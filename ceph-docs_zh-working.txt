@@ -5291,44 +5291,66 @@ When a placement group is in the clean state, the primary OSD and the replica OS
  3.3.3.4.5  已降级
 Degraded
 When a client writes an object to the primary OSD, the primary OSD is responsible for writing the replicas to the replica OSDs. After the primary OSD writes the object to storage, the placement group will remain in a degraded state until the primary OSD has received an acknowledgement from the replica OSDs that Ceph created the replica objects successfully.
+当客户端向主OSD写入数据时，由主OSD负责把副本写入其余复制OSD。主OSD把对象写入复制OSD后，在没收到成功完成的确认前，主OSD会一直停留在degraded状态。
 The reason a placement group can be active+degraded is that an OSD may be active even though it doesn’t hold all of the objects yet. If an OSD goes down, Ceph marks each placement group assigned to the OSD as degraded. The OSDs must peer again when the OSD comes back online. However, a client can still write a new object to a degraded placement group if it is active.
+归置组状态可以是active+degraded状态，原因在于一OSD即使没所有对象也可以处于active状态。如果一OSD挂了，ceph会把相关的归置组都标记为degraded；那个OSD重生后，它们必须重新互联。然而，如果归置组仍处于active状态，即便它处于degraded状态，客户端还可以向其写入新对象。
 If an OSD is down and the degraded condition persists, Ceph may mark the down OSD as out of the cluster and remap the data from the down OSD to another OSD. The time between being marked down and being marked out is controlled by mon osd down out interval, which is set to 300 seconds by default.
+如果一OSD挂了，且degraded状态持续，ceph会把down的OSD标记为在集群外（out）、并把那些down掉的OSD上的数据重映射到其它OSD。从标记为down到out的时间间隔由mon osd down out interval控制，默认是300秒。
 A placement group can also be degraded, because Ceph cannot find one or more objects that Ceph thinks should be in the placement group. While you cannot read or write to unfound objects, you can still access all of the other objects in the degraded placement group.
+归置组也会被降级（degraded），因为归置组找不到本应存在于归置组中的一或多个对象，这时，你不能读或写找不到的对象，但仍能访问其它位于降级归置组中的对象。
  3.3.3.4.6  恢复中
 Recovering
 Ceph was designed for fault-tolerance at a scale where hardware and software problems are ongoing. When an OSD goes down, its contents may fall behind the current state of other replicas in the placement groups. When the OSD is back up, the contents of the placement groups must be updated to reflect the current state. During that time period, the OSD may reflect a recovering state.
+ceph被设计为可容错，可抵御一定规模的软、硬件问题。当某OSD挂了（down）时，其内容版本会落后于归置组内的其它副本；它重生（up）时，归置组内容必须更新，以反映当前状态；在此期间，OSD在recovering状态。
 Recovery isn’t always trivial, because a hardware failure might cause a cascading failure of multiple OSDs. For example, a network switch for a rack or cabinet may fail, which can cause the OSDs of a number of host machines to fall behind the current state of the cluster. Each one of the OSDs must recover once the fault is resolved.
+恢复并非总是这些小事，因为一次硬件失败可能牵连多个OSD。比如一个机柜的网络交换机失败了，这会导致多个主机落后于集群的当前状态，问题解决后每一个OSD都必须恢复。
 Ceph provides a number of settings to balance the resource contention between new service requests and the need to recover data objects and restore the placement groups to the current state. The osd recovery delay start setting allows an OSD to restart, re-peer and even process some replay requests before starting the recovery process. The osd recovery threads setting limits the number of threads for the recovery process (1 thread by default). The osd recovery thread timeout sets a thread timeout, because multiple OSDs may fail, restart and re-peer at staggered rates. The osd recovery max active setting limits the number of recovery requests an OSD will entertain simultaneously to prevent the OSD from failing to serve . The osd recovery max chunk setting limits the size of the recovered data chunks to prevent network congestion.
+ceph提供了很多选项来均衡资源竞争，如新服务请求、恢复数据对象和恢复归置组到当前状态。osd recovery delay start选项允许一OSD在开始恢复进程前，先重启、重建互联、甚至处理一些重放请求；osd recovery threads选项限制恢复进程的线程数，默认为1线程；osd recovery thread timeout设置线程超时，因为多个OSD可能交替失败、重启和重建互联；osd recovery max active选项限制一OSD最多同时接受多少请求，以防它压力过大而不能正常服务；osd recovery max chunk选项限制恢复数据块尺寸，以防网络拥塞。
  3.3.3.4.7  回填中
 Back Filling
 When a new OSD joins the cluster, CRUSH will reassign placement groups from OSDs in the cluster to the newly added OSD. Forcing the new OSD to accept the reassigned placement groups immediately can put excessive load on the new OSD. Back filling the OSD with the placement groups allows this process to begin in the background. Once backfilling is complete, the new OSD will begin serving requests when it is ready.
+有新OSD加入集群时，CRUSH会把现有集群内的归置组重分配给它。强制新OSD立即接受重分配的归置组会使之过载，用归置组回填可使这个过程在后台开始。回填完成后，新OSD准备好时就可以对外服务了。
 During the backfill operations, you may see one of several states: backfill_wait indicates that a backfill operation is pending, but isn’t underway yet; backfill indicates that a backfill operation is underway; and, backfill_too_full indicates that a backfill operation was requested, but couldn’t be completed due to insufficient storage capacity.
+在回填操作期间，你可能见到几种状态之一：backfill_wait表明一回填操作挂起了，还没开始；backfill表明一回填操作正在进行；backfill_too_full表明请求回填了，但是因存储空间不足而不能完成。
 Ceph provides a number of settings to manage the load spike associated with reassigning placement groups to an OSD (especially a new OSD). By default, osd_max_backfills sets the maximum number of concurrent backfills to or from an OSD to 10. The osd backfill full ratio enables an OSD to refuse a backfill request if the OSD is approaching its its full ratio (85%, by default). If an OSD refuses a backfill request, the osd backfill retry interval enables an OSD to retry the request (after 10 seconds, by default). OSDs can also set osd backfill scan min and osd backfill scan max to manage scan intervals (64 and 512, by default).
+ceph提供了多个选项来解决重分配归置组时相关的负载问题。默认，osd_max_backfill把双向的回填并发量都设置为10；osd backfill full ratio可让一OSD在接近占满率（默认85%）时拒绝回填请求，如果一OSD拒绝了回填请求，在osd backfill retry interval间隔之后将重试（默认10秒）；OSD也能用osd backfill scan min和osd backfill scan max来管理扫描间隔（默认64和512）。
  3.3.3.4.8  被重映射
 Remapped
 When the Acting Set that services a placement group changes, the data migrates from the old acting set to the new acting set. It may take some time for a new primary OSD to service requests. So it may ask the old primary to continue to service requests until the placement group migration is complete. Once data migration completes, the mapping uses the primary OSD of the new acting set.
-
- 3.3.3.4.9  发蔫
+某一归置组的Acting Set变更时，数据要从旧集合迁移到新的。主OSD要花费一些时间才能提供服务，所以它可以让老的主OSD持续服务、直到归置组迁移完。数据迁移完后，主OSD会映射到新acting set。
+ 3.3.3.4.9  发蔫（stale）
 Stale
 While Ceph uses heartbeats to ensure that hosts and daemons are running, the ceph-osd daemons may also get into a stuck state where they aren’t reporting statistics in a timely manner (e.g., a temporary network fault). By default, OSD daemons report their placement group, up thru, boot and failure statistics every half second (i.e., 0.5), which is more frequent than the heartbeat thresholds. If the Primary OSD of a placement group’s acting set fails to report to the monitor or if other OSDs have reported the primary OSD down, the monitors will mark the placement group stale.
+虽然ceph用心跳来保证主机和守护进程在运行，但是ceph-osd仍有可能进入stuck状态，它们没有按时报告其状态（如网络瞬断）。默认，OSD守护进程每半秒（0.5）会一次报告其归置组、出流量、引导和失败统计状态，此频率高于心跳阀值。如果一归置组的主OSD所在的acting set没能向监视器报告、或者其它监视器已经报告了那个主OSD已down，监视器们就会把此归置组标记为stale。
 When you start your cluster, it is common to see the stale state until the peering process completes. After your cluster has been running for awhile, seeing placement groups in the stale state indicates that the primary OSD for those placement groups is down or not reporting placement group statistics to the monitor.
+启动集群时，会经常看到stale状态，直到互联完成。集群运行一阵后，如果还能看到有归置组位于stale状态，就说明那些归置组的主OSD挂了（down）、或没在向监视器报告统计信息。
  3.3.3.5  找出故障归置组
 Identifying Troubled PGs
 As previously noted, a placement group isn’t necessarily problematic just because its state isn’t active+clean. Generally, Ceph’s ability to self repair may not be working when placement groups get stuck. The stuck states include:
+如前所述，一个归置组状态是active+clean时未必有问题。一般来说，归置组卡住时ceph的自修复功能往往无能为力，卡住的状态细分为：
 Unclean: Placement groups contain objects that are not replicated the desired number of times. They should be recovering.
+不干净：归置组里有些对象的复制数未达到期望次数，它们应该在恢复中。
 Inactive: Placement groups cannot process reads or writes because they are waiting for an OSD with the most up-to-date data to come back up.
+不活跃：归置组不能处理读写，因为它们在等着一个持有最新数据的OSD再次进入up状态。
 Stale: Placement groups are in an unknown state, because the OSDs that host them have not reported to the monitor cluster in a while (configured by mon osd report timeout).
+发蔫：归置组们处于一种未知状态，因为存储它们的OSD有一阵子没向监视器报告了（由mon osd report timeout配置）。
 To identify stuck placement groups, execute the following:
+为找出卡住的归置组，执行：
 ceph pg dump_stuck [unclean|inactive|stale]
 See Placement Group Subsystem for additional details. To troubleshoot stuck placement groups, see Troubleshooting PG Errors.
+详情见Placement Group Subsystem，排除卡住的归置组见Troubleshooting PG Errors。
  3.3.3.6  定位对象
 Finding an Object Location
 To store object data in the Ceph Object Store, a Ceph client must:
+要把对象数据存入Ceph对象存储，一ceph客户端必须：
 1. Set an object name
+设置对象名
 2. Specify a pool
+指定一存储池
 The Ceph client retrieves the latest cluster map and the CRUSH algorithm calculates how to map the object to a placement group, and then calculates how to assign the placement group to an OSD dynamically. To find the object location, all you need is the object name and the pool name. For example:
 ceph osd map {poolname} {object-name}
 
+练习：定位一个对象
 Excercise: Locate an Object
 As an exercise, lets create an object. Specify an object name, a path to a test file containing some object data and a pool name using the rados put command on the command line. For example:
 
