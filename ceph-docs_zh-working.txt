@@ -5348,519 +5348,364 @@ To store object data in the Ceph Object Store, a Ceph client must:
 2. Specify a pool
 指定一存储池
 The Ceph client retrieves the latest cluster map and the CRUSH algorithm calculates how to map the object to a placement group, and then calculates how to assign the placement group to an OSD dynamically. To find the object location, all you need is the object name and the pool name. For example:
+ceph客户端索取最新集群运行图、并用CRUSH算法计算对象到归置组的映射，然后计算如何动态地把归置组映射到OSD。要定位对象，只需要知道对象名和存储池名字，例如：
 ceph osd map {poolname} {object-name}
 
 练习：定位一个对象
 Excercise: Locate an Object
 As an exercise, lets create an object. Specify an object name, a path to a test file containing some object data and a pool name using the rados put command on the command line. For example:
-
+反正是练习，我们先创建一个对象。给rados put命令指定一对象名、一个包含数据的测试文件路径、和一个存储池名字，例如：
+rados put {object-name} {file-path} --pool=data
+rados put test-object-1 testfile.txt --pool=data
 To verify that the Ceph Object Store stored the object, execute the following:
-	rados -p data ls
+用下列命令确认ceph对象存储已经包含此对象：
+rados -p data ls
 Now, identify the object location:
-	ceph osd map {pool-name} {object-name}
-	ceph osd map data test-object-1
+现在可以定位对象了：
+ceph osd map {pool-name} {object-name}
+ceph osd map data test-object-1
 Ceph should output the object’s location. For example:
-	osdmap e537 pool 'data' (0) object 'test-object-1' -> pg 0.d1743484 (0.4) -> up [1,0] acting [1,0]
+ceph应该输出对象的位置，例如：
+osdmap e537 pool 'data' (0) object 'test-object-1' -> pg 0.d1743484 (0.4) -> up [1,0] acting [1,0]
 To remove the test object, simply delete it using the rados rm command. For example:
-	rados rm test-object-1 --pool=data
+要删除测试对象，用rados rm即可，如：
+rados rm test-object-1 --pool=data
+
 As the cluster evolves, the object location may change dynamically. One benefit of Ceph’s dynamic rebalancing is that Ceph relieves you from having to perform the migration manually. See the Architecture section for details.
+随着集群的运转，对象位置会动态改变。ceph动态重均衡的优点之一，就是把你从手动迁移中解救了，详情见Architecture。
+ 3.3.4  认证概览
+ceph认证及授权
+Ceph authentication & authorization
+Ceph is a distributed storage system where a typical deployment involves a relatively small quorum of monitors, scores of metadata servers (MDSs) and many thousands of OSD daemons operating across many hosts/nodes–representing the server portion of the Ceph object store. Ceph clients such as CephFS, Ceph block device and Ceph Gateway interact with the Ceph object store. All Ceph object store clients use the librados library to interact with the Ceph object store. The following diagram illustrates an abstract client/server technology stack.
+ceph是一个分布式存储系统，其典型部署包含相对少量的监视器、许多元数据服务器（MDS）和数千OSD守护进程，它们运行于很多主机或节点，共同构成了ceph对象存储的服务器部分；ceph客户端如CephFS、Ceph块设备和Ceph网关与ceph对象存储交互，所有客户端都用librados库与ceph对象存储交互，下面的图抽象地展示了客户端/服务器技术。
 
- 3.3.4  CPU剖析
-CPU Profiling
-If you built Ceph from source and compiled Ceph for use with oprofile you can profile Ceph’s CPU usage. See Installing Oprofile for details.
-如果你从源码编译、且启用了oprofile，那么你就可以剖析ceph的CPU用法了，详情参见 Installing Oprofile。
- 3.3.4.1  初始化oprofile
-INITIALIZING OPROFILE
-The first time you use oprofile you need to initialize it. Locate the vmlinux image corresponding to the kernel you are now running.
-你首次使用oprofile的时候要初始化，找到对应于当前运行内核的vmlinux位置：
-ls /boot
-sudo opcontrol --init
-sudo opcontrol --setup --vmlinux={path-to-image} --separate=library --callgraph=6
- 3.3.4.2  启动oprofile
-STARTING OPROFILE
-To start oprofile execute the following command:
-执行下面的命令启动opeofile：
-opcontrol --start
+Users are either individuals or system actors such as applications, which use Ceph clients to interact with Ceph server daemons.
+用户可以是个人或系统角色，像应用程序，它们用ceph客户端和ceph服务器守护进程交互。
 
-Once you start oprofile, you may run some tests with Ceph.
-启动oprofile后，你可以运行一些ceph测试：
- 3.3.4.3  停止oprofile
-STOPPING OPROFILE
-To stop oprofile execute the following command:
-执行下面的命令停止oprofile：
-opcontrol --stop
- 3.3.4.4  查看oprofile运行结果
-RETRIEVING OPROFILE RESULTS
-To retrieve the top cmon results, execute the following command:
-要查看cmon最近的结果，执行下面的命令：
-opreport -gal ./cmon | less
+For additional information, see our Cephx Guide and ceph-authtool manpage.
+更多信息参见Cephx Guide和ceph-authtool手册。
+ 3.3.4.1  ceph认证（cephx）
+CEPH AUTHENTICATION (CEPHX)
+Cryptographic authentication has some computational costs, though they should generally be quite low. If the network environment connecting your client and server hosts is very safe and you cannot afford authentication, you can use a Ceph option to turn it off. This is not generally recommended, but should you need to do so, details can be found in the Disable Cephx section.
+加密认证要耗费一定计算资源，但通常很低。如果您的客户端和服务器网络环境相当安全，而且认证的负面效应更大，你可以关闭它，通常不推荐您这么做，但必要时可以。详情参见Disable Cephx。
+Important Remember, if you disable authentication, you are at risk of a man-in-the-middle attack altering your client/server messages, which could lead to disastrous security effects.
+重要：记住，如果禁用了认证，就会有篡改客户端/服务器消息这样的中间人攻击风险，这会导致灾难性后果。
+A key scalability feature of Ceph is to avoid a centralized interface to the Ceph object store, which means that Ceph clients must be able to interact with OSDs directly. To protect data, Ceph provides its cephx authentication system, which authenticates users operating Ceph clients. The cephx protocol operates in a manner with behavior similar to Kerberos.
+ceph一个主要伸缩功能就是避免了对象存储的中央接口，这就要求ceph客户端能直接和OSD交互。Ceph通过cephx认证系统保护数据，它也认证运行ceph客户端的用户，cephx协议运行机制类似Kerberos。
+A user/actor invokes a Ceph client to contact a monitor. Unlike Kerberos, each monitor can authenticate users and distribute keys, so there is no single point of failure or bottleneck when using cephx. The monitor returns an authentication data structure similar to a Kerberos ticket that contains a session key for use in obtaining Ceph services. This session key is itself encrypted with the user’s permanent secret key, so that only the user can request services from the Ceph monitor(s). The client then uses the session key to request its desired services from the monitor, and the monitor provides the client with a ticket that will authenticate the client to the OSDs that actually handle data. Ceph monitors and OSDs share a secret, so the client can use the ticket provided by the monitor with any OSD or metadata server in the cluster. Like Kerberos, cephx tickets expire, so an attacker cannot use an expired ticket or session key obtained surreptitiously. This form of authentication will prevent attackers with access to the communications medium from either creating bogus messages under another user’s identity or altering another user’s legitimate messages, as long as the user’s secret key is not divulged before it expires.
+用户/参与者通过调用ceph客户端来联系监视器，不像Kerberos，每个监视器都能认证用户、发布密钥，所以使用cephx时不会有单点故障或瓶颈。监视器返回一个类似Kerberos票据的认证数据结构，它包含一个可用于获取ceph服务的会话密钥，会话密钥是用户的永久私钥自加密过的，只有此用户能从ceph监视器请求服务。客户端用会话密钥向监视器请求需要的服务，然后监视器给客户端一个凭证用以向实际持有数据的OSD认证。ceph的监视器和OSD共享相同的密钥，所以集群内任何OSD或元数据服务器都认可客户端从监视器获取的凭证，像Kerberos一样cephx凭证也会过期，以使攻击者不能用暗中得到的过期凭证或会话密钥。只要用户的私钥过期前没有泄露 ，这种认证形式就可防止中间线路攻击者以别人的ID发送垃圾消息、或修改用户的正常消息。
+To use cephx, an administrator must set up users first. In the following diagram, the client.admin user invokes ceph auth get-or-create-key from the command line to generate a username and secret key. Ceph’s auth subsystem generates the username and key, stores a copy with the monitor(s) and transmits the user’s secret back to the client.admin user. This means that the client and the monitor share a secret key.
+要使用cephx，管理员必须先设置好用户。在下面的图解里，client.admin用户从命令行调用 ceph auth get-or-create-key来生成一个用户及其密钥，ceph的认证子系统生成了用户名和密钥、副本存到监视器然后把此用户的密钥回传给client.admin用户，也就是说客户端和监视器共享着相同的密钥。
+Note: The client.admin user must provide the user ID and secret key to the user in a secure manner.
+注意：client.admin用户必须以安全方式把此用户ID和密钥交给用户。
 
-To retrieve the top cmon results with call graphs attached, execute the following command:
-要检索cmon最近的调用图结果，执行下面的命令：
-opreport -cal ./cmon | less
 
-Important: After reviewing results, you should reset oprofile before running it again. Resetting oprofile removes data from the session directory.
-重要：回顾结果后，重新剖析前应该先重置，重置动作从会话目录里删除了数据。
- 3.3.4.5  重置oprofile
-RESETTING OPROFILE
-To reset oprofile, execute the following command:
-要重置oprofile，执行下面的命令：
-sudo opcontrol --reset
+To authenticate with the monitor, the client passes in the user name to the monitor, and the monitor generates a session key and encrypts it with the secret key associated to the user name. Then, the monitor transmits the encrypted ticket back to the client. The client then decrypts the payload with the shared secret key to retrieve the session key. The session key identifies the user for the current session. The client then requests a ticket on behalf of the user signed by the session key. The monitor generates a ticket, encrypts it with the user’s secret key and transmits it back to the client. The client decrypts the ticket and uses it to sign requests to OSDs and metadata servers throughout the cluster.
+要和监视器认证，客户端得把用户名传给监视器，然后监视器生成一个会话密钥、并且用此用户的密钥加密它，然后把加密的凭证回传给客户端，客户端用共享密钥解密载荷就可获取会话密钥。会话密钥在当前会话中标识了此用户，客户端再用此会话密钥签署过的用户名请求一个凭证，监视器生成一个凭证、用客户端的密钥加密它，然后回传给客户端，客户端解密此凭证，然后用它签署连接集群内OSD和元数据服务器的请求。
 
-Important: You should reset oprofile after analyzing data so that you do not commingle results from different tests.
-重要：你应该分析后再重置，以免混合不同的剖析结果。
- 3.3.5  内存剖析
-Memory Profiling
-Ceph OSD and metadata server daemons can generate heap profiles using tcmalloc. To generate heap profiles, ensure you have google-perftools installed:
-sudo apt-get google-perftools
-The profiler dumps output to your log file directory (i.e., /var/log/ceph). See Logging and Debugging Config Reference for details. To view the profiler logs with Google’s performance tools, execute the following:
-google-pprof -gv {log-path/filename}
-Refer to Google Heap Profiler for additional details.
-Once you have the heap profiler installed, start your cluster and begin using the heap profiler. You may enable or disable the heap profiler at runtime, or ensure that it runs continously. For the following commandline usage, replace {daemon-type} with osd or mds, and replace daemon-id with the OSD number or metadata server letter.
- 3.3.5.1  启动剖析器
-Starting the Profiler
-To start the heap profiler, execute the following:
-ceph {daemon-type} tell {daemon-id} heap start_profiler
+The cephx protocol authenticates ongoing communications between the client machine and the Ceph servers. Each message sent between a client and server, subsequent to the initial authentication, is signed using a ticket that the monitors, OSDs and metadata servers can verify with their shared secret.
+cephx协议认证客户端机器和ceph服务器间正在进行的通讯，二者间认证完成后的每条消息都用凭证签署过，监视器、OSD、元数据服务器可用共享的密钥来校验。
+
+The protection offered by this authentication is between the Ceph client and the Ceph server hosts. The authentication is not extended beyond the Ceph client. If the user accesses the Ceph client from a remote host, Ceph authentication is not applied to the connection between the user’s host and the client host.
+认证提供的保护位于ceph客户端和服务器间，没有扩展到ceph客户端之外。如果用户从远程主机访问ceph客户端，ceph认证就不管用了，它不会影响到用户主机和客户端主机间的通讯。
+ 3.3.4.2  ceph授权（能力）
+CEPH AUTHORIZATION (CAPS)
+Ceph uses the term “capabilities” (caps) to describe authorizing an authenticated user to exercise the functionality of the monitors, OSDs and metadata servers. Capabilities can also restrict access to data within one or more pools.
+ceph用能力(caps)来描述给认证用户的授权，这样才能使用监视器、OSD、和元数据服务器的功能。能力也能限制到一或多个存储池的访问。
+Note: Ceph uses the capabilities discussed here for setting up and controlling access between various Ceph client and server instances, and are relevant regardless of what type of client accesses the Ceph object store. CephFS uses a different type of capability for files and directories internal to the CephFS filesystem. CephFS filesystem access controls are relevant to CephFS, but not block devices or the RESTful gateway.
+注意：ceph使用能力来设置、控制ceph客户端和服务器例程间的相互访问，并且不管哪种客户端访问ceph对象存储。CephFS内部给文件和目录用了不同于CephFS文件系统的另外一种能力，CephFS访问控制和CephFS有关，但不是块设备或RESTful网关。
+A Ceph client.admin user sets a user’s capabilities when creating the user.
+ceph的client.admin用户在创建用户时设置了用户的能力。
+allow
+Description:
+Precedes access settings for a daemon. Implies rw for MDS only.
+在守护进程的访问设置之前，仅对MDS隐含rw。
+Example:
+ceph-authtool -n client.foo --cap mds 'allow'
+r
+Description:
+Gives the user read access. Required with monitors to retrieve the CRUSH map.
+授予用户读权限，监视器需要它才能搜刮CRUSH图。
+Example:
+ceph-authtool -n client.foo --cap mon 'allow r'
+w
+Description:
+Gives the user write access to objects.
+授予用户写对象的权限。
+Example:
+ceph-authtool -n client.foo --cap osd 'allow w'
+x
+Description:
+Gives the user the capability to call class methods (i.e., both read and write).
+授予用户调用类方法的能力，如同时有读和写。
+Example:
+ceph-authtool -n client.foo --cap osd 'allow x'
+class-read
+Descriptions:
+Gives the user the capability to call class read methods. Subset of x.
+授予用户调用类读取方法的能力，x的子集。
+Example:
+ceph-authtool -n client.foo --cap osd 'allow class-read'
+class-write
+Description:
+Gives the user the capability to call class write methods. Subset of x.
+授予用户调用类写入方法的能力，x的子集。
+Example:
+ceph-authtool -n client.foo --cap osd 'allow class-write'
+*
+Description:
+Gives the user read, write and execute permissions for a particular daemon/pool, and the ability to execute admin commands.
+授权用户读、写和执行某守护进程/存储池，且允许执行管理命令。
+Example:
+ceph-authtool -n client.foo --cap osd 'allow *'
+When setting capabilities for a user, Ceph also supports restricting the capabilities to a particular pool. This means you can have full access to some pools, and restricted (or no) access to other pools for the same user. For example:
+给用户设置能力的时候，ceph也支持把能力限制于某存储池。意思是你可以完全地访问一些存储池、访问其他存储池却是受限的（或未受限）。
+ceph-authtool -n client.foo --cap osd 'allow rwx pool=customer-pool'
+ 3.3.4.3  cephx的局限性
+CEPHX LIMITATIONS
+The cephx protocol authenticates Ceph clients and servers to each other. It is not intended to handle authentication of human users or application programs run on their behalf. If that effect is required to handle your access control needs, you must have another mechanism, which is likely to be specific to the front end used to access the Ceph object store. This other mechanism has the role of ensuring that only acceptable users and programs are able to run on the machine that Ceph will permit to access its object store.
+cephx协议提供ceph客户端和服务器间的相互认证，并没打算认证人类用户或者应用程序。如果有访问控制需求，那必须用另外一种机制，它对于前端用户访问ceph对象存储可能是特定的，其任务是确保只有此机器上可接受的用户和程序才能访问ceph的对象存储。
+The keys used to authenticate Ceph clients and servers are typically stored in a plain text file with appropriate permissions in a trusted host.
+用于认证ceph客户端和服务器的密钥通常以纯文本存储在权限合适的文件里，此文件保存于可信主机上。
+Important: Storing keys in plaintext files has security shortcomings, but they are difficult to avoid, given the basic authentication methods Ceph uses in the background. Those setting up Ceph systems should be aware of these shortcomings.
+重要：密钥存储为纯文本文件有安全缺陷，但很难避免，它给了ceph可用的基本认证方法，设置ceph时应该注意这些缺陷。
+In particular, arbitrary user machines, especially portable machines, should not be configured to interact directly with Ceph, since that mode of use would require the storage of a plaintext authentication key on an insecure machine. Anyone who stole that machine or obtained surreptitious access to it could obtain the key that will allow them to authenticate their own machines to Ceph.
+尤其是任意用户、特别是移动机器不应该和ceph直接交互，因为这种用法要求把明文认证密钥存储在不安全的机器上，这些机器的丢失、或盗用将泄露可访问ceph集群的密钥。
+Rather than permitting potentially insecure machines to access a Ceph object store directly, users should be required to sign in to a trusted machine in your environment using a method that provides sufficient security for your purposes. That trusted machine will store the plaintext Ceph keys for the human users. A future version of Ceph may address these particular authentication issues more fully.
+相比于允许潜在的欠安全机器直接访问ceph对象存储，应该要求用户先登录安全有保障的可信机器，这台可信机器会给人们存储明文密钥。未来的ceph版本也许会更彻底地解决这些特殊认证问题。
+At the moment, none of the Ceph authentication protocols provide secrecy for messages in transit. Thus, an eavesdropper on the wire can hear and understand all data sent between clients and servers in Ceph, even if he cannot create or alter them. Further, Ceph does not include options to encrypt user data in the object store. Users can hand-encrypt and store their own data in the Ceph object store, of course, but Ceph provides no features to perform object encryption itself. Those storing sensitive data in Ceph should consider encrypting their data before providing it to the Ceph system.
+当前，没有任何ceph认证协议保证传送中消息的私密性。所以，即使物理线路窃听者不能创建用户或修改它们，但可以听到、并理解客户端和服务器间发送过的所有数据。此外，ceph没有可加密用户数据的选项，当然，用户可以手动加密、然后把它们存在对象库里，但ceph没有自己加密对象的功能。在ceph里存储敏感数据的用户应该考虑存入ceph集群前先加密。
+ 3.3.5  cephx认证
+Cephx Guide
+Ceph provides two authentication modes:
+ceph提供了两种认证模式：
+None: Any user can access data without authentication.
+none：任何用户无需认证就能访问数据；
+Cephx: Ceph requires user authentication in a manner similar to Kerberos.
+cephx：ceph要求用户认证，机制类似Kerberos。
+If you disable cephx, you do not need to generate keys using the procedures described here. If you re-enable cephx and have already generated keys, you do not need to generate the keys again.
+如果你要禁用cephx，就不需要按前述生成密钥；如果你重新启用cephx且已然生成了密钥，也无需再次生成。
+Important: The cephx protocol does not address data encryption in transport (e.g., SSL/TLS) or encryption at rest.
+重要：cephx协议不解决传输加密（如SSL/TLS）、或者存储加密问题。
+For additional information, see our Cephx Intro and ceph-authtool manpage.
+额外信息要参见 Cephx Intro和ceph-authtool手册。
+ 3.3.5.1  配置cephx
+CONFIGURING CEPHX
+There are several important procedures you must follow to enable the cephx protocol for your Ceph cluster and its daemons.
+要为集群及其守护进程启用cephx协议，有几个重要步骤必须遵循。
+1. First, you must generate a secret key for the default client.admin user so the administrator can execute Ceph commands.
+首先，必须给默认的client.admin生成密钥，以便管理员执行ceph命令；
+2. Second, you must generate a monitor secret key and distribute it to all monitors in the cluster.
+其次，必须生成一个监视器密钥，并发布到集群内的所有监视器；
+3. Finally, you can follow the remaining steps in Enabling Cephx to enable authentication.
+最后，你要完成启用cephx里的剩余步骤。
+ 3.3.5.1.1  client.admin密钥
+THE CLIENT.ADMIN KEY
+When you first install Ceph, each Ceph command you execute on the command line assumes that you are the client.admin default user. When running Ceph with cephx enabled, you need to have a key for the client.admin user to run ceph commands as the administrator.
+你首次安装ceph后，你执行的每个ceph命令都先假设你是默认用户client.admin。集群如果启用了cephx，client.admin用户就需要一个密钥才能运行ceph命令。
+Important: To run Ceph commands on the command line with cephx enabled, you need to create a key for the client.admin user, and create a secret file under /etc/ceph.
+重要：在启用了cephx的ceph上执行命令时，你得给client.admin用户创建一个密钥、并在/etc/ceph下创建一个密钥文件。
+The following command will generate and register a client.admin key on the monitor with admin capabilities and write it to a keyring on the local file system. If the key already exists, its current value will be returned.
+下列命令将在监视器上生成并注册一个具有管理能力的client.admin密钥，并将之写入本地文件系统的keyring，如果密钥已存在，将返回其值。
+sudo ceph auth get-or-create client.admin mds 'allow' osd 'allow *' mon 'allow *' > /etc/ceph/keyring
+See Enabling Cephx step 1 for stepwise details to enable cephx.
+启用cephx的手把手教程，请参见启用cephx步骤1。
+ 3.3.5.1.2  监视器密钥环
+MONITOR KEYRINGS
+Ceph requires a keyring for the monitors. Use the ceph-authtool command to generate a secret monitor key and keyring.
+ceph的监视器需要一个密钥环，用ceph-authtool命令生成密钥和密钥环。
+sudo ceph-authtool {keyring} --create-keyring --gen-key -n mon.
+A cluster with multiple monitors must have identical keyrings for all monitors. So you must copy the keyring to each monitor host under the following directory:
+有多个监视器的集群，其所有监视器的密钥环必须相同，所以你必须把下列目录里的密钥环拷到每个监视器：
+/var/lib/ceph/mon/$cluster-$id
+See Enabling Cephx step 2 and 3 for stepwise details to enable cephx.
+启用cephx的详细步骤参见启用cephx的第2、3步。
+ 3.3.5.1.3  启用cephx
+ENABLING CEPHX
+When cephx is enabled, Ceph will look for the keyring in the default search path, which includes /etc/ceph/keyring. You can override this location by adding a keyring option in the [global] section of your Ceph configuration file, but this is not recommended.
+启用cephx后，ceph将在默认搜索路径（/etc/ceph/keyring）里查找密钥环。你可以在配置文件的[global]段里添加keyring选项来修改，但不推荐。
+Execute the following procedures to enable cephx on a cluster with cephx disabled. If you (or your deployment utility) have already generated the keys, you may skip the steps related to generating keys.
+在禁用了cephx的集群上执行下面的步骤来启用它，如果你（或者部署工具）已经生成了密钥，你可以跳过相关步骤。
+1. Create a client.admin key, and save a copy of the key for your client host:
+创建client.admin密钥，并为客户端保存此密钥的副本：
+ceph auth get-or-create client.admin mon 'allow *' mds 'allow *' osd 'allow *' -o /etc/ceph/keyring
+**Warning:** This will clobber any existing ``/etc/ceph/keyring`` file. Be careful!
+2. Generate a secret monitor mon. key:
+生成给监视器的mon.密钥：
+ceph-authtool --create --gen-key -n mon. /tmp/monitor-key
+3. Copy the mon keyring into a keyring file in every monitor’s mon data directory:
+把mon密钥环拷贝到keyring文件，再拷到每个监视器的mon data目录下：
+cp /tmp/monitor-key /var/lib/ceph/mon/ceph-a/keyring
+4. Generate a secret key for every OSD, where {$id} is the OSD number:
+为每个OSD生成密钥，{id}是OSD编号：
+ceph auth get-or-create osd.{$id} mon 'allow rwx' osd 'allow *' -o /var/lib/ceph/osd/ceph-{$id}/keyring
+5. Generate a secret key for every MDS, where {$id} is the MDS letter:
+为每个MDS生成密钥，{id}是MDS的标识字母：
+ceph auth get-or-create mds.{$id} mon 'allow rwx' osd 'allow *' mds 'allow *' -o /var/lib/ceph/mds/ceph-{$id}/keyring
+6. Enable cephx authentication for versions 0.51 and above by setting the following options in the [global] section of your Ceph configuration file:
+0.51以上版本启用cephx时，要在配置文件的[global]段下添加如下内容：
+auth cluster required = cephx
+auth service required = cephx
+auth client required = cephx
+7. Or, enable cephx authentication for versions 0.50 and below by setting the following option in the [global] section of your Ceph configuration file:
+或者，0.50以下版本启用cephx时，要在配置文件的[global]段下添加以下：
+auth supported = cephx
+Deprecated since version 0.51.
+从0.51起死亡了。
+1. Start or restart the Ceph cluster.
+启动或重启ceph集群：
+sudo service ceph -a start
+sudo service ceph -a restart
+ 3.3.5.1.4  禁用cephx
+DISABLING CEPHX
+The following procedure describes how to disable Cephx. If your cluster environment is relatively safe, you can offset the computation expense of running authentication. We do not recommend it. However, it may be easier during setup and/or troubleshooting to temporarily disable authentication.
+下面的步骤描述了如何禁用cephx，如果你的集群环境相对安全，你可以去掉认证带来的计算消耗，然而我们不推荐。但是临时禁用认证会使安装、和/或排障更简单。
+
+1. Disable cephx authentication for versions 0.51 and above by setting the following options in the [global] section of your Ceph configuration file:
+在0.51及以上禁用cephx认证，要在配置文件的[global]段下设置：
+auth cluster required = none
+auth service required = none
+auth client required = none
+2. Or, disable cephx authentication for versions 0.50 and below (deprecated as of version 0.51) by setting the following option in the [global] section of your Ceph configuration file:
+或者，在0.50（从0.51时消失）及以下禁用cephx，要在配置文件的[global]段下设置：
+auth supported = none
+3. Start or restart the Ceph cluster.
+启动或重启ceph集群：
+sudo service ceph -a start
+sudo service ceph -a restart
+ 3.3.5.1.5  守护进程密钥环
+DAEMON KEYRINGS
+With the exception of the monitors, Ceph generates daemon keyrings in the same way that it generates user keyrings. By default, the daemons store their keyrings inside their data directory. The default keyring locations, and the capabilities necessary for the daemon to function, are shown below.
+除监视器外，守护进程密钥环和用户密钥环生成方法一样。默认情况下，守护进程把密钥环保存在它们的数据目录下，默认密钥环位置、和守护进程发挥作用必需的能力展示如下：
+ceph-mon
+Location:
+$mon_data/keyring
+Capabilities:
+N/A
+ceph-osd
+Location:
+$osd_data/keyring
+Capabilities:
+mon 'allow rwx' osd 'allow *'
+ceph-mds
+Location:
+$mds_data/keyring
+Capabilities:
+mds 'allow rwx' mds 'allow *' osd 'allow *'
+radosgw
+Location:
+$rgw_data/keyring
+Capabilities:
+mon 'allow r' osd 'allow rwx'
+Note that the monitor keyring contains a key but no capabilities, and is not part of the cluster auth database.
+注意，监视器密钥环包含一个密钥，但没有能力，且不是集群auth数据库的一部分。
+The daemon data directory locations default to directories of the form:
+守护进程数据目录位置默认格式如下：
+/var/lib/ceph/$type/$cluster-$id
+For example, osd.12 would be:
+例如，osd.12的目录会是：
+/var/lib/ceph/osd/ceph-12
+You can override these locations, but it is not recommended.
+你可以覆盖这些位置，但不推荐。
+ 3.3.5.2  cephx管理
+CEPHX ADMINISTRATION
+Cephx uses shared secret keys for authentication, meaning both the client and the monitor cluster have a copy of the client’s secret key. The authentication protocol is such that both parties are able to prove to each other they have a copy of the key without actually revealing it. This provides mutual authentication, which means the cluster is sure the user possesses the secret key, and the user is sure that the cluster has a copy of the secret key.
+cephx用共享密钥来认证，即客户端和监视器集群各自都有客户端密钥的副本。这样的认证协议使所有参与者没有展现密钥就能相互证明，就是说集群确信用户可处理密钥、而且用户相信集群有密钥的副本。
+Default users and pools are suitable for initial testing purposes. For test bed and production environments, you should create users and assign pool access to the users.
+默认用户和存储池只适合最初的测试，在试验台和生产环境下，应该创建用户并给其分配存储池访问权限。
+ 3.3.5.2.1  增加密钥
+ADD A KEY
+Keys enable a specific user to access the monitor, metadata server and cluster according to capabilities assigned to the key. Capabilities are simple strings specifying some access permissions for a given server type. Each server type has its own string. All capabilities are simply listed in {type} and {capability} pairs on the command line:
+具体用户根据分配给密钥的能力可访问监视器、元数据服务器和集群。能力用字符串定义，它给某类服务器指定访问权限，每种服务器都各有其字符串。在命令行下，所有能力都可成对地表示为{type}和{capability}。
+sudo ceph auth get-or-create client.{username} {daemon1} {cap1} {daemon2} {cap2} ...
+For example, to create a user client.foo with access ‘rw’ for daemon type ‘osd’ and ‘r’ for daemon type ‘mon’:
+例如，要创建一个用户client.foo，他对osd有rw权限、对mon有r权限：
+sudo ceph auth get-or-create client.foo osd 'allow rw' mon 'allow r' > keyring.foo
+Note: User names are associated to user types, which include client osd, mon, and mds. In most cases, you will be creating keys for client users.
+注意：用户名和用户类型相关联，包括client和osd、mon、和mds，在大多数情况下，你要给client用户创建密钥。
+After you add a key to the cluster keyring, go to the relevant client(s) and copy the keyring from the cluster host to the client(s).
+把密钥加入集群密钥环后，把集群密钥环从集群主机拷贝到相关客户端。
+sudo scp {user}@{ceph-cluster-host}:/etc/ceph/ceph.keyring /etc/ceph/ceph.keyring
+
+Tip: Ensure the ceph.keyring file has appropriate permissions set (e.g., chmod 644) on your client machine.
+提示：确保你客户端主机上的ceph.keyring文件设置了合适的权限位（如chmod 644）。
+ 3.3.5.2.2  删除密钥
+DELETE A KEY
+To delete a key for a user or a daemon, use ceph auth del:
+要删除一个用户或守护进程的密钥，用ceph auth del：
+ceph auth del {daemon-type}.{ID|username}
+Where {daemon-type} is one of client, osd, mon, or mds, and {ID|username} is the ID of the daemon or the username.
+{daemon-type}是client、osd、mon、mds中一个，{ID|username}是守护进程或用户名的ID。
+After you delete a key from the cluster keyring, go to the relevant client(s) and copy the keyring from the cluster host to the client(s).
+从集群密钥环删除密钥后，把集群密钥环从集群主机拷贝到相关客户端。
+sudo scp {user}@{ceph-cluster-host}:/etc/ceph/ceph.keyring /etc/ceph/ceph.keyring
+
+Tip: Ensure the ceph.keyring file has appropriate permissions set (e.g., chmod 644) on your client machine.
+提示：确保你客户端主机上的ceph.keyring文件设置了合适的权限位（如chmod 644）。
+ 3.3.5.2.3  列出集群内的密钥
+LIST KEYS IN YOUR CLUSTER
+To list the keys registered in your cluster:
+要列出集群内注册的密钥：
+sudo ceph auth list
+ 3.3.5.3  cephx命令行选项
+CEPHX COMMANDLINE OPTIONS
+When Ceph runs with Cephx enabled, you must specify a user name and a secret key on the command line. Alternatively, you may use the CEPH_ARGS environment variable to avoid re-entry of the user name and secret.
+在启用了cephx的集群上，你必须在命令行指定用户名及其密钥；另外你也可以用CEPH_ARGS环境变量来避免多次输入用户名和密钥。
+ceph --id {user-name} --keyring=/path/to/secret [commands]
 For example:
-ceph osd tell 1 heap start_profiler
- 3.3.5.2  打印统计
-Printing Stats
-To print out statistics, execute the following:
-ceph {daemon-type} tell {daemon-id} heap stats
-For example:
-ceph osd tell 0 heap stats
+例如：
+ceph --id client.admin --keyring=/etc/ceph/ceph.keyring [commands]
+Ceph supports the following usage for user name and secret:
+ceph支持用户名和密钥的下列用法：
+--id | --user
+Description:
+Ceph identifies users with a type and an ID (e.g., TYPE.ID or client.admin, client.user1). The id, name and -n options enable you to specify the ID portion of the user name (e.g., admin, user1, foo, etc.). You can specify the user with the --id and omit the type. For example, to specify user client.foo enter the following:
+ceph用一个类型和ID（如TYPE.ID或client.admin、client.user1）来标识用户，id、name、和-n选项可用于指定用户名（如admin、user1、foo等）的ID部分，你可以用--id指定用户并忽略类型，例如可用下列命令指定client.foo用户：
+ceph --id foo --keyring /path/to/keyring health
+ceph --user foo --keyring /path/to/keyring health
+--name
+Description:
+Ceph identifies users with a type and an ID (e.g., TYPE.ID or client.admin, client.user1). The --name and -n options enables you to specify the fully qualified user name. You must specify the user type (typically client) with the user ID. For example:
+ceph用一个类型和ID（如TYPE.ID或client.admin、client.user1）来标识用户，--name和-n选项可用于指定完整的用户名，但必须指定用户类型（一般是client）和用户ID，例如：
+ceph --name client.foo --keyring /path/to/keyring health
+ceph -n client.foo --keyring /path/to/keyring health
+--keyring
+Description:
+The path to the keyring containing one or more user name and secret. The --secret option provides the same functionality, but it does not work with Ceph RADOS Gateway, which uses --secret for another purpose. You may retrieve a keyring with ceph auth get-or-create and store it locally. This is a preferred approach, because you can switch user names without switching the keyring path. For example:
+包含一或多个用户名、密钥的密钥环路径。--secret选项提供了相同功能，但它不能用于RADOS网关，其--secret另有用途。你可以用ceph auth get-or-create获取密钥环并保存在本地，然后您就可以改用其他用户而无需重指定密钥环路径了。
+sudo rbd map foo --pool rbd myimage --id client.foo --keyring /path/to/keyring
+--keyfile
+Description:
+The path to the key file containing the secret key for the user specified by --id, --name, -n, or --user. You may retrieve the key for a specific user with ceph auth get and store it locally. Then, specify the path to the keyfile. For example:
+包含用户（用--id、--name、-n、或--user指定）密钥的文件路径。你可以用ceph auth get获取密钥并保存在本地，然后指定给--keyfile，例如：
+sudo rbd map foo --pool rbd myimage --id client.foo --keyfile /path/to/file
 
-Note: Printing stats does not require the profiler to be running and does not dump the heap allocation information to a file.
- 3.3.5.3  转储堆栈信息
-Dumping Heap Information
-To dump heap information, execute the following:
-ceph {daemon-type} tell {daemon-id} heap dump
-For example:
-ceph mds tell a heap dump
-
-Note: Dumping heap information only works when the profiler is running.
-
- 3.3.5.4  释放内存
-Releasing Memory
-To release memory that tcmalloc has allocated but which is not being used by the Ceph daemon itself, execute the following:
-ceph {daemon-type} tell {daemon-id} heap release
-For example:
-ceph osd tell 2 heap release
- 3.3.5.5  停止剖析器
-Stopping the Profiler
-To stop the heap profiler, execute the following:
-ceph {daemon-type} tell {daemon-id} heap stop_profiler
-For example:
-ceph {daemon-type} tell {daemon-id} heap stop_profiler
- 3.3.6  故障排除
-Troubleshooting
-When monitoring your cluster, you may receive health warnings and you may also notice that not all of your daemons are running properly. The following sections will help you identify and resolve daemon operations issues.
-
- 3.3.6.1  OSD和PG排障
-Troubleshooting OSDs and PGs
-Before troubleshooting your OSDs, check your monitors and network first. If you execute ceph health or ceph -s on the command line and Ceph returns a health status, the return of a status means that the monitors have a quorum. If you don’t have a monitor quorum or if there are errors with the monitor status, address the monitor issues first. Check your networks to ensure they are running properly, because networks may have a significant impact on OSD operation and performance.
- 3.3.6.1.1  ceph社区
-The Ceph Community
-The Ceph community is an excellent source of information and help. For operational issues with Ceph releases we recommend you subscribe to the ceph-users email list. When you no longer want to receive emails, you can unsubscribe from the ceph-users email list.
-If you have read through this guide and you have contacted ceph-users, but you haven’t resolved your issue, you may contact Inktank for support.
-You may also subscribe to the ceph-devel email list. You should do so if your issue is:
-Likely related to a bug
-Related to a development release package
-Related to a development testing package
-Related to your own builds
-If you no longer want to receive emails from the ceph-devel email list, you may unsubscribe from the ceph-devel email list.
-Tip: The Ceph community is growing rapidly, and community members can help you if you provide them with detailed information about your problem. See Obtaining Data About OSDs before you post questions to ensure that community members have sufficient data to help you.
- 3.3.6.1.2  收集OSD数据
-Obtaining Data About OSDs
-A good first step in troubleshooting your OSDs is to obtain information in addition to the information you collected while monitoring your OSDs (e.g., ceph osd tree).
- 3.3.6.1.2.1  ceph日志
-Ceph Logs
-If you haven’t changed the default path, you can find Ceph log files at /var/log/ceph:
-ls /var/log/ceph
-If you don’t get enough log detail, you can change your logging level. See Ceph Logging and Debugging and Logging and Debugging Config Reference in the Ceph Configuration documentation for details. Also, see Debugging and Logging in the Ceph Operations documentation to ensure that Ceph performs adequately under high logging volume.
- 3.3.6.1.2.2  管理套接字
-Admin Socket
-Use the admin socket tool to retrieve runtime information. For details, list the sockets for your Ceph processes:
-ls /var/run/ceph
-Then, execute the following, replacing {socket-name} with an actual socket name to show the list of available options:
-ceph --admin-daemon /var/run/ceph/{socket-name} help
-The admin socket, among other things, allows you to:
-List your configuration at runtime
-Dump historic operations
-Dump the operation priority queue state
-Dump operations in flight
-Dump perfcounters
- 3.3.6.1.2.3  显示剩余空间
-Display Freespace
-Filesystem issues may arise. To display your filesystem’s free space, execute df.
-df -h
-Execute df --help for additional usage.
- 3.3.6.1.2.4  I/O统计信息
-I/O Statistics
-Use iostat to identify I/O-related issues.
-iostat -x
- 3.3.6.1.2.5  诊断消息
-Diagnostic Messages
-To retrieve diagnostic messages, use dmesg with less, more, grep or tail. For example:
-dmesg | grep scsi
- 3.3.6.1.3  停止自动重均衡
-Stopping w/out Rebalancing
-Periodically, you may need to perform maintenance on a subset of your cluster, or resolve a problem that affects a failure domain (e.g., a rack). If you do not want CRUSH to automatically rebalance the cluster as you stop OSDs for maintenance, set the cluster to noout first:
-ceph osd set noout
-Once the cluster is set to noout, you can begin stopping the OSDs within the failure domain that requires maintenance work.
-ceph osd stop osd.{num}
-
-Note: Placement groups within the OSDs you stop will become degraded while you are addressing issues with within the failure domain.
-
-Once you have completed your maintenance, restart the OSDs.
-ceph osd start osd.{num}
-Finally, you must unset the cluster from noout.
-ceph osd unset noout
- 3.3.6.1.4  OSD没运行
-OSD Not Running
-Under normal circumstances, simply restarting the ceph-osd daemon will allow it to rejoin the cluster and recover.
- 3.3.6.1.4.1  OSD起不来
-An OSD Won’t Start
-If you start your cluster and an OSD won’t start, check the following:
-Configuration File: If you were not able to get OSDs running from a new installation, check your configuration file to ensure it conforms (e.g., host not hostname, etc.).
-Check Paths: Check the paths in your configuration, and the actual paths themselves for data and journals. If you separate the OSD data from the journal data and there are errors in your configuration file or in the actual mounts, you may have trouble starting OSDs. If you want to store the journal on a block device, you should partition your journal disk and assign one partition per OSD.
-Kernel Version: Identify the kernel version and distribution you are using. Ceph uses some third party tools by default, which may be buggy or may conflict with certain distributions and/or kernel versions (e.g., Google perftools). Check the OS recommendations to ensure you have addressed any issues related to your kernel.
-Segment Fault: If there is a segment fault, turn your logging up (if it isn’t already), and try again. If it segment faults again, contact the ceph-devel email list and provide your Ceph configuration file, your monitor output and the contents of your log file(s).
-If you cannot resolve the issue and the email list isn’t helpful, you may contact Inktank for support.
- 3.3.6.1.4.2  OSD失败
-An OSD Failed
-When a ceph-osd process dies, the monitor will learn about the failure from surviving ceph-osd daemons and report it via the ceph health command:
-ceph-osd挂的时候，监视器将了解ceph-osd的存活情况，且通过ceph health命令报告：
-ceph health
-HEALTH_WARN 1/3 in osds are down
-Specifically, you will get a warning whenever there are ceph-osd processes that are marked in and down. You can identify which ceph-osds are down with:
-而且，有ceph-osd进程标记为in且down的时候，你会得到警告，你可以用下面的命令得知哪个ceph-osd进程挂了：
-ceph health detail
-HEALTH_WARN 1/3 in osds are down
-osd.0 is down since epoch 23, last address 192.168.106.220:6800/11080
-If there is a disk failure or other fault preventing ceph-osd from functioning or restarting, an error message should be present in its log file in /var/log/ceph.
-如果有个硬盘失败或其它错误使ceph-osd不能正常运行或重启，一条错误信息将会出现在日志文件/var/log/ceph/里。
-If the daemon stopped because of a heartbeat failure, the underlying kernel file system may be unresponsive. Check dmesg output for disk or other kernel errors.
-如果守护进程因心跳失败、或者底层文件系统无响应而停止，查看dmesg获取硬盘或者内核错误。
-If the problem is a software error (failed assertion or other unexpected error), it should be reported to the ceph-devel email list.
-如果是软件错误（失败的插入或其它意外错误），就应该回馈到邮件列表。
- 3.3.6.1.4.3  硬盘没有剩余空间
-No Free Drive Space
-Ceph prevents you from writing to a full OSD so that you don’t lose data. In an operational cluster, you should receive a warning when your cluster is getting near its full ratio. The mon osd full ratio defaults to 0.95, or 95% of capacity before it stops clients from writing data. The mon osd nearfull ratio defaults to 0.85, or 85% of capacity when it generates a health warning.
-Full cluster issues usually arise when testing how Ceph handles an OSD failure on a small cluster. When one node has a high percentage of the cluster’s data, the cluster can easily eclipse its nearfull and full ratio immediately. If you are testing how Ceph reacts to OSD failures on a small cluster, you should leave ample free disk space and consider temporarily lowering the mon osd full ratio and mon osd nearfull ratio.
-Full ceph-osds will be reported by ceph health:
-ceph health
-HEALTH_WARN 1 nearfull osds
-osd.2 is near full at 85%
-Or:
-ceph health
-HEALTH_ERR 1 nearfull osds, 1 full osds
-osd.2 is near full at 85%
-osd.3 is full at 97%
-The best way to deal with a full cluster is to add new ceph-osds, allowing the cluster to redistribute data to the newly available storage.
-处理这种情况的最好方法就是增加新的ceph-osd，这允许集群把数据重分布到新OSD里。
-If you cannot start an OSD because it is full, you may delete some data by deleting some placement group directories in the full OSD.
-Important: If you choose to delete a placement group directory on a full OSD, DO NOT delete the same placement group directory on another full OSD, or YOU MAY LOSE DATA. You MUST maintain at least one copy of your data on at least one OSD.
-
- 3.3.6.1.5  OSD龟速或没反应
-OSDs are Slow/Unresponsive
-A commonly recurring issue involves slow or unresponsive OSDs. Ensure that you have eliminated other troubleshooting possibilities before delving into OSD performance issues. For example, ensure that your network(s) is working properly and your OSDs are running. Check to see if OSDs are throttling recovery traffic.
-Tip: Newer versions of Ceph provide better recovery handling by preventing recovering OSDs from using up system resources so that up and in OSDs aren’t available or are otherwise slow.
-提示：
- 3.3.6.1.5.1  网络问题
-Networking Issues
-Ceph is a distributed storage system, so it depends upon networks to peer with OSDs, replicate objects, recover from faults and check heartbeats. Networking issues can cause OSD latency and flapping OSDs. See Flapping OSDs for details.
-Ensure that Ceph processes and Ceph-dependent processes are connected and/or listening.
-netstat -a | grep ceph
-netstat -l | grep ceph
-sudo netstat -p | grep ceph
-Check network statistics.
-netstat -s
- 3.3.6.1.5.2  驱动器配置
-Drive Configuration
-A storage drive should only support one OSD. Sequential read and sequential write throughput can bottleneck if other processes share the drive, including journals, operating systems, monitors, other OSDs and non-Ceph processes.
-Ceph acknowledges writes after journaling, so fast SSDs are an attractive option to accelerate the response time–particularly when using the ext4 or XFS filesystems. By contrast, the btrfs filesystem can write and journal simultaneously.
-Note: Partitioning a drive does not change its total throughput or sequential read/write limits. Running a journal in a separate partition may help, but you should prefer a separate physical drive.
- 3.3.6.1.5.3  坏扇区/碎片化硬盘
-Bad Sectors / Fragmented Disk
-Check your disks for bad sectors and fragmentation. This can cause total throughput to drop substantially.
- 3.3.6.1.5.4  监视器和OSD蜗居
-Co-resident Monitors/OSDs
-Monitors are generally light-weight processes, but they do lots of fsync(), which can interfere with other workloads, particularly if monitors run on the same drive as your OSDs. Additionally, if you run monitors on the same host as the OSDs, you may incur performance issues related to:
-Running an older kernel (pre-3.0)
-Running Argonaut with an old glibc
-Running a kernel with no syncfs(2) syscall.
-In these cases, multiple OSDs running on the same host can drag each other down by doing lots of commits. That often leads to the bursty writes.
- 3.3.6.1.5.5  进程蜗居
-Co-resident Processes
-Spinning up co-resident processes such as a cloud-based solution, virtual machines and other applications that write data to Ceph while operating on the same hardware as OSDs can introduce significant OSD latency. Generally, we recommend optimizing a host for use with Ceph and using other hosts for other processes. The practice of separating Ceph operations from other applications may help improve performance and may streamline troubleshooting and maintenance.
- 3.3.6.1.5.6  日志级别
-Logging Levels
-If you turned logging levels up to track an issue and then forgot to turn logging levels back down, the OSD may be putting a lot of logs onto the disk. If you intend to keep logging levels high, you may consider mounting a drive to the default path for logging (i.e., /var/log/ceph/$cluster-$name.log).
- 3.3.6.1.5.7  恢复节流
-Recovery Throttling
-Depending upon your configuration, Ceph may reduce recovery rates to maintain performance or it may increase recovery rates to the point that recovery impacts OSD performance. Check to see if the OSD is recovering.
- 3.3.6.1.5.8  内核版本
-Kernel Version
-Check the kernel version you are running. Older kernels may not receive new backports that Ceph depends upon for better performance.
- 3.3.6.1.5.9  内核与syncfs问题
-Kernel Issues with SyncFS
-Try running one OSD per host to see if performance improves. Old kernels might not have a recent enough version of glibc to support syncfs(2).
-试着
- 3.3.6.1.5.10  文件系统问题
-Filesystem Issues
-Currently, we recommend deploying clusters with XFS or ext4. The btrfs filesystem has many attractive features, but bugs in the filesystem may lead to performance issues.
- 3.3.6.1.5.11  内存不足
-Insufficient RAM
-We recommend 1GB of RAM per OSD daemon. You may notice that during normal operations, the OSD only uses a fraction of that amount (e.g., 100-200MB). Unused RAM makes it tempting to use the excess RAM for co-resident applications, VMs and so forth. However, when OSDs go into recovery mode, their memory utilization spikes. If there is no RAM available, the OSD performance will slow considerably.
- 3.3.6.1.5.12  old requests和 slow requests
-Old Requests or Slow Requests
-If a ceph-osd daemon is slow to respond to a request, it will generate log messages complaining about requests that are taking too long. The warning threshold defaults to 30 seconds, and is configurable via the osd op complaint time option. When this happens, the cluster log will receive messages.
-Legacy versions of Ceph complain about ‘old requests`:
-osd.0 192.168.106.220:6800/18813 312 : [WRN] old request osd_op(client.5099.0:790 fatty_26485_object789 [write 0~4096] 2.5e54f643) v4 received at 2012-03-06 15:42:56.054801 currently waiting for sub ops
-New versions of Ceph complain about ‘slow requests`:
-{date} {osd.num} [WRN] 1 slow requests, 1 included below; oldest blocked for > 30.005692 secs
-{date} {osd.num}  [WRN] slow request 30.005692 seconds old, received at {date-time}: osd_op(client.4240.0:8 benchmark_data_ceph-1_39426_object7 [write 0~4194304] 0.69848840) v4 currently waiting for subops from [610]
-Possible causes include:
-A bad drive (check dmesg output)
-A bug in the kernel file system bug (check dmesg output)
-An overloaded cluster (check system load, iostat, etc.)
-A bug in the ceph-osd daemon.
-Possible solutions
-Remove VMs Cloud Solutions from Ceph Hosts
-Upgrade Kernel
-Upgrade Ceph
-Restart OSDs
- 3.3.6.1.6  打摆子的OSD
-Flapping OSDs
-We recommend using both a public (front-end) network and a cluster (back-end) network so that you can better meet the capacity requirements of object replication. Another advantage is that you can run a cluster network such that it isn’t connected to the internet, thereby preventing some denial of service attacks. When OSDs peer and check heartbeats, they use the cluster (back-end) network when it’s available. See Monitor/OSD Interaction for details.
-However, if the cluster (back-end) network fails or develops significant latency while the public (front-end) network operates optimally, OSDs currently do not handle this situation well. What happens is that OSDs mark each other down on the monitor, while marking themselves up. We call this scenario ‘flapping`.
-If something is causing OSDs to ‘flap’ (repeatedly getting marked down and then up again), you can force the monitors to stop the flapping with:
-如果有东西导致OSD摆动（反复地被标记为down，然后又up），你可以强制监视器停止：
-ceph osd set noup      # prevent osds from getting marked up
-ceph osd set nodown    # prevent osds from getting marked down
-These flags are recorded in the osdmap structure:
-这些标记记录在osdmap数据结构里：
-ceph osd dump | grep flags
-flags no-up,no-down
-You can clear the flags with:
-下列命令可清除标记：
-ceph osd unset noup
-ceph osd unset nodown
-Two other flags are supported, noin and noout, which prevent booting OSDs from being marked in (allocated data) or down ceph-osds from eventually being marked out (regardless of what the current value for mon osd down out interval is).
-还支持其它两个标记noin和noout，它们分别可阻止OSD被标记为in、死亡的ceph-osd被标记为out（不管 mon osd down out interval的值是什么）。
-Note: noup, noout, and nodown are temporary in the sense that once the flags are cleared, the action they were blocking should occur shortly after. The noin flag, on the other hand, prevents OSDs from being marked in on boot, and any daemons that started while the flag was set will remain that way.
-注意，noup、noout和nodown从某种意义上说是临时的，一旦标记清除了，它们被阻塞的动作短时间内就会发生；相反，noin标记阻止ceph-osd启动时进入集群，任何设置了此标记的守护进程启动后都维持原样。
- 3.3.6.1.7  PG错误排障
-Troubleshooting PG Errors
- 3.3.6.1.7.1  归置组总不整洁
-Placement Groups Never Get Clean
-There are a few cases where Ceph placement groups never get clean:
-1. One OSD: If you deviate from the quick start and use only one OSD, you will likely run into problems. OSDs report other OSDs to the monitor, and also interact with other OSDs when replicating data. If you have only one OSD, a second OSD cannot check its heartbeat. Also, if you remove an OSD and have only one OSD remaining, you may encounter problems. An secondary or tertiary OSD expects another OSD to tell it which placement groups it should have. The lack of another OSD prevents this from occurring. So a placement group can remain stuck “stale” forever.
-2. Pool Size = 1: If you have only one copy of an object, no other OSD will tell the OSD which objects it should have. For each placement group mapped to the remaining OSD (see ceph pg dump), you can force the OSD to notice the placement groups it needs by running:
-ceph pg force_create_pg <pgid>
-As a general rule, you should run your cluster with more than one OSD and a pool size greater than 1 object replica.
- 3.3.6.1.7.2  卡住的归置组
-Stuck Placement Groups
-It is normal for placement groups to enter states like “degraded” or “peering” following a failure. Normally these states indicate the normal progression through the failure recovery process. However, if a placement group stays in one of these states for a long time this may be an indication of a larger problem. For this reason, the monitor will warn when placement groups get “stuck” in a non-optimal state. Specifically, we check for:
-有失败时归置组进入“degraded”（降级）或“peering”（连接建立中）状态，这事时有发生，通常这些状态意味着正常的失败恢复正在进行。然而，如果一个归置组长时间处于某个这些状态就意味着有更大的问题，因此监视器在归置组卡(stuck)在非最优状态时会警告，具体地，我们检查：
-inactive - The placement group has not been active for too long (i.e., it hasn’t been able to service read/write requests).
-inactive（不活跃）——归置组长时间无活跃（例如它不能提供读写服务了）；
-unclean - The placement group has not been clean for too long (i.e., it hasn’t been able to completely recover from a previous failure).
-unclean（不干净）——归置组长时间不干净（例如它未能从前面的失败完全恢复）；
-stale - The placement group status has not been updated by a ceph-osd, indicating that all nodes storing this placement group may be down.
-stale（不新鲜）——归置组状态没有被ceph-osd更新，表明存储这个归置组的所有节点可能都挂了。
-You can explicitly list stuck placement groups with one of:
-你可以明确列出卡住的归置组：
-ceph pg dump_stuck stale
-ceph pg dump_stuck inactive
-ceph pg dump_stuck unclean
-For stuck stale placement groups, it is normally a matter of getting the right ceph-osd daemons running again. For stuck inactive placement groups, it is usually a peering problem (see Placement Group Down - Peering Failure). For stuck unclean placement groups, there is usually something preventing recovery from completing, like unfound objects (see Unfound Objects);
-处于stuck stale状态的归置组通过修复ceph-osd进程通常可以修复；处于stuck inactive状态的归置组通常是连接建立问题（参见错误：引用源未找到）；处于stuck unclean状态的归置组通常是由于某些东西阻止了恢复的完成，像未找到的对象（参见错误：引用源未找到）。
- 3.3.6.1.7.3  归置组挂了——连接建立失败
-Placement Group Down - Peering Failure
-In certain cases, the ceph-osd Peering process can run into problems, preventing a PG from becoming active and usable. For example, ceph health might report:
-在某些情况下，ceph-osd连接建立进程会遇到问题，使PG不能活跃、可用，例如ceph health也许显示：
-ceph health detail
-HEALTH_ERR 7 pgs degraded; 12 pgs down; 12 pgs peering; 1 pgs recovering; 6 pgs stuck unclean; 114/3300 degraded (3.455%); 1/3 in osds are down
-...
-pg 0.5 is down+peering
-pg 1.4 is down+peering
-...
-osd.1 is down since epoch 69, last address 192.168.106.220:6801/8651
-We can query the cluster to determine exactly why the PG is marked down with:
-可以查询到PG为何被标记为down：
-ceph pg 0.5 query
-
-{ "state": "down+peering",
-  ...
-  "recovery_state": [
-       { "name": "Started\/Primary\/Peering\/GetInfo",
-         "enter_time": "2012-03-06 14:40:16.169679",
-         "requested_info_from": []},
-       { "name": "Started\/Primary\/Peering",
-         "enter_time": "2012-03-06 14:40:16.169659",
-         "probing_osds": [
-               0,
-               1],
-         "blocked": "peering is blocked due to down osds",
-         "down_osds_we_would_probe": [
-               1],
-         "peering_blocked_by": [
-               { "osd": 1,
-                 "current_lost_at": 0,
-                 "comment": "starting or marking this osd lost may let us proceed"}]},
-       { "name": "Started",
-         "enter_time": "2012-03-06 14:40:16.169513"}
-   ]
-}
-The recovery_state section tells us that peering is blocked due to down ceph-osd daemons, specifically osd.1. In this case, we can start that ceph-osd and things will recover.
-recovery_state段告诉我们连接建立因ceph-osd进程挂了而被阻塞，本例是osd.1挂了，启动这个进程应该就可以恢复。
-Alternatively, if there is a catastrophic failure of osd.1 (e.g., disk failure), we can tell the cluster that it is lost and to cope as best it can.
-另外，如果osd.1是灾难性的失败（如硬盘损坏），我们可以告诉集群它丢失了，让集群尽力完成副本拷贝。
-Important: This is dangerous in that the cluster cannot guarantee that the other copies of the data are consistent and up to date.
-重要：集群不能保证其它数据副本是一致且最新就危险了！
-To instruct Ceph to continue anyway:
-无论如何让ceph继续：
-ceph osd lost 1
-Recovery will proceed.
-恢复将继续。
- 3.3.6.1.7.4  未找到的对象
-Unfound Objects
-Under certain combinations of failures Ceph may complain about unfound objects:
-某几种失败相组合可能导致ceph抱怨有对象丢失：
-ceph health detail
-HEALTH_WARN 1 pgs degraded; 78/3778 unfound (2.065%)
-pg 2.4 is active+degraded, 78 unfound
-This means that the storage cluster knows that some objects (or newer copies of existing objects) exist, but it hasn’t found copies of them. One example of how this might come about for a PG whose data is on ceph-osds 1 and 2:
-这意味着存储集群知道一些对象（或者存在对象的较新副本）存在，却没有找到它们的副本。下例展示了这种情况是如何发生的，一个PG的数据存储在ceph-osd 1和2上：
-1 goes down
-2 handles some writes, alone
-1 comes up
-1 and 2 repeer, and the objects missing on 1 are queued for recovery.
-Before the new objects are copied, 2 goes down.
-
-1挂了；
-2独自处理一些写动作；
-1起来了；
-1和2重新建立连接，1上面丢失的对象加入队列准备恢复；
-新对象还未拷贝完，2挂了。
-Now 1 knows that these object exist, but there is no live ceph-osd who has a copy. In this case, IO to those objects will block, and the cluster will hope that the failed node comes back soon; this is assumed to be preferable to returning an IO error to the user.
-这时，1知道这些对象存在，但是活着的ceph-osd都没有副本，这种情况下，读写这些对象的IO就会被阻塞，集群只能指望节点早点恢复。这时我们假设用户希望先得到一个IO错误。
-First, you can identify which objects are unfound with:
-首先，你应该确认哪些对象找不到了：
-ceph pg 2.4 list_missing [starting offset, in json]
-
-{ "offset": { "oid": "",
-     "key": "",
-     "snapid": 0,
-     "hash": 0,
-     "max": 0},
- "num_missing": 0,
- "num_unfound": 0,
- "objects": [
-    { "oid": "object 1",
-      "key": "",
-      "hash": 0,
-      "max": 0 },
-    ...
- ],
- "more": 0}
-If there are too many objects to list in a single result, the more field will be true and you can query for more. (Eventually the command line tool will hide this from you, but not yet.)
-如果在一次查询里列出的对象太多，more这个域将为true，因此你可以查询more。（命令行工具可能隐藏了，但这里没有）
-Second, you can identify which OSDs have been probed or might contain data:
-其次，你可以找出哪些OSD上探测到、或可能包含数据：
-ceph pg 2.4 query
-
-"recovery_state": [
-     { "name": "Started\/Primary\/Active",
-       "enter_time": "2012-03-06 15:15:46.713212",
-       "might_have_unfound": [
-             { "osd": 1,
-               "status": "osd is down"}]},
-In this case, for example, the cluster knows that osd.1 might have data, but it is down. The full range of possible states include:
-本例中，集群知道osd.1可能有数据，但它挂了。所有可能的状态有：
-* already probed	已经探测到了
-* querying	 	在查询
-* osd is down	 	OSD挂了
-* not queried (yet)	 尚未查询
-Sometimes it simply takes some time for the cluster to query possible locations.
-有时候集群要花一些时间来查询可能的位置。
-It is possible that there are other locations where the object can exist that are not listed. For example, if a ceph-osd is stopped and taken out of the cluster, the cluster fully recovers, and due to some future set of failures ends up with an unfound object, it won’t consider the long-departed ceph-osd as a potential location to consider. (This scenario, however, is unlikely.)
-还有一种可能性，对象存在于其它位置却未被列出，例如，集群里的一个ceph-osd停止且被剔出，然后完全恢复了；后来的失败、恢复后仍有未找到的对象，它也不会觉得早已死亡的ceph-osd上仍可能包含这些对象。（这种情况几乎不太可能发生）。
-If all possible locations have been queried and objects are still lost, you may have to give up on the lost objects. This, again, is possible given unusual combinations of failures that allow the cluster to learn about writes that were performed before the writes themselves are recovered. To mark the “unfound” objects as “lost”:
-如果所有位置都查询过了仍有对象丢失，那就得放弃丢失的对象了。这仍可能是罕见的失败组合导致的，集群在写入完成前，未能得知写入是否已执行。以下命令把未找到的(unfound)对象标记为丢失(lost)。
-ceph pg 2.5 mark_unfound_lost revert
-This the final argument specifies how the cluster should deal with lost objects. Currently the only supported option is “revert”, which will either roll back to a previous version of the object or (if it was a new object) forget about it entirely. Use this with caution, as it may confuse applications that expected the object to exist.
-上述最后一个参数告诉集群应如何处理丢失的对象。当前只支持revert选项，它使得回滚到对象的前一个版本（如果它是新对象）或完全忽略它。要谨慎使用，它可能迷惑那些期望对象存在的应用程序。
- 3.3.6.1.7.5  无根归置组
-Homeless Placement Groups
-It is possible for all OSDs that had copies of a given placement groups to fail. If that’s the case, that subset of the object store is unavailable, and the monitor will receive no status updates for those placement groups. To detect this situation, the monitor marks any placement group whose primary OSD has failed as stale. For example:
-拥有归置组拷贝的OSD都可以失败，在这种情况下，那一部分的对象存储不可用，监视器就不会收到那些归置组的状态更新了。为检测这种情况，监视器把任何主OSD失败的归置组标记为stale（不新鲜），例如：
-ceph health
-HEALTH_WARN 24 pgs stale; 3/300 in osds are down
-You can identify which placement groups are stale, and what the last OSDs to store them were, with:
-你能找出哪些归置组不新鲜、和存储这些归置组的最新OSD，命令如下：
-ceph health detail
-HEALTH_WARN 24 pgs stale; 3/300 in osds are down
-...
-pg 2.5 is stuck stale+active+remapped, last acting [2,0]
-...
-osd.10 is down since epoch 23, last address 192.168.106.220:6800/11080
-osd.11 is down since epoch 13, last address 192.168.106.220:6803/11539
-osd.12 is down since epoch 24, last address 192.168.106.220:6806/11861
-If we want to get placement group 2.5 back online, for example, this tells us that it was last managed by osd.0 and osd.2. Restarting those ceph-osd daemons will allow the cluster to recover that placement group (and, presumably, many others).
-如果想使归置组2.5重新在线，例如，上面的输出告诉我们它最后由osd.0和osd.2处理，重启这些ceph-osd将恢复之（还有其它的很多PG）。
- 3.3.6.2  监视器故障恢复
-Recovering from Monitor Failures
-In production clusters, we recommend running the cluster with a minimum of three monitors. The failure of a single monitor should not take down the entire monitor cluster, provided a majority of the monitors remain available. If the majority of nodes are available, the remaining nodes will be able to form a quorum.
-在生产集群，我们推荐至少要运行3个监视器。这样单个监视器失败不会拖垮整个监视器集群，因为大部分仍可用，这样剩余节点仍能形成法定人数。
-When you check your cluster’s health, you may notice that a monitor has failed. For example:
-检查集群健康状况的时候，也许会看到一个监视器失败了，例如：
-ceph health
-HEALTH_WARN 1 mons down, quorum 0,2
-For additional detail, you may check the cluster status:
-额外详情可检查集群状态：
-ceph status
-HEALTH_WARN 1 mons down, quorum 0,2
-mon.b (rank 1) addr 192.168.106.220:6790/0 is down (out of quorum)
-In most cases, you can simply restart the affected node. For example:
-大多情况下，都可以简单地重启相应节点，例如：
-service ceph -a restart {failed-mon}
-If there are not enough monitors to form a quorum, the ceph command will block trying to reach the cluster. In this situation, you need to get enough ceph-mon daemons running to form a quorum before doing anything else with the cluster.
-如果监视器数量不足以形成法定人数，ceph命令将拦截你的操作尝试，你得先启动足够的ceph-mon守护进程来形成法定人数，才能在集群里做其它的事。
- 3.3.6.2.1  客户端不能连接/挂载
-Client Can’t Connect/Mount
-Check your IP tables. Some OS install utilities add a REJECT rule to iptables. The rule rejects all clients trying to connect to the host except for ssh. If your monitor host’s IP tables have such a REJECT rule in place, clients connecting from a separate node will fail to mount with a timeout error. You need to address iptables rules that reject clients trying to connect to Ceph daemons. For example, you would need to address rules that look like this appropriately:
-REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
-You may also need to add rules to IP tables on your Ceph hosts to ensure that clients can access the ports associated with your Ceph monitors (i.e., port 6789 by default) and Ceph OSDs (i.e., 6800 et. seq. by default). For example:
-iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:6810 -j ACCEPT
- 3.3.7  调试和日志记录
-Debugging and logging
-You may view Ceph log files under /var/log/ceph (the default location).
-你可以在默认位置/var/log/ceph下翻阅ceph的日志。
-Important: If you enable or increase the rate of Ceph logging, ensure that you have sufficient disk space on your OS disk. Verbose logging can generate over 1GB of data per hour. If your OS disk reaches its capacity, the node will stop working.
-
-Accelerating Log Rotation
-If your OS disk is relatively full, you can accelerate log rotation by modifying the Ceph log rotation file at /etc/logrotate.d/ceph. Add a size setting after the rotation frequency to accelerate log rotation (via cronjob) if your logs exceed the size setting. For example, the default setting looks like this:
-
-Modify it by adding a size setting.
-
-Then, start the crontab editor for your user space.
-
-Finally, add an entry to check the etc/logrotate.d/ceph file.
-
-The preceding example checks the etc/logrotate.d/ceph file every 30 minutes.
-
-Ceph is still on the leading edge, so you may encounter situations that require using Ceph’s debugging and logging. To activate and configure Ceph’s debug logging, refer to Ceph Logging and Debugging. For additional logging settings, refer to the Logging and Debugging Config Reference.
-ceph仍在技术前沿，所以你也许会碰到一些状况，需要使用ceph的调试和日志功能。激活和配置ceph的调试日志，参见日志、调试；额外的日志设置参见错误：引用源未找到。
-
-You can change the logging settings at runtime so that you don’t have to stop and restart the cluster. Refer to Ceph Configuration - Runtime Changes for additional details.
-可以在运行时更改日志选项，这样你就不必停止、重启集群了，详情参见运行时更改。
-
-Debugging may also require you to track down memory and threading issues. You can run a single daemon, a type of daemon, or the whole cluster with Valgrind. You should only use Valgrind when developing or debugging Ceph. Valgrind is computationally expensive, and will slow down your system otherwise. Valgrind messages are logged to stderr.
-调试也许要求你捕捉内存和线程问题，你可以在Valgrind下运行单个、一类守护进程、或者整个集群。你应该只在开发、调试期间使用Valgrind，它需要大量计算，会减慢你的系统。Valgrind消息记录在标准错误。
- 3.3.8  数据归置概览
+Note: Add the user and secret to the CEPH_ARGS environment variable so that you don’t need to enter them each time. You can override the environment variable settings on the command line.
+注意：把用户和密钥添加到CEPH_ARGS环境变量就不用每次都输入了。命令行下可以覆盖环境变量设置。
+ 3.3.5.4  向后兼容性
+BACKWARD COMPATIBILITY
+New in version Bobtail.
+bobtail版新功能。
+In Ceph Argonaut v0.48 and earlier versions, if you enable cephx authentication, Ceph only authenticates the initial communication between the client and daemon; Ceph does not authenticate the subsequent messages they send to each other, which has security implications. In Ceph Bobtail and subsequent versions, Ceph authenticates all ongoing messages between the entities using the session key set up for that initial authentication.
+在ceph-0.48及更早版本，启用cephx认证后，ceph仅认证客户端和守护进程间的最初通讯，不会认证后续相互发送的消息，这导致了安全隐患；bobtail及后续版本会用认证后生成的会话密钥来认证所有消息。
+We identified a backward compatibility issue between Argonaut v0.48 (and prior versions) and Bobtail (and subsequent versions). During testing, if you attempted to use Argonaut (and earlier) daemons with Bobtail (and later) daemons, the Argonaut daemons did not know how to perform ongoing message authentication, while the Bobtail versions of the daemons insist on authenticating message traffic subsequent to the initial request/response–making it impossible for Argonaut (and prior) daemons to interoperate with Bobtail (and subsequent) daemons.
+我们确定了一个向后兼容性问题，在Argonaut v0.48（及之前版本）和Bobtail（及后续版本）之间。测试发现，如果你混用Argonaut（及更小版）和Bobtail的守护进程，Argonaut的守护进程将对正在进行的消息不知所措，因为Bobtail进程坚持要求认证最初请求/响应之后的消息，导致二者无法交互。
+We have addressed this potential problem by providing a means for Argonaut (and prior) systems to interact with Bobtail (and subsequent) systems. Here’s how it works: by default, the newer systems will not insist on seeing signatures from older systems that do not know how to perform them, but will simply accept such messages without authenticating them. This new default behavior provides the advantage of allowing two different releases to interact. We do not recommend this as a long term solution. Allowing newer daemons to forgo ongoing authentication has the unfortunate security effect that an attacker with control of some of your machines or some access to your network can disable session security simply by claiming to be unable to sign messages.
+我们已经提供了一种方法，解决了Argonaut（及之前）和Bobtail（及后续）系统间交互的潜在的问题。是这样解决的，默认情况下，较新系统不会再坚持要求较老系统的签名，只是简单地接收这些消息而不对其认证。这个默认行为使得两个不同版本可以交互，但我们不推荐作为长期方案。允许较新进程不认证正在进行的消息会导致安全问题，因为攻击者如果能控制你的机器、或访问你的网络，就可以宣称不能签署消息，从而禁用会话安全。
+Note: Even if you don’t actually run any old versions of Ceph, the attacker may be able to force some messages to be accepted unsigned in the default scenario. While running Cephx with the default scenario, Ceph still authenticates the initial communication, but you lose desirable session security.
+注意：即使你没有使用旧版的ceph，在默认配置下，攻击者也可以强制一些未签署消息被接受；虽然初始通讯认证通过了，但你失去了会话安全。
+If you know that you are not running older versions of Ceph, or you are willing to accept that old servers and new servers will not be able to interoperate, you can eliminate this security risk. If you do so, any Ceph system that is new enough to support session authentication and that has Cephx enabled will reject unsigned messages. To preclude new servers from interacting with old servers, include the following in the [global] section of your Ceph configuration file directly below the line that specifies the use of Cephx for authentication:
+如果你确定不会使用旧版ceph、或者新旧服务器不能交互无所谓，那就可以排除这个安全风险；如果你这样做了，任何支持会话认证、启用了cephx的ceph系统都会拒绝未签名的消息。要防止新服务器和旧服务器交互，在配置文件的[global]下添加下列这行，要加到启用cephx之后。
+cephx require signatures = true    ; everywhere possible
+You can also selectively require signatures for cluster internal communications only, separate from client-facing service:
+你也可以选择只对集群内部通讯要求签名，它和面向客户端的服务是分离的：
+cephx cluster require signatures = true    ; for cluster-internal communication
+cephx service require signatures = true    ; for client-facing service
+An option to make a client require signatures from the cluster is not yet implemented.
+客户端向集群要求签名的选项还没实现。
+We recommend migrating all daemons to the newer versions and enabling the foregoing flag at the nearest practical time so that you may avail yourself of the enhanced authentication.
+我们推荐把所有进程迁移到较新版本，然后关闭兼容选项，以增强认证安全性。
+ 3.3.6  数据归置概览
 Data placement overview
 Ceph stores, replicates and rebalances data objects across a RADOS cluster dynamically. With many different users storing objects in different pools for different purposes on countless OSDs, Ceph operations require some data placement planning. The main data placement planning concepts in Ceph include:
 ceph通过RADOS集群动态地存储、复制和重新均衡数据对象。很多不同用户因不同目的把对象存储在不同的存储池里，而它们都坐落于无数的OSD之上，所以ceph的运营需要些数据归置计划。ceph的数据归置计划概念主要有：
@@ -5874,11 +5719,10 @@ CRUSH图：CRUSH是使ceph能伸缩自如而没有性能瓶颈、没有扩展限
 
 When you initially set up a test cluster, you can use the default values. Once you begin planning for a large Ceph cluster, refer to pools, placement groups and CRUSH for data placement operations. If you find some aspects challenging, Inktank provides excellent premium support for Ceph.
 起初安装测试集群的时候，可以使用默认值。但开始规划一个大型ceph集群，做数据归置操作的时候会涉及存储池、归置组、和CRUSH。
- 3.3.9  存储池
+ 3.3.7  存储池
 Pools
 When you first deploy a cluster without creating a pool, Ceph uses the default pools for storing data. A pool differs from CRUSH’s location-based buckets in that a pool doesn’t have a single physical location, and a pool provides you with some additional functionality, including:
 开始部署集群时没有创建存储池，ceph则用默认存储池存数据。存储池不同于CRUSH基于位置的桶，它没有单独的物理位置，而且存储池提供了一些额外的功能：
-
 Replicas: You can set the desired number of copies/replicas of an object. A typical configuration stores an object and one additional copy (i.e., size = 2), but you can determine the number of copies/replicas.
 复制：你可以设置一个对象期望的副本数量。典型配置存储一个对象和一个它的副本（如size = 2），但你可以更改副本的数量。
 Placement Groups: You can set the number of placement groups for the pool. A typical configuration uses approximately 100 placement groups per OSD to provide optimal balancing without using up too many computing resources. When setting up multiple pools, be careful to ensure you set a reasonable number of placement groups for both the pool and the cluster as a whole.
@@ -5889,26 +5733,23 @@ Snapshots: When you create snapshots with ceph osd pool mksnap, you effectively 
 快照：你用ceph osd pool mksnap创建快照的时候，实际上创建了一小部分存储池的快照。
 Set Ownership: You can set a user ID as the owner of a pool.
 设置所有者：你可以设置一个用户ID为一个存储池的所有者。
-
 To organize data into pools, you can list, create, and remove pools. You can also view the utilization statistics for each pool.
 要把数据组织到存储池里，你可以列出、创建、删除存储池，也可以查看每个存储池的利用率。
- 3.3.9.1  列出存储池
+ 3.3.7.1  列出存储池
 LIST POOLS
 To list your cluster’s pools, execute:
 要列出集群的存储池，命令如下：
 ceph osd lspools
-
 The default pools include:
 默认存储池有：
 data
 metadata
 rbd
- 3.3.9.2  创建存储池
+ 3.3.7.2  创建存储池
 CREATE A POOL
 To create a pool, execute:
 要创建一个存储池，执行：
 ceph osd pool create {pool-name} {pg-num} [{pgp-num}]
-
 Where:
 参数含义如下：
 {pool-name}
@@ -5922,7 +5763,7 @@ Yes
 {pg-num}
 Description:
 The total number of placement groups for the pool. See Placement Groups for details on calculating a suitable number. The default value 8 is NOT suitable for most systems.
-存储池拥有的归置组总数。
+存储池拥有的归置组总数。关于如何计算合适的数值，请参见Placement Groups。默认值8对大多数系统都不合适。
 Type:
 Integer
 Required:
@@ -5932,7 +5773,7 @@ Default:
 {pgp-num}
 Description:
 The total number of placement groups for placement purposes. This should be equal to the total number of placement groups, except for placement group splitting scenarios.
-用于归置的归置组总数。
+用于归置的归置组总数。此值应该等于归置组总数，归置组分割的情况下除外。
 Type:
 Integer
 Required:
@@ -5940,19 +5781,19 @@ Yes
 Default:
 8
 When you create a pool, set the number of placement groups to a reasonable value (e.g., 100). Consider the total number of placement groups per OSD too. Placement groups are computationally expensive, so performance will degrade when you have many pools with many placement groups (e.g., 50 pools with 100 placement groups each). The point of diminishing returns depends upon the power of the OSD host.
-
+创建存储池时，要设置一个合理的归置组数量，如100。也要考虑到每OSD的归置组总数，因为归置组很耗计算资源，所以很多存储池和很多归置组（如50个存储池，各包含100归置组）会导致性能下降。收益递减点取决于OSD主机的强大。
 Important: Increasing the number of placement groups in a pool after you create the pool is still an experimental feature in Bobtail (v 0.56). We recommend defining a reasonable number of placement groups and maintaining that number until Ceph’s placement group splitting and merging functionality matures.
-
+重要：增加一现有存储池中的归置组数量仍然是v0.56新增的一个实验功能。我们建议创建时就指定一个合适的归置组数量并维持不变，直到ceph的归置组拆分、合并功能成熟。
 See Placement Groups for details on calculating an appropriate number of placement groups for your pool.
-如何计算存储池合适的归置组数量请参见归置组。
- 3.3.9.3  删除存储池
+如何为存储池计算合适的归置组数量请参见归置组。
+ 3.3.7.3  删除存储池
 DELETE A POOL
 To delete a pool, execute:
-要删除一个存储池，执行：
+要删除一存储池，执行：
 ceph osd pool delete {pool-name} [{pool-name} --yes-i-really-really-mean-it]
 If you created your own rulesets and rules for a pool you created, you should consider removing them when you no longer need your pool. If you created users with permissions strictly for a pool that no longer exists, you should consider deleting those users too.
 如果你给自建的存储池创建了定制的规则集，你不需要存储池时最好删除它。如果你曾严格地创建了用户及其权限给一个存储池，但存储池已不存在，最好也删除那些用户。
- 3.3.9.4  重命名存储池
+ 3.3.7.4  重命名存储池
 RENAME A POOL
 To rename a pool, execute:
 要重命名一个存储池，执行：
@@ -5960,29 +5801,33 @@ ceph osd pool rename {current-pool-name} {new-pool-name}
 If you rename a pool and you have per-pool capabilities for an authenticated user, you must update the user’s capabilities (i.e., caps) with the new pool name.
 如果重命名了一个存储池，且认证用户有每存储池能力，那你必须用新存储池名字更新用户的能力（如caps）。
 Note: Version 0.48 Argonaut and above.
- 3.3.9.5  查看存储池统计信息
+注意：适用0.48及以上。
+ 3.3.7.5  查看存储池统计信息
 SHOW POOL STATISTICS
 To show a pool’s utilization statistics, execute:
 要查看某存储池的使用统计信息，执行命令：
 rados df
- 3.3.9.6  拍下存储池快照
+ 3.3.7.6  拍下存储池快照
 MAKE A SNAPSHOT OF A POOL
 To make a snapshot of a pool, execute:
 要拍下某存储池的快照，执行命令：
 ceph osd pool mksnap {pool-name} {snap-name}
+
 Note: Version 0.48 Argonaut and above.
- 3.3.9.7  删除存储池快照
+注意：适用0.48及以上。
+ 3.3.7.7  删除存储池快照
 REMOVE A SNAPSHOT OF A POOL
 To remove a snapshot of a pool, execute:
 要删除某存储池的一个快照，执行命令：
 ceph osd pool rmsnap {pool-name} {snap-name}
+
 Note: Version 0.48 Argonaut and above.
- 3.3.9.8  设置存储池键值
+注意：适用0.48及以上。
+ 3.3.7.8  设置存储池键值
 SET POOL VALUES
 To set a value to a pool, execute the following:
 要设置一个存储池的选项值，执行命令：
 ceph osd pool set {pool-name} {key} {value}
-
 You may set values for the following keys:
 你可以设置下列键的值：
 size
@@ -5997,6 +5842,7 @@ Sets the minimum number of replicas required for io. See Set the Number of Objec
 设置IO需要的最小副本数，详情参见设置对象副本数。
 Type:
 Integer
+
 Note: Version 0.54 and above
 注意：0.54版及以上。
 crash_replay_interval
@@ -6019,9 +5865,10 @@ The ruleset to use for mapping object placement in the cluster.
 集群内映射对象归置时使用的规则集。
 Type:
 Integer
+
 Note: Version 0.48 Argonaut and above.
 注意：0.48版及以上。
- 3.3.9.9  获取存储池键值
+ 3.3.7.9  获取存储池键值
 GET POOL VALUES
 To set a value to a pool, execute the following:
 要给一个存储池设置值，执行命令：
@@ -6040,15 +5887,16 @@ Type:
 Integer
 Valid Range:
 Equal to or less than pg_num.
+小于等于pg_num。
 
- 3.3.9.10  设置对象副本数
+ 3.3.7.10  设置对象副本数
 SET THE NUMBER OF OBJECT REPLICAS
 To set the number of object replicas, execute the following:
 要设置对象副本数，执行命令：
 ceph osd pool set {poolname} size {num-replicas}
 
 Important: The {num-replicas} includes the object itself. If you want the object and two copies of the object for a total of three instances of the object, specify 3.
-
+重要：{num-replicas}包括对象自身，如果你想要对象自身及其两份拷贝共计三份，指定3。
 For example:
 例如：
 ceph osd pool set data size 3
@@ -6059,17 +5907,16 @@ Note, however, that pool size is more of a best-effort setting: an object might 
 For example:
 例如：
 ceph osd pool set data min_size 2
-
 This ensures that no object in the data pool will receive IO with fewer than min_size replicas.
 这确保数据存储池里任何副本数小于min_size的对象都不会收到IO了。
- 3.3.9.11  获取对象副本数
+ 3.3.7.11  获取对象副本数
 GET THE NUMBER OF OBJECT REPLICAS
 To get the number of object replicas, execute the following:
 要获取对象副本数，执行命令：
 ceph osd dump | grep 'rep size'
 Ceph will list the pools, with the rep size attribute highlighted. By default, Ceph creates two replicas of an object (two copies).
-ceph会列出存储池，且高亮'rep size'属性，它创建了一个对象的两个副本（两份拷贝）。
- 3.3.10  归置组
+ceph会列出存储池，且高亮rep size属性，它创建了一个对象的两个副本（两份拷贝）。
+ 3.3.8  归置组
 Placement groups
 A Placement Group (PG) aggregates a series of objects into a group, and maps the group to a series of OSDs. Tracking object placement and object metadata on a per-object basis is computationally expensive–i.e., a system with millions of objects cannot realistically track placement on a per-object basis. Placement groups address this barrier to performance and scalability. Additionally, placement groups reduce the number of processes and the amount of per-object metadata Ceph must track when storing and retrieving data.
 一个归置组(PG)把一系列对象汇聚到一组，并且把这个组映射到一系列OSD。跟踪每个对象的位置和元数据需要大量计算。例如，一个拥有数百万对象的系统，不可能在每对象级追踪位置。归置组可应对这个影响性能和扩展性的问题，另外，归置组减小了ceph存储、检索数据时必须追踪的每对象元数据的处理量和尺寸。
@@ -6077,7 +5924,6 @@ A Placement Group (PG) aggregates a series of objects into a group, and maps the
 
 Each placement group requires some amount of system resources:
 每个归置组都需要一定量系统资源：
-
 Directly: Each PG requires some amount of memory and CPU.
 直接地：每个PG需要一些内存和CPU；
 Indirectly: The total number of PGs increases the peering count.
@@ -6087,115 +5933,210 @@ Increasing the number of placement groups reduces the variance in per-OSD load a
             (OSDs * 100)
 Total PGs = ------------
               Replicas
-
 When using multiple data pools for storing objects, you need to ensure that you balance the number of placement groups per pool with the number of placement groups per OSD so that you arrive at a reasonable total number of placement groups that provides reasonably low variance per OSD without taxing system resources or making the peering process too slow.
 当用了多个数据存储池来存储数据时，你得确保均衡每个存储池的归置组数量、且归置组数量分摊到每个OSD，这样才能达到较合理的归置组总量，并因此使得每个OSD无需耗费过多系统资源或拖慢连接进程就能实现较小变迁。
- 3.3.10.1  设置归置组数量
+ 3.3.8.1  设置归置组数量
 SET THE NUMBER OF PLACEMENT GROUPS
 To set the number of placement groups in a pool, you must specify the number of placement groups at the time you create the pool.
 你必须在创建存储池时设置一个存储池的归置组数量。
-
 See Create a Pool for details.
 详情参见创建存储池。
- 3.3.10.2  获取归置组数量
+ 3.3.8.2  获取归置组数量
 GET THE NUMBER OF PLACEMENT GROUPS
 To get the number of placement groups in a pool, execute the following:
 要获取一个存储池的归置组数量，执行命令：
 ceph osd pool get {pool-name} pg_num
- 3.3.10.3  获取归置组统计信息
+ 3.3.8.3  获取归置组统计信息
 GET A CLUSTER’S PG STATISTICS
 To get the statistics for the placement groups in your cluster, execute the following:
 要获取集群里归置组的统计信息，执行命令：
 ceph pg dump [--format {format}]
-
 Valid formats are plain (default) and json.
 可用格式有纯文本（默认）和json。
- 3.3.10.4  获取卡住的归置组统计信息
+ 3.3.8.4  获取卡住的归置组统计信息
 GET STATISTICS FOR STUCK PGS
 To get the statistics for all placement groups stuck in a specified state, execute the following:
 要获取所有卡在某状态的归置组统计信息，执行命令：
 ceph pg dump_stuck inactive|unclean|stale [--format <format>] [-t|--threshold <seconds>]
-
 Inactive Placement groups cannot process reads or writes because they are waiting for an OSD with the most up-to-date data to come up and in.
 inactive（不活跃）归置组不能处理读写，因为它们在等待一个有最新数据的OSD复活且进入集群。
-
 Unclean Placement groups contain objects that are not replicated the desired number of times. They should be recovering.
 unclean（不干净）归置组含有复制数未达到期望数量的对象，它们应该在恢复中。
-
 Stale Placement groups are in an unknown state - the OSDs that host them have not reported to the monitor cluster in a while (configured by mon_osd_report_timeout).
 stale（不新鲜）归置组处于未知状态：存储它们的OSD有段时间没向监视器报告了（由 mon_osd_report_timeout配置）。
 
 Valid formats are plain (default) and json. The threshold defines the minimum number of seconds the placement group is stuck before including it in the returned statistics (default 300 seconds).
-可用格式有纯文本（默认）和json。阀值定义的是，归置组被认为卡住前等待的最小时间（默认300秒）。
- 3.3.10.5  获取归置组图
+可用格式有plain（默认）和json。阀值定义的是，归置组被认为卡住前等待的最小时间（默认300秒）。
+ 3.3.8.5  获取一归置组运行图
 GET A PG MAP
 To get the placement group map for a particular placement group, execute the following:
 要获取一个具体归置组的归置组图，执行命令：
 ceph pg map {pg-id}
-
 For example:
 例如：
 ceph pg map 1.6c
-
 Ceph will return the placement group map, the placement group, and the OSD status:
 ceph将返回归置组图、归置组、和OSD状态：
 osdmap e13 pg 1.6c (1.6c) -> up [1,0] acting [1,0]
- 3.3.10.6  获取一个PG的统计信息
+ 3.3.8.6  获取一PG的统计信息
 GET A PGS STATISTICS
 To retrieve statistics for a particular placement group, execute the following:
 要查看一个具体归置组的统计信息，执行命令：
 ceph pg {pg-id} query
- 3.3.10.7  洗刷归置组
+ 3.3.8.7  洗刷归置组
 Scrub a placement group
 To scrub a placement group, execute the following:
 要洗刷一个归置组，执行命令：
 ceph pg scrub {pg-id}
-
 Ceph checks the primary and any replica nodes, generates a catalog of all objects in the placement group and compares them to ensure that no objects are missing or mismatched, and their contents are consistent. Assuming the replicas all match, a final semantic sweep ensures that all of the snapshot-related object metadata is consistent. Errors are reported via logs.
 ceph检查原始的和任何复制节点，生成归置组里所有对象的目录，然后再对比，确保没有对象丢失或不匹配，并且它们的内容一致。
- 3.3.10.8  恢复丢失的
+ 3.3.8.8  恢复丢失的
 REVERT LOST
 If the cluster has lost one or more objects, and you have decided to abandon the search for the lost data, you must mark the unfound objects as lost.
 如果集群丢了一或多个对象，而且必须放弃搜索这些数据，你就要把未找到的对象标记为丢失。
-
 If all possible locations have been queried and objects are still lost, you may have to give up on the lost objects. This is possible given unusual combinations of failures that allow the cluster to learn about writes that were performed before the writes themselves are recovered.
 如果所有可能的位置都查询过了，而仍找不到这些对象，你也许得放弃它们了。这可能是罕见的失败组合导致的，集群在写入完成前，未能得知写入是否已执行。
-
 Currently the only supported option is “revert”, which will either roll back to a previous version of the object or (if it was a new object) forget about it entirely. To mark the “unfound” objects as “lost”, execute the following:
 当前只支持revert选项，它使得回滚到对象的前一个版本（如果它是新对象）或完全忽略它。要把unfound对象标记为lost，执行命令：
 ceph pg {pg-id} mark_unfound_lost revert
 
 Important: Use this feature with caution, because it may confuse applications that expect the object(s) to exist.
 重要：要谨慎使用，它可能迷惑那些期望对象存在的应用程序。
- 3.3.11  CRUSH图
+ 3.3.8.8.1  归置组状态
+Placement Group States
+When checking a cluster’s status (e.g., running ceph -w or ceph -s), Ceph will report on the status of the placement groups. A placement group has one or more states. The optimum state for placement groups in the placement group map is active + clean.
+检查集群状态时（如运行ceph -s或ceph -w），ceph会报告归置组状态。一个归置组有一到多种状态，其最优状态为active+clean。
+Creating
+Ceph is still creating the placement group.
+ceph仍在创建归置组。
+Active
+Ceph will process requests to the placement group.
+ceph可处理到归置组的请求。
+Clean
+Ceph replicated all objects in the placement group the correct number of times.
+ceph把归置组内的对象复制了规定次数。
+Down
+A replica with necessary data is down, so the placement group is offline.
+包含必备数据的副本挂了，所以归置组离线。
+Replay
+The placement group is waiting for clients to replay operations after an OSD crashed.
+某OSD崩溃后，归置组在等待客户端重放操作。
+Splitting
+Ceph is splitting the placment group into multiple placement groups. (functional?)
+ceph正在把一归置组分割为多个。（实现了？）
+Scrubbing
+Ceph is checking the placement group for inconsistencies.
+ceph正在检查归置组的一致性。
+Degraded
+Ceph has not replicated some objects in the placement group the correct number of times yet.
+归置组内的对象还没复制到规定次数。
+Inconsistent
+Ceph detects inconsistencies in the one or more replicas of an object in the placement group (e.g. objects are the wrong size, objects are missing from one replica after recovery finished, etc.).
+ceph检测到了归置组内一或多个副本间不一致（如各对象大小不一、恢复后对象还没复制到副本那里、等等）。
+Peering
+The placement group is undergoing the peering process
+归置组正在互联。
+Repair
+Ceph is checking the placement group and repairing any inconsistencies it finds (if possible).
+ceph正在检查归置组、并试图修复发现的不一致（如果可能的话）。
+Recovering
+Ceph is migrating/synchronizing objects and their replicas.
+ceph正在迁移/同步对象及其副本。
+Backfill
+Ceph is scanning and synchronizing the entire contents of a placement group instead of inferring what contents need to be synchronized from the logs of recent operations. Backfill is a special case of recovery.
+ceph正在扫描并同步整个归置组的内容，而不是根据日志推算哪些最新操作需要同步。Backfill是recovery的一种特殊情况。
+Wait-backfill
+The placement group is waiting in line to start backfill.
+归置组正在排队，等候回填。
+Incomplete
+Ceph detects that a placement group is missing a necessary period of history from its log. If you see this state, report a bug, and try to start any failed OSDs that may contain the needed information.
+ceph根据一归置组的日志检测到它丢失了一段历史。如果你看到这种状态，请报告一个bug，并试着重启所有包含相关信息的OSD。
+Stale
+The placement group is in an unknown state - the monitors have not received an update for it since the placement group mapping changed.
+归置组处于一种未知状态——从归置组运行图变更起就没再收到它的更新。
+Remapped
+The placement group is temporarily mapped to a different set of OSDs from what CRUSH specified.
+归置组被临时映射到了另外一组OSD，它们不是CRUSH算法指定的。
+ 3.3.8.8.2  归置组术语解释
+Placement Group Concepts
+When you execute commands like ceph -w, ceph osd dump, and other commands related to placement groups, Ceph may return values using some of the following terms:
+当你执行诸如ceph -w、ceph osd dump、及其他和归置组相关的命令时，ceph会返回下列术语及其值：
+Peering
+The process of bringing all of the OSDs that store a Placement Group (PG) into agreement about the state of all of the objects (and their metadata) in that PG. Note that agreeing on the state does not mean that they all have the latest contents.
+是一种过程，它使得存储着同一归置组的所有OSD对归置组内的所有对象及其元数据统一意见。需要注意的是，达成一致不意味着它们都有最新内容。
+Acting Set
+The ordered list of OSDs who are (or were as of some epoch) responsible for a particular placement group.
+一列有序OSD，它们为某一特定归置组（或其中一些元版本）负责。
+Up Set
+The ordered list of OSDs responsible for a particular placment group for a particular epoch according to CRUSH. Normally this is the same as the Acting Set, except when the Acting Set has been explicitly overridden via pg_temp in the OSD Map.
+［译者：此处原文没看懂……瞎译如下］
+一列有序OSD，它们为某一特定元版本所在的特定归置组负责。它通常和Acting Set相同，除非Acting Set被OSD运行图里的pg_temp显式地覆盖掉了。
+Current Interval or Past Interval
+A sequence of OSD map epochs during which the Acting Set and Up Set for particular placement group do not change.
+某一特定归置组所在Acting Set和Up Set未更改时的一系列OSD运行图元版本。
+Primary
+The member (and by convention first) of the Acting Set, that is responsible for coordination peering, and is the only OSD that will accept client-initiated writes to objects in a placement group.
+Acting Set的成员（按惯例第一个），它负责协调互联，并且是归置组内惟一接受客户端初始写入的OSD。
+Replica
+A non-primary OSD in the Acting Set for a placement group (and who has been recognized as such and activated by the primary).
+一归置组的Acting Set内不是主OSD的其它OSD，它们被同等对待、并由主OSD激活。
+Stray
+An OSD that is not a member of the current Acting Set, but has not yet been told that it can delete its copies of a particular placement group.
+某一OSD，它不再是当前Acting Set的成员，但还没被告知它可以删除那个归置组拷贝。
+Recovery
+Ensuring that copies of all of the objects in a placement group are on all of the OSDs in the Acting Set. Once Peering has been performed, the Primary can start accepting write operations, and Recovery can proceed in the background.
+确保Acting Set内、一归置组中的所有对象的副本都存在于所有OSD上。一旦互联完成，主OSD就以接受写操作，且恢复进程可在后台进行。
+PG Info
+Basic metadata about the placement group’s creation epoch, the version for the most recent write to the placement group, last epoch started, last epoch clean, and the beginning of the current interval. Any inter-OSD communication about placement groups includes the PG Info, such that any OSD that knows a placement group exists (or once existed) also has a lower bound on last epoch clean or last epoch started.
+［译者：此处原文没看透……瞎译如下］
+基本元数据，关于归置组创建元版本、向归置组的最新写版本、最近的开始元版本（last epoch started）、最近的干净元版本（last epoch clean）、和当前间隔（current interval）的起点。OSD间关于归置组的任何通讯都包含PG Info，这样任何知道一归置组存在（或曾经存在）的OSD也必定有last epoch clean或last epoch started的下限。
+PG Log
+A list of recent updates made to objects in a placement group. Note that these logs can be truncated after all OSDs in the Acting Set have acknowledged up to a certain point.
+一归置组内对象的一系列最近更新。注意，这些日志在Acting Set内的所有OSD确认更新到某点后可以删除。
+Missing Set
+Each OSD notes update log entries and if they imply updates to the contents of an object, adds that object to a list of needed updates. This list is called the Missing Set for that <OSD,PG>.
+各OSD都记录更新日志，而且如果它们包含对象内容的更新，会把那个对象加入一个待更新列表，这个列表叫做那个<OSD,PG>的Missing Set。
+Authoritative History
+A complete, and fully ordered set of operations that, if performed, would bring an OSD’s copy of a placement group up to date.
+一个完整、完全有序的操作集合，如果应用，可把一OSD上的归置组副本带到最新。
+Epoch
+A (monotonically increasing) OSD map version number
+单递增OSD运行图版本号。
+Last Epoch Start
+The last epoch at which all nodes in the Acting Set for a particular placement group agreed on an Authoritative History. At this point, Peering is deemed to have been successful.
+一最新元版本，在这点上，一归置组所对应Acting Set内的所有节点都对权威历史达成了一致、并且互联被认为成功了。
+up_thru
+Before a Primary can successfully complete the Peering process, it must inform a monitor that is alive through the current osd map Epoch by having the monitor set its up_thru in the osd map. This helps Peering ignore previous Acting Sets for which Peering never completed after certain sequences of failures, such as the second interval below:
+主OSD要想成功完成互联，它必须通过当前OSD运行图epoch通知一个监视器，并在osd运行图中设置其up_thru。这会使互联进程忽略之前的Acting Set，因为它经历特定顺序的失败后一直不能互联，比如像下面的第二周期：
+acting set = [A,B]
+acting set = [A]
+acting set = [] very shortly after (e.g., simultaneous failure, but staggered detection)
+acting set = [] 之后很短时间（例如同时失败、但探测是交叉的）
+acting set = [B] (B restarts, A does not)
+Last Epoch Clean
+The last Epoch at which all nodes in the Acting set for a particular placement group were completely up to date (both placement group logs and object contents). At this point, recovery is deemed to have been completed.
+最近的Epoch，这时某一特定归置组所在Acting Set内的所有节点都全部更新了（包括归置组日志和对象内容）。在这点上，恢复被认为已完成。
+ 3.3.9  CRUSH图
 CRUSH MAPS
 The CRUSH algorithm determines how to store and retrieve data by computing data storage locations. CRUSH empowers Ceph clients to communicate with OSDs directly rather than through a centralized server or broker. With an algorithmically determined method of storing and retrieving data, Ceph avoids a single point of failure, a performance bottleneck, and a physical limit to its scalability.
 CRUSH算法通过计算数据存储位置来确定如何存储和检索。CRUSH授权ceph客户端直接连接OSD，而非通过一个中央服务器或经纪人。数据存储、检索算法的使用，使ceph避免了单点失败、性能瓶颈、和伸缩的物理限制。
-
 CRUSH requires a map of your cluster, and uses the CRUSH map to pseudo-randomly store and retrieve data in OSDs with a uniform distribution of data across the cluster. For a detailed discussion of CRUSH, see CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data
 CRUSH需要一张集群的地图，且使用CRUSH把数据伪随机地存储、检索于整个集群的OSD里。CRUSH的讨论详情参见CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data。
-
 CRUSH Maps contain a list of OSDs, a list of ‘buckets’ for aggregating the devices into physical locations, and a list of rules that tell CRUSH how it should replicate data in a Ceph cluster’s pools. By reﬂecting the underlying physical organization of the installation, CRUSH can model—and thereby address—potential sources of correlated device failures. Typical sources include physical proximity, a shared power source, and a shared network. By encoding this information into the cluster map, CRUSH placement policies can separate object replicas across different failure domains while still maintaining the desired distribution. For example, to address the possibility of concurrent failures, it may be desirable to ensure that data replicas are on devices in different shelves, racks, power supplies, controllers, and/or physical locations.
 CRUSH图包含OSD列表、把设备汇聚为物理位置的“桶”列表、和指示CRUSH如何复制存储池里的数据的规则列表。由于对所安装底层物理组织的表达，CRUSH能模型化、并因此定位到潜在的相关失败设备源头，典型的源头有物理距离、共享电源、和共享网络，把这些信息编码到集群图里，CRUSH归置策略可把对象副本分离到不同的失败域，却仍能保持期望的分布。例如，要定位同时失败的可能性，可能希望保证数据复制到的设备位于不同机架、不同托盘、不同电源、不同控制器、甚至不同物理位置。
-
 When you create a configuration file and deploy Ceph with mkcephfs, Ceph generates a default CRUSH map for your configuration. The default CRUSH map is fine for your Ceph sandbox environment. However, when you deploy a large-scale data cluster, you should give significant consideration to developing a custom CRUSH map, because it will help you manage your Ceph cluster, improve performance and ensure data safety.
 当你写好配置文件，用mkcephfs部署ceph后，它生成了一个默认的CRUSH图，对于你的沙盒环境来说它很好。然而，部署一个大规模数据集群的时候，应该好好设计自己的CRUSH图，因为它帮你管理ceph集群、提升性能、和保证数据安全性。
-
 For example, if an OSD goes down, a CRUSH Map can help you can locate the physical data center, room, row and rack of the host with the failed OSD in the event you need to use onsite support or replace hardware.
 例如，如果一个OSD挂了，CRUSH图可帮你定位此事件中OSD所在主机的物理数据中心、房间、行和机架，据此你可以请求在线支持或替换硬件。
-
 Similarly, CRUSH may help you identify faults more quickly. For example, if all OSDs in a particular rack go down simultaneously, the fault may lie with a network switch or power to the rack or the network switch rather than the OSDs themselves.
 类似地，CRUSH可帮你更快地找出问题。例如，如果一个机架上的所有OSD同时挂了，问题可能在于机架的交换机或电源，而非OSD本身。
-
 A custom CRUSH map can also help you identify the physical locations where Ceph stores redundant copies of data when the placement group(s) associated with a failed host are in a degraded state.
 定制的CRUSH图也能在归置组降级时，帮你找出冗余副本所在主机的物理位置。
-
 Inktank provides excellent premium support for developing CRUSH maps.
 Inktank提供优秀的商业支持，帮您开发CRUSH图。
-
-Note Lines of code in example boxes may extend past the edge of the box. Please scroll when reading or copying longer examples.
+Note: Lines of code in example boxes may extend past the edge of the box. Please scroll when reading or copying longer examples.
 注意：文本框里的代码实例可能超出了边界，读或拷贝时注意滚动。
- 3.3.11.1  编辑CRUSH图
+ 3.3.9.1  编辑CRUSH图
 EDITING A CRUSH MAP
 To edit an existing CRUSH map:
 要编辑现有的CRUSH图：
@@ -6210,94 +6151,102 @@ To edit an existing CRUSH map:
 3. 至少编辑一个设备、桶、规则；
 4. 重编译CRUSH图；
 5. 应用CRUSH图。
-
 To activate CRUSH Map rules for a specific pool, identify the common ruleset number for those rules and specify that ruleset number for the pool. See Set Pool Values for details.
 要激活CRUSH图里某存储池的规则，找到通用规则集编号，然后把它指定到那个规则集。详情参见设置存储池键值。
- 3.3.11.1.1  获取CRUSH图
+ 3.3.9.1.1  获取CRUSH图
 GET A CRUSH MAP
 To get the CRUSH Map for your cluster, execute the following:
 要获取集群的CRUSH图，执行命令：
 ceph osd getcrushmap -o {compiled-crushmap-filename}
 Ceph will output (-o) a compiled CRUSH Map to the filename you specified. Since the CRUSH Map is in a compiled form, you must decompile it first before you can edit it.
 ceph将把CRUSH输出(-o)到你指定的文件，由于CRUSH图是已编译的，所以编辑前必须先反编译。
- 3.3.11.1.2  反编译CRUSH图
+ 3.3.9.1.2  反编译CRUSH图
 DECOMPILE A CRUSH MAP
 To decompile a CRUSH Map, execute the following:
 要反编译CRUSH图，执行命令：
 crushtool -d {compiled-crushmap-filename} -o {decompiled-crushmap-filename}
-
 Ceph will decompile (-d) the compiled CRUSH map and output (-o) it to the filename you specified.
 ceph将反编译(-d)二进制CRUSH图，且输出(-o)到你指定的文件。
- 3.3.11.1.3  编译CRUSH图
+ 3.3.9.1.3  编译CRUSH图
 COMPILE A CRUSH MAP
 To compile a CRUSH Map, execute the following:
 要编译CRUSH图，执行命令：
 crushtool -c {decompiled-crush-map-filename} -o {compiled-crush-map-filename}
-
 Ceph will store a compiled CRUSH map to the filename you specified.
 ceph将把已编译的CRUSH图保存到你指定的文件。
- 3.3.11.1.4  设置CRUSH图
+ 3.3.9.1.4  设置CRUSH图
 SET A CRUSH MAP
 To set the CRUSH Map for your cluster, execute the following:
 要把CRUSH图应用到集群，执行命令：
 ceph osd setcrushmap -i  {compiled-crushmap-filename}
-
 Ceph will input the compiled CRUSH Map of the filename you specified as the CRUSH Map for the cluster.
 ceph将把你指定的已编译CRUSH图输入到集群。
- 3.3.11.2  CRUSH图参数
+ 3.3.9.2  CRUSH图参数
 CRUSH MAP PARAMETERS
 There are four main sections to a CRUSH Map.
 CRUSH图主要有4个主要段落。
 1. Devices: Devices consist of any object storage device–i.e., the storage drive corresponding to a ceph-osd daemon. You should have a device for each OSD daemon in your Ceph configuration file.
 devices由任意对象存储设备组成，如对应一个ceph-osd进程的存储器。ceph配置文件里的每个OSD都应该有一个设备。
 2. Bucket Types: Bucket types define the types of buckets used in your CRUSH hierarchy. Buckets consist of a hierarchical aggregation of storage locations (e.g., rows, racks, hosts, etc.) and their assigned weights.
+bucket types（桶类型）：定义了CRUSH分级结构里要用的桶类型，桶由逐级汇聚的存储位置（如行、机柜、主机等等）及其权重组成。
 3. Bucket Instances: Once you define bucket types, you must declare bucket instances for your hosts, and any other failure domain partitioning you choose.
+Bucket Instances:定义了桶类型后，还必须声明主机的桶类型、以及规划的其它故障域。
 4. Rules: Rules consist of the manner of selecting buckets.
-rules由选择桶的方法组成。
+rules:由选择桶的方法组成。
 If you launched Ceph using one of our Quick Start guides, you’ll notice that you didn’t need to create a CRUSH map. Ceph’s deployment tools generate a default CRUSH map that lists devices from the OSDs you defined in your Ceph configuration file, and it declares a bucket for each host you specified in the [osd] sections of your Ceph configuration file. You should create your own CRUSH maps with buckets that reflect your cluster’s failure domains to better ensure data safety and availability.
+如果你用我们的某个Quick Start Guide配起了ceph，应该注意到了，你并不需要创建CRUSH运行图。ceph部署工具生成了默认CRUSH运行图，它列出了你定义在ceph配置文件中的OSD设备、并把配置文件[osd]段下定义的各OSD主机声明为桶。为保证数据安全和可用，你应该创建自己的CRUSH图，以反映出自己集群的故障域。
 Note: The generated CRUSH map doesn’t take your larger grained failure domains into account. So you should modify your CRUSH map to account for larger grained failure domains such as racks, rows, data centers, etc.
- 3.3.11.2.1  CRUSH图之设备
+注意：生成的CRUSH图没考虑大粒度故障域，所以你修改CRUSH图时要考虑上，像机柜、行、数据中心。
+ 3.3.9.2.1  CRUSH图之设备
 CRUSH MAP DEVICES
 To map placement groups to OSDs, a CRUSH Map requires a list of OSD devices (i.e., the name of the OSD daemon). The list of devices appears first in the CRUSH Map. To declare a device in the CRUSH map, create a new line under your list of devices, enter device followed by a unique numeric ID, followed by the corresponding ceph-osd daemon instance.
 为把归置组映射到OSD，CRUSH图需要OSD列表（如OSD守护进程名称），所以它们首先出现在CRUSH图里。要在CRUSH图里声明一个设备，在设备列表后面新建一行，输入device、之后是唯一的数字ID、之后是相应的ceph-osd守护进程例程名字。
-
 #devices
 device {num} {osd.name}
-
 For example:
 例如：
-
 #devices
 device 0 osd.0
 device 1 osd.1
 device 2 osd.2
 device 3 osd.3
-
 As a general rule, an OSD daemon maps to a single disk or to a RAID.
 一般来说，一个OSD映射到一个单独的硬盘或RAID。
- 3.3.11.2.2  CRUSH图之桶类型
+ 3.3.9.2.2  CRUSH图之桶类型
 CRUSH Map Bucket Types
 The second list in the CRUSH map defines ‘bucket’ types. Buckets facilitate a hierarchy of nodes and leaves. Node (or non-leaf) buckets typically represent physical locations in a hierarchy. Nodes aggregate other nodes or leaves. Leaf buckets represent ceph-osd daemons and their corresponding storage media.
+CRUSH图里的第二个列表定义了bucket（桶）类型，桶简化了节点和叶子层次。节点（或非叶）桶在分级结构里一般表示物理位置，节点汇聚了其它节点或叶子，叶桶表示ceph-osd守护进程及其对应的存储媒体。
 Tip: The term “bucket” used in the context of CRUSH means a node in the hierarchy, i.e. a location or a piece of physical hardware. It is a different concept from the term “bucket” when used in the context of RADOS Gateway APIs.
+提示：CRUSH中用到的bucket意思是分级结构中的一个节点，比如一个位置或一部分硬件。但是在RADOS网关接口的术语中，它又是不同的概念。
 To add a bucket type to the CRUSH map, create a new line under your list of bucket types. Enter type followed by a unique numeric ID and a bucket name. By convention, there is one leaf bucket and it is type 0; however, you may give it any name you like (e.g., osd, disk, drive, storage, etc.):
+要往CRUSH图中增加一种bucket类型，在现有桶类型列表下方新增一行，输入type、之后是惟一数字ID和一个桶名。按惯例，会有一个叶子桶为type 0;，然而你可以指定任何名字（如osd、disk、drive、storage等等）：
 #types
 type {num} {bucket-name}
 For example:
+例如：
 # types
 type 0 osd
 type 1 host
 type 2 rack
- 3.3.11.2.3  CRUSH图之桶层次
+ 3.3.9.2.3  CRUSH图之桶层次
 CRUSH Map Bucket Hierarchy
 The CRUSH algorithm distributes data objects among storage devices according to a per-device weight value, approximating a uniform probability distribution. CRUSH distributes objects and their replicas according to the hierarchical cluster map you define. Your CRUSH map represents the available storage devices and the logical elements that contain them.
+CRUSH算法根据各设备的权重、大致统一的概率把数据对象分布到存储设备中。CRUSH根据你定义的集群运行图分布对象及其副本，CRUSH图表达了可用存储设备以及包含它们的逻辑单元。
 To map placement groups to OSDs across failure domains, a CRUSH map defines a hierarchical list of bucket types (i.e., under #types in the generated CRUSH map). The purpose of creating a bucket hierarchy is to segregate the leaf nodes by their failure domains, such as hosts, racks, rows, rooms, and data centers. With the exception of the leaf nodes representing OSDs, the rest of the hierarchy is arbitrary, and you may define it according to your own needs.
+要把归置组映射到跨故障域的OSD，一个CRUSH图需定义一系列分级桶类型（如在现有CRUSH图的#type下）。创建桶分级结构的目的是按故障域隔离叶节点，像主机、机柜、行、房间、和数据中心。除了表示叶节点的OSD，其它分级结构都是任意的，你可以按需定义。
 We recommend adapting your CRUSH map to your firms’s hardware naming conventions and using instances names that reflect the physical hardware. Your naming practice can make it easier to administer the cluster and troubleshoot problems when an OSD and/or other hardware malfunctions and the administrator need access to physical hardware.
+我们建议CRUSH图内的命名符合贵公司的硬件命名规则，并且采用反映物理硬件的例程名。良好的命名可简化集群管理和故障排除，当OSD和/或其它硬件出问题时，管理员可轻易找到对应物理硬件。
 In the following example, the bucket hierarchy has a leaf bucket named osd, and two node buckets named host and rack respectively.
+在下例中，桶分级结构有一个分支名为osd、和两个节点分别名为host和rack。
 
 Note: The higher numbered rack bucket type aggregates the lower numbered host bucket type.
+注意：编号较高的rack桶类型汇聚编号较低的host桶类型。
 Since leaf nodes reflect storage devices declared under the #devices list at the beginning of the CRUSH map, you do not need to declare them as bucket instances. The second lowest bucket type in your hierarchy usually aggregates the devices (i.e., it’s usually the computer containing the storage media, and uses whatever term you prefer to describe it, such as “node”, “computer”, “server,” “host”, “machine”, etc.).
+位于CRUSH图起始部分的#devices列表表示叶节点的存储设备，没必要声明为桶例程。位于分级结构第二低层的桶一般用于汇聚设备（如它通常是包含存储媒体的计算机，你可以用自己喜欢的名字描述，如节点、计算机、服务器、主机、机器等等）。
 When declaring a bucket instance, you must specify its type, give it a unique name (string), assign it a unique ID expressed as a negative integer (optional), specify a weight relative to the total capacity/capability of its item(s), specify the bucket algorithm (usually straw), and the hash (usually 0, reflecting hash algorithm rjenkins1). A bucket may have one or more items. The items may consist of node buckets or leaves. Items may have a weight that reflects the relative weight of the item.
+声明一个桶例程时，你必须指定其类型、惟一名称（字符串）、惟一负整数ID（可选）、指定和各条目总容量/能力相关的权重、指定桶算法（通常是straw）、和哈希（通常为0，表示哈希算法rjenkins1）。一个桶可以包含一到多条，这些条目可以由节点桶或叶子组成，它们可以有个权重用来反映条目的相对权重。
 You may declare a node bucket with the following syntax:
+你可以按下列语法声明一个节点桶：
 [bucket-type] [bucket-name] {
         id [a unique negative numeric ID]
         weight [the relative capacity/capability of the item(s)]
@@ -6306,6 +6255,7 @@ You may declare a node bucket with the following syntax:
         item [item-name] weight [weight]
 }
 For example, using the diagram above, we would define two host buckets and one rack bucket. The OSDs are declared as items within the host buckets:
+例如，用上面的图表，我们可以定义两个主机桶和一个机柜桶，OSD被声明为主机桶内的条目：
 host node1 {
         id -1
         alg straw
@@ -6331,33 +6281,43 @@ rack rack1 {
 }
 
 Note: In the foregoing example, note that the rack bucket does not contain any OSDs. Rather it contains lower level host buckets, and includes the sum total of their weight in the item entry.
+注意：在前述示例中，机柜桶不包含任何OSD，它只包含低一级的主机桶、以及其内条目的权重之和。
 
+桶类型
 Bucket Types
 Ceph supports four bucket types, each representing a tradeoff between performance and reorganization efficiency. If you are unsure of which bucket type to use, we recommend using a straw bucket. For a detailed discussion of bucket types, refer to CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data, and more specifically to Section 3.4. The bucket types are:
+ceph支持四种桶，每种都是性能和组织简易间的折衷。如果你不确定用哪种桶，我们建议straw，关于各类桶的详细讨论见CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data，特别是Section 3.4。支持的桶类型有：
 1. Uniform: Uniform buckets aggregate devices with exactly the same weight. For example, when firms commission or decommission hardware, they typically do so with many machines that have exactly the same physical configuration (e.g., bulk purchases). When storage devices have exactly the same weight, you may use the uniform bucket type, which allows CRUSH to map replicas into uniform buckets in constant time. With non-uniform weights, you should use another bucket algorithm.
+Uniform: 这种桶用完全相同的权重汇聚设备。例如，公司采购或淘汰硬件时，一般都有相同的物理配置（如批发）。当存储设备权重都相同时，你可以用uniform桶类型，它允许CRUSH按常数把副本映射到uniform桶。权重不统一时，你应该采用其它算法。
 2. List: List buckets aggregate their content as linked lists. Based on the P algorithm, a list is a natural and intuitive choice for an expanding cluster: either an object is relocated to the newest device with some appropriate probability, or it remains on the older devices as before. The result is optimal data migration when items are added to the bucket. Items removed from the middle or tail of the list, however, can result in a signiﬁcant amount of unnecessary movement, making list buckets most suitable for circumstances in which they never (or very rarely) shrink.
+list: 这种桶把它们的内容汇聚为链表。它基于P算法，一个列表就是一个自然、直观的扩张集群：对象会按一定概率被重定位到最新的设备、或者像从前一样仍保留在较老的设备上。结果是优化了新条目加入桶时的数据迁移。然而，如果从链表的中间或末尾删除了一些条目，将会导致大量没必要的挪动。所以这种桶适合永不或极少缩减的场景。
 3. Tree: Tree buckets use a binary search tree. They are more efficient than list buckets when a bucket contains a larger set of items. Based on the R algorithm, tree buckets reduce the placement time to O(log n), making them suitable for managing much larger sets of devices or nested buckets.
+tree: 它用一种二进制搜索树，在桶包含大量条目时比list桶更高效。它基于R算法，tree桶把归置时间减少到了O(log n)，这使得它们更适合管理更大规模的设备或嵌套桶。
 4. Straw: List and Tree buckets use a divide and conquer strategy in a way that either gives certain items precedence (e.g., those at the beginning of a list) or obviates the need to consider entire subtrees of items at all. That improves the performance of the replica placement process, but can also introduce suboptimal reorganization behavior when the contents of a bucket change due an addition, removal, or re-weighting of an item. The straw bucket type allows all items to fairly “compete” against each other for replica placement through a process analogous to a draw of straws.
+straw: list和tree桶用分而治之策略，给特定条目一定优先级（如位于链表开头的条目）、或避开对整个子树上所有条目的考虑。这样提升了副本归置进程的性能，但是也导致了重新组织时的次优结果，如增加、拆除、或重设某条目的权重。straw桶类型允许所有条目模拟拉稻草的过程公平地相互“竞争”副本归置。
 
 Hash
 Each bucket uses a hash algorithm. Currently, Ceph supports rjenkins1. Enter 0 as your hash setting to select rjenkins1.
+各个桶都用了一种哈希算法，当前ceph仅支持rjenkins1，输入0表示哈希算法设置为rjenkins1。
 
+调整桶的权重
 Weighting Bucket Items
 Ceph expresses bucket weights as double integers, which allows for fine weighting. A weight is the relative difference between device capacities. We recommend using 1.00 as the relative weight for a 1TB storage device. In such a scenario, a weight of 0.5 would represent approximately 500GB, and a weight of 3.00 would represent approximately 3TB. Higher level buckets have a weight that is the sum total of the leaf items aggregated by the bucket.
+ceph用双整形表示桶权重。权重和设备容量不同，我们建议用1.00作为1TB存储设备的相对权重，这样0.5的权重大概代表500GB、3.00大概代表3TB。较高级桶的权重是所有枝叶桶的权重之和。
 A bucket item weight is one dimensional, but you may also calculate your item weights to reflect the performance of the storage drive. For example, if you have many 1TB drives where some have relatively low data transfer rate and the others have a relatively high data transfer rate, you may weight them differently, even though they have the same capacity (e.g., a weight of 0.80 for the first set of drives with lower total throughput, and 1.20 for the second set of drives with higher total throughput).
- 3.3.11.2.4  CRUSH图之规则
+一个桶的权重是一维的，你也可以计算条目权重来反映存储设备性能。例如，如果你有很多1TB的硬盘，其中一些数据传输速率相对低、其他的数据传输率相对高，即使它们容量相同，也应该设置不同的权重（如给吞吐量较低的硬盘设置权重0.8，较高的设置1.2）。
+ 3.3.9.2.4  CRUSH图之规则
 CRUSH MAP RULES
 CRUSH maps support the notion of ‘CRUSH rules’, which are the rules that determine data placement for a pool. For large clusters, you will likely create many pools where each pool may have its own CRUSH ruleset and rules. The default CRUSH map has a rule for each pool, and one ruleset assigned to each of the default pools, which include:
 CRUSH图支持CRUSH规则概念，用以确定一个存储池里数据的归置。对大型集群来说，你可能创建很多存储池，且每个存储池都有它自己的CRUSH规则集和规则。默认的CRUSH图里，每个存储池有一条规则、一个规则集被分配到每个默认存储池，它们有：
-
 data
 metadata
 rbd
+
 Note: In most cases, you will not need to modify the default rules. When you create a new pool, its default ruleset is 0.
 注意：大多数情况下，你都不需要修改默认规则。新创建存储池的默认规则集是0。
-
 CRUSH rules deﬁnes placement and replication strategies or distribution policies that allow you to specify exactly how CRUSH places object replicas. For example, you might create a rule selecting a pair of targets for 2-way mirroring, another rule for selecting three targets in two different data centers for 3-way mirroring, and yet another rule for RAID-4 over six storage devices. For a detailed discussion of CRUSH rules, refer to CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data, and more specifically to Section 3.2.
-
+CRUSH规则定义了归置和复制策略、或分布策略，用它可以规定CRUSH如何放置对象副本。例如，你也许想创建一条规则用以选择一对目的地做双路复制；另一条规则用以选择位于两个数据中心的三个目的地做三路镜像；又一条规则用6个设备做RAID-4。关于CRUSH规则的详细研究见CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data，主要是Section 3.2。
 A rule takes the following form:
 规则格式如下：
 rule <rulename> {
@@ -6373,9 +6333,10 @@ rule <rulename> {
 ruleset
 Description:
 A means of classifying a rule as belonging to a set of rules. Activated by setting the ruleset in a pool.
-区分一条规则属于某个规则集合的手段。在存储池里设置ruleset后激活。
+区分一条规则属于某个规则集的手段。在存储池里设置ruleset后激活。
 Purpose:
 A component of the rule mask.
+规则掩码的一个组件。
 Type:
 Integer
 Required:
@@ -6436,7 +6397,10 @@ Selects the number of buckets of the given type. The number is usually the numbe
 If {num} == 0, choose pool-num-replicas buckets (all available).
 If {num} > 0 && < pool-num-replicas, choose that many buckets.
 If {num} < 0, it means pool-num-replicas - {num}.
-选取指定类型的桶数量，这里N是可用选择的数量，如果{num}>0 && <N就选择那么多的桶；如果{num}<0它意为N-{num}；如果{num}==0选择N个桶（所有可用的）。
+选取指定类型桶的数量，这个数字通常是存储池的副本数（如pool size）。
+如果{num}==0选择pool-num-replicas个桶（所有可用的）。
+如果{num}>0 && <pool-num-replicas就选择那么多的桶；
+如果{num}<0它意为pool-num-replicas-{num}；
 Purpose:
 A component of the rule.
 Prerequisite:
@@ -6446,11 +6410,13 @@ step choose firstn 1 type row
 step chooseleaf firstn {num} type {bucket-type}
 Description:
 Selects a set of buckets of {bucket-type} and chooses a leaf node from the subtree of each bucket in the set of buckets. The number of buckets in the set is usually the number of replicas in the pool (i.e., pool size).
+选择{bucket-type}类型的一堆桶，并从各桶的子树里选择一个叶子节点。集合内桶的数量通常是存储池的副本数（如pool size）。
 If {num} == 0, choose pool-num-replicas buckets (all available).
 If {num} > 0 && < pool-num-replicas, choose that many buckets.
 If {num} < 0, it means pool-num-replicas - {num}.
 Purpose:
 A component of the rule. Usage removes the need to select a device using two steps.
+规则的一组件。它的使用避免了通过两步来选择一设备。
 Prerequisite:
 Follows step take or step choose.
 Example:
@@ -6458,9 +6424,10 @@ step chooseleaf firstn 0 type row
 step emit
 Description:
 Outputs the current value and empties the stack. Typically used at the end of a rule, but may also be used to pick from different trees in the same rule.
-输出当前值并清空堆栈，通常用于规则末尾，也适用于相同规则应用到不同树的情况。
+输出当前值并清空堆栈。通常用于规则末尾，也适用于相同规则应用到不同树的情况。
 Purpose:
 A component of the rule.
+规则组件。
 Prerequisite:
 Follows step choose.
 Example:
@@ -6468,9 +6435,10 @@ step emit
 
 Important: To activate one or more rules with a common ruleset number to a pool, set the ruleset number to the pool.
 重要：要把规则集编号设置到存储池，才能用一个通用规则集编号激活一或多条规则。
- 3.3.11.3  不同存储池置于不同OSD
+ 3.3.9.3  不同存储池置于不同OSD
 Placing Different Pools on Different OSDS:
 Suppose you want to have most pools default to OSDs backed by large hard drives, but have some pools mapped to OSDs backed by fast solid-state drives (SSDs). It’s possible to have multiple independent CRUSH heirarchies within the same CRUSH map. Define two hierachies with two different root nodes–one for hard disks (e.g., “root platter”) and one for SSDs (e.g., “root ssd”) as shown below:
+假设你想让大多数存储池坐落到使用大硬盘的OSD上，但是其中一些存储池映射到使用高速SSD的OSD上。在同一个CRUSH图内有多个独立的CRUSH树是可能的，定义两棵树、分别有自己的根节点——一个用于硬盘（如root platter）、一个用于SSD（如root ssd），如：
 device 0 osd.0
 device 1 osd.1
 device 2 osd.2
@@ -6591,17 +6559,20 @@ device 7 osd.7
               step emit
       }
 You can then set a pool to use the SSD rule by:
+然后你可以设置一个存储池，让它使用SSD规则：
 ceph osd pool set <poolname> crush_ruleset 4
 Similarly, using the ssd-primary rule will cause each placement group in the pool to be placed with an SSD as the primary and platters as the replicas.
- 3.3.11.4  增加/移动OSD
+同样，用ssd-primary规则将使存储池内的各归置组用SSD作主OSD，普通硬盘作副本。
+ 3.3.9.4  增加/移动OSD
 ADD/MOVE AN OSD
 To add or move an OSD in the CRUSH map of a running cluster, execute the ceph osd crush set. For Argonaut (v 0.48), execute the following:
 要增加或删除在线集群里OSD所对应的CRUSH图条目，执行ceph osd crush set命令。对于v0.48版，执行下列：
 ceph osd crush set {id} {name} {weight} pool={pool-name}  [{bucket-type}={bucket-name} ...]
 For Bobtail (v 0.56), execute the following:
+bobtail (v0.56)可执行下列：
 ceph osd crush set {id-or-name} {weight} root={pool-name}  [{bucket-type}={bucket-name} ...]
-
 Where:
+其中：
 id
 Description:
 The numeric ID of the OSD.
@@ -6635,6 +6606,7 @@ Example:
 root
 Description:
 The root of the tree in which the OSD resides.
+OSD所在树的根。
 Type:
 Key/value pair.
 Required:
@@ -6655,12 +6627,13 @@ datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1
 The following example adds osd.0 to the hierarchy, or moves the OSD from a previous location.
 下例把osd.0添加到分级结构里、或者说从前一个位置挪动一下。
 ceph osd crush set osd.0 1.0 root=default datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1
- 3.3.11.5  调整OSD的CRUSH权重
+ 3.3.9.5  调整一OSD的CRUSH权重
 ADJUST AN OSD’S CRUSH WEIGHT
 To adjust an OSD’s crush weight in the CRUSH map of a running cluster, execute the following:
-要调整在线集群中OSD的CRUSH权重，执行命令：
+要调整在线集群中一OSD的CRUSH权重，执行命令：
 ceph osd crush reweight {name} {weight}
 Where:
+其中：
 name
 Description:
 The full name of the OSD.
@@ -6682,12 +6655,13 @@ Yes
 Example:
 2.0
 
- 3.3.11.6  删除OSD
+ 3.3.9.6  删除OSD
 REMOVE AN OSD
 To remove an OSD from the CRUSH map of a running cluster, execute the following:
-要从在线集群里把OSD踢出CRUSH图，执行命令：
+要从在线集群里把一OSD踢出CRUSH图，执行命令：
 ceph osd crush remove {name}
 Where:
+其中：
 name
 Description:
 The full name of the OSD.
@@ -6699,17 +6673,17 @@ Yes
 Example:
 osd.0
 
- 3.3.11.7  移动桶
+ 3.3.9.7  移动桶
 MOVE A BUCKET
 To move a bucket to a different location or position in the CRUSH map hierarchy, execute the following:
 要把一个桶挪动到CRUSH图里的不同位置，执行命令：
-
 ceph osd crush move {bucket-name} {bucket-type}={bucket-name}, [...]
 Where:
+其中：
 bucket-name
 Description:
 The name of the bucket to move/reposition.
-要移动到的桶名。
+要移动或复位的桶名。
 Type:
 String
 Required:
@@ -6727,466 +6701,96 @@ No
 Example:
 datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1
 
- 3.3.11.8  可调选项
+ 3.3.9.8  可调选项
 TUNABLES
 New in version 0.48.
 0.48时加入。
-
 There are several magic numbers that were used in the original CRUSH implementation that have proven to be poor choices. To support the transition away from them, newer versions of CRUSH (starting with the v0.48 argonaut series) allow the values to be adjusted or tuned.
 在CRUSH最初实现时加入的几个幻数，现在看来已成问题。作为过渡方法，较新版的CRUSH（从0.48起）允许调整这些值。
-
 Clusters running recent Ceph releases support using the tunable values in the CRUSH maps. However, older clients and daemons will not correctly interact with clusters using the “tuned” CRUSH maps. To detect this situation, there is now a feature bit CRUSH_TUNABLES (value 0x40000) and CRUSH_TUNABLES2 to reflect support for tunables.
-最近发布的ceph允许CRUSH图里的值可调，然而老客户端和守护进程不会正确地和调整过的CRUSH图交互，为应对这种情况，现在多了个功能位（值 0x40000）来反映是否支持可调值。
-
+最近发布的ceph允许在CRUSH图里使用可调值，然而老客户端和守护进程不会正确地和调整过的CRUSH图交互，为应对这种情况，现在多了个功能位CRUSH_TUNABLES（值 0x40000）和CRUSH_TUNABLES2 来反映支持可调值。
 If the OSDMap currently used by the ceph-mon or ceph-osd daemon has non-legacy values, it will require the CRUSH_TUNABLES or CRUSH_TUNABLES2 feature bit from clients and daemons who connect to it. This means that old clients will not be able to connect.
-如果ceph-mon或ceph-osd进程现在用的OSDMap有非遗留值，它将要求连接它的客户端和守护进程有 CRUSH_TUNABLES功能位。
-
+如果ceph-mon或ceph-osd进程现在用的OSDMap有非遗留值，它将要求连接它的客户端和守护进程有 CRUSH_TUNABLES或CRUSH_TUNABLES2 功能位。
 At some future point in time, newly created clusters will have improved default values for the tunables. This is a matter of waiting until the support has been present in the Linux kernel clients long enough to make this a painless transition for most users.
 将来，新建集群的可调值其默认值会更好。这要等到此功能进入内核客户端的时间足够长，对大多数用户来说已是无痛的过渡。
- 3.3.11.8.1  过时值的影响
+ 3.3.9.8.1  过时值的影响
 IMPACT OF LEGACY VALUES
 The legacy values result in several misbehaviors:
 遗留值导致几个不当行为：
-
 For hiearchies with a small number of devices in the leaf buckets, some PGs map to fewer than the desired number of replicas. This commonly happens for hiearchies with “host” nodes with a small number (1-3) of OSDs nested beneath each one.
 如果分级结构的支部只有少量设备，一些PG的副本数小于期望值，这通常出现在一些子结构里，host节点下少数OSD嵌套到了其他OSD里。
 For large clusters, some small percentages of PGs map to less than the desired number of OSDs. This is more prevalent when there are several layers of the hierarchy (e.g., row, rack, host, osd).
 大型集群里，小部分PG映射到的OSD数目小于期望值，有多层结构（如：机架行、机架、主机、OSD）时这种情况更普遍。
 When some OSDs are marked out, the data tends to get redistributed to nearby OSDs instead of across the entire hierarchy.
 当一些OSD标记为out时，数据倾向于重分布到附近OSD而非整个分级结构。
- 3.3.11.8.2  CRUSH_TUNABLES
+ 3.3.9.8.2  CRUSH_TUNABLES
 choose_local_tries: Number of local retries. Legacy value is 2, optimal value is 0.
+choose_local_tries：本地重试次数。以前是2，最优值是0。
 choose_local_fallback_tries: Legacy value is 5, optimal value is 0.
+choose_local_fallback_tries：以前5，现在是0。
 choose_total_tries: Total number of attempts to choose an item. Legacy value was 19, subsequent testing indicates that a value of 50 is more appropriate for typical clusters. For extremely large clusters, a larger value might be necessary.
- 3.3.11.8.3  CRUSH_TUNABLES2
+choose_total_tries：选择一个条目的最大尝试次数。以前19，后来的测试表明，对典型的集群来说50更合适。最相当大的集群来说，更大的值也许必要。
+ 3.3.9.8.3  CRUSH_TUNABLES2
 chooseleaf_descend_once: Whether a recursive chooseleaf attempt will retry, or only try once and allow the original placement to retry. Legacy default is 0, optimal value is 1.
- 3.3.11.8.4  支持CRUSH_TUNABLES的客户端版本
+chooseleaf_descend_once：是否重递归叶子选择，或只试一次、并允许最初归置组重试。以前默认0，最优为1。
+ 3.3.9.8.4  支持CRUSH_TUNABLES的客户端版本
 Which client versions support CRUSH_TUNABLES
 argonaut series, v0.48.1 or later
 v0.49 or later
 Linux kernel version v3.6 or later (for the file system and RBD kernel clients)
- 3.3.11.8.5  支持CRUSH_TUNABLES2的客户端版本
+ 3.3.9.8.5  支持CRUSH_TUNABLES2的客户端版本
 Which client versions support CRUSH_TUNABLES2
 v0.55 or later, including bobtail series (v0.56.x)
 Linux kernel version v3.9 or later (for the file system and RBD kernel clients)
- 3.3.11.8.6  一些要点
+ 3.3.9.8.6  一些要点
 A FEW IMPORTANT POINTS
 Adjusting these values will result in the shift of some PGs between storage nodes. If the Ceph cluster is already storing a lot of data, be prepared for some fraction of the data to move.
 调整这些值将使一些PG在存储节点间移位，如果ceph集群已经存储了大量数据，做好移动一部分数据的准备。
-The ceph-osd and ceph-mon daemons will start requiring the CRUSH_TUNABLES feature of new connections as soon as they get the updated map. However, already-connected clients are effectively grandfathered in, and will misbehave if they do not support the new feature.
-一旦ceph-osd和ceph-mon收到了更新的地图，它们对新建连接就开始要求CRUSH_TUNABLES功能了，然而，之前已经连接的客户端如果不支持新功能将行为失常。
+The ceph-osd and ceph-mon daemons will start requiring the feature bits of new connections as soon as they get the updated map. However, already-connected clients are effectively grandfathered in, and will misbehave if they do not support the new feature.
+一旦更新运行图，ceph-osd和ceph-mon就会开始向新建连接要求功能位，然而，之前已经连接的客户端如果不支持新功能将行为失常。
 If the CRUSH tunables are set to non-legacy values and then later changed back to the defult values, ceph-osd daemons will not be required to support the feature. However, the OSD peering process requires examining and understanding old maps. Therefore, you should not run old (pre-v0.48) versions of the ceph-osd daemon if the cluster has previosly used non-legacy CRUSH values, even if the latest version of the map has been switched back to using the legacy defaults.
 如果CRUSH可调值更改过、然后又改回了默认值，ceph-osd守护进程将不要求支持此功能，然而，OSD连接建立进程要能检查和理解旧地图。因此，集群如果用过非默认CRUSH值就不应该再运行版本小于0.48.1的ceph-osd，即使最新版地图已经回滚到了遗留默认值。
- 3.3.11.8.7  调整CRUSH
+ 3.3.9.8.7  调整CRUSH
 TUNING CRUSH
 The simplest way to adjust the crush tunables is by changing to a known profile. Those are:
+更改crush可调值的最简方法就是改到一个已知配置，它们有：
 legacy: the legacy behavior from argonaut and earlier.
 argonaut: the legacy values supported by the original argonaut release
 bobtail: the values supported by the bobtail release
 optimal: the current best values
 default: the current default values for a new cluster
 Currently, legacy, default, and argonaut are the same, and bobtail and optimal include CRUSH_TUNABLES and CRUSH_TUNABLES2.
+当前，legacy、default、和argonaut相同；bobtail和optimal包含 CRUSH_TUNABLES和CRUSH_TUNABLES2。
 You can select a profile on a running cluster with the command:
+你可以在运行着的集群上选择一个配置：
 ceph osd crush tunables {PROFILE}
 Note that this may result in some data movement.
- 3.3.11.8.8  调整CRUSH——强硬方法
+要注意，这可能产生一些数据迁移。
+ 3.3.9.8.8  调整CRUSH——强硬方法
 Tuning CRUSH, the hard way
 If you can ensure that all clients are running recent code, you can adjust the tunables by extracting the CRUSH map, modifying the values, and reinjecting it into the cluster.
 如果你能保证所有客户端都运行最新代码，你可以这样调整可调值：从集群抽取CRUSH图、修改值、重注入。
-
 Extract the latest CRUSH map:
 抽取最新CRUSH图：
 ceph osd getcrushmap -o /tmp/crush
-
 Adjust tunables. These values appear to offer the best behavior for both large and small clusters we tested with. You will need to additionally specify the --enable-unsafe-tunables argument to crushtool for this to work. Please use this option with extreme care.:
 调整可调参数。这些值在我们测试过的大、小型集群上都有最佳表现。在极端情况下，你需要给crushtool额外指定--enable-unsafe-tunables参数才行：
 crushtool -i /tmp/crush --set-choose-local-tries 0 --set-choose-local-fallback-tries 0 --set-choose-total-tries 50 -o /tmp/crush.new
-
 Reinject modified map:
 重注入修改的地图：
 ceph osd setcrushmap -i /tmp/crush.new
- 3.3.11.8.9  遗留值
+ 3.3.9.8.9  遗留值
 LEGACY VALUES
 For reference, the legacy values for the CRUSH tunables can be set with:
 CRUSH可调参数的遗留值可以用下面命令设置：
 crushtool -i /tmp/crush --set-choose-local-tries 2 --set-choose-local-fallback-tries 5 --set-choose-total-tries 19 -o /tmp/crush.legacy
-
 Again, the special --enable-unsafe-tunables option is required. Further, as noted above, be careful running old versions of the ceph-osd daemon after reverting to legacy values as the feature bit is not perfectly enforced.
 再次申明，--enable-unsafe-tunables是必需的，而且前面也提到了，回退到遗留值后慎用旧版ceph-osd进程，因为此功能位不是完全强制的。
- 3.3.12  认证概览
-ceph认证及授权
-Ceph authentication & authorization
-Ceph is a distributed storage system where a typical deployment involves a relatively small quorum of monitors, scores of metadata servers (MDSs) and many thousands of OSD daemons operating across many hosts/nodes–representing the server portion of the Ceph object store. Ceph clients such as CephFS, Ceph block device and Ceph Gateway interact with the Ceph object store. All Ceph object store clients use the librados library to interact with the Ceph object store. The following diagram illustrates an abstract client/server technology stack.
-ceph是一个分布式存储系统，其典型部署包含相对少量的监视器、许多元数据服务器（MDS）和数千OSD守护进程，它们运行于很多主机或节点，共同构成了ceph对象存储的服务器部分；ceph客户端如CephFS、Ceph块设备和Ceph网关与ceph对象存储交互，所有客户端都用librados库和ceph对象存储交互，下面的图抽象地展示了客户端/服务器技术。
-
-Users are either individuals or system actors such as applications, which use Ceph clients to interact with Ceph server daemons.
-用户可以是个人或系统角色，像应用程序，它们用ceph客户端和ceph服务器守护进程交互。
-
-For additional information, see our Cephx Guide and ceph-authtool manpage.
-更多信息参见Cephx Guide和ceph-authtool手册。
- 3.3.12.1  ceph认证（cephx）
-CEPH AUTHENTICATION (CEPHX)
-Cryptographic authentication has some computational costs, though they should generally be quite low. If the network environment connecting your client and server hosts is very safe and you cannot afford authentication, you can use a Ceph option to turn it off. This is not generally recommended, but should you need to do so, details can be found in the Disable Cephx section.
-加密认证要耗费一定计算资源，但通常很低。如果您的客户端和服务器网络环境相当安全，而且认证的负面效应更大，你可以关闭它，通常不推荐您这么做，但必要时可以。详情参见Disable Cephx。
-
-Important Remember, if you disable authentication, you are at risk of a man-in-the-middle attack altering your client/server messages, which could lead to disastrous security effects.
-重要：记住，如果禁用了认证，就会有篡改客户端/服务器消息这样的中间人攻击风险，这会导致灾难性后果。
-
-A key scalability feature of Ceph is to avoid a centralized interface to the Ceph object store, which means that Ceph clients must be able to interact with OSDs directly. To protect data, Ceph provides its cephx authentication system, which authenticates users operating Ceph clients. The cephx protocol operates in a manner with behavior similar to Kerberos.
-ceph一个主要伸缩功能就是避免了对象存储的中央接口，这就要求ceph客户端能直接和OSD交互。Ceph通过cephx认证系统保护数据，它也认证运行ceph客户端的用户，cephx协议运行机制类似Kerberos。
-
-A user/actor invokes a Ceph client to contact a monitor. Unlike Kerberos, each monitor can authenticate users and distribute keys, so there is no single point of failure or bottleneck when using cephx. The monitor returns an authentication data structure similar to a Kerberos ticket that contains a session key for use in obtaining Ceph services. This session key is itself encrypted with the user’s permanent secret key, so that only the user can request services from the Ceph monitor(s). The client then uses the session key to request its desired services from the monitor, and the monitor provides the client with a ticket that will authenticate the client to the OSDs that actually handle data. Ceph monitors and OSDs share a secret, so the client can use the ticket provided by the monitor with any OSD or metadata server in the cluster. Like Kerberos, cephx tickets expire, so an attacker cannot use an expired ticket or session key obtained surreptitiously. This form of authentication will prevent attackers with access to the communications medium from either creating bogus messages under another user’s identity or altering another user’s legitimate messages, as long as the user’s secret key is not divulged before it expires.
-用户/参与者通过调用ceph客户端来联系监视器，不像Kerberos，每个监视器都能认证用户、发布密钥，所以使用cephx时不会有单点故障或瓶颈。监视器返回一个类似Kerberos票据的认证数据结构，它包含一个可用于获取ceph服务的会话密钥，会话密钥是用户的永久私钥自加密过的，只有此用户能从ceph监视器请求服务。客户端用会话密钥向监视器请求需要的服务，然后监视器给客户端一个凭证用以向实际持有数据的OSD认证。ceph的监视器和OSD共享相同的密钥，所以集群内任何OSD或元数据服务器都认可客户端从监视器获取的凭证，像Kerberos一样cephx凭证也会过期，以使攻击者不能用暗中得到的过期凭证或会话密钥。只要用户的私钥过期前没有泄露 ，这种认证形式就可防止中间线路攻击者以别人的ID发送垃圾消息、或修改用户的正常消息。
-
-To use cephx, an administrator must set up users first. In the following diagram, the client.admin user invokes ceph auth get-or-create-key from the command line to generate a username and secret key. Ceph’s auth subsystem generates the username and key, stores a copy with the monitor(s) and transmits the user’s secret back to the client.admin user. This means that the client and the monitor share a secret key.
-要使用cephx，管理员必须先设置好用户。在下面的图解里，client.admin用户从命令行调用 ceph auth get-or-create-key来生成一个用户及其密钥，ceph的认证子系统生成了用户名和密钥、副本存到监视器然后把此用户的密钥回传给client.admin用户，也就是说客户端和监视器共享着相同的密钥。
-
-Note: The client.admin user must provide the user ID and secret key to the user in a secure manner.
-注意：client.admin用户必须以安全方式把此用户ID和密钥交给用户。
-
-
-To authenticate with the monitor, the client passes in the user name to the monitor, and the monitor generates a session key and encrypts it with the secret key associated to the user name. Then, the monitor transmits the encrypted ticket back to the client. The client then decrypts the payload with the shared secret key to retrieve the session key. The session key identifies the user for the current session. The client then requests a ticket on behalf of the user signed by the session key. The monitor generates a ticket, encrypts it with the user’s secret key and transmits it back to the client. The client decrypts the ticket and uses it to sign requests to OSDs and metadata servers throughout the cluster.
-要和监视器认证，客户端得把用户名传给监视器，然后监视器生成一个会话密钥、并且用此用户的密钥加密它，然后把加密的凭证回传给客户端，客户端用共享密钥解密载荷就可获取会话密钥。会话密钥在当前会话中标识了此用户，客户端再用此会话密钥签署过的用户名请求一个凭证，监视器生成一个凭证、用客户端的密钥加密它，然后回传给客户端，客户端解密此凭证，然后用它签署连接集群内OSD和元数据服务器的请求。
-
-The cephx protocol authenticates ongoing communications between the client machine and the Ceph servers. Each message sent between a client and server, subsequent to the initial authentication, is signed using a ticket that the monitors, OSDs and metadata servers can verify with their shared secret.
-cephx协议认证客户端机器和ceph服务器间正在进行的通讯，二者间认证完成后的每条消息都用凭证签署过，监视器、OSD、元数据服务器可用共享的密钥来校验。
-
-The protection offered by this authentication is between the Ceph client and the Ceph server hosts. The authentication is not extended beyond the Ceph client. If the user accesses the Ceph client from a remote host, Ceph authentication is not applied to the connection between the user’s host and the client host.
-认证提供的保护位于ceph客户端和服务器间，没有扩展到ceph客户端之外。如果用户从远程主机访问ceph客户端，ceph认证就不管用了，它不会影响到用户主机和客户端主机间的通讯。
- 3.3.12.2  ceph授权（能力）
-CEPH AUTHORIZATION (CAPS)
-Ceph uses the term “capabilities” (caps) to describe authorizing an authenticated user to exercise the functionality of the monitors, OSDs and metadata servers. Capabilities can also restrict access to data within one or more pools.
-ceph用能力(caps)来描述给认证用户的授权，这样才能使用监视器、OSD、和元数据服务器的功能。能力也能限制到一或多个存储池的访问。
-
-Note Ceph uses the capabilities discussed here for setting up and controlling access between various Ceph client and server instances, and are relevant regardless of what type of client accesses the Ceph object store. CephFS uses a different type of capability for files and directories internal to the CephFS filesystem. CephFS filesystem access controls are relevant to CephFS, but not block devices or the RESTful gateway.
-注意：ceph使用能力来设置、控制ceph客户端和服务器例程间的相互访问，并且不管哪种客户端访问ceph对象存储。CephFS内部给文件和目录用了不同于CephFS文件系统的另外一种能力，CephFS访问控制和CephFS有关，但不是块设备或RESTful网关。
-
-A Ceph client.admin user sets a user’s capabilities when creating the user.
-ceph的client.admin用户在创建用户时设置了用户的能力。
-
-allow
-Description:
-Precedes access settings for a daemon. Implies rw for MDS only.
-在守护进程的访问设置之前，仅对MDS隐含rw。
-Example:
-ceph-authtool -n client.foo --cap mds 'allow'
-r
-Description:
-Gives the user read access. Required with monitors to retrieve the CRUSH map.
-授予用户读权限，监视器需要它才能搜刮CRUSH图。
-Example:
-ceph-authtool -n client.foo --cap mon 'allow r'
-w
-Description:
-Gives the user write access to objects.
-授予用户写对象的权限。
-Example:
-ceph-authtool -n client.foo --cap osd 'allow w'
-x
-Description:
-Gives the user the capability to call class methods (i.e., both read and write).
-授予用户调用类方法的能力，如同时有读和写。
-Example:
-ceph-authtool -n client.foo --cap osd 'allow x'
-class-read
-Descriptions:
-Gives the user the capability to call class read methods. Subset of x.
-授予用户调用类读取方法的能力，x的子集。
-Example:
-ceph-authtool -n client.foo --cap osd 'allow class-read'
-class-write
-Description:
-Gives the user the capability to call class write methods. Subset of x.
-授予用户调用类写入方法的能力，x的子集。
-Example:
-ceph-authtool -n client.foo --cap osd 'allow class-write'
-*
-Description:
-Gives the user read, write and execute permissions for a particular daemon/pool, and the ability to execute admin commands.
-授权用户读、写和执行某守护进程/存储池，且允许执行管理命令。
-Example:
-ceph-authtool -n client.foo --cap osd 'allow *'
-
-When setting capabilities for a user, Ceph also supports restricting the capabilities to a particular pool. This means you can have full access to some pools, and restricted (or no) access to other pools for the same user. For example:
-给用户设置能力的时候，ceph也支持把能力限制于某存储池。意思是你可以完全地访问一些存储池、访问其他存储池却是受限的（或未受限）。
-ceph-authtool -n client.foo --cap osd 'allow rwx pool=customer-pool'
- 3.3.12.3  cephx的局限性
-CEPHX LIMITATIONS
-The cephx protocol authenticates Ceph clients and servers to each other. It is not intended to handle authentication of human users or application programs run on their behalf. If that effect is required to handle your access control needs, you must have another mechanism, which is likely to be specific to the front end used to access the Ceph object store. This other mechanism has the role of ensuring that only acceptable users and programs are able to run on the machine that Ceph will permit to access its object store.
-cephx协议提供ceph客户端和服务器间的相互认证，并没打算认证人类用户或者应用程序。如果有访问控制需求，那必须用另外一种机制，它对于前端用户访问ceph对象存储可能是特定的，其任务是确保只有此机器上可接受的用户和程序才能访问ceph的对象存储。
-
-The keys used to authenticate Ceph clients and servers are typically stored in a plain text file with appropriate permissions in a trusted host.
-用于认证ceph客户端和服务器的密钥通常以纯文本存储在权限合适的文件里，此文件保存于可信主机上。
-
-Important: Storing keys in plaintext files has security shortcomings, but they are difficult to avoid, given the basic authentication methods Ceph uses in the background. Those setting up Ceph systems should be aware of these shortcomings.
-重要：密钥存储为纯文本文件有安全缺陷，但很难避免，它给了ceph可用的基本认证方法，设置ceph时应该注意这些缺陷。
-
-In particular, arbitrary user machines, especially portable machines, should not be configured to interact directly with Ceph, since that mode of use would require the storage of a plaintext authentication key on an insecure machine. Anyone who stole that machine or obtained surreptitious access to it could obtain the key that will allow them to authenticate their own machines to Ceph.
-尤其是任意用户、特别是移动机器不应该和ceph直接交互，因为这种用法要求把明文认证密钥存储在不安全的机器上，这些机器的丢失、或盗用将泄露可访问ceph集群的密钥。
-
-Rather than permitting potentially insecure machines to access a Ceph object store directly, users should be required to sign in to a trusted machine in your environment using a method that provides sufficient security for your purposes. That trusted machine will store the plaintext Ceph keys for the human users. A future version of Ceph may address these particular authentication issues more fully.
-相比于允许潜在的欠安全机器直接访问ceph对象存储，应该要求用户先登录安全有保障的可信机器，这台可信机器会给人们存储明文密钥。未来的ceph版本也许会更彻底地解决这些特殊认证问题。
-
-At the moment, none of the Ceph authentication protocols provide secrecy for messages in transit. Thus, an eavesdropper on the wire can hear and understand all data sent between clients and servers in Ceph, even if he cannot create or alter them. Further, Ceph does not include options to encrypt user data in the object store. Users can hand-encrypt and store their own data in the Ceph object store, of course, but Ceph provides no features to perform object encryption itself. Those storing sensitive data in Ceph should consider encrypting their data before providing it to the Ceph system.
-当前，没有任何ceph认证协议保证传送中消息的私密性。所以，即使物理线路窃听者不能创建用户或修改它们，但可以听到、并理解客户端和服务器间发送过的所有数据。此外，ceph没有可加密用户数据的选项，当然，用户可以手动加密、然后把它们存在对象库里，但ceph没有自己加密对象的功能。在ceph里存储敏感数据的用户应该考虑存入ceph集群前先加密。
- 3.3.13  cephx认证
-Cephx Guide
-Ceph provides two authentication modes:
-ceph提供了两种认证模式：
-None: Any user can access data without authentication.
-none：任何用户无需认证就能访问数据；
-Cephx: Ceph requires user authentication in a manner similar to Kerberos.
-cephx：ceph要求用户认证，机制类似Kerberos。
-
-If you disable cephx, you do not need to generate keys using the procedures described here. If you re-enable cephx and have already generated keys, you do not need to generate the keys again.
-如果你要禁用cephx，就不需要按前述生成密钥；如果你重新启用cephx且已然生成了密钥，也无需再次生成。
-Important: The cephx protocol does not address data encryption in transport (e.g., SSL/TLS) or encryption at rest.
-
-For additional information, see our Cephx Intro and ceph-authtool manpage.
-额外信息要参见 Cephx Intro和ceph-authtool手册。
- 3.3.13.1  配置cephx
-CONFIGURING CEPHX
-There are several important procedures you must follow to enable the cephx protocol for your Ceph cluster and its daemons.
-要为集群及其守护进程启用cephx协议，有几个重要步骤必须遵循。
-1. First, you must generate a secret key for the default client.admin user so the administrator can execute Ceph commands.
-首先，必须给默认的client.admin生成密钥，以便管理员执行ceph命令；
-2. Second, you must generate a monitor secret key and distribute it to all monitors in the cluster.
-其次，必须生成一个监视器密钥，并发布到集群内的所有监视器；
-3. Finally, you can follow the remaining steps in Enabling Cephx to enable authentication.
-最后，你要完成启用cephx里的剩余步骤。
- 3.3.13.1.1  client.admin密钥
-THE CLIENT.ADMIN KEY
-When you first install Ceph, each Ceph command you execute on the command line assumes that you are the client.admin default user. When running Ceph with cephx enabled, you need to have a key for the client.admin user to run ceph commands as the administrator.
-你首次安装ceph后，你执行的每个ceph命令都先假设你是默认用户client.admin。集群如果启用了cephx，client.admin用户就需要一个密钥才能运行ceph命令。
-Important: To run Ceph commands on the command line with cephx enabled, you need to create a key for the client.admin user, and create a secret file under /etc/ceph.
-
-The following command will generate and register a client.admin key on the monitor with admin capabilities and write it to a keyring on the local file system. If the key already exists, its current value will be returned.
-下列命令将在监视器上生成并注册一个具有管理能力的client.admin密钥，并将之写入本地文件系统的keyring，如果密钥已存在，将返回其值。
-sudo ceph auth get-or-create client.admin mds 'allow' osd 'allow *' mon 'allow *' > /etc/ceph/keyring
-
-See Enabling Cephx step 1 for stepwise details to enable cephx.
-启用cephx的手把手教程，请参见启用cephx步骤1。
- 3.3.13.1.2  监视器密钥环
-MONITOR KEYRINGS
-Ceph requires a keyring for the monitors. Use the ceph-authtool command to generate a secret monitor key and keyring.
-ceph的监视器需要一个密钥环，用ceph-authtool命令生成密钥和密钥环。
-sudo ceph-authtool {keyring} --create-keyring --gen-key -n mon.
-
-A cluster with multiple monitors must have identical keyrings for all monitors. So you must copy the keyring to each monitor host under the following directory:
-有多个监视器的集群，其所有监视器的密钥环必须相同，所以你必须把下列目录里的密钥环拷到每个监视器：
-/var/lib/ceph/mon/$cluster-$id
-
-See Enabling Cephx step 2 and 3 for stepwise details to enable cephx.
-启用cephx的详细步骤参见启用cephx的第2、3步。
- 3.3.13.1.3  启用cephx
-ENABLING CEPHX
-When cephx is enabled, Ceph will look for the keyring in the default search path, which includes /etc/ceph/keyring. You can override this location by adding a keyring option in the [global] section of your Ceph configuration file, but this is not recommended.
-启用cephx后，ceph将在默认搜索路径（/etc/ceph/keyring）里查找密钥环。你可以在配置文件的[global]段里添加keyring选项来修改，但不推荐。
-
-Execute the following procedures to enable cephx on a cluster with cephx disabled. If you (or your deployment utility) have already generated the keys, you may skip the steps related to generating keys.
-在禁用了cephx的集群上执行下面的步骤来启用它，如果你（或者部署工具）已经生成了密钥，你可以跳过相关步骤。
-
-1. Create a client.admin key, and save a copy of the key for your client host:
-创建client.admin密钥，并为客户端保存此密钥的副本：
-ceph auth get-or-create client.admin mon 'allow *' mds 'allow *' osd 'allow *' -o /etc/ceph/keyring
-**Warning:** This will clobber any existing ``/etc/ceph/keyring`` file. Be careful!
-
-2. Generate a secret monitor mon. key:
-生成给监视器的mon.密钥：
-ceph-authtool --create --gen-key -n mon. /tmp/monitor-key
-3. Copy the mon keyring into a keyring file in every monitor’s mon data directory:
-把mon密钥环拷贝到keyring文件，再拷到每个监视器的mon data目录下：
-cp /tmp/monitor-key /var/lib/ceph/mon/ceph-a/keyring
-
-4. Generate a secret key for every OSD, where {$id} is the OSD number:
-为每个OSD生成密钥，{id}是OSD编号：
-ceph auth get-or-create osd.{$id} mon 'allow rwx' osd 'allow *' -o /var/lib/ceph/osd/ceph-{$id}/keyring
-5. Generate a secret key for every MDS, where {$id} is the MDS letter:
-为每个MDS生成密钥，{id}是MDS的标识字母：
-ceph auth get-or-create mds.{$id} mon 'allow rwx' osd 'allow *' mds 'allow *' -o /var/lib/ceph/mds/ceph-{$id}/keyring
-
-6. Enable cephx authentication for versions 0.51 and above by setting the following options in the [global] section of your Ceph configuration file:
-0.51以上版本启用cephx时，要在配置文件的[global]段下添加如下内容：
-auth cluster required = cephx
-auth service required = cephx
-auth client required = cephx
-
-7. Or, enable cephx authentication for versions 0.50 and below by setting the following option in the [global] section of your Ceph configuration file:
-或者，0.50以下版本启用cephx时，要在配置文件的[global]段下添加以下：
-auth supported = cephx
-
-Deprecated since version 0.51.
-从0.51起死亡了。
-
-1. Start or restart the Ceph cluster.
-启动或重启ceph集群：
-sudo service ceph -a start
-sudo service ceph -a restart
- 3.3.13.1.4  禁用cephx
-DISABLING CEPHX
-The following procedure describes how to disable Cephx. If your cluster environment is relatively safe, you can offset the computation expense of running authentication. We do not recommend it. However, it may be easier during setup and/or troubleshooting to temporarily disable authentication.
-前面的步骤描述了如何禁用cephx，如果你的集群环境相对安全，你可以去掉认证带来的计算消耗，然而我们不推荐。但是临时禁用认证会使安装、和/或排障更简单。
-
-1. Disable cephx authentication for versions 0.51 and above by setting the following options in the [global] section of your Ceph configuration file:
-在0.51及以上禁用cephx认证，要在配置文件的[global]段下设置：
-auth cluster required = none
-auth service required = none
-auth client required = none
-
-2. Or, disable cephx authentication for versions 0.50 and below (deprecated as of version 0.51) by setting the following option in the [global] section of your Ceph configuration file:
-或者，在0.50（从0.51时消失）及以下禁用cephx，要在配置文件的[global]段下设置：
-auth supported = none
-
-3. Start or restart the Ceph cluster.
-启动或重启ceph集群：
-sudo service ceph -a start
-sudo service ceph -a restart
- 3.3.13.1.5  守护进程密钥环
-DAEMON KEYRINGS
-With the exception of the monitors, Ceph generates daemon keyrings in the same way that it generates user keyrings. By default, the daemons store their keyrings inside their data directory. The default keyring locations, and the capabilities necessary for the daemon to function, are shown below.
-除监视器外，守护进程密钥环和用户密钥环生成方法一样。默认情况下，守护进程把密钥环保存在它们的数据目录下，默认密钥环位置、和守护进程发挥作用必需的能力展示如下：
-
-ceph-mon
-Location:
-$mon_data/keyring
-Capabilities:
-N/A
-ceph-osd
-Location:
-$osd_data/keyring
-Capabilities:
-mon 'allow rwx' osd 'allow *'
-ceph-mds
-Location:
-$mds_data/keyring
-Capabilities:
-mds 'allow rwx' mds 'allow *' osd 'allow *'
-radosgw
-Location:
-$rgw_data/keyring
-Capabilities:
-mon 'allow r' osd 'allow rwx'
-
-Note that the monitor keyring contains a key but no capabilities, and is not part of the cluster auth database.
-注意，监视器密钥环包含一个密钥，但没有能力，且不是集群认证数据库的一部分。
-
-The daemon data directory locations default to directories of the form:
-守护进程数据目录位置默认格式如下：
-/var/lib/ceph/$type/$cluster-$id
-
-For example, osd.12 would be:
-例如，osd.12的目录会是：
-/var/lib/ceph/osd/ceph-12
-
-You can override these locations, but it is not recommended.
-你可以覆盖这些位置，但不推荐。
- 3.3.13.2  cephx管理
-CEPHX ADMINISTRATION
-Cephx uses shared secret keys for authentication, meaning both the client and the monitor cluster have a copy of the client’s secret key. The authentication protocol is such that both parties are able to prove to each other they have a copy of the key without actually revealing it. This provides mutual authentication, which means the cluster is sure the user possesses the secret key, and the user is sure that the cluster has a copy of the secret key.
-cephx用共享密钥来认证，即客户端和监视器集群各自都有客户端密钥的副本。这样的认证协议使所有参与者没有展现密钥就能相互证明，就是说集群确信用户可处理密钥、而且用户相信集群有密钥的副本。
-
-Default users and pools are suitable for initial testing purposes. For test bed and production environments, you should create users and assign pool access to the users.
-默认用户和存储池只适合最初的测试，在试验台和生产环境下，应该创建用户并给其分配存储池访问权限。
- 3.3.13.2.1  增加密钥
-ADD A KEY
-Keys enable a specific user to access the monitor, metadata server and cluster according to capabilities assigned to the key. Capabilities are simple strings specifying some access permissions for a given server type. Each server type has its own string. All capabilities are simply listed in {type} and {capability} pairs on the command line:
-具体用户根据分配给密钥的能力可获得监视器、元数据服务器和集群的访问。能力是字符串，它给某类服务器指定访问权限，每种服务器都各有其字符串。在命令行下，所有能力都可成对地表示为{type}和{capability}。
-sudo ceph auth get-or-create client.{username} {daemon1} {cap1} {daemon2} {cap2} ...
-
-For example, to create a user client.foo with access ‘rw’ for daemon type ‘osd’ and ‘r’ for daemon type ‘mon’:
-例如，要创建一个用户，他对osd有rw权限、对mon有r权限：
-sudo ceph auth get-or-create client.foo osd 'allow rw' mon 'allow r' > keyring.foo
-Note: User names are associated to user types, which include client osd, mon, and mds. In most cases, you will be creating keys for client users.
-
-After you add a key to the cluster keyring, go to the relevant client(s) and copy the keyring from the cluster host to the client(s).
-sudo scp {user}@{ceph-cluster-host}:/etc/ceph/ceph.keyring /etc/ceph/ceph.keyring
-
-Tip: Ensure the ceph.keyring file has appropriate permissions set (e.g., chmod 644) on your client machine.
-
- 3.3.13.2.2  删除密钥
-DELETE A KEY
-To delete a key for a user or a daemon, use ceph auth del:
-要删除一个用户或守护进程的密钥，用ceph auth del：
-ceph auth del {daemon-type}.{ID|username}
-
-Where {daemon-type} is one of client, osd, mon, or mds, and {ID|username} is the ID of the daemon or the username.
-{daemon-type}是客户端、osd、mon、mds中一个，{ID|username}是守护进程或用户名的ID。
-After you delete a key from the cluster keyring, go to the relevant client(s) and copy the keyring from the cluster host to the client(s).
-sudo scp {user}@{ceph-cluster-host}:/etc/ceph/ceph.keyring /etc/ceph/ceph.keyring
-Tip: Ensure the ceph.keyring file has appropriate permissions set (e.g., chmod 644) on your client machine.
- 3.3.13.2.3  列出集群内的密钥
-LIST KEYS IN YOUR CLUSTER
-To list the keys registered in your cluster:
-要列出集群内注册的密钥：
-sudo ceph auth list
- 3.3.13.3  cephx命令行选项
-CEPHX COMMANDLINE OPTIONS
-When Ceph runs with Cephx enabled, you must specify a user name and a secret key on the command line. Alternatively, you may use the CEPH_ARGS environment variable to avoid re-entry of the user name and secret.
-在启用了cephx的集群上，你必须在命令行指定用户名及其密钥；另外你也可以用CEPH_ARGS环境变量来避免多次输入用户名和密钥。
-ceph --id {user-name} --keyring=/path/to/secret [commands]
-
-For example:
-例如：
-ceph --id client.admin --keyring=/etc/ceph/ceph.keyring [commands]
-
-Ceph supports the following usage for user name and secret:
-ceph支持用户名和密钥的下列用法：
-
---id | --user
-Description:
-Ceph identifies users with a type and an ID (e.g., TYPE.ID or client.admin, client.user1). The id, name and -n options enable you to specify the ID portion of the user name (e.g., admin, user1, foo, etc.). You can specify the user with the --id and omit the type. For example, to specify user client.foo enter the following:
-ceph用一个类型和ID（如TYPE.ID或client.admin、client.user1）来标识用户，id、name、和-n选项可用于指定用户名（如admin、user1、foo等）的ID部分，你可以用--id指定用户并忽略类型，例如可用下列命令指定client.foo用户：
-ceph --id foo --keyring /path/to/keyring health
-ceph --user foo --keyring /path/to/keyring health
---name
-Description:
-Ceph identifies users with a type and an ID (e.g., TYPE.ID or client.admin, client.user1). The --name and -n options enables you to specify the fully qualified user name. You must specify the user type (typically client) with the user ID. For example:
-ceph用一个类型和ID（如TYPE.ID或client.admin、client.user1）来标识用户，--name和-n选项可用于指定完整的用户名，但必须指定用户类型（一般是client）和用户ID，例如：
-ceph --name client.foo --keyring /path/to/keyring health
-ceph -n client.foo --keyring /path/to/keyring health
---keyring
-Description:
-The path to the keyring containing one or more user name and secret. The --secret option provides the same functionality, but it does not work with Ceph RADOS Gateway, which uses --secret for another purpose. You may retrieve a keyring with ceph auth get-or-create and store it locally. This is a preferred approach, because you can switch user names without switching the keyring path. For example:
-包含一或多个用户名、密钥的密钥环路径。--secret选项提供了相同功能，但它不能用于RADOS网关，其--secret另有用途。你可以用ceph auth get获取密钥环并保存在本地，然后您就可以改用其他用户而无需重指定密钥环路径了。
-sudo rbd map foo --pool rbd myimage --id client.foo --keyring /path/to/keyring
---keyfile
-Description:
-The path to the key file containing the secret key for the user specified by --id, --name, -n, or --user. You may retrieve the key for a specific user with ceph auth get and store it locally. Then, specify the path to the keyfile. For example:
-包含用户（用--id、--name、-n、或--user指定）密钥的文件路径。你可以用ceph auth get获取密钥并保存在本地，然后指定给--keyfile，例如：
-sudo rbd map foo --pool rbd myimage --id client.foo --keyfile /path/to/file
-
-Note: Add the user and secret to the CEPH_ARGS environment variable so that you don’t need to enter them each time. You can override the environment variable settings on the command line.
-注意：把用户和密钥添加到CEPH_ARGS环境变量就不用每次都输入了。命令行下可以覆盖环境变量设置。
- 3.3.13.4  向后兼容性
-BACKWARD COMPATIBILITY
-New in version Bobtail.
-bobtail版新功能。
-
-In Ceph Argonaut v0.48 and earlier versions, if you enable cephx authentication, Ceph only authenticates the initial communication between the client and daemon; Ceph does not authenticate the subsequent messages they send to each other, which has security implications. In Ceph Bobtail and subsequent versions, Ceph authenticates all ongoing messages between the entities using the session key set up for that initial authentication.
-在ceph-0.48及更早版本，启用cephx认证后，ceph仅认证客户端和守护进程间的最初通讯，不会认证后续相互发送的消息，这导致了安全隐患；bobtail及后续版本会用认证后生成的会话密钥来认证所有消息。
-
-We identified a backward compatibility issue between Argonaut v0.48 (and prior versions) and Bobtail (and subsequent versions). During testing, if you attempted to use Argonaut (and earlier) daemons with Bobtail (and later) daemons, the Argonaut daemons did not know how to perform ongoing message authentication, while the Bobtail versions of the daemons insist on authenticating message traffic subsequent to the initial request/response–making it impossible for Argonaut (and prior) daemons to interoperate with Bobtail (and subsequent) daemons.
-我们确定了一个向后兼容性问题，在Argonaut v0.48（及之前版本）和Bobtail（及后续版本）之间。测试发现，如果你混用Argonaut（及更小版）和Bobtail的守护进程，Argonaut的守护进程将对正在进行的消息不知所措，因为Bobtail进程坚持要求认证最初请求/响应之后的消息，导致二者无法交互。
-
-We have addressed this potential problem by providing a means for Argonaut (and prior) systems to interact with Bobtail (and subsequent) systems. Here’s how it works: by default, the newer systems will not insist on seeing signatures from older systems that do not know how to perform them, but will simply accept such messages without authenticating them. This new default behavior provides the advantage of allowing two different releases to interact. We do not recommend this as a long term solution. Allowing newer daemons to forgo ongoing authentication has the unfortunate security effect that an attacker with control of some of your machines or some access to your network can disable session security simply by claiming to be unable to sign messages.
-我们已经提供了一种方法，解决了Argonaut（及之前）和Bobtail（及后续）系统间交互的潜在的问题。是这样解决的，默认情况下，较新系统不会再坚持要求较老系统的签名，只是简单地接收这些消息而不对其认证。这个默认行为使得两个不同版本可以交互，但我们不推荐作为长期方案。允许较新进程不认证正在进行的消息会导致安全问题，因为攻击者如果能控制你的机器、或访问你的网络，就可以宣称不能签署消息，从而禁用会话安全。
-Note: Even if you don’t actually run any old versions of Ceph, the attacker may be able to force some messages to be accepted unsigned in the default scenario. While running Cephx with the default scenario, Ceph still authenticates the initial communication, but you lose desirable session security.
-注意：即使你没有使用旧版的ceph，在默认配置下，攻击者也可以强制一些未签署消息被接受；虽然初始通讯认证通过了，但你失去了会话安全。
-If you know that you are not running older versions of Ceph, or you are willing to accept that old servers and new servers will not be able to interoperate, you can eliminate this security risk. If you do so, any Ceph system that is new enough to support session authentication and that has Cephx enabled will reject unsigned messages. To preclude new servers from interacting with old servers, include the following in the [global] section of your Ceph configuration file directly below the line that specifies the use of Cephx for authentication:
-如果你确定不会使用旧版ceph、或者新旧服务器不能交互无所谓，那就可以排除这个安全风险；如果你这样做了，任何支持会话认证、启用了cephx的ceph系统都会拒绝未签名的消息。要防止新服务器和旧服务器交互，在配置文件的[global]下添加下列这行，要加到启用cephx之后。
-cephx require signatures = true    ; everywhere possible
-You can also selectively require signatures for cluster internal communications only, separate from client-facing service:
-cephx cluster require signatures = true    ; for cluster-internal communication
-cephx service require signatures = true    ; for client-facing service
-An option to make a client require signatures from the cluster is not yet implemented.
-
-We recommend migrating all daemons to the newer versions and enabling the foregoing flag at the nearest practical time so that you may avail yourself of the enhanced authentication.
-我们推荐把所有进程迁移到较新版本，然后关闭兼容选项，以增强认证安全性。
- 3.3.14  增加/删除OSD
+ 3.3.10  增加/删除OSD
 Adding/Removing OSDs
 When you have a cluster up and running, you may add OSDs or remove OSDs from the cluster at runtime.
 如果您的集群已经在运行，你可以在运行时添加或删除OSD。
- 3.3.14.1  增加OSD
+ 3.3.10.1  增加OSD
 When you want to expand a cluster, you may add an OSD at runtime. With Ceph, an OSD is generally one Ceph ceph-osd daemon for one storage drive within a host machine. If your host has multiple storage drives, you may map one ceph-osd daemon for each drive.
 你迟早要扩容集群，ceph允许在运行时增加OSD。在ceph里，一个OSD一般是一个ceph-osd守护进程，它运行在硬盘之上，如果你有多个硬盘，可以给每个硬盘启动一个ceph-osd守护进程。
 
@@ -7195,20 +6799,20 @@ Generally, it’s a good idea to check the capacity of your cluster to see if yo
 
 Warning: Do not let your cluster reach its full ratio before adding an OSD. OSD failures that occur after the cluster reaches its near full ratio may cause the cluster to exceed its full ratio.
 警告：不要等空间满了再增加OSD，空间使用率达到near full ratio值后，OSD失败可能导致集群空间占满。
- 3.3.14.1.1  部署硬件
+ 3.3.10.1.1  部署硬件
 DEPLOY YOUR HARDWARE
 If you are adding a new host when adding a new OSD, see Hardware Recommendations for details on minimum recommendations for OSD hardware. To add a OSD host to your cluster, first make sure you have an up-to-date version of Linux installed (typically Ubuntu 12.04 precise), and you have made some initial preparations for your storage drives. See Filesystem Recommendations for details.
 如果你通过增加主机来增加OSD，关于OSD服务器硬件的配置请参见硬件推荐。要把一台OSD主机加入到集群，首先要安装最新版的Linux（如Ubuntu 12.04），而且存储硬盘要做好必要的准备，详情参见硬盘和文件系统。
 
 Add your OSD host to a rack in your cluster, connect it to the network and ensure that it has network connectivity.
 把OSD主机添加到集群机架上，连接好网络、确保网络通畅。
- 3.3.14.1.2  安装必要软件
+ 3.3.10.1.2  安装必要软件
 INSTALL THE REQUIRED SOFTWARE
 For manually deployed clusters, you must install Ceph packages manually. See Installing Debian/Ubuntu Packages for details. You should configure SSH to a user with password-less authentication and root permissions.
 在手动部署的集群里，你必须手动安装ceph软件包，详情参见安装ceph软件包。你应该配置一个无密码登录SSH的用户，且他有root权限。
 For clusters deployed with Chef, create a chef user, configure SSH keys, install Ruby and install the Chef client on your host. See Installing Chef for details.
 对于用chef部署的集群，要在主机上创建一个cheg用户、配置SSH密钥对、安装Ruby、安装chef客户端，详情参见错误：引用源未找到。
- 3.3.14.1.3  增加OSD（手动）
+ 3.3.10.1.3  增加OSD（手动）
 ADDING AN OSD (MANUAL)
 This procedure sets up an ceph-osd daemon, configures it to use one drive, and configures the cluster to distribute data to the OSD. If your host has multiple drives, you may add an OSD for each drive by repeating this procedure.
 此过程要设置一个ceph-osd守护进程，让它使用一个硬盘，且让集群把数据发布到OSD。如果一台主机有多个硬盘，可以重复此过程，把每个硬盘配置为一个OSD。
@@ -7273,7 +6877,7 @@ Again, wait for the cluster to finish migrating data, and then adjust the weight
 还是等着集群完成数据迁移，然后再次调整权重，直到权重为0。注意，这会阻止集群在发生故障时自动重复制数据，所以要确保监控的及时性，以便管理员迅速介入。
 Note that this practice will no longer be necessary in Bobtail and subsequent releases.
 注意：以上经验在Bobtail及后续版本已不再必要。
- 3.3.14.1.4  增加OSD（chef）
+ 3.3.10.1.4  增加OSD（chef）
 ADDING AN OSD (CHEF)
 This procedure configures your OSD using chef-client. If your host has multiple drives, you may need to execute the procedure for preparing an OSD drive for each data drive on your host.
 这个步骤用chef-client配置OSD，如果主机有多个硬盘，每个硬盘都要重复此步骤。
@@ -7291,7 +6895,7 @@ When you add the OSD to the CRUSH map, consider the weight you give to the new O
 5. Add the OSD to the CRUSH map so that it can begin receiving data. You may also decompile the CRUSH map edit the file, recompile it and set it. See Add/Move an OSD for details.
 把OSD加入CRUSH图以便它接收数据，也可以反编译CRUSH图、编辑文件、重编译并应用它。详情参见增加/移动OSD。
 ceph osd crush set {name} {weight} [{bucket-type}={bucket-name} ...]
- 3.3.14.1.5  启动OSD
+ 3.3.10.1.5  启动OSD
 STARTING THE OSD
 After you add an OSD to Ceph, the OSD is in your configuration. However, it is not yet running. The OSD is down and out. You must start your new OSD before it can begin receiving data. You may use service ceph from your admin host or start the OSD from its host machine:
 把OSD加入ceph后，OSD就在配置里了。然而，它还没运行，其状态为down且out，开始收数据前必须先启动。可以用管理主机上的服务、或从OSD所在主机启动。
@@ -7301,37 +6905,37 @@ ssh {new-osd-host}
 sudo /etc/init.d/ceph start osd.{osd-num}
 Once you start your OSD, it is up.
 只要启动了OSD，它就是up状态。
- 3.3.14.1.6  把OSD推进集群
+ 3.3.10.1.6  把OSD推进集群
 PUT THE OSD IN THE CLUSTER
 After you start your OSD, it is up and out. You need to put it in to the cluster so that Ceph can begin writing data to it.
 启动OSD后，它是up且out的，你得把它推入集群，ceph才能向其写入数据。
 ceph osd in {osd-num}
- 3.3.14.1.7  观察数据迁移
+ 3.3.10.1.7  观察数据迁移
 OBSERVE THE DATA MIGRATION
 Once you have added your new OSD to the CRUSH map, Ceph will begin rebalancing the server by migrating placement groups to your new OSD. You can observe this process with the ceph tool.
 把新OSD加入CRUSH图后，ceph会重新均衡服务器，一些归置组会迁移到新OSD里，你可以用ceph命令观察此过程。
 ceph -w
 You should see the placement group states change from active+clean to active, some degraded objects, and finally active+clean when migration completes. (Control-c to exit.)
 你会看到归置组状态从active+clean变为active、一些降级的对象、且迁移完成后回到active+clean状态。（Ctrl-c退出）
- 3.3.14.2  删除OSD（手动）
+ 3.3.10.2  删除OSD（手动）
 Removing OSDs (Manual)
 When you want to reduce the size of a cluster or replace hardware, you may remove an OSD at runtime. With Ceph, an OSD is generally one Ceph ceph-osd daemon for one storage drive within a host machine. If your host has multiple storage drives, you may need to remove one ceph-osd daemon for each drive. Generally, it’s a good idea to check the capacity of your cluster to see if you are reaching the upper end of its capacity. Ensure that when you remove an OSD that your cluster is not at its near full ratio.
 要想缩减集群尺寸或替换硬件，可在运行时删除OSD。在ceph里，一个OSD通常是一台主机上的一个ceph-osd守护进程、它运行在一个硬盘之上。如果一台主机上有多个数据盘，你得挨个删除其对应ceph-osd。通常，操作前应该检查集群容量，看是否快达到上限了，确保删除OSD后不会使集群达到near full ratio值。
 Warning: Do not let your cluster reach its full ratio when removing an OSD. Removing OSDs could cause the cluster to reach or exceed its full ratio.
 警告：删除OSD时不要让集群达到其最大利用率，删除OSD可能导致集群达到或超过最大利用率。
- 3.3.14.2.1  把OSD踢出集群
+ 3.3.10.2.1  把OSD踢出集群
 TAKE THE OSD OUT OF THE CLUSTER
 Before you remove an OSD, it is usually up and in. You need to take it out of the cluster so that Ceph can begin rebalancing and copying its data to other OSDs.
 删除OSD前，它通常是up且in的，要先把它踢出集群，以使ceph启动重新均衡、把数据拷贝到其他OSD。
 ceph osd out {osd-num}
- 3.3.14.2.2  观察数据迁移
+ 3.3.10.2.2  观察数据迁移
 OBSERVE THE DATA MIGRATION
 Once you have taken your OSD out of the cluster, Ceph will begin rebalancing the cluster by migrating placement groups out of the OSD you removed. You can observe this process with the ceph tool.
 一旦把OSD踢出集群，ceph就会开始重新均衡集群、把归置组迁移出删除的OSD。你可以用ceph程序观察此过程。
 ceph -w
 You should see the placement group states change from active+clean to active, some degraded objects, and finally active+clean when migration completes. (Control-c to exit.)
 你会看到归置组状态从active+clean变为active、有一些降级的对象、迁移完成后最终回到active+clean状态。（Ctrl-c中止）
- 3.3.14.2.3  停止OSD
+ 3.3.10.2.3  停止OSD
 STOPPING THE OSD
 After you take an OSD out of the cluster, it may still be running. That is, the OSD may be up and out. You must stop your OSD before you remove it from the configuration.
 把OSD踢出集群后，它可能仍在运行，就是说其状态为up且out。删除前要先停止OSD进程。
@@ -7339,7 +6943,7 @@ ssh {new-osd-host}
 sudo /etc/init.d/ceph stop osd.{osd-num}
 Once you stop your OSD, it is down.
 停止OSD后，状态变为down。
- 3.3.14.2.4  删除OSD
+ 3.3.10.2.4  删除OSD
 This procedure removes an OSD from a cluster map, removes its authentication key, removes the OSD from the OSD map, and removes the OSD from the ceph.conf file. If your host has multiple drives, you may need to remove an OSD for each drive by repeating this procedure.
 此步骤依次把一个OSD移出集群CRUSH图、删除认证密钥、删除OSD图条目、删除ceph.conf条目。如果主机有多个硬盘，每个硬盘对应的OSD都得重复此步骤。
 1. Remove the OSD from the CRUSH map so that it no longer receives data. You may also decompile the CRUSH map, remove the OSD from the device list, remove the device as an item in the host bucket or remove the host bucket (if it’s in the CRUSH map and you intend to remove the host), recompile the map and set it. See Remove an OSD for details.
@@ -7367,6 +6971,501 @@ vim ceph.conf
 6. From the host where you keep the master copy of the cluster’s ceph.conf file, copy the updated ceph.conf file to the /etc/ceph directory of other hosts in your cluster.
 从保存ceph.conf主拷贝的主机，把更新过的ceph.conf拷贝到集群其他主机的/etc/ceph目录下。
 ssh {osd} sudo tee /etc/ceph/ceph.conf < /etc/ceph/ceph.conf
+ 3.3.11  CPU剖析
+CPU Profiling
+If you built Ceph from source and compiled Ceph for use with oprofile you can profile Ceph’s CPU usage. See Installing Oprofile for details.
+如果你从源码编译、且启用了oprofile，那么你就可以剖析ceph的CPU用法了，详情参见 Installing Oprofile。
+ 3.3.11.1  初始化oprofile
+INITIALIZING OPROFILE
+The first time you use oprofile you need to initialize it. Locate the vmlinux image corresponding to the kernel you are now running.
+你首次使用oprofile的时候要初始化，找到对应于当前运行内核的vmlinux位置：
+ls /boot
+sudo opcontrol --init
+sudo opcontrol --setup --vmlinux={path-to-image} --separate=library --callgraph=6
+ 3.3.11.2  启动oprofile
+STARTING OPROFILE
+To start oprofile execute the following command:
+执行下面的命令启动opeofile：
+opcontrol --start
+
+Once you start oprofile, you may run some tests with Ceph.
+启动oprofile后，你可以运行一些ceph测试：
+ 3.3.11.3  停止oprofile
+STOPPING OPROFILE
+To stop oprofile execute the following command:
+执行下面的命令停止oprofile：
+opcontrol --stop
+ 3.3.11.4  查看oprofile运行结果
+RETRIEVING OPROFILE RESULTS
+To retrieve the top cmon results, execute the following command:
+要查看cmon最近的结果，执行下面的命令：
+opreport -gal ./cmon | less
+
+To retrieve the top cmon results with call graphs attached, execute the following command:
+要检索cmon最近的调用图结果，执行下面的命令：
+opreport -cal ./cmon | less
+
+Important: After reviewing results, you should reset oprofile before running it again. Resetting oprofile removes data from the session directory.
+重要：回顾结果后，重新剖析前应该先重置，重置动作从会话目录里删除了数据。
+ 3.3.11.5  重置oprofile
+RESETTING OPROFILE
+To reset oprofile, execute the following command:
+要重置oprofile，执行下面的命令：
+sudo opcontrol --reset
+
+Important: You should reset oprofile after analyzing data so that you do not commingle results from different tests.
+重要：你应该分析后再重置，以免混合不同的剖析结果。
+ 3.3.12  内存剖析
+Memory Profiling
+Ceph OSD and metadata server daemons can generate heap profiles using tcmalloc. To generate heap profiles, ensure you have google-perftools installed:
+sudo apt-get google-perftools
+The profiler dumps output to your log file directory (i.e., /var/log/ceph). See Logging and Debugging Config Reference for details. To view the profiler logs with Google’s performance tools, execute the following:
+google-pprof -gv {log-path/filename}
+Refer to Google Heap Profiler for additional details.
+Once you have the heap profiler installed, start your cluster and begin using the heap profiler. You may enable or disable the heap profiler at runtime, or ensure that it runs continously. For the following commandline usage, replace {daemon-type} with osd or mds, and replace daemon-id with the OSD number or metadata server letter.
+ 3.3.12.1  启动剖析器
+Starting the Profiler
+To start the heap profiler, execute the following:
+ceph {daemon-type} tell {daemon-id} heap start_profiler
+For example:
+ceph osd tell 1 heap start_profiler
+ 3.3.12.2  打印统计
+Printing Stats
+To print out statistics, execute the following:
+ceph {daemon-type} tell {daemon-id} heap stats
+For example:
+ceph osd tell 0 heap stats
+
+Note: Printing stats does not require the profiler to be running and does not dump the heap allocation information to a file.
+ 3.3.12.3  转储堆栈信息
+Dumping Heap Information
+To dump heap information, execute the following:
+ceph {daemon-type} tell {daemon-id} heap dump
+For example:
+ceph mds tell a heap dump
+
+Note: Dumping heap information only works when the profiler is running.
+
+ 3.3.12.4  释放内存
+Releasing Memory
+To release memory that tcmalloc has allocated but which is not being used by the Ceph daemon itself, execute the following:
+ceph {daemon-type} tell {daemon-id} heap release
+For example:
+ceph osd tell 2 heap release
+ 3.3.12.5  停止剖析器
+Stopping the Profiler
+To stop the heap profiler, execute the following:
+ceph {daemon-type} tell {daemon-id} heap stop_profiler
+For example:
+ceph {daemon-type} tell {daemon-id} heap stop_profiler
+ 3.3.13  故障排除
+Troubleshooting
+When monitoring your cluster, you may receive health warnings and you may also notice that not all of your daemons are running properly. The following sections will help you identify and resolve daemon operations issues.
+
+ 3.3.13.1  OSD和PG排障
+Troubleshooting OSDs and PGs
+Before troubleshooting your OSDs, check your monitors and network first. If you execute ceph health or ceph -s on the command line and Ceph returns a health status, the return of a status means that the monitors have a quorum. If you don’t have a monitor quorum or if there are errors with the monitor status, address the monitor issues first. Check your networks to ensure they are running properly, because networks may have a significant impact on OSD operation and performance.
+ 3.3.13.1.1  ceph社区
+The Ceph Community
+The Ceph community is an excellent source of information and help. For operational issues with Ceph releases we recommend you subscribe to the ceph-users email list. When you no longer want to receive emails, you can unsubscribe from the ceph-users email list.
+If you have read through this guide and you have contacted ceph-users, but you haven’t resolved your issue, you may contact Inktank for support.
+You may also subscribe to the ceph-devel email list. You should do so if your issue is:
+Likely related to a bug
+Related to a development release package
+Related to a development testing package
+Related to your own builds
+If you no longer want to receive emails from the ceph-devel email list, you may unsubscribe from the ceph-devel email list.
+Tip: The Ceph community is growing rapidly, and community members can help you if you provide them with detailed information about your problem. See Obtaining Data About OSDs before you post questions to ensure that community members have sufficient data to help you.
+ 3.3.13.1.2  收集OSD数据
+Obtaining Data About OSDs
+A good first step in troubleshooting your OSDs is to obtain information in addition to the information you collected while monitoring your OSDs (e.g., ceph osd tree).
+ 3.3.13.1.2.1  ceph日志
+Ceph Logs
+If you haven’t changed the default path, you can find Ceph log files at /var/log/ceph:
+ls /var/log/ceph
+If you don’t get enough log detail, you can change your logging level. See Ceph Logging and Debugging and Logging and Debugging Config Reference in the Ceph Configuration documentation for details. Also, see Debugging and Logging in the Ceph Operations documentation to ensure that Ceph performs adequately under high logging volume.
+ 3.3.13.1.2.2  管理套接字
+Admin Socket
+Use the admin socket tool to retrieve runtime information. For details, list the sockets for your Ceph processes:
+ls /var/run/ceph
+Then, execute the following, replacing {socket-name} with an actual socket name to show the list of available options:
+ceph --admin-daemon /var/run/ceph/{socket-name} help
+The admin socket, among other things, allows you to:
+List your configuration at runtime
+Dump historic operations
+Dump the operation priority queue state
+Dump operations in flight
+Dump perfcounters
+ 3.3.13.1.2.3  显示剩余空间
+Display Freespace
+Filesystem issues may arise. To display your filesystem’s free space, execute df.
+df -h
+Execute df --help for additional usage.
+ 3.3.13.1.2.4  I/O统计信息
+I/O Statistics
+Use iostat to identify I/O-related issues.
+iostat -x
+ 3.3.13.1.2.5  诊断消息
+Diagnostic Messages
+To retrieve diagnostic messages, use dmesg with less, more, grep or tail. For example:
+dmesg | grep scsi
+ 3.3.13.1.3  停止自动重均衡
+Stopping w/out Rebalancing
+Periodically, you may need to perform maintenance on a subset of your cluster, or resolve a problem that affects a failure domain (e.g., a rack). If you do not want CRUSH to automatically rebalance the cluster as you stop OSDs for maintenance, set the cluster to noout first:
+ceph osd set noout
+Once the cluster is set to noout, you can begin stopping the OSDs within the failure domain that requires maintenance work.
+ceph osd stop osd.{num}
+
+Note: Placement groups within the OSDs you stop will become degraded while you are addressing issues with within the failure domain.
+
+Once you have completed your maintenance, restart the OSDs.
+ceph osd start osd.{num}
+Finally, you must unset the cluster from noout.
+ceph osd unset noout
+ 3.3.13.1.4  OSD没运行
+OSD Not Running
+Under normal circumstances, simply restarting the ceph-osd daemon will allow it to rejoin the cluster and recover.
+ 3.3.13.1.4.1  OSD起不来
+An OSD Won’t Start
+If you start your cluster and an OSD won’t start, check the following:
+Configuration File: If you were not able to get OSDs running from a new installation, check your configuration file to ensure it conforms (e.g., host not hostname, etc.).
+Check Paths: Check the paths in your configuration, and the actual paths themselves for data and journals. If you separate the OSD data from the journal data and there are errors in your configuration file or in the actual mounts, you may have trouble starting OSDs. If you want to store the journal on a block device, you should partition your journal disk and assign one partition per OSD.
+Kernel Version: Identify the kernel version and distribution you are using. Ceph uses some third party tools by default, which may be buggy or may conflict with certain distributions and/or kernel versions (e.g., Google perftools). Check the OS recommendations to ensure you have addressed any issues related to your kernel.
+Segment Fault: If there is a segment fault, turn your logging up (if it isn’t already), and try again. If it segment faults again, contact the ceph-devel email list and provide your Ceph configuration file, your monitor output and the contents of your log file(s).
+If you cannot resolve the issue and the email list isn’t helpful, you may contact Inktank for support.
+ 3.3.13.1.4.2  OSD失败
+An OSD Failed
+When a ceph-osd process dies, the monitor will learn about the failure from surviving ceph-osd daemons and report it via the ceph health command:
+ceph-osd挂的时候，监视器将了解ceph-osd的存活情况，且通过ceph health命令报告：
+ceph health
+HEALTH_WARN 1/3 in osds are down
+Specifically, you will get a warning whenever there are ceph-osd processes that are marked in and down. You can identify which ceph-osds are down with:
+而且，有ceph-osd进程标记为in且down的时候，你会得到警告，你可以用下面的命令得知哪个ceph-osd进程挂了：
+ceph health detail
+HEALTH_WARN 1/3 in osds are down
+osd.0 is down since epoch 23, last address 192.168.106.220:6800/11080
+If there is a disk failure or other fault preventing ceph-osd from functioning or restarting, an error message should be present in its log file in /var/log/ceph.
+如果有个硬盘失败或其它错误使ceph-osd不能正常运行或重启，一条错误信息将会出现在日志文件/var/log/ceph/里。
+If the daemon stopped because of a heartbeat failure, the underlying kernel file system may be unresponsive. Check dmesg output for disk or other kernel errors.
+如果守护进程因心跳失败、或者底层文件系统无响应而停止，查看dmesg获取硬盘或者内核错误。
+If the problem is a software error (failed assertion or other unexpected error), it should be reported to the ceph-devel email list.
+如果是软件错误（失败的插入或其它意外错误），就应该回馈到邮件列表。
+ 3.3.13.1.4.3  硬盘没有剩余空间
+No Free Drive Space
+Ceph prevents you from writing to a full OSD so that you don’t lose data. In an operational cluster, you should receive a warning when your cluster is getting near its full ratio. The mon osd full ratio defaults to 0.95, or 95% of capacity before it stops clients from writing data. The mon osd nearfull ratio defaults to 0.85, or 85% of capacity when it generates a health warning.
+Full cluster issues usually arise when testing how Ceph handles an OSD failure on a small cluster. When one node has a high percentage of the cluster’s data, the cluster can easily eclipse its nearfull and full ratio immediately. If you are testing how Ceph reacts to OSD failures on a small cluster, you should leave ample free disk space and consider temporarily lowering the mon osd full ratio and mon osd nearfull ratio.
+Full ceph-osds will be reported by ceph health:
+ceph health
+HEALTH_WARN 1 nearfull osds
+osd.2 is near full at 85%
+Or:
+ceph health
+HEALTH_ERR 1 nearfull osds, 1 full osds
+osd.2 is near full at 85%
+osd.3 is full at 97%
+The best way to deal with a full cluster is to add new ceph-osds, allowing the cluster to redistribute data to the newly available storage.
+处理这种情况的最好方法就是增加新的ceph-osd，这允许集群把数据重分布到新OSD里。
+If you cannot start an OSD because it is full, you may delete some data by deleting some placement group directories in the full OSD.
+Important: If you choose to delete a placement group directory on a full OSD, DO NOT delete the same placement group directory on another full OSD, or YOU MAY LOSE DATA. You MUST maintain at least one copy of your data on at least one OSD.
+
+ 3.3.13.1.5  OSD龟速或没反应
+OSDs are Slow/Unresponsive
+A commonly recurring issue involves slow or unresponsive OSDs. Ensure that you have eliminated other troubleshooting possibilities before delving into OSD performance issues. For example, ensure that your network(s) is working properly and your OSDs are running. Check to see if OSDs are throttling recovery traffic.
+Tip: Newer versions of Ceph provide better recovery handling by preventing recovering OSDs from using up system resources so that up and in OSDs aren’t available or are otherwise slow.
+提示：
+ 3.3.13.1.5.1  网络问题
+Networking Issues
+Ceph is a distributed storage system, so it depends upon networks to peer with OSDs, replicate objects, recover from faults and check heartbeats. Networking issues can cause OSD latency and flapping OSDs. See Flapping OSDs for details.
+Ensure that Ceph processes and Ceph-dependent processes are connected and/or listening.
+netstat -a | grep ceph
+netstat -l | grep ceph
+sudo netstat -p | grep ceph
+Check network statistics.
+netstat -s
+ 3.3.13.1.5.2  驱动器配置
+Drive Configuration
+A storage drive should only support one OSD. Sequential read and sequential write throughput can bottleneck if other processes share the drive, including journals, operating systems, monitors, other OSDs and non-Ceph processes.
+Ceph acknowledges writes after journaling, so fast SSDs are an attractive option to accelerate the response time–particularly when using the ext4 or XFS filesystems. By contrast, the btrfs filesystem can write and journal simultaneously.
+Note: Partitioning a drive does not change its total throughput or sequential read/write limits. Running a journal in a separate partition may help, but you should prefer a separate physical drive.
+ 3.3.13.1.5.3  坏扇区/碎片化硬盘
+Bad Sectors / Fragmented Disk
+Check your disks for bad sectors and fragmentation. This can cause total throughput to drop substantially.
+ 3.3.13.1.5.4  监视器和OSD蜗居
+Co-resident Monitors/OSDs
+Monitors are generally light-weight processes, but they do lots of fsync(), which can interfere with other workloads, particularly if monitors run on the same drive as your OSDs. Additionally, if you run monitors on the same host as the OSDs, you may incur performance issues related to:
+Running an older kernel (pre-3.0)
+Running Argonaut with an old glibc
+Running a kernel with no syncfs(2) syscall.
+In these cases, multiple OSDs running on the same host can drag each other down by doing lots of commits. That often leads to the bursty writes.
+ 3.3.13.1.5.5  进程蜗居
+Co-resident Processes
+Spinning up co-resident processes such as a cloud-based solution, virtual machines and other applications that write data to Ceph while operating on the same hardware as OSDs can introduce significant OSD latency. Generally, we recommend optimizing a host for use with Ceph and using other hosts for other processes. The practice of separating Ceph operations from other applications may help improve performance and may streamline troubleshooting and maintenance.
+ 3.3.13.1.5.6  日志级别
+Logging Levels
+If you turned logging levels up to track an issue and then forgot to turn logging levels back down, the OSD may be putting a lot of logs onto the disk. If you intend to keep logging levels high, you may consider mounting a drive to the default path for logging (i.e., /var/log/ceph/$cluster-$name.log).
+ 3.3.13.1.5.7  恢复节流
+Recovery Throttling
+Depending upon your configuration, Ceph may reduce recovery rates to maintain performance or it may increase recovery rates to the point that recovery impacts OSD performance. Check to see if the OSD is recovering.
+ 3.3.13.1.5.8  内核版本
+Kernel Version
+Check the kernel version you are running. Older kernels may not receive new backports that Ceph depends upon for better performance.
+ 3.3.13.1.5.9  内核与syncfs问题
+Kernel Issues with SyncFS
+Try running one OSD per host to see if performance improves. Old kernels might not have a recent enough version of glibc to support syncfs(2).
+试着
+ 3.3.13.1.5.10  文件系统问题
+Filesystem Issues
+Currently, we recommend deploying clusters with XFS or ext4. The btrfs filesystem has many attractive features, but bugs in the filesystem may lead to performance issues.
+ 3.3.13.1.5.11  内存不足
+Insufficient RAM
+We recommend 1GB of RAM per OSD daemon. You may notice that during normal operations, the OSD only uses a fraction of that amount (e.g., 100-200MB). Unused RAM makes it tempting to use the excess RAM for co-resident applications, VMs and so forth. However, when OSDs go into recovery mode, their memory utilization spikes. If there is no RAM available, the OSD performance will slow considerably.
+ 3.3.13.1.5.12  old requests和 slow requests
+Old Requests or Slow Requests
+If a ceph-osd daemon is slow to respond to a request, it will generate log messages complaining about requests that are taking too long. The warning threshold defaults to 30 seconds, and is configurable via the osd op complaint time option. When this happens, the cluster log will receive messages.
+Legacy versions of Ceph complain about ‘old requests`:
+osd.0 192.168.106.220:6800/18813 312 : [WRN] old request osd_op(client.5099.0:790 fatty_26485_object789 [write 0~4096] 2.5e54f643) v4 received at 2012-03-06 15:42:56.054801 currently waiting for sub ops
+New versions of Ceph complain about ‘slow requests`:
+{date} {osd.num} [WRN] 1 slow requests, 1 included below; oldest blocked for > 30.005692 secs
+{date} {osd.num}  [WRN] slow request 30.005692 seconds old, received at {date-time}: osd_op(client.4240.0:8 benchmark_data_ceph-1_39426_object7 [write 0~4194304] 0.69848840) v4 currently waiting for subops from [610]
+Possible causes include:
+A bad drive (check dmesg output)
+A bug in the kernel file system bug (check dmesg output)
+An overloaded cluster (check system load, iostat, etc.)
+A bug in the ceph-osd daemon.
+Possible solutions
+Remove VMs Cloud Solutions from Ceph Hosts
+Upgrade Kernel
+Upgrade Ceph
+Restart OSDs
+ 3.3.13.1.6  打摆子的OSD
+Flapping OSDs
+We recommend using both a public (front-end) network and a cluster (back-end) network so that you can better meet the capacity requirements of object replication. Another advantage is that you can run a cluster network such that it isn’t connected to the internet, thereby preventing some denial of service attacks. When OSDs peer and check heartbeats, they use the cluster (back-end) network when it’s available. See Monitor/OSD Interaction for details.
+However, if the cluster (back-end) network fails or develops significant latency while the public (front-end) network operates optimally, OSDs currently do not handle this situation well. What happens is that OSDs mark each other down on the monitor, while marking themselves up. We call this scenario ‘flapping`.
+If something is causing OSDs to ‘flap’ (repeatedly getting marked down and then up again), you can force the monitors to stop the flapping with:
+如果有东西导致OSD摆动（反复地被标记为down，然后又up），你可以强制监视器停止：
+ceph osd set noup      # prevent osds from getting marked up
+ceph osd set nodown    # prevent osds from getting marked down
+These flags are recorded in the osdmap structure:
+这些标记记录在osdmap数据结构里：
+ceph osd dump | grep flags
+flags no-up,no-down
+You can clear the flags with:
+下列命令可清除标记：
+ceph osd unset noup
+ceph osd unset nodown
+Two other flags are supported, noin and noout, which prevent booting OSDs from being marked in (allocated data) or down ceph-osds from eventually being marked out (regardless of what the current value for mon osd down out interval is).
+还支持其它两个标记noin和noout，它们分别可阻止OSD被标记为in、死亡的ceph-osd被标记为out（不管 mon osd down out interval的值是什么）。
+Note: noup, noout, and nodown are temporary in the sense that once the flags are cleared, the action they were blocking should occur shortly after. The noin flag, on the other hand, prevents OSDs from being marked in on boot, and any daemons that started while the flag was set will remain that way.
+注意，noup、noout和nodown从某种意义上说是临时的，一旦标记清除了，它们被阻塞的动作短时间内就会发生；相反，noin标记阻止ceph-osd启动时进入集群，任何设置了此标记的守护进程启动后都维持原样。
+ 3.3.13.1.7  PG错误排障
+Troubleshooting PG Errors
+ 3.3.13.1.7.1  归置组总不整洁
+Placement Groups Never Get Clean
+There are a few cases where Ceph placement groups never get clean:
+1. One OSD: If you deviate from the quick start and use only one OSD, you will likely run into problems. OSDs report other OSDs to the monitor, and also interact with other OSDs when replicating data. If you have only one OSD, a second OSD cannot check its heartbeat. Also, if you remove an OSD and have only one OSD remaining, you may encounter problems. An secondary or tertiary OSD expects another OSD to tell it which placement groups it should have. The lack of another OSD prevents this from occurring. So a placement group can remain stuck “stale” forever.
+2. Pool Size = 1: If you have only one copy of an object, no other OSD will tell the OSD which objects it should have. For each placement group mapped to the remaining OSD (see ceph pg dump), you can force the OSD to notice the placement groups it needs by running:
+ceph pg force_create_pg <pgid>
+As a general rule, you should run your cluster with more than one OSD and a pool size greater than 1 object replica.
+ 3.3.13.1.7.2  卡住的归置组
+Stuck Placement Groups
+It is normal for placement groups to enter states like “degraded” or “peering” following a failure. Normally these states indicate the normal progression through the failure recovery process. However, if a placement group stays in one of these states for a long time this may be an indication of a larger problem. For this reason, the monitor will warn when placement groups get “stuck” in a non-optimal state. Specifically, we check for:
+有失败时归置组进入“degraded”（降级）或“peering”（连接建立中）状态，这事时有发生，通常这些状态意味着正常的失败恢复正在进行。然而，如果一个归置组长时间处于某个这些状态就意味着有更大的问题，因此监视器在归置组卡(stuck)在非最优状态时会警告，具体地，我们检查：
+inactive - The placement group has not been active for too long (i.e., it hasn’t been able to service read/write requests).
+inactive（不活跃）——归置组长时间无活跃（例如它不能提供读写服务了）；
+unclean - The placement group has not been clean for too long (i.e., it hasn’t been able to completely recover from a previous failure).
+unclean（不干净）——归置组长时间不干净（例如它未能从前面的失败完全恢复）；
+stale - The placement group status has not been updated by a ceph-osd, indicating that all nodes storing this placement group may be down.
+stale（不新鲜）——归置组状态没有被ceph-osd更新，表明存储这个归置组的所有节点可能都挂了。
+You can explicitly list stuck placement groups with one of:
+你可以明确列出卡住的归置组：
+ceph pg dump_stuck stale
+ceph pg dump_stuck inactive
+ceph pg dump_stuck unclean
+For stuck stale placement groups, it is normally a matter of getting the right ceph-osd daemons running again. For stuck inactive placement groups, it is usually a peering problem (see Placement Group Down - Peering Failure). For stuck unclean placement groups, there is usually something preventing recovery from completing, like unfound objects (see Unfound Objects);
+处于stuck stale状态的归置组通过修复ceph-osd进程通常可以修复；处于stuck inactive状态的归置组通常是连接建立问题（参见错误：引用源未找到）；处于stuck unclean状态的归置组通常是由于某些东西阻止了恢复的完成，像未找到的对象（参见错误：引用源未找到）。
+ 3.3.13.1.7.3  归置组挂了——连接建立失败
+Placement Group Down - Peering Failure
+In certain cases, the ceph-osd Peering process can run into problems, preventing a PG from becoming active and usable. For example, ceph health might report:
+在某些情况下，ceph-osd连接建立进程会遇到问题，使PG不能活跃、可用，例如ceph health也许显示：
+ceph health detail
+HEALTH_ERR 7 pgs degraded; 12 pgs down; 12 pgs peering; 1 pgs recovering; 6 pgs stuck unclean; 114/3300 degraded (3.455%); 1/3 in osds are down
+...
+pg 0.5 is down+peering
+pg 1.4 is down+peering
+...
+osd.1 is down since epoch 69, last address 192.168.106.220:6801/8651
+We can query the cluster to determine exactly why the PG is marked down with:
+可以查询到PG为何被标记为down：
+ceph pg 0.5 query
+
+{ "state": "down+peering",
+  ...
+  "recovery_state": [
+       { "name": "Started\/Primary\/Peering\/GetInfo",
+         "enter_time": "2012-03-06 14:40:16.169679",
+         "requested_info_from": []},
+       { "name": "Started\/Primary\/Peering",
+         "enter_time": "2012-03-06 14:40:16.169659",
+         "probing_osds": [
+               0,
+               1],
+         "blocked": "peering is blocked due to down osds",
+         "down_osds_we_would_probe": [
+               1],
+         "peering_blocked_by": [
+               { "osd": 1,
+                 "current_lost_at": 0,
+                 "comment": "starting or marking this osd lost may let us proceed"}]},
+       { "name": "Started",
+         "enter_time": "2012-03-06 14:40:16.169513"}
+   ]
+}
+The recovery_state section tells us that peering is blocked due to down ceph-osd daemons, specifically osd.1. In this case, we can start that ceph-osd and things will recover.
+recovery_state段告诉我们连接建立因ceph-osd进程挂了而被阻塞，本例是osd.1挂了，启动这个进程应该就可以恢复。
+Alternatively, if there is a catastrophic failure of osd.1 (e.g., disk failure), we can tell the cluster that it is lost and to cope as best it can.
+另外，如果osd.1是灾难性的失败（如硬盘损坏），我们可以告诉集群它丢失了，让集群尽力完成副本拷贝。
+Important: This is dangerous in that the cluster cannot guarantee that the other copies of the data are consistent and up to date.
+重要：集群不能保证其它数据副本是一致且最新就危险了！
+To instruct Ceph to continue anyway:
+无论如何让ceph继续：
+ceph osd lost 1
+Recovery will proceed.
+恢复将继续。
+ 3.3.13.1.7.4  未找到的对象
+Unfound Objects
+Under certain combinations of failures Ceph may complain about unfound objects:
+某几种失败相组合可能导致ceph抱怨有对象丢失：
+ceph health detail
+HEALTH_WARN 1 pgs degraded; 78/3778 unfound (2.065%)
+pg 2.4 is active+degraded, 78 unfound
+This means that the storage cluster knows that some objects (or newer copies of existing objects) exist, but it hasn’t found copies of them. One example of how this might come about for a PG whose data is on ceph-osds 1 and 2:
+这意味着存储集群知道一些对象（或者存在对象的较新副本）存在，却没有找到它们的副本。下例展示了这种情况是如何发生的，一个PG的数据存储在ceph-osd 1和2上：
+1 goes down
+2 handles some writes, alone
+1 comes up
+1 and 2 repeer, and the objects missing on 1 are queued for recovery.
+Before the new objects are copied, 2 goes down.
+
+1挂了；
+2独自处理一些写动作；
+1起来了；
+1和2重新建立连接，1上面丢失的对象加入队列准备恢复；
+新对象还未拷贝完，2挂了。
+Now 1 knows that these object exist, but there is no live ceph-osd who has a copy. In this case, IO to those objects will block, and the cluster will hope that the failed node comes back soon; this is assumed to be preferable to returning an IO error to the user.
+这时，1知道这些对象存在，但是活着的ceph-osd都没有副本，这种情况下，读写这些对象的IO就会被阻塞，集群只能指望节点早点恢复。这时我们假设用户希望先得到一个IO错误。
+First, you can identify which objects are unfound with:
+首先，你应该确认哪些对象找不到了：
+ceph pg 2.4 list_missing [starting offset, in json]
+
+{ "offset": { "oid": "",
+     "key": "",
+     "snapid": 0,
+     "hash": 0,
+     "max": 0},
+ "num_missing": 0,
+ "num_unfound": 0,
+ "objects": [
+    { "oid": "object 1",
+      "key": "",
+      "hash": 0,
+      "max": 0 },
+    ...
+ ],
+ "more": 0}
+If there are too many objects to list in a single result, the more field will be true and you can query for more. (Eventually the command line tool will hide this from you, but not yet.)
+如果在一次查询里列出的对象太多，more这个域将为true，因此你可以查询more。（命令行工具可能隐藏了，但这里没有）
+Second, you can identify which OSDs have been probed or might contain data:
+其次，你可以找出哪些OSD上探测到、或可能包含数据：
+ceph pg 2.4 query
+
+"recovery_state": [
+     { "name": "Started\/Primary\/Active",
+       "enter_time": "2012-03-06 15:15:46.713212",
+       "might_have_unfound": [
+             { "osd": 1,
+               "status": "osd is down"}]},
+In this case, for example, the cluster knows that osd.1 might have data, but it is down. The full range of possible states include:
+本例中，集群知道osd.1可能有数据，但它挂了。所有可能的状态有：
+* already probed	已经探测到了
+* querying	 	在查询
+* osd is down	 	OSD挂了
+* not queried (yet)	 尚未查询
+Sometimes it simply takes some time for the cluster to query possible locations.
+有时候集群要花一些时间来查询可能的位置。
+It is possible that there are other locations where the object can exist that are not listed. For example, if a ceph-osd is stopped and taken out of the cluster, the cluster fully recovers, and due to some future set of failures ends up with an unfound object, it won’t consider the long-departed ceph-osd as a potential location to consider. (This scenario, however, is unlikely.)
+还有一种可能性，对象存在于其它位置却未被列出，例如，集群里的一个ceph-osd停止且被剔出，然后完全恢复了；后来的失败、恢复后仍有未找到的对象，它也不会觉得早已死亡的ceph-osd上仍可能包含这些对象。（这种情况几乎不太可能发生）。
+If all possible locations have been queried and objects are still lost, you may have to give up on the lost objects. This, again, is possible given unusual combinations of failures that allow the cluster to learn about writes that were performed before the writes themselves are recovered. To mark the “unfound” objects as “lost”:
+如果所有位置都查询过了仍有对象丢失，那就得放弃丢失的对象了。这仍可能是罕见的失败组合导致的，集群在写入完成前，未能得知写入是否已执行。以下命令把未找到的(unfound)对象标记为丢失(lost)。
+ceph pg 2.5 mark_unfound_lost revert
+This the final argument specifies how the cluster should deal with lost objects. Currently the only supported option is “revert”, which will either roll back to a previous version of the object or (if it was a new object) forget about it entirely. Use this with caution, as it may confuse applications that expected the object to exist.
+上述最后一个参数告诉集群应如何处理丢失的对象。当前只支持revert选项，它使得回滚到对象的前一个版本（如果它是新对象）或完全忽略它。要谨慎使用，它可能迷惑那些期望对象存在的应用程序。
+ 3.3.13.1.7.5  无根归置组
+Homeless Placement Groups
+It is possible for all OSDs that had copies of a given placement groups to fail. If that’s the case, that subset of the object store is unavailable, and the monitor will receive no status updates for those placement groups. To detect this situation, the monitor marks any placement group whose primary OSD has failed as stale. For example:
+拥有归置组拷贝的OSD都可以失败，在这种情况下，那一部分的对象存储不可用，监视器就不会收到那些归置组的状态更新了。为检测这种情况，监视器把任何主OSD失败的归置组标记为stale（不新鲜），例如：
+ceph health
+HEALTH_WARN 24 pgs stale; 3/300 in osds are down
+You can identify which placement groups are stale, and what the last OSDs to store them were, with:
+你能找出哪些归置组不新鲜、和存储这些归置组的最新OSD，命令如下：
+ceph health detail
+HEALTH_WARN 24 pgs stale; 3/300 in osds are down
+...
+pg 2.5 is stuck stale+active+remapped, last acting [2,0]
+...
+osd.10 is down since epoch 23, last address 192.168.106.220:6800/11080
+osd.11 is down since epoch 13, last address 192.168.106.220:6803/11539
+osd.12 is down since epoch 24, last address 192.168.106.220:6806/11861
+If we want to get placement group 2.5 back online, for example, this tells us that it was last managed by osd.0 and osd.2. Restarting those ceph-osd daemons will allow the cluster to recover that placement group (and, presumably, many others).
+如果想使归置组2.5重新在线，例如，上面的输出告诉我们它最后由osd.0和osd.2处理，重启这些ceph-osd将恢复之（还有其它的很多PG）。
+ 3.3.13.2  监视器故障恢复
+Recovering from Monitor Failures
+In production clusters, we recommend running the cluster with a minimum of three monitors. The failure of a single monitor should not take down the entire monitor cluster, provided a majority of the monitors remain available. If the majority of nodes are available, the remaining nodes will be able to form a quorum.
+在生产集群，我们推荐至少要运行3个监视器。这样单个监视器失败不会拖垮整个监视器集群，因为大部分仍可用，这样剩余节点仍能形成法定人数。
+When you check your cluster’s health, you may notice that a monitor has failed. For example:
+检查集群健康状况的时候，也许会看到一个监视器失败了，例如：
+ceph health
+HEALTH_WARN 1 mons down, quorum 0,2
+For additional detail, you may check the cluster status:
+额外详情可检查集群状态：
+ceph status
+HEALTH_WARN 1 mons down, quorum 0,2
+mon.b (rank 1) addr 192.168.106.220:6790/0 is down (out of quorum)
+In most cases, you can simply restart the affected node. For example:
+大多情况下，都可以简单地重启相应节点，例如：
+service ceph -a restart {failed-mon}
+If there are not enough monitors to form a quorum, the ceph command will block trying to reach the cluster. In this situation, you need to get enough ceph-mon daemons running to form a quorum before doing anything else with the cluster.
+如果监视器数量不足以形成法定人数，ceph命令将拦截你的操作尝试，你得先启动足够的ceph-mon守护进程来形成法定人数，才能在集群里做其它的事。
+ 3.3.13.2.1  客户端不能连接/挂载
+Client Can’t Connect/Mount
+Check your IP tables. Some OS install utilities add a REJECT rule to iptables. The rule rejects all clients trying to connect to the host except for ssh. If your monitor host’s IP tables have such a REJECT rule in place, clients connecting from a separate node will fail to mount with a timeout error. You need to address iptables rules that reject clients trying to connect to Ceph daemons. For example, you would need to address rules that look like this appropriately:
+REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
+You may also need to add rules to IP tables on your Ceph hosts to ensure that clients can access the ports associated with your Ceph monitors (i.e., port 6789 by default) and Ceph OSDs (i.e., 6800 et. seq. by default). For example:
+iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:6810 -j ACCEPT
+ 3.3.14  调试和日志记录
+Debugging and logging
+You may view Ceph log files under /var/log/ceph (the default location).
+你可以在默认位置/var/log/ceph下翻阅ceph的日志。
+Important: If you enable or increase the rate of Ceph logging, ensure that you have sufficient disk space on your OS disk. Verbose logging can generate over 1GB of data per hour. If your OS disk reaches its capacity, the node will stop working.
+
+Accelerating Log Rotation
+If your OS disk is relatively full, you can accelerate log rotation by modifying the Ceph log rotation file at /etc/logrotate.d/ceph. Add a size setting after the rotation frequency to accelerate log rotation (via cronjob) if your logs exceed the size setting. For example, the default setting looks like this:
+
+Modify it by adding a size setting.
+
+Then, start the crontab editor for your user space.
+
+Finally, add an entry to check the etc/logrotate.d/ceph file.
+
+The preceding example checks the etc/logrotate.d/ceph file every 30 minutes.
+
+Ceph is still on the leading edge, so you may encounter situations that require using Ceph’s debugging and logging. To activate and configure Ceph’s debug logging, refer to Ceph Logging and Debugging. For additional logging settings, refer to the Logging and Debugging Config Reference.
+ceph仍在技术前沿，所以你也许会碰到一些状况，需要使用ceph的调试和日志功能。激活和配置ceph的调试日志，参见日志、调试；额外的日志设置参见错误：引用源未找到。
+
+You can change the logging settings at runtime so that you don’t have to stop and restart the cluster. Refer to Ceph Configuration - Runtime Changes for additional details.
+可以在运行时更改日志选项，这样你就不必停止、重启集群了，详情参见运行时更改。
+
+Debugging may also require you to track down memory and threading issues. You can run a single daemon, a type of daemon, or the whole cluster with Valgrind. You should only use Valgrind when developing or debugging Ceph. Valgrind is computationally expensive, and will slow down your system otherwise. Valgrind messages are logged to stderr.
+调试也许要求你捕捉内存和线程问题，你可以在Valgrind下运行单个、一类守护进程、或者整个集群。你应该只在开发、调试期间使用Valgrind，它需要大量计算，会减慢你的系统。Valgrind消息记录在标准错误。
  3.3.15  增加/删除监视器
 Adding/removing monitors
 When you have a cluster up and running, you may add or remove monitors from the cluster at runtime.
