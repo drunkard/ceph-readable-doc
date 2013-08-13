@@ -7767,16 +7767,21 @@ Note: noup, noout, and nodown are temporary in the sense that once the flags are
  3.3.16  PG错误排障
 Troubleshooting PGs
  3.3.16.1  归置组总不整洁
-Placement Groups Never Get Clean
 There are a few cases where Ceph placement groups never get clean:
+在某些情况下，ceph归置组一直不能整洁：
 1. One OSD: If you deviate from the quick start and use only one OSD, you will likely run into problems. OSDs report other OSDs to the monitor, and also interact with other OSDs when replicating data. If you have only one OSD, a second OSD cannot check its heartbeat. Also, if you remove an OSD and have only one OSD remaining, you may encounter problems. An secondary or tertiary OSD expects another OSD to tell it which placement groups it should have. The lack of another OSD prevents this from occurring. So a placement group can remain stuck “stale” forever.
+单个OSD：如果你违背了快速入门，只用了一个OSD，很可能碰到问题。OSD向监视器报告其它OSD的动态，要复制数据时要与其它OSD交互，如果你只有一个OSD、没有第二个OSD检查心跳，或者说你删除了一个OSD、只剩下一个OSD了，这时就会出现问题。第二或第三个OSD期望别的OSD告诉它应该持有哪些归置组，可是再没别的OSD了，所以它只能永远卡在“过时”状态。
 2. Pool Size = 1: If you have only one copy of an object, no other OSD will tell the OSD which objects it should have. For each placement group mapped to the remaining OSD (see ceph pg dump), you can force the OSD to notice the placement groups it needs by running:
+pool size = 1：如果你只有某对象的一个副本，那就没其它OSD告诉它应该持有哪些对象。对于每个映射到活跃OSD的归置组（见ceph pg dump），你都可以强制OSD通知它需要的归置组，运行：
 ceph pg force_create_pg <pgid>
+3. CRUSH Rules: Another candidate for placement groups remaining unclean involves errors in your CRUSH map.
+CRUSH规则：另一个使得归置组总停留在不洁状态的原因是CRUSH图中的错误。
 As a general rule, you should run your cluster with more than one OSD and a pool size greater than 1 object replica.
+作为常识，你应该用不止一个OSD和大于1的对象副本数构建集群。
  3.3.16.2  卡住的归置组
 Stuck Placement Groups
 It is normal for placement groups to enter states like “degraded” or “peering” following a failure. Normally these states indicate the normal progression through the failure recovery process. However, if a placement group stays in one of these states for a long time this may be an indication of a larger problem. For this reason, the monitor will warn when placement groups get “stuck” in a non-optimal state. Specifically, we check for:
-有失败时归置组进入“degraded”（降级）或“peering”（连接建立中）状态，这事时有发生，通常这些状态意味着正常的失败恢复正在进行。然而，如果一个归置组长时间处于某个这些状态就意味着有更大的问题，因此监视器在归置组卡(stuck)在非最优状态时会警告，具体地，我们检查：
+有失败时归置组会进入“degraded”（降级）或“peering”（连接建立中）状态，这事时有发生，通常这些状态意味着正常的失败恢复正在进行。然而，如果一个归置组长时间处于某个这些状态就意味着有更大的问题，因此监视器在归置组卡(stuck)在非最优状态时会警告。我们具体检查：
 inactive - The placement group has not been active for too long (i.e., it hasn’t been able to service read/write requests).
 inactive（不活跃）——归置组长时间无活跃（例如它不能提供读写服务了）；
 unclean - The placement group has not been clean for too long (i.e., it hasn’t been able to completely recover from a previous failure).
@@ -7784,12 +7789,12 @@ unclean（不干净）——归置组长时间不干净（例如它未能从前�
 stale - The placement group status has not been updated by a ceph-osd, indicating that all nodes storing this placement group may be down.
 stale（不新鲜）——归置组状态没有被ceph-osd更新，表明存储这个归置组的所有节点可能都挂了。
 You can explicitly list stuck placement groups with one of:
-你可以明确列出卡住的归置组：
+你可以摆出卡住的归置组：
 ceph pg dump_stuck stale
 ceph pg dump_stuck inactive
 ceph pg dump_stuck unclean
 For stuck stale placement groups, it is normally a matter of getting the right ceph-osd daemons running again. For stuck inactive placement groups, it is usually a peering problem (see Placement Group Down - Peering Failure). For stuck unclean placement groups, there is usually something preventing recovery from completing, like unfound objects (see Unfound Objects);
-处于stuck stale状态的归置组通过修复ceph-osd进程通常可以修复；处于stuck inactive状态的归置组通常是连接建立问题（参见错误：引用源未找到）；处于stuck unclean状态的归置组通常是由于某些东西阻止了恢复的完成，像未找到的对象（参见错误：引用源未找到）。
+卡在stale状态的归置组通过修复ceph-osd进程通常可以修复；卡在inactive状态的归置组通常是连接建立问题（参见Placement Group Down - Peering Failure）；卡在unclean状态的归置组通常是由于某些东西阻止了恢复的完成，像未找到的对象（参见Unfound Objects）。
  3.3.16.3  归置组挂了——连接建立失败
 Placement Group Down - Peering Failure
 In certain cases, the ceph-osd Peering process can run into problems, preventing a PG from becoming active and usable. For example, ceph health might report:
@@ -7830,7 +7835,7 @@ ceph pg 0.5 query
 The recovery_state section tells us that peering is blocked due to down ceph-osd daemons, specifically osd.1. In this case, we can start that ceph-osd and things will recover.
 recovery_state段告诉我们连接建立因ceph-osd进程挂了而被阻塞，本例是osd.1挂了，启动这个进程应该就可以恢复。
 Alternatively, if there is a catastrophic failure of osd.1 (e.g., disk failure), we can tell the cluster that it is lost and to cope as best it can.
-另外，如果osd.1是灾难性的失败（如硬盘损坏），我们可以告诉集群它丢失了，让集群尽力完成副本拷贝。
+另外，如果osd.1是灾难性的失败（如硬盘损坏），我们可以告诉集群它丢失（lost）了，让集群尽力完成副本拷贝。
 Important: This is dangerous in that the cluster cannot guarantee that the other copies of the data are consistent and up to date.
 重要：集群不能保证其它数据副本是一致且最新就危险了！
 To instruct Ceph to continue anyway:
@@ -7841,7 +7846,7 @@ Recovery will proceed.
  3.3.16.4  未找到的对象
 Unfound Objects
 Under certain combinations of failures Ceph may complain about unfound objects:
-某几种失败相组合可能导致ceph抱怨有对象丢失：
+某几种失败相组合可能导致ceph抱怨有找不到（unfound）的对象：
 ceph health detail
 HEALTH_WARN 1 pgs degraded; 78/3778 unfound (2.065%)
 pg 2.4 is active+degraded, 78 unfound
@@ -7892,7 +7897,7 @@ ceph pg 2.4 query
              { "osd": 1,
                "status": "osd is down"}]},
 In this case, for example, the cluster knows that osd.1 might have data, but it is down. The full range of possible states include:
-本例中，集群知道osd.1可能有数据，但它挂了。所有可能的状态有：
+本例中，集群知道osd.1可能有数据，但它挂了（down）。所有可能的状态有：
 * already probed	已经探测到了
 * querying	 	在查询
 * osd is down	 	OSD挂了
@@ -7913,7 +7918,7 @@ It is possible for all OSDs that had copies of a given placement groups to fail.
 ceph health
 HEALTH_WARN 24 pgs stale; 3/300 in osds are down
 You can identify which placement groups are stale, and what the last OSDs to store them were, with:
-你能找出哪些归置组不新鲜、和存储这些归置组的最新OSD，命令如下：
+你能找出哪些归置组stale、和存储这些归置组的最新OSD，命令如下：
 ceph health detail
 HEALTH_WARN 24 pgs stale; 3/300 in osds are down
 ...
@@ -7924,102 +7929,20 @@ osd.11 is down since epoch 13, last address 192.168.106.220:6803/11539
 osd.12 is down since epoch 24, last address 192.168.106.220:6806/11861
 If we want to get placement group 2.5 back online, for example, this tells us that it was last managed by osd.0 and osd.2. Restarting those ceph-osd daemons will allow the cluster to recover that placement group (and, presumably, many others).
 如果想使归置组2.5重新在线，例如，上面的输出告诉我们它最后由osd.0和osd.2处理，重启这些ceph-osd将恢复之（还有其它的很多PG）。
- 3.3.17  CPU剖析
-CPU Profiling
-If you built Ceph from source and compiled Ceph for use with oprofile you can profile Ceph’s CPU usage. See Installing Oprofile for details.
-如果你从源码编译、且启用了oprofile，那么你就可以剖析ceph的CPU用法了，详情参见 Installing Oprofile。
- 3.3.17.1  初始化oprofile
-INITIALIZING OPROFILE
-The first time you use oprofile you need to initialize it. Locate the vmlinux image corresponding to the kernel you are now running.
-你首次使用oprofile的时候要初始化，找到对应于当前运行内核的vmlinux位置：
-ls /boot
-sudo opcontrol --init
-sudo opcontrol --setup --vmlinux={path-to-image} --separate=library --callgraph=6
- 3.3.17.2  启动oprofile
-STARTING OPROFILE
-To start oprofile execute the following command:
-执行下面的命令启动opeofile：
-opcontrol --start
-
-Once you start oprofile, you may run some tests with Ceph.
-启动oprofile后，你可以运行一些ceph测试：
- 3.3.17.3  停止oprofile
-STOPPING OPROFILE
-To stop oprofile execute the following command:
-执行下面的命令停止oprofile：
-opcontrol --stop
- 3.3.17.4  查看oprofile运行结果
-RETRIEVING OPROFILE RESULTS
-To retrieve the top cmon results, execute the following command:
-要查看cmon最近的结果，执行下面的命令：
-opreport -gal ./cmon | less
-
-To retrieve the top cmon results with call graphs attached, execute the following command:
-要检索cmon最近的调用图结果，执行下面的命令：
-opreport -cal ./cmon | less
-
-Important: After reviewing results, you should reset oprofile before running it again. Resetting oprofile removes data from the session directory.
-重要：回顾结果后，重新剖析前应该先重置，重置动作从会话目录里删除了数据。
- 3.3.17.5  重置oprofile
-RESETTING OPROFILE
-To reset oprofile, execute the following command:
-要重置oprofile，执行下面的命令：
-sudo opcontrol --reset
-
-Important: You should reset oprofile after analyzing data so that you do not commingle results from different tests.
-重要：你应该分析后再重置，以免混合不同的剖析结果。
- 3.3.18  内存剖析
-Memory Profiling
-Ceph OSD and metadata server daemons can generate heap profiles using tcmalloc. To generate heap profiles, ensure you have google-perftools installed:
-sudo apt-get google-perftools
-The profiler dumps output to your log file directory (i.e., /var/log/ceph). See Logging and Debugging Config Reference for details. To view the profiler logs with Google’s performance tools, execute the following:
-google-pprof -gv {log-path/filename}
-Refer to Google Heap Profiler for additional details.
-Once you have the heap profiler installed, start your cluster and begin using the heap profiler. You may enable or disable the heap profiler at runtime, or ensure that it runs continously. For the following commandline usage, replace {daemon-type} with osd or mds, and replace daemon-id with the OSD number or metadata server letter.
- 3.3.18.1  启动剖析器
-Starting the Profiler
-To start the heap profiler, execute the following:
-ceph {daemon-type} tell {daemon-id} heap start_profiler
-For example:
-ceph osd tell 1 heap start_profiler
- 3.3.18.2  打印统计
-Printing Stats
-To print out statistics, execute the following:
-ceph {daemon-type} tell {daemon-id} heap stats
-For example:
-ceph osd tell 0 heap stats
-
-Note: Printing stats does not require the profiler to be running and does not dump the heap allocation information to a file.
- 3.3.18.3  转储堆栈信息
-Dumping Heap Information
-To dump heap information, execute the following:
-ceph {daemon-type} tell {daemon-id} heap dump
-For example:
-ceph mds tell a heap dump
-
-Note: Dumping heap information only works when the profiler is running.
-
- 3.3.18.4  释放内存
-Releasing Memory
-To release memory that tcmalloc has allocated but which is not being used by the Ceph daemon itself, execute the following:
-ceph {daemon-type} tell {daemon-id} heap release
-For example:
-ceph osd tell 2 heap release
- 3.3.18.5  停止剖析器
-Stopping the Profiler
-To stop the heap profiler, execute the following:
-ceph {daemon-type} tell {daemon-id} heap stop_profiler
-For example:
-ceph {daemon-type} tell {daemon-id} heap stop_profiler
- 3.3.19  故障排除
-Troubleshooting
-When monitoring your cluster, you may receive health warnings and you may also notice that not all of your daemons are running properly. The following sections will help you identify and resolve daemon operations issues.
-
- 3.3.20  调试和日志记录
+ 3.3.16.6  只有几个OSD接收数据
+Only a Few OSDs Receive Data
+If you have many nodes in your cluster and only a few of them receive data, check the number of placement groups in your pool. Since placement groups get mapped to OSDs, a small number of placement groups will not distribute across your cluster. Try creating a pool with a placement group count that is a multiple of the number of OSDs. See Placement Groups for details. The default placement group count for pools isn’t useful, but you can change it here.
+如果你的集群有很多节点，但只有其中几个接收数据，检查下存储池里的归置组数量。因为归置组是映射到多个OSD的，这样少量的归置组将不能分布于整个集群。试着创建个新存储池，其归置组数量是OSD数量的若干倍。详情见Placement Groups，存储池的默认归置组数量没多大用，你可以更改它。
+ 3.3.16.7  不能写入数据
+Can’t Write Data
+If your cluster is up, but some OSDs are down and you cannot write data, check to ensure that you have the minimum number of OSDs running for the placement group. If you don’t have the minimum number of OSDs running, Ceph will not allow you to write data because there is no guarantee that Ceph can replicate your data. See osd pool default min size in the Pool, PG and CRUSH Config Reference for details.
+如果你的集群已启动，但一些OSD没起来，导致不能写入数据，确认下运行的OSD数量满足归置组要求的最低OSD数。如果不能满足，ceph就不会允许你写入数据，因为ceph不能保证复制能如愿进行。详情参见Pool, PG and CRUSH Config Reference里的osd pool default min size。
+ 3.3.17  调试和日志记录
 Debugging and logging
 You may view Ceph log files under /var/log/ceph (the default location).
 你可以在默认位置/var/log/ceph下翻阅ceph的日志。
 Important: If you enable or increase the rate of Ceph logging, ensure that you have sufficient disk space on your OS disk. Verbose logging can generate over 1GB of data per hour. If your OS disk reaches its capacity, the node will stop working.
+重要：
 
 Accelerating Log Rotation
 If your OS disk is relatively full, you can accelerate log rotation by modifying the Ceph log rotation file at /etc/logrotate.d/ceph. Add a size setting after the rotation frequency to accelerate log rotation (via cronjob) if your logs exceed the size setting. For example, the default setting looks like this:
@@ -8040,6 +7963,97 @@ You can change the logging settings at runtime so that you don’t have to stop 
 
 Debugging may also require you to track down memory and threading issues. You can run a single daemon, a type of daemon, or the whole cluster with Valgrind. You should only use Valgrind when developing or debugging Ceph. Valgrind is computationally expensive, and will slow down your system otherwise. Valgrind messages are logged to stderr.
 调试也许要求你捕捉内存和线程问题，你可以在Valgrind下运行单个、一类守护进程、或者整个集群。你应该只在开发、调试期间使用Valgrind，它需要大量计算，会减慢你的系统。Valgrind消息记录在标准错误。
+ 3.3.18  CPU剖析
+CPU Profiling
+If you built Ceph from source and compiled Ceph for use with oprofile you can profile Ceph’s CPU usage. See Installing Oprofile for details.
+如果你从源码编译、且启用了oprofile，那么你就可以剖析ceph的CPU用法了，详情参见 Installing Oprofile。
+ 3.3.18.1  初始化oprofile
+INITIALIZING OPROFILE
+The first time you use oprofile you need to initialize it. Locate the vmlinux image corresponding to the kernel you are now running.
+你首次使用oprofile的时候要初始化，找到对应于当前运行内核的vmlinux位置：
+ls /boot
+sudo opcontrol --init
+sudo opcontrol --setup --vmlinux={path-to-image} --separate=library --callgraph=6
+ 3.3.18.2  启动oprofile
+STARTING OPROFILE
+To start oprofile execute the following command:
+执行下面的命令启动opeofile：
+opcontrol --start
+
+Once you start oprofile, you may run some tests with Ceph.
+启动oprofile后，你可以运行一些ceph测试：
+ 3.3.18.3  停止oprofile
+STOPPING OPROFILE
+To stop oprofile execute the following command:
+执行下面的命令停止oprofile：
+opcontrol --stop
+ 3.3.18.4  查看oprofile运行结果
+RETRIEVING OPROFILE RESULTS
+To retrieve the top cmon results, execute the following command:
+要查看cmon最近的结果，执行下面的命令：
+opreport -gal ./cmon | less
+
+To retrieve the top cmon results with call graphs attached, execute the following command:
+要检索cmon最近的调用图结果，执行下面的命令：
+opreport -cal ./cmon | less
+
+Important: After reviewing results, you should reset oprofile before running it again. Resetting oprofile removes data from the session directory.
+重要：回顾结果后，重新剖析前应该先重置，重置动作从会话目录里删除了数据。
+ 3.3.18.5  重置oprofile
+RESETTING OPROFILE
+To reset oprofile, execute the following command:
+要重置oprofile，执行下面的命令：
+sudo opcontrol --reset
+
+Important: You should reset oprofile after analyzing data so that you do not commingle results from different tests.
+重要：你应该分析后再重置，以免混合不同的剖析结果。
+ 3.3.19  内存剖析
+Memory Profiling
+Ceph OSD and metadata server daemons can generate heap profiles using tcmalloc. To generate heap profiles, ensure you have google-perftools installed:
+sudo apt-get google-perftools
+The profiler dumps output to your log file directory (i.e., /var/log/ceph). See Logging and Debugging Config Reference for details. To view the profiler logs with Google’s performance tools, execute the following:
+google-pprof -gv {log-path/filename}
+Refer to Google Heap Profiler for additional details.
+Once you have the heap profiler installed, start your cluster and begin using the heap profiler. You may enable or disable the heap profiler at runtime, or ensure that it runs continously. For the following commandline usage, replace {daemon-type} with osd or mds, and replace daemon-id with the OSD number or metadata server letter.
+ 3.3.19.1  启动剖析器
+Starting the Profiler
+To start the heap profiler, execute the following:
+ceph {daemon-type} tell {daemon-id} heap start_profiler
+For example:
+ceph osd tell 1 heap start_profiler
+ 3.3.19.2  打印统计
+Printing Stats
+To print out statistics, execute the following:
+ceph {daemon-type} tell {daemon-id} heap stats
+For example:
+ceph osd tell 0 heap stats
+
+Note: Printing stats does not require the profiler to be running and does not dump the heap allocation information to a file.
+ 3.3.19.3  转储堆栈信息
+Dumping Heap Information
+To dump heap information, execute the following:
+ceph {daemon-type} tell {daemon-id} heap dump
+For example:
+ceph mds tell a heap dump
+
+Note: Dumping heap information only works when the profiler is running.
+
+ 3.3.19.4  释放内存
+Releasing Memory
+To release memory that tcmalloc has allocated but which is not being used by the Ceph daemon itself, execute the following:
+ceph {daemon-type} tell {daemon-id} heap release
+For example:
+ceph osd tell 2 heap release
+ 3.3.19.5  停止剖析器
+Stopping the Profiler
+To stop the heap profiler, execute the following:
+ceph {daemon-type} tell {daemon-id} heap stop_profiler
+For example:
+ceph {daemon-type} tell {daemon-id} heap stop_profiler
+ 3.3.20  故障排除
+Troubleshooting
+When monitoring your cluster, you may receive health warnings and you may also notice that not all of your daemons are running properly. The following sections will help you identify and resolve daemon operations issues.
+
 
  3.4  手册页<尚未整理>
 Manual Pages
