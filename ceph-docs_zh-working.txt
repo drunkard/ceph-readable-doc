@@ -1614,7 +1614,7 @@ LOGS / DEBUGGING
 Ceph is still on the leading edge, so you may encounter situations that require modifying logging output and using Ceph’s debugging. To activate Ceph’s debugging output (i.e., dout()), you may add debug settings to your configuration. Ceph’s logging levels operate on a scale of 1 to 20, where 1 is terse and 20 is verbose.
 ceph仍在前沿，所以你可能碰到一些情况，需要修改日志和调试信息。为打开ceph的调试输出（例如，dout()），你可以在配置文件里添加调试选项。ceph的日志级别在1到20之间，1是简洁、20是详细。
 Note: See Debugging and Logging for details on log rotation.
-注意：关于日志滚动见调试和日志记录。
+注意：关于日志滚动见日志记录和调试。
 Subsystems common to each daemon may be set under [global] in your configuration file. Subsystems for particular daemons are set under the daemon section in your configuration file (e.g., [mon], [osd], [mds]). For example:
 对每个进程都相同的子系统可以在[global]下配置，对特定守护进程的子系统要配置在进程段下，如[mon]、[osd]、[mds]下。例如：
 
@@ -7937,40 +7937,569 @@ If you have many nodes in your cluster and only a few of them receive data, chec
 Can’t Write Data
 If your cluster is up, but some OSDs are down and you cannot write data, check to ensure that you have the minimum number of OSDs running for the placement group. If you don’t have the minimum number of OSDs running, Ceph will not allow you to write data because there is no guarantee that Ceph can replicate your data. See osd pool default min size in the Pool, PG and CRUSH Config Reference for details.
 如果你的集群已启动，但一些OSD没起来，导致不能写入数据，确认下运行的OSD数量满足归置组要求的最低OSD数。如果不能满足，ceph就不会允许你写入数据，因为ceph不能保证复制能如愿进行。详情参见Pool, PG and CRUSH Config Reference里的osd pool default min size。
- 3.3.17  调试和日志记录
-Debugging and logging
-You may view Ceph log files under /var/log/ceph (the default location).
-你可以在默认位置/var/log/ceph下翻阅ceph的日志。
-Important: If you enable or increase the rate of Ceph logging, ensure that you have sufficient disk space on your OS disk. Verbose logging can generate over 1GB of data per hour. If your OS disk reaches its capacity, the node will stop working.
-重要：
+ 3.3.17  日志记录和调试
+Logging and Debugging
+Typically, when you add debugging to your Ceph configuration, you do so at runtime. You can also add Ceph debug logging to your Ceph configuration file if you are encountering issues when starting your cluster. You may view Ceph log files under /var/log/ceph (the default location).
+一般来说，你应该在运行时增加调试选项来调试问题；也可以把调试选项添加到ceph配置文件里来调试启动问题，然后查看/var/log/ceph（默认位置）下的日志文件。
+Tip: When debug output slows down your system, the latency can hide race conditions.
+提示：调试输出会拖慢系统，这种延时有可能掩盖竞争环境。
+Logging is resource intensive. If you are encountering a problem in a specific area of your cluster, enable logging for that area of the cluster. For example, if your OSDs are running fine, but your metadata servers are not, you should start by enabling debug logging for the specific metadata server instance(s) giving you trouble. Enable logging for each subsystem as needed.
+日志记录是资源密集任务。如果你碰到的问题在集群的某个特定区域，只启用那个区域对应的日志功能即可。例如，你的OSD运行良好、元数据服务器却不行，这时应该先打开那个可疑元数据服务器例程的调试日志；如果不行再打开各子系统的日志。
+Important: Verbose logging can generate over 1GB of data per hour. If your OS disk reaches its capacity, the node will stop working.
+重要：详尽的日志每小时可能超过1GB，如果你的系统盘满了，这个节点就会停止工作。
+If you enable or increase the rate of Ceph logging, ensure that you have sufficient disk space on your OS disk. See Accelerating Log Rotation for details on rotating log files. When your system is running well, remove unnecessary debugging settings to ensure your cluster runs optimally. Logging debug output messages is relatively slow, and a waste of resources when operating your cluster.
+如果你要打开或增加ceph日志级别，确保系统盘空间足够。滚动日志文件的方法见Accelerating Log Rotation。集群稳定运行后，可以关闭不必要的调试选项以更好地运行。在运营中记录调试输出会拖慢系统、且浪费资源。
+See Subsystem, Log and Debug Settings for details on available settings.
+可用选项参见Subsystem, Log and Debug Settings。
+ 3.3.17.1  运行时
+Runtime
+If you would like to see the configuration settings at runtime, you must log in to a host with a running daemon and execute the following:
+如果你想查看一进程的运行时配置，必须先登录对应主机，然后执行命令：
+ceph --admin-daemon {/path/to/admin/socket} config show | less
+ceph --admin-daemon /var/run/ceph/ceph-osd.0.asok config show | less
+To activate Ceph’s debugging output (i.e., dout()) at runtime, use the ceph tell command to inject arguments into the runtime configuration:
+要在运行时激活ceph的调试输出（如dout()），用ceph tell命令把参数注入运行时配置：
+ceph {daemon-type} tell {daemon id or *} injectargs '--{name} {value} [--{name} {value}]'
+Replace {daemon-type} with one of osd, mon or mds. You may apply the runtime setting to all daemons of a particular type with *, or specify a specific daemon’s ID (i.e., its number or letter). For example, to increase debug logging for a ceph-osd daemon named osd.0, execute the following:
+用osd、mon或mds替代{daemon-type}。你可以用星号（*）把配置应用到同类型的所有守护进程，或者指定具体守护进程的标识号（即其名字或字母）。例如，要给名为ods.0的ceph-osd守护进程提高调试级别，用下列命令：
+ceph osd tell 0 injectargs '--debug_osd 0/5'
+The ceph tell command goes through the monitors. If you cannot bind to the monitor, you can still make the change by logging into the host of the daemon whose configuration you’d like to change using ceph --admin-daemon. For example:
+ceph tell命令会贯穿所有监视器。如果你不能绑定监视器，还可以登录你要改的那台主机用ceph --admin-daemon来更改。例如：
+sudo ceph --admin-daemon /var/run/ceph/ceph-osd.0.asok config set debug_osd 0/5
+See Subsystem, Log and Debug Settings for details on available settings.
+可用选项参见Subsystem, Log and Debug Settings。
+ 3.3.17.2  启动时
+Boot Time
+To activate Ceph’s debugging output (i.e., dout()) at boot time, you must add settings to your Ceph configuration file. Subsystems common to each daemon may be set under [global] in your configuration file. Subsystems for particular daemons are set under the daemon section in your configuration file (e.g., [mon], [osd], [mds]). For example:
+要在启动时激活调试输出（如dout()），你得把选项加入配置文件。各进程共有配置可写在配置文件的[global]下，某类进程的配置可写在守护进程段下（如[mon]、[osd]、[mds]）。例如：
+[global]
+        debug ms = 1/5
 
+[mon]
+        debug mon = 20
+        debug paxos = 1/5
+        debug auth = 2
+
+[osd]
+        debug osd = 1/5
+        debug filestore = 1/5
+        debug journal = 1
+        debug monc = 5/20
+
+[mds]
+        debug mds = 1
+        debug mds balancer = 1
+        debug mds log = 1
+        debug mds migrator = 1
+See Subsystem, Log and Debug Settings for details.
+详情见Subsystem, Log and Debug Settings。
+ 3.3.17.3  加快日志滚动
 Accelerating Log Rotation
 If your OS disk is relatively full, you can accelerate log rotation by modifying the Ceph log rotation file at /etc/logrotate.d/ceph. Add a size setting after the rotation frequency to accelerate log rotation (via cronjob) if your logs exceed the size setting. For example, the default setting looks like this:
-
+如果你的系统盘比较满，可以修改/etc/logrotate.d/ceph内的日志滚动配置以加快滚动。在滚动频率后增加一个尺寸选项（达到此尺寸就滚动）来加快滚动（通过cronjob）。例如默认配置大致如此：
+rotate 7
+weekly
+compress
+sharedscripts
 Modify it by adding a size setting.
-
+增加一个size选项：
+rotate 7
+weekly
+size 500M
+compress
+sharedscripts
 Then, start the crontab editor for your user space.
-
+然后，打开crontab编辑器。
+crontab -e
 Finally, add an entry to check the etc/logrotate.d/ceph file.
-
+最后，增加一条用以检查/etc/logrorate.d/ceph文件。
+30 * * * * /usr/sbin/logrotate /etc/logrotate.d/ceph >/dev/null 2>&1
 The preceding example checks the etc/logrotate.d/ceph file every 30 minutes.
-
-Ceph is still on the leading edge, so you may encounter situations that require using Ceph’s debugging and logging. To activate and configure Ceph’s debug logging, refer to Ceph Logging and Debugging. For additional logging settings, refer to the Logging and Debugging Config Reference.
-ceph仍在技术前沿，所以你也许会碰到一些状况，需要使用ceph的调试和日志功能。激活和配置ceph的调试日志，参见日志、调试；额外的日志设置参见错误：引用源未找到。
-
-You can change the logging settings at runtime so that you don’t have to stop and restart the cluster. Refer to Ceph Configuration - Runtime Changes for additional details.
-可以在运行时更改日志选项，这样你就不必停止、重启集群了，详情参见运行时更改。
-
+本例中每30分钟检查一次/etc/logrorate.d/ceph文件。
+ 3.3.17.4  Valgrind
 Debugging may also require you to track down memory and threading issues. You can run a single daemon, a type of daemon, or the whole cluster with Valgrind. You should only use Valgrind when developing or debugging Ceph. Valgrind is computationally expensive, and will slow down your system otherwise. Valgrind messages are logged to stderr.
-调试也许要求你捕捉内存和线程问题，你可以在Valgrind下运行单个、一类守护进程、或者整个集群。你应该只在开发、调试期间使用Valgrind，它需要大量计算，会减慢你的系统。Valgrind消息记录在标准错误。
+你也许还得追踪内存和线程问题，可以在Valgrind中运行一个守护进程、一类进程、或整个集群。valgrind是计算密集型程序，应该只用于开发或调试，否则会拖慢系统。其消息记录到stderr。
+ 3.3.17.5  子系统，日志和调试选项
+Subsystem, Log and Debug Settings
+In most cases, you will enable debug logging output via subsystems.
+大多数情况下你可以通过子系统打开调试。
+ 3.3.17.5.1  ceph子系统概览
+Ceph Subsystems
+Each subsystem has a logging level for its output logs, and for its logs in-memory. You may set different values for each of these subsystems by setting a log file level and a memory level for debug logging. Ceph’s logging levels operate on a scale of 1 to 20, where 1 is terse and 20 is verbose.
+各子系统都有日志级别用于分别控制其输出日志、和暂存日志，你可以分别为这些子系统设置不同的记录级别。ceph的日志级别从1到20，1是简洁、20是详尽。
+A debug logging setting can take a single value for the log level and the memory level, which sets them both as the same value. For example, if you specify debug ms = 5, Ceph will treat it as a log level and a memory level of 5. You may also specify them separately. The first setting is the log level, and the second setting is the memory level. You must separate them with a forward slash (/). For example, if you want to set the ms subsystem’s debug logging level to 1 and its memory level to 5, you would specify it as debug ms = 1/5. For example:
+调试选项允许用单个数字同时设置日志级别和内存级别，会设置为一样。比如，如果你指定debug ms = 5，ceph会把日志级别和内存级别都设置为5。也可以分别设置，第一个选项是日志级别、后一个是内存级别，二者必须用斜线（/）分隔。假如你想把ms子系统的调试日志级别设为1、内存级别设为5，可以写为debug ms = 1/5，如下：
+debug {subsystem} = {log-level}/{memory-level}
+#for example
+debug mds log = 1/20
+The following table provides a list of Ceph subsystems and their default log and memory levels. Once you complete your logging efforts, restore the subsystems to their default level or to a level suitable for normal operations.
+下表列出了ceph子系统及其默认日志和内存级别。一旦你完成调试，应该恢复默认值、或一个适合平常运营的级别。
+Subsystem
+Log Level
+Memory Level
+default
+0
+5
+lockdep
+0
+5
+context
+0
+5
+crush
+1
+5
+mds
+1
+5
+mds balancer
+1
+5
+mds locker
+1
+5
+mds log
+1
+5
+mds log expire
+1
+5
+mds migrator
+1
+5
+buffer
+0
+0
+timer
+0
+5
+filer
+0
+5
+objecter
+0
+0
+rados
+0
+5
+rbd
+0
+5
+journaler
+0
+5
+objectcacher
+0
+5
+client
+0
+5
+osd
+0
+5
+optracker
+0
+5
+objclass
+0
+5
+filestore
+1
+5
+journal
+1
+5
+ms
+0
+5
+mon
+1
+5
+monc
+0
+5
+paxos
+0
+5
+tp
+0
+5
+auth
+1
+5
+finisher
+1
+5
+heartbeatmap
+1
+5
+perfcounter
+1
+5
+rgw
+1
+5
+hadoop
+1
+5
+asok
+1
+5
+throttle
+1
+5
+ 3.3.17.5.2  日志记录选项
+Logging Settings
+Logging and debugging settings are not required in a Ceph configuration file, but you may override default settings as needed. Ceph supports the following settings:
+日志和调试选项不是必需配置，但你可以按需覆盖默认值。ceph支持如下配置：
+log file
+Desription:
+The location of the logging file for your cluster.
+集群日志文件的位置。
+Type:
+String
+Required:
+No
+Default:
+/var/log/ceph/$cluster-$name.log
+log max new
+Description:
+The maximum number of new log files.
+新日志文件的最大数量。
+Type:
+Integer
+Required:
+No
+Default:
+1000
+log max recent
+Description:
+The maximum number of recent events to include in a log file.
+一个日志文件包含的最新事件的最大数量。
+Type:
+Integer
+Required:
+No
+Default:
+1000000
+log to stderr
+Description:
+Determines if logging messages should appear in stderr.
+设置日志消息是否输出到标准错误。
+Type:
+Boolean
+Required:
+No
+Default:
+true
+err to stderr
+Description:
+Determines if error messages should appear in stderr.
+设置错误消息是否输出到标准错误。
+Type:
+Boolean
+Required:
+No
+Default:
+true
+log to syslog
+Description:
+Determines if logging messages should appear in syslog.
+设置日志消息是否输出到syslog。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+err to syslog
+Description:
+Determines if error messages should appear in syslog.
+设置错误消息是否输出到syslog。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+log flush on exit
+Description:
+Determines if Ceph should flush the log files after exit.
+设置ceph退出后是否回写日志文件。
+Type:
+Boolean
+Required:
+No
+Default:
+true
+clog to monitors
+Description:
+Determines if clog messages should be sent to monitors.
+设置是否把clog消息发送给监视器。
+Type:
+Boolean
+Required:
+No
+Default:
+true
+clog to syslog
+Description:
+Determines if clog messages should be sent to syslog.
+设置是否把clog输出到syslog。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+mon cluster log to syslog
+Description:
+Determines if the cluster log should be output to the syslog.
+设置集群日志是否输出到syslog。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+mon cluster log file
+Description:
+The location of the cluster’s log file.
+集群日志位置。
+Type:
+String
+Required:
+No
+Default:
+/var/log/ceph/$cluster.log
+ 3.3.17.5.3  OSD
+osd debug drop ping probability
+Description:
+?
+Type:
+Double
+Required:
+No
+Default:
+0
+osd debug drop ping duration
+Description:
+
+Type:
+Integer
+Required:
+No
+Default:
+0
+osd debug drop pg create probability
+Description:
+
+Type:
+Integer
+Required:
+No
+Default:
+0
+osd debug drop pg create duration
+Description:
+?
+Type:
+Double
+Required:
+No
+Default:
+1
+osd preserve trimmed log
+Description:
+Preserves trimmed logs after trimming.
+裁减后保留剩余日志。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+osd tmapput sets uses tmap
+Description:
+Uses tmap. For debug only.
+使用tmap，仅用于调试。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+osd min pg log entries
+Description:
+The minimum number of log entries for placement groups.
+归置组日志最小条数。
+Type:
+32-bit Unsigned Integer
+Required:
+No
+Default:
+1000
+osd op log threshold
+Description:
+How many op log messages to show up in one pass.
+一次发送多少操作日志消息。
+Type:
+Integer
+Required:
+No
+Default:
+5
+ 3.3.17.5.4  Filestore
+filestore debug omap check
+Description:
+Debugging check on synchronization. This is an expensive operation.
+检查omap，这是昂贵的操作。
+Type:
+Boolean
+Required:
+No
+Default:
+0
+ 3.3.17.5.5  MDS
+mds debug scatterstat
+Description:
+Ceph will assert that various recursive stat invariants are true (for developers only).
+ceph将把各种回归状态常量设置为真（谨为开发者）。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+mds debug frag
+Description:
+Ceph will verify directory fragmentation invariants when convenient (developers only).
+ceph将在方便时校验目录碎片（谨为开发者）。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+mds debug auth pins
+Description:
+The debug auth pin invariants (for developers only).
+debug auth pin恒量（谨为开发者）。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+mds debug subtrees
+Description:
+The debug subtree invariants (for developers only).
+debug subtree恒量（谨为开发者）。
+Type:
+Boolean
+Required:
+No
+Default:
+false
+ 3.3.17.5.6  RADOS网关
+RADOS Gateway
+rgw log nonexistent bucket
+Description:
+Should we log a non-existent buckets?
+记录不存在的桶？
+Type:
+Boolean
+Required:
+No
+Default:
+false
+rgw log object name
+Description:
+Should an object’s name be logged. // man date to see codes (a subset are supported)
+是否记录对象名称。
+Type:
+String
+Required:
+No
+Default:
+%Y-%m-%d-%H-%i-%n
+rgw log object name utc
+Description:
+Object log name contains UTC?
+对象日志名称包含UTC？
+Type:
+Boolean
+Required:
+No
+Default:
+false
+rgw enable ops log
+Description:
+Enables logging of every RGW operation.
+允许记录RGW的每一个操作。
+Type:
+Boolean
+Required:
+No
+Default:
+true
+rgw enable usage log
+Description:
+Enable logging of RGW’s bandwidth usage.
+允许记录RGW的带宽使用。
+Type:
+Boolean
+Required:
+No
+Default:
+true
+rgw usage log flush threshold
+Description:
+Threshold to flush pending log data.
+回写未决的日志数据阀值。
+Type:
+Integer
+Required:
+No
+Default:
+1024
+rgw usage log tick interval
+Description:
+Flush pending log data every s seconds.
+未决日志回写间隔。
+Type:
+Integer
+Required:
+No
+Default:
+30
+rgw intent log object name
+Description:
+
+Type:
+String
+Required:
+No
+Default:
+%Y-%m-%d-%i-%n
+rgw intent log object name utc
+Description:
+Include a UTC timestamp in the intent log object name.
+日志对象名字里包含UTC时间戳。
+Type:
+Boolean
+Required:
+No
+Default:
+false
  3.3.18  CPU剖析
 CPU Profiling
 If you built Ceph from source and compiled Ceph for use with oprofile you can profile Ceph’s CPU usage. See Installing Oprofile for details.
-如果你从源码编译、且启用了oprofile，那么你就可以剖析ceph的CPU用法了，详情参见 Installing Oprofile。
+如果你从源码编译时启用了oprofile，那就可以剖析ceph的CPU使用情况，详情见 Installing Oprofile。
  3.3.18.1  初始化oprofile
 INITIALIZING OPROFILE
 The first time you use oprofile you need to initialize it. Locate the vmlinux image corresponding to the kernel you are now running.
-你首次使用oprofile的时候要初始化，找到对应于当前运行内核的vmlinux位置：
+你首次使用oprofile时要初始化，找到对应于当前运行内核的vmlinux映像：
 ls /boot
 sudo opcontrol --init
 sudo opcontrol --setup --vmlinux={path-to-image} --separate=library --callgraph=6
@@ -7992,7 +8521,6 @@ RETRIEVING OPROFILE RESULTS
 To retrieve the top cmon results, execute the following command:
 要查看cmon最近的结果，执行下面的命令：
 opreport -gal ./cmon | less
-
 To retrieve the top cmon results with call graphs attached, execute the following command:
 要检索cmon最近的调用图结果，执行下面的命令：
 opreport -cal ./cmon | less
@@ -8010,11 +8538,15 @@ Important: You should reset oprofile after analyzing data so that you do not com
  3.3.19  内存剖析
 Memory Profiling
 Ceph OSD and metadata server daemons can generate heap profiles using tcmalloc. To generate heap profiles, ensure you have google-perftools installed:
+
 sudo apt-get google-perftools
-The profiler dumps output to your log file directory (i.e., /var/log/ceph). See Logging and Debugging Config Reference for details. To view the profiler logs with Google’s performance tools, execute the following:
+The profiler dumps output to your log file directory (i.e., /var/log/ceph). See Logging and Debugging for details. To view the profiler logs with Google’s performance tools, execute the following:
+
 google-pprof -gv {log-path/filename}
 Refer to Google Heap Profiler for additional details.
+
 Once you have the heap profiler installed, start your cluster and begin using the heap profiler. You may enable or disable the heap profiler at runtime, or ensure that it runs continously. For the following commandline usage, replace {daemon-type} with osd or mds, and replace daemon-id with the OSD number or metadata server letter.
+
  3.3.19.1  启动剖析器
 Starting the Profiler
 To start the heap profiler, execute the following:
