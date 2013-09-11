@@ -1,7 +1,7 @@
 ﻿CEPH官方文档中译
 原	文：http://ceph.com/docs/master/start/
 翻译人：张绍文<gongfan193@gmail.com>
-版	本：v1.3
+版	本：v1.8
 许	可：同原文
 
 
@@ -1893,7 +1893,7 @@ We recommend running a Ceph cluster with two networks: a public (front-side) net
 There are several reasons to consider operating two separate networks:
 运营两个独立网络的考量主要有：
 1. Peformance: OSDs handle data replication for the clients. When OSDs replicate data more than once, the network load between OSDs easily dwarfs the network load between clients and the Ceph cluster. This can introduce latency and create a performance problem. Recovery and rebalancing can also introduce significant latency on the public network. See How Ceph Scales for additional details on how Ceph replicates data. See Monitor / OSD Interaction for details on heartbeat traffic.
-性能：OSD为客户端处理数据复制，复制多份时OSD间的网络负载势必会影响到客户端和ceph集群的通讯，包括延时增加、产生性能问题；恢复和重均衡也会显著增加公共网延时。关于ceph如何复制参见ceph如何伸缩；关于心跳流量参见心跳配置 （监视器/OSD交互的配置）。
+性能：OSD为客户端处理数据复制，复制多份时OSD间的网络负载势必会影响到客户端和ceph集群的通讯，包括延时增加、产生性能问题；恢复和重均衡也会显著增加公共网延时。关于ceph如何复制参见错误：引用源未找到；关于心跳流量参见心跳配置 （监视器/OSD交互的配置）。
 2. Security: While most people are generally civil, a very tiny segment of the population likes to engage in what’s known as a Denial of Service (DoS) attack. When traffic between OSDs gets disrupted, placement groups may no longer reflect an active + clean state, which may prevent users from reading and writing data. A great way to defeat this type of attack is to maintain a completely separate cluster network that doesn’t connect directly to the internet. Also, consider using Message Signatures to defeat spoofing attacks.
 安全：大多数人都是良民，很少的一撮人喜欢折腾拒绝服务攻击（DoS）。当OSD间的流量瓦解时，归置组再也不能达到active+clean状态，这样用户就不能读写数据了。挫败此类攻击的一种好方法是维护一个完全独立的集群网，使之不能直连互联网；另外，请考虑用签名防止欺骗攻击。
  3.1.3.1  防火墙iptables
@@ -12479,24 +12479,29 @@ rbd的python模块为RBD映像提供了类似文件的访问方法。
  5.12.1  实例：创建并写入映像
 Example: Creating and writing to an image
 To use rbd, you must first connect to RADOS and open an IO context:
-
+要使用rbd，必须先连接RADOS并打开IO上下文：
 cluster = rados.Rados(conffile='my_ceph.conf')
 cluster.connect()
 ioctx = cluster.open_ioctx('mypool')
 Then you instantiate an :class:rbd.RBD object, which you use to create the image:
+然后实例化:class:rbd.RBD对象，用它来创建映像：
 rbd_inst = rbd.RBD()
 size = 4 * 1024**3  # 4 GiB
 rbd_inst.create(ioctx, 'myimage', size)
 To perform I/O on the image, you instantiate an :class:rbd.Image object:
+要在映像上进行I/O操作，需实例化:class:rbd.Image对象：
 image = rbd.Image(ioctx, 'myimage')
 data = 'foo' * 200
 image.write(data, 0)
 This writes ‘foo’ to the first 600 bytes of the image. Note that data cannot be :type:unicode - Librbd does not know how to deal with characters wider than a :c:type:char.
 In the end, you’ll want to close the image, the IO context and the connection to RADOS:
+上面的代码向映像前面写入了600字节。注意数据不能是:type:unicode，librbd不能如何处理大于:c:type:char的字符串。
+最后，关闭映像、IO上下文、和到RADOS的连接。
 image.close()
 ioctx.close()
 cluster.shutdown()
 To be safe, each of these calls would need to be in a separate :finally block:
+安全起见，每个调用都应该封装到单独的:finally块内。
 cluster = rados.Rados(conffile='my_ceph_conf')
 try:
     ioctx = cluster.open_ioctx('my_pool')
@@ -12515,6 +12520,7 @@ try:
 finally:
     cluster.shutdown()
 This can be cumbersome, so the Rados, Ioctx, and Image classes can be used as context managers that close/shutdown automatically (see PEP 343). Using them as context managers, the above example becomes:
+这样做有些繁琐，所以Rados、Ioctx、Image类可以当上下文管理器来用，它能自动关闭（见PEP 343）。当上下文管理器用时，上面的实例可以写成：
 with rados.Rados(conffile='my_ceph.conf') as cluster:
     with cluster.open_ioctx('mypool') as ioctx:
         rbd_inst = rbd.RBD()
@@ -12526,9 +12532,13 @@ with rados.Rados(conffile='my_ceph.conf') as cluster:
  5.12.2  API参考
 API Reference
 This module is a thin wrapper around librbd.
+此模块是librbd的瘦包装。
 It currently provides all the synchronous methods of librbd that do not use callbacks.
+当前它提供了librbd的所有未使用回调的同步方法。
 Error codes from librbd are turned into exceptions that subclass Error. Almost all methods may raise Error (the base class of all rbd exceptions), PermissionError and IOError, in addition to those documented for the method.
+librbd中的错误代码转换成了Error子类中的异常。几乎所有方法都能产生Error（所有rbd异常的基础类）、PermissionError和IOError等等。
 A number of methods have string arguments, which must not be unicode to interact correctly with librbd. If unicode is passed to these methods, a TypeError will be raised.
+很多方法都有字符串参数，它们都不能是unicode，否则不能正确地和librbd交互。如果向这些方法传递unicode，将抛出TypeError。
 class rbd.RBD
 This class wraps librbd CRUD functions.
 clone(p_ioctx, p_name, p_snapname, c_ioctx, c_name, features=0, order=None)
@@ -12749,25 +12759,20 @@ Keys are:
 id (int) - numeric identifier of the snapshot
 size (int) - size of the image at the time of snapshot (in bytes)
 name (str) - name of the snapshot
-
- 6  RADOS网关
-RADOS gateway
-RADOS Gateway is an object storage interface built on top of librados to provide applications with a RESTful gateway to RADOS clusters. The RADOS Gateway supports two interfaces:
-RADOS网关是构建于librados之上的对象存储接口，可为应用程序提供到RADOS集群的RESTful网关，它现在提供了2个接口。
-
+ 6  ceph对象网关
+Ceph Object Gateway
+Ceph Object Gateway is an object storage interface built on top of librgw and librados to provide applications with a RESTful gateway to Ceph Storage Clusters. Ceph Object Storage supports two interfaces:
+ceph对象网关是个对象存储接口，构建于librgw和librados之上，用RESTful作为ceph存储集群的网关提供给应用程序。ceph对象存储提供了2个接口：
 S3-compatible: Provides block storage functionality with an interface that is compatible with a large subset of the Amazon S3 RESTful API.
 Swift-compatible: Provides block storage functionality with an interface that is compatible with a large subset of the OpenStack Swift API.
 S3兼容：用兼容大量亚马逊S3 RESTful API的接口提供了块存储功能。
 Swift兼容：用兼容大量OpenStack Swift API的接口提供了块存储功能。
-
 RADOS Gateway is a FastCGI module for interacting with librados. Since it provides interfaces compatible with OpenStack Swift and Amazon S3, RADOS Gateway has its own user management. RADOS Gateway can store data in the same RADOS cluster used to store data from Ceph FS clients or RADOS block devices. The S3 and Swift APIs share a common namespace, so you may write data with one API and retrieve it with the other.
-RADOS网关是个与librados交互的FastCGI模块。因为它提供了与OpenStack Swift和Amazon S3兼容的接口，RADOS要有它自己的用户管理。RADOS网关可在存储Ceph FS客户端或RADOS块设备数据的集群里存储数据。S3和Swift API共用一个名字空间，所以你可以用一个API写、然后用另一个检索。
+Ceph Object Storage uses the Ceph Object Gateway daemon (radosgw), which is a FastCGI module for interacting with librgw and librados. Since it provides interfaces compatible with OpenStack Swift and Amazon S3, the Ceph Object Gateway has its own user management. Ceph Object Gateway can store data in the same Ceph Storage Cluster used to store data from Ceph Filesystem clients or Ceph Block Device clients. The S3 and Swift APIs share a common namespace, so you may write data with one API and retrieve it with the other.
+ceph对象存储使用ceph对象网关守护进程（radosgw），它是个与librgw和librados交互的FastCGI模块。因为它提供了与OpenStack Swift和Amazon S3兼容的接口，RADOS要有它自己的用户管理。ceph对象网关可与Ceph FS客户端或ceph块设备客户端共用一个存储集群。S3和Swift API共用一个通用命名空间，所以你可以用一个API写、然后用另一个检索。
 
-
-
-Note RADOS Gateway does NOT use the CephFS metadata server.
-注意：RADOS网关不使用CephFS元数据服务器。
-
+Note: Ceph Object Storage does NOT use the Ceph Metadata Server.
+注意：ceph对象存储不使用Ceph元数据服务器。
 Manual Install
 Configuration
 Config Reference
@@ -12783,134 +12788,208 @@ Manpage radosgw-admin
 后续将补。。。
  8  体系结构
 Architecture
-Ceph provides an infinitely scalable object storage system. It is based upon RADOS, which you can read about in RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters. Its high-level features include providing a native interface to the object storage system via librados, and a number of service interfaces built on top of librados. These include:
-CEPH提供了一个可无限伸缩的对象存储系统，它基于RADOS，见论文RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters。它的高级功能包括：基于librados的对象存储系统原生接口、和多种服务接口，它们有：
+Ceph uniquely delivers object, block, and file storage in one unified system. Ceph is highly reliable, easy to manage, and free. The power of Ceph can transform your company’s IT infrastructure and your ability to manage vast amounts of data. Ceph delivers extraordinary scalability–thousands of clients accessing petabytes to exabytes of data. A Ceph Node leverages commodity hardware and intelligent daemons, and a Ceph Storage Cluster accommodates large numbers of nodes, which communicate with each other to replicate and redistribute data dynamically. A Ceph Monitor can also be placed into a cluster of Ceph monitors to oversee the Ceph nodes in the Ceph Storage Cluster (a monitor cluster ensures high availability).
+Ceph独一无二地用统一的系统提供了对象、块、和文件系统功能，它可靠性高、管理简便、并且是自由软件。ceph的强大足以改变贵公司的IT基础架构、和管理海量数据。ceph具有极大的伸缩性——支持数千客户端访问EB级数据；每个ceph节点都揉合了普通硬件和智能守护进程，而一个ceph存储集群容纳了大量节点，它们相互通讯、复制数据、动态地重分布数据；ceph监视器也能组成集群来监控整个ceph存储集群内的ceph节点，同时，监视器集群也提供了高可用性。
 
-Block Devices: The RADOS Block Device (RBD) service provides resizable, thin-provisioned block devices with snapshotting and cloning. Ceph stripes a block device across the cluster for high performance. Ceph supports both kernel objects (KO) and a QEMU hypervisor that uses librbd directly–avoiding the kernel object overhead for virtualized systems.
-块设备：RBD服务提供了大小可调、精炼、支持快照和克隆的块设备。为提供高性能，ceph把块设备条带化。ceph同时支持直接使用librbd的内核对象（KO）和QEMU管理程序——避免了虚拟系统上的内核模块开销。
-RESTful Gateway: The RADOS Gateway (RGW) service provides RESTful APIs with interfaces that are compatible with Amazon S3 and OpenStack Swift.
-RESTful网关： RADOS网关（RADOS Gateway, RGW）服务提供了和Amazon S3和OpenStack Swift兼容的RESTful API。
-Ceph FS: The Ceph Filesystem (CephFS) service provides a POSIX compliant filesystem usable with mount or as a filesytem in user space (FUSE).
-Ceph文件系统：Ceph文件系统兼容POSIX，可以直接挂载或挂载为用户空间文件系统（FUSE）。
+ 8.1  ceph存储集群
+The Ceph Storage Cluster
+Ceph provides an infinitely scalable Ceph Storage Cluster based upon , which you can read about in RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters. Storage cluster clients and each Ceph OSD Daemon use the CRUSH algorithm to efficiently compute information about data location, instead of having to depend on a central lookup table. Ceph’s high-level features include providing a native interface to the Ceph Storage Cluster via librados, and a number of service interfaces built on top of librados.
+CEPH提供了一个可无限伸缩的对象存储系统，它基于RADOS，见论文RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters。存储集群的客户端和各个OSD守护进程使用CRUSH算法高效地计算数据位置，而不是查询某个表。它的高级功能包括：基于librados的原生存储接口、和多种基于librados的服务接口.
 
-Ceph OSDs store all data–whether it comes through RBD, RGW, or CephFS–as objects in the object storage system. Ceph can run additional instances of OSDs, MDSs, and monitors for scalability and high availability. The following diagram depicts the high-level architecture.
-Ceph的OSD把所有数据以对象形式保存在对象存储系统中——不论它来自RBD、RGW还是CephFS。Ceph可运行多个OSD、MDS和监视器例程，以保证伸缩性和高可用性。下面图解了其高级体系结构。
+ 8.1.1  数据的存储
+Storing Data
+The Ceph Storage Cluster receives data from Ceph Clients–whether it comes through a Ceph Block Device, Ceph Object Storage, the Ceph Filesystem or a custom implementation you create using librados–and it stores the data as objects. Each object corresponds to a file in a filesystem, which is stored on an Object Storage Device. Ceph OSD Daemons handle the read/write operations on the storage disks.
+ceph存储集群从客户端接收数据——不管是来自ceph块设备、对象存储、ceph文件系统、还是基于librados的自定义实现——并存储为对象。对象是相应文件系统中的文件，但它是作为对象存储设备使用的，这些读/写操作是OSD守护进程处理的。
 
- 8.1  消除局限性
-Removing limitations
+Ceph OSD Daemons store all data as objects in a flat namespace (e.g., no hierarchy of directories). An object has an identifier, binary data, and metadata consisting of a set of name/value pairs. The semantics are completely up to Ceph Clients. For example, CephFS uses metadata to store file attributes such as the file owner, created date, last modified date, and so forth.
+OSD在扁平的命名空间内把所有数据存储为对象（也就是没有目录层次）。对象包含一个标识符、二进制数据、和由名字/值配对组成的元数据，语义完全取决于客户端。例如，CephFS用元数据存储文件属性，如文件所有者、创建日期、最后修改日期等等。
 
-Today’s storage systems have demonstrated an ability to scale out, but with some significant limitations: interfaces, session managers, and stateful sessions with a centralized point of access often limit the scalability of today’s storage architectures. Furthermore, a centralized interface that dispatches requests from clients to server nodes within a cluster and subsequently routes responses from those server nodes back to clients will hit a scalability and/or performance limitation.
-当今的存储系统已经表现出了扩张力，但是有着明显的局限性：接口、会话管理、和有状态会话都基于中央访问点，它通常限制了存储系统架构的伸缩性，另外，中央化的接口要把客户端请求调度到集群内的服务器节点，并把后续响应从服务器路由给客户端，这通常会碰到伸缩和/或性能问题。
-
-Another problem for storage systems is the need to manually rebalance data when increasing or decreasing the size of a data cluster. Manual rebalancing works fine on small scales, but it is a nightmare at larger scales because hardware additions are common and hardware failure becomes an expectation rather than an exception when operating at the petabyte scale and beyond.
-存储系统的另一个问题是增加、或减少数据集群尺寸时要手动重均衡数据，对小型集群来说手动均衡没什么问题，但对大型集群来说是噩梦，因为在PB级及更大的集群里，硬件增加和失败都是常态而非异常。
-
-The operational challenges of managing legacy technologies with the burgeoning growth in the demand for unstructured storage makes legacy technologies inadequate for scaling into petabytes. Some legacy technologies (e.g., SAN) can be considerably more expensive, and more challenging to maintain when compared to using commodity hardware. Ceph uses commodity hardware, because it is substantially less expensive to purchase (or to replace), and it only requires standard system administration skills to use it.
-急剧增长的非结构化存储需求使得用老技术不足以扩展到PB级。一些老技术（如SAN）和普通硬件相比相当昂贵、且不易维护，而ceph用普通硬件，因为购买（或替换）它很便宜，而且只需要基本的系统管理技能即可。
- 8.2  ceph如何伸缩
-How ceph scales
+Note: An object ID is unique across the entire cluster, not just the local filesystem.
+注意：一个对象ID不止在本地唯一 ，它在整个集群内都是唯一的。
+ 8.1.2  伸缩性和高可用性
+Scalability and High Availability
 In traditional architectures, clients talk to a centralized component (e.g., a gateway, broker, API, facade, etc.), which acts as a single point of entry to a complex subsystem. This imposes a limit to both performance and scalability, while introducing a single point of failure (i.e., if the centralized component goes down, the whole system goes down, too).
 在传统架构里，客户端沟通中央化的组件（如网关、中间件、API、facade等等），它作为一个复杂子系统的单接触点，它引入单故障点的同时，也压制了性能和伸缩性（例如，如果中央化组件挂了，整个系统就挂了）。
+Ceph eliminates the centralized gateway to enable clients to interact with Ceph OSD Daemons directly. Ceph OSD Daemons create object replicas on other Ceph Nodes to ensure data safety and high availabilty. Ceph also uses a cluster of monitors to ensure high availability. To eliminate centralization, Ceph uses an algorithm called CRUSH.
+ 8.1.2.1  CRUSH简介
+CRUSH Introduction
+Ceph Clients and Ceph OSD Daemons both use the algorithm to efficiently compute information about data containers on demand, instead of having to depend on a central lookup table. CRUSH provides a better data management mechanism compared to older approaches, and enables massive scale by cleanly distributing the work to all the clients and OSD daemons in the cluster. CRUSH uses intelligent data replication to ensure resiliency, which is better suited to hyper-scale storage. The following sections provide additional details on how CRUSH works. For a detailed discussion of CRUSH, see CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data.
+ 8.1.2.2  集群运行图
+Cluster Map
+Ceph depends upon Ceph Clients and Ceph OSD Daemons having knowledge of the cluster topology, which is inclusive of 5 maps collectively referred to as the “Cluster Map”:
+1. The Monitor Map: Contains the cluster fsid, the position, name address and port of each monitor. It also indicates the current epoch, when the map was created, and the last time it changed. To view a monitor map, execute ceph mon dump. 
+2. The OSD Map: Contains the cluster fsid, when the map was created and last modified, a list of pools, replica sizes, PG numbers, a list of OSDs and their status (e.g., up, in). To view an OSD map, execute ceph osd dump. 
+3. The PG Map: Contains the PG version, its time stamp, the last OSD map epoch, the full ratios, and details on each placement group such as the PG ID, the Up Set, the Acting Set, the state of the PG (e.g., active + clean), and data usage statistics for each pool. 
+4. The CRUSH Map: Contains a list of storage devices, the failure domain hierarchy (e.g., device, host, rack, row, room, etc.), and rules for traversing the hierarchy when storing data. To view a CRUSH map, execute ceph osd getcrushmap -o {filename}; then, decompile it by executing crushtool -d {comp-crushmap-filename} -o {decomp-crushmap-filename}. You can view the decompiled map in a text editor or with cat. 
+5. The MDS Map: Contains the current MDS map epoch, when the map was created, and the last time it changed. It also contains the pool for storing metadata, a list of metadata servers, and which metadata servers are up and in. To view an MDS map, execute ceph mds dump. 
+Each map maintains an iterative history of its operating state changes. Ceph Monitors maintain a master copy of the cluster map including the cluster members, state, changes, and the overall health of the Ceph Storage Cluster.
+ 8.1.2.3  高可用监视器
+High Availability Monitors
+Before Ceph Clients can read or write data, they must contact a Ceph Monitor to obtain the most recent copy of the cluster map. A Ceph Storage Cluster can operate with a single monitor; however, this introduces a single point of failure (i.e., if the monitor goes down, Ceph Clients cannot read or write data).
+For added reliability and fault tolerance, Ceph supports a cluster of monitors. In a cluster of monitors, latency and other faults can cause one or more monitors to fall behind the current state of the cluster. For this reason, Ceph must have agreement among various monitor instances regarding the state of the cluster. Ceph always uses a majority of monitors (e.g., 1, 2:3, 3:5, 4:6, etc.) and the Paxos algorithm to establish a consensus among the monitors about the current state of the cluster.
+ceph监视器是轻量级进程，但是增强了可靠性和容错能力，ceph支持分布式监视器。不管Ceph集群状态如何，其不同监视器例程必须达成一致，为此，ceph总是使用奇数个监视器（如：1、3、5、7……）和Paxos算法来达成一致意见。
+For details on configuring monitors, see the Monitor Config Reference.
+ 8.1.2.4  高可用认证
+High Availability Authentication
+Ceph clients can authenticate users with Ceph Monitors, Ceph OSD Daemons and Ceph Metadata Servers, using Ceph’s Kerberos-like cephx protocol. Authenticated users gain authorization to read, write and execute Ceph commands. The Cephx authentication system avoids a single point of failure to ensure scalability and high availability. For details on Cephx and how it differs from Kerberos, see Ceph Authentication and Authorization.
+ceph客户端能通过ceph监视器、OSD和元数据服务器认证它们的用户，通过认证的用户获得读、写和执行ceph命令的授权。cephx认证系统和Kerberos相似，但消除了单故障点，进而保证了可扩展性和高可用性。关于cephx的细节，参见认证概览。
+ 8.1.2.5  智能守护进程支持超大规模
+Smart Daemons Enable Hyperscale
+In many clustered architectures, the primary purpose of cluster membership is so that a centralized interface knows which nodes it can access. Then the centralized interface provides services to the client through a double dispatch–which is a huge bottleneck at the petabyte-to-exabyte scale.
+Ceph elminates the bottleneck: Ceph’s OSD Daemons AND Ceph Clients are cluster aware. Like Ceph clients, each Ceph OSD Daemon knows about other Ceph OSD Daemons in the cluster. This enables Ceph OSD Daemons to interact directly with other Ceph OSD Daemons and Ceph monitors. Additionally, it enables Ceph Clients to interact directly with Ceph OSD Daemons.
+The ability of Ceph Clients, Ceph Monitors and Ceph OSD Daemons to interact with each other means that Ceph OSD Daemons can utilize the CPU and RAM of the Ceph nodes to easily perform tasks that would bog down a centralized server. The ability to leverage this computing power leads to several major benefits:
+1. OSDs Service Clients Directly: Since any network device has a limit to the number of concurrent connections it can support, a centralized system has a low physical limit at high scales. By enabling Ceph Clients to contact Ceph OSD Daemons directly, Ceph increases both performance and total system capacity simultaneously, while removing a single point of failure. Ceph Clients can maintain a session when they need to, and with a particular Ceph OSD Daemon instead of a centralized server.
+由于任何网络设备都有其支持的最大并发连接限制，规模巨大时一个中央化的系统其物理局限性就暴露了。Ceph允许客户端直接和节点联系，这在消除单故障点的同时，提升了性能和系统总容量。Ceph客户端可按需维护和某OSD的会话，而不是一个中央服务器。
+2. OSD Membership and Status: Ceph OSD Daemons join a cluster and report on their status. At the lowest level, the Ceph OSD Daemon status is up or down reflecting whether or not it is running and able to service Ceph Client requests. If a Ceph OSD Daemon is down and in the Ceph Storage Cluster, this status may indicate the failure of the Ceph OSD Daemon. If a Ceph OSD Daemon is not running (e.g., it crashes), the Ceph OSD Daemon cannot notify the Ceph Monitor that it is down. The Ceph Monitor can ping a Ceph OSD Daemon periodically to ensure that it is running. However, Ceph also empowers Ceph OSD Daemons to determine if a neighboring OSD is down, to update the cluster map and to report it to the Ceph monitor(s). This means that Ceph monitors can remain light weight processes. See Monitoring OSDs and Heartbeats for additional details.
+Ceph的OSD加入集群后会持续报告自己的状态。在最低水平，OSD状态为up或down，反应了它是否在运行、能否提供服务。如果一个OSD状态为down且in，表明OSD可能有故障。
+如果一OSD没在运行（比如，它崩溃了），这个OSD就不能告诉监视器它挂了。监视器可以周期性地ping一个OSD来确保它在运行，即便这样，ceph也授权OSD们探测它的邻居OSD是否还活着，以此来更新集群运行图并报告给监视器。一个OSD挂了时，对应归置组里的数据就降级了，如果OSD状态为down且in，但随后被踢出了集群，其余OSD会收到一个集群运行图更新，并自动重均衡集群内的归置组。
+3. Data Scrubbing: As part of maintaining data consistency and cleanliness, Ceph OSD Daemons can scrub objects within placement groups. That is, Ceph OSD Daemons can compare object metadata in one placement group with its replicas in placement groups stored on other OSDs. Scrubbing (usually performed daily) catches bugs or filesystem errors. Ceph OSD Daemons also perform deeper scrubbing by comparing data in objects bit-for-bit. Deep scrubbing (usually performed weekly) finds bad sectors on a drive that weren’t apparent in a light scrub. See Data Scrubbing for details on configuring scrubbing.
+作为维护工作的一部分，不但要保证数据的一致性和清洁性，OSD也能洗刷数据，就是说，Ceph OSD能比较对象元数据的几个副本以捕捉OSD缺陷或文件系统错误（每天）。OSD也能做深度洗刷，即按字节比较对象中的数据以找出轻度洗刷（每周）时未发现的硬盘坏扇区。
+4. Replication: Like Ceph Clients, Ceph OSD Daemons use the CRUSH algorithm, but the Ceph OSD Daemon uses it to compute where replicas of objects should be stored (and for rebalancing). In a typical write scenario, a client uses the CRUSH algorithm to compute where to store an object, maps the object to a pool and placement group, then looks at the CRUSH map to identify the primary OSD for the placement group.
 
-Ceph uses a new and innovative approach. Ceph clients contact a Ceph monitor and retrieve a copy of the cluster map. The CRUSH algorithm allows a client to compute where data should be stored, and enables the client to contact the primary OSD to store or retrieve the data. The OSD also uses the CRUSH algorithm, but the OSD uses it to compute where replicas of data should be stored (and for rebalancing). For a detailed discussion of CRUSH, see CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data
-Ceph用了全新的方法，其客户端联系ceph监视器并获得一份集群运行图拷贝。CRUSH算法让客户端计算数据应该存在哪里、并允许它联系主OSD来存储或检索数据。OSD也用CRUSH算法，但是用于计算数据副本应该存到哪里（或用于重均衡）。关于CRUSH的详细讨论，见CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data。
+The client writes the object to the identified placement group in the primary OSD. Then, the primary OSD with its own copy of the CRUSH map identifies the secondary and tertiary OSDs for replication purposes, and replicates the object to the appropriate placement groups in the secondary and tertiary OSDs (as many OSDs as additional replicas), and responds to the client once it has confirmed the object was stored successfully.
+客户端把数据写入目标归置组的主OSD，然后这个主OSD再用它的CRUSH图副本找出用于放副本的第二、第三个OSD，并把数据复制到适当的归置组所对应的第二、第三OSD（要多少副本就有多少OSD），最终，确认数据成功存储后反馈给客户端。
 
-The Ceph storage system supports the notion of ‘Pools’, which are logical partitions for storing object data. Pools set ownership/access, the number of object replicas, the number of placement groups, and the CRUSH rule set to use. Each pool has a number of placement groups that are mapped dynamically to OSDs. When clients store data, CRUSH maps the object data to placement groups. The following diagram depicts how CRUSH maps objects to placement groups, and placement groups to OSDs.
-Ceph存储系统支持“池”概念，它是存储对象数据的逻辑分区。存储池设置了所有者及访问权限、对象副本数、归置组数量、要用的CRUSH规则集。每个存储池都有一定数量的归置组动态地映射到OSD，客户端存数据时，CRUSH把对象数据映射到归置组。下图描述了CRUSH如何把对象映射到归置组、然后归置组到OSD。
+With the ability to perform data replication, Ceph OSD Daemons relieve Ceph clients from that duty, while ensuring high data availability and data safety.
+ 8.1.3  动态集群管理
+Dynamic Cluster Management
+In the Scalability and High Availability section, we explained how Ceph uses CRUSH, cluster awareness and intelligent daemons to scale and maintain high availability. Key to Ceph’s design is the autonomous, self-healing, and intelligent Ceph OSD Daemon. Let’s take a deeper look at how CRUSH works to enable modern cloud storage infrastructures to place data, rebalance the cluster and recover from faults dynamically.
+ 8.1.3.1  关于存储池
+About Pools
+The Ceph storage system supports the notion of ‘Pools’, which are logical partitions for storing objects. Pools set the following parameters:
+Ceph存储系统支持“池”概念，它是存储对象数据的逻辑分区。
+Ownership/Access to Objects 
+The Number of Object Replicas 
+The Number of Placement Groups, and 
+The CRUSH Ruleset to Use. 
+Ceph Clients retrieve a Cluster Map from a Ceph Monitor, and write objects to pools. The pool’s size or number of replicas, the CRUSH ruleset and the number of placement groups determine how Ceph will place the data.
 
-
-
-Mapping objects to placement groups instead of directly to OSDs creates a layer of indirection between the OSD and the client. The cluster must be able to grow (or shrink) and rebalance data dynamically. If the client “knew” which OSD had the data, that would create a tight coupling between the client and the OSD. Instead, the CRUSH algorithm maps the data to a placement group and then maps the placement group to one or more OSDs. This layer of indirection allows Ceph to rebalance dynamically when new OSDs come online.
+ 8.1.3.2  PG映射到OSD
+Mapping PGs to OSDs
+Each pool has a number of placement groups. CRUSH maps PGs to OSDs dynamically. When a Ceph Client stores objects, CRUSH will map each object to a placement group.
+Mapping objects to placement groups creates a layer of indirection between the Ceph OSD Daemon and the Ceph Client. The Ceph Storage Cluster must be able to grow (or shrink) and rebalance where it stores objects dynamically. If the Ceph Client “knew” which Ceph OSD Daemon had which object, that would create a tight coupling between the Ceph Client and the Ceph OSD Daemon. Instead, the CRUSH algorithm maps each object to a placement group and then maps each placement group to one or more Ceph OSD Daemons. This layer of indirection allows Ceph to rebalance dynamically when new Ceph OSD Daemons and the underlying OSD devices come online. The following diagram depicts how CRUSH maps objects to placement groups, and placement groups to OSDs.
 把对象映射到归置组而不是直接到OSD，由此在OSD和客户端间产生了一个间接层。由于集群必须能增大或缩小、并动态地重均衡数据，如果客户端“知道”哪个OSD有数据，这将会导致客户端和OSD间密耦合，相反，CRUSH算法把数据映射到归置组、然后再把归置组映射到一或多个OSD。这个间接层可以让ceph在OSD上线时动态地重均衡。
 
-With a copy of the cluster map and the CRUSH algorithm, the client can compute exactly which OSD to use when reading or writing a particular piece of data.
+With a copy of the cluster map and the CRUSH algorithm, the client can compute exactly which OSD to use when reading or writing a particular object.
 用一份集群运行图的拷贝和CRUSH算法，客户端能准确计算出到哪个OSD读、写数据片段。
-
-In a typical write scenario, a client uses the CRUSH algorithm to compute where to store data, maps the data to a placement group, then looks at the CRUSH map to identify the primary OSD for the placement group. Clients write data to the identified placement group in the primary OSD. Then, the primary OSD with its own copy of the CRUSH map identifies the secondary and tertiary OSDs for replication purposes, and replicates the data to the appropriate placement groups in the secondary and tertiary OSDs (as many OSDs as additional replicas), and responds to the client once it has confirmed the data was stored successfully.
-在一个典型的写入场景中，一客户端用CRUSH算法计算往哪里存数据、映射数据到归置组、然后参阅CRUSH图找到归置组的主OSD；客户端把数据写入目标归置组的主OSD，然后这个主OSD再用它的CRUSH图副本找出用于放副本的第二、第三个OSD，并把数据复制到适当的归置组所对应的第二、第三OSD（要多少副本就有多少OSD），最终，确认数据成功存储后反馈给客户端。
-
-
-
-Since any network device has a limit to the number of concurrent connections it can support, a centralized system has a low physical limit at high scales. By enabling clients to contact nodes directly, Ceph increases both performance and total system capacity simultaneously, while removing a single point of failure. Ceph clients can maintain a session when they need to, and with a particular OSD instead of a centralized server.
-由于任何网络设备都有其支持的最大并发连接限制，规模巨大时一个中央化的系统其物理局限性就暴露了。Ceph允许客户端直接和节点联系，这在消除单故障点的同时，提升了性能和系统总容量。Ceph客户端可按需维护和某OSD的会话，而不是一个中央服务器。
- 8.3  邻居感应节点
-Peer-aware nodes
-Ceph’s cluster map determines whether a node in a network is in the Ceph cluster or out of the Ceph cluster.
-Ceph的集群图可确定网络中的一个节点是在集群内还是在集群外。
-
-
-
-In many clustered architectures, the primary purpose of cluster membership is so that a centralized interface knows which hosts it can access. Ceph takes it a step further: Ceph’s nodes are cluster aware. Each node knows about other nodes in the cluster. This enables Ceph’s monitor, OSD, and metadata server daemons to interact directly with each other. One major benefit of this approach is that Ceph can utilize the CPU and RAM of its nodes to easily perform tasks that would bog down a centralized server.
-在很多集群化体系结构中，设计集群成员的主要目的是让中央接口知道它能访问哪些主机。ceph向前迈进了一步：ceph的节点会感知集群，每个节点都知道集群内的其它节点，这使得ceph的监视器、OSD、和元数据服务器守护进程可以直接互相沟通。这种方法的一个主要优势是，ceph能很容易地利用其节点的CPU和内存资源执行任务，而这样的任务会拖垮中央服务器。
-
-Todo Explain OSD maps, Monitor Maps, MDS maps
-待完成：解释OSD图、监视器图、MDS图。
- 8.4  智能OSD
-Smart osds
-Ceph OSDs join a cluster and report on their status. At the lowest level, the OSD status is up or down reflecting whether or not it is running and able to service requests. If an OSD is down and in the cluster, this status may indicate the failure of the OSD.
-Ceph的OSD加入集群后会持续报告自己的状态。在最低水平，OSD状态为up或down，反应了它是否在运行、能否提供服务。如果一个OSD状态为down且in，表明OSD可能有故障。
-
-With peer awareness, OSDs can communicate with other OSDs and monitors to perform tasks. OSDs take client requests to read data from or write data to pools, which have placement groups. When a client makes a request to write data to a primary OSD, the primary OSD knows how to determine which OSDs have the placement groups for the replica copies, and then update those OSDs. This means that OSDs can also take requests from other OSDs. With multiple replicas of data across OSDs, OSDs can also “peer” to ensure that the placement groups are in sync. See Placement Group States and Placement Group Concepts for details.
-有了邻居感知功能，为执行任务OSD能和其它OSD和监视器通讯。OSD根据客户端请求向存储池内的归置组读取或写入数据。当一客户端向某个主OSD请求写入数据时，主OSD知道如何确定哪个OSD持有用于副本的归置组，继而更新那些OSD。这意味着OSD也能接受其他OSD的请求，用散布于多个OSD的多份数据副本，OSD也能通过相互查询来确保归置组同步无误。详情见 Placement Group States和Placement Group Concepts。
-
-If an OSD is not running (e.g., it crashes), the OSD cannot notify the monitor that it is down. The monitor can ping an OSD periodically to ensure that it is running. However, Ceph also empowers OSDs to determine if a neighboring OSD is down, to update the cluster map and to report it to the monitor(s). When an OSD is down, the data in the placement group is said to be degraded. If the OSD is down and in, but subsequently taken out of the cluster, the OSDs receive an update to the cluster map and rebalance the placement groups within the cluster automatically.
-如果一OSD没在运行（比如，它崩溃了），这个OSD就不能告诉监视器它挂了。监视器可以周期性地ping一个OSD来确保它在运行，即便这样，ceph也授权OSD们探测它的邻居OSD是否还活着，以此来更新集群运行图并报告给监视器。一个OSD挂了时，对应归置组里的数据就降级了，如果OSD状态为down且in，但随后被踢出了集群，其余OSD会收到一个集群运行图更新，并自动重均衡集群内的归置组。
-
-OSDs store all data as objects in a flat namespace (e.g., no hierarchy of directories). An object has an identifier, binary data, and metadata consisting of a set of name/value pairs. The semantics are completely up to the client. For example, CephFS uses metadata to store file attributes such as the file owner, created date, last modified date, and so forth.
-OSD在扁平的名字空间里把所有数据存储为对象（例如，没有目录层次）。对象包含一个标识符、二进制数据、和由名字/值配对组成的元数据，语义完全取决于客户端。例如，CephFS用元数据存储文件属性，如文件所有者、创建日期、最后修改日期等等。
+ 8.1.3.3  计算PG ID
+Calculating PG IDs
+When a Ceph Client binds to a Ceph Monitor, it retrieves the latest copy of the Cluster Map. With the cluster map, the client knows about all of the monitors, OSDs, and metadata servers in the cluster. However, it doesn’t know anything about object locations.
+Object locations get computed.
+The only input required by the client is the object ID and the pool. It’s simple: Ceph stores data in named pools (e.g., “liverpool”). When a client wants to store a named object (e.g., “john,” “paul,” “george,” “ringo”, etc.) it calculates a placement group using the object name, a hash code, the number of OSDs in the cluster and the pool name. Ceph clients use the following steps to compute PG IDs.
+1. The client inputs the pool ID and the object ID. (e.g., pool = “liverpool” and object-id = “john”) 
+2. CRUSH takes the object ID and hashes it. 
+3. CRUSH calculates the hash modulo the number of OSDs. (e.g., 0x58) to get a PG ID. 
+4. CRUSH gets the pool ID given the pool name (e.g., “liverpool” = 4) 
+5. CRUSH prepends the pool ID to the pool ID to the PG ID (e.g., 4.0x58). 
+Computing object locations is much faster than performing object location query over a chatty session. The algorithm allows a client to compute where objects should be stored, and enables the client to contact the primary OSD to store or retrieve the objects.
+ 8.1.3.4  互联和集合
+Peering and Sets
+In previous sections, we noted that Ceph OSD Daemons check each other’s heartbeats and report back to the Ceph Monitor. Another thing Ceph OSD daemons do is called ‘peering’, which is the process of bringing all of the OSDs that store a Placement Group (PG) into agreement about the state of all of the objects (and their metadata) in that PG. In fact, Ceph OSD Daemons Report Peering Failure to the Ceph Monitors. Peering issues usually resolve themselves; however, if the problem persists, you may need to refer to the Troubleshooting Peering Failure section.
+Note: Agreeing on the state does not mean that the PGs have the latest contents.
+The Ceph Storage Cluster was designed to store at least two copies of an object (i.e., size = 2), which is the minimum requirement for data safety. For high availability, a Ceph Storage Cluster should store more than two copies of an object (e.g., size = 3 and min size = 2) so that it can continue to run in a degraded state while maintaining data safety.
+Referring back to the diagram in Smart Daemons Enable Hyperscale, we do not name the Ceph OSD Daemons specifically (e.g., osd.0, osd.1, etc.), but rather refer to them as Primary, Secondary, and so forth. By convention, the Primary is the first OSD in the Acting Set, and is responsible for coordinating the peering process for each placement group where it acts as the Primary, and is the ONLY OSD that that will accept client-initiated writes to objects for a given placement group where it acts as the Primary.
+When a series of OSDs are responsible for a placement group, that series of OSDs, we refer to them as an Acting Set. An Acting Set may refer to the Ceph OSD Daemons that are currently responsible for the placement group, or the Ceph OSD Daemons that were responsible for a particular placement group as of some epoch.
+The Ceph OSD daemons that are part of an Acting Set may not always be up. When an OSD in the Acting Set is up, it is part of the Up Set. The Up Set is an important distinction, because Ceph can remap PGs to other Ceph OSD Daemons when an OSD fails.
+Note: In an Acting Set for a PG containing osd.25, osd.32 and osd.61, the first OSD, osd.25, is the Primary. If that OSD fails, the Secondary, osd.32, becomes the Primary, and osd.25 will be removed from the Up Set.
+ 8.1.3.5  重均衡
+Rebalancing
+When you add a Ceph OSD Daemon to a Ceph Storage Cluster, the cluster map gets updated with the new OSD. Referring back to Calculating PG IDs, this changes the cluster map. Consequently, it changes object placement, because it changes an input for the calculations. The following diagram depicts the rebalancing process (albeit rather crudely, since it is substantially less impactful with large clusters) where some, but not all of the PGs migrate from existing OSDs (OSD 1, and OSD 2) to the new OSD (OSD 3). Even when rebalancing, CRUSH is stable. Many of the placement groups remain in their original configuration, and each OSD gets some added capacity, so there are no load spikes on the new OSD after rebalancing is complete.
 
 
+ 8.1.3.6  数据一致性
+Data Consistency
+As part of maintaining data consistency and cleanliness, Ceph OSDs can also scrub objects within placement groups. That is, Ceph OSDs can compare object metadata in one placement group with its replicas in placement groups stored in other OSDs. Scrubbing (usually performed daily) catches OSD bugs or filesystem errors. OSDs can also perform deeper scrubbing by comparing data in objects bit-for-bit. Deep scrubbing (usually performed weekly) finds bad sectors on a disk that weren’t apparent in a light scrub.
+See Data Scrubbing for details on configuring scrubbing.
+ 8.1.4  扩展ceph
+Extending Ceph
+You can extend Ceph by creating shared object classes called ‘Ceph Classes’. Ceph loads .so classes stored in the osd class dir directory dynamically (i.e., $libdir/rados-classes by default). When you implement a class, you can create new object methods that have the ability to call the native methods in the Ceph Object Store, or other class methods you incorporate via libraries or create yourself.
+On writes, Ceph Classes can call native or class methods, perform any series of operations on the inbound data and generate a resulting write transaction that Ceph will apply atomically.
+On reads, Ceph Classes can call native or class methods, perform any series of operations on the outbound data and return the data to the client.
+Ceph Class Example
+A Ceph class for a content management system that presents pictures of a particular size and aspect ratio could take an inbound bitmap image, crop it to a particular aspect ratio, resize it and embed an invisible copyright or watermark to help protect the intellectual property; then, save the resulting bitmap image to the object store.
+See src/objclass/objclass.h, src/fooclass.cc and src/barclass for exemplary implementations.
+ 8.1.5  总结
+Summary
+Ceph Storage Clusters are dynamic–like a living organism. Whereas, many storage appliances do not fully utilize the CPU and RAM of a typical commodity server, Ceph does. From heartbeats, to peering, to rebalancing the cluster or recovering from faults, Ceph offloads work from clients (and from a centralized gateway which doesn’t exist in the Ceph architecture) and uses the computing power of the OSDs to perform the work. When referring to Hardware Recommendations and the Network Config Reference, be cognizant of the foregoing concepts to understand how Ceph utilizes computing resources.
+ 8.2  ceph协议
+Ceph Protocol
+Ceph Clients use the native protocol for interacting with the Ceph Storage Cluster. Ceph packages this functionality into the librados library so that you can create your own custom Ceph Clients. The following diagram depicts the basic architecture.
 
-As part of maintaining data consistency and cleanliness, Ceph OSDs can also scrub the data. That is, Ceph OSDs can compare object metadata across replicas to catch OSD bugs or filesystem errors (daily). OSDs can also do deeper scrubbing by comparing data in objects bit-for-bit to find bad sectors on a disk that weren’t apparent in a light scrub (weekly).
-作为维护工作的一部分，不但要保证数据的一致性和清洁性，OSD也能洗刷数据，就是说，Ceph OSD能比较对象元数据的几个副本以捕捉OSD缺陷或文件系统错误（每天）。OSD也能做深度洗刷，即按字节比较对象中的数据以找出轻度洗刷（每周）时未发现的硬盘坏扇区。
+ 8.2.1  原生协议和librados
+Native Protocol and librados
+Modern applications need a simple object storage interface with asynchronous communication capability. The Ceph Storage Cluster provides a simple object storage interface with asynchronous communication capability. The interface provides direct, parallel access to objects throughout the cluster.
+Pool Operations 
+Snapshots and Copy-on-write Cloning 
+Read/Write Objects - Create or Remove - Entire Object or Byte Range - Append or Truncate 
+Create/Set/Get/Remove XATTRs 
+Create/Set/Get/Remove Key/Value Pairs 
+Compound operations and dual-ack semantics 
+Object Classes 
+ 8.2.2  对象关注/通知
+Object Watch/Notify
+A client can register a persistent interest with an object and keep a session to the primary OSD open. The client can send a notification message and payload to all watchers and receive notification when the watchers receive the notification. This enables a client to use any object a synchronization/communication channel.
 
-Todo explain “classes”
-待完成：解释“classes”
- 8.5  监视器法定人数
-Monitor quorums
-Ceph’s monitors maintain a master copy of the cluster map. So Ceph daemons and clients merely contact the monitor periodically to ensure they have the most recent copy of the cluster map. Ceph monitors are light-weight processes, but for added reliability and fault tolerance, Ceph supports distributed monitors. Ceph must have agreement among various monitor instances regarding the state of the cluster. To establish a consensus, Ceph always uses an odd number of monitors (e.g., 1, 3, 5, 7, etc) and the Paxos algorithm in order to establish a consensus.
-ceph的监视器维护着集群运行图的原稿，所以ceph守护进程和客户端只是周期性地联系监视器以保证他们有运行图的最新副本。ceph监视器是轻量级进程，但是增强了可靠性和容错能力，ceph支持分布式监视器。不管Ceph集群状态如何，其不同监视器例程必须达成一致，为此，ceph总是使用奇数个监视器（如：1、3、5、7……）和Paxos算法来达成一致意见。
- 8.6  mds
-The Ceph filesystem service is provided by a daemon called ceph-mds. It uses RADOS to store all the filesystem metadata (directories, file ownership, access modes, etc), and directs clients to access RADOS directly for the file contents. The Ceph filesystem aims for POSIX compatibility. ceph-mds can run as a single process, or it can be distributed out to multiple physical machines, either for high availability or for scalability.
-Ceph文件系统服务由名为ceph-mds的守护进程提供，它使用RADOS存储所有文件系统元数据（目录、文件所有者、访问权限等等），并指导客户端直接访问RADOS获取文件内容。Ceph力争兼容POSIX。ceph-mds可以只运行一个，也可以分布于多台物理机器，以获得高可用性或伸缩性。
+ 8.2.3  数据裁剪
+Data Striping
+Storage devices have throughput limitations, which impact performance and scalability. So storage systems often support striping–storing sequential pieces of information across across multiple storage devices–to increase throughput and performance. The most common form of data striping comes from RAID. The RAID type most similar to Ceph’s striping is RAID 0, or a ‘striped volume.’ Ceph’s striping offers the throughput of RAID 0 striping, the reliability of n-way RAID mirroring and faster recovery.
+Ceph provides three types of clients: Ceph Block Device, Ceph Filesystem, and Ceph Object Storage. A Ceph Client converts its data from the representation format it provides to its users (a block device image, RESTful objects, CephFS filesystem directories) into objects for storage in the Ceph Storage Cluster.
+Tip: The objects Ceph stores in the Ceph Storage Cluster are not striped. Ceph Object Storage, Ceph Block Device, and the Ceph Filesystem stripe their data over multiple Ceph Storage Cluster objects. Ceph Clients that write directly to the Ceph Storage Cluster via librados must perform the the striping (and parallel I/O) for themselves to obtain these benefits.
+The simplest Ceph striping format involves a stripe count of 1 object. Ceph Clients write stripe units to a Ceph Storage Cluster object until the object is at its maximum capacity, and then create another object for additional stripes of data. The simplest form of striping may be sufficient for small block device images, S3 or Swift objects and CephFS files. However, this simple form doesn’t take maximum advantage of Ceph’s ability to distribute data across placement groups, and consequently doesn’t improve performance very much. The following diagram depicts the simplest form of striping:
 
-High Availability: The extra ceph-mds instances can be standby, ready to take over the duties of any failed ceph-mds that was active. This is easy because all the data, including the journal, is stored on RADOS. The transition is triggered automatically by ceph-mon.
+If you anticipate large images sizes, large S3 or Swift objects (e.g., video), or large CephFS directories, you may see considerable read/write performance improvements by striping client data over multiple objects within an object set. Significant write performance occurs when the client writes the stripe units to their corresponding objects in parallel. Since objects get mapped to different placement groups and further mapped to different OSDs, each write occurs in parallel at the maximum write speed. A write to a single disk would be limited by the head movement (e.g. 6ms per seek) and bandwidth of that one device (e.g. 100MB/s). By spreading that write over multiple objects (which map to different placement groups and OSDs) Ceph can reduce the number of seeks per drive and combine the throughput of multiple drives to achieve much faster write (or read) speeds.
+Note: Striping is independent of object replicas. Since CRUSH replicates objects across OSDs, stripes get replicated automatically.
+In the following diagram, client data gets striped across an object set (object set 1 in the following diagram) consisting of 4 objects, where the first stripe unit is stripe unit 0 in object 0, and the fourth stripe unit is stripe unit 3 in object 3. After writing the fourth stripe, the client determines if the object set is full. If the object set is not full, the client begins writing a stripe to the first object again (object 0 in the following diagram). If the object set is full, the client creates a new object set (object set 2 in the following diagram), and begins writing to the first stripe (stripe unit 16) in the first object in the new object set (object 4 in the diagram below).
+
+
+Three important variables determine how Ceph stripes data:
+Object Size: Objects in the Ceph Storage Cluster have a maximum configurable size (e.g., 2MB, 4MB, etc.). The object size should be large enough to accommodate many stripe units, and should be a multiple of the stripe unit. 
+Stripe Width: Stripes have a configurable unit size (e.g., 64kb). The Ceph Client divides the data it will write to objects into equally sized stripe units, except for the last stripe unit. A stripe width, should be a fraction of the Object Size so that an object may contain many stripe units. 
+Stripe Count: The Ceph Client writes a sequence of stripe units over a series of objects determined by the stripe count. The series of objects is called an object set. After the Ceph Client writes to the last object in the object set, it returns to the first object in the object set. 
+Important: Test the performance of your striping configuration before putting your cluster into production. You CANNOT change these striping parameters after you stripe the data and write it to objects.
+Once the Ceph Client has striped data to stripe units and mapped the stripe units to objects, Ceph’s CRUSH algorithm maps the objects to placement groups, and the placement groups to Ceph OSD Daemons before the objects are stored as files on a storage disk.
+Note: Since a client writes to a single pool, all data striped into objects get mapped to placement groups in the same pool. So they use the same CRUSH map and the same access controls.
+ 8.3  ceph客户端
+Ceph Clients
+Ceph Clients include a number of service interfaces. These include:
+Block Devices: The Ceph Block Device (a.k.a., RBD) service provides resizable, thin-provisioned block devices with snapshotting and cloning. Ceph stripes a block device across the cluster for high performance. Ceph supports both kernel objects (KO) and a QEMU hypervisor that uses librbd directly–avoiding the kernel object overhead for virtualized systems.
+块设备：RBD服务提供了大小可调、精炼、支持快照和克隆的块设备。为提供高性能，ceph把块设备条带化。ceph同时支持直接使用librbd的内核对象（KO）和QEMU管理程序——避免了虚拟系统上的内核模块开销。
+Object Storage: The Ceph Object Storage (a.k.a., RGW) service provides RESTful APIs with interfaces that are compatible with Amazon S3 and OpenStack Swift. 
+
+Filesystem: The Ceph Filesystem (CephFS) service provides a POSIX compliant filesystem usable with mount or as a filesytem in user space (FUSE).
+Ceph文件系统：Ceph文件系统兼容POSIX，可以直接挂载或挂载为用户空间文件系统（FUSE）。
+Ceph can run additional instances of OSDs, MDSs, and monitors for scalability and high availability. The following diagram depicts the high-level architecture.
+
+ 8.3.1  ceph对象存储
+Ceph Object Storage
+The Ceph Object Storage daemon, radosgw, is a FastCGI service that provides a RESTful HTTP API to store objects and metadata. It layers on top of the Ceph Storage Cluster with its own data formats, and maintains its own user database, authentication, and access control. The RADOS Gateway uses a unified namespace, which means you can use either the OpenStack Swift-compatible API or the Amazon S3-compatible API. For example, you can write data using the S3-comptable API with one application and then read data using the Swift-compatible API with another application.
+RADOS网关守护进程是radosgw，它是一个FastCGI服务，提供了RESTful HTTP API用于存储对象和元数据。它坐落于RADOS之上，有自己的数据格式，并维护着自己的用户数据库、认证、和访问控制。RADOS网关使用统一的名字空间，也就是说，你可以用OpenStack Swift兼容的API或者Amazon S3兼容的API；例如，你可以用一个程序以S3兼容API写入数据、然后用另一个程序以Swift兼容API读出。
+S3/Swift Objects and Store Cluster Objects Compared
+Ceph’s Object Storage uses the term object to describe the data it stores. S3 and Swift objects are not the same as the objects that Ceph writes to the Ceph Storage Cluster. Ceph Object Storage objects are mapped to Ceph Storage Cluster objects. The S3 and Swift objects do not necessarily correspond in a 1:1 manner with an object stored in the storage cluster. It is possible for an S3 or Swift object to map to multiple Ceph objects.
+See Ceph Object Storage for details.
+ 8.3.2  ceph块设备
+Ceph Block Device
+A Ceph Block Device stripes a block device image over multiple objects in the Ceph Storage Cluster, where each object gets mapped to a placement group and distributed, and the placement groups are spread across separate ceph-osd daemons throughout the cluster.
+RBD把一个设备映像条带化到集群内的多个对象，其中每个对象都被映射到一个归置组并分布出去，这些归置组会散播到整个集群的某些ceph-osd守护进程。
+Important: Striping allows RBD block devices to perform better than a single server could!
+重要：条带化会使RBD块设备比单台服务器运行的更好。
+Thin-provisioned snapshottable Ceph Block Devices are an attractive option for virtualization and cloud computing. In virtual machine scenarios, people typically deploy a Ceph Block Device with the rbd network storage driver in Qemu/KVM, where the host machine uses librbd to provide a block device service to the guest. Many cloud computing stacks use libvirt to integrate with hypervisors. You can use thin-provisioned Ceph Block Devices with Qemu and libvirt to support OpenStack and CloudStack among other solutions.
+RBD的简配、可快照块设备对虚拟化和云计算很有吸引力。在虚拟机场景中，人们一般会用Qemu/KVM中的rbd网络驱动部署RBD，虚拟主机用librbd向客户提供块设备服务；很多云计算堆栈用libvirt和管理程序集成，你可以用RBD的简配块设备搭配Qemu和libvirt来支持OpenStack和CloudStack。
+While we do not provide librbd support with other hypervisors at this time, you may also use Ceph Block Device kernel objects to provide a block device to a client. Other virtualization technologies such as Xen can access the Ceph Block Device kernel object(s). This is done with the command-line tool rbd.
+现在我们还没对其它虚拟机管理程序提供librbd支持，你可以用RBD内核对象把块设备提供给客户端。其它虚拟化技术，像Xen能访问RBD内核对象，这可以用命令行工具rbd来实现。
+ 8.3.3  ceph文件系统
+Ceph Filesystem
+The Ceph Filesystem (Ceph FS) provides a POSIX-compliant filesystem as a service that is layered on top of the object-based Ceph Storage Cluster. Ceph FS files get mapped to objects that Ceph stores in the Ceph Storage Cluster. Ceph Clients mount a CephFS filesystem as a kernel object or as a Filesystem in User Space (FUSE).
+
+The Ceph Filesystem service includes the Ceph Metadata Server (MDS) deployed with the Ceph Storage cluster. The purpose of the MDS is to to store all the filesystem metadata (directories, file ownership, access modes, etc) in high-availability Ceph Metadata Servers where the metadata resides in memory. The reason for the MDS (a daemon called ceph-mds) is that simple filesystem operations like listing a directory or changing a directory (ls, cd) would tax the Ceph OSD Daemons unnecessarily. So separating the metadata from the data means that the Ceph Filesystem can provide high performance services without taxing the Ceph Storage Cluster.
+Ceph文件系统服务由名为ceph-mds的守护进程提供，它使用RADOS存储所有文件系统元数据（目录、文件所有者、访问权限等等），并指导客户端直接访问RADOS获取文件内容。
+Ceph FS separates the metadata from the data, storing the metadata in the MDS, and storing the file data in one or more objects in the Ceph Storage Cluster. The Ceph filesystem aims for POSIX compatibility. ceph-mds can run as a single process, or it can be distributed out to multiple physical machines, either for high availability or for scalability.
+Ceph力争兼容POSIX。ceph-mds可以只运行一个，也可以分布于多台物理机器，以获得高可用性或伸缩性。
+High Availability: The extra ceph-mds instances can be standby, ready to take over the duties of any failed ceph-mds that was active. This is easy because all the data, including the journal, is stored on RADOS. The transition is triggered automatically by ceph-mon. 
 高可用性：多余的ceph-mds例程可处于standby（待命）状态，随时准备替下之前处于active（活跃）状态的失败ceph-mds。这可以轻易做到，因为所有数据、包括日志都存储在RADOS上，这个转换过程由ceph-mon自动触发。
-Scalability: Multiple ceph-mds instances can be active, and they will split the directory tree into subtrees (and shards of a single busy directory), effectively balancing the load amongst all active servers.
+Scalability: Multiple ceph-mds instances can be active, and they will split the directory tree into subtrees (and shards of a single busy directory), effectively balancing the load amongst all active servers. 
 可伸缩性：多个ceph-mds例程可以处于active状态，并且它们会把目录树分割为子树（和单个忙碌目录的碎片），在所有活跃服务器间高效地均衡负载。
 译者曰：虽然文档这么说，但实践中还不推荐这样做，mds稳定性尚不理想。多个活跃的mds远没一个稳定，即便如此，您也应该先配置起几个mds备用。
-
-Combinations of standby and active etc are possible, for example running 3 active ceph-mds instances for scaling, and one standby intance for high availability.
+Combinations of standby and active etc are possible, for example running 3 active ceph-mds instances for scaling, and one standby instance for high availability.
 待命和活跃MDS可组合，例如，运行3个活跃ceph-mds例程以实现扩展、和1个待命例程以实现高可用性。
- 8.7  客户端接口
-Client interfaces
- 8.7.1  认证和授权
-Authentication and authorization
-Ceph clients can authenticate their users with Ceph monitors, OSDs and metadata servers. Authenticated users gain authorization to read, write and execute Ceph commands. The Cephx authentication system is similar to Kerberos, but avoids a single point of failure to ensure scalability and high availability. For details on Cephx, see Ceph Authentication and Authorization.
-ceph客户端能通过ceph监视器、OSD和元数据服务器认证它们的用户，通过认证的用户获得读、写和执行ceph命令的授权。cephx认证系统和Kerberos相似，但消除了单故障点，进而保证了可扩展性和高可用性。关于cephx的细节，参见认证概览。
- 8.7.2  librados
-Todo Snapshotting, Import/Export, Backup
-Todo native APIs
-待完成：拍快照、导入/导出、备份。
-待完成：原生API。
- 8.7.3  RBD
-RBD stripes a block device image over multiple objects in the cluster, where each object gets mapped to a placement group and distributed, and the placement groups are spread across separate ceph-osd daemons throughout the cluster.
-RBD把一个设备映像条带化到集群内的多个对象，其中每个对象都被映射到一个归置组并分布出去，这些归置组会散播到整个集群的某些ceph-osd守护进程。
 
-Important Striping allows RBD block devices to perform better than a single server could!
-重要：条带化会使RBD块设备比单台服务器运行的更好。
-
-RBD’s thin-provisioned snapshottable block devices are an attractive option for virtualization and cloud computing. In virtual machine scenarios, people typically deploy RBD with the rbd network storage driver in Qemu/KVM, where the host machine uses librbd to provide a block device service to the guest. Many cloud computing stacks use libvirt to integrate with hypervisors. You can use RBD thin-provisioned block devices with Qemu and libvirt to support OpenStack and CloudStack among other solutions.
-RBD的简配、可快照块设备对虚拟化和云计算很有吸引力。在虚拟机场景中，人们一般会用Qemu/KVM中的rbd网络驱动部署RBD，虚拟主机用librbd向客户提供块设备服务；很多云计算堆栈用libvirt和管理程序集成，你可以用RBD的简配块设备搭配Qemu和libvirt来支持OpenStack和CloudStack。
-
-While we do not provide librbd support with other hypervisors at this time, you may also use RBD kernel objects to provide a block device to a client. Other virtualization technologies such as Xen can access the RBD kernel object(s). This is done with the command-line tool rbd.
-现在我们还没对其它虚拟机管理程序提供librbd支持，你可以用RBD内核对象把块设备提供给客户端。其它虚拟化技术，像Xen能访问RBD内核对象，这可以用命令行工具rbd来实现。
- 8.7.4  RGW
-The RADOS Gateway daemon, radosgw, is a FastCGI service that provides a RESTful HTTP API to store objects and metadata. It layers on top of RADOS with its own data formats, and maintains its own user database, authentication, and access control. The RADOS Gateway uses a unified namespace, which means you can use either the OpenStack Swift-compatible API or the Amazon S3-compatible API. For example, you can write data using the S3-comptable API with one application and then read data using the Swift-compatible API with another application.
-RADOS网关守护进程是radosgw，它是一个FastCGI服务，提供了RESTful HTTP API用于存储对象和元数据。它坐落于RADOS之上，有自己的数据格式，并维护着自己的用户数据库、认证、和访问控制。RADOS网关使用统一的名字空间，也就是说，你可以用OpenStack Swift兼容的API或者Amazon S3兼容的API；例如，你可以用一个程序以S3兼容API写入数据、然后用另一个程序以Swift兼容API读出。
-
-See RADOS Gateway for details.
-详情参见RADOS网关。
- 8.7.5  cephfs
-Todo cephfs, ceph-fuse
-待完成：cephfs、ceph-fuse
