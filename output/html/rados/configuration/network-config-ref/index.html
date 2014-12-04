@@ -1,0 +1,509 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>网络配置参考 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <link rel="up" title="配置" href="../" />
+    <link rel="next" title="Cephx 配置参考" href="../auth-config-ref/" />
+    <link rel="prev" title="配置 Ceph" href="../ceph-conf/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../auth-config-ref/" title="Cephx 配置参考"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../ceph-conf/" title="配置 Ceph"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" accesskey="U">配置</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="id1">
+<h1>网络配置参考<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>网络配置对构建高性能 <a class="reference internal" href="../../../glossary/#term-21"><em class="xref std std-term">Ceph 存储集群</em></a>来说相当重要。 Ceph 存储集群不会代表 <a class="reference internal" href="../../../glossary/#term-67"><em class="xref std std-term">Ceph 客户端</em></a>执行请求路由或调度，相反， Ceph 客户端（如块设备、 CephFS 、 REST 网关）直接向 OSD 请求，然后OSD为客户端执行数据复制，也就是说复制和其它因素会额外增加集群网的负载。</p>
+<p>我们的快速入门配置提供了一个简陋的 <a class="reference external" href="../../../start/quick-ceph-deploy/#create-a-cluster">Ceph 配置文件</a>，其中只设置了监视器 IP 地址和守护进程所在的主机名。如果没有配置集群网，那么 Ceph 假设你只有一个“公共网”。只用一个网可以运行 Ceph ，但是在大型集群里用单独的“集群”网可显著地提升性能。</p>
+<p>我们建议用两个网络运营 Ceph 存储集群：一个公共网（前端）和一个集群网（后端）。为此，各<a class="reference internal" href="../../../glossary/#term-"><em class="xref std std-term">节点</em></a>得配备多个网卡，见<cite>硬件推荐——网络</cite>。</p>
+<p class="ditaa">
+<img src="../../../_images/ditaa-2452ee22ef7d825a489a08e0b935453f2b06b0e6.png"/>
+</p>
+<p>运营两个独立网络的考量主要有：</p>
+<ol class="arabic simple">
+<li><strong>性能：</strong> OSD 为客户端处理数据复制，复制多份时 OSD 间的网络负载势必会影响到客户端和 Ceph 集群的通讯，包括延时增加、产生性能问题；恢复和重均衡也会显著增加公共网延时。关于 Ceph 如何复制参见<a class="reference external" href="../../../architecture#scalability-and-high-availability">伸缩性和高可用性</a>；关于心跳流量参见<a class="reference external" href="../mon-osd-interaction">监视器与 OSD 的交互</a>。</li>
+<li><strong>安全：</strong> 大多数人都是良民，很少的一撮人喜欢折腾拒绝服务攻击（ DoS ）。当 OSD 间的流量失控时，归置组再也不能达到 <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt> 状态，这样用户就不能读写数据了。挫败此类攻击的一种好方法是维护一个完全独立的集群网，使之不能直连互联网；另外，请考虑用<a class="reference external" href="../auth-config-ref#signatures">消息签名</a>防止欺骗攻击。</li>
+</ol>
+<div class="section" id="id2">
+<h2>防火墙<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>守护进程默认会<a class="reference internal" href="#id10">绑定</a>到 <tt class="docutils literal"><span class="pre">6800:7100</span></tt> 间的端口，你可以更改此范围。更改防火墙配置前先检查下 <tt class="docutils literal"><span class="pre">iptables</span></tt> 配置。更改配置时谨慎点。</p>
+<div class="highlight-python"><pre>sudo iptables -L</pre>
+</div>
+<p>一些 Linux 发行版的规则拒绝除 SSH 之外的所有网卡的所有入栈连接，例如：</p>
+<div class="highlight-python"><pre>REJECT all -- anywhere anywhere reject-with icmp-host-prohibited</pre>
+</div>
+<p>你得先删掉公共网和集群网对应的这些规则，然后再增加安全保护规则。</p>
+<div class="section" id="id3">
+<h3>监视器防火墙<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>监视器默认监听 <tt class="docutils literal"><span class="pre">6789</span></tt> 端口，而且监视器总是运行在公共网。按下例增加规则时，要把 <tt class="docutils literal"><span class="pre">{iface}</span></tt> 替换为公共网接口（如 <tt class="docutils literal"><span class="pre">eth0</span></tt> 、 <tt class="docutils literal"><span class="pre">eth1</span></tt> 等等）、 <tt class="docutils literal"><span class="pre">{ip-address}</span></tt> 替换为公共网 IP 、 <tt class="docutils literal"><span class="pre">{netmask}</span></tt> 替换为公共网掩码。</p>
+<div class="highlight-python"><pre>sudo iptables -A INPUT -i {iface} -p tcp -s {ip-address}/{netmask} --dport 6789 -j ACCEPT</pre>
+</div>
+</div>
+<div class="section" id="mds">
+<h3>MDS 防火墙<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="../../../glossary/#term-64"><em class="xref std std-term">元数据服务器</em></a>会监听公共网 6800 以上的第一个可用端口，确保打开元数据服务器上 6800 以上的端口。按下例增加规则时，要把 <tt class="docutils literal"><span class="pre">{iface}</span></tt> 替换为公共网接口（如 <tt class="docutils literal"><span class="pre">eth0</span></tt> 、 <tt class="docutils literal"><span class="pre">eth1</span></tt> 等等）、 <tt class="docutils literal"><span class="pre">{ip-address}</span></tt> 替换为公共网 IP 、 <tt class="docutils literal"><span class="pre">{netmask}</span></tt> 替换为公共网掩码。</p>
+<p>例如：</p>
+<div class="highlight-python"><pre>sudo iptables -A INPUT -i {iface} -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:6810 -j ACCEPT</pre>
+</div>
+</div>
+<div class="section" id="osd">
+<h3>OSD 防火墙<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h3>
+<p>OSD 默认<a class="reference internal" href="#id10">绑定</a> 6800 以上的第一个可用端口，要确保为各 OSD 至少打开了 3 个 6800 以上的端口。一主机上的各个 OSD 最多会用到 3 个端口：</p>
+<ol class="arabic simple">
+<li>一个用于和客户端、监视器通讯；</li>
+<li>一个用于发送数据到其他 OSD；</li>
+<li>一个用于心跳；</li>
+</ol>
+<p class="ditaa">
+<img src="../../../_images/ditaa-7aacc46d3624d8b5f65c30b294080e1e69bbd29c.png"/>
+</p>
+<p>各节点的端口不尽相同，所以你不需要开放多于 Ceph 所需的端口。但是最好多开放一点，因为有时候某个守护进程失败了，但是重启前并未全部释放，以致于重启后的进程监听了新端口。</p>
+<p>如果你分开了公共网和集群网，必须分别为之设置防火墙，因为客户端会通过公共网连接、而其他 OSD 会通过集群网连接。按下例增加规则时，要把 <tt class="docutils literal"><span class="pre">{iface}</span></tt> 替换为网口（如 <tt class="docutils literal"><span class="pre">eth0</span></tt> 、 <tt class="docutils literal"><span class="pre">eth1</span></tt> 等等）、 <tt class="docutils literal"><span class="pre">{ip-address}</span></tt> 替换为公共网或集群网 IP 、 <tt class="docutils literal"><span class="pre">{netmask}</span></tt> 替换为公共网或集群网掩码。例如：</p>
+<div class="highlight-python"><pre>sudo iptables -A INPUT -i {iface}  -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:6810 -j ACCEPT</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">如果你的元数据服务器和 OSD 在同一节点上，可以合并公共网配置，要确保开放了足够用的端口。</p>
+</div>
+</div>
+</div>
+<div class="section" id="ceph">
+<h2>Ceph 网络<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h2>
+<p>Ceph 的网络配置要放到 <tt class="docutils literal"><span class="pre">[global]</span></tt> 段下。前述的 5 分钟快速入门提供了一个简陋的 <a class="reference external" href="../../../start/quick-ceph-deploy/#create-a-cluster">Ceph 配置文件</a>，它假设服务器和客户端都位于同一网段， Ceph 可以很好地适应这种情形。然而 Ceph 允许配置更精细的公共网，包括多 IP 和多掩码；也能用单独的集群网处理 OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址和客户端用来访问存储服务的公共网地址。典型的内网常常是 <tt class="docutils literal"><span class="pre">192.168.0.0</span></tt> 或 <tt class="docutils literal"><span class="pre">10.0.0.0</span></tt> 。</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">如果你给公共网或集群网配置了多个 IP 地址及子网掩码，这些子网必须能互通。另外要确保在防火墙上为各 IP 和子网开放了必要的端口。</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ceph 用 CIDR 法表示子网，如 <tt class="docutils literal"><span class="pre">10.0.0.0/24</span></tt> 。</p>
+</div>
+<p>配置完几个网络后，可以重启集群或挨个重启守护进程。 Ceph 守护进程动态地绑定端口，所以更改网络配置后无需重启整个集群。</p>
+<div class="section" id="id4">
+<h3>公共网<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>要配置一个公共网，把下列选项加到配置文件的 <tt class="docutils literal"><span class="pre">[global]</span></tt> 段下。</p>
+<div class="highlight-ini"><pre>[global]
+        ...
+        public network = {public-network/netmask}</pre>
+</div>
+</div>
+<div class="section" id="id5">
+<h3>集群网<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>如果你声明了集群网， OSD 将把心跳、对象复制和恢复流量路由到集群网，与单个网络相比这会提升性能。要配置集群网，把下列选项加进配置文件的 <tt class="docutils literal"><span class="pre">[global]</span></tt> 段。</p>
+<div class="highlight-ini"><pre>[global]
+        ...
+        cluster network = {cluster-network/netmask}</pre>
+</div>
+<p>为安全起见，从公共网或互联网到集群网应该是<strong>不可达</strong>的。</p>
+</div>
+</div>
+<div class="section" id="id6">
+<h2>Ceph 守护进程<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>有一个网络配置是所有守护进程都要配的：各个守护进程都<strong>必须</strong>指定 <tt class="docutils literal"><span class="pre">host</span></tt> ， Ceph 也要求指定监视器 IP 地址及端口。</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">一些部署工具（如 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 、 Chef ）会给你创建配置文件，如果它能胜任那就<strong>别设置</strong>这些值。</p>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last"><tt class="docutils literal"><span class="pre">host</span></tt> 选项是主机的短名，不是全资域名 FQDN ，也<strong>不是</strong> IP 地址。在命令行下输入 <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-s</span></tt> 获取主机名。</p>
+</div>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[mon.a]</span>
+
+        <span class="na">host</span> <span class="o">=</span> <span class="s">{hostname}</span>
+<span class="s">        mon addr = {ip-address}:6789</span>
+
+<span class="k">[osd.0]</span>
+        <span class="na">host</span> <span class="o">=</span> <span class="s">{hostname}</span>
+</pre></div>
+</div>
+<p>并非一定要给守护进程设置 IP 地址。如果你有一个静态配置，且分离了公共网和集群网， Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程设置静态 IP ，可把下列选项加到 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 。</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[osd.0]</span>
+        <span class="na">public addr</span> <span class="o">=</span> <span class="s">{host-public-ip-address}</span>
+<span class="s">        cluster addr = {host-cluster-ip-address}</span>
+</pre></div>
+</div>
+<div class="topic">
+<p class="topic-title first">单网卡OSD、双网络集群</p>
+<p>一般来说，我们不建议用单网卡 OSD 主机部署两个网络。然而这事可以实现，把 <tt class="docutils literal"><span class="pre">public</span> <span class="pre">addr</span></tt> 选项配在 <tt class="docutils literal"><span class="pre">[osd.n]</span></tt> 段下即可强制 OSD 主机运行在公共网，其中 <tt class="docutils literal"><span class="pre">n</span></tt> 是其 OSD 号。另外，公共网和集群网必须互通，考虑到安全因素我们不建议这样做。</p>
+</div>
+</div>
+<div class="section" id="id7">
+<h2>网络配置选项<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<p>网络配置选项不是必需的， Ceph 假设所有主机都运行于公共网，除非你特意配置了一个集群网。</p>
+<div class="section" id="id8">
+<h3>公共网<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<p>公共网配置用于明确地为公共网定义 IP 地址和子网。你可以分配静态 IP 或用 <tt class="docutils literal"><span class="pre">public</span>
+<span class="pre">addr</span></tt> 覆盖 <tt class="docutils literal"><span class="pre">public</span> <span class="pre">network</span></tt> 选项。</p>
+<p><tt class="docutils literal"><span class="pre">public</span> <span class="pre">network</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">公共网（前端）的 IP 地址和掩码（如 <tt class="docutils literal"><span class="pre">192.168.0.0/24</span></tt> ），置于 <tt class="docutils literal"><span class="pre">[global]</span></tt> 下。多个子网用逗号分隔。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><tt class="docutils literal"><span class="pre">{ip-address}/{netmask}</span> <span class="pre">[,</span> <span class="pre">{ip-address}/{netmask}]</span></tt></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">public</span> <span class="pre">addr</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">用于公共网（前端）的 IP 地址。适用于各守护进程。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">IP 地址</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id9">
+<h3>集群网<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<p>集群网配置用来声明一个集群网，并明确地定义其 IP 地址和子网。你可以配置静态 IP 或为某 OSD 守护进程配置 <tt class="docutils literal"><span class="pre">cluster</span> <span class="pre">addr</span></tt> 以覆盖 <tt class="docutils literal"><span class="pre">cluster</span> <span class="pre">network</span></tt> 选项。</p>
+<p><tt class="docutils literal"><span class="pre">cluster</span> <span class="pre">network</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">集群网（后端）的 IP 地址及掩码（如 <tt class="docutils literal"><span class="pre">10.0.0.0/24</span></tt> ），置于 <tt class="docutils literal"><span class="pre">[global]</span></tt> 下。多个子网用逗号分隔。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><tt class="docutils literal"><span class="pre">{ip-address}/{netmask}</span> <span class="pre">[,</span> <span class="pre">{ip-address}/{netmask}]</span></tt></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cluster</span> <span class="pre">addr</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">集群网（后端） IP 地址。置于各守护进程下。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Address</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id10">
+<h3>绑定<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<p>绑定选项用于设置 OSD 和 MDS 默认使用的端口范围，默认范围是 <tt class="docutils literal"><span class="pre">6800:7100</span></tt> 。确保<a class="reference internal" href="#id2">防火墙</a>开放了对应端口范围。</p>
+<p>你也可以让 Ceph 守护进程绑定到 IPv6 地址。</p>
+<p><tt class="docutils literal"><span class="pre">ms</span> <span class="pre">bind</span> <span class="pre">port</span> <span class="pre">min</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">OSD 或 MDS 可绑定的最小端口号。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">6800</span></tt></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">ms</span> <span class="pre">bind</span> <span class="pre">port</span> <span class="pre">max</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">OSD 或 MDS 可绑定的最大端口号。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">7100</span></tt></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">No.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">ms</span> <span class="pre">bind</span> <span class="pre">ipv6</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">允许 Ceph 守护进程绑定 IPv6 地址。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id11">
+<h3>主机<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 配置文件里至少要写一个监视器、且每个监视器下都要配置 <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">addr</span></tt> 选项；每个监视器、元数据服务器和 OSD 下都要配 <tt class="docutils literal"><span class="pre">host</span></tt> 选项。</p>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">addr</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"><tt class="docutils literal"><span class="pre">{hostname}:{port}</span></tt> 条目列表，用以让客户端连接 Ceph 监视器。如果未设置， Ceph 查找 <tt class="docutils literal"><span class="pre">[mon.*]</span></tt> 段。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">host</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">主机名。此选项用于特定守护进程，如 <tt class="docutils literal"><span class="pre">[osd.0]</span></tt> 。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes, for daemon instances.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">localhost</span></tt></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">不要用 <tt class="docutils literal"><span class="pre">localhost</span></tt> 。在命令行下执行 <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-s</span></tt> 获取主机名（到第一个点，不是全资域名），并用于配置文件。</p>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">用第三方部署工具时不要指定 <tt class="docutils literal"><span class="pre">host</span></tt> 选项，它会自行获取。</p>
+</div>
+</div>
+<div class="section" id="tcp">
+<h3>TCP<a class="headerlink" href="#tcp" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 默认禁用 TCP 缓冲。</p>
+<p><tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">nodelay</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph 用 <tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">nodelay</span></tt> 使系统尽快（不缓冲）发送每个请求。禁用 <a class="reference external" href="http://en.wikipedia.org/wiki/Nagle's_algorithm">Nagle 算法</a>可增加吞吐量，但会引进延时。如果你遇到大量小包，可以禁用 <tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">nodelay</span></tt> 试试。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">true</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">rcvbuf</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">网络套接字接收缓冲尺寸，默认禁用。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">ms</span> <span class="pre">tcp</span> <span class="pre">read</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">如果一客户端或守护进程请求连接到另一个 Ceph 守护进程，且没有断开不再使用的连接，在 <tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">read</span> <span class="pre">timeout</span></tt> 指定的秒数之后它将被标记为空闲。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Unsigned 64-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">900</span></tt> 15 minutes.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../">配置</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../filesystem-recommendations/">硬盘和文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ceph-conf/">配置 Ceph</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">网络选项</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id2">防火墙</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id3">监视器防火墙</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#mds">MDS 防火墙</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#osd">OSD 防火墙</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#ceph">Ceph 网络</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id4">公共网</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id5">集群网</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">Ceph 守护进程</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">网络配置选项</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id8">公共网</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id9">集群网</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id10">绑定</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id11">主机</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#tcp">TCP</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../auth-config-ref/">认证选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mon-config-ref/">监视器选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mon-osd-interaction/">心跳选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../osd-config-ref/">OSD 选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../filestore-config-ref/">文件存储选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../keyvaluestore-config-ref/">键/值存储选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journal-ref/">日志选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pool-pg-config-ref/">存储池、归置组和 CRUSH 选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ms-ref/">消息传递选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../general-config-ref/">常规选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operations/">运维</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../auth-config-ref/" title="Cephx 配置参考"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../ceph-conf/" title="配置 Ceph"
+             >previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" >配置</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

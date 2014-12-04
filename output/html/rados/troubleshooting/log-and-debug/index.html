@@ -1,0 +1,990 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>日志记录和调试 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <link rel="up" title="故障排除" href="../" />
+    <link rel="next" title="监视器故障排除" href="../troubleshooting-mon/" />
+    <link rel="prev" title="Ceph 社区" href="../community/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../troubleshooting-mon/" title="监视器故障排除"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../community/" title="Ceph 社区"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" accesskey="U">故障排除</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="id1">
+<h1>日志记录和调试<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>一般来说，你应该在运行时增加调试选项来调试问题；也可以把调试选项添加到 Ceph 配置文件里来调试启动问题，然后查看 <tt class="docutils literal"><span class="pre">/var/log/ceph</span></tt> （默认位置）下的日志文件。</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">调试输出会拖慢系统，这种延时有可能掩盖竞争条件。</p>
+</div>
+<p>日志记录是资源密集任务。如果你碰到的问题在集群的某个特定区域，只启用那个区域对应的日志功能即可。例如，你的 OSD 运行良好、元数据服务器却不行，这时应该先打开那个可疑元数据服务器例程的调试日志；如果不行再打开各子系统的日志。</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">详尽的日志每小时可能超过 1GB ，如果你的系统盘满了，这个节点就会停止工作。</p>
+</div>
+<p>如果你要打开或增加 Ceph 日志级别，确保系统盘空间足够。滚动日志文件的方法见<a class="reference internal" href="#id4">加快日志更迭</a>。集群稳定运行后，可以关闭不必要的调试选项以更好地运行。在运营中记录调试输出会拖慢系统、且浪费资源。</p>
+<p>可用选项参见<a class="reference internal" href="#id5">子系统、日志和调试选项</a>。</p>
+<div class="section" id="id2">
+<h2>运行时<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>如果你想查看一进程的运行时配置，必须先登录对应主机，然后执行命令：</p>
+<div class="highlight-python"><pre>ceph --admin-daemon {/path/to/admin/socket} config show | less
+ceph --admin-daemon /var/run/ceph/ceph-osd.0.asok config show | less</pre>
+</div>
+<p>要在运行时激活 Ceph 的调试输出（即 <tt class="docutils literal"><span class="pre">dout()</span></tt> ），用 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">tell</span></tt> 命令把参数注入运行时配置：</p>
+<div class="highlight-python"><pre>ceph tell {daemon-type}.{daemon id or *} injectargs --{name} {value} [--{name} {value}]</pre>
+</div>
+<p>用 <tt class="docutils literal"><span class="pre">osd</span></tt> 、 <tt class="docutils literal"><span class="pre">mon</span></tt> 或 <tt class="docutils literal"><span class="pre">mds</span></tt> 替代 <tt class="docutils literal"><span class="pre">{daemon-type}</span></tt> 。你可以用星号（ <tt class="docutils literal"><span class="pre">*</span></tt> ）把配置应用到同类型的所有守护进程，或者指定具体守护进程的标识号（即其名字或字母）。例如，要给名为 <tt class="docutils literal"><span class="pre">ods.0</span></tt> 的 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 守护进程提高调试级别，用下列命令：</p>
+<div class="highlight-python"><pre>ceph tell osd.0 injectargs --debug-osd 0/5</pre>
+</div>
+<p><tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">tell</span></tt> 命令会贯穿所有监视器。如果你不能绑定监视器，还可以登录你要改的那台主机用 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">--admin-daemon</span></tt> 来更改。例如：</p>
+<div class="highlight-python"><pre>sudo ceph --admin-daemon /var/run/ceph/ceph-osd.0.asok config set debug_osd 0/5</pre>
+</div>
+<p>可用选项参见<a class="reference internal" href="#id5">子系统、日志和调试选项</a>。</p>
+</div>
+<div class="section" id="id3">
+<h2>启动时<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>要在启动时激活调试输出（<em>即</em> <tt class="docutils literal"><span class="pre">dout()</span></tt> ），你得把选项加入配置文件。各进程共有配置可写在配置文件的 <tt class="docutils literal"><span class="pre">[global]</span></tt> 下，某类进程的配置可写在守护进程段下（<em>如</em> <tt class="docutils literal"><span class="pre">[mon]</span></tt> 、 <tt class="docutils literal"><span class="pre">[osd]</span></tt> 、 <tt class="docutils literal"><span class="pre">[mds]</span></tt> ）。例如：</p>
+<div class="highlight-python"><pre>[global]
+        debug ms = 1/5
+
+[mon]
+        debug mon = 20
+        debug paxos = 1/5
+        debug auth = 2
+
+[osd]
+        debug osd = 1/5
+        debug filestore = 1/5
+        debug journal = 1
+        debug monc = 5/20
+
+[mds]
+        debug mds = 1
+        debug mds balancer = 1
+        debug mds log = 1
+        debug mds migrator = 1</pre>
+</div>
+<p>可用选项参见<a class="reference internal" href="#id5">子系统、日志和调试选项</a>。</p>
+</div>
+<div class="section" id="id4">
+<h2>加快日志更迭<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>如果你的系统盘比较满，可以修改 <tt class="docutils literal"><span class="pre">/etc/logrotate.d/ceph</span></tt> 内的日志滚动配置以加快滚动。在滚动频率后增加一个尺寸选项（达到此尺寸就滚动）来加快滚动（通过 cronjob ）。例如默认配置大致如此：</p>
+<div class="highlight-python"><pre>rotate 7
+weekly
+compress
+sharedscripts</pre>
+</div>
+<p>增加一个 <tt class="docutils literal"><span class="pre">size</span></tt> 选项。</p>
+<div class="highlight-python"><pre>rotate 7
+weekly
+size 500M
+compress
+sharedscripts</pre>
+</div>
+<p>然后，打开 crontab 编辑器。</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">crontab</span> <span class="o">-</span><span class="n">e</span>
+</pre></div>
+</div>
+<p>最后，增加一条用以检查 <tt class="docutils literal"><span class="pre">/etc/logrorate.d/ceph</span></tt> 文件。</p>
+<div class="highlight-python"><pre>30 * * * * /usr/sbin/logrotate /etc/logrotate.d/ceph &gt;/dev/null 2&gt;&amp;1</pre>
+</div>
+<p>本例中每 30 分钟检查一次 <tt class="docutils literal"><span class="pre">/etc/logrorate.d/ceph</span></tt> 文件。</p>
+</div>
+<div class="section" id="valgrind">
+<h2>Valgrind<a class="headerlink" href="#valgrind" title="Permalink to this headline">¶</a></h2>
+<p>你也许还得追踪内存和线程问题，可以在 Valgrind 中运行一个守护进程、一类进程、或整个集群。 Valgrind 是计算密集型程序，应该只用于开发或调试，否则会拖慢系统。其消息记录到 <tt class="docutils literal"><span class="pre">stderr</span></tt> 。</p>
+</div>
+<div class="section" id="id5">
+<h2>子系统、日志和调试选项<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>大多数情况下你可以通过子系统打开调试。</p>
+<div class="section" id="ceph">
+<h3>Ceph 子系统概览<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h3>
+<p>各子系统都有日志级别用于分别控制其输出日志、和暂存日志，你可以分别为这些子系统设置不同的记录级别。 Ceph 的日志级别从 <tt class="docutils literal"><span class="pre">1</span></tt> 到 <tt class="docutils literal"><span class="pre">20</span></tt> ， <tt class="docutils literal"><span class="pre">1</span></tt> 是简洁、 <tt class="docutils literal"><span class="pre">20</span></tt> 是详尽。</p>
+<p>调试选项允许用单个数字同时设置日志级别和内存级别，会设置为一样。比如，如果你指定 <tt class="docutils literal"><span class="pre">debug</span> <span class="pre">ms</span> <span class="pre">=</span> <span class="pre">5</span></tt> ， Ceph 会把日志级别和内存级别都设置为 <tt class="docutils literal"><span class="pre">5</span></tt> 。也可以分别设置，第一个选项是日志级别、后一个是内存级别，二者必须用斜线（ <tt class="docutils literal"><span class="pre">/</span></tt> ）分隔。假如你想把 <tt class="docutils literal"><span class="pre">ms</span></tt> 子系统的调试日志级别设为 <tt class="docutils literal"><span class="pre">1</span></tt> 、内存级别设为 <tt class="docutils literal"><span class="pre">5</span></tt> ，可以写为 <tt class="docutils literal"><span class="pre">debug</span> <span class="pre">ms</span> <span class="pre">=</span> <span class="pre">1/5</span></tt> ，如下：</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="na">debug {subsystem}</span> <span class="o">=</span> <span class="s">{log-level}/{memory-level}</span>
+<span class="c1">#for example</span>
+<span class="na">debug mds log</span> <span class="o">=</span> <span class="s">1/20</span>
+</pre></div>
+</div>
+<p>下表列出了 Ceph 子系统及其默认日志和内存级别。一旦你完成调试，应该恢复默认值、或一个适合平常运营的级别。</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="44%" />
+<col width="24%" />
+<col width="31%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">子系统</th>
+<th class="head">日志级别</th>
+<th class="head">内存日志级别</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">default</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">lockdep</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">context</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">crush</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">mds</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">balancer</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">locker</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">log</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">log</span> <span class="pre">expire</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">migrator</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">buffer</span></tt></td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">timer</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">filer</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">objecter</span></tt></td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rados</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">rbd</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">journaler</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">objectcacher</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">client</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">osd</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">optracker</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">objclass</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">filestore</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">journal</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">ms</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">mon</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">monc</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">paxos</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">tp</span></tt></td>
+<td>0</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">auth</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">finisher</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">heartbeatmap</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">perfcounter</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">rgw</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">javaclient</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">asok</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">throttle</span></tt></td>
+<td>1</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id6">
+<h3>日志记录选项<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>日志和调试选项不是必需配置，但你可以按需覆盖默认值。 Ceph 支持如下配置：</p>
+<p><tt class="docutils literal"><span class="pre">log</span> <span class="pre">file</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">集群日志文件的位置。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">/var/log/ceph/$cluster-$name.log</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">log</span> <span class="pre">max</span> <span class="pre">new</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">新日志文件的最大数量。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1000</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">log</span> <span class="pre">max</span> <span class="pre">recent</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">一个日志文件包含的最新事件的最大数量。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1000000</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">log</span> <span class="pre">to</span> <span class="pre">stderr</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">设置日志消息是否输出到标准错误（ <tt class="docutils literal"><span class="pre">stderr</span></tt> ）。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">true</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">err</span> <span class="pre">to</span> <span class="pre">stderr</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">设置错误消息是否输出到标准错误（ <tt class="docutils literal"><span class="pre">stderr</span></tt> ）。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">true</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">log</span> <span class="pre">to</span> <span class="pre">syslog</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">设置日志消息是否输出到 <tt class="docutils literal"><span class="pre">syslog</span></tt> 。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">err</span> <span class="pre">to</span> <span class="pre">syslog</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">设置错误消息是否输出到 <tt class="docutils literal"><span class="pre">syslog</span></tt> 。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">log</span> <span class="pre">flush</span> <span class="pre">on</span> <span class="pre">exit</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">设置 Ceph 退出后是否回写日志文件。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">true</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">clog</span> <span class="pre">to</span> <span class="pre">monitors</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">设置是否把 <tt class="docutils literal"><span class="pre">clog</span></tt> 消息发送给监视器。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">true</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">clog</span> <span class="pre">to</span> <span class="pre">syslog</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">设置是否把 <tt class="docutils literal"><span class="pre">clog</span></tt> 输出到 syslog 。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">cluster</span> <span class="pre">log</span> <span class="pre">to</span> <span class="pre">syslog</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">设置集群日志是否输出到 syslog 。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">cluster</span> <span class="pre">log</span> <span class="pre">file</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">集群日志位置。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">/var/log/ceph/$cluster.log</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="osd">
+<h3>OSD<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h3>
+<p><tt class="docutils literal"><span class="pre">osd</span> <span class="pre">debug</span> <span class="pre">drop</span> <span class="pre">ping</span> <span class="pre">probability</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">?</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">0</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">osd</span> <span class="pre">debug</span> <span class="pre">drop</span> <span class="pre">ping</span> <span class="pre">duration</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">0</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">osd</span> <span class="pre">debug</span> <span class="pre">drop</span> <span class="pre">pg</span> <span class="pre">create</span> <span class="pre">probability</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">0</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">osd</span> <span class="pre">debug</span> <span class="pre">drop</span> <span class="pre">pg</span> <span class="pre">create</span> <span class="pre">duration</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">?</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">1</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">osd</span> <span class="pre">preserve</span> <span class="pre">trimmed</span> <span class="pre">log</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">裁减后保留剩余日志。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">osd</span> <span class="pre">tmapput</span> <span class="pre">sets</span> <span class="pre">uses</span> <span class="pre">tmap</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">使用 <tt class="docutils literal"><span class="pre">tmap</span></tt> ，仅用于调试。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">osd</span> <span class="pre">min</span> <span class="pre">pg</span> <span class="pre">log</span> <span class="pre">entries</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">归置组日志最小条数。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">1000</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">log</span> <span class="pre">threshold</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">一次发送多少操作日志消息。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">5</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="filestore">
+<h3>Filestore<a class="headerlink" href="#filestore" title="Permalink to this headline">¶</a></h3>
+<p><tt class="docutils literal"><span class="pre">filestore</span> <span class="pre">debug</span> <span class="pre">omap</span> <span class="pre">check</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">调试同步检查，这是昂贵的操作。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="mds">
+<h3>MDS<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h3>
+<p><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">debug</span> <span class="pre">scatterstat</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph 将把各种回归状态常量设置为真（谨为开发者）。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">debug</span> <span class="pre">frag</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph 将在方便时校验目录碎片（谨为开发者）。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">debug</span> <span class="pre">auth</span> <span class="pre">pins</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">debug auth pin 开关（谨为开发者）。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mds</span> <span class="pre">debug</span> <span class="pre">subtrees</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">debug subtree 开关（谨为开发者）。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="rados">
+<h3>RADOS 网关<a class="headerlink" href="#rados" title="Permalink to this headline">¶</a></h3>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">log</span> <span class="pre">nonexistent</span> <span class="pre">bucket</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">记录不存在的桶？</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">log</span> <span class="pre">object</span> <span class="pre">name</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">是否记录对象名称。注：关于格式参考 <tt class="docutils literal"><span class="pre">man</span> <span class="pre">date</span></tt> ，子集也支持。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">%Y-%m-%d-%H-%i-%n</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">log</span> <span class="pre">object</span> <span class="pre">name</span> <span class="pre">utc</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">对象日志名称包含 UTC ？</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">enable</span> <span class="pre">ops</span> <span class="pre">log</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">允许记录 RGW 的每一个操作。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">true</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">enable</span> <span class="pre">usage</span> <span class="pre">log</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">允许记录 RGW 的带宽使用。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">true</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">usage</span> <span class="pre">log</span> <span class="pre">flush</span> <span class="pre">threshold</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">回写未决的日志数据阀值。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1024</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">usage</span> <span class="pre">log</span> <span class="pre">tick</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">每隔 <tt class="docutils literal"><span class="pre">s</span></tt> 回写一次未决日志。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">30</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">intent</span> <span class="pre">log</span> <span class="pre">object</span> <span class="pre">name</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">%Y-%m-%d-%i-%n</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">intent</span> <span class="pre">log</span> <span class="pre">object</span> <span class="pre">name</span> <span class="pre">utc</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">日志对象名字里包含 UTC 时间戳。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../configuration/">配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../../operations/">运维</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../../operations/operating/">操纵集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/monitoring/">监控集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/monitoring-osd-pg/">监控 OSD 和归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/user-management/">用户管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/data-placement/">数据归置概览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/pools/">存储池</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/erasure-code/">纠删码</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/cache-tiering/">分级缓存</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/placement-groups/">归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/crush-map/">CRUSH 图</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/add-or-rm-osds/">增加/删除 OSD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/add-or-rm-mons/">增加/删除监视器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../operations/control/">命令参考</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../community/">Ceph 社区</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting-mon/">监视器故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting-osd/">OSD 故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting-pg/">归置组排障</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">日志记录和调试</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id2">运行时</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">启动时</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">加快日志更迭</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#valgrind">Valgrind</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">子系统、日志和调试选项</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#ceph">Ceph 子系统概览</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id6">日志记录选项</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#osd">OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#filestore">Filestore</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#mds">MDS</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#rados">RADOS 网关</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../cpu-profiling/">CPU 剖析</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../memory-profiling/">内存剖析</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">故障排除</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../community/">Ceph 社区</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">日志记录和调试</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id2">运行时</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">启动时</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">加快日志更迭</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#valgrind">Valgrind</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">子系统、日志和调试选项</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#ceph">Ceph 子系统概览</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id6">日志记录选项</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#osd">OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#filestore">Filestore</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#mds">MDS</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#rados">RADOS 网关</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting-mon/">监视器故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting-osd/">OSD 故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting-pg/">归置组排障</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../memory-profiling/">内存剖析</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cpu-profiling/">CPU 剖析</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../troubleshooting-mon/" title="监视器故障排除"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../community/" title="Ceph 社区"
+             >previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" >故障排除</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,360 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>快照 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="Ceph 块设备" href="../rbd/" />
+    <link rel="next" title="QEMU 与块设备" href="../qemu-rbd/" />
+    <link rel="prev" title="内核模块操作" href="../rbd-ko/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../qemu-rbd/" title="QEMU 与块设备"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../rbd-ko/" title="内核模块操作"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../rbd/" accesskey="U">Ceph 块设备</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="id1">
+<h1>快照<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p id="index-0">一份快照是某映像在一个特定时间点的一份只读副本。 Ceph 块设备的一个高级功能就是你可以为映像创建快照来保留其历史； Ceph 还支持分层快照，让你快速、容易地克隆映像（如 VM 映像）。 Ceph 的快照功能支持 <tt class="docutils literal"><span class="pre">rbd</span></tt> 命令和多种高级接口，包括 <a class="reference external" href="../qemu-rbd/">QEMU</a> 、 <a class="reference external" href="../libvirt/">libvirt</a> 、 <a class="reference external" href="../rbd-openstack/">OpenStack</a> 和 <a class="reference external" href="../rbd-cloudstack/">CloudStack</a> 。</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">要使用 RBD 快照功能，你必须有个运行着的集群。</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><strong>先停止 I/O 操作</strong>再拍映像的快照，如果映像内包含文件系统，拍快照<strong>前</strong>确保文件系统是一致的。</p>
+</div>
+<p class="ditaa">
+<img src="../../_images/ditaa-75fdb48a3db2bad6ef749fdae1282f4ae2dd1f7c.png"/>
+</p>
+<div class="section" id="cephx">
+<h2>Cephx 注意事项<a class="headerlink" href="#cephx" title="Permalink to this headline">¶</a></h2>
+<p>启用了 <a class="reference external" href="../../rados/configuration/auth-config-ref/">cephx</a> 时（默认的），你必须指定用户名或 ID 、及其密钥文件，详情见<a class="reference external" href="../../operations/user-management">用户管理</a>。你也可以用 <tt class="docutils literal"><span class="pre">CEPH_ARGS</span></tt> 环境变量来避免重复输入下列参数。</p>
+<div class="highlight-python"><pre>rbd --id {user-ID} --keyring=/path/to/secret [commands]
+rbd --name {username} --keyring=/path/to/secret [commands]</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --id admin --keyring=/etc/ceph/ceph.keyring [commands]
+rbd --name client.admin --keyring=/etc/ceph/ceph.keyring [commands]</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">把用户名和密钥写入 <tt class="docutils literal"><span class="pre">CEPH_ARGS</span></tt> 环境变量，省得每次手动输入。</p>
+</div>
+</div>
+<div class="section" id="id2">
+<h2>快照基础<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>下列过程演示了如何用 <tt class="docutils literal"><span class="pre">rbd</span></tt> 命令创建、罗列、和删除快照。</p>
+<div class="section" id="id3">
+<h3>创建快照<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>用 <tt class="docutils literal"><span class="pre">rbd</span></tt> 命令创建快照，要指定 <tt class="docutils literal"><span class="pre">snap</span> <span class="pre">create</span></tt> 选项、外加存储池名、映像名。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} snap create --snap {snap-name} {image-name}
+rbd snap create {pool-name}/{image-name}@{snap-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd snap create --snap snapname foo
+rbd snap create rbd/foo@snapname</pre>
+</div>
+</div>
+<div class="section" id="id4">
+<h3>罗列快照<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>要列出一映像的快照，指定存储池名和映像名。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} snap ls {image-name}
+rbd snap ls {pool-name}/{image-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd snap ls foo
+rbd snap ls rbd/foo</pre>
+</div>
+</div>
+<div class="section" id="id5">
+<h3>回滚快照<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>要用 <tt class="docutils literal"><span class="pre">rbd</span></tt> 回滚到一映像，指定 <tt class="docutils literal"><span class="pre">snap</span> <span class="pre">rollback</span></tt> 选项、存储池名、映像名和快照名。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} snap rollback --snap {snap-name} {image-name}
+rbd snap rollback {pool-name}/{image-name}@{snap-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd snap rollback --snap snapname foo
+rbd snap rollback rbd/foo@snapname</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">把映像回滚到一快照的意思是，用快照中的数据覆盖映像的当前版本，此过程花费的时间随映像尺寸增长。从快照<strong>克隆要快于回滚</strong>到某快照，这也是回到先前状态的首选方法。</p>
+</div>
+</div>
+<div class="section" id="id6">
+<h3>删除快照<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>要用 <tt class="docutils literal"><span class="pre">rbd</span></tt> 删除一快照，指定 <tt class="docutils literal"><span class="pre">snap</span> <span class="pre">rm</span></tt> 选项、存储池名、映像名和用户名。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} snap rm --snap {snap-name} {image-name}
+rbd snap rm {pool-name}/{image-name}@{snap-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd snap rm --snap snapname foo
+rbd snap rm rbd/foo@snapname</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ceph 的 OSD 异步地删除数据，所以删除快照后不会立即释放磁盘空间。</p>
+</div>
+</div>
+<div class="section" id="id7">
+<h3>清除快照<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>要用 <tt class="docutils literal"><span class="pre">rbd</span></tt> 删除一映像的所有快照，指定 <tt class="docutils literal"><span class="pre">snap</span> <span class="pre">purge</span></tt> 选项和映像名。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} snap purge {image-name}
+rbd snap purge {pool-name}/{image-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd snap purge foo
+rbd snap purge rbd/foo</pre>
+</div>
+</div>
+</div>
+<div class="section" id="index-1">
+<span id="id8"></span><h2>分层<a class="headerlink" href="#index-1" title="Permalink to this headline">¶</a></h2>
+<p>Ceph 支持创建某一设备快照的很多写时复制（ COW ）克隆。分层快照使得 Ceph 块设备客户端可以很快地创建映像。例如，你可以创建一个块设备映像，其中有 Linux VM ；然后拍快照、保护快照，再创建任意多写时复制克隆。快照是只读的，所以简化了克隆快照的语义——使得克隆很迅速。</p>
+<p class="ditaa">
+<img src="../../_images/ditaa-b4c8b30123e5581e44b87f1836b96a869c4898b6.png"/>
+</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">这里的术语“父”和“子”意思是一个 Ceph 块设备快照（父），和从此快照克隆出来的对应映像（子）。这些术语对下列的命令行用法来说很重要。</p>
+</div>
+<p>各个克隆出来的映像（子）都存储着对父映像的引用，这使得克隆出来的映像可以打开父映像并读取它。</p>
+<p>一个快照的 COW 克隆和其它任何 Ceph 块设备映像的行为完全一样。克隆出的映像没有特别的限制，你可以读出、写入、克隆、调整其大小，然而快照的写时复制克隆引用了快照，所以你克隆前<strong>必须</strong>保护它。下图描述了此过程。</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ceph 仅支持克隆 <tt class="docutils literal"><span class="pre">format</span> <span class="pre">2</span></tt> 映像（即用 <tt class="docutils literal"><span class="pre">rbd</span> <span class="pre">create</span> <span class="pre">--format</span> <span class="pre">2</span></tt> 创建的），而且内核 <tt class="docutils literal"><span class="pre">rbd</span></tt> 模块还不支持。所以现在你只能用 QEMU/KVM 或 <tt class="docutils literal"><span class="pre">librbd</span></tt> 直接访问克隆品。</p>
+</div>
+<div class="section" id="id9">
+<h3>分层入门<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 块设备的分层是个简单的过程。你必须有个映像、必须为它创建快照、必须保护快照，执行过这些步骤后，你才能克隆快照。</p>
+<p class="ditaa">
+<img src="../../_images/ditaa-bbd86247e30fd4ca83550176ab1bf5a39ab46c6d.png"/>
+</p>
+<p>克隆出的映像包含到父快照的引用、也包含存储池 ID 、映像 ID 和快照 ID 。包含存储池 ID 意味着你可以把一存储池内的快照克隆到别的存储池。</p>
+<ol class="arabic simple">
+<li><strong>映像模板：</strong> 块设备分层的一个常见用法是创建一个主映像及其快照，并作为模板以供克隆。例如，一用户创建一 Linux 发行版（如 Ubuntu 12.04 ）的映像、并为其拍快照；此用户可能会周期性地更新映像、并创建新的快照（如在 <tt class="docutils literal"><span class="pre">rbd</span> <span class="pre">snap</span> <span class="pre">create</span></tt> 之后执行 <tt class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">update</span></tt> 、 <tt class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">upgrade</span></tt> 、 <tt class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">dist-upgrade</span></tt> ），当映像成熟时，用户可以克隆任意快照。</li>
+<li><strong>扩展模板：</strong> 更高级的用法包括扩展映像模板，让它包含比基础映像更多的信息。例如，用户可以克隆一个映像（如 VM 模板）、然后安装其它软件（如数据库、内容管理系统、分析系统等等）、然后为此扩展映像拍快照，拍下的快照可以像基础映像一样更新。</li>
+<li><strong>模板存储池：</strong> 块设备分层的一种用法是创建一存储池，其中包含作为模板的主映像、和那些模板的快照。然后把只读权限分给用户，这样他们就可以克隆快照了，而无需分配此存储池内的写和执行权限。</li>
+<li><strong>映像迁移/恢复：</strong> 块设备分层的一种用法是把一存储池内的数据迁移或恢复到另一存储池。</li>
+</ol>
+</div>
+<div class="section" id="id10">
+<h3>保护快照<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<p>克隆品要访问父快照。如果哪个用户不小心删除了父快照，所有克隆品都会损坏。为防止数据丢失，<strong>必须</strong>先保护、然后再克隆快照。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} snap protect --image {image-name} --snap {snapshot-name}
+rbd snap protect {pool-name}/{image-name}@{snapshot-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd snap protect --image my-image --snap my-snapshot
+rbd snap protect rbd/my-image@my-snapshot</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">你删除不了受保护的快照。</p>
+</div>
+</div>
+<div class="section" id="id11">
+<h3>克隆快照<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<p>要克隆快照，你得指定父存储池、映像、和快照，还有子存储池和映像名。克隆前必须先保护它。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} --image {parent-image} --snap {snap-name} --dest-pool {pool-name} --dest {child-image}
+     rbd clone {pool-name}/{parent-image}@{snap-name} {pool-name}/{child-image-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd clone rbd/my-image@my-snapshot rbd/new-image</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">你可以把一存储池中映像的快照克隆到另一存储池。例如，你可以把一存储池中的只读映像及其快照当模板维护、却把可写克隆置于另一存储池。</p>
+</div>
+</div>
+<div class="section" id="id12">
+<h3>取消快照保护<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<p>删除快照前，必须先取消保护。另外，你<em>不能</em>删除被克隆品引用的快照，所以删除快照前必须先拍平此快照的各个克隆。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} snap unprotect --image {image-name} --snap {snapshot-name}
+rbd snap unprotect {pool-name}/{image-name}@{snapshot-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd snap unprotect --image my-image --snap my-snapshot
+rbd snap unprotect rbd/my-image@my-snapshot</pre>
+</div>
+</div>
+<div class="section" id="id13">
+<h3>罗列一快照的子孙<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<p>用下列命令罗列一快照的子孙：</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} children --image {image-name} --snap {snap-name}
+rbd children {pool-name}/{image-name}@{snapshot-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd children --image my-image --snap my-snapshot
+rbd children rbd/my-image@my-snapshot</pre>
+</div>
+</div>
+<div class="section" id="id14">
+<h3>拍平克隆品映像<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<p>克隆来的映像仍保留了父快照的引用。要从子克隆删除这些到父快照的引用，你可以把快照的信息复制给子克隆，也就是“拍平”它。拍平克隆品的时间因快照尺寸而不同。要删除快照，必须先拍平子映像。</p>
+<div class="highlight-python"><pre>rbd --pool {pool-name} flatten --image {image-name}
+rbd flatten {pool-name}/{image-name}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>rbd --pool rbd flatten --image my-image
+rbd flatten rbd/my-image</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">因为拍平的映像包含了快照的所有信息，所以拍平的映像占用的存储空间会比分层克隆品大。</p>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../rbd/">Ceph 块设备</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../rados-rbd-cmds/">命令</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-ko/">内核模块</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">快照</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cephx">Cephx 注意事项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">快照基础</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id3">创建快照</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">罗列快照</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">回滚快照</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">删除快照</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">清除快照</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#index-1">分层</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id9">分层入门</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">保护快照</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id11">克隆快照</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id12">取消快照保护</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">罗列一快照的子孙</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">拍平克隆品映像</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../qemu-rbd/">QEMU</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../libvirt/">libvirt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-config-ref/">缓存选项</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-openstack/">OpenStack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-cloudstack/">CloudStack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd/">rbd 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd-fuse/">rbd-fuse 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-rbdnamer/">ceph-rbdnamer 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd-replay-prep/">rbd-replay-prep 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd-replay/">rbd-replay 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../librbdpy/">librbd 的 Python 接口</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../qemu-rbd/" title="QEMU 与块设备"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../rbd-ko/" title="内核模块操作"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../rbd/" >Ceph 块设备</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

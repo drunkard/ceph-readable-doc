@@ -1,0 +1,578 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuring Ceph Object Gateway &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="Ceph 对象网关" href="../" />
+    <link rel="next" title="Configuring Federated Gateways" href="../federated-config/" />
+    <link rel="prev" title="安装 Ceph 对象网关" href="../../install/install-ceph-gateway/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../federated-config/" title="Configuring Federated Gateways"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../../install/install-ceph-gateway/" title="安装 Ceph 对象网关"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" accesskey="U">Ceph 对象网关</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="configuring-ceph-object-gateway">
+<h1>Configuring Ceph Object Gateway<a class="headerlink" href="#configuring-ceph-object-gateway" title="Permalink to this headline">¶</a></h1>
+<p>Configuring a Ceph Object Gateway requires a running Ceph Storage Cluster,
+and an Apache web server with the FastCGI module.</p>
+<p>The Ceph Object Gateway is a client of the Ceph Storage Cluster. As a
+Ceph Storage Cluster client, it requires:</p>
+<ul class="simple">
+<li>A name for the gateway instance. We use <tt class="docutils literal"><span class="pre">gateway</span></tt> in this guide.</li>
+<li>A storage cluster user name with appropriate permissions in a keyring.</li>
+<li>Pools to store its data.</li>
+<li>A data directory for the gateway instance.</li>
+<li>An instance entry in the Ceph Configuration file.</li>
+<li>A configuration file for the web server to interact with FastCGI.</li>
+</ul>
+<div class="section" id="create-a-user-and-keyring">
+<h2>Create a User and Keyring<a class="headerlink" href="#create-a-user-and-keyring" title="Permalink to this headline">¶</a></h2>
+<p>Each instance must have a user name and key to communicate with a Ceph Storage
+Cluster. In the following steps, we use an admin node to create a keyring.
+Then, we create a client user name and key. Next, we add the
+key to the Ceph Storage Cluster. Finally, we distribute the key ring to
+the node containing the gateway instance.</p>
+<div class="topic">
+<p class="topic-title first">Monitor Key CAPS</p>
+<p>When you provide CAPS to the key, you MUST provide read capability.
+However, you have the option of providing write capability for the monitor.
+This is an important choice. If you provide write capability to the key,
+the Ceph Object Gateway will have the ability to create pools automatically;
+however, it will create pools with either the default number of placement
+groups (not ideal) or the number of placement groups you specified in your
+Ceph configuration file. If you allow the Ceph Object Gateway to create
+pools automatically, ensure that you have reasonable defaults for the number
+of placement groups first. See <a class="reference external" href="../../rados/configuration/pool-pg-config-ref/">Pool Configuration</a> for details.</p>
+</div>
+<p>See the <a class="reference external" href="../../rados/operations/authentication/#cephx-guide">Cephx Guide</a> for additional details on Ceph authentication.</p>
+<ol class="arabic">
+<li><p class="first">Create a keyring for the gateway.</p>
+<div class="highlight-python"><pre>sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.radosgw.keyring
+sudo chmod +r /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+<li><p class="first">Generate a Ceph Object Gateway user name and key for each instance. For
+exemplary purposes, we will use the name <tt class="docutils literal"><span class="pre">gateway</span></tt> after <tt class="docutils literal"><span class="pre">client.radosgw</span></tt>:</p>
+<div class="highlight-python"><pre>sudo ceph-authtool /etc/ceph/ceph.client.radosgw.keyring -n client.radosgw.gateway --gen-key</pre>
+</div>
+</li>
+<li><p class="first">Add capabilities to the key. See <a class="reference external" href="../config-ref#pools">Configuration Reference - Pools</a> for details
+on the effect of write permissions for the monitor and creating pools.</p>
+<div class="highlight-python"><pre>sudo ceph-authtool -n client.radosgw.gateway --cap osd 'allow rwx' --cap mon 'allow rwx' /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+<li><p class="first">Once you have created a keyring and key to enable the Ceph Object Gateway
+with access to the Ceph Storage Cluster, add the key to your
+Ceph Storage Cluster. For example:</p>
+<div class="highlight-python"><pre>sudo ceph -k /etc/ceph/ceph.client.admin.keyring auth add client.radosgw.gateway -i /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+<li><p class="first">Distribute the keyring to the node with the gateway instance.</p>
+<div class="highlight-python"><pre>sudo scp /etc/ceph/ceph.client.radosgw.keyring  ceph@{hostname}:/home/ceph
+ssh {hostname}
+sudo mv ceph.client.radosgw.keyring /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="create-pools">
+<h2>Create Pools<a class="headerlink" href="#create-pools" title="Permalink to this headline">¶</a></h2>
+<p>Ceph Object Gateways require Ceph Storage Cluster pools to store specific
+gateway data.  If the user you created has permissions, the gateway
+will create the pools automatically. However, you should ensure that you have
+set an appropriate default number of placement groups per pool into your Ceph
+configuration file.</p>
+<p>When configuring a gateway with the default region and zone, the naming
+convention for pools typically omits region and zone naming, but you can use any
+naming convention you prefer. For example:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">.rgw</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.root</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.control</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.gc</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.buckets</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.buckets.index</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.intent-log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.usage</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.users</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.users.email</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.users.swift</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.users.uid</span></tt></li>
+</ul>
+<p>See <a class="reference external" href="../config-ref#pools">Configuration Reference - Pools</a> for details on the default pools for
+gateways. See <a class="reference external" href="../../rados/operations/pools">Pools</a> for details on creating pools. Execute the following
+to create a pool:</p>
+<div class="highlight-python"><pre>ceph osd pool create {poolname} {pg-num} {pgp-num}</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">When adding a large number of pools, it may take some time for your
+cluster to return to a <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt> state.</p>
+</div>
+<p>When you have completed this step, execute the following to ensure that
+you have created all of the foregoing pools:</p>
+<div class="highlight-python"><pre>rados lspools</pre>
+</div>
+</div>
+<div class="section" id="add-a-gateway-configuration-to-ceph">
+<h2>Add a Gateway Configuration to Ceph<a class="headerlink" href="#add-a-gateway-configuration-to-ceph" title="Permalink to this headline">¶</a></h2>
+<p>Add the Ceph Object Gateway configuration to your Ceph Configuration file. The
+Ceph Object Gateway configuration requires you to identify the Ceph Object
+Gateway instance. Then, you must specify the host name where you installed the
+Ceph Object Gateway daemon, a keyring (for use with cephx), the socket path for
+FastCGI and a log file. For example:</p>
+<div class="highlight-python"><pre>[client.radosgw.{instance-name}]
+host = {host-name}
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw socket path = /var/run/ceph/ceph.radosgw.{instance-name}.fastcgi.sock
+log file = /var/log/radosgw/client.radosgw.{instance-name}.log</pre>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">[client.radosgw.*]</span></tt> portion of the gateway instance identifies this
+portion of the Ceph configuration file as configuring a Ceph Storage Cluster
+client where the client type is  a Ceph Object Gateway (i.e., <tt class="docutils literal"><span class="pre">radosgw</span></tt>). The
+instance name follows. For example:</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway]
+host = ceph-gateway
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+log file = /var/log/radosgw/client.radosgw.{instance-name}.log</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">host</span></tt> must be your machine hostname, not the FQDN. Make sure
+that the name you use for the FastCGI socket is not the same as the one
+used for the object gateway, which is
+<tt class="docutils literal"><span class="pre">ceph-client.radosgw.{instance-name}.asok</span></tt> by default. You must use the
+same name in your S3 FastCGI file too. See <a class="reference internal" href="#add-a-ceph-object-gateway-script">Add a Ceph Object Gateway
+Script</a> for details.</p>
+</div>
+<div class="section" id="configuring-print-continue">
+<h3>Configuring Print Continue<a class="headerlink" href="#configuring-print-continue" title="Permalink to this headline">¶</a></h3>
+<p>On CentOS/RHEL distributions, turn off <tt class="docutils literal"><span class="pre">print</span> <span class="pre">continue</span></tt>. If you have it set
+to <tt class="docutils literal"><span class="pre">true</span></tt>, you may encounter problems with <tt class="docutils literal"><span class="pre">PUT</span></tt> operations.</p>
+<div class="highlight-python"><pre>rgw print continue = false</pre>
+</div>
+</div>
+<div class="section" id="configuring-operations-logging">
+<h3>Configuring Operations Logging<a class="headerlink" href="#configuring-operations-logging" title="Permalink to this headline">¶</a></h3>
+<p>In early releases of Ceph (v0.66 and earlier), the Ceph Object Gateway will log
+every successful operation in the Ceph Object Gateway backend by default. This
+means that every request, whether it is a read request or a write request will
+generate a gateway operation that writes data. This does not come without cost,
+and may affect overall performance. Turning off logging completely can be done
+by adding the following config option to the Ceph configuration file:</p>
+<div class="highlight-python"><pre>rgw enable ops log = false</pre>
+</div>
+<p>Another way to reduce the logging load is to send operations logging data to a
+UNIX domain socket, instead of writing it to the Ceph Object Gateway backend:</p>
+<div class="highlight-python"><pre>rgw ops log rados = false
+rgw enable ops log = true
+rgw ops log socket path = &lt;path to socket&gt;</pre>
+</div>
+<p>When specifying a UNIX domain socket, it is also possible to specify the maximum
+amount of memory that will be used to keep the data backlog:</p>
+<div class="highlight-python"><pre>rgw ops log data backlog = &lt;size in bytes&gt;</pre>
+</div>
+<p>Any backlogged data in excess to the specified size will be lost, so the socket
+needs to be read constantly.</p>
+</div>
+<div class="section" id="enabling-subdomain-s3-calls">
+<h3>Enabling Subdomain S3 Calls<a class="headerlink" href="#enabling-subdomain-s3-calls" title="Permalink to this headline">¶</a></h3>
+<p>To use a Ceph Object Gateway with subdomain S3 calls (e.g.,
+<tt class="docutils literal"><span class="pre">http://bucketname.hostname</span></tt>), you must add the Ceph Object Gateway DNS name
+under the <tt class="docutils literal"><span class="pre">[client.radosgw.gateway]</span></tt> section of your Ceph configuration file:</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway]
+        ...
+        rgw dns name = {hostname}</pre>
+</div>
+<p>You should also consider installing a DNS server such as <a class="reference external" href="https://help.ubuntu.com/community/Dnsmasq">Dnsmasq</a> on your
+client machine(s) when using <tt class="docutils literal"><span class="pre">http://{bucketname}.{hostname}</span></tt> syntax. The
+<tt class="docutils literal"><span class="pre">dnsmasq.conf</span></tt> file should include the following settings:</p>
+<div class="highlight-python"><pre>address=/{hostname}/{host-ip-address}
+listen-address={client-loopback-ip}</pre>
+</div>
+<p>Then, add the <tt class="docutils literal"><span class="pre">{client-loopback-ip}</span></tt> IP address as the first DNS nameserver
+on client the machine(s).</p>
+<p>See <a class="reference external" href="../../install/install-ceph-gateway#add-wildcard-to-dns">Add Wildcard to DNS</a> for details.</p>
+</div>
+<div class="section" id="redeploy-ceph-configuration">
+<h3>Redeploy Ceph Configuration<a class="headerlink" href="#redeploy-ceph-configuration" title="Permalink to this headline">¶</a></h3>
+<p>To use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> to push a new copy of the configuration file to the hosts
+in your cluster, execute the following:</p>
+<div class="highlight-python"><pre>ceph-deploy config push {host-name [host-name]...}</pre>
+</div>
+</div>
+</div>
+<div class="section" id="add-a-ceph-object-gateway-script">
+<h2>Add a Ceph Object Gateway Script<a class="headerlink" href="#add-a-ceph-object-gateway-script" title="Permalink to this headline">¶</a></h2>
+<p>Add a <tt class="docutils literal"><span class="pre">s3gw.fcgi</span></tt> file (use the same name referenced in the first line
+of <tt class="docutils literal"><span class="pre">rgw.conf</span></tt>). For Debian/Ubuntu distributions, save the file to the
+<tt class="docutils literal"><span class="pre">/var/www</span></tt> directory. For CentOS/RHEL distributions, save the file to the
+<tt class="docutils literal"><span class="pre">/var/www/html</span></tt> directory. Assuming a cluster named <tt class="docutils literal"><span class="pre">ceph</span></tt> (default),
+and the user created in previous steps, the contents of the file should
+include:</p>
+<div class="highlight-python"><pre>#!/bin/sh
+exec /usr/bin/radosgw -c /etc/ceph/ceph.conf -n client.radosgw.gateway</pre>
+</div>
+<p>Ensure that you apply execute permissions to <tt class="docutils literal"><span class="pre">s3gw.fcgi</span></tt>.</p>
+<div class="highlight-python"><pre>sudo chmod +x s3gw.fcgi</pre>
+</div>
+<p>On some distributions, you must also change the ownership to <tt class="docutils literal"><span class="pre">apache</span></tt>.</p>
+<div class="highlight-python"><pre>sudo chown apache:apache s3gw.fcgi</pre>
+</div>
+</div>
+<div class="section" id="create-data-directory">
+<h2>Create Data Directory<a class="headerlink" href="#create-data-directory" title="Permalink to this headline">¶</a></h2>
+<p>Deployment scripts may not create the default Ceph Object Gateway data
+directory.  Create data directories for each instance of a <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemon
+(if you haven&#8217;t done so already). The <tt class="docutils literal"><span class="pre">host</span></tt>  variables in the Ceph
+configuration file determine which host runs each instance of a <tt class="docutils literal"><span class="pre">radosgw</span></tt>
+daemon. The typical form specifies the <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemon, the cluster name and
+the daemon ID.</p>
+<div class="highlight-python"><pre>sudo mkdir -p /var/lib/ceph/radosgw/{$cluster}-{$id}</pre>
+</div>
+<p>Using the exemplary <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> settings above, you would execute the following:</p>
+<div class="highlight-python"><pre>sudo mkdir -p /var/lib/ceph/radosgw/ceph-radosgw.gateway</pre>
+</div>
+</div>
+<div class="section" id="create-a-gateway-configuration">
+<h2>Create a Gateway Configuration<a class="headerlink" href="#create-a-gateway-configuration" title="Permalink to this headline">¶</a></h2>
+<p>On the host where you installed the Ceph Object Gateway, create an <tt class="docutils literal"><span class="pre">rgw.conf</span></tt>
+file. For Debian/Ubuntu systems, place the file in the
+<tt class="docutils literal"><span class="pre">/etc/apache2/sites-available</span></tt> directory. For CentOS/RHEL systems, place the
+file in the <tt class="docutils literal"><span class="pre">/etc/httpd/conf.d</span></tt> directory.</p>
+<p>We recommend deploying FastCGI as an external server, because allowing Apache to
+manage FastCGI sometimes introduces high latency. To manage FastCGI as an
+external server, use the <tt class="docutils literal"><span class="pre">FastCgiExternalServer</span></tt> directive.  See
+<a class="reference external" href="http://www.fastcgi.com/drupal/node/25#FastCgiExternalServer">FastCgiExternalServer</a> for details on this directive.  See <a class="reference external" href="http://www.fastcgi.com/drupal/node/25">Module
+mod_fastcgi</a> for general details. See <a class="reference external" href="http://httpd.apache.org/docs/2.2/vhosts/">Apache Virtual Host documentation</a> for
+details on <tt class="docutils literal"><span class="pre">&lt;VirtualHost&gt;</span></tt> format  and settings. See <a class="reference external" href="http://httpd.apache.org/docs/2.2/mod/core.html#ifmodule">&lt;IfModule&gt; Directive</a>
+for additional details.</p>
+<p>Ceph Object Gateway requires a rewrite rule for the Amazon S3-compatible
+interface. It&#8217;s required for passing in the <tt class="docutils literal"><span class="pre">HTTP_AUTHORIZATION</span> <span class="pre">env</span></tt> for S3,
+which is filtered out by Apache. The rewrite rule is not necessary for the
+OpenStack Swift-compatible interface.</p>
+<p>You should configure Apache to allow encoded slashes, provide paths for log
+files and to turn off server signatures. See below for an exemplary embodiment
+of a gateway configuration for Debian/Ubuntu and CentOS/RHEL.</p>
+<p class="rubric">Debian/Ubuntu</p>
+<div class="highlight-ini"><pre>FastCgiExternalServer /var/www/s3gw.fcgi -socket /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+
+&lt;VirtualHost *:80&gt;
+
+	ServerName {fqdn}
+	&lt;!--Remove the comment. Add a server alias with *.{fqdn} for S3 subdomains--&gt;
+	&lt;!--ServerAlias *.{fqdn}--&gt;
+	ServerAdmin {email.address}
+	DocumentRoot /var/www
+	RewriteEngine On
+	RewriteRule  ^/(.*) /s3gw.fcgi?%{QUERY_STRING} [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+	&lt;IfModule mod_fastcgi.c&gt;
+   	&lt;Directory /var/www&gt;
+			Options +ExecCGI
+			AllowOverride All
+			SetHandler fastcgi-script
+			Order allow,deny
+			Allow from all
+			AuthBasicAuthoritative Off
+		&lt;/Directory&gt;
+	&lt;/IfModule&gt;
+
+	AllowEncodedSlashes On
+	ErrorLog /var/log/apache2/error.log
+	CustomLog /var/log/apache2/access.log combined
+	ServerSignature Off
+
+&lt;/VirtualHost&gt;</pre>
+</div>
+<p class="rubric">CentOS/RHEL</p>
+<div class="highlight-ini"><pre>FastCgiExternalServer /var/www/html/s3gw.fcgi -socket /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+
+
+&lt;VirtualHost *:80&gt;
+
+	ServerName {fqdn}
+	&lt;!--Remove the comment. Add a server alias with *.{fqdn} for S3 subdomains--&gt;
+	&lt;!--ServerAlias *.{fqdn}--&gt;
+	ServerAdmin {email.address}
+	DocumentRoot /var/www/html
+	RewriteEngine On
+	RewriteRule  ^/(.*) /s3gw.fcgi?%{QUERY_STRING} [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+	&lt;IfModule mod_fastcgi.c&gt;
+   	&lt;Directory /var/www/html&gt;
+			Options +ExecCGI
+			AllowOverride All
+			SetHandler fastcgi-script
+			Order allow,deny
+			Allow from all
+			AuthBasicAuthoritative Off
+		&lt;/Directory&gt;
+	&lt;/IfModule&gt;
+
+	AllowEncodedSlashes On
+	ErrorLog /var/log/httpd/error.log
+	CustomLog /var/log/httpd/access.log combined
+	ServerSignature Off
+
+&lt;/VirtualHost&gt;</pre>
+</div>
+<ol class="arabic simple">
+<li>Replace the <tt class="docutils literal"><span class="pre">/{path}/{socket-name}</span></tt> entry with path to the socket and
+the socket name. For example,
+<tt class="docutils literal"><span class="pre">/var/run/ceph/ceph.radosgw.gateway.fastcgi.sock</span></tt>. Ensure that you use the
+same path and socket name in your <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> entry.</li>
+<li>Replace the <tt class="docutils literal"><span class="pre">{fqdn}</span></tt> entry with the fully-qualified domain name of the
+server.</li>
+<li>Replace the <tt class="docutils literal"><span class="pre">{email.address}</span></tt> entry with the email address for the
+server administrator.</li>
+<li>Add a <tt class="docutils literal"><span class="pre">ServerAlias</span></tt> if you wish to use S3-style subdomains
+(of course you do).</li>
+<li>Save the configuration to a file (e.g., <tt class="docutils literal"><span class="pre">rgw.conf</span></tt>).</li>
+</ol>
+<p>Finally, if you enabled SSL, make sure that you set the port to your SSL port
+(usually 443) and your configuration file includes the following:</p>
+<div class="highlight-python"><pre>SSLEngine on
+SSLCertificateFile /etc/apache2/ssl/apache.crt
+SSLCertificateKeyFile /etc/apache2/ssl/apache.key
+SetEnv SERVER_PORT_SECURE 443</pre>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">If you are using CentOS, RHEL or a similar distribution, make
+sure that <tt class="docutils literal"><span class="pre">FastCgiWrapper</span></tt> is turned <tt class="docutils literal"><span class="pre">off</span></tt> in
+<tt class="docutils literal"><span class="pre">/etc/httpd/conf.d/fastcgi.conf</span></tt>. It is usually <tt class="docutils literal"><span class="pre">on</span></tt> by default.</p>
+</div>
+<p>For Debian/Ubuntu distributions, enable the site for <tt class="docutils literal"><span class="pre">rgw.conf</span></tt>.</p>
+<div class="highlight-python"><pre>sudo a2ensite rgw.conf</pre>
+</div>
+<p>Then, disable the default site.</p>
+<div class="highlight-python"><pre>sudo a2dissite default</pre>
+</div>
+</div>
+<div class="section" id="adjust-path-ownership-permissions">
+<h2>Adjust Path Ownership/Permissions<a class="headerlink" href="#adjust-path-ownership-permissions" title="Permalink to this headline">¶</a></h2>
+<p>On some distributions, you must change ownership for <tt class="docutils literal"><span class="pre">/var/log/httpd</span></tt> or
+<tt class="docutils literal"><span class="pre">/var/log/apache2</span></tt> and <tt class="docutils literal"><span class="pre">/var/run/ceph</span></tt> to ensure that Apache has permissions
+to create a socket or log file.</p>
+<div class="highlight-python"><pre>sudo chown apache:apache /path/to/file</pre>
+</div>
+<p>On some systems, you may need to set SELinux to <tt class="docutils literal"><span class="pre">Permissive</span></tt>. If you are
+unable to communicate with the gateway after attempting to start it, try
+executing:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">getenforce</span>
+</pre></div>
+</div>
+<p>If the result is <tt class="docutils literal"><span class="pre">1</span></tt> or <tt class="docutils literal"><span class="pre">Enforcing</span></tt>, execute:</p>
+<div class="highlight-python"><pre>sudo setenforce 0</pre>
+</div>
+<p>Then, restart Apache and the gateway daemon to see if that resolves the issue.
+If it does, you can configure your system to disable SELinux.</p>
+</div>
+<div class="section" id="restart-services-and-start-the-gateway">
+<h2>Restart Services and Start the Gateway<a class="headerlink" href="#restart-services-and-start-the-gateway" title="Permalink to this headline">¶</a></h2>
+<p>To ensure that all components have reloaded their configurations,  we recommend
+restarting your <tt class="docutils literal"><span class="pre">ceph</span></tt> and <tt class="docutils literal"><span class="pre">apache</span></tt> services. Then,  start up the
+<tt class="docutils literal"><span class="pre">radosgw</span></tt> service.</p>
+<p>For the Ceph Storage Cluster, see <a class="reference external" href="../../rados/rados/operations/operating">Operating a Cluster</a> for details. Some
+versions of Ceph use different methods for starting and stopping clusters.</p>
+<div class="section" id="restart-apache">
+<h3>Restart Apache<a class="headerlink" href="#restart-apache" title="Permalink to this headline">¶</a></h3>
+<p>On Debian/Ubuntu systems, use <tt class="docutils literal"><span class="pre">apache2</span></tt>. For example:</p>
+<div class="highlight-python"><pre>sudo service apache2 restart
+sudo /etc/init.d/apache2 restart</pre>
+</div>
+<p>On CentOS/RHEL systems, use <tt class="docutils literal"><span class="pre">httpd</span></tt>. For example:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/httpd restart</pre>
+</div>
+</div>
+<div class="section" id="start-the-gateway">
+<h3>Start the Gateway<a class="headerlink" href="#start-the-gateway" title="Permalink to this headline">¶</a></h3>
+<p>On Debian/Ubuntu systems, use <tt class="docutils literal"><span class="pre">radosgw</span></tt>. For example:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/radosgw start</pre>
+</div>
+<p>On CentOS/RHEL systems, use <tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt>. For example:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph-radosgw start</pre>
+</div>
+</div>
+<div class="section" id="verify-the-runtime">
+<h3>Verify the Runtime<a class="headerlink" href="#verify-the-runtime" title="Permalink to this headline">¶</a></h3>
+<p>Once the service is up and running, you can make an anonymous GET request to see
+if the gateway returns a response. A simple HTTP request to the domain name
+should return the following:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;ListAllMyBucketsResult</span> <span class="na">xmlns=</span><span class="s">&quot;http://s3.amazonaws.com/doc/2006-03-01/&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;Owner&gt;</span>
+                <span class="nt">&lt;ID&gt;</span>anonymous<span class="nt">&lt;/ID&gt;</span>
+                <span class="nt">&lt;DisplayName/&gt;</span>
+        <span class="nt">&lt;/Owner&gt;</span>
+        <span class="nt">&lt;Buckets/&gt;</span>
+<span class="nt">&lt;/ListAllMyBucketsResult&gt;</span>
+</pre></div>
+</div>
+<p>If you receive an error, check your settings and try again. See
+<a class="reference internal" href="#adjust-path-ownership-permissions">Adjust Path Ownership/Permissions</a> for details.</p>
+</div>
+</div>
+<div class="section" id="using-the-gateway">
+<h2>Using The Gateway<a class="headerlink" href="#using-the-gateway" title="Permalink to this headline">¶</a></h2>
+<p>To use the REST interfaces, first create an initial Ceph Object Gateway user for
+the S3 interface. Then, create a subuser for the swift interface. See the <a class="reference external" href="../admin">Admin
+Guide</a> for details.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 对象网关</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">手动安装</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">简单配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#create-a-user-and-keyring">Create a User and Keyring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-pools">Create Pools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#add-a-gateway-configuration-to-ceph">Add a Gateway Configuration to Ceph</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#configuring-print-continue">Configuring Print Continue</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configuring-operations-logging">Configuring Operations Logging</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#enabling-subdomain-s3-calls">Enabling Subdomain S3 Calls</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#redeploy-ceph-configuration">Redeploy Ceph Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#add-a-ceph-object-gateway-script">Add a Ceph Object Gateway Script</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-data-directory">Create Data Directory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-a-gateway-configuration">Create a Gateway Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adjust-path-ownership-permissions">Adjust Path Ownership/Permissions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#restart-services-and-start-the-gateway">Restart Services and Start the Gateway</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#restart-apache">Restart Apache</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#start-the-gateway">Start the Gateway</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#verify-the-runtime">Verify the Runtime</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#using-the-gateway">Using The Gateway</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../federated-config/">联盟配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">配置参考</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../purge-temp/">清除临时数据</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">管理员操作 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 集成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../federated-config/" title="Configuring Federated Gateways"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../../install/install-ceph-gateway/" title="安装 Ceph 对象网关"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" >Ceph 对象网关</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

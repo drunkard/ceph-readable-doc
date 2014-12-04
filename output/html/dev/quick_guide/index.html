@@ -1,0 +1,261 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Developer Guide (Quick) &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="内部开发者文档" href="../" />
+    <link rel="next" title="RBD Incremental Backup" href="../rbd-diff/" />
+    <link rel="prev" title="PG （归置组）说明" href="../placement-group/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rbd-diff/" title="RBD Incremental Backup"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../placement-group/" title="PG （归置组）说明"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" accesskey="U">内部开发者文档</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="developer-guide-quick">
+<h1>Developer Guide (Quick)<a class="headerlink" href="#developer-guide-quick" title="Permalink to this headline">¶</a></h1>
+<p>This guide will describe how to build and test Ceph for development.</p>
+<div class="section" id="development">
+<h2>Development<a class="headerlink" href="#development" title="Permalink to this headline">¶</a></h2>
+<p>After installing the dependencies described in the <tt class="docutils literal"><span class="pre">README</span></tt>,
+prepare the git source tree by updating the submodules</p>
+<div class="code highlight-python"><pre>git submodule update --init</pre>
+</div>
+<p>To build the server daemons, and FUSE client, execute the following:</p>
+<div class="code highlight-python"><pre>./do_autogen.sh -d 1
+make -j [number of cpus]</pre>
+</div>
+</div>
+<div class="section" id="running-a-development-deployment">
+<h2>Running a development deployment<a class="headerlink" href="#running-a-development-deployment" title="Permalink to this headline">¶</a></h2>
+<p>Ceph contains a script called <tt class="docutils literal"><span class="pre">vstart.sh</span></tt> which allows developers to quickly test their code using
+a simple deployment on your development system. Once the build finishes successfully, start the ceph
+deployment using the following command:</p>
+<div class="code highlight-python"><pre>$ cd src
+$ ./vstart.sh -d -n -x</pre>
+</div>
+<p>You can also configure <tt class="docutils literal"><span class="pre">vstart.sh</span></tt> to use only one monitor and one metadata server by using the following:</p>
+<div class="code highlight-python"><pre>$ MON=1 MDS=1 ./vstart.sh -d -n -x</pre>
+</div>
+<p>The system creates three pools on startup: <cite>cephfs_data</cite>, <cite>cephfs_metadata</cite>, and <cite>rbd</cite>.  Let&#8217;s get some stats on
+the current pools:</p>
+<div class="code highlight-python"><pre>$ ./ceph osd pool stats
+*** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
+pool rbd id 0
+  nothing is going on
+
+pool cephfs_data id 1
+  nothing is going on
+
+pool cephfs_metadata id 2
+  nothing is going on
+
+$ ./ceph osd pool stats cephfs_data
+*** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
+pool cephfs_data id 1
+  nothing is going on
+
+$ ./rados df
+pool name       category                 KB      objects       clones     degraded      unfound     rd        rd KB           wr        wr KB
+rbd             -                          0            0            0            0     0            0            0            0            0
+cephfs_data     -                          0            0            0            0     0            0            0            0            0
+cephfs_metadata -                          2           20            0           40     0            0            0           21            8
+  total used        12771536           20
+  total avail     3697045460
+  total space     3709816996</pre>
+</div>
+<p>Make a pool and run some benchmarks against it:</p>
+<div class="code highlight-python"><pre>$ ./rados mkpool mypool
+$ ./rados -p mypool bench 10 write -b 123</pre>
+</div>
+<p>Place a file into the new pool:</p>
+<div class="code highlight-python"><pre>$ ./rados -p mypool put objectone &lt;somefile&gt;
+$ ./rados -p mypool put objecttwo &lt;anotherfile&gt;</pre>
+</div>
+<p>List the objects in the pool:</p>
+<div class="code highlight-python"><pre>$ ./rados -p mypool ls</pre>
+</div>
+<p>Once you are done, type the following to stop the development ceph deployment:</p>
+<div class="code highlight-python"><pre>$ ./stop.sh</pre>
+</div>
+</div>
+<div class="section" id="running-a-radosgw-development-environment">
+<h2>Running a RadosGW development environment<a class="headerlink" href="#running-a-radosgw-development-environment" title="Permalink to this headline">¶</a></h2>
+<p>Add the <tt class="docutils literal"><span class="pre">-r</span></tt> to vstart.sh to enable the RadosGW</p>
+<div class="code highlight-python"><pre>$ cd src
+$ ./vstart.sh -d -n -x -r</pre>
+</div>
+<p>You can now use the swift python client to communicate with the RadosGW.</p>
+<div class="code highlight-python"><pre>$ swift -A http://localhost:8000/auth -U tester:testing -K asdf list
+$ swift -A http://localhost:8000/auth -U tester:testing -K asdf upload mycontainer ceph
+$ swift -A http://localhost:8000/auth -U tester:testing -K asdf list</pre>
+</div>
+</div>
+<div class="section" id="run-unit-tests">
+<h2>Run unit tests<a class="headerlink" href="#run-unit-tests" title="Permalink to this headline">¶</a></h2>
+<p>The tests are located in <cite>src/tests</cite>.  To run them type:</p>
+<div class="code highlight-python"><pre>$ make check</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">开发文档</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx_protocol/">A Detailed Description of the Cephx Authentication Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config/">Configuration Management System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../corpus/">Corpus structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../corpus/#how-to-generate-an-object-corpus">How to generate an object corpus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpu-profiler/">Installing Oprofile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/">Deploying a development cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../differences-from-posix/">Differences from POSIX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../documenting/">Documenting Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../erasure-coded-pool/">Erasure Coded pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../filestore-filesystem-compat/">Filestore filesystem compatilibity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generatedocs/">Building Ceph Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel-client-troubleshooting/">Kernel client troubleshooting (FS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logs/">Debug logs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-protocol/">Network Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../object-store/">Object Store Architecture Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../peering/">Peering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_counters/">Perf counters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement-group/">PG （归置组）说明</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">Developer Guide (Quick)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#development">Development</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#running-a-development-deployment">Running a development deployment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#running-a-radosgw-development-environment">Running a RadosGW development environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run-unit-tests">Run unit tests</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-diff/">RBD Incremental Backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../repo-access/">Notes on Ceph repositories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sepia/">Notes on the Sepia community test lab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd_internals/">OSD 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../radosgw/">RADOS 网关开发者文档</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rbd-diff/" title="RBD Incremental Backup"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../placement-group/" title="PG （归置组）说明"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" >内部开发者文档</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

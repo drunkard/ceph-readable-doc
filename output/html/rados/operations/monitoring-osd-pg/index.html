@@ -1,0 +1,512 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>监控 OSD 和归置组 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <link rel="up" title="集群运维" href="../" />
+    <link rel="next" title="用户管理" href="../user-management/" />
+    <link rel="prev" title="监控集群" href="../monitoring/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../user-management/" title="用户管理"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../monitoring/" title="监控集群"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" accesskey="U">集群运维</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="osd">
+<h1>监控 OSD 和归置组<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h1>
+<p>高可用性和高可靠性要求容错方法来管理软硬件。 Ceph 没有单故障点，并且能在“降级”模式下继续提供服务。其<a class="reference external" href="../data-placement">数据归置</a>引进了一个间接层，它可保证数据不会直接绑死到某一个特定 OSD 地址，这也意味着追踪系统错误的根源得深入<a class="reference external" href="../placement-groups">归置组</a>及底层的 OSD 。</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">集群某一部分失效可能导致不能访问某个对象，但不会牵连其他对象。碰到这种问题时无需恐慌，只需按步骤检查 OSD 和归置组，然后排除故障。</p>
+</div>
+<p>Ceph 通常能自己康复，然而如果故障持续存在，监控 OSD 和归置组有助于找出问题所在。</p>
+<div class="section" id="id1">
+<h2>监控 OSD<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>某 OSD 的状态可以是在集群内（ <tt class="docutils literal"><span class="pre">in</span></tt> ）或集群外（ <tt class="docutils literal"><span class="pre">out</span></tt> ）、也可以是活着且在运行（ <tt class="docutils literal"><span class="pre">up</span></tt> ）或挂了且不在运行（ <tt class="docutils literal"><span class="pre">down</span></tt> ）。如果一个 OSD 活着，它也可以是 <tt class="docutils literal"><span class="pre">in</span></tt> （你可以读写数据）或者 <tt class="docutils literal"><span class="pre">out</span></tt> 集群。如果它以前是 <tt class="docutils literal"><span class="pre">in</span></tt> 但最近 <tt class="docutils literal"><span class="pre">out</span></tt> 了， Ceph 会把其归置组迁移到其他 OSD 。如果一 OSD <tt class="docutils literal"><span class="pre">out</span></tt> 了， CRUSH 就不会再分配归置组给它。如果它挂了（ <tt class="docutils literal"><span class="pre">down</span></tt> ）其状态也应该是 <tt class="docutils literal"><span class="pre">out</span></tt> 。</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">如果一 OSD 状态为 <tt class="docutils literal"><span class="pre">down</span></tt> 且 <tt class="docutils literal"><span class="pre">in</span></tt> ，必定有问题，而且集群处于非健康状态。</p>
+</div>
+<p class="ditaa">
+<img src="../../../_images/ditaa-700a689bcec45906334cd28500d7f59aa579850a.png"/>
+</p>
+<p>如果你执行过这些命令，如 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">health</span></tt> 、 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-s</span></tt> 、或 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-w</span></tt> ，也许注意到了，集群并非一直返回 <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">OK</span></tt> ，别紧张。就 OSD 而言你应该明确，在一些情况下集群<strong>不会</strong>返回 <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">OK</span></tt> ：</p>
+<ol class="arabic simple">
+<li>你还没启动集群（它不会响应的）。</li>
+<li>你刚刚启动或重启完集群，而且它还没准备好，因为归置组正被创建、 OSD 们正在相互建立连接。</li>
+<li>你刚刚增加或拆除一个 OSD 。</li>
+<li>你刚刚修改完集群运行图。</li>
+</ol>
+<p>OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD 也应该是启动（ <tt class="docutils literal"><span class="pre">up</span></tt> ）并在集群内（ <tt class="docutils literal"><span class="pre">in</span></tt> ）运行。用下列命令查看：</p>
+<div class="highlight-python"><pre>ceph osd stat</pre>
+</div>
+<p>其结果会告诉你运行图版本（ eNNNN ）、 总共有 x 个 OSD 、 y 个是 <tt class="docutils literal"><span class="pre">up</span></tt> 的、 z 个是 <tt class="docutils literal"><span class="pre">in</span></tt> 的。</p>
+<blockquote>
+<div>eNNNN: x osds: y up, z in</div></blockquote>
+<p>如果处于 <tt class="docutils literal"><span class="pre">in</span></tt> 状态的 OSD 多于 <tt class="docutils literal"><span class="pre">up</span></tt> 的，用下列命令看看哪些 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 守护进程没在运行：</p>
+<div class="highlight-python"><pre>ceph osd tree</pre>
+</div>
+<div class="highlight-python"><pre>dumped osdmap tree epoch 1
+# id    weight  type name       up/down reweight
+-1      2       pool openstack
+-3      2               rack dell-2950-rack-A
+-2      2                       host dell-2950-A1
+0       1                               osd.0   up      1
+1       1                               osd.1   down    1</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">精心设计的 CRUSH 分级结构可以帮你更快的定位到物理位置、加快故障排除。</p>
+</div>
+<p>若一个 OSD 状态为 <tt class="docutils literal"><span class="pre">down</span></tt> ，启动它：</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph -a start osd.1</pre>
+</div>
+<p>和 OSD 没运行或不启动相关的问题请看 <a class="reference external" href="../../troubleshooting/troubleshooting-osd#osd-not-running">OSD 没运行</a>。</p>
+</div>
+<div class="section" id="id2">
+<h2>归置组集<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>CRUSH 要把归置组分配到 OSD 时，它先查询这个存储池的副本数设置，再把归置组分配到 OSD ，这样就把各副本分配到了不同 OSD 。比如，如果存储池要求归置组有 3 个副本， CRUSH 可能把它们分别分配到 <tt class="docutils literal"><span class="pre">osd.1</span></tt> 、 <tt class="docutils literal"><span class="pre">osd.2</span></tt> 、 <tt class="docutils literal"><span class="pre">osd.3</span></tt> 。考虑到你设置于 <a class="reference external" href="../crush-map">CRUSH 运行图</a>中的失败域，实际上 CRUSH 找出的是伪随机位置，所以在大型集群中，你很少能看到归置组被分配到了相邻的 OSD 。我们把涉及某个特定归置组副本的一组 OSD 称为 <strong>acting set</strong> 。在一些情况下，位于 acting set 中的一个 OSD <tt class="docutils literal"><span class="pre">down</span></tt> 了或者不能为归置组内的对象提供服务，这些情形发生时无需惊慌，常见原因如下：</p>
+<ul class="simple">
+<li>你增加或拆除了一 OSD 。然后 CRUSH 把那个归置组分配到了其他 OSD ，因此改变了 Acting Set 的构成、并且用 backfill 进程启动了数据迁移；</li>
+<li>一 OSD <tt class="docutils literal"><span class="pre">down</span></tt> 了、重启了、而现在正恢复（ <tt class="docutils literal"><span class="pre">recovering</span></tt> ）；</li>
+<li>acting set 中的一个 OSD 挂了，不能提供服务，另一个 OSD 临时接替其工作。</li>
+</ul>
+<p>Ceph 靠 <strong>up set</strong> 处理客户端请求，它们是最终处理请求的一系列 OSD 。大多数情况下 up set 和 acting set 本质上相同，如果不同，说明可能 Ceph 在迁移数据、某 OSD 在恢复、或者哪里有问题。这种情况下， Ceph 通常表现为 HEALTH WARN 状态，还有 &#8220;stuck stale&#8221; 消息。</p>
+<p>用下列命令获取归置组列表：</p>
+<div class="highlight-python"><pre>ceph pg dump</pre>
+</div>
+<p>要根据指定归置组号查看哪些 OSD 位于 Acting Set 或 Up Set 里，执行：</p>
+<div class="highlight-python"><pre>ceph pg map {pg-num}</pre>
+</div>
+<p>其结果会告诉你 osdmap 版本（ eNNN ）、归置组号（ {pg-num} ）、 Up Set 内的 OSD （ up[] ）、和 Acting Set 内的 OSD （ acting[] ）。</p>
+<div class="highlight-python"><pre>osdmap eNNN pg {pg-num} -&gt; up [0,1,2] acting [0,1,2]</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">如果 Up Set 和 Acting Set 不一致，这可能表明集群内部在重均衡或者有潜在问题。</p>
+</div>
+</div>
+<div class="section" id="id3">
+<h2>节点互联<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>写入数据前，归置组必须处于 <tt class="docutils literal"><span class="pre">active</span></tt> 、而且<strong>应该</strong>是 <tt class="docutils literal"><span class="pre">clean</span></tt> 状态。假设一存储池的归置组有 3 个副本，为让 Ceph 确定归置组的当前状态，一归置组的主 OSD （即 acting set 内的第一个 OSD ）会与第二和第三 OSD 建立连接、并就归置组的当前状态达成一致意见。</p>
+<p class="ditaa">
+<img src="../../../_images/ditaa-12ccbc36b952da92b4cb940ca78f39c63f498547.png"/>
+</p>
+<p>OSD 们也向监视器报告自己的状态，详情见<a class="reference external" href="../../configuration/mon-osd-interaction/">监视器与 OSD 交互的配置</a>。要排除连接建立问题，参见<a class="reference external" href="../../troubleshooting/troubleshooting-pg#failures-osd-peering">互联失败</a>。</p>
+</div>
+<div class="section" id="id4">
+<h2>监控归置组状态<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>如果你执行过 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">health</span></tt> 、 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-s</span></tt> 、或 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-w</span></tt> 命令，你也许注意到了集群并非总返回 <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">OK</span></tt> 。检查完 OSD 是否在运行后，你还应该检查归置组状态。你应该明白，在归置组建立连接时集群<strong>不会</strong>返回 <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">OK</span></tt> ：</p>
+<ol class="arabic simple">
+<li>刚刚创建了一个存储池，归置组还没互联好；</li>
+<li>归置组正在恢复；</li>
+<li>刚刚增加或删除了一个 OSD ；</li>
+<li>刚刚修改了 CRUSH 图，并且归置组正在迁移；</li>
+<li>某一归置组的副本间的数据不一致；</li>
+<li>Ceph 正在洗刷一个归置组的副本；</li>
+<li>Ceph 没有足够空余容量来完成回填操作。</li>
+</ol>
+<p>如果是前述原因之一导致了 Ceph 返回 <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">WARN</span></tt> ，无需紧张。很多情况下，集群会自行恢复；有些时候你得采取些措施。归置组监控的一件重要事情是保证集群起来并运行着，所有归置组都处于 <tt class="docutils literal"><span class="pre">active</span></tt> 状态、并且最好是 <tt class="docutils literal"><span class="pre">clean</span></tt> 状态。用下列命令查看所有归置组状态：</p>
+<div class="highlight-python"><pre>ceph pg stat</pre>
+</div>
+<p>其结果会告诉你归置组运行图的版本号（ vNNNNNN ）、归置组总数 x 、有多少归置组处于某种特定状态，如 <tt class="docutils literal"><span class="pre">active+clean</span></tt> （ y ）。</p>
+<div class="highlight-python"><pre>vNNNNNN: x pgs: y active+clean; z bytes data, aa MB used, bb GB / cc GB avail</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ceph 同时报告出多种状态是正常的。</p>
+</div>
+<p>除了归置组状态之外， Ceph 也会报告数据占据的空间（ aa ）、剩余空间（ bb ）和归置组总容量。这些数字在某些情况下是很重要的：</p>
+<div class="highlight-python"><pre>- 快达到 ``near full ratio`` 或 ``full ratio`` 时；
+- 由于 CRUSH 配置错误致使你的数据没能在集群内分布。</pre>
+</div>
+<div class="topic">
+<p class="topic-title first">归置组唯一标识符</p>
+<p>归置组 ID 包含存储池号（不是存储池名字），后面跟一个点（ . ），然后是归置组 ID 一个十六进制数字。用 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">lspools</span></tt> 可查看存储池号及其名字，默认存储池名字 <tt class="docutils literal"><span class="pre">data</span></tt> 、 <tt class="docutils literal"><span class="pre">metadata</span></tt> 、和 <tt class="docutils literal"><span class="pre">rbd</span></tt> 对应的存储池号分别是 <tt class="docutils literal"><span class="pre">0</span></tt> 、 <tt class="docutils literal"><span class="pre">1</span></tt> 、 <tt class="docutils literal"><span class="pre">2</span></tt> 。完整的归置组 ID 格式如下：</p>
+<div class="highlight-python"><pre>{pool-num}.{pg-id}</pre>
+</div>
+<p>典型长相：</p>
+<div class="highlight-python"><pre>0.1f</pre>
+</div>
+</div>
+<p>用下列命令获取归置组列表：</p>
+<div class="highlight-python"><pre>ceph pg dump</pre>
+</div>
+<p>你也可以让它输出到 JSON 格式，并保存到文件：</p>
+<div class="highlight-python"><pre>ceph pg dump -o {filename} --format=json</pre>
+</div>
+<p>要查询某个归置组，用下列命令：</p>
+<div class="highlight-python"><pre>ceph pg {poolnum}.{pg-id} query</pre>
+</div>
+<p>Ceph 会输出成 JSON 格式。</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="p">{</span>
+  <span class="s2">&quot;state&quot;</span><span class="o">:</span> <span class="s2">&quot;active+clean&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;up&quot;</span><span class="o">:</span> <span class="p">[</span>
+    <span class="mi">1</span><span class="p">,</span>
+    <span class="mi">0</span>
+  <span class="p">],</span>
+  <span class="s2">&quot;acting&quot;</span><span class="o">:</span> <span class="p">[</span>
+    <span class="mi">1</span><span class="p">,</span>
+    <span class="mi">0</span>
+  <span class="p">],</span>
+  <span class="s2">&quot;info&quot;</span><span class="o">:</span> <span class="p">{</span>
+    <span class="s2">&quot;pgid&quot;</span><span class="o">:</span> <span class="s2">&quot;1.e&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;last_update&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;last_complete&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;log_tail&quot;</span><span class="o">:</span> <span class="s2">&quot;0&#39;0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;last_backfill&quot;</span><span class="o">:</span> <span class="s2">&quot;MAX&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;purged_snaps&quot;</span><span class="o">:</span> <span class="s2">&quot;[]&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;history&quot;</span><span class="o">:</span> <span class="p">{</span>
+      <span class="s2">&quot;epoch_created&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;last_epoch_started&quot;</span><span class="o">:</span> <span class="mi">537</span><span class="p">,</span>
+      <span class="s2">&quot;last_epoch_clean&quot;</span><span class="o">:</span> <span class="mi">537</span><span class="p">,</span>
+      <span class="s2">&quot;last_epoch_split&quot;</span><span class="o">:</span> <span class="mi">534</span><span class="p">,</span>
+      <span class="s2">&quot;same_up_since&quot;</span><span class="o">:</span> <span class="mi">536</span><span class="p">,</span>
+      <span class="s2">&quot;same_interval_since&quot;</span><span class="o">:</span> <span class="mi">536</span><span class="p">,</span>
+      <span class="s2">&quot;same_primary_since&quot;</span><span class="o">:</span> <span class="mi">536</span><span class="p">,</span>
+      <span class="s2">&quot;last_scrub&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_scrub_stamp&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828174&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;stats&quot;</span><span class="o">:</span> <span class="p">{</span>
+      <span class="s2">&quot;version&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;reported&quot;</span><span class="o">:</span> <span class="s2">&quot;536&#39;782&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;state&quot;</span><span class="o">:</span> <span class="s2">&quot;active+clean&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_fresh&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_change&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_active&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_clean&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_unstale&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;mapping_epoch&quot;</span><span class="o">:</span> <span class="mi">535</span><span class="p">,</span>
+      <span class="s2">&quot;log_start&quot;</span><span class="o">:</span> <span class="s2">&quot;0&#39;0&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;ondisk_log_start&quot;</span><span class="o">:</span> <span class="s2">&quot;0&#39;0&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;created&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;last_epoch_clean&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;parent&quot;</span><span class="o">:</span> <span class="s2">&quot;0.0&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;parent_split_bits&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+      <span class="s2">&quot;last_scrub&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_scrub_stamp&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828174&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;log_size&quot;</span><span class="o">:</span> <span class="mi">128</span><span class="p">,</span>
+      <span class="s2">&quot;ondisk_log_size&quot;</span><span class="o">:</span> <span class="mi">128</span><span class="p">,</span>
+      <span class="s2">&quot;stat_sum&quot;</span><span class="o">:</span> <span class="p">{</span>
+        <span class="s2">&quot;num_bytes&quot;</span><span class="o">:</span> <span class="mi">205</span><span class="p">,</span>
+        <span class="s2">&quot;num_objects&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;num_object_clones&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_object_copies&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_objects_missing_on_primary&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_objects_degraded&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_objects_unfound&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_read&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;num_read_kb&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_write&quot;</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s2">&quot;num_write_kb&quot;</span><span class="o">:</span> <span class="mi">1</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;stat_cat_sum&quot;</span><span class="o">:</span> <span class="p">{</span>
+
+      <span class="p">},</span>
+      <span class="s2">&quot;up&quot;</span><span class="o">:</span> <span class="p">[</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="mi">0</span>
+      <span class="p">],</span>
+      <span class="s2">&quot;acting&quot;</span><span class="o">:</span> <span class="p">[</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="mi">0</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;empty&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;dne&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;incomplete&quot;</span><span class="o">:</span> <span class="mi">0</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;recovery_state&quot;</span><span class="o">:</span> <span class="p">[</span>
+    <span class="p">{</span>
+      <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;Started\/Primary\/Active&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;enter_time&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-23 09:35:37.594691&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;might_have_unfound&quot;</span><span class="o">:</span> <span class="p">[</span>
+
+      <span class="p">],</span>
+      <span class="s2">&quot;scrub&quot;</span><span class="o">:</span> <span class="p">{</span>
+        <span class="s2">&quot;scrub_epoch_start&quot;</span><span class="o">:</span> <span class="s2">&quot;536&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;scrub_active&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;scrub_block_writes&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;finalizing_scrub&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;scrub_waiting_on&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;scrub_waiting_on_whom&quot;</span><span class="o">:</span> <span class="p">[</span>
+
+        <span class="p">]</span>
+      <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+      <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;Started&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;enter_time&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-23 09:35:31.581160&quot;</span>
+    <span class="p">}</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>后续子章节详述了常见状态。</p>
+<div class="section" id="id5">
+<h3>存储池在建中<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>创建存储池时，它会创建指定数量的归置组。 Ceph 在创建一或多个归置组时会显示 <tt class="docutils literal"><span class="pre">creating</span></tt> ；创建完后，在其归置组的 Acting Set 里的 OSD 将建立互联；一旦互联完成，归置组状态应该变为 <tt class="docutils literal"><span class="pre">active+clean</span></tt> ，意思是 Ceph 客户端可以向归置组写入数据了。</p>
+<p class="ditaa">
+<img src="../../../_images/ditaa-48a884d47a318394a948f7e883a89c76115606bc.png"/>
+</p>
+</div>
+<div class="section" id="id6">
+<h3>互联建立中<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 为归置组建立互联时，会让存储归置组副本的 OSD 之间就其中的对象和元数据状态<strong>达成一致</strong>。 Ceph 完成了互联，也就意味着存储着归置组的 OSD 就其当前状态达成了一致。然而，互联过程的完成并<strong>不能</strong>表明各副本都有了数据的最新版本。</p>
+<div class="topic">
+<p class="topic-title first">权威历史</p>
+<p>Ceph <strong>不会</strong>向客户端确认写操作，直到 acting set 里的所有 OSD 都完成了写操作。这样处理保证了从上次成功互联起， acting set 中至少有一个成员确认了每个写操作。</p>
+<p>有了各个已确认写操作的精确记录， Ceph 就可以构建和散布一个新的归置组权威历史——一个完整、完全有序的操作集，如果被采用，就能把一个 OSD 的归置组副本更新到最新。</p>
+</div>
+</div>
+<div class="section" id="id7">
+<h3>活跃<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 完成互联后，一归置组状态会变为 <tt class="docutils literal"><span class="pre">active</span></tt> 。 <tt class="docutils literal"><span class="pre">active</span></tt> 状态意味着数据已完好地保存到了主归置组和副本归置组。</p>
+</div>
+<div class="section" id="id8">
+<h3>整洁<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<p>某一归置组处于 <tt class="docutils literal"><span class="pre">clean</span></tt> 状态时，主 OSD 和副本 OSD 已成功互联，并且没有偏离的归置组。 Ceph 已把归置组中的对象复制了规定次数。</p>
+</div>
+<div class="section" id="id9">
+<h3>已降级<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<p>当客户端向主 OSD 写入数据时，由主 OSD 负责把数据副本写入其余副本 OSD 。主 OSD 把对象写入存储器后，在副本 OSD 创建完对象副本并报告给主 OSD 之前，主 OSD 会一直停留在 <tt class="docutils literal"><span class="pre">degraded</span></tt> 状态。</p>
+<p>归置组状态可以处于 <tt class="docutils literal"><span class="pre">active+degraded</span></tt> 状态，原因在于一 OSD 即使尚未持有所有对象也可以处于 <tt class="docutils literal"><span class="pre">active</span></tt> 状态。如果一 OSD 挂了， Ceph 会把分配到此 OSD 的归置组都标记为 <tt class="docutils literal"><span class="pre">degraded</span></tt> ；那个 OSD 重生后，它们必须重新互联。然而，客户端仍可以向处于 <tt class="docutils literal"><span class="pre">degraded</span></tt> 状态的归置组写入新对象，只要它还在 <tt class="docutils literal"><span class="pre">active</span></tt> 状态。</p>
+<p>如果一 OSD 挂了，且老是处于 <tt class="docutils literal"><span class="pre">degraded</span></tt> 状态， Ceph 会把 <tt class="docutils literal"><span class="pre">down</span></tt> 的 OSD 标记为在集群外（ <tt class="docutils literal"><span class="pre">out</span></tt> ）、并把那个 <tt class="docutils literal"><span class="pre">down</span></tt> 掉的 OSD 上的数据重映射到其它 OSD 。从标记为 <tt class="docutils literal"><span class="pre">down</span></tt> 到 <tt class="docutils literal"><span class="pre">out</span></tt> 的时间间隔由 <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">osd</span> <span class="pre">down</span> <span class="pre">out</span> <span class="pre">interval</span></tt> 控制，默认是 <tt class="docutils literal"><span class="pre">300</span></tt> 秒。</p>
+<p>归置组也会被降级（ <tt class="docutils literal"><span class="pre">degraded</span></tt> ），因为 Ceph 找不到本应存在于此归置组中的一或多个对象，这时，你不能读写找不到的对象，但仍能访问位于降级归置组中的其它对象。</p>
+</div>
+<div class="section" id="id10">
+<h3>恢复中<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 被设计为可容错，可抵御一定规模的软、硬件问题。当某 OSD 挂了（ <tt class="docutils literal"><span class="pre">down</span></tt> ）时，其内的归置组会落后于别的归置组副本；此 OSD 重生（ <tt class="docutils literal"><span class="pre">up</span></tt> ）时，归置组内容必须更新到当前状态；在此期间， OSD 处于 <tt class="docutils literal"><span class="pre">recovering</span></tt> 状态。</p>
+<p>恢复并非总是这些小事，因为一次硬件失败可能牵连多个 OSD 。比如一个机柜或房间的网络交换机失败了，这会导致多个主机上的 OSD 落后于集群的当前状态，故障恢复后每一个 OSD 都必须恢复。</p>
+<p>Ceph 提供了几个选项来均衡资源竞争，如新服务请求、恢复数据对象和恢复归置组到当前状态。 <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">delay</span> <span class="pre">start</span></tt> 选项允许一 OSD 在开始恢复进程前，先重启、重建互联、甚至处理一些重放请求；<tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">threads</span></tt> 选项限制恢复进程的线程数，默认为 1 线程； <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">thread</span> <span class="pre">timeout</span></tt> 设置线程超时，因为多个 OSD 可能交替失败、重启和重建互联； <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">max</span> <span class="pre">active</span></tt> 选项限制一 OSD 最多同时接受多少请求，以防它压力过大而不能正常服务； <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">max</span> <span class="pre">chunk</span></tt> 选项限制恢复数据块尺寸，以防网络拥塞。</p>
+</div>
+<div class="section" id="id11">
+<h3>回填中<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<p>有新 OSD 加入集群时， CRUSH 会把现有集群内的部分归置组重分配给它。强制新 OSD 立即接受重分配的归置组会使之过载，用归置组回填可使这个过程在后台开始。只要回填顺利完成，新 OSD 就可以对外服务了。</p>
+<p>在回填运转期间，你可能见到以下几种状态之一： <tt class="docutils literal"><span class="pre">backfill_wait</span></tt> 表明一回填操作在等待时机，尚未开始； <tt class="docutils literal"><span class="pre">backfill</span></tt> 表明一回填操作正在进行； <tt class="docutils literal"><span class="pre">backfill_too_full</span></tt> 表明需要进行回填，但是因存储空间不足而不能完成。某归置组不能回填时，其状态应该是 <tt class="docutils literal"><span class="pre">incomplete</span></tt> 。</p>
+<p>Ceph 提供了多个选项来解决重分配归置组给一 OSD （特别是新 OSD ）时相关的负载问题。默认， <tt class="docutils literal"><span class="pre">osd_max_backfills</span></tt> 把双向的回填并发量都设置为 10 ； <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">backfill</span> <span class="pre">full</span> <span class="pre">\</span>
+<span class="pre">ratio</span></tt> 可让一 OSD 在接近占满率（默认 85% ）时拒绝回填请求，如果一 OSD 拒绝了回填请求，在 <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">backfill</span> <span class="pre">retry</span> <span class="pre">interval</span></tt> 间隔之后将重试（默认 10 秒）； OSD 也能用 <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">backfill</span> <span class="pre">scan</span> <span class="pre">min</span></tt> 和 <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">backfill</span> <span class="pre">scan</span> <span class="pre">max</span></tt> 来管理扫描间隔（默认 64 和 512 ）。</p>
+</div>
+<div class="section" id="id12">
+<h3>被重映射<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<p>负责维护某一归置组的 Acting Set 变更时，数据要从旧集合迁移到新的。新的主 OSD 要花费一些时间才能提供服务，所以老的主 OSD 还要持续提供服务、直到归置组迁移完。数据迁移完后，运行图会包含新 acting set 里的主 OSD 。</p>
+</div>
+<div class="section" id="id13">
+<h3>发蔫<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<p>虽然 Ceph 用心跳来保证主机和守护进程在运行，但是 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 仍有可能进入 <tt class="docutils literal"><span class="pre">stuck</span></tt> 状态，它们没有按时报告其状态（如网络瞬断）。默认， OSD 守护进程每半秒（ <tt class="docutils literal"><span class="pre">0.5</span></tt> ）会一次报告其归置组、出流量、引导和失败统计状态，此频率高于心跳阀值。如果一归置组的<strong>主 OSD</strong> 所在的 acting set 没能向监视器报告、或者其它监视器已经报告了那个主 OSD 已 <tt class="docutils literal"><span class="pre">down</span></tt> ，监视器们就会把此归置组标记为 <tt class="docutils literal"><span class="pre">stale</span></tt> 。</p>
+<p>启动集群时，会经常看到 <tt class="docutils literal"><span class="pre">stale</span></tt> 状态，直到互联完成。集群运行一阵后，如果还能看到有归置组位于 <tt class="docutils literal"><span class="pre">stale</span></tt> 状态，就说明那些归置组的主 OSD 挂了（ <tt class="docutils literal"><span class="pre">down</span></tt> ）、或没在向监视器报告统计信息。</p>
+</div>
+</div>
+<div class="section" id="id14">
+<h2>找出故障归置组<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
+<p>如前所述，一个归置组状态不是 <tt class="docutils literal"><span class="pre">active+clean</span></tt> 时未必有问题。一般来说，归置组卡住时 Ceph 的自修复功能往往无能为力，卡住的状态细分为：</p>
+<ul class="simple">
+<li><strong>Unclean</strong>: 归置组里有些对象的副本数未达到期望次数，它们应该在恢复中；</li>
+<li><strong>Inactive</strong>: 归置组不能处理读写请求，因为它们在等着一个持有最新数据的 OSD 回到 <tt class="docutils literal"><span class="pre">up</span></tt> 状态；</li>
+<li><strong>Stale</strong>: 归置组们处于一种未知状态，因为存储它们的 OSD 有一阵子没向监视器报告了（由 <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">osd</span> <span class="pre">report</span> <span class="pre">timeout</span></tt> 配置）。</li>
+</ul>
+<p>为找出卡住的归置组，执行：</p>
+<div class="highlight-python"><pre>ceph pg dump_stuck [unclean|inactive|stale]</pre>
+</div>
+<p>详情见<a class="reference external" href="../control#placement-group-subsystem">归置组子系统</a>，关于排除卡住的归置组见<a class="reference external" href="../../troubleshooting/troubleshooting-pg#troubleshooting-pg-errors">排除归置组错误</a>。</p>
+</div>
+<div class="section" id="id15">
+<h2>定位对象<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
+<p>要把对象数据存入 Ceph 对象存储，一 Ceph 客户端必须：</p>
+<ol class="arabic simple">
+<li>设置对象名</li>
+<li>指定一<a class="reference external" href="../pools">存储池</a></li>
+</ol>
+<p>Ceph 客户端索取最新集群运行图、并用 CRUSH 算法计算对象到<a class="reference external" href="../placement-groups">归置组</a>的映射，然后计算如何动态地把归置组映射到 OSD 。要定位对象，只需要知道对象名和存储池名字，例如：</p>
+<div class="highlight-python"><pre>ceph osd map {poolname} {object-name}</pre>
+</div>
+<div class="topic">
+<p class="topic-title first">练习：定位一个对象</p>
+<p>反正是练习，我们先创建一个对象。给 <tt class="docutils literal"><span class="pre">rados</span> <span class="pre">put</span></tt> 命令指定一对象名、一个包含数据的测试文件路径、和一个存储池名字，例如：</p>
+<div class="highlight-python"><pre>rados put {object-name} {file-path} --pool=data
+rados put test-object-1 testfile.txt --pool=data</pre>
+</div>
+<p>用下列命令确认 Ceph 对象存储已经包含此对象：</p>
+<div class="highlight-python"><pre>rados -p data ls</pre>
+</div>
+<p>现在可以定位对象了：</p>
+<div class="highlight-python"><pre>ceph osd map {pool-name} {object-name}
+ceph osd map data test-object-1</pre>
+</div>
+<p>Ceph 应该输出对象的位置，例如：</p>
+<div class="highlight-python"><pre>osdmap e537 pool 'data' (0) object 'test-object-1' -&gt; pg 0.d1743484 (0.4) -&gt; up [1,0] acting [1,0]</pre>
+</div>
+<p>要删除测试对象，用 <tt class="docutils literal"><span class="pre">rados</span> <span class="pre">rm</span></tt> 即可，如：</p>
+<div class="highlight-python"><pre>rados rm test-object-1 --pool=data</pre>
+</div>
+</div>
+<p>随着集群的运转，对象位置会动态改变。 Ceph 动态重均衡的优点之一，就是把你从人工迁移中解救了，详情见<a class="reference external" href="../../../architecture">体系结构</a>。</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../configuration/">配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">运维</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../operating/">操纵集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring/">监控集群</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">监控 OSD 和归置组</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">监控 OSD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">归置组集</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">节点互联</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">监控归置组状态</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id5">存储池在建中</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id6">互联建立中</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id7">活跃</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id8">整洁</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id9">已降级</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id10">恢复中</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id11">回填中</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id12">被重映射</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id13">发蔫</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">找出故障归置组</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">定位对象</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../user-management/">用户管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-placement/">数据归置概览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pools/">存储池</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../erasure-code/">纠删码</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-tiering/">分级缓存</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-osds/">增加/删除 OSD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../control/">命令参考</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/community/">Ceph 社区</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-mon/">监视器故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-osd/">OSD 故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-pg/">归置组排障</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/log-and-debug/">日志记录和调试</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/cpu-profiling/">CPU 剖析</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/memory-profiling/">内存剖析</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../user-management/" title="用户管理"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../monitoring/" title="监控集群"
+             >previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" >集群运维</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,460 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>归置组 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <link rel="up" title="集群运维" href="../" />
+    <link rel="next" title="归置组状态" href="../pg-states/" />
+    <link rel="prev" title="分级缓存" href="../cache-tiering/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../pg-states/" title="归置组状态"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../cache-tiering/" title="分级缓存"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" accesskey="U">集群运维</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="id1">
+<h1>归置组<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="pg-num">
+<span id="preselection"></span><h2>预定义 pg_num<a class="headerlink" href="#pg-num" title="Permalink to this headline">¶</a></h2>
+<p>When creating a new pool with:</p>
+<div class="highlight-python"><pre>ceph osd pool set {pool-name} pg_num</pre>
+</div>
+<p>it is mandatory to choose the value of <tt class="docutils literal"><span class="pre">pg_num</span></tt> because it cannot be
+calculated automatically. Here are a few values commonly used:</p>
+<ul class="simple">
+<li>Less than 5 OSDs set <tt class="docutils literal"><span class="pre">pg_num</span></tt> to 128</li>
+<li>Between 5 and 10 OSDs set <tt class="docutils literal"><span class="pre">pg_num</span></tt> to 512</li>
+<li>Between 10 and 50 OSDs set <tt class="docutils literal"><span class="pre">pg_num</span></tt> to 4096</li>
+<li>If you have more than 50 OSDs, you need to understand the tradeoffs
+and how to calculate the <tt class="docutils literal"><span class="pre">pg_num</span></tt> value by yourself</li>
+</ul>
+<p>As the number of OSDs increases, chosing the right value for pg_num
+becomes more important because it has a significant influence on the
+behavior of the cluster as well as the durability of the data when
+something goes wrong (i.e. the probability that a catastrophic event
+leads to data loss).</p>
+</div>
+<div class="section" id="id2">
+<h2>归置组是如何使用的？<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的位置及其元数据需要大量计算——即一个拥有数百万对象的系统，不可能在对象这一级追踪位置。</p>
+<p class="ditaa">
+<img src="../../../_images/ditaa-1fde157d24b63e3b465d96eb6afea22078c85a90.png"/>
+</p>
+<p>Placement groups are invisible to the Ceph user: the CRUSH algorithm
+determines in which placement group the object will be
+placed. Although CRUSH is a deterministic function using the object
+name as a parameter, there is no way to force an object into a given
+placement group.</p>
+<p>The object&#8217;s contents within a placement group are stored in a set of
+OSDs. For instance, in a replicated pool of size two, each placement
+group will store objects on two OSDs, as shown below.</p>
+<p class="ditaa">
+<img src="../../../_images/ditaa-3c86866fb6edc99dad6ccf51e25e536806f0b079.png"/>
+</p>
+<p>Should OSD #2 fail, another will be assigned to Placement Group #1 and
+will be filled with copies of all objects in OSD #1. If the pool size
+is changed from two to three, an additional OSD will be assigned to
+the placement group and will receive copies of all objects in the
+placement group.</p>
+<p>Placement groups do not own the OSD, they share it with other
+placement groups from the same pool or even other pools. If OSD #2
+fails, the Placement Group #2 will also have to restore copies of
+objects, using OSD #3.</p>
+<p>When the number of placement groups increases, the new placement
+groups will be assigned OSDs. The result of the CRUSH function will
+also change and some objects from the former placement groups will be
+copied over to the new Placement Groups and removed from the old ones.</p>
+</div>
+<div class="section" id="placement-groups-tradeoffs">
+<h2>Placement Groups Tradeoffs<a class="headerlink" href="#placement-groups-tradeoffs" title="Permalink to this headline">¶</a></h2>
+<p>Data durability and even distribution among all OSDs call for more
+placement groups but their number should be reduced to the minimum to
+save CPU and memory.</p>
+<div class="section" id="data-durability">
+<span id="id3"></span><h3>Data durability<a class="headerlink" href="#data-durability" title="Permalink to this headline">¶</a></h3>
+<p>After an OSD fails, the risk of data loss increases until the data it
+contained is fully recovered. Let&#8217;s imagine a scenario that causes
+permanent data loss in a single placement group:</p>
+<ul class="simple">
+<li>The OSD fails and all copies of the object it contains are lost.
+For all objects within the placement group the number of replica
+suddently drops from three to two.</li>
+<li>Ceph starts recovery for this placement group by chosing a new OSD
+to re-create the third copy of all objects.</li>
+<li>Another OSD, within the same placement group, fails before the new
+OSD is fully populated with the third copy. Some objects will then
+only have one surviving copies.</li>
+<li>Ceph picks yet another OSD and keeps copying objects to restore the
+desired number of copies.</li>
+<li>A third OSD, within the same placement group, fails before recovery
+is complete. If this OSD contained the only remaining copy of an
+object, it is permanently lost.</li>
+</ul>
+<p>In a cluster containing 10 OSDs with 512 placement groups in a three
+replica pool, CRUSH will give each placement groups three OSDs. In the
+end, each OSDs will end up hosting (512 * 3) / 10 = ~150 Placement
+Groups. When the first OSD fails, the above scenario will therefore
+start recovery for all 150 placement groups at the same time.</p>
+<p>The 150 placement groups being recovered are likely to be
+homogeneously spread over the 9 remaining OSDs. Each remaining OSD is
+therefore likely to send copies of objects to all others and also
+receive some new objects to be stored because they became part of a
+new placement group.</p>
+<p>The amount of time it takes for this recovery to complete entirely
+depends on the architecture of the Ceph cluster. Let say each OSD is
+hosted by a 1TB SSD on a single machine and all of them are connected
+to a 10Gb/s switch and the recovery for a single OSD completes within
+M minutes. If there are two OSDs per machine using spinners with no
+SSD journal and a 1Gb/s switch, it will at least be an order of
+magnitude slower.</p>
+<p>In a cluster of this size, the number of placement groups has almost
+no influence on data durability. It could be 128 or 8192 and the
+recovery would not be slower or faster.</p>
+<p>However, growing the same Ceph cluster to 20 OSDs instead of 10 OSDs
+is likely to speed up recovery and therefore improve data durability
+significantly. Each OSD now participates in only ~75 placement groups
+instead of ~150 when there were only 10 OSDs and it will still require
+all 19 remaining OSDs to perform the same amount of object copies in
+order to recover. But where 10 OSDs had to copy approximately 100GB
+each, they now have to copy 50GB each instead. If the network was the
+bottleneck, recovery will happen twice as fast. In other words,
+recovery goes faster when the number of OSDs increases.</p>
+<p>If this cluster grows to 40 OSDs, each of them will only host ~35
+placement groups. If an OSD dies, recovery will keep going faster
+unless it is blocked by another bottleneck. However, if this cluster
+grows to 200 OSDs, each of them will only host ~7 placement groups. If
+an OSD dies, recovery will happen between at most of ~21 (7 * 3) OSDs
+in these placement groups: recovery will take longer than when there
+were 40 OSDs, meaning the number of placement groups should be
+increased.</p>
+<p>No matter how short the recovery time is, there is a chance for a
+second OSD to fail while it is in progress. In the 10 OSDs cluster
+described above, if any of them fail, then ~8 placement groups
+(i.e. ~75 / 9 placement groups being recovered) will only have one
+surviving copy. And if any of the 8 remaining OSD fail, the last
+objects of one placement group are likely to be lost (i.e. ~8 / 8
+placement groups with only one remaining copy being recovered).</p>
+<p>When the size of the cluster grows to 20 OSDs, the number of Placement
+Groups damaged by the loss of three OSDs drops. The second OSD lost
+will degrade ~2 (i.e. ~35 / 19 placement groups being recovered)
+instead of ~8 and the third OSD lost will only lose data if it is one
+of the two OSDs containing the surviving copy. In other words, if the
+probability of losing one OSD is 0.0001% during the recovery time
+frame, it goes from 8 * 0.0001% in the cluster with 10 OSDs to 2 *
+0.0001% in the cluster with 20 OSDs.</p>
+<p>In a nutshell, more OSDs mean faster recovery and a lower risk of
+cascading failures leading to the permanent loss of a Placement
+Group. Having 512 or 4096 Placement Groups is roughly equivalent in a
+cluster with less than 50 OSDs as far as data durability is concerned.</p>
+<p>Note: It may take a long time for a new OSD added to the cluster to be
+populated with placement groups that were assigned to it. However
+there is no degradation of any object and it has no impact on the
+durability of the data contained in the Cluster.</p>
+</div>
+<div class="section" id="object-distribution-within-a-pool">
+<span id="object-distribution"></span><h3>Object distribution within a pool<a class="headerlink" href="#object-distribution-within-a-pool" title="Permalink to this headline">¶</a></h3>
+<p>Ideally objects are evenly distributed in each placement group. Since
+CRUSH computes the placement group for each object, but does not
+actually know how much data is stored in each OSD within this
+placement group, the ratio between the number of placement groups and
+the number of OSDs may influence the distribution of the data
+significantly.</p>
+<p>For instance, if there was single a placement group for ten OSDs in a
+three replica pool, only three OSD would be used because CRUSH would
+have no other choice. When more placement groups are available,
+objects are more likely to be evenly spread among them. CRUSH also
+makes every effort to evenly spread OSDs among all existing Placement
+Groups.</p>
+<p>As long as there are one or two orders of magnitude more Placement
+Groups than OSDs, the distribution should be even. For instance, 300
+placement groups for 3 OSDs, 1000 placement groups for 10 OSDs etc.</p>
+<p>Uneven data distribution can be caused by factors other than the ratio
+between OSDs and placement groups. Since CRUSH does not take into
+account the size of the objects, a few very large objects may create
+an imbalance. Let say one million 4K objects totaling 4GB are evenly
+spread among 1000 placement groups on 10 OSDs. They will use 4GB / 10
+= 400MB on each OSD. If one 400MB object is added to the pool, the
+three OSDs supporting the placement group in which the object has been
+placed will be filled with 400MB + 400MB = 800MB while the seven
+others will remain occupied with only 400MB.</p>
+</div>
+<div class="section" id="resource-usage">
+<span id="id4"></span><h3>内存、处理器和网络使用情况<a class="headerlink" href="#resource-usage" title="Permalink to this headline">¶</a></h3>
+<p>各个归置组、 OSD 和监视器都一直需要内存、网络、处理器，在恢复期间需求更大。为消除过载而把对象聚集成簇是归置组存在的主要原因。</p>
+<p>最小化归置组数量可节省不少资源。</p>
+</div>
+</div>
+<div class="section" id="id5">
+<h2>确定归置组数量<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>If you have more than 50 OSDs, we recommend approximately 50-100
+placement groups per OSD to balance out resource usage, data
+durability and distribution. If you have less than 50 OSDs, chosing
+among the <a class="reference internal" href="#preselection">preselection</a> above is best. For a single pool of objects,
+you can use the following formula to get a baseline:</p>
+<div class="highlight-python"><pre>             (OSDs * 100)
+Total PGs =  ------------
+              pool size</pre>
+</div>
+<p>Where <strong>pool size</strong> is either the number of replicas for replicated
+pools or the K+M sum for erasure coded pools (as returned by <strong>ceph
+osd erasure-code-profile get</strong>).</p>
+<p>You should then check if the result makes sense with the way you
+designed your Ceph cluster to maximize <a class="reference internal" href="#data-durability">data durability</a>,
+<a class="reference internal" href="#object-distribution">object distribution</a> and minimize <a class="reference internal" href="#resource-usage">resource usage</a>.</p>
+<p>其结果<strong>汇总后应该接近 2 的幂</strong>。汇总并非强制的，如果你想确保所有归置组内的对象数大致相等，最好检查下。</p>
+<p>比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样估算归置组数量：</p>
+<div class="highlight-python"><pre>(200 * 100)
+----------- = 6667. Nearest power of 2: 8192
+     3</pre>
+</div>
+<p>当用了多个数据存储池来存储数据时，你得确保均衡每个存储池的归置组数量、且归置组数量分摊到每个 OSD ，这样才能达到较合理的归置组总量，并因此使得每个 OSD 无需耗费过多系统资源或拖慢连接进程就能实现较小变迁。</p>
+<p>For instance a cluster of 10 pools each with 512 placement groups on
+ten OSDs is a total of 5,120 placement groups spread over ten OSDs,
+that is 512 placement groups per OSD. That does not use too many
+resources. However, if 1,000 pools were created with 512 placement
+groups each, the OSDs will handle ~50,000 placement groups each and it
+would require significantly more resources and time for peering.</p>
+</div>
+<div class="section" id="setting-the-number-of-placement-groups">
+<span id="id6"></span><h2>设置归置组数量<a class="headerlink" href="#setting-the-number-of-placement-groups" title="Permalink to this headline">¶</a></h2>
+<p>要设置某存储池的归置组数量，你必须在创建它时就指定好，详情见<a class="reference external" href="../pools#createpool">创建存储池</a>。一存储池的归置组数量设置好之后，还可以增加（但不可以减少），下列命令可增加归置组数量：</p>
+<div class="highlight-python"><pre>ceph osd pool set {pool-name} pg_num {pg_num}</pre>
+</div>
+<p>你增加归置组数量后、还必须增加用于归置的归置组（ <tt class="docutils literal"><span class="pre">pgp_num</span></tt> ）数量，这样才会开始重均衡。 <tt class="docutils literal"><span class="pre">pgp_num</span></tt> 应等于 <tt class="docutils literal"><span class="pre">pg_num</span></tt> ，可用下列命令增加用于归置的归置组数量：</p>
+<div class="highlight-python"><pre>ceph osd pool set {pool-name} pgp_num {pgp_num}</pre>
+</div>
+</div>
+<div class="section" id="id7">
+<h2>获取归置组数量<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<p>要获取一个存储池的归置组数量，执行命令：</p>
+<div class="highlight-python"><pre>ceph osd pool get {pool-name} pg_num</pre>
+</div>
+</div>
+<div class="section" id="id8">
+<h2>获取归置组统计信息<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<p>要获取集群里归置组的统计信息，执行命令：</p>
+<div class="highlight-python"><pre>ceph pg dump [--format {format}]</pre>
+</div>
+<p>可用格式有纯文本 <tt class="docutils literal"><span class="pre">plain</span></tt> （默认）和 <tt class="docutils literal"><span class="pre">json</span></tt> 。</p>
+</div>
+<div class="section" id="id9">
+<h2>获取卡住的归置组统计信息<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<p>要获取所有卡在某状态的归置组统计信息，执行命令：</p>
+<div class="highlight-python"><pre>ceph pg dump_stuck inactive|unclean|stale [--format &lt;format&gt;] [-t|--threshold &lt;seconds&gt;]</pre>
+</div>
+<p><strong>Inactive</strong> （不活跃）归置组不能处理读写，因为它们在等待一个有最新数据的 OSD 复活且进入集群。</p>
+<p><strong>Unclean</strong> （不干净）归置组含有复制数未达到期望数量的对象，它们应该在恢复中。</p>
+<p><strong>Stale</strong> （不新鲜）归置组处于未知状态：存储它们的 OSD 有段时间没向监视器报告了（由  <tt class="docutils literal"><span class="pre">mon_osd_report_timeout</span></tt> 配置）。</p>
+<p>可用格式有 <tt class="docutils literal"><span class="pre">plain</span></tt> （默认）和 <tt class="docutils literal"><span class="pre">json</span></tt> 。阀值定义的是，归置组被认为卡住前等待的最小时间（默认 300 秒）。</p>
+</div>
+<div class="section" id="id10">
+<h2>获取一归置组运行图<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
+<p>要获取一个具体归置组的归置组图，执行命令：</p>
+<div class="highlight-python"><pre>ceph pg map {pg-id}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>ceph pg map 1.6c</pre>
+</div>
+<p>Ceph 将返回归置组图、归置组、和 OSD 状态：</p>
+<div class="highlight-python"><pre>osdmap e13 pg 1.6c (1.6c) -&gt; up [1,0] acting [1,0]</pre>
+</div>
+</div>
+<div class="section" id="pg">
+<h2>获取一 PG 的统计信息<a class="headerlink" href="#pg" title="Permalink to this headline">¶</a></h2>
+<p>要查看一个具体归置组的统计信息，执行命令：</p>
+<div class="highlight-python"><pre>ceph pg {pg-id} query</pre>
+</div>
+</div>
+<div class="section" id="id11">
+<h2>洗刷归置组<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h2>
+<p>要洗刷一个归置组，执行命令：</p>
+<div class="highlight-python"><pre>ceph pg scrub {pg-id}</pre>
+</div>
+<p>Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目录，然后再对比，确保没有对象丢失或不匹配，并且它们的内容一致。</p>
+</div>
+<div class="section" id="id12">
+<h2>恢复丢失的<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
+<p>如果集群丢了一或多个对象，而且必须放弃搜索这些数据，你就要把未找到的对象标记为丢失（ <tt class="docutils literal"><span class="pre">lost</span></tt> ）。</p>
+<p>如果所有可能的位置都查询过了，而仍找不到这些对象，你也许得放弃它们了。这可能是罕见的失败组合导致的，集群在写入完成前，未能得知写入是否已执行。</p>
+<p>当前只支持 revert 选项，它使得回滚到对象的前一个版本（如果它是新对象）或完全忽略它。要把 unfound 对象标记为 lost ，执行命令：</p>
+<div class="highlight-python"><pre>ceph pg {pg-id} mark_unfound_lost revert|delete</pre>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">要谨慎使用，它可能迷惑那些期望对象存在的应用程序。</p>
+</div>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../configuration/">配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">运维</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../operating/">操纵集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring/">监控集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring-osd-pg/">监控 OSD 和归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-management/">用户管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-placement/">数据归置概览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pools/">存储池</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../erasure-code/">纠删码</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-tiering/">分级缓存</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">归置组</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pg-num">预定义 pg_num</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">归置组是如何使用的？</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#placement-groups-tradeoffs">Placement Groups Tradeoffs</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#data-durability">Data durability</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#object-distribution-within-a-pool">Object distribution within a pool</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#resource-usage">内存、处理器和网络使用情况</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">确定归置组数量</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#setting-the-number-of-placement-groups">设置归置组数量</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">获取归置组数量</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">获取归置组统计信息</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">获取卡住的归置组统计信息</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">获取一归置组运行图</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pg">获取一 PG 的统计信息</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id11">洗刷归置组</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id12">恢复丢失的</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="../pg-states/">归置组状态</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../pg-concepts/">归置组术语解释</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-osds/">增加/删除 OSD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../control/">命令参考</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/community/">Ceph 社区</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-mon/">监视器故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-osd/">OSD 故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-pg/">归置组排障</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/log-and-debug/">日志记录和调试</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/cpu-profiling/">CPU 剖析</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/memory-profiling/">内存剖析</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../pg-states/" title="归置组状态"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../cache-tiering/" title="分级缓存"
+             >previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" >集群运维</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,353 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>增加/删除 OSD &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <link rel="up" title="集群运维" href="../" />
+    <link rel="next" title="增加/删除监视器" href="../add-or-rm-mons/" />
+    <link rel="prev" title="CRUSH 图" href="../crush-map/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../add-or-rm-mons/" title="增加/删除监视器"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../crush-map/" title="CRUSH 图"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" accesskey="U">集群运维</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="osd">
+<h1>增加/删除 OSD<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h1>
+<p>如果您的集群已经在运行，你可以在运行时添加或删除 OSD 。</p>
+<div class="section" id="id1">
+<h2>增加 OSD<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>你迟早要扩容集群， Ceph 允许在运行时增加 OSD 。在 Ceph 里，一个 OSD 一般是一个 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 守护进程，它运行在硬盘之上，如果你有多个硬盘，可以给每个硬盘启动一个 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 守护进程。</p>
+<p>通常，你应该监控集群容量，看是否达到了容量上限，因为达到了它的 <tt class="docutils literal"><span class="pre">near</span> <span class="pre">full</span></tt> 比率后，要增加一或多个 OSD 来扩容。</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">不要等空间满了再增加 OSD ，空间使用率达到 <tt class="docutils literal"><span class="pre">near</span> <span class="pre">full</span></tt> 比率后， OSD 失败可能导致集群空间占满。</p>
+</div>
+<div class="section" id="id2">
+<h3>部署硬件<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>如果你通过增加主机来增加 OSD ，关于 OSD 服务器硬件的配置请参见<a class="reference external" href="../../../start/hardware-recommendations">硬件推荐</a>。要把一台 OSD 主机加入到集群，首先要安装最新版的 Linux ，而且存储硬盘要做好必要的准备，详情参见<a class="reference external" href="../../configuration/filesystem-recommendations">文件系统推荐</a>。</p>
+<p>把 OSD 主机添加到集群机架上，连接好网络、确保网络通畅。详情见<a class="reference external" href="../../configuration/network-config-ref">网络配置参考</a>。</p>
+</div>
+<div class="section" id="id6">
+<h3>安装必要软件<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>在手动部署的集群里，你必须手动安装 Ceph 软件包，详情见<a class="reference external" href="../../../install">安装 Ceph （手动）</a>。你应该配置一个无密码登录 SSH 的用户，且他有 root 权限。</p>
+</div>
+<div class="section" id="id7">
+<h3>增加 OSD （手动）<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>此过程要设置一个 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 守护进程，让它使用一个硬盘，且让集群把数据发布到 OSD 。如果一台主机有多个硬盘，可以重复此过程，把每个硬盘配置为一个 OSD 。</p>
+<p>要添加 OSD ，要依次创建数据目录、把硬盘挂载到目录、把 OSD 加入集群、然后把它加入 CRUSH 图。</p>
+<p>往 CRUSH 图里添加 OSD 时建议设置权重，硬盘容量每年增长 40% ，所以较新的 OSD 主机拥有更大的空间（即它们可以有更大的权重）。</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">Ceph prefers uniform hardware across pools. If you are adding drives
+of dissimilar size, you can adjust their weights. However, for best
+performance, consider a CRUSH hierarchy with drives of the same type/size.</p>
+</div>
+<ol class="arabic">
+<li><p class="first">创建 OSD 。如果未指定 UUID ， OSD 启动时会自动生成一个。下列命令会输出 OSD 号，后续步骤你会用到。</p>
+<div class="highlight-python"><pre>ceph osd create [{uuid}]</pre>
+</div>
+</li>
+<li><p class="first">在新 OSD 主机上创建默认目录。</p>
+<div class="highlight-python"><pre>ssh {new-osd-host}
+sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}</pre>
+</div>
+</li>
+<li><p class="first">如果准备用于 OSD 的是单独的而非系统盘，先把它挂载到刚创建的目录下：</p>
+<div class="highlight-python"><pre>ssh {new-osd-host}
+sudo mkfs -t {fstype} /dev/{drive}
+sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}</pre>
+</div>
+</li>
+<li><p class="first">初始化 OSD 数据目录。</p>
+<div class="highlight-python"><pre>ssh {new-osd-host}
+ceph-osd -i {osd-num} --mkfs --mkkey</pre>
+</div>
+<p>运行 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 时目录必须是空的。</p>
+</li>
+<li><p class="first">注册 OSD 认证密钥， <tt class="docutils literal"><span class="pre">ceph-{osd-num}</span></tt> 路径里的 <tt class="docutils literal"><span class="pre">ceph</span></tt> 值应该是 <tt class="docutils literal"><span class="pre">$cluster-$id</span></tt> ，如果你的集群名字不是 <tt class="docutils literal"><span class="pre">ceph</span></tt> ，那就用改过的名字。</p>
+<div class="highlight-python"><pre>ceph auth add osd.{osd-num} osd 'allow *' mon 'allow rwx' -i /var/lib/ceph/osd/ceph-{osd-num}/keyring</pre>
+</div>
+</li>
+<li><p class="first">Add the OSD to the CRUSH map so that the OSD can begin receiving data. The
+<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">add</span></tt> command allows you to add OSDs to the CRUSH hierarchy
+wherever you wish. If you specify at least one bucket, the command
+will place the OSD into the most specific bucket you specify, <em>and</em> it will
+move that bucket underneath any other buckets you specify. <strong>Important:</strong> If
+you specify only the root bucket, the command will attach the OSD directly
+to the root, but CRUSH rules expect OSDs to be inside of hosts.</p>
+<p>若用的是 v0.48 版，执行下列命令：</p>
+<div class="highlight-python"><pre>ceph osd crush add {id} {name} {weight}  [{bucket-type}={bucket-name} ...]</pre>
+</div>
+<p>若用的是 v0.56 及更高版，执行下列命令：</p>
+<div class="highlight-python"><pre>ceph osd crush add {id-or-name} {weight}  [{bucket-type}={bucket-name} ...]</pre>
+</div>
+<p>你也可以反编译 CRUSH 图、把 OSD 加入设备列表、以桶的形式加入主机（如果它没在 CRUSH 图里）、以条目形式把设备加入主机、分配权重、重编译并应用它。详情参见<a class="reference external" href="../crush-map#addosd">增加/移动 OSD</a> 。</p>
+</li>
+</ol>
+<div class="topic">
+<p class="topic-title first">Argonaut 0.48 版最佳实践</p>
+<p>为降低对用户 I/O 性能的影响，加入 CRUSH 图时应该把 OSD 的初始权重设为 <tt class="docutils literal"><span class="pre">0</span></tt> ，然后每次增大一点、逐步增大 CRUSH 权重。例如每次增加 <tt class="docutils literal"><span class="pre">0.2</span></tt> ：</p>
+<div class="highlight-python"><pre>ceph osd crush reweight {osd-id} .2</pre>
+</div>
+<p>迁移完成前，可以依次把权重重置为 <tt class="docutils literal"><span class="pre">0.4</span></tt> 、 <tt class="docutils literal"><span class="pre">0.6</span></tt> 等等，直到达到期望权重。</p>
+<p>为降低 OSD 失败的影响，你可以设置：</p>
+<div class="highlight-python"><pre>mon osd down out interval = 0</pre>
+</div>
+<p>它防止挂了的 OSD 自动被标记为 <tt class="docutils literal"><span class="pre">out</span></tt> ，然后逐步降低其权重：</p>
+<div class="highlight-python"><pre>ceph osd reweight {osd-num} .8</pre>
+</div>
+<p>还是等着集群完成数据迁移，然后再次调整权重，直到权重为 0 。注意，这会阻止集群在发生故障时自动重复制数据，所以要确保监控的及时性，以便管理员迅速介入。</p>
+<p>注意，以上经验在 Bobtail 及后续版本已不再必要。</p>
+</div>
+</div>
+<div class="section" id="id8">
+<h3>启动 OSD<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<p>把 OSD 加入 Ceph 后， OSD 就在配置里了。然而它还没运行，它现在的状态为 <tt class="docutils literal"><span class="pre">down</span></tt> 且 <tt class="docutils literal"><span class="pre">out</span></tt> 。你必须先启动 OSD 它才能收数据。可以用管理主机上的 <tt class="docutils literal"><span class="pre">service</span> <span class="pre">ceph</span></tt> 、或从 OSD 所在主机启动。</p>
+<p>在 Debian/Ubuntu 上用 Upstart。</p>
+<div class="highlight-python"><pre>sudo start ceph-osd id={osd-num}</pre>
+</div>
+<p>在 CentOS/RHEL 上用 sysvinit 。</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph start osd.{osd-num}</pre>
+</div>
+<p>一旦你启动了 OSD ，其状态就变成了 <tt class="docutils literal"><span class="pre">up</span></tt> 且 <tt class="docutils literal"><span class="pre">in</span></tt> 。</p>
+</div>
+<div class="section" id="id9">
+<h3>观察数据迁移<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<p>把新 OSD 加入 CRUSH 图后， Ceph 会重新均衡服务器，一些归置组会迁移到新 OSD 里，你可以用 <a class="reference external" href="../monitoring">ceph</a> 命令观察此过程。</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">ceph</span> <span class="o">-</span><span class="n">w</span>
+</pre></div>
+</div>
+<p>你会看到归置组状态从 <tt class="docutils literal"><span class="pre">active+clean</span></tt> 变为 <tt class="docutils literal"><span class="pre">active,</span> <span class="pre">some</span> <span class="pre">degraded</span> <span class="pre">objects</span></tt> （有降级的对象)、且迁移完成后回到 <tt class="docutils literal"><span class="pre">active+clean</span></tt> 状态。（ Ctrl-c 退出）</p>
+</div>
+</div>
+<div class="section" id="id12">
+<h2>删除 OSD （手动）<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
+<p>要想缩减集群尺寸或替换硬件，可在运行时删除 OSD 。在 Ceph 里，一个 OSD 通常是一台主机上的一个 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 守护进程、它运行在一个硬盘之上。如果一台主机上有多个数据盘，你得挨个删除其对应 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 。通常，操作前应该检查集群容量，看是否快达到上限了，确保删除 OSD 后不会使集群达到 <tt class="docutils literal"><span class="pre">near</span> <span class="pre">full</span></tt> 比率。</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">删除 OSD 时不要让集群达到 <tt class="docutils literal"><span class="pre">full</span> <span class="pre">ratio</span></tt> 值，删除 OSD 可能导致集群达到或超过 <tt class="docutils literal"><span class="pre">full</span> <span class="pre">ratio</span></tt> 值。</p>
+</div>
+<div class="section" id="id13">
+<h3>把 OSD 踢出集群<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<p>删除 OSD 前，它通常是 <tt class="docutils literal"><span class="pre">up</span></tt> 且 <tt class="docutils literal"><span class="pre">in</span></tt> 的，要先把它踢出集群，以使 Ceph 启动重新均衡、把数据拷贝到其他 OSD 。</p>
+<div class="highlight-python"><pre>ceph osd out {osd-num}</pre>
+</div>
+</div>
+<div class="section" id="id14">
+<h3>观察数据迁移<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<p>一旦把 OSD 踢出（ <tt class="docutils literal"><span class="pre">out</span></tt> ）集群， Ceph 就会开始重新均衡集群、把归置组迁出将删除的 OSD 。你可以用 <a class="reference external" href="../monitoring">ceph</a> 工具观察此过程。</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">ceph</span> <span class="o">-</span><span class="n">w</span>
+</pre></div>
+</div>
+<p>你会看到归置组状态从 <tt class="docutils literal"><span class="pre">active+clean</span></tt> 变为 <tt class="docutils literal"><span class="pre">active,</span> <span class="pre">some</span> <span class="pre">degraded</span> <span class="pre">objects</span></tt> 、迁移完成后最终回到 <tt class="docutils literal"><span class="pre">active+clean</span></tt> 状态。（ Ctrl-c 中止）</p>
+</div>
+<div class="section" id="id15">
+<h3>停止 OSD<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<p>把 OSD 踢出集群后，它可能仍在运行，就是说其状态为 <tt class="docutils literal"><span class="pre">up</span></tt> 且 <tt class="docutils literal"><span class="pre">out</span></tt> 。删除前要先停止 OSD 进程。</p>
+<div class="highlight-python"><pre>ssh {osd-host}
+sudo /etc/init.d/ceph stop osd.{osd-num}</pre>
+</div>
+<p>停止 OSD 后，状态变为 <tt class="docutils literal"><span class="pre">down</span></tt> 。</p>
+</div>
+<div class="section" id="id16">
+<h3>删除 OSD<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
+<p>此步骤依次把一个 OSD 移出集群 CRUSH 图、删除认证密钥、删除 OSD 图条目、删除 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 条目。如果主机有多个硬盘，每个硬盘对应的 OSD 都得重复此步骤。</p>
+<ol class="arabic">
+<li><p class="first">删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了。你也可以反编译 CRUSH 图、删除 device 列表条目、删除对应的 host 桶条目或删除 host 桶（如果它在 CRUSH 图里，而且你想删除主机），重编译 CRUSH 图并应用它。详情参见<a class="reference external" href="../crush-map#removeosd">删除 OSD</a> 。</p>
+<div class="highlight-python"><pre>ceph osd crush remove {name}</pre>
+</div>
+</li>
+<li><p class="first">删除 OSD 认证密钥：</p>
+<div class="highlight-python"><pre>ceph auth del osd.{osd-num}</pre>
+</div>
+<p><tt class="docutils literal"><span class="pre">ceph-{osd-num}</span></tt> 路径里的 <tt class="docutils literal"><span class="pre">ceph</span></tt> 值是 <tt class="docutils literal"><span class="pre">$cluster-$id</span></tt> ，如果集群名字不是 <tt class="docutils literal"><span class="pre">ceph</span></tt> ，这里要更改。</p>
+</li>
+<li><p class="first">删除 OSD 。</p>
+<div class="highlight-python"><pre>ceph osd rm {osd-num}
+#for example
+ceph osd rm 1</pre>
+</div>
+</li>
+<li><p class="first">登录到保存 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 主拷贝的主机。</p>
+<div class="highlight-python"><pre>ssh {admin-host}
+cd /etc/ceph
+vim ceph.conf</pre>
+</div>
+</li>
+<li><p class="first">从 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 配置文件里删除对应条目。</p>
+<div class="highlight-python"><pre>[osd.1]
+        host = {hostname}</pre>
+</div>
+</li>
+<li><p class="first">从保存 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 主拷贝的主机，把更新过的 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 拷贝到集群其他主机的 <tt class="docutils literal"><span class="pre">/etc/ceph</span></tt> 目录下。</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../configuration/">配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">运维</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../operating/">操纵集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring/">监控集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring-osd-pg/">监控 OSD 和归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-management/">用户管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-placement/">数据归置概览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pools/">存储池</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../erasure-code/">纠删码</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-tiering/">分级缓存</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">增加/删除 OSD</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">增加 OSD</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id2">部署硬件</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id6">安装必要软件</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id7">增加 OSD （手动）</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id8">启动 OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id9">观察数据迁移</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id12">删除 OSD （手动）</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id13">把 OSD 踢出集群</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id14">观察数据迁移</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id15">停止 OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id16">删除 OSD</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../control/">命令参考</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/community/">Ceph 社区</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-mon/">监视器故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-osd/">OSD 故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-pg/">归置组排障</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/log-and-debug/">日志记录和调试</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/cpu-profiling/">CPU 剖析</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/memory-profiling/">内存剖析</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../add-or-rm-mons/" title="增加/删除监视器"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../crush-map/" title="CRUSH 图"
+             >previous</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
+          <li><a href="../" >集群运维</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>
