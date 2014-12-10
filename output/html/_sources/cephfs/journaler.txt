@@ -4,46 +4,46 @@
 
 ``journaler allow split entries``
 
-:Description: 允许一条目跨越条带边界。
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:描述: 允许一条目跨越条带边界。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``journaler write head interval``
 
-:Description: 多频繁地更新日志头部对象？
-:Type: Integer
-:Required: No
-:Default: ``15``
+:描述: 多频繁地更新日志头部对象？
+:类型: Integer
+:是否必需: No
+:默认值: ``15``
 
 
 ``journaler prefetch periods``
 
-:Description: 重放日志时预读多少条带。
-:Type: Integer
-:Required: No
-:Default: ``10``
+:描述: 重放日志时预读多少条带。
+:类型: Integer
+:是否必需: No
+:默认值: ``10``
 
 
 ``journal prezero periods``
 
-:Description: 把写位置前的多少条带清零。
-:Type: Integer
-:Required: No
-:Default: ``10``
+:描述: 把写位置前的多少条带清零。
+:类型: Integer
+:是否必需: No
+:默认值: ``10``
 
 ``journaler batch interval``
 
-:Description: 人为导致的最大额外延时。
-:Type: Double
-:Required: No
-:Default: ``.001``
+:描述: 人为导致的最大额外延时。
+:类型: Double
+:是否必需: No
+:默认值: ``.001``
 
 
 ``journaler batch max``
 
-:Description: 我们会延迟回写的最大字节数。
-:Type: 64-bit Unsigned Integer 
-:Required: No
-:Default: ``0``
+:描述: 我们会延迟回写的最大字节数。
+:类型: 64-bit Unsigned Integer
+:是否必需: No
+:默认值: ``0``

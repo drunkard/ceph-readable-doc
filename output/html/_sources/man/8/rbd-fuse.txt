@@ -16,8 +16,7 @@
 **rbd-fuse** 是个 rbd 映像的用户空间文件系统（ FUSE ）客户端。给一个包含 rbd 映像\
 的存储池，它就可以在用户空间把那些映像挂载到 **mountpoint** 下，并显示为普通文件。
 
-用下列命令卸载：
-::
+用下列命令卸载： ::
 
         fusermount -u mountpoint
 

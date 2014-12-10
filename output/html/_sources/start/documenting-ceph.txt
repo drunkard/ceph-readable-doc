@@ -36,30 +36,25 @@ Ceph 文档位于和源码同一仓库内的 ``ceph/doc`` 目录下，关于 git
 
 最常用的贡献方法是\ `分支并拉入`_\ 。为此，必须先做到：
 
-#. 在本地安装 git 。在 Debian/Ubuntu 下用此命令：
-   ::
+#. 在本地安装 git 。在 Debian/Ubuntu 下用此命令： ::
 
 	sudo apt-get install git
 
-   在 Fedora 下用此命令：
-   ::
+   在 Fedora 下用此命令： ::
 
 	sudo yum install git
 
-   在 CentOS/RHEL 下用此命令：
-   ::
+   在 CentOS/RHEL 下用此命令： ::
 
 	sudo yum install git
 
-#. 在 ``.gitconfig`` 配置文件里写好自己的名字和邮件地址。
-   ::
+#. 在 ``.gitconfig`` 配置文件里写好自己的名字和邮件地址。 ::
 
 	[user]
 	   email = {your-email-address}
 	   name = {your-name}
 
-   例如：
-   ::
+   例如： ::
 
 	git config --global user.name "John Doe"
 	git config --global user.email johndoe@example.com
@@ -99,13 +94,11 @@ Ceph 文档按主要组件来分类组织。
 
 如果只是细小的变更，像修正排版错误、或换一种措辞，直接提交到 ``master`` 分支即\
 可；为当前版本的功能提供文档时也应该提交到 ``master`` 分支。 ``master`` 是最常\
-用的分支。
-::
+用的分支。 ::
 
 	git checkout master
 
-给未来版本提供文档时应该提交到 ``next`` 分支， ``next`` 分支是第二常用的分支。
-::
+给未来版本提供文档时应该提交到 ``next`` 分支， ``next`` 分支是第二常用的分支。 ::
 
 	git checkout next
 
@@ -121,13 +114,11 @@ http://tracker.ceph.com/issues/4000 。
    阅、而源码由工程师审阅。您分别提交文档和源码时，合并进度会很快，我们也不用\
    让您重新提交。
 
-创建分支前，确保本地和远程都没有同名的。
-::
+创建分支前，确保本地和远程都没有同名的。 ::
 
 	git branch -a | grep wip-doc-{your-branch-name}
 
-如果确实不存在，就可以创建了：
-::
+如果确实不存在，就可以创建了： ::
 
 	git checkout -b wip-doc-{your-branch-name}
 
@@ -145,13 +136,11 @@ http://tracker.ceph.com/issues/4000 。
 
 你新建的文档不会自动被 ``git`` 跟踪，如果想把它加进仓库，必须用 \
 ``git add {path-to-filename}`` 命令。比如，在 Ceph 仓库的顶极目录下，把 \
-``example.rst`` 文件加到 ``rados`` 子目录下，可以这样：
-::
+``example.rst`` 文件加到 ``rados`` 子目录下，可以这样： ::
 
 	git add doc/rados/example.rst
 
-要删除一文档，应该用 ``git rm {path-to-filename}`` ，比如：
-::
+要删除一文档，应该用 ``git rm {path-to-filename}`` ，比如： ::
 
 	git rm doc/rados/example.rst
 
@@ -161,29 +150,24 @@ http://tracker.ceph.com/issues/4000 。
 构建文档源码
 ------------
 
-要想构建文档，先进入 ``ceph`` 库目录：
-::
+要想构建文档，先进入 ``ceph`` 库目录： ::
 
 	cd ceph
 
-在 Debian/Ubuntu 上执行此命令构建文档：
-::
+在 Debian/Ubuntu 上执行此命令构建文档： ::
 
 	admin/build-doc
 
-在 Fedora 上执行此命令构建文档：
-::
+在 Fedora 上执行此命令构建文档： ::
 
 	admin/build-doc
 
-在 CentOS/RHEL 上执行此命令构建文档：
-::
+在 CentOS/RHEL 上执行此命令构建文档： ::
 
 	admin/build-doc
 
 执行 ``admin/build-doc`` 之后，它会在 ``ceph`` 下创建一个 ``build-doc`` 目录。\
-你也许还得在 ``ceph/build-doc`` 下创建个目录用于 Javadoc 的输出。
-::
+你也许还得在 ``ceph/build-doc`` 下创建个目录用于 Javadoc 的输出。 ::
 
 	mkdir -p output/html/api/libcephfs-java/javadoc
 
@@ -192,8 +176,7 @@ http://tracker.ceph.com/issues/4000 。
 
 .. important:: 你必须核实\ **所有超链接**\ ，损坏的超链接会中止构建过程。
 
-文档构建完成后你就可以到源码目录下查看了：
-::
+文档构建完成后你就可以到源码目录下查看了： ::
 
 	cd build-doc/output
 
@@ -269,14 +252,12 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构
 	</td></tr></tbody></table>
 
 
-缺少的依赖都要安装，基于 Debian/Ubuntu 发行版的系统可以用此命令安装：
-::
+缺少的依赖都要安装，基于 Debian/Ubuntu 发行版的系统可以用此命令安装： ::
 
 	sudo apt-get install gcc python-dev python-pip python-virtualenv libxml2-dev libxslt-dev doxygen graphviz ant ditaa
 	sudo apt-get install python-sphinx
 
-在 Fedora 发行版上可以执行：
-::
+在 Fedora 发行版上可以执行： ::
 
    sudo yum install gcc python-devel python-pip python-virtualenv libxml2-devel libxslt-devel doxygen graphviz ant
    sudo pip install html2text
@@ -285,22 +266,19 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构
 
 在 CentOS/RHEL 发行版上，最好安装 ``epel`` (Extra Packages for Enterprise \
 Linux) 软件库，因为它提供了很多默认软件库所没有的软件包。可执行此命令安装 \
-``epel`` ：
-::
+``epel`` ： ::
 
 
 	wget http://ftp.riken.jp/Linux/fedora/epel/7/x86_64/e/epel-release-7-2.noarch.rpm
 	sudo yum install epel-release-7-2.noarch.rpm
 
-在 CentOS/RHEL 发行版上可以执行：
-::
+在 CentOS/RHEL 发行版上可以执行： ::
 
 	sudo yum install gcc python-devel python-pip python-virtualenv libxml2-devel libxslt-devel doxygen graphviz ant
 	sudo pip install html2text
 
 对于 CentOS/RHEL 发行版，其余软件包不包含在默认及 ``epel`` 软件库内，所以得到 \
-http://rpmfind.net/ 找，然后到合适的镜像下载并安装它们，比如：
-::
+http://rpmfind.net/ 找，然后到合适的镜像下载并安装它们，比如： ::
 
 	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/python-jinja2-2.7.2-2.el7.noarch.rpm
 	sudo yum install python-jinja2-2.7.2-2.el7.noarch.rpm
@@ -321,8 +299,7 @@ CentOS/RHEL7 下 `ditaa`_ 依赖下列软件包：
 - batik
 
 到 http://rpmfind.net/ 找兼容的 ``ditaa`` 及其依赖，然后从某个镜像下载并安装它\
-们。例如：
-::
+们。例如： ::
 
 	wget ftp://rpmfind.net/linux/fedora/linux/releases/20/Everything/x86_64/os/Packages/j/jericho-html-3.2-6.fc20.noarch.rpm
 	sudo yum install jericho-html-3.2-6.fc20.noarch.rpm
@@ -358,16 +335,14 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 .. tip:: 请遵守前述惯例，特别是标明了 ``（应严格遵守）`` 的那些，否则你的提交\
    会被打回，修正后才能重新提交。
 
-下面是个通用提交的注释（首选）：
-::
+下面是个通用提交的注释（首选）： ::
 
 	doc: Fixes a spelling error and a broken hyperlink.
 
 	Signed-off-by: John Doe <john.doe@gmail.com>
 
 
-下面的注释里有到 BUG 的引用。
-::
+下面的注释里有到 BUG 的引用。 ::
 
 	doc: Fixes a spelling error and a broken hyperlink.
 
@@ -376,8 +351,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 	Signed-off-by: John Doe <john.doe@gmail.com>
 
 
-下面的注释包含一句概要和详述，在摘要和详述之间用空行隔开了：
-::
+下面的注释包含一句概要和详述，在摘要和详述之间用空行隔开了： ::
 
 	doc: Added mon setting to monitor config reference
 
@@ -387,8 +361,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 	Signed-off-by: John Doe <john.doe@gmail.com>
 
 
-执行下列命令提交变更：
-::
+执行下列命令提交变更： ::
 
 	git commit -a
 
@@ -398,27 +371,23 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 提交变更暂存起来、提交变更、并推送到自己的 Ceph 分支仓库。
 
 
-在 Debian/Ubuntu 上执行以下命令安装：
-::
+在 Debian/Ubuntu 上执行以下命令安装： ::
 
 	sudo apt-get install gitk git-gui
 
-在 Fedora 上执行以下命令安装：
-::
+在 Fedora 上执行以下命令安装： ::
 
 	sudo yum install gitk git-gui
 
 在 CentOS/RHEL7 上， ``gitk`` 和 ``git-gui`` 都不在默认和 ``epel`` 软件库里，\
-所以得到 http://rpmfind.net/ 上找，然后从合适的镜像下载并安装它们，例如：
-::
+所以得到 http://rpmfind.net/ 上找，然后从合适的镜像下载并安装它们，例如： ::
 
 	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/gitk-1.8.3.1-4.el7.noarch.rpm
 	sudo yum install gitk-1.8.3.1-4.el7.noarch.rpm
 	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/git-gui-1.8.3.1-4.el7.noarch.rpm
 	sudo yum install git-gui-1.8.3.1-4.el7.noarch.rpm
 
-然后执行
-::
+然后执行 ::
 
 	cd {git-ceph-repo-path}
 	gitk
@@ -430,8 +399,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 --------
 
 你完成一或多个提交后，必须从本地推送到位于 ``github`` 的仓库。某些图形化工具\
-（如 ``git-gui`` ）有推送菜单。
-::
+（如 ``git-gui`` ）有推送菜单。 ::
 
 	git push
 
@@ -456,8 +424,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 Ceph 文档项目的目标之一就是可读性，包括 restructuredText 和渲染后的 HTML 页面\
 的可读性。进入 Ceph 源码库，随便找个文档查看其源码，你会发现它们在终端下就像已\
 经渲染过的 HTML 页面一样清晰明了。另外，也许你还看到 ``ditaa`` 格式的图表渲染\
-的很漂亮。
-::
+的很漂亮。 ::
 
 	cat doc/architecture.rst | less
 

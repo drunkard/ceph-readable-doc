@@ -14,9 +14,8 @@
 描述
 ====
 
-**ceph-rbdnamer** 把指定 RBD 设备所属的存储池和映像名打印到标准输出，以便 udev \
-（使用类似如下的规则）设置设备的符号链接：
-::
+**ceph-rbdnamer** 把指定 RBD 设备所属的存储池和映像名打印到标准输出，以便 \
+udev （使用类似如下的规则）设置设备的符号链接： ::
 
         KERNEL=="rbd[0-9]*", PROGRAM="/usr/bin/ceph-rbdnamer %n", SYMLINK+="rbd/%c{1}/%c{2}"
 

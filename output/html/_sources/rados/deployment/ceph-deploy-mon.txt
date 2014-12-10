@@ -19,8 +19,7 @@
 ============
 
 创建集群并在监视器主机上安装 Ceph 软件包后，接着部署监视器。用 ``ceph-deploy`` \
-时，它限制一主机只能装一个监视器。
-::
+时，它限制一主机只能装一个监视器。 ::
 
 	ceph-deploy mon create {host-name [host-name]...}
 
@@ -35,8 +34,7 @@
 删除一监视器
 ============
 
-如果你想删除集群中的某个监视器，可以用 ``destroy`` 选项。
-::
+如果你想删除集群中的某个监视器，可以用 ``destroy`` 选项。 ::
 
 	ceph-deploy mon destroy {host-name [host-name]...}
 

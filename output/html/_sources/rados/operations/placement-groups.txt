@@ -274,8 +274,7 @@ designed your Ceph cluster to maximize `data durability`_,
 其结果\ **汇总后应该接近 2 的幂**\ 。汇总并非强制的，如果你想确保所有归置组内的对象\
 数大致相等，最好检查下。
 
-比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样估算归置组数量：
-::
+比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样估算归置组数量： ::
 
    (200 * 100)
    ----------- = 6667. Nearest power of 2: 8192
@@ -299,14 +298,12 @@ would require significantly more resources and time for peering.
 ==============
 
 要设置某存储池的归置组数量，你必须在创建它时就指定好，详情见\ `创建存储池`_\ 。一存\
-储池的归置组数量设置好之后，还可以增加（但不可以减少），下列命令可增加归置组数量：
-::
+储池的归置组数量设置好之后，还可以增加（但不可以减少），下列命令可增加归置组数量： ::
 
 	ceph osd pool set {pool-name} pg_num {pg_num}
 
 你增加归置组数量后、还必须增加用于归置的归置组（ ``pgp_num`` ）数量，这样才会开始重\
-均衡。 ``pgp_num`` 应等于 ``pg_num`` ，可用下列命令增加用于归置的归置组数量：
-::
+均衡。 ``pgp_num`` 应等于 ``pg_num`` ，可用下列命令增加用于归置的归置组数量： ::
 
 	ceph osd pool set {pool-name} pgp_num {pgp_num}
 
@@ -314,8 +311,7 @@ would require significantly more resources and time for peering.
 获取归置组数量
 ==============
 
-要获取一个存储池的归置组数量，执行命令：
-::
+要获取一个存储池的归置组数量，执行命令： ::
 
         ceph osd pool get {pool-name} pg_num
 
@@ -323,8 +319,7 @@ would require significantly more resources and time for peering.
 获取归置组统计信息
 ==================
 
-要获取集群里归置组的统计信息，执行命令：
-::
+要获取集群里归置组的统计信息，执行命令： ::
 
         ceph pg dump [--format {format}]
 
@@ -334,8 +329,7 @@ would require significantly more resources and time for peering.
 获取卡住的归置组统计信息
 ========================
 
-要获取所有卡在某状态的归置组统计信息，执行命令：
-::
+要获取所有卡在某状态的归置组统计信息，执行命令： ::
 
         ceph pg dump_stuck inactive|unclean|stale [--format <format>] [-t|--threshold <seconds>]
 
@@ -354,18 +348,15 @@ would require significantly more resources and time for peering.
 获取一归置组运行图
 ==================
 
-要获取一个具体归置组的归置组图，执行命令：
-::
+要获取一个具体归置组的归置组图，执行命令： ::
 
         ceph pg map {pg-id}
 
-例如：
-::
+例如： ::
 
         ceph pg map 1.6c
 
-Ceph 将返回归置组图、归置组、和 OSD 状态：
-::
+Ceph 将返回归置组图、归置组、和 OSD 状态： ::
 
         osdmap e13 pg 1.6c (1.6c) -> up [1,0] acting [1,0]
 
@@ -373,8 +364,7 @@ Ceph 将返回归置组图、归置组、和 OSD 状态：
 获取一 PG 的统计信息
 ====================
 
-要查看一个具体归置组的统计信息，执行命令：
-::
+要查看一个具体归置组的统计信息，执行命令： ::
 
         ceph pg {pg-id} query
 
@@ -382,8 +372,7 @@ Ceph 将返回归置组图、归置组、和 OSD 状态：
 洗刷归置组
 ==========
 
-要洗刷一个归置组，执行命令：
-::
+要洗刷一个归置组，执行命令： ::
 
         ceph pg scrub {pg-id}
 
@@ -401,8 +390,7 @@ Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目
 失败组合导致的，集群在写入完成前，未能得知写入是否已执行。
 
 当前只支持 revert 选项，它使得回滚到对象的前一个版本（如果它是新对象）或完全忽略\
-它。要把 unfound 对象标记为 lost ，执行命令：
-::
+它。要把 unfound 对象标记为 lost ，执行命令： ::
 
         ceph pg {pg-id} mark_unfound_lost revert|delete
 

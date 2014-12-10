@@ -65,45 +65,38 @@ for more than three exists.
 ……）命名，但你可以指定任何形式。在本文档里，要记住 ``{mon-id}`` 应该是你所选的标识\
 号，不包含 ``mon.`` 前缀，如在 ``mon.a`` 中，其 ``{mon-id}`` 是 ``a`` 。
 
-#. 在新监视器主机上创建默认目录：
-   ::
+#. 在新监视器主机上创建默认目录： ::
 
 	ssh {new-mon-host}
 	sudo mkdir /var/lib/ceph/mon/ceph-{mon-id}
 
 #. 创建临时目录 ``{tmp}`` ，用以保存此过程中用到的文件。此目录要不同于前面步骤创建\
-   的监视器数据目录，且完成后可删除。
-   ::
+   的监视器数据目录，且完成后可删除。 ::
 
 	mkdir {tmp}
 
 #. 获取监视器密钥环， ``{tmp}`` 是密钥环文件保存路径、 ``{filename}`` 是包含密钥的\
-   文件名。
-   ::
+   文件名。 ::
 
 	ceph auth get mon. -o {tmp}/{key-filename}
 
 #. 获取监视器运行图， ``{tmp}`` 是获取到的监视器运行图、 ``{filename}`` 是包含监视\
-   器运行图的文件名。
-   ::
+   器运行图的文件名。 ::
 
 	ceph mon getmap -o {tmp}/{map-filename}
 
 #. 准备第一步创建的监视器数据目录。必须指定监视器运行图路径，这样才能获得监视器法定\
-   人数和它们 ``fsid`` 的信息；还要指定监视器密钥环路径。
-   ::
+   人数和它们 ``fsid`` 的信息；还要指定监视器密钥环路径。 ::
 
 	sudo ceph-mon -i {mon-id} --mkfs --monmap {tmp}/{map-filename} --keyring {tmp}/{key-filename}
 
-#. 把新监视器添加到集群的监视器列表里（运行时），这允许其它节点开始启动时使用这个节点。
-   ::
+#. 把新监视器添加到集群的监视器列表里（运行时），这允许其它节点开始启动时使用这个节点。 ::
 
 	ceph mon add <mon-id> <ip>[:<port>]
 
 #. 启动新监视器，它会自动加入机器。守护进程需知道绑定到哪个地址，通过 \
    ``--public-addr {ip:port}`` 或在 ``ceph.conf`` 里的相应段设置 ``mon addr`` 可\
-   以指定。
-   ::
+   以指定。 ::
 
 	ceph-mon -i {mon-id} --public-addr {ip:port}
 
@@ -122,13 +115,11 @@ for more than three exists.
 本步骤从集群删除 ``ceph-mon`` 守护进程，如果此步骤导致只剩 2 个监视器了，你得增加或\
 删除一个监视器，直到凑足法定人数所必需的 ``ceph-mon`` 数。
 
-#. 停止监视器。
-   ::
+#. 停止监视器。 ::
 
 	service ceph -a stop mon.{mon-id}
 
-#. 从集群删除监视器。
-   ::
+#. 从集群删除监视器。 ::
 
 	ceph mon remove {mon-id}
 
@@ -140,14 +131,12 @@ for more than three exists.
 
 本步骤从不健康集群删除 ``ceph-mon`` ，即集群有些归置组永久偏离 ``active+clean`` 。
 
-#. 找出活着的监视器，并登录其所在主机。
-   ::
+#. 找出活着的监视器，并登录其所在主机。 ::
 
 	ceph mon dump
 	ssh {mon-host}
 
-#. 停止 ``ceph-mon`` 守护进程并提取 monmap 副本。
-   ::
+#. 停止 ``ceph-mon`` 守护进程并提取 monmap 副本。 ::
 
 	service ceph stop mon || stop ceph-mon-all
         ceph-mon -i {mon-id} --extract-monmap {map-path}
@@ -155,8 +144,7 @@ for more than three exists.
         ceph-mon -i a --extract-monmap /tmp/monmap
 
 #. 删除不保留的监视器。例如，如果你有 3 个监视器 ``mon.a`` 、 ``mon.b`` 和 \
-   ``mon.c`` ，其中仅保留 ``mon.a`` ，按如下步骤：
-   ::
+   ``mon.c`` ，其中仅保留 ``mon.a`` ，按如下步骤： ::
 
 	monmaptool {map-path} --rm {mon-id}
 	# 例如
@@ -164,8 +152,7 @@ for more than three exists.
 	monmaptool /tmp/monmap --rm c
 
 #. 把去除过监视器后剩下的运行图注入存活的监视器。比如，用下列命令把一张运行图注入 \
-   ``mon.a`` 监视器：
-   ::
+   ``mon.a`` 监视器： ::
 
 	ceph-mon -i {mon-id} --inject-monmap {map-path}
 	# for example,
@@ -217,8 +204,7 @@ monmap 的监视器赶上集群当前的状态。
 动）`_\ ），确保新监视器成功加入法定人数，然后删除用旧 IP 的监视器，最后更新 \
 ``ceph.conf`` 以确保客户端和其它守护进程得知新监视器的 IP 地址。
 
-例如，我们假设有 3 个监视器，如下：
-::
+例如，我们假设有 3 个监视器，如下： ::
 
 	[mon.a]
 		host = host01
@@ -250,13 +236,11 @@ IP 地址。
 ``10.1.0.x`` ，并且两个网络互不相通，步骤如下：
 
 #. 获取监视器运行图，其中 ``{tmp}`` 是所获取的运行图路径， ``{filename}`` 是监视器\
-   运行图的文件名。
-   ::
+   运行图的文件名。 ::
 
 	ceph mon getmap -o {tmp}/{filename}
 
-#. 下面是一个 monmap 内容示例：
-   ::
+#. 下面是一个 monmap 内容示例： ::
 
 	$ monmaptool --print {tmp}/{filename}
 
@@ -269,8 +253,7 @@ IP 地址。
 	1: 10.0.0.2:6789/0 mon.b
 	2: 10.0.0.3:6789/0 mon.c
 
-#. 删除现有监视器。
-   ::
+#. 删除现有监视器。 ::
 
 	$ monmaptool --rm a --rm b --rm c {tmp}/{filename}
 
@@ -280,16 +263,14 @@ IP 地址。
 	monmaptool: removing c
 	monmaptool: writing epoch 1 to {tmp}/{filename} (0 monitors)
 
-#. 添加新监视器位置。
-   ::
+#. 添加新监视器位置。 ::
 
 	$ monmaptool --add a 10.1.0.1:6789 --add b 10.1.0.2:6789 --add c 10.1.0.3:6789 {tmp}/{filename}
 
 	monmaptool: monmap file {tmp}/{filename}
 	monmaptool: writing epoch 1 to {tmp}/{filename} (3 monitors)
 
-#. 检查新内容。
-   ::
+#. 检查新内容。 ::
 
 	$ monmaptool --print {tmp}/{filename}
 
@@ -307,8 +288,7 @@ IP 地址。
 
 #. 首先，停止所有监视器，注入必须在守护进程停止时进行。
 
-#. 注入 monmap 。
-   ::
+#. 注入 monmap 。 ::
 
 	ceph-mon -i {mon-id} --inject-monmap {tmp}/{filename}
 

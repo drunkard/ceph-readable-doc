@@ -24,7 +24,7 @@
 更以实现高度一致性。同步期间， Ceph 监视器能查询集群运行图的近期版本，它们通过操作\
 键/值存储快照和迭代器（用 leveldb ）来进行存储级同步。
 
-.. ditaa:: 
+.. ditaa::
 
  /-------------\               /-------------\
  |   Monitor   | Write Changes |    Paxos    |
@@ -119,7 +119,7 @@ monmap 的更新是增量的，所以监视器们都有最新的一致版本，�
   多个集群，所以在初始化监视器时必须指定对象存储的唯一标识符。部署工具通常可替你完\
   成（如 ``ceph-deploy`` 会调用类似 ``uuidgen`` 的程序），但是你也可以手动指定 \
   ``fsid`` 。
-  
+
 - **监视器标识符：** 监视器标识符是分配给集群内各监视器的唯一 ID ，它是一个字母数字\
   组合，为方便起见，标识符通常以字母顺序结尾（如 ``a`` 、 ``b`` 等等），可以设置于 \
   Ceph 配置文件（如 ``[mon.a]`` 、 ``[mon.b]`` 等等）、部署工具、或 ``ceph`` 命令\
@@ -186,12 +186,13 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 件的 ``[global]`` 段下。部署工具通常会生成 ``fsid`` 并存于监视器图，所以不一定会写\
 入配置文件， ``fsid`` 使得在一套硬件上运行多个集群成为可能。
 
+
 ``fsid``
 
-:Description: 集群 ID ，一集群一个。
-:Type: UUID
-:Required: Yes.
-:Default: 无。若未指定，部署工具会生成。
+:描述: 集群 ID ，一集群一个。
+:类型: UUID
+:是否必需: Yes.
+:默认值: 无。若未指定，部署工具会生成。
 
 .. note:: 如果你用部署工具就不能设置。
 
@@ -212,11 +213,11 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 
 ``mon initial members``
 
-:Description: 集群启动时初始监视器的 ID ，若指定， Ceph 需要奇数个监视器来确定最初\
-              法定人数（如 3 ）。
+:描述: 集群启动时初始监视器的 ID ，若指定， Ceph 需要奇数个监视器来确定最初\
+       法定人数（如 3 ）。
 
-:Type: String
-:Default: None
+:类型: String
+:默认值: None
 
 .. note:: 集群内的\ *大多数*\ 监视器必须能互通以建立法定人数，你可以用此选项减小初\
    始监视器数量来形成。
@@ -240,11 +241,11 @@ Ceph 监视器有存储数据的默认路径，生产集群为实现更高性能
 件的 ``[mon]`` 下。
 
 
-``mon data`` 
+``mon data``
 
-:Description: 监视器的数据位置。
-:Type: String
-:Default: ``/var/lib/ceph/mon/$cluster-$id``
+:描述: 监视器的数据位置。
+:类型: String
+:默认值: ``/var/lib/ceph/mon/$cluster-$id``
 
 
 .. index:: Ceph Storage Cluster; capacity planning, Ceph Monitor; capacity planning
@@ -283,7 +284,7 @@ Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ）
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
  | OSD 3  |  | OSD 9  |  | OSD 15 |  | OSD 21 |  | OSD 27 |  | OSD 33 |
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
- | OSD 4  |  | OSD 10 |  | OSD 16 |  | OSD 22 |  | OSD 28 |  | Spare  | 
+ | OSD 4  |  | OSD 10 |  | OSD 16 |  | OSD 22 |  | OSD 28 |  | Spare  |
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
  | OSD 5  |  | OSD 11 |  | OSD 17 |  | OSD 23 |  | OSD 29 |  | Spare  |
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
@@ -314,18 +315,18 @@ Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ）
 		mon osd nearfull ratio = .70
 
 
-``mon osd full ratio`` 
+``mon osd full ratio``
 
-:Description: OSD 硬盘使用率达到多少就认为它 ``full`` 。
-:Type: Float
-:Default: ``.95``
+:描述: OSD 硬盘使用率达到多少就认为它 ``full`` 。
+:类型: Float
+:默认值: ``.95``
 
 
-``mon osd nearfull ratio`` 
+``mon osd nearfull ratio``
 
-:Description: OSD 硬盘使用率达到多少就认为它 ``nearfull`` 。
-:Type: Float
-:Default: ``.85``
+:描述: OSD 硬盘使用率达到多少就认为它 ``nearfull`` 。
+:类型: Float
+:默认值: ``.85``
 
 
 .. tip:: 如果一些 OSD 快满了，但其他的仍有足够空间，你可能配错 CRUSH 权重了。
@@ -401,132 +402,130 @@ provider 落后于 leader ）， provider 能终结和 requester 间的同步。
 
 ``mon sync trim timeout``
 
-:Description: 
-:Type: Double
-:Default: ``30.0``
+:描述:
+:类型: Double
+:默认值: ``30.0``
 
 
 ``mon sync heartbeat timeout``
 
-:Description: 
-:Type: Double
-:Default: ``30.0``
+:描述:
+:类型: Double
+:默认值: ``30.0``
 
 
 ``mon sync heartbeat interval``
 
-:Description: 
-:Type: Double
-:Default: ``5.0``
+:描述:
+:类型: Double
+:默认值: ``5.0``
 
 
 ``mon sync backoff timeout``
 
-:Description: 
-:Type: Double
-:Default: ``30.0``
+:描述:
+:类型: Double
+:默认值: ``30.0``
 
 
 ``mon sync timeout``
 
-:Description: 
-:Type: Double
-:Default: ``30.0``
+:描述:
+:类型: Double
+:默认值: ``30.0``
 
 
 ``mon sync max retries``
 
-:Description: 
-:Type: Integer
-:Default: ``5``
+:描述:
+:类型: Integer
+:默认值: ``5``
 
 
 ``mon sync max payload size``
 
-:Description: 同步载荷的最大尺寸。
-:Type: 32-bit Integer
-:Default: ``1045676``
+:描述: 同步载荷的最大尺寸。
+:类型: 32-bit Integer
+:默认值: ``1045676``
 
 
-``mon accept timeout`` 
+``mon accept timeout``
 
-:Description: leader 等待  requester(s) 接受 PAXOS 更新的时间，出于同样的目的此值\
-              也用于 PAXOS 恢复阶段。
+:描述: leader 等待  requester(s) 接受 PAXOS 更新的时间，出于同样的目的此值\
+       也用于 PAXOS 恢复阶段。
 
-:Type: Float
-:Default: ``10.0`` 
+:类型: Float
+:默认值: ``10.0``
 
 
 ``paxos propose interval``
 
-:Description: 提议更新之前收集本时间段的更新。
-:Type: Double
-:Default: ``1.0``
+:描述: 提议更新之前收集本时间段的更新。
+:类型: Double
+:默认值: ``1.0``
 
 
 ``paxos min wait``
 
-:Description: 经过一段不活跃时间后，收集更新的最小等待时间。
-:Type: Double
-:Default: ``0.05``
+:描述: 经过一段不活跃时间后，收集更新的最小等待时间。
+:类型: Double
+:默认值: ``0.05``
 
 
 ``paxos trim tolerance``
 
-:Description: 修复前容忍的其他提议数量。
-:Type: Integer
-:Default: ``30``
+:描述: 修复前容忍的其他提议数量。
+:类型: Integer
+:默认值: ``30``
 
 
 ``paxos trim disabled max versions``
 
-:Description: 允许不修复就通过的最大版本数。
-:Type: Integer
-:Default: ``100``
+:描述: 允许不修复就通过的最大版本数。
+:类型: Integer
+:默认值: ``100``
 
 
-``mon lease`` 
+``mon lease``
 
-:Description: 监视器版本租期（秒）。
-:Type: Float
-:Default: ``5``
-
-
-``mon lease renew interval`` 
-
-:Description: 监视器 leader （头领）刷新其他监视器租期的间隔。              
-:Type: Float
-:Default: ``3``
+:描述: 监视器版本租期（秒）。
+:类型: Float
+:默认值: ``5``
 
 
-``mon lease ack timeout`` 
+``mon lease renew interval``
 
-:Description: leader 在等到 providers （随从）确认延长租期前等待的时间。              
-:Type: Float
-:Default: ``10.0``
-
-
-``mon min osdmap epochs`` 
-
-:Description: 一直保存的 OSD 图元素最小数量。
-:Type: 32-bit Integer
-:Default: ``500``
+:描述: 监视器 leader （头领）刷新其他监视器租期的间隔。
+:类型: Float
+:默认值: ``3``
 
 
-``mon max pgmap epochs`` 
+``mon lease ack timeout``
 
-:Description: 监视器应该一直保存的 PG 图元素最大数量。
-:Type: 32-bit Integer
-:Default: ``500``
-
-
-``mon max log epochs`` 
-
-:Description: 监视器应该保留的最大日志数量。
-:Type: 32-bit Integer
-:Default: ``500``
+:描述: leader 在等到 providers （随从）确认延长租期前等待的时间。
+:类型: Float
+:默认值: ``10.0``
 
 
+``mon min osdmap epochs``
+
+:描述: 一直保存的 OSD 图元素最小数量。
+:类型: 32-bit Integer
+:默认值: ``500``
+
+
+``mon max pgmap epochs``
+
+:描述: 监视器应该一直保存的 PG 图元素最大数量。
+:类型: 32-bit Integer
+:默认值: ``500``
+
+
+``mon max log epochs``
+
+:描述: 监视器应该保留的最大日志数量。
+:类型: 32-bit Integer
+:默认值: ``500``
 
 
 Slurp
@@ -537,27 +536,28 @@ Slurp
 偏差的服务。 Ceph 0.59 及后续版本的 slurp 机制取消了，因为所有服务共享一个 Paxos \
 例程。
 
+
 .. deprecated:: 0.58
 
 ``paxos max join drift``
 
-:Description: 在我们首次同步监视器数据存储前， Paxos 迭代的最大数量。
-:Type: Integer
-:Default: ``10`` 
+:描述: 在我们首次同步监视器数据存储前， Paxos 迭代的最大数量。
+:类型: Integer
+:默认值: ``10``
 
 
-``mon slurp timeout`` 
+``mon slurp timeout``
 
-:Description: 监视器进程终止后、自举前，要等待多长时间才开始发出显式修复通告。
-:Type: Double
-:Default: ``10.0``
+:描述: 监视器进程终止后、自举前，要等待多长时间才开始发出显式修复通告。
+:类型: Double
+:默认值: ``10.0``
 
 
 ``mon slurp bytes``
 
-:Description: 显式修复消息尺寸限制。
-:Type: 32-bit Integer
-:Default: ``256 * 1024``
+:描述: 显式修复消息尺寸限制。
+:类型: 32-bit Integer
+:默认值: ``256 * 1024``
 
 
 .. index:: Ceph Monitor; clock
@@ -565,98 +565,93 @@ Slurp
 时钟
 ----
 
-Ceph daemons pass critical messages to each other, which must be processed
-before daemons reach a timeout threshold. If the clocks in Ceph monitors
-are not synchronized, it can lead to a number of anomalies. For example:
+Ceph 的守护进程会相互传递关键消息，这些消息必须在达到超时阀值前处理掉。如果 \
+Ceph 监视器时钟不同步，就可能出现多种异常情况。例如：
 
-- Daemons ignoring received messages (e.g., timestamps outdated)
-- Timeouts triggered too soon/late when a message wasn't received in time.
+- 守护进程忽略了收到的消息（如时间戳过时了）
+- 消息未及时收到时，超时触发得太快或太晚。
 
-See `监视器存储同步`_ and `Slurp`_ for details.
+详情见\ `监视器存储同步`_\ 和 `Slurp`_ 。
 
 
-.. tip:: You SHOULD install NTP on your Ceph monitor hosts to 
-         ensure that the monitor cluster operates with synchronized clocks.
+.. tip:: 你\ **应该**\ 在所有监视器主机上安装 NTP 以确保监视器集群的时钟同步。
 
-Clock drift may still be noticeable with NTP even though the discrepancy isn't
-yet harmful. Ceph's clock drift / clock skew warnings may get triggered even 
-though NTP maintains a reasonable level of synchronization. Increasing your 
-clock drift may be tolerable under such circumstances; however, a number of 
-factors such as workload, network latency, configuring overrides to default 
-timeouts and the `监视器存储同步`_ settings may influence 
-the level of acceptable clock drift without compromising Paxos guarantees.
+时钟漂移即使尚未造成损坏也能被 NTP 感知， Ceph 的时钟漂移或时钟偏差警告即使\
+在 NTP 同步水平合理时也会被触发。提高时钟漂移值有时候尚可容忍，然而很多因素\
+（像载荷、网络延时、覆盖默认超时值和\ `监视器存储同步`_\ 选项）都能在不降低 \
+Paxos 保证级别的情况下影响可接受的时钟漂移水平。
 
-Ceph provides the following tunable options to allow you to find 
-acceptable values.
+Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 
 ``clock offset``
 
-:Description: 时钟可以漂移多少，详情见 ``Clock.cc`` 。
-:Type: Double
-:Default: ``0``
+:描述: 时钟可以漂移多少，详情见 ``Clock.cc`` 。
+:类型: Double
+:默认值: ``0``
 
 
 .. deprecated:: 0.58
 
-``mon tick interval`` 
+``mon tick interval``
 
-:Description: 监视器的心跳间隔，单位为秒。
-:Type: 32-bit Integer
-:Default: ``5`` 
-
-
-``mon clock drift allowed`` 
-
-:Description: 监视器间允许的时钟漂移量
-:Type: Float
-:Default: ``.050``
+:描述: 监视器的心跳间隔，单位为秒。
+:类型: 32-bit Integer
+:默认值: ``5``
 
 
-``mon clock drift warn backoff`` 
+``mon clock drift allowed``
 
-:Description: 时钟偏移警告的退避指数。
-:Type: Float
-:Default: ``5``
+:描述: 监视器间允许的时钟漂移量
+:类型: Float
+:默认值: ``.050``
+
+
+``mon clock drift warn backoff``
+
+:描述: 时钟偏移警告的退避指数。
+:类型: Float
+:默认值: ``5``
 
 
 ``mon timecheck interval``
 
-:Description: 和 leader 的时间偏移检查（时钟漂移检查）。单位为秒。
-:Type: Float
-:Default: ``300.0``
+:描述: 和 leader 的时间偏移检查（时钟漂移检查）。单位为秒。
+:类型: Float
+:默认值: ``300.0``
 
 
 
 客户端
 ------
 
+
 ``mon client hung interval``
 
-:Description: 客户端每 ``N`` 秒尝试一个新监视器，直到它建立连接。              
-:Type: Double
-:Default: ``3.0``
+:描述: 客户端每 ``N`` 秒尝试一个新监视器，直到它建立连接。
+:类型: Double
+:默认值: ``3.0``
 
 
 ``mon client ping interval``
 
-:Description: 客户端每 ``N`` 秒 ping 一次监视器。
-:Type: Double
-:Default: ``10.0``
+:描述: 客户端每 ``N`` 秒 ping 一次监视器。
+:类型: Double
+:默认值: ``10.0``
 
 
 ``mon client max log entries per message``
 
-:Description: 某监视器为每客户端生成的最大日志条数。
-:Type: Integer
-:Default: ``1000``
+:描述: 某监视器为每客户端生成的最大日志条数。
+:类型: Integer
+:默认值: ``1000``
 
 
 ``mon client bytes``
 
-:Description: 内存中允许存留的客户端消息数量（字节数）。
-:Type: 64-bit Integer Unsigned
-:Default: ``100ul << 20``
+:描述: 内存中允许存留的客户端消息数量（字节数）。
+:类型: 64-bit Integer Unsigned
+:默认值: ``100ul << 20``
 
 
 
@@ -666,59 +661,58 @@ acceptable values.
 
 ``mon max osd``
 
-:Description: 集群允许的最大 OSD 数量。
-:Type: 32-bit Integer
-:Default: ``10000``
+:描述: 集群允许的最大 OSD 数量。
+:类型: 32-bit Integer
+:默认值: ``10000``
 
 
-``mon globalid prealloc`` 
+``mon globalid prealloc``
 
-:Description: 为集群预分配的全局 ID 数量。
-:Type: 32-bit Integer
-:Default: ``100``
-
-
-``mon sync fs threshold`` 
-
-:Description: 数量达到设定值时和文件系统同步， 0 为禁用。
-:Type: 32-bit Integer
-:Default: ``5`` 
+:描述: 为集群预分配的全局 ID 数量。
+:类型: 32-bit Integer
+:默认值: ``100``
 
 
-``mon subscribe interval`` 
+``mon sync fs threshold``
 
-:Description: 同步的刷新间隔（秒），同步机制允许获取集群运行图和日志信息。
-:Type: Double
-:Default: ``300`` 
+:描述: 数量达到设定值时和文件系统同步， 0 为禁用。
+:类型: 32-bit Integer
+:默认值: ``5``
+
+
+``mon subscribe interval``
+
+:描述: 同步的刷新间隔（秒），同步机制允许获取集群运行图和日志信息。
+:类型: Double
+:默认值: ``300``
 
 
 ``mon stat smooth intervals``
 
-:Description: Ceph 将平滑最后 ``N`` 个归置组图的统计信息。
-:Type: Integer
-:Default: ``2``
+:描述: Ceph 将平滑最后 ``N`` 个归置组图的统计信息。
+:类型: Integer
+:默认值: ``2``
 
 
-``mon probe timeout`` 
+``mon probe timeout``
 
-:Description: 监视器自举无效，搜寻节点前等待的时间。
-:Type: Double
-:Default: ``2.0``
+:描述: 监视器自举无效，搜寻节点前等待的时间。
+:类型: Double
+:默认值: ``2.0``
 
 
 ``mon daemon bytes``
 
-:Description: 给元数据服务器和 OSD 的消息使用的内存空间（字节）。
-:Type: 64-bit Integer Unsigned
-:Default: ``400ul << 20``
+:描述: 给元数据服务器和 OSD 的消息使用的内存空间（字节）。
+:类型: 64-bit Integer Unsigned
+:默认值: ``400ul << 20``
 
 
 ``mon max log entries per event``
 
-:Description: 每个事件允许的最大日志条数。
-:Type: Integer
-:Default: ``4096``
-
+:描述: 每个事件允许的最大日志条数。
+:类型: Integer
+:默认值: ``4096``
 
 
 .. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)

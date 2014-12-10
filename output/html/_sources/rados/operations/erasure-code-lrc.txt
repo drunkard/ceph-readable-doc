@@ -1,28 +1,24 @@
-======================================
-Locally repairable erasure code plugin
-======================================
+======================
+ 局部自修复纠删码插件
+======================
 
-With the *jerasure* plugin, when an erasure coded object is stored on
-multiple OSDs, recovering from the loss of one OSD requires reading
-from all the others. For instance if *jerasure* is configured with
-*k=8* and *m=4*, losing one OSD requires reading from the eleven
-others to repair.
+用 *jerasure* 插件时，纠删码编码的对象存储在多个 OSD 上，丢失一个 OSD 的恢复\
+过程需读取所有其他的 OSD 。比如 *jerasure* 的配置为 *k=8* 且 *m=4* ，丢失一\
+个 OSD 后需读取其他 11 个 OSD 才能恢复。
 
-The *lrc* erasure code plugin creates local parity chunks to be able
-to recover using less OSDs. For instance if *lrc* is configured with
-*k=8*, *m=4* and *l=4*, it will create an additional parity chunk for
-every four OSDs. When a single OSD is lost, it can be recovered with
-only four OSDs instead of eleven.
+*lrc* 纠删码插件创建的是局部校验块，这样只需较少的 OSD 即可恢复。比如 *lrc* \
+的配置为 *k=8* 、 *m=4* 且 *l=4* ，它将为每四个 OSD 创建额外的校验块，当一个 \
+OSD 丢失时，它只需四个 OSD 即可恢复，而不需要十一个。
 
-Erasure code profile examples
-=============================
 
-Reduce recovery bandwidth between hosts
----------------------------------------
+纠删码配置实例
+==============
 
-Although it is probably not an interesting use case when all hosts are
-connected to the same switch, reduced bandwidth usage can actually be
-observed.::
+降低主机间的恢复带宽
+--------------------
+
+虽然当所有主机都接入同一交换机时，这不会是诱人的用法，但是带宽利用率确实降低\
+了。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
@@ -31,11 +27,10 @@ observed.::
         $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
 
 
-Reduce recovery bandwidth between racks
----------------------------------------
+降低机架间的恢复带宽
+--------------------
 
-In Firefly the reduced bandwidth will only be observed if the primary
-OSD is in the same rack as the lost chunk.::
+在 Firefly 版中，只有主 OSD 与丢失块位于同一机架时所需带宽才能降低。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
@@ -48,8 +43,7 @@ OSD is in the same rack as the lost chunk.::
 创建 lrc 配置
 =============
 
-要新建 *lrc* 纠删码配置：
-::
+要新建 *lrc* 纠删码配置： ::
 
         ceph osd erasure-code-profile set {name} \
              plugin=lrc \
@@ -67,124 +61,107 @@ OSD is in the same rack as the lost chunk.::
 
 ``k={data chunks}``
 
-:Description: 各对象都被分割为\ **数据块**\ ，分别存储于不同 OSD 。
-:Type: Integer
-:Required: Yes.
-:Example: 4
+:描述: 各对象都被分割为\ **数据块**\ ，分别存储于不同 OSD 。
+:类型: Integer
+:是否必需: Yes.
+:实例: 4
 
 
 ``m={coding-chunks}``
 
-:Description: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的数量等同于在\
-              不丢数据的前提下允许同时失效的 OSD 数量。
+:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的数量等同于在\
+       不丢数据的前提下允许同时失效的 OSD 数量。
 
-:Type: Integer
-:Required: Yes.
-:Example: 2
+:类型: Integer
+:是否必需: Yes.
+:实例: 2
 
 
 ``l={locality}``
 
-:Description: Group the coding and data chunks into sets of size
-              **locality**. For instance, for **k=4** and **m=2**,
-              when **locality=3** two groups of three are created.
-              Each set can be recovered without reading chunks
-              from another set.
+:描述: 把编码块和数据块分组为大小为 **locality** 的集合。比如， **k=4** 且 \
+       **m=2** 时，若设置 **locality=3** ，将会分组为大小三的两组，这样各组\
+       都能自行恢复，无需从别的组读数据块。
 
-:Type: Integer
-:Required: Yes.
-:Example: 3
+:类型: Integer
+:是否必需: Yes.
+:实例: 3
 
 
 ``ruleset-root={root}``
 
-:Description: The name of the crush bucket used for the first step of
-              the ruleset. For intance **step take default**.
-
-:Type: String
-:Required: No.
-:Default: default
+:描述: 规则集第一步所指向的 CRUSH 桶之名，如 **step take default** 。
+:类型: String
+:是否必需: No.
+:默认值: default
 
 
 ``ruleset-locality={bucket-type}``
 
-:Description: The type of the crush bucket in which each set of chunks
-              defined by **l** will be stored. For instance, if it is
-              set to **rack**, each group of **l** chunks will be
-              placed in a different rack. It is used to create a
-              ruleset step such as **step choose rack**. If it is not
-              set, no such grouping is done.
+:描述: 由 **l** 定义的块集合将按哪种 crush 桶类型存储。比如，若设置为 \
+       **rack** ，大小为 **l** 块的各组将被存入不同的机架，此值会被用于创建\
+       类似 **step choose rack** 的规则集。如果没设置，就不会这样分组。
 
-:Type: String
-:Required: No.
+:类型: String
+:是否必需: No.
 
 
 ``ruleset-failure-domain={bucket-type}``
 
-:Description: Ensure that no two chunks are in a bucket with the same
-              failure domain. For instance, if the failure domain is
-              **host** no two chunks will be stored on the same
-              host. It is used to create a ruleset step such as **step
-              chooseleaf host**.
+:描述: 确保两个编码块不会存在于同一故障域的桶中。比如，假设故障域是 \
+       **host** ，就不会有两个编码块存储到同一主机；此值用于在规则集中创建类\
+       似 **step chooseleaf host** 的步骤。
 
-:Type: String
-:Required: No.
-:Default: host
+:类型: String
+:是否必需: No.
+:默认值: host
 
 
 ``directory={directory}``
 
-:Description: 设置纠删码插件的路径，需是\ **目录**\ 。
-:Type: String
-:Required: No.
-:Default: /usr/lib/ceph/erasure-code
+:描述: 设置纠删码插件的路径，需是\ **目录**\ 。
+:类型: String
+:是否必需: No.
+:默认值: /usr/lib/ceph/erasure-code
 
 
 ``--force``
 
-:Description: 覆盖同名配置。
-
-:Type: String
-:Required: No.
+:描述: 覆盖同名配置。
+:类型: String
+:是否必需: No.
 
 
 低级插件配置
 ============
 
-The sum of **k** and **m** must be a multiple of the **l** parameter.
-The low level configuration parameters do not impose such a
-restriction and it may be more convienient to use it for specific
-purposes. It is for instance possible to define two groups, one with 4
-chunks and another with 3 chunks. It is also possible to recursively
-define locality sets, for instance datacenters and racks into
-datacenters. The **k/m/l** are implemented by generating a low level
-configuration.
+**k** 与 **m** 之和必须是 **l** 参数的整数倍。低级配置参数没有强加这样的限\
+制，并且在某些场合下更方便。因此有可能配置两个组，一组 4 块、另一组 3 块；\
+也有可能递归地定义局部集合，如数据中心和机架再组合为数据中心。 **k/m/l** 可\
+通过生成低级配置来实现。
 
-The *lrc* erasure code plugin recursively applies erasure code
-techniques so that recovering from the loss of some chunks only
-requires a subset of the available chunks, most of the time.
+*lrc* 纠删码插件递归地使用纠删码技术，这样一些块丢失的恢复大多只需少部分数\
+据块的子集。
 
-For instance, when three coding steps are described as::
+比如，三步编码描述为如下： ::
 
    chunk nr    01234567
    step 1      _cDD_cDD
    step 2      cDDD____
    step 3      ____cDDD
 
-where *c* are coding chunks calculated from the data chunks *D*, the
-loss of chunk *7* can be recovered with the last four chunks. And the
-loss of chun *2* chunk can be recovered with the first four
-chunks.
+其中， *c* 是从数据块 *D* 计算出的编码块，块 *7* 丢失后可从后四个块恢复，块 \
+*2* 丢失后可从前四个块恢复。
 
-Erasure code profile examples using low level configuration
-===========================================================
 
-Minimal testing
----------------
+使用低级配置的纠删码配置实例
+============================
 
-It is strictly equivalent to using the default erasure code profile. The *DD*
-implies *K=2*, the *c* implies *M=1* and the *jerasure* plugin is used
-by default.::
+最小测试
+--------
+
+此例其实等价于默认纠删码配置， *DD* 其实就是 *K=2* 、 *c* 就是 *m=1* 并且默认\
+使用 *jerasure* 插件。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
@@ -192,13 +169,12 @@ by default.::
              layers='[ [ "DDc", "" ] ]'
         $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
 
-Reduce recovery bandwidth between hosts
----------------------------------------
 
-Although it is probably not an interesting use case when all hosts are
-connected to the same switch, reduced bandwidth usage can actually be
-observed. It is equivalent to **k=4**, **m=2** and **l=3** although
-the layout of the chunks is different::
+降低主机间的恢复带宽
+--------------------
+
+虽然当所有主机都接入同一交换机时，这不会是诱人的用法，但是带宽利用率确实降低\
+了。它等价于 **k=4** 、 **m=2** 且 **l=3** ，尽管数据块的布局不同： ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
@@ -211,11 +187,10 @@ the layout of the chunks is different::
         $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
 
 
-Reduce recovery bandwidth between racks
----------------------------------------
+降低机架间的恢复带宽
+--------------------
 
-In Firefly the reduced bandwidth will only be observed if the primary
-OSD is in the same rack as the lost chunk.::
+在 Firefly 版中，只有主 OSD 与丢失块位于同一机架时所需带宽才能降低。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
@@ -231,15 +206,13 @@ OSD is in the same rack as the lost chunk.::
                             ]'
         $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
 
-Testing with different Erasure Code backends
---------------------------------------------
 
-LRC now uses jerasure as the default EC backend. It is possible to
-specify the EC backend/algorithm on a per layer basis using the low
-level configuration. The second argument in layers='[ [ "DDc", "" ] ]'
-is actually an erasure code profile to be used for this level. The
-example below specifies the ISA backend with the cauchy technique to
-be used in the lrcpool.::
+不同纠删码后端测试
+------------------
+
+LRC 当前用 jerasure 作为默认 EC 后端。使用低级配置时，你可以为每一级分别指定 \
+EC 后端、算法。 layers='[ [ "DDc", "" ] ]' 里的第二个参数其实是用于本级的纠删\
+码配置。下面的例子为 lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
@@ -247,8 +220,7 @@ be used in the lrcpool.::
              layers='[ [ "DDc", "plugin=isa technique=cauchy" ] ]'
         $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
 
-You could also use a different erasure code profile for for each
-layer.::
+你也可以为各级分别使用不同的纠删码配置。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
@@ -261,11 +233,10 @@ layer.::
         $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
 
 
+纠删编码和解码算法
+==================
 
-Erasure coding and decoding algorithm
-=====================================
-
-The steps found in the layers description::
+在层描述中找出的步骤： ::
 
    chunk nr    01234567
 
@@ -273,21 +244,17 @@ The steps found in the layers description::
    step 2      cDDD____
    step 3      ____cDDD
 
-are applied in order. For instance, if a 4K object is encoded, it will
-first go thru *step 1* and be divided in four 1K chunks (the four
-uppercase D). They are stored in the chunks 2, 3, 6 and 7, in
-order. From these, two coding chunks are calculated (the two lowercase
-c). The coding chunks are stored in the chunks 1 and 4, respectively.
+将被依次应用。比如一个 4K 的对象要被编码，它要先通过 **step 1** 被分割为四个 \
+1K 的块（四个大写的 D ），分别依次存储于 2 、 3 、 6 和 7 。这些数据产生了两\
+个编码块（两个小写 c ），它们分别存储于 1 和 4 。
 
-The *step 2* re-uses the content created by *step 1* in a similar
-fashion and stores a single coding chunk *c* at position 0. The last four
-chunks, marked with an underscore (*_*) for readability, are ignored.
+*step 2* 以相似的方式重用 *step 1* 创建的内容，并把单个编码块 *c* 存储于位置 \
+0 。最后四个下划线（ *_* ）标记是为提高可读性的，被忽略了。
 
-The *step 3* stores a single coding chunk *c* at position 4. The three
-chunks created by *step 1* are used to compute this coding chunk,
-i.e. the coding chunk from *step 1* becomes a data chunk in *step 3*.
+*step 3* 把单个编码块存储到了位置 4 ， *step 1* 创建的三个块被用于计算此编码\
+块，也就是 *step 1* 产生的编码块成了 *step 3* 的数据块。
 
-If chunk *2* is lost::
+如果 *2* 块丢失了： ::
 
    chunk nr    01234567
 
@@ -295,20 +262,16 @@ If chunk *2* is lost::
    step 2      cD D____
    step 3      __ _cDDD
 
-decoding will attempt to recover it by walking the steps in reverse
-order: *step 3* then *step 2* and finally *step 1*.
+将通过解码来恢复它，反向依次执行： *step 3* 然后 *step 2* 最后是 *step 1* 。
 
-The *step 3* knows nothing about chunk *2* (i.e. it is an underscore)
-and is skipped.
+*step 3* 对 *2* 一无所知（即它是下划线），所以跳过此步。
 
-The coding chunk from *step 2*, stored in chunk *0*, allows it to
-recover the content of chunk *2*. There are no more chunks to recover
-and the process stops, without considering *step 1*.
+*step 2* 里的编码块存储在 *0* 块中，可用来恢复 *2* 块的内容。没有需要恢复的数\
+据块了，不再考虑 *step 1* ，进程终止。
 
-Recovering chunk *2* required reading chunks *0, 1, 3* and writing
-back chunk *2*.
+恢复块 *2* 需读取块 *0, 1, 3* 并写回块 *2* 。
 
-If chunk *2, 3, 6* are lost::
+如果块 *2, 3, 6* 丢失： ::
 
    chunk nr    01234567
 
@@ -316,7 +279,7 @@ If chunk *2, 3, 6* are lost::
    step 2      cD  __ _
    step 3      __  cD D
 
-The *step 3* can recover the conten of chunk *6*::
+*step 3* 可恢复块 *6* 的内容： ::
 
    chunk nr    01234567
 
@@ -324,12 +287,9 @@ The *step 3* can recover the conten of chunk *6*::
    step 2      cD  ____
    step 3      __  cDDD
 
-The *step 2* fails to recover and is skipped because there are two
-chunks missing (*2, 3*) and it can only recover from one missing
-chunk.
+*step 2* 未能恢复被跳过了，因为丢失了两块（ *2, 3* ），它只能恢复一个块的丢失。
 
-The coding chunk from *step 1*, stored in chunk *1, 5*, allows it to
-recover the content of chunk *2, 3*::
+*step 1* 中的编码块位于块 *1, 5* ，因此能恢复块 *2, 3* 的内容。 ::
 
    chunk nr    01234567
 
@@ -337,10 +297,11 @@ recover the content of chunk *2, 3*::
    step 2      cDDD____
    step 3      ____cDDD
 
-Controlling crush placement
-===========================
 
-The default crush ruleset provides OSDs that are on different hosts. For instance::
+CRUSH 归置的控制
+================
+
+默认的 CRUSH 规则集会选择位于不同主机的 OSD ，例如： ::
 
    chunk nr    01234567
 
@@ -348,18 +309,15 @@ The default crush ruleset provides OSDs that are on different hosts. For instanc
    step 2      cDDD____
    step 3      ____cDDD
 
-needs exactly *8* OSDs, one for each chunk. If the hosts are in two
-adjacent racks, the first four chunks can be placed in the first rack
-and the last four in the second rack. So that recovering from the loss
-of a single OSD does not require using bandwidth between the two
-racks.
+需要整整 8 个 OSD ，分别存储 8 个块。如果这些主机分别位于相邻的机架，前四块可\
+放到第一个机架，后四块可放到第二个机架，这样丢失单个 OSD 恢复时就不会用到机架\
+间的带宽。
 
-For instance::
+例如： ::
 
    ruleset-steps='[ [ "choose", "rack", 2 ], [ "chooseleaf", "host", 4 ] ]'
 
-will create a ruleset that will select two crush buckets of type
-*rack* and for each of them choose four OSDs, each of them located in
-different bucket of type *host*.
+此配置会创建这样的规则集，选定类型为 *rack* 的两个 crush 桶、并在各桶中再选四\
+个 OSD ，各 OSD 分别位于类型为 *host* 的不同桶中。
 
-The ruleset can also be manually crafted for finer control.
+此规则集还可以手工雕琢一下，使其更精细。

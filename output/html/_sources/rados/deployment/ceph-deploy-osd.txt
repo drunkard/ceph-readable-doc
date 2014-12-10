@@ -16,8 +16,7 @@
 列举磁盘
 ========
 
-执行下列命令列举一节点上的磁盘：
-::
+执行下列命令列举一节点上的磁盘： ::
 
 	ceph-deploy disk list {node-name [node-name]...}
 
@@ -25,8 +24,7 @@
 擦净磁盘
 ========
 
-用下列命令擦净（删除分区表）磁盘，以用于 Ceph ：
-::
+用下列命令擦净（删除分区表）磁盘，以用于 Ceph ： ::
 
 	ceph-deploy disk zap {osd-server-name}:{disk-name}
 	ceph-deploy disk zap osdserver1:sdb
@@ -38,8 +36,7 @@
 =========
 
 创建集群、安装 Ceph 软件包、收集密钥完成后你就可以准备 OSD 并把它们部署到 OSD 节点\
-了。如果你想确认某磁盘或擦净它，参见\ `列举磁盘`_\ 和\ `擦净磁盘`_\ 。
-::
+了。如果你想确认某磁盘或擦净它，参见\ `列举磁盘`_\ 和\ `擦净磁盘`_\ 。 ::
 
 	ceph-deploy osd prepare {node-name}:{data-disk}[:{journal-disk}]
 	ceph-deploy osd prepare osdserver1:sdb:/dev/ssd
@@ -61,8 +58,7 @@
 激活 OSD
 ========
 
-准备好 OSD 后，可以用下列命令激活它。
-::
+准备好 OSD 后，可以用下列命令激活它。 ::
 
 	ceph-deploy osd activate {node-name}:{data-disk-partition}[:{journal-disk-partition}]
 	ceph-deploy osd activate osdserver1:/dev/sdb1:/dev/ssd1
@@ -76,8 +72,7 @@
 =========
 
 你可以用 ``create`` 命令一次完成准备 OSD 、部署到 OSD 节点、并激活它。 ``create`` \
-命令是依次执行 ``prepare`` 和 ``activate`` 命令的捷径。
-::
+命令是依次执行 ``prepare`` 和 ``activate`` 命令的捷径。 ::
 
 	ceph-deploy osd create {node-name}:{disk}[:{path/to/journal}]
 	ceph-deploy osd create osdserver1:sdb:/dev/ssd1

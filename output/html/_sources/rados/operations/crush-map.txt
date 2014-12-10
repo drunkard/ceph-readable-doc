@@ -44,8 +44,7 @@ CRUSH 位置
 
 用 CRUSH 图层次结构所表示的 OSD 位置被称为“ crush 位置”，它用键/值对列表来表\
 示。例如，一 OSD 位于某特定行、机柜、机架、和主机，且是 CRUSH 图里名为 \
-default 树的一部分，那么其 crush 位置可表示如下：
-::
+default 树的一部分，那么其 crush 位置可表示如下： ::
 
   root=default row=a rack=a2 chassis=a2a host=a2a1
 
@@ -74,8 +73,7 @@ ceph-crush-location 挂钩
 置 ``crush location`` 域来描述此机器在数据中心或集群内的位置。这样 Ceph 守护\
 进程和客户端就能提供基于位置的服务。
 
-完全手动管理 CRUSH 图也是可能的，在配置中把挂钩关掉即可：
-::
+完全手动管理 CRUSH 图也是可能的，在配置中把挂钩关掉即可： ::
 
 	osd crush update on start = false
 
@@ -84,13 +82,11 @@ ceph-crush-location 挂钩
 ------------
 
 定制化位置挂钩可代替通用挂钩，用于控制 OSD 在分级结构中的位置（启动时，各 \
-OSD 都确认它们的位置正确无误）：
-::
+OSD 都确认它们的位置正确无误）： ::
 
 	osd crush location hook = /path/to/script
 
-此挂钩应该接受几个参数（下述）并向标准输出打印一行 CRUSH 位置描述：
-::
+此挂钩应该接受几个参数（下述）并向标准输出打印一行 CRUSH 位置描述： ::
 
 	$ ceph-crush-location --cluster CLUSTER --id ID --type TYPE
 
@@ -126,8 +122,7 @@ OSD 都确认它们的位置正确无误）：
 获取 CRUSH 图
 -------------
 
-要获取集群的 CRUSH 图，执行命令：
-::
+要获取集群的 CRUSH 图，执行命令： ::
 
 	ceph osd getcrushmap -o {compiled-crushmap-filename}
 
@@ -140,8 +135,7 @@ Ceph 将把 CRUSH 输出（ -o ）到你指定的文件，由于 CRUSH 图是已
 反编译 CRUSH 图
 ---------------
 
-要反编译 CRUSH 图，执行命令：
-::
+要反编译 CRUSH 图，执行命令： ::
 
 	crushtool -d {compiled-crushmap-filename} -o {decompiled-crushmap-filename}
 
@@ -153,8 +147,7 @@ Ceph 将反编译（ -d ）二进制 CRUSH 图，且输出（ -o ）到你指定
 编译 CRUSH 图
 -------------
 
-要编译 CRUSH 图，执行命令：
-::
+要编译 CRUSH 图，执行命令： ::
 
 	crushtool -c {decompiled-crush-map-filename} -o {compiled-crush-map-filename}
 
@@ -166,8 +159,7 @@ Ceph 将把已编译的 CRUSH 图保存到你指定的文件。
 注入 CRUSH 图
 -------------
 
-要把 CRUSH 图应用到集群，执行命令：
-::
+要把 CRUSH 图应用到集群，执行命令： ::
 
 	ceph osd setcrushmap -i  {compiled-crushmap-filename}
 
@@ -206,14 +198,12 @@ CRUSH 图之设备
 为把归置组映射到 OSD ， CRUSH 图需要 OSD 列表（即配置文件所定义的 OSD 守护进\
 程名称），所以它们首先出现在 CRUSH 图里。要在 CRUSH 图里声明一个设备，在设备\
 列表后面新建一行，输入 ``device`` 、之后是唯一的数字 ID 、之后是相应的 \
-``ceph-osd`` 守护进程例程名字。
-::
+``ceph-osd`` 守护进程例程名字。 ::
 
 	#devices
 	device {num} {osd.name}
 
-例如：
-::
+例如： ::
 
 	#devices
 	device 0 osd.0
@@ -236,14 +226,12 @@ CRUSH 图里的第二个列表定义了 bucket （桶）类型，桶简化了节
 
 要往 CRUSH 图中增加一种 bucket 类型，在现有桶类型列表下方新增一行，输入 \
 ``type`` 、之后是惟一数字 ID 和一个桶名。按惯例，会有一个叶子桶为 ``type 0`` ，\
-然而你可以指定任何名字（如 osd 、 disk 、 drive 、 storage 等等）：
-::
+然而你可以指定任何名字（如 osd 、 disk 、 drive 、 storage 等等）： ::
 
 	#types
 	type {num} {bucket-name}
 
-例如：
-::
+例如： ::
 
 	# types
 	type 0 osd
@@ -314,8 +302,7 @@ CRUSH 图的 ``#type`` 下）。创建桶分级结构的目的是按故障域隔
 哈希（通常为 ``0`` ，表示哈希算法 ``rjenkins1`` ）。一个桶可以包含一到多条，\
 这些条目可以由节点桶或叶子组成，它们可以有个权重用来反映条目的相对权重。
 
-你可以按下列语法声明一个节点桶：
-::
+你可以按下列语法声明一个节点桶： ::
 
 	[bucket-type] [bucket-name] {
 		id [a unique negative numeric ID]
@@ -326,8 +313,7 @@ CRUSH 图的 ``#type`` 下）。创建桶分级结构的目的是按故障域隔
 	}
 
 例如，用上面的图表，我们可以定义两个主机桶和一个机柜桶， OSD 被声明为主机桶\
-内的条目：
-::
+内的条目： ::
 
 	host node1 {
 		id -1
@@ -425,8 +411,7 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 `CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data`_ ，\
 主要是 **Section 3.2** 。
 
-规则格式如下：
-::
+规则格式如下： ::
 
 	rule <rulename> {
 
@@ -442,86 +427,84 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 
 ``ruleset``
 
-:Description: 区分一条规则属于某个规则集的手段。\ `给存储池设置规则集`_\ 后激活。
-:Purpose: 规则掩码的一个组件。
-:Type: Integer
-:Required: Yes
-:Default: 0
+:描述: 区分一条规则属于某个规则集的手段。\ `给存储池设置规则集`_\ 后激活。
+:目的: 规则掩码的一个组件。
+:类型: Integer
+:是否必需: Yes
+:默认值: 0
 
 .. _给存储池设置规则集: ../pools#setpoolvalues
 
 
 ``type``
 
-:Description: 为硬盘（复制的）或 RAID 写一条规则。
-:Purpose: 规则掩码的一个组件。
-:Type: String
-:Required: Yes
-:Default: ``replicated``
+:描述: 为硬盘（复制的）或 RAID 写一条规则。
+:目的: 规则掩码的一个组件。
+:类型: String
+:是否必需: Yes
+:默认值: ``replicated``
 :Valid Values: Currently only ``replicated``
 
 
 ``min_size``
 
-:Description: 如果一个归置组副本数小于此数， CRUSH 将\ **不**\ 应用此规则。
-:Type: Integer
-:Purpose: 规则掩码的一个组件。
-:Required: Yes
-:Default: ``1``
+:描述: 如果一个归置组副本数小于此数， CRUSH 将\ **不**\ 应用此规则。
+:类型: Integer
+:目的: 规则掩码的一个组件。
+:是否必需: Yes
+:默认值: ``1``
 
 
 ``max_size``
 
-:Description: 如果一个归置组副本数大于此数， CRUSH 将\ **不**\ 应用此规则。
-:Type: Integer
-:Purpose: 规则掩码的一个组件。
-:Required: Yes
-:Default: 10
+:描述: 如果一个归置组副本数大于此数， CRUSH 将\ **不**\ 应用此规则。
+:类型: Integer
+:目的: 规则掩码的一个组件。
+:是否必需: Yes
+:默认值: 10
 
 
 ``step take <bucket-name>``
 
-:Description: 选取桶名并迭代到树底。
-:Purpose: 规则掩码的一个组件。
-:Required: Yes
-:Example: ``step take data``
+:描述: 选取桶名并迭代到树底。
+:目的: 规则掩码的一个组件。
+:是否必需: Yes
+:实例: ``step take data``
 
 
 ``step choose firstn {num} type {bucket-type}``
 
-:Description: 选取指定类型桶的数量，这个数字通常是存储池的副本数（即 pool size ）。
+:描述: 选取指定类型桶的数量，这个数字通常是存储池的副本数（即 pool size ）。
 
-              - 如果 ``{num} == 0`` 选择 ``pool-num-replicas`` 个桶（所有可用的）；
-              - 如果 ``{num} > 0 && < pool-num-replicas`` 就选择那么多的桶；
-              - 如果 ``{num} < 0`` 它意为 ``pool-num-replicas - {num}`` 。
+       - 如果 ``{num} == 0`` 选择 ``pool-num-replicas`` 个桶（所有可用的）；
+       - 如果 ``{num} > 0 && < pool-num-replicas`` 就选择那么多的桶；
+       - 如果 ``{num} < 0`` 它意为 ``pool-num-replicas - {num}`` 。
 
-:Purpose: 规则掩码的一个组件。
-:Prerequisite: 跟在 ``step take`` 或 ``step choose`` 之后。
-:Example: ``step choose firstn 1 type row``
+:目的: 规则掩码的一个组件。
+:先决条件: 跟在 ``step take`` 或 ``step choose`` 之后。
+:实例: ``step choose firstn 1 type row``
 
 
 ``step chooseleaf firstn {num} type {bucket-type}``
 
-:Description: 选择 ``{bucket-type}`` 类型的一堆桶，并从各桶的子树里选择一个叶\
-              子节点。集合内桶的数量通常是存储池的副本数（即 pool size ）。
+:描述: 选择 ``{bucket-type}`` 类型的一堆桶，并从各桶的子树里选择一个叶\
+       子节点。集合内桶的数量通常是存储池的副本数（即 pool size ）。
 
-              - 如果 ``{num} == 0`` 选择 ``pool-num-replicas`` 个桶（所有可用的）；
-              - 如果 ``{num} > 0 && < pool-num-replicas`` 就选择那么多的桶；
-              - 如果 ``{num} < 0`` 它意为 ``pool-num-replicas - {num}`` 。
+       - 如果 ``{num} == 0`` 选择 ``pool-num-replicas`` 个桶（所有可用的）；
+       - 如果 ``{num} > 0 && < pool-num-replicas`` 就选择那么多的桶；
+       - 如果 ``{num} < 0`` 它意为 ``pool-num-replicas - {num}`` 。
 
-:Purpose: 规则掩码的一个组件。 它的使用避免了通过两步来选择一设备。
-:Prerequisite: Follows ``step take`` or ``step choose``.
-:Example: ``step chooseleaf firstn 0 type row``
+:目的: 规则掩码的一个组件。 它的使用避免了通过两步来选择一设备。
+:先决条件: Follows ``step take`` or ``step choose``.
+:实例: ``step chooseleaf firstn 0 type row``
 
 
 ``step emit``
 
-:Description: 输出当前值并清空堆栈。通常用于规则末尾，也适用于相同规则应用到\
-              不同树的情况。
-
-:Purpose: 规则掩码的一个组件。
-:Prerequisite: Follows ``step choose``.
-:Example: ``step emit``
+:描述: 输出当前值并清空堆栈。通常用于规则末尾，也适用于相同规则应用到不同树的情况。
+:目的: 规则掩码的一个组件。
+:先决条件: Follows ``step choose``.
+:实例: ``step emit``
 
 .. important:: 把规则集编号设置到存储池，才能用一个通用规则集编号激活一或多条规则。
 
@@ -532,8 +515,7 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 一 Ceph 客户端读写数据时，总是连接 acting set 里的主 OSD （如 ``[2, 3, 4]`` \
 中， ``osd.2`` 是主的）。有时候某个 OSD 与其它的相比并不适合做主 OSD （比如其\
 硬盘慢、或控制器慢），最大化硬件利用率时为防止性能瓶颈（特别是读操作），你可\
-以调整 OSD 的主亲和性，这样 CRUSH 就尽量不把它用作 acting set 里的主 OSD 了。
-::
+以调整 OSD 的主亲和性，这样 CRUSH 就尽量不把它用作 acting set 里的主 OSD 了。 ::
 
 	ceph osd primary-affinity <osd-id> <weight>
 
@@ -548,8 +530,7 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 假设你想让大多数存储池坐落到使用大硬盘的 OSD 上，但是其中一些存储池映射到使用\
 高速 SSD 的 OSD 上。在同一个 CRUSH 图内有多个独立的 CRUSH 树是可能的，定义两\
 棵树、分别有自己的根节点——一个用于硬盘（如 root platter ）、一个用于 SSD \
-（如 root ssd ），如：
-::
+（如 root ssd ），如： ::
 
   device 0 osd.0
   device 1 osd.1
@@ -671,8 +652,7 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 		step emit
 	}
 
-然后你可以设置一个存储池，让它使用 SSD 规则：
-::
+然后你可以设置一个存储池，让它使用 SSD 规则： ::
 
 	ceph osd pool set <poolname> crush_ruleset 4
 
@@ -686,13 +666,11 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 =============
 
 要增加或删除在线集群里 OSD 所对应的 CRUSH 图条目，执行 ``ceph osd crush set`` \
-命令。对于 v0.48 版，执行下列：
-::
+命令。对于 v0.48 版，执行下列： ::
 
 	ceph osd crush set {id} {name} {weight} pool={pool-name}  [{bucket-type}={bucket-name} ...]
 
-Bobtail (v0.56) 可执行下列：
-::
+Bobtail (v0.56) 可执行下列： ::
 
 	ceph osd crush set {id-or-name} {weight} root={pool-name}  [{bucket-type}={bucket-name} ...]
 
@@ -701,46 +679,45 @@ Bobtail (v0.56) 可执行下列：
 
 ``id``
 
-:Description: OSD 的数字标识符。
-:Type: Integer
-:Required: Yes
-:Example: ``0``
+:描述: OSD 的数字标识符。
+:类型: Integer
+:是否必需: Yes
+:实例: ``0``
 
 
 ``name``
 
-:Description: OSD 的全名。
-:Type: String
-:Required: Yes
-:Example: ``osd.0``
+:描述: OSD 的全名。
+:类型: String
+:是否必需: Yes
+:实例: ``osd.0``
 
 
 ``weight``
 
-:Description: OSD 的 CRUSH 权重。
-:Type: Double
-:Required: Yes
-:Example: ``2.0``
+:描述: OSD 的 CRUSH 权重。
+:类型: Double
+:是否必需: Yes
+:实例: ``2.0``
 
 
 ``root``
 
-:Description: OSD 所在树的根。
-:Type: Key/value pair.
-:Required: Yes
-:Example: ``root=default``
+:描述: OSD 所在树的根。
+:类型: Key/value pair.
+:是否必需: Yes
+:实例: ``root=default``
 
 
 ``bucket-type``
 
-:Description: 定义 OSD 在 CRUSH 分级结构中的位置。
-:Type: Key/value pairs.
-:Required: No
-:Example: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
+:描述: 定义 OSD 在 CRUSH 分级结构中的位置。
+:类型: Key/value pairs.
+:是否必需: No
+:实例: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
 
 
-下例把 ``osd.0`` 添加到分级结构里、或者说从前一个位置挪动一下。
-::
+下例把 ``osd.0`` 添加到分级结构里、或者说从前一个位置挪动一下。 ::
 
 	ceph osd crush set osd.0 1.0 root=default datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1
 
@@ -748,8 +725,7 @@ Bobtail (v0.56) 可执行下列：
 调整一 OSD 的 CRUSH 权重
 ========================
 
-要调整在线集群中一 OSD 的 CRUSH 权重，执行命令：
-::
+要调整在线集群中一 OSD 的 CRUSH 权重，执行命令： ::
 
 	ceph osd crush reweight {name} {weight}
 
@@ -758,18 +734,18 @@ Bobtail (v0.56) 可执行下列：
 
 ``name``
 
-:Description: OSD 的全名。
-:Type: String
-:Required: Yes
-:Example: ``osd.0``
+:描述: OSD 的全名。
+:类型: String
+:是否必需: Yes
+:实例: ``osd.0``
 
 
 ``weight``
 
-:Description: OSD 的 CRUSH权重。
-:Type: Double
-:Required: Yes
-:Example: ``2.0``
+:描述: OSD 的 CRUSH权重。
+:类型: Double
+:是否必需: Yes
+:实例: ``2.0``
 
 
 .. _removeosd:
@@ -777,8 +753,7 @@ Bobtail (v0.56) 可执行下列：
 删除 OSD
 ========
 
-要从在线集群里把一 OSD 踢出 CRUSH 图，执行命令：
-::
+要从在线集群里把一 OSD 踢出 CRUSH 图，执行命令： ::
 
 	ceph osd crush remove {name}
 
@@ -787,17 +762,16 @@ Bobtail (v0.56) 可执行下列：
 
 ``name``
 
-:Description: OSD 全名。
-:Type: String
-:Required: Yes
-:Example: ``osd.0``
+:描述: OSD 全名。
+:类型: String
+:是否必需: Yes
+:实例: ``osd.0``
 
 
 增加桶
 ======
 
-要在运行集群的 CRUSH 图中新建一个桶，用 ``ceph osd crush add-bucket`` 命令：
-::
+要在运行集群的 CRUSH 图中新建一个桶，用 ``ceph osd crush add-bucket`` 命令： ::
 
 	ceph osd crush add-bucket {bucket-name} {bucket-type}
 
@@ -806,22 +780,21 @@ Bobtail (v0.56) 可执行下列：
 
 ``bucket-name``
 
-:Description: 桶的全名。
-:Type: String
-:Required: Yes
-:Example: ``rack12``
+:描述: 桶的全名。
+:类型: String
+:是否必需: Yes
+:实例: ``rack12``
 
 
 ``bucket-type``
 
-:Description: 桶的类型，它必须已存在于分级结构中。
-:Type: String
-:Required: Yes
-:Example: ``rack``
+:描述: 桶的类型，它必须已存在于分级结构中。
+:类型: String
+:是否必需: Yes
+:实例: ``rack``
 
 
-下例把 ``rack12`` 桶加入了分级结构：
-::
+下例把 ``rack12`` 桶加入了分级结构： ::
 
 	ceph osd crush add-bucket rack12 rack
 
@@ -829,8 +802,7 @@ Bobtail (v0.56) 可执行下列：
 移动桶
 ======
 
-要把一个桶挪动到 CRUSH 图里的不同位置，执行命令：
-::
+要把一个桶挪动到 CRUSH 图里的不同位置，执行命令： ::
 
 	ceph osd crush move {bucket-name} {bucket-type}={bucket-name}, [...]
 
@@ -839,24 +811,23 @@ Bobtail (v0.56) 可执行下列：
 
 ``bucket-name``
 
-:Description: 要移动或复位的桶名。
-:Type: String
-:Required: Yes
-:Example: ``foo-bar-1``
+:描述: 要移动或复位的桶名。
+:类型: String
+:是否必需: Yes
+:实例: ``foo-bar-1``
 
 ``bucket-type``
 
-:Description: 你可以指定桶在 CRUSH 分级结构里的位置。
-:Type: Key/value pairs.
-:Required: No
-:Example: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
+:描述: 你可以指定桶在 CRUSH 分级结构里的位置。
+:类型: Key/value pairs.
+:是否必需: No
+:实例: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
 
 
 删除桶
 ======
 
-要把一个桶从 CRUSH 图的分级结构中删除，可用此命令：
-::
+要把一个桶从 CRUSH 图的分级结构中删除，可用此命令： ::
 
 	ceph osd crush remove {bucket-name}
 
@@ -867,13 +838,12 @@ Bobtail (v0.56) 可执行下列：
 
 ``bucket-name``
 
-:Description: 将要删除的桶的名字。
-:Type: String
-:Required: Yes
-:Example: ``rack12``
+:描述: 将要删除的桶的名字。
+:类型: String
+:是否必需: Yes
+:实例: ``rack12``
 
-下例从分级结构里删除了 ``rack12`` 。
-::
+下例从分级结构里删除了 ``rack12`` 。 ::
 
 	ceph osd crush remove rack12
 
@@ -968,26 +938,22 @@ CRUSH_TUNABLES3
 
 #. 调整现有集群上的可调选项。注意，这可能会导致一些数据迁移（可能有 10% 之\
    多）。这是推荐的办法，但是在生产集群上要注意此调整对性能带来的影响。此命令\
-   可启用较优可调选项：
-   ::
+   可启用较优可调选项： ::
 
 	ceph osd crush tunables optimal
 
    如果切换得不太顺利（如负载太高）且切换才不久，或者有客户端兼容问题（较老的 \
    cephfs 内核驱动或 rbd 客户端、或早于 bobtail 的 librados 客户端），你可以\
-   这样切回：
-   ::
+   这样切回： ::
 
 	ceph osd crush tunables legacy
 
 #. 不对 CRUSH 做任何更改也能消除报警，把下列配置加入 ``ceph.conf`` 的 \
-   ``[mon]`` 段下：
-   ::
+   ``[mon]`` 段下： ::
 
 	mon warn on legacy crush tunables = false
 
-   为使变更生效需重启所有监视器，或者执行下列命令：
-   ::
+   为使变更生效需重启所有监视器，或者执行下列命令： ::
 
 	ceph tell mon.\* injectargs --no-mon-warn-on-legacy-crush-tunables
 
@@ -1017,8 +983,7 @@ CRUSH_TUNABLES3
  * ``optimal``: 采用当前最佳配置；
  * ``default``: 新建集群可采用当前默认值。
 
-你可以在运行着的集群上选择一个配置：
-::
+你可以在运行着的集群上选择一个配置： ::
 
 	ceph osd crush tunables {PROFILE}
 
@@ -1031,27 +996,23 @@ CRUSH_TUNABLES3
 如果你能保证所有客户端都运行最新代码，你可以这样调整可调值：从集群抽取 CRUSH \
 图、修改值、重注入。
 
- * 提抽取最新 CRUSH 图：
-   ::
+ * 提抽取最新 CRUSH 图： ::
 
 	ceph osd getcrushmap -o /tmp/crush
 
  * 调整可调参数。这些值在我们测试过的大、小型集群上都有最佳表现。在极端情况\
-   下，你需要给 ``crushtool`` 额外指定 ``--enable-unsafe-tunables`` 参数才行：
-   ::
+   下，你需要给 ``crushtool`` 额外指定 ``--enable-unsafe-tunables`` 参数才行： ::
 
 	crushtool -i /tmp/crush --set-choose-local-tries 0 --set-choose-local-fallback-tries 0 --set-choose-total-tries 50 -o /tmp/crush.new
 
- * 重注入修改的图。
-   ::
+ * 重注入修改的图。 ::
 
 	ceph osd setcrushmap -i /tmp/crush.new
 
 遗留值
 ------
 
-CRUSH 可调参数的遗留值可以用下面命令设置：
-::
+CRUSH 可调参数的遗留值可以用下面命令设置： ::
 
 	crushtool -i /tmp/crush --set-choose-local-tries 2 --set-choose-local-fallback-tries 5 --set-choose-total-tries 19 --set-chooseleaf-descend-once 0 --set-chooseleaf-vary-r 0 -o /tmp/crush.legacy
 

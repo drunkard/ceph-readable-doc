@@ -22,20 +22,17 @@ Ceph 配置文件至少要包含：
 用法
 ----
 
-要用 ``ceph-deploy`` 创建集群，用 ``new`` 命令、并指定几个主机作为初始监视器法定人数。
-::
+要用 ``ceph-deploy`` 创建集群，用 ``new`` 命令、并指定几个主机作为初始监视器法定人数。 ::
 
 	ceph-deploy new {host [host], ...}
 
-例如：
-::
+例如： ::
 
 	ceph-deploy new mon1.foo.com
 	ceph-deploy new mon{1,2,3}
 
 ``ceph-deploy`` 工具会用 DNS 把主机名解析为 IP 地址。监视器将被命名为域名的第一段\
-（如前述的 ``mon1`` ），它会把指定主机名加入 Ceph 配置文件。其他用法见：
-::
+（如前述的 ``mon1`` ），它会把指定主机名加入 Ceph 配置文件。其他用法见： ::
 
 	ceph-deploy new -h
 
@@ -49,8 +46,7 @@ Ceph 集群的默认名字为 ``ceph`` ，如果你想在同一套硬件上运�
 
 	ceph-deploy --cluster {cluster-name} new {host [host], ...}
 
-例如：
-::
+例如： ::
 
 	ceph-deploy --cluster rbdcluster new ceph-mon1
 	ceph-deploy --cluster rbdcluster new ceph-mon{1,2,3}

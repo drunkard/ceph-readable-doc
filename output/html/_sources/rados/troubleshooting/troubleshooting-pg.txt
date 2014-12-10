@@ -101,8 +101,7 @@ in your CRUSH map.
 * ``stale`` （不新鲜）——归置组状态没有被 ``ceph-osd`` 更新，表明存储这个归置组的所\
   有节点可能都挂了。
 
-你可以摆出卡住的归置组：
-::
+你可以摆出卡住的归置组： ::
 
 	ceph pg dump_stuck stale
 	ceph pg dump_stuck inactive
@@ -120,8 +119,7 @@ in your CRUSH map.
 ========================
 
 在某些情况下， ``ceph-osd`` 连接建立进程会遇到问题，使 PG 不能活跃、可用，例如 \
-``ceph health`` 也许显示：
-::
+``ceph health`` 也许显示： ::
 
 	ceph health detail
 	HEALTH_ERR 7 pgs degraded; 12 pgs down; 12 pgs peering; 1 pgs recovering; 6 pgs stuck unclean; 114/3300 degraded (3.455%); 1/3 in osds are down
@@ -131,8 +129,7 @@ in your CRUSH map.
 	...
 	osd.1 is down since epoch 69, last address 192.168.106.220:6801/8651
 
-可以查询到 PG 为何被标记为 ``down`` ：
-::
+可以查询到 PG 为何被标记为 ``down`` ： ::
 
 	ceph pg 0.5 query
 
@@ -169,8 +166,7 @@ in your CRUSH map.
 
 .. important:: 集群不能保证其它数据副本是一致且最新就危险了！
 
-让 Ceph 无论如何都继续：
-::
+让 Ceph 无论如何都继续： ::
 
 	ceph osd lost 1
 
@@ -182,8 +178,7 @@ in your CRUSH map.
 未找到的对象
 ============
 
-某几种失败相组合可能导致 Ceph 抱怨有找不到（ ``unfound`` ）的对象：
-::
+某几种失败相组合可能导致 Ceph 抱怨有找不到（ ``unfound`` ）的对象： ::
 
 	ceph health detail
 	HEALTH_WARN 1 pgs degraded; 78/3778 unfound (2.065%)
@@ -202,8 +197,7 @@ in your CRUSH map.
 对象的 IO 就会被阻塞，集群只能指望节点早点恢复。这时我们假设用户希望先得到一个 IO \
 错误。
 
-首先，你应该确认哪些对象找不到了：
-::
+首先，你应该确认哪些对象找不到了： ::
 
 	ceph pg 2.4 list_missing [starting offset, in json]
 
@@ -228,8 +222,7 @@ in your CRUSH map.
 如果在一次查询里列出的对象太多， ``more`` 这个域将为 ``true`` ，因此你可以查询更\
 多。（命令行工具可能隐藏了，但这里没有）
 
-其次，你可以找出哪些 OSD 上探测到、或可能包含数据：
-::
+其次，你可以找出哪些 OSD 上探测到、或可能包含数据： ::
 
 	ceph pg 2.4 query
 
@@ -257,8 +250,7 @@ in your CRUSH map.
 
 如果所有位置都查询过了仍有对象丢失，那就得放弃丢失的对象了。这仍可能是罕见的失败组合\
 导致的，集群在写入完成前，未能得知写入是否已执行。以下命令把未找到的（ unfound ）对\
-象标记为丢失（ lost ）。
-::
+象标记为丢失（ lost ）。 ::
 
 	ceph pg 2.5 mark_unfound_lost revert|delete
 
@@ -275,14 +267,12 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 
 拥有归置组拷贝的 OSD 都可以失败，在这种情况下，那一部分的对象存储不可用，监视器就不\
 会收到那些归置组的状态更新了。为检测这种情况，监视器把任何主 OSD 失败的归置组标记\
-为 ``stale`` （不新鲜），例如：
-::
+为 ``stale`` （不新鲜），例如： ::
 
 	ceph health
 	HEALTH_WARN 24 pgs stale; 3/300 in osds are down
 
-你能找出哪些归置组 ``stale`` 、和存储这些归置组的最新 OSD ，命令如下：
-::
+你能找出哪些归置组 ``stale`` 、和存储这些归置组的最新 OSD ，命令如下： ::
 
 	ceph health detail
 	HEALTH_WARN 24 pgs stale; 3/300 in osds are down

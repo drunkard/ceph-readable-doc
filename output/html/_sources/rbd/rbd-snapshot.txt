@@ -26,14 +26,12 @@ Cephx 注意事项
 ==============
 
 启用了 `cephx`_ 时（默认的），你必须指定用户名或 ID 、及其密钥文件，详情见\ \
-`用户管理`_\ 。你也可以用 ``CEPH_ARGS`` 环境变量来避免重复输入下列参数。
-::
+`用户管理`_\ 。你也可以用 ``CEPH_ARGS`` 环境变量来避免重复输入下列参数。 ::
 
 	rbd --id {user-ID} --keyring=/path/to/secret [commands]
 	rbd --name {username} --keyring=/path/to/secret [commands]
 
-例如：
-::
+例如： ::
 
 	rbd --id admin --keyring=/etc/ceph/ceph.keyring [commands]
 	rbd --name client.admin --keyring=/etc/ceph/ceph.keyring [commands]
@@ -50,14 +48,12 @@ Cephx 注意事项
 创建快照
 --------
 
-用 ``rbd`` 命令创建快照，要指定 ``snap create`` 选项、外加存储池名、映像名。
-::
+用 ``rbd`` 命令创建快照，要指定 ``snap create`` 选项、外加存储池名、映像名。 ::
 
 	rbd --pool {pool-name} snap create --snap {snap-name} {image-name}
 	rbd snap create {pool-name}/{image-name}@{snap-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd snap create --snap snapname foo
 	rbd snap create rbd/foo@snapname
@@ -66,14 +62,12 @@ Cephx 注意事项
 罗列快照
 --------
 
-要列出一映像的快照，指定存储池名和映像名。
-::
+要列出一映像的快照，指定存储池名和映像名。 ::
 
 	rbd --pool {pool-name} snap ls {image-name}
 	rbd snap ls {pool-name}/{image-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd snap ls foo
 	rbd snap ls rbd/foo
@@ -82,14 +76,12 @@ Cephx 注意事项
 回滚快照
 --------
 
-要用 ``rbd`` 回滚到一映像，指定 ``snap rollback`` 选项、存储池名、映像名和快照名。
-::
+要用 ``rbd`` 回滚到一映像，指定 ``snap rollback`` 选项、存储池名、映像名和快照名。 ::
 
 	rbd --pool {pool-name} snap rollback --snap {snap-name} {image-name}
 	rbd snap rollback {pool-name}/{image-name}@{snap-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd snap rollback --snap snapname foo
 	rbd snap rollback rbd/foo@snapname
@@ -102,14 +94,12 @@ Cephx 注意事项
 删除快照
 --------
 
-要用 ``rbd`` 删除一快照，指定 ``snap rm`` 选项、存储池名、映像名和用户名。
-::
+要用 ``rbd`` 删除一快照，指定 ``snap rm`` 选项、存储池名、映像名和用户名。 ::
 
 	rbd --pool {pool-name} snap rm --snap {snap-name} {image-name}
 	rbd snap rm {pool-name}/{image-name}@{snap-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd snap rm --snap snapname foo
 	rbd snap rm rbd/foo@snapname
@@ -120,14 +110,12 @@ Cephx 注意事项
 清除快照
 --------
 
-要用 ``rbd`` 删除一映像的所有快照，指定 ``snap purge`` 选项和映像名。
-::
+要用 ``rbd`` 删除一映像的所有快照，指定 ``snap purge`` 选项和映像名。 ::
 
 	rbd --pool {pool-name} snap purge {image-name}
 	rbd snap purge {pool-name}/{image-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd snap purge foo
 	rbd snap purge rbd/foo
@@ -216,14 +204,12 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 --------
 
 克隆品要访问父快照。如果哪个用户不小心删除了父快照，所有克隆品都会损坏。为防止数据丢\
-失，\ **必须**\ 先保护、然后再克隆快照。
-::
+失，\ **必须**\ 先保护、然后再克隆快照。 ::
 
 	rbd --pool {pool-name} snap protect --image {image-name} --snap {snapshot-name}
 	rbd snap protect {pool-name}/{image-name}@{snapshot-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd snap protect --image my-image --snap my-snapshot
 	rbd snap protect rbd/my-image@my-snapshot
@@ -234,14 +220,12 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 克隆快照
 --------
 
-要克隆快照，你得指定父存储池、映像、和快照，还有子存储池和映像名。克隆前必须先保护它。
-::
+要克隆快照，你得指定父存储池、映像、和快照，还有子存储池和映像名。克隆前必须先保护它。 ::
 
    rbd --pool {pool-name} --image {parent-image} --snap {snap-name} --dest-pool {pool-name} --dest {child-image}
 	rbd clone {pool-name}/{parent-image}@{snap-name} {pool-name}/{child-image-name}
 
-例如：
-::
+例如： ::
 
 	rbd clone rbd/my-image@my-snapshot rbd/new-image
 
@@ -253,14 +237,12 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 ------------
 
 删除快照前，必须先取消保护。另外，你\ *不能*\ 删除被克隆品引用的快照，所以删除快照\
-前必须先拍平此快照的各个克隆。
-::
+前必须先拍平此快照的各个克隆。 ::
 
 	rbd --pool {pool-name} snap unprotect --image {image-name} --snap {snapshot-name}
 	rbd snap unprotect {pool-name}/{image-name}@{snapshot-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd snap unprotect --image my-image --snap my-snapshot
 	rbd snap unprotect rbd/my-image@my-snapshot
@@ -269,14 +251,12 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 罗列一快照的子孙
 ----------------
 
-用下列命令罗列一快照的子孙：
-::
+用下列命令罗列一快照的子孙： ::
 
 	rbd --pool {pool-name} children --image {image-name} --snap {snap-name}
 	rbd children {pool-name}/{image-name}@{snapshot-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd children --image my-image --snap my-snapshot
 	rbd children rbd/my-image@my-snapshot
@@ -287,14 +267,12 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 
 克隆来的映像仍保留了父快照的引用。要从子克隆删除这些到父快照的引用，你可以把快照的信\
 息复制给子克隆，也就是“拍平”它。拍平克隆品的时间因快照尺寸而不同。要删除快照，必须先\
-拍平子映像。
-::
+拍平子映像。 ::
 
 	rbd --pool {pool-name} flatten --image {image-name}
 	rbd flatten {pool-name}/{image-name}
 
-例如：
-::
+例如： ::
 
 	rbd --pool rbd flatten --image my-image
 	rbd flatten rbd/my-image

@@ -72,8 +72,7 @@ Create a Pool
 =============
 
 默认情况下， Ceph 块设备使用 ``rbd`` 存储池，你可以用任何可用存储池。但我们建议分别\
-为 Cinder 和 Glance 创建存储池。确保 Ceph 集群在运行，然后创建存储池。
-::
+为 Cinder 和 Glance 创建存储池。确保 Ceph 集群在运行，然后创建存储池。 ::
 
 	ceph osd pool create volumes 128
 	ceph osd pool create images 128
@@ -91,8 +90,7 @@ Create a Pool
 =============================
 
 运行着 ``glance-api`` 、 ``cinder-volume`` 、 ``nova-compute`` 或 \
-``cinder-backup`` 的主机被当作 Ceph 客户端，它们都需要 ``ceph.conf`` 文件。
-::
+``cinder-backup`` 的主机被当作 Ceph 客户端，它们都需要 ``ceph.conf`` 文件。 ::
 
 	ssh {your-openstack-server} sudo tee /etc/ceph/ceph.conf </etc/ceph/ceph.conf
 
@@ -100,15 +98,13 @@ Create a Pool
 安装 Ceph 客户端软件包
 ----------------------
 
-在运行 ``glance-api`` 的节点上你需要 ``librbd`` 的 Python 接口：
-::
+在运行 ``glance-api`` 的节点上你需要 ``librbd`` 的 Python 接口： ::
 
 	sudo apt-get install python-ceph
 	sudo yum install python-ceph
 
 在 ``nova-compute`` 、 ``cinder-backup`` 和 ``cinder-volume`` 节点上，要安装 \
-Python 绑定和客户端命令行工具：
-::
+Python 绑定和客户端命令行工具： ::
 
 	sudo apt-get install ceph-common
 	sudo yum install ceph
@@ -117,16 +113,14 @@ Python 绑定和客户端命令行工具：
 配置 Ceph 客户端认证
 --------------------
 
-如果你启用了 `cephx 认证`_\ ，需要分别为 Nova/Cinder 和 Glance 创建新用户。命令如下：
-::
+如果你启用了 `cephx 认证`_\ ，需要分别为 Nova/Cinder 和 Glance 创建新用户。命令如下： ::
 
 	ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'
 	ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'
 	ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'
 
 把这些用户 ``client.cinder`` 、 ``client.glance`` 和 ``client.cinder-backup`` 的\
-密钥环复制到各自所在节点，并修正所有权：
-::
+密钥环复制到各自所在节点，并修正所有权： ::
 
 	ceph auth get-or-create client.glance | ssh {your-glance-api-server} sudo tee /etc/ceph/ceph.client.glance.keyring
 	ssh {your-glance-api-server} sudo chown glance:glance /etc/ceph/ceph.client.glance.keyring
@@ -140,13 +134,11 @@ process. They also need to store the secret key of the ``client.cinder`` user in
 ``libvirt``. The libvirt process needs it to access the cluster while attaching
 a block device from Cinder.
 
-在运行 ``nova-compute`` 的节点上创建一个密钥的临时副本：
-::
+在运行 ``nova-compute`` 的节点上创建一个密钥的临时副本： ::
 
 	ceph auth get-key client.cinder | ssh {your-compute-node} tee client.cinder.key
 
-然后，在计算节点上把密钥加进 ``libvirt`` 、然后删除临时副本：
-::
+然后，在计算节点上把密钥加进 ``libvirt`` 、然后删除临时副本： ::
 
 	uuidgen
 	457eb676-33da-42ec-9a8c-9293d545c337
@@ -183,8 +175,7 @@ Glance 可使用多种后端存储映像，要让它默认使用 Ceph 块设备�
 低于 Juno 的版本
 ~~~~~~~~~~~~~~~~
 
-编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到 ``[DEFAULT]`` 段下：
-::
+编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到 ``[DEFAULT]`` 段下： ::
 
 	default_store = rbd
 	rbd_store_user = glance
@@ -195,8 +186,7 @@ Glance 可使用多种后端存储映像，要让它默认使用 Ceph 块设备�
 Juno 版
 ~~~~~~~
 
-编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到 ``[glance_store]`` 段下：
-::
+编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到 ``[glance_store]`` 段下： ::
 
 	[glance_store]
 	stores = rbd
@@ -211,8 +201,7 @@ Juno 版
 任意版 OpenStack
 ~~~~~~~~~~~~~~~~
 
-如果你想允许使用映像的写时复制克隆品，把下列内容加到 ``[DEFAULT]`` 段下：
-::
+如果你想允许使用映像的写时复制克隆品，把下列内容加到 ``[DEFAULT]`` 段下： ::
 
 	show_image_direct_url = True
 
@@ -229,8 +218,7 @@ assuming your configuration file has ``flavor = keystone+cachemanagement``::
 -----------
 
 OpenStack 需要一个驱动和 Ceph 块设备交互，还得指定块设备所在的存储池名字。编辑 \
-OpenStack 节点上的 ``/etc/cinder/cinder.conf`` ，添加：
-::
+OpenStack 节点上的 ``/etc/cinder/cinder.conf`` ，添加： ::
 
 	volume_driver = cinder.volume.drivers.rbd.RBDDriver
 	rbd_pool = volumes
@@ -377,16 +365,14 @@ To ensure a proper live-migration, use the following flags::
 ==============
 
 要激活 Ceph 块设备驱动、并把块设备存储池名载入配置，必须重启 OpenStack 。在基于 \
-Debian 的系统上需在对应节点上执行这些命令：
-::
+Debian 的系统上需在对应节点上执行这些命令： ::
 
 	sudo glance-control api restart
 	sudo service nova-compute restart
 	sudo service cinder-volume restart
 	sudo service cinder-backup restart
 
-在基于 Red Hat 的系统上执行：
-::
+在基于 Red Hat 的系统上执行： ::
 
 	sudo service openstack-glance-api restart
 	sudo service openstack-nova-compute restart
@@ -401,13 +387,11 @@ and boot from it.
 从块设备引导
 ============
 
-你可以用 Cinder 命令行工具从一映像创建卷宗：
-::
+你可以用 Cinder 命令行工具从一映像创建卷宗： ::
 
 	cinder create --image-id {id of image} --display-name {name of volume} {size of volume}
 
-注意映像必须是 RAW 格式，你可以用 `qemu-img`_ 转换格式，如：
-::
+注意映像必须是 RAW 格式，你可以用 `qemu-img`_ 转换格式，如： ::
 
 	qemu-img convert -f {source-format} -O {output-format} {source-filename} {output-filename}
 	qemu-img convert -f qcow2 -O raw precise-cloudimg.img precise-cloudimg.raw

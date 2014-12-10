@@ -5,10 +5,10 @@
 
 ``filestore debug omap check``
 
-:Description: 打开对同步检查过程的调试。代价很高，仅用于调试。
-:Type: Boolean
-:Required: No
-:Default: ``0``
+:描述: 打开对同步检查过程的调试。代价很高，仅用于调试。
+:类型: Boolean
+:是否必需: No
+:默认值: ``0``
 
 
 .. index:: filestore; extended attributes
@@ -28,28 +28,28 @@ Ceph 扩展属性用底层文件系统的 XATTR （如果没有尺寸限制）�
 
 ``filestore xattr use omap``
 
-:Description: 用 XATTR 存储对象图，采用 ``ext4`` 文件系统时要设置为 ``true`` 。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 用 XATTR 存储对象图，采用 ``ext4`` 文件系统时要设置为 ``true`` 。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``filestore max inline xattr size``
 
-:Description: 每个对象在文件系统（如 XFS 、 btrfs 、 ext4 等）里存储的 XATTR 最大\
-              尺寸，应该小于文件系统支持的尺寸。
+:描述: 每个对象在文件系统（如 XFS 、 btrfs 、 ext4 等）里存储的 XATTR 最大\
+       尺寸，应该小于文件系统支持的尺寸。
 
-:Type: Unsigned 32-bit Integer
-:Required: No
-:Default: ``512``
+:类型: Unsigned 32-bit Integer
+:是否必需: No
+:默认值: ``512``
 
 
 ``filestore max inline xattrs``
 
-:Description: 每个对象存储在文件系统里的 XATTR 数量。
-:Type: 32-bit Integer
-:Required: No
-:Default: ``2``
+:描述: 每个对象存储在文件系统里的 XATTR 数量。
+:类型: 32-bit Integer
+:是否必需: No
+:默认值: ``2``
 
 
 .. index:: filestore; synchronization
@@ -64,18 +64,18 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 
 ``filestore max sync interval``
 
-:Description: 同步 filestore 的最大间隔秒数。
-:Type: Double
-:Required: No
-:Default: ``5``
+:描述: 同步 filestore 的最大间隔秒数。
+:类型: Double
+:是否必需: No
+:默认值: ``5``
 
 
 ``filestore min sync interval``
 
-:Description: 同步 filestore 的最小间隔秒数。
-:Type: Double
-:Required: No
-:Default: ``.01``
+:描述: 同步 filestore 的最小间隔秒数。
+:类型: Double
+:是否必需: No
+:默认值: ``.01``
 
 
 .. index:: filestore; flusher
@@ -89,37 +89,37 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 
 ``filestore flusher``
 
-:Description: 启用文件存储回写器。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 启用文件存储回写器。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 .. deprecated:: v.65
 
 ``filestore flusher max fds``
 
-:Description: 设置回写器的最大文件描述符数量。
-:Type: Integer
-:Required: No
-:Default: ``512``
+:描述: 设置回写器的最大文件描述符数量。
+:类型: Integer
+:是否必需: No
+:默认值: ``512``
 
 .. deprecated:: v.65
 
 ``filestore sync flush``
 
-:Description: 启用同步回写器。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 启用同步回写器。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 .. deprecated:: v.65
 
 ``filestore fsync flushes journal data``
 
-:Description: 文件系统同步时也回写日志数据。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 文件系统同步时也回写日志数据。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 .. index:: filestore; queue
@@ -132,34 +132,34 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 
 ``filestore queue max ops``
 
-:Description: 文件存储操作接受的最大并发数，超过此设置的请求会被拒绝。
-:Type: Integer
-:Required: 无。对性能影响最小。
-:Default: ``500``
+:描述: 文件存储操作接受的最大并发数，超过此设置的请求会被拒绝。
+:类型: Integer
+:是否必需: 无。对性能影响最小。
+:默认值: ``500``
 
 
 ``filestore queue max bytes``
 
-:Description: 一个操作的最大字节数。
-:Type: Integer
-:Required: No
-:Default: ``100 << 20``
+:描述: 一个操作的最大字节数。
+:类型: Integer
+:是否必需: No
+:默认值: ``100 << 20``
 
 
 ``filestore queue committing max ops``
 
-:Description: 文件存储能提交的最大操作数。
-:Type: Integer
-:Required: No
-:Default: ``500``
+:描述: 文件存储能提交的最大操作数。
+:类型: Integer
+:是否必需: No
+:默认值: ``500``
 
 
 ``filestore queue committing max bytes``
 
-:Description: 文件存储器能提交的最大字节数。
-:Type: Integer
-:Required: No
-:Default: ``100 << 20``
+:描述: 文件存储器能提交的最大字节数。
+:类型: Integer
+:是否必需: No
+:默认值: ``100 << 20``
 
 
 .. index:: filestore; timeouts
@@ -170,26 +170,26 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 
 ``filestore op threads``
 
-:Description: 允许并行操作文件系统的最大线程数。
-:Type: Integer
-:Required: No
-:Default: ``2``
+:描述: 允许并行操作文件系统的最大线程数。
+:类型: Integer
+:是否必需: No
+:默认值: ``2``
 
 
 ``filestore op thread timeout``
 
-:Description: 文件系统操作线程超时值，单位为秒。
-:Type: Integer
-:Required: No
-:Default: ``60``
+:描述: 文件系统操作线程超时值，单位为秒。
+:类型: Integer
+:是否必需: No
+:默认值: ``60``
 
 
 ``filestore op thread suicide timeout``
 
-:Description: 提交操作超时值（秒），超时后会取消。
-:Type: Integer
-:Required: No
-:Default: ``180``
+:描述: 提交操作超时值（秒），超时后会取消。
+:类型: Integer
+:是否必需: No
+:默认值: ``180``
 
 
 .. index:: filestore; btrfs
@@ -200,18 +200,18 @@ B-Tree 文件系统
 
 ``filestore btrfs snap``
 
-:Description: 对 ``btrfs`` 文件存储器启用快照功能。
-:Type: Boolean
-:Required: 不。仅适用于 ``btrfs`` 。
-:Default: ``true``
+:描述: 对 ``btrfs`` 文件存储器启用快照功能。
+:类型: Boolean
+:是否必需: 不。仅适用于 ``btrfs`` 。
+:默认值: ``true``
 
 
 ``filestore btrfs clone range``
 
-:Description: 允许 ``btrfs`` 文件存储克隆动作排队。
-:Type: Boolean
-:Required: 不。仅适用于 ``btrfs`` 。
-:Default: ``true``
+:描述: 允许 ``btrfs`` 文件存储克隆动作排队。
+:类型: Boolean
+:是否必需: 不。仅适用于 ``btrfs`` 。
+:默认值: ``true``
 
 
 .. index:: filestore; journal
@@ -222,26 +222,26 @@ B-Tree 文件系统
 
 ``filestore journal parallel``
 
-:Description: 允许并行记日志，对 btrfs 默认开。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 允许并行记日志，对 btrfs 默认开。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``filestore journal writeahead``
 
-:Description: 允许预写日志，对 xfs 默认开。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 允许预写日志，对 xfs 默认开。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``filestore journal trailing``
 
-:Description: 过时了，从没用过。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 过时了，从没用过。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 杂项
@@ -250,58 +250,57 @@ B-Tree 文件系统
 
 ``filestore merge threshold``
 
-:Description: 并入父目录前，子目录内的最小文件数。注：负值表示禁用子目录合并功能。
-:Type: Integer
-:Required: No
-:Default: ``10``
+:描述: 并入父目录前，子目录内的最小文件数。注：负值表示禁用子目录合并功能。
+:类型: Integer
+:是否必需: No
+:默认值: ``10``
 
 
 ``filestore split multiple``
 
-:Description:  ``filestore_split_multiple * abs(filestore_merge_threshold) * 16`` 
+:描述:  ``filestore_split_multiple * abs(filestore_merge_threshold) * 16``
                是分割为子目录前某目录内的最大文件数。
 
-:Type: Integer
-:Required: No
-:Default: ``2``
+:类型: Integer
+:是否必需: No
+:默认值: ``2``
 
 
 ``filestore update to``
 
-:Description: 限制文件存储自动更新到某个指定版本。
-:Type: Integer
-:Required: No
-:Default: ``1000``
+:描述: 限制文件存储自动更新到某个指定版本。
+:类型: Integer
+:是否必需: No
+:默认值: ``1000``
 
 
 ``filestore blackhole``
 
-:Description: 丢弃任何讨论中的事务。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 丢弃任何讨论中的事务。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``filestore dump file``
 
-:Description: 存储事务转储目的文件。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 存储事务转储目的文件。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``filestore kill at``
 
-:Description: 在第 N 次机会后注入一个失效。
-:Type: String
-:Required: No
-:Default: ``false``
+:描述: 在第 N 次机会后注入一个失效。
+:类型: String
+:是否必需: No
+:默认值: ``false``
 
 
 ``filestore fail eio``
 
-:Description: 在 IO 错误的时候失败或崩溃。
-:Type: Boolean
-:Required: No
-:Default: ``true``
-
+:描述: 在 IO 错误的时候失败或崩溃。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``

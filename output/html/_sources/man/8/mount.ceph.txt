@@ -16,8 +16,7 @@
 
 **mount.ceph** 是在 Linux 主机上挂载 Ceph 文件系统的简单助手。它只负责把监视器主机\
 名解析为 IP 地址、从硬盘读取认证密钥，大多数实际工作由 Linux 内核客户端组件完成。事\
-实上，无需认证的 Ceph 文件系统无需 mount.ceph 也能挂载，只要指定监视器 IP 地址即可：
-::
+实上，无需认证的 Ceph 文件系统无需 mount.ceph 也能挂载，只要指定监视器 IP 地址即可： ::
 
 	mount -t ceph 1.2.3.4:/ mountpoint
 
@@ -112,28 +111,23 @@ mount 助手程序的惯例是前两个选项分别为要挂载的设备和目�
 实例
 ====
 
-挂载整个文件系统：
-::
+挂载整个文件系统： ::
 
         mount.ceph monhost:/ /mnt/foo
 
-如果有多个监视器：
-::
+如果有多个监视器： ::
 
         mount.ceph monhost1,monhost2,monhost3:/ /mnt/foo
 
-如果 :doc:`ceph-mon </man/8/ceph-mon>`\(8) 运行于非默认端口：
-::
+如果 :doc:`ceph-mon </man/8/ceph-mon>`\(8) 运行于非默认端口： ::
 
         mount.ceph monhost1:7000,monhost2:7000,monhost3:7000:/ /mnt/foo
 
-只挂载文件系统命名空间的一部分：
-::
+只挂载文件系统命名空间的一部分： ::
 
         mount.ceph monhost1:/some/small/thing /mnt/thing
 
-假设 mount.ceph(8) 安装正确， mount(8) 应该能自动调用它：
-::
+假设 mount.ceph(8) 安装正确， mount(8) 应该能自动调用它： ::
 
         mount -t ceph monhost:/ /mnt/foo
 

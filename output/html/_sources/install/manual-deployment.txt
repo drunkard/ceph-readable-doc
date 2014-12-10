@@ -70,117 +70,96 @@
 
 具体过程如下：
 
-#. 登录到初始监视器节点：
-   ::
+#. 登录到初始监视器节点： ::
 
 	ssh {hostname}
 
-   如：
-   ::
+   如： ::
 
 	ssh node1
 
 #. 确保保存 Ceph 配置文件的目录存在， Ceph 默认使用 ``/etc/ceph`` 。安装 \
-   ``ceph`` 软件时，安装器也会自动创建 ``/etc/ceph/`` 目录。
-   ::
+   ``ceph`` 软件时，安装器也会自动创建 ``/etc/ceph/`` 目录。 ::
 
 	ls /etc/ceph   
 
    **注意：**\ 部署工具在清除集群时可能删除此目录（如 ``ceph-deploy purgedata
    {node-name}`` 、 ``ceph-deploy purge {node-name}`` ）。
 
-#. 创建 Ceph 配置文件， Ceph 默认使用 ``ceph.conf`` ，其中的 ``ceph`` 是集群名字。
-   ::
+#. 创建 Ceph 配置文件， Ceph 默认使用 ``ceph.conf`` ，其中的 ``ceph`` 是集群名字。 ::
 
 	sudo vim /etc/ceph/ceph.conf
 
-#. 给集群分配惟一 ID （即 ``fsid`` ）。
-   ::
+#. 给集群分配惟一 ID （即 ``fsid`` ）。 ::
 
 	uuidgen
 
-#. 把此 ID 写入 Ceph 配置文件。
-   ::
+#. 把此 ID 写入 Ceph 配置文件。 ::
 
 	fsid = {UUID}
 
-   例如：
-   ::
+   例如： ::
 
 	fsid = a7f64266-0894-4f1e-a635-d0aeaca0e993
 
-#. 把初始监视器写入 Ceph 配置文件。
-   ::
+#. 把初始监视器写入 Ceph 配置文件。 ::
 
 	mon initial members = {hostname}[,{hostname}]
 
-   例如：
-   ::
+   例如： ::
 
 	mon initial members = node1
 
-#. 把初始监视器的 IP 地址写入 Ceph 配置文件、并保存。
-   ::
+#. 把初始监视器的 IP 地址写入 Ceph 配置文件、并保存。 ::
 
 	mon host = {ip-address}[,{ip-address}]
 
-   例如：
-   ::
+   例如： ::
 
 	mon host = 192.168.0.1
 
    **注意：** 你也可以写 IPv6 地址，但是必须设置 ``ms bind ipv6 = true`` 。详情\
    见\ `网络配置参考`_\ 。
 
-#. 为此集群创建密钥环、并生成监视器密钥。
-   ::
+#. 为此集群创建密钥环、并生成监视器密钥。 ::
 
 	ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
-#. 生成管理员密钥环，生成 ``client.admin`` 用户并加入密钥环。
-   ::
+#. 生成管理员密钥环，生成 ``client.admin`` 用户并加入密钥环。 ::
 
 	ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
 
-#. 把 ``client.admin`` 密钥加入 ``ceph.mon.keyring`` 。
-   ::
+#. 把 ``client.admin`` 密钥加入 ``ceph.mon.keyring`` 。 ::
 
 	ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 
-#. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，并保存为 ``/tmp/monmap`` 。
-   ::
+#. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，并保存为 ``/tmp/monmap`` 。 ::
 
 	monmaptool --create --add {hostname} {ip-address} --fsid {uuid} /tmp/monmap
 
-   例如：
-   ::
+   例如： ::
 
 	monmaptool --create --add node1 192.168.0.1 --fsid a7f64266-0894-4f1e-a635-d0aeaca0e993 /tmp/monmap
 
-#. 在监视器主机上分别创建数据目录。
-   ::
+#. 在监视器主机上分别创建数据目录。 ::
 
 	sudo mkdir /var/lib/ceph/mon/{cluster-name}-{hostname}
 
-   例如：
-   ::
+   例如： ::
 
 	sudo mkdir /var/lib/ceph/mon/ceph-node1
 
    详情见\ `监视器配置参考——数据`_\ 。
 
-#. 用监视器图和密钥环组装守护进程所需的初始数据。
-   ::
+#. 用监视器图和密钥环组装守护进程所需的初始数据。 ::
 
 	ceph-mon --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
 
-   例如：
-   ::
+   例如： ::
 
 	ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
 
-#. 仔细斟酌 Ceph 配置文件，公共的全局配置包括这些：
-   ::
+#. 仔细斟酌 Ceph 配置文件，公共的全局配置包括这些： ::
 
 	[global]
 	fsid = {cluster-id}
@@ -199,8 +178,7 @@
 	osd pool default pgp num = {n}
 	osd crush chooseleaf type = {n}
 
-   按前述实例， ``[global]`` 段的配置大致如下：
-   ::
+   按前述实例， ``[global]`` 段的配置大致如下： ::
 
 	[global]
 	fsid = a7f64266-0894-4f1e-a635-d0aeaca0e993
@@ -218,51 +196,42 @@
 	osd pool default pgp num = 333
 	osd crush chooseleaf type = 1
 
-#. 建一个空文件 ``done`` ，表示监视器已创建、可以启动了：
-   ::
+#. 建一个空文件 ``done`` ，表示监视器已创建、可以启动了： ::
 
 	sudo touch /var/lib/ceph/mon/ceph-node1/done
 
 #. 启动监视器。
 
-   在 Ubuntu 上用 Upstart ：
-   ::
+   在 Ubuntu 上用 Upstart ： ::
 
 	sudo start ceph-mon id=node1
 
-   要使此守护进程开机自启，需要创建两个空文件，像这样：
-   ::
+   要使此守护进程开机自启，需要创建两个空文件，像这样： ::
 
 	sudo touch /var/lib/ceph/mon/{cluster-name}-{hostname}/upstart
 
-   例如：
-   ::
+   例如： ::
 
 	sudo touch /var/lib/ceph/mon/ceph-node1/upstart
 
-   在 Debian/CentOS/RHEL 上用 sysvinit ：
-   ::
+   在 Debian/CentOS/RHEL 上用 sysvinit ： ::
 
 	sudo /etc/init.d/ceph start mon.node1
 
-#. 验证下 Ceph 已经创建了默认存储池。
-   ::
+#. 验证下 Ceph 已经创建了默认存储池。 ::
 
 	ceph osd lspools
 
-   你应该会看到这样的输出：
-   ::
+   你应该会看到这样的输出： ::
 
 	0 data,1 metadata,2 rbd,
 
-#. 确认下集群在运行。
-   ::
+#. 确认下集群在运行。 ::
 
 	ceph -s
 
    你应该从输出里看到刚刚启动的监视器在正常运行，并且应该会看到一个健康错误：它表明\
-   归置组卡在了 ``stuck inactive`` 状态。输出大致如此：
-   ::
+   归置组卡在了 ``stuck inactive`` 状态。输出大致如此： ::
 
 	cluster a7f64266-0894-4f1e-a635-d0aeaca0e993
 	  health HEALTH_ERR 192 pgs stuck inactive; 192 pgs stuck unclean; no osds
@@ -293,25 +262,21 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 `精简型`_\ 里面的步骤都自动化了。为按照精简型创建前两个 OSD ，在 ``node2`` 和 \
 ``node3`` 上执行下列命令：
 
-#. 准备OSD。
-   ::
+#. 准备OSD。 ::
 
 	ssh {node-name}
 	sudo ceph-disk prepare --cluster {cluster-name} --cluster-uuid {uuid} --fs-type {ext4|xfs|btrfs} {data-path} [{journal-path}]
 
-   例如：
-   ::
+   例如： ::
 
 	ssh node1
 	sudo ceph-disk prepare --cluster ceph --cluster-uuid a7f64266-0894-4f1e-a635-d0aeaca0e993 --fs-type ext4 /dev/hdd1
 
-#. 激活 OSD：
-   ::
+#. 激活 OSD： ::
 
 	sudo ceph-disk activate {data-path} [--activate-key {path}]
 
-   例如：
-   ::
+   例如： ::
 
 	sudo ceph-disk activate /dev/hdd1
 
@@ -325,37 +290,31 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 要是不想借助任何辅助工具，可按下列步骤创建 OSD 、将之加入集群和 CRUSH 图。按下列详\
 细步骤可在 ``node2`` 和 ``node3`` 上增加前 2 个 OSD ：
 
-#. 登录到OSD主机。
-   ::
+#. 登录到OSD主机。 ::
 
 	ssh {node-name}
 
-#. 给 OSD 分配 UUID 。
-   ::
+#. 给 OSD 分配 UUID 。 ::
 
 	uuidgen
 
 #. 创建 OSD 。如果没有指定 UUID ，将会在 OSD 首次启动时分配一个。下列命令执行完成后\
-   将输出 OSD 号，在后续步骤里还会用到这个号。
-   ::
+   将输出 OSD 号，在后续步骤里还会用到这个号。 ::
 
 	ceph osd create [{uuid}]
 
-#. 在新 OSD 主机上创建默认目录。
-   ::
+#. 在新 OSD 主机上创建默认目录。 ::
 
 	ssh {new-osd-host}
 	sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
 
-#. 如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后挂载到刚创建的目录下：
-   ::
+#. 如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后挂载到刚创建的目录下： ::
 
 	ssh {new-osd-host}
 	sudo mkfs -t {fstype} /dev/{hdd}
 	sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}
 
-#. 初始化 OSD 数据目录：
-   ::
+#. 初始化 OSD 数据目录： ::
 
 	ssh {new-osd-host}
 	sudo ceph-osd -i {osd-num} --mkfs --mkkey --osd-uuid [{uuid}]
@@ -364,70 +323,58 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
    不是默认值，还要给 ``ceph-osd`` 指定 ``--cluster`` 选项。
 
 #. 注册此 OSD 的密钥。路径内 ``ceph-{osd-num}`` 里的 ``ceph`` 其含义为 \
-   ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，请指定自己的集群名：
-   ::
+   ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，请指定自己的集群名： ::
 
 	sudo ceph auth add osd.{osd-num} osd 'allow *' mon 'allow profile osd' -i /var/lib/ceph/osd/ceph-{osd-num}/keyring
 
-#. 把此节点加入 CRUSH 图。
-   ::
+#. 把此节点加入 CRUSH 图。 ::
 
 	ceph osd crush add-bucket {hostname} host
 
-   例如：
-   ::
+   例如： ::
 
 	ceph osd crush add-bucket node1 host
 
-#. 把此 Ceph 节点放入 ``default`` 根下。
-   ::
+#. 把此 Ceph 节点放入 ``default`` 根下。 ::
 
 	ceph osd crush move node1 root=default
 
 #. 把此 OSD 加入 CRUSH 图之后，它就能接收数据了。你也可以反编译 CRUSH 图、把此 \
    OSD 加入设备列表、对应主机作为桶加入（如果它还不在 CRUSH 图里）、然后此设备作为\
-   主机的一个条目、分配权重、重新编译、注入集群。
-   ::
+   主机的一个条目、分配权重、重新编译、注入集群。 ::
 
 	ceph osd crush add {id-or-name} {weight} [{bucket-type}={bucket-name} ...]
 
-   例如：
-   ::
+   例如： ::
 
 	ceph osd crush add osd.0 1.0 host=node1
 
 #. 把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始运行，这时处于 ``down`` \
    且 ``in`` 状态，要启动进程才能收数据。
 
-   在 Ubuntu 系统上用 Upstart 启动：
-   ::
+   在 Ubuntu 系统上用 Upstart 启动： ::
 
 	sudo start ceph-osd id={osd-num}
 
-   例如：
-   ::
+   例如： ::
 
 	sudo start ceph-osd id=0
 	sudo start ceph-osd id=1
 
-   在 Debian/CentOS/RHEL 上用 sysvinit 启动：
-   ::
+   在 Debian/CentOS/RHEL 上用 sysvinit 启动： ::
 
 	sudo /etc/init.d/ceph start osd.{osd-num}
 
-   例如：
-   ::
+   例如： ::
 
 	sudo /etc/init.d/ceph start osd.0
 	sudo /etc/init.d/ceph start osd.1
 
-   要让守护进程开机自启，必须创建一个空文件：
-   ::
+   要让守护进程开机自启，必须创建一个空文件： ::
 
 	sudo touch /var/lib/ceph/mon/{cluster-name}-{hostname}/sysvinit
 
-   例如：
-   ::
+   例如： ::
 
 	sudo touch /var/lib/ceph/mon/ceph-node1/sysvinit
 
@@ -437,18 +384,15 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 总结
 ====
 
-监视器和两个 OSD 开始正常运行后，你就可以通过下列命令观察归置组互联过程了：
-::
+监视器和两个 OSD 开始正常运行后，你就可以通过下列命令观察归置组互联过程了： ::
 
 	ceph -w
 
-执行下列命令查看 OSD树：
-::
+执行下列命令查看 OSD树： ::
 
 	ceph osd tree
 
-你应该会看到类似如下的输出：
-::
+你应该会看到类似如下的输出： ::
 
 	# id	weight	type name	up/down	reweight
 	-1	2	root default

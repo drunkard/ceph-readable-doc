@@ -113,8 +113,7 @@ Hadoop 文件系统接口允许用户在创建文件时定制复制因子（例�
 
 额外的数据存储池用 ``ceph.data.pools`` 指定，此选项的值是逗号分隔的一溜存储池名\
 字。此选项被忽略或为空时将使用默认存储池。例如，下面的配置会使 Hadoop 在为文件选择\
-存储池时考虑 ``pool1`` 、 ``pool2`` 、 ``pool5`` ：
-::
+存储池时考虑 ``pool1`` 、 ``pool2`` 、 ``pool5`` ： ::
 
 	<property>
 	  <name>ceph.data.pools</name>
@@ -130,31 +129,26 @@ Hadoop 不会自动创建存储池。要创建一个指定复制因子的存储�
 存储池创建、配置完毕后，必须把新存储池可用于数据存储的消息告知元数据服务，用 \
 ``ceph mds add_data_pool`` 命令告知，这样存储池就可存储文件系统数据了。
 
-首先创建存储池。本例中，我们创建 ``hadoop1`` 存储池，其复制因子为 1 。
-::
+首先创建存储池。本例中，我们创建 ``hadoop1`` 存储池，其复制因子为 1 。 ::
 
 	ceph osd pool create hadoop1 100
 	ceph osd pool set hadoop1 size 1
 
 下一步，找出存储池 ID ，命令为 ``ceph osd dump`` 。例如，找出刚创建的 \
-``hadoop1`` 存储池：
-::
+``hadoop1`` 存储池： ::
 
 	ceph osd dump | grep hadoop1
 
-输出应该类似：
-::
+输出应该类似： ::
 
 	pool 3 'hadoop1' rep size 1 min_size 1 crush_ruleset 0...
 
 其中， ``3`` 是存储池 id 。下面我们用前述 ID 把存储池注册为数据存储池，用于存储文件\
-系统数据。
-::
+系统数据。 ::
 
 	ceph mds add_data_pool 3
 
-最后配置 Hadoop ，让它在为新文件选择目标存储池时考虑此存储池。
-::
+最后配置 Hadoop ，让它在为新文件选择目标存储池时考虑此存储池。 ::
 
 	<property>
 		<name>ceph.data.pools</name>
@@ -177,12 +171,10 @@ Hadoop 不会自动创建存储池。要创建一个指定复制因子的存储�
 存储池选择调试
 ~~~~~~~~~~~~~~
 
-Hadoop 不确定存储池复制因子时会产生日志（如它未被配置为数据存储池），日志消息长相如下：
-::
+Hadoop 不确定存储池复制因子时会产生日志（如它未被配置为数据存储池），日志消息长相如下： ::
 
 	Error looking up replication of pool: <pool name>
 
-未能选到复制数准确匹配的存储池时 Hadoop 也会产生日志，其长相如下：
-::
+未能选到复制数准确匹配的存储池时 Hadoop 也会产生日志，其长相如下： ::
 
 	selectDataPool path=<path> pool:repl=<name>:<value> wanted=<value>

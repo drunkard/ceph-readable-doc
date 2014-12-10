@@ -26,19 +26,16 @@ Ceph 部署工具的安装
 
 在 Debian 和 Ubuntu 发行版上，可以执行下列步骤：
 
-#. 添加发布密钥：
-   ::
+#. 添加发布密钥： ::
 
 	wget -q -O- 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc' | sudo apt-key add -
 
 #. 添加Ceph软件包源，用稳定版Ceph（如 ``cuttlefish`` 、 ``dumpling`` 、 \
-   ``emperor`` 、 ``firefly`` 等等）替换掉 ``{ceph-stable-release}`` 。例如：
-   ::
+   ``emperor`` 、 ``firefly`` 等等）替换掉 ``{ceph-stable-release}`` 。例如： ::
 
 	echo deb http://ceph.com/debian-{ceph-stable-release}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-#. 更新你的仓库，并安装 ``ceph-deploy`` ：
-   ::
+#. 更新你的仓库，并安装 ``ceph-deploy`` ： ::
 
 	sudo apt-get update && sudo apt-get install ceph-deploy
 
@@ -53,16 +50,14 @@ Ceph 部署工具的安装
 行下列步骤：
 
 #. 把软件包源加入软件库，用文本编辑器创建一个 YUM (Yellowdog Updater, Modified) \
-   库文件，其路径为 ``/etc/yum.repos.d/ceph.repo`` 。例如：
-   ::
+   库文件，其路径为 ``/etc/yum.repos.d/ceph.repo`` 。例如： ::
 
 	sudo vim /etc/yum.repos.d/ceph.repo
 
    把如下内容粘帖进去，用最新稳定版 Ceph 名字替换 ``{ceph-stable-release}`` \
    （如 ``firefly`` ）、用你的发行版名字替换 ``{distro}`` （如 ``el6`` 为 \
    CentOS 6 、 ``rhel6.5`` 为 Red Hat 6 .5、 ``fc19`` 是 Fedora 19 、 \
-   ``fc20`` 是 Fedora 20 。最后保存到 ``/etc/yum.repos.d/ceph.repo`` 文件。
-   ::
+   ``fc20`` 是 Fedora 20 。最后保存到 ``/etc/yum.repos.d/ceph.repo`` 文件。 ::
 
 	[ceph-noarch]
 	name=Ceph noarch packages
@@ -73,8 +68,7 @@ Ceph 部署工具的安装
 	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
 
 
-#. 更新软件库并安装 ``ceph-deploy`` ：
-   ::
+#. 更新软件库并安装 ``ceph-deploy`` ： ::
 
 	sudo yum update && sudo yum install ceph-deploy
 
@@ -95,13 +89,11 @@ Ceph 节点安装
 我们建议把 NTP 服务安装到所有 Ceph 节点上（特别是 Ceph 监视器节点），以免因时\
 钟漂移导致故障，详情见\ `时钟`_\ 。
 
-在 CentOS / RHEL 上可执行：
-::
+在 CentOS / RHEL 上可执行： ::
 
 	sudo yum install ntp ntpdate ntp-doc
 
-在 Debian / Ubuntu 上可执行：
-::
+在 Debian / Ubuntu 上可执行： ::
 
 	sudo apt-get install ntp
 
@@ -113,13 +105,11 @@ Ceph 节点安装
 
 在\ **所有** Ceph 节点上执行如下步骤：
 
-#. 在各 Ceph 节点安装 SSH 服务器（如果还没有）：
-   ::
+#. 在各 Ceph 节点安装 SSH 服务器（如果还没有）： ::
 
 	sudo apt-get install openssh-server
 
-   或者
-   ::
+   或者 ::
 
 	sudo yum install openssh-server
 
@@ -142,15 +132,13 @@ Ceph 节点安装
 破解（如 ``root`` 、 ``admin`` 、 ``{productname}`` ）。后续步骤描述了如何创建\
 无 ``sudo`` 密码的用户，你要用自己取的名字取代 ``{username}`` 。
 
-#. 在各 Ceph 节点创建用户。
-   ::
+#. 在各 Ceph 节点创建用户。 ::
 
 	ssh user@ceph-server
 	sudo useradd -d /home/{username} -m {username}
 	sudo passwd {username}
 
-#. 确保各 Ceph 节点上所创建的用户都有 ``sudo`` 权限。
-   ::
+#. 确保各 Ceph 节点上所创建的用户都有 ``sudo`` 权限。 ::
 
 	echo "{username} ALL = (root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/{username}
 	sudo chmod 0440 /etc/sudoers.d/{username}
@@ -164,8 +152,7 @@ Ceph 节点安装
 
 .. note:: ``ceph-deploy`` 的 v1.1.3 版及其后续版本会给初始监视器们生成 SSH 密钥。
 
-#. 生成 SSH 密钥对，但不要用 ``sudo`` 或 ``root`` 用户。口令为空：
-   ::
+#. 生成 SSH 密钥对，但不要用 ``sudo`` 或 ``root`` 用户。口令为空： ::
 
 	ssh-keygen
 
@@ -177,8 +164,7 @@ Ceph 节点安装
 	Your public key has been saved in /ceph-admin/.ssh/id_rsa.pub.
 
 #. 把公钥拷贝到各 Ceph 节点，把下列命令中的 ``{username}`` 替换成前面\ \
-   `创建 Ceph 用户`_\ 里的用户名。
-   ::
+   `创建 Ceph 用户`_\ 里的用户名。 ::
 
 	ssh-copy-id {username}@node1
 	ssh-copy-id {username}@node2
@@ -187,8 +173,7 @@ Ceph 节点安装
 #. （ 推荐做法）修改 ``ceph-deploy`` 管理节点上的 ``~/.ssh/config`` 文件，这样 \
    ``ceph-deploy`` 就能用你所建的用户名登录 Ceph 节点了，无需每次执行 \
    ``ceph-deploy`` 都指定 ``--username {username}`` 。这样做同时也简化了 \
-   ``ssh`` 和 ``scp`` 的用法。把 ``{username}`` 替换成你创建的用户名。
-   ::
+   ``ssh`` 和 ``scp`` 的用法。把 ``{username}`` 替换成你创建的用户名。 ::
 
 	Host node1
 	   Hostname node1
@@ -236,19 +221,16 @@ Ceph 监视器之间默认用 ``6789`` 端口通信， OSD 之间默认用 ``680
 
 对于 RHEL 7 上的 ``firewalld`` ，要对公共域放通 Ceph 监视器所使用的 ``6789`` \
 端口、以及 OSD 所使用的 ``6800:7100`` ，并且要配置为永久规则，这样重启后规则仍\
-有效。例如：
-::
+有效。例如： ::
 
 	sudo firewall-cmd --zone=public --add-port=6789/tcp --permanent
 
 若用 ``iptables`` 命令，要放通 Ceph 监视器所用的 ``6789`` 端口和 OSD 所用的 \
-``6800:7100`` 端口范围，命令如下：
-::
+``6800:7100`` 端口范围，命令如下： ::
 
 	sudo iptables -A INPUT -i {iface} -p tcp -s {ip-address}/{netmask} --dport 6789 -j ACCEPT
 
-配置好 ``iptables`` 之后要保存配置，这样重启之后才依然有效。例如：
-::
+配置好 ``iptables`` 之后要保存配置，这样重启之后才依然有效。例如： ::
 
 	/sbin/service iptables save
 
@@ -271,8 +253,7 @@ SELinux
 
 在 CentOS 和 RHEL 上， SELinux 默认开启为 ``Enforcing`` 。为简化安装，我们建议\
 把 SELinux 设置为 ``Permissive`` 或者完全禁用，也就是在加固系统配置前先确保集\
-群的安装、配置没问题。用下列命令把 SELinux 设置为 ``Permissive`` ：
-::
+群的安装、配置没问题。用下列命令把 SELinux 设置为 ``Permissive`` ： ::
 
 	sudo setenforce 0
 

@@ -16,8 +16,7 @@
 **ceph-fuse** 是 Ceph 分布式文件系统的 FUSE （用户空间文件系统）客户端，它会把 \
 Ceph 文件系统（用 -m 选项或 ceph.conf 指定）挂载到指定挂载点。
 
-文件系统可这样卸载：
-::
+文件系统可这样卸载： ::
 
         fusermount -u mountpoint
 

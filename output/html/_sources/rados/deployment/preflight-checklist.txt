@@ -9,7 +9,7 @@
 
 通过 ``ceph-deploy`` 部署 Ceph 前，先要在管理节点和运行 Ceph 守护进程的节点上确认\
 一些事情。
- 
+
 
 选装一个操作系统
 ================
@@ -21,8 +21,7 @@ Ubuntu 以外的操作系统详见\ `操作系统推荐`_\ 。
 安装 SSH 服务器
 ===============
 
-``ceph-deploy`` 工具需要 ``ssh`` ，所以你的服务器节点需要 SSH 服务器。
-::
+``ceph-deploy`` 工具需要 ``ssh`` ，所以你的服务器节点需要 SSH 服务器。 ::
 
 	sudo apt-get install openssh-server
 
@@ -46,8 +45,7 @@ Ubuntu 以外的操作系统详见\ `操作系统推荐`_\ 。
 
 .. note:: 为安全起见，我们\ **不推荐**\ 启用 ``root`` 密码。
 
-为赋予用户所有权限，把下列加入 ``/etc/sudoers.d/ceph`` 。
-::
+为赋予用户所有权限，把下列加入 ``/etc/sudoers.d/ceph`` 。 ::
 
 	echo "ceph ALL = (root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/ceph
 	sudo chmod 0440 /etc/sudoers.d/ceph
@@ -56,8 +54,7 @@ Ubuntu 以外的操作系统详见\ `操作系统推荐`_\ 。
 配置 SSH
 ========
 
-配置你的管理主机，使之可通过  SSH无密码访问各节点，口令留空。
-::
+配置你的管理主机，使之可通过  SSH无密码访问各节点，口令留空。 ::
 
 	ssh-keygen
 	Generating public/private key pair.
@@ -68,12 +65,11 @@ Ubuntu 以外的操作系统详见\ `操作系统推荐`_\ 。
 	Your public key has been saved in /ceph-client/.ssh/id_rsa.pub.
 
 把公钥拷贝到各节点：
-: 
+:
 
 	ssh-copy-id ceph@ceph-server
 
-修改你管理节点上的 ``~/.ssh/config`` ，以使未指定用户名时默认用你刚刚创建的用户名。
-::
+修改你管理节点上的 ``~/.ssh/config`` ，以使未指定用户名时默认用你刚刚创建的用户名。 ::
 
 	Host ceph-server
 		Hostname ceph-server.fqdn-or-ip-address.com
@@ -83,8 +79,7 @@ Ubuntu 以外的操作系统详见\ `操作系统推荐`_\ 。
 安装 ceph-deploy
 ================
 
-执行下列命令安装 ``ceph-deploy`` ：
-:: 
+执行下列命令安装 ``ceph-deploy`` ： ::
 
 	wget -q -O- 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc' | sudo apt-key add -
 	echo deb http://ceph.com/debian-dumpling/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list

@@ -59,8 +59,7 @@ CloudStack 集成了 Ceph 的块设备作为它的主要存储（ Primary Storag
 ==========
 
 默认情况下， Ceph 块设备使用 ``rbd`` 存储池，建议为 CloudStack NFS 主存储新建一存\
-储池。确保 Ceph 集群在运行，再创建存储池：
-::
+储池。确保 Ceph 集群在运行，再创建存储池： ::
 
    ceph osd pool create cloudstack
 

@@ -26,8 +26,7 @@ Ceph 元数据服务器和 Ceph 对象网关依赖于 Ceph 监视器和 OSD 守�
 
 #. 用 ``ceph-deploy`` 为各主机升级软件包（用 ``ceph-deploy install`` 命令），\
    或者分别登录各主机\ `手动升级`_\ 。例如，\ `升级监视器`_\ 时， ``ceph-deploy`` \
-   语法大致如此：
-   ::
+   语法大致如此： ::
 
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 	ceph-deploy install --release firefly mon1 mon2 mon3
@@ -45,18 +44,15 @@ Ceph 元数据服务器和 Ceph 对象网关依赖于 Ceph 监视器和 OSD 守�
 ceph-deploy 工具
 ================
 
-升级 Ceph 守护进程前，应该先升级 ``ceph-deploy`` 工具。
-::
+升级 Ceph 守护进程前，应该先升级 ``ceph-deploy`` 工具。 ::
 
 	sudo pip install -U ceph-deploy
 
-或者：
-::
+或者： ::
 
 	sudo apt-get install ceph-deploy
 
-或者：
-::
+或者： ::
 
 	sudo yum install ceph-deploy python-pushy
 
@@ -70,8 +66,7 @@ Argonaut 到 Bobtail
 #. 监视器间使用新的通讯协议；
 #. 通过 RBD 使用 ``format2`` 格式的映像前要完成所有 OSD 的升级。
 
-确保你先更新软件库路径，如：
-::
+确保你先更新软件库路径，如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
@@ -83,22 +78,19 @@ Argonaut 到 Bobtail
 ----
 
 Bobtail 版默认启用了认证，而且预置了粒度更细的认证配置选项。在先前的版本（即 v0.55 \
-和更早的）中你可以简单地写：
-::
+和更早的）中你可以简单地写： ::
 
 	auth supported = [cephx | none]
 
 此选项仍然能被识别，但已经过时。新版支持 ``cluster`` 、 ``service`` 、和 \
-``client`` 认证选项，如下：
-::
+``client`` 认证选项，如下： ::
 
 	auth cluster required = [cephx | none]  # default cephx
 	auth service required = [cephx | none] # default cephx
 	auth client required = [cephx | none] # default cephx,none
 
 .. important:: 如果你现在的集群没有用 ``auth supported`` 这一行启用认证，那你升级\
-   到 Bobtail 时必须显式地关闭：
-   ::
+   到 Bobtail 时必须显式地关闭： ::
 
 	auth cluster required = none
 	auth service required = none
@@ -128,8 +120,7 @@ Bobtail 版现在支持 ``format 2`` 格式的映像了！但是在所有 ``ceph
 前，不要新建或使用 ``format 2`` 格式的RBD映像。注意， ``format 1`` 仍然是默认值。\
 你可以用新的 ``ceph osd ls`` 和 ``ceph tell osd.N version`` 命令再次确认软件版\
 本， ``ceph osd ls`` 将给出集群内所有 OSD 的 ID 列表，把它们代入 shell 循环即可查\
-询所有 OSD 的版本：
-::
+询所有 OSD 的版本： ::
 
       for i in $(ceph osd ls); do
           ceph tell osd.${i} version
@@ -146,8 +137,7 @@ Argonaut 直接升级到 Cuttlefish ，无需间接地从 Bobtail 过渡一次�
 
 .. important:: 确保软件仓库指定的是 Bobtail ，而不是 Cuttlefish 。
 
-例如：
-::
+例如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
@@ -162,8 +152,7 @@ Argonaut 监视器将导致旧监视器不能使用新线上协议，因为此�
    `Ceph 认证——向后兼容性`_\ 。
 
 把监视器从 Argonaut 升级到 Bobtail 、并重启无误（可以形成法定人数）后，还必须从 \
-Bobtail 再升级到 Cuttlefish 。再次升级前，记得更改到 Cuttlefish 软件库的引用，例如：
-::
+Bobtail 再升级到 Cuttlefish 。再次升级前，记得更改到 Cuttlefish 软件库的引用，例如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
@@ -182,8 +171,7 @@ Bobtail 到 Cuttlefish
 所有监视器都升级到 Cuttlefish ；其次，如果你的集群有多个元数据服务器，应该确保它们\
 的名字都唯一。详情如下。
 
-把较老的 ``apt`` 源替换为 Cuttlefish ，如：
-::
+把较老的 ``apt`` 源替换为 Cuttlefish ，如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
@@ -222,14 +210,12 @@ Cuttlefish 到 Dumpling
 升级 ``ceph`` 这个命令行工具，因为它变动很大；其次，你必须把所有监视器升级到 \
 Dumpling ，因为协议有变动。
 
-把较老的软件库源替换为 Dumpling 源，例如用 ``apt`` 执行：
-::
+把较老的软件库源替换为 Dumpling 源，例如用 ``apt`` 执行： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://ceph.com/debian-dumpling/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-在 CentOS/Red Hat 发行版上可删除旧源。
-::
+在 CentOS/Red Hat 发行版上可删除旧源。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
@@ -257,14 +243,12 @@ Dumpling 到 Emperor
 
 Dumpling (v0.64) 可滚动升级。
 
-把较老的软件库源替换为 Emperor 源，例如用 ``apt`` 执行：
-::
+把较老的软件库源替换为 Emperor 源，例如用 ``apt`` 执行： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://ceph.com/debian-emperor/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-在 CentOS/Red Hat 发行版上可删除旧源。
-::
+在 CentOS/Red Hat 发行版上可删除旧源。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
@@ -293,8 +277,7 @@ Dumpling (v0.64) 可滚动升级。
 
 在 v0.65 中， ``ceph`` 命令行接口（ CLI ）工具变动很大；老的 CLI 不能与 Dumpling \
 通讯，也就是说，要用 ``ceph`` 命令访问 Ceph 存储集群的所有节点其 ``ceph-common`` \
-库必须升级。
-::
+库必须升级。 ::
 
 	sudo apt-get update && sudo apt-get install ceph-common
 
@@ -338,8 +321,7 @@ Dumpling (v0.67) 版本的 ``ceph-mon`` 守护进程与 v0.66 及更早版本相
 Ceph 配置文件变更
 -----------------
 
-我们建议升级前先把下列配置加入 ``ceph.conf`` 配置文件的 ``[mon]`` 段下：
-::
+我们建议升级前先把下列配置加入 ``ceph.conf`` 配置文件的 ``[mon]`` 段下： ::
 
     mon warn on legacy crush tunables = false
 
@@ -354,13 +336,11 @@ Ceph 配置文件变更
 Firefly 。也就是说，在升级 Ceph 守护进程前，要用 ``ceph`` 命令访问存储集群的节点都\
 必须升级 ``ceph-common`` 库。
 
-在 Debian/Ubuntu 上可用此命令：
-::
+在 Debian/Ubuntu 上可用此命令： ::
 
 	sudo apt-get update && sudo apt-get install ceph-common
 
-在 CentOS/RHEL 上可用此命令：
-::
+在 CentOS/RHEL 上可用此命令： ::
 
 	sudo yum install ceph-common
 
@@ -374,14 +354,12 @@ Firefly 。也就是说，在升级 Ceph 守护进程前，要用 ``ceph`` 命�
 升级顺序
 --------
 
-把旧版软件库改为 Firefly 的，例如用 ``apt`` 命令执行此命令：
-::
+把旧版软件库改为 Firefly 的，例如用 ``apt`` 命令执行此命令： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-对于 CentOS/Red Hat 发行版，先删除旧版软件库。
-::
+对于 CentOS/Red Hat 发行版，先删除旧版软件库。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
@@ -427,8 +405,7 @@ Emperor 到 Firefly
 Ceph 配置文件变更
 -----------------
 
-我们建议升级前先把下列配置加入 ``ceph.conf`` 配置文件的 ``[mon]`` 段下：
-::
+我们建议升级前先把下列配置加入 ``ceph.conf`` 配置文件的 ``[mon]`` 段下： ::
 
     mon warn on legacy crush tunables = false
 
@@ -439,14 +416,12 @@ Ceph 配置文件变更
 升级顺序
 --------
 
-把旧版软件库改为 Firefly 的，例如用 ``apt`` 命令执行此命令：
-::
+把旧版软件库改为 Firefly 的，例如用 ``apt`` 命令执行此命令： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-对于 CentOS/Red Hat 发行版，先删除旧版软件库。
-::
+对于 CentOS/Red Hat 发行版，先删除旧版软件库。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
@@ -500,39 +475,33 @@ Ceph 配置文件变更
 
 #. 升级各守护进程的二进制包。
 
-   你可以用 ``ceph-deploy`` 一次升级所有监视器节点，如：
-   ::
+   你可以用 ``ceph-deploy`` 一次升级所有监视器节点，如： ::
 
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 	ceph-deploy install --release dumpling mon1 mon2 mon3
 
-   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上软件包的步骤如下：
-   ::
+   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上软件包的步骤如下： ::
 
 	ssh {mon-host}
 	sudo apt-get update && sudo apt-get install ceph
 
-   在 CentOS/Red Hat 主机上相应的命令如下：
-   ::
+   在 CentOS/Red Hat 主机上相应的命令如下： ::
 
 	ssh {mon-host}
 	sudo yum update && sudo yum install ceph
 
-#. 重启各监视器。 Debian/Ubuntu 发行版的命令如下：
-   ::
+#. 重启各监视器。 Debian/Ubuntu 发行版的命令如下： ::
 
 	sudo restart ceph-mon id={hostname}
 
-   CentOS/Red Hat/Debian 发行版的命令如下：
-   ::
+   CentOS/Red Hat/Debian 发行版的命令如下： ::
 
 	sudo /etc/init.d/ceph restart {mon-id}
 
    用 ``ceph-deploy`` 部署的 CentOS/Red Hat 发行版，其监视器 ID 通常是 \
    ``mon.{hostname}`` 。
 
-#. 确保各监视器都重回法定人数。
-   ::
+#. 确保各监视器都重回法定人数。 ::
 
 	ceph mon stat
 
@@ -546,41 +515,34 @@ Ceph 配置文件变更
 
 #. 升级 OSD 守护进程对应的软件包。
 
-   你可以用 ``ceph-deploy`` 一次升级所有 OSD 守护进程，如：
-   ::
+   你可以用 ``ceph-deploy`` 一次升级所有 OSD 守护进程，如： ::
 
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 	ceph-deploy install --release dumpling mon1 mon2 mon3
 
-   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上软件包的步骤如下。
-   ::
+   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上软件包的步骤如下。 ::
 
 	ssh {osd-host}
 	sudo apt-get update && sudo apt-get install ceph
 
-   在 CentOS/Red Hat 主机上相应的命令如下：
-   ::
+   在 CentOS/Red Hat 主机上相应的命令如下： ::
 
 	ssh {osd-host}
 	sudo yum update && sudo yum install ceph
 
-#. 重启 OSD ，其中 ``N`` 是 OSD 号。对 Debian/Ubuntu ，用命令：
-   ::
+#. 重启 OSD ，其中 ``N`` 是 OSD 号。对 Debian/Ubuntu ，用命令： ::
 
 	sudo restart ceph-osd id=N
 
-   对于一主机上的多个 OSD ，你可以用 Upstart 一次性全部重启。
-   ::
+   对于一主机上的多个 OSD ，你可以用 Upstart 一次性全部重启。 ::
 
 	sudo restart ceph-osd-all
 
-   对于CentOS/Red Hat/Debian 发行版，用：
-   ::
+   对于CentOS/Red Hat/Debian 发行版，用： ::
 
 	sudo /etc/init.d/ceph restart N
 
-#. 确保升级后的 OSD 重新加入了集群：
-   ::
+#. 确保升级后的 OSD 重新加入了集群： ::
 
 	ceph osd stat
 
@@ -593,38 +555,32 @@ Ceph 配置文件变更
 要升级单个 Ceph 元数据服务器，挨个执行下列步骤：
 
 #. 升级二进制包。你可以用 ``ceph-deploy`` 一次升级所有 MDS 节点，也可以在各节点用\
-   包管理器升级，如：
-   ::
+   包管理器升级，如： ::
 
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 	ceph-deploy install --release dumpling mon1 mon2 mon3
 
-   在 Debian/Ubuntu 主机上可这样手动升级。
-   ::
+   在 Debian/Ubuntu 主机上可这样手动升级。 ::
 
 	ssh {mon-host}
 	sudo apt-get update && sudo apt-get install ceph-mds
 
-   在 CentOS/Red Hat 主机上则是：
-   ::
+   在 CentOS/Red Hat 主机上则是： ::
 
 	ssh {mon-host}
 	sudo yum update && sudo yum install ceph-mds
 
-#. 重启元数据服务器。在 Debian/Ubuntu 上用：
-   ::
+#. 重启元数据服务器。在 Debian/Ubuntu 上用： ::
 
 	sudo restart ceph-mds id={hostname}
 
-   在 CentOS/Red Hat/Debian 上用：
-   ::
+   在 CentOS/Red Hat/Debian 上用： ::
 
 	sudo /etc/init.d/ceph restart mds.{hostname}
 
    用 ``ceph-deploy`` 部署的集群其 ``{hostname}`` 通常是所在主机的主机名。
 
-#. 确保元数据服务器已启动，且运行着：
-   ::
+#. 确保元数据服务器已启动，且运行着： ::
 
 	ceph mds stat
 
@@ -635,14 +591,12 @@ Ceph 配置文件变更
 升级软件包并重启完集群之后，我们建议同时升级下客户端节点上的 ``ceph-common`` 和客户\
 端库（ ``librbd1`` 和 ``librados2`` ）。
 
-#. 升级软件包：
-   ::
+#. 升级软件包： ::
 
 	ssh {client-host}
 	apt-get update && sudo apt-get install ceph-common librados2 librbd1 python-ceph
 
-#. 确认升级后的版本：
-   ::
+#. 确认升级后的版本： ::
 
 	ceph --version
 
@@ -661,8 +615,7 @@ Ceph 配置文件变更
 
 要把 ``caps mon = "allow *"`` 加进监视器密钥环（如果还没加的话）。默认情况下监视器\
 密钥环位于 ``/var/lib/ceph/mon/ceph-$id/keyring`` ，增加 ``caps`` 配置后它应该类\
-似如下：
-::
+似如下： ::
 
 	[mon.]
 		key = AQBJIHhRuHCwDRAAZjBTSJcIBIoGpdOR9ToiyQ==

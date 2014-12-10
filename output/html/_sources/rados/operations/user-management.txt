@@ -17,7 +17,7 @@ Ceph 服务器守护进程交互。
             /--+--\
             |     |
             |     |
-             actor                                    
+             actor
 
 
 When Ceph runs with authentication and authorization enabled (enabled by
@@ -92,8 +92,7 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 视器、 OSD 、和元数据服务器的功能。能力也用于限制对一存储池内的数据或某个名字空间的\
 访问。 Ceph 的管理用户可在创建或更新某用户时赋予他能力。
 
-能力的语法符合下面的形式：
-::
+能力的语法符合下面的形式： ::
 
 	{daemon-type} 'allow {capability}' [{daemon-type} 'allow {capability}']
 
@@ -125,67 +124,60 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 
 ``allow``
 
-:Description: 在守护进程的访问设置之前，仅对 MDS 隐含 ``rw`` 。
+:描述: 在守护进程的访问设置之前，仅对 MDS 隐含 ``rw`` 。
 
 
 ``r``
 
-:Description: 授予用户读权限，监视器需要它才能搜刮 CRUSH 图。
+:描述: 授予用户读权限，监视器需要它才能搜刮 CRUSH 图。
 
 
 ``w``
 
-:Description: 授予用户写对象的权限。
+:描述: 授予用户写对象的权限。
 
 
 ``x``
 
-:Description: 授予用户调用类方法的能力，即同时有读和写；且在监视器上执行 ``auth`` 操作。
+:描述: 授予用户调用类方法的能力，即同时有读和写；且在监视器上执行 ``auth`` 操作。
 
 
 ``class-read``
 
-:Description: 授予用户调用类读取方法的能力， ``x`` 的子集。
+:描述: 授予用户调用类读取方法的能力， ``x`` 的子集。
 
 
 ``class-write``
 
-:Description: 授予用户调用类写入方法的能力， ``x`` 的子集。
+:描述: 授予用户调用类写入方法的能力， ``x`` 的子集。
 
 
 ``*``
 
-:Description: 授权此用户读、写和执行某守护进程/存储池，且允许执行管理命令。
+:描述: 授权此用户读、写和执行某守护进程/存储池，且允许执行管理命令。
 
 
 ``profile osd``
 
-:Description: Gives a user permissions to connect as an OSD to other OSDs or 
-              monitors. Conferred on OSDs to enable OSDs to handle replication
-              heartbeat traffic and status reporting.
+:描述: 授权一个用户以 OSD 身份连接其它 OSD 或监视器。授予 OSD 们允许其它 OSD \
+       处理复制、心跳流量和状态报告。
 
 
 ``profile mds``
 
-:Description: Gives a user permissions to connect as a MDS to other MDSs or 
-              monitors.
+:描述: 授权一个用户以 MDS 身份连接其它 MDS 或监视器。
 
 
 ``profile bootstrap-osd``
 
-:Description: Gives a user permissions to bootstrap an OSD. Conferred on 
-              deployment tools such as ``ceph-disk``, ``ceph-deploy``, etc.
-              so that they have permissions to add keys, etc. when 
-              bootstrapping an OSD.
+:描述: 授权一用户自举引导一 OSD 。授予部署工具，像 ``ceph-disk`` 、 \
+       ``ceph-deploy`` 等等，这样它们在自举引导 OSD 时就有权限增加密钥了。
 
 
 ``profile bootstrap-osd``
 
-:Description: Gives a user permissions to bootstrap a metadata server. 
-              Conferred on deployment tools such as ``ceph-deploy``, etc.
-              so they have permissions to add keys, etc. when bootstrapping
-              a metadata server.
-
+:描述: 授权一用户自举引导一元数据服务器。授予像 ``ceph-deploy`` 一样的部署工\
+       具，这样它们在自举引导元数据服务器时就有权限增加密钥了。
 
 
 存储池
@@ -369,18 +361,18 @@ an empty string. For example::
 
 	ceph auth caps client.ringo mon ' ' osd ' '
 
-See `授权（能力）`_ for additional details on capabilities.
+关于能力请参考\ `授权（能力）`_\ 。
 
 
 删除用户
 --------
 
-To delete a user, use ``ceph auth del``:: 
+要删除一用户，用 ``ceph auth del`` 命令： ::
 
 	ceph auth del {TYPE}.{ID}
 
-Where ``{TYPE}`` is one of ``client``, ``osd``, ``mon``, or ``mds``, 
-and ``{ID}`` is the user name or ID of the daemon.
+其中 ``{TYPE}`` 是 ``client`` 、 ``osd`` 、 ``mon`` 或 ``mds`` 之一， \
+``{ID}`` 是用户名或守护进程的 ID 。
 
 
 查看用户密钥
@@ -556,12 +548,11 @@ Ceph 支持用户名和密钥的下列用法：
 
 ``--id`` | ``--user``
 
-:Description: Ceph 用一个类型和 ID（ 如 ``TYPE.ID`` 或 ``client.admin`` 、 \
-              ``client.user1`` ）来标识用户， ``id`` 、 ``name`` 、和 ``-n`` 选\
-              项可用于指定用户名（如 ``admin`` 、 ``user1`` 、 ``foo`` 等）的 ID \
-              部分，你可以用 ``--id`` 指定用户并忽略类型，例如可用下列命令指定 \
-              ``client.foo`` 用户：
-              ::
+:描述: Ceph 用一个类型和 ID（ 如 ``TYPE.ID`` 或 ``client.admin`` 、 \
+       ``client.user1`` ）来标识用户， ``id`` 、 ``name`` 、和 ``-n`` 选项可\
+       用于指定用户名（如 ``admin`` 、 ``user1`` 、 ``foo`` 等）的 ID 部分，\
+       你可以用 ``--id`` 指定用户并忽略类型，例如可用下列命令指定 \
+       ``client.foo`` 用户： ::
 
                ceph --id foo --keyring /path/to/keyring health
                ceph --user foo --keyring /path/to/keyring health
@@ -569,11 +560,10 @@ Ceph 支持用户名和密钥的下列用法：
 
 ``--name`` | ``-n``
 
-:Description: Ceph 用一个类型和 ID （如 ``TYPE.ID`` 或 ``client.admin`` 、 \
-              ``client.user1`` ）来标识用户， ``--name`` 和 ``-n`` 选项可用于指\
-              定完整的用户名，但必须指定用户类型（一般是 ``client`` ）和用户 ID ，\
-              例如：
-              ::
+:描述: Ceph 用一个类型和 ID （如 ``TYPE.ID`` 或 ``client.admin`` 、 \
+       ``client.user1`` ）来标识用户， ``--name`` 和 ``-n`` 选项可用于指定完\
+       整的用户名，但必须指定用户类型（一般是 ``client`` ）和用户 ID ，\
+       例如： ::
 
                ceph --name client.foo --keyring /path/to/keyring health
                ceph -n client.foo --keyring /path/to/keyring health
@@ -581,11 +571,10 @@ Ceph 支持用户名和密钥的下列用法：
 
 ``--keyring``
 
-:Description: 包含一或多个用户名、密钥的密钥环路径。 ``--secret`` 选项提供了相同功\
-              能，但它不能用于 RADOS 网关，其 ``--secret`` 另有用途。你可以用 \
-              ``ceph auth get-or-create`` 获取密钥环并保存在本地，然后您就可以改\
-              用其他用户而无需重指定密钥环路径了。
-              ::
+:描述: 包含一或多个用户名、密钥的密钥环路径。 ``--secret`` 选项提供了相同功\
+       能，但它不能用于 RADOS 网关，其 ``--secret`` 另有用途。你可以用 \
+       ``ceph auth get-or-create`` 获取密钥环并保存在本地，然后您就可以改\
+       用其他用户而无需重指定密钥环路径了。 ::
 
                sudo rbd map foo --pool rbd myimage --id client.foo --keyring /path/to/keyring
 

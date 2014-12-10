@@ -9,8 +9,7 @@
 创建一管理主机
 ==============
 
-要允许一主机以管理员权限执行 Ceph 命令，用 ``admin`` 命令：
-::
+要允许一主机以管理员权限执行 Ceph 命令，用 ``admin`` 命令： ::
 
 	ceph-deploy admin {host-name [host-name]...}
 
@@ -18,8 +17,7 @@
 分发配置文件
 ============
 
-要把改过的配置文件分发给集群内各主机，可用 ``config push`` 命令。
-::
+要把改过的配置文件分发给集群内各主机，可用 ``config push`` 命令。 ::
 
 	ceph-deploy config push {host-name [host-name]...}
 
@@ -29,7 +27,6 @@
 检索配置文件
 ============
 
-要从集群内的一主机检索配置文件，用 ``config pull`` 命令。
-::
+要从集群内的一主机检索配置文件，用 ``config pull`` 命令。 ::
 
 	ceph-deploy config pull {host-name [host-name]...}

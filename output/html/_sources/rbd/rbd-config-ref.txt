@@ -38,56 +38,56 @@ RBD 选项应该位于 ``ceph.conf`` 配置文件的 ``[client]`` 段下，可�
 
 ``rbd cache``
 
-:Description: 允许为 RADOS 块设备提供缓存。
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:描述: 允许为 RADOS 块设备提供缓存。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``rbd cache size``
 
-:Description: RBD 缓存尺寸，字节。
-:Type: 64-bit Integer
-:Required: No
-:Default: ``32 MiB``
+:描述: RBD 缓存尺寸，字节。
+:类型: 64-bit Integer
+:是否必需: No
+:默认值: ``32 MiB``
 
 
 ``rbd cache max dirty``
 
-:Description: 使缓存触发写回的 ``dirty`` 临界点，若为 ``0`` ，直接使用写透缓存。
-:Type: 64-bit Integer
-:Required: No
-:Constraint: 必须小于 ``rbd cache size`` 。
-:Default: ``24 MiB``
+:描述: 使缓存触发写回的 ``dirty`` 临界点，若为 ``0`` ，直接使用写透缓存。
+:类型: 64-bit Integer
+:是否必需: No
+:约束条件: 必须小于 ``rbd cache size`` 。
+:默认值: ``24 MiB``
 
 
 ``rbd cache target dirty``
 
-:Description: 缓存开始写回数据的目的地 ``dirty target`` ，不会阻塞到缓存的写动作。
-:Type: 64-bit Integer
-:Required: No
-:Constraint: 必须小于 ``rbd cache max dirty``.
-:Default: ``16 MiB``
+:描述: 缓存开始写回数据的目的地 ``dirty target`` ，不会阻塞到缓存的写动作。
+:类型: 64-bit Integer
+:是否必需: No
+:约束条件: 必须小于 ``rbd cache max dirty``.
+:默认值: ``16 MiB``
 
 
 ``rbd cache max dirty age``
 
-:Description: 写回开始前，脏数据在缓存中的暂存时间。
-:Type: Float
-:Required: No
-:Default: ``1.0``
+:描述: 写回开始前，脏数据在缓存中的暂存时间。
+:类型: Float
+:是否必需: No
+:默认值: ``1.0``
 
 .. versionadded:: 0.60
 
 ``rbd cache writethrough until flush``
 
-:Description: 开始进入写透模式，并且在首个 flush 请求收到后切回写回模式。启用它保\
-              守但安全，以防 rbd 之上的虚拟机内核太老、不能发送 flush ，像 2.6.32 \
-              之前的 virtio 驱动。
+:描述: 开始进入写透模式，并且在首个 flush 请求收到后切回写回模式。启用它保\
+       守但安全，以防 rbd 之上的虚拟机内核太老、不能发送 flush ，像 2.6.32 \
+       之前的 virtio 驱动。
 
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 .. _块设备: ../../rbd/rbd/
 
@@ -97,31 +97,32 @@ RBD 选项应该位于 ``ceph.conf`` 配置文件的 ``[client]`` 段下，可�
 
 .. versionadded:: 0.86
 
-RBD supports read-ahead/prefetching to optimize small, sequential reads.
-This should normally be handled by the guest OS in the case of a VM,
-but boot loaders may not issue efficient reads.
-Read-ahead is automatically disabled if caching is disabled.
+RBD 支持预读或预取功能，以此优化小块的顺序读。此功能通常应该由访客操作系统\
+（是虚拟机）处理，但是引导加载程序还不能进行高效的读。如果缓存功能停用，预读\
+也会自动被禁用。
 
 
 ``rbd readahead trigger requests``
 
-:Description: Number of sequential read requests necessary to trigger read-ahead.
-:Type: Integer
-:Required: No
-:Default: ``10``
+:描述: 触发预读的顺序读请求数量。
+:类型: Integer
+:是否必需: No
+:默认值: ``10``
 
 
 ``rbd readahead max bytes``
 
-:Description: Maximum size of a read-ahead request.  If zero, read-ahead is disabled.
-:Type: 64-bit Integer
-:Required: No
-:Default: ``512 KiB``
+:描述: 预读请求最大尺寸，零为禁用预读。
+:类型: 64-bit Integer
+:是否必需: No
+:默认值: ``512 KiB``
 
 
 ``rbd readahead disable after bytes``
 
-:Description: After this many bytes have been read from an RBD image, read-ahead is disabled for that image until it is closed.  This allows the guest OS to take over read-ahead once it is booted.  If zero, read-ahead stays enabled.
-:Type: 64-bit Integer
-:Required: No
-:Default: ``50 MiB``
+:描述: 从 RBD 映像读取这么多字节后，预读功能将被禁用，直到关闭。这样访客操作\
+       系统启动后就可以接管预读了，设为 0 时则仍开启预读。
+
+:类型: 64-bit Integer
+:是否必需: No
+:默认值: ``50 MiB``

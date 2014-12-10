@@ -9,19 +9,19 @@
 是完全透明的。
 
 
-.. ditaa:: 
+.. ditaa::
            +-------------+
            | Ceph Client |
            +------+------+
                   ^
-     Tiering is   |  
+     Tiering is   |
     Transparent   |              Faster I/O
         to Ceph   |           +---------------+
-     Client Ops   |           |               |   
+     Client Ops   |           |               |
                   |    +----->+   Cache Tier  |
                   |    |      |               |
                   |    |      +-----+---+-----+
-                  |    |            |   ^ 
+                  |    |            |   ^
                   v    v            |   |   Active Data in Cache Tier
            +------+----+--+         |   |
            |   Objecter   |         |   |
@@ -96,34 +96,28 @@
 创建缓存层
 ==========
 
-设置一缓存层需把缓存存储池挂接到后端存储池上：
-::
+设置一缓存层需把缓存存储池挂接到后端存储池上： ::
 
 	ceph osd tier add {storagepool} {cachepool}
 
-例如：
-::
+例如： ::
 
 	ceph osd tier add cold-storage hot-storage
 
-用下列命令设置缓存模式：
-::
+用下列命令设置缓存模式： ::
 
 	ceph osd tier cache-mode {cachepool} {cache-mode}
 
-例如：
-::
+例如： ::
 
 	ceph osd tier cache-mode hot-storage writeback
 
 写缓存层盖在存储层之上，所以要多一步：必须把所有客户端流量从存储池迁移到缓存存储池。\
-用此命令把客户端流量指向缓存存储池：
-::
+用此命令把客户端流量指向缓存存储池： ::
 
 	ceph osd tier set-overlay {storagepool} {cachepool}
 
-例如：
-::
+例如： ::
 
 	ceph osd tier set-overlay cold-storage hot-storage
 
@@ -131,8 +125,7 @@
 配置缓存层
 ==========
 
-缓存层支持几个配置选项，可按下列语法配置：
-::
+缓存层支持几个配置选项，可按下列语法配置： ::
 
 	ceph osd pool set {cachepool} {key} {value}
 
@@ -142,20 +135,17 @@
 目标尺寸和类型
 --------------
 
-生产环境下，缓存层的 ``hit_set_type`` 还只能用 Bloom 过滤器：
-::
+生产环境下，缓存层的 ``hit_set_type`` 还只能用 Bloom 过滤器： ::
 
 	ceph osd pool set {cachepool} hit_set_type bloom
 
-例如：
-::
+例如： ::
 
 	ceph osd pool set hot-storage hit_set_type bloom
 
 ``hit_set_count`` 和 ``hit_set_period`` 选项可控制各 HitSet 计算的时间区间、以及\
 保留多少个这样的 HitSet 。当前， ``hit_set_count`` > 1 有微小的优势，因为代理还不\
-能处理复杂信息。
-::
+能处理复杂信息。 ::
 
 	ceph osd pool set {cachepool} hit_set_count 1
 	ceph osd pool set {cachepool} hit_set_period 3600
@@ -174,7 +164,7 @@
 缓存分层代理有两个主要功能：
 
 - **刷回：** 代理找出修改过（或脏）的对象、并把它们转发给存储池做长期存储。
-  
+
 - **赶出：** 代理找出未修改（或干净）的对象、并把最近未用过的赶出缓存。
 
 
@@ -183,24 +173,20 @@
 
 缓存分层代理可根据缓存存储池相对大小刷回或赶出对象。当缓存池包含的已修改（或脏）对象\
 达到一定比例时，缓存分层代理就把它们刷回到存储池。用下列命令设置 \
-``cache_target_dirty_ratio`` ：
-::
+``cache_target_dirty_ratio`` ： ::
 
 	ceph osd pool set {cachepool} cache_target_dirty_ratio {0.0..1.0}
 
-例如，设置为 ``0.4`` 时，脏对象达到缓存池容量的 40% 就开始刷回：
-::
+例如，设置为 ``0.4`` 时，脏对象达到缓存池容量的 40% 就开始刷回： ::
 
 	ceph osd pool set hot-storage cache_target_dirty_ratio 0.4
 
 当缓存池利用率达到总容量的一定比例时，缓存分层代理会赶出部分对象以维持空闲空间。执行\
-此命令设置 ``cache_target_full_ratio`` ：
-::
+此命令设置 ``cache_target_full_ratio`` ： ::
 
 	ceph osd pool set {cachepool} cache_target_full_ratio {0.0..1.0}
 
-例如，设置为 ``0.8`` 时，干净对象占到总容量的 80% 就开始赶出缓存池：
-::
+例如，设置为 ``0.8`` 时，干净对象占到总容量的 80% 就开始赶出缓存池： ::
 
 	ceph osd pool set hot-storage cache_target_full_ratio 0.8
 
@@ -208,24 +194,20 @@
 绝对空间消长
 ~~~~~~~~~~~~
 
-缓存分层代理可根据总字节数或对象数量来刷回或赶出对象，用下列命令可指定最大字节数：
-::
+缓存分层代理可根据总字节数或对象数量来刷回或赶出对象，用下列命令可指定最大字节数： ::
 
 	ceph osd pool set {cachepool} target_max_bytes {#bytes}
 
-例如，用下列命令配置在达到 1TB 时刷回或赶出：
-::
+例如，用下列命令配置在达到 1TB 时刷回或赶出： ::
 
 	ceph osd pool hot-storage target_max_bytes 1000000000000
 
 
-用下列命令指定缓存对象的最大数量：
-::
+用下列命令指定缓存对象的最大数量： ::
 
 	ceph osd pool set {cachepool} target_max_objects {#objects}
 
-例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出：
-::
+例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出： ::
 
 	ceph osd pool set hot-storage target_max_objects 1000000
 
@@ -235,23 +217,19 @@
 缓存时长
 --------
 
-你可以规定缓存层代理必须延迟多久才能把某个已修改（脏）对象刷回后端存储池：
-::
+你可以规定缓存层代理必须延迟多久才能把某个已修改（脏）对象刷回后端存储池： ::
 
 	ceph osd pool set {cachepool} cache_min_flush_age {#seconds}
 
-例如，让已修改（或脏）对象需至少延迟 10 分钟才能刷回，执行此命令：
-::
+例如，让已修改（或脏）对象需至少延迟 10 分钟才能刷回，执行此命令： ::
 
 	ceph osd pool set hot-storage cache_min_flush_age 600
 
-你可以指定某对象在缓存层至少放置多长时间才能被赶出：
-::
+你可以指定某对象在缓存层至少放置多长时间才能被赶出： ::
 
 	ceph osd pool {cache-tier} cache_min_evict_age {#seconds}
 
-例如，要规定 30 分钟后才赶出对象，执行此命令：
-::
+例如，要规定 30 分钟后才赶出对象，执行此命令： ::
 
 	ceph osd pool set hot-storage cache_min_evict_age 1800
 
@@ -267,23 +245,19 @@
 
 只读缓存不含变更数据，所以禁用它不会导致任何近期更改的数据丢失。
 
-#. 把缓存模式改为 ``none`` 即可禁用。
-   ::
+#. 把缓存模式改为 ``none`` 即可禁用。 ::
 
 	ceph osd tier cache-mode {cachepool} none
 
-   例如：
-   :: 
+   例如： ::
 
 	ceph osd tier cache-mode hot-storage none
 
-#. 去除后端存储池的缓存池。
-   ::
+#. 去除后端存储池的缓存池。 ::
 
 	ceph osd tier remove {storagepool} {cachepool}
 
-   例如：
-   ::
+   例如： ::
 
 	ceph osd tier remove cold-storage hot-storage
 
@@ -296,46 +270,38 @@
 改的对象。
 
 
-#. 把缓存模式改为 ``forward`` ，这样新的和更改过的对象将直接刷回到后端存储池。
-   ::
+#. 把缓存模式改为 ``forward`` ，这样新的和更改过的对象将直接刷回到后端存储池。 ::
 
 	ceph osd tier cache-mode {cachepool} forward
 
-   例如：
-   :: 
+   例如： ::
 
 	ceph osd tier cache-mode hot-storage forward
 
 
-#. 确保缓存池已刷回，可能要等数分钟：
-   ::
+#. 确保缓存池已刷回，可能要等数分钟： ::
 
 	rados -p {cachepool} ls
 
-   如果缓存池还有对象，你可以手动刷回，例如：
-   ::
+   如果缓存池还有对象，你可以手动刷回，例如： ::
 
 	rados -p {cachepool} cache-flush-evict-all
 
 
-#. 去除此盖子，这样客户端就不会被指到缓存了。
-   ::
+#. 去除此盖子，这样客户端就不会被指到缓存了。 ::
 
 	ceph osd tier remove-overlay {storagetier}
 
-   例如：
-   ::
+   例如： ::
 
 	ceph osd tier remove-overlay cold-storage
 
 
-#. 最后，从后端存储池剥离缓存层存储池。
-   ::
+#. 最后，从后端存储池剥离缓存层存储池。 ::
 
-	ceph osd tier remove {storagepool} {cachepool} 
+	ceph osd tier remove {storagepool} {cachepool}
 
-   例如：
-   ::
+   例如： ::
 
 	ceph osd tier remove cold-storage hot-storage
 

@@ -10,8 +10,7 @@ library. It only runs on Intel processors.
 创建 isa 配置
 =============
 
-要新建 *isa* 纠删码配置：
-::
+要新建 *isa* 纠删码配置： ::
 
         ceph osd erasure-code-profile set {name} \
              plugin=isa \
@@ -28,70 +27,65 @@ library. It only runs on Intel processors.
 
 ``k={data chunks}``
 
-:Description: 各对象都被分割为\ **数据块**\ ，分别存储于不同 OSD 。
-:Type: Integer
-:Required: No.
-:Default: 7
+:描述: 各对象都被分割为\ **数据块**\ ，分别存储于不同 OSD 。
+:类型: Integer
+:是否必需: No.
+:默认值: 7
 
 
 ``m={coding-chunks}``
 
-:Description: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的数量等同于在\
-              不丢数据的前提下允许同时失效的 OSD 数量。
+:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的数量等同于在\
+       不丢数据的前提下允许同时失效的 OSD 数量。
 
-:Type: Integer
-:Required: No.
-:Default: 3
+:类型: Integer
+:是否必需: No.
+:默认值: 3
 
 
 ``technique={reed_sol_van|cauchy}``
 
-:Description: The ISA plugin comes in two `Reed Solomon
-              <https://en.wikipedia.org/wiki/Reed%E2%80%93Solomon_error_correction>`_
-              forms. If *reed_sol_van* is set, it is `Vandermonde
-              <https://en.wikipedia.org/wiki/Vandermonde_matrix>`_, if
-              *cauchy* is set, it is `Cauchy
-              <https://en.wikipedia.org/wiki/Cauchy_matrix>`_.
+:描述: ISA 插件包含两种 `Reed Solomon \
+       <https://en.wikipedia.org/wiki/Reed%E2%80%93Solomon_error_correction>`_ \
+       编码形式。设置为 *reed_sol_van* 表示用 \
+       `Vandermonde <https://en.wikipedia.org/wiki/Vandermonde_matrix>`_ 算\
+       法，设置为 *cauchy* 表示用 \
+       `Cauchy <https://en.wikipedia.org/wiki/Cauchy_matrix>`_ 算法。
 
-:Type: String
-:Required: No.
-:Default: reed_sol_van
+:类型: String
+:是否必需: No.
+:默认值: reed_sol_van
 
 
 ``ruleset-root={root}``
 
-:Description: The name of the crush bucket used for the first step of
-              the ruleset. For intance **step take default**.
-
-:Type: String
-:Required: No.
-:Default: default
+:描述: 规则集（如 **step take default** ）第一步要用的 crush 桶的名字。
+:类型: String
+:是否必需: No.
+:默认值: default
 
 
 ``ruleset-failure-domain={bucket-type}``
 
-:Description: Ensure that no two chunks are in a bucket with the same
-              failure domain. For instance, if the failure domain is
-              **host** no two chunks will be stored on the same
-              host. It is used to create a ruleset step such as **step
-              chooseleaf host**.
+:描述: 确保两个编码块不会存在于同一故障域的桶中。比如，假设故障域是 \
+       **host** ，就不会有两个编码块存储到同一主机；此值用于在规则集中创建类\
+       似 **step chooseleaf host** 的步骤。
 
-:Type: String
-:Required: No.
-:Default: host
+:类型: String
+:是否必需: No.
+:默认值: host
 
 
 ``directory={directory}``
 
-:Description: 设置纠删码插件的路径，需是\ **目录**\ 。
-:Type: String
-:Required: No.
-:Default: /usr/lib/ceph/erasure-code
+:描述: 设置纠删码插件的路径，需是\ **目录**\ 。
+:类型: String
+:是否必需: No.
+:默认值: /usr/lib/ceph/erasure-code
 
 
 ``--force``
 
-:Description: 覆盖同名配置。
-
-:Type: String
-:Required: No.
+:描述: 覆盖同名配置。
+:类型: String
+:是否必需: No.

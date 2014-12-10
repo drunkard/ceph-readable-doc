@@ -58,13 +58,11 @@ For example, specifying the ``id`` and ``conf`` options might look like the foll
 ================
 
 你可以用 QEMU 创建块设备映像。必须指定 ``rbd`` 、存储池名、要创建的映像名以及映像尺\
-寸。
-::
+寸。 ::
 
 	qemu-img create -f raw rbd:{pool-name}/{image-name} {size}
 
-例如：
-::
+例如： ::
 
 	qemu-img create -f raw rbd:data/foo 10G
 
@@ -80,13 +78,11 @@ For example, specifying the ``id`` and ``conf`` options might look like the foll
 ====================
 
 你可以通过 QEMU 调整块设备尺寸。必须指定 ``rbd`` 、存储池名、要调整的映像名，还有映\
-像尺寸。
-::
+像尺寸。 ::
 
 	qemu-img resize rbd:{pool-name}/{image-name} {size}
 
-例如：
-::
+例如： ::
 
 	qemu-img resize rbd:data/foo 10G
 
@@ -94,13 +90,11 @@ For example, specifying the ``id`` and ``conf`` options might look like the foll
 用 QEMU 检索映像信息
 ====================
 
-你可以用 QEMU 检索块设备映像信息。必须指定 ``rbd`` 、存储池名、和映像名。
-::
+你可以用 QEMU 检索块设备映像信息。必须指定 ``rbd`` 、存储池名、和映像名。 ::
 
 	qemu-img info rbd:{pool-name}/{image-name}
 
-例如：
-::
+例如： ::
 
 	qemu-img info rbd:data/foo
 
@@ -113,24 +107,20 @@ QEMU 能把一主机上的块设备传递给访客，但从 QEMU 0.15 起，不�
 为它避免了额外的上下文切换，而且能利用\ `启用 RBD 缓存`_\ 带来的好处。
 
 你可以用 ``qemu-img`` 把已有的虚拟机映像转换为 Ceph 块设备映像，比如你有一个 \
-qcow2 映像，可以这样转：
-::
+qcow2 映像，可以这样转： ::
 
 	qemu-img convert -f qcow2 -O raw debian_squeeze.qcow2 rbd:data/squeeze
 
-要从那个映像引导虚拟机，执行：
-::
+要从那个映像引导虚拟机，执行： ::
 
 	qemu -m 1024 -drive format=raw,file=rbd:data/squeeze
 
-`启用 RBD 缓存`_\ 可显著提升性能。从 QEMU 1.2 起，缓存选项可控制 ``librbd`` 缓存：
-::
+`启用 RBD 缓存`_\ 可显著提升性能。从 QEMU 1.2 起，缓存选项可控制 ``librbd`` 缓存： ::
 
 	qemu -m 1024 -drive format=rbd,file=rbd:data/squeeze,cache=writeback
 
 如果你的 QEMU 版本较老，你可以用 file 参数更改 librbd 缓存配置（就像其它 Ceph 配置\
-选项一样）：
-::
+选项一样）： ::
 
 	qemu -m 1024 -drive format=raw,file=rbd:data/squeeze:rbd_cache=true,cache=writeback
 
@@ -151,8 +141,7 @@ qcow2 映像，可以这样转：
 XFS 时用 ``discard`` 选项启用。
 
 要使此功能对访客可用，必须对块设备显式启用。为此，你必须指定在驱动器上指定 \
-``discard_granularity`` ：
-::
+``discard_granularity`` ： ::
 
 	qemu -m 1024 -drive format=raw,file=rbd:data/squeeze,id=drive1,if=none \
 		-device driver=ide-hd,drive=drive1,discard_granularity=512
@@ -182,19 +171,16 @@ QEMU 缓存选项
 
 QEMU 的缓存选项对应下列的 Ceph `RBD 缓存`_\ 选项。
 
-回写：
-::
+回写： ::
 
 	rbd_cache = true
 
-写透：
-::
+写透： ::
 
 	rbd_cache = true
 	rbd_cache_max_dirty = 0
 
-无：
-::
+无： ::
 
 	rbd_cache = false
 

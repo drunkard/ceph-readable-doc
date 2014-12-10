@@ -24,28 +24,24 @@
 运行时
 ======
 
-如果你想查看一进程的运行时配置，必须先登录对应主机，然后执行命令：
-::
+如果你想查看一进程的运行时配置，必须先登录对应主机，然后执行命令： ::
 
 	ceph --admin-daemon {/path/to/admin/socket} config show | less
 	ceph --admin-daemon /var/run/ceph/ceph-osd.0.asok config show | less
 
 要在运行时激活 Ceph 的调试输出（即 ``dout()`` ），用 ``ceph tell`` 命令把参数注入\
-运行时配置：
-::
+运行时配置： ::
 
 	ceph tell {daemon-type}.{daemon id or *} injectargs --{name} {value} [--{name} {value}]
 
 用 ``osd`` 、 ``mon`` 或 ``mds`` 替代 ``{daemon-type}`` 。你可以用星号（ ``*`` ）\
 把配置应用到同类型的所有守护进程，或者指定具体守护进程的标识号（即其名字或字母）。例\
-如，要给名为 ``ods.0`` 的 ``ceph-osd`` 守护进程提高调试级别，用下列命令：
-::
+如，要给名为 ``ods.0`` 的 ``ceph-osd`` 守护进程提高调试级别，用下列命令： ::
 
 	ceph tell osd.0 injectargs --debug-osd 0/5
 
 ``ceph tell`` 命令会贯穿所有监视器。如果你不能绑定监视器，还可以登录你要改的那台主\
-机用 ``ceph --admin-daemon`` 来更改。例如：
-::
+机用 ``ceph --admin-daemon`` 来更改。例如： ::
 
 	sudo ceph --admin-daemon /var/run/ceph/ceph-osd.0.asok config set debug_osd 0/5
 
@@ -57,8 +53,7 @@
 
 要在启动时激活调试输出（\ *即* ``dout()`` ），你得把选项加入配置文件。各进程共有配\
 置可写在配置文件的 ``[global]`` 下，某类进程的配置可写在守护进程段下（\ *如* \
-``[mon]`` 、 ``[osd]`` 、 ``[mds]`` ）。例如：
-::
+``[mon]`` 、 ``[osd]`` 、 ``[mds]`` ）。例如： ::
 
 	[global]
 		debug ms = 1/5
@@ -67,13 +62,13 @@
 		debug mon = 20
 		debug paxos = 1/5
 		debug auth = 2
-		 
+		
  	[osd]
  		debug osd = 1/5
  		debug filestore = 1/5
  		debug journal = 1
  		debug monc = 5/20
- 
+
 	[mds]
 		debug mds = 1
 		debug mds balancer = 1
@@ -89,16 +84,14 @@
 
 如果你的系统盘比较满，可以修改 ``/etc/logrotate.d/ceph`` 内的日志滚动配置以加快滚\
 动。在滚动频率后增加一个尺寸选项（达到此尺寸就滚动）来加快滚动（通过 cronjob ）。例\
-如默认配置大致如此：
-::
+如默认配置大致如此： ::
 
 	rotate 7
   	weekly
   	compress
   	sharedscripts
 
-增加一个 ``size`` 选项。
-::
+增加一个 ``size`` 选项。 ::
 
 	rotate 7
 	weekly
@@ -106,13 +99,11 @@
 	compress
 	sharedscripts
 
-然后，打开 crontab 编辑器。
-::
-   
+然后，打开 crontab 编辑器。 ::
+
   	crontab -e
 
-最后，增加一条用以检查 ``/etc/logrorate.d/ceph`` 文件。
-::
+最后，增加一条用以检查 ``/etc/logrorate.d/ceph`` 文件。 ::
 
   	30 * * * * /usr/sbin/logrotate /etc/logrotate.d/ceph >/dev/null 2>&1
 
@@ -144,7 +135,7 @@ Ceph 子系统概览
 ``ms`` 子系统的调试日志级别设为 ``1`` 、内存级别设为 ``5`` ，可以写为 \
 ``debug ms = 1/5`` ，如下：
 
-.. code-block:: ini 
+.. code-block:: ini
 
 	debug {subsystem} = {log-level}/{memory-level}
 	#for example
@@ -242,98 +233,98 @@ Ceph 子系统概览
 
 ``log file``
 
-:Description: 集群日志文件的位置。
-:Type: String
-:Required: No
-:Default: ``/var/log/ceph/$cluster-$name.log``
+:描述: 集群日志文件的位置。
+:类型: String
+:是否必需: No
+:默认值: ``/var/log/ceph/$cluster-$name.log``
 
 
 ``log max new``
 
-:Description: 新日志文件的最大数量。
-:Type: Integer
-:Required: No
-:Default: ``1000``
+:描述: 新日志文件的最大数量。
+:类型: Integer
+:是否必需: No
+:默认值: ``1000``
 
 
 ``log max recent``
 
-:Description: 一个日志文件包含的最新事件的最大数量。
-:Type: Integer
-:Required:  No
-:Default: ``1000000``
+:描述: 一个日志文件包含的最新事件的最大数量。
+:类型: Integer
+:是否必需:  No
+:默认值: ``1000000``
 
 
 ``log to stderr``
 
-:Description: 设置日志消息是否输出到标准错误（ ``stderr`` ）。
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:描述: 设置日志消息是否输出到标准错误（ ``stderr`` ）。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``err to stderr``
 
-:Description: 设置错误消息是否输出到标准错误（ ``stderr`` ）。
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:描述: 设置错误消息是否输出到标准错误（ ``stderr`` ）。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``log to syslog``
 
-:Description: 设置日志消息是否输出到 ``syslog`` 。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 设置日志消息是否输出到 ``syslog`` 。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``err to syslog``
 
-:Description: 设置错误消息是否输出到 ``syslog`` 。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 设置错误消息是否输出到 ``syslog`` 。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``log flush on exit``
 
-:Description: 设置 Ceph 退出后是否回写日志文件。
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:描述: 设置 Ceph 退出后是否回写日志文件。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``clog to monitors``
 
-:Description: 设置是否把 ``clog`` 消息发送给监视器。
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:描述: 设置是否把 ``clog`` 消息发送给监视器。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``clog to syslog``
 
-:Description: 设置是否把 ``clog`` 输出到 syslog 。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 设置是否把 ``clog`` 输出到 syslog 。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``mon cluster log to syslog``
 
-:Description: 设置集群日志是否输出到 syslog 。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 设置集群日志是否输出到 syslog 。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``mon cluster log file``
 
-:Description: 集群日志位置。
-:Type: String
-:Required: No
-:Default: ``/var/log/ceph/$cluster.log``
+:描述: 集群日志位置。
+:类型: String
+:是否必需: No
+:默认值: ``/var/log/ceph/$cluster.log``
 
 
 
@@ -342,66 +333,66 @@ OSD
 
 ``osd debug drop ping probability``
 
-:Description: ?
-:Type: Double
-:Required: No
-:Default: 0
+:描述: ?
+:类型: Double
+:是否必需: No
+:默认值: 0
 
 
 ``osd debug drop ping duration``
 
-:Description: 
-:Type: Integer
-:Required: No
-:Default: 0
+:描述:
+:类型: Integer
+:是否必需: No
+:默认值: 0
 
 
 ``osd debug drop pg create probability``
 
-:Description: 
-:Type: Integer
-:Required: No
-:Default: 0
+:描述:
+:类型: Integer
+:是否必需: No
+:默认值: 0
 
 
 ``osd debug drop pg create duration``
 
-:Description: ?
-:Type: Double
-:Required: No
-:Default: 1
+:描述: ?
+:类型: Double
+:是否必需: No
+:默认值: 1
 
 
 ``osd preserve trimmed log``
 
-:Description: 裁减后保留剩余日志。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 裁减后保留剩余日志。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``osd tmapput sets uses tmap``
 
-:Description: 使用 ``tmap`` ，仅用于调试。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 使用 ``tmap`` ，仅用于调试。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``osd min pg log entries``
 
-:Description: 归置组日志最小条数。
-:Type: 32-bit Unsigned Integer
-:Required: No
-:Default: 1000
+:描述: 归置组日志最小条数。
+:类型: 32-bit Unsigned Integer
+:是否必需: No
+:默认值: 1000
 
 
 ``osd op log threshold``
 
-:Description: 一次发送多少操作日志消息。
-:Type: Integer
-:Required: No
-:Default: 5
+:描述: 一次发送多少操作日志消息。
+:类型: Integer
+:是否必需: No
+:默认值: 5
 
 
 
@@ -410,10 +401,10 @@ Filestore
 
 ``filestore debug omap check``
 
-:Description: 调试同步检查，这是昂贵的操作。
-:Type: Boolean
-:Required: No
-:Default: 0
+:描述: 调试同步检查，这是昂贵的操作。
+:类型: Boolean
+:是否必需: No
+:默认值: 0
 
 
 MDS
@@ -421,34 +412,34 @@ MDS
 
 ``mds debug scatterstat``
 
-:Description: Ceph 将把各种回归状态常量设置为真（谨为开发者）。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: Ceph 将把各种回归状态常量设置为真（谨为开发者）。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``mds debug frag``
 
-:Description: Ceph 将在方便时校验目录碎片（谨为开发者）。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: Ceph 将在方便时校验目录碎片（谨为开发者）。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``mds debug auth pins``
 
-:Description: debug auth pin 开关（谨为开发者）。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: debug auth pin 开关（谨为开发者）。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``mds debug subtrees``
 
-:Description: debug subtree 开关（谨为开发者）。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: debug subtree 开关（谨为开发者）。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 RADOS 网关
@@ -456,71 +447,71 @@ RADOS 网关
 
 ``rgw log nonexistent bucket``
 
-:Description: 记录不存在的桶？
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 记录不存在的桶？
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``rgw log object name``
 
-:Description: 是否记录对象名称。注：关于格式参考 ``man date`` ，子集也支持。
-:Type: String
-:Required: No
-:Default: ``%Y-%m-%d-%H-%i-%n``
+:描述: 是否记录对象名称。注：关于格式参考 ``man date`` ，子集也支持。
+:类型: String
+:是否必需: No
+:默认值: ``%Y-%m-%d-%H-%i-%n``
 
 
 ``rgw log object name utc``
 
-:Description: 对象日志名称包含 UTC ？
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 对象日志名称包含 UTC ？
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``rgw enable ops log``
 
-:Description: 允许记录 RGW 的每一个操作。
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:描述: 允许记录 RGW 的每一个操作。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``rgw enable usage log``
 
-:Description: 允许记录 RGW 的带宽使用。
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:描述: 允许记录 RGW 的带宽使用。
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``rgw usage log flush threshold``
 
-:Description: 回写未决的日志数据阀值。
-:Type: Integer
-:Required: No
-:Default: ``1024``
+:描述: 回写未决的日志数据阀值。
+:类型: Integer
+:是否必需: No
+:默认值: ``1024``
 
 
 ``rgw usage log tick interval``
 
-:Description: 每隔 ``s`` 回写一次未决日志。
-:Type: Integer
-:Required: No
-:Default: 30
+:描述: 每隔 ``s`` 回写一次未决日志。
+:类型: Integer
+:是否必需: No
+:默认值: 30
 
 
 ``rgw intent log object name``
 
-:Description: 
-:Type: String
-:Required: No
-:Default: ``%Y-%m-%d-%i-%n``
+:描述:
+:类型: String
+:是否必需: No
+:默认值: ``%Y-%m-%d-%i-%n``
 
 
 ``rgw intent log object name utc``
 
-:Description: 日志对象名字里包含 UTC 时间戳。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 日志对象名字里包含 UTC 时间戳。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``

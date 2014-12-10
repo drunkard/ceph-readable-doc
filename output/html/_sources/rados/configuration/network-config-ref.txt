@@ -57,13 +57,11 @@ REST 网关）直接向 OSD 请求，然后OSD为客户端执行数据复制，�
 ======
 
 守护进程默认会\ `绑定`_\ 到 ``6800:7100`` 间的端口，你可以更改此范围。更改防火墙配\
-置前先检查下 ``iptables`` 配置。更改配置时谨慎点。
-::
+置前先检查下 ``iptables`` 配置。更改配置时谨慎点。 ::
 
 	sudo iptables -L
 
-一些 Linux 发行版的规则拒绝除 SSH 之外的所有网卡的所有入栈连接，例如：
-::
+一些 Linux 发行版的规则拒绝除 SSH 之外的所有网卡的所有入栈连接，例如： ::
 
 	REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
 
@@ -75,8 +73,7 @@ REST 网关）直接向 OSD 请求，然后OSD为客户端执行数据复制，�
 
 监视器默认监听 ``6789`` 端口，而且监视器总是运行在公共网。按下例增加规则时，要把 \
 ``{iface}`` 替换为公共网接口（如 ``eth0`` 、 ``eth1`` 等等）、 ``{ip-address}`` \
-替换为公共网 IP 、 ``{netmask}`` 替换为公共网掩码。
-::
+替换为公共网 IP 、 ``{netmask}`` 替换为公共网掩码。 ::
 
    sudo iptables -A INPUT -i {iface} -p tcp -s {ip-address}/{netmask} --dport 6789 -j ACCEPT
 
@@ -89,8 +86,7 @@ MDS 防火墙
 ``eth0`` 、 ``eth1`` 等等）、 ``{ip-address}`` 替换为公共网 IP 、 ``{netmask}`` \
 替换为公共网掩码。
 
-例如：
-::
+例如： ::
 
 	sudo iptables -A INPUT -i {iface} -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:6810 -j ACCEPT
 
@@ -105,7 +101,7 @@ OSD 默认\ `绑定`_ 6800 以上的第一个可用端口，要确保为各 OSD 
 #. 一个用于发送数据到其他 OSD；
 #. 一个用于心跳；
 
-.. ditaa:: 
+.. ditaa::
               /---------------\
               |      OSD      |
               |           +---+----------------+
@@ -128,8 +124,7 @@ OSD 默认\ `绑定`_ 6800 以上的第一个可用端口，要确保为各 OSD 
 如果你分开了公共网和集群网，必须分别为之设置防火墙，因为客户端会通过公共网连接、而其\
 他 OSD 会通过集群网连接。按下例增加规则时，要把 ``{iface}`` 替换为网口（如 \
 ``eth0`` 、 ``eth1`` 等等）、 ``{ip-address}`` 替换为公共网或集群网 IP 、 \
-``{netmask}`` 替换为公共网或集群网掩码。例如：
-::
+``{netmask}`` 替换为公共网或集群网掩码。例如： ::
 
 	sudo iptables -A INPUT -i {iface}  -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:6810 -j ACCEPT
 
@@ -235,25 +230,26 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
 公共网
 ------
 
-公共网配置用于明确地为公共网定义 IP 地址和子网。你可以分配静态 IP 或用 ``public 
-addr`` 覆盖 ``public network`` 选项。
+公共网配置用于明确地为公共网定义 IP 地址和子网。你可以分配静态 IP 或用 \
+``public addr`` 覆盖 ``public network`` 选项。
+
 
 ``public network``
 
-:Description: 公共网（前端）的 IP 地址和掩码（如 ``192.168.0.0/24`` ），置于 \
-              ``[global]`` 下。多个子网用逗号分隔。
+:描述: 公共网（前端）的 IP 地址和掩码（如 ``192.168.0.0/24`` ），置于 \
+       ``[global]`` 下。多个子网用逗号分隔。
 
-:Type: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
-:Required: No
-:Default: N/A
+:类型: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
+:是否必需: No
+:默认值: N/A
 
 
 ``public addr``
 
-:Description: 用于公共网（前端）的 IP 地址。适用于各守护进程。
-:Type: IP 地址
-:Required: No
-:Default: N/A
+:描述: 用于公共网（前端）的 IP 地址。适用于各守护进程。
+:类型: IP 地址
+:是否必需: No
+:默认值: N/A
 
 
 
@@ -266,20 +262,20 @@ addr`` 覆盖 ``public network`` 选项。
 
 ``cluster network``
 
-:Description: 集群网（后端）的 IP 地址及掩码（如 ``10.0.0.0/24`` ），置于 \
-              ``[global]`` 下。多个子网用逗号分隔。
+:描述: 集群网（后端）的 IP 地址及掩码（如 ``10.0.0.0/24`` ），置于 \
+       ``[global]`` 下。多个子网用逗号分隔。
 
-:Type: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
-:Required: No
-:Default: N/A
+:类型: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
+:是否必需: No
+:默认值: N/A
 
 
 ``cluster addr``
 
-:Description: 集群网（后端） IP 地址。置于各守护进程下。
-:Type: Address
-:Required: No
-:Default: N/A
+:描述: 集群网（后端） IP 地址。置于各守护进程下。
+:类型: Address
+:是否必需: No
+:默认值: N/A
 
 
 绑定
@@ -293,51 +289,51 @@ addr`` 覆盖 ``public network`` 选项。
 
 ``ms bind port min``
 
-:Description: OSD 或 MDS 可绑定的最小端口号。
-:Type: 32-bit Integer
-:Default: ``6800``
-:Required: No
+:描述: OSD 或 MDS 可绑定的最小端口号。
+:类型: 32-bit Integer
+:默认值: ``6800``
+:是否必需: No
 
 
 ``ms bind port max``
 
-:Description: OSD 或 MDS 可绑定的最大端口号。
-:Type: 32-bit Integer
-:Default: ``7100``
-:Required: No. 
+:描述: OSD 或 MDS 可绑定的最大端口号。
+:类型: 32-bit Integer
+:默认值: ``7100``
+:是否必需: No.
 
 
 ``ms bind ipv6``
 
-:Description: 允许 Ceph 守护进程绑定 IPv6 地址。
-:Type: Boolean
-:Default: ``false``
-:Required: No
+:描述: 允许 Ceph 守护进程绑定 IPv6 地址。
+:类型: Boolean
+:默认值: ``false``
+:是否必需: No
 
 
 
 主机
 ----
 
-Ceph 配置文件里至少要写一个监视器、且每个监视器下都要配置 ``mon addr`` 选项；每个\
-监视器、元数据服务器和 OSD 下都要配 ``host`` 选项。
+Ceph 配置文件里至少要写一个监视器、且每个监视器下都要配置 ``mon addr`` 选项；\
+每个监视器、元数据服务器和 OSD 下都要配 ``host`` 选项。
 
 ``mon addr``
 
-:Description: ``{hostname}:{port}`` 条目列表，用以让客户端连接 Ceph 监视器。如果\
-              未设置， Ceph 查找 ``[mon.*]`` 段。
+:描述: ``{hostname}:{port}`` 条目列表，用以让客户端连接 Ceph 监视器。如果未设\
+       置， Ceph 查找 ``[mon.*]`` 段。
 
-:Type: String
-:Required: No
-:Default: N/A
+:类型: String
+:是否必需: No
+:默认值: N/A
 
 
 ``host``
 
-:Description: 主机名。此选项用于特定守护进程，如 ``[osd.0]`` 。
-:Type: String
-:Required: Yes, for daemon instances.
-:Default: ``localhost``
+:描述: 主机名。此选项用于特定守护进程，如 ``[osd.0]`` 。
+:类型: String
+:是否必需: Yes, for daemon instances.
+:默认值: ``localhost``
 
 .. tip:: 不要用 ``localhost`` 。在命令行下执行 ``hostname -s`` 获取主机名（到第一\
    个点，不是全资域名），并用于配置文件。
@@ -354,32 +350,32 @@ Ceph 默认禁用 TCP 缓冲。
 
 ``tcp nodelay``
 
-:Description: Ceph 用 ``tcp nodelay`` 使系统尽快（不缓冲）发送每个请求。禁用 \
-              `Nagle 算法`_\ 可增加吞吐量，但会引进延时。如果你遇到大量小包，可以\
-              禁用 ``tcp nodelay`` 试试。
+:描述: Ceph 用 ``tcp nodelay`` 使系统尽快（不缓冲）发送每个请求。禁用 \
+       `Nagle 算法`_\ 可增加吞吐量，但会引进延时。如果你遇到大量小包，可以禁\
+       用 ``tcp nodelay`` 试试。
 
-:Type: Boolean
-:Required: No
-:Default: ``true``
+:类型: Boolean
+:是否必需: No
+:默认值: ``true``
 
 
 ``tcp rcvbuf``
 
-:Description: 网络套接字接收缓冲尺寸，默认禁用。
-:Type: 32-bit Integer
-:Required: No
-:Default: ``0``
+:描述: 网络套接字接收缓冲尺寸，默认禁用。
+:类型: 32-bit Integer
+:是否必需: No
+:默认值: ``0``
 
 
 
 ``ms tcp read timeout``
 
-:Description: 如果一客户端或守护进程请求连接到另一个 Ceph 守护进程，且没有断开不再\
-              使用的连接，在 ``tcp read timeout`` 指定的秒数之后它将被标记为空闲。
+:描述: 如果一客户端或守护进程请求连接到另一个 Ceph 守护进程，且没有断开不再\
+       使用的连接，在 ``tcp read timeout`` 指定的秒数之后它将被标记为空闲。
 
-:Type: Unsigned 64-bit Integer
-:Required: No
-:Default: ``900`` 15 minutes.
+:类型: Unsigned 64-bit Integer
+:是否必需: No
+:默认值: ``900`` 15 minutes.
 
 
 

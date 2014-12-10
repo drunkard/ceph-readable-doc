@@ -27,8 +27,7 @@
 osd erasure-code-profile set
 ============================
 
-要新建纠删码配置：
-::
+要新建纠删码配置： ::
 
 	ceph osd erasure-code-profile set {name} \
              [{directory=directory}] \
@@ -41,39 +40,38 @@ osd erasure-code-profile set
 
 ``{directory=directory}``
 
-:Description: 设置纠删码插件的路径，需是\ **目录**\ 。
-:Type: String
-:Required: No.
-:Default: /usr/lib/ceph/erasure-code
+:描述: 设置纠删码插件的路径，需是\ **目录**\ 。
+:类型: String
+:是否必需: No.
+:默认值: /usr/lib/ceph/erasure-code
 
 
 ``{plugin=plugin}``
 
-:Description: 指定纠删码\ **插件**\ 来计算编码块、及恢复丢失块。详见\ `可用插件列表`_\ 。
-:Type: String
-:Required: No. 
-:Default: jerasure
+:描述: 指定纠删码\ **插件**\ 来计算编码块、及恢复丢失块。详见\ `可用插件列表`_\ 。
+:类型: String
+:是否必需: No.
+:默认值: jerasure
 
 
 ``{key=value}``
 
-:Description: 纠删码插件所定义的键/值对含义。
-:Type: String
-:Required: No. 
+:描述: 纠删码插件所定义的键/值对含义。
+:类型: String
+:是否必需: No.
 
 
 ``--force``
 
-:Description: 覆盖同名配置。
-:Type: String
-:Required: No. 
+:描述: 覆盖同名配置。
+:类型: String
+:是否必需: No.
 
 
 osd erasure-code-profile rm
 ============================
 
-要删除纠删码配置：
-::
+要删除纠删码配置： ::
 
 	ceph osd erasure-code-profile rm {name}
 
@@ -83,8 +81,7 @@ osd erasure-code-profile rm
 osd erasure-code-profile get
 ============================
 
-要查看一纠删码配置：
-::
+要查看一纠删码配置： ::
 
 	ceph osd erasure-code-profile get {name}
 
@@ -92,7 +89,6 @@ osd erasure-code-profile get
 osd erasure-code-profile ls
 ===========================
 
-列出所有纠删码配置：
-::
+列出所有纠删码配置： ::
 
 	ceph osd erasure-code-profile ls

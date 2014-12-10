@@ -11,8 +11,7 @@
 件的 `Upstart`_ 来启动、关闭 :term:`Ceph 节点`\ 上的守护进程。 Upstart 不要求你在\
 配置文件里定义守护进程例程。
 
-用下列命令列出 Ceph 作业和例程：
-::
+用下列命令列出 Ceph 作业和例程： ::
 
 	sudo initctl list | grep ceph
 
@@ -22,8 +21,7 @@
 启动所有守护进程
 ----------------
 
-要启动一 Ceph 节点（任何类型）上的所有守护进程，用下列命令：
-::
+要启动一 Ceph 节点（任何类型）上的所有守护进程，用下列命令： ::
 
 	sudo start ceph-all
 
@@ -31,8 +29,7 @@
 停止所有守护进程
 ----------------
 
-要停止一 Ceph 节点（任何类型）上的所有守护进程，用下列命令：
-::
+要停止一 Ceph 节点（任何类型）上的所有守护进程，用下列命令： ::
 
 	sudo stop ceph-all
 
@@ -40,8 +37,7 @@
 按类型启动所有守护进程
 ----------------------
 
-要启动一节点上的某一类守护进程，用下列命令：
-::
+要启动一节点上的某一类守护进程，用下列命令： ::
 
 	sudo start ceph-osd-all
 	sudo start ceph-mon-all
@@ -61,15 +57,13 @@
 启动单个进程
 ------------
 
-要启动某节点上一指定守护进程例程，用下列命令之一：
-::
+要启动某节点上一指定守护进程例程，用下列命令之一： ::
 
 	sudo start ceph-osd id={id}
 	sudo start ceph-mon id={hostname}
 	sudo start ceph-mds id={hostname}
 
-例如：
-::
+例如： ::
 
 	sudo start ceph-osd id=1
 	sudo start ceph-mon id=ceph-server
@@ -79,15 +73,13 @@
 停止单个进程
 ------------
 
-要停止某节点上一指定守护进程例程，用下列命令之一：
-::
+要停止某节点上一指定守护进程例程，用下列命令之一： ::
 
 	sudo stop ceph-osd id={id}
 	sudo stop ceph-mon id={hostname}
 	sudo stop ceph-mds id={hostname}
 
-例如：
-::
+例如： ::
 
 	sudo stop ceph-osd id=1
 	sudo start ceph-mon id=ceph-server
@@ -101,8 +93,7 @@
 =========
 
 每次用命令\ **启动**\ 、\ **重启**\ 、\ **停止**\ Ceph 守护进程（或整个集群）时，\
-你必须指定至少一个选项和一个命令，还可能要指定守护进程类型或具体例程。
-::
+你必须指定至少一个选项和一个命令，还可能要指定守护进程类型或具体例程。 ::
 
 	{commandline} [options] [commands] [daemons]
 
@@ -137,7 +128,7 @@ Ceph 子命令包括：
 +------------------+-----------------------------------------------------------+
 |  ``forcestop``   | 暴力停止守护进程，等价于 ``kill -9``                      |
 +------------------+-----------------------------------------------------------+
-|   ``killall``    | 杀死某一类守护进程。                                      | 
+|   ``killall``    | 杀死某一类守护进程。                                      |
 +------------------+-----------------------------------------------------------+
 |  ``cleanlogs``   | 清理掉日志目录。                                          |
 +------------------+-----------------------------------------------------------+
@@ -163,13 +154,11 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 启动所有守护进程
 ~~~~~~~~~~~~~~~~
 
-要启动 Ceph 集群，执行 ``ceph`` 时加上 ``start`` 命令，语法如下：
-::
+要启动 Ceph 集群，执行 ``ceph`` 时加上 ``start`` 命令，语法如下： ::
 
 	sudo /etc/init.d/ceph [options] [start|restart] [daemonType|daemonID]
 
-下面是个典型实例：
-::
+下面是个典型实例： ::
 
 	sudo /etc/init.d/ceph -a start
 
@@ -179,13 +168,11 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 停止所有守护进程
 ~~~~~~~~~~~~~~~~
 
-要停止 Ceph 集群，执行 ``ceph`` 时加上 ``stop`` 命令，语法如下：
-::
+要停止 Ceph 集群，执行 ``ceph`` 时加上 ``stop`` 命令，语法如下： ::
 
 	sudo /etc/init.d/ceph [options] stop [daemonType|daemonID]
 
-下面是个典型实例：
-::
+下面是个典型实例： ::
 
 	sudo /etc/init.d/ceph -a stop
 
@@ -195,14 +182,12 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 启动一类守护进程
 ~~~~~~~~~~~~~~~~
 
-要启动本节点上某一类的所有 Ceph 守护进程，按此语法：
-::
+要启动本节点上某一类的所有 Ceph 守护进程，按此语法： ::
 
 	sudo /etc/init.d/ceph start {daemon-type}
 	sudo /etc/init.d/ceph start osd
 
-要启动非本机节点上某一类的所有 Ceph 守护进程，按此语法：
-::
+要启动非本机节点上某一类的所有 Ceph 守护进程，按此语法： ::
 
 	sudo /etc/init.d/ceph -a start {daemon-type}
 	sudo /etc/init.d/ceph -a start osd
@@ -216,8 +201,7 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 	sudo /etc/init.d/ceph stop {daemon-type}
 	sudo /etc/init.d/ceph stop osd
 
-要启动非本机节点上某一类的所有 Ceph 守护进程，按此语法：
-::
+要启动非本机节点上某一类的所有 Ceph 守护进程，按此语法： ::
 
 	sudo /etc/init.d/ceph -a stop {daemon-type}
 	sudo /etc/init.d/ceph -a stop osd
@@ -226,14 +210,12 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 启动单个守护进程
 ~~~~~~~~~~~~~~~~
 
-要启动本节点上某个 Ceph 守护进程，按此语法：
-::
+要启动本节点上某个 Ceph 守护进程，按此语法： ::
 
 	sudo /etc/init.d/ceph start {daemon-type}.{instance}
 	sudo /etc/init.d/ceph start osd.0
 
-要启动另一节点上某个 Ceph 守护进程，按此语法：
-::
+要启动另一节点上某个 Ceph 守护进程，按此语法： ::
 
 	sudo /etc/init.d/ceph -a start {daemon-type}.{instance}
 	sudo /etc/init.d/ceph -a start osd.0
@@ -242,14 +224,12 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 停止单个守护进程
 ~~~~~~~~~~~~~~~~
 
-要停止本节点上某个 Ceph 守护进程，按此语法：
-::
+要停止本节点上某个 Ceph 守护进程，按此语法： ::
 
 	sudo /etc/init.d/ceph stop {daemon-type}.{instance}
 	sudo /etc/init.d/ceph stop osd.0
 
-要停止另一节点上某个 Ceph 守护进程，按此语法：
-::
+要停止另一节点上某个 Ceph 守护进程，按此语法： ::
 
 	sudo /etc/init.d/ceph -a stop {daemon-type}.{instance}
 	sudo /etc/init.d/ceph -a stop osd.0
@@ -265,13 +245,11 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 启动所有守护进程
 ~~~~~~~~~~~~~~~~
 
-要启动你的 Ceph 集群，执行 ``ceph`` 时加上 ``start`` 命令，按此语法：
-::
+要启动你的 Ceph 集群，执行 ``ceph`` 时加上 ``start`` 命令，按此语法： ::
 
 	sudo service ceph [options] [start|restart] [daemonType|daemonID]
 
-下面是个典型实例：
-::
+下面是个典型实例： ::
 
 	sudo service ceph -a start
 
@@ -281,13 +259,11 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 停止所有守护进程
 ~~~~~~~~~~~~~~~~
 
-要停止你的 Ceph 集群，执行 ``ceph`` 时加上 ``stop`` 命令，按此语法：
-::
+要停止你的 Ceph 集群，执行 ``ceph`` 时加上 ``stop`` 命令，按此语法： ::
 
 	sudo service ceph [options] stop [daemonType|daemonID]
 
-例如：
-:: 
+例如： ::
 
 	sudo service ceph -a stop
 
@@ -297,14 +273,12 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 启动一类守护进程
 ~~~~~~~~~~~~~~~~
 
-要启动本节点上某一类的所有 Ceph 守护进程，按此语法：
-::
+要启动本节点上某一类的所有 Ceph 守护进程，按此语法： ::
 
 	sudo service ceph start {daemon-type}
 	sudo service ceph start osd
 
-要启动所有节点上某一类的所有 Ceph 守护进程，按此语法：
-::
+要启动所有节点上某一类的所有 Ceph 守护进程，按此语法： ::
 
 	sudo service ceph -a start {daemon-type}
 	sudo service ceph -a start osd
@@ -313,14 +287,12 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 停止一类守护进程
 ~~~~~~~~~~~~~~~~
 
-要停止本节点上某一类的所有 Ceph 守护进程，按此语法：
-::
+要停止本节点上某一类的所有 Ceph 守护进程，按此语法： ::
 
 	sudo service ceph stop {daemon-type}
 	sudo service ceph stop osd
 
-要停止所有节点上某一类的所有 Ceph 守护进程，按此语法：
-::
+要停止所有节点上某一类的所有 Ceph 守护进程，按此语法： ::
 
 	sudo service ceph -a stop {daemon-type}
 	sudo service ceph -a stop osd
@@ -329,14 +301,12 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 启动单个守护进程
 ~~~~~~~~~~~~~~~~
 
-要启动本节点上某个 Ceph 守护进程，按此语法：
-::
+要启动本节点上某个 Ceph 守护进程，按此语法： ::
 
 	sudo service ceph start {daemon-type}.{instance}
 	sudo service ceph start osd.0
 
-要启动另一节点上某个 Ceph 守护进程，按此语法：
-::
+要启动另一节点上某个 Ceph 守护进程，按此语法： ::
 
 	sudo service ceph -a start {daemon-type}.{instance}
 	sudo service ceph -a start osd.0
@@ -345,14 +315,12 @@ Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
 停止单个守护进程
 ~~~~~~~~~~~~~~~~
 
-要停止本节点上某个 Ceph 守护进程，按此语法：
-::
+要停止本节点上某个 Ceph 守护进程，按此语法： ::
 
 	sudo service ceph stop {daemon-type}.{instance}
 	sudo service ceph stop osd.0
 
-要停止另一节点上某个 Ceph 守护进程，按此语法：
-::
+要停止另一节点上某个 Ceph 守护进程，按此语法： ::
 
 	sudo service ceph -a stop {daemon-type}.{instance}
 	sudo service ceph -a stop osd.0

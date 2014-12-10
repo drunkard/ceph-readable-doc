@@ -85,37 +85,31 @@ you do not have to repeat the bootstrapping procedures.
 在禁用了 ``cephx`` 的集群上执行下面的步骤来启用它，如果你（或者部署工具）已经生成了\
 密钥，你可以跳过相关步骤。
 
-#. 创建 ``client.admin`` 密钥，并为客户端保存此密钥的副本：
-   ::
+#. 创建 ``client.admin`` 密钥，并为客户端保存此密钥的副本： ::
 
 	ceph auth get-or-create client.admin mon 'allow *' mds 'allow *' osd 'allow *' -o /etc/ceph/ceph.client.admin.keyring
 
    **警告：** 此命令会覆盖任何存在的 ``/etc/ceph/client.admin.keyring`` 文件，如\
    果部署工具已经完成此步骤，千万别再执行此命令。多加小心！
 
-#. 创建监视器集群所需的密钥环、并给它们生成密钥。
-   ::
+#. 创建监视器集群所需的密钥环、并给它们生成密钥。 ::
 
 	ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
 #. 把监视器密钥环复制到 ``ceph.mon.keyring`` 文件，再把此文件复制到各监视器的 
-   ``mon data`` 目录下。比如要把它复制给名为 ``ceph`` 集群的 ``mon.a`` ，用此命令：
-   ::
+   ``mon data`` 目录下。比如要把它复制给名为 ``ceph`` 集群的 ``mon.a`` ，用此命令： ::
 
 	cp /tmp/ceph.mon.keyring /var/lib/ceph/mon/ceph-a/keyring
 
-#. 为每个 OSD 生成密钥， ``{$id}`` 是 OSD 编号：
-   ::
+#. 为每个 OSD 生成密钥， ``{$id}`` 是 OSD 编号： ::
 
 	ceph auth get-or-create osd.{$id} mon 'allow rwx' osd 'allow *' -o /var/lib/ceph/osd/ceph-{$id}/keyring
 
-#. 为每个 MDS 生成密钥， ``{$id}`` 是 MDS 的标识字母：
-   ::
+#. 为每个 MDS 生成密钥， ``{$id}`` 是 MDS 的标识字母： ::
 
 	ceph auth get-or-create mds.{$id} mon 'allow rwx' osd 'allow *' mds 'allow *' -o /var/lib/ceph/mds/ceph-{$id}/keyring
 
-#. 把以下配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下以启用 ``cephx`` 认证：
-   ::
+#. 把以下配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下以启用 ``cephx`` 认证： ::
 
 	auth cluster required = cephx
 	auth service required = cephx
@@ -132,8 +126,7 @@ you do not have to repeat the bootstrapping procedures.
 下述步骤描述了如何禁用 Cephx 。如果你的集群环境相对安全，你可以减免认证耗费的计算资\
 源，然而\ **我们不推荐**\ 。但是临时禁用认证会使安装、和/或排障更简单。
 
-#. 把下列配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下即可禁用 ``cephx`` 认证：
-   ::
+#. 把下列配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下即可禁用 ``cephx`` 认证： ::
 
 	auth cluster required = none
 	auth service required = none
@@ -151,32 +144,32 @@ you do not have to repeat the bootstrapping procedures.
 
 ``auth cluster required``
 
-:Description: 如果启用了，集群守护进程（如 ``ceph-mon`` 、 ``ceph-osd`` 和 \
-              ``ceph-mds`` ）间必须相互认证。可用选项有 ``cephx`` 或 ``none`` 。
+:描述: 如果启用了，集群守护进程（如 ``ceph-mon`` 、 ``ceph-osd`` 和 \
+       ``ceph-mds`` ）间必须相互认证。可用选项有 ``cephx`` 或 ``none`` 。
 
-:Type: String
-:Required: No
-:Default: ``cephx``.
+:类型: String
+:是否必需: No
+:默认值: ``cephx``.
 
 
 ``auth service required``
 
-:Description: 如果启用，客户端要访问 Ceph 服务的话，集群守护进程会要求它和集群认\
-              证。可用选项为 ``cephx`` 或 ``none`` 。
+:描述: 如果启用，客户端要访问 Ceph 服务的话，集群守护进程会要求它和集群认\
+       证。可用选项为 ``cephx`` 或 ``none`` 。
 
-:Type: String
-:Required: No
-:Default: ``cephx``.
+:类型: String
+:是否必需: No
+:默认值: ``cephx``.
 
 
 ``auth client required``
 
-:Description: 如果启用，客户端会要求 Ceph 集群和它认证。可用选项为 ``cephx`` 或 \
-              ``none`` 。
+:描述: 如果启用，客户端会要求 Ceph 集群和它认证。可用选项为 ``cephx`` 或 \
+       ``none`` 。
 
-:Type: String
-:Required: No
-:Default: ``cephx``.
+:类型: String
+:是否必需: No
+:默认值: ``cephx``.
 
 
 .. index:: keys; keyring
@@ -194,8 +187,7 @@ you do not have to repeat the bootstrapping procedures.
 我们建议把集群的密钥环复制到你执行管理命令的节点，它包含 ``client.admin`` 密钥。
 
 你可以用 ``ceph-deploy admin`` 命令做此事，详情见\ '部署管理主机'_\ ，手动复制可执\
-行此命令：
-::
+行此命令： ::
 
 	sudo scp {user}@{ceph-cluster-host}:/etc/ceph/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
 
@@ -207,26 +199,26 @@ you do not have to repeat the bootstrapping procedures.
 
 ``keyring``
 
-:Description: 密钥环文件的路径。
-:Type: String
-:Required: No
-:Default: ``/etc/ceph/$cluster.$name.keyring,/etc/ceph/$cluster.keyring,/etc/ceph/keyring,/etc/ceph/keyring.bin``
+:描述: 密钥环文件的路径。
+:类型: String
+:是否必需: No
+:默认值: ``/etc/ceph/$cluster.$name.keyring,/etc/ceph/$cluster.keyring,/etc/ceph/keyring,/etc/ceph/keyring.bin``
 
 
 ``keyfile``
 
-:Description: 到密钥文件的路径，如一个只包含密钥的文件。
-:Type: String
-:Required: No
-:Default: None
+:描述: 到密钥文件的路径，如一个只包含密钥的文件。
+:类型: String
+:是否必需: No
+:默认值: None
 
 
 ``key``
 
-:Description: 密钥（密钥文本），最好别这样做。
-:Type: String
-:Required: No
-:Default: None
+:描述: 密钥（密钥文本），最好别这样做。
+:类型: String
+:是否必需: No
+:默认值: None
 
 
 守护进程密钥环
@@ -238,35 +230,33 @@ you do not have to repeat the bootstrapping procedures.
 
 ``ceph-mon``
 
-:Location: ``$mon_data/keyring``
-:Capabilities: ``mon 'allow *'``
+:位置: ``$mon_data/keyring``
+:能力: ``mon 'allow *'``
 
 ``ceph-osd``
 
-:Location: ``$osd_data/keyring``
-:Capabilities: ``mon 'allow profile osd' osd 'allow *'``
+:位置: ``$osd_data/keyring``
+:能力: ``mon 'allow profile osd' osd 'allow *'``
 
 ``ceph-mds``
 
-:Location: ``$mds_data/keyring``
-:Capabilities: ``mds 'allow' mon 'allow profile mds' osd 'allow rwx'``
+:位置: ``$mds_data/keyring``
+:能力: ``mds 'allow' mon 'allow profile mds' osd 'allow rwx'``
 
 ``radosgw``
 
-:Location: ``$rgw_data/keyring``
-:Capabilities: ``mon 'allow rwx' osd 'allow rwx'``
+:位置: ``$rgw_data/keyring``
+:能力: ``mon 'allow rwx' osd 'allow rwx'``
 
 
 .. note:: 监视器密钥环（即 ``mon.`` ）包含一个密钥，但没有能力，且不是集群 \
    ``auth`` 数据库的一部分。
 
-守护进程数据目录位置默认格式如下：
-::
+守护进程数据目录位置默认格式如下： ::
 
 	/var/lib/ceph/$type/$cluster-$id
 
-例如， ``osd.12`` 的目录会是：
-::
+例如， ``osd.12`` 的目录会是： ::
 
 	/var/lib/ceph/osd/ceph-12
 
@@ -289,35 +279,35 @@ Bobtail 和 Argonaut ），消息签名默认是\ **关闭**\ 的。如果你只
 
 ``cephx require signatures``
 
-:Description: 若设置为 ``true`` ， Ceph 集群会要求客户端签名所有消息，包括集群内\
-              其他守护进程间的。
+:描述: 若设置为 ``true`` ， Ceph 集群会要求客户端签名所有消息，包括集群内\
+       其他守护进程间的。
 
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``cephx cluster require signatures``
 
-:Description: 若设置为 ``true`` ， Ceph 要求集群内所有守护进程签名相互之间的消息。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 若设置为 ``true`` ， Ceph 要求集群内所有守护进程签名相互之间的消息。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``cephx service require signatures``
 
-:Description: 若设置为 ``true`` ， Ceph 要求签名所有客户端和集群间的消息。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 若设置为 ``true`` ， Ceph 要求签名所有客户端和集群间的消息。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``
 
 
 ``cephx sign messages``
 
-:Description: 如果 Ceph 版本支持消息签名， Ceph 会签名所有消息以防欺骗。
-:Type: Boolean
-:Default: ``true``
+:描述: 如果 Ceph 版本支持消息签名， Ceph 会签名所有消息以防欺骗。
+:类型: Boolean
+:默认值: ``true``
 
 
 生存期
@@ -325,9 +315,9 @@ Bobtail 和 Argonaut ），消息签名默认是\ **关闭**\ 的。如果你只
 
 ``auth service ticket ttl``
 
-:Description: Ceph 存储集群发给客户端一个用于认证的票据时分配给这个票据的生存期。
-:Type: Double
-:Default: ``60*60``
+:描述: Ceph 存储集群发给客户端一个用于认证的票据时分配给这个票据的生存期。
+:类型: Double
+:默认值: ``60*60``
 
 
 向后兼容性
@@ -356,13 +346,11 @@ Argonaut 的守护进程将对正在进行的消息不知所措，因为 Bobtail
 如果你确定不会使用旧版 Ceph 、或者新旧服务器不能交互无所谓，那就可以排除这个安全风\
 险；如果你这样做了，任何支持会话认证、启用了 Cephx 的 Ceph 系统都会拒绝未签名的消\
 息。要防止新服务器和旧服务器交互，在 `Ceph 配置`_\ 文件的 ``[global]`` 下添加下列\
-这行，要加到启用 Cephx 之后。
-::
+这行，要加到启用 Cephx 之后。 ::
 
 	cephx require signatures = true    ; everywhere possible
 
-你也可以选择只对集群内部通讯要求签名，它和面向客户端的服务是分离的：
-::
+你也可以选择只对集群内部通讯要求签名，它和面向客户端的服务是分离的： ::
 
 	cephx cluster require signatures = true    ; for cluster-internal communication
 	cephx service require signatures = true    ; for client-facing service

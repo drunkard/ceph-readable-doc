@@ -10,8 +10,7 @@ purgedata
 =========
 
 如果只想清除 ``/var/lib/ceph`` 下的数据、并保留 Ceph 安装包，可以用 \
-``purgedata`` 命令：
-::
+``purgedata`` 命令： ::
 
 	ceph-deploy purgedata {hostname} [{hostname} ...]
 
@@ -19,7 +18,7 @@ purgedata
 purge
 =====
 
-要清理掉 ``/var/lib/ceph`` 下的所有数据、并卸载 Ceph 软件包，用 ``purge`` 命令。
-::
+要清理掉 ``/var/lib/ceph`` 下的所有数据、并卸载 Ceph 软件包，用 ``purge`` 命\
+令。 ::
 
 	ceph-deploy purge {hostname} [{hostname} ...]

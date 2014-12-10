@@ -35,13 +35,11 @@
 - ``pkg-config``
 - ``libcurl4-gnutls-dev``
 
-在 Ubuntu 上，执行 ``sudo apt-get install`` 分别安装各缺失依赖。
-::
+在 Ubuntu 上，执行 ``sudo apt-get install`` 分别安装各缺失依赖。 ::
 
 	sudo apt-get install autoconf automake autotools-dev libbz2-dev debhelper default-jdk git javahelper junit4 libaio-dev libatomic-ops-dev libbabeltrace-ctf-dev libbabeltrace-dev libblkid-dev libboost-dev libboost-program-options-dev libboost-system-dev libboost-thread-dev libcurl4-gnutls-dev libedit-dev libexpat1-dev libfcgi-dev libfuse-dev libgoogle-perftools-dev libkeyutils-dev libleveldb-dev libnss3-dev libsnappy-dev liblttng-ust-dev libtool libudev-dev libxml2-dev pkg-config python python-argparse python-nose uuid-dev uuid-runtime xfslibs-dev yasm
 
-在 Debian 上，可以执行 ``aptitude install`` 挨个安装还没装好的依赖包。
-::
+在 Debian 上，可以执行 ``aptitude install`` 挨个安装还没装好的依赖包。 ::
 
 	aptitude install autoconf automake autotools-dev libbz2-dev debhelper default-jdk git javahelper junit4 libaio-dev libatomic-ops-dev libbabeltrace-ctf-dev libbabeltrace-dev libblkid-dev libboost-dev libboost-program-options-dev libboost-system-dev libboost-thread-dev libcurl4-gnutls-dev libedit-dev libexpat1-dev libfcgi-dev libfuse-dev libgoogle-perftools-dev libkeyutils-dev libleveldb-dev libnss3-dev libsnappy-dev liblttng-ust-dev libtool libudev-dev libxml2-dev pkg-config python python-argparse python-nose uuid-dev uuid-runtime xfslibs-dev yasm
 
@@ -61,8 +59,7 @@ Ubuntu
 - ``libsnappy-dev`` 
 - ``libleveldb-dev``
 
-执行 ``sudo apt-get install`` 挨个安装各缺失依赖。
-::
+执行 ``sudo apt-get install`` 挨个安装各缺失依赖。 ::
 
 	sudo apt-get install uuid-dev libkeyutils-dev libgoogle-perftools-dev libatomic-ops-dev libaio-dev libgdata-common libgdata13 libsnappy-dev libleveldb-dev
 
@@ -70,8 +67,7 @@ Ubuntu
 Debian
 ------
 
-另外，你也可以安装：
-::
+另外，你也可以安装： ::
 
 	aptitude install fakeroot dpkg-dev
 	aptitude install debhelper cdbs libexpat1-dev libatomic-ops-dev
@@ -85,16 +81,14 @@ openSUSE 11.2 （及后续版本）
 - ``libopenssl-devel``
 - ``fuse-devel`` (optional)
 
-执行 ``zypper install`` 安装各缺失依赖。
-::
+执行 ``zypper install`` 安装各缺失依赖。 ::
 
 	zypper install boost-devel gcc-c++ libedit-devel libopenssl-devel fuse-devel
 
 Fedora 20
 ---------
 
-以 root 身份运行：
-::
+以 root 身份运行： ::
 
     yum install make automake autoconf  boost-devel fuse-devel gcc-c++ libtool libuuid-devel libblkid-devel keyutils-libs-devel cryptopp-devel fcgi-devel libcurl-devel expat-devel gperftools-devel libedit-devel libatomic_ops-devel snappy-devel leveldb-devel libaio-devel xfsprogs-devel git libudev-devel
 
@@ -103,8 +97,7 @@ Fedora 20
 =========
 
 Ceph 用 ``automake`` 和 ``configure`` 脚本简化构建过程。先进入刚克隆的 Ceph 源码\
-库，执行下列命令开始构建：
-::
+库，执行下列命令开始构建： ::
 
 	cd ceph
 	./autogen.sh
@@ -133,13 +126,11 @@ Debian/Ubuntu 创建安装包；用 ``rpmbuild`` 为 RPM 包管理器创建安�
 ---------------------
 
 要为 Debian/Ubuntu 创建 ``.deb`` 安装包，先要克隆 Ceph 源码库、安装好必要的\ `构\
-建依赖`_\ 和 ``debhelper`` 。
-::
+建依赖`_\ 和 ``debhelper`` 。 ::
 
 	sudo apt-get install debhelper
 
-装好 ``debhelper`` 之后就可以开始构建安装包了：
-::
+装好 ``debhelper`` 之后就可以开始构建安装包了： ::
 
 	sudo dpkg-buildpackage
 
@@ -150,33 +141,27 @@ RPM 包管理器
 ------------
 
 要创建 ``.rpm`` 包，先得克隆 `Ceph`_ 源码库、安装必要的\ `构建依赖`_\ 、安装好 \
-``rpm-build`` 和 ``rpmdevtools`` ：
-::
+``rpm-build`` 和 ``rpmdevtools`` ： ::
 
 	yum install rpm-build rpmdevtools
 
-安装完这些工具后，设置 RPM 编译环境：
-::
+安装完这些工具后，设置 RPM 编译环境： ::
 
 	rpmdev-setuptree
 
-下载源码包，编译 RPM 时需要：
-::
+下载源码包，编译 RPM 时需要： ::
 
 	wget -P ~/rpmbuild/SOURCES/ http://ceph.com/download/ceph-<version>.tar.bz2
 
-或者从欧洲镜像下载：
-::
+或者从欧洲镜像下载： ::
 
 	wget -P ~/rpmbuild/SOURCES/ http://eu.ceph.com/download/ceph-<version>.tar.bz2
 
-提取规范文件：
-::
+提取规范文件： ::
 
     tar --strip-components=1 -C ~/rpmbuild/SPECS/ --no-anchored -xvjf ~/rpmbuild/SOURCES/ceph-<version>.tar.bz2 "ceph.spec"
 
-开始构建 RPM 包：
-::
+开始构建 RPM 包： ::
 
 	rpmbuild -ba ~/rpmbuild/SPECS/ceph.spec
 

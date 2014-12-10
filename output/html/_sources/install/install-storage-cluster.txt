@@ -12,8 +12,7 @@
 用 APT 安装
 ===========
 
-只要把正式版或开发版软件包源加入了 APT ，你就可以更新 APT 数据库并安装 Ceph 了：
-::
+只要把正式版或开发版软件包源加入了 APT ，你就可以更新 APT 数据库并安装 Ceph 了： ::
 
 	sudo apt-get update && sudo apt-get install ceph ceph-mds
 
@@ -23,22 +22,19 @@
 
 要用 RPM 安装 Ceph ，可按如下步骤进行：
 
-#. 安装 ``yum-plugin-priorities`` 。
-   ::
+#. 安装 ``yum-plugin-priorities`` 。 ::
 
 	sudo yum install yum-plugin-priorities
 
 #. 确认 ``/etc/yum/pluginconf.d/priorities.conf`` 文件存在。
 
-#. 确认 ``priorities.conf`` 里面打开了插件支持。
-   ::
+#. 确认 ``priorities.conf`` 里面打开了插件支持。 ::
 
 	[main]
 	enabled = 1
 
 #. 确认你的 YUM ``ceph.repo`` 库文件条目包含 ``priority=2`` ，详情见\ \
-   `获取软件包`_\ ：
-   ::
+   `获取软件包`_\ ： ::
 
 	[ceph]
 	name=Ceph packages for $basearch
@@ -68,13 +64,11 @@
 	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
 
 
-#. 安装依赖的的软件包：
-   ::  
+#. 安装依赖的的软件包： ::
 
 	sudo yum install snappy leveldb gdisk python-argparse gperftools-libs
 
-成功添加正式版或开发版软件包的库文件之后，或把 ``ceph.repo`` 文件放入 ``/etc/yum.repos.d`` 之后，你就可以安装 Ceph 软件包了。
-::
+成功添加正式版或开发版软件包的库文件之后，或把 ``ceph.repo`` 文件放入 ``/etc/yum.repos.d`` 之后，你就可以安装 Ceph 软件包了。 ::
 
 	sudo yum install ceph
 
@@ -82,8 +76,7 @@
 从源码安装
 ==========
 
-如果你是从源码构建的 Ceph ，可以用下面的命令安装到用户区：
-::
+如果你是从源码构建的 Ceph ，可以用下面的命令安装到用户区： ::
 
 	sudo make install
 

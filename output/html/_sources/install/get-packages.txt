@@ -61,14 +61,12 @@ Ceph 对象存储`_\ 。
 APT
 ---
 
-执行下列命令安装 ``release.asc`` 内的密钥：
-::
+执行下列命令安装 ``release.asc`` 内的密钥： ::
 
 	wget -q -O- 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc' | sudo apt-key add -
 
 
-执行下列命令安装 ``autobuild.asc`` 密钥（仅适用于 QA 和开发者）：
-::
+执行下列命令安装 ``autobuild.asc`` 密钥（仅适用于 QA 和开发者）： ::
 
 	wget -q -O- 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc' | sudo apt-key add -
 
@@ -76,13 +74,11 @@ APT
 RPM
 ---
 
-执行下列命令安装 ``release.asc`` 密钥：
-::
+执行下列命令安装 ``release.asc`` 密钥： ::
 
 	sudo rpm --import 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc'
 
-执行下列命令安装 ``autobuild.asc`` 密钥（仅对 QA 和开发者）：
-::
+执行下列命令安装 ``autobuild.asc`` 密钥（仅对 QA 和开发者）： ::
 
 	sudo rpm --import 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc'
 
@@ -100,8 +96,7 @@ RPM
 Debian 二进制包
 ---------------
 
-把 Ceph Extra 库添加到你的 APT 源列表里。
-::
+把 Ceph Extra 库添加到你的 APT 源列表里。 ::
 
 	echo deb http://ceph.com/packages/ceph-extras/debian $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph-extras.list
 
@@ -111,8 +106,7 @@ RPM 二进制包
 
 对于 RPM 包，仓库的定义需要加到 ``/etc/yum.repos.d/`` 下面（如 \
 ``ceph-extras.repo`` ）。某些包（如 QEMU ）必须优先于标准包，所以要设置 \
-``priority=2`` 。
-::
+``priority=2`` 。 ::
 
 	[ceph-extras]
 	name=Ceph Extras Packages
@@ -148,13 +142,11 @@ RPM 二进制包
 发布库用 ``release.asc`` 公钥校验软件包。要通过 APT 或 YUM 安装 Ceph 二进制包，必\
 须先配置库。
 
-适合 Debian/Ubuntu 的包位于：
-::
+适合 Debian/Ubuntu 的包位于： ::
 
 	http://ceph.com/debian-{release-name}
 
-适合 CentOS/RHEL 和其他发行版（通过 YUM 安装）的包位于：
-::
+适合 CentOS/RHEL 和其他发行版（通过 YUM 安装）的包位于： ::
 
 	http://ceph.com/rpm-{release-name}
 
@@ -181,37 +173,31 @@ Debian 二进制包
 ---------------
 
 把 Ceph 库加入系统级 APT 源列表。在较新版本的 Debian/Ubuntu 上，用命令 \
-``lsb_release -sc`` 可获取短代码名，然后用它替换下列命令里的 ``{codename}`` 。
-::
+``lsb_release -sc`` 可获取短代码名，然后用它替换下列命令里的 ``{codename}`` 。 ::
 
 	sudo apt-add-repository 'deb http://ceph.com/debian-firefly/ {codename} main'
 
-对于早期 Linux 发行版，你可以执行下列命令：
-::
+对于早期 Linux 发行版，你可以执行下列命令： ::
 
 	echo deb http://ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 对于早期 Ceph 发布，可用 Ceph 发布名替换 ``{release-name}`` 。用命令 \
-``lsb_release -sc`` 可获取短代码名，然后用它替换下列命令里的 ``{codename}`` 。
-::
+``lsb_release -sc`` 可获取短代码名，然后用它替换下列命令里的 ``{codename}`` 。 ::
 
 	sudo apt-add-repository 'deb http://ceph.com/debian-{release-name}/ {codename} main'
 
-对较老的 Linux 发行版，用发布名替换 ``{release-name}`` 。
-::
+对较老的 Linux 发行版，用发布名替换 ``{release-name}`` 。 ::
 
 	echo deb http://ceph.com/debian-{release-name}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 要在 ARM 处理器上运行 Ceph 的话，需要 Google 的内存剖析工具（\ ``google-perftools`` ）， \
-Ceph 库里有： http://ceph.com/packages/google-perftools/debian 。
-::
+Ceph 库里有： http://ceph.com/packages/google-perftools/debian 。 ::
 
 	echo deb http://ceph.com/packages/google-perftools/debian  $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/google-perftools.list
 
 
 对于开发版，把我们的软件库加入 APT 源。这里 `Debian 测试版软件库`_ 是已支持的 \
-Debian/Ubuntu 列表。
-::
+Debian/Ubuntu 列表。 ::
 
 	echo deb http://ceph.com/debian-testing/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
@@ -224,8 +210,7 @@ RPM 二进制包
 ``emperor`` ）替换 ``{ceph-release}`` 、用 Linux 发行版名（ ``el6`` 、 \
 ``rhel6`` 等）替换 ``{distro}`` 。你可以到 http://ceph.com/rpm-{ceph-release}/ \
 看看 Ceph 支持哪些发行版。有些 Ceph 包（如 EPEL ）必须优先于标准包，所以你必须确保\
-设置了 ``priority=2`` 。
-::
+设置了 ``priority=2`` 。 ::
 
 	[ceph]
 	name=Ceph packages for $basearch
@@ -255,8 +240,7 @@ RPM 二进制包
 	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
 
 
-如果想用开发版，你也可以用相应配置：
-::
+如果想用开发版，你也可以用相应配置： ::
 
 	[ceph]
 	name=Ceph packages for $basearch/$releasever
@@ -291,13 +275,11 @@ RPM 二进制包
 发布。
 
 软件库包会把软件库的具体配置安装到本机，以便 ``yum`` 或 ``up2date`` 使用。把 \
-``{distro}`` 替换成你的 Linux 发行版名字，把 ``{release}`` 换成 Ceph 的某个发布名。
-::
+``{distro}`` 替换成你的 Linux 发行版名字，把 ``{release}`` 换成 Ceph 的某个发布名。 ::
 
     su -c 'rpm -Uvh http://ceph.com/rpms/{distro}/x86_64/ceph-{release}.el6.noarch.rpm'
 
-你可以从这个地址直接下载 RPM ：
-::
+你可以从这个地址直接下载 RPM ： ::
 
      http://ceph.com/rpm-testing
 
@@ -316,8 +298,7 @@ Debian 二进制包
 人员。
 
 把此仓库加入 APT 源，用你要测试的分支名（如 chef-3、wip-hack、master ）替换 \
-``{BRANCH}`` 。我们所构建的完整分支列表在 `the gitbuilder page`_ 。
-::
+``{BRANCH}`` 。我们所构建的完整分支列表在 `the gitbuilder page`_ 。 ::
 
 	echo deb http://gitbuilder.ceph.com/ceph-deb-$(lsb_release -sc)-x86_64-basic/ref/{BRANCH} $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
@@ -327,8 +308,7 @@ RPM 二进制包
 
 对于当前开发分支，你可以在 ``/etc/yum.repos.d/`` 目录下创建 ``ceph.repo`` 文件，\
 内容如下，用你的 Linux 发行版名字（ ``centos6`` 、 ``rhel6`` 等）替换 \
-``{distro}`` 、用你想安装的分支名替换 ``{branch}`` 。
-::
+``{distro}`` 、用你想安装的分支名替换 ``{branch}`` 。 ::
 
 	[ceph-source]
 	name=Ceph source packages
@@ -351,8 +331,7 @@ Ceph 对象存储与普通的 Apache 和 FastCGI 库对接，只是 Ceph 要求 
 Debian 二进制包
 ---------------
 
-如果想要 100-continue 功能，请把我们的源加入 APT 源列表。
-::
+如果想要 100-continue 功能，请把我们的源加入 APT 源列表。 ::
 
 	echo deb http://gitbuilder.ceph.com/apache2-deb-$(lsb_release -sc)-x86_64-basic/ref/master $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph-apache.list
 	echo deb http://gitbuilder.ceph.com/libapache-mod-fastcgi-deb-$(lsb_release -sc)-x86_64-basic/ref/master $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph-fastcgi.list
@@ -363,8 +342,7 @@ RPM 二进制包
 
 你可以在 ``/etc/yum.repos.d/`` 目录下创建 ``ceph-apache.repo`` 文件，内容如下，\
 用你的 Linux 发行版名字（如 ``el6`` 、 ``rhel6`` ）替换 ``{distro}`` ， \
-http://gitbuilder.ceph.com  列出了支持的发行版。
-::
+http://gitbuilder.ceph.com  列出了支持的发行版。 ::
 
 	[apache2-ceph-noarch]
 	name=Apache noarch packages for Ceph
@@ -385,8 +363,7 @@ http://gitbuilder.ceph.com  列出了支持的发行版。
 	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc
 
 
-仿照前述步骤创建 ``ceph-fastcgi.repo`` 文件。
-::
+仿照前述步骤创建 ``ceph-fastcgi.repo`` 文件。 ::
 
 	[fastcgi-ceph-basearch]
 	name=FastCGI basearch packages for Ceph
@@ -437,8 +414,7 @@ Ceph 依赖这些第三方库。
 
 这个软件库包会装好所需的 ``apt`` 软件库的配置文件。需用最新 Ceph 发布替换掉 \
 ``{release}`` 、用最新 Ceph 版本号替换 ``{version}`` 、用自己的 Linux 发行版代号\
-替换 ``{distro}`` 、用自己的 CPU 架构替换 ``{arch}`` 。
-::
+替换 ``{distro}`` 、用自己的 CPU 架构替换 ``{arch}`` 。 ::
 
 	wget -q http://ceph.com/debian-{release}/pool/main/c/ceph/ceph_{version}{distro}_{arch}.deb
 
@@ -446,8 +422,7 @@ Ceph 依赖这些第三方库。
 RPM 二进制包
 ------------
 
-Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库：
-::
+Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库： ::
 
 	su -c 'rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm'
 
@@ -463,25 +438,21 @@ Ceph依赖下列包：
 当前，我们为这些平台 RHEL/CentOS6 （ ``el6`` ）、 Fedora 18 和 19（ ``f18`` 和 \
 ``f19`` ）、 OpenSUSE 12.2 （ ``opensuse12.2`` ）和 SLES （ ``sles11`` ）分别构\
 建二进制包，仓库包会在本地系统上装好 Ceph 库配置文件，这样 ``yum`` 或 ``up2date`` \
-就可以使用这些配置文件自动安装了。用自己的发行版名字替换 ``{distro}`` 。
-::
+就可以使用这些配置文件自动安装了。用自己的发行版名字替换 ``{distro}`` 。 ::
 
 	su -c 'rpm -Uvh http://ceph.com/rpm-firefly/{distro}/noarch/ceph-{version}.{distro}.noarch.rpm'
 
-例如，对于 CentOS 6 （ ``el6`` ）：
-::
+例如，对于 CentOS 6 （ ``el6`` ）： ::
 
 	su -c 'rpm -Uvh http://ceph.com/rpm-firefly/el6/noarch/ceph-release-1-0.el6.noarch.rpm'
 
-你可以从这里直接下载RPM包：
-::
+你可以从这里直接下载RPM包： ::
 
 	http://ceph.com/rpm-firefly
 
 
 对较老的 Ceph 发布，用 Ceph 发布名替换 ``{release-name}`` ，你可以执行 \
-``lsb_release -sc`` 命令获取发行版代号。
-::
+``lsb_release -sc`` 命令获取发行版代号。 ::
 
 	su -c 'rpm -Uvh http://ceph.com/rpm-{release-name}/{distro}/noarch/ceph-{version}.{distro}.noarch.rpm'
 

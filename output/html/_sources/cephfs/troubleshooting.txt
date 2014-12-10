@@ -14,13 +14,11 @@ Mount 12 Error
 ==============
 
 mount 12 错误显示 ``cannot allocate memory`` ，常见于 :term:`Ceph 客户端`\ 和 \
-:term:`Ceph 存储集群`\ 版本不匹配。用以下命令检查版本：
-::
+:term:`Ceph 存储集群`\ 版本不匹配。用以下命令检查版本： ::
 
 	ceph -v
 
-如果 Ceph 客户端版本落后于集群，试着升级它：
-::
+如果 Ceph 客户端版本落后于集群，试着升级它： ::
 
 	sudo apt-get update && sudo apt-get install ceph-common 
 

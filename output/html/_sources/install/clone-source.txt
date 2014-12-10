@@ -14,13 +14,11 @@
 安装 Git
 ========
 
-在 Debian/Ubuntu 上执行下列命令安装 ``git`` ：
-::
+在 Debian/Ubuntu 上执行下列命令安装 ``git`` ： ::
 
 	sudo apt-get install git
 
-在 CentOS/RHEL 上执行下列命令安装 ``git`` ：
-::
+在 CentOS/RHEL 上执行下列命令安装 ``git`` ： ::
 
 	sudo yum install git
 
@@ -40,13 +38,11 @@
 .. tip:: 如果你只是想克隆，不需要 SSH 密钥也可用 \
    ``git clone --recursive https://github.com/ceph/ceph.git`` 克隆。
 
-执行如下命令生成 SSH 密钥对用于 ``github`` ：
-::
+执行如下命令生成 SSH 密钥对用于 ``github`` ： ::
 
 	ssh-keygen
 
-把此密钥对的公钥加入 ``github`` 帐户（本例假设用了默认路径）：
-::
+把此密钥对的公钥加入 ``github`` 帐户（本例假设用了默认路径）： ::
 
 	cat .ssh/id_rsa.pub
 
@@ -62,21 +58,18 @@
 克隆源码
 ========
 
-执行下列命令克隆源码库：
-::
+执行下列命令克隆源码库： ::
 
 	git clone --recursive https://github.com/ceph/ceph.git
 
 ``git clone`` 完成后，你应该已经得到了一份完整的 Ceph 源码库。
 
-.. tip:: 确保你获取到的源码库之内的各子模块都是最新的，运行 ``git status`` 确认。
-   ::
+.. tip:: 确保你获取到的源码库之内的各子模块都是最新的，运行 ``git status`` 确认。 ::
 
 	cd ceph
 	git status
 
-   如果你的子模块过时了，运行：
-   ::
+   如果你的子模块过时了，运行： ::
 
 	git submodule update
 

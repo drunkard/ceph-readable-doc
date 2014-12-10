@@ -6,8 +6,8 @@
 下继续提供服务。其\ `数据归置`_\ 引进了一个间接层，它可保证数据不会直接绑死到某一个\
 特定 OSD 地址，这也意味着追踪系统错误的根源得深入\ `归置组`_\ 及底层的 OSD 。
 
-.. tip:: 集群某一部分失效可能导致不能访问某个对象，但不会牵连其他对象。碰到这种问题\
-   时无需恐慌，只需按步骤检查 OSD 和归置组，然后排除故障。
+.. tip:: 集群某一部分失效可能导致不能访问某个对象，但不会牵连其他对象。碰到\
+   这种问题时无需恐慌，只需按步骤检查 OSD 和归置组，然后排除故障。
 
 Ceph 通常能自己康复，然而如果故障持续存在，监控 OSD 和归置组有助于找出问题所在。
 
@@ -50,8 +50,7 @@ Ceph 通常能自己康复，然而如果故障持续存在，监控 OSD 和归�
 #. 你刚刚修改完集群运行图。
 
 OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD 也应该是启动（ ``up`` ）并在\
-集群内（ ``in`` ）运行。用下列命令查看：
-::
+集群内（ ``in`` ）运行。用下列命令查看： ::
 
 	ceph osd stat
 
@@ -61,12 +60,9 @@ OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD �
 	eNNNN: x osds: y up, z in
 
 如果处于 ``in`` 状态的 OSD 多于 ``up`` 的，用下列命令看看哪些 ``ceph-osd`` 守护进\
-程没在运行：
-::
+程没在运行： ::
 
-	ceph osd tree
-
-:: 
+	ceph osd tree ::
 
 	dumped osdmap tree epoch 1
 	# id	weight	type name	up/down	reweight
@@ -79,8 +75,7 @@ OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD �
 
 .. tip:: 精心设计的 CRUSH 分级结构可以帮你更快的定位到物理位置、加快故障排除。
 
-若一个 OSD 状态为 ``down`` ，启动它：
-::
+若一个 OSD 状态为 ``down`` ，启动它： ::
 
 	sudo /etc/init.d/ceph -a start osd.1
 
@@ -108,25 +103,22 @@ up set 和 acting set 本质上相同，如果不同，说明可能 Ceph 在迁�
 复、或者哪里有问题。这种情况下， Ceph 通常表现为 HEALTH WARN 状态，还有 "stuck \
 stale" 消息。
 
-用下列命令获取归置组列表：
-::
+用下列命令获取归置组列表： ::
 
 	ceph pg dump
 
-要根据指定归置组号查看哪些 OSD 位于 Acting Set 或 Up Set 里，执行：
-::
+要根据指定归置组号查看哪些 OSD 位于 Acting Set 或 Up Set 里，执行： ::
 
 	ceph pg map {pg-num}
 
 其结果会告诉你 osdmap 版本（ eNNN ）、归置组号（ {pg-num} ）、 Up Set 内的 OSD \
-（ up[] ）、和 Acting Set 内的 OSD （ acting[] ）。
-::
+（ up[] ）、和 Acting Set 内的 OSD （ acting[] ）。 ::
 
 	osdmap eNNN pg {pg-num} -> up [0,1,2] acting [0,1,2]
 
 .. note:: 如果 Up Set 和 Acting Set 不一致，这可能表明集群内部在重均衡或者有潜在\
    问题。
- 
+
 
 节点互联
 ========
@@ -142,14 +134,14 @@ acting set 内的第一个 OSD ）会与第二和第三 OSD 建立连接、并�
            +---------+     +---------+     +-------+
                 |               |              |
                 |  Request To   |              |
-                |     Peer      |              |             
+                |     Peer      |              |
                 |-------------->|              |
                 |<--------------|              |
                 |    Peering                   |
                 |                              |
                 |         Request To           |
-                |            Peer              | 
-                |----------------------------->|  
+                |            Peer              |
+                |----------------------------->|
                 |<-----------------------------|
                 |          Peering             |
 
@@ -175,22 +167,19 @@ OSD 们也向监视器报告自己的状态，详情见\ `监视器与 OSD 交�
 如果是前述原因之一导致了 Ceph 返回 ``HEALTH WARN`` ，无需紧张。很多情况下，集群会\
 自行恢复；有些时候你得采取些措施。归置组监控的一件重要事情是保证集群起来并运行着，所\
 有归置组都处于 ``active`` 状态、并且最好是 ``clean`` 状态。用下列命令查看所有归置\
-组状态：
-::
+组状态： ::
 
 	ceph pg stat
 
 其结果会告诉你归置组运行图的版本号（ vNNNNNN ）、归置组总数 x 、有多少归置组处于某\
-种特定状态，如 ``active+clean`` （ y ）。
-::
+种特定状态，如 ``active+clean`` （ y ）。 ::
 
 	vNNNNNN: x pgs: y active+clean; z bytes data, aa MB used, bb GB / cc GB avail
 
 .. note:: Ceph 同时报告出多种状态是正常的。
 
 除了归置组状态之外， Ceph 也会报告数据占据的空间（ aa ）、剩余空间（ bb ）和归置组\
-总容量。这些数字在某些情况下是很重要的：
-::
+总容量。这些数字在某些情况下是很重要的： ::
 
 - 快达到 ``near full ratio`` 或 ``full ratio`` 时；
 - 由于 CRUSH 配置错误致使你的数据没能在集群内分布。
@@ -201,29 +190,24 @@ OSD 们也向监视器报告自己的状态，详情见\ `监视器与 OSD 交�
    归置组 ID 包含存储池号（不是存储池名字），后面跟一个点（ . ），然后是归置组 ID \
    一个十六进制数字。用 ``ceph osd lspools`` 可查看存储池号及其名字，默认存储池名\
    字 ``data`` 、 ``metadata`` 、和 ``rbd`` 对应的存储池号分别是 ``0`` 、 \
-   ``1`` 、 ``2`` 。完整的归置组 ID 格式如下：
-   ::
+   ``1`` 、 ``2`` 。完整的归置组 ID 格式如下： ::
 
    	{pool-num}.{pg-id}
-   
-   典型长相：
-   ::
-   
+
+   典型长相： ::
+
    	0.1f
 
 
-用下列命令获取归置组列表：
-::
+用下列命令获取归置组列表： ::
 
 	ceph pg dump
 
-你也可以让它输出到 JSON 格式，并保存到文件：
-::
+你也可以让它输出到 JSON 格式，并保存到文件： ::
 
 	ceph pg dump -o {filename} --format=json
 
-要查询某个归置组，用下列命令：
-::
+要查询某个归置组，用下列命令： ::
 
 	ceph pg {poolnum}.{pg-id} query
 
@@ -293,7 +277,7 @@ Ceph 会输出成 JSON 格式。
 	        "num_write_kb": 1
 	      },
 	      "stat_cat_sum": {
-	        
+
 	      },
 	      "up": [
 	        1,
@@ -313,7 +297,7 @@ Ceph 会输出成 JSON 格式。
 	      "name": "Started\/Primary\/Active",
 	      "enter_time": "2013-01-23 09:35:37.594691",
 	      "might_have_unfound": [
-	        
+
 	      ],
 	      "scrub": {
 	        "scrub_epoch_start": "536",
@@ -322,7 +306,7 @@ Ceph 会输出成 JSON 格式。
 	        "finalizing_scrub": 0,
 	        "scrub_waiting_on": 0,
 	        "scrub_waiting_on_whom": [
-	          
+
 	        ]
 	      }
 	    },
@@ -344,8 +328,8 @@ Ceph 会输出成 JSON 格式。
 ``creating`` ；创建完后，在其归置组的 Acting Set 里的 OSD 将建立互联；一旦互联完\
 成，归置组状态应该变为 ``active+clean`` ，意思是 Ceph 客户端可以向归置组写入数据了。
 
-.. ditaa:: 
-         
+.. ditaa::
+
        /-----------\       /-----------\       /-----------\
        | Creating  |------>|  Peering  |------>|  Active   |
        \-----------/       \-----------/       \-----------/
@@ -475,8 +459,7 @@ Ceph 的自修复功能往往无能为力，卡住的状态细分为：
 - **Stale**: 归置组们处于一种未知状态，因为存储它们的 OSD 有一阵子没向监视器报告了\
   （由 ``mon osd report timeout`` 配置）。
 
-为找出卡住的归置组，执行：
-::
+为找出卡住的归置组，执行： ::
 
 	ceph pg dump_stuck [unclean|inactive|stale]
 
@@ -492,41 +475,35 @@ Ceph 的自修复功能往往无能为力，卡住的状态细分为：
 #. 指定一\ `存储池`_
 
 Ceph 客户端索取最新集群运行图、并用 CRUSH 算法计算对象到\ `归置组`_\ 的映射，然后\
-计算如何动态地把归置组映射到 OSD 。要定位对象，只需要知道对象名和存储池名字，例如：
-::
+计算如何动态地把归置组映射到 OSD 。要定位对象，只需要知道对象名和存储池名字，例如： ::
 
 	ceph osd map {poolname} {object-name}
 
 .. topic:: 练习：定位一个对象
 
-	反正是练习，我们先创建一个对象。给 ``rados put`` 命令指定一对象名、一个包\
-	含数据的测试文件路径、和一个存储池名字，例如：
-	::
+   反正是练习，我们先创建一个对象。给 ``rados put`` 命令指定一对象名、一个包\
+   含数据的测试文件路径、和一个存储池名字，例如： ::
 
-		rados put {object-name} {file-path} --pool=data   
-		rados put test-object-1 testfile.txt --pool=data
-   
-	用下列命令确认 Ceph 对象存储已经包含此对象：
-	::
+	rados put {object-name} {file-path} --pool=data
+	rados put test-object-1 testfile.txt --pool=data
 
-		rados -p data ls
-   
-	现在可以定位对象了：
-	::
+   用下列命令确认 Ceph 对象存储已经包含此对象： ::
 
-		ceph osd map {pool-name} {object-name}
-		ceph osd map data test-object-1
-   
-	Ceph 应该输出对象的位置，例如：
-	::
+	rados -p data ls
 
-		osdmap e537 pool 'data' (0) object 'test-object-1' -> pg 0.d1743484 (0.4) -> up [1,0] acting [1,0]
+   现在可以定位对象了： ::
 
-	要删除测试对象，用 ``rados rm`` 即可，如：
-	::
+	ceph osd map {pool-name} {object-name}
+	ceph osd map data test-object-1
 
-		rados rm test-object-1 --pool=data
-   
+   Ceph 应该输出对象的位置，例如： ::
+
+	osdmap e537 pool 'data' (0) object 'test-object-1' -> pg 0.d1743484 (0.4) -> up [1,0] acting [1,0]
+
+   要删除测试对象，用 ``rados rm`` 即可，如： ::
+
+	rados rm test-object-1 --pool=data
+
 
 随着集群的运转，对象位置会动态改变。 Ceph 动态重均衡的优点之一，就是把你从人工迁移\
 中解救了，详情见\ `体系结构`_\ 。

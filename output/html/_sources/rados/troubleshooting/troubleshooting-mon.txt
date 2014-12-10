@@ -370,14 +370,12 @@ What should I do if there's a clock skew?
 检查防火墙配置。有些系统安装工具把 ``REJECT`` 规则加入了 ``iptables`` ，它会拒绝\
 除 ``ssh`` 以外的所有入栈连接。如果你的监视器主机有这样的 ``REJECT`` 规则，别的客\
 户端进来的连接将遇到超时错误而不能挂载。得先找到这条拒绝客户端连入的 ``iptables`` \
-规则，例如，你要找到形似以下的规则：
-::
+规则，例如，你要找到形似以下的规则： ::
 
 	REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
 
 你也许还要在 Ceph 主机上增加 iptables 规则来放通 Ceph 监视器端口（如默认的 6789 端\
-口）、和 OSD 端口（如默认从 6800 开始的一系列端口）。例如：
-::
+口）、和 OSD 端口（如默认从 6800 开始的一系列端口）。例如： ::
 
 	iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:6810 -j ACCEPT
 

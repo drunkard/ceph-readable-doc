@@ -12,8 +12,7 @@
 增加一元数据服务器
 ==================
 
-部署完监视器和 OSD 后，还可以部署元数据服务器。
-::
+部署完监视器和 OSD 后，还可以部署元数据服务器。 ::
 
 	ceph-deploy mds create {host-name}[:{daemon-name}] [{host-name}[:{daemon-name}] ...]
 

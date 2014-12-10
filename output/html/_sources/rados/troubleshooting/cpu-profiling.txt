@@ -9,8 +9,7 @@
 初始化 oprofile
 ===============
 
-你首次使用 ``oprofile`` 时要初始化，找到对应于当前运行内核的 ``vmlinux`` 映像：
-::
+你首次使用 ``oprofile`` 时要初始化，找到对应于当前运行内核的 ``vmlinux`` 映像： ::
 
 	ls /boot
 	sudo opcontrol --init
@@ -20,8 +19,7 @@
 启动 oprofile
 =============
 
-执行下面的命令启动 ``oprofile`` ：
-::
+执行下面的命令启动 ``oprofile`` ： ::
 
 	opcontrol --start
 
@@ -31,8 +29,7 @@
 停止 oprofile
 =============
 
-执行下面的命令停止 ``oprofile`` ：
-::
+执行下面的命令停止 ``oprofile`` ： ::
 
 	opcontrol --stop
 
@@ -40,13 +37,11 @@
 查看 oprofile 运行结果
 ======================
 
-要查看 ``cmon`` 最近的结果，执行下面的命令：
-::
+要查看 ``cmon`` 最近的结果，执行下面的命令： ::
 
 	opreport -gal ./cmon | less
 
-要检索 ``cmon`` 最近的调用图结果，执行下面的命令：
-::
+要检索 ``cmon`` 最近的调用图结果，执行下面的命令： ::
 
 	opreport -cal ./cmon | less
 
@@ -57,8 +52,7 @@
 重置 oprofile
 =============
 
-要重置 ``oprofile`` ，执行下面的命令：
-::
+要重置 ``oprofile`` ，执行下面的命令： ::
 
 	sudo opcontrol --reset   
 

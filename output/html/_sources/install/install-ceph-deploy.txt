@@ -8,8 +8,7 @@
 APT
 ---
 
-要用 ``apt`` 安装 ``ceph-deploy`` ，用此命令：
-::
+要用 ``apt`` 安装 ``ceph-deploy`` ，用此命令： ::
 
 	sudo apt-get update && sudo apt-get install ceph-deploy
 
@@ -17,8 +16,7 @@ APT
 RPM
 ---
 
-要用 ``yum`` 安装 ``ceph-deploy`` ，用此命令：
-::
+要用 ``yum`` 安装 ``ceph-deploy`` ，用此命令： ::
 
 	sudo yum install ceph-deploy
 

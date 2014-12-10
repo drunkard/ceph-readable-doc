@@ -234,8 +234,7 @@
 映像名
 ======
 
-除了 --pool 和 --snap 选项之外，映像名还能包含存储池名和快照名，其格式如下：
-::
+除了 --pool 和 --snap 选项之外，映像名还能包含存储池名和快照名，其格式如下： ::
 
 	[pool/]image-name[@snap]
 
@@ -299,82 +298,67 @@ Map 选项
 实例
 ====
 
-要新建一 100GB 的 rbd 映像：
-::
+要新建一 100GB 的 rbd 映像： ::
 
 	rbd -p mypool create myimage --size 102400
 
-或者这样：
-::
+或者这样： ::
 
 	rbd create mypool/myimage --size 102400
 
-用个非默认对象尺寸，8 MB：
-::
+用个非默认对象尺寸，8 MB： ::
 
 	rbd create mypool/myimage --size 102400 --order 23
 
-删除一 rbd 映像（谨慎啊！）：
-::
+删除一 rbd 映像（谨慎啊！）： ::
 
 	rbd rm mypool/myimage
 
-新建快照：
-::
+新建快照： ::
 
 	rbd snap create mypool/myimage@mysnap
 
-创建已保护快照的写时复制克隆：
-::
+创建已保护快照的写时复制克隆： ::
 
 	rbd clone mypool/myimage@mysnap otherpool/cloneimage
 
-查看快照有哪些克隆品：
-::
+查看快照有哪些克隆品： ::
 
 	rbd children mypool/myimage@mysnap
 
-删除快照：
-::
+删除快照： ::
 
 	rbd snap rm mypool/myimage@mysnap
 
-启用 cephx 时通过内核映射一映像：
-::
+启用 cephx 时通过内核映射一映像： ::
 
 	rbd map mypool/myimage --id admin --keyfile secretfile
 
-取消映像映射：
-::
+取消映像映射： ::
 
 	rbd unmap /dev/rbd0
 
-创建一映像及其克隆品：
-::
+创建一映像及其克隆品： ::
 
 	rbd import --image-format 2 image mypool/parent
 	rbd snap create --snap snapname mypool/parent
 	rbd snap protect mypool/parent@snap
 	rbd clone mypool/parent@snap otherpool/child
 
-新建一 stripe_unit 较小的映像（在某些情况下可更好地分布少量写）：
-::
+新建一 stripe_unit 较小的映像（在某些情况下可更好地分布少量写）： ::
 
 	rbd -p mypool create myimage --size 102400 --stripe-unit 65536 --stripe-count 16
 
-更改一映像的格式，先导出、再导入为期望格式：
-::
+更改一映像的格式，先导出、再导入为期望格式： ::
 
 	rbd export mypool/myimage@snap /tmp/img
 	rbd import --image-format 2 /tmp/img mypool/myimage2
 
-互斥地锁住一映像：
-::
+互斥地锁住一映像： ::
 
 	rbd lock add mypool/myimage mylockid
 
-释放锁：
-::
+释放锁： ::
 
 	rbd lock remove mypool/myimage mylockid client.2485
 

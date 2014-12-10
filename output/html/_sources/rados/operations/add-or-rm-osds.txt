@@ -54,31 +54,27 @@ CRUSH 图。
 往 CRUSH 图里添加 OSD 时建议设置权重，硬盘容量每年增长 40% ，所以较新的 OSD 主机拥\
 有更大的空间（即它们可以有更大的权重）。
 
-.. tip:: Ceph prefers uniform hardware across pools. If you are adding drives
-   of dissimilar size, you can adjust their weights. However, for best 
-   performance, consider a CRUSH hierarchy with drives of the same type/size.
+.. tip:: Ceph 喜欢统一的硬件，与存储池无关。如果你要新增容量不一的驱动器，还\
+   需调整它们的权重。但是，为实现最佳性能，CRUSH 的分级结构最好按类型、容量\
+   定义。
 
 #. 创建 OSD 。如果未指定 UUID ， OSD 启动时会自动生成一个。下列命令会输出 OSD 号，\
-   后续步骤你会用到。
-   ::
+   后续步骤你会用到。 ::
 
 	ceph osd create [{uuid}]
 
-#. 在新 OSD 主机上创建默认目录。
-   ::
+#. 在新 OSD 主机上创建默认目录。 ::
 
 	ssh {new-osd-host}
 	sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
 
-#. 如果准备用于 OSD 的是单独的而非系统盘，先把它挂载到刚创建的目录下：
-   ::
+#. 如果准备用于 OSD 的是单独的而非系统盘，先把它挂载到刚创建的目录下： ::
 
 	ssh {new-osd-host}
 	sudo mkfs -t {fstype} /dev/{drive}
 	sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}
 
-#. 初始化 OSD 数据目录。
-   ::
+#. 初始化 OSD 数据目录。 ::
 
 	ssh {new-osd-host}
 	ceph-osd -i {osd-num} --mkfs --mkkey
@@ -86,26 +82,21 @@ CRUSH 图。
    运行 ``ceph-osd`` 时目录必须是空的。
 
 #. 注册 OSD 认证密钥， ``ceph-{osd-num}`` 路径里的 ``ceph`` 值应该是 \
-   ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，那就用改过的名字。
-   ::
+   ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，那就用改过的名字。 ::
 
 	ceph auth add osd.{osd-num} osd 'allow *' mon 'allow rwx' -i /var/lib/ceph/osd/ceph-{osd-num}/keyring
 
-#. Add the OSD to the CRUSH map so that the OSD can begin receiving data. The 
-   ``ceph osd crush add`` command allows you to add OSDs to the CRUSH hierarchy 
-   wherever you wish. If you specify at least one bucket, the command 
-   will place the OSD into the most specific bucket you specify, *and* it will 
-   move that bucket underneath any other buckets you specify. **Important:** If 
-   you specify only the root bucket, the command will attach the OSD directly 
-   to the root, but CRUSH rules expect OSDs to be inside of hosts.
-      
-   若用的是 v0.48 版，执行下列命令：
-   ::
+#. 把 OSD 加入 CRUSH 图，这样它才开始收数据。用 ``ceph osd crush add`` 命令\
+   把 OSD 加入 CRUSH 分级结构的合适位置。如果你指定了不止一个桶，此命令会把\
+   它加入你所指定的桶中最具体的一个，\ *并且*\ 把此桶挪到你指定的其它桶之内。\
+   **重要：**\ 如果你只指定了 root 桶，此命令会把 OSD 直接挂到 root 下面，但\
+   是 CRUSH 规则期望它位于主机内。
+
+   若用的是 v0.48 版，执行下列命令： ::
 
 	ceph osd crush add {id} {name} {weight}  [{bucket-type}={bucket-name} ...]
 
-   若用的是 v0.56 及更高版，执行下列命令：
-   ::
+   若用的是 v0.56 及更高版，执行下列命令： ::
 
 	ceph osd crush add {id-or-name} {weight}  [{bucket-type}={bucket-name} ...]
 
@@ -117,20 +108,17 @@ CRUSH 图。
 .. topic:: Argonaut 0.48 版最佳实践
 
    为降低对用户 I/O 性能的影响，加入 CRUSH 图时应该把 OSD 的初始权重设为 ``0`` ，\
-   然后每次增大一点、逐步增大 CRUSH 权重。例如每次增加 ``0.2`` ：
-   ::
+   然后每次增大一点、逐步增大 CRUSH 权重。例如每次增加 ``0.2`` ： ::
 
       ceph osd crush reweight {osd-id} .2
 
    迁移完成前，可以依次把权重重置为 ``0.4`` 、 ``0.6`` 等等，直到达到期望权重。
 
-   为降低 OSD 失败的影响，你可以设置：
-   ::
+   为降低 OSD 失败的影响，你可以设置： ::
 
       mon osd down out interval = 0
 
-   它防止挂了的 OSD 自动被标记为 ``out`` ，然后逐步降低其权重：
-   ::
+   它防止挂了的 OSD 自动被标记为 ``out`` ，然后逐步降低其权重： ::
 
       ceph osd reweight {osd-num} .8
 
@@ -147,13 +135,11 @@ CRUSH 图。
 且 ``out`` 。你必须先启动 OSD 它才能收数据。可以用管理主机上的 ``service ceph`` 、\
 或从 OSD 所在主机启动。
 
-在 Debian/Ubuntu 上用 Upstart。
-::
+在 Debian/Ubuntu 上用 Upstart。 ::
 
 	sudo start ceph-osd id={osd-num}
 
-在 CentOS/RHEL 上用 sysvinit 。
-::
+在 CentOS/RHEL 上用 sysvinit 。 ::
 
 	sudo /etc/init.d/ceph start osd.{osd-num}
 
@@ -164,8 +150,7 @@ CRUSH 图。
 ------------
 
 把新 OSD 加入 CRUSH 图后， Ceph 会重新均衡服务器，一些归置组会迁移到新 OSD 里，你\
-可以用 `ceph`_ 命令观察此过程。
-::
+可以用 `ceph`_ 命令观察此过程。 ::
 
 	ceph -w
 
@@ -187,14 +172,13 @@ CRUSH 图。
 
 .. warning:: 删除 OSD 时不要让集群达到 ``full ratio`` 值，删除 OSD 可能导致集群达\
    到或超过 ``full ratio`` 值。
-   
+
 
 把 OSD 踢出集群
 ---------------
 
 删除 OSD 前，它通常是 ``up`` 且 ``in`` 的，要先把它踢出集群，以使 Ceph 启动重新均\
-衡、把数据拷贝到其他 OSD 。
-::
+衡、把数据拷贝到其他 OSD 。 ::
 
 	ceph osd out {osd-num}
 
@@ -203,8 +187,7 @@ CRUSH 图。
 ------------
 
 一旦把 OSD 踢出（ ``out`` ）集群， Ceph 就会开始重新均衡集群、把归置组迁出将删除\
-的 OSD 。你可以用 `ceph`_ 工具观察此过程。
-::
+的 OSD 。你可以用 `ceph`_ 工具观察此过程。 ::
 
 	ceph -w
 
@@ -216,8 +199,7 @@ CRUSH 图。
 --------
 
 把 OSD 踢出集群后，它可能仍在运行，就是说其状态为 ``up`` 且 ``out`` 。删除前要先停\
-止 OSD 进程。
-::
+止 OSD 进程。 ::
 
 	ssh {osd-host}
 	sudo /etc/init.d/ceph stop osd.{osd-num}
@@ -234,42 +216,37 @@ CRUSH 图。
 
 #. 删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了。你也可以反编译 CRUSH 图、删\
    除 device 列表条目、删除对应的 host 桶条目或删除 host 桶（如果它在 CRUSH 图里，\
-   而且你想删除主机），重编译 CRUSH 图并应用它。详情参见\ `删除 OSD`_ 。
-   ::
+   而且你想删除主机），重编译 CRUSH 图并应用它。详情参见\ `删除 OSD`_ 。 ::
 
 	ceph osd crush remove {name}
 
-#. 删除 OSD 认证密钥：
-   ::
+#. 删除 OSD 认证密钥： ::
 
 	ceph auth del osd.{osd-num}
 
    ``ceph-{osd-num}`` 路径里的 ``ceph`` 值是 ``$cluster-$id`` ，如果集群名字不\
    是 ``ceph`` ，这里要更改。
 
-#. 删除 OSD 。
-   ::
+#. 删除 OSD 。 ::
 
 	ceph osd rm {osd-num}
 	#for example
 	ceph osd rm 1
 
-#. 登录到保存 ``ceph.conf`` 主拷贝的主机。
-   ::
+#. 登录到保存 ``ceph.conf`` 主拷贝的主机。 ::
 
 	ssh {admin-host}
 	cd /etc/ceph
 	vim ceph.conf
 
-#. 从 ``ceph.conf`` 配置文件里删除对应条目。
-   ::
+#. 从 ``ceph.conf`` 配置文件里删除对应条目。 ::
 
 	[osd.1]
 		host = {hostname}
- 
+
 #. 从保存 ``ceph.conf`` 主拷贝的主机，把更新过的 ``ceph.conf`` 拷贝到集群其他主机\
    的 ``/etc/ceph`` 目录下。
-   
+
 
 
 .. _删除 OSD: ../crush-map#removeosd

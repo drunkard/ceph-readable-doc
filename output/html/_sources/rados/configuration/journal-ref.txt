@@ -22,73 +22,73 @@ OSD 守护进程支持下面的日志选项：
 
 ``journal dio``
 
-:Description: 对日志启用径直 IO ，需要  ``journal block align`` 设置为 ``true`` 。              
-:Type: Boolean
-:Required: 用 ``aio`` 时自动启用。
-:Default: ``true``
+:描述: 对日志启用径直 IO ，需要  ``journal block align`` 设置为 ``true`` 。
+:类型: Boolean
+:是否必需: 用 ``aio`` 时自动启用。
+:默认值: ``true``
 
 
 ``journal aio``
 
 .. versionchanged:: 0.61 Cuttlefish
 
-:Description: 异步写入日志时用 ``libaio`` 库，需要  ``journal dio`` 设为 ``true`` 。
-:Type: Boolean 
-:Required: No.
-:Default: 0.61 版之后为 ``true`` ， 0.60 及之前为 ``false`` 。
+:描述: 异步写入日志时用 ``libaio`` 库，需要  ``journal dio`` 设为 ``true`` 。
+:类型: Boolean
+:是否必需: No.
+:默认值: 0.61 版之后为 ``true`` ， 0.60 及之前为 ``false`` 。
 
 
 ``journal block align``
 
-:Description: 块对齐写， ``dio`` 和 ``aio`` 需要。
-:Type: Boolean
-:Required: 用 ``dio`` 和 ``aio`` 时自动启用。
-:Default: ``true``
+:描述: 块对齐写， ``dio`` 和 ``aio`` 需要。
+:类型: Boolean
+:是否必需: 用 ``dio`` 和 ``aio`` 时自动启用。
+:默认值: ``true``
 
 
 ``journal max write bytes``
 
-:Description: 一次写入日志的最大尺寸。
-:Type: Integer
-:Required: No
-:Default: ``10 << 20``
+:描述: 一次写入日志的最大尺寸。
+:类型: Integer
+:是否必需: No
+:默认值: ``10 << 20``
 
 
 ``journal max write entries``
 
-:Description: 一次写入日志的最大数量。
-:Type: Integer
-:Required: No
-:Default: ``100``
+:描述: 一次写入日志的最大数量。
+:类型: Integer
+:是否必需: No
+:默认值: ``100``
 
 
 ``journal queue max ops``
 
-:Description: 队列里一次允许的最大操作数量。
-:Type: Integer
-:Required: No
-:Default: ``500``
+:描述: 队列里一次允许的最大操作数量。
+:类型: Integer
+:是否必需: No
+:默认值: ``500``
 
 
 ``journal queue max bytes``
 
-:Description: 队列里一次允许的最大字节数。
-:Type: Integer
-:Required: No
-:Default: ``10 << 20``
+:描述: 队列里一次允许的最大字节数。
+:类型: Integer
+:是否必需: No
+:默认值: ``10 << 20``
 
 
 ``journal align min size``
 
-:Description: 对齐大于指定最小值的数据有效载荷。
-:Type: Integer
-:Required: No
-:Default: ``64 << 10``
+:描述: 对齐大于指定最小值的数据有效载荷。
+:类型: Integer
+:是否必需: No
+:默认值: ``64 << 10``
 
 
 ``journal zero on create``
 
-:Description: 在创建文件系统（ ``mkfs`` ）期间用 ``0`` 填充整个日志。
-:Type: Boolean
-:Required: No
-:Default: ``false``
+:描述: 在创建文件系统（ ``mkfs`` ）期间用 ``0`` 填充整个日志。
+:类型: Boolean
+:是否必需: No
+:默认值: ``false``

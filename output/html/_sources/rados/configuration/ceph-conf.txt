@@ -48,7 +48,7 @@ Ceph 配置文件使用 *ini* 风格的语法，以分号 (;) 和井号 (#) 开�
 .. code-block:: ini
 
 	# <--A number (#) sign precedes a comment.
-	; A comment may be anything. 
+	; A comment may be anything.
 	# Comments always follow a semi-colon (;) or a pound (#) on each line.
 	# The end of the line terminates a comment.
 	# We recommend that you provide comments in your configuration file(s).
@@ -62,40 +62,43 @@ Ceph 配置文件使用 *ini* 风格的语法，以分号 (;) 和井号 (#) 开�
 Ceph 配置文件可用于配置存储集群内的所有守护进程、或者某一类型的所有守护进程。要配置\
 一系列守护进程，这些配置必须位于能收到配置的段落之下，比如：
 
+
 ``[global]``
 
-:Description: ``[global]`` 下的配置影响 Ceph 集群里的所有守护进程。
-              
-:Example: ``auth supported = cephx``
+:描述: ``[global]`` 下的配置影响 Ceph 集群里的所有守护进程。
+:实例: ``auth supported = cephx``
+
 
 ``[osd]``
 
-:Description: ``[osd]`` 下的配置影响存储集群里的所有 ``ceph-osd`` 进程，并且会覆\
-              盖 ``[global]`` 下的同一选项。
+:描述: ``[osd]`` 下的配置影响存储集群里的所有 ``ceph-osd`` 进程，并且会覆盖 \
+       ``[global]`` 下的同一选项。
 
-:Example: ``osd journal size = 1000``
+:实例: ``osd journal size = 1000``
+
 
 ``[mon]``
 
-:Description: ``[mon]`` 下的配置影响集群里的所有 ``ceph-mon`` 进程，并且会覆盖 \
-              ``[global]`` 下的同一选项。
+:描述: ``[mon]`` 下的配置影响集群里的所有 ``ceph-mon`` 进程，并且会覆盖 \
+       ``[global]`` 下的同一选项。
 
-:Example: ``mon addr = 10.0.0.101:6789``
+:实例: ``mon addr = 10.0.0.101:6789``
 
 
 ``[mds]``
 
-:Description: ``[mds]`` 下的配置影响集群里的所有 ``ceph-mds`` 进程，并且会覆盖 \
-              ``[global]`` 下的同一选项。
+:描述: ``[mds]`` 下的配置影响集群里的所有 ``ceph-mds`` 进程，并且会覆盖 \
+       ``[global]`` 下的同一选项。
 
-:Example: ``host = myserver01``
+:实例: ``host = myserver01``
+
 
 ``[client]``
 
-:Description: ``[client]`` 下的配置影响所有客户端（如挂载的 Ceph 文件系统、挂载的\
-              块设备等等）。
+:描述: ``[client]`` 下的配置影响所有客户端（如挂载的 Ceph 文件系统、挂载的\
+       块设备等等）。
 
-:Example: ``log file = /var/log/ceph/radosgw.log``
+:实例: ``log file = /var/log/ceph/radosgw.log``
 
 
 全局设置影响集群内所有守护进程的例程，所以 ``[global]`` 可用于设置适用所有守护进程\
@@ -168,38 +171,37 @@ Ceph 配置文件可用于配置存储集群内的所有守护进程、或者某
 
 Ceph 支持下列元变量：
 
+
 ``$cluster``
 
-:Description: 展开为存储集群名字，在同一套硬件上运行多个集群时有用。
-
-:Example: ``/etc/ceph/$cluster.keyring``
-:Default: ``ceph``
+:描述: 展开为存储集群名字，在同一套硬件上运行多个集群时有用。
+:实例: ``/etc/ceph/$cluster.keyring``
+:默认值: ``ceph``
 
 
 ``$type``
 
-:Description: 可展开为 ``mds`` 、 ``osd`` 、 ``mon`` 中的一个，有赖于当前守护进程\
-              的类型。
+:描述: 可展开为 ``mds`` 、 ``osd`` 、 ``mon`` 中的一个，有赖于当前守护进程\
+       的类型。
 
-:Example: ``/var/lib/ceph/$type``
+:实例: ``/var/lib/ceph/$type``
 
 
 ``$id``
 
-:Description: 展开为守护进程标识符； ``osd.0`` 应为 ``0`` ， ``mds.a`` 是 ``a`` 。
-
-:Example: ``/var/lib/ceph/$type/$cluster-$id``
+:描述: 展开为守护进程标识符； ``osd.0`` 应为 ``0`` ， ``mds.a`` 是 ``a`` 。
+:实例: ``/var/lib/ceph/$type/$cluster-$id``
 
 
 ``$host``
 
-:Description: 展开为当前守护进程的主机名。
+:描述: 展开为当前守护进程的主机名。
 
 
 ``$name``
 
-:Description: 展开为 ``$type.$id`` 。
-:Example: ``/var/run/ceph/$cluster-$name.asok``
+:描述: 展开为 ``$type.$id`` 。
+:实例: ``/var/run/ceph/$cluster-$name.asok``
 
 
 .. _ceph-conf-common-settings:
@@ -248,20 +250,18 @@ Ceph 支持下列元变量：
 
 Ceph 监视器默认监听 ``6789`` 端口，例如：
 
-.. code-block:: ini 
+.. code-block:: ini
 
 	[mon.a]
 	host = hostName
 	mon addr = 150.140.130.120:6789
 
-默认情况下， Ceph 会在下面的路径存储监视器数据：
-::
+默认情况下， Ceph 会在下面的路径存储监视器数据： ::
 
 	/var/lib/ceph/mon/$cluster-$id
 
 你必须手动或通过部署工具（如 ``ceph-deploy`` ）创建对应目录。前述元变量必须先全部展\
-开，名为 “ceph” 的集群将展开为：
-::
+开，名为 “ceph” 的集群将展开为： ::
 
 	/var/lib/ceph/mon/ceph-a
 
@@ -278,8 +278,7 @@ Ceph 监视器默认监听 ``6789`` 端口，例如：
 
 .. versionadded:: Bobtail 0.56
 
-对于 v0.56 及后来版本，要在配置文件的 ``[global]`` 中明确启用或禁用认证。
-::
+对于 v0.56 及后来版本，要在配置文件的 ``[global]`` 中明确启用或禁用认证。 ::
 
 	auth cluster required = cephx
 	auth service required = cephx
@@ -312,27 +311,23 @@ OSDs
 	host = {hostname} #manual deployments only.
 
 
-默认 Ceph 认为你把 OSD 数据存储到了以下路径：
-::
+默认 Ceph 认为你把 OSD 数据存储到了以下路径： ::
 
 	/var/lib/ceph/osd/$cluster-$id
 
 你必须手动或通过部署工具（如 ``ceph-deploy`` ）创建对应目录，名为 “ceph” 的集群其\
-元变量完全展开后，前述的目录将是：
-::
+元变量完全展开后，前述的目录将是： ::
 
 	/var/lib/ceph/osd/ceph-0
 
 你可以用 ``osd data`` 选项更改默认值，但我们不建议修改。用下面的命令在新 OSD 主机\
-上创建默认目录：
-:: 
+上创建默认目录： ::
 
 	ssh {osd-host}
 	sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
 
 ``osd data`` 路径应该指向一个独立硬盘的挂载点，这个硬盘应该独立于操作系统和守护进程\
-所在硬盘。按下列步骤准备好并挂载：
-::
+所在硬盘。按下列步骤准备好并挂载： ::
 
 	ssh {new-osd-host}
 	sudo mkfs -t {fstype} /dev/{disk}
@@ -368,6 +363,7 @@ ceph.conf 实例
 .. literalinclude:: demo-ceph.conf
    :language: ini
 
+
 .. _ceph-runtime-config:
 
 运行时更改
@@ -375,15 +371,13 @@ ceph.conf 实例
 
 Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守护进程的配\
 置，此功能在增加/降低日志输出、启用/禁用调试设置、甚至是运行时优化的时候非常有用，\
-下面是运行时配置方法：
-::
+下面是运行时配置方法： ::
 
 	ceph tell {daemon-type}.{id or *} injectargs --{name} {value} [--{name} {value}]
 
 用 ``osd`` 、 ``mon`` 、 ``mds`` 中的一个替代 ``{daemon-type}`` ，你可以用星号\
 （ ``*`` ）更改一类进程的所有例程配置、或者更改某一具体进程 ID （即数字或字母）的配\
-置。例如提高名为 ``osd.0`` 的 ``ceph-osd`` 进程之调试级别的命令如下：
-::
+置。例如提高名为 ``osd.0`` 的 ``ceph-osd`` 进程之调试级别的命令如下： ::
 
 	ceph tell osd.0 injectargs --debug-osd 20 --debug-ms 1
 
@@ -394,19 +388,16 @@ Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守
 查看运行时配置
 ==============
 
-如果你的 Ceph 存储集群在运行，而你想看一个在运行进程的配置，用下面的命令：
-::
+如果你的 Ceph 存储集群在运行，而你想看一个在运行进程的配置，用下面的命令： ::
 
 	ceph --admin-daemon {/path/to/admin/socket} config show | less
 
-各守护进程的管理套接字默认路径如下：
-::
+各守护进程的管理套接字默认路径如下： ::
 
 	/var/run/ceph/$cluster-$name.asok
 
 同时，元变量将展开为实际的集群名和进程名，例如如果集群名是 ``ceph`` （默认值），你\
-可以用下面的命令检索 ``osd.0`` 的配置：
-::
+可以用下面的命令检索 ``osd.0`` 的配置： ::
 
 	ceph --admin-daemon /var/run/ceph/ceph-osd.0.asok config show | less
 
@@ -452,8 +443,7 @@ Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守
 .. _日志选项: ../../troubleshooting/log-and-debug
 
 
-创建默认目录和文件时，路径里该用集群名的地方要注意，例如：
-::
+创建默认目录和文件时，路径里该用集群名的地方要注意，例如： ::
 
 	sudo mkdir /var/lib/ceph/osd/openstack-0
 	sudo mkdir /var/lib/ceph/mon/openstack-a
@@ -462,8 +452,7 @@ Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守
    端口，如果它已经被占，其它集群得指定其它端口。
 
 要调动一个名字不是 ``ceph`` 的集群，要给 ``ceph`` 命令加 ``-c {filename}.conf`` \
-选项，例如：
-::
+选项，例如： ::
 
 	ceph -c {cluster-name}.conf health
 	ceph -c openstack.conf health

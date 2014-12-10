@@ -1,6 +1,6 @@
-========================
+=========================
  监视器与 OSD 交互的配置
-========================
+=========================
 
 .. index:: heartbeat
 
@@ -187,99 +187,101 @@ OSD 报告自己的状态
 
 ``mon osd min up ratio``
 
-:Description: 在把 OSD 标记为 ``down`` 前，保持处于 ``up`` 状态的 OSD 最小比例。
-:Type: Double
-:Default: ``.3``
+:描述: 在把 OSD 标记为 ``down`` 前，保持处于 ``up`` 状态的 OSD 最小比例。
+:类型: Double
+:默认值: ``.3``
 
 
 ``mon osd min in ratio``
 
-:Description: 在把 OSD 标记为 ``out`` 前，保持处于 ``in`` 状态的 OSD 最小比例。
-:Type: Double
-:Default: ``.3``
+:描述: 在把 OSD 标记为 ``out`` 前，保持处于 ``in`` 状态的 OSD 最小比例。
+:类型: Double
+:默认值: ``.3``
 
 
 ``mon osd laggy halflife``
 
-:Description: 滞后量消退时间，秒。
-:Type: Integer
-:Default: ``60*60``
+:描述: 滞后量消退时间，秒。
+:类型: Integer
+:默认值: ``60*60``
 
 
 ``mon osd laggy weight``
 
-:Description: 滞后量消退时新样本的权重。
-:Type: Double
-:Default: ``0.3``
+:描述: 滞后量消退时新样本的权重。
+:类型: Double
+:默认值: ``0.3``
 
 
 ``mon osd adjust heartbeat grace``
 
-:Description: 设置为 ``true`` 时， Ceph 将根据滞后量伸缩。
-:Type: Boolean
-:Default: ``true``
+:描述: 设置为 ``true`` 时， Ceph 将根据滞后量伸缩。
+:类型: Boolean
+:默认值: ``true``
 
 
 ``mon osd adjust down out interval``
 
-:Description: 设置为 ``true`` 时， Ceph 将根据滞后量伸缩。
-:Type: Boolean
-:Default: ``true``
+:描述: 设置为 ``true`` 时， Ceph 将根据滞后量伸缩。
+:类型: Boolean
+:默认值: ``true``
 
 
 ``mon osd auto mark in``
 
-:Description: Ceph 将把任何启动中的 OSD 标记为在集群中（ ``in`` ）。
-:Type: Boolean
-:Default: ``false``
+:描述: Ceph 将把任何启动中的 OSD 标记为在集群中（ ``in`` ）。
+:类型: Boolean
+:默认值: ``false``
 
 
 ``mon osd auto mark auto out in``
 
-:Description: 把正在启动、且被自动标记为 ``out`` 状态的 OSD 标记为 ``in`` 。
-:Type: Boolean
-:Default: ``true``
+:描述: 把正在启动、且被自动标记为 ``out`` 状态的 OSD 标记为 ``in`` 。
+:类型: Boolean
+:默认值: ``true``
 
 
 ``mon osd auto mark new in``
 
-:Description: 把正在启动的新 OSD 标记为 ``in`` 。
-:Type: Boolean
-:Default: ``true``
+:描述: 把正在启动的新 OSD 标记为 ``in`` 。
+:类型: Boolean
+:默认值: ``true``
 
 
 ``mon osd down out interval``
 
-:Description: 在 OSD 停止响应多少秒后把它标记为 ``down`` 且 ``out`` 。
-:Type: 32-bit Integer
-:Default: ``300``
+:描述: 在 OSD 停止响应多少秒后把它标记为 ``down`` 且 ``out`` 。
+:类型: 32-bit Integer
+:默认值: ``300``
 
 
 ``mon osd downout subtree limit``
 
-:Description: Ceph 可以把最大为多少的 :term:`CRUSH` 单元自动标记为 ``out`` 。
-:Type: String
-:Default: ``rack``
+:描述: Ceph 可以把最大为多少的 :term:`CRUSH` 单元自动标记为 ``out`` 。
+:类型: String
+:默认值: ``rack``
 
 
 ``mon osd report timeout``
 
-:Description: 宣布无响应 OSD ``down`` 前的宽限期，秒。
-:Type: 32-bit Integer
-:Default: ``900``
+:描述: 宣布无响应 OSD ``down`` 前的宽限期，秒。
+:类型: 32-bit Integer
+:默认值: ``900``
+
 
 ``mon osd min down reporters``
 
-:Description: 确定一 OSD 状态为 ``down`` 的最少报告来源 OSD 数。
-:Type: 32-bit Integer
-:Default: ``1``
+:描述: 确定一 OSD 状态为 ``down`` 的最少报告来源 OSD 数。
+:类型: 32-bit Integer
+:默认值: ``1``
 
 
 ``mon osd min down reports``
 
-:Description: 一 OSD 必须重复报告另一个 ``down`` 的次数。
-:Type: 32-bit Integer
-:Default: ``3``
+:描述: 一 OSD 必须重复报告另一个 ``down`` 的次数。
+:类型: 32-bit Integer
+:默认值: ``3``
+
 
 .. index:: OSD hearbeat
 
@@ -288,50 +290,49 @@ OSD 选项
 
 ``osd heartbeat address``
 
-:Description: OSD 用于心跳的网络地址。
-:Type: Address
-:Default: 此主机的地址。
+:描述: OSD 用于心跳的网络地址。
+:类型: Address
+:默认值: 此主机的地址。
 
 
 ``osd heartbeat interval``
 
-:Description: 一 OSD 探测邻居的频率，秒。
-:Type: 32-bit Integer
-:Default: ``6``
+:描述: 一 OSD 探测邻居的频率，秒。
+:类型: 32-bit Integer
+:默认值: ``6``
 
 
 ``osd heartbeat grace``
 
-:Description: OSD 多久没心跳就会被集群认为它挂（ ``down`` ）了。
-:Type: 32-bit Integer
-:Default: ``20``
+:描述: OSD 多久没心跳就会被集群认为它挂（ ``down`` ）了。
+:类型: 32-bit Integer
+:默认值: ``20``
 
 
 ``osd mon heartbeat interval``
 
-:Description: OSD 没有邻居时多久探测一次监视器。
-:Type: 32-bit Integer
-:Default: ``30``
+:描述: OSD 没有邻居时多久探测一次监视器。
+:类型: 32-bit Integer
+:默认值: ``30``
 
 
 ``osd mon report interval max``
 
-:Description: 监视器允许 OSD 报告的最大间隔，超时将认为 OSD 挂了（ ``down`` ）。
-:Type: 32-bit Integer
-:Default: ``120``
+:描述: 监视器允许 OSD 报告的最大间隔，超时将认为 OSD 挂了（ ``down`` ）。
+:类型: 32-bit Integer
+:默认值: ``120``
 
 
 ``osd mon report interval min``
 
-:Description: 从一 OSD 启动或其它可报告事件发生以来，多长时间内必须向监视器报告一次。
-:Type: 32-bit Integer
-:Default: ``5``
-:Valid Range: 要小于 ``osd mon report interval max`` 。
+:描述: 从一 OSD 启动或其它可报告事件发生以来，多长时间内必须向监视器报告一次。
+:类型: 32-bit Integer
+:默认值: ``5``
+:有效范围: 要小于 ``osd mon report interval max`` 。
 
 
 ``osd mon ack timeout``
 
-:Description: OSD 等待监视器提供统计信息的时间，秒。
-:Type: 32-bit Integer
-:Default: ``30``
-
+:描述: OSD 等待监视器提供统计信息的时间，秒。
+:类型: 32-bit Integer
+:默认值: ``30``

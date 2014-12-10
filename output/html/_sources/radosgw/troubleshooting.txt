@@ -1,10 +1,10 @@
-=================
- Troubleshooting
-=================
+==========
+ 故障排除
+==========
 
 
-The Gateway Won't Start
-=======================
+网关启不起来
+============
 
 If you cannot start the gateway (i.e., there is no existing ``pid``), 
 check to see if there is an existing ``.asok`` file from another 
@@ -26,8 +26,9 @@ or
 
   /etc/init.d radosgw start --verbose
 
-HTTP Request Errors
-===================
+
+HTTP 请求错误
+=============
 
 Examining the access and error logs for the web server itself is
 probably the first step in identifying what is going on.  If there is
@@ -37,8 +38,8 @@ configured, and that the web server is looking for it in the proper
 location.
 
 
-Crashed ``radosgw`` process
-===========================
+``radosgw`` 崩溃
+================
 
 If the ``radosgw`` process dies, you will normally see a 500 error
 from the web server (apache, nginx, etc.).  In that situation, simply
@@ -129,8 +130,8 @@ The ``flag_point`` field indicates that the OSD is currently waiting
 for replicas to respond, in this case ``osd.0``.
 
 
-Java S3 API Troubleshooting
-===========================
+Java S3 API 故障排除
+====================
 
 
 Peer Not Authenticated
