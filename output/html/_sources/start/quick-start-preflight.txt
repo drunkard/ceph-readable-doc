@@ -56,8 +56,9 @@ Ceph 部署工具的安装
 
    把如下内容粘帖进去，用最新稳定版 Ceph 名字替换 ``{ceph-stable-release}`` \
    （如 ``firefly`` ）、用你的发行版名字替换 ``{distro}`` （如 ``el6`` 为 \
-   CentOS 6 、 ``rhel6.5`` 为 Red Hat 6 .5、 ``fc19`` 是 Fedora 19 、 \
-   ``fc20`` 是 Fedora 20 。最后保存到 ``/etc/yum.repos.d/ceph.repo`` 文件。 ::
+   CentOS 6 、 ``el7`` 为 CentOS 7 、 ``rhel6.5`` 为 Red Hat 6.5 、 ``rhel7`` \
+   为 Red Hat 7 、 ``fc19`` 是 Fedora 19 、 ``fc20`` 是 Fedora 20 。最后保存\
+   到 ``/etc/yum.repos.d/ceph.repo`` 文件。 ::
 
 	[ceph-noarch]
 	name=Ceph noarch packages

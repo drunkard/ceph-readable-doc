@@ -1,6 +1,6 @@
-===================
- Bucket Operations
-===================
+========
+ 桶操作
+========
 
 PUT Bucket
 ----------
@@ -155,6 +155,34 @@ The ``ListBucketResult`` contains objects, where each object is within a ``Conte
 | ``Size``               | Integer   | The object's size.                       |
 +------------------------+-----------+------------------------------------------+
 | ``StorageClass``       | String    | Should always return ``STANDARD``.       |
++------------------------+-----------+------------------------------------------+
+
+
+Get Bucket Location
+-------------------
+Retrieves the bucket's region. The user needs to be the bucket owner
+to call this. A bucket can be constrained to a region by providing
+``LocationConstraint`` during a PUT request.
+
+Syntax
+~~~~~~
+Add the ``location`` subresource to bucket resource as shown below
+
+::
+
+   GET /{bucket}?location HTTP/1.1
+   Host: cname.domain.com
+
+   Authorization: AWS {access-key}:{hash-of-header-and-secret}
+
+Response Entities
+~~~~~~~~~~~~~~~~~~~~~~~~
+
++------------------------+-----------+------------------------------------------+
+| Name                   | Type      | Description                              |
++========================+===========+==========================================+
+| ``LocationConstraint`` | String    | The region where bucket resides, empty   |
+|                        |           | string for defult region                 |
 +------------------------+-----------+------------------------------------------+
 
 

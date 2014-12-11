@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>块设备命令 &mdash; Ceph Documentation</title>
+    <title>RBD 重放 &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -27,8 +27,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
     <link rel="up" title="Ceph 块设备" href="../rbd/" />
-    <link rel="next" title="内核模块操作" href="../rbd-ko/" />
-    <link rel="prev" title="Ceph 块设备" href="../rbd/" />
+    <link rel="next" title="rbd-replay-prep – 预处理捕捉到的用于重放工作负荷的 RBD" href="../../man/8/rbd-replay-prep/" />
+    <link rel="prev" title="ceph-rbdnamer – 用于命名 RBD 设备的 udev 辅助程序" href="../../man/8/ceph-rbdnamer/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,10 +43,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../rbd-ko/" title="内核模块操作"
+          <a href="../../man/8/rbd-replay-prep/" title="rbd-replay-prep – 预处理捕捉到的用于重放工作负荷的 RBD"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../rbd/" title="Ceph 块设备"
+          <a href="../../man/8/ceph-rbdnamer/" title="ceph-rbdnamer – 用于命名 RBD 设备的 udev 辅助程序"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../rbd/" accesskey="U">Ceph 块设备</a> &raquo;</li> 
@@ -58,75 +58,35 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="id1">
-<h1>块设备命令<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
-<p id="index-0"><tt class="docutils literal"><span class="pre">rbd</span></tt> 命令可用于创建、罗列、内省和删除块设备映像，也可克隆映像、创建快照、回滚快照、查看快照等等。 <tt class="docutils literal"><span class="pre">rbd</span></tt> 命令用法详情见 <a class="reference external" href="../../man/8/rbd/">RBD – 管理 RADOS 块设备映像</a>。</p>
+  <div class="section" id="rbd">
+<h1>RBD 重放<a class="headerlink" href="#rbd" title="Permalink to this headline">¶</a></h1>
+<p id="index-0">RBD 重放是个用于捕捉和重放 Rados 块设备（ RBD ）载荷的工具集。要捕捉 RBD 载荷，必须在客户端安装 <tt class="docutils literal"><span class="pre">lttng-tools</span></tt> ，且客户端上的 <tt class="docutils literal"><span class="pre">librbd</span></tt> 必须在 Giant 版以上。</p>
+<p>捕捉、重放需三步：</p>
+<ol class="arabic">
+<li><p class="first">捕捉一个追踪过程，确保捕捉的是 <tt class="docutils literal"><span class="pre">pthread_id</span></tt> 上下文：</p>
+<div class="highlight-python"><pre>mkdir -p traces
+lttng create -o traces librbd
+lttng enable-event -u 'librbd:*'
+lttng add-context -u -t pthread_id
+lttng start
+# run RBD workload here
+lttng stop</pre>
+</div>
+</li>
+<li><p class="first">用 <a class="reference external" href="../../man/8/rbd-replay-prep">rbd-replay-prep</a> 处理捕捉到的追踪结果：</p>
+<div class="highlight-python"><pre>rbd-replay-prep traces/ust/uid/*/* replay.bin</pre>
+</div>
+</li>
+<li><p class="first">用 <a class="reference external" href="../../man/8/rbd-replay">rbd-replay</a> 重放此追踪过程。熟知它的行为前请用只读模式：</p>
+<div class="highlight-python"><pre>rbd-replay --read-only replay.bin</pre>
+</div>
+</li>
+</ol>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">要使用 Ceph 块设备命令，你必须有对应集群的访问权限。</p>
+<p class="last"><tt class="docutils literal"><span class="pre">rbd-replay</span></tt> 默认会销毁数据。不要在想保留的映像上使用，除非指定了 <tt class="docutils literal"><span class="pre">--read-only</span></tt> 选项。</p>
 </div>
-<div class="section" id="id2">
-<h2>创建块设备映像<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<p>要想把块设备加入某节点，你得先在 <a class="reference internal" href="../../glossary/#term-21"><em class="xref std std-term">Ceph 存储集群</em></a>中创建一个映像，用下列命令：</p>
-<div class="highlight-python"><pre>rbd create {image-name} --size {megabytes} --pool {pool-name}</pre>
-</div>
-<p>例如，要在 <tt class="docutils literal"><span class="pre">swimmingpool</span></tt> 这个存储池中创建一个名为 <tt class="docutils literal"><span class="pre">foo</span></tt> 、大小为 1GB 的映像，执行下列命令：</p>
-<div class="highlight-python"><pre>rbd create foo --size 1024
-rbd create bar --size 1024 --pool swimmingpool</pre>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">指定此存储池前必须先创建它，详情见<a class="reference external" href="../../rados/operations/pools">存储池</a>。</p>
-</div>
-</div>
-<div class="section" id="id3">
-<h2>罗列块设备映像<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<p>要罗列 <tt class="docutils literal"><span class="pre">rbd</span></tt> 存储池中的块设备，用下列命令（即 <tt class="docutils literal"><span class="pre">rbd</span></tt> 是默认存储池名字）：</p>
-<div class="highlight-python"><pre>rbd ls</pre>
-</div>
-<p>用下列命令罗列某个特定存储池中的块设备，用存储池名字替换掉 <tt class="docutils literal"><span class="pre">{poolname}</span></tt> ：</p>
-<div class="highlight-python"><pre>rbd ls {poolname}</pre>
-</div>
-<p>例如：</p>
-<div class="highlight-python"><pre>rbd ls swimmingpool</pre>
-</div>
-</div>
-<div class="section" id="id4">
-<h2>检索映像信息<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
-<p>用下列命令检索某特定映像的信息，用 <tt class="docutils literal"><span class="pre">{image-name}</span></tt> 替换映像名字：</p>
-<div class="highlight-python"><pre>rbd --image {image-name} info</pre>
-</div>
-<p>例如：</p>
-<div class="highlight-python"><pre>rbd --image foo info</pre>
-</div>
-<p>用下列命令检索某存储池内一映像的信息，用 <tt class="docutils literal"><span class="pre">{image-name}</span></tt> 替换掉映像名字、用 <tt class="docutils literal"><span class="pre">{pool-name}</span></tt> 替换掉存储池名字：</p>
-<div class="highlight-python"><pre>rbd --image {image-name} -p {pool-name} info</pre>
-</div>
-<p>例如：</p>
-<div class="highlight-python"><pre>rbd --image bar -p swimmingpool info</pre>
-</div>
-</div>
-<div class="section" id="id5">
-<h2>调整块设备映像尺寸<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference internal" href="../../glossary/#term-38"><em class="xref std std-term">Ceph 块设备</em></a>映像是瘦接口设备，只有在你开始写入数据时它们才会占用物理空间。然而，它们都有最大容量，就是你设置的 <tt class="docutils literal"><span class="pre">--size</span></tt> 选项。如果你想增加（或减小） Ceph 块设备映像的最大尺寸，用下列命令：</p>
-<div class="highlight-python"><pre>rbd resize --image foo --size 2048</pre>
-</div>
-</div>
-<div class="section" id="id6">
-<h2>删除块设备映像<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
-<p>用下列命令删除块设备，用 <tt class="docutils literal"><span class="pre">{image-name}</span></tt> 替换映像名字：</p>
-<div class="highlight-python"><pre>rbd rm {image-name}</pre>
-</div>
-<p>例如：</p>
-<div class="highlight-python"><pre>rbd rm foo</pre>
-</div>
-<p>用下列命令从某存储池中删除一个块设备，用 <tt class="docutils literal"><span class="pre">{image-name}</span></tt> 替换要删除的映像名、用 <tt class="docutils literal"><span class="pre">{pool-name}</span></tt> 替换存储池名字：</p>
-<div class="highlight-python"><pre>rbd rm {image-name} -p {pool-name}</pre>
-</div>
-<p>例如：</p>
-<div class="highlight-python"><pre>rbd rm bar -p swimmingpool</pre>
-</div>
-</div>
+<p>重放载荷并非只能在与捕获时相同的 RBD 映像或相同的集群上进行。为说明差异，你也许得在执行 <tt class="docutils literal"><span class="pre">rbd-replay</span></tt> 命令时指定 <tt class="docutils literal"><span class="pre">--pool</span></tt> 和 <tt class="docutils literal"><span class="pre">--map-image</span></tt> 选项。</p>
 </div>
 
 
@@ -146,14 +106,7 @@ rbd create bar --size 1024 --pool swimmingpool</pre>
 <li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../rbd/">Ceph 块设备</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="">命令</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id2">创建块设备映像</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id3">罗列块设备映像</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id4">检索映像信息</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id5">调整块设备映像尺寸</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id6">删除块设备映像</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../rados-rbd-cmds/">命令</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../rbd-ko/">内核模块</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../rbd-snapshot/">快照</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../qemu-rbd/">QEMU</a></li>
@@ -164,7 +117,7 @@ rbd create bar --size 1024 --pool swimmingpool</pre>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd/">rbd 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd-fuse/">rbd-fuse 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-rbdnamer/">ceph-rbdnamer 手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../rbd-replay/">RBD 重放</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">RBD 重放</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd-replay-prep/">rbd-replay-prep 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd-replay/">rbd-replay 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/rbd-replay-many/">rbd-replay-many 手册页</a></li>
@@ -209,10 +162,10 @@ rbd create bar --size 1024 --pool swimmingpool</pre>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../rbd-ko/" title="内核模块操作"
+          <a href="../../man/8/rbd-replay-prep/" title="rbd-replay-prep – 预处理捕捉到的用于重放工作负荷的 RBD"
              >next</a> |</li>
         <li class="right" >
-          <a href="../rbd/" title="Ceph 块设备"
+          <a href="../../man/8/ceph-rbdnamer/" title="ceph-rbdnamer – 用于命名 RBD 设备的 udev 辅助程序"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../rbd/" >Ceph 块设备</a> &raquo;</li> 

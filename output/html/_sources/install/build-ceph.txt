@@ -5,92 +5,18 @@
 你可以下载 Ceph 源码并自行构建。首先，你得准备开发环境、编译 Ceph 、然后安装到用户\
 区或者构建二进制包并安装。
 
+
 构建依赖
 ========
 
-
 .. tip:: 对照本段检查下你的 Linux/Unix 发行版是否满足这些依赖。
 
-构建 Ceph 源码前，你得先安装如下库和工具。 Ceph 用 ``autoconf`` 和 ``automake`` \
-脚本简化构建， Ceph 构建脚本依赖如下：
+构建 Ceph 源码前，你得先安装几个库和工具： ::
 
-- ``autotools-dev``
-- ``autoconf``
-- ``automake``
-- ``cdbs``
-- ``gcc``
-- ``g++``
-- ``git``
-- ``libboost-dev``
-- ``libedit-dev``
-- ``libssl-dev``
-- ``libtool``
-- ``libfcgi``
-- ``libfcgi-dev``
-- ``libfuse-dev``
-- ``linux-kernel-headers``
-- ``libcrypto++-dev``
-- ``libcrypto++``
-- ``libexpat1-dev``
-- ``pkg-config``
-- ``libcurl4-gnutls-dev``
-
-在 Ubuntu 上，执行 ``sudo apt-get install`` 分别安装各缺失依赖。 ::
-
-	sudo apt-get install autoconf automake autotools-dev libbz2-dev debhelper default-jdk git javahelper junit4 libaio-dev libatomic-ops-dev libbabeltrace-ctf-dev libbabeltrace-dev libblkid-dev libboost-dev libboost-program-options-dev libboost-system-dev libboost-thread-dev libcurl4-gnutls-dev libedit-dev libexpat1-dev libfcgi-dev libfuse-dev libgoogle-perftools-dev libkeyutils-dev libleveldb-dev libnss3-dev libsnappy-dev liblttng-ust-dev libtool libudev-dev libxml2-dev pkg-config python python-argparse python-nose uuid-dev uuid-runtime xfslibs-dev yasm
-
-在 Debian 上，可以执行 ``aptitude install`` 挨个安装还没装好的依赖包。 ::
-
-	aptitude install autoconf automake autotools-dev libbz2-dev debhelper default-jdk git javahelper junit4 libaio-dev libatomic-ops-dev libbabeltrace-ctf-dev libbabeltrace-dev libblkid-dev libboost-dev libboost-program-options-dev libboost-system-dev libboost-thread-dev libcurl4-gnutls-dev libedit-dev libexpat1-dev libfcgi-dev libfuse-dev libgoogle-perftools-dev libkeyutils-dev libleveldb-dev libnss3-dev libsnappy-dev liblttng-ust-dev libtool libudev-dev libxml2-dev pkg-config python python-argparse python-nose uuid-dev uuid-runtime xfslibs-dev yasm
+        ./install-deps.sh
 
 .. note:: 在某些支持 Google 内存剖析工具的发行版上，名字未必如此（如 \
    ``libgoogle-perftools4`` ）。
-
-Ubuntu
-------
-
-- ``uuid-dev``
-- ``libkeyutils-dev``
-- ``libgoogle-perftools-dev``
-- ``libatomic-ops-dev``
-- ``libaio-dev``
-- ``libgdata-common``
-- ``libgdata13``
-- ``libsnappy-dev`` 
-- ``libleveldb-dev``
-
-执行 ``sudo apt-get install`` 挨个安装各缺失依赖。 ::
-
-	sudo apt-get install uuid-dev libkeyutils-dev libgoogle-perftools-dev libatomic-ops-dev libaio-dev libgdata-common libgdata13 libsnappy-dev libleveldb-dev
-
-
-Debian
-------
-
-另外，你也可以安装： ::
-
-	aptitude install fakeroot dpkg-dev
-	aptitude install debhelper cdbs libexpat1-dev libatomic-ops-dev
-
-openSUSE 11.2 （及后续版本）
-----------------------------
-
-- ``boost-devel``
-- ``gcc-c++``
-- ``libedit-devel``
-- ``libopenssl-devel``
-- ``fuse-devel`` (optional)
-
-执行 ``zypper install`` 安装各缺失依赖。 ::
-
-	zypper install boost-devel gcc-c++ libedit-devel libopenssl-devel fuse-devel
-
-Fedora 20
----------
-
-以 root 身份运行： ::
-
-    yum install make automake autoconf  boost-devel fuse-devel gcc-c++ libtool libuuid-devel libblkid-devel keyutils-libs-devel cryptopp-devel fcgi-devel libcurl-devel expat-devel gperftools-devel libedit-devel libatomic_ops-devel snappy-devel leveldb-devel libaio-devel xfsprogs-devel git libudev-devel
 
 
 构建 Ceph

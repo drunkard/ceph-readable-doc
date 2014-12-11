@@ -21,22 +21,20 @@ Ceph 提供了一个可无限伸缩的 :term:`Ceph 存储集群`\ ，它基于 \
 Ceph 存储集群包含两种类型的守护进程：
 
 - :term:`Ceph 监视器`
-- :term:`Ceph OSD 守护进程`
+- :term:`Ceph 对象存储守护进程`
 
 .. ditaa::  +---------------+ +---------------+
             |      OSDs     | |    Monitors   |
             +---------------+ +---------------+
 
-A Ceph Monitor maintains a master copy of the cluster map. A cluster of Ceph
-monitors ensures high availability should a monitor daemon fail. Storage cluster
-clients retrieve a copy of the cluster map from the Ceph Monitor.
+Ceph 监视器维护着集群运行图的主副本。一个监视器集群确保了当某个监视器失效时的\
+高可用性。存储集群客户端向 Ceph 监视器索取集群运行图的最新副本。
 
-A Ceph OSD Daemon checks its own state and the state of other OSDs and reports 
-back to monitors.
+Ceph OSD 守护进程检查自身状态、以及其它 OSD 的状态，并报告给监视器们。
 
-存储集群的客户端和各个 :term:`Ceph OSD 守护进程`\ 使用 CRUSH 算法高效地计算数据位置，而\
-不是查询某个表。它的高级功能包括：基于 ``librados`` 的原生存储接口、和多种基于 \
-``librados`` 的服务接口。
+存储集群的客户端和各个 :term:`Ceph OSD 守护进程`\ 使用 CRUSH 算法高效地计算\
+数据位置，而不是查询某个表。它的高级功能包括：基于 ``librados`` 的原生存储接\
+口、和多种基于 ``librados`` 的服务接口。
 
 
 数据的存储
@@ -50,7 +48,7 @@ Ceph 存储集群从 :term:`Ceph 客户端`\ 接收数据——不管是来自 :
 .. ditaa:: /-----\       +-----+       +-----+
            | obj |------>| {d} |------>| {s} |
            \-----/       +-----+       +-----+
-   
+
             Object         File         Disk
 
 OSD 在扁平的命名空间内把所有数据存储为对象（也就是没有目录层次）。对象包含一个标识\
@@ -61,10 +59,10 @@ OSD 在扁平的命名空间内把所有数据存储为对象（也就是没有�
 .. ditaa:: /------+------------------------------+----------------\
            | ID   | Binary Data                  | Metadata       |
            +------+------------------------------+----------------+
-           | 1234 | 0101010101010100110101010010 | name1 = value1 | 
+           | 1234 | 0101010101010100110101010010 | name1 = value1 |
            |      | 0101100001010100110101010010 | name2 = value2 |
            |      | 0101100001010100110101010010 | nameN = valueN |
-           \------+------------------------------+----------------/    
+           \------+------------------------------+----------------/
 
 .. note:: 一个对象 ID 不止在本地唯一 ，它在整个集群内都是唯一的。
 
@@ -186,7 +184,7 @@ Kerberos 票据的认证数据结构，它包含一个可用于获取 Ceph 服�
                 |  request to   |
                 | create a user |
                 |-------------->|----------+ create user
-                |               |          | and                 
+                |               |          | and
                 |<--------------|<---------+ store key
                 | transmit key  |
                 |               |
@@ -203,25 +201,25 @@ Kerberos 票据的认证数据结构，它包含一个可用于获取 Ceph 服�
            +---------+     +---------+
                 |  authenticate |
                 |-------------->|----------+ generate and
-                |               |          | encrypt                
+                |               |          | encrypt
                 |<--------------|<---------+ session key
                 | transmit      |
                 | encrypted     |
                 | session key   |
-                |               |             
+                |               |
                 |-----+ decrypt |
-                |     | session | 
-                |<----+ key     |              
+                |     | session |
+                |<----+ key     |
                 |               |
                 |  req. ticket  |
                 |-------------->|----------+ generate and
-                |               |          | encrypt                
+                |               |          | encrypt
                 |<--------------|<---------+ ticket
                 | recv. ticket  |
-                |               |             
+                |               |
                 |-----+ decrypt |
-                |     | ticket  | 
-                |<----+         |              
+                |     | ticket  |
+                |<----+         |
 
 
 ``cephx`` 协议认证客户端机器和 Ceph 服务器间正在进行的通讯，二者间认证完成后的每条\
@@ -231,7 +229,7 @@ Kerberos 票据的认证数据结构，它包含一个可用于获取 Ceph 服�
            |  Client |     | Monitor |     |  MDS  |     |  OSD  |
            +---------+     +---------+     +-------+     +-------+
                 |  request to   |              |             |
-                | create a user |              |             |               
+                | create a user |              |             |
                 |-------------->| mon and      |             |
                 |<--------------| client share |             |
                 |    receive    | a secret.    |             |
@@ -239,7 +237,7 @@ Kerberos 票据的认证数据结构，它包含一个可用于获取 Ceph 服�
                 |               |<------------>|             |
                 |               |<-------------+------------>|
                 |               | mon, mds,    |             |
-                | authenticate  | and osd      |             |  
+                | authenticate  | and osd      |             |
                 |-------------->| share        |             |
                 |<--------------| a secret     |             |
                 |  session key  |              |             |
@@ -255,7 +253,7 @@ Kerberos 票据的认证数据结构，它包含一个可用于获取 Ceph 服�
                 | receive response (CephFS only)             |
                 |                                            |
                 |                make request                |
-                |------------------------------------------->|  
+                |------------------------------------------->|
                 |<-------------------------------------------|
                                receive response
 
@@ -263,7 +261,8 @@ Kerberos 票据的认证数据结构，它包含一个可用于获取 Ceph 服�
 程主机访问 Ceph 客户端， Ceph 认证就不管用了，它不会影响到用户主机和客户端主机间的\
 通讯。
 
-关于如何配置，请参考 `Cephx 配置指南`_；关于用户管理细节，请参考\ `用户管理`_\ 。
+关于如何配置，请参考 `Cephx 配置指南`_\ ；关于用户管理细节，请参考\ \
+`用户管理`_\ 。
 
 
 .. index:: architecture; smart daemons and scalability
@@ -309,7 +308,7 @@ Ceph 客户端、监视器和 OSD 守护进程可以相互直接交互，这意�
    于放对象副本的第二、第三个 OSD ，并把数据复制到适当的归置组所对应的第二、第三 \
    OSD （要多少副本就有多少 OSD ），最终，确认数据成功存储后反馈给客户端。
 
-.. ditaa:: 
+.. ditaa::
              +----------+
              |  Client  |
              |          |
@@ -326,7 +325,7 @@ Ceph 客户端、监视器和 OSD 守护进程可以相互直接交互，这意�
     Write (2) |  |   |  |  Write (3)
        +------+  |   |  +------+
        |  +------+   +------+  |
-       |  | Ack (4)  Ack (5)|  | 
+       |  | Ack (4)  Ack (5)|  |
        v  *                 *  v
  +---------------+   +---------------+
  | Secondary OSD |   | Tertiary OSD  |
@@ -356,7 +355,7 @@ Ceph 存储系统支持“池”概念，它是存储对象的逻辑分区。
 Ceph 客户端从监视器获取一张\ `集群运行图`_\ ，并把对象写入存储池。存储池的 \
 ``size`` 或副本数、 CRUSH 规则集和归置组数量决定着 Ceph 如何放置数据。
 
-.. ditaa:: 
+.. ditaa::
             +--------+  Retrieves  +---------------+
             | Client |------------>|  Cluster Map  |
             +--------+             +---------------+
@@ -370,7 +369,7 @@ Ceph 客户端从监视器获取一张\ `集群运行图`_\ ，并把对象写�
             +--------+           +---------------+
             |  Pool  |---------->| CRUSH Ruleset |
             +--------+  Selects  +---------------+
-                 
+
 
 存储池至少可设置以下参数：
 
@@ -395,7 +394,7 @@ CRUSH 将把各对象映射到某个归置组。
 OSD ，这一间接层可以让 Ceph 在 OSD 守护进程和底层设备上线时动态地重均衡。下列图表描\
 述了如何用 CRUSH 把对象映射到归置组、再把归置组映射到 OSD 。
 
-.. ditaa:: 
+.. ditaa::
            /-----\  /-----\  /-----\  /-----\  /-----\
            | obj |  | obj |  | obj |  | obj |  | obj |
            \-----/  \-----/  \-----/  \-----/  \-----/
@@ -412,11 +411,11 @@ OSD ，这一间接层可以让 Ceph 在 OSD 守护进程和底层设备上线�
         +------+------+-------------+             |
         |             |             |             |
         v             v             v             v
-   /----------\  /----------\  /----------\  /----------\ 
+   /----------\  /----------\  /----------\  /----------\
    |          |  |          |  |          |  |          |
    |  OSD #1  |  |  OSD #2  |  |  OSD #3  |  |  OSD #4  |
    |          |  |          |  |          |  |          |
-   \----------/  \----------/  \----------/  \----------/  
+   \----------/  \----------/  \----------/  \----------/
 
 有了集群运行图副本和 CRUSH 算法，客户端就能精确地计算出到哪个 OSD 读、写某特定对象。
 
@@ -429,7 +428,7 @@ OSD ，这一间接层可以让 Ceph 在 OSD 守护进程和底层设备上线�
 Ceph 客户端绑定到某监视器时，会索取最新的\ `集群运行图`_\ 副本，有了此图，客户端就\
 能知道集群内的所有监视器、 OSD 、和元数据服务器。\ **然而它对对象的位置一点也不了解。**
 
-.. epigraph:: 
+.. epigraph::
 
 	对象位置是计算出来的。
 
@@ -496,7 +495,7 @@ OSD 守护进程作为 *acting set* 的一部分，不一定总在 ``up`` 状态
 间，所以重均衡完成后新 OSD 上不会有到突增负载。
 
 
-.. ditaa:: 
+.. ditaa::
            +--------+     +--------+
    Before  |  OSD 1 |     |  OSD 2 |
            +--------+     +--------+
@@ -533,31 +532,27 @@ OSD 守护进程作为 *acting set* 的一部分，不一定总在 ``up`` 状态
 
 .. index:: erasure coding
 
-Erasure Coding
---------------
+纠删编码
+--------
 
-An erasure coded pool stores each object as ``K+M`` chunks. It is divided into
-``K`` data chunks and ``M`` coding chunks. The pool is configured to have a size
-of ``K+M`` so that each chunk is stored in an OSD in the acting set. The rank of
-the chunk is stored as an attribute of the object.
+纠删码存储池把各对象存储为 ``K+M`` 个数据块，其中有 ``K`` 个数据块和 ``M`` \
+个编码块。此存储池的尺寸为 ``K+M`` ，这样各块被存储到位于 acting set 中的 \
+OSD ，块的位置也作为对象属性保存下来了。
 
-For instance an erasure coded pool is created to use five OSDs (``K+M = 5``) and
-sustain the loss of two of them (``M = 2``).
+比如一纠删码存储池创建时分配了五个 OSD （ ``K+M = 5`` ）并容忍其中两个丢失\
+（ ``M = 2`` ）。
 
-Reading and Writing Encoded Chunks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When the object **NYAN** containing ``ABCDEFGHI`` is written to the pool, the erasure
-encoding function splits the content into three data chunks simply by dividing
-the content in three: the first contains ``ABC``, the second ``DEF`` and the
-last ``GHI``. The content will be padded if the content length is not a multiple
-of ``K``. The function also creates two coding chunks: the fourth with ``YXY``
-and the fifth with ``GQC``. Each chunk is stored in an OSD in the acting set.
-The chunks are stored in objects that have the same name (**NYAN**) but reside
-on different OSDs. The order in which the chunks were created must be preserved
-and is stored as an attribute of the object (``shard_t``), in addition to its
-name. Chunk 1 contains ``ABC`` and is stored on **OSD5** while chunk 4 contains
-``YXY`` and is stored on **OSD3**.
+读出和写入编码块
+~~~~~~~~~~~~~~~~
+
+当包含 ``ABCDEFGHI`` 的对象 **NYAN** 被写入存储池时，纠删编码功能把内容分割\
+为三个数据块，只是简单地切割为三份：第一份包含 ``ABC`` 、第二份是 ``DEF`` 、\
+最后是 ``GHI`` ，若内容长度不是 ``K`` 的倍数则需填充；此功能还会创建两个编码\
+块：第四个是 ``YXY`` 、第五个是 ``GQC`` ，各块分别存入 acting set 中的 OSD \
+内。这些块以相同的名字（ **NYAN** ）存入对象、但是位于不同的 OSD 上；分块顺\
+序也必须保留，被存储为对象的一个属性（ ``shard_t`` ）追加到名字后面。包含 \
+``ABC`` 的块 1 存储在 **OSD5** 上、包含 ``YXY`` 的块 4 存储在 **OSD3** 上。
 
 
 .. ditaa::
@@ -605,14 +600,11 @@ name. Chunk 1 contains ``ABC`` and is stored on **OSD5** while chunk 4 contains
                                  +------+
 
 
-When the object **NYAN** is read from the erasure coded pool, the decoding
-function reads three chunks: chunk 1 containing ``ABC``, chunk 3 containing
-``GHI`` and chunk 4 containing ``YXY``. Then, it rebuilds the original content
-of the object ``ABCDEFGHI``. The decoding function is informed that the chunks 2
-and 5 are missing (they are called 'erasures'). The chunk 5 could not be read
-because the **OSD4** is out. The decoding function can be called as soon as
-three chunks are read: **OSD2** was the slowest and its chunk was not taken into
-account.
+从纠删码存储池中读取 **NYAN** 对象时，解码功能会读取三个块：包含 ``ABC`` 的\
+块 1 ，包含 ``GHI`` 的块 3 和包含 ``YXY`` 的块 4 ，然后重建对象的原始内容 \
+``ABCDEFGHI`` 。解码功能被告知块 2 和 5 丢失了（被称为“擦除”），块 5 不可读\
+是因为 **OSD4** 出局了； **OSD2** 是最慢的，其数据未被采纳。只要有三块读出就\
+可以成功调用解码功能。
 
 .. ditaa::
 	                         +-------------------+
@@ -629,7 +621,7 @@ account.
 	            |              |               |  |
 	            |              +-------+-------+  |
 	            |                      ^          |
-	            |                      |          | 
+	            |                      |          |
 	            |                      |          |
 	         +--+---+   +------+   +---+--+   +---+--+
 	   name  | NYAN |   | NYAN |   | NYAN |   | NYAN |
@@ -664,24 +656,20 @@ account.
 Interrupted Full Writes
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-In an erasure coded pool, the primary OSD in the up set receives all write
-operations. It is responsible for encoding the payload into ``K+M`` chunks and
-sends them to the other OSDs. It is also responsible for maintaining an
-authoritative version of the placement group logs.
+在纠删码存储池中， up set 中的主 OSD 接受所有写操作，它负责把载荷编码为 \
+``K+M`` 个块并发送给其它 OSD 。它也负责维护归置组日志的一份权威版本。
 
-In the following diagram, an erasure coded placement group has been created with
-``K = 2 + M = 1`` and is supported by three OSDs, two for ``K`` and one for
-``M``. The acting set of the placement group is made of **OSD 1**, **OSD 2** and
-**OSD 3**. An object has been encoded and stored in the OSDs : the chunk
-``D1v1`` (i.e. Data chunk number 1, version 1) is on **OSD 1**, ``D2v1`` on
-**OSD 2** and ``C1v1`` (i.e. Coding chunk number 1, version 1) on **OSD 3**. The
-placement group logs on each OSD are identical (i.e. ``1,1`` for epoch 1,
-version 1).
+在下图中，已创建了一个参数为 ``K = 2 + M = 1`` 的纠删编码归置组，存储在三个 \
+OSD 上，两个存储 ``K`` 、一个存 ``M`` 。此归置组的 acting set 由 **OSD 1** 、\
+**OSD 2** 、 **OSD 3** 组成。一个对象已被编码并存进了各 OSD ：块 ``D1v1`` \
+（即数据块号为 1 ，版本为 1 ）在 **OSD 1** 上、 ``D2v1`` 在 **OSD 2** 上、 \
+``C1v1`` （即编码块号为 1 ，版本为 1 ）在 **OSD 3** 上。各 OSD 上的归置组日\
+志都相同（即 ``1,1`` ，表明 epoch 为 1 ，版本为 1 ）。
 
 
 .. ditaa::
      Primary OSD
-    
+
    +-------------+
    |    OSD 1    |             +-------------+
    |         log |  Write Full |             |
@@ -707,26 +695,21 @@ version 1).
                      |  +----+     |
                      +-------------+
 
-**OSD 1** is the primary and receives a **WRITE FULL** from a client, which
-means the payload is to replace the object entirely instead of overwriting a
-portion of it. Version 2 (v2) of the object is created to override version 1
-(v1). **OSD 1** encodes the payload into three chunks: ``D1v2`` (i.e. Data
-chunk number 1 version 2) will be on **OSD 1**, ``D2v2`` on **OSD 2** and
-``C1v2`` (i.e. Coding chunk number 1 version 2) on **OSD 3**. Each chunk is sent
-to the target OSD, including the primary OSD which is responsible for storing
-chunks in addition to handling write operations and maintaining an authoritative
-version of the placement group logs. When an OSD receives the message
-instructing it to write the chunk, it also creates a new entry in the placement
-group logs to reflect the change. For instance, as soon as **OSD 3** stores
-``C1v2``, it adds the entry ``1,2`` ( i.e. epoch 1, version 2 ) to its logs.
-Because the OSDs work asynchronously, some chunks may still be in flight ( such
-as ``D2v2`` ) while others are acknowledged and on disk ( such as ``C1v1`` and
-``D1v1``).
+**OSD 1** 是主的，它从客户端收到了 **WRITE FULL** 请求，这意味着净载荷将会完\
+全取代此对象，而非部分覆盖。此对象的版本 2 （ v2 ）将被创建以取代版本 1 \
+（ v1 ）。 **OSD 1** 把净载荷编码为三块： ``D1v2`` （即数据块号 1 、版本 2 ）\
+将存入 **OSD 1** 、 ``D2v2`` 在 **OSD 2** 上、 ``C1v2`` （即编码块号 1 版本 \
+2 ）在 **OSD 3** 上，各块分别被发往目标 OSD ，包括主 OSD ，它除了存储块还负\
+责处理写操作和维护归置组日志的权威版本。当某个 OSD 收到写入块的指令消息后，\
+它也会新建一条归置组日志来反映变更，比如在 **OSD 3** 存储 ``C1v2`` 时它也会\
+把 ``1,2`` （即 epoch 为 1 、版本为 2 ）写入它自己的日志。因为 OSD 们是异步\
+工作的，当某些块还“飞着”时（像 ``D2v2`` ），其它的可能已经被确认存在磁盘上了\
+（像 ``C1v1`` 和 ``D1v1`` ）。
 
 .. ditaa::
 
      Primary OSD
-    
+
    +-------------+
    |    OSD 1    |
    |         log |
@@ -735,11 +718,11 @@ as ``D2v2`` ) while others are acknowledged and on disk ( such as ``C1v1`` and
    |  +----+     +<------------+ Ceph Client |
    |             |      v2     |             |
    |  +----+     |             +-------------+
-   |  |D1v1| 1,1 |           
-   |  +----+     |           
-   +------+------+           
-          |                  
-          |                  
+   |  |D1v1| 1,1 |
+   |  +----+     |
+   +------+------+
+          |
+          |
           |           +------+------+
           |           |    OSD 2    |
           |  +------+ |         log |
@@ -761,13 +744,13 @@ as ``D2v2`` ) while others are acknowledged and on disk ( such as ``C1v1`` and
                       +-------------+
 
 
-If all goes well, the chunks are acknowledged on each OSD in the acting set and
-the logs' ``last_complete`` pointer can move from ``1,1`` to ``1,2``.
+如果一切顺利，各块被证实已在 acting set 中的 OSD 上了，日志的 \
+``last_complete`` 指针就会从 ``1,1`` 改为指向 ``1,2`` 。
 
 .. ditaa::
 
      Primary OSD
-    
+
    +-------------+
    |    OSD 1    |
    |         log |
@@ -776,10 +759,10 @@ the logs' ``last_complete`` pointer can move from ``1,1`` to ``1,2``.
    |  +----+     +<------------+ Ceph Client |
    |             |      v2     |             |
    |  +----+     |             +-------------+
-   |  |D1v1| 1,1 |           
-   |  +----+     |           
-   +------+------+           
-          |                  
+   |  |D1v1| 1,1 |
+   |  +----+     |
+   +------+------+
+          |
           |           +-------------+
           |           |    OSD 2    |
           |           |         log |
@@ -791,7 +774,7 @@ the logs' ``last_complete`` pointer can move from ``1,1`` to ``1,2``.
           |           |  |D2v1| 1,1 |
           |           |  +----+     |
           |           +-------------+
-          |                  
+          |
           |           +-------------+
           |           |    OSD 3    |
           |           |         log |
@@ -805,13 +788,12 @@ the logs' ``last_complete`` pointer can move from ``1,1`` to ``1,2``.
                       +-------------+
 
 
-Finally, the files used to store the chunks of the previous version of the
-object can be removed: ``D1v1`` on **OSD 1**, ``D2v1`` on **OSD 2** and ``C1v1``
-on **OSD 3**.
+最后，用于存储对象前一版本的文件就可以删除了： **OSD 1** 上的 ``D1v1`` 、 \
+**OSD 2** 上的 ``D2v1`` 和 **OSD 3** 上的 ``C1v1`` 。
 
 .. ditaa::
      Primary OSD
-    
+
    +-------------+
    |    OSD 1    |             +-------------+
    |         log |  Write Full |             |
@@ -838,14 +820,12 @@ on **OSD 3**.
                      +-------------+
 
 
-But accidents happen. If **OSD 1** goes down while ``D2v2`` is still in flight,
-the object's version 2 is partially written: **OSD 3** has one chunk but that is
-not enough to recover. It lost two chunks: ``D1v2`` and ``D2v2`` and the
-erasure coding parameters ``K = 2``, ``M = 1`` require that at least two chunks are
-available to rebuild the third. **OSD 4** becomes the new primary and finds that
-the ``last_complete`` log entry (i.e., all objects before this entry were known
-to be available on all OSDs in the previous acting set ) is ``1,1`` and that
-will be the head of the new authoritative log.
+但是意外发生了，如果 **OSD 1** 挂了、同时 ``D2v2`` 仍飞着，此对象的版本 2 一\
+部分已被写入了： **OSD 3** 有一块但是不足以恢复；它丢失了两块： ``D1v2`` 和 \
+``D2v2`` ，并且纠删编码参数 ``K = 2`` 、 ``M = 1`` 要求至少有两块可用才能重\
+建出第三块。 **OSD 4** 成为新的主 OSD ，它发现 ``last_complete`` 日志条目（即\
+在此条目之前，已知所有对象都位于所有前任 acting set 中的 OSD 上、且可用）是 \
+``1,1`` 那么它将是新权威日志的头条。
 
 .. ditaa::
    +-------------+
@@ -853,7 +833,7 @@ will be the head of the new authoritative log.
    |   (down)    |
    | c333        |
    +------+------+
-          |                  
+          |
           |           +-------------+
           |           |    OSD 2    |
           |           |         log |
@@ -862,7 +842,7 @@ will be the head of the new authoritative log.
           |           |  +----+     |
           |           |             |
           |           +-------------+
-          |                  
+          |
           |           +-------------+
           |           |    OSD 3    |
           |           |         log |
@@ -882,19 +862,16 @@ will be the head of the new authoritative log.
    |         1,1 |
    |             |
    +------+------+
-          
 
 
-The log entry 1,2 found on **OSD 3** is divergent from the new authoritative log
-provided by **OSD 4**: it is discarded and the file containing the ``C1v2``
-chunk is removed. The ``D1v1`` chunk is rebuilt with the ``decode`` function of
-the erasure coding library during scrubbing and stored on the new primary 
-**OSD 4**.
+在 **OSD 3** 上发现的日志条目 1,2 与 **OSD 4** 上新的权威日志有分歧：它将被\
+忽略、且包含 ``C1v2`` 块的文件也被删除。 ``D1v1`` 块将在洗刷期间通过纠删码库\
+的 ``decode`` 解码功能重建，并存储到新的主 **OSD 4** 上。
 
 
 .. ditaa::
      Primary OSD
-    
+
    +-------------+
    |    OSD 4    |
    |         log |
@@ -926,37 +903,32 @@ the erasure coding library during scrubbing and stored on the new primary
    | c333        |
    +-------------+
 
-See `Erasure Code Notes`_ for additional details.
+详情见\ `纠删码笔记`_\ 。
 
 
+缓存分级
+--------
 
-Cache Tiering
--------------
-
-A cache tier provides Ceph Clients with better I/O performance for a subset of
-the data stored in a backing storage tier. Cache tiering involves creating a
-pool of relatively fast/expensive storage devices (e.g., solid state drives)
-configured to act as a cache tier, and a backing pool of either erasure-coded
-or relatively slower/cheaper devices configured to act as an economical storage
-tier. The Ceph objecter handles where to place the objects and the tiering
-agent determines when to flush objects from the cache to the backing storage
-tier. So the cache tier and the backing storage tier are completely transparent 
-to Ceph clients.
+对于后端存储层上的部分热点数据，缓存层能向 Ceph 客户端提供更好的 IO 性能。缓\
+存分层包括创建由相对高速、昂贵的存储设备（如固态硬盘）组成的存储池，并配置为\
+缓存层；以及一个后端存储池，可以用纠删码编码的或者相对低速、便宜的设备，作为\
+经济存储层。 Ceph 对象管理器会决定往哪里放置对象，分层代理决定何时把缓存层的\
+对象刷回后端存储层。所以缓存层和后端存储层对 Ceph 客户端来说是完全透明的。
 
 
-.. ditaa:: 
+.. ditaa::
            +-------------+
            | Ceph Client |
            +------+------+
                   ^
-     Tiering is   |  
+     Tiering is   |
     Transparent   |              Faster I/O
         to Ceph   |           +---------------+
-     Client Ops   |           |               |   
+     Client Ops   |           |               |
                   |    +----->+   Cache Tier  |
                   |    |      |               |
                   |    |      +-----+---+-----+
-                  |    |            |   ^ 
+                  |    |            |   ^
                   v    v            |   |   Active Data in Cache Tier
            +------+----+--+         |   |
            |   Objecter   |         |   |
@@ -970,7 +942,7 @@ to Ceph clients.
                               +---------------+
                                  Slower I/O
 
-See `Cache Tiering`_ for additional details.
+详情见\ `缓存分级`_\ 。
 
 
 .. index:: Extensibility, Ceph Classes
@@ -1016,7 +988,7 @@ Ceph 协议
 Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进了 ``librados`` 库，这样\
 你就能创建自己的定制客户端了，下图描述了基本架构。
 
-.. ditaa::  
+.. ditaa::
             +---------------------------------+
             |  Ceph Storage Cluster Protocol  |
             |           (librados)            |
@@ -1059,7 +1031,7 @@ Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进
            +----------+     +----------+     +----------+     +---------------+
                  |                |                |                  |
                  |                |                |                  |
-                 |                |  Watch Object  |                  |               
+                 |                |  Watch Object  |                  |
                  |--------------------------------------------------->|
                  |                |                |                  |
                  |<---------------------------------------------------|
@@ -1075,7 +1047,7 @@ Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进
                  |                |                |                  |
                  |                |                |<-----------------|
                  |                |                |    Ack/Commit    |
-                 |                |     Notify     |                  |               
+                 |                |     Notify     |                  |
                  |--------------------------------------------------->|
                  |                |                |                  |
                  |<---------------------------------------------------|
@@ -1085,7 +1057,7 @@ Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进
                  |                |     Notify     |                  |
                  |                |                |<-----------------|
                  |                |                |      Notify      |
-                 |                |       Ack      |                  |               
+                 |                |       Ack      |                  |
                  |----------------+---------------------------------->|
                  |                |                |                  |
                  |                |       Ack      |                  |
@@ -1093,7 +1065,7 @@ Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进
                  |                |                |                  |
                  |                |                |        Ack       |
                  |                |                |----------------->|
-                 |                |                |                  | 
+                 |                |                |                  |
                  |<---------------+----------------+------------------|
                  |                     Complete
 
@@ -1109,7 +1081,7 @@ Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进
 提供了像 RAID 0 一样的吞吐量、像 N 路 RAID 镜像一样的可靠性、和更快的恢复。
 
 Ceph 提供了三种类型的客户端：块设备、文件系统和对象存储。一个 Ceph 客户端把展现给用\
-户的数据格式（一块设备映像、 RESTful 对象、 CephFS 文件系统目录）转换为可存储于 \
+户的数据格式（一块设备映像、 REST 风格对象、 CephFS 文件系统目录）转换为可存储于 \
 Ceph 存储集群的对象。
 
 .. tip:: 在 Ceph 存储集群内存储的那些对象是没条带化的。 Ceph 对象存储、 Ceph 块设\
@@ -1124,7 +1096,7 @@ Ceph 存储集群的对象。
 带化的最简形式：
 
 
-.. ditaa::              
+.. ditaa::
                         +---------------+
                         |  Client Data  |
                         |     Format    |
@@ -1172,7 +1144,7 @@ Ceph 存储集群的对象。
 满了，客户端就得创建新对象集（下图的 ``object set 2`` ），然后从新对象集中的第一个\
 对象（下图中的 ``object 4`` ）起开始写入第一个条带（ ``stripe unit 16`` ）。
 
-.. ditaa::                 
+.. ditaa::
                           +---------------+
                           |  Client Data  |
                           |     Format    |
@@ -1182,16 +1154,16 @@ Ceph 存储集群的对象。
        +-----------------+--------+--------+-----------------+
        |                 |                 |                 |     +--\
        v                 v                 v                 v        |
- /-----------\     /-----------\     /-----------\     /-----------\  |   
+ /-----------\     /-----------\     /-----------\     /-----------\  |
  | Begin cCCC|     | Begin cCCC|     | Begin cCCC|     | Begin cCCC|  |
  | Object 0  |     | Object  1 |     | Object  2 |     | Object  3 |  |
  +-----------+     +-----------+     +-----------+     +-----------+  |
  |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |  |
  |  unit 0   |     |  unit 1   |     |  unit 2   |     |  unit 3   |  |
  +-----------+     +-----------+     +-----------+     +-----------+  |
- |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |  +-\ 
+ |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |  +-\
  |  unit 4   |     |  unit 5   |     |  unit 6   |     |  unit 7   |    | Object
- +-----------+     +-----------+     +-----------+     +-----------+    +- Set 
+ +-----------+     +-----------+     +-----------+     +-----------+    +- Set
  |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |    |   1
  |  unit 8   |     |  unit 9   |     |  unit 10  |     |  unit 11  |  +-/
  +-----------+     +-----------+     +-----------+     +-----------+  |
@@ -1199,31 +1171,31 @@ Ceph 存储集群的对象。
  |  unit 12  |     |  unit 13  |     |  unit 14  |     |  unit 15  |  |
  +-----------+     +-----------+     +-----------+     +-----------+  |
  | End cCCC  |     | End cCCC  |     | End cCCC  |     | End cCCC  |  |
- | Object 0  |     | Object 1  |     | Object 2  |     | Object 3  |  |  
+ | Object 0  |     | Object 1  |     | Object 2  |     | Object 3  |  |
  \-----------/     \-----------/     \-----------/     \-----------/  |
                                                                       |
                                                                    +--/
-  
+
                                                                    +--\
                                                                       |
- /-----------\     /-----------\     /-----------\     /-----------\  |   
+ /-----------\     /-----------\     /-----------\     /-----------\  |
  | Begin cCCC|     | Begin cCCC|     | Begin cCCC|     | Begin cCCC|  |
- | Object  4 |     | Object  5 |     | Object  6 |     | Object  7 |  |  
+ | Object  4 |     | Object  5 |     | Object  6 |     | Object  7 |  |
  +-----------+     +-----------+     +-----------+     +-----------+  |
  |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |  |
  |  unit 16  |     |  unit 17  |     |  unit 18  |     |  unit 19  |  |
  +-----------+     +-----------+     +-----------+     +-----------+  |
- |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |  +-\ 
+ |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |  +-\
  |  unit 20  |     |  unit 21  |     |  unit 22  |     |  unit 23  |    | Object
  +-----------+     +-----------+     +-----------+     +-----------+    +- Set
- |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |    |   2 
+ |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |    |   2
  |  unit 24  |     |  unit 25  |     |  unit 26  |     |  unit 27  |  +-/
  +-----------+     +-----------+     +-----------+     +-----------+  |
  |  stripe   |     |  stripe   |     |  stripe   |     |  stripe   |  |
  |  unit 28  |     |  unit 29  |     |  unit 30  |     |  unit 31  |  |
  +-----------+     +-----------+     +-----------+     +-----------+  |
  | End cCCC  |     | End cCCC  |     | End cCCC  |     | End cCCC  |  |
- | Object 4  |     | Object 5  |     | Object 6  |     | Object 7  |  |  
+ | Object 4  |     | Object 5  |     | Object 6  |     | Object 7  |  |
  \-----------/     \-----------/     \-----------/     \-----------/  |
                                                                       |
                                                                    +--/
@@ -1261,8 +1233,8 @@ Ceph 客户端包括数种服务接口，有：
   照和克隆。为提供高性能， Ceph 把块设备条带化到整个集群。 Ceph 同时支持直接使用 \
   ``librbd`` 的内核对象（ KO ）和 QEMU 管理程序——避免了虚拟系统上的内核对象过载。
 
-- **对象存储：** :term:`Ceph 对象存储`\ （也叫 RGW ）服务提供了 RESTful API ，它\
-  有与 Amazon S3 和 OpenStack Swift 兼容的接口。
+- **对象存储：** :term:`Ceph 对象存储`\ （也叫 RGW ）服务提供了 `REST 风格`_\ \
+  的 API ，它有与 Amazon S3 和 OpenStack Swift 兼容的接口。
 
 - **文件系统：** :term:`Ceph 文件系统`\ （ CephFS ）服务提供了兼容 POSIX 的文件系\
   统，可以直接 ``mount`` 或挂载为用户空间文件系统（ FUSE ）。
@@ -1272,7 +1244,7 @@ Ceph 能额外运行多个 OSD 、 MDS 、和监视器来保证伸缩性和高�
 .. ditaa::
             +--------------+  +----------------+  +-------------+
             | Block Device |  | Object Storage |  |   Ceph FS   |
-            +--------------+  +----------------+  +-------------+            
+            +--------------+  +----------------+  +-------------+
 
             +--------------+  +----------------+  +-------------+
             |    librbd    |  |     librgw     |  |  libcephfs  |
@@ -1292,11 +1264,12 @@ Ceph 能额外运行多个 OSD 、 MDS 、和监视器来保证伸缩性和高�
 Ceph 对象存储
 -------------
 
-Ceph 对象存储守护进程是 ``radosgw`` ，它是一个 FastCGI 服务，提供了 RESTful_ \
-HTTP API 用于存储对象和元数据。它坐落于 Ceph 存储集群之上，有自己的数据格式，并维\
-护着自己的用户数据库、认证、和访问控制。 RADOS 网关使用统一的命名空间，也就是说，你\
-可以用 OpenStack Swift 兼容的 API 或者 Amazon S3 兼容的 API ；例如，你可以用一个\
-程序通过 S3 兼容 API 写入数据、然后用另一个程序通过 Swift 兼容 API 读出。
+Ceph 对象存储守护进程是 ``radosgw`` ，它是一个 FastCGI 服务，提供了 \
+`REST 风格`_ HTTP API 用于存储对象和元数据。它坐落于 Ceph 存储集群之上，有自\
+己的数据格式，并维护着自己的用户数据库、认证、和访问控制。 RADOS 网关使用统\
+一的命名空间，也就是说，你可以用 OpenStack Swift 兼容的 API 或者 Amazon S3 \
+兼容的 API ；例如，你可以用一个程序通过 S3 兼容 API 写入数据、然后用另一个程\
+序通过 Swift 兼容 API 读出。
 
 .. topic:: S3/Swift 对象和存储集群对象比较
 
@@ -1305,7 +1278,7 @@ HTTP API 用于存储对象和元数据。它坐落于 Ceph 存储集群之上�
    对象； S3 和 Swift 对象却不一定 1:1 地映射到存储集群内的对象，它有可能映射到了\
    多个 Ceph 对象。
 
-详情见 `Ceph 对象存储`_\ 。 
+详情见 `Ceph 对象存储`_\ 。
 
 
 .. index:: Ceph Block Device; block device; RBD; Rados Block Device
@@ -1340,7 +1313,7 @@ Ceph 文件系统（ Ceph FS ）是与 POSIX 兼容的文件系统服务，坐�
 .. ditaa::
             +-----------------------+  +------------------------+
             | CephFS Kernel Object  |  |      CephFS FUSE       |
-            +-----------------------+  +------------------------+            
+            +-----------------------+  +------------------------+
 
             +---------------------------------------------------+
             |            Ceph FS Library (libcephfs)            |
@@ -1394,12 +1367,12 @@ Ceph FS 从数据中分离出了元数据、并存储于 MDS ，文件数据存�
 .. _硬件推荐: ../install/hardware-recommendations
 .. _网络配置参考: ../rados/configuration/network-config-ref
 .. _条带化: http://en.wikipedia.org/wiki/Data_striping
-.. _RAID: http://en.wikipedia.org/wiki/RAID 
+.. _RAID: http://en.wikipedia.org/wiki/RAID
 .. _RAID 0: http://en.wikipedia.org/wiki/RAID_0#RAID_0
 .. _Ceph 对象存储: ../radosgw/
-.. _RESTful: http://en.wikipedia.org/wiki/RESTful
-.. _Erasure Code Notes: https://github.com/ceph/ceph/blob/40059e12af88267d0da67d8fd8d9cd81244d8f93/doc/dev/osd_internals/erasure_coding/developer_notes.rst
-.. _Cache Tiering: ../rados/operations/cache-tiering
+.. _REST 风格: http://en.wikipedia.org/wiki/RESTful
+.. _纠删码笔记: https://github.com/ceph/ceph/blob/40059e12af88267d0da67d8fd8d9cd81244d8f93/doc/dev/osd_internals/erasure_coding/developer_notes.rst
+.. _缓存分级: ../rados/operations/cache-tiering
 .. _调整存储池: ../rados/operations/pools#set-pool-values
 .. _Kerberos: http://en.wikipedia.org/wiki/Kerberos_(protocol)
 .. _Cephx 配置指南: ../rados/configuration/auth-config-ref
