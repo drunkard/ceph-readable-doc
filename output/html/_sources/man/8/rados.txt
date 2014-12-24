@@ -4,23 +4,23 @@
 
 .. program:: rados
 
-Synopsis
-========
+提纲
+====
 
 | **rados** [ -m *monaddr* ] [ mkpool | rmpool *foo* ] [ -p | --pool
   *pool* ] [ -s | --snap *snap* ] [ -i *infile* ] [ -o *outfile* ]
   *command* ...
 
 
-Description
-===========
+描述
+====
 
 **rados** is a utility for interacting with a Ceph object storage
 cluster (RADOS), part of the Ceph distributed storage system.
 
 
-Options
-=======
+选项
+====
 
 .. option:: -p pool, --pool pool
 
@@ -52,8 +52,8 @@ Options
    Connect to specified monitor (instead of looking through ceph.conf).
 
 
-Global commands
-===============
+全局命令
+========
 
 :command:`lspools`
   List object pools
@@ -69,8 +69,8 @@ Global commands
   Delete the pool foo (and all its data)
 
 
-Pool specific commands
-======================
+特定于存储池的命令
+==================
 
 :command:`get` *name* *outfile*
   Read object name from the cluster and write it to outfile.
@@ -128,8 +128,9 @@ Pool specific commands
 :command:`setomapheader` *name* *value*
   Set the value of the object map header of object name.
 
-Examples
-========
+
+实例
+====
 
 To view cluster utilization::
 
@@ -156,14 +157,13 @@ To read a previously snapshotted version of an object::
        rados -p foo -s mysnap get myobject blah.txt.old
 
 
-Availability
-============
-
-**rados** is part of the Ceph distributed storage system. Please refer to
-the Ceph documentation at http://ceph.com/docs for more information.
-
-
-See also
+使用范围
 ========
+
+**rados** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8)

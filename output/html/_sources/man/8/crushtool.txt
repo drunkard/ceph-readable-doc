@@ -4,147 +4,127 @@
 
 .. program:: crushtool
 
-Synopsis
-========
+提纲
+====
 
 | **crushtool** ( -d *map* | -c *map.txt* | --build --num_osds *numosds*
   *layer1* *...* | --test ) [ -o *outfile* ]
 
 
-Description
-===========
+描述
+====
 
-**crushtool** is a utility that lets you create, compile, decompile
- and test CRUSH map files.
+**crushtool** 是 CRUSH 图处理工具，它允许你创建、编译、反编译和测试 CRUSH 图。
 
-CRUSH is a pseudo-random data distribution algorithm that efficiently
-maps input values (typically data objects) across a heterogeneous,
-hierarchically structured device map. The algorithm was originally
-described in detail in the following paper (although it has evolved
-some since then):
+CRUSH 是个伪随机数据分布算法，它能高效地把输入值（通常是数据对象）映射到异\
+构、结构化的分级设备图中。此算法最初是在下面的论文（已改进过了）中描述的：
 
        http://www.ssrc.ucsc.edu/Papers/weil-sc06.pdf
 
-The tool has four modes of operation.
+此工具有四种操作模式。
 
 .. option:: --compile|-c map.txt
 
-   will compile a plaintext map.txt into a binary map file.
+   把纯文本 map.txt 编译为二进制图文件。
 
 .. option:: --decompile|-d map
 
-   will take the compiled map and decompile it into a plaintext source
-   file, suitable for editing.
+   接受已编译的图，并把它反编译为适合编辑的纯文本源文件。
 
 .. option:: --build --num_osds {num-osds} layer1 ...
 
-   will create map with the given layer structure. See below for a
-   detailed explanation.
+   将用指定分级结构创建图。详细解释见下文。
 
 .. option:: --test
 
-   will perform a dry run of a CRUSH mapping for a range of input
-   object names. See below for a detailed explanation.
+   在一系列输入对象名上试运行 CRUSH 映射。详细解释见下文。
 
-Unlike other Ceph tools, **crushtool** does not accept generic options
-such as **--debug-crush** from the command line. They can however be
-provided via the CEPH_ARGS environment variable. For instance, to
-silence all output from the CRUSH subsystem::
+不像其它 Ceph 工具， **crushtool** 不接受命令行输入的像 **--debug-crush** 这\
+样的通用选项；却可以通过 CEPH_ARGS 环境变量提供。例如，可以这样压制 CRUSH 子\
+系统的所有输出： ::
 
     CEPH_ARGS="--debug-crush 0" crushtool ...
 
 
-Running tests with --test
-=========================
+用 --test 进行测试
+==================
 
-The test mode will use the input crush map ( as specified with **-i
-map** ) and perform a dry run of CRUSH mapping or random placement (
-if **--simulate** is set ). On completion, two kinds of reports can be
-created. The **--show-...** options output human readable information
-on stderr. The **--output-csv** option creates CSV files that are
-documented by the **--help-output** option.
+测试模式会采用指定的 crush 图（用 **-i map** 指定的），并试运行 CRUSH 映射\
+或随机放置（若设置了 **--simulate** ）。完成后可创建两种报告类型： \
+**--show-...** 选项会把人类可读的信息输出到标准错误； **--output-csv** 选项\
+会创建 CSV 文件，具体文档可在 **--help-output** 选项中见到。
 
 .. option:: --show-statistics
 
-   for each rule display the mapping of each object. For instance::
+   对每条规则都显示各对象的映射。例如： ::
 
        CRUSH rule 1 x 24 [11,6]
 
-   shows that object **24** is mapped to devices **[11,6]** by rule
-   **1**. At the end of the mapping details, a summary of the
-   distribution is displayed. For instance::
+   表明对象 **24** 被规则 **1** 映射到了设备 **[11,6]** 。在映射详情的末尾，\
+   显示了一个分布情况汇总，例如： ::
 
        rule 1 (metadata) num_rep 5 result size == 5:	1024/1024
 
-   shows that rule **1** which is named **metadata** successfully
-   mapped **1024** objects to **result size == 5** devices when trying
-   to map them to **num_rep 5** replicas. When it fails to provide the
-   required mapping, presumably because the number of **tries** must
-   be increased, a breakdown of the failures is displays. For instance::
+   以上输出表明，规则 **1** 名字为 **metadata** ，在试图把 **1024** 个对象映\
+   射为 **num_rep 5** 个副本时，最终映射到了 **result size == 5** 个设备。当\
+   没能达到要求的映射数量时（假设已\ **尝试**\ 了规定次数），就会显示失败情\
+   况。比如： ::
 
        rule 1 (metadata) num_rep 10 result size == 8:	4/1024
        rule 1 (metadata) num_rep 10 result size == 9:	93/1024
        rule 1 (metadata) num_rep 10 result size == 10:	927/1024
 
-   shows that although **num_rep 10** replicas were required, **4**
-   out of **1024** objects ( **4/1024** ) were mapped to **result size
-   == 8** devices only.
+   以上表明，虽然要求的副本数是 **num_rep 10** ，但是 **1024** 个对象中有 \
+   **4** 个（ **4/1024** ）只映射到了 **result size == 8** 个设备。
 
 .. option:: --show-bad-mappings
 
-   display which object failed to be mapped to the required number of
-   devices. For instance::
+   查看哪些对象的映射数量没达到要求，例如： ::
 
-     bad mapping rule 1 x 781 num_rep 7 result [8,10,2,11,6,9]
+       bad mapping rule 1 x 781 num_rep 7 result [8,10,2,11,6,9]
 
-   shows that when rule **1** was required to map **7** devices, it
-   could only map six : **[8,10,2,11,6,9]**.
+   表明规则 **1** 要求映射到 **7** 个设备，实际上只映射了六个： \
+   **[8,10,2,11,6,9]** 。
 
 .. option:: --show-utilization
 
-   display the expected and actual utilisation for each device, for
-   each number of replicas. For instance::
+   显示各设备的期望和实际利用率，各种数量的副本也计算在内。例如： ::
 
      device 0: stored : 951      expected : 853.333
      device 1: stored : 963      expected : 853.333
      ...
 
-   shows that device **0** stored **951** objects and was expected to store **853**.
-   Implies **--show-statistics**.
+   表明设备 **0** 实际存储了 **951** 个对象，本来期望存储 **853** 个。隐含了 \
+   **--show-statistics** 。
 
 .. option:: --show-utilization-all
 
-   displays the same as **--show-utilization** but does not suppress
-   output when the weight of a device is zero.
-   Implies **--show-statistics**.
+   显示结果与 **--show-utilization** 相同，只是不剔除权重为 0 的设备。隐含了 \
+   **--show-statistics** 。
 
 .. option:: --show-choose-tries
 
-   display how many attempts were needed to find a device mapping.
-   For instance::
+   显示要尝试多少次才能映射到设备。例如： ::
 
       0:     95224
       1:      3745
       2:      2225
       ..
 
-   shows that **95224** mappings succeeded without retries, **3745**
-   mappings succeeded with one attempts, etc. There are as many rows
-   as the value of the **--set-choose-total-tries** option.
+   表明有 **95224** 次映射没重试就成功了， **3745** 次映射尝试一次后成功，等\
+   等。显示的最大行数与 **--set-choose-total-tries** 选项相同。
 
 .. option:: --output-csv
 
-   create CSV files (in the current directory) containing information
-   documented by **--help-output**. The files are named after the rule
-   used when collecting the statistics. For instance, if the rule
-   metadata is used, the CSV files will be::
+   在当前目录内创建 CSV 文件用于保存输出信息，具体请参考 **--help-output** 。\
+   文件被命名为收集统计信息时涉及的规则，比如使用了 metadata 规则时， CSV 文\
+   件将会是： ::
 
       metadata-absolute_weights.csv
       metadata-device_utilization.csv
       ...
 
-   The first line of the file shortly explains the column layout. For
-   instance::
+   文件的首行是本列的简单描述，例如： ::
 
       metadata-absolute_weights.csv
       Device ID, Absolute Weight
@@ -153,60 +133,51 @@ documented by the **--help-output** option.
 
 .. option:: --output-name NAME
 
-   prepend **NAME** to the file names generated when **--output-csv**
-   is specified. For instance **--output-name FOO** will create
-   files::
+   用了 **--output-csv** 选项时生成的文件名要加 **NAME** 前缀，例如 \
+   **--output-name FOO** 将创建这些文件： ::
 
       FOO-metadata-absolute_weights.csv
       FOO-metadata-device_utilization.csv
       ...
 
-The **--set-...** options can be used to modify the tunables of the
-input crush map. The input crush map is modified in
-memory. For example::
+用 **--set-...** 选项可修改指定 crush 图内的可调值，在内存中修改。例如： ::
 
       $ crushtool -i mymap --test --show-bad-mappings
       bad mapping rule 1 x 781 num_rep 7 result [8,10,2,11,6,9]
 
-could be fixed by increasing the **choose-total-tries** as follows:
+上面的问题可通过增加 **choose-total-tries** 来修正，如： ::
 
       $ crushtool -i mymap --test \
           --show-bad-mappings \
           --set-choose-total-tries 500
 
-Building a map with --build
-===========================
 
-The build mode will generate hierarchical maps. The first argument
-specifies the number of devices (leaves) in the CRUSH hierarchy. Each
-layer describes how the layer (or devices) preceding it should be
-grouped.
+用 ``--build`` 构建新图
+=======================
 
-Each layer consists of::
+构建模式可生成一个分级图。第一个参数指定了 CRUSH 分级结构中的设备（叶子）数\
+量。每一层都要描述如何分组前一层（或设备）。
+
+各层都由如下要素组成： ::
 
        bucket ( uniform | list | tree | straw ) size
 
-The **bucket** is the type of the buckets in the layer
-(e.g. "rack"). Each bucket name will be built by appending a unique
-number to the **bucket** string (e.g. "rack0", "rack1"...).
+这里的 **bucket** 是本层桶的类型（如 "rack" ）。构建时各桶名 **bucket** 后将\
+追加一个惟一的数字（如 "rack0" 、 "rack1" ……）。
 
-The second component is the type of bucket: **straw** should be used
-most of the time.
+第二个组件是桶类型：大多用 **straw** 。
 
-The third component is the maximum size of the bucket. A size of zero
-means a bucket of infinite capacity.
+第三个组件是此桶的最大尺寸，为零时表示容量无限。
 
 
-Example
-=======
+实例
+====
 
-Suppose we have two rows with two racks each and 20 nodes per rack. Suppose
-each node contains 4 storage devices for Ceph OSD Daemons. This configuration
-allows us to deploy 320 Ceph OSD Daemons. Lets assume a 42U rack with 2U nodes,
-leaving an extra 2U for a rack switch.
+假设我们有 2 行、每行有 2 个机架、每机架有 20 个节点、每个节点有 4 个存储设\
+备用于 OSD 守护进程，这样的配置允许部署 320 个 OSD 守护进程。这里按照机架高 \
+42U ，节点都是 2U 高的，另外空余 2U 装机架交换机。
 
-To reflect our hierarchy of devices, nodes, racks and rows, we would execute
-the following::
+要如实反映我们的设备、节点、机架、行构成的分级结构，要用此命令： ::
 
     $ crushtool -o crushmap --build --num_osds 320 \
            node straw 4 \
@@ -227,35 +198,33 @@ the following::
     5	1					osd.5	1
     ...
 
-CRUSH rulesets are created so the generated crushmap can be
-tested. They are the same rulesets as the one created by default when
-creating a new Ceph cluster. They can be further edited with::
+这样就创建了 CRUSH 规则集，以便测试。此规则集与创建集群时默认创建的规则集相\
+同，可用下面的方法编辑它们： ::
 
-       # decompile
+       # 反编译
        crushtool -d crushmap -o map.txt
 
-       # edit
+       # 编辑
        emacs map.txt
 
-       # recompile
+       # 重新编译
        crushtool -c map.txt -o crushmap
 
 
-Availability
-============
-
-**crushtool** is part of the Ceph distributed storage system. Please
-refer to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-
-See also
+使用范围
 ========
+
+**crushtool** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`osdmaptool <osdmaptool>`\(8),
 
-Authors
-=======
+
+作者
+====
 
 John Wilkins, Sage Weil, Loic Dachary

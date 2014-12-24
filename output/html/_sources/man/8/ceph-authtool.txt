@@ -4,98 +4,91 @@
 
 .. program:: ceph-authtool
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-authtool** *keyringfile* [ -l | --list ] [ -C | --create-keyring
   ] [ -p | --print ] [ -n | --name *entityname* ] [ --gen-key ] [ -a |
   --add-key *base64_key* ] [ --caps *capfile* ]
 
 
-Description
-===========
+描述
+====
 
-**ceph-authtool** is a utility to create, view, and modify a Ceph keyring
-file. A keyring file stores one or more Ceph authentication keys and
-possibly an associated capability specification. Each key is
-associated with an entity name, of the form
-``{client,mon,mds,osd}.name``.
+**ceph-authtool** 工具用于创建、查看和修改 Ceph 密钥环文件。密钥环文件内存储\
+着一或多个 Ceph 认证密钥、可能还有被授予的能力。每个密钥都与其类型名关联，格\
+式为 ``{client,mon,mds,osd}.name`` 。
 
-**WARNING** Ceph provides authentication and protection against
-man-in-the-middle attacks once secret keys are in place.  However,
-data over the wire is not encrypted, which may include the messages
-used to configure said keys.  The system is primarily intended to be
-used in trusted environments.
+**警告：** 在私钥保护得当的前提下， Ceph 能提供认证和防中间人攻击的保护。然\
+而，传输中的数据是未加密的，这些数据中可能就有配置密钥的消息。此系统意在运行\
+于可信环境中。
 
-Options
-=======
+
+选项
+====
 
 .. option:: -l, --list
 
-   will list all keys and capabilities present in the keyring
+   列出密钥环内的所有密钥及其能力
 
 .. option:: -p, --print
 
-   will print an encoded key for the specified entityname. This is
-   suitable for the ``mount -o secret=`` argument
+   打印指定条目的已编码密钥，它适合作为 ``mount -o secret=`` 的参数
 
 .. option:: -C, --create-keyring
 
-   will create a new keyring, overwriting any existing keyringfile
+   创建新密钥环，覆盖已有密钥环文件
 
 .. option:: --gen-key
 
-   will generate a new secret key for the specified entityname
+   为指定实体名生成新私钥
 
 .. option:: --add-key
 
-   will add an encoded key to the keyring
+   把已编码密钥加进密钥环
 
 .. option:: --cap subsystem capability
 
-   will set the capability for given subsystem
+   设置指定子系统的能力
 
 .. option:: --caps capsfile
 
-   will set all of capabilities associated with a given key, for all subsystems
+   在所有子系统内设置与给定密钥相关的所有能力
 
 
-Capabilities
-============
+能力
+====
 
-The subsystem is the name of a Ceph subsystem: ``mon``, ``mds``, or
-``osd``.
+subsystem 代表 Ceph 子系统的名字： ``mon`` 、 ``mds`` 、 ``osd`` 。
 
-The capability is a string describing what the given user is allowed
-to do. This takes the form of a comma separated list of allow
-clauses with a permission specifier containing one or more of rwx for
-read, write, and execute permission. The ``allow *`` grants full
-superuser permissions for the given subsystem.
+能力是一个字符串，描述了允许此用户干什么。格式为逗号分隔的允许声明列表，此声\
+明包含一或多个 rwx （分别表示读、写、执行权限）。 ``allow *`` 将在指定子系统\
+下授予完整的超级用户权限。
 
-For example::
+例如： ::
 
-	# can read, write, and execute objects
+	# 可读、写、执行对象
         osd = "allow rwx"
 
-	# can access mds server
+	# 可访问 MDS 服务器
         mds = "allow"
 
-	# can modify cluster state (i.e., is a server daemon)
+	# 可更改集群状态（即它是服务器守护进程）
         mon = "allow rwx"
 
-A librados user restricted to a single pool might look like::
+被限定到单个存储池的 librados 用户的能力大致如此： ::
 
         mon = "allow r"
 
         osd = "allow rw pool foo"
 
-A client using rbd with read access to one pool and read/write access to another::
+一个 RBD 客户端有一个存储池的读权限和另一个存储池的读写权限： ::
 
         mon = "allow r"
 
         osd = "allow class-read object_prefix rbd_children, allow pool templates r class-read, allow pool vms rwx"
 
-A client mounting the file system with minimal permissions would need caps like::
+权限最小化的文件系统客户端，其能力大致如此： ::
 
         mds = "allow"
 
@@ -104,73 +97,67 @@ A client mounting the file system with minimal permissions would need caps like:
         mon = "allow r"
 
 
-OSD Capabilities
-================
+OSD 能力
+========
 
-In general, an osd capability follows the grammar::
+一般来说， OSD 能力遵循以下语法： ::
 
         osdcap  := grant[,grant...]
         grant   := allow (match capspec | capspec match)
         match   := [pool[=]<poolname> | object_prefix <prefix>]
         capspec := * | [r][w][x] [class-read] [class-write]
 
-The capspec determines what kind of operations the entity can perform::
+capspec 决定了此实体可执行哪些操作： ::
 
-    r           = read access to objects
-    w           = write access to objects
-    x           = can call any class method (same as class-read class-write)
-    class-read  = can call class methods that are reads
-    class-write = can call class methods that are writes
-    *           = equivalent to rwx, plus the ability to run osd admin commands,
-                  i.e. ceph osd tell ...
+    r           = 可读取对象
+    w           = 可写入对象
+    x           = 可调用任何类方法（等同于 class-read 、 class-write ）
+    class-read  = 可调用读数据的类方法
+    class-write = 可调用写数据的类方法
+    *           = 等价于 rwx ，另外还可运行 OSD 管理命令，即 ceph osd tell ...
 
-The match criteria restrict a grant based on the pool being accessed.
-Grants are additive if the client fulfills the match condition. For
-example, if a client has the osd capabilities: "allow r object_prefix
-prefix, allow w pool foo, allow x pool bar", then it has rw access to
-pool foo, rx access to pool bar, and r access to objects whose
-names begin with 'prefix' in any pool.
-
-Caps file format
-================
-
-The caps file format consists of zero or more key/value pairs, one per
-line. The key and value are separated by an ``=``, and the value must
-be quoted (with ``'`` or ``"``) if it contains any whitespace. The key
-is the name of the Ceph subsystem (``osd``, ``mds``, ``mon``), and the
-value is the capability string (see above).
+匹配规则限制了授权是基于被访问存储池的，客户端满足匹配条件时授权会叠加。例\
+如，假设客户端的 OSD 能力为： \
+"allow r object_prefix prefix, allow w pool foo, allow x pool bar" ，那么它\
+有 foo 存储池的读写权限（ rw ）、有 bar 存储池的读和执行权限（ rx ）、还有\
+任意存储池中以 prefix 打头的对象的读（ r ）权限。
 
 
-Example
-=======
+能力文件的格式
+==============
 
-To create a new keyring containing a key for client.foo::
+能力配置文件是格式化的零或多个键值对，每条一行。键和值以 ``=`` 分隔，且值内\
+包含空格时必须用 ``'`` 或 ``"`` 包起来。键是某个 Ceph 子系统（ ``osd`` 、 \
+``mds`` 、 ``mon`` ），值是能力字符串（见上文）。
+
+
+实例
+====
+
+给 client.foo 生成密钥并新建密钥环： ::
 
         ceph-authtool -C -n client.foo --gen-key keyring
 
-To associate some capabilities with the key (namely, the ability to
-mount a Ceph filesystem)::
+给此密钥关联一些能力（也就是挂载 Ceph 文件系统的能力）： ::
 
         ceph-authtool -n client.foo --cap mds 'allow' --cap osd 'allow rw pool=data' --cap mon 'allow r' keyring
 
-To display the contents of the keyring::
+查看密钥环内容： ::
 
         ceph-authtool -l keyring
 
-When mounting a Ceph file system, you can grab the appropriately encoded secret key with::
+挂载 Ceph 文件系统时，你可以用此命令获取编码好的私钥： ::
 
         mount -t ceph serverhost:/ mountpoint -o name=foo,secret=`ceph-authtool -p -n client.foo keyring`
 
 
-Availability
-============
-
-**ceph-authtool** is part of the Ceph distributed storage system. Please
-refer to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-
-See also
+使用范围
 ========
+
+**ceph-authtool** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8)

@@ -4,77 +4,67 @@
 
 .. program:: ceph-mon
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-mon** -i *monid* [ --mon-data *mondatapath* ]
 
 
-Description
-===========
+描述
+====
 
-**ceph-mon** is the cluster monitor daemon for the Ceph distributed
-file system. One or more instances of **ceph-mon** form a Paxos
-part-time parliament cluster that provides extremely reliable and
-durable storage of cluster membership, configuration, and state.
+**ceph-mon** 是 Ceph 分布式存储集群的监视器守护进程。一或多个 **ceph-mon** \
+例程可形成 Paxos 兼职议员集群，它们能为集群成员、配置和状态提供非常可靠、坚\
+实的存储。
 
-The *mondatapath* refers to a directory on a local file system storing
-monitor data. It is normally specified via the ``mon data`` option in
-the configuration file.
+*mondatapath* 是个本地文件系统上的目录，存储着监视器数据。通常可用配置文件中\
+的 ``mon data`` 选项指定。
 
-Options
-=======
+
+选项
+====
 
 .. option:: -f, --foreground
 
-   Foreground: do not daemonize after startup (run in foreground). Do
-   not generate a pid file. Useful when run via :doc:`ceph-run <ceph-run>`\(8).
+   前台：启动后不要作为守护进程，仍在前台运行。不要生成 PID 文件。 通过 \
+   :doc:`ceph-run <ceph-run>`\(8) 运行时此选项有用。
 
 .. option:: -d
 
-   Debug mode: like ``-f``, but also send all log output to stderr.
+   调试模式：类似 ``-f`` ，还会把所有日志发到了标准错误。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   Use *ceph.conf* configuration file instead of the default
-   ``/etc/ceph/ceph.conf`` to determine monitor addresses during
-   startup.
+   启动时用 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定启\
+   动时所需的监视器地址。
 
 .. option:: --mkfs
 
-   Initialize the ``mon data`` directory with seed information to form
-   and initial ceph file system or to join an existing monitor
-   cluster.  Three pieces of information must be provided:
+   用种子信息初始化 ``mon data`` 目录，以形成并初始化 Ceph 文件系统或加入现\
+   有监视器集群。以下三个信息是必需的：
 
-   - The cluster fsid.  This can come from a monmap (``--monmap <path>``) or
-     explicitly via ``--fsid <uuid>``.
-   - A list of monitors and their addresses.  This list of monitors
-     can come from a monmap (``--monmap <path>``), the ``mon host``
-     configuration value (in *ceph.conf* or via ``-m
-     host1,host2,...``), or ``mon addr`` lines in *ceph.conf*.  If this
-     monitor is to be part of the initial monitor quorum for a new
-     Ceph cluster, then it must be included in the initial list,
-     matching either the name or address of a monitor in the list.
-     When matching by address, either the ``public addr`` or ``public
-     subnet`` options may be used.
-   - The monitor secret key ``mon.``.  This must be included in the
-     keyring provided via ``--keyring <path>``.
+   - 集群的 fsid 。可从 monmap （ ``--monmap <path>`` ）中获得或直接用 \
+     ``--fsid <uuid>`` 指定。
+   - 一连串监视器及其地址。这些监视器可来源于 monmap （ ``--monmap <path>`` \
+     ）、 ``mon host`` 配置（在 *ceph.conf* 里或通过 ``-m host1,host2,...`` \
+     ）或 *ceph.conf* 中的 ``mon addr`` 行。如果这个监视器将作为新 Ceph 集群\
+     监视器法定人数的一部分，还必须放进初始列表中。匹配地址时，可以用 \
+     ``public addr`` 或 ``public subnet`` 。
+   - 监视器私钥 ``mon.`` 。必须包含在 ``--keyring <path>`` 所提供的密钥环内。
 
 .. option:: --keyring
 
-   Specify a keyring for use with ``--mkfs``.
+   指定 ``--mkfs`` 所需的密钥环。
 
 
-Availability
-============
-
-**ceph-mon** is part of the Ceph distributed storage system. Please refer
-to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-
-See also
+使用范围
 ========
+
+**ceph-mon** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`ceph-mds <ceph-mds>`\(8),

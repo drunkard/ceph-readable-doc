@@ -4,44 +4,41 @@
 
 .. program:: ceph-clsinfo
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-clsinfo** [ *options* ] ... *filename*
 
 
-Description
-===========
+描述
+====
 
-**ceph-clsinfo** can show name, version, and architecture information
-about a specific class object.
+**ceph-clsinfo** 可显示某个类对象的名字、版本和体系结构信息。
 
 
-Options
-=======
+选项
+====
 
 .. option:: -n, --name
 
-   Shows the class name
+   显示类名字
 
 .. option:: -v, --version
 
-   Shows the class version
+   显示类版本
 
 .. option:: -a, --arch
 
-   Shows the class architecture
+   显示类的体系结构
 
 
-Availability
-============
-
-**ceph-clsinfo** is part of the Ceph distributed storage system. Please
-refer to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-
-See also
+使用范围
 ========
+
+**ceph-clsinfo** 是 Ceph 分布式存储系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8)

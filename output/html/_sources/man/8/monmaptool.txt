@@ -4,102 +4,93 @@
 
 .. program:: monmaptool
 
-Synopsis
-========
+提纲
+====
 
 | **monmaptool** *mapfilename* [ --clobber ] [ --print ] [ --create ]
   [ --add *ip*:*port* *...* ] [ --rm *ip*:*port* *...* ]
 
 
-Description
-===========
+描述
+====
 
-**monmaptool** is a utility to create, view, and modify a monitor
-cluster map for the Ceph distributed storage system. The monitor map
-specifies the only fixed addresses in the Ceph distributed system.
-All other daemons bind to arbitrary addresses and register themselves
-with the monitors.
+**monmaptool** 工具用于创建、查看、修改用于 Ceph 分布式存储系统的监视器集群\
+运行图。监视器图只是在 Ceph 分布式系统中定义了几个固定的地址，其他所有守护进\
+程绑定到任意地址、并注册到监视器。
 
-When creating a map with --create, a new monitor map with a new,
-random UUID will be created. It should be followed by one or more
-monitor addresses.
+用 --create 选项创建新图时，会创建新的随机 UUID ，此选项后还应加一或多个监视\
+器地址。
 
-The default Ceph monitor port is 6789.
+Ceph 监视器的默认端口是 6789 。
 
 
-Options
-=======
+选项
+====
 
 .. option:: --print
 
-   will print a plaintext dump of the map, after any modifications are
-   made.
+   在所有修改完成后，打印一份监视器图的纯文本转储。
 
 .. option:: --clobber
 
-   will allow monmaptool to overwrite mapfilename if changes are made.
+   更改时允许 monmaptool 覆盖 mapfilename 。
 
 .. option:: --create
 
-   will create a new monitor map with a new UUID (and with it, a new,
-   empty Ceph file system).
+   新建一监视器图，它有新的 UUID （用它可创建个新的空 Ceph 文件系统）。
 
 .. option:: --generate
 
-   generate a new monmap based on the values on the command line or specified
-   in the ceph configuration.  This is, in order of preference,
+   基于命令行参数或配置文件中的配置生成新 monmap ，配置来源优先级如下：
 
-      #. ``--monmap filename`` to specify a monmap to load
-      #. ``--mon-host 'host1,ip2'`` to specify a list of hosts or ip addresses
-      #. ``[mon.foo]`` sections containing ``mon addr`` settings in the config
+      #. ``--monmap filename`` 指定要载入的 monmap
+      #. ``--mon-host 'host1,ip2'`` 指定一系列主机或 IP 地址
+      #. 配置文件中包含 ``mon addr`` 选项的 ``[mon.foo]`` 段落
 
 .. option:: --filter-initial-members
 
-   filter the initial monmap by applying the ``mon initial members``
-   setting.  Monitors not present in that list will be removed, and
-   initial members not present in the map will be added with dummy
-   addresses.
+   用 ``mon initial members`` 选项的设置过滤初始 monmap ，不在此列表内的监视\
+   器将被删除、没在图内的初始成员将用假地址加入。
 
 .. option:: --add name ip:port
 
-   will add a monitor with the specified ip:port to the map.
+   把指定 ip:port 的监视器加入图中。
 
 .. option:: --rm name
 
-    will remove the monitor with the specified ip:port from the map.
+   从图中删除 ip:port 监视器。
 
 .. option:: --fsid uuid
 
-    will set the fsid to the given uuid.  If not specified with --create, a random fsid will be generated.
+    把 fsid 设置为指定的 uuid ，如果 --create 时没指定，将会随机生成一个。
 
 
-Example
-=======
+实例
+====
 
-To create a new map with three monitors (for a fresh Ceph file system)::
+新建一个有三个监视器的新图（为新的 Ceph 文件系统）： ::
 
-        monmaptool  --create  --add  mon.a 192.168.0.10:6789 --add mon.b 192.168.0.11:6789 \
+        monmaptool  --create  --add  mon.a 192.168.0.10:6789 \
+          --add mon.b 192.168.0.11:6789 \
           --add mon.c 192.168.0.12:6789 --clobber monmap
 
-To display the contents of the map::
+显示监视器图内容： ::
 
         monmaptool --print monmap
 
-To replace one monitor::
+替换一个监视器： ::
 
         monmaptool --rm mon.a --add mon.a 192.168.0.9:6789 --clobber monmap
 
 
-Availability
-============
-
-**monmaptool** is part of the Ceph distributed storage system.  Please
-refer to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-
-See also
+使用范围
 ========
+
+**monmaptool** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`crushtool <crushtool>`\(8),

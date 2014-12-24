@@ -4,94 +4,88 @@
 
 .. program:: ceph-syn
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-syn** [ -m *monaddr*:*port* ] --syn *command* *...*
 
 
-Description
-===========
+描述
+====
 
-**ceph-syn** is a simple synthetic workload generator for the Ceph
-distributed file system. It uses the userspace client library to
-generate simple workloads against a currently running file system. The
-file system need not be mounted via ceph-fuse(8) or the kernel client.
+**ceph-syn** 是个适用于 Ceph 分布式文件系统的简单的人造载荷生成器。它通过用\
+户空间客户端库在当前运行着的文件系统上生成简单的载荷，此文件系统不必通过 \
+ceph-fuse(8) 或内核客户端挂载。
 
-One or more ``--syn`` command arguments specify the particular
-workload, as documented below.
+一或多个 ``--syn`` 命令参数规定特定的载荷，具体文档如下。
 
 
-Options
-=======
+选项
+====
 
 .. option:: -d
 
-   Detach from console and daemonize after startup.
+   启动后离开控制台并进入后台。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   Use *ceph.conf* configuration file instead of the default
-   ``/etc/ceph/ceph.conf`` to determine monitor addresses during
-   startup.
+   启动时用 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定监\
+   视器地址。
 
 .. option:: -m monaddress[:port]
 
-   Connect to specified monitor (instead of looking through
-   ``ceph.conf``).
+   连接到指定监视器（而不是在 ``ceph.conf`` 里查找）。
 
 .. option:: --num_client num
 
-   Run num different clients, each in a separate thread.
+   模拟 num 个不同的客户端，都位于独立的线程中。
 
 .. option:: --syn workloadspec
 
-   Run the given workload. May be specified as many times as
-   needed. Workloads will normally run sequentially.
+   运行给定载荷。可以指定任意多次，通常依次被运行。
 
 
-Workloads
-=========
+载荷
+====
 
-Each workload should be preceded by ``--syn`` on the command
-line. This is not a complete list.
+命令行中每个载荷前都要加 ``--syn`` 。下面是个不太完整的列表。
 
 :command:`mknap` *path* *snapname*
-  Create a snapshot called *snapname* on *path*.
+  在 *path* 下创建名为 *snapname* 的快照。
 
 :command:`rmsnap` *path* *snapname*
-  Delete snapshot called *snapname* on *path*.
+  删除 *path* 路径下名为 *snapname* 的快照。
 
 :command:`rmfile` *path*
-  Delete/unlink *path*.
+  删除或断链 *path* 。
 
 :command:`writefile` *sizeinmb* *blocksize*
-  Create a file, named after our client id, that is *sizeinmb* MB by
-  writing *blocksize* chunks.
+  创建一个文件，以我们的客户端 ID 命名，写入 *blocksize* 个尺寸为 *sizeinmb* \
+  MB 的数据块。
 
 :command:`readfile` *sizeinmb* *blocksize*
-  Read file, named after our client id, that is *sizeinmb* MB by
-  writing *blocksize* chunks.
+  读文件，以我们的客户端 ID 命名，写入 *blocksize* 个尺寸为 *sizeinmb* MB 的\
+  数据块。
 
 :command:`rw` *sizeinmb* *blocksize*
-  Write file, then read it back, as above.
+  写文件，然后再读出，像上面的一样。
 
 :command:`makedirs` *numsubdirs* *numfiles* *depth*
-  Create a hierarchy of directories that is *depth* levels deep. Give
-  each directory *numsubdirs* subdirectories and *numfiles* files.
+  创建深度为 *depth* 级的分级目录，各目录有 *numsubdirs* 个子目录和 \
+  *numfiles* 个文件。
 
 :command:`walk`
-  Recursively walk the file system (like find).
+  递归地遍历文件系统（类似 find ）。
 
 
-Availability
-============
-
-**ceph-syn** is part of the Ceph distributed storage system. Please refer to
-the Ceph documentation at http://ceph.com/docs for more information.
-
-See also
+使用范围
 ========
+
+**ceph-syn** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`ceph-fuse <ceph-fuse>`\(8)

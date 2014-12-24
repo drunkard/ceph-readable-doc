@@ -4,38 +4,35 @@
 
 .. program:: ceph-run
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-run** *command* ...
 
 
-Description
-===========
+描述
+====
 
-**ceph-run** is a simple wrapper that will restart a daemon if it exits
-with a signal indicating it crashed and possibly core dumped (that is,
-signals 3, 4, 5, 6, 8, or 11).
+**ceph-run** 是个简单的壳子，它会在守护进程异常退出时重启它，异常退出时的信\
+号（有 3, 4, 5, 6, 8, 11 ）会表明它崩溃了、并有可能产生了核心转储。
 
-The command should run the daemon in the foreground. For Ceph daemons,
-that means the ``-f`` option.
+此命令会在前台运行守护进程，对于 Ceph 守护进程来说就相当于加了 ``-f`` 选项。
 
 
-Options
-=======
+选项
+====
 
-None
-
-
-Availability
-============
-
-**ceph-run** is part of the Ceph distributed storage system. Please refer to
-the Ceph documentation at http://ceph.com/docs for more information.
+无
 
 
-See also
+使用范围
 ========
+
+**ceph-run** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`ceph-mon <ceph-mon>`\(8),

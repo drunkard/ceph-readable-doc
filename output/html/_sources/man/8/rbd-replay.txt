@@ -4,73 +4,72 @@
 
 .. program:: rbd-replay
 
-Synopsis
-========
+提纲
+====
 
 | **rbd-replay** [ *options* ] *replay_file*
 
 
-Description
-===========
+描述
+====
 
-**rbd-replay** is a utility for replaying rados block device (RBD) workloads.
+**rbd-replay** 工具用于重放 RBD 载荷。
 
 
-Options
-=======
+选项
+====
 
 .. option:: -c ceph.conf, --conf ceph.conf
 
-   Use ceph.conf configuration file instead of the default /etc/ceph/ceph.conf to
-   determine monitor addresses during startup.
+   使用 ceph.conf 配置文件而非默认的 /etc/ceph/ceph.conf 来确定启动期间所需\
+   的监视器地址。
 
 .. option:: -p pool, --pool pool
 
-   Interact with the given pool.  Defaults to 'rbd'.
+   与指定存储池交互，默认为 'rbd' 。
 
 .. option:: --latency-multiplier
 
-   Multiplies inter-request latencies.  Default: 1.
+   请求间延时加倍，默认为 1 。
 
 .. option:: --read-only
 
-   Only replay non-destructive requests.
+   只重放非破坏性的请求。
 
 .. option:: --map-image rule
 
-   Add a rule to map image names in the trace to image names in the replay cluster.
-   A rule of image1@snap1=image2@snap2 would map snap1 of image1 to snap2 of image2.
+   增加一条规则把跟踪文件中的映像名映射为重放集群中的映像名。此规则 \
+   image1@snap1=image2@snap2 将把 image1 的快照 snap1 映射为 image2 的快照 \
+   snap2 。
 
 .. option:: --dump-perf-counters
 
-   **Experimental**
-   Dump performance counters to standard out before an image is closed.
-   Performance counters may be dumped multiple times if multiple images are closed,
-   or if the same image is opened and closed multiple times.
-   Performance counters and their meaning may change between versions.
+   **实验功能**
+   关闭映像前先把性能计数器转储到标准输出。如果关闭了多个映像或者同一映像被\
+   打开、关闭多次，那么性能计数器就可能转储多次。性能计数器及其含义可能因版\
+   本而不同。
 
 
-Examples
-========
+实例
+====
 
-To replay workload1 as fast as possible::
+尽可能快地重放 workload1::
 
        rbd-replay --latency-multiplier=0 workload1
 
-To replay workload1 but use test_image instead of prod_image::
+重放 workload1 ，并用 test_image 取代 prod_image::
 
        rbd-replay --map-image=prod_image=test_image workload1
 
 
-Availability
-============
-
-**rbd-replay** is part of the Ceph distributed storage system. Please refer to
-the Ceph documentation at http://ceph.com/docs for more information.
-
-
-See also
+使用范围
 ========
+
+**rbd-replay** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`rbd-replay-prep <rbd-replay-prep>`\(8),
 :doc:`rbd <rbd>`\(8)

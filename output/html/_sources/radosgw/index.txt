@@ -39,7 +39,7 @@ RADOS 要有它自己的用户管理。 Ceph 对象网关可与 Ceph FS 客户�
 	清除临时数据 <purge-temp>
 	S3 API <s3>
 	Swift API <swift>
-	管理员操作 API <adminops>
+	管理操作 API <adminops>
 	与 OpenStack Keystone 集成 <keystone>
 	troubleshooting
 	radosgw 手册页 <../../man/8/radosgw>

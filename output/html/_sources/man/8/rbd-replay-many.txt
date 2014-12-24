@@ -4,68 +4,64 @@
 
 .. program:: rbd-replay-many
 
-Synopsis
-========
+提纲
+====
 
 | **rbd-replay-many** [ *options* ] --original-image *name* *host1* [ *host2* [ ... ] ] -- *rbd_replay_args*
 
 
-Description
-===========
+描述
+====
 
-**rbd-replay-many** is a utility for replaying a rados block device (RBD) workload on several clients.
-Although all clients use the same workload, they replay against separate images.
-This matches normal use of librbd, where each original client is a VM with its own image.
+**rbd-replay-many** 工具用于在几个客户端上重放 RBD 载荷。虽然所有客户端使用\
+相同的载荷，但它们对单独的映像重放。正像 librbd 的常规用法，其中各原始客户端\
+都是有各自映像的虚拟机。
 
-Configuration and replay files are not automatically copied to clients.
-Replay images must already exist.
+配置和重放文件不会自动复制到客户端。重放映像必须存在才能进行重放。
 
 
-Options
-=======
+选项
+====
 
 .. option:: --original-image name
 
-   Specifies the name (and snap) of the originally traced image.
-   Necessary for correct name mapping.
+   指定最初被追踪映像的名字（和快照），对正确地映射名字是必要的。
 
 .. option:: --image-prefix prefix
 
-   Prefix of image names to replay against.
-   Specifying --image-prefix=foo results in clients replaying against foo-0, foo-1, etc.
-   Defaults to the original image name.
+   要进行重放的映像名前缀。指定 --image-prefix=foo 可使客户端重放 foo-0 、 \
+   foo-1 等等。默认为最初映像名。
 
 .. option:: --exec program
 
-   Path to the rbd-replay executable.
+   rbd-replay 可执行文件的路径。
 
 .. option:: --delay seconds
 
-   Delay between starting each client.  Defaults to 0.
+   启动各客户端的延时，默认为 0 。
 
 
-Examples
-========
+实例
+====
 
-Typical usage::
+典型用法： ::
 
        rbd-replay-many host-0 host-1 --original-image=image -- -c ceph.conf replay.bin
 
-This results in the following commands being executed::
+实际上将执行下列的命令： ::
 
        ssh host-0 'rbd-replay' --map-image 'image=image-0' -c ceph.conf replay.bin
        ssh host-1 'rbd-replay' --map-image 'image=image-1' -c ceph.conf replay.bin
 
 
-Availability
-============
-
-**rbd-replay-many** is part of the Ceph distributed storage system. Please refer to
-the Ceph documentation at http://ceph.com/docs for more information.
-
-
-See also
+使用范围
 ========
+
+**rbd-replay-many** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`rbd-replay <rbd-replay>`\(8),
 :doc:`rbd <rbd>`\(8)

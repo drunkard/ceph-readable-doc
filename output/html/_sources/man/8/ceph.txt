@@ -4,94 +4,87 @@
 
 .. program:: ceph
 
-Synopsis
-========
+提纲
+====
 
 | **ceph** [ -m *monaddr* ] [ -w | *command* ... ]
 
 
-Description
-===========
+描述
+====
 
-**ceph** is a control utility for communicating with the monitor
-cluster of a running Ceph distributed storage system.
+**ceph** 是与在线 Ceph 分布式存储系统的监视器集群通讯的控制工具。
 
-There are three basic modes of operation.
+有三种基本操作模式。
 
-Interactive mode
-----------------
+交互模式
+--------
 
-To start in interactive mode, no arguments are necessary. Control-d or
-'quit' will exit.
+要进入交互模式，不加参数运行即可。 Control-d 或 'quit' 可退出。
 
-Watch mode
-----------
+观察模式
+--------
 
-Watch mode shows cluster state changes as they occur. For example::
+观察模式会显示实时发生的集群状态变更，例如： ::
 
        ceph -w
 
-Command line mode
------------------
+命令行模式
+----------
 
-Finally, to send a single instruction to the monitor cluster (and wait
-for a response), the command can be specified on the command line.
+最后，要向监视器集群下达单个指令（并等待响应），可在命令行下输入子命令。
 
 
-Options
-=======
+选项
+====
 
 .. option:: -i infile
 
-   will specify an input file to be passed along as a payload with the
-   command to the monitor cluster. This is only used for specific
-   monitor commands.
+   指定一个输入文件，它将作为载荷与命令一起传递给监视器集群。仅用于某些特定\
+   的监视器命令。
 
 .. option:: -o outfile
 
-   will write any payload returned by the monitor cluster with its
-   reply to outfile.  Only specific monitor commands (e.g. osd getmap)
-   return a payload.
+   把响应中监视器集群返回的载荷写入 outfile 文件。只有某些特定的监视器命令\
+   （如 psd getmap ）会返回载荷。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   Use ceph.conf configuration file instead of the default
-   /etc/ceph/ceph.conf to determine monitor addresses during startup.
+   用 ceph.conf 配置文件而非默认的 /etc/ceph/ceph.conf 来确定启动时所用的监\
+   视器地址。
 
 .. option:: -m monaddress[:port]
 
-   Connect to specified monitor (instead of looking through ceph.conf).
+   连接到指定监视器（而不是通过 ceph.conf 查找）。
 
 
-Examples
-========
+实例
+====
 
-To grab a copy of the current OSD map::
+获取当前 OSD 运行图的副本： ::
 
        ceph -m 1.2.3.4:6789 osd getmap -o osdmap
 
-To get a dump of placement group (PG) state::
+转储一份归置组（ PG ）状态： ::
 
        ceph pg dump -o pg.txt
 
 
-Monitor commands
-================
+监视器命令
+==========
 
-A more complete summary of commands understood by the monitor cluster can be found in the
-online documentation, at
+监视器集群能理解的命令汇总到了在线文档中：
 
        http://ceph.com/docs/master/rados/operations/control
 
 
-Availability
-============
-
-**ceph** is part of the Ceph distributed storage system. Please refer to the Ceph documentation at
-http://ceph.com/docs for more information.
-
-
-See also
+使用范围
 ========
+
+**ceph** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),

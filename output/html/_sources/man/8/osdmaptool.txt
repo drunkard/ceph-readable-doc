@@ -4,72 +4,66 @@
 
 .. program:: osdmaptool
 
-Synopsis
-========
+提纲
+====
 
 | **osdmaptool** *mapfilename* [--print] [--createsimple *numosd*
   [--pgbits *bitsperosd* ] ] [--clobber]
 
 
-Description
-===========
+描述
+====
 
-**osdmaptool** is a utility that lets you create, view, and manipulate
-OSD cluster maps from the Ceph distributed storage system. Notably, it
-lets you extract the embedded CRUSH map or import a new CRUSH map.
+**osdmaptool** 工具可用于创建、查看、修改 Ceph 分布式存储系统的 OSD 集群运行\
+图。很显然，它可用于提取内嵌的 CRUSH 图，或者导入新 CRUSH 图。
 
 
-Options
-=======
+选项
+====
 
 .. option:: --print
 
-   will simply make the tool print a plaintext dump of the map, after
-   any modifications are made.
+   修改完成后，打印此图的一份纯文本转储。
 
 .. option:: --clobber
 
-   will allow osdmaptool to overwrite mapfilename if changes are made.
+   修改时允许 osdmaptool 覆盖 mapfilename 。
 
 .. option:: --import-crush mapfile
 
-   will load the CRUSH map from mapfile and embed it in the OSD map.
+   从 mapfile 载入 CRUSH 图并把它嵌入 OSD 图。
 
 .. option:: --export-crush mapfile
 
-   will extract the CRUSH map from the OSD map and write it to
-   mapfile.
+   从 OSD 图提取出 CRUSH 图并写入 mapfile 。
 
 .. option:: --createsimple numosd [--pgbits bitsperosd]
 
-   will create a relatively generic OSD map with the numosd devices.
-   If --pgbits is specified, the initial placement group counts will
-   be set with bitsperosd bits per OSD. That is, the pg_num map
-   attribute will be set to numosd shifted by bitsperosd.
+   创建有 numosd 个设备的相对通用的 OSD 图。若指定了 --pgbits 选项，每个 OSD \
+   的归置组数量将是 bitsperosd 个位偏移。也就是 pg_num 属性将被设置为 numosd \
+   数值再右移 bitsperosd 位。
 
 
-Example
-=======
+实例
+====
 
-To create a simple map with 16 devices::
+要创建个有 16 个设备的简易图： ::
 
         osdmaptool --createsimple 16 osdmap --clobber
 
-To view the result::
+查看结果： ::
 
         osdmaptool --print osdmap
 
 
-Availability
-============
-
-**osdmaptool** is part of the Ceph distributed storage system.  Please
-refer to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-
-See also
+使用范围
 ========
+
+**osdmaptool** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`crushtool <crushtool>`\(8),

@@ -4,145 +4,130 @@
 
 .. program:: ceph-rest-api
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-rest-api** [ -c *conffile* ] [--cluster *clustername* ] [ -n *name* ] [-i *id* ]
 
 
-Description
-===========
+描述
+====
 
-**ceph-rest-api** is a WSGI application that can run as a
-standalone web service or run under a web server that supports
-WSGI.  It provides much of the functionality of the **ceph**
-command-line tool through an HTTP-accessible interface.
+**ceph-rest-api** 是一个 WSGI （网页服务器网关接口）应用程序，可作为网页服\
+务独立运行，也可在支持 WSGI 的网页服务器下运行。它通过 HTTP 访问接口提供了 \
+**ceph** 命令行工具的大多数功能。
 
-Options
-=======
+
+选项
+====
 
 .. option:: -c/--conf conffile
 
-    names the ceph.conf file to use for configuration.  If -c is not
-    specified, the default depends on the state of the --cluster option
-    (default 'ceph'; see below).  The configuration file is searched
-    for in this order:
+   指定配置所在的 ``ceph.conf`` 配置文件。若未指定 ``-c`` 选项，默认将取决于 \
+   ``--cluster`` 选项（默认为 'ceph' ，见下文）的状态。配置文件将按如下顺序\
+   确定：
 
-    * $CEPH_CONF
-    * /etc/ceph/${cluster}.conf
-    * ~/.ceph/${cluster}.conf
-    * ${cluster}.conf (in the current directory)
+   * $CEPH_CONF
+   * /etc/ceph/${cluster}.conf
+   * ~/.ceph/${cluster}.conf
+   * ${cluster}.conf (in the current directory)
   
-    so you can also pass this option in the environment as CEPH_CONF.
+   所以说，你也可以用 CEPH_CONF 环境变量来传递此选项。
 
 .. option:: --cluster clustername
 
-    set *clustername* for use in the $cluster metavariable, for
-    locating the ceph.conf file.  The default is 'ceph'.
+   为定位 ceph.conf 文件，把 $cluster 元变量设置为 *clustername* 。默认为 \
+   'ceph' 。
 
 .. option:: -n/--name name
 
-    specifies the client 'name', which is used to find the
-    client-specific configuration options in the config file, and
-    also is the name used for authentication when connecting
-    to the cluster (the entity name appearing in ceph auth list output,
-    for example).  The default is 'client.restapi'. 
+   指定客户端名字 'name' ，用于从配置文件里查找与此客户端相关的配置选项，也\
+   用于连接集群（例如此名字出现在集群的 ``ceph auth list`` 输出中）时的认证\
+   过程。默认为 'client.restapi' 。
 
 .. option:: -i/--id id
 
-   specifies the client 'id', which will form the clientname
-   as 'client.<id>' if clientname is not set.  If -n/-name is
-   set, that takes precedence.
+   指定客户端 'id' ，在没有设置客户端名字时它将扩展为 'client.<id>' 。若设置\
+   了 ``-n/--name`` 则优先采用此值。
 
-   Also, global Ceph options are supported.
+   Ceph 全局选项在这里有效。
  
 
-Configuration parameters
-========================
-
-Supported configuration parameters include:
-
-* **keyring** the keyring file holding the key for 'clientname'
-* **public addr** ip:port to listen on (default 0.0.0.0:5000)
-* **log file** (usual Ceph default)
-* **restapi base url** the base URL to answer requests on (default /api/v0.1)
-* **restapi log level** critical, error, warning, info, debug (default warning)
-
-Configuration parameters are searched in the standard order:
-first in the section named '<clientname>', then 'client', then 'global'.
-
-<clientname> is either supplied by -n/--name, "client.<id>" where
-<id> is supplied by -i/--id, or 'client.restapi' if neither option
-is present.
-
-A single-threaded server will run on **public addr** if the ceph-rest-api
-executed directly; otherwise, configuration is specified by the enclosing
-WSGI web server.
-
-Commands
+配置参数
 ========
 
-Commands are submitted with HTTP GET requests (for commands that
-primarily return data) or PUT (for commands that affect cluster state).
-HEAD and OPTIONS are also supported.  Standard HTTP status codes
-are returned.
+支持的配置参数有：
 
-For commands that return bulk data, the request can include
-Accept: application/json or Accept: application/xml to select the
-desired structured output, or you may use a .json or .xml addition
-to the requested PATH.  Parameters are supplied as query parameters
-in the request; for parameters that take more than one value, repeat
-the key=val construct.  For instance, to remove OSDs 2 and 3,
-send a PUT request to ``osd/rm?ids=2&ids=3``.
+* **keyring** 保存着 'clientname' 密钥的密钥环文件
+* **public addr** 监听的 ip:port （默认为 0.0.0.0:5000 ）
+* **log file** 通常用 Ceph 默认值
+* **restapi base url** 向请求回应的前导 URL ，默认为 /api/v0.1 。
+* **restapi log level** critical, error, warning, info, debug （默认 warning ）
 
-Discovery
-=========
+配置参数按标准顺序搜索：先是名为 '<clientname>' 的段落、然后 'client' 、然\
+后 'global' 。
 
-Human-readable discovery of supported commands and parameters, along
-with a small description of each command, is provided when the requested
-path is incomplete/partially matching.  Requesting / will redirect to
-the value of  **restapi base url**, and that path will give a full list
-of all known commands.
-For example, requesting ``api/vX.X/mon`` will return the list of API calls for
-monitors - ``api/vX.X/osd`` will return the list of API calls for OSD and so on.
+<clientname> 的来源可以是 -n/--name ，或 "client.<id>" （ <id> 由 -i/--id 提\
+供），都没配置的话就是 'client.restapi' 。
 
-The command set is very similar to the commands
-supported by the **ceph** tool.  One notable exception is that the
-``ceph pg <pgid> <command>`` style of commands is supported here
-as ``tell/<pgid>/command?args``.
-
-Deployment as WSGI application
-==============================
-
-When deploying as WSGI application (say, with Apache/mod_wsgi,
-or nginx/uwsgi, or gunicorn, etc.), use the ``ceph_rest_api.py`` module
-(``ceph-rest-api`` is a thin layer around this module).  The standalone web
-server is of course not used, so address/port configuration is done in
-the WSGI server.  Use a python .wsgi module or the equivalent to call
-``app = generate_app(conf, cluster, clientname, clientid, args)`` where:
-
-* conf is as -c/--conf above
-* cluster is as --cluster above
-* clientname, -n/--name
-* clientid, -i/--id, and
-* args are any other generic Ceph arguments
-
-When app is returned, it will have attributes 'ceph_addr' and 'ceph_port'
-set to what the address and port are in the Ceph configuration;
-those may be used for the server, or ignored.
-
-Any errors reading configuration or connecting to the cluster cause an
-exception to be raised; see your WSGI server documentation for how to
-see those messages in case of problem.
-
-Availability
-============
-
-**ceph-rest-api** is part of the Ceph distributed storage system. Please refer to the Ceph documentation at
-http://ceph.com/docs for more information.
+如果直接执行 ceph-rest-api 的话，一个单线程服务器将监听 **public addr** ；否\
+则此配置将由 WSGI 网页服务器指定。
 
 
-See also
+命令
+====
+
+命令通过 HTTP GET 请求（对于主要返回数据的命令）、或 PUT （对于影响集群状态\
+的命令）提交的命令； HEAD 和 OPTIONS 也支持。返回标准的 HTTP 状态码。
+
+对于返回大量数据的命令，发出的请求可用 Accept: application/json 或 \
+Accept: application/xml 来指定想要的格式化输出，或者在请求的 PATH 里加 .json \
+或 .xml 后缀。请求中的参数将作为查询参数；对于需要多个值的参数可重复提供 \
+key=val 结构。例如，要删除 OSD 2 和 3 ，可发送 PUT 请求到 \
+``osd/rm?ids=2&ids=3`` 。
+
+
+发现
+====
+
+当请求的路径不完整或只有部分匹配时，服务器会返回人类可读的命令列表及其支持的\
+参数、和简短描述。请求 / 将重定向到 **restapi base url** 的值，并返回所有已\
+知命令的完整列表。例如，请求 ``api/vX.X/mon`` 将返回监视器相关的 API 调用列\
+表； ``api/vX.X/osd`` 将返回 OSD 相关的 API 调用列表。
+
+命令集与 **ceph** 工具所支持的子命令非常相似，但有一个明显的例外就是 \
+``ceph pg <pgid> <command>`` 命令在这里将变为 ``tell/<pgid>/command?args`` 。
+
+
+部署为 WSGI 应用程序
+====================
+
+部署为 WSGI 应用程序（比如用 Apache/mod_wsgi 、 nginx/uwsgi 或 gunicorn 等）\
+时，需要用 ``ceph_rest_api.py`` 模块， ``ceph-rest-api`` 只是此模块的瘦前\
+端。这里没用单独的网页服务器，所以地址和端口要在 WSGI 服务器上配置。用一个 \
+python 的 .wsgi 模块或者类似模块调用 \
+``app = generate_app(conf, cluster, clientname, clientid, args)`` ，其中：
+
+* conf 相当于上述的 -c/--conf
+* cluster 相当于上述的 --cluster
+* clientname 即是 -n/--name
+* clientid 相当 -i/--id
+* args 是其它的 Ceph 常规参数
+
+app 返回时，它将带有 'ceph_addr' 和 'ceph_port' 属性，分别被设置成了 Ceph 配\
+置中的地址和端口，服务器可使用这些信息，或忽略掉。
+
+任何读取配置或连接集群时的错误将引发一个异常，遇到问题时查看相关消息的方法可\
+参考 WSGI 服务器文档。
+
+
+使用范围
 ========
+
+**ceph-rest-api** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8)

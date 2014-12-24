@@ -4,66 +4,62 @@
 
 .. program:: ceph-post-file
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-post-file** [-d *description] [-u *user*] *file or dir* ...
 
 
-Description
-===========
+描述
+====
 
-**ceph-post-file** will upload files or directories to ceph.com for
-later analysis by Ceph developers.
+**ceph-post-file** 可把文件或目录上传到 ceph.com 让 Ceph 开发者稍后分析。
 
-Each invocation uploads files or directories to a separate directory
-with a unique tag.  That tag can be passed to a developer or
-referenced in a bug report (http://tracker.ceph.com/).  Once the
-upload completes, the directory is marked non-readable and
-non-writeable to prevent access or modification by other users.
-
-Warning
-=======
-
-Basic measures are taken to make posted data be visible only to
-developers with access to ceph.com infrastructure. However, users
-should think twice and/or take appropriate precautions before
-posting potentially sensitive data (for example, logs or data
-directories that contain Ceph secrets).
+每次调用都会把文件或目录上传到一个带惟一标签的独立目录。此标签可共享给开发者\
+或在缺陷报告（ http://tracker.ceph.com/ ）里引用。一旦上传完成，目录就被标记\
+为不可读且不可写，以防其它用户访问或修改。
 
 
-Options
-=======
+警告
+====
+
+上传的数据做了基本的防护措施，只对有权限访问 ceph.com 基础设施的开发者可见。\
+然而，用户自己也要再三考虑并采取恰当的预防措施，然后再上传（潜在的）敏感数据\
+（例如包含 Ceph 密钥的日志或数据目录）。
+
+
+选项
+====
 
 .. option:: -d *description*, --description *description*
 
-   Add a short description for the upload.  This is a good opportunity
-   to reference a bug number.  There is no default value.
+   给此次上传加个简短的描述，这是引用缺陷号码的最佳位置。无默认值。
 
 .. option:: -u *user*
 
-   Set the user metadata for the upload.  This defaults to `whoami`@`hostname -f`.
+   设置此上传的用户元数据。默认为 `whoami`@`hostname -f` 。
 
-Examples
-========
 
-To upload a single log::
+实例
+====
+
+上传单个日志文件： ::
 
    ceph-post-file /var/log/ceph/ceph-mon.`hostname`.log
 
-To upload several directories::
+上传几个目录： ::
 
    ceph-post-file -d 'mon data directories' /var/log/ceph/mon/*
 
 
-Availability
-============
-
-**ceph-post-file** is part of the Ceph distributed storage system. Please refer to
-the Ceph documentation at http://ceph.com/docs for more information.
-
-See also
+使用范围
 ========
+
+**ceph-post-file** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`ceph-debugpack <ceph-debugpack>`\(8),

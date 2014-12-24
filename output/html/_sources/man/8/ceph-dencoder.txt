@@ -4,92 +4,84 @@
 
 .. program:: ceph-dencoder
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-dencoder** [commands...]
 
 
-Description
-===========
+描述
+====
 
-**ceph-dencoder** is a utility to encode, decode, and dump ceph data
-structures.  It is used for debugging and for testing inter-version
-compatibility.
+**ceph-dencoder** 工具用来编码、解码和转储 Ceph 数据结构。常用于调试或测试版\
+本间的兼容性。
 
-**ceph-dencoder** takes a simple list of commands and performs them
-in order.
+**ceph-dencoder** 只是简单地读入命令列表并依次执行。
 
-Commands
-========
+
+命令
+====
 
 .. option:: version
 
-   Print the version string for the **ceph-dencoder** binary.
+   打印 **ceph-dencoder** 二进制程序的版本字符串。
 
 .. option:: import <file>
 
-   Read a binary blob of encoded data from the given file.  It will be
-   placed in an in-memory buffer.
+   从指定文件读入已编码的二进制数据块。它将被放入内存驻留缓冲。
 
 .. option:: export <file>
 
-   Write the contents of the current in-memory buffer to the given
-   file.
+   把当前内存驻留缓冲的内容写入指定文件。
 
 .. option:: list_types
 
-   List the data types known to this build of **ceph-dencoder**.
+   列出此 **ceph-dencoder** 程序已知的所有数据类型。
 
 .. option:: type <name>
 
-   Select the given type for future ``encode`` or ``decode`` operations.
+   为即将进行的 ``encode`` 或 ``decode`` 操作指定类型。
 
 .. option:: skip <bytes>
 
-   Seek <bytes> into the imported file before reading data structure, use
-   this with objects that have a preamble/header before the object of interest.
+   导入的文件先找到 <bytes> 字节处再开始读数据结构，当对象中感兴趣的部分之前\
+   有前同步码或头部时可加此选项。
 
 .. option:: decode
 
-   Decode the contents of the in-memory buffer into an instance of the
-   previously selected type.  If there is an error, report it.
+   把内存驻留缓冲中的内容解码为之前选定类型的例程。若遇到错误，则只报告。
 
 .. option:: encode
 
-   Encode the contents of the in-memory instance of the previously
-   selected type to the in-memory buffer.
+   把之前选定类型的驻留内存例程编码为驻留内存缓冲。
 
 .. option:: dump_json
 
-   Print a JSON-formatted description of the in-memory object.
+   打印内存驻留对象 JSON 格式的描述。
 
 .. option:: count_tests
 
-   Print the number of built-in test instances of the previosly
-   selected type that **ceph-dencoder** is able to generate.
+   打印出之前选定类型、且 **ceph-dencoder** 支持的内建测试例程数量。
 
 .. option:: select_test <n>
 
-   Select the given build-in test instance as a the in-memory instance
-   of the type.
+   用指定的内建测试例程作为同类型的内存驻留例程。
 
 .. option:: get_features
 
-   Print the decimal value of the feature set supported by this version
-   of **ceph-dencoder**.  Each bit represents a feature.  These correspond to
-   CEPH_FEATURE_* defines in src/include/ceph_features.h.
+   打印此版本 **ceph-dencoder** 所支持功能集的十进制值。每一位表示一个功能，\
+   它们对应于 src/include/ceph_features.h 中定义的 CEPH_FEATURE_* 。
 
 .. option:: set_features <f>
 
-   Set the feature bits provided to ``encode`` to *f*.  This allows
-   you to encode objects such that they can be understood by old
-   versions of the software (for those types that support it).
+   把提供给 ``encode`` 的功能位设置为 *f* 。设置了此选项你就能编码出旧版软件\
+   可理解的对象（它所支持的类型）。
 
-Example
-=======
 
-Say you want to examine an attribute on an object stored by ``ceph-osd``.  You can do this:
+实例
+====
+
+比如你想检查 ``ceph-osd`` 存储的一对象的一个属性，可以这样：
 
 ::
 
@@ -120,8 +112,7 @@ Say you want to examine an attribute on an object stored by ``ceph-osd``.  You c
       "truncate_size": 0,
       "watchers": {}}
 
-Alternatively, perhaps you wish to dump an internal CephFS metadata object, you might
-do that like this:
+或者，你也许想转储一个内部 CephFS 元数据对象，可以这样：
 
 ::
 
@@ -135,15 +126,13 @@ do that like this:
       "pending_destroy": []}} 
 
 
-Availability
-============
-
-**ceph-dencoder** is part of the Ceph distributed storage system. Please
-refer to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-
-See also
+使用范围
 ========
+
+**ceph-dencoder** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8)

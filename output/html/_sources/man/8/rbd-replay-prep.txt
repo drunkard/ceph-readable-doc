@@ -4,47 +4,46 @@
 
 .. program:: rbd-replay-prep
 
-Synopsis
-========
+提纲
+====
 
 | **rbd-replay-prep** [ --window *seconds* ] [ --anonymize ] *trace_dir* *replay_file*
 
 
-Description
-===========
+描述
+====
 
-**rbd-replay-prep** processes raw rados block device (RBD) traces to prepare them for **rbd-replay**.
+**rbd-replay-prep** 可处理原始 RBD 映像跟踪文件，以便用于 **rbd-replay** 。
 
 
-Options
-=======
+选项
+====
 
 .. option:: --window seconds
 
-   Requests further apart than 'seconds' seconds are assumed to be independent.
+   请求多于 'seconds' 秒之后被认为是独立的。
 
 .. option:: --anonymize
 
-   Anonymizes image and snap names.
+   匿名化映像和快照名。
 
 
-Examples
-========
+实例
+====
 
-To prepare workload1-trace for replay::
+要预处理 workload1-trace 以便重放： ::
 
        rbd-replay-prep workload1-trace/ust/uid/1000/64-bit workload1
 
 
-Availability
-============
-
-**rbd-replay-prep** is part of the Ceph distributed storage system. Please refer to
-the Ceph documentation at http://ceph.com/docs for more information.
-
-
-See also
+使用范围
 ========
+
+**rbd-replay-prep** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`rbd-replay <rbd-replay>`\(8),
 :doc:`rbd <rbd>`\(8)

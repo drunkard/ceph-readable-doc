@@ -4,156 +4,153 @@
 
 .. program:: radosgw-admin
 
-Synopsis
-========
+提纲
+====
 
 | **radosgw-admin** *command* [ *options* *...* ]
 
 
-Description
-===========
+描述
+====
 
-**radosgw-admin** is a RADOS gateway user administration utility. It
-allows creating and modifying users.
+**radosgw-admin** 是 RADOS 网关用户管理工具，可用于创建和修改用户。
 
 
-Commands
-========
+命令
+====
 
-*command* can be one of the following options:
+*command* 是下列选项之一：
 
 :command:`user create`
-  Create a new user
+  创建一个新用户
 
 :command:`user modify`
-  Modify a user
+  修改一个用户
 
 :command:`user info`
-  Display information of a user, and any potentially available
-  subusers and keys
+  显示用户信息，以及可能存在的子用户和密钥
 
 :command:`user rm`
-  Remove a user
+  删除一个用户
 
 :command:`subuser create`
-  Create a new subuser (primarily useful for clients using the Swift API)
+  新建一个子用户（适合使用 Swift API 的客户端）
 
 :command:`subuser modify`
-  Modify a subuser
+  修改子用户
 
 :command:`subuser rm`
-  Remove a subuser
+  删除子用户
 
 :command:`bucket list`
-  List all buckets
+  罗列所有桶
 
 :command:`bucket unlink`
-  Remove a bucket
+  删除一个桶
 
 :command:`bucket rm`
-  Remove a bucket
+  删除一个桶
 
 :command:`object rm`
-  Remove an object
+  删除一个对象
 
 :command:`key create`
-  Create an access key
+  创建一个访问密钥
 
 :command:`key rm`
-  Remove an access key
+  删除一个访问密钥
 
 :command:`pool add`
-  Add an existing pool for data placement
+  增加一个已有存储池用于数据归置
 
 :command:`pool rm`
-  Remove an existing pool from data placement set
+  从数据归置集删除一个已有存储池
 
 :command:`pools list`
-  List placement active set
+  罗列归置活跃集
 
 :command:`policy`
-  Display bucket/object policy
+  显示桶或对象相关的策略
 
 :command:`log show`
-  Show the log of a bucket (with a specified date)
+  查看一个桶的日志（可指定日期）
 
 :command:`usage show`
-  Show the usage information (with optional user and date range)
+  查看使用率信息（可选选项有用户和数据范围）
 
 :command:`usage trim`
-  Trim usage information (with optional user and date range)
+  修剪使用率信息（可选选项有用户和数据范围）
 
 
-Options
-=======
+选项
+====
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   Use *ceph.conf* configuration file instead of the default
-   ``/etc/ceph/ceph.conf`` to determine monitor addresses during
-   startup.
+   用指定的 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定启\
+   动时所需的监视器地址。
 
 .. option:: -m monaddress[:port]
 
-   Connect to specified monitor (instead of looking through ceph.conf).
+   连接到指定监视器，而非通过 ceph.conf 查询。
 
 .. option:: --uid=uid
 
-   The radosgw user ID.
+   radosgw 用户的 ID 。
 
 .. option:: --secret=secret
 
-   The secret associated with a given key.
+   指定密钥的密文
 
 .. option:: --display-name=name
 
-   Configure the display name of the user.
+   配置用户的显示名称（昵称）
 
 .. option:: --email=email
 
-   The e-mail address of the user
+   用户的电子邮件地址
 
 .. option:: --bucket=bucket
 
-   Specify the bucket name.
+   指定桶名
 
 .. option:: --object=object
 
-   Specify the object name.
+   指定对象名
 
 .. option:: --date=yyyy-mm-dd
 
-   The date needed for some commands
+   某些命令所需的日期
 
 .. option:: --start-date=yyyy-mm-dd
 
-   The start date needed for some commands
+   某些命令所需的起始日期
 
 .. option:: --end-date=yyyy-mm-dd
 
-   The end date needed for some commands
+   某些命令所需的终结日期
 
 .. option:: --auth-uid=auid
 
-   The librados auid
+   librados 认证所需的 auid
 
 .. option:: --purge-data
 
-   Remove user data before user removal
+   删除用户前先删除用户数据
    
 .. option:: --purge-objects
 
-   Remove all objects before bucket removal
+   删除桶前先删除其内所有对象
 
 .. option:: --lazy-remove
 
-   Defer removal of object tail
+   推迟对象尾部的删除
    
 
-Examples
-========
+实例
+====
 
-Generate a new user::
+生成一新用户： ::
 
         $ radosgw-admin user create --display-name="johnny rotten" --uid=johnny
         { "user_id": "johnny",
@@ -168,43 +165,43 @@ Generate a new user::
                   "secret_key": "tfm9aHMI8X76L3UdgE+ZQaJag1vJQmE6HDb5Lbrz"}],
           "swift_keys": []}
 
-Remove a user::
+删除一用户： ::
 
         $ radosgw-admin user rm --uid=johnny
         
-Remove a user and all associated buckets with their contents::
+删除一个用户和与他相关的桶及内容： ::
 
         $ radosgw-admin user rm --uid=johnny --purge-data
 
-Remove a bucket::
+删除一个桶： ::
 
         $ radosgw-admin bucket unlink --bucket=foo
 
-Show the logs of a bucket from April 1st, 2012::
+显示一个桶从 2012 年 4 月 1 日起的日志： ::
 
         $ radosgw-admin log show --bucket=foo --date=2012=04-01
 
-Show usage information for user from March 1st to (but not including) April 1st, 2012::
+显示某用户 2012 年 3 月 1 日（不含）到 4 月 1 日期间的使用情况： ::
 
         $ radosgw-admin usage show --uid=johnny \
                         --start-date=2012-03-01 --end-date=2012-04-01
 
-Show only summary of usage information for all users::
+只显示所有用户的使用情况汇总： ::
 
         $ radosgw-admin usage show --show-log-entries=false
 
-Trim usage information for user until March 1st, 2012::
+裁剪掉某用户 2012 年 4 月 1 日之前的使用信息： ::
 
         $ radosgw-admin usage trim --uid=johnny --end-date=2012-04-01
 
-Availability
-============
 
-**radosgw-admin** is part of the Ceph distributed storage system.  Please
-refer to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-See also
+使用范围
 ========
+
+**radosgw-admin** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8)

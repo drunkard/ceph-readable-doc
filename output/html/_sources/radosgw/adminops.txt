@@ -1,6 +1,6 @@
-==================
- Admin Operations
-==================
+==========
+ 管理操作
+==========
 
 An admin API request will be done on a URI that starts with the configurable 'admin'
 resource entry point. Authorization for the admin API duplicates the S3 authorization
@@ -8,15 +8,16 @@ mechanism. Some operations require that the user holds special administrative ca
 The response entity type (XML or JSON) may be specified as the 'format' option in the
 request and defaults to JSON if not specified.
 
+
 Get Usage
 =========
 
-Request bandwidth usage information.
+请求带宽利用率信息。
 
 :caps: usage=read
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -24,9 +25,8 @@ Syntax
 	Host: {fqdn}
 
 
-
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+请求参数
+~~~~~~~~
 
 ``uid``
 

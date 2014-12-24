@@ -4,45 +4,40 @@
 
 .. program:: ceph-debugpack
 
-Synopsis
-========
+提纲
+====
 
 | **ceph-debugpack** [ *options* ] *filename.tar.gz*
 
 
-Description
-===========
+描述
+====
 
-**ceph-debugpack** will build a tarball containing various items that are
-useful for debugging crashes. The resulting tarball can be shared with
-Ceph developers when debugging a problem.
+**ceph-debugpack** 会打包各种用于崩溃调试的信息。当调试某问题时，可把此压缩\
+包共享给 Ceph 开发者。
 
-The tarball will include the binaries for ceph-mds, ceph-osd, and ceph-mon, radosgw, any
-log files, the ceph.conf configuration file, any core files we can
-find, and (if the system is running) dumps of the current cluster state
-as reported by 'ceph report'.
+此压缩包会包含 ceph-mds 、 ceph-osd 、 ceph-mon 、 radosgw 的二进制文件，所\
+有日志文件， ceph.conf 配置文件，能找到的核心转储文件，以及（若集群在运行） \
+'ceph report' 生成的当前集群状态转储。
 
 
-Options
-=======
+选项
+====
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   Use *ceph.conf* configuration file instead of the default
-   ``/etc/ceph/ceph.conf`` to determine monitor addresses during
-   startup.
+   用 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定启动时所\
+   需的监视器地址。
 
 
-Availability
-============
-
-**ceph-debugpack** is part of the Ceph distributed storage system. Please
-refer to the Ceph documentation at http://ceph.com/docs for more
-information.
-
-
-See also
+使用范围
 ========
+
+**ceph-debugpack** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8)
 :doc:`ceph-post-file <ceph-post-file>`\(8)

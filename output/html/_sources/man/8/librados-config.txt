@@ -4,41 +4,38 @@
 
 .. program:: librados-config
 
-Synopsis
-========
+提纲
+====
 
 | **librados-config** [ --version ] [ --vernum ]
 
 
-Description
-===========
+描述
+====
 
-**librados-config** is a utility that displays information about the
-  installed ``librados``.
+**librados-config** 工具可查看已安装 ``librados`` 的相关信息。
 
 
-Options
-=======
+选项
+====
 
 .. option:: --version
 
-   Display ``librados`` version
+   显示 ``librados`` 版本号
 
 .. option:: --vernum
 
-   Display the ``librados`` version code
+   显示 ``librados`` 版本代码
 
 
-Availability
-============
-
-**librados-config** is part of the Ceph distributed storage system.
-Please refer to the Ceph documentation at http://ceph.com/docs for
-more information.
-
-
-See also
+使用范围
 ========
+
+**librados-config** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`rados <rados>`\(8)
