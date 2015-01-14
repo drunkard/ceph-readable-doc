@@ -390,16 +390,11 @@ Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守
 
 如果你的 Ceph 存储集群在运行，而你想看一个在运行进程的配置，用下面的命令： ::
 
-	ceph --admin-daemon {/path/to/admin/socket} config show | less
+	ceph daemon {daemon-type}.{id} config show | less
 
-各守护进程的管理套接字默认路径如下： ::
+如果你现在位于 osd.0 所在的主机，命令将是： ::
 
-	/var/run/ceph/$cluster-$name.asok
-
-同时，元变量将展开为实际的集群名和进程名，例如如果集群名是 ``ceph`` （默认值），你\
-可以用下面的命令检索 ``osd.0`` 的配置： ::
-
-	ceph --admin-daemon /var/run/ceph/ceph-osd.0.asok config show | less
+	ceph daemon osd.0 config show | less
 
 
 运行多个集群

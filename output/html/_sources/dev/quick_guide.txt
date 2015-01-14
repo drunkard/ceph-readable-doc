@@ -1,28 +1,24 @@
-=================================
- Developer Guide (Quick)
-=================================
+====================
+ 开发者指南（快速）
+====================
 
-This guide will describe how to build and test Ceph for development.
+本指南将解说如何构建并测试用于开发的 Ceph 。
 
-Development
------------
+开发
+----
 
-After installing the dependencies described in the ``README``,
-prepare the git source tree by updating the submodules
-
-.. code::
-
-	git submodule update --init
-
-To build the server daemons, and FUSE client, execute the following:
+The ``run-make-check.sh`` script will install Ceph dependencies,
+compiles everything in debug mode and runs a number of tests to verify
+the result behaves as expected.
 
 .. code::
 
-	./do_autogen.sh -d 1
-	make -j [number of cpus]
+	$ ./run-make-check.sh
 
-Running a development deployment
---------------------------------
+
+进行开发环境部署
+----------------
+
 Ceph contains a script called ``vstart.sh`` which allows developers to quickly test their code using
 a simple deployment on your development system. Once the build finishes successfully, start the ceph
 deployment using the following command:
@@ -95,8 +91,10 @@ Once you are done, type the following to stop the development ceph deployment:
 
 	$ ./stop.sh
 
-Running a RadosGW development environment
------------------------------------------
+
+运行 RadosGW 开发环境
+---------------------
+
 Add the ``-r`` to vstart.sh to enable the RadosGW
 
 .. code::
@@ -113,8 +111,8 @@ You can now use the swift python client to communicate with the RadosGW.
     $ swift -A http://localhost:8000/auth -U tester:testing -K asdf list
 
 
-Run unit tests
---------------
+运行单元测试
+------------
 
 The tests are located in `src/tests`.  To run them type:
 

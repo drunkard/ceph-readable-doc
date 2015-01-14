@@ -1,22 +1,21 @@
+资料库结构
+==========
 
-Corpus structure
-================
+ceph.git/ceph-object-corpus 是一个子模块。 ::
 
-ceph.git/ceph-object-corpus is a submodule.::
+	bin/   # misc scripts
+	archive/$version/objects/$type/$hash  # a sample of encoded objects from a specific version
 
- bin/   # misc scripts
- archive/$version/objects/$type/$hash  # a sample of encoded objects from a specific version
+You can also mark known or deliberate incompatibilities between versions with::
 
-You can also mark known or deliber incompatibilities between versions with::
-
- archive/$version/forward_incompat/$type
+	archive/$version/forward_incompat/$type
 
 The presence of a file indicates that new versions of code cannot
 decode old objects across that $version (this is normally the case).
 
 
-How to generate an object corpus
-================================
+如何生成对象资料库
+==================
 
 We can generate an object corpus for a particular version of ceph like so.
 
@@ -37,7 +36,7 @@ We can generate an object corpus for a particular version of ceph like so.
 	cd src
 	MON=3 OSD=3 MDS=3 RGW=1 ./vstart.sh -n -x
 
-#. Use a much functionality of the cluster as you can, to exercise as many object encoder methods as possible::
+#. Use as much functionality of the cluster as you can, to exercise as many object encoder methods as possible::
 
 	./rados -p rbd bench 10 write -b 123
 	./ceph osd out 0
@@ -89,7 +88,3 @@ Do some more stuff with rgw if you know how.
 	make check-local
 
 #. If everything looks good, update the submodule master branch, and commit the submodule in ceph.git.
-
-
-
-

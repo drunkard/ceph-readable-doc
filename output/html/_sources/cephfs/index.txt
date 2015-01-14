@@ -11,7 +11,7 @@ Ceph 对象存储也有 S3 和 Swift API 、或本地库（ librados ）一样�
 .. ditaa::
             +-----------------------+  +------------------------+
             | CephFS Kernel Object  |  |      CephFS FUSE       |
-            +-----------------------+  +------------------------+            
+            +-----------------------+  +------------------------+
 
             +---------------------------------------------------+
             |            Ceph FS Library (libcephfs)            |
@@ -38,7 +38,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 存储集群。
 
 
-.. toctree:: 
+.. toctree::
 	:maxdepth: 1
 
 	增加/删除 MDS <../../rados/deployment/ceph-deploy-mds>
@@ -46,14 +46,14 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 	Journaler 配置 <journaler>
 	ceph-mds 手册页 <../../man/8/ceph-mds>
 
-.. raw:: html 
+.. raw:: html
 
 	</td><td><h3>步骤二：挂载 Ceph FS</h3>
 
 一旦有了健康的 Ceph 存储集群，及其配套的元数据服务器，你就可以创建并挂载自己的 \
 Ceph 文件系统了。首先确认下你的客户端的网络连通性和认证密钥。
 
-.. toctree:: 
+.. toctree::
 	:maxdepth: 1
 
 	创建 Ceph 文件系统 <createfs>
@@ -65,17 +65,19 @@ Ceph 文件系统了。首先确认下你的客户端的网络连通性和认证
 	mount.ceph 手册页 <../../man/8/mount.ceph>
 
 
-.. raw:: html 
+.. raw:: html
 
 	</td><td><h3>其它详细信息</h3>
 
-.. toctree:: 
+.. toctree::
 	:maxdepth: 1
 
 	在 Ceph 上使用 Hadoop <hadoop>
 	libcephfs <../../api/libcephfs-java/>
 	cephfs-journal-tool <cephfs-journal-tool>
 	文件布局 <file-layouts>
+        驱逐客户端 <eviction>
+        文件系统占满的处理 <full>
 	故障排除 <troubleshooting>
 
 .. raw:: html

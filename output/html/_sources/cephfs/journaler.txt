@@ -33,6 +33,7 @@
 :是否必需: No
 :默认值: ``10``
 
+
 ``journaler batch interval``
 
 :描述: 人为导致的最大额外延时。
