@@ -188,6 +188,10 @@ Juno 版
 
 编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到 ``[glance_store]`` 段下： ::
 
+	[DEFAULT]
+	...
+	default_store = rbd
+	...
 	[glance_store]
 	stores = rbd
 	rbd_store_pool = images
@@ -196,6 +200,9 @@ Juno 版
 	rbd_store_chunk_size = 8
 
 关于 Glance 里可用的其它配置选项见 http://docs.openstack.org/trunk/config-reference/content/section_glance-api.conf.html.
+
+.. important:: Glance 还没完全迁移到 'store' ，所以我们还得在 DEFAULT 段下配\
+   置 store 。
 
 
 任意版 OpenStack

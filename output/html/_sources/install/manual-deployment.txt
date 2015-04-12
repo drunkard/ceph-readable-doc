@@ -280,8 +280,8 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 
 	sudo ceph-disk activate /dev/hdd1
 
-   **注意：** 如果你的 Ceph 节点上没有 ``/var/lib/ceph/bootstrap-osd/{cluster}.keyring`` ，\
-   那么应该外加 ``--activaye-key`` 参数。
+   **注：** 如果你的 Ceph 节点上没有 ``/var/lib/ceph/bootstrap-osd/{cluster}.keyring`` ，\
+   那么应该外加 ``--activate-key`` 参数。
 
 
 细致型

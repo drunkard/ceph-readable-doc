@@ -304,6 +304,158 @@ clock skew, you may consider configuring your <a class="reference external" href
 monitor hosts to act as peers. See <a class="reference external" href="http://www.ntp.org/">网络时间协议</a> and Ceph
 <a class="reference external" href="../../configuration/mon-config-ref/#clock">时钟选项</a> for additional details.</p>
 </div>
+<div class="section" id="active-clean">
+<h2>纠删编码的归置组不是 active+clean<a class="headerlink" href="#active-clean" title="Permalink to this headline">¶</a></h2>
+<p>CRUSH 找不到足够多的 OSD 映射到某个 PG 时，它会显示为 <tt class="docutils literal"><span class="pre">2147483647</span></tt> ，意思是 ITEM_NONE 或 <tt class="docutils literal"><span class="pre">no</span> <span class="pre">OSD</span> <span class="pre">found</span></tt> ，例如：</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">2147483647</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="section" id="id9">
+<h3>OSD 不够多<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<p>如果 Ceph 集群仅有 8 个 OSD ，但是纠删码存储池需要 9 个，就会显示上面的错误。这时候，你仍然可以另外创建需要较少 OSD 的纠删码存储池：</p>
+<div class="highlight-python"><pre>ceph osd erasure-code-profile set myprofile k=5 m=3
+ceph osd pool create erasurepool 16 16 erasure myprofile</pre>
+</div>
+<p>或者新增一个 OSD ，这个 PG 会自动用上的。</p>
+</div>
+<div class="section" id="id10">
+<h3>CRUSH 条件不能满足<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<p>即使集群拥有足够多的 OSD ， CRUSH 规则集的强制要求仍有可能无法满足。假如有 10 个 OSD 分布于两个主机上，且 CRUSH 规则集要求相同归置组不得使用位于同一主机的两个 OSD ，这样映射就会失败，因为只能找到两个 OSD ，你可以从规则集里查看必要条件：</p>
+<div class="highlight-python"><pre>$ ceph osd crush rule ls
+[
+    "replicated_ruleset",
+    "erasurepool"]
+$ ceph osd crush rule dump erasurepool
+{ "rule_id": 1,
+  "rule_name": "erasurepool",
+  "ruleset": 1,
+  "type": 3,
+  "min_size": 3,
+  "max_size": 20,
+  "steps": [
+        { "op": "take",
+          "item": -1,
+          "item_name": "default"},
+        { "op": "chooseleaf_indep",
+          "num": 0,
+          "type": "host"},
+        { "op": "emit"}]}</pre>
+</div>
+<p>可以这样解决此问题，创建新存储池，其内的 PG 允许多个 OSD 位于同一主机，命令如下：</p>
+<div class="highlight-python"><pre>ceph osd erasure-code-profile set myprofile ruleset-failure-domain=osd
+ceph osd pool create erasurepool 16 16 erasure myprofile</pre>
+</div>
+</div>
+<div class="section" id="id11">
+<h3>CRUSH 过早中止<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<p>假设集群拥有的 OSD 足以映射到 PG （比如有 9 个 OSD 和一个纠删码存储池的集群，每个 PG 需要 9 个 OSD ）， CRUSH 仍然有可能在找到映射前就中止了。可以这样解决：</p>
+<ul class="simple">
+<li>降低纠删存储池内 PG 的要求，让它使用较少的 OSD （需创建另一个存储池，因为纠删码配置不支持动态修改）。</li>
+<li>向集群添加更多 OSD （无需修改纠删存储池，它会自动回到清洁状态）。</li>
+<li>通过手工打造的 CRUSH 规则集，让它多试几次以找到合适的映射。（需创建另一个存储池，因为纠删码配置不支持动态修改）。把 <tt class="docutils literal"><span class="pre">set_choose_tries</span></tt> 设置得高于默认值即可。</li>
+</ul>
+<p>你从集群中提取出 crushmap 之后，应该先用 <tt class="docutils literal"><span class="pre">crushtool</span></tt> 校验一下是否有问题，这样你的试验就无需触及 Ceph 集群，只要在一个本地文件上测试即可：</p>
+<div class="highlight-python"><pre>$ ceph osd crush rule dump erasurepool
+{ "rule_name": "erasurepool",
+  "ruleset": 1,
+  "type": 3,
+  "min_size": 3,
+  "max_size": 20,
+  "steps": [
+        { "op": "take",
+          "item": -1,
+          "item_name": "default"},
+        { "op": "chooseleaf_indep",
+          "num": 0,
+          "type": "host"},
+        { "op": "emit"}]}
+$ ceph osd getcrushmap &gt; crush.map
+got crush map from osdmap epoch 13
+$ crushtool -i crush.map --test --show-bad-mappings \
+   --rule 1 \
+   --num-rep 9 \
+   --min-x 1 --max-x $((1024 * 1024))
+bad mapping rule 8 x 43 num_rep 9 result [3,2,7,1,2147483647,8,5,6,0]
+bad mapping rule 8 x 79 num_rep 9 result [6,0,2,1,4,7,2147483647,5,8]
+bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]</pre>
+</div>
+<p>其中 <tt class="docutils literal"><span class="pre">--num-rep</span></tt> 是纠删码 crush 规则集所需的 OSD 数量， <tt class="docutils literal"><span class="pre">--rule</span></tt> 是 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">rule</span> <span class="pre">dump</span></tt> 命令结果中 <tt class="docutils literal"><span class="pre">ruleset</span></tt> 字段的值。此测试会尝试映射一百万个值（即 <tt class="docutils literal"><span class="pre">[--min-x,--max-x]</span></tt> 所指定的范围），且必须至少显示一个坏映射；如果它没有任何输出，说明所有映射都成功了，你可以就此打住：问题的根源不在这里。</p>
+<p>反编译 crush 图后，你可以手动编辑其规则集：</p>
+<div class="highlight-python"><pre>$ crushtool --decompile crush.map &gt; crush.txt</pre>
+</div>
+<p>并把下面这行加进规则集：</p>
+<div class="highlight-python"><pre>step set_choose_tries 100</pre>
+</div>
+<p>然后 <tt class="docutils literal"><span class="pre">crush.txt</span></tt> 文件内的这部分大致如此：</p>
+<div class="highlight-python"><pre>rule erasurepool {
+        ruleset 1
+        type erasure
+        min_size 3
+        max_size 20
+        step set_chooseleaf_tries 5
+        step set_choose_tries 100
+        step take default
+        step chooseleaf indep 0 type host
+        step emit
+}</pre>
+</div>
+<p>然后编译、并再次测试：</p>
+<div class="highlight-python"><pre>$ crushtool --compile crush.txt -o better-crush.map</pre>
+</div>
+<p>所有映射都成功时，用 <tt class="docutils literal"><span class="pre">crushtool</span></tt> 的 <tt class="docutils literal"><span class="pre">--show-choose-tries</span></tt> 选项能看到成功映射的尝试次数直方图：</p>
+<div class="highlight-python"><pre>$ crushtool -i better-crush.map --test --show-bad-mappings \
+   --show-choose-tries \
+   --rule 1 \
+   --num-rep 9 \
+   --min-x 1 --max-x $((1024 * 1024))
+...
+11:        42
+12:        44
+13:        54
+14:        45
+15:        35
+16:        34
+17:        30
+18:        25
+19:        19
+20:        22
+21:        20
+22:        17
+23:        13
+24:        16
+25:        13
+26:        11
+27:        11
+28:        13
+29:        11
+30:        10
+31:         6
+32:         5
+33:        10
+34:         3
+35:         7
+36:         5
+37:         2
+38:         5
+39:         5
+40:         2
+41:         5
+42:         4
+43:         1
+44:         2
+45:         2
+46:         3
+47:         1
+48:         0
+...
+102:         0
+103:         1
+104:         0
+...</pre>
+</div>
+<p>有 42 个归置组需 11 次重试、 44 个归置组需 12 次重试，以此类推。这样，重试的最高次数就是防止坏映射的最低值，也就是 <tt class="docutils literal"><span class="pre">set_choose_tries</span></tt> 的取值（即上面输出中的 103 ，因为任意归置组成功映射的重试次数都没有超过 103 ）。</p>
+</div>
+</div>
 </div>
 
 
@@ -355,6 +507,12 @@ monitor hosts to act as peers. See <a class="reference external" href="http://ww
 <li class="toctree-l4"><a class="reference internal" href="#osd">只有几个 OSD 接收数据</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id7">不能写入数据</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id8">归置组不一致</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#active-clean">纠删编码的归置组不是 active+clean</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id9">OSD 不够多</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id10">CRUSH 条件不能满足</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id11">CRUSH 过早中止</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../log-and-debug/">日志记录和调试</a></li>
@@ -383,6 +541,12 @@ monitor hosts to act as peers. See <a class="reference external" href="http://ww
 <li class="toctree-l4"><a class="reference internal" href="#osd">只有几个 OSD 接收数据</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id7">不能写入数据</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id8">归置组不一致</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#active-clean">纠删编码的归置组不是 active+clean</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id9">OSD 不够多</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id10">CRUSH 条件不能满足</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id11">CRUSH 过早中止</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../memory-profiling/">内存剖析</a></li>

@@ -94,7 +94,7 @@ Cephx 注意事项
 删除快照
 --------
 
-要用 ``rbd`` 删除一快照，指定 ``snap rm`` 选项、存储池名、映像名和用户名。 ::
+要用 ``rbd`` 删除一快照，指定 ``snap rm`` 选项、存储池名、映像名和快照名。 ::
 
 	rbd --pool {pool-name} snap rm --snap {snap-name} {image-name}
 	rbd snap rm {pool-name}/{image-name}@{snap-name}
@@ -222,7 +222,7 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 
 要克隆快照，你得指定父存储池、映像、和快照，还有子存储池和映像名。克隆前必须先保护它。 ::
 
-   rbd --pool {pool-name} --image {parent-image} --snap {snap-name} --dest-pool {pool-name} --dest {child-image}
+	rbd --pool {pool-name} --image {parent-image} --snap {snap-name} --dest-pool {pool-name} --dest {child-image}
 	rbd clone {pool-name}/{parent-image}@{snap-name} {pool-name}/{child-image-name}
 
 例如： ::

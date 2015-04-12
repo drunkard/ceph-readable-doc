@@ -262,10 +262,25 @@ SELinux
 ``/etc/selinux/config`` 。
 
 
+优先级或首选项
+--------------
+
+确保你的包管理器安装了优先级或首选项包、且已启用。在 CentOS 上你也许得安装 \
+EPEL ，在 RHEL 上你也许得启用可选软件库。 ::
+
+	sudo yum install yum-plugin-priorities
+
+比如在 RHEL 7 服务器上，可用下列命令安装 ``yum-plugin-priorities`` 并启用 \
+``rhel-7-server-optional-rpms`` 软件库： ::
+
+	sudo yum install yum-plugin-priorities --enablerepo=rhel-7-server-optional-rpms
+
+
 总结
 ====
 
 快速入门的飞前部分到此结束，请继续\ `存储集群快速入门`_\ 。
+
 
 .. _存储集群快速入门: ../quick-ceph-deploy
 .. _操作系统推荐: ../os-recommendations

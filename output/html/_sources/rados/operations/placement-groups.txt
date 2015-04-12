@@ -331,7 +331,7 @@ would require significantly more resources and time for peering.
 
 要获取所有卡在某状态的归置组统计信息，执行命令： ::
 
-        ceph pg dump_stuck inactive|unclean|stale [--format <format>] [-t|--threshold <seconds>]
+        ceph pg dump_stuck inactive|unclean|stale|undersized|degraded [--format <format>] [-t|--threshold <seconds>]
 
 **Inactive** （不活跃）归置组不能处理读写，因为它们在等待一个有最新数据的 OSD 复活\
 且进入集群。

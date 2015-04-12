@@ -1,6 +1,6 @@
-==========================
- Introduction to librados
-==========================
+===============
+ librados 简介
+===============
 
 The :term:`Ceph Storage Cluster` provides the basic storage service that allows
 :term:`Ceph` to uniquely deliver **object, block, and file storage** in one
@@ -30,13 +30,12 @@ Storage Cluster. To use the API, you need a running Ceph Storage Cluster.
 See `Installation (Quick)`_ for details.
 
 
-Step 1: Getting librados
-========================
+第一步：获取 librados
+=====================
 
-Your client application must bind with ``librados`` to connect to the Ceph
-Storage Cluster. You must install ``librados`` and any required packages to
-write applications that use ``librados``. The ``librados`` API is written in
-C++, with additional bindings for C, Python and Java. 
+你的客户端应用必须绑定 ``librados`` 才能连接 Ceph 存储集群。在写使用 \
+``librados`` 的应用程序前，要安装 ``librados`` 及其他依赖包。 ``librados`` \
+API 本身是用 C++ 实现的，另外有 C 、 Python 、 Java 和 PHP 绑定。
 
 
 Getting librados for C/C++
@@ -119,8 +118,38 @@ To build the documentation, execute the following::
 	ant docs
 
 
-Step 2: Configuring a Cluster Handle
-====================================
+获取 librados 的 PHP 绑定
+-------------------------
+
+要安装 ``librados`` 的 PHP 扩展，可按如下步骤：
+
+#. 安装 php-dev ，在 Debian/Ubuntu 下应该执行： ::
+
+	sudo apt-get install php5-dev build-essential
+
+   在 CentOS/RHEL 下应该执行： ::
+
+	sudo yum install php-devel
+
+#. 克隆 ``phprados`` 源码库： ::
+
+	git clone https://github.com/ceph/phprados.git
+
+#. 构建 ``phprados``::
+
+	cd phprados
+	phpize
+	./configure
+	make
+	sudo make install
+
+#. 把下列配置加入 php.ini 以启用 ``phprados``::
+
+	extension=rados.so
+
+
+第二步：配置集群句柄
+====================
 
 A :term:`Ceph Client`, via ``librados``, interacts directly with OSDs to store
 and retrieve data. To interact with OSDs, the client app must invoke
@@ -439,7 +468,7 @@ binding converts C++-based errors into exceptions.
 				System.out.println("Read the configuration file.");
 
 				cluster.connect();
-				System.out.println("Connected to the cluster.");            
+				System.out.println("Connected to the cluster.");
 
 			} catch (RadosException e) {
 				System.out.println(e.getMessage() + ": " + e.getReturnValue());
@@ -454,6 +483,28 @@ to specify the classpath. For example::
 
 	javac CephClient.java
 	java CephClient
+
+
+PHP 实例
+--------
+
+在启用了 RADOS 扩展的 PHP 上，新建集群句柄非常简单：
+
+.. code-block:: php
+
+	<?php
+	$r = rados_create();
+	rados_conf_read_file($r, '/etc/ceph/ceph.conf');
+	if (!rados_connect($r)) {
+		echo "Failed to connect to Ceph cluster";
+	} else {
+		echo "Successfully connected to Ceph cluster";
+	}
+
+
+把上述内容保存为 rados.php 并运行： ::
+
+	php rados.php
 
 
 Step 3: Creating an I/O Context
@@ -477,7 +528,7 @@ functionality includes:
                 |               |               |
                 |-----+ create  |               |
                 |     | I/O     |               | 
-                |<----+ context |               |              
+                |<----+ context |               |
                 |               |               |
                 |  write data   |               |
                 |---------------+-------------->|
@@ -875,6 +926,17 @@ Java-Example
 	}
 
 
+PHP 实例
+--------
+
+.. code-block:: php
+
+	<?php
+	$io = rados_ioctx_create($r, "mypool");
+	rados_write_full($io, "oidOne", "mycontents");
+	rados_remove("oidOne");
+	rados_ioctx_destroy($io);
+
 
 Step 4: Closing Sessions
 ========================
@@ -914,7 +976,12 @@ Python Example
 	cluster.shutdown()
 
 
+PHP 实例
+--------
 
+.. code-block:: php
+
+	rados_shutdown($r);
 
 
 .. _user ID: ../../operations/authentication#cephx-commandline-options

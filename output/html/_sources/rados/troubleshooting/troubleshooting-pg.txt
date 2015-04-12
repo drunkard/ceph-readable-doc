@@ -322,6 +322,190 @@ monitor hosts to act as peers. See `网络时间协议`_ and Ceph
 `时钟选项`_ for additional details.
 
 
+纠删编码的归置组不是 active+clean
+=================================
+
+CRUSH 找不到足够多的 OSD 映射到某个 PG 时，它会显示为 ``2147483647`` ，意思\
+是 ITEM_NONE 或 ``no OSD found`` ，例如： ::
+
+	[2,1,6,0,5,8,2147483647,7,4]
+
+OSD 不够多
+----------
+
+如果 Ceph 集群仅有 8 个 OSD ，但是纠删码存储池需要 9 个，就会显示上面的错\
+误。这时候，你仍然可以另外创建需要较少 OSD 的纠删码存储池： ::
+
+	ceph osd erasure-code-profile set myprofile k=5 m=3
+	ceph osd pool create erasurepool 16 16 erasure myprofile
+
+或者新增一个 OSD ，这个 PG 会自动用上的。
+
+CRUSH 条件不能满足
+------------------
+
+即使集群拥有足够多的 OSD ， CRUSH 规则集的强制要求仍有可能无法满足。假如有 \
+10 个 OSD 分布于两个主机上，且 CRUSH 规则集要求相同归置组不得使用位于同一主\
+机的两个 OSD ，这样映射就会失败，因为只能找到两个 OSD ，你可以从规则集里查看\
+必要条件： ::
+
+	$ ceph osd crush rule ls
+	[
+	    "replicated_ruleset",
+	    "erasurepool"]
+	$ ceph osd crush rule dump erasurepool
+	{ "rule_id": 1,
+	  "rule_name": "erasurepool",
+	  "ruleset": 1,
+	  "type": 3,
+	  "min_size": 3,
+	  "max_size": 20,
+	  "steps": [
+	        { "op": "take",
+	          "item": -1,
+	          "item_name": "default"},
+	        { "op": "chooseleaf_indep",
+	          "num": 0,
+	          "type": "host"},
+	        { "op": "emit"}]}
+
+可以这样解决此问题，创建新存储池，其内的 PG 允许多个 OSD 位于同一主机，命令\
+如下： ::
+
+	ceph osd erasure-code-profile set myprofile ruleset-failure-domain=osd
+	ceph osd pool create erasurepool 16 16 erasure myprofile
+
+CRUSH 过早中止
+--------------
+
+假设集群拥有的 OSD 足以映射到 PG （比如有 9 个 OSD 和一个纠删码存储池的集群，\
+每个 PG 需要 9 个 OSD ）， CRUSH 仍然有可能在找到映射前就中止了。可以这样解决：
+
+* 降低纠删存储池内 PG 的要求，让它使用较少的 OSD （需创建另一个存储池，因为\
+  纠删码配置不支持动态修改）。
+
+* 向集群添加更多 OSD （无需修改纠删存储池，它会自动回到清洁状态）。
+
+* 通过手工打造的 CRUSH 规则集，让它多试几次以找到合适的映射。（需创建另一个\
+  存储池，因为纠删码配置不支持动态修改）。把 ``set_choose_tries`` 设置得高于\
+  默认值即可。
+
+你从集群中提取出 crushmap 之后，应该先用 ``crushtool`` 校验一下是否有问题，\
+这样你的试验就无需触及 Ceph 集群，只要在一个本地文件上测试即可： ::
+
+	$ ceph osd crush rule dump erasurepool
+	{ "rule_name": "erasurepool",
+	  "ruleset": 1,
+	  "type": 3,
+	  "min_size": 3,
+	  "max_size": 20,
+	  "steps": [
+	        { "op": "take",
+	          "item": -1,
+	          "item_name": "default"},
+	        { "op": "chooseleaf_indep",
+	          "num": 0,
+	          "type": "host"},
+	        { "op": "emit"}]}
+	$ ceph osd getcrushmap > crush.map
+	got crush map from osdmap epoch 13
+	$ crushtool -i crush.map --test --show-bad-mappings \
+	   --rule 1 \
+	   --num-rep 9 \
+	   --min-x 1 --max-x $((1024 * 1024))
+	bad mapping rule 8 x 43 num_rep 9 result [3,2,7,1,2147483647,8,5,6,0]
+	bad mapping rule 8 x 79 num_rep 9 result [6,0,2,1,4,7,2147483647,5,8]
+	bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]
+
+其中 ``--num-rep`` 是纠删码 crush 规则集所需的 OSD 数量， ``--rule`` 是 \
+``ceph osd crush rule dump`` 命令结果中 ``ruleset`` 字段的值。此测试会尝试\
+映射一百万个值（即 ``[--min-x,--max-x]`` 所指定的范围），且必须至少显示一\
+个坏映射；如果它没有任何输出，说明所有映射都成功了，你可以就此打住：问题的\
+根源不在这里。
+
+反编译 crush 图后，你可以手动编辑其规则集： ::
+
+	$ crushtool --decompile crush.map > crush.txt
+
+并把下面这行加进规则集： ::
+
+	step set_choose_tries 100
+
+然后 ``crush.txt`` 文件内的这部分大致如此： ::
+
+	rule erasurepool {
+		ruleset 1
+		type erasure
+		min_size 3
+		max_size 20
+		step set_chooseleaf_tries 5
+		step set_choose_tries 100
+		step take default
+		step chooseleaf indep 0 type host
+		step emit
+	}
+
+然后编译、并再次测试： ::
+
+	$ crushtool --compile crush.txt -o better-crush.map
+
+所有映射都成功时，用 ``crushtool`` 的 ``--show-choose-tries`` 选项能看到成\
+功映射的尝试次数直方图： ::
+
+	$ crushtool -i better-crush.map --test --show-bad-mappings \
+	   --show-choose-tries \
+	   --rule 1 \
+	   --num-rep 9 \
+	   --min-x 1 --max-x $((1024 * 1024))
+	...
+	11:        42
+	12:        44
+	13:        54
+	14:        45
+	15:        35
+	16:        34
+	17:        30
+	18:        25
+	19:        19
+	20:        22
+	21:        20
+	22:        17
+	23:        13
+	24:        16
+	25:        13
+	26:        11
+	27:        11
+	28:        13
+	29:        11
+	30:        10
+	31:         6
+	32:         5
+	33:        10
+	34:         3
+	35:         7
+	36:         5
+	37:         2
+	38:         5
+	39:         5
+	40:         2
+	41:         5
+	42:         4
+	43:         1
+	44:         2
+	45:         2
+	46:         3
+	47:         1
+	48:         0
+	...
+	102:         0
+	103:         1
+	104:         0
+	...
+
+有 42 个归置组需 11 次重试、 44 个归置组需 12 次重试，以此类推。这样，重试\
+的最高次数就是防止坏映射的最低值，也就是 ``set_choose_tries`` 的取值（即上\
+面输出中的 103 ，因为任意归置组成功映射的重试次数都没有超过 103 ）。
+
 
 .. _检查: ../../operations/placement-groups#get-the-number-of-placement-groups
 .. _这里: ../../configuration/pool-pg-config-ref

@@ -85,14 +85,12 @@ Ceph 存储集群。
 储池名的前缀，但你可以用自己喜欢的命名规则。例如：
 
 
-- ``.us.rgw.root``
-
-- ``.us-east.domain.rgw``
 - ``.us-east.rgw.root``
 - ``.us-east.rgw.control``
 - ``.us-east.rgw.gc``
-- ``.us-east.rgw.buckets.index``
 - ``.us-east.rgw.buckets``
+- ``.us-east.rgw.buckets.index``
+- ``.us-east.rgw.buckets.extra``
 - ``.us-east.log``
 - ``.us-east.intent-log``
 - ``.us-east.usage``
@@ -101,12 +99,13 @@ Ceph 存储集群。
 - ``.us-east.users.swift``
 - ``.us-east.users.uid``
 
-- ``.us-west.domain.rgw``
+
 - ``.us-west.rgw.root``
 - ``.us-west.rgw.control``
 - ``.us-west.rgw.gc``
-- ``.us-west.rgw.buckets.index``
 - ``.us-west.rgw.buckets``
+- ``.us-west.rgw.buckets.index``
+- ``.us-west.rgw.buckets.extra``
 - ``.us-west.log``
 - ``.us-west.intent-log``
 - ``.us-west.usage``
@@ -118,7 +117,7 @@ Ceph 存储集群。
 关于网关的默认存储池请参考\ `配置参考——存储池`_\ 。关于创建存储池见\ \
 `存储池`_\ 。用下列命令创建存储池： ::
 
-	ceph osd pool create {poolname} {pg-num} {pgp-num}
+	ceph osd pool create {poolname} {pg-num} {pgp-num} {replicated | erasure} [{erasure-code-profile}]  {ruleset-name} {ruleset-number}
 
 
 .. tip:: 创建大量存储池时，集群回到 ``active + clean`` 状态可能需要较多的时间。
@@ -126,7 +125,12 @@ Ceph 存储集群。
 .. topic:: CRUSH 图
 
 	把整个辖区配置为单个 Ceph 存储集群时，请考虑单独为域使用 CRUSH 规则，\
-        这样就不会有重叠的故障域了。详情见 `CRUSH 图`_\ 。
+	这样就不会有重叠的故障域了。详情见 `CRUSH 图`_\ 。
+
+	Ceph 允许多级 CRUSH 和多种 CRUSH 规则集，这样在配置你自己的网关时就\
+	有很大的灵活性。像 ``rgw.buckets.index`` 这样的存储池就可以利用副本\
+	数适当的 SSD 存储池取得高性能；后端存储也可以从更经济的纠删编码的存\
+	储中获益，还可能利用缓存层提升性能。
 
 完成这一步后，执行下列命令以确认你已经创建了前述所需的存储池： ::
 

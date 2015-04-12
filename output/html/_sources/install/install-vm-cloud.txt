@@ -57,6 +57,9 @@ To install QEMU, execute the following:
 	[main]
 	enabled = 1
 
+.. note:: 在基于 RPM 的系统中，只有基于 EL6 的发行版（ RHEL 6 、 CentOS 6 、 \
+   Scientific Linux 6）需要 ceph-extras ； Fedora 或 RHEL 7+ 系统不需要。
+
 #. Create a ``/etc/yum.repos.d/ceph-extras.repo`` file with the following 
    contents, and replace ``{distro}`` with your Linux distribution. Follow
    the ``baseurl`` path below to see which distributions Ceph supports:: 

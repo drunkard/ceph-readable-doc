@@ -104,6 +104,9 @@ Debian 二进制包
 RPM 二进制包
 ------------
 
+.. note:: 在基于 RPM 的系统中，只有基于 EL6 的发行版（ RHEL 6 、 CentOS 6 、 \
+   Scientific Linux 6）需要 ceph-extras ； Fedora 或 RHEL 7+ 系统不需要。
+
 对于 RPM 包，仓库的定义需要加到 ``/etc/yum.repos.d/`` 下面（如 \
 ``ceph-extras.repo`` ）。某些包（如 QEMU ）必须优先于标准包，所以要设置 \
 ``priority=2`` 。 ::

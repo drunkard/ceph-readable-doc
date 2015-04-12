@@ -100,7 +100,7 @@ Ceph 可自动创建并挂载所需的文件系统。
 :类型: String
 :xfs 默认值: ``rw,noatime,inode64``
 :其余文件系统默认值: ``rw, noatime``
-:实例: ``osd mount options xfs = rw, noatime, inode64, nobarrier, logbufs=8``
+:实例: ``osd mount options xfs = rw, noatime, inode64, logbufs=8``
 
 
 .. index:: OSD; journal settings

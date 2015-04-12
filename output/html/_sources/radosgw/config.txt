@@ -1,12 +1,11 @@
-=================================
- Configuring Ceph Object Gateway
-=================================
+=====================
+ Ceph 对象网关的配置
+=====================
 
-Configuring a Ceph Object Gateway requires a running Ceph Storage Cluster, 
-and an Apache web server with the FastCGI module.
+要配置 Ceph 对象网关需要一个运行着的 Ceph 存储集群，还有启用了 FastCGI 模块\
+的 Apache 网页服务器。
 
-The Ceph Object Gateway is a client of the Ceph Storage Cluster. As a 
-Ceph Storage Cluster client, it requires:
+Ceph 对象网关是 Ceph 存储集群的一个客户端，作为 Ceph 存储集群的客户端，它需要：
 
 - A name for the gateway instance. We use ``gateway`` in this guide.
 - A storage cluster user name with appropriate permissions in a keyring.
@@ -72,9 +71,8 @@ See the `Cephx Guide`_ for additional details on Ceph authentication.
 	sudo mv ceph.client.radosgw.keyring /etc/ceph/ceph.client.radosgw.keyring
 
 
-
-Create Pools
-============
+创建存储池
+==========
 
 Ceph Object Gateways require Ceph Storage Cluster pools to store specific
 gateway data.  If the user you created has permissions, the gateway
@@ -82,17 +80,20 @@ will create the pools automatically. However, you should ensure that you have
 set an appropriate default number of placement groups per pool into your Ceph
 configuration file.
 
+.. note:: Ceph 对象网关有多个存储池，考虑到所有存储池会共用相同的 CRUSH 分级\
+   结构，所以 PG 数不要设置得过大，否则会影响性能。
+
 When configuring a gateway with the default region and zone, the naming
 convention for pools typically omits region and zone naming, but you can use any
 naming convention you prefer. For example:
 
 
-- ``.rgw``
 - ``.rgw.root``
 - ``.rgw.control``
 - ``.rgw.gc``
 - ``.rgw.buckets``
 - ``.rgw.buckets.index``
+- ``.rgw.buckets.extra``
 - ``.log``
 - ``.intent-log``
 - ``.usage``
@@ -106,20 +107,21 @@ See `Configuration Reference - Pools`_ for details on the default pools for
 gateways. See `Pools`_ for details on creating pools. Execute the following 
 to create a pool:: 
 
-	ceph osd pool create {poolname} {pg-num} {pgp-num}
+	ceph osd pool create {poolname} {pg-num} {pgp-num} {replicated | erasure} [{erasure-code-profile}]  {ruleset-name} {ruleset-number}
 
 
-.. tip:: When adding a large number of pools, it may take some time for your 
-   cluster to return to a ``active + clean`` state.
+.. tip:: Ceph 允许多级 CRUSH 和多种 CRUSH 规则集，这样在配置你自己的网关时就\
+   有很大的灵活性。像 ``rgw.buckets.index`` 这样的存储池就可以利用副本数适当\
+   的 SSD 存储池取得高性能；后端存储也可以从更经济的纠删编码的存储中获益，还\
+   可能利用缓存层提升性能。
 
-When you have completed this step, execute the following to ensure that
-you have created all of the foregoing pools::
+完成此步骤之后，执行下列命令确认前述存储池是否都创建了： ::
 
 	rados lspools
 
 
-Add a Gateway Configuration to Ceph
-===================================
+为 Ceph 新增网关配置
+====================
 
 Add the Ceph Object Gateway configuration to your Ceph Configuration file. The
 Ceph Object Gateway configuration requires you to identify the Ceph Object
@@ -169,19 +171,19 @@ generate a gateway operation that writes data. This does not come without cost,
 and may affect overall performance. Turning off logging completely can be done
 by adding the following config option to the Ceph configuration file::
 
-        rgw enable ops log = false
+	rgw enable ops log = false
 
 Another way to reduce the logging load is to send operations logging data to a
 UNIX domain socket, instead of writing it to the Ceph Object Gateway backend::
 
-        rgw ops log rados = false
-        rgw enable ops log = true
-        rgw ops log socket path = <path to socket>
+	rgw ops log rados = false
+	rgw enable ops log = true
+	rgw ops log socket path = <path to socket>
 
 When specifying a UNIX domain socket, it is also possible to specify the maximum
 amount of memory that will be used to keep the data backlog::
 
-        rgw ops log data backlog = <size in bytes>
+	rgw ops log data backlog = <size in bytes>
 
 Any backlogged data in excess to the specified size will be lost, so the socket
 needs to be read constantly.

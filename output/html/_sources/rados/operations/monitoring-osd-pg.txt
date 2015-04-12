@@ -461,7 +461,7 @@ Ceph 的自修复功能往往无能为力，卡住的状态细分为：
 
 为找出卡住的归置组，执行： ::
 
-	ceph pg dump_stuck [unclean|inactive|stale]
+	ceph pg dump_stuck [unclean|inactive|stale|undersized|degraded]
 
 详情见\ `归置组子系统`_\ ，关于排除卡住的归置组见\ `排除归置组错误`_\ 。
 

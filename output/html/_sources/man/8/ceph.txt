@@ -934,7 +934,7 @@ pg
 
 用法： ::
 
-	ceph pg dump_stuck {inactive|unclean|stale[inactive|unclean|stale...]}
+	ceph pg dump_stuck {inactive|unclean|stale[inactive|unclean|stale|undersized|degraded...]}
 	{<int>}
 
 子命令 ``force_create_pg`` 强制创建归置组 <pgid> 。

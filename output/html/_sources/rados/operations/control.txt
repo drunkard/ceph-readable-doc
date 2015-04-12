@@ -61,7 +61,7 @@
 
 要显示卡在某状态的所有归置组，执行下列命令： ::
 
-	ceph pg dump_stuck inactive|unclean|stale [--format {format}] [-t|--threshold {seconds}]
+	ceph pg dump_stuck inactive|unclean|stale|undersized|degraded [--format {format}] [-t|--threshold {seconds}]
 
 
 ``--format`` 可以是 ``plain`` （默认）或 ``json``
