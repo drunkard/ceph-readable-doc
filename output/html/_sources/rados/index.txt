@@ -2,11 +2,12 @@
  Ceph 存储集群
 ===============
 
-所有 Ceph 部署都始于 :term:`Ceph 存储集群`\ 。以 :abbr:`RADOS (Reliable \
-Autonomic Distributed Object Store ，可靠自主的分布式对象存储)` 基础的 Ceph 对象\
-存储集群包括两类守护进程：对象存储守护进程（ OSD ）把存储节点上的数据存储为对象；监\
-视器维护集群运行图的主拷贝。一个 Ceph 集群可以包含数千个存储节点，最简系统至少需要\
-一个监视器和两个 OSD 才能做到数据复制。
+所有 Ceph 部署都始于 :term:`Ceph 存储集群`\ 。基于 :abbr:`RADOS (Reliable \
+Autonomic Distributed Object Store ，可靠自主的分布式对象存储)` 的 Ceph 对象\
+存储集群包括两类守护进程：term:`对象存储守护进程`\ （ OSD ）把存储节点上的数\
+据存储为对象； term:`Ceph 监视器`\ （ MON ）维护集群运行图的主拷贝。一个 \
+Ceph 集群可以包含数千个存储节点，最简系统至少需要一个监视器和两个 OSD 才能\
+做到数据复制。
 
 Ceph 文件系统、 Ceph 对象存储、和 Ceph 块设备从 Ceph 存储集群读出和写入数据。
 

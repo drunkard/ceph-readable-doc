@@ -41,7 +41,7 @@
 	ceph-deploy admin ceph-client
 
    ``ceph-deploy`` 工具会把密钥环复制到 ``/etc/ceph`` 目录，要确保此密钥环文件\
-   可读（如 ``sudo chmod + r /etc/ceph/ceph.client.admin.keyring`` ）。
+   可读（如 ``sudo chmod +r /etc/ceph/ceph.client.admin.keyring`` ）。
 
 
 配置块设备

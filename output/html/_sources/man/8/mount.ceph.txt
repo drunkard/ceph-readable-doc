@@ -137,7 +137,8 @@ mount 助手程序的惯例是前两个选项分别为要挂载的设备和目�
 使用范围
 ========
 
-**mount.ceph** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+**mount.ceph** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
+更多信息参见 http://ceph.com/docs 。
 
 
 参考

@@ -17,11 +17,15 @@
 
 	rbd create {image-name} --size {megabytes} --pool {pool-name}
 
-例如，要在 ``swimmingpool`` 这个存储池中创建一个名为 ``foo`` 、大小为 1GB 的映像，\
-执行下列命令： ::
+例如，要在 ``swimmingpool`` 这个存储池中创建一个名为 ``bar`` 、大小为 1GB 的\
+映像，执行下列命令： ::
+
+	rbd create bar --size 1024 --pool swimmingpool
+
+如果创建映像时不指定存储池，它将使用默认的 ``rbd`` 存储池。例如，下面的命令\
+将默认在 ``rbd`` 存储池中创建一个大小为 1GB 、名为 ``foo`` 的映像： ::
 
 	rbd create foo --size 1024
-	rbd create bar --size 1024 --pool swimmingpool
 
 .. note:: 指定此存储池前必须先创建它，详情见\ `存储池`_\ 。
 

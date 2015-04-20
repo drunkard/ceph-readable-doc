@@ -76,9 +76,10 @@ Ceph 文件系统了。首先确认下你的客户端的网络连通性和认证
 	libcephfs <../../api/libcephfs-java/>
 	cephfs-journal-tool <cephfs-journal-tool>
 	文件布局 <file-layouts>
-        驱逐客户端 <eviction>
-        文件系统占满的处理 <full>
+	驱逐客户端 <eviction>
+	文件系统占满的处理 <full>
 	故障排除 <troubleshooting>
+	灾难恢复 <disaster-recovery>
 
 .. raw:: html
 

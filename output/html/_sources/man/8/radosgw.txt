@@ -152,7 +152,8 @@ flush threshold 决定了保留的日志条数达到多少才调用异步刷回�
 使用范围
 ========
 
-**radosgw** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+**radosgw** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
+更多信息参见 http://ceph.com/docs 。
 
 
 参考

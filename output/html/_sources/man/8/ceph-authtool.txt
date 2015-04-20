@@ -154,7 +154,8 @@ capspec 决定了此实体可执行哪些操作： ::
 使用范围
 ========
 
-**ceph-authtool** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+**ceph-authtool** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
+更多信息参见 http://ceph.com/docs 。
 
 
 参考

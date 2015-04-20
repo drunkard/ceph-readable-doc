@@ -1,86 +1,75 @@
-===================
- Object Operations
-===================
+==========
+ 对象操作
+==========
 
-An object is a container for storing data and metadata. A container may
-have many objects, but the object names must be unique. This API enables a 
-client to create an object, set access controls and metadata, retrieve an 
-object's data and metadata, and delete an object. Since this API makes requests 
-related to information in a particular user's account, all requests in this API 
-must be authenticated unless the container or object's access control is 
-deliberately made publicly accessible (i.e., allows anonymous requests).
+对象是个用于存储数据和元数据的容器。容器可以包含很多对象，但是对象的名字必\
+须唯一。这个 API 允许客户端创建对象、设置访问权限及元数据、读取对象的数据\
+和元数据、以及删除对象。因为此 API 发出的请求是与用户帐户信息相关的，所以\
+此 API 内的所有请求都必须认证，除非容器或对象的访问控制权限被故意设置成了\
+可公开访问（即允许匿名请求）。
 
 
-Create/Update an Object
-=======================
+创建或更新对象
+==============
 
-To create a new object, make a ``PUT`` request with the API version, account,
-container name and the name of the new object. You must have write permission
-on the container to create or update an object. The object name must be 
-unique within the container. The ``PUT`` request is not idempotent, so if you
-do not use a unique name, the request will update the object. However, you may
-use pseudo-hierarchical syntax in your object name to distinguish it from 
-another object of the same name if it is under a different pseudo-hierarchical 
-directory. You may include access control headers and metadata headers in the 
-request.
+要创建新对象，需发送带有 API 版本、帐户、容器名和新对象名的 ``PUT`` 请求。\
+还必须有对应容器的写权限才能创建或更新对象。容器内的对象名字必须唯一。 \
+``PUT`` 请求不会预先检测，所以你要是没用唯一的名字，此请求就会更新对象。然\
+而你可以在对象名中用伪分级语法来区分同名、但位于不同伪分级目录的对象。你可\
+以在请求头里加上访问控制和元数据头。
 
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
-   PUT /{api version}/{account}/{container}/{object} HTTP/1.1 
+	PUT /{api version}/{account}/{container}/{object} HTTP/1.1
 	Host: {fqdn}
 	X-Auth-Token: {auth-token}
 
 
-Request Headers
-~~~~~~~~~~~~~~~
+请求头
+~~~~~~
+
 
 ``ETag``
 
-:Description: An MD5 hash of the object's contents. Recommended. 
-:Type: String
-:Required: No
+:描述: 对象内容的 MD5 哈希值，建议设置。
+:类型: 字符串
+:是否必需: 否
 
 
 ``Content-Type``
 
-:Description: The type of content the object contains.
-:Type: String
-:Required: No
+:描述: 对象所包含内容的类型。
+:类型: 字符串
+:是否必需: 否
 
 
 ``Transfer-Encoding``
 
-:Description: Indicates whether the object is part of a larger aggregate object.
-:Type: String
-:Valid Values: ``chunked``
-:Required: No
+:描述: 用于标识此对象是否是更大的聚合对象的一部分。
+:类型: 字符串
+:有效取值: ``chunked``
+:是否必需: 否
 
 
-Copy an Object
-==============
+复制对象
+========
 
-Copying an object allows you to make a server-side copy of an object, so that
-you don't have to download it and upload it under another container/name.
-To copy the contents of one object to another object, you may make either a
-``PUT`` request or a ``COPY`` request with the API version, account, and the 
-container name. For a ``PUT`` request, use the destination container and object
-name in the request, and the source container and object in the request header.
-For a ``Copy`` request, use the source container and object in the request, and
-the destination container and object in the request header. You must have write 
-permission on the container to copy an object. The destination object name must be 
-unique within the container. The request is not idempotent, so if you do not use 
-a unique name, the request will update the destination object. However, you may 
-use pseudo-hierarchical syntax in your object name to distinguish the destination 
-object from the source object of the same name if it is under a different 
-pseudo-hierarchical directory. You may include access control headers and metadata 
-headers in the request.
+对象复制方法允许你在服务器端创建对象副本，这样你就不必先下载、再上传到另一\
+个容器或名字了。要把一对象的内容复制到另一对象，你可以发送 ``PUT`` 请求或 \
+``COPY`` 请求，要携带 API 版本、帐户、和容器名。发送 ``PUT`` 请求时，请求内\
+容为目标容器和对象名，源容器和对象在请求头里设置；对于 ``COPY`` 请求，请求\
+内容为源容器和对象，目标容器和对象在请求头里。要复制对象，你必须有写权限；\
+目标对象名在其容器内也必须唯一。此请求不会预先检查，所以如果名字不唯一，它\
+就会更新目标对象。然而你可以在对象名中用伪分级语法来区分同名、但位于不同伪\
+分级目录的对象。你可以在请求头里加上访问控制和元数据头。
 
-Syntax
-~~~~~~
+
+语法
+~~~~
 
 ::
 
@@ -90,67 +79,69 @@ Syntax
 	X-Auth-Token: {auth-token}
 
 
-or alternatively:
+或者这样：
 
 ::
 
 	COPY /{api version}/{account}/{source-container}/{source-object} HTTP/1.1
 	Destination: {dest-container}/{dest-object}
 
-Request Headers
-~~~~~~~~~~~~~~~
+
+请求头
+~~~~~~
 
 ``X-Copy-From``
 
-:Description: Used with a ``PUT`` request to define the source container/object path.
-:Type: String
-:Required: Yes, if using ``PUT``
+:描述: 用于在 ``PUT`` 请求中定义源容器或对象的路径。
+:类型: 字符串
+:是否必需: 用 ``PUT`` 方法时必需
 
 
 ``Destination``
 
-:Description: Used with a ``COPY`` request to define the destination container/object path.
-:Type: String
-:Required: Yes, if using ``COPY``
+:描述: 用于在 ``COPY`` 请求中定义目标容器或对象的路径。
+:类型: 字符串
+:是否必需: 用 ``COPY`` 方法时必需
 
 
 ``If-Modified-Since``
 
-:Description: Only copies if modified since the date/time of the source object's ``last_modified`` attribute.
-:Type: Date
-:Required: No
+:描述: 如果从源对象的 ``last_modified`` 属性记录的时间起修改过，那就复制。
+:类型: 日期
+:是否必需: 否
 
 
 ``If-Unmodified-Since``
 
-:Description: Only copies if not modified since the date/time of the source object's ``last_modified`` attribute.
-:Type: Date
-:Required: No
+:描述: 如果从源对象的 ``last_modified`` 属性记录的时间起没有修改过，那就复制。
+:类型: 日期
+:是否必需: 否
+
 
 ``Copy-If-Match``
 
-:Description: Copies only if the ETag in the request matches the source object's ETag.
-:Type: ETag.
-:Required: No
+:描述: 请求中的 ETag 与源对象的 ETag 属性相同时才复制。
+:类型: ETag.
+:是否必需: 否
 
 
 ``Copy-If-None-Match``
 
-:Description: Copies only if the ETag in the request does not match the source object's ETag.
-:Type: ETag.
-:Required: No
+:描述: 请求中的 ETag 与源对象的 ETag 属性不同时才复制。
+:类型: ETag.
+:是否必需: 否
 
 
-Delete an Object
-================
+删除对象
+========
 
-To delete an object, make a ``DELETE`` request with the API version, account,
-container and object name. You must have write permissions on the container to delete
-an object within it. Once you've successfully deleted the object, you'll be able to 
-reuse the object name.
+要删除对象，可发送带有 API 版本、帐户、容器和对象名的 ``DELETE`` 请求。此\
+帐户必须有容器的写权限，才能删除其内的对象。成功删除对象后，你就能重用对象\
+名了。
 
-Syntax
-~~~~~~
+
+语法
+~~~~
 
 ::
 
@@ -159,15 +150,15 @@ Syntax
 	X-Auth-Token: {auth-token}
 
 
-Get an Object
-=============
+获取一对象
+==========
 
-To retrieve an object, make a ``GET`` request with the API version, account,
-container and object name. You must have read permissions on the container to
-retrieve an object within it.
+要获取一对象，需发出带有 API 版本、帐户、容器和对象名的 ``GET`` 请求，而且\
+必须有此容器的读权限，才能读取其内的对象。
 
-Syntax
-~~~~~~
+
+语法
+~~~~
 
 ::
 
@@ -176,64 +167,63 @@ Syntax
 	X-Auth-Token: {auth-token}
 
 
-
-Request Headers
-~~~~~~~~~~~~~~~
+请求头
+~~~~~~
 
 ``range``
 
-:Description: To retrieve a subset of an object's contents, you may specify a byte range.
-:Type: Date
-:Required: No
+:描述: 要获取某一对象内容的一部分，你可以指定字节范围。
+:类型: 日期（译者：应为整数？）
+:是否必需: 否
 
 
 ``If-Modified-Since``
 
-:Description: Only copies if modified since the date/time of the source object's ``last_modified`` attribute.
-:Type: Date
-:Required: No
+:描述: 如果从源对象的 ``last_modified`` 属性记录的时间起修改过，那就下载。
+:类型: 日期
+:是否必需: 否
 
 
 ``If-Unmodified-Since``
 
-:Description: Only copies if not modified since the date/time of the source object's ``last_modified`` attribute.
-:Type: Date
-:Required: No
+:描述: 如果从源对象的 ``last_modified`` 属性记录的时间起没有修改过，那就下载。
+:类型: 日期
+:是否必需: 否
+
 
 ``Copy-If-Match``
 
-:Description: Copies only if the ETag in the request matches the source object's ETag.
-:Type: ETag.
-:Required: No
+:描述: 请求中的 ETag 与源对象的 ETag 属性相同时才下载。
+:类型: ETag.
+:是否必需: 否
 
 
 ``Copy-If-None-Match``
 
-:Description: Copies only if the ETag in the request does not match the source object's ETag.
-:Type: ETag.
-:Required: No
+:描述: 请求中的 ETag 与源对象的 ETag 属性不同时才下载。
+:类型: ETag.
+:是否必需: No
 
 
+响应头
+~~~~~~
 
-Response Headers
-~~~~~~~~~~~~~~~~
 
 ``Content-Range``
 
-:Description: The range of the subset of object contents. Returned only if the range header field was specified in the request  
+:描述: 此区间表示对象内容的子集。只有在请求头中有 range 字段时才会返回此字段。
 
 
-Get Object Metadata
-===================
+获取对象元数据
+==============
 
-To retrieve an object's metadata, make a ``HEAD`` request with the API version, 
-account, container and object name. You must have read permissions on the 
-container to retrieve metadata from an object within the container. This request
-returns the same header information as the request for the object itself, but
-it does not return the object's data.
+要查看一对象的元数据，可发送带有 API 版本、帐户、容器和对象名的 ``HEAD`` \
+头。你还必须有此容器的读权限才能其内对象的元数据。此请求会返回和获取对象本\
+身时相同的头信息，只是不返回对象的数据而已。
 
-Syntax
-~~~~~~
+
+语法
+~~~~
 
 ::
 
@@ -243,16 +233,15 @@ Syntax
 
 
 
-Add/Update Object Metadata
-==========================
+增加或更新对象元数据
+====================
 
-To add metadata to an object, make a ``POST`` request with the API version, 
-account, container and object name. You must have write permissions on the 
-parent container to add or update metadata.
+要给对象增加元数据需发送 ``POST`` 请求，要带上 API 版本、帐户、容器和对象\
+名。你还必须有父容器的写权限才能增加或更新元数据。
 
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -260,12 +249,12 @@ Syntax
 	Host: {fqdn}
 	X-Auth-Token: {auth-token}
 
-Request Headers
-~~~~~~~~~~~~~~~
 
-``X-Container-Meta-{key}``
+请求头
+~~~~~~
 
-:Description:  A user-defined meta data key that takes an arbitrary string value.
-:Type: String
-:Required: No
+``X-Object-Meta-{key}``
 
+:描述: 一个用户定义的元数据关键字，其值为任意字符串。
+:类型: 字符串
+:是否必需: 否

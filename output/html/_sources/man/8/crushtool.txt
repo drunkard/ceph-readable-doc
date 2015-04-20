@@ -214,7 +214,8 @@ CRUSH 是个伪随机数据分布算法，它能高效地把输入值（通常�
 使用范围
 ========
 
-**crushtool** 是 Ceph 分布式文件系统的一部分，更多信息参见 http://ceph.com/docs 。
+**crushtool** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
+更多信息参见 http://ceph.com/docs 。
 
 
 参考

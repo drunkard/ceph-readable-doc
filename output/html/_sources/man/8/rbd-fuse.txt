@@ -41,7 +41,8 @@ rbd-fuse 不认识的选项将传递给 libfuse 。
 使用范围
 ========
 
-**rbd-fuse** 是 Ceph 分布式文件系统的一部分，更多信息参见  http://ceph.com/docs 。
+**rbd-fuse** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
+更多信息参见 http://ceph.com/docs 。
 
 
 参考

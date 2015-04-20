@@ -405,7 +405,8 @@ Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守
 务器进程。默认配置下集群名字是 “ceph” ，这意味着你得把配置文件保存为 ``/etc/ceph`` \
 下的 ``ceph.conf`` 。
 
-详情见 ``ceph-deploy new`` 。
+详情见 `ceph-deploy new`_ 。
+.. _ceph-deploy new: ../ceph-deploy-new
 
 运行多个集群时，你必须为集群命名并用这个名字保存配置文件。例如，名为 ``openstack`` \
 的集群其配置文件将是 ``/etc/ceph`` 下的 ``openstack.conf`` 。

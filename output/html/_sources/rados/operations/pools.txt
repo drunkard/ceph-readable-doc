@@ -252,6 +252,30 @@
 :适用版本: ``0.48`` 及以上。
 
 
+``nodelete``
+
+:描述: 给指定存储池设置/取消 NODELETE 标志。
+:类型: 整数
+:有效范围: 1 开启， 0 取消
+:适用版本: Version ``FIXME``
+
+
+``nopgchange``
+
+:描述: 给指定存储池设置/取消 NOPGCHANGE 标志。
+:类型: 整数
+:有效范围: 1 开启， 0 取消
+:适用版本: Version ``FIXME``
+
+
+``nosizechange``
+
+:描述: 给指定存储池设置/取消 NOSIZECHANGE 标志。
+:类型: 整数
+:有效范围: 1 开启， 0 取消
+:适用版本: Version ``FIXME``
+
+
 ``hit_set_type``
 
 :描述: 启用缓存存储池的命中集跟踪，详情见 `Bloom 过滤器`_\ 。
