@@ -31,11 +31,6 @@ CRUSH 图包含 :abbr:`OSD (Object Storage Devices)` 列表、把设备汇聚为
 
 定制的 CRUSH 图也能在归置组降级时，帮你找出冗余副本所在主机的物理位置。
 
-`Inktank`_ 提供优秀的商业支持，帮您开发 CRUSH 图。
-
-
-.. _Inktank: http://www.inktank.com
-
 .. note:: 文本框里的代码实例可能超出了边界，读或拷贝时注意滚动。
 
 

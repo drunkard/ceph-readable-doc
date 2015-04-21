@@ -5,9 +5,6 @@
 Ceph 社区是极好的信息和帮助来源。想了解与 Ceph 发布相关的运维问题，建议您\ \
 `订阅 ceph-users 邮件列表`_\ ，不再想收邮件时可以\ `退订 ceph-users`_\ 。
 
-如果你已经读过本手册、也联系过 ``ceph-users`` ，但是还没有解决问题，你可以联系 \
-`Inktank`_ 寻求支持。
-
 你也可以\ `订阅 ceph-devel 邮件列表`_\ ，遇到以下问题时你应该这样做：
 
 - 可能和某个缺陷有关
@@ -26,4 +23,3 @@ Ceph 社区是极好的信息和帮助来源。想了解与 Ceph 发布相关的
 .. _订阅 ceph-users 邮件列表: mailto:ceph-users-join@lists.ceph.com
 .. _退订 ceph-users: mailto:ceph-users-leave@lists.ceph.com
 .. _ceph-devel: ceph-devel@vger.kernel.org
-.. _Inktank: http://inktank.com

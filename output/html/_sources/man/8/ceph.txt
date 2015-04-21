@@ -805,8 +805,8 @@ osd
 
 用法： ::
 
-	ceph osd set pause|noup|nodown|noout|noin|nobackfill|norecover|noscrub|
-	nodeep-scrub|notieragent
+	ceph osd set pause|noup|nodown|noout|noin|nobackfill|norebalance|norecover|
+	noscrub|nodeep-scrub|notieragent
 
 子命令 ``setcrushmap`` 把输入文件设置为 CRUSH 图。
 
@@ -888,8 +888,8 @@ osd
 
 用法： ::
 
-	osd unset pause|noup|nodown|noout|noin|nobackfill|norecover|noscrub|
-	nodeep-scrub|notieragent
+	osd unset pause|noup|nodown|noout|noin|nobackfill|norebalance|norecover|
+	noscrub|nodeep-scrub|notieragent
 
 
 pg

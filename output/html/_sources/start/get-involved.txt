@@ -50,9 +50,6 @@
 |                      | 码，您可以从  http://github.com 获取，参        | - http://github.com/ceph/ceph                 |
 |                      | 见 `Ceph 源码`_\ 如何从 github 克隆源码。       | - http://ceph.com/download                    |
 +----------------------+-------------------------------------------------+-----------------------------------------------+
-| **支持**             | 如果您有特殊问题、急切的需求、或者您的部        | http://inktank.com                            |
-|                      | 署需要大量帮助，请考虑\ `商业支持`_\ 。         |                                               |
-+----------------------+-------------------------------------------------+-----------------------------------------------+
 
 
 .. _开发订阅: mailto:majordomo@vger.kernel.org?body=subscribe+ceph-devel
@@ -70,5 +67,4 @@
 .. _邮件列表存档: http://lists.ceph.com/
 .. _博客: http://ceph.com/community/blog/
 .. _跟踪系统: http://tracker.ceph.com/
-.. _商业支持: http://ceph.com/help/professional/
 .. _Ceph 源码: http://github.com/ceph/ceph
