@@ -128,6 +128,8 @@ OSD 默认\ `绑定`_ 6800 以上的第一个可用端口，要确保为各 OSD 
 
 	sudo iptables -A INPUT -i {iface}  -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:6810 -j ACCEPT
 
+记得把上例中的 6810 替换掉，此端口应能满足你规划的进程数需求。
+
 .. tip:: 如果你的元数据服务器和 OSD 在同一节点上，可以合并公共网配置，要确保开放了\
    足够用的端口。
 

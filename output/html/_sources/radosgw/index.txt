@@ -2,7 +2,7 @@
  Ceph 对象网关
 ===============
 
-:term:`Ceph 对象网关`\ 是个对象存储接口，在 ``librgw`` 之上为应用程序构建了一个 \
+:term:`Ceph 对象网关`\ 是个对象存储接口，在 ``librados`` 之上为应用程序构建了一个 \
 RESTful 风格的 Ceph 存储集群网关。 :term:`Ceph 对象存储`\ 支持 2 种接口：
 
 #. **S3-compatible:** 提供了对象存储接口，与亚马逊的 S3 RESTful 风格的接口兼容。

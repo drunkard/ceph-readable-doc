@@ -49,7 +49,7 @@ distributions, execute the following::
 To install ``librados`` development support files for C/C++ on RHEL/CentOS
 distributions, execute the following::
 
-	sudo yum install ceph-devel
+	sudo yum install librados2-devel
 
 Once you install ``librados`` for developers, you can find the required 
 headers for C/C++ under ``/usr/include/rados``. ::
@@ -57,63 +57,60 @@ headers for C/C++ under ``/usr/include/rados``. ::
 	ls /usr/include/rados
 
 
-Getting librados for Python
----------------------------
+获取 librados 的 Python 支持
+----------------------------
 
-The ``rados.py`` modules provides ``librados`` support to Python
-applications. The ``librados-dev`` package for Debian/Ubuntu
-and the ``ceph-devel`` package for RHEL/CentOS will install the
-``python-ceph`` package for you. You may install ``python-ceph``
-directly too.
+``rados.py`` 模块为 Python 应用提供了 ``librados`` 支持。在 Debian/Ubuntu \
+下软件包名为 ``librados-dev`` ，在 RHEL/CentOS 下是 ``librados2-devel`` ，\
+它们包含了 ``python-ceph`` 包。你也可以直接安装 ``python-ceph`` 。
 
-To install ``librados`` development support files for Python on Debian/Ubuntu
-distributions, execute the following::
+要在 Debian/Ubuntu 发行版上安装 ``librados`` 的 Python 开发支持文件，用此\
+命令： ::
 
 	sudo apt-get install python-ceph
 
-To install ``librados`` development support files for C/C++ on RHEL/CentOS
-distributions, execute the following::
+要在 RHEL/CentOS 发行版上安装 ``librados`` 的 C/C++ 开发支持文件，用此命令： ::
 
 	sudo yum install python-ceph
 
-You can find the module under ``/usr/share/pyshared`` on Debian systems,
-or under ``/usr/lib/python*/site-packages`` on CentOS/RHEL systems.
+此模块在 Debian 风格的系统上安装到了 ``/usr/share/pyshared`` ，在 \
+CentOS/RHEL 系统上安装到了 ``/usr/lib/python*/site-packages`` 。
 
 
-Getting librados for Java
--------------------------
+获取 librados 的 Java 支持
+--------------------------
 
-To install ``librados`` for Java, you need to execute the following procedure:
+要安装 ``librados`` 的 Java 支持，你需要执行下列步骤：
 
-#. Install ``jna.jar``. For Debian/Ubuntu, execute:: 
+#. 安装 ``jna.jar`` 。在 Debian/Ubuntu 系统下应执行： ::
 
 	sudo apt-get install libjna-java
 
-   For CentOS/RHEL, execute::
+   在 CentOS/RHEL 下应执行： ::
 
 	sudo yum install jna
 
-   The JAR files are located in ``/usr/share/java``.
+   JAR 文件位于 ``/usr/share/java`` 。
 
-#. Clone the ``rados-java`` repository::
+#. 克隆 ``rados-java`` 软件库： ::
 
 	git clone --recursive https://github.com/ceph/rados-java.git
 
-#. Build the ``rados-java`` repository:: 
+#. 构建 ``rados-java`` 软件库： ::
 
 	cd rados-java
 	ant
 
-   The JAR file is located under ``rados-java/target``.
+   JAR 文件位于 ``rados-java/target`` 。
 
-#. Copy the JAR for RADOS to a common location (e.g., ``/usr/share/java``) and 
-   ensure that it and the JNA JAR are in your JVM's classpath. For example::
+#. 把 RADOS 的 JAR 文件复制到统一位置（如 ``/usr/share/java`` ），并确保它\
+   和 JNA JAR 都位于 JVM 的类路径里。例如： ::
 
 	sudo cp target/rados-0.1.3.jar /usr/share/java/rados-0.1.3.jar
-	sudo ln -s /usr/share/java/jna-3.2.7.jar /usr/lib/jvm/default-java/jre/lib/ext/jna-3.2.7.jar  
+	sudo ln -s /usr/share/java/jna-3.2.7.jar /usr/lib/jvm/default-java/jre/lib/ext/jna-3.2.7.jar
 	sudo ln -s /usr/share/java/rados-0.1.3.jar  /usr/lib/jvm/default-java/jre/lib/ext/rados-0.1.3.jar
 
-To build the documentation, execute the following::
+要编译文档，用下列命令： ::
 
 	ant docs
 

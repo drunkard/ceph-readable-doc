@@ -1,73 +1,75 @@
-===============================
- Ceph Object Gateway Swift API
-===============================
+=========================
+ Ceph 对象网关 Swift API
+=========================
 
-Ceph supports a RESTful API that is compatible with the basic data access model of the Swift API.
+Ceph 支持 REST 风格的 API ，它与 Swift API 的基本访问模型兼容。
+
 
 API
 ---
 
 .. toctree::
-   :maxdepth: 1
+	:maxdepth: 1
 
-   Authentication <swift/auth>
-   Service Ops <swift/serviceops>
-   Container Ops <swift/containerops>
-   Object Ops <swift/objectops>
-   Tutorial <swift/tutorial>
-   Java <swift/java>
-   Python <swift/python>
-   Ruby <swift/ruby>
+	认证 <swift/auth>
+	服务操作 <swift/serviceops>
+	容器操作 <swift/containerops>
+	对象操作 <swift/objectops>
+	临时 URL 操作 <swift/tempurl>
+	指导手册 <swift/tutorial>
+	Java <swift/java>
+	Python <swift/python>
+	Ruby <swift/ruby>
 
 
-Features Support
-----------------
+功能支持
+--------
 
-The following table describes the support status for current Swift functional features:
+下面的表格描述了对当前 Swift 功能的支持情况：
 
 +---------------------------------+-----------------+----------------------------------------+
-| Feature                         | Status          | Remarks                                |
+| 功能                            | 状态            | 备注                                   |
 +=================================+=================+========================================+
-| **Authentication**              | Supported       |                                        |
+| **Authentication**              | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Get Account Metadata**        | Supported       | No custom metadata                     |
+| **Get Account Metadata**        | 支持            | No custom metadata                     |
 +---------------------------------+-----------------+----------------------------------------+
-| **Swift ACLs**                  | Supported       | Supports a subset of Swift ACLs        |
+| **Swift ACLs**                  | 支持            | 支持部分 Swift ACL                     |
 +---------------------------------+-----------------+----------------------------------------+
-| **List Containers**             | Supported       |                                        |
+| **List Containers**             | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Delete Container**            | Supported       |                                        |
+| **Delete Container**            | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Create Container**            | Supported       |                                        |
+| **Create Container**            | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Get Container Metadata**      | Supported       |                                        |
+| **Get Container Metadata**      | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Update Container Metadata**   | Supported       |                                        |
+| **Update Container Metadata**   | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Delete Container Metadata**   | Supported       |                                        |
+| **Delete Container Metadata**   | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **List Objects**                | Supported       |                                        |
+| **List Objects**                | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Static Website**              | Not Supported   |                                        |
+| **Static Website**              | 不支持          |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Create Object**               | Supported       |                                        |
+| **Create Object**               | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Create Large Object**         | Supported       |                                        |
+| **Create Large Object**         | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Delete Object**               | Supported       |                                        |
+| **Delete Object**               | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Get Object**                  | Supported       |                                        |
+| **Get Object**                  | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Copy Object**                 | Supported       |                                        |
+| **Copy Object**                 | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Get Object Metadata**         | Supported       |                                        |
+| **Get Object Metadata**         | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Update Object Metadata**      | Supported       |                                        |
+| **Update Object Metadata**      | 支持            |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Expiring Objects**            | Not Supported   |                                        |
+| **Expiring Objects**            | 不支持          |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **Object Versioning**           | Not Supported   |                                        |
+| **Object Versioning**           | 不支持          |                                        |
 +---------------------------------+-----------------+----------------------------------------+
-| **CORS**                        | Not Supported   |                                        |
+| **CORS**                        | 不支持          |                                        |
 +---------------------------------+-----------------+----------------------------------------+
 

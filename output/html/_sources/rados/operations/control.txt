@@ -119,13 +119,17 @@ OSD 子系统
 
 	ceph osd crush set {id} {weight} [{loc1} [{loc2} ...]]
 
-从现有 CRUSH 图删除存在的条目： ::
+从现有 CRUSH 图删除存在的条目（ OSD ）： ::
 
-	ceph osd crush remove {id}
+	ceph osd crush remove {name}
+
+从现有 CRUSH 图删除存在的空桶： ::
+
+	ceph osd crush remove {bucket-name}
 
 把有效的桶从分级结构里的一个位置挪到另一个。 ::
 
-   ceph osd crush move {id} {loc1} [{loc2} ...]
+	ceph osd crush move {id} {loc1} [{loc2} ...]
 
 设置 ``{name}`` 所指条目的权重为 ``{weight}`` 。 ::
 
@@ -252,7 +256,9 @@ I/O 请求、并存储相同数量的数据。 ``ceph osd reweight`` 命令可�
 	ceph osd repair N
 
 在 osdN 上进行个简单的吞吐量测试，每次写入 ``BYTES_PER_WRITE`` 、一共写入 \
-``TOTAL_BYTES`` 。默认以 4MB 增量写入 1GB 。 ::
+``TOTAL_BYTES`` 。默认以 4MB 增量写入 1GB 。
+此压力测试是非破坏性的，不会覆盖已有 OSD 数据，但可能会暂时影响同时访问此 \
+OSD 的客户端性能。 ::
 
 	ceph tell osd.N bench [NUMER_OF_OBJECTS] [BYTES_PER_WRITE]
 

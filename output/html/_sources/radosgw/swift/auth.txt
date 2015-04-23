@@ -1,13 +1,12 @@
-================
- Authentication
-================
+======
+ 认证
+======
 
-Swift API requests that require authentication must contain an
-``X-Storage-Token`` authentication token in the request header. 
-The token may be retrieved from RADOS Gateway, or from another authenticator.
-To obtain a token from RADOS Gateway, you must create a user. For example:: 
+需要认证的 Swift API 请求必须在请求头里带上 ``X-Storage-Token`` 认证令牌。\
+此令牌可以从 RADOS 网关、或别的认证器获取，要从 RADOS 网关获取的话需创建用\
+户，例如： ::
 
-	sudo radosgw-admin user create --uid="{username}" --displayname="{Display Name}"
+	sudo radosgw-admin user create --uid="{username}" --display-name="{Display Name}"
 
 For details on RADOS Gateway administration, see `radosgw-admin`_. 
 
