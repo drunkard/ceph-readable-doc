@@ -372,11 +372,12 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 
    要让守护进程开机自启，必须创建一个空文件： ::
 
-	sudo touch /var/lib/ceph/mon/{cluster-name}-{hostname}/sysvinit
+	sudo touch /var/lib/ceph/osd/{cluster-name}-{osd-num}/sysvinit
 
    例如： ::
 
-	sudo touch /var/lib/ceph/mon/ceph-node1/sysvinit
+	sudo touch /var/lib/ceph/osd/ceph-0/sysvinit
+	sudo touch /var/lib/ceph/osd/ceph-1/sysvinit
 
    OSD 启动后，它应该处于 ``up`` 且 ``in`` 状态。
 

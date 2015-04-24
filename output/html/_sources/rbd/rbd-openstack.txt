@@ -100,8 +100,8 @@ Create a Pool
 
 在运行 ``glance-api`` 的节点上你需要 ``librbd`` 的 Python 接口： ::
 
-	sudo apt-get install python-ceph
-	sudo yum install python-ceph
+	sudo apt-get install python-rbd
+	sudo yum install python-rbd
 
 在 ``nova-compute`` 、 ``cinder-backup`` 和 ``cinder-volume`` 节点上，要安装 \
 Python 绑定和客户端命令行工具： ::

@@ -41,9 +41,10 @@ In the ceph source directory, checkout next branch (for point releases use the {
 
     git checkout next
 
-Checkout the submodules::
+检出子模块： ::
 
-    git submodule update --init
+    git submodule update --force --init --recursive
+
 
 4.  Update Build version numbers
 ================================

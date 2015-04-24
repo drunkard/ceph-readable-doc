@@ -175,3 +175,4 @@ More information can be found in the `cache tiering
 	erasure-code-jerasure
 	erasure-code-isa
 	erasure-code-lrc
+	erasure-code-shec

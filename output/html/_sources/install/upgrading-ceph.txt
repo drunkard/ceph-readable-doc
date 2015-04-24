@@ -594,7 +594,7 @@ Ceph 配置文件变更
 #. 升级软件包： ::
 
 	ssh {client-host}
-	apt-get update && sudo apt-get install ceph-common librados2 librbd1 python-ceph
+	apt-get update && sudo apt-get install ceph-common librados2 librbd1 python-rados python-rbd
 
 #. 确认升级后的版本： ::
 

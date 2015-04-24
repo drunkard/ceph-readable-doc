@@ -22,6 +22,7 @@
 	erasure-code-jerasure
 	erasure-code-isa
 	erasure-code-lrc
+	erasure-code-shec
 
 
 osd erasure-code-profile set

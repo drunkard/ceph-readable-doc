@@ -403,7 +403,7 @@ OSD 运行图反映集群中运行的 OSD 守护进程，斗转星移，图元�
 
 ``osd map cache size``
 
-:描述: OSD 图缓存尺寸， MB 。
+:描述: 缓存的 OSD 图个数。
 :类型: 32-bit Integer
 :默认值: ``500``
 

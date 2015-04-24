@@ -71,7 +71,8 @@
 
    如果你的子模块过时了，运行： ::
 
-	git submodule update
+	git submodule update --force --init --recursive
+
 
 选择分支
 ========

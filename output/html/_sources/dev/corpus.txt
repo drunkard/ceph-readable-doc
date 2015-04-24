@@ -17,21 +17,21 @@ decode old objects across that $version (this is normally the case).
 如何生成对象资料库
 ==================
 
-We can generate an object corpus for a particular version of ceph like so.
+我们可以为某个指定版本的 ceph 生成一个对象集，像下面这样。
 
-#. Checkout a clean repo (best not to do this where you normally work)::
+#. 检出一个干净的库（最好别在你日常工作的库上操作）： ::
 
 	git clone ceph.git
 	cd ceph
-	git submodule update --init
+	git submodule update --init --recursive
 
-#. Build with flag to dump objects to /tmp/foo::
+#. 带选项编译，这样才能把对象转储到 /tmp/foo::
 
 	rm -rf /tmp/foo ; mkdir /tmp/foo
 	./do_autogen.sh -e /tmp/foo
 	make
 
-#. Start via vstart::
+#. 用 vstart 启动： ::
 
 	cd src
 	MON=3 OSD=3 MDS=3 RGW=1 ./vstart.sh -n -x
