@@ -15,7 +15,7 @@ decode old objects across that $version (this is normally the case).
 
 
 如何生成对象资料库
-==================
+------------------
 
 我们可以为某个指定版本的 ceph 生成一个对象集，像下面这样。
 

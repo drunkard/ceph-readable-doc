@@ -1,0 +1,1068 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Monitor Config Reference &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="monitor-config-reference">
+<h1>Monitor Config Reference<a class="headerlink" href="#monitor-config-reference" title="Permalink to this headline">¶</a></h1>
+<p>Understanding how to configure a <a class="reference internal" href="../../../../glossary/#term-ceph-monitor"><em class="xref std std-term">Ceph Monitor</em></a> is an important part of
+building a reliable <a class="reference internal" href="../../../../glossary/#term-ceph-storage-cluster"><em class="xref std std-term">Ceph Storage Cluster</em></a>. <strong>All Ceph Storage Clusters
+have at least one monitor</strong>. A monitor configuration usually remains fairly
+consistent, but you can add, remove or replace a monitor in a cluster. See
+<a class="reference external" href="../../operations/add-or-rm-mons">Adding/Removing a Monitor</a> and <a class="reference external" href="../../deployment/ceph-deploy-mon">Add/Remove a Monitor (ceph-deploy)</a> for
+details.</p>
+<div class="section" id="background">
+<span id="index-0"></span><h2>Background<a class="headerlink" href="#background" title="Permalink to this headline">¶</a></h2>
+<p>Ceph Monitors maintain a &#8220;master copy&#8221; of the <a class="reference internal" href="../../../../glossary/#term-cluster-map"><em class="xref std std-term">cluster map</em></a>, which means a
+<a class="reference internal" href="../../../../glossary/#term-ceph-client"><em class="xref std std-term">Ceph Client</em></a> can determine the location of all Ceph Monitors, Ceph OSD
+Daemons, and Ceph Metadata Servers just by connecting to one Ceph Monitor and
+retrieving a current cluster map. Before Ceph Clients can read from or write to
+Ceph OSD Daemons or Ceph Metadata Servers, they must connect to a Ceph Monitor
+first. With a current copy of the cluster map and the CRUSH algorithm, a Ceph
+Client can compute the location for any object. The ability to compute object
+locations allows a Ceph Client to talk directly to Ceph OSD Daemons, which is a
+very important aspect of Ceph&#8217;s high scalability and performance. See
+<a class="reference external" href="../../../architecture#scalability-and-high-availability">Scalability and High Availability</a> for additional details.</p>
+<p>The primary role of the Ceph Monitor is to maintain a master copy of the cluster
+map. Ceph Monitors also provide authentication and logging services. Ceph
+Monitors write all changes in the monitor services to a single Paxos instance,
+and Paxos writes the changes to a key/value store for strong consistency. Ceph
+Monitors can query the most recent version of the cluster map during sync
+operations. Ceph Monitors leverage the key/value store&#8217;s snapshots and iterators
+(using leveldb) to perform store-wide synchronization.</p>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-ae8fc6ae5b4014f064a0bed424507a7a247cd113.png"/>
+</p>
+<p class="deprecated">
+<span class="versionmodified">Deprecated since version version: </span>0.58</p>
+<p>In Ceph versions 0.58 and earlier, Ceph Monitors use a Paxos instance for
+each service and store the map as a file.</p>
+<div class="section" id="cluster-maps">
+<span id="index-1"></span><h3>Cluster Maps<a class="headerlink" href="#cluster-maps" title="Permalink to this headline">¶</a></h3>
+<p>The cluster map is a composite of maps, including the monitor map, the OSD map,
+the placement group map and the metadata server map. The cluster map tracks a
+number of important things: which processes are <tt class="docutils literal"><span class="pre">in</span></tt> the Ceph Storage Cluster;
+which processes that are <tt class="docutils literal"><span class="pre">in</span></tt> the Ceph Storage Cluster are <tt class="docutils literal"><span class="pre">up</span></tt> and running
+or <tt class="docutils literal"><span class="pre">down</span></tt>; whether, the placement groups are <tt class="docutils literal"><span class="pre">active</span></tt> or <tt class="docutils literal"><span class="pre">inactive</span></tt>, and
+<tt class="docutils literal"><span class="pre">clean</span></tt> or in some other state; and, other details that reflect the current
+state of the cluster such as the total amount of storage space, and the amount
+of storage used.</p>
+<p>When there is a significant change in the state of the cluster&#8211;e.g., a Ceph OSD
+Daemon goes down, a placement group falls into a degraded state, etc.&#8211;the
+cluster map gets updated to reflect the current state of the cluster.
+Additionally, the Ceph Monitor also maintains a history of the prior states of
+the cluster. The monitor map, OSD map, placement group map and metadata server
+map each maintain a history of their map versions. We call each version an
+&#8220;epoch.&#8221;</p>
+<p>When operating your Ceph Storage Cluster, keeping track of these states is an
+important part of your system administration duties. See <a class="reference external" href="../../operations/monitoring">Monitoring a Cluster</a>
+and <a class="reference external" href="../../operations/monitoring-osd-pg">Monitoring OSDs and PGs</a> for additional details.</p>
+</div>
+<div class="section" id="monitor-quorum">
+<span id="index-2"></span><h3>Monitor Quorum<a class="headerlink" href="#monitor-quorum" title="Permalink to this headline">¶</a></h3>
+<p>Our Getting Started section provides a trivial <a class="reference external" href="../../../start/quick-start/#add-a-configuration-file">Ceph configuration file</a> that
+provides for one monitor in the test cluster. A cluster will run fine with a
+single monitor; however, <strong>a single monitor is a single-point-of-failure</strong>. To
+ensure high availability in a production Ceph Storage Cluster, you should run
+Ceph with multiple monitors so that the failure of a single monitor <strong>WILL NOT</strong>
+bring down your entire cluster.</p>
+<p>When a Ceph Storage Cluster runs multiple Ceph Monitors for high availability,
+Ceph Monitors use <a class="reference external" href="http://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a> to establish consensus about the master cluster map.
+A consensus requires a majority of monitors running to establish a quorum for
+consensus about the cluster map (e.g., 1; 2 out of 3; 3 out of 5; 4 out of 6;
+etc.).</p>
+</div>
+<div class="section" id="consistency">
+<span id="index-3"></span><h3>Consistency<a class="headerlink" href="#consistency" title="Permalink to this headline">¶</a></h3>
+<p>When you add monitor settings to your Ceph configuration file, you need to be
+aware of some of the architectural aspects of Ceph Monitors. <strong>Ceph imposes
+strict consistency requirements</strong> for a Ceph monitor when discovering another
+Ceph Monitor within the cluster. Whereas, Ceph Clients and other Ceph daemons
+use the Ceph configuration file to discover monitors, monitors discover each
+other using the monitor map (monmap), not the Ceph configuration file.</p>
+<p>A Ceph Monitor always refers to the local copy of the monmap when discovering
+other Ceph Monitors in the Ceph Storage Cluster. Using the monmap instead of the
+Ceph configuration file avoids errors that could break the cluster (e.g., typos
+in <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> when specifying a monitor address or port). Since monitors use
+monmaps for discovery and they share monmaps with clients and other Ceph
+daemons, <strong>the monmap provides monitors with a strict guarantee that their
+consensus is valid.</strong></p>
+<p>Strict consistency also applies to updates to the monmap. As with any other
+updates on the Ceph Monitor, changes to the monmap always run through a
+distributed consensus algorithm called <a class="reference external" href="http://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a>. The Ceph Monitors must agree on
+each update to the monmap, such as adding or removing a Ceph Monitor, to ensure
+that each monitor in the quorum has the same version of the monmap. Updates to
+the monmap are incremental so that Ceph Monitors have the latest agreed upon
+version, and a set of previous versions. Maintaining a history enables a Ceph
+Monitor that has an older version of the monmap to catch up with the current
+state of the Ceph Storage Cluster.</p>
+<p>If Ceph Monitors discovered each other through the Ceph configuration file
+instead of through the monmap, it would introduce additional risks because the
+Ceph configuration files aren&#8217;t updated and distributed automatically. Ceph
+Monitors might inadvertently use an older Ceph configuration file, fail to
+recognize a Ceph Monitor, fall out of a quorum, or develop a situation where
+<a class="reference external" href="http://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a> isn&#8217;t able to determine the current state of the system accurately.</p>
+</div>
+<div class="section" id="bootstrapping-monitors">
+<span id="index-4"></span><h3>Bootstrapping Monitors<a class="headerlink" href="#bootstrapping-monitors" title="Permalink to this headline">¶</a></h3>
+<p>In most configuration and deployment cases, tools that deploy Ceph may help
+bootstrap the Ceph Monitors by generating a monitor map for you (e.g.,
+<tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>, etc). A Ceph Monitor requires a few explicit
+settings:</p>
+<ul class="simple">
+<li><strong>Filesystem ID</strong>: The <tt class="docutils literal"><span class="pre">fsid</span></tt> is the unique identifier for your
+object store. Since you can run multiple clusters on the same
+hardware, you must specify the unique ID of the object store when
+bootstrapping a monitor.  Deployment tools usually do this for you
+(e.g., <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> can call a tool like <tt class="docutils literal"><span class="pre">uuidgen</span></tt>), but you
+may specify the <tt class="docutils literal"><span class="pre">fsid</span></tt> manually too.</li>
+<li><strong>Monitor ID</strong>: A monitor ID is a unique ID assigned to each monitor within
+the cluster. It is an alphanumeric value, and by convention the identifier
+usually follows an alphabetical increment (e.g., <tt class="docutils literal"><span class="pre">a</span></tt>, <tt class="docutils literal"><span class="pre">b</span></tt>, etc.). This
+can be set in a Ceph configuration file (e.g., <tt class="docutils literal"><span class="pre">[mon.a]</span></tt>, <tt class="docutils literal"><span class="pre">[mon.b]</span></tt>, etc.),
+by a deployment tool, or using the <tt class="docutils literal"><span class="pre">ceph</span></tt> commandline.</li>
+<li><strong>Keys</strong>: The monitor must have secret keys. A deployment tool such as
+<tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> usually does this for you, but you may
+perform this step manually too. See <a class="reference external" href="../../operations/authentication#monitor-keyrings">Monitor Keyrings</a> for details.</li>
+</ul>
+<p>For additional details on bootstrapping, see <a class="reference external" href="../../../dev/mon-bootstrap">Bootstrapping a Monitor</a>.</p>
+</div>
+</div>
+<div class="section" id="configuring-monitors">
+<span id="index-5"></span><h2>Configuring Monitors<a class="headerlink" href="#configuring-monitors" title="Permalink to this headline">¶</a></h2>
+<p>To apply configuration settings to the entire cluster, enter the configuration
+settings under <tt class="docutils literal"><span class="pre">[global]</span></tt>. To apply configuration settings to all monitors in
+your cluster, enter the configuration settings under <tt class="docutils literal"><span class="pre">[mon]</span></tt>. To apply
+configuration settings to specific monitors, specify the monitor instance
+(e.g., <tt class="docutils literal"><span class="pre">[mon.a]</span></tt>). By convention, monitor instance names use alpha notation.</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[global]</span>
+
+<span class="k">[mon]</span>
+
+<span class="k">[mon.a]</span>
+
+<span class="k">[mon.b]</span>
+
+<span class="k">[mon.c]</span>
+</pre></div>
+</div>
+<div class="section" id="minimum-configuration">
+<h3>Minimum Configuration<a class="headerlink" href="#minimum-configuration" title="Permalink to this headline">¶</a></h3>
+<p>The bare minimum monitor settings for a Ceph monitor via the Ceph configuration
+file include a hostname and a monitor address for each monitor. You can configure
+these under <tt class="docutils literal"><span class="pre">[mon]</span></tt> or under the entry for a specific monitor.</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[mon]</span>
+        <span class="na">mon host</span> <span class="o">=</span> <span class="s">hostname1,hostname2,hostname3</span>
+<span class="s">        mon addr = 10.0.0.10:6789,10.0.0.11:6789,10.0.0.12:6789</span>
+</pre></div>
+</div>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[mon.a]</span>
+        <span class="na">host</span> <span class="o">=</span> <span class="s">hostname1</span>
+<span class="s">        mon addr = 10.0.0.10:6789</span>
+</pre></div>
+</div>
+<p>See the <a class="reference external" href="../network-config-ref">Network Configuration Reference</a> for details.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This minimum configuration for monitors assumes that a deployment
+tool generates the <tt class="docutils literal"><span class="pre">fsid</span></tt> and the <tt class="docutils literal"><span class="pre">mon.</span></tt> key for you.</p>
+</div>
+<p>Once you deploy a Ceph cluster, you <strong>SHOULD NOT</strong> change the IP address of
+the monitors. However, if you decide to change the monitor&#8217;s IP address, you
+must follow a specific procedure. See <a class="reference external" href="../../operations/add-or-rm-mons#changing-a-monitor-s-ip-address">Changing a Monitor&#8217;s IP Address</a> for
+details.</p>
+</div>
+<div class="section" id="cluster-id">
+<h3>Cluster ID<a class="headerlink" href="#cluster-id" title="Permalink to this headline">¶</a></h3>
+<p>Each Ceph Storage Cluster has a unique identifier (<tt class="docutils literal"><span class="pre">fsid</span></tt>). If specified, it
+usually appears under the <tt class="docutils literal"><span class="pre">[global]</span></tt> section of the configuration file.
+Deployment tools usually generate the <tt class="docutils literal"><span class="pre">fsid</span></tt> and store it in the monitor map,
+so the value may not appear in a configuration file. The <tt class="docutils literal"><span class="pre">fsid</span></tt> makes it
+possible to run daemons for multiple clusters on the same hardware.</p>
+<p><tt class="docutils literal"><span class="pre">fsid</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The cluster ID. One per cluster.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">UUID</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A. May be generated by a deployment tool if not specified.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Do not set this value if you use a deployment tool that does
+it for you.</p>
+</div>
+</div>
+<div class="section" id="initial-members">
+<span id="index-6"></span><h3>Initial Members<a class="headerlink" href="#initial-members" title="Permalink to this headline">¶</a></h3>
+<p>We recommend running a production Ceph Storage Cluster with at least three Ceph
+Monitors to ensure high availability. When you run multiple monitors, you may
+specify the initial monitors that must be members of the cluster in order to
+establish a quorum. This may reduce the time it takes for your cluster to come
+online.</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[mon]</span>
+        <span class="na">mon initial members</span> <span class="o">=</span> <span class="s">a,b,c</span>
+</pre></div>
+</div>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">initial</span> <span class="pre">members</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The IDs of initial monitors in a cluster during startup. If
+specified, Ceph requires an odd number of monitors to form an
+initial quorum (e.g., 3).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A <em>majority</em> of monitors in your cluster must be able to reach
+each other in order to establish a quorum. You can decrease the initial
+number of monitors to establish a quorum with this setting.</p>
+</div>
+</div>
+<div class="section" id="data">
+<span id="index-7"></span><h3>Data<a class="headerlink" href="#data" title="Permalink to this headline">¶</a></h3>
+<p>Ceph provides a default path where Ceph Monitors store data. For optimal
+performance in a production Ceph Storage Cluster, we recommend running Ceph
+Monitors on separate hosts and drives from Ceph OSD Daemons. Ceph Monitors do
+lots of <tt class="docutils literal"><span class="pre">fsync()</span></tt>, which can interfere with Ceph OSD Daemon workloads.</p>
+<p>In Ceph versions 0.58 and earlier, Ceph Monitors store their data in files. This
+approach allows users to inspect monitor data with common tools like <tt class="docutils literal"><span class="pre">ls</span></tt>
+and <tt class="docutils literal"><span class="pre">cat</span></tt>. However, it doesn&#8217;t provide strong consistency.</p>
+<p>In Ceph versions 0.59 and later, Ceph Monitors store their data as key/value
+pairs. Ceph Monitors require <a class="reference external" href="http://en.wikipedia.org/wiki/ACID">ACID</a> transactions. Using a data store prevents
+recovering Ceph Monitors from running corrupted versions through Paxos, and it
+enables multiple modification operations in one single atomic batch, among other
+advantages.</p>
+<p>Generally, we do not recommend changing the default data location. If you modify
+the default location, we recommend that you make it uniform across Ceph Monitors
+by setting it in the <tt class="docutils literal"><span class="pre">[mon]</span></tt> section of the configuration file.</p>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">data</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The monitor&#8217;s data location.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">/var/lib/ceph/mon/$cluster-$id</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="storage-capacity">
+<span id="index-8"></span><h3>Storage Capacity<a class="headerlink" href="#storage-capacity" title="Permalink to this headline">¶</a></h3>
+<p>When a Ceph Storage Cluster gets close to its maximum capacity (i.e., <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">osd</span>
+<span class="pre">full</span> <span class="pre">ratio</span></tt>),  Ceph prevents you from writing to or reading from Ceph OSD
+Daemons as a safety measure to prevent data loss. Therefore, letting a
+production Ceph Storage Cluster approach its full ratio is not a good practice,
+because it sacrifices high availability. The default full ratio is <tt class="docutils literal"><span class="pre">.95</span></tt>, or
+95% of capacity. This a very aggressive setting for a test cluster with a small
+number of OSDs.</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">When monitoring your cluster, be alert to warnings related to the
+<tt class="docutils literal"><span class="pre">nearfull</span></tt> ratio. This means that a failure of some OSDs could result
+in a temporary service disruption if one or more OSDs fails. Consider adding
+more OSDs to increase storage capacity.</p>
+</div>
+<p>A common scenario for test clusters involves a system administrator removing a
+Ceph OSD Daemon from the Ceph Storage Cluster to watch the cluster rebalance;
+then, removing another Ceph OSD Daemon, and so on until the Ceph Storage Cluster
+eventually reaches the full ratio and locks up. We recommend a bit of capacity
+planning even with a test cluster. Planning enables you to gauge how much spare
+capacity you will need in order to maintain high availability. Ideally, you want
+to plan for a series of Ceph OSD Daemon failures where the cluster can recover
+to an <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt> state without replacing those Ceph OSD Daemons
+immediately. You can run a cluster in an <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">degraded</span></tt> state, but this
+is not ideal for normal operating conditions.</p>
+<p>The following diagram depicts a simplistic Ceph Storage Cluster containing 33
+Ceph Nodes with one Ceph OSD Daemon per host, each Ceph OSD Daemon reading from
+and writing to a 3TB drive. So this exemplary Ceph Storage Cluster has a maximum
+actual capacity of 99TB. With a <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">osd</span> <span class="pre">full</span> <span class="pre">ratio</span></tt> of <tt class="docutils literal"><span class="pre">0.95</span></tt>, if the Ceph
+Storage Cluster falls to 5TB of remaining capacity, the cluster will not allow
+Ceph Clients to read and write data. So the Ceph Storage Cluster&#8217;s operating
+capacity is 95TB, not 99TB.</p>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-28056cd20c19e97a7617494fbc1cf0d761fb9da5.png"/>
+</p>
+<p>It is normal in such a cluster for one or two OSDs to fail. A less frequent but
+reasonable scenario involves a rack&#8217;s router or power supply failing, which
+brings down multiple OSDs simultaneously (e.g., OSDs 7-12). In such a scenario,
+you should still strive for a cluster that can remain operational and achieve an
+<tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt> state&#8211;even if that means adding a few hosts with additional
+OSDs in short order. If your capacity utilization is too high, you may not lose
+data, but you could still sacrifice data availability while resolving an outage
+within a failure domain if capacity utilization of the cluster exceeds the full
+ratio. For this reason, we recommend at least some rough capacity planning.</p>
+<p>Identify two numbers for your cluster:</p>
+<ol class="arabic simple">
+<li>The number of OSDs.</li>
+<li>The total capacity of the cluster</li>
+</ol>
+<p>If you divide the total capacity of your cluster by the number of OSDs in your
+cluster, you will find the mean average capacity of an OSD within your cluster.
+Consider multiplying that number by the number of OSDs you expect will fail
+simultaneously during normal operations (a relatively small number). Finally
+multiply the capacity of the cluster by the full ratio to arrive at a maximum
+operating capacity; then, subtract the number of amount of data from the OSDs
+you expect to fail to arrive at a reasonable full ratio. Repeat the foregoing
+process with a higher number of OSD failures (e.g., a rack of OSDs) to arrive at
+a reasonable number for a near full ratio.</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[global]</span>
+
+        <span class="na">mon osd full ratio</span> <span class="o">=</span> <span class="s">.80</span>
+<span class="s">        mon osd nearfull ratio = .70</span>
+</pre></div>
+</div>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">osd</span> <span class="pre">full</span> <span class="pre">ratio</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The percentage of disk space used before an OSD is
+considered <tt class="docutils literal"><span class="pre">full</span></tt>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">.95</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">osd</span> <span class="pre">nearfull</span> <span class="pre">ratio</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The percentage of disk space used before an OSD is
+considered <tt class="docutils literal"><span class="pre">nearfull</span></tt>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">.85</span></tt></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">If some OSDs are nearfull, but others have plenty of capacity, you
+may have a problem with the CRUSH weight for the nearfull OSDs.</p>
+</div>
+</div>
+<div class="section" id="heartbeat">
+<span id="index-9"></span><h3>Heartbeat<a class="headerlink" href="#heartbeat" title="Permalink to this headline">¶</a></h3>
+<p>Ceph monitors know about the cluster by requiring reports from each OSD, and by
+receiving reports from OSDs about the status of their neighboring OSDs. Ceph
+provides reasonable default settings for monitor/OSD interaction; however,  you
+may modify them as needed. See <a class="reference external" href="../mon-osd-interaction">Monitor/OSD Interaction</a> for details.</p>
+</div>
+<div class="section" id="monitor-store-synchronization">
+<span id="index-10"></span><h3>Monitor Store Synchronization<a class="headerlink" href="#monitor-store-synchronization" title="Permalink to this headline">¶</a></h3>
+<p>When you run a production cluster with multiple monitors (recommended), each
+monitor checks to see if a neighboring monitor has a more recent version of the
+cluster map (e.g., a map in a neighboring monitor with one or more epoch numbers
+higher than the most current epoch in the map of the instant monitor).
+Periodically, one monitor in the cluster may fall behind the other monitors to
+the point where it must leave the quorum, synchronize to retrieve the most
+current information about the cluster, and then rejoin the quorum. For the
+purposes of synchronization, monitors may assume one of three roles:</p>
+<ol class="arabic simple">
+<li><strong>Leader</strong>: The <cite>Leader</cite> is the first monitor to achieve the most recent
+Paxos version of the cluster map.</li>
+<li><strong>Provider</strong>: The <cite>Provider</cite> is a monitor that has the most recent version
+of the cluster map, but wasn&#8217;t the first to achieve the most recent version.</li>
+<li><strong>Requester:</strong> A <cite>Requester</cite> is a monitor that has fallen behind the leader
+and must synchronize in order to retrieve the most recent information about
+the cluster before it can rejoin the quorum.</li>
+</ol>
+<p>These roles enable a leader to delegate synchronization duties to a provider,
+which prevents synchronization requests from overloading the leader&#8211;improving
+performance. In the following diagram, the requester has learned that it has
+fallen behind the other monitors. The requester asks the leader to synchronize,
+and the leader tells the requester to synchronize with a provider.</p>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-215fab4d12b3f0727a4fbc633b58887918820ca9.png"/>
+</p>
+<p>Synchronization always occurs when a new monitor joins the cluster. During
+runtime operations, monitors may receive updates to the cluster map at different
+times. This means the leader and provider roles may migrate from one monitor to
+another. If this happens while synchronizing (e.g., a provider falls behind the
+leader), the provider can terminate synchronization with a requester.</p>
+<p>Once synchronization is complete, Ceph requires trimming across the cluster.
+Trimming requires that the placement groups are <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt>.</p>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">sync</span> <span class="pre">trim</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">30.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">sync</span> <span class="pre">heartbeat</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">30.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">sync</span> <span class="pre">heartbeat</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">5.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">sync</span> <span class="pre">backoff</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">30.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">sync</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">30.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">sync</span> <span class="pre">max</span> <span class="pre">retries</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">5</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">sync</span> <span class="pre">max</span> <span class="pre">payload</span> <span class="pre">size</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The maximum size for a sync payload.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1045676</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">accept</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Number of seconds the Leader will wait for the Requester(s) to
+accept a Paxos update. It is also used during the Paxos recovery
+phase for similar purposes.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">10.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">paxos</span> <span class="pre">propose</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Gather updates for this time interval before proposing
+a map update.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">paxos</span> <span class="pre">min</span> <span class="pre">wait</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The minimum amount of time to gather updates after a period of
+inactivity.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">0.05</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">paxos</span> <span class="pre">trim</span> <span class="pre">tolerance</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The number of extra proposals tolerated before trimming.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">30</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">paxos</span> <span class="pre">trim</span> <span class="pre">disabled</span> <span class="pre">max</span> <span class="pre">versions</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The maximimum number of version allowed to pass without trimming.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">100</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">lease</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The length (in seconds) of the lease on the monitor&#8217;s versions.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">5</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">lease</span> <span class="pre">renew</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The interval (in seconds) for the Leader to renew the other
+monitor&#8217;s leases.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">3</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">lease</span> <span class="pre">ack</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The number of seconds the Leader will wait for the Providers to
+acknowledge the lease extension.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">10.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">min</span> <span class="pre">osdmap</span> <span class="pre">epochs</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Minimum number of OSD map epochs to keep at all times.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">500</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">max</span> <span class="pre">pgmap</span> <span class="pre">epochs</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Maximum number of PG map epochs the monitor should keep.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">500</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">max</span> <span class="pre">log</span> <span class="pre">epochs</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Maximum number of Log epochs the monitor should keep.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">500</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="slurp">
+<h3>Slurp<a class="headerlink" href="#slurp" title="Permalink to this headline">¶</a></h3>
+<p>In Ceph version 0.58 and earlier, when a Paxos service drifts beyond a given
+number of versions, Ceph triggers the <cite>slurp</cite> mechanism, which establishes a
+connection with the quorum Leader and obtains every single version the Leader
+has for every service that has drifted. In Ceph versions 0.59 and later, slurp
+will not work, because there is a single Paxos instance for all services.</p>
+<p class="deprecated">
+<span class="versionmodified">Deprecated since version 0.58.</span></p>
+<p><tt class="docutils literal"><span class="pre">paxos</span> <span class="pre">max</span> <span class="pre">join</span> <span class="pre">drift</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The maximum Paxos iterations before we must first sync the
+monitor data stores.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">10</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">slurp</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The number of seconds the monitor has to recover using slurp
+before the process is aborted and the monitor bootstraps.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">10.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">slurp</span> <span class="pre">bytes</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Limits the slurp messages to the specified number of bytes.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">256</span> <span class="pre">*</span> <span class="pre">1024</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="clock">
+<span id="index-11"></span><h3>Clock<a class="headerlink" href="#clock" title="Permalink to this headline">¶</a></h3>
+<p>Ceph daemons pass critical messages to each other, which must be processed
+before daemons reach a timeout threshold. If the clocks in Ceph monitors
+are not synchronized, it can lead to a number of anomalies. For example:</p>
+<ul class="simple">
+<li>Daemons ignoring received messages (e.g., timestamps outdated)</li>
+<li>Timeouts triggered too soon/late when a message wasn&#8217;t received in time.</li>
+</ul>
+<p>See <a class="reference internal" href="#monitor-store-synchronization">Monitor Store Synchronization</a> and <a class="reference internal" href="#slurp">Slurp</a> for details.</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">You SHOULD install NTP on your Ceph monitor hosts to
+ensure that the monitor cluster operates with synchronized clocks.</p>
+</div>
+<p>Clock drift may still be noticeable with NTP even though the discrepancy isn&#8217;t
+yet harmful. Ceph&#8217;s clock drift / clock skew warnings may get triggered even
+though NTP maintains a reasonable level of synchronization. Increasing your
+clock drift may be tolerable under such circumstances; however, a number of
+factors such as workload, network latency, configuring overrides to default
+timeouts and the <a class="reference internal" href="#monitor-store-synchronization">Monitor Store Synchronization</a> settings may influence
+the level of acceptable clock drift without compromising Paxos guarantees.</p>
+<p>Ceph provides the following tunable options to allow you to find
+acceptable values.</p>
+<p><tt class="docutils literal"><span class="pre">clock</span> <span class="pre">offset</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">How much to offset the system clock. See <tt class="docutils literal"><span class="pre">Clock.cc</span></tt> for details.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p class="deprecated">
+<span class="versionmodified">Deprecated since version 0.58.</span></p>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">tick</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">A monitor&#8217;s tick interval in seconds.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">5</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">clock</span> <span class="pre">drift</span> <span class="pre">allowed</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The clock drift in seconds allowed between monitors.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">.050</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">clock</span> <span class="pre">drift</span> <span class="pre">warn</span> <span class="pre">backoff</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Exponential backoff for clock drift warnings</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">5</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">timecheck</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The time check interval (clock drift check) in seconds
+for the leader.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">300.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="client">
+<h3>Client<a class="headerlink" href="#client" title="Permalink to this headline">¶</a></h3>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">client</span> <span class="pre">hung</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The client will try a new monitor every <tt class="docutils literal"><span class="pre">N</span></tt> seconds until it
+establishes a connection.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">3.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">client</span> <span class="pre">ping</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The client will ping the monitor every <tt class="docutils literal"><span class="pre">N</span></tt> seconds.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">10.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">client</span> <span class="pre">max</span> <span class="pre">log</span> <span class="pre">entries</span> <span class="pre">per</span> <span class="pre">message</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The maximum number of log entries a monitor will generate
+per client message.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1000</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">client</span> <span class="pre">bytes</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The amount of client message data allowed in memory (in bytes).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">64-bit Integer Unsigned</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">100ul</span> <span class="pre">&lt;&lt;</span> <span class="pre">20</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="miscellaneous">
+<h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h2>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">max</span> <span class="pre">osd</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The maximum number of OSDs allowed in the cluster.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">10000</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">globalid</span> <span class="pre">prealloc</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The number of global IDs to pre-allocate for clients and daemons in the cluster.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">100</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">sync</span> <span class="pre">fs</span> <span class="pre">threshold</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Synchronize with the filesystem when writing the specified number of objects. Set it to <tt class="docutils literal"><span class="pre">0</span></tt> to disable it.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">5</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">subscribe</span> <span class="pre">interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The refresh interval (in seconds) for subscriptions. The
+subscription mechanism enables obtaining the cluster maps
+and log information.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">300</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">stat</span> <span class="pre">smooth</span> <span class="pre">intervals</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph will smooth statistics over the last <tt class="docutils literal"><span class="pre">N</span></tt> PG maps.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">2</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">probe</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Number of seconds the monitor will wait to find peers before bootstrapping.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">2.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">daemon</span> <span class="pre">bytes</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The message memory cap for metadata server and OSD messages (in bytes).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">64-bit Integer Unsigned</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">400ul</span> <span class="pre">&lt;&lt;</span> <span class="pre">20</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">max</span> <span class="pre">log</span> <span class="pre">entries</span> <span class="pre">per</span> <span class="pre">event</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The maximum number of log entries per event.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">4096</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

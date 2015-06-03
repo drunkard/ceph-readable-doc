@@ -1,0 +1,213 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuration Management System &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="configuration-management-system">
+<h1>Configuration Management System<a class="headerlink" href="#configuration-management-system" title="Permalink to this headline">¶</a></h1>
+<p>The configuration management system exists to provide every daemon with the
+proper configuration information. The configuration can be viewed as a set of
+key-value pairs.</p>
+<dl class="docutils">
+<dt>How can the configuration be set? Well, there are several sources:</dt>
+<dd><ul class="first last">
+<li><p class="first">the ceph configuration file, usually named ceph.conf</p>
+</li>
+<li><dl class="first docutils">
+<dt>command line arguments::</dt>
+<dd><p class="first last">&#8211;debug-ms=1
+&#8211;debug-pg=10
+etc.</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">arguments injected at runtime by using injectargs</p>
+</li>
+</ul>
+</dd>
+</dl>
+<div class="section" id="the-configuration-file">
+<h2>The Configuration File<a class="headerlink" href="#the-configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>Most configuration settings originate in the Ceph configuration file.</p>
+<dl class="docutils">
+<dt>How do we find the configuration file? Well, in order, we check:</dt>
+<dd><ul class="first last simple">
+<li>the default locations</li>
+<li>the environment variable CEPH_CONF</li>
+<li>the command line argument -c</li>
+</ul>
+</dd>
+</dl>
+<p>Each stanza of the configuration file describes the key-value pairs that will be in
+effect for a particular subset of the daemons. The &#8220;global&#8221; stanza applies to
+everything. The &#8220;mon&#8221;, &#8220;osd&#8221;, and &#8220;mds&#8221; stanzas specify settings to take effect
+for all monitors, all OSDs, and all mds servers, respectively.  A stanza of the
+form mon.$name, osd.$name, or mds.$name gives settings for the monitor, OSD, or
+MDS of that name, respectively. Configuration values that appear later in the
+file win over earlier ones.</p>
+<p>A sample configuration file can be found in src/sample.ceph.conf.</p>
+</div>
+<div class="section" id="metavariables">
+<h2>Metavariables<a class="headerlink" href="#metavariables" title="Permalink to this headline">¶</a></h2>
+<p>The configuration system allows any configuration value to be
+substituted into another value using the <tt class="docutils literal"><span class="pre">$varname</span></tt> syntax, similar
+to how bash shell expansion works.</p>
+<dl class="docutils">
+<dt>A few additional special metavariables are also defined:</dt>
+<dd><ul class="first last simple">
+<li>$host: expands to the current hostname</li>
+<li>$type: expands to one of &#8220;mds&#8221;, &#8220;osd&#8221;, &#8220;mon&#8221;, or &#8220;client&#8221;</li>
+<li>$id: expands to the daemon identifier. For <tt class="docutils literal"><span class="pre">osd.0</span></tt>, this would be <tt class="docutils literal"><span class="pre">0</span></tt>; for <tt class="docutils literal"><span class="pre">mds.a</span></tt>, it would be <tt class="docutils literal"><span class="pre">a</span></tt>; for <tt class="docutils literal"><span class="pre">client.admin</span></tt>, it would be <tt class="docutils literal"><span class="pre">admin</span></tt>.</li>
+<li>$num: same as $id</li>
+<li>$name: expands to $type.$id</li>
+</ul>
+</dd>
+</dl>
+</div>
+<div class="section" id="reading-configuration-values">
+<h2>Reading configuration values<a class="headerlink" href="#reading-configuration-values" title="Permalink to this headline">¶</a></h2>
+<p>There are two ways for Ceph code to get configuration values. One way is to
+read it directly from a variable named &#8220;g_conf,&#8221; or equivalently,
+&#8220;g_ceph_ctx-&gt;_conf.&#8221; The other is to register an observer that will be called
+every time the relevant configuration values changes.  This observer will be
+called soon after the initial configuration is read, and every time after that
+when one of the relevant values changes. Each observer tracks a set of keys
+and is invoked only when one of the relevant keys changes.</p>
+<p>The interface to implement is found in common/config_obs.h.</p>
+<dl class="docutils">
+<dt>The observer method should be preferred in new code because</dt>
+<dd><ul class="first last simple">
+<li>It is more flexible, allowing the code to do whatever reinitialization needs
+to be done to implement the new configuration value.</li>
+<li>It is the only way to create a std::string configuration variable that can
+be changed by injectargs.</li>
+<li>Even for int-valued configuration options, changing the values in one thread
+while another thread is reading them can lead to subtle and
+impossible-to-diagnose bugs.</li>
+</ul>
+</dd>
+</dl>
+<p>For these reasons, reading directly from g_conf should be considered deprecated
+and not done in new code.  Do not ever alter g_conf.</p>
+</div>
+<div class="section" id="changing-configuration-values">
+<h2>Changing configuration values<a class="headerlink" href="#changing-configuration-values" title="Permalink to this headline">¶</a></h2>
+<p>Configuration values can be changed by calling g_conf-&gt;set_val. After changing
+the configuration, you should call g_conf-&gt;apply_changes to re-run all the
+affected configuration observers. For convenience, you can call
+g_conf-&gt;set_val_or_die to make a configuration change which you think should
+never fail.</p>
+<p>Injectargs, parse_argv, and parse_env are three other functions which modify
+the configuration. Just like with set_val, you should call apply_changes after
+calling these functions to make sure your changes get applied.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

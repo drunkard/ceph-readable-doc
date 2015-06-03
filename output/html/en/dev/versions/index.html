@@ -1,0 +1,152 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Public OSD Version &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="public-osd-version">
+<h1>Public OSD Version<a class="headerlink" href="#public-osd-version" title="Permalink to this headline">¶</a></h1>
+<p>We maintain two versions on disk: an eversion_t pg_log.head and a
+version_t info.user_version. Each object is tagged with both the pg
+version and user_version it was last modified with.  The PG version is
+modified by manipulating OpContext::at_version and then persisting it
+to the pg log as transactions, and is incremented in all the places it
+used to be. The user_version is modified by manipulating the new
+OpContext::user_at_version and is also persisted via the pg log
+transactions.
+user_at_version is modified only in ReplicatedPG::prepare_transaction
+when the op was a &#8220;user modify&#8221; (a non-watch write), and the durable
+user_version is updated according to the following rules:
+1) set user_at_version to the maximum of ctx-&gt;new_obs.oi.user_version+1
+and info.last_user_version+1.
+2) set user_at_version to the maximum of itself and
+ctx-&gt;at_version.version.
+3) ctx-&gt;new_obs.oi.user_version = ctx-&gt;user_at_version (to change the
+object&#8217;s user_version)</p>
+<p>This set of update semantics mean that for traditional pools the
+user_version will be equal to the past reassert_version, while for
+caching pools the object and PG user-version will be able to cross
+pools without making a total mess of things.
+In order to support old clients, we keep the old reassert_version but
+rename it to &#8220;bad_replay_version&#8221;; we fill it in as before: for writes
+it is set to the at_version (and is the proper replay version); for
+watches it is set to our user version; for ENOENT replies it is set to
+the replay version&#8217;s epoch but the user_version&#8217;s version. We also now
+fill in the version_t portion of the bad_replay_version on read ops as
+well as write ops, which should be fine for all old clients.</p>
+<p>For new clients, we prevent them from reading bad_replay_version and
+add two proper members: user_version and replay_version; user_version
+is filled in on every operation (reads included) while replay_version
+is filled in for writes.</p>
+<p>The objclass function get_current_version() now always returns the
+pg-&gt;info.last_user_version, which means it is guaranteed to contain
+the version of the last user update in the PG (including on reads!).</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

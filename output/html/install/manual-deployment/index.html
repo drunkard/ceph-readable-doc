@@ -162,7 +162,7 @@
 <p>详情见<a class="reference external" href="../../rados/configuration/mon-config-ref#data">监视器配置参考——数据</a>。</p>
 </li>
 <li><p class="first">用监视器图和密钥环组装守护进程所需的初始数据。</p>
-<div class="highlight-python"><pre>ceph-mon --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring</pre>
+<div class="highlight-python"><pre>ceph-mon [--cluster {cluster-name}] --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring</pre>
 </div>
 <p>例如：</p>
 <div class="highlight-python"><pre>ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring</pre>
@@ -210,7 +210,7 @@ osd crush chooseleaf type = 1</pre>
 </li>
 <li><p class="first">启动监视器。</p>
 <p>在 Ubuntu 上用 Upstart ：</p>
-<div class="highlight-python"><pre>sudo start ceph-mon id=node1</pre>
+<div class="highlight-python"><pre>sudo start ceph-mon id=node1 [cluster={cluster-name}]</pre>
 </div>
 <p>要使此守护进程开机自启，需要创建两个空文件，像这样：</p>
 <div class="highlight-python"><pre>sudo touch /var/lib/ceph/mon/{cluster-name}-{hostname}/upstart</pre>
@@ -291,13 +291,13 @@ sudo ceph-disk prepare --cluster ceph --cluster-uuid a7f64266-0894-4f1e-a635-d0a
 </li>
 <li><p class="first">在新 OSD 主机上创建默认目录。</p>
 <div class="highlight-python"><pre>ssh {new-osd-host}
-sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}</pre>
+sudo mkdir /var/lib/ceph/osd/{cluster-name}-{osd-number}</pre>
 </div>
 </li>
 <li><p class="first">如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后挂载到刚创建的目录下：</p>
 <div class="highlight-python"><pre>ssh {new-osd-host}
 sudo mkfs -t {fstype} /dev/{hdd}
-sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}</pre>
+sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/{cluster-name}-{osd-number}</pre>
 </div>
 </li>
 <li><p class="first">初始化 OSD 数据目录：</p>
@@ -307,11 +307,11 @@ sudo ceph-osd -i {osd-num} --mkfs --mkkey --osd-uuid [{uuid}]</pre>
 <p>加 <tt class="docutils literal"><span class="pre">--mkkey</span></tt> 选项运行 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 之前，此目录必须是空的；另外，如果集群名字不是默认值，还要给 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 指定 <tt class="docutils literal"><span class="pre">--cluster</span></tt> 选项。</p>
 </li>
 <li><p class="first">注册此 OSD 的密钥。路径内 <tt class="docutils literal"><span class="pre">ceph-{osd-num}</span></tt> 里的 <tt class="docutils literal"><span class="pre">ceph</span></tt> 其含义为 <tt class="docutils literal"><span class="pre">$cluster-$id</span></tt> ，如果你的集群名字不是 <tt class="docutils literal"><span class="pre">ceph</span></tt> ，请指定自己的集群名：</p>
-<div class="highlight-python"><pre>sudo ceph auth add osd.{osd-num} osd 'allow *' mon 'allow profile osd' -i /var/lib/ceph/osd/ceph-{osd-num}/keyring</pre>
+<div class="highlight-python"><pre>sudo ceph auth add osd.{osd-num} osd 'allow *' mon 'allow profile osd' -i /var/lib/ceph/osd/{cluster-name}-{osd-num}/keyring</pre>
 </div>
 </li>
 <li><p class="first">把此节点加入 CRUSH 图。</p>
-<div class="highlight-python"><pre>ceph osd crush add-bucket {hostname} host</pre>
+<div class="highlight-python"><pre>ceph [--cluster {cluster-name}] osd crush add-bucket {hostname} host</pre>
 </div>
 <p>例如：</p>
 <div class="highlight-python"><pre>ceph osd crush add-bucket node1 host</pre>
@@ -322,7 +322,7 @@ sudo ceph-osd -i {osd-num} --mkfs --mkkey --osd-uuid [{uuid}]</pre>
 </div>
 </li>
 <li><p class="first">把此 OSD 加入 CRUSH 图之后，它就能接收数据了。你也可以反编译 CRUSH 图、把此 OSD 加入设备列表、对应主机作为桶加入（如果它还不在 CRUSH 图里）、然后此设备作为主机的一个条目、分配权重、重新编译、注入集群。</p>
-<div class="highlight-python"><pre>ceph osd crush add {id-or-name} {weight} [{bucket-type}={bucket-name} ...]</pre>
+<div class="highlight-python"><pre>ceph [--cluster {cluster-name}] osd crush add {id-or-name} {weight} [{bucket-type}={bucket-name} ...]</pre>
 </div>
 <p>例如：</p>
 <div class="highlight-python"><pre>ceph osd crush add osd.0 1.0 host=node1</pre>
@@ -330,14 +330,14 @@ sudo ceph-osd -i {osd-num} --mkfs --mkkey --osd-uuid [{uuid}]</pre>
 </li>
 <li><p class="first">把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始运行，这时处于 <tt class="docutils literal"><span class="pre">down</span></tt> 且 <tt class="docutils literal"><span class="pre">in</span></tt> 状态，要启动进程才能收数据。</p>
 <p>在 Ubuntu 系统上用 Upstart 启动：</p>
-<div class="highlight-python"><pre>sudo start ceph-osd id={osd-num}</pre>
+<div class="highlight-python"><pre>sudo start ceph-osd id={osd-num} [cluster={cluster-name}]</pre>
 </div>
 <p>例如：</p>
 <div class="highlight-python"><pre>sudo start ceph-osd id=0
 sudo start ceph-osd id=1</pre>
 </div>
 <p>在 Debian/CentOS/RHEL 上用 sysvinit 启动：</p>
-<div class="highlight-python"><pre>sudo /etc/init.d/ceph start osd.{osd-num}</pre>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph start osd.{osd-num} [--cluster {cluster-name}]</pre>
 </div>
 <p>例如：</p>
 <div class="highlight-python"><pre>sudo /etc/init.d/ceph start osd.0
@@ -416,6 +416,7 @@ sudo touch /var/lib/ceph/osd/ceph-1/sysvinit</pre>
 <li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">发布时间表</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
 </ul>
 

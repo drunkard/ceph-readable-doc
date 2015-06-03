@@ -1,0 +1,204 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Add/Remove OSDs &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="add-remove-osds">
+<h1>Add/Remove OSDs<a class="headerlink" href="#add-remove-osds" title="Permalink to this headline">¶</a></h1>
+<p>Adding and removing Ceph OSD Daemons to your cluster may involve a few more
+steps when compared to adding and removing other Ceph daemons. Ceph OSD Daemons
+write data to the disk and to journals. So you need to provide a disk for the
+OSD and a path to the journal partition (i.e., this is the most common
+configuration, but you may configure your system to  your own needs).</p>
+<p>In Ceph v0.60 and later releases, Ceph supports <tt class="docutils literal"><span class="pre">dm-crypt</span></tt> on disk encryption.
+You may specify the <tt class="docutils literal"><span class="pre">--dmcrypt</span></tt> argument when preparing an OSD to tell
+<tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> that you want to use encryption. You may also specify the
+<tt class="docutils literal"><span class="pre">--dmcrypt-key-dir</span></tt> argument to specify the location of <tt class="docutils literal"><span class="pre">dm-crypt</span></tt>
+encryption keys.</p>
+<p>You should test various drive configurations to gauge their throughput before
+before building out a large cluster. See <a class="reference external" href="../../../start/hardware-recommendations#data-storage">Data Storage</a> for additional details.</p>
+<div class="section" id="list-disks">
+<h2>List Disks<a class="headerlink" href="#list-disks" title="Permalink to this headline">¶</a></h2>
+<p>To list the disks on a node, execute the following command:</p>
+<div class="highlight-python"><pre>ceph-deploy disk list {node-name [node-name]...}</pre>
+</div>
+</div>
+<div class="section" id="zap-disks">
+<h2>Zap Disks<a class="headerlink" href="#zap-disks" title="Permalink to this headline">¶</a></h2>
+<p>To zap a disk (delete its partition table) in preparation for use with Ceph,
+execute the following:</p>
+<div class="highlight-python"><pre>ceph-deploy disk zap {osd-server-name}:{disk-name}
+ceph-deploy disk zap osdserver1:sdb</pre>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">This will delete all data.</p>
+</div>
+</div>
+<div class="section" id="prepare-osds">
+<h2>Prepare OSDs<a class="headerlink" href="#prepare-osds" title="Permalink to this headline">¶</a></h2>
+<p>Once you create a cluster, install Ceph packages, and gather keys, you
+may prepare the OSDs and deploy them to the OSD node(s). If you need to
+identify a disk or zap it prior to preparing it for use as an OSD,
+see <a class="reference internal" href="#list-disks">List Disks</a> and <a class="reference internal" href="#zap-disks">Zap Disks</a>.</p>
+<div class="highlight-python"><pre>ceph-deploy osd prepare {node-name}:{data-disk}[:{journal-disk}]
+ceph-deploy osd prepare osdserver1:sdb:/dev/ssd
+ceph-deploy osd prepare osdserver1:sdc:/dev/ssd</pre>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">prepare</span></tt> command only prepares the OSD. On most operating
+systems, the <tt class="docutils literal"><span class="pre">activate</span></tt> phase will automatically run when the
+partitions are created on the disk (using Ceph <tt class="docutils literal"><span class="pre">udev</span></tt> rules). If not
+use the <tt class="docutils literal"><span class="pre">activate</span></tt> command. See <a class="reference internal" href="#activate-osds">Activate OSDs</a> for
+details.</p>
+<p>The foregoing example assumes a disk dedicated to one Ceph OSD Daemon, and
+a path to an SSD journal partition. We recommend storing the journal on
+a separate drive to maximize throughput. You may dedicate a single drive
+for the journal too (which may be expensive) or place the journal on the
+same disk as the OSD (not recommended as it impairs performance). In the
+foregoing example we store the journal on a partitioned solid state drive.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When running multiple Ceph OSD daemons on a single node, and
+sharing a partioned journal with each OSD daemon, you should consider
+the entire node the minimum failure domain for CRUSH purposes, because
+if the SSD drive fails, all of the Ceph OSD daemons that journal to it
+will fail too.</p>
+</div>
+</div>
+<div class="section" id="activate-osds">
+<h2>Activate OSDs<a class="headerlink" href="#activate-osds" title="Permalink to this headline">¶</a></h2>
+<p>Once you prepare an OSD you may activate it with the following command.</p>
+<div class="highlight-python"><pre>ceph-deploy osd activate {node-name}:{data-disk-partition}[:{journal-disk-partition}]
+ceph-deploy osd activate osdserver1:/dev/sdb1:/dev/ssd1
+ceph-deploy osd activate osdserver1:/dev/sdc1:/dev/ssd2</pre>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">activate</span></tt> command will cause your OSD to come <tt class="docutils literal"><span class="pre">up</span></tt> and be placed
+<tt class="docutils literal"><span class="pre">in</span></tt> the cluster. The <tt class="docutils literal"><span class="pre">activate</span></tt> command uses the path to the partition
+created when running the <tt class="docutils literal"><span class="pre">prepare</span></tt> command.</p>
+</div>
+<div class="section" id="create-osds">
+<h2>Create OSDs<a class="headerlink" href="#create-osds" title="Permalink to this headline">¶</a></h2>
+<p>You may prepare OSDs, deploy them to the OSD node(s) and activate them in one
+step with the <tt class="docutils literal"><span class="pre">create</span></tt> command. The <tt class="docutils literal"><span class="pre">create</span></tt> command is a convenience method
+for executing the <tt class="docutils literal"><span class="pre">prepare</span></tt> and <tt class="docutils literal"><span class="pre">activate</span></tt> command sequentially.</p>
+<div class="highlight-python"><pre>ceph-deploy osd create {node-name}:{disk}[:{path/to/journal}]
+ceph-deploy osd create osdserver1:sdb:/dev/ssd1</pre>
+</div>
+</div>
+<div class="section" id="destroy-osds">
+<h2>Destroy OSDs<a class="headerlink" href="#destroy-osds" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Coming soon. See <a class="reference external" href="../../operations/add-or-rm-osds#removing-osds-manual">Remove OSDs</a> for manual procedures.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

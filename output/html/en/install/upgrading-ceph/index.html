@@ -1,0 +1,760 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Upgrading Ceph &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="upgrading-ceph">
+<h1>Upgrading Ceph<a class="headerlink" href="#upgrading-ceph" title="Permalink to this headline">¶</a></h1>
+<p>Each release of Ceph may have additional steps. Refer to the release-specific
+sections in this document and the <a class="reference external" href="../../release-notes">release notes</a> document to identify
+release-specific procedures for your cluster before using the upgrade
+procedures.</p>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>You can upgrade daemons in your Ceph cluster while the cluster is online and in
+service! Certain types of daemons depend upon others. For example, Ceph Metadata
+Servers and Ceph Object Gateways depend upon Ceph Monitors and Ceph OSD Daemons.
+We recommend upgrading in this order:</p>
+<ol class="arabic simple">
+<li><a class="reference internal" href="#ceph-deploy">Ceph Deploy</a></li>
+<li>Ceph Monitors</li>
+<li>Ceph OSD Daemons</li>
+<li>Ceph Metadata Servers</li>
+<li>Ceph Object Gateways</li>
+</ol>
+<p>As a general rule, we recommend upgrading all the daemons of a specific type
+(e.g., all <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons, all <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons, etc.) to ensure that
+they are all on the same release. We also recommend that you upgrade all the
+daemons in your cluster before you try to exercise new functionality in a
+release.</p>
+<p>The <a class="reference internal" href="#upgrade-procedures">Upgrade Procedures</a> are relatively simple, but please look at
+distribution-specific sections before upgrading. The basic process involves
+three steps:</p>
+<ol class="arabic">
+<li><p class="first">Use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> on your admin node to upgrade the packages for
+multiple hosts (using the <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">install</span></tt> command), or login to each
+host and upgrade the Ceph package <a class="reference external" href="../install-storage-cluster/">manually</a>. For example, when
+<a class="reference internal" href="#upgrading-monitors">Upgrading Monitors</a>, the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> syntax might look like this:</p>
+<div class="highlight-python"><pre>ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
+ceph-deploy install --release firefly mon1 mon2 mon3</pre>
+</div>
+<p><strong>Note:</strong> The <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">install</span></tt> command will upgrade the packages
+in the specified node(s) from the old release to the release you specify.
+There is no <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">upgrade</span></tt> command.</p>
+</li>
+<li><p class="first">Login in to each Ceph node and restart each Ceph daemon.
+See <a class="reference external" href="../../rados/operations/operating">Operating a Cluster</a> for details.</p>
+</li>
+<li><p class="first">Ensure your cluster is healthy. See <a class="reference external" href="../../rados/operations/monitoring">Monitoring a Cluster</a> for details.</p>
+</li>
+</ol>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Once you upgrade a daemon, you cannot downgrade it.</p>
+</div>
+</div>
+<div class="section" id="ceph-deploy">
+<h2>Ceph Deploy<a class="headerlink" href="#ceph-deploy" title="Permalink to this headline">¶</a></h2>
+<p>Before upgrading Ceph daemons, upgrade the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool.</p>
+<div class="highlight-python"><pre>sudo pip install -U ceph-deploy</pre>
+</div>
+<p>Or:</p>
+<div class="highlight-python"><pre>sudo apt-get install ceph-deploy</pre>
+</div>
+<p>Or:</p>
+<div class="highlight-python"><pre>sudo yum install ceph-deploy python-pushy</pre>
+</div>
+</div>
+<div class="section" id="argonaut-to-bobtail">
+<h2>Argonaut to Bobtail<a class="headerlink" href="#argonaut-to-bobtail" title="Permalink to this headline">¶</a></h2>
+<p>When upgrading from Argonaut to Bobtail, you need to be aware of several things:</p>
+<ol class="arabic simple">
+<li>Authentication now defaults to <strong>ON</strong>, but used to default to <strong>OFF</strong>.</li>
+<li>Monitors use a new internal on-wire protocol.</li>
+<li>RBD <tt class="docutils literal"><span class="pre">format2</span></tt> images require upgrading all OSDs before using it.</li>
+</ol>
+<p>Ensure that you update package repository paths. For example:</p>
+<div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
+echo deb http://ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
+</div>
+<p>See the following sections for additional details.</p>
+<div class="section" id="authentication">
+<h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this headline">¶</a></h3>
+<p>The Ceph Bobtail release enables authentication by default. Bobtail also has
+finer-grained authentication configuration settings. In previous versions of
+Ceph (i.e., actually v 0.55 and earlier), you could simply specify:</p>
+<div class="highlight-python"><pre>auth supported = [cephx | none]</pre>
+</div>
+<p>This option still works, but is deprecated.  New releases support
+<tt class="docutils literal"><span class="pre">cluster</span></tt>, <tt class="docutils literal"><span class="pre">service</span></tt> and <tt class="docutils literal"><span class="pre">client</span></tt> authentication settings as
+follows:</p>
+<div class="highlight-python"><pre>auth cluster required = [cephx | none]  # default cephx
+auth service required = [cephx | none] # default cephx
+auth client required = [cephx | none] # default cephx,none</pre>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p>If your cluster does not currently have an <tt class="docutils literal"><span class="pre">auth</span>
+<span class="pre">supported</span></tt> line that enables authentication, you must explicitly
+turn it off in Bobtail using the settings below.:</p>
+<div class="highlight-python"><pre>auth cluster required = none
+auth service required = none</pre>
+</div>
+<p class="last">This will disable authentication on the cluster, but still leave
+clients with the default configuration where they can talk to a
+cluster that does enable it, but do not require it.</p>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">If your cluster already has an <tt class="docutils literal"><span class="pre">auth</span> <span class="pre">supported</span></tt> option defined in
+the configuration file, no changes are necessary.</p>
+</div>
+<p>See <a class="reference external" href="../../rados/operations/authentication/#backward-compatibility">Ceph Authentication - Backward Compatibility</a> for details.</p>
+</div>
+<div class="section" id="monitor-on-wire-protocol">
+<h3>Monitor On-wire Protocol<a class="headerlink" href="#monitor-on-wire-protocol" title="Permalink to this headline">¶</a></h3>
+<p>We recommend upgrading all monitors to Bobtail. A mixture of Bobtail and
+Argonaut monitors will not be able to use the new on-wire protocol, as the
+protocol requires all monitors to be Bobtail or greater. Upgrading  only a
+majority of the nodes (e.g., two out of three) may expose the cluster to a
+situation where a single additional failure may compromise availability (because
+the non-upgraded daemon cannot participate in the new protocol).  We recommend
+not waiting for an extended period of time between <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> upgrades.</p>
+</div>
+<div class="section" id="rbd-images">
+<h3>RBD Images<a class="headerlink" href="#rbd-images" title="Permalink to this headline">¶</a></h3>
+<p>The Bobtail release supports <tt class="docutils literal"><span class="pre">format</span> <span class="pre">2</span></tt> images! However, you should not create
+or use <tt class="docutils literal"><span class="pre">format</span> <span class="pre">2</span></tt> RBD images until after all <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons have been
+upgraded.  Note that <tt class="docutils literal"><span class="pre">format</span> <span class="pre">1</span></tt> is still the default. You can use the new
+<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">ls</span></tt> and <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">tell</span> <span class="pre">osd.N</span> <span class="pre">version</span></tt> commands to doublecheck your
+cluster. <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">ls</span></tt> will give a list of all OSD IDs that are part of the
+cluster, and you can use that to write a simple shell loop to display all the
+OSD version strings:</p>
+<div class="highlight-python"><pre>for i in $(ceph osd ls); do
+    ceph tell osd.${i} version
+done</pre>
+</div>
+</div>
+</div>
+<div class="section" id="argonaut-to-cuttlefish">
+<h2>Argonaut to Cuttlefish<a class="headerlink" href="#argonaut-to-cuttlefish" title="Permalink to this headline">¶</a></h2>
+<p>To upgrade your cluster from Argonaut to Cuttlefish, please read this
+section, and the sections on upgrading from Argonaut to Bobtail and
+upgrading from Bobtail to Cuttlefish carefully. When upgrading from
+Argonaut to Cuttlefish, <strong>YOU MUST UPGRADE YOUR MONITORS FROM ARGONAUT
+TO BOBTAIL v0.56.5 FIRST!!!</strong>. All other Ceph daemons can upgrade from
+Argonaut to Cuttlefish without the intermediate upgrade to Bobtail.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Ensure that the repository specified points to Bobtail, not
+Cuttlefish.</p>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
+echo deb http://ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
+</div>
+<p>We recommend upgrading all monitors to Bobtail before proceeding with the
+upgrade of the monitors to Cuttlefish. A mixture of Bobtail and Argonaut
+monitors will not be able to use the new on-wire protocol, as the protocol
+requires all monitors to be Bobtail or greater. Upgrading only a majority of the
+nodes (e.g., two out of three) may expose the cluster to a situation where a
+single additional failure may compromise availability (because the non-upgraded
+daemon cannot participate in the new protocol).  We recommend not waiting for an
+extended period of time between <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> upgrades. See <a class="reference internal" href="#upgrading-monitors">Upgrading
+Monitors</a> for details.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">See the <a class="reference internal" href="#authentication">Authentication</a> section and the
+<a class="reference external" href="../../rados/operations/authentication/#backward-compatibility">Ceph Authentication - Backward Compatibility</a> for additional information
+on authentication backward compatibility settings for Bobtail.</p>
+</div>
+<p>Once you complete the upgrade of your monitors from Argonaut to
+Bobtail, and have restarted the monitor daemons, you must upgrade the
+monitors from Bobtail to Cuttlefish. Ensure that you have a quorum
+before beginning this upgrade procedure. Before upgrading, remember to
+replace the reference to the Bobtail repository with a reference to
+the Cuttlefish repository. For example:</p>
+<div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
+echo deb http://ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
+</div>
+<p>See <a class="reference internal" href="#upgrading-monitors">Upgrading Monitors</a> for details.</p>
+<p>The architecture of the monitors changed significantly from Argonaut to
+Cuttlefish. See <a class="reference external" href="../../rados/configuration/mon-config-ref">Monitor Config Reference</a> and <a class="reference external" href="http://ceph.com/dev-notes/cephs-new-monitor-changes">Joao&#8217;s blog post</a> for details.
+Once you complete the monitor upgrade, you can upgrade the OSD daemons and the
+MDS daemons using the generic procedures. See <a class="reference internal" href="#upgrading-an-osd">Upgrading an OSD</a> and <a class="reference internal" href="#upgrading-a-metadata-server">Upgrading
+a Metadata Server</a> for details.</p>
+</div>
+<div class="section" id="bobtail-to-cuttlefish">
+<h2>Bobtail to Cuttlefish<a class="headerlink" href="#bobtail-to-cuttlefish" title="Permalink to this headline">¶</a></h2>
+<p>Upgrading your cluster from Bobtail to Cuttlefish has a few important
+considerations. First, the monitor uses a new architecture, so you should
+upgrade the full set of monitors to use Cuttlefish. Second, if you run multiple
+metadata servers in a cluster, ensure the metadata servers have unique names.
+See the following sections for details.</p>
+<p>Replace any <tt class="docutils literal"><span class="pre">apt</span></tt> reference to older repositories with a reference to the
+Cuttlefish repository. For example:</p>
+<div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
+echo deb http://ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
+</div>
+<div class="section" id="monitor">
+<h3>Monitor<a class="headerlink" href="#monitor" title="Permalink to this headline">¶</a></h3>
+<p>The architecture of the monitors changed significantly from Bobtail to
+Cuttlefish. See <a class="reference external" href="../../rados/configuration/mon-config-ref">Monitor Config Reference</a> and <a class="reference external" href="http://ceph.com/dev-notes/cephs-new-monitor-changes">Joao&#8217;s blog post</a> for
+details. This means that v0.59 and pre-v0.59 monitors do not talk to each other
+(Cuttlefish is v.0.61). When you upgrade each monitor, it will convert its
+local data store to the new format. Once you upgrade a majority of monitors,
+the monitors form a quorum using the new protocol and the old monitors will be
+blocked until they get upgraded. For this reason, we recommend upgrading the
+monitors in immediate succession.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Do not run a mixed-version cluster for an extended period.</p>
+</div>
+</div>
+<div class="section" id="mds-unique-names">
+<h3>MDS Unique Names<a class="headerlink" href="#mds-unique-names" title="Permalink to this headline">¶</a></h3>
+<p>The monitor now enforces that MDS names be unique. If you have multiple metadata
+server daemons that start with the same ID (e.g., mds.a) the second
+metadata server will implicitly mark the first metadata server as <tt class="docutils literal"><span class="pre">failed</span></tt>.
+Multi-MDS configurations with identical names must be adjusted accordingly to
+give daemons unique names. If you run your cluster with one  metadata server,
+you can disregard this notice for now.</p>
+</div>
+<div class="section" id="id1">
+<h3>ceph-deploy<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool is now the preferred method of provisioning new clusters.
+For existing clusters created via the obsolete <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> tool that would like to transition to the
+new tool, there is a migration path, documented at <a class="reference internal" href="#transitioning-to-ceph-deploy">Transitioning to ceph-deploy</a>.</p>
+</div>
+</div>
+<div class="section" id="cuttlefish-to-dumpling">
+<h2>Cuttlefish to Dumpling<a class="headerlink" href="#cuttlefish-to-dumpling" title="Permalink to this headline">¶</a></h2>
+<p>When upgrading from Cuttlefish (v0.61-v0.61.7) you may perform a rolling
+upgrade. However, there are a few important considerations. First, you must
+upgrade the <tt class="docutils literal"><span class="pre">ceph</span></tt> command line utility, because it has changed significantly.
+Second, you must upgrade the full set of monitors to use Dumpling, because of a
+protocol change.</p>
+<p>Replace any reference to older repositories with a reference to the
+Dumpling repository. For example, with <tt class="docutils literal"><span class="pre">apt</span></tt> perform the following:</p>
+<div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
+echo deb http://ceph.com/debian-dumpling/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
+</div>
+<p>With CentOS/Red Hat distributions, remove the old repository.</p>
+<div class="highlight-python"><pre>sudo rm /etc/yum.repos.d/ceph.repo</pre>
+</div>
+<p>Then add a new <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> repository entry with the following contents.</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[ceph]</span>
+<span class="na">name</span><span class="o">=</span><span class="s">Ceph Packages and Backports $basearch</span>
+<span class="na">baseurl</span><span class="o">=</span><span class="s">http://ceph.com/rpm/el6/$basearch</span>
+<span class="na">enabled</span><span class="o">=</span><span class="s">1</span>
+<span class="na">gpgcheck</span><span class="o">=</span><span class="s">1</span>
+<span class="na">type</span><span class="o">=</span><span class="s">rpm-md</span>
+<span class="na">gpgkey</span><span class="o">=</span><span class="s">https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ensure you use the correct URL for your distribution. Check the
+<a class="reference external" href="http://ceph.com/rpm">http://ceph.com/rpm</a> directory for your distribution.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Since you can upgrade using <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> you will only need to add
+the repository on Ceph Client nodes where you use the <tt class="docutils literal"><span class="pre">ceph</span></tt> command line
+interface or the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool.</p>
+</div>
+</div>
+<div class="section" id="dumpling-to-emperor">
+<h2>Dumpling to Emperor<a class="headerlink" href="#dumpling-to-emperor" title="Permalink to this headline">¶</a></h2>
+<p>When upgrading from Dumpling (v0.64) you may perform a rolling
+upgrade.</p>
+<p>Replace any reference to older repositories with a reference to the
+Emperor repository. For example, with <tt class="docutils literal"><span class="pre">apt</span></tt> perform the following:</p>
+<div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
+echo deb http://ceph.com/debian-emperor/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
+</div>
+<p>With CentOS/Red Hat distributions, remove the old repository.</p>
+<div class="highlight-python"><pre>sudo rm /etc/yum.repos.d/ceph.repo</pre>
+</div>
+<p>Then add a new <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> repository entry with the following contents and
+replace <tt class="docutils literal"><span class="pre">{distro}</span></tt> with your distribution (e.g., <tt class="docutils literal"><span class="pre">el6</span></tt>, <tt class="docutils literal"><span class="pre">rhel6</span></tt>, etc).</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[ceph]</span>
+<span class="na">name</span><span class="o">=</span><span class="s">Ceph Packages and Backports $basearch</span>
+<span class="na">baseurl</span><span class="o">=</span><span class="s">http://ceph.com/rpm-emperor/{distro}/$basearch</span>
+<span class="na">enabled</span><span class="o">=</span><span class="s">1</span>
+<span class="na">gpgcheck</span><span class="o">=</span><span class="s">1</span>
+<span class="na">type</span><span class="o">=</span><span class="s">rpm-md</span>
+<span class="na">gpgkey</span><span class="o">=</span><span class="s">https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ensure you use the correct URL for your distribution. Check the
+<a class="reference external" href="http://ceph.com/rpm">http://ceph.com/rpm</a> directory for your distribution.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Since you can upgrade using <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> you will only need to add
+the repository on Ceph Client nodes where you use the <tt class="docutils literal"><span class="pre">ceph</span></tt> command line
+interface or the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool.</p>
+</div>
+<div class="section" id="command-line-utility">
+<h3>Command Line Utility<a class="headerlink" href="#command-line-utility" title="Permalink to this headline">¶</a></h3>
+<p>In V0.65, the <tt class="docutils literal"><span class="pre">ceph</span></tt> commandline interface (CLI) utility changed
+significantly. You will not be able to use the old CLI with Dumpling. This means
+that you must upgrade the  <tt class="docutils literal"><span class="pre">ceph-common</span></tt> library on all nodes that access the
+Ceph Storage Cluster with the <tt class="docutils literal"><span class="pre">ceph</span></tt> CLI before upgrading Ceph daemons.</p>
+<div class="highlight-python"><pre>sudo apt-get update &amp;&amp; sudo apt-get install ceph-common</pre>
+</div>
+<p>Ensure that you have the latest version (v0.67 or later). If you do not,
+you may need to uninstall, auto remove dependencies and reinstall.</p>
+<p>See <a class="reference external" href="http://ceph.com/docs/master/release-notes/#v0-65">v0.65</a> for details on the new command line interface.</p>
+</div>
+<div class="section" id="id2">
+<h3>Monitor<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Dumpling (v0.67) <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons have an internal protocol change. This
+means that v0.67 daemons cannot talk to v0.66 or older daemons.  Once you
+upgrade a majority of monitors,  the monitors form a quorum using the new
+protocol and the old monitors will be blocked until they get upgraded. For this
+reason, we recommend upgrading all monitors at once (or in relatively quick
+succession) to minimize the possibility of downtime.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Do not run a mixed-version cluster for an extended period.</p>
+</div>
+</div>
+</div>
+<div class="section" id="dumpling-to-firefly">
+<h2>Dumpling to Firefly<a class="headerlink" href="#dumpling-to-firefly" title="Permalink to this headline">¶</a></h2>
+<p>If your existing cluster is running a version older than v0.67 Dumpling, please
+first upgrade to the latest Dumpling release before upgrading to v0.80 Firefly.</p>
+<div class="section" id="id3">
+<h3>Monitor<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>Dumpling (v0.67) <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons have an internal protocol change. This
+means that v0.67 daemons cannot talk to v0.66 or older daemons.  Once you
+upgrade a majority of monitors,  the monitors form a quorum using the new
+protocol and the old monitors will be blocked until they get upgraded. For this
+reason, we recommend upgrading all monitors at once (or in relatively quick
+succession) to minimize the possibility of downtime.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Do not run a mixed-version cluster for an extended period.</p>
+</div>
+</div>
+<div class="section" id="ceph-config-file-changes">
+<h3>Ceph Config File Changes<a class="headerlink" href="#ceph-config-file-changes" title="Permalink to this headline">¶</a></h3>
+<p>We recommand adding the following to the <tt class="docutils literal"><span class="pre">[mon]</span></tt> section of your
+<tt class="docutils literal"><span class="pre">ceph.conf</span></tt> prior to upgrade:</p>
+<div class="highlight-python"><pre>mon warn on legacy crush tunables = false</pre>
+</div>
+<p>This will prevent health warnings due to the use of legacy CRUSH placement.
+Although it is possible to rebalance existing data across your cluster, we do
+not normally recommend it for production environments as a large amount of data
+will move and there is a significant performance impact from the rebalancing.</p>
+</div>
+<div class="section" id="id4">
+<h3>Command Line Utility<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>In V0.65, the <tt class="docutils literal"><span class="pre">ceph</span></tt> commandline interface (CLI) utility changed
+significantly. You will not be able to use the old CLI with Firefly. This means
+that you must upgrade the  <tt class="docutils literal"><span class="pre">ceph-common</span></tt> library on all nodes that access the
+Ceph Storage Cluster with the <tt class="docutils literal"><span class="pre">ceph</span></tt> CLI before upgrading Ceph daemons.</p>
+<p>For Debian/Ubuntu, execute:</p>
+<div class="highlight-python"><pre>sudo apt-get update &amp;&amp; sudo apt-get install ceph-common</pre>
+</div>
+<p>For CentOS/RHEL, execute:</p>
+<div class="highlight-python"><pre>sudo yum install ceph-common</pre>
+</div>
+<p>Ensure that you have the latest version. If you do not,
+you may need to uninstall, auto remove dependencies and reinstall.</p>
+<p>See <a class="reference external" href="http://ceph.com/docs/master/release-notes/#v0-65">v0.65</a> for details on the new command line interface.</p>
+</div>
+<div class="section" id="upgrade-sequence">
+<h3>Upgrade Sequence<a class="headerlink" href="#upgrade-sequence" title="Permalink to this headline">¶</a></h3>
+<p>Replace any reference to older repositories with a reference to the
+Firely repository. For example, with <tt class="docutils literal"><span class="pre">apt</span></tt> perform the following:</p>
+<div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
+echo deb http://ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
+</div>
+<p>With CentOS/Red Hat distributions, remove the old repository.</p>
+<div class="highlight-python"><pre>sudo rm /etc/yum.repos.d/ceph.repo</pre>
+</div>
+<p>Then add a new <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> repository entry with the following contents and
+replace <tt class="docutils literal"><span class="pre">{distro}</span></tt> with your distribution (e.g., <tt class="docutils literal"><span class="pre">el6</span></tt>, <tt class="docutils literal"><span class="pre">rhel6</span></tt>,
+<tt class="docutils literal"><span class="pre">rhel7</span></tt>, etc.).</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[ceph]</span>
+<span class="na">name</span><span class="o">=</span><span class="s">Ceph Packages and Backports $basearch</span>
+<span class="na">baseurl</span><span class="o">=</span><span class="s">http://ceph.com/rpm-firefly/{distro}/$basearch</span>
+<span class="na">enabled</span><span class="o">=</span><span class="s">1</span>
+<span class="na">gpgcheck</span><span class="o">=</span><span class="s">1</span>
+<span class="na">type</span><span class="o">=</span><span class="s">rpm-md</span>
+<span class="na">gpgkey</span><span class="o">=</span><span class="s">https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc</span>
+</pre></div>
+</div>
+<p>Upgrade daemons in the following order:</p>
+<ol class="arabic simple">
+<li><strong>Monitors:</strong> If the <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons are not restarted prior to the
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons, the monitors will not correctly register their new
+capabilities with the cluster and new features may not be usable until
+the monitors are restarted a second time.</li>
+<li><strong>OSDs</strong></li>
+<li><strong>MDSs:</strong> If the <tt class="docutils literal"><span class="pre">ceph-mds</span></tt> daemon is restarted first, it will wait until
+all OSDs have been upgraded before finishing its startup sequence.</li>
+<li><strong>Gateways:</strong> Upgrade <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemons together. There is a subtle change
+in behavior for multipart uploads that prevents a multipart request that
+was initiated with a new <tt class="docutils literal"><span class="pre">radosgw</span></tt> from being completed by an old
+<tt class="docutils literal"><span class="pre">radosgw</span></tt>.</li>
+</ol>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Make sure you upgrade your <strong>ALL</strong> of your Ceph monitors <strong>AND</strong>
+restart them <strong>BEFORE</strong> upgrading and restarting OSDs, MDSs, and gateways!</p>
+</div>
+</div>
+</div>
+<div class="section" id="emperor-to-firefly">
+<h2>Emperor to Firefly<a class="headerlink" href="#emperor-to-firefly" title="Permalink to this headline">¶</a></h2>
+<p>If your existing cluster is running a version older than v0.67 Dumpling, please
+first upgrade to the latest Dumpling release before upgrading to v0.80 Firefly.
+Please refer to <a class="reference internal" href="#cuttlefish-to-dumpling">Cuttlefish to Dumpling</a> and the <a class="reference external" href="../../release-notes/#v0-80-firefly">Firefly release notes</a> for
+details. To upgrade from a post-Emperor point release, see the <a class="reference external" href="../../release-notes/#v0-80-firefly">Firefly release
+notes</a> for details.</p>
+<div class="section" id="id6">
+<h3>Ceph Config File Changes<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>We recommand adding the following to the <tt class="docutils literal"><span class="pre">[mon]</span></tt> section of your
+<tt class="docutils literal"><span class="pre">ceph.conf</span></tt> prior to upgrade:</p>
+<div class="highlight-python"><pre>mon warn on legacy crush tunables = false</pre>
+</div>
+<p>This will prevent health warnings due to the use of legacy CRUSH placement.
+Although it is possible to rebalance existing data across your cluster, we do
+not normally recommend it for production environments as a large amount of data
+will move and there is a significant performance impact from the rebalancing.</p>
+</div>
+<div class="section" id="id7">
+<h3>Upgrade Sequence<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>Replace any reference to older repositories with a reference to the
+Firefly repository. For example, with <tt class="docutils literal"><span class="pre">apt</span></tt> perform the following:</p>
+<div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
+echo deb http://ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
+</div>
+<p>With CentOS/Red Hat distributions, remove the old repository.</p>
+<div class="highlight-python"><pre>sudo rm /etc/yum.repos.d/ceph.repo</pre>
+</div>
+<p>Then add a new <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> repository entry with the following contents, but
+replace <tt class="docutils literal"><span class="pre">{distro}</span></tt> with your distribution (e.g., <tt class="docutils literal"><span class="pre">el6</span></tt>, <tt class="docutils literal"><span class="pre">rhel6</span></tt>,
+<tt class="docutils literal"><span class="pre">rhel7</span></tt>, etc.).</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[ceph]</span>
+<span class="na">name</span><span class="o">=</span><span class="s">Ceph Packages and Backports $basearch</span>
+<span class="na">baseurl</span><span class="o">=</span><span class="s">http://ceph.com/rpm/{distro}/$basearch</span>
+<span class="na">enabled</span><span class="o">=</span><span class="s">1</span>
+<span class="na">gpgcheck</span><span class="o">=</span><span class="s">1</span>
+<span class="na">type</span><span class="o">=</span><span class="s">rpm-md</span>
+<span class="na">gpgkey</span><span class="o">=</span><span class="s">https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ensure you use the correct URL for your distribution. Check the
+<a class="reference external" href="http://ceph.com/rpm">http://ceph.com/rpm</a> directory for your distribution.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Since you can upgrade using <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> you will only need to add
+the repository on Ceph Client nodes where you use the <tt class="docutils literal"><span class="pre">ceph</span></tt> command line
+interface or the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool.</p>
+</div>
+<p>Upgrade daemons in the following order:</p>
+<ol class="arabic simple">
+<li><strong>Monitors:</strong> If the <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons are not restarted prior to the
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons, the monitors will not correctly register their new
+capabilities with the cluster and new features may not be usable until
+the monitors are restarted a second time.</li>
+<li><strong>OSDs</strong></li>
+<li><strong>MDSs:</strong> If the <tt class="docutils literal"><span class="pre">ceph-mds</span></tt> daemon is restarted first, it will wait until
+all OSDs have been upgraded before finishing its startup sequence.</li>
+<li><strong>Gateways:</strong> Upgrade <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemons together. There is a subtle change
+in behavior for multipart uploads that prevents a multipart request that
+was initiated with a new <tt class="docutils literal"><span class="pre">radosgw</span></tt> from being completed by an old
+<tt class="docutils literal"><span class="pre">radosgw</span></tt>.</li>
+</ol>
+</div>
+</div>
+<div class="section" id="upgrade-procedures">
+<h2>Upgrade Procedures<a class="headerlink" href="#upgrade-procedures" title="Permalink to this headline">¶</a></h2>
+<p>The following sections describe the upgrade process.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Each release of Ceph may have some additional steps. Refer to
+release-specific sections for details <strong>BEFORE</strong> you begin upgrading daemons.</p>
+</div>
+<div class="section" id="upgrading-monitors">
+<h3>Upgrading Monitors<a class="headerlink" href="#upgrading-monitors" title="Permalink to this headline">¶</a></h3>
+<p>To upgrade monitors, perform the following steps:</p>
+<ol class="arabic">
+<li><p class="first">Upgrade the Ceph package for each daemon instance.</p>
+<p>You may use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> to address all monitor nodes at once.
+For example:</p>
+<div class="highlight-python"><pre>ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
+ceph-deploy install --release dumpling mon1 mon2 mon3</pre>
+</div>
+<p>You may also use the package manager for your Linux distribution on
+each individual node. To upgrade packages manually on each Debian/Ubuntu
+host, perform the following steps .</p>
+<div class="highlight-python"><pre>ssh {mon-host}
+sudo apt-get update &amp;&amp; sudo apt-get install ceph</pre>
+</div>
+<p>On CentOS/Red Hat hosts, perform the following steps:</p>
+<div class="highlight-python"><pre>ssh {mon-host}
+sudo yum update &amp;&amp; sudo yum install ceph</pre>
+</div>
+</li>
+<li><p class="first">Restart each monitor. For Ubuntu distributions, use:</p>
+<div class="highlight-python"><pre>sudo restart ceph-mon id={hostname}</pre>
+</div>
+<p>For CentOS/Red Hat/Debian distributions, use:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph restart {mon-id}</pre>
+</div>
+<p>For CentOS/Red Hat distributions deployed with <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>,
+the monitor ID is usually <tt class="docutils literal"><span class="pre">mon.{hostname}</span></tt>.</p>
+</li>
+<li><p class="first">Ensure each monitor has rejoined the quorum.</p>
+<div class="highlight-python"><pre>ceph mon stat</pre>
+</div>
+</li>
+</ol>
+<p>Ensure that you have completed the upgrade cycle for all of your Ceph Monitors.</p>
+</div>
+<div class="section" id="upgrading-an-osd">
+<h3>Upgrading an OSD<a class="headerlink" href="#upgrading-an-osd" title="Permalink to this headline">¶</a></h3>
+<p>To upgrade a Ceph OSD Daemon, perform the following steps:</p>
+<ol class="arabic">
+<li><p class="first">Upgrade the Ceph OSD Daemon package.</p>
+<p>You may use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> to address all Ceph OSD Daemon nodes at
+once. For example:</p>
+<div class="highlight-python"><pre>ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
+ceph-deploy install --release dumpling mon1 mon2 mon3</pre>
+</div>
+<p>You may also use the package manager on each node to upgrade packages
+manually. For Debian/Ubuntu hosts, perform the following steps on each
+host.</p>
+<div class="highlight-python"><pre>ssh {osd-host}
+sudo apt-get update &amp;&amp; sudo apt-get install ceph</pre>
+</div>
+<p>For CentOS/Red Hat hosts, perform the following steps:</p>
+<div class="highlight-python"><pre>ssh {osd-host}
+sudo yum update &amp;&amp; sudo yum install ceph</pre>
+</div>
+</li>
+<li><p class="first">Restart the OSD, where <tt class="docutils literal"><span class="pre">N</span></tt> is the OSD number. For Ubuntu, use:</p>
+<div class="highlight-python"><pre>sudo restart ceph-osd id=N</pre>
+</div>
+<p>For multiple OSDs on a host, you may restart all of them with Upstart.</p>
+<div class="highlight-python"><pre>sudo restart ceph-osd-all</pre>
+</div>
+<p>For CentOS/Red Hat/Debian distributions, use:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph restart N</pre>
+</div>
+</li>
+<li><p class="first">Ensure each upgraded Ceph OSD Daemon has rejoined the cluster:</p>
+<div class="highlight-python"><pre>ceph osd stat</pre>
+</div>
+</li>
+</ol>
+<p>Ensure that you have completed the upgrade cycle for all of your
+Ceph OSD Daemons.</p>
+</div>
+<div class="section" id="upgrading-a-metadata-server">
+<h3>Upgrading a Metadata Server<a class="headerlink" href="#upgrading-a-metadata-server" title="Permalink to this headline">¶</a></h3>
+<p>To upgrade a Ceph Metadata Server, perform the following steps:</p>
+<ol class="arabic">
+<li><p class="first">Upgrade the Ceph Metadata Server package. You may use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> to
+address all Ceph Metadata Server nodes at once, or use the package manager
+on each node. For example:</p>
+<div class="highlight-python"><pre>ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
+ceph-deploy install --release dumpling mon1 mon2 mon3</pre>
+</div>
+<p>To upgrade packages manually, perform the following steps on each
+Debian/Ubuntu host.</p>
+<div class="highlight-python"><pre>ssh {mon-host}
+sudo apt-get update &amp;&amp; sudo apt-get install ceph-mds</pre>
+</div>
+<p>Or the following steps on CentOS/Red Hat hosts:</p>
+<div class="highlight-python"><pre>ssh {mon-host}
+sudo yum update &amp;&amp; sudo yum install ceph-mds</pre>
+</div>
+</li>
+<li><p class="first">Restart the metadata server. For Ubuntu, use:</p>
+<div class="highlight-python"><pre>sudo restart ceph-mds id={hostname}</pre>
+</div>
+<p>For CentOS/Red Hat/Debian distributions, use:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph restart mds.{hostname}</pre>
+</div>
+<p>For clusters deployed with <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>, the name is usually either
+the name you specified on creation or the hostname.</p>
+</li>
+<li><p class="first">Ensure the metadata server is up and running:</p>
+<div class="highlight-python"><pre>ceph mds stat</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="upgrading-a-client">
+<h3>Upgrading a Client<a class="headerlink" href="#upgrading-a-client" title="Permalink to this headline">¶</a></h3>
+<p>Once you have upgraded the packages and restarted daemons on your Ceph
+cluster, we recommend upgrading <tt class="docutils literal"><span class="pre">ceph-common</span></tt> and client libraries
+(<tt class="docutils literal"><span class="pre">librbd1</span></tt> and <tt class="docutils literal"><span class="pre">librados2</span></tt>) on your client nodes too.</p>
+<ol class="arabic">
+<li><p class="first">Upgrade the package:</p>
+<div class="highlight-python"><pre>ssh {client-host}
+apt-get update &amp;&amp; sudo apt-get install ceph-common librados2 librbd1 python-rados python-rbd</pre>
+</div>
+</li>
+<li><p class="first">Ensure that you have the latest version:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">ceph</span> <span class="o">--</span><span class="n">version</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>If you do not have the latest version, you may need to uninstall, auto remove
+dependencies and reinstall.</p>
+</div>
+</div>
+<div class="section" id="transitioning-to-ceph-deploy">
+<h2>Transitioning to ceph-deploy<a class="headerlink" href="#transitioning-to-ceph-deploy" title="Permalink to this headline">¶</a></h2>
+<p>If you have an existing cluster that you deployed with <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> (usually
+Argonaut or Bobtail releases),  you will need to make a few changes to your
+configuration to  ensure that your cluster will work with <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>.</p>
+<div class="section" id="monitor-keyring">
+<h3>Monitor Keyring<a class="headerlink" href="#monitor-keyring" title="Permalink to this headline">¶</a></h3>
+<p>You will need to add <tt class="docutils literal"><span class="pre">caps</span> <span class="pre">mon</span> <span class="pre">=</span> <span class="pre">&quot;allow</span> <span class="pre">*&quot;</span></tt> to your monitor keyring if it is
+not already in the keyring. By default, the monitor keyring is located under
+<tt class="docutils literal"><span class="pre">/var/lib/ceph/mon/ceph-$id/keyring</span></tt>. When you have added the <tt class="docutils literal"><span class="pre">caps</span></tt>
+setting, your monitor keyring should look something like this:</p>
+<div class="highlight-python"><pre>[mon.]
+        key = AQBJIHhRuHCwDRAAZjBTSJcIBIoGpdOR9ToiyQ==
+        caps mon = "allow *"</pre>
+</div>
+<p>Adding <tt class="docutils literal"><span class="pre">caps</span> <span class="pre">mon</span> <span class="pre">=</span> <span class="pre">&quot;allow</span> <span class="pre">*&quot;</span></tt> will ease the transition from <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> to
+<tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> by allowing <tt class="docutils literal"><span class="pre">ceph-create-keys</span></tt> to use the <tt class="docutils literal"><span class="pre">mon.</span></tt> keyring
+file in <tt class="docutils literal"><span class="pre">$mon_data</span></tt> and get the caps it needs.</p>
+</div>
+<div class="section" id="use-default-paths">
+<h3>Use Default Paths<a class="headerlink" href="#use-default-paths" title="Permalink to this headline">¶</a></h3>
+<p>Under the <tt class="docutils literal"><span class="pre">/var/lib/ceph</span></tt> directory, the <tt class="docutils literal"><span class="pre">mon</span></tt> and <tt class="docutils literal"><span class="pre">osd</span></tt> directories need
+to use the default paths.</p>
+<ul class="simple">
+<li><strong>OSDs</strong>: The path should be <tt class="docutils literal"><span class="pre">/var/lib/ceph/osd/ceph-$id</span></tt></li>
+<li><strong>MON</strong>: The path should be  <tt class="docutils literal"><span class="pre">/var/lib/ceph/mon/ceph-$id</span></tt></li>
+</ul>
+<p>Under those directories, the keyring should be in a file named <tt class="docutils literal"><span class="pre">keyring</span></tt>.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

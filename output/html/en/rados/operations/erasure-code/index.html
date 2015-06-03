@@ -1,0 +1,230 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Erasure code &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="erasure-code">
+<h1>Erasure code<a class="headerlink" href="#erasure-code" title="Permalink to this headline">¶</a></h1>
+<p>A Ceph pool is associated to a type to sustain the loss of an OSD
+(i.e. a disk since most of the time there is one OSD per disk). The
+default choice when <a class="reference external" href="../pools">creating a pool</a> is <em>replicated</em>,
+meaning every object is copied on multiple disks. The <a class="reference external" href="https://en.wikipedia.org/wiki/Erasure_code">Erasure Code</a> pool type can be used
+instead to save space.</p>
+<div class="section" id="creating-a-sample-erasure-coded-pool">
+<h2>Creating a sample erasure coded pool<a class="headerlink" href="#creating-a-sample-erasure-coded-pool" title="Permalink to this headline">¶</a></h2>
+<p>The simplest erasure coded pool is equivalent to <a class="reference external" href="https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_5">RAID5</a> and
+requires at least three hosts:</p>
+<div class="highlight-python"><pre>$ ceph osd pool create ecpool 12 12 erasure
+pool 'ecpool' created
+$ echo ABCDEFGHI | rados --pool ecpool put NYAN -
+$ rados --pool ecpool get NYAN -
+ABCDEFGHI</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">the 12 in <em>pool create</em> stands for
+<a class="reference external" href="../pools">the number of placement groups</a>.</p>
+</div>
+</div>
+<div class="section" id="erasure-code-profiles">
+<h2>Erasure code profiles<a class="headerlink" href="#erasure-code-profiles" title="Permalink to this headline">¶</a></h2>
+<p>The default erasure code profile sustains the loss of a single OSD. It
+is equivalent to a replicated pool of size two but requires 1.5TB
+instead of 2TB to store 1TB of data. The default profile can be
+displayed with:</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile get default
+directory=.libs
+k=2
+m=1
+plugin=jerasure
+ruleset-failure-domain=host
+technique=reed_sol_van</pre>
+</div>
+<p>Choosing the right profile is important because it cannot be modified
+after the pool is created: a new pool with a different profile needs
+to be created and all objects from the previous pool moved to the new.</p>
+<p>The most important parameters of the profile are <em>K</em>, <em>M</em> and
+<em>ruleset-failure-domain</em> because they define the storage overhead and
+the data durability. For instance, if the desired architecture must
+sustain the loss of two racks with a storage overhead of 40% overhead,
+the following profile can be defined:</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile set myprofile \
+   k=3 \
+   m=2 \
+   ruleset-failure-domain=rack
+$ ceph osd pool create ecpool 12 12 erasure *myprofile*
+$ echo ABCDEFGHI | rados --pool ecpool put NYAN -
+$ rados --pool ecpool get NYAN -
+ABCDEFGHI</pre>
+</div>
+<p>The <em>NYAN</em> object will be divided in three (<em>K=3</em>) and two additional
+<em>chunks</em> will be created (<em>M=2</em>). The value of <em>M</em> defines how many
+OSD can be lost simultaneously without losing any data. The
+<em>ruleset-failure-domain=rack</em> will create a CRUSH ruleset that ensures
+no two <em>chunks</em> are stored in the same rack.</p>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-96fe8c3c73e5e54cf27fa8a4d64ed08d17679ba3.png"/>
+</p>
+<p>More information can be found in the <a class="reference external" href="../erasure-code-profile">erasure code profiles</a> documentation.</p>
+</div>
+<div class="section" id="erasure-coded-pool-and-cache-tiering">
+<h2>Erasure coded pool and cache tiering<a class="headerlink" href="#erasure-coded-pool-and-cache-tiering" title="Permalink to this headline">¶</a></h2>
+<p>Erasure coded pools require more resources than replicated pools and
+lack some functionalities such as partial writes. To overcome these
+limitations, it is recommended to set a <a class="reference external" href="../cache-tiering">cache tier</a>
+before the erasure coded pool.</p>
+<p>For instance, if the pool <em>hot-storage</em> is made of fast storage:</p>
+<div class="highlight-python"><pre>$ ceph osd tier add ecpool hot-storage
+$ ceph osd tier cache-mode hot-storage writeback
+$ ceph osd tier set-overlay ecpool hot-storage</pre>
+</div>
+<p>will place the <em>hot-storage</em> pool as tier of <em>ecpool</em> in <em>writeback</em>
+mode so that every write and read to the <em>ecpool</em> are actually using
+the <em>hot-storage</em> and benefit from its flexibility and speed.</p>
+<p>It is not possible to create an RBD image on an erasure coded pool
+because it requires partial writes. It is however possible to create
+an RBD image on an erasure coded pools when a replicated pool tier set
+a cache tier:</p>
+<div class="highlight-python"><pre>$ rbd --pool ecpool create --size 10 myvolume</pre>
+</div>
+<p>More information can be found in the <a class="reference external" href="../cache-tiering">cache tiering</a> documentation.</p>
+</div>
+<div class="section" id="glossary">
+<h2>Glossary<a class="headerlink" href="#glossary" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt><em>chunk</em></dt>
+<dd>when the encoding function is called, it returns chunks of the same
+size. Data chunks which can be concatenated to reconstruct the original
+object and coding chunks which can be used to rebuild a lost chunk.</dd>
+<dt><em>K</em></dt>
+<dd>the number of data <em>chunks</em>, i.e. the number of <em>chunks</em> in which the
+original object is divided. For instance if <em>K</em> = 2 a 10KB object
+will be divided into <em>K</em> objects of 5KB each.</dd>
+<dt><em>M</em></dt>
+<dd>the number of coding <em>chunks</em>, i.e. the number of additional <em>chunks</em>
+computed by the encoding functions. If there are 2 coding <em>chunks</em>,
+it means 2 OSDs can be out without losing data.</dd>
+</dl>
+</div>
+<div class="section" id="table-of-content">
+<h2>Table of content<a class="headerlink" href="#table-of-content" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../erasure-code-profile/">Erasure code profiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../erasure-code-jerasure/">Jerasure erasure code plugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../erasure-code-isa/">ISA erasure code plugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../erasure-code-lrc/">Locally repairable erasure code plugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../erasure-code-shec/">SHEC erasure code plugin</a></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

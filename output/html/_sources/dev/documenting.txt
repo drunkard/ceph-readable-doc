@@ -1,17 +1,17 @@
 ==================
- Documenting Ceph
+ 为 Ceph 写作文档
 ==================
 
-Code Documentation
-==================
+代码文档
+========
 
-C and C++ can be documented with Doxygen_, using the subset of Doxygen
-markup supported by Asphyxiate_.
+C 和 C++ 可以用 Doxygen_ 生成文档，我们用 Breathe_ 工具，它支持 Doxygen \
+的部分功能。
 
 .. _Doxygen: http://www.stack.nl/~dimitri/doxygen/
-.. _Asphyxiate: https://github.com/ceph/asphyxiate
+.. _Breathe: https://github.com/michaeljones/breathe
 
-The general format for function documentation is::
+函数文档的统一格式为： ::
 
   /**
    * Short description
@@ -24,24 +24,24 @@ The general format for function documentation is::
    * return value (if non-void)
    */
 
-This should be in the header where the function is declared, and
-functions should be grouped into logical categories. The `librados C
-API`_ provides a complete example. It is pulled into Sphinx by
-`librados.rst`_, which is rendered at :doc:`/rados/api/librados`.
+这些应该在声明函数时写在函数头部，并且函数应该按逻辑分组， `librados C API`_ \
+里面有完整实例。这些文档被 `librados.rst`_ 拉进 Sphinx 、并在 \
+:doc:`/rados/api/librados` 渲染。
 
 .. _`librados C API`: https://github.com/ceph/ceph/blob/master/src/include/rados/librados.h
 .. _`librados.rst`: https://raw.github.com/ceph/ceph/master/doc/api/librados.rst
 
-Drawing diagrams
-================
+
+绘图
+====
 
 Graphviz
 --------
 
-You can use Graphviz_, as explained in the `Graphviz extension documentation`_.
+你可以用 Graphviz_ ，其文档位于 `Graphviz 扩展文档`_\ 。
 
 .. _Graphviz: http://graphviz.org/
-.. _`Graphviz extension documentation`: http://sphinx.pocoo.org/ext/graphviz.html
+.. _`Graphviz 扩展文档`: http://sphinx.pocoo.org/ext/graphviz.html
 
 .. graphviz::
 
@@ -51,8 +51,7 @@ You can use Graphviz_, as explained in the `Graphviz extension documentation`_.
      bar -> thud;
    }
 
-Most of the time, you'll want to put the actual DOT source in a
-separate file, like this::
+大多数时候，我们都会把实际的 DOT 文件放在单独的文件内，比如： ::
 
   .. graphviz:: myfile.dot
 
@@ -60,7 +59,7 @@ separate file, like this::
 Ditaa
 -----
 
-You can use Ditaa_:
+也可以用 Ditaa_ 绘图：
 
 .. _Ditaa: http://ditaa.sourceforge.net/
 
@@ -74,35 +73,30 @@ You can use Ditaa_:
 Blockdiag
 ---------
 
-If a use arises, we can integrate Blockdiag_. It is a Graphviz-style
-declarative language for drawing things, and includes:
+如果有必要，还可以用 Blockdiag_ ，它是个 Graphviz 风格的申诉式绘图语言，包括：
 
-- `block diagrams`_: boxes and arrows (automatic layout, as opposed to
-  Ditaa_)
-- `sequence diagrams`_: timelines and messages between them
-- `activity diagrams`_: subsystems and activities in them
-- `network diagrams`_: hosts, LANs, IP addresses etc (with `Cisco
-  icons`_ if wanted)
+- `框图`_\ ：方框和箭头（自动排版，相对于 Ditaa_ ）
+- `时序图`_\ ：带说明信息的时间线
+- `活动图`_\ ：子系统以及其内的活动
+- `网络图`_\ ：主机、局域网、 IP 地址等（可选用 `Cisco 图标`_\ ）
 
 .. _Blockdiag: http://blockdiag.com/
-.. _`Cisco icons`: http://pypi.python.org/pypi/blockdiagcontrib-cisco/
-.. _`block diagrams`: http://blockdiag.com/en/blockdiag/
-.. _`sequence diagrams`: http://blockdiag.com/en/seqdiag/index.html
-.. _`activity diagrams`: http://blockdiag.com/en/actdiag/index.html
-.. _`network diagrams`: http://blockdiag.com/en/nwdiag/
+.. _`Cisco 图标`: http://pypi.python.org/pypi/blockdiagcontrib-cisco/
+.. _`框图`: http://blockdiag.com/en/blockdiag/
+.. _`时序图`: http://blockdiag.com/en/seqdiag/index.html
+.. _`活动图`: http://blockdiag.com/en/actdiag/index.html
+.. _`网络图`: http://blockdiag.com/en/nwdiag/
 
 
 Inkscape
 --------
 
-You can use Inkscape to generate scalable vector graphics.
-http://inkscape.org for restructedText documents.
+你可以用 Inkscape 生成可伸缩矢量图。 restructedText 文档位于 \
+http://inkscape.org 。
 
-If you generate diagrams with Inkscape, you should
-commit both the Scalable Vector Graphics (SVG) file and export a
-Portable Network Graphic (PNG) file. Reference the PNG file.
+如果你是用 Inkscape 生成图表的，你应该同时提交可伸缩矢量图（ SVG ）和导出\
+的流式网络图（ PNG ）文件。应该引用 PNG 文件。
 
-By committing the SVG file, others will be able to update the
-SVG diagrams using Inkscape.
+如果提交的是 SVG 文件，其他人也能用 Inkscape 更新 SVG 图表。
 
-HTML5 will support SVG inline.
+HTML5 将内嵌对 SVG 的支持。

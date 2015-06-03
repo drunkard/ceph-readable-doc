@@ -1,0 +1,1325 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>CRUSH Maps &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="crush-maps">
+<h1>CRUSH Maps<a class="headerlink" href="#crush-maps" title="Permalink to this headline">¶</a></h1>
+<p>The <abbr title="Controlled Replication Under Scalable Hashing">CRUSH</abbr> algorithm
+determines how to store and retrieve data by computing data storage locations.
+CRUSH empowers Ceph clients to communicate with OSDs directly rather than
+through a centralized server or broker. With an algorithmically determined
+method of storing and retrieving data, Ceph avoids a single point of failure, a
+performance bottleneck, and a physical limit to its scalability.</p>
+<p>CRUSH requires a map of your cluster, and uses the CRUSH map to pseudo-randomly
+store and retrieve data in OSDs with a uniform distribution of data across the
+cluster. For a detailed discussion of CRUSH, see
+<a class="reference external" href="http://ceph.com/papers/weil-crush-sc06.pdf">CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data</a></p>
+<p>CRUSH maps contain a list of <abbr title="Object Storage Devices">OSDs</abbr>, a list of
+&#8216;buckets&#8217; for aggregating the devices into physical locations, and a list of
+rules that tell CRUSH how it should replicate data in a Ceph cluster&#8217;s pools. By
+reﬂecting the underlying physical organization of the installation, CRUSH can
+model—and thereby address—potential sources of correlated device failures.
+Typical sources include physical proximity, a shared power source, and a shared
+network. By encoding this information into the cluster map, CRUSH placement
+policies can separate object replicas across different failure domains while
+still maintaining the desired distribution. For example, to address the
+possibility of concurrent failures, it may be desirable to ensure that data
+replicas are on devices using different shelves, racks, power supplies,
+controllers, and/or physical locations.</p>
+<p>When you create a configuration file and deploy Ceph with <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>, Ceph
+generates a default CRUSH map for your configuration. The default CRUSH map is
+fine for your Ceph sandbox environment. However, when you deploy a large-scale
+data cluster, you should give significant consideration to developing a custom
+CRUSH map, because it will help you manage your Ceph cluster, improve
+performance and ensure data safety.</p>
+<p>For example, if an OSD goes down, a CRUSH map can help you can locate
+the physical data center, room, row and rack of the host with the failed OSD in
+the event you need to use onsite support or replace hardware.</p>
+<p>Similarly, CRUSH may help you identify faults more quickly. For example, if all
+OSDs in a particular rack go down simultaneously, the fault may lie with a
+network switch or power to the rack or the network switch rather than the
+OSDs themselves.</p>
+<p>A custom CRUSH map can also help you identify the physical locations where
+Ceph stores redundant copies of data when the placement group(s) associated
+with a failed host are in a degraded state.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Lines of code in example boxes may extend past the edge of the box.
+Please scroll when reading or copying longer examples.</p>
+</div>
+<div class="section" id="crush-location">
+<h2>CRUSH Location<a class="headerlink" href="#crush-location" title="Permalink to this headline">¶</a></h2>
+<p>The location of an OSD in terms of the CRUSH map&#8217;s hierarchy is referred to
+as a &#8216;crush location&#8217;.  This location specifier takes the form of a list of
+key and value pairs describing a position.  For example, if an OSD is in a
+particular row, rack, chassis and host, and is part of the &#8216;default&#8217; CRUSH
+tree, its crush location could be described as:</p>
+<div class="highlight-python"><pre>root=default row=a rack=a2 chassis=a2a host=a2a1</pre>
+</div>
+<p>Note:</p>
+<ol class="arabic simple">
+<li>Note that the order of the keys does not matter.</li>
+<li>The key name (left of <tt class="docutils literal"><span class="pre">=</span></tt>) must be a valid CRUSH <tt class="docutils literal"><span class="pre">type</span></tt>.  By default
+these include root, datacenter, room, row, pod, pdu, rack, chassis and host,
+but those types can be customized to be anything appropriate by modifying
+the CRUSH map.</li>
+<li>Not all keys need to be specified.  For example, by default, Ceph
+automatically sets a <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon&#8217;s location to be
+<tt class="docutils literal"><span class="pre">root=default</span> <span class="pre">host=HOSTNAME</span></tt> (based on the output from <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-s</span></tt>).</li>
+</ol>
+<div class="section" id="ceph-crush-location-hook">
+<h3>ceph-crush-location hook<a class="headerlink" href="#ceph-crush-location-hook" title="Permalink to this headline">¶</a></h3>
+<p>By default, the <tt class="docutils literal"><span class="pre">ceph-crush-location</span></tt> utility will generate a CRUSH
+location string for a given daemon.  The location is based on, in order of
+preference:</p>
+<ol class="arabic simple">
+<li>A <tt class="docutils literal"><span class="pre">TYPE</span> <span class="pre">crush</span> <span class="pre">location</span></tt> option in ceph.conf.  For example, this
+is <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">location</span></tt> for OSD daemons.</li>
+<li>A <tt class="docutils literal"><span class="pre">crush</span> <span class="pre">location</span></tt> option in ceph.conf.</li>
+<li>A default of <tt class="docutils literal"><span class="pre">root=default</span> <span class="pre">host=HOSTNAME</span></tt> where the hostname is
+generated with the <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-s</span></tt> command.</li>
+</ol>
+<p>In a typical deployment scenario, provisioning software (or the system
+administrator) can simply set the &#8216;crush location&#8217; field in a host&#8217;s
+ceph.conf to describe that machine&#8217;s location within the datacenter or
+cluster.  This will be provide location awareness to both Ceph daemons
+and clients alike.</p>
+<p>It is possible to manage the CRUSH map entirely manually by toggling
+the hook off in the configuration:</p>
+<div class="highlight-python"><pre>osd crush update on start = false</pre>
+</div>
+</div>
+<div class="section" id="custom-location-hooks">
+<h3>Custom location hooks<a class="headerlink" href="#custom-location-hooks" title="Permalink to this headline">¶</a></h3>
+<p>A customize location hook can be used in place of the generic hook for OSD
+daemon placement in the hierarchy.  (On startup, each OSD ensure its position is
+correct.):</p>
+<div class="highlight-python"><pre>osd crush location hook = /path/to/script</pre>
+</div>
+<p>This hook is passed several arguments (below) and should output a single line
+to stdout with the CRUSH location description.:</p>
+<div class="highlight-python"><pre>$ ceph-crush-location --cluster CLUSTER --id ID --type TYPE</pre>
+</div>
+<p>where the cluster name is typically &#8216;ceph&#8217;, the id is the daemon
+identifier (the OSD number), and the daemon type is typically <tt class="docutils literal"><span class="pre">osd</span></tt>.</p>
+</div>
+</div>
+<div class="section" id="editing-a-crush-map">
+<h2>Editing a CRUSH Map<a class="headerlink" href="#editing-a-crush-map" title="Permalink to this headline">¶</a></h2>
+<p>To edit an existing CRUSH map:</p>
+<ol class="arabic simple">
+<li><a class="reference external" href="#getcrushmap">Get the CRUSH map</a>.</li>
+<li><a class="reference external" href="#decompilecrushmap">Decompile</a> the CRUSH map.</li>
+<li>Edit at least one of <a class="reference external" href="#crushmapdevices">Devices</a>, <a class="reference external" href="#crushmapbuckets">Buckets</a> and <a class="reference external" href="#crushmaprules">Rules</a>.</li>
+<li><a class="reference external" href="#compilecrushmap">Recompile</a> the CRUSH map.</li>
+<li><a class="reference external" href="#setcrushmap">Set the CRUSH map</a>.</li>
+</ol>
+<p>To activate CRUSH Map rules for a specific pool, identify the common ruleset
+number for those rules and specify that ruleset number for the pool. See <a class="reference external" href="../pools#setpoolvalues">Set
+Pool Values</a> for details.</p>
+<div class="section" id="get-a-crush-map">
+<span id="getcrushmap"></span><h3>Get a CRUSH Map<a class="headerlink" href="#get-a-crush-map" title="Permalink to this headline">¶</a></h3>
+<p>To get the CRUSH map for your cluster, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd getcrushmap -o {compiled-crushmap-filename}</pre>
+</div>
+<p>Ceph will output (-o) a compiled CRUSH map to the filename you specified. Since
+the CRUSH map is in a compiled form, you must decompile it first before you can
+edit it.</p>
+</div>
+<div class="section" id="decompile-a-crush-map">
+<span id="decompilecrushmap"></span><h3>Decompile a CRUSH Map<a class="headerlink" href="#decompile-a-crush-map" title="Permalink to this headline">¶</a></h3>
+<p>To decompile a CRUSH map, execute the following:</p>
+<div class="highlight-python"><pre>crushtool -d {compiled-crushmap-filename} -o {decompiled-crushmap-filename}</pre>
+</div>
+<p>Ceph will decompile (-d) the compiled CRUSH map and output (-o) it to the
+filename you specified.</p>
+</div>
+<div class="section" id="compile-a-crush-map">
+<span id="compilecrushmap"></span><h3>Compile a CRUSH Map<a class="headerlink" href="#compile-a-crush-map" title="Permalink to this headline">¶</a></h3>
+<p>To compile a CRUSH map, execute the following:</p>
+<div class="highlight-python"><pre>crushtool -c {decompiled-crush-map-filename} -o {compiled-crush-map-filename}</pre>
+</div>
+<p>Ceph will store a compiled CRUSH map to the filename you specified.</p>
+</div>
+<div class="section" id="set-a-crush-map">
+<span id="setcrushmap"></span><h3>Set a CRUSH Map<a class="headerlink" href="#set-a-crush-map" title="Permalink to this headline">¶</a></h3>
+<p>To set the CRUSH map for your cluster, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd setcrushmap -i  {compiled-crushmap-filename}</pre>
+</div>
+<p>Ceph will input the compiled CRUSH map of the filename you specified as the
+CRUSH map for the cluster.</p>
+</div>
+</div>
+<div class="section" id="crush-map-parameters">
+<h2>CRUSH Map Parameters<a class="headerlink" href="#crush-map-parameters" title="Permalink to this headline">¶</a></h2>
+<p>There are four main sections to a CRUSH Map.</p>
+<ol class="arabic simple">
+<li><strong>Devices:</strong> Devices consist of any object storage device&#8211;i.e., the storage
+drive corresponding to a <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon. You should have a device for
+each OSD daemon in your Ceph configuration file.</li>
+<li><strong>Bucket Types</strong>: Bucket <tt class="docutils literal"><span class="pre">types</span></tt> define the types of buckets used in your
+CRUSH hierarchy. Buckets consist of a hierarchical aggregation of storage
+locations (e.g., rows, racks, chassis, hosts, etc.) and their assigned
+weights.</li>
+<li><strong>Bucket Instances:</strong> Once you define bucket types, you must declare bucket
+instances for your hosts, and any other failure domain partitioning
+you choose.</li>
+<li><strong>Rules:</strong> Rules consist of the manner of selecting buckets.</li>
+</ol>
+<p>If you launched Ceph using one of our Quick Start guides, you&#8217;ll notice
+that you didn&#8217;t need to create a CRUSH map. Ceph&#8217;s deployment tools generate
+a default CRUSH map that lists devices from the OSDs you defined in your
+Ceph configuration file, and it declares a bucket for each host you specified
+in the <tt class="docutils literal"><span class="pre">[osd]</span></tt> sections of your Ceph configuration file. You should create
+your own CRUSH maps with buckets that reflect your cluster&#8217;s failure domains
+to better ensure data safety and availability.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The generated CRUSH map doesn&#8217;t take your larger grained failure
+domains into account. So you should modify your CRUSH map to account for
+larger grained failure domains such as chassis, racks, rows, data
+centers, etc.</p>
+</div>
+<div class="section" id="crush-map-devices">
+<span id="crushmapdevices"></span><h3>CRUSH Map Devices<a class="headerlink" href="#crush-map-devices" title="Permalink to this headline">¶</a></h3>
+<p>To map placement groups to OSDs, a CRUSH map requires a list of OSD devices
+(i.e., the names of the OSD daemons from the Ceph configuration file). The list
+of devices appears first in the CRUSH map. To declare a device in the CRUSH map,
+create a new line under your list of devices, enter <tt class="docutils literal"><span class="pre">device</span></tt> followed by a
+unique numeric ID, followed by the corresponding <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon instance.</p>
+<div class="highlight-python"><pre>#devices
+device {num} {osd.name}</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>#devices
+device 0 osd.0
+device 1 osd.1
+device 2 osd.2
+device 3 osd.3</pre>
+</div>
+<p>As a general rule, an OSD daemon maps to a single storage drive or to a RAID.</p>
+</div>
+<div class="section" id="crush-map-bucket-types">
+<h3>CRUSH Map Bucket Types<a class="headerlink" href="#crush-map-bucket-types" title="Permalink to this headline">¶</a></h3>
+<p>The second list in the CRUSH map defines &#8216;bucket&#8217; types. Buckets facilitate
+a hierarchy of nodes and leaves. Node (or non-leaf) buckets typically represent
+physical locations in a hierarchy. Nodes aggregate other nodes or leaves.
+Leaf buckets represent <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons and their corresponding storage
+media.</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">The term &#8220;bucket&#8221; used in the context of CRUSH means a node in
+the hierarchy, i.e. a location or a piece of physical hardware. It
+is a different concept from the term &#8220;bucket&#8221; when used in the
+context of RADOS Gateway APIs.</p>
+</div>
+<p>To add a bucket type to the CRUSH map, create a new line under your list of
+bucket types. Enter <tt class="docutils literal"><span class="pre">type</span></tt> followed by a unique numeric ID and a bucket name.
+By convention, there is one leaf bucket and it is <tt class="docutils literal"><span class="pre">type</span> <span class="pre">0</span></tt>;  however, you may
+give it any name you like (e.g., osd, disk, drive, storage, etc.):</p>
+<div class="highlight-python"><pre>#types
+type {num} {bucket-name}</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre># types
+type 0 osd
+type 1 host
+type 2 chassis
+type 3 rack
+type 4 row
+type 5 pdu
+type 6 pod
+type 7 room
+type 8 datacenter
+type 9 region
+type 10 root</pre>
+</div>
+</div>
+<div class="section" id="crush-map-bucket-hierarchy">
+<span id="crushmapbuckets"></span><h3>CRUSH Map Bucket Hierarchy<a class="headerlink" href="#crush-map-bucket-hierarchy" title="Permalink to this headline">¶</a></h3>
+<p>The CRUSH algorithm distributes data objects among storage devices according
+to a per-device weight value, approximating a uniform probability distribution.
+CRUSH distributes objects and their replicas according to the hierarchical
+cluster map you define. Your CRUSH map represents the available storage
+devices and the logical elements that contain them.</p>
+<p>To map placement groups to OSDs across failure domains, a CRUSH map defines a
+hierarchical list of bucket types (i.e., under <tt class="docutils literal"><span class="pre">#types</span></tt> in the generated CRUSH
+map). The purpose of creating a bucket hierarchy is to segregate the
+leaf nodes by their failure domains, such as hosts, chassis, racks, power
+distribution units, pods, rows, rooms, and data centers. With the exception of
+the leaf nodes representing OSDs, the rest of the hierarchy is arbitrary, and
+you may define it according to your own needs.</p>
+<p>We recommend adapting your CRUSH map to your firms&#8217;s hardware naming conventions
+and using instances names that reflect the physical hardware. Your naming
+practice can make it easier to administer the cluster and troubleshoot
+problems when an OSD and/or other hardware malfunctions and the administrator
+need access to physical hardware.</p>
+<p>In the following example, the bucket hierarchy has a leaf bucket named <tt class="docutils literal"><span class="pre">osd</span></tt>,
+and two node buckets named <tt class="docutils literal"><span class="pre">host</span></tt> and <tt class="docutils literal"><span class="pre">rack</span></tt> respectively.</p>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-91dff8176c752894890e24c5e8844d0fdfb8a890.png"/>
+</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The higher numbered <tt class="docutils literal"><span class="pre">rack</span></tt> bucket type aggregates the lower
+numbered <tt class="docutils literal"><span class="pre">host</span></tt> bucket type.</p>
+</div>
+<p>Since leaf nodes reflect storage devices declared under the <tt class="docutils literal"><span class="pre">#devices</span></tt> list
+at the beginning of the CRUSH map, you do not need to declare them as bucket
+instances. The second lowest bucket type in your hierarchy usually aggregates
+the devices (i.e., it&#8217;s usually the computer containing the storage media, and
+uses whatever term you prefer to describe it, such as  &#8220;node&#8221;, &#8220;computer&#8221;,
+&#8220;server,&#8221; &#8220;host&#8221;, &#8220;machine&#8221;, etc.). In high density environments, it is
+increasingly common to see multiple hosts/nodes per chassis. You should account
+for chassis failure too&#8211;e.g., the need to pull a chassis if a node fails may
+result in bringing down numerous hosts/nodes and their OSDs.</p>
+<p>When declaring a bucket instance, you must specify its type, give it a unique
+name (string), assign it a unique ID expressed as a negative integer (optional),
+specify a weight relative to the total capacity/capability of its item(s),
+specify the bucket algorithm (usually <tt class="docutils literal"><span class="pre">straw</span></tt>), and the hash (usually <tt class="docutils literal"><span class="pre">0</span></tt>,
+reflecting hash algorithm <tt class="docutils literal"><span class="pre">rjenkins1</span></tt>). A bucket may have one or more items.
+The items may consist of node buckets or leaves. Items may have a weight that
+reflects the relative weight of the item.</p>
+<p>You may declare a node bucket with the following syntax:</p>
+<div class="highlight-python"><pre>[bucket-type] [bucket-name] {
+        id [a unique negative numeric ID]
+        weight [the relative capacity/capability of the item(s)]
+        alg [the bucket type: uniform | list | tree | straw ]
+        hash [the hash type: 0 by default]
+        item [item-name] weight [weight]
+}</pre>
+</div>
+<p>For example, using the diagram above, we would define two host buckets
+and one rack bucket. The OSDs are declared as items within the host buckets:</p>
+<div class="highlight-python"><pre>host node1 {
+        id -1
+        alg straw
+        hash 0
+        item osd.0 weight 1.00
+        item osd.1 weight 1.00
+}
+
+host node2 {
+        id -2
+        alg straw
+        hash 0
+        item osd.2 weight 1.00
+        item osd.3 weight 1.00
+}
+
+rack rack1 {
+        id -3
+        alg straw
+        hash 0
+        item node1 weight 2.00
+        item node2 weight 2.00
+}</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">In the foregoing example, note that the rack bucket does not contain
+any OSDs. Rather it contains lower level host buckets, and includes the
+sum total of their weight in the item entry.</p>
+</div>
+<div class="topic">
+<p class="topic-title first">Bucket Types</p>
+<p>Ceph supports four bucket types, each representing a tradeoff between
+performance and reorganization efficiency. If you are unsure of which bucket
+type to use, we recommend using a <tt class="docutils literal"><span class="pre">straw</span></tt> bucket.  For a detailed
+discussion of bucket types, refer to
+<a class="reference external" href="http://ceph.com/papers/weil-crush-sc06.pdf">CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data</a>,
+and more specifically to <strong>Section 3.4</strong>. The bucket types are:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><strong>Uniform:</strong> Uniform buckets aggregate devices with <strong>exactly</strong> the same
+weight. For example, when firms commission or decommission hardware, they
+typically do so with many machines that have exactly the same physical
+configuration (e.g., bulk purchases). When storage devices have exactly
+the same weight, you may use the <tt class="docutils literal"><span class="pre">uniform</span></tt> bucket type, which allows
+CRUSH to map replicas into uniform buckets in constant time. With
+non-uniform weights, you should use another bucket algorithm.</li>
+<li><strong>List</strong>: List buckets aggregate their content as linked lists. Based on
+the <abbr title="Replication Under Scalable Hashing">RUSH</abbr> <sub>P</sub> algorithm,
+a list is a natural and intuitive choice for an <strong>expanding cluster</strong>:
+either an object is relocated to the newest device with some appropriate
+probability, or it remains on the older devices as before. The result is
+optimal data migration when items are added to the bucket. Items removed
+from the middle or tail of the list, however, can result in a signiﬁcant
+amount of unnecessary movement, making list buckets most suitable for
+circumstances in which they <strong>never (or very rarely) shrink</strong>.</li>
+<li><strong>Tree</strong>: Tree buckets use a binary search tree. They are more efficient
+than list buckets when a bucket contains a larger set of items. Based on
+the <abbr title="Replication Under Scalable Hashing">RUSH</abbr> <sub>R</sub> algorithm,
+tree buckets reduce the placement time to O(log <sub>n</sub>), making them
+suitable for managing much larger sets of devices or nested buckets.</li>
+<li><strong>Straw:</strong> List and Tree buckets use a divide and conquer strategy
+in a way that either gives certain items precedence (e.g., those
+at the beginning of a list) or obviates the need to consider entire
+subtrees of items at all. That improves the performance of the replica
+placement process, but can also introduce suboptimal reorganization
+behavior when the contents of a bucket change due an addition, removal,
+or re-weighting of an item. The straw bucket type allows all items to
+fairly “compete” against each other for replica placement through a
+process analogous to a draw of straws.</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="topic">
+<p class="topic-title first">Hash</p>
+<p>Each bucket uses a hash algorithm. Currently, Ceph supports <tt class="docutils literal"><span class="pre">rjenkins1</span></tt>.
+Enter <tt class="docutils literal"><span class="pre">0</span></tt> as your hash setting to select <tt class="docutils literal"><span class="pre">rjenkins1</span></tt>.</p>
+</div>
+<div class="topic">
+<p class="topic-title first">Weighting Bucket Items</p>
+<p>Ceph expresses bucket weights as doubles, which allows for fine
+weighting. A weight is the relative difference between device capacities. We
+recommend using <tt class="docutils literal"><span class="pre">1.00</span></tt> as the relative weight for a 1TB storage device.
+In such a scenario, a weight of <tt class="docutils literal"><span class="pre">0.5</span></tt> would represent approximately 500GB,
+and a weight of <tt class="docutils literal"><span class="pre">3.00</span></tt> would represent approximately 3TB. Higher level
+buckets have a weight that is the sum total of the leaf items aggregated by
+the bucket.</p>
+<p>A bucket item weight is one dimensional, but you may also calculate your
+item weights to reflect the performance of the storage drive. For example,
+if you have many 1TB drives where some have relatively low data transfer
+rate and the others have a relatively high data transfer rate, you may
+weight them differently, even though they have the same capacity (e.g.,
+a weight of 0.80 for the first set of drives with lower total throughput,
+and 1.20 for the second set of drives with higher total throughput).</p>
+</div>
+</div>
+<div class="section" id="crush-map-rules">
+<span id="crushmaprules"></span><h3>CRUSH Map Rules<a class="headerlink" href="#crush-map-rules" title="Permalink to this headline">¶</a></h3>
+<p>CRUSH maps support the notion of &#8216;CRUSH rules&#8217;, which are the rules that
+determine data placement for a pool. For large clusters, you will likely create
+many pools where each pool may have its own CRUSH ruleset and rules. The default
+CRUSH map has a rule for each pool, and one ruleset assigned to each of the
+default pools, which include:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">data</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">metadata</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">rbd</span></tt></li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">In most cases, you will not need to modify the default rules. When
+you create a new pool, its default ruleset is <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+</div>
+<p>CRUSH rules deﬁnes placement and replication strategies or distribution policies
+that  allow you to specify exactly how CRUSH places object replicas. For
+example, you might create a rule selecting a pair of targets for 2-way
+mirroring, another rule for selecting three targets in two different data
+centers for 3-way mirroring, and yet another rule for erasure coding over six
+storage devices. For a detailed discussion of CRUSH rules, refer to
+<a class="reference external" href="http://ceph.com/papers/weil-crush-sc06.pdf">CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data</a>,
+and more specifically to <strong>Section 3.2</strong>.</p>
+<p>A rule takes the following form:</p>
+<div class="highlight-python"><pre>rule &lt;rulename&gt; {
+
+        ruleset &lt;ruleset&gt;
+        type [ replicated | erasure ]
+        min_size &lt;min-size&gt;
+        max_size &lt;max-size&gt;
+        step take &lt;bucket-type&gt;
+        step [choose|chooseleaf] [firstn|indep] &lt;N&gt; &lt;bucket-type&gt;
+        step emit
+}</pre>
+</div>
+<p><tt class="docutils literal"><span class="pre">ruleset</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">A means of classifying a rule as belonging to a set of rules.
+Activated by <a class="reference external" href="../pools#setpoolvalues">setting the ruleset in a pool</a>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Purpose:</th><td class="field-body">A component of the rule mask.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body">0</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">type</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Describes a rule for either a storage drive (replicated)
+or a RAID.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Purpose:</th><td class="field-body">A component of the rule mask.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">replicated</span></tt></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Valid Values:</th><td class="field-body">Currently only <tt class="docutils literal"><span class="pre">replicated</span></tt> and <tt class="docutils literal"><span class="pre">erasure</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">min_size</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">If a pool makes fewer replicas than this number, CRUSH will
+<strong>NOT</strong> select this rule.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body">A component of the rule mask.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">max_size</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">If a pool makes more replicas than this number, CRUSH will
+<strong>NOT</strong> select this rule.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body">A component of the rule mask.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body">10</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">step</span> <span class="pre">take</span> <span class="pre">&lt;bucket-name&gt;</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Takes a bucket name, and begins iterating down the tree.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Purpose:</th><td class="field-body">A component of the rule.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">step</span> <span class="pre">take</span> <span class="pre">data</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">step</span> <span class="pre">choose</span> <span class="pre">firstn</span> <span class="pre">{num}</span> <span class="pre">type</span> <span class="pre">{bucket-type}</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"><p class="first">Selects the number of buckets of the given type. The number is
+usually the number of replicas in the pool (i.e., pool size).</p>
+<ul class="simple">
+<li>If <tt class="docutils literal"><span class="pre">{num}</span> <span class="pre">==</span> <span class="pre">0</span></tt>, choose <tt class="docutils literal"><span class="pre">pool-num-replicas</span></tt> buckets (all available).</li>
+<li>If <tt class="docutils literal"><span class="pre">{num}</span> <span class="pre">&gt;</span> <span class="pre">0</span> <span class="pre">&amp;&amp;</span> <span class="pre">&lt;</span> <span class="pre">pool-num-replicas</span></tt>, choose that many buckets.</li>
+<li>If <tt class="docutils literal"><span class="pre">{num}</span> <span class="pre">&lt;</span> <span class="pre">0</span></tt>, it means <tt class="docutils literal"><span class="pre">pool-num-replicas</span> <span class="pre">-</span> <span class="pre">{num}</span></tt>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">A component of the rule.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Prerequisite:</th><td class="field-body"><p class="first">Follows <tt class="docutils literal"><span class="pre">step</span> <span class="pre">take</span></tt> or <tt class="docutils literal"><span class="pre">step</span> <span class="pre">choose</span></tt>.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><p class="first last"><tt class="docutils literal"><span class="pre">step</span> <span class="pre">choose</span> <span class="pre">firstn</span> <span class="pre">1</span> <span class="pre">type</span> <span class="pre">row</span></tt></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">step</span> <span class="pre">chooseleaf</span> <span class="pre">firstn</span> <span class="pre">{num}</span> <span class="pre">type</span> <span class="pre">{bucket-type}</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body"><p class="first">Selects a set of buckets of <tt class="docutils literal"><span class="pre">{bucket-type}</span></tt> and chooses a leaf
+node from the subtree of each bucket in the set of buckets. The
+number of buckets in the set is usually the number of replicas in
+the pool (i.e., pool size).</p>
+<ul class="simple">
+<li>If <tt class="docutils literal"><span class="pre">{num}</span> <span class="pre">==</span> <span class="pre">0</span></tt>, choose <tt class="docutils literal"><span class="pre">pool-num-replicas</span></tt> buckets (all available).</li>
+<li>If <tt class="docutils literal"><span class="pre">{num}</span> <span class="pre">&gt;</span> <span class="pre">0</span> <span class="pre">&amp;&amp;</span> <span class="pre">&lt;</span> <span class="pre">pool-num-replicas</span></tt>, choose that many buckets.</li>
+<li>If <tt class="docutils literal"><span class="pre">{num}</span> <span class="pre">&lt;</span> <span class="pre">0</span></tt>, it means <tt class="docutils literal"><span class="pre">pool-num-replicas</span> <span class="pre">-</span> <span class="pre">{num}</span></tt>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">A component of the rule. Usage removes the need to select a device using two steps.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Prerequisite:</th><td class="field-body"><p class="first">Follows <tt class="docutils literal"><span class="pre">step</span> <span class="pre">take</span></tt> or <tt class="docutils literal"><span class="pre">step</span> <span class="pre">choose</span></tt>.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><p class="first last"><tt class="docutils literal"><span class="pre">step</span> <span class="pre">chooseleaf</span> <span class="pre">firstn</span> <span class="pre">0</span> <span class="pre">type</span> <span class="pre">row</span></tt></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">step</span> <span class="pre">emit</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Outputs the current value and empties the stack. Typically used
+at the end of a rule, but may also be used to pick from different
+trees in the same rule.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Purpose:</th><td class="field-body">A component of the rule.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Prerequisite:</th><td class="field-body">Follows <tt class="docutils literal"><span class="pre">step</span> <span class="pre">choose</span></tt>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">step</span> <span class="pre">emit</span></tt></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">To activate one or more rules with a common ruleset number to a
+pool, set the ruleset number of the pool.</p>
+</div>
+</div>
+</div>
+<div class="section" id="primary-affinity">
+<h2>Primary Affinity<a class="headerlink" href="#primary-affinity" title="Permalink to this headline">¶</a></h2>
+<p>When a Ceph Client reads or writes data, it always contacts the primary OSD in
+the acting set. For set <tt class="docutils literal"><span class="pre">[2,</span> <span class="pre">3,</span> <span class="pre">4]</span></tt>, <tt class="docutils literal"><span class="pre">osd.2</span></tt> is the primary. Sometimes an
+OSD isn&#8217;t well suited to act as a primary compared to other OSDs (e.g., it has
+a slow disk or a slow controller). To prevent performance bottlenecks
+(especially on read operations) while maximizing utilization of your hardware,
+you can set a Ceph OSD&#8217;s primary affinity so that CRUSH is less likely to use
+the OSD as a primary in an acting set.</p>
+<div class="highlight-python"><pre>ceph osd primary-affinity &lt;osd-id&gt; &lt;weight&gt;</pre>
+</div>
+<p>Primary affinity is <tt class="docutils literal"><span class="pre">1</span></tt> by default (<em>i.e.,</em> an OSD may act as a primary). You
+may set the OSD primary range from <tt class="docutils literal"><span class="pre">0-1</span></tt>, where <tt class="docutils literal"><span class="pre">0</span></tt> means that the OSD may
+<strong>NOT</strong> be used as a primary and <tt class="docutils literal"><span class="pre">1</span></tt> means that an OSD may be used as a
+primary.  When the weight is <tt class="docutils literal"><span class="pre">&lt;</span> <span class="pre">1</span></tt>, it is less likely that CRUSH will select
+the Ceph OSD Daemon to act as a primary.</p>
+</div>
+<div class="section" id="placing-different-pools-on-different-osds">
+<h2>Placing Different Pools on Different OSDS:<a class="headerlink" href="#placing-different-pools-on-different-osds" title="Permalink to this headline">¶</a></h2>
+<p>Suppose you want to have most pools default to OSDs backed by large hard drives,
+but have some pools mapped to OSDs backed by fast solid-state drives (SSDs).
+It&#8217;s possible to have multiple independent CRUSH heirarchies within the same
+CRUSH map. Define two hierarchies with two different root nodes&#8211;one for hard
+disks (e.g., &#8220;root platter&#8221;) and one for SSDs (e.g., &#8220;root ssd&#8221;) as shown
+below:</p>
+<div class="highlight-python"><pre>device 0 osd.0
+device 1 osd.1
+device 2 osd.2
+device 3 osd.3
+device 4 osd.4
+device 5 osd.5
+device 6 osd.6
+device 7 osd.7
+
+      host ceph-osd-ssd-server-1 {
+              id -1
+              alg straw
+              hash 0
+              item osd.0 weight 1.00
+              item osd.1 weight 1.00
+      }
+
+      host ceph-osd-ssd-server-2 {
+              id -2
+              alg straw
+              hash 0
+              item osd.2 weight 1.00
+              item osd.3 weight 1.00
+      }
+
+      host ceph-osd-platter-server-1 {
+              id -3
+              alg straw
+              hash 0
+              item osd.4 weight 1.00
+              item osd.5 weight 1.00
+      }
+
+      host ceph-osd-platter-server-2 {
+              id -4
+              alg straw
+              hash 0
+              item osd.6 weight 1.00
+              item osd.7 weight 1.00
+      }
+
+      root platter {
+              id -5
+              alg straw
+              hash 0
+              item ceph-osd-platter-server-1 weight 2.00
+              item ceph-osd-platter-server-2 weight 2.00
+      }
+
+      root ssd {
+              id -6
+              alg straw
+              hash 0
+              item ceph-osd-ssd-server-1 weight 2.00
+              item ceph-osd-ssd-server-2 weight 2.00
+      }
+
+      rule data {
+              ruleset 0
+              type replicated
+              min_size 2
+              max_size 2
+              step take platter
+              step chooseleaf firstn 0 type host
+              step emit
+      }
+
+      rule metadata {
+              ruleset 1
+              type replicated
+              min_size 0
+              max_size 10
+              step take platter
+              step chooseleaf firstn 0 type host
+              step emit
+      }
+
+      rule rbd {
+              ruleset 2
+              type replicated
+              min_size 0
+              max_size 10
+              step take platter
+              step chooseleaf firstn 0 type host
+              step emit
+      }
+
+      rule platter {
+              ruleset 3
+              type replicated
+              min_size 0
+              max_size 10
+              step take platter
+              step chooseleaf firstn 0 type host
+              step emit
+      }
+
+      rule ssd {
+              ruleset 4
+              type replicated
+              min_size 0
+              max_size 4
+              step take ssd
+              step chooseleaf firstn 0 type host
+              step emit
+      }
+
+      rule ssd-primary {
+              ruleset 5
+              type replicated
+              min_size 5
+              max_size 10
+              step take ssd
+              step chooseleaf firstn 1 type host
+              step emit
+              step take platter
+              step chooseleaf firstn -1 type host
+              step emit
+      }</pre>
+</div>
+<p>You can then set a pool to use the SSD rule by:</p>
+<div class="highlight-python"><pre>ceph osd pool set &lt;poolname&gt; crush_ruleset 4</pre>
+</div>
+<p>Similarly, using the <tt class="docutils literal"><span class="pre">ssd-primary</span></tt> rule will cause each placement group in the
+pool to be placed with an SSD as the primary and platters as the replicas.</p>
+</div>
+<div class="section" id="add-move-an-osd">
+<span id="addosd"></span><h2>Add/Move an OSD<a class="headerlink" href="#add-move-an-osd" title="Permalink to this headline">¶</a></h2>
+<p>To add or move an OSD in the CRUSH map of a running cluster, execute the
+<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">set</span></tt>. For Argonaut (v 0.48), execute the following:</p>
+<div class="highlight-python"><pre>ceph osd crush set {id} {name} {weight} pool={pool-name}  [{bucket-type}={bucket-name} ...]</pre>
+</div>
+<p>For Bobtail (v 0.56), execute the following:</p>
+<div class="highlight-python"><pre>ceph osd crush set {id-or-name} {weight} root={pool-name}  [{bucket-type}={bucket-name} ...]</pre>
+</div>
+<p>Where:</p>
+<p><tt class="docutils literal"><span class="pre">id</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The numeric ID of the OSD.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">name</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The full name of the OSD.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">osd.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">weight</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The CRUSH weight for the OSD.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">2.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">root</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The root of the tree in which the OSD resides.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Key/value pair.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">root=default</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">bucket-type</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">You may specify the OSD&#8217;s location in the CRUSH hierarchy.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Key/value pairs.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">datacenter=dc1</span> <span class="pre">room=room1</span> <span class="pre">row=foo</span> <span class="pre">rack=bar</span> <span class="pre">host=foo-bar-1</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p>The following example adds <tt class="docutils literal"><span class="pre">osd.0</span></tt> to the hierarchy, or moves the OSD from a
+previous location.</p>
+<div class="highlight-python"><pre>ceph osd crush set osd.0 1.0 root=default datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1</pre>
+</div>
+</div>
+<div class="section" id="adjust-an-osd-s-crush-weight">
+<h2>Adjust an OSD&#8217;s CRUSH Weight<a class="headerlink" href="#adjust-an-osd-s-crush-weight" title="Permalink to this headline">¶</a></h2>
+<p>To adjust an OSD&#8217;s crush weight in the CRUSH map of a running cluster, execute
+the following:</p>
+<div class="highlight-python"><pre>ceph osd crush reweight {name} {weight}</pre>
+</div>
+<p>Where:</p>
+<p><tt class="docutils literal"><span class="pre">name</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The full name of the OSD.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">osd.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">weight</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The CRUSH weight for the OSD.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">2.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="remove-an-osd">
+<span id="removeosd"></span><h2>Remove an OSD<a class="headerlink" href="#remove-an-osd" title="Permalink to this headline">¶</a></h2>
+<p>To remove an OSD from the CRUSH map of a running cluster, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd crush remove {name}</pre>
+</div>
+<p>Where:</p>
+<p><tt class="docutils literal"><span class="pre">name</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The full name of the OSD.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">osd.0</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="add-a-bucket">
+<h2>Add a Bucket<a class="headerlink" href="#add-a-bucket" title="Permalink to this headline">¶</a></h2>
+<p>To add a bucket in the CRUSH map of a running cluster, execute the <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">add-bucket</span></tt> command:</p>
+<div class="highlight-python"><pre>ceph osd crush add-bucket {bucket-name} {bucket-type}</pre>
+</div>
+<p>Where:</p>
+<p><tt class="docutils literal"><span class="pre">bucket-name</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The full name of the bucket.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">rack12</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">bucket-type</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The type of the bucket. The type must already exist in the hierarchy.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">rack</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p>The following example adds the <tt class="docutils literal"><span class="pre">rack12</span></tt> bucket to the hierarchy:</p>
+<div class="highlight-python"><pre>ceph osd crush add-bucket rack12 rack</pre>
+</div>
+</div>
+<div class="section" id="move-a-bucket">
+<h2>Move a Bucket<a class="headerlink" href="#move-a-bucket" title="Permalink to this headline">¶</a></h2>
+<p>To move a bucket to a different location or position in the CRUSH map hierarchy,
+execute the following:</p>
+<div class="highlight-python"><pre>ceph osd crush move {bucket-name} {bucket-type}={bucket-name}, [...]</pre>
+</div>
+<p>Where:</p>
+<p><tt class="docutils literal"><span class="pre">bucket-name</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The name of the bucket to move/reposition.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">foo-bar-1</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">bucket-type</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">You may specify the bucket&#8217;s location in the CRUSH hierarchy.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Key/value pairs.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">datacenter=dc1</span> <span class="pre">room=room1</span> <span class="pre">row=foo</span> <span class="pre">rack=bar</span> <span class="pre">host=foo-bar-1</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="remove-a-bucket">
+<h2>Remove a Bucket<a class="headerlink" href="#remove-a-bucket" title="Permalink to this headline">¶</a></h2>
+<p>To remove a bucket from the CRUSH map hierarchy, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd crush remove {bucket-name}</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A bucket must be empty before removing it from the CRUSH hierarchy.</p>
+</div>
+<p>Where:</p>
+<p><tt class="docutils literal"><span class="pre">bucket-name</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The name of the bucket that you&#8217;d like to remove.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">rack12</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p>The following example removes the <tt class="docutils literal"><span class="pre">rack12</span></tt> bucket from the hierarchy:</p>
+<div class="highlight-python"><pre>ceph osd crush remove rack12</pre>
+</div>
+</div>
+<div class="section" id="tunables">
+<h2>Tunables<a class="headerlink" href="#tunables" title="Permalink to this headline">¶</a></h2>
+<p class="versionadded">
+<span class="versionmodified">New in version 0.48.</span></p>
+<p>There are several magic numbers that were used in the original CRUSH
+implementation that have proven to be poor choices.  To support
+the transition away from them, newer versions of CRUSH (starting with
+the v0.48 argonaut series) allow the values to be adjusted or tuned.</p>
+<p>Clusters running recent Ceph releases support using the tunable values
+in the CRUSH maps.  However, older clients and daemons will not correctly interact
+with clusters using the &#8220;tuned&#8221; CRUSH maps.  To detect this situation,
+there are now features bits <tt class="docutils literal"><span class="pre">CRUSH_TUNABLES</span></tt> (value 0x40000) and <tt class="docutils literal"><span class="pre">CRUSH_TUNABLES2</span></tt> to
+reflect support for tunables.</p>
+<p>If the OSDMap currently used by the <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> or <tt class="docutils literal"><span class="pre">ceph-osd</span></tt>
+daemon has non-legacy values, it will require the <tt class="docutils literal"><span class="pre">CRUSH_TUNABLES</span></tt> or <tt class="docutils literal"><span class="pre">CRUSH_TUNABLES2</span></tt>
+feature bits from clients and daemons who connect to it.  This means
+that old clients will not be able to connect.</p>
+<p>At some future point in time, newly created clusters will have
+improved default values for the tunables.  This is a matter of waiting
+until the support has been present in the Linux kernel clients long
+enough to make this a painless transition for most users.</p>
+<div class="section" id="impact-of-legacy-values">
+<h3>Impact of Legacy Values<a class="headerlink" href="#impact-of-legacy-values" title="Permalink to this headline">¶</a></h3>
+<p>The legacy values result in several misbehaviors:</p>
+<blockquote>
+<div><ul class="simple">
+<li>For hiearchies with a small number of devices in the leaf buckets,
+some PGs map to fewer than the desired number of replicas.  This
+commonly happens for hiearchies with &#8220;host&#8221; nodes with a small
+number (1-3) of OSDs nested beneath each one.</li>
+<li>For large clusters, some small percentages of PGs map to less than
+the desired number of OSDs.  This is more prevalent when there are
+several layers of the hierarchy (e.g., row, rack, host, osd).</li>
+<li>When some OSDs are marked out, the data tends to get redistributed
+to nearby OSDs instead of across the entire hierarchy.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="crush-tunables">
+<h3>CRUSH_TUNABLES<a class="headerlink" href="#crush-tunables" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><tt class="docutils literal"><span class="pre">choose_local_tries</span></tt>: Number of local retries.  Legacy value is
+2, optimal value is 0.</li>
+<li><tt class="docutils literal"><span class="pre">choose_local_fallback_tries</span></tt>: Legacy value is 5, optimal value
+is 0.</li>
+<li><tt class="docutils literal"><span class="pre">choose_total_tries</span></tt>: Total number of attempts to choose an item.
+Legacy value was 19, subsequent testing indicates that a value of
+50 is more appropriate for typical clusters.  For extremely large
+clusters, a larger value might be necessary.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="crush-tunables2">
+<h3>CRUSH_TUNABLES2<a class="headerlink" href="#crush-tunables2" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><tt class="docutils literal"><span class="pre">chooseleaf_descend_once</span></tt>: Whether a recursive chooseleaf attempt
+will retry, or only try once and allow the original placement to
+retry.  Legacy default is 0, optimal value is 1.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="crush-tunables3">
+<h3>CRUSH_TUNABLES3<a class="headerlink" href="#crush-tunables3" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><tt class="docutils literal"><span class="pre">chooseleaf_vary_r</span></tt>: Whether a recursive chooseleaf attempt will
+start with a non-zero value of r, based on how many attempts the
+parent has already made.  Legacy default is 0, but with this value
+CRUSH is sometimes unable to find a mapping.  The optimal value (in
+terms of computational cost and correctness) is 1.  However, for
+legacy clusters that have lots of existing data, changing from 0 to
+1 will cause a lot of data to move; a value of 4 or 5 will allow
+CRUSH to find a valid mapping but will make less data move.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="which-client-versions-support-crush-tunables">
+<h3>Which client versions support CRUSH_TUNABLES<a class="headerlink" href="#which-client-versions-support-crush-tunables" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>argonaut series, v0.48.1 or later</li>
+<li>v0.49 or later</li>
+<li>Linux kernel version v3.6 or later (for the file system and RBD kernel clients)</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="which-client-versions-support-crush-tunables2">
+<h3>Which client versions support CRUSH_TUNABLES2<a class="headerlink" href="#which-client-versions-support-crush-tunables2" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>v0.55 or later, including bobtail series (v0.56.x)</li>
+<li>Linux kernel version v3.9 or later (for the file system and RBD kernel clients)</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="which-client-versions-support-crush-tunables3">
+<h3>Which client versions support CRUSH_TUNABLES3<a class="headerlink" href="#which-client-versions-support-crush-tunables3" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>v0.78 (firefly) or later</li>
+<li>Linux kernel version v3.15 or later (for the file system and RBD kernel clients)</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="warning-when-tunables-are-non-optimal">
+<h3>Warning when tunables are non-optimal<a class="headerlink" href="#warning-when-tunables-are-non-optimal" title="Permalink to this headline">¶</a></h3>
+<p>Starting with version v0.74, Ceph will issue a health warning if the
+CRUSH tunables are not set to their optimal values (the optimal values are
+the default as of v0.73).  To make this warning go away, you have two options:</p>
+<ol class="arabic">
+<li><p class="first">Adjust the tunables on the existing cluster.  Note that this will
+result in some data movement (possibly as much as 10%).  This is the
+preferred route, but should be taken with care on a production cluster
+where the data movement may affect performance.  You can enable optimal
+tunables with:</p>
+<div class="highlight-python"><pre>ceph osd crush tunables optimal</pre>
+</div>
+<p>If things go poorly (e.g., too much load) and not very much
+progress has been made, or there is a client compatibility problem
+(old kernel cephfs or rbd clients, or pre-bobtail librados
+clients), you can switch back with:</p>
+<div class="highlight-python"><pre>ceph osd crush tunables legacy</pre>
+</div>
+</li>
+<li><p class="first">You can make the warning go away without making any changes to CRUSH by
+adding the following option to your ceph.conf <tt class="docutils literal"><span class="pre">[mon]</span></tt> section:</p>
+<div class="highlight-python"><pre>mon warn on legacy crush tunables = false</pre>
+</div>
+<p>For the change to take effect, you will need to restart the monitors, or
+apply the option to running monitors with:</p>
+<div class="highlight-python"><pre>ceph tell mon.\* injectargs --no-mon-warn-on-legacy-crush-tunables</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="a-few-important-points">
+<h3>A few important points<a class="headerlink" href="#a-few-important-points" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>Adjusting these values will result in the shift of some PGs between
+storage nodes.  If the Ceph cluster is already storing a lot of
+data, be prepared for some fraction of the data to move.</li>
+<li>The <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> and <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons will start requiring the
+feature bits of new connections as soon as they get
+the updated map.  However, already-connected clients are
+effectively grandfathered in, and will misbehave if they do not
+support the new feature.</li>
+<li>If the CRUSH tunables are set to non-legacy values and then later
+changed back to the defult values, <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons will not be
+required to support the feature.  However, the OSD peering process
+requires examining and understanding old maps.  Therefore, you
+should not run old versions of the <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon
+if the cluster has previously used non-legacy CRUSH values, even if
+the latest version of the map has been switched back to using the
+legacy defaults.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="tuning-crush">
+<h3>Tuning CRUSH<a class="headerlink" href="#tuning-crush" title="Permalink to this headline">¶</a></h3>
+<p>The simplest way to adjust the crush tunables is by changing to a known
+profile.  Those are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><tt class="docutils literal"><span class="pre">legacy</span></tt>: the legacy behavior from argonaut and earlier.</li>
+<li><tt class="docutils literal"><span class="pre">argonaut</span></tt>: the legacy values supported by the original argonaut release</li>
+<li><tt class="docutils literal"><span class="pre">bobtail</span></tt>: the values supported by the bobtail release</li>
+<li><tt class="docutils literal"><span class="pre">firefly</span></tt>: the values supported by the firefly release</li>
+<li><tt class="docutils literal"><span class="pre">optimal</span></tt>: the current best values</li>
+<li><tt class="docutils literal"><span class="pre">default</span></tt>: the current default values for a new cluster</li>
+</ul>
+</div></blockquote>
+<p>You can select a profile on a running cluster with the command:</p>
+<div class="highlight-python"><pre>ceph osd crush tunables {PROFILE}</pre>
+</div>
+<p>Note that this may result in some data movement.</p>
+</div>
+<div class="section" id="tuning-crush-the-hard-way">
+<h3>Tuning CRUSH, the hard way<a class="headerlink" href="#tuning-crush-the-hard-way" title="Permalink to this headline">¶</a></h3>
+<p>If you can ensure that all clients are running recent code, you can
+adjust the tunables by extracting the CRUSH map, modifying the values,
+and reinjecting it into the cluster.</p>
+<ul>
+<li><p class="first">Extract the latest CRUSH map:</p>
+<div class="highlight-python"><pre>ceph osd getcrushmap -o /tmp/crush</pre>
+</div>
+</li>
+<li><p class="first">Adjust tunables.  These values appear to offer the best behavior
+for both large and small clusters we tested with.  You will need to
+additionally specify the <tt class="docutils literal"><span class="pre">--enable-unsafe-tunables</span></tt> argument to
+<tt class="docutils literal"><span class="pre">crushtool</span></tt> for this to work.  Please use this option with
+extreme care.:</p>
+<div class="highlight-python"><pre>crushtool -i /tmp/crush --set-choose-local-tries 0 --set-choose-local-fallback-tries 0 --set-choose-total-tries 50 -o /tmp/crush.new</pre>
+</div>
+</li>
+<li><p class="first">Reinject modified map:</p>
+<div class="highlight-python"><pre>ceph osd setcrushmap -i /tmp/crush.new</pre>
+</div>
+</li>
+</ul>
+</div>
+<div class="section" id="legacy-values">
+<h3>Legacy values<a class="headerlink" href="#legacy-values" title="Permalink to this headline">¶</a></h3>
+<p>For reference, the legacy values for the CRUSH tunables can be set
+with:</p>
+<div class="highlight-python"><pre>crushtool -i /tmp/crush --set-choose-local-tries 2 --set-choose-local-fallback-tries 5 --set-choose-total-tries 19 --set-chooseleaf-descend-once 0 --set-chooseleaf-vary-r 0 -o /tmp/crush.legacy</pre>
+</div>
+<p>Again, the special <tt class="docutils literal"><span class="pre">--enable-unsafe-tunables</span></tt> option is required.
+Further, as noted above, be careful running old versions of the
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon after reverting to legacy values as the feature
+bit is not perfectly enforced.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -13,9 +13,9 @@
 描述
 ====
 
-**radosgw** 是 RADOS 对象存储的一个 HTTP REST 网关，是 Ceph 分布式存储系统的\
-一部分。它是用 libfcgi 实现的一个 FastCGI 模块，可联合任何支持 FastCGI 功能\
-的网页服务器使用。
+:program:`radosgw` 是 RADOS 对象存储的一个 HTTP REST 网关，是 Ceph 分布式\
+存储系统的一部分。它是用 libfcgi 实现的一个 FastCGI 模块，可联合任何支持 \
+FastCGI 功能的网页服务器使用。
 
 
 选项
@@ -23,12 +23,12 @@
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   用指定的 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定启\
+   用指定的 ``ceph.conf`` 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定启\
    动时所需的监视器地址。
 
 .. option:: -m monaddress[:port]
 
-   连接到指定监视器，而非通过 ceph.conf 查询。
+   连接到指定监视器，而非通过 ``ceph.conf`` 查询。
 
 .. option:: -i ID, --id ID
 
@@ -66,69 +66,138 @@
 配置
 ====
 
-当前，使用 RADOS 网关最简单的方法就是通过 Apache 与 mod_fastcgi::
+先前的 RADOS 网关配置依赖 ``Apache`` 和 ``mod_fastcgi`` ；现在则用 \
+``mod_proxy_fcgi`` 替换了 ``mod_fastcgi`` ，因为后者使用了非自由许可证。 \
+``mod_proxy_fcgi`` 不同于传统的 FastCGI 模块，它需要 ``mod_proxy`` 模块所\
+支持的 FastCGI 协议。所以，要处理 FastCGI 协议，服务器需同时有 ``mod_proxy`` \
+和 ``mod_proxy_fcgi`` 模块。不像 ``mod_fastcgi`` ， ``mod_proxy_fcgi`` 不\
+能启动应用进程。某些平台提供了 ``fcgistarter`` 来实现此功能。然而， FastCGI \
+应用框架有可能具备外部启动或进程管理功能。
 
-	FastCgiExternalServer /var/www/s3gw.fcgi -socket /tmp/radosgw.sock
+``Apache`` 可以通过本机 TCP 连接或 unix 域套接字使用 ``mod_proxy_fcgi`` 模\
+块。不支持 unix 域套接字的 ``mod_proxy_fcgi`` ，像 Apache 2.2 和 2.4 的早\
+期版本，必需通过本机 TCP 连接。
 
-	<VirtualHost *:80>
-	  ServerName rgw.example1.com
-	  ServerAlias rgw
-	  ServerAdmin webmaster@example1.com
-	  DocumentRoot /var/www
-
-	  RewriteEngine On
-	  RewriteRule ^/([a-zA-Z0-9-_.]*)([/]?.*) /s3gw.fcgi?page=$1&params=$2&%{QUERY_STRING} [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
-
-	  <IfModule mod_fastcgi.c>
-	    <Directory /var/www>
-	      Options +ExecCGI
-	      AllowOverride All
-	      SetHandler fastcgi-script
-	      Order allow,deny
-	      Allow from all
-	      AuthBasicAuthoritative Off
-	    </Directory>
-	  </IfModule>
-
-	  AllowEncodedSlashes On
-	  ServerSignature Off
-	</VirtualHost>
-
-与之对应的 radosgw 脚本为 /var/www/s3gw.fcgi::
-
-	#!/bin/sh
-	exec /usr/bin/radosgw -c /etc/ceph/ceph.conf -n client.radosgw.gateway
-
-若要以独立进程运行 radosgw 守护进程，需把配置写入 ceph.conf ，配置段落应以 \
-'client.radosgw.' 打头，并在 /etc/init.d/radosgw 内指定：
-
-.. code-block:: ini
+#. 更改 ``/etc/ceph/ceph.conf`` 文件，让 radosgw 使用 TCP 而非 unix 域套接字。 ::
 
 	[client.radosgw.gateway]
-	host = gateway
-	keyring = /etc/ceph/keyring.radosgw.gateway
-	rgw socket path = /tmp/radosgw.sock
+	host = {hostname}
+	keyring = /etc/ceph/ceph.client.radosgw.keyring
+	rgw socket path = ""
+	log file = /var/log/radosgw/client.radosgw.gateway.log
+	rgw frontends = fastcgi socket_port=9000 socket_host=0.0.0.0
+	rgw print continue = false
 
-你还得给 radosgw 生成一个密钥，用于和集群认证： ::
+#. 把下列内容加入网关配置文件：
+
+   在 Debian/Ubuntu 上，加入 ``/etc/apache2/conf-available/rgw.conf``::
+
+		<VirtualHost *:80>
+		ServerName localhost
+		DocumentRoot /var/www/html
+
+		ErrorLog /var/log/apache2/rgw_error.log
+		CustomLog /var/log/apache2/rgw_access.log combined
+
+		# LogLevel debug
+
+		RewriteEngine On
+
+		RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+		SetEnv proxy-nokeepalive 1
+
+		ProxyPass / fcgi://localhost:9000/
+
+		</VirtualHost>
+
+   在 CentOS/RHEL 上，加入 ``/etc/httpd/conf.d/rgw.conf``::
+
+		<VirtualHost *:80>
+		ServerName localhost
+		DocumentRoot /var/www/html
+
+		ErrorLog /var/log/httpd/rgw_error.log
+		CustomLog /var/log/httpd/rgw_access.log combined
+
+		# LogLevel debug
+
+		RewriteEngine On
+
+		RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+		SetEnv proxy-nokeepalive 1
+
+		ProxyPass / fcgi://localhost:9000/
+
+		</VirtualHost>
+
+#. 对于搭载了支持 Unix 域套接字的 Apache 2.4.9 及更高版的发行版，可使用下\
+   列配置： ::
+
+	[client.radosgw.gateway]
+	host = {hostname}
+	keyring = /etc/ceph/ceph.client.radosgw.keyring
+	rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+	log file = /var/log/radosgw/client.radosgw.gateway.log
+	rgw print continue = false
+
+#. 把下列内容加入网关配置文件中：
+
+   在 CentOS/RHEL 上，加入 ``/etc/httpd/conf.d/rgw.conf``::
+
+		<VirtualHost *:80>
+		ServerName localhost
+		DocumentRoot /var/www/html
+
+		ErrorLog /var/log/httpd/rgw_error.log
+		CustomLog /var/log/httpd/rgw_access.log combined
+
+		# LogLevel debug
+
+		RewriteEngine On
+
+		RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+		SetEnv proxy-nokeepalive 1
+
+		ProxyPass / unix:///var/run/ceph/ceph.radosgw.gateway.fastcgi.sock|fcgi://localhost:9000/
+
+		</VirtualHost>
+
+   Ubuntu 14.04 自带 ``Apache 2.4.7`` ，它不支持 Unix 域套接字，所以必须配\
+   置成本机 TCP 。 Unix 域套接字支持存在于 ``Apache 2.4.9`` 及其后续版本\
+   中。已经有人提交了申请，要求把 UDS 支持移植到 ``Ubuntu 14.04`` 的 \
+   ``Apache 2.4.7`` 。
+   在这里： https://bugs.launchpad.net/ubuntu/+source/apache2/+bug/1411030
+
+#. 给 radosgw 生成一个密钥，用于到集群认证。 ::
 
 	ceph-authtool -C -n client.radosgw.gateway --gen-key /etc/ceph/keyring.radosgw.gateway
 	ceph-authtool -n client.radosgw.gateway --cap mon 'allow rw' --cap osd 'allow rwx' /etc/ceph/keyring.radosgw.gateway
 
-并把密钥加入集群： ::
+#. 把密钥导入集群。 ::
 
 	ceph auth add client.radosgw.gateway --in-file=keyring.radosgw.gateway
 
-现在可以启动 Apache 和 radosgw 守护进程了： ::
+#. 启动 Apache 和 radosgw 。
 
-	/etc/init.d/apache2 start
-	/etc/init.d/radosgw start
+   Debian/Ubuntu::
+
+		sudo /etc/init.d/apache2 start
+		sudo /etc/init.d/radosgw start
+
+   CentOS/RHEL::
+
+		sudo apachectl start
+		sudo /etc/init.d/ceph-radosgw start
 
 
 记录使用日志
 ============
 
-**radosgw** 会异步地维护使用率日志，它会累积用户操作统计并周期性地刷回。可用 \
-**radosgw-admin** 访问和管理日志。
+:program:`radosgw` 会异步地维护使用率日志，它会累积用户操作统计并周期性地\
+刷回。可用 :program:`radosgw-admin` 访问和管理日志。
 
 记录的信息包括数据传输总量、操作总量、成功操作总量。这些数据是按小时记录到桶\
 所有者名下的，除非操作是针对服务的（如罗列桶时），这时会记录到操作用户名下。
@@ -152,7 +221,7 @@ flush threshold 决定了保留的日志条数达到多少才调用异步刷回�
 使用范围
 ========
 
-**radosgw** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
+:program:`radosgw` 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
 更多信息参见 http://ceph.com/docs 。
 
 

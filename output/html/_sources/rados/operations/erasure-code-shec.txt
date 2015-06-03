@@ -45,7 +45,7 @@
 ``c={durability-estimator}``
 
 :描述: 奇偶校验块数量，它们在各自的计算范围内包含了各数据块。此数值被用作 \
-	 **durability estimator** （耐用性估值）。例如，假设 c=2 ，就是说\
+	 **durability estimator** （持久性估值）。例如，假设 c=2 ，就是说\
 	 不丟数据的情况下可损失 2 个 OSD 。
 :类型: Integer
 :是否必需: No.
@@ -101,10 +101,10 @@ SHEC 布局概述
 	SHEC(5,3,2) or SHEC(4,2,2) improves SHEC(4,3,2)'s space efficiency
 
 
-耐用性
+持久性
 ------
 
-SHEC 的第三个参数（ =c ）是一个耐用性估值，它大致等于在不丢数据的前提下允\
+SHEC 的第三个参数（ =c ）是一个持久性估值，它大致等于在不丢数据的前提下允\
 许损失的 OSD 数量。
 
 ``durability estimator of SHEC(4,3,2) = 2``

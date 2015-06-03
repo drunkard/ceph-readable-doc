@@ -1,8 +1,8 @@
-Erasure Coded pool
-==================
+纠删码存储池
+============
 
-Purpose
--------
+用途
+----
 
 Erasure-coded pools require less storage space compared to replicated
 pools.  The erasure-coding support has higher computational requirements and
@@ -90,7 +90,7 @@ Choose an alternate erasure code plugin::
  m=1
  plugin=example
  technique=xor
- $ ceph osd create ecpool 12 12 erasure \
+ $ ceph osd pool create ecpool 12 12 erasure \
      myprofile
 
 Display the default erasure code profile::

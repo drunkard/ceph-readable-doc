@@ -1,0 +1,288 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>File striping &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="file-striping">
+<h1>File striping<a class="headerlink" href="#file-striping" title="Permalink to this headline">¶</a></h1>
+<p>The text below describes how files from Ceph file system clients are
+stored across objects stored in RADOS.</p>
+<div class="section" id="ceph-file-layout">
+<h2>ceph_file_layout<a class="headerlink" href="#ceph-file-layout" title="Permalink to this headline">¶</a></h2>
+<p>Ceph distributes (stripes) the data for a given file across a number
+of underlying objects.  The way file data is mapped to those objects
+is defined by the ceph_file_layout structure.  The data distribution
+is a modified RAID 0, where data is striped across a set of objects up
+to a (per-file) fixed size, at which point another set of objects
+holds the file&#8217;s data.  The second set also holds no more than the
+fixed amount of data, and then another set is used, and so on.</p>
+<p>Defining some terminology will go a long way toward explaining the
+way file data is laid out across Ceph objects.</p>
+<ul>
+<li><dl class="first docutils">
+<dt>file</dt>
+<dd><p class="first last">A collection of contiguous data, named from the perspective of
+the Ceph client (i.e., a file on a Linux system using Ceph
+storage).  The data for a file is divided into fixed-size
+&#8220;stripe units,&#8221; which are stored in ceph &#8220;objects.&#8221;</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>stripe unit</dt>
+<dd><p class="first last">The size (in bytes) of a block of data used in the RAID 0
+distribution of a file.  All stripe units for a file have equal
+size.  The last stripe unit is typically incomplete&#8211;i.e. it
+represents the data at the end of the file as well as unused
+&#8220;space&#8221; beyond it up to the end of the fixed stripe unit size.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>stripe count</dt>
+<dd><p class="first last">The number of consecutive stripe units that constitute a RAID 0
+&#8220;stripe&#8221; of file data.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>stripe</dt>
+<dd><p class="first last">A contiguous range of file data, RAID 0 striped across &#8220;stripe
+count&#8221; objects in fixed-size &#8220;stripe unit&#8221; blocks.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>object</dt>
+<dd><p class="first last">A collection of data maintained by Ceph storage.  Objects are
+used to hold portions of Ceph client files.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>object set</dt>
+<dd><p class="first last">A set of objects that together represent a contiguous portion of
+a file.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Three fields in the ceph_file_layout structure define this mapping:</p>
+<div class="highlight-python"><pre>u32 fl_stripe_unit;
+u32 fl_stripe_count;
+u32 fl_object_size;</pre>
+</div>
+<p>(They are actually maintained in their on-disk format, __le32.)</p>
+<p>The role of the first two fields should be clear from the
+definitions above.</p>
+<p>The third field is the maximum size (in bytes) of an object used to
+back file data.  The object size is a multiple of the stripe unit.</p>
+<p>A file&#8217;s data is blocked into stripe units, and consecutive stripe
+units are stored on objects in an object set.  The number of objects
+in a set is the same as the stripe count.  No object storing file
+data will exceed the file&#8217;s designated object size, so after some
+fixed number of complete stripes, a new object set is used to store
+subsequent file data.</p>
+<p>Note that by default, Ceph uses a simple striping strategy in which
+object_size equals stripe_unit and stripe_count is 1.  This simply
+puts one stripe_unit in each object.</p>
+<p>Here&#8217;s a more complex example:</p>
+<div class="highlight-python"><pre>file size = 1 trillion = 1000000000000 bytes
+
+fl_stripe_unit = 64KB = 65536 bytes
+fl_stripe_count = 5 stripe units per stripe
+fl_object_size = 64GB = 68719476736 bytes</pre>
+</div>
+<p>This means:</p>
+<div class="highlight-python"><pre>file stripe size = 64KB * 5 = 320KB = 327680 bytes
+each object holds 64GB / 64KB = 1048576 stripe units
+file object set size = 64GB * 5 = 320GB = 343597383680 bytes
+    (also 1048576 stripe units * 327680 bytes per stripe unit)</pre>
+</div>
+<p>So the file&#8217;s 1 trillion bytes can be divided into complete object
+sets, then complete stripes, then complete stripe units, and finally
+a single incomplete stripe unit:</p>
+<div class="highlight-python"><pre>- 1 trillion bytes / 320GB per object set = 2 complete object sets
+    (with 312805232640 bytes remaining)
+- 312805232640 bytes / 320KB per stripe = 954605 complete stripes
+    (with 266240 bytes remaining)
+- 266240 bytes / 64KB per stripe unit = 4 complete stripe units
+    (with 4096 bytes remaining)
+- and the final incomplete stripe unit holds those 4096 bytes.</pre>
+</div>
+<p>The ASCII art below attempts to capture this:</p>
+<div class="highlight-python"><pre>   _________   _________   _________   _________   _________
+  /object  0\ /object  1\ /object  2\ /object  3\ /object  4\
+  +=========+ +=========+ +=========+ +=========+ +=========+
+  |  stripe | |  stripe | |  stripe | |  stripe | |  stripe |
+o |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | stripe 0
+b |     0   | |     1   | |     2   | |     3   | |     4   |
+j |---------| |---------| |---------| |---------| |---------|
+e |  stripe | |  stripe | |  stripe | |  stripe | |  stripe |
+c |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | stripe 1
+t |     5   | |     6   | |     7   | |     8   | |     9   |
+  |---------| |---------| |---------| |---------| |---------|
+s |     .   | |     .   | |     .   | |     .   | |     .   |
+e       .           .           .           .           .
+t |     .   | |     .   | |     .   | |     .   | |     .   |
+  |---------| |---------| |---------| |---------| |---------|
+0 |  stripe | |  stripe | |  stripe | |  stripe | |  stripe | stripe
+  |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | 1048575
+  | 5242875 | | 5242876 | | 5242877 | | 5242878 | | 5242879 |
+  \=========/ \=========/ \=========/ \=========/ \=========/
+
+   _________   _________   _________   _________   _________
+  /object  5\ /object  6\ /object  7\ /object  8\ /object  9\
+  +=========+ +=========+ +=========+ +=========+ +=========+
+  |  stripe | |  stripe | |  stripe | |  stripe | |  stripe | stripe
+o |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | 1048576
+b | 5242880 | | 5242881 | | 5242882 | | 5242883 | | 5242884 |
+j |---------| |---------| |---------| |---------| |---------|
+e |  stripe | |  stripe | |  stripe | |  stripe | |  stripe | stripe
+c |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | 1048577
+t | 5242885 | | 5242886 | | 5242887 | | 5242888 | | 5242889 |
+  |---------| |---------| |---------| |---------| |---------|
+s |     .   | |     .   | |     .   | |     .   | |     .   |
+e       .           .           .           .           .
+t |     .   | |     .   | |     .   | |     .   | |     .   |
+  |---------| |---------| |---------| |---------| |---------|
+1 |  stripe | |  stripe | |  stripe | |  stripe | |  stripe | stripe
+  |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | 2097151
+  | 10485755| | 10485756| | 10485757| | 10485758| | 10485759|
+  \=========/ \=========/ \=========/ \=========/ \=========/
+
+   _________   _________   _________   _________   _________
+  /object 10\ /object 11\ /object 12\ /object 13\ /object 14\
+  +=========+ +=========+ +=========+ +=========+ +=========+
+  |  stripe | |  stripe | |  stripe | |  stripe | |  stripe | stripe
+o |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | 2097152
+b | 10485760| | 10485761| | 10485762| | 10485763| | 10485764|
+j |---------| |---------| |---------| |---------| |---------|
+e |  stripe | |  stripe | |  stripe | |  stripe | |  stripe | stripe
+c |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | 2097153
+t | 10485765| | 10485766| | 10485767| | 10485768| | 10485769|
+  |---------| |---------| |---------| |---------| |---------|
+s |     .   | |     .   | |     .   | |     .   | |     .   |
+e       .           .           .           .           .
+t |     .   | |     .   | |     .   | |     .   | |     .   |
+  |---------| |---------| |---------| |---------| |---------|
+2 |  stripe | |  stripe | |  stripe | |  stripe | |  stripe | stripe
+  |   unit  | |   unit  | |   unit  | |   unit  | |   unit  | 3051756
+  | 15258780| | 15258781| | 15258782| | 15258783| | 15258784|
+  |---------| |---------| |---------| |---------| |---------|
+  |  stripe | |  stripe | |  stripe | |  stripe | | (partial| (partial
+  |   unit  | |   unit  | |   unit  | |   unit  | |  stripe | stripe
+  | 15258785| | 15258786| | 15258787| | 15258788| |  unit)  | 3051757)
+  \=========/ \=========/ \=========/ \=========/ \=========/</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

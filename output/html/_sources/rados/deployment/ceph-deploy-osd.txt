@@ -42,8 +42,9 @@
 	ceph-deploy osd prepare osdserver1:sdb:/dev/ssd
 	ceph-deploy osd prepare osdserver1:sdc:/dev/ssd
 
-``prepare`` 命令只准备 OSD ，不会激活它。要激活一个已准备好的 OSD ，用 \
-``activate`` 命令，见\ `激活 OSD`_\ 。
+``prepare`` 命令只准备 OSD 。在大多数操作系统中，硬盘分区创建后，不用 \
+``activate`` 命令也会自动执行 ``activate`` 阶段（通过 Ceph 的 ``udev`` 规\
+则）。详情见\ `激活 OSD`_\ 。
 
 前例假定一个硬盘只会用于一个 OSD 守护进程，以及一个到 SSD 日志分区的路径。我们建议\
 把日志存储于另外的驱动器以最优化性能；你也可以指定一单独的驱动器用于日志（也许比较昂\

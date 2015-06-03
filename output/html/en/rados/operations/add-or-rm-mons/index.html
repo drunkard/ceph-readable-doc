@@ -1,0 +1,454 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Adding/Removing Monitors &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="adding-removing-monitors">
+<h1>Adding/Removing Monitors<a class="headerlink" href="#adding-removing-monitors" title="Permalink to this headline">¶</a></h1>
+<p>When you have a cluster up and running, you may add or remove monitors
+from the cluster at runtime. To bootstrap a monitor, see <a class="reference external" href="../../../install/manual-deployment">Manual Deployment</a>
+or <a class="reference external" href="../../../dev/mon-bootstrap">Monitor Bootstrap</a>.</p>
+<div class="section" id="adding-monitors">
+<h2>Adding Monitors<a class="headerlink" href="#adding-monitors" title="Permalink to this headline">¶</a></h2>
+<p>Ceph monitors are light-weight processes that maintain a master copy of the
+cluster map. You can run a cluster with 1 monitor. We recommend at least 3
+monitors for a production cluster. Ceph monitors use a variation of the
+<a class="reference external" href="http://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a> protocol to establish consensus about maps and other critical
+information across the cluster. Due to the nature of Paxos, Ceph requires
+a majority of monitors running to establish a quorum (thus establishing
+consensus).</p>
+<p>It is advisable to run an odd-number of monitors but not mandatory. An
+odd-number of monitors has a higher resiliency to failures than an
+even-number of monitors. For instance, on a 2 monitor deployment, no
+failures can be tolerated in order to maintain a quorum; with 3 monitors,
+one failure can be tolerated; in a 4 monitor deployment, one failure can
+be tolerated; with 5 monitors, two failures can be tolerated.  This is
+why an odd-number is advisable. Summarizing, Ceph needs a majority of
+monitors to be running (and able to communicate with each other), but that
+majority can be achieved using a single monitor, or 2 out of 2 monitors,
+2 out of 3, 3 out of 4, etc.</p>
+<p>For an initial deployment of a multi-node Ceph cluster, it is advisable to
+deploy three monitors, increasing the number two at a time if a valid need
+for more than three exists.</p>
+<p>Since monitors are light-weight, it is possible to run them on the same
+host as an OSD; however, we recommend running them on separate hosts,
+because fsync issues with the kernel may impair performance.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A <em>majority</em> of monitors in your cluster must be able to
+reach each other in order to establish a quorum.</p>
+</div>
+<div class="section" id="deploy-your-hardware">
+<h3>Deploy your Hardware<a class="headerlink" href="#deploy-your-hardware" title="Permalink to this headline">¶</a></h3>
+<p>If you are adding a new host when adding a new monitor,  see <a class="reference external" href="../../../start/hardware-recommendations">Hardware
+Recommendations</a> for details on minimum recommendations for monitor hardware.
+To add a monitor host to your cluster, first make sure you have an up-to-date
+version of Linux installed (typically Ubuntu 14.04 or RHEL 7).</p>
+<p>Add your monitor host to a rack in your cluster, connect it to the network
+and ensure that it has network connectivity.</p>
+</div>
+<div class="section" id="install-the-required-software">
+<h3>Install the Required Software<a class="headerlink" href="#install-the-required-software" title="Permalink to this headline">¶</a></h3>
+<p>For manually deployed clusters, you must install Ceph packages
+manually. See <a class="reference external" href="../../../install/install-storage-cluster">Installing Packages</a> for details.
+You should configure SSH to a user with password-less authentication
+and root permissions.</p>
+</div>
+<div class="section" id="adding-a-monitor-manual">
+<span id="id1"></span><h3>Adding a Monitor (Manual)<a class="headerlink" href="#adding-a-monitor-manual" title="Permalink to this headline">¶</a></h3>
+<p>This procedure creates a <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> data directory, retrieves the monitor map
+and monitor keyring, and adds a <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemon to your cluster.  If
+this results in only two monitor daemons, you may add more monitors by
+repeating this procedure until you have a sufficient number of <tt class="docutils literal"><span class="pre">ceph-mon</span></tt>
+daemons to achieve a quorum.</p>
+<p>At this point you should define your monitor&#8217;s id.  Traditionally, monitors
+have been named with single letters (<tt class="docutils literal"><span class="pre">a</span></tt>, <tt class="docutils literal"><span class="pre">b</span></tt>, <tt class="docutils literal"><span class="pre">c</span></tt>, ...), but you are
+free to define the id as you see fit.  For the purpose of this document,
+please take into account that <tt class="docutils literal"><span class="pre">{mon-id}</span></tt> should be the id you chose,
+without the <tt class="docutils literal"><span class="pre">mon.</span></tt> prefix (i.e., <tt class="docutils literal"><span class="pre">{mon-id}</span></tt> should be the <tt class="docutils literal"><span class="pre">a</span></tt>
+on <tt class="docutils literal"><span class="pre">mon.a</span></tt>).</p>
+<ol class="arabic">
+<li><p class="first">Create the default directory on the machine that will host your
+new monitor.</p>
+<div class="highlight-python"><pre>ssh {new-mon-host}
+sudo mkdir /var/lib/ceph/mon/ceph-{mon-id}</pre>
+</div>
+</li>
+<li><p class="first">Create a temporary directory <tt class="docutils literal"><span class="pre">{tmp}</span></tt> to keep the files needed during
+this process. This directory should be different from the monitor&#8217;s default
+directory created in the previous step, and can be removed after all the
+steps are executed.</p>
+<div class="highlight-python"><pre>mkdir {tmp}</pre>
+</div>
+</li>
+<li><p class="first">Retrieve the keyring for your monitors, where <tt class="docutils literal"><span class="pre">{tmp}</span></tt> is the path to
+the retrieved keyring, and <tt class="docutils literal"><span class="pre">{key-filename}</span></tt> is the name of the file
+containing the retrieved monitor key.</p>
+<div class="highlight-python"><pre>ceph auth get mon. -o {tmp}/{key-filename}</pre>
+</div>
+</li>
+<li><p class="first">Retrieve the monitor map, where <tt class="docutils literal"><span class="pre">{tmp}</span></tt> is the path to
+the retrieved monitor map, and <tt class="docutils literal"><span class="pre">{map-filename}</span></tt> is the name of the file
+containing the retrieved monitor monitor map.</p>
+<div class="highlight-python"><pre>ceph mon getmap -o {tmp}/{map-filename}</pre>
+</div>
+</li>
+<li><p class="first">Prepare the monitor&#8217;s data directory created in the first step. You must
+specify the path to the monitor map so that you can retrieve the
+information about a quorum of monitors and their <tt class="docutils literal"><span class="pre">fsid</span></tt>. You must also
+specify a path to the monitor keyring:</p>
+<div class="highlight-python"><pre>sudo ceph-mon -i {mon-id} --mkfs --monmap {tmp}/{map-filename} --keyring {tmp}/{key-filename}</pre>
+</div>
+</li>
+<li><p class="first">Add the new monitor to the list of monitors for you cluster (runtime). This enables
+other nodes to use this monitor during their initial startup.</p>
+<div class="highlight-python"><pre>ceph mon add &lt;mon-id&gt; &lt;ip&gt;[:&lt;port&gt;]</pre>
+</div>
+</li>
+<li><p class="first">Start the new monitor and it will automatically join the cluster.
+The daemon needs to know which address to bind to, either via
+<tt class="docutils literal"><span class="pre">--public-addr</span> <span class="pre">{ip:port}</span></tt> or by setting <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">addr</span></tt> in the
+appropriate section of <tt class="docutils literal"><span class="pre">ceph.conf</span></tt>.  For example:</p>
+<div class="highlight-python"><pre>ceph-mon -i {mon-id} --public-addr {ip:port}</pre>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="removing-monitors">
+<h2>Removing Monitors<a class="headerlink" href="#removing-monitors" title="Permalink to this headline">¶</a></h2>
+<p>When you remove monitors from a cluster, consider that Ceph monitors use
+PAXOS to establish consensus about the master cluster map. You must have
+a sufficient number of monitors to establish a quorum for consensus about
+the cluster map.</p>
+<div class="section" id="removing-a-monitor-manual">
+<span id="id2"></span><h3>Removing a Monitor (Manual)<a class="headerlink" href="#removing-a-monitor-manual" title="Permalink to this headline">¶</a></h3>
+<p>This procedure removes a <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemon from your cluster.   If this
+procedure results in only two monitor daemons, you may add or remove another
+monitor until you have a number of <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons that can achieve a
+quorum.</p>
+<ol class="arabic">
+<li><p class="first">Stop the monitor.</p>
+<div class="highlight-python"><pre>service ceph -a stop mon.{mon-id}</pre>
+</div>
+</li>
+<li><p class="first">Remove the monitor from the cluster.</p>
+<div class="highlight-python"><pre>ceph mon remove {mon-id}</pre>
+</div>
+</li>
+<li><p class="first">Remove the monitor entry from <tt class="docutils literal"><span class="pre">ceph.conf</span></tt>.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="removing-monitors-from-an-unhealthy-cluster">
+<h3>Removing Monitors from an Unhealthy Cluster<a class="headerlink" href="#removing-monitors-from-an-unhealthy-cluster" title="Permalink to this headline">¶</a></h3>
+<p>This procedure removes a <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemon from an unhealthy
+cluster, for example a cluster where the monitors cannot form a
+quorum.</p>
+<ol class="arabic">
+<li><p class="first">Stop all <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons on all monitor hosts.</p>
+<div class="highlight-python"><pre>ssh {mon-host}
+service ceph stop mon || stop ceph-mon-all
+# and repeat for all mons</pre>
+</div>
+</li>
+<li><p class="first">Identify a surviving monitor and log in to that host.</p>
+<div class="highlight-python"><pre>ssh {mon-host}</pre>
+</div>
+</li>
+<li><p class="first">Extract a copy of the monmap file.</p>
+<div class="highlight-python"><pre>ceph-mon -i {mon-id} --extract-monmap {map-path}
+# in most cases, that's
+ceph-mon -i `hostname` --extract-monmap /tmp/monmap</pre>
+</div>
+</li>
+<li><p class="first">Remove the non-surviving or problematic monitors.  For example, if
+you have three monitors, <tt class="docutils literal"><span class="pre">mon.a</span></tt>, <tt class="docutils literal"><span class="pre">mon.b</span></tt>, and <tt class="docutils literal"><span class="pre">mon.c</span></tt>, where
+only <tt class="docutils literal"><span class="pre">mon.a</span></tt> will survive, follow the example below:</p>
+<div class="highlight-python"><pre>monmaptool {map-path} --rm {mon-id}
+# for example,
+monmaptool /tmp/monmap --rm b
+monmaptool /tmp/monmap --rm c</pre>
+</div>
+</li>
+<li><p class="first">Inject the surviving map with the removed monitors into the
+surviving monitor(s).  For example, to inject a map into monitor
+<tt class="docutils literal"><span class="pre">mon.a</span></tt>, follow the example below:</p>
+<div class="highlight-python"><pre>ceph-mon -i {mon-id} --inject-monmap {map-path}
+# for example,
+ceph-mon -i a --inject-monmap /tmp/monmap</pre>
+</div>
+</li>
+<li><p class="first">Start only the surviving monitors.</p>
+</li>
+<li><p class="first">Verify the monitors form a quorum (<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-s</span></tt>).</p>
+</li>
+<li><p class="first">You may wish to archive the removed monitors&#8217; data directory in
+<tt class="docutils literal"><span class="pre">/var/lib/ceph/mon</span></tt> in a safe location, or delete it if you are
+confident the remaining monitors are healthy and are sufficiently
+redundant.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="changing-a-monitor-s-ip-address">
+<span id="id3"></span><h2>Changing a Monitor&#8217;s IP Address<a class="headerlink" href="#changing-a-monitor-s-ip-address" title="Permalink to this headline">¶</a></h2>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Existing monitors are not supposed to change their IP addresses.</p>
+</div>
+<p>Monitors are critical components of a Ceph cluster, and they need to maintain a
+quorum for the whole system to work properly. To establish a quorum, the
+monitors need to discover each other. Ceph has strict requirements for
+discovering monitors.</p>
+<p>Ceph clients and other Ceph daemons use <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> to discover monitors.
+However, monitors discover each other using the monitor map, not <tt class="docutils literal"><span class="pre">ceph.conf</span></tt>.
+For example,  if you refer to <a class="reference internal" href="#adding-a-monitor-manual">Adding a Monitor (Manual)</a> you will see that you
+need to obtain the current monmap for the cluster when creating a new monitor,
+as it is one of the required arguments of <tt class="docutils literal"><span class="pre">ceph-mon</span> <span class="pre">-i</span> <span class="pre">{mon-id}</span> <span class="pre">--mkfs</span></tt>. The
+following sections explain the consistency requirements for Ceph monitors, and a
+few safe ways to change a monitor&#8217;s IP address.</p>
+<div class="section" id="consistency-requirements">
+<h3>Consistency Requirements<a class="headerlink" href="#consistency-requirements" title="Permalink to this headline">¶</a></h3>
+<p>A monitor always refers to the local copy of the monmap  when discovering other
+monitors in the cluster.  Using the monmap instead of <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> avoids
+errors that could  break the cluster (e.g., typos in <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> when
+specifying a monitor address or port). Since monitors use monmaps for discovery
+and they share monmaps with clients and other Ceph daemons, the monmap provides
+monitors with a strict guarantee that their consensus is valid.</p>
+<p>Strict consistency also applies to updates to the monmap. As with any other
+updates on the monitor, changes to the monmap always run through a distributed
+consensus algorithm called <a class="reference external" href="http://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a>. The monitors must agree on each update to
+the monmap, such as adding or removing a monitor, to ensure that each monitor in
+the quorum has the same version of the monmap. Updates to the monmap are
+incremental so that monitors have the latest agreed upon version, and a set of
+previous versions, allowing a monitor that has an older version of the monmap to
+catch up with the current state of the cluster.</p>
+<p>If monitors discovered each other through the Ceph configuration file instead of
+through the monmap, it would introduce additional risks because the Ceph
+configuration files aren&#8217;t updated and distributed automatically. Monitors
+might inadvertently use an older <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file, fail to recognize a
+monitor, fall out of a quorum, or develop a situation where <a class="reference external" href="http://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a> isn&#8217;t able
+to determine the current state of the system accurately. Consequently,  making
+changes to an existing monitor&#8217;s IP address must be done with  great care.</p>
+</div>
+<div class="section" id="changing-a-monitor-s-ip-address-the-right-way">
+<h3>Changing a Monitor&#8217;s IP address (The Right Way)<a class="headerlink" href="#changing-a-monitor-s-ip-address-the-right-way" title="Permalink to this headline">¶</a></h3>
+<p>Changing a monitor&#8217;s IP address in <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> only is not sufficient to
+ensure that other monitors in the cluster will receive the update.  To change a
+monitor&#8217;s IP address, you must add a new monitor with the IP  address you want
+to use (as described in <a class="reference internal" href="#adding-a-monitor-manual">Adding a Monitor (Manual)</a>),  ensure that the new
+monitor successfully joins the  quorum; then, remove the monitor that uses the
+old IP address. Then, update the <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file to ensure that clients and
+other daemons know the IP address of the new monitor.</p>
+<p>For example, lets assume there are three monitors in place, such as</p>
+<div class="highlight-python"><pre>[mon.a]
+        host = host01
+        addr = 10.0.0.1:6789
+[mon.b]
+        host = host02
+        addr = 10.0.0.2:6789
+[mon.c]
+        host = host03
+        addr = 10.0.0.3:6789</pre>
+</div>
+<p>To change <tt class="docutils literal"><span class="pre">mon.c</span></tt> to <tt class="docutils literal"><span class="pre">host04</span></tt> with the IP address  <tt class="docutils literal"><span class="pre">10.0.0.4</span></tt>, follow the
+steps in <a class="reference internal" href="#adding-a-monitor-manual">Adding a Monitor (Manual)</a> by adding a  new monitor <tt class="docutils literal"><span class="pre">mon.d</span></tt>. Ensure
+that <tt class="docutils literal"><span class="pre">mon.d</span></tt> is  running before removing <tt class="docutils literal"><span class="pre">mon.c</span></tt>, or it will break the
+quorum. Remove <tt class="docutils literal"><span class="pre">mon.c</span></tt> as described on  <a class="reference internal" href="#removing-a-monitor-manual">Removing a Monitor (Manual)</a>. Moving
+all three  monitors would thus require repeating this process as many times as
+needed.</p>
+</div>
+<div class="section" id="changing-a-monitor-s-ip-address-the-messy-way">
+<h3>Changing a Monitor&#8217;s IP address (The Messy Way)<a class="headerlink" href="#changing-a-monitor-s-ip-address-the-messy-way" title="Permalink to this headline">¶</a></h3>
+<p>There may come a time when the monitors must be moved to a different network,  a
+different part of the datacenter or a different datacenter altogether. While  it
+is possible to do it, the process becomes a bit more hazardous.</p>
+<p>In such a case, the solution is to generate a new monmap with updated IP
+addresses for all the monitors in the cluster, and inject the new map on each
+individual monitor.  This is not the most user-friendly approach, but we do not
+expect this to be something that needs to be done every other week.  As it is
+clearly stated on the top of this section, monitors are not supposed to change
+IP addresses.</p>
+<p>Using the previous monitor configuration as an example, assume you want to move
+all the  monitors from the <tt class="docutils literal"><span class="pre">10.0.0.x</span></tt> range to <tt class="docutils literal"><span class="pre">10.1.0.x</span></tt>, and these
+networks  are unable to communicate.  Use the following procedure:</p>
+<ol class="arabic">
+<li><p class="first">Retrieve the monitor map, where <tt class="docutils literal"><span class="pre">{tmp}</span></tt> is the path to
+the retrieved monitor map, and <tt class="docutils literal"><span class="pre">{filename}</span></tt> is the name of the file
+containing the retrieved monitor monitor map.</p>
+<div class="highlight-python"><pre>ceph mon getmap -o {tmp}/{filename}</pre>
+</div>
+</li>
+<li><p class="first">The following example demonstrates the contents of the monmap.</p>
+<div class="highlight-python"><pre>$ monmaptool --print {tmp}/{filename}
+
+monmaptool: monmap file {tmp}/{filename}
+epoch 1
+fsid 224e376d-c5fe-4504-96bb-ea6332a19e61
+last_changed 2012-12-17 02:46:41.591248
+created 2012-12-17 02:46:41.591248
+0: 10.0.0.1:6789/0 mon.a
+1: 10.0.0.2:6789/0 mon.b
+2: 10.0.0.3:6789/0 mon.c</pre>
+</div>
+</li>
+<li><p class="first">Remove the existing monitors.</p>
+<div class="highlight-python"><pre>$ monmaptool --rm a --rm b --rm c {tmp}/{filename}
+
+monmaptool: monmap file {tmp}/{filename}
+monmaptool: removing a
+monmaptool: removing b
+monmaptool: removing c
+monmaptool: writing epoch 1 to {tmp}/{filename} (0 monitors)</pre>
+</div>
+</li>
+<li><p class="first">Add the new monitor locations.</p>
+<div class="highlight-python"><pre>$ monmaptool --add a 10.1.0.1:6789 --add b 10.1.0.2:6789 --add c 10.1.0.3:6789 {tmp}/{filename}
+
+monmaptool: monmap file {tmp}/{filename}
+monmaptool: writing epoch 1 to {tmp}/{filename} (3 monitors)</pre>
+</div>
+</li>
+<li><p class="first">Check new contents.</p>
+<div class="highlight-python"><pre>$ monmaptool --print {tmp}/{filename}
+
+monmaptool: monmap file {tmp}/{filename}
+epoch 1
+fsid 224e376d-c5fe-4504-96bb-ea6332a19e61
+last_changed 2012-12-17 02:46:41.591248
+created 2012-12-17 02:46:41.591248
+0: 10.1.0.1:6789/0 mon.a
+1: 10.1.0.2:6789/0 mon.b
+2: 10.1.0.3:6789/0 mon.c</pre>
+</div>
+</li>
+</ol>
+<p>At this point, we assume the monitors (and stores) are installed at the new
+location. The next step is to propagate the modified monmap to the new
+monitors, and inject the modified monmap into each new monitor.</p>
+<ol class="arabic">
+<li><p class="first">First, make sure to stop all your monitors.  Injection must be done while
+the daemon is not running.</p>
+</li>
+<li><p class="first">Inject the monmap.</p>
+<div class="highlight-python"><pre>ceph-mon -i {mon-id} --inject-monmap {tmp}/{filename}</pre>
+</div>
+</li>
+<li><p class="first">Restart the monitors.</p>
+</li>
+</ol>
+<p>After this step, migration to the new location is complete and
+the monitors should operate successfully.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

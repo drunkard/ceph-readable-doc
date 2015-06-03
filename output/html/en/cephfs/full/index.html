@@ -1,0 +1,170 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Handling a full Ceph filesystem &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="handling-a-full-ceph-filesystem">
+<h1>Handling a full Ceph filesystem<a class="headerlink" href="#handling-a-full-ceph-filesystem" title="Permalink to this headline">¶</a></h1>
+<p>When a RADOS cluster reaches its <tt class="docutils literal"><span class="pre">mon_osd_full_ratio</span></tt> (default
+95%) capacity, it is marked with the OSD full flag.  This flag causes
+most normal RADOS clients to pause all operations until it is resolved
+(for example by adding more capacity to the cluster).</p>
+<p>The filesystem has some special handling of the full flag, explained below.</p>
+<div class="section" id="hammer-and-later">
+<h2>Hammer and later<a class="headerlink" href="#hammer-and-later" title="Permalink to this headline">¶</a></h2>
+<p>Since the hammer release, a full filesystem will lead to ENOSPC
+results from:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Data writes on the client</li>
+<li>Metadata operations other than deletes and truncates</li>
+</ul>
+</div></blockquote>
+<p>Because the full condition may not be encountered until
+data is flushed to disk (sometime after a <tt class="docutils literal"><span class="pre">write</span></tt> call has already
+returned 0), the ENOSPC error may not be seen until the application
+calls <tt class="docutils literal"><span class="pre">fsync</span></tt> or <tt class="docutils literal"><span class="pre">fclose</span></tt> (or equivalent) on the file handle.</p>
+<p>Calling <tt class="docutils literal"><span class="pre">fsync</span></tt> is guaranteed to reliably indicate whether the data
+made it to disk, and will return an error if it doesn&#8217;t.  <tt class="docutils literal"><span class="pre">fclose</span></tt> will
+only return an error if buffered data happened to be flushed since
+the last write &#8211; a successful <tt class="docutils literal"><span class="pre">fclose</span></tt> does not guarantee that the
+data made it to disk, and in a full-space situation, buffered data
+may be discarded after an <tt class="docutils literal"><span class="pre">fclose</span></tt> if no space is available to persist it.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If an application appears to be misbehaving on a full filesystem,
+check that it is performing <tt class="docutils literal"><span class="pre">fsync()</span></tt> calls as necessary to ensure
+data is on disk before proceeding.</p>
+</div>
+<p>Data writes may be cancelled by the client if they are in flight at the
+time the OSD full flag is sent.  Clients update the <tt class="docutils literal"><span class="pre">osd_epoch_barrier</span></tt>
+when releasing capabilities on files affected by cancelled operations, in
+order to ensure that these cancelled operations do not interfere with
+subsequent access to the data objects by the MDS or other clients.  For
+more on the epoch barrier mechanism, see <a class="reference internal" href="../eviction/"><em>Ceph filesystem client eviction</em></a>.</p>
+</div>
+<div class="section" id="legacy-pre-hammer-behavior">
+<h2>Legacy (pre-hammer) behavior<a class="headerlink" href="#legacy-pre-hammer-behavior" title="Permalink to this headline">¶</a></h2>
+<p>In versions of Ceph earlier than hammer, the MDS would ignore
+the full status of the RADOS cluster, and any data writes from
+clients would stall until the cluster ceased to be full.</p>
+<p>There are two dangerous conditions to watch for with this behaviour:</p>
+<ul class="simple">
+<li>If a client had pending writes to a file, then it was not possible
+for the client to release the file to the MDS for deletion: this could
+lead to difficulty clearing space on a full filesystem</li>
+<li>If clients continued to create a large number of empty files, the
+resulting metadata writes from the MDS could lead to total exhaustion
+of space on the OSDs such that no further deletions could be performed.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

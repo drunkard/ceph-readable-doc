@@ -1,0 +1,395 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Adding/Removing OSDs &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="adding-removing-osds">
+<h1>Adding/Removing OSDs<a class="headerlink" href="#adding-removing-osds" title="Permalink to this headline">¶</a></h1>
+<p>When you have a cluster up and running, you may add OSDs or remove OSDs
+from the cluster at runtime.</p>
+<div class="section" id="adding-osds">
+<h2>Adding OSDs<a class="headerlink" href="#adding-osds" title="Permalink to this headline">¶</a></h2>
+<p>When you want to expand a cluster, you may add an OSD at runtime. With Ceph, an
+OSD is generally one Ceph <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon for one storage drive within a
+host machine. If your host has multiple storage drives, you may map one
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon for each drive.</p>
+<p>Generally, it&#8217;s a good idea to check the capacity of your cluster to see if you
+are reaching the upper end of its capacity. As your cluster reaches its <tt class="docutils literal"><span class="pre">near</span>
+<span class="pre">full</span></tt> ratio, you should add one or more OSDs to expand your cluster&#8217;s capacity.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Do not let your cluster reach its <tt class="docutils literal"><span class="pre">full</span> <span class="pre">ratio</span></tt> before
+adding an OSD. OSD failures that occur after the cluster reaches
+its <tt class="docutils literal"><span class="pre">near</span> <span class="pre">full</span></tt> ratio may cause the cluster to exceed its
+<tt class="docutils literal"><span class="pre">full</span> <span class="pre">ratio</span></tt>.</p>
+</div>
+<div class="section" id="deploy-your-hardware">
+<h3>Deploy your Hardware<a class="headerlink" href="#deploy-your-hardware" title="Permalink to this headline">¶</a></h3>
+<p>If you are adding a new host when adding a new OSD,  see <a class="reference external" href="../../../start/hardware-recommendations">Hardware
+Recommendations</a> for details on minimum recommendations for OSD hardware. To
+add an OSD host to your cluster, first make sure you have an up-to-date version
+of Linux installed, and you have made some initial preparations for your
+storage drives.  See <a class="reference external" href="../../configuration/filesystem-recommendations">Filesystem Recommendations</a> for details.</p>
+<p>Add your OSD host to a rack in your cluster, connect it to the network
+and ensure that it has network connectivity. See the <a class="reference external" href="../../configuration/network-config-ref">Network Configuration
+Reference</a> for details.</p>
+</div>
+<div class="section" id="install-the-required-software">
+<h3>Install the Required Software<a class="headerlink" href="#install-the-required-software" title="Permalink to this headline">¶</a></h3>
+<p>For manually deployed clusters, you must install Ceph packages
+manually. See <a class="reference external" href="../../../install">Installing Ceph (Manual)</a> for details.
+You should configure SSH to a user with password-less authentication
+and root permissions.</p>
+</div>
+<div class="section" id="adding-an-osd-manual">
+<h3>Adding an OSD (Manual)<a class="headerlink" href="#adding-an-osd-manual" title="Permalink to this headline">¶</a></h3>
+<p>This procedure sets up a <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon, configures it to use one drive,
+and configures the cluster to distribute data to the OSD. If your host has
+multiple drives, you may add an OSD for each drive by repeating this procedure.</p>
+<p>To add an OSD, create a data directory for it, mount a drive to that directory,
+add the OSD to the cluster, and then add it to the CRUSH map.</p>
+<p>When you add the OSD to the CRUSH map, consider the weight you give to the new
+OSD. Hard drive capacity grows 40% per year, so newer OSD hosts may have larger
+hard drives than older hosts in the cluster (i.e., they may have greater
+weight).</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">Ceph prefers uniform hardware across pools. If you are adding drives
+of dissimilar size, you can adjust their weights. However, for best
+performance, consider a CRUSH hierarchy with drives of the same type/size.</p>
+</div>
+<ol class="arabic">
+<li><p class="first">Create the OSD. If no UUID is given, it will be set automatically when the
+OSD starts up. The following command will output the OSD number, which you
+will need for subsequent steps.</p>
+<div class="highlight-python"><pre>ceph osd create [{uuid} [{id}]]</pre>
+</div>
+<p>If the optional parameter {id} is given it will be used as the OSD id.
+Note, in this case the command may fail if the number is already in use.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">In general, explicitly specifying {id} is not recommended.</p>
+</div>
+<p>IDs are allocated as an array, and skipping entries consumes some extra
+memory. This can become significant if there are large gaps and/or
+clusters are large. If {id} is not specified, the smallest available is
+used.</p>
+</li>
+<li><p class="first">Create the default directory on your new OSD.</p>
+<div class="highlight-python"><pre>ssh {new-osd-host}
+sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}</pre>
+</div>
+</li>
+<li><p class="first">If the OSD is for a drive other than the OS drive, prepare it
+for use with Ceph, and mount it to the directory you just created:</p>
+<div class="highlight-python"><pre>ssh {new-osd-host}
+sudo mkfs -t {fstype} /dev/{drive}
+sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}</pre>
+</div>
+</li>
+<li><p class="first">Initialize the OSD data directory.</p>
+<div class="highlight-python"><pre>ssh {new-osd-host}
+ceph-osd -i {osd-num} --mkfs --mkkey</pre>
+</div>
+<p>The directory must be empty before you can run <tt class="docutils literal"><span class="pre">ceph-osd</span></tt>.</p>
+</li>
+<li><p class="first">Register the OSD authentication key. The value of <tt class="docutils literal"><span class="pre">ceph</span></tt> for
+<tt class="docutils literal"><span class="pre">ceph-{osd-num}</span></tt> in the path is the <tt class="docutils literal"><span class="pre">$cluster-$id</span></tt>.  If your
+cluster name differs from <tt class="docutils literal"><span class="pre">ceph</span></tt>, use your cluster name instead.:</p>
+<div class="highlight-python"><pre>ceph auth add osd.{osd-num} osd 'allow *' mon 'allow rwx' -i /var/lib/ceph/osd/ceph-{osd-num}/keyring</pre>
+</div>
+</li>
+<li><p class="first">Add the OSD to the CRUSH map so that the OSD can begin receiving data. The
+<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">add</span></tt> command allows you to add OSDs to the CRUSH hierarchy
+wherever you wish. If you specify at least one bucket, the command
+will place the OSD into the most specific bucket you specify, <em>and</em> it will
+move that bucket underneath any other buckets you specify. <strong>Important:</strong> If
+you specify only the root bucket, the command will attach the OSD directly
+to the root, but CRUSH rules expect OSDs to be inside of hosts.</p>
+<p>For Argonaut (v 0.48), execute the following:</p>
+<div class="highlight-python"><pre>ceph osd crush add {id} {name} {weight}  [{bucket-type}={bucket-name} ...]</pre>
+</div>
+<p>For Bobtail (v 0.56) and later releases, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd crush add {id-or-name} {weight}  [{bucket-type}={bucket-name} ...]</pre>
+</div>
+<p>You may also decompile the CRUSH map, add the OSD to the device list, add the
+host as a bucket (if it&#8217;s not already in the CRUSH map), add the device as an
+item in the host, assign it a weight, recompile it and set it. See
+<a class="reference external" href="../crush-map#addosd">Add/Move an OSD</a> for details.</p>
+</li>
+</ol>
+<div class="topic">
+<p class="topic-title first">Argonaut (v0.48) Best Practices</p>
+<p>To limit impact on user I/O performance, add an OSD to the CRUSH map
+with an initial weight of <tt class="docutils literal"><span class="pre">0</span></tt>. Then, ramp up the CRUSH weight a
+little bit at a time.  For example, to ramp by increments of <tt class="docutils literal"><span class="pre">0.2</span></tt>,
+start with:</p>
+<div class="highlight-python"><pre>ceph osd crush reweight {osd-id} .2</pre>
+</div>
+<p>and allow migration to complete before reweighting to <tt class="docutils literal"><span class="pre">0.4</span></tt>,
+<tt class="docutils literal"><span class="pre">0.6</span></tt>, and so on until the desired CRUSH weight is reached.</p>
+<p>To limit the impact of OSD failures, you can set:</p>
+<div class="highlight-python"><pre>mon osd down out interval = 0</pre>
+</div>
+<p>which prevents down OSDs from automatically being marked out, and then
+ramp them down manually with:</p>
+<div class="highlight-python"><pre>ceph osd reweight {osd-num} .8</pre>
+</div>
+<p>Again, wait for the cluster to finish migrating data, and then adjust
+the weight further until you reach a weight of 0.  Note that this
+problem prevents the cluster to automatically re-replicate data after
+a failure, so please ensure that sufficient monitoring is in place for
+an administrator to intervene promptly.</p>
+<p>Note that this practice will no longer be necessary in Bobtail and
+subsequent releases.</p>
+</div>
+</div>
+<div class="section" id="starting-the-osd">
+<h3>Starting the OSD<a class="headerlink" href="#starting-the-osd" title="Permalink to this headline">¶</a></h3>
+<p>After you add an OSD to Ceph, the OSD is in your configuration. However,
+it is not yet running. The OSD is <tt class="docutils literal"><span class="pre">down</span></tt> and <tt class="docutils literal"><span class="pre">in</span></tt>. You must start
+your new OSD before it can begin receiving data. You may use
+<tt class="docutils literal"><span class="pre">service</span> <span class="pre">ceph</span></tt> from your admin host or start the OSD from its host
+machine.</p>
+<p>For Debian/Ubuntu use Upstart.</p>
+<div class="highlight-python"><pre>sudo start ceph-osd id={osd-num}</pre>
+</div>
+<p>For CentOS/RHEL, use sysvinit.</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph start osd.{osd-num}</pre>
+</div>
+<p>Once you start your OSD, it is <tt class="docutils literal"><span class="pre">up</span></tt> and <tt class="docutils literal"><span class="pre">in</span></tt>.</p>
+</div>
+<div class="section" id="observe-the-data-migration">
+<h3>Observe the Data Migration<a class="headerlink" href="#observe-the-data-migration" title="Permalink to this headline">¶</a></h3>
+<p>Once you have added your new OSD to the CRUSH map, Ceph  will begin rebalancing
+the server by migrating placement groups to your new OSD. You can observe this
+process with  the <a class="reference external" href="../monitoring">ceph</a> tool.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">ceph</span> <span class="o">-</span><span class="n">w</span>
+</pre></div>
+</div>
+<p>You should see the placement group states change from <tt class="docutils literal"><span class="pre">active+clean</span></tt> to
+<tt class="docutils literal"><span class="pre">active,</span> <span class="pre">some</span> <span class="pre">degraded</span> <span class="pre">objects</span></tt>, and finally <tt class="docutils literal"><span class="pre">active+clean</span></tt> when migration
+completes. (Control-c to exit.)</p>
+</div>
+</div>
+<div class="section" id="removing-osds-manual">
+<h2>Removing OSDs (Manual)<a class="headerlink" href="#removing-osds-manual" title="Permalink to this headline">¶</a></h2>
+<p>When you want to reduce the size of a cluster or replace hardware, you may
+remove an OSD at runtime. With Ceph, an OSD is generally one Ceph <tt class="docutils literal"><span class="pre">ceph-osd</span></tt>
+daemon for one storage drive within a host machine. If your host has multiple
+storage drives, you may need to remove one <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon for each drive.
+Generally, it&#8217;s a good idea to check the capacity of your cluster to see if you
+are reaching the upper end of its capacity. Ensure that when you remove an OSD
+that your cluster is not at its <tt class="docutils literal"><span class="pre">near</span> <span class="pre">full</span></tt> ratio.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Do not let your cluster reach its <tt class="docutils literal"><span class="pre">full</span> <span class="pre">ratio</span></tt> when
+removing an OSD. Removing OSDs could cause the cluster to reach
+or exceed its <tt class="docutils literal"><span class="pre">full</span> <span class="pre">ratio</span></tt>.</p>
+</div>
+<div class="section" id="take-the-osd-out-of-the-cluster">
+<h3>Take the OSD <tt class="docutils literal"><span class="pre">out</span></tt> of the Cluster<a class="headerlink" href="#take-the-osd-out-of-the-cluster" title="Permalink to this headline">¶</a></h3>
+<p>Before you remove an OSD, it is usually <tt class="docutils literal"><span class="pre">up</span></tt> and <tt class="docutils literal"><span class="pre">in</span></tt>.  You need to take it
+out of the cluster so that Ceph can begin rebalancing and copying its data to
+other OSDs.</p>
+<div class="highlight-python"><pre>ceph osd out {osd-num}</pre>
+</div>
+</div>
+<div class="section" id="id1">
+<h3>Observe the Data Migration<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Once you have taken your OSD <tt class="docutils literal"><span class="pre">out</span></tt> of the cluster, Ceph  will begin
+rebalancing the cluster by migrating placement groups out of the OSD you
+removed. You can observe  this process with  the <a class="reference external" href="../monitoring">ceph</a> tool.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">ceph</span> <span class="o">-</span><span class="n">w</span>
+</pre></div>
+</div>
+<p>You should see the placement group states change from <tt class="docutils literal"><span class="pre">active+clean</span></tt> to
+<tt class="docutils literal"><span class="pre">active,</span> <span class="pre">some</span> <span class="pre">degraded</span> <span class="pre">objects</span></tt>, and finally <tt class="docutils literal"><span class="pre">active+clean</span></tt> when migration
+completes. (Control-c to exit.)</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Sometimes, typically in a &#8220;small&#8221; cluster with few hosts (for
+instance with a small testing cluster), the fact to take <tt class="docutils literal"><span class="pre">out</span></tt> the
+OSD can spawn a CRUSH corner case where some PGs remain stuck in the
+<tt class="docutils literal"><span class="pre">active+remapped</span></tt> state. If you are in this case, you should mark
+the OSD <tt class="docutils literal"><span class="pre">in</span></tt> with:</p>
+<blockquote>
+<div><tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">in</span> <span class="pre">{osd-num}</span></tt></div></blockquote>
+<p>to come back to the initial state and then, instead of marking <tt class="docutils literal"><span class="pre">out</span></tt>
+the OSD, set its weight to 0 with:</p>
+<blockquote>
+<div><tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">reweight</span> <span class="pre">osd.{osd-num}</span> <span class="pre">0</span></tt></div></blockquote>
+<p class="last">After that, you can observe the data migration which should come to its
+end. The difference between marking <tt class="docutils literal"><span class="pre">out</span></tt> the OSD and reweighting it
+to 0 is that in the first case the weight of the bucket which contains
+the OSD isn&#8217;t changed whereas in the second case the weight of the bucket
+is updated (and decreased of the OSD weight). The reweight command could
+be sometimes favoured in the case of a &#8220;small&#8221; cluster.</p>
+</div>
+</div>
+<div class="section" id="stopping-the-osd">
+<h3>Stopping the OSD<a class="headerlink" href="#stopping-the-osd" title="Permalink to this headline">¶</a></h3>
+<p>After you take an OSD out of the cluster, it may still be running.
+That is, the OSD may be <tt class="docutils literal"><span class="pre">up</span></tt> and <tt class="docutils literal"><span class="pre">out</span></tt>. You must stop
+your OSD before you remove it from the configuration.</p>
+<div class="highlight-python"><pre>ssh {osd-host}
+sudo /etc/init.d/ceph stop osd.{osd-num}</pre>
+</div>
+<p>Once you stop your OSD, it is <tt class="docutils literal"><span class="pre">down</span></tt>.</p>
+</div>
+<div class="section" id="removing-the-osd">
+<h3>Removing the OSD<a class="headerlink" href="#removing-the-osd" title="Permalink to this headline">¶</a></h3>
+<p>This procedure removes an OSD from a cluster map, removes its authentication
+key, removes the OSD from the OSD map, and removes the OSD from the
+<tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file. If your host has multiple drives, you may need to remove an
+OSD for each drive by repeating this procedure.</p>
+<ol class="arabic">
+<li><p class="first">Remove the OSD from the CRUSH map so that it no longer receives data. You may
+also decompile the CRUSH map, remove the OSD from the device list, remove the
+device as an item in the host bucket or remove the host  bucket (if it&#8217;s in the
+CRUSH map and you intend to remove the host), recompile the map and set it.
+See <a class="reference external" href="../crush-map#removeosd">Remove an OSD</a> for details.</p>
+<div class="highlight-python"><pre>ceph osd crush remove {name}</pre>
+</div>
+</li>
+<li><p class="first">Remove the OSD authentication key.</p>
+<div class="highlight-python"><pre>ceph auth del osd.{osd-num}</pre>
+</div>
+<p>The value of <tt class="docutils literal"><span class="pre">ceph</span></tt> for <tt class="docutils literal"><span class="pre">ceph-{osd-num}</span></tt> in the path is the <tt class="docutils literal"><span class="pre">$cluster-$id</span></tt>.
+If your cluster name differs from <tt class="docutils literal"><span class="pre">ceph</span></tt>, use your cluster name instead.</p>
+</li>
+<li><p class="first">Remove the OSD.</p>
+<div class="highlight-python"><pre>ceph osd rm {osd-num}
+#for example
+ceph osd rm 1</pre>
+</div>
+</li>
+<li><p class="first">Navigate to the host where you keep the master copy of the cluster&#8217;s
+<tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file.</p>
+<div class="highlight-python"><pre>ssh {admin-host}
+cd /etc/ceph
+vim ceph.conf</pre>
+</div>
+</li>
+<li><p class="first">Remove the OSD entry from your <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file (if it exists).</p>
+<div class="highlight-python"><pre>[osd.1]
+        host = {hostname}</pre>
+</div>
+</li>
+<li><p class="first">From the host where you keep the master copy of the cluster&#8217;s <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file,
+copy the updated <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file to the <tt class="docutils literal"><span class="pre">/etc/ceph</span></tt> directory of other
+hosts in your cluster.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

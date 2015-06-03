@@ -1,0 +1,631 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Monitoring OSDs and PGs &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="monitoring-osds-and-pgs">
+<h1>Monitoring OSDs and PGs<a class="headerlink" href="#monitoring-osds-and-pgs" title="Permalink to this headline">¶</a></h1>
+<p>High availability and high reliability require a fault-tolerant approach to
+managing hardware and software issues. Ceph has no single point-of-failure, and
+can service requests for data in a &#8220;degraded&#8221; mode. Ceph&#8217;s <a class="reference external" href="../data-placement">data placement</a>
+introduces a layer of indirection to ensure that data doesn&#8217;t bind directly to
+particular OSD addresses. This means that tracking down system faults requires
+finding the <a class="reference external" href="../placement-groups">placement group</a> and the underlying OSDs at root of the problem.</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">A fault in one part of the cluster may prevent you from accessing a
+particular object, but that doesn&#8217;t mean that you can&#8217;t access other objects.
+When you run into a fault, don&#8217;t panic. Just follow the steps for monitoring
+your OSDs and placement groups. Then, begin troubleshooting.</p>
+</div>
+<p>Ceph is generally self-repairing. However, when problems persist, monitoring
+OSDs and placement groups will help you identify the problem.</p>
+<div class="section" id="monitoring-osds">
+<h2>Monitoring OSDs<a class="headerlink" href="#monitoring-osds" title="Permalink to this headline">¶</a></h2>
+<p>An OSD&#8217;s status is either in the cluster (<tt class="docutils literal"><span class="pre">in</span></tt>) or out of the cluster
+(<tt class="docutils literal"><span class="pre">out</span></tt>); and, it is either up and running (<tt class="docutils literal"><span class="pre">up</span></tt>), or it is down and not
+running (<tt class="docutils literal"><span class="pre">down</span></tt>). If an OSD is <tt class="docutils literal"><span class="pre">up</span></tt>, it may be either <tt class="docutils literal"><span class="pre">in</span></tt> the cluster
+(you can read and write data) or it is <tt class="docutils literal"><span class="pre">out</span></tt> of the cluster.  If it was
+<tt class="docutils literal"><span class="pre">in</span></tt> the cluster and recently moved <tt class="docutils literal"><span class="pre">out</span></tt> of the cluster, Ceph will migrate
+placement groups to other OSDs. If an OSD is <tt class="docutils literal"><span class="pre">out</span></tt> of the cluster, CRUSH will
+not assign placement groups to the OSD. If an OSD is <tt class="docutils literal"><span class="pre">down</span></tt>, it should also be
+<tt class="docutils literal"><span class="pre">out</span></tt>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If an OSD is <tt class="docutils literal"><span class="pre">down</span></tt> and <tt class="docutils literal"><span class="pre">in</span></tt>, there is a problem and the cluster
+will not be in a healthy state.</p>
+</div>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-700a689bcec45906334cd28500d7f59aa579850a.png"/>
+</p>
+<p>If you execute a command such as <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">health</span></tt>, <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-s</span></tt> or <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-w</span></tt>,
+you may notice that the cluster does not always echo back <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">OK</span></tt>. Don&#8217;t
+panic. With respect to OSDs, you should expect that the cluster will <strong>NOT</strong>
+echo   <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">OK</span></tt> in a few expected circumstances:</p>
+<ol class="arabic simple">
+<li>You haven&#8217;t started the cluster yet (it won&#8217;t respond).</li>
+<li>You have just started or restarted the cluster and it&#8217;s not ready yet,
+because the placement groups are getting created and the OSDs are in
+the process of peering.</li>
+<li>You just added or removed an OSD.</li>
+<li>You just have modified your cluster map.</li>
+</ol>
+<p>An important aspect of monitoring OSDs is to ensure that when the cluster
+is up and running that all OSDs that are <tt class="docutils literal"><span class="pre">in</span></tt> the cluster are <tt class="docutils literal"><span class="pre">up</span></tt> and
+running, too. To see if all OSDs are running, execute:</p>
+<div class="highlight-python"><pre>ceph osd stat</pre>
+</div>
+<p>The result should tell you the map epoch (eNNNN), the total number of OSDs (x),
+how many are <tt class="docutils literal"><span class="pre">up</span></tt> (y) and how many are <tt class="docutils literal"><span class="pre">in</span></tt> (z).</p>
+<div class="highlight-python"><pre>eNNNN: x osds: y up, z in</pre>
+</div>
+<p>If the number of OSDs that are <tt class="docutils literal"><span class="pre">in</span></tt> the cluster is more than the number of
+OSDs that are <tt class="docutils literal"><span class="pre">up</span></tt>, execute the following command to identify the <tt class="docutils literal"><span class="pre">ceph-osd</span></tt>
+daemons that aren&#8217;t running:</p>
+<div class="highlight-python"><pre>ceph osd tree</pre>
+</div>
+<div class="highlight-python"><pre>dumped osdmap tree epoch 1
+# id    weight  type name       up/down reweight
+-1      2       pool openstack
+-3      2               rack dell-2950-rack-A
+-2      2                       host dell-2950-A1
+0       1                               osd.0   up      1
+1       1                               osd.1   down    1</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">The ability to search through a well-designed CRUSH hierarchy may help
+you troubleshoot your cluster by identifying the physcial locations faster.</p>
+</div>
+<p>If an OSD is <tt class="docutils literal"><span class="pre">down</span></tt>, start it:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph -a start osd.1</pre>
+</div>
+<p>See <a class="reference external" href="../../troubleshooting/troubleshooting-osd#osd-not-running">OSD Not Running</a> for problems associated with OSDs that stopped, or won&#8217;t
+restart.</p>
+</div>
+<div class="section" id="pg-sets">
+<h2>PG Sets<a class="headerlink" href="#pg-sets" title="Permalink to this headline">¶</a></h2>
+<p>When CRUSH assigns placement groups to OSDs, it looks at the number of replicas
+for the pool and assigns the placement group to OSDs such that each replica of
+the placement group gets assigned to a different OSD. For example, if the pool
+requires three replicas of a placement group, CRUSH may assign them to
+<tt class="docutils literal"><span class="pre">osd.1</span></tt>, <tt class="docutils literal"><span class="pre">osd.2</span></tt> and <tt class="docutils literal"><span class="pre">osd.3</span></tt> respectively. CRUSH actually seeks a
+pseudo-random placement that will take into account failure domains you set in
+your <a class="reference external" href="../crush-map">CRUSH map</a>, so you will rarely see placement groups assigned to nearest
+neighbor OSDs in a large cluster. We refer to the set of OSDs that should
+contain the replicas of a particular placement group as the <strong>Acting Set</strong>. In
+some cases, an OSD in the Acting Set is <tt class="docutils literal"><span class="pre">down</span></tt> or otherwise not able to
+service requests for objects in the placement group. When these situations
+arise, don&#8217;t panic. Common examples include:</p>
+<ul class="simple">
+<li>You added or removed an OSD. Then, CRUSH reassigned the placement group to
+other OSDs&#8211;thereby changing the composition of the Acting Set and spawning
+the migration of data with a &#8220;backfill&#8221; process.</li>
+<li>An OSD was <tt class="docutils literal"><span class="pre">down</span></tt>, was restared, and is now <tt class="docutils literal"><span class="pre">recovering</span></tt>.</li>
+<li>An OSD in the Acting Set is <tt class="docutils literal"><span class="pre">down</span></tt> or unable to service requests,
+and another OSD has temporarily assumed its duties.</li>
+</ul>
+<p>Ceph processes a client request using the <strong>Up Set</strong>, which is the set of OSDs
+that will actually handle the requests. In most cases, the Up Set and the Acting
+Set are virtually identical. When they are not, it may indicate that Ceph is
+migrating data, an OSD is recovering, or that there is a problem (i.e., Ceph
+usually echoes a &#8220;HEALTH WARN&#8221; state with a &#8220;stuck stale&#8221; message in such
+scenarios).</p>
+<p>To retrieve a list of placement groups, execute:</p>
+<div class="highlight-python"><pre>ceph pg dump</pre>
+</div>
+<p>To view which OSDs are within the Acting Set or the Up Set for a given placement
+group, execute:</p>
+<div class="highlight-python"><pre>ceph pg map {pg-num}</pre>
+</div>
+<p>The result should tell you the osdmap epoch (eNNN), the placement group number
+({pg-num}),  the OSDs in the Up Set (up[]), and the OSDs in the acting set
+(acting[]).</p>
+<div class="highlight-python"><pre>osdmap eNNN pg {pg-num} -&gt; up [0,1,2] acting [0,1,2]</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If the Up Set and Acting Set do not match, this may be an indicator
+that the cluster rebalancing itself or of a potential problem with
+the cluster.</p>
+</div>
+</div>
+<div class="section" id="peering">
+<h2>Peering<a class="headerlink" href="#peering" title="Permalink to this headline">¶</a></h2>
+<p>Before you can write data to a placement group, it must be in an <tt class="docutils literal"><span class="pre">active</span></tt>
+state, and it  <strong>should</strong> be in a <tt class="docutils literal"><span class="pre">clean</span></tt> state. For Ceph to determine the
+current state of a placement group, the primary OSD of the placement group
+(i.e., the first OSD in the acting set), peers with the secondary and tertiary
+OSDs to establish agreement on the current state of the placement group
+(assuming a pool with 3 replicas of the PG).</p>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-12ccbc36b952da92b4cb940ca78f39c63f498547.png"/>
+</p>
+<p>The OSDs also report their status to the monitor. See <a class="reference external" href="../../configuration/mon-osd-interaction/">Configuring Monitor/OSD
+Interaction</a> for details. To troubleshoot peering issues, see <a class="reference external" href="../../troubleshooting/troubleshooting-pg#failures-osd-peering">Peering
+Failure</a>.</p>
+</div>
+<div class="section" id="monitoring-placement-group-states">
+<h2>Monitoring Placement Group States<a class="headerlink" href="#monitoring-placement-group-states" title="Permalink to this headline">¶</a></h2>
+<p>If you execute a command such as <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">health</span></tt>, <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-s</span></tt> or <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-w</span></tt>,
+you may notice that the cluster does not always echo back <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">OK</span></tt>. After
+you check to see if the OSDs are running, you should also check placement group
+states. You should expect that the cluster will <strong>NOT</strong> echo <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">OK</span></tt> in a
+number of placement group peering-related circumstances:</p>
+<ol class="arabic simple">
+<li>You have just created a pool and placement groups haven&#8217;t peered yet.</li>
+<li>The placement groups are recovering.</li>
+<li>You have just added an OSD to or removed an OSD from the cluster.</li>
+<li>You have just modified your CRUSH map and your placement groups are migrating.</li>
+<li>There is inconsistent data in different replicas of a placement group.</li>
+<li>Ceph is scrubbing a placement group&#8217;s replicas.</li>
+<li>Ceph doesn&#8217;t have enough storage capacity to complete backfilling operations.</li>
+</ol>
+<p>If one of the foregoing circumstances causes Ceph to echo <tt class="docutils literal"><span class="pre">HEALTH</span> <span class="pre">WARN</span></tt>, don&#8217;t
+panic. In many cases, the cluster will recover on its own. In some cases, you
+may need to take action. An important aspect of monitoring placement groups is
+to ensure that when the cluster is up and running that all placement groups are
+<tt class="docutils literal"><span class="pre">active</span></tt>, and preferably in the <tt class="docutils literal"><span class="pre">clean</span></tt> state. To see the status of all
+placement groups, execute:</p>
+<div class="highlight-python"><pre>ceph pg stat</pre>
+</div>
+<p>The result should tell you the placement group map version (vNNNNNN), the total
+number of placement groups (x), and how many placement groups are in a
+particular state such as <tt class="docutils literal"><span class="pre">active+clean</span></tt> (y).</p>
+<div class="highlight-python"><pre>vNNNNNN: x pgs: y active+clean; z bytes data, aa MB used, bb GB / cc GB avail</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">It is common for Ceph to report multiple states for placement groups.</p>
+</div>
+<p>In addition to the placement group states, Ceph will also echo back the amount
+of data used (aa), the amount of storage capacity remaining (bb), and the total
+storage capacity for the placement group. These numbers can be important in a
+few cases:</p>
+<ul class="simple">
+<li>You are reaching your <tt class="docutils literal"><span class="pre">near</span> <span class="pre">full</span> <span class="pre">ratio</span></tt> or <tt class="docutils literal"><span class="pre">full</span> <span class="pre">ratio</span></tt>.</li>
+<li>Your data isn&#8217;t getting distributed across the cluster due to an
+error in your CRUSH configuration.</li>
+</ul>
+<div class="topic">
+<p class="topic-title first">Placement Group IDs</p>
+<p>Placement group IDs consist of the pool number (not pool name) followed
+by a period (.) and the placement group ID&#8211;a hexadecimal number. You
+can view pool numbers and their names from the output of <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span>
+<span class="pre">lspools</span></tt>. The default pool names <tt class="docutils literal"><span class="pre">data</span></tt>, <tt class="docutils literal"><span class="pre">metadata</span></tt> and <tt class="docutils literal"><span class="pre">rbd</span></tt>
+correspond to pool numbers <tt class="docutils literal"><span class="pre">0</span></tt>, <tt class="docutils literal"><span class="pre">1</span></tt> and <tt class="docutils literal"><span class="pre">2</span></tt> respectively. A fully
+qualified placement group ID has the following form:</p>
+<div class="highlight-python"><pre>{pool-num}.{pg-id}</pre>
+</div>
+<p>And it typically looks like this:</p>
+<div class="highlight-python"><pre>0.1f</pre>
+</div>
+</div>
+<p>To retrieve a list of placement groups, execute the following:</p>
+<div class="highlight-python"><pre>ceph pg dump</pre>
+</div>
+<p>You can also format the output in JSON format and save it to a file:</p>
+<div class="highlight-python"><pre>ceph pg dump -o {filename} --format=json</pre>
+</div>
+<p>To query a particular placement group, execute the following:</p>
+<div class="highlight-python"><pre>ceph pg {poolnum}.{pg-id} query</pre>
+</div>
+<p>Ceph will output the query in JSON format.</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="p">{</span>
+  <span class="s2">&quot;state&quot;</span><span class="o">:</span> <span class="s2">&quot;active+clean&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;up&quot;</span><span class="o">:</span> <span class="p">[</span>
+    <span class="mi">1</span><span class="p">,</span>
+    <span class="mi">0</span>
+  <span class="p">],</span>
+  <span class="s2">&quot;acting&quot;</span><span class="o">:</span> <span class="p">[</span>
+    <span class="mi">1</span><span class="p">,</span>
+    <span class="mi">0</span>
+  <span class="p">],</span>
+  <span class="s2">&quot;info&quot;</span><span class="o">:</span> <span class="p">{</span>
+    <span class="s2">&quot;pgid&quot;</span><span class="o">:</span> <span class="s2">&quot;1.e&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;last_update&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;last_complete&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;log_tail&quot;</span><span class="o">:</span> <span class="s2">&quot;0&#39;0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;last_backfill&quot;</span><span class="o">:</span> <span class="s2">&quot;MAX&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;purged_snaps&quot;</span><span class="o">:</span> <span class="s2">&quot;[]&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;history&quot;</span><span class="o">:</span> <span class="p">{</span>
+      <span class="s2">&quot;epoch_created&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;last_epoch_started&quot;</span><span class="o">:</span> <span class="mi">537</span><span class="p">,</span>
+      <span class="s2">&quot;last_epoch_clean&quot;</span><span class="o">:</span> <span class="mi">537</span><span class="p">,</span>
+      <span class="s2">&quot;last_epoch_split&quot;</span><span class="o">:</span> <span class="mi">534</span><span class="p">,</span>
+      <span class="s2">&quot;same_up_since&quot;</span><span class="o">:</span> <span class="mi">536</span><span class="p">,</span>
+      <span class="s2">&quot;same_interval_since&quot;</span><span class="o">:</span> <span class="mi">536</span><span class="p">,</span>
+      <span class="s2">&quot;same_primary_since&quot;</span><span class="o">:</span> <span class="mi">536</span><span class="p">,</span>
+      <span class="s2">&quot;last_scrub&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_scrub_stamp&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828174&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;stats&quot;</span><span class="o">:</span> <span class="p">{</span>
+      <span class="s2">&quot;version&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;reported&quot;</span><span class="o">:</span> <span class="s2">&quot;536&#39;782&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;state&quot;</span><span class="o">:</span> <span class="s2">&quot;active+clean&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_fresh&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_change&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_active&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_clean&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_unstale&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828271&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;mapping_epoch&quot;</span><span class="o">:</span> <span class="mi">535</span><span class="p">,</span>
+      <span class="s2">&quot;log_start&quot;</span><span class="o">:</span> <span class="s2">&quot;0&#39;0&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;ondisk_log_start&quot;</span><span class="o">:</span> <span class="s2">&quot;0&#39;0&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;created&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;last_epoch_clean&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;parent&quot;</span><span class="o">:</span> <span class="s2">&quot;0.0&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;parent_split_bits&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+      <span class="s2">&quot;last_scrub&quot;</span><span class="o">:</span> <span class="s2">&quot;4&#39;1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;last_scrub_stamp&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-25 10:12:23.828174&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;log_size&quot;</span><span class="o">:</span> <span class="mi">128</span><span class="p">,</span>
+      <span class="s2">&quot;ondisk_log_size&quot;</span><span class="o">:</span> <span class="mi">128</span><span class="p">,</span>
+      <span class="s2">&quot;stat_sum&quot;</span><span class="o">:</span> <span class="p">{</span>
+        <span class="s2">&quot;num_bytes&quot;</span><span class="o">:</span> <span class="mi">205</span><span class="p">,</span>
+        <span class="s2">&quot;num_objects&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;num_object_clones&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_object_copies&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_objects_missing_on_primary&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_objects_degraded&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_objects_unfound&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_read&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;num_read_kb&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_write&quot;</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s2">&quot;num_write_kb&quot;</span><span class="o">:</span> <span class="mi">1</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;stat_cat_sum&quot;</span><span class="o">:</span> <span class="p">{</span>
+
+      <span class="p">},</span>
+      <span class="s2">&quot;up&quot;</span><span class="o">:</span> <span class="p">[</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="mi">0</span>
+      <span class="p">],</span>
+      <span class="s2">&quot;acting&quot;</span><span class="o">:</span> <span class="p">[</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="mi">0</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;empty&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;dne&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;incomplete&quot;</span><span class="o">:</span> <span class="mi">0</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;recovery_state&quot;</span><span class="o">:</span> <span class="p">[</span>
+    <span class="p">{</span>
+      <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;Started\/Primary\/Active&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;enter_time&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-23 09:35:37.594691&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;might_have_unfound&quot;</span><span class="o">:</span> <span class="p">[</span>
+
+      <span class="p">],</span>
+      <span class="s2">&quot;scrub&quot;</span><span class="o">:</span> <span class="p">{</span>
+        <span class="s2">&quot;scrub_epoch_start&quot;</span><span class="o">:</span> <span class="s2">&quot;536&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;scrub_active&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;scrub_block_writes&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;finalizing_scrub&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;scrub_waiting_on&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;scrub_waiting_on_whom&quot;</span><span class="o">:</span> <span class="p">[</span>
+
+        <span class="p">]</span>
+      <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+      <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;Started&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;enter_time&quot;</span><span class="o">:</span> <span class="s2">&quot;2013-01-23 09:35:31.581160&quot;</span>
+    <span class="p">}</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The following subsections describe common states in greater detail.</p>
+<div class="section" id="creating">
+<h3>Creating<a class="headerlink" href="#creating" title="Permalink to this headline">¶</a></h3>
+<p>When you create a pool, it will create the number of placement groups you
+specified.  Ceph will echo <tt class="docutils literal"><span class="pre">creating</span></tt> when it is creating one or more
+placement groups. Once they are created, the OSDs that are part of a placement
+group&#8217;s Acting Set will peer. Once peering is complete, the placement group
+status should be <tt class="docutils literal"><span class="pre">active+clean</span></tt>, which means a Ceph client can begin writing
+to the placement group.</p>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-48a884d47a318394a948f7e883a89c76115606bc.png"/>
+</p>
+</div>
+<div class="section" id="id1">
+<h3>Peering<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>When Ceph is Peering a placement group, Ceph is bringing the OSDs that
+store the replicas of the placement group into <strong>agreement about the state</strong>
+of the objects and metadata in the placement group. When Ceph completes peering,
+this means that the OSDs that store the placement group agree about the current
+state of the placement group. However, completion of the peering process does
+<strong>NOT</strong> mean that each replica has the latest contents.</p>
+<div class="topic">
+<p class="topic-title first">Authoratative History</p>
+<p>Ceph will <strong>NOT</strong> acknowledge a write operation to a client, until
+all OSDs of the acting set persist the write operation. This practice
+ensures that at least one member of the acting set will have a record
+of every acknowledged write operation since the last successful
+peering operation.</p>
+<p>With an accurate record of each acknowledged write operation, Ceph can
+construct and disseminate a new authoritative history of the placement
+group&#8211;a complete, and fully ordered set of operations that, if performed,
+would bring an OSD’s copy of a placement group up to date.</p>
+</div>
+</div>
+<div class="section" id="active">
+<h3>Active<a class="headerlink" href="#active" title="Permalink to this headline">¶</a></h3>
+<p>Once Ceph completes the peering process, a placement group may become
+<tt class="docutils literal"><span class="pre">active</span></tt>. The <tt class="docutils literal"><span class="pre">active</span></tt> state means that the data in the placement group is
+generally  available in the primary placement group and the replicas for read
+and write operations.</p>
+</div>
+<div class="section" id="clean">
+<h3>Clean<a class="headerlink" href="#clean" title="Permalink to this headline">¶</a></h3>
+<p>When a placement group is in the <tt class="docutils literal"><span class="pre">clean</span></tt> state, the primary OSD and the
+replica OSDs have successfully peered and there are no stray replicas for the
+placement group. Ceph replicated all objects in the placement group the correct
+number of times.</p>
+</div>
+<div class="section" id="degraded">
+<h3>Degraded<a class="headerlink" href="#degraded" title="Permalink to this headline">¶</a></h3>
+<p>When a client writes an object to the primary OSD, the primary OSD is
+responsible for writing the replicas to the replica OSDs. After the primary OSD
+writes the object to storage, the placement group will remain in a <tt class="docutils literal"><span class="pre">degraded</span></tt>
+state until the primary OSD has received an acknowledgement from the replica
+OSDs that Ceph created the replica objects successfully.</p>
+<p>The reason a placement group can be <tt class="docutils literal"><span class="pre">active+degraded</span></tt> is that an OSD may be
+<tt class="docutils literal"><span class="pre">active</span></tt> even though it doesn&#8217;t hold all of the objects yet. If an OSD goes
+<tt class="docutils literal"><span class="pre">down</span></tt>, Ceph marks each placement group assigned to the OSD as <tt class="docutils literal"><span class="pre">degraded</span></tt>.
+The OSDs must peer again when the OSD comes back online. However, a client can
+still write a new object to a <tt class="docutils literal"><span class="pre">degraded</span></tt> placement group if it is <tt class="docutils literal"><span class="pre">active</span></tt>.</p>
+<p>If an OSD is <tt class="docutils literal"><span class="pre">down</span></tt> and the <tt class="docutils literal"><span class="pre">degraded</span></tt> condition persists, Ceph may mark the
+<tt class="docutils literal"><span class="pre">down</span></tt> OSD as <tt class="docutils literal"><span class="pre">out</span></tt> of the cluster and remap the data from the <tt class="docutils literal"><span class="pre">down</span></tt> OSD
+to another OSD. The time between being marked <tt class="docutils literal"><span class="pre">down</span></tt> and being marked <tt class="docutils literal"><span class="pre">out</span></tt>
+is controlled by <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">osd</span> <span class="pre">down</span> <span class="pre">out</span> <span class="pre">interval</span></tt>, which is set to <tt class="docutils literal"><span class="pre">300</span></tt> seconds
+by default.</p>
+<p>A placement group can also be <tt class="docutils literal"><span class="pre">degraded</span></tt>, because Ceph cannot find one or more
+objects that Ceph thinks should be in the placement group. While you cannot
+read or write to unfound objects, you can still access all of the other objects
+in the <tt class="docutils literal"><span class="pre">degraded</span></tt> placement group.</p>
+</div>
+<div class="section" id="recovering">
+<h3>Recovering<a class="headerlink" href="#recovering" title="Permalink to this headline">¶</a></h3>
+<p>Ceph was designed for fault-tolerance at a scale where hardware and software
+problems are ongoing. When an OSD goes <tt class="docutils literal"><span class="pre">down</span></tt>, its contents may fall behind
+the current state of other replicas in the placement groups. When the OSD is
+back <tt class="docutils literal"><span class="pre">up</span></tt>, the contents of the placement groups must be updated to reflect the
+current state. During that time period, the OSD may reflect a <tt class="docutils literal"><span class="pre">recovering</span></tt>
+state.</p>
+<p>Recovery isn&#8217;t always trivial, because a hardware failure might cause a
+cascading failure of multiple OSDs. For example, a network switch for a rack or
+cabinet may fail, which can cause the OSDs of a number of host machines to fall
+behind the current state  of the cluster. Each one of the OSDs must recover once
+the fault is resolved.</p>
+<p>Ceph provides a number of settings to balance the resource contention between
+new service requests and the need to recover data objects and restore the
+placement groups to the current state. The <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">delay</span> <span class="pre">start</span></tt> setting
+allows an OSD to restart, re-peer and even process some replay requests before
+starting the recovery process. The <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">threads</span></tt> setting limits the
+number of threads for the recovery process (1 thread by default).  The <tt class="docutils literal"><span class="pre">osd</span>
+<span class="pre">recovery</span> <span class="pre">thread</span> <span class="pre">timeout</span></tt> sets a thread timeout, because multiple OSDs may fail,
+restart and re-peer at staggered rates. The <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">max</span> <span class="pre">active</span></tt> setting
+limits the  number of recovery requests an OSD will entertain simultaneously to
+prevent the OSD from failing to serve . The <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">max</span> <span class="pre">chunk</span></tt> setting
+limits the size of the recovered data chunks to prevent network congestion.</p>
+</div>
+<div class="section" id="back-filling">
+<h3>Back Filling<a class="headerlink" href="#back-filling" title="Permalink to this headline">¶</a></h3>
+<p>When a new OSD joins the cluster, CRUSH will reassign placement groups from OSDs
+in the cluster to the newly added OSD. Forcing the new OSD to accept the
+reassigned placement groups immediately can put excessive load on the new OSD.
+Back filling the OSD with the placement groups allows this process to begin in
+the background.  Once backfilling is complete, the new OSD will begin serving
+requests when it is ready.</p>
+<p>During the backfill operations, you may see one of several states:
+<tt class="docutils literal"><span class="pre">backfill_wait</span></tt> indicates that a backfill operation is pending, but isn&#8217;t
+underway yet; <tt class="docutils literal"><span class="pre">backfill</span></tt> indicates that a backfill operation is underway;
+and, <tt class="docutils literal"><span class="pre">backfill_too_full</span></tt> indicates that a backfill operation was requested,
+but couldn&#8217;t be completed due to insufficient storage capacity. When a
+placement group can&#8217;t be backfilled, it may be considered <tt class="docutils literal"><span class="pre">incomplete</span></tt>.</p>
+<p>Ceph provides a number of settings to manage the load spike associated with
+reassigning placement groups to an OSD (especially a new OSD). By default,
+<tt class="docutils literal"><span class="pre">osd_max_backfills</span></tt> sets the maximum number of concurrent backfills to or from
+an OSD to 10. The <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">backfill</span> <span class="pre">full</span> <span class="pre">ratio</span></tt> enables an OSD to refuse a
+backfill request if the OSD is approaching its full ratio (85%, by default).
+If an OSD refuses a backfill request, the <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">backfill</span> <span class="pre">retry</span> <span class="pre">interval</span></tt>
+enables an OSD to retry the request (after 10 seconds, by default). OSDs can
+also set <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">backfill</span> <span class="pre">scan</span> <span class="pre">min</span></tt> and <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">backfill</span> <span class="pre">scan</span> <span class="pre">max</span></tt> to manage scan
+intervals (64 and 512, by default).</p>
+</div>
+<div class="section" id="remapped">
+<h3>Remapped<a class="headerlink" href="#remapped" title="Permalink to this headline">¶</a></h3>
+<p>When the Acting Set that services a placement group changes, the data migrates
+from the old acting set to the new acting set. It may take some time for a new
+primary OSD to service requests. So it may ask the old primary to continue to
+service requests until the placement group migration is complete. Once  data
+migration completes, the mapping uses the primary OSD of the new acting set.</p>
+</div>
+<div class="section" id="stale">
+<h3>Stale<a class="headerlink" href="#stale" title="Permalink to this headline">¶</a></h3>
+<p>While Ceph uses heartbeats to ensure that hosts and daemons are running, the
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons may also get into a <tt class="docutils literal"><span class="pre">stuck</span></tt> state where they aren&#8217;t
+reporting statistics in a timely manner (e.g., a temporary network fault). By
+default, OSD daemons report their placement group, up thru, boot and failure
+statistics every half second (i.e., <tt class="docutils literal"><span class="pre">0.5</span></tt>),  which is more frequent than the
+heartbeat thresholds. If the <strong>Primary OSD</strong> of a placement group&#8217;s acting set
+fails to report to the monitor or if other OSDs have reported the primary OSD
+<tt class="docutils literal"><span class="pre">down</span></tt>, the monitors will mark the placement group <tt class="docutils literal"><span class="pre">stale</span></tt>.</p>
+<p>When you start your cluster, it is common to see the <tt class="docutils literal"><span class="pre">stale</span></tt> state until
+the peering process completes. After your cluster has been running for awhile,
+seeing placement groups in the <tt class="docutils literal"><span class="pre">stale</span></tt> state indicates that the primary OSD
+for those placement groups is <tt class="docutils literal"><span class="pre">down</span></tt> or not reporting placement group statistics
+to the monitor.</p>
+</div>
+</div>
+<div class="section" id="identifying-troubled-pgs">
+<h2>Identifying Troubled PGs<a class="headerlink" href="#identifying-troubled-pgs" title="Permalink to this headline">¶</a></h2>
+<p>As previously noted, a placement group isn&#8217;t necessarily problematic just
+because its state isn&#8217;t <tt class="docutils literal"><span class="pre">active+clean</span></tt>. Generally, Ceph&#8217;s ability to self
+repair may not be working when placement groups get stuck. The stuck states
+include:</p>
+<ul class="simple">
+<li><strong>Unclean</strong>: Placement groups contain objects that are not replicated the
+desired number of times. They should be recovering.</li>
+<li><strong>Inactive</strong>: Placement groups cannot process reads or writes because they
+are waiting for an OSD with the most up-to-date data to come back <tt class="docutils literal"><span class="pre">up</span></tt>.</li>
+<li><strong>Stale</strong>: Placement groups are in an unknown state, because the OSDs that
+host them have not reported to the monitor cluster in a while (configured
+by <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">osd</span> <span class="pre">report</span> <span class="pre">timeout</span></tt>).</li>
+</ul>
+<p>To identify stuck placement groups, execute the following:</p>
+<div class="highlight-python"><pre>ceph pg dump_stuck [unclean|inactive|stale|undersized|degraded]</pre>
+</div>
+<p>See <a class="reference external" href="../control#placement-group-subsystem">Placement Group Subsystem</a> for additional details. To troubleshoot
+stuck placement groups, see <a class="reference external" href="../../troubleshooting/troubleshooting-pg#troubleshooting-pg-errors">Troubleshooting PG Errors</a>.</p>
+</div>
+<div class="section" id="finding-an-object-location">
+<h2>Finding an Object Location<a class="headerlink" href="#finding-an-object-location" title="Permalink to this headline">¶</a></h2>
+<p>To store object data in the Ceph Object Store, a Ceph client must:</p>
+<ol class="arabic simple">
+<li>Set an object name</li>
+<li>Specify a <a class="reference external" href="../pools">pool</a></li>
+</ol>
+<p>The Ceph client retrieves the latest cluster map and the CRUSH algorithm
+calculates how to map the object to a <a class="reference external" href="../placement-groups">placement group</a>, and then calculates
+how to assign the placement group to an OSD dynamically. To find the object
+location, all you need is the object name and the pool name. For example:</p>
+<div class="highlight-python"><pre>ceph osd map {poolname} {object-name}</pre>
+</div>
+<div class="topic">
+<p class="topic-title first">Exercise: Locate an Object</p>
+<p>As an exercise, lets create an object. Specify an object name, a path to a
+test file containing some object data and a pool name using the
+<tt class="docutils literal"><span class="pre">rados</span> <span class="pre">put</span></tt> command on the command line. For example:</p>
+<div class="highlight-python"><pre>rados put {object-name} {file-path} --pool=data
+rados put test-object-1 testfile.txt --pool=data</pre>
+</div>
+<p>To verify that the Ceph Object Store stored the object, execute the following:</p>
+<div class="highlight-python"><pre>rados -p data ls</pre>
+</div>
+<p>Now, identify the object location:</p>
+<div class="highlight-python"><pre>ceph osd map {pool-name} {object-name}
+ceph osd map data test-object-1</pre>
+</div>
+<p>Ceph should output the object&#8217;s location. For example:</p>
+<div class="highlight-python"><pre>osdmap e537 pool 'data' (0) object 'test-object-1' -&gt; pg 0.d1743484 (0.4) -&gt; up [1,0] acting [1,0]</pre>
+</div>
+<p>To remove the test object, simply delete it using the <tt class="docutils literal"><span class="pre">rados</span> <span class="pre">rm</span></tt> command.
+For example:</p>
+<div class="highlight-python"><pre>rados rm test-object-1 --pool=data</pre>
+</div>
+</div>
+<p>As the cluster evolves, the object location may change dynamically. One benefit
+of Ceph&#8217;s dynamic rebalancing is that Ceph relieves you from having to perform
+the migration manually. See the  <a class="reference external" href="../../../architecture">Architecture</a> section for details.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,254 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Map and PG Message handling &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="map-and-pg-message-handling">
+<h1>Map and PG Message handling<a class="headerlink" href="#map-and-pg-message-handling" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>The OSD handles routing incoming messages to PGs, creating the PG if necessary
+in some cases.</p>
+<p>PG messages generally come in two varieties:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Peering Messages</li>
+<li>Ops/SubOps</li>
+</ol>
+</div></blockquote>
+<p>There are several ways in which a message might be dropped or delayed.  It is
+important that the message delaying does not result in a violation of certain
+message ordering requirements on the way to the relevant PG handling logic:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Ops referring to the same object must not be reordered.</li>
+<li>Peering messages must not be reordered.</li>
+<li>Subops must not be reordered.</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="mosdmap">
+<h2>MOSDMap<a class="headerlink" href="#mosdmap" title="Permalink to this headline">¶</a></h2>
+<p>MOSDMap messages may come from either monitors or other OSDs.  Upon receipt, the
+OSD must perform several tasks:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Persist the new maps to the filestore.
+Several PG operations rely on having access to maps dating back to the last
+time the PG was clean.</li>
+<li>Update and persist the superblock.</li>
+<li>Update OSD state related to the current map.</li>
+<li>Expose new maps to PG processes via <em>OSDService</em>.</li>
+<li>Remove PGs due to pool removal.</li>
+<li>Queue dummy events to trigger PG map catchup.</li>
+</ol>
+</div></blockquote>
+<p>Each PG asynchronously catches up to the currently published map during
+process_peering_events before processing the event.  As a result, different
+PGs may have different views as to the &#8220;current&#8221; map.</p>
+<p>One consequence of this design is that messages containing submessages from
+multiple PGs (MOSDPGInfo, MOSDPGQuery, MOSDPGNotify) must tag each submessage
+with the PG&#8217;s epoch as well as tagging the message as a whole with the OSD&#8217;s
+current published epoch.</p>
+</div>
+<div class="section" id="mosdpgop-mosdpgsubop">
+<h2>MOSDPGOp/MOSDPGSubOp<a class="headerlink" href="#mosdpgop-mosdpgsubop" title="Permalink to this headline">¶</a></h2>
+<p>See OSD::dispatch_op, OSD::handle_op, OSD::handle_sub_op</p>
+<p>MOSDPGOps are used by clients to initiate rados operations. MOSDSubOps are used
+between OSDs to coordinate most non peering activities including replicating
+MOSDPGOp operations.</p>
+<p>OSD::require_same_or_newer map checks that the current OSDMap is at least
+as new as the map epoch indicated on the message.  If not, the message is
+queued in OSD::waiting_for_osdmap via OSD::wait_for_new_map.  Note, this
+cannot violate the above conditions since any two messages will be queued
+in order of receipt and if a message is received with epoch e0, a later message
+from the same source must be at epoch at least e0.  Note that two PGs from
+the same OSD count for these purposes as different sources for single PG
+messages.  That is, messages from different PGs may be reordered.</p>
+<p>MOSDPGOps follow the following process:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>OSD::handle_op: validates permissions and crush mapping.
+discard the request if they are not connected and the client cannot get the reply ( See OSD::op_is_discardable )
+See OSDService::handle_misdirected_op
+See PG::op_has_sufficient_caps
+See OSD::require_same_or_newer_map</li>
+<li>OSD::enqueue_op</li>
+</ol>
+</div></blockquote>
+<p>MOSDSubOps follow the following process:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>OSD::handle_sub_op checks that sender is an OSD</li>
+<li>OSD::enqueue_op</li>
+</ol>
+</div></blockquote>
+<p>OSD::enqueue_op calls PG::queue_op which checks waiting_for_map before calling OpWQ::queue which adds the op to the queue of the PG responsible for handling it.</p>
+<p>OSD::dequeue_op is then eventually called, with a lock on the PG.  At
+this time, the op is passed to PG::do_request, which checks that:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>the PG map is new enough (PG::must_delay_op)</li>
+<li>the client requesting the op has enough permissions (PG::op_has_sufficient_caps)</li>
+<li>the op is not to be discarded (PG::can_discard_{request,op,subop,scan,backfill})</li>
+<li>the PG is active (PG::flushed boolean)</li>
+<li>the op is a CEPH_MSG_OSD_OP and the PG is in PG_STATE_ACTIVE state and not in PG_STATE_REPLAY</li>
+</ol>
+</div></blockquote>
+<p>If these conditions are not met, the op is either discarded or queued for later processing. If all conditions are met, the op is processed according to its type:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>CEPH_MSG_OSD_OP is handled by PG::do_op</li>
+<li>MSG_OSD_SUBOP is handled by PG::do_sub_op</li>
+<li>MSG_OSD_SUBOPREPLY is handled by PG::do_sub_op_reply</li>
+<li>MSG_OSD_PG_SCAN is handled by PG::do_scan</li>
+<li>MSG_OSD_PG_BACKFILL is handled by PG::do_backfill</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="ceph-msg-osd-op-processing">
+<h2>CEPH_MSG_OSD_OP processing<a class="headerlink" href="#ceph-msg-osd-op-processing" title="Permalink to this headline">¶</a></h2>
+<p>ReplicatedPG::do_op handles CEPH_MSG_OSD_OP op and will queue it</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>in wait_for_all_missing if it is a CEPH_OSD_OP_PGLS for a designated snapid and some object updates are still missing</li>
+<li>in waiting_for_active if the op may write but the scrubber is working</li>
+<li>in waiting_for_missing_object if the op requires an object or a snapdir or a specific snap that is still missing</li>
+<li>in waiting_for_degraded_object if the op may write an object or a snapdir that is degraded, or if another object blocks it (&#8220;blocked_by&#8221;)</li>
+<li>in waiting_for_backfill_pos if the op requires an object that will be available after the backfill is complete</li>
+<li>in waiting_for_ack if an ack from another OSD is expected</li>
+<li>in waiting_for_ondisk if the op is waiting for a write to complete</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="peering-messages">
+<h2>Peering Messages<a class="headerlink" href="#peering-messages" title="Permalink to this headline">¶</a></h2>
+<p>See OSD::handle_pg_(notify|info|log|query)</p>
+<p>Peering messages are tagged with two epochs:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>epoch_sent: map epoch at which the message was sent</li>
+<li>query_epoch: map epoch at which the message triggering the message was sent</li>
+</ol>
+</div></blockquote>
+<p>These are the same in cases where there was no triggering message.  We discard
+a peering message if the message&#8217;s query_epoch if the PG in question has entered
+a new epoch (See PG::old_peering_evt, PG::queue_peering_event).  Notifies,
+infos, notifies, and logs are all handled as PG::RecoveryMachine events and
+are wrapped by PG::queue_* by PG::CephPeeringEvts, which include the created
+state machine event along with epoch_sent and query_epoch in order to
+generically check PG::old_peering_message upon insertion and removal from the
+queue.</p>
+<p>Note, notifies, logs, and infos can trigger the creation of a PG.  See
+OSD::get_or_create_pg.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

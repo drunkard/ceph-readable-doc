@@ -68,20 +68,20 @@
 </div>
 <div class="section" id="id2">
 <h2>描述<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<p><strong>radosgw</strong> 是 RADOS 对象存储的一个 HTTP REST 网关，是 Ceph 分布式存储系统的一部分。它是用 libfcgi 实现的一个 FastCGI 模块，可联合任何支持 FastCGI 功能的网页服务器使用。</p>
+<p><strong class="program">radosgw</strong> 是 RADOS 对象存储的一个 HTTP REST 网关，是 Ceph 分布式存储系统的一部分。它是用 libfcgi 实现的一个 FastCGI 模块，可联合任何支持 FastCGI 功能的网页服务器使用。</p>
 </div>
 <div class="section" id="id3">
 <h2>选项<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
 <dl class="option">
 <dt id="cmdoption-radosgw-c">
 <tt class="descname">-c</tt><tt class="descclassname"> ceph.conf</tt><tt class="descclassname">, </tt><tt class="descname">--conf</tt><tt class="descclassname">=ceph.conf</tt><a class="headerlink" href="#cmdoption-radosgw-c" title="Permalink to this definition">¶</a></dt>
-<dd><p>用指定的 <em>ceph.conf</em> 配置文件而非默认的 <tt class="docutils literal"><span class="pre">/etc/ceph/ceph.conf</span></tt> 来确定启动时所需的监视器地址。</p>
+<dd><p>用指定的 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 配置文件而非默认的 <tt class="docutils literal"><span class="pre">/etc/ceph/ceph.conf</span></tt> 来确定启动时所需的监视器地址。</p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption-radosgw-m">
 <tt class="descname">-m</tt><tt class="descclassname"> monaddress[:port]</tt><a class="headerlink" href="#cmdoption-radosgw-m" title="Permalink to this definition">¶</a></dt>
-<dd><p>连接到指定监视器，而非通过 ceph.conf 查询。</p>
+<dd><p>连接到指定监视器，而非通过 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 查询。</p>
 </dd></dl>
 
 <dl class="option">
@@ -135,59 +135,118 @@
 </div>
 <div class="section" id="id4">
 <h2>配置<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
-<p>当前，使用 RADOS 网关最简单的方法就是通过 Apache 与 mod_fastcgi:</p>
-<div class="highlight-python"><pre>FastCgiExternalServer /var/www/s3gw.fcgi -socket /tmp/radosgw.sock
+<p>先前的 RADOS 网关配置依赖 <tt class="docutils literal"><span class="pre">Apache</span></tt> 和 <tt class="docutils literal"><span class="pre">mod_fastcgi</span></tt> ；现在则用 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 替换了 <tt class="docutils literal"><span class="pre">mod_fastcgi</span></tt> ，因为后者使用了非自由许可证。 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 不同于传统的 FastCGI 模块，它需要 <tt class="docutils literal"><span class="pre">mod_proxy</span></tt> 模块所支持的 FastCGI 协议。所以，要处理 FastCGI 协议，服务器需同时有 <tt class="docutils literal"><span class="pre">mod_proxy</span></tt> 和 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 模块。不像 <tt class="docutils literal"><span class="pre">mod_fastcgi</span></tt> ， <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 不能启动应用进程。某些平台提供了 <tt class="docutils literal"><span class="pre">fcgistarter</span></tt> 来实现此功能。然而， FastCGI 应用框架有可能具备外部启动或进程管理功能。</p>
+<p><tt class="docutils literal"><span class="pre">Apache</span></tt> 可以通过本机 TCP 连接或 unix 域套接字使用 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 模块。不支持 unix 域套接字的 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> ，像 Apache 2.2 和 2.4 的早期版本，必需通过本机 TCP 连接。</p>
+<ol class="arabic">
+<li><p class="first">更改 <tt class="docutils literal"><span class="pre">/etc/ceph/ceph.conf</span></tt> 文件，让 radosgw 使用 TCP 而非 unix 域套接字。</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway]
+host = {hostname}
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw socket path = ""
+log file = /var/log/radosgw/client.radosgw.gateway.log
+rgw frontends = fastcgi socket_port=9000 socket_host=0.0.0.0
+rgw print continue = false</pre>
+</div>
+</li>
+<li><p class="first">把下列内容加入网关配置文件：</p>
+<p>在 Debian/Ubuntu 上，加入 <tt class="docutils literal"><span class="pre">/etc/apache2/conf-available/rgw.conf</span></tt>:</p>
+<div class="highlight-python"><pre>&lt;VirtualHost *:80&gt;
+ServerName localhost
+DocumentRoot /var/www/html
 
-&lt;VirtualHost *:80&gt;
-  ServerName rgw.example1.com
-  ServerAlias rgw
-  ServerAdmin webmaster@example1.com
-  DocumentRoot /var/www
+ErrorLog /var/log/apache2/rgw_error.log
+CustomLog /var/log/apache2/rgw_access.log combined
 
-  RewriteEngine On
-  RewriteRule ^/([a-zA-Z0-9-_.]*)([/]?.*) /s3gw.fcgi?page=$1&amp;params=$2&amp;%{QUERY_STRING} [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+# LogLevel debug
 
-  &lt;IfModule mod_fastcgi.c&gt;
-    &lt;Directory /var/www&gt;
-      Options +ExecCGI
-      AllowOverride All
-      SetHandler fastcgi-script
-      Order allow,deny
-      Allow from all
-      AuthBasicAuthoritative Off
-    &lt;/Directory&gt;
-  &lt;/IfModule&gt;
+RewriteEngine On
 
-  AllowEncodedSlashes On
-  ServerSignature Off
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+SetEnv proxy-nokeepalive 1
+
+ProxyPass / fcgi://localhost:9000/
+
 &lt;/VirtualHost&gt;</pre>
 </div>
-<p>与之对应的 radosgw 脚本为 /var/www/s3gw.fcgi:</p>
-<div class="highlight-python"><pre>#!/bin/sh
-exec /usr/bin/radosgw -c /etc/ceph/ceph.conf -n client.radosgw.gateway</pre>
+<p>在 CentOS/RHEL 上，加入 <tt class="docutils literal"><span class="pre">/etc/httpd/conf.d/rgw.conf</span></tt>:</p>
+<div class="highlight-python"><pre>&lt;VirtualHost *:80&gt;
+ServerName localhost
+DocumentRoot /var/www/html
+
+ErrorLog /var/log/httpd/rgw_error.log
+CustomLog /var/log/httpd/rgw_access.log combined
+
+# LogLevel debug
+
+RewriteEngine On
+
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+SetEnv proxy-nokeepalive 1
+
+ProxyPass / fcgi://localhost:9000/
+
+&lt;/VirtualHost&gt;</pre>
 </div>
-<p>若要以独立进程运行 radosgw 守护进程，需把配置写入 ceph.conf ，配置段落应以 &#8216;client.radosgw.&#8217; 打头，并在 /etc/init.d/radosgw 内指定：</p>
-<div class="highlight-ini"><div class="highlight"><pre><span class="k">[client.radosgw.gateway]</span>
-<span class="na">host</span> <span class="o">=</span> <span class="s">gateway</span>
-<span class="na">keyring</span> <span class="o">=</span> <span class="s">/etc/ceph/keyring.radosgw.gateway</span>
-<span class="na">rgw socket path</span> <span class="o">=</span> <span class="s">/tmp/radosgw.sock</span>
-</pre></div>
+</li>
+<li><p class="first">对于搭载了支持 Unix 域套接字的 Apache 2.4.9 及更高版的发行版，可使用下列配置：</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway]
+host = {hostname}
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+log file = /var/log/radosgw/client.radosgw.gateway.log
+rgw print continue = false</pre>
 </div>
-<p>你还得给 radosgw 生成一个密钥，用于和集群认证：</p>
+</li>
+<li><p class="first">把下列内容加入网关配置文件中：</p>
+<p>在 CentOS/RHEL 上，加入 <tt class="docutils literal"><span class="pre">/etc/httpd/conf.d/rgw.conf</span></tt>:</p>
+<div class="highlight-python"><pre>&lt;VirtualHost *:80&gt;
+ServerName localhost
+DocumentRoot /var/www/html
+
+ErrorLog /var/log/httpd/rgw_error.log
+CustomLog /var/log/httpd/rgw_access.log combined
+
+# LogLevel debug
+
+RewriteEngine On
+
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+SetEnv proxy-nokeepalive 1
+
+ProxyPass / unix:///var/run/ceph/ceph.radosgw.gateway.fastcgi.sock|fcgi://localhost:9000/
+
+&lt;/VirtualHost&gt;</pre>
+</div>
+<p>Ubuntu 14.04 自带 <tt class="docutils literal"><span class="pre">Apache</span> <span class="pre">2.4.7</span></tt> ，它不支持 Unix 域套接字，所以必须配置成本机 TCP 。 Unix 域套接字支持存在于 <tt class="docutils literal"><span class="pre">Apache</span> <span class="pre">2.4.9</span></tt> 及其后续版本中。已经有人提交了申请，要求把 UDS 支持移植到 <tt class="docutils literal"><span class="pre">Ubuntu</span> <span class="pre">14.04</span></tt> 的 <tt class="docutils literal"><span class="pre">Apache</span> <span class="pre">2.4.7</span></tt> 。
+在这里： <a class="reference external" href="https://bugs.launchpad.net/ubuntu/+source/apache2/+bug/1411030">https://bugs.launchpad.net/ubuntu/+source/apache2/+bug/1411030</a></p>
+</li>
+<li><p class="first">给 radosgw 生成一个密钥，用于到集群认证。</p>
 <div class="highlight-python"><pre>ceph-authtool -C -n client.radosgw.gateway --gen-key /etc/ceph/keyring.radosgw.gateway
 ceph-authtool -n client.radosgw.gateway --cap mon 'allow rw' --cap osd 'allow rwx' /etc/ceph/keyring.radosgw.gateway</pre>
 </div>
-<p>并把密钥加入集群：</p>
+</li>
+<li><p class="first">把密钥导入集群。</p>
 <div class="highlight-python"><pre>ceph auth add client.radosgw.gateway --in-file=keyring.radosgw.gateway</pre>
 </div>
-<p>现在可以启动 Apache 和 radosgw 守护进程了：</p>
-<div class="highlight-python"><pre>/etc/init.d/apache2 start
-/etc/init.d/radosgw start</pre>
+</li>
+<li><p class="first">启动 Apache 和 radosgw 。</p>
+<p>Debian/Ubuntu:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/apache2 start
+sudo /etc/init.d/radosgw start</pre>
 </div>
+<p>CentOS/RHEL:</p>
+<div class="highlight-python"><pre>sudo apachectl start
+sudo /etc/init.d/ceph-radosgw start</pre>
+</div>
+</li>
+</ol>
 </div>
 <div class="section" id="id5">
 <h2>记录使用日志<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
-<p><strong>radosgw</strong> 会异步地维护使用率日志，它会累积用户操作统计并周期性地刷回。可用 <strong>radosgw-admin</strong> 访问和管理日志。</p>
+<p><strong class="program">radosgw</strong> 会异步地维护使用率日志，它会累积用户操作统计并周期性地刷回。可用 <strong class="program">radosgw-admin</strong> 访问和管理日志。</p>
 <p>记录的信息包括数据传输总量、操作总量、成功操作总量。这些数据是按小时记录到桶所有者名下的，除非操作是针对服务的（如罗列桶时），这时会记录到操作用户名下。</p>
 <p>下面是个配置实例：</p>
 <div class="highlight-ini"><div class="highlight"><pre><span class="k">[client.radosgw.gateway]</span>
@@ -202,7 +261,7 @@ ceph-authtool -n client.radosgw.gateway --cap mon 'allow rw' --cap osd 'allow rw
 </div>
 <div class="section" id="id6">
 <h2>使用范围<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
-<p><strong>radosgw</strong> 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，更多信息参见 <a class="reference external" href="http://ceph.com/docs">http://ceph.com/docs</a> 。</p>
+<p><strong class="program">radosgw</strong> 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，更多信息参见 <a class="reference external" href="http://ceph.com/docs">http://ceph.com/docs</a> 。</p>
 </div>
 <div class="section" id="id7">
 <h2>参考<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
@@ -257,6 +316,7 @@ ceph-authtool -n client.radosgw.gateway --cap mon 'allow rw' --cap osd 'allow rw
 <li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
 </ul>
 

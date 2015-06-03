@@ -129,10 +129,12 @@ Python 绑定和客户端命令行工具： ::
 	ceph auth get-or-create client.cinder-backup | ssh {your-cinder-backup-server} sudo tee /etc/ceph/ceph.client.cinder-backup.keyring
 	ssh {your-cinder-backup-server} sudo chown cinder:cinder /etc/ceph/ceph.client.cinder-backup.keyring
 
-Nodes running ``nova-compute`` need the keyring file for the ``nova-compute``
-process. They also need to store the secret key of the ``client.cinder`` user in
-``libvirt``. The libvirt process needs it to access the cluster while attaching
-a block device from Cinder.
+运行 ``nova-compute`` 的节点，其进程需要密钥环文件： ::
+
+	ceph auth get-or-create client.cinder | ssh {your-nova-compute-server} sudo tee /etc/ceph/ceph.client.cinder.keyring
+
+还得把 ``client.cinder`` 用户的密钥存进 ``libvirt`` ， libvirt 进程从 \
+Cinder 挂载块设备时要用它访问集群。
 
 在运行 ``nova-compute`` 的节点上创建一个密钥的临时副本： ::
 

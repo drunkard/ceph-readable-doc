@@ -174,7 +174,7 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
        ``ceph-deploy`` 等等，这样它们在自举引导 OSD 时就有权限增加密钥了。
 
 
-``profile bootstrap-osd``
+``profile bootstrap-mds``
 
 :描述: 授权一用户自举引导一元数据服务器。授予像 ``ceph-deploy`` 一样的部署工\
        具，这样它们在自举引导元数据服务器时就有权限增加密钥了。

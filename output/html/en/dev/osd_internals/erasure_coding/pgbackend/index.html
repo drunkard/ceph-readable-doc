@@ -1,0 +1,414 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PG Backend Proposal &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="pg-backend-proposal">
+<h1>PG Backend Proposal<a class="headerlink" href="#pg-backend-proposal" title="Permalink to this headline">¶</a></h1>
+<p>NOTE: the last update of this page is dated 2013, before the Firefly
+release. The details of the implementation may be different.</p>
+<div class="section" id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>The purpose of the <a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h">PG Backend interface</a>
+is to abstract over the differences between replication and erasure
+coding as failure recovery mechanisms.</p>
+<p>Much of the existing PG logic, particularly that for dealing with
+peering, will be common to each.  With both schemes, a log of recent
+operations will be used to direct recovery in the event that an OSD is
+down or disconnected for a brief period of time.  Similarly, in both
+cases it will be necessary to scan a recovered copy of the PG in order
+to recover an empty OSD.  The PGBackend abstraction must be
+sufficiently expressive for Replicated and ErasureCoded backends to be
+treated uniformly in these areas.</p>
+<p>However, there are also crucial differences between using replication
+and erasure coding which PGBackend must abstract over:</p>
+<ol class="arabic simple">
+<li>The current write strategy would not ensure that a particular
+object could be reconstructed after a failure.</li>
+<li>Reads on an erasure coded PG require chunks to be read from the
+replicas as well.</li>
+<li>Object recovery probably involves recovering the primary and
+replica missing copies at the same time to avoid performing extra
+reads of replica shards.</li>
+<li>Erasure coded PG chunks created for different acting set
+positions are not interchangeable.  In particular, it might make
+sense for a single OSD to hold more than 1 PG copy for different
+acting set positions.</li>
+<li>Selection of a pgtemp for backfill may differ between replicated
+and erasure coded backends.</li>
+<li>The set of necessary OSDs from a particular interval required to
+to continue peering may differ between replicated and erasure
+coded backends.</li>
+<li>The selection of the authoritative log may differ between replicated
+and erasure coded backends.</li>
+</ol>
+</div>
+<div class="section" id="client-writes">
+<h2>Client Writes<a class="headerlink" href="#client-writes" title="Permalink to this headline">¶</a></h2>
+<p>The current PG implementation performs a write by performing the write
+locally while concurrently directing replicas to perform the same
+operation.  Once all operations are durable, the operation is
+considered durable.  Because these writes may be destructive
+overwrites, during peering, a log entry on a replica (or the primary)
+may be found to be divergent if that replica remembers a log event
+which the authoritative log does not contain.  This can happen if only
+1 out of 3 replicas persisted an operation, but was not available in
+the next interval to provide an authoritative log.  With replication,
+we can repair the divergent object as long as at least 1 replica has a
+current copy of the divergent object.  With erasure coding, however,
+it might be the case that neither the new version of the object nor
+the old version of the object has enough available chunks to be
+reconstructed.  This problem is much simpler if we arrange for all
+supported operations to be locally roll-back-able.</p>
+<ul class="simple">
+<li>CEPH_OSD_OP_APPEND: We can roll back an append locally by
+including the previous object size as part of the PG log event.</li>
+<li>CEPH_OSD_OP_DELETE: The possibility of rolling back a delete
+requires that we retain the deleted object until all replicas have
+persisted the deletion event.  ErasureCoded backend will therefore
+need to store objects with the version at which they were created
+included in the key provided to the filestore.  Old versions of an
+object can be pruned when all replicas have committed up to the log
+event deleting the object.</li>
+<li>CEPH_OSD_OP_(SET|RM)ATTR: If we include the prior value of the attr
+to be set or removed, we can roll back these operations locally.</li>
+</ul>
+<p>Core Changes:</p>
+<ul class="simple">
+<li>Current code should be adapted to use and rollback as appropriate
+APPEND, DELETE, (SET|RM)ATTR log entries.</li>
+<li>The filestore needs to be able to deal with multiply versioned
+hobjects.  This means adapting the filestore internally to
+use a <a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/common/hobject.h#L238">ghobject</a>
+which is basically a tuple&lt;hobject_t, gen_t,
+shard_t&gt;.  The gen_t + shard_t need to be included in the on-disk
+filename.  gen_t is a unique object identifier to make sure there
+are no name collisions when object N is created +
+deleted + created again. An interface needs to be added to get all
+versions of a particular hobject_t or the most recently versioned
+instance of a particular hobject_t.</li>
+</ul>
+<p>PGBackend Interfaces:</p>
+<ul class="simple">
+<li>PGBackend::perform_write() : It seems simplest to pass the actual
+ops vector.  The reason for providing an async, callback based
+interface rather than having the PGBackend respond directly is that
+we might want to use this interface for internal operations like
+watch/notify expiration or snap trimming which might not necessarily
+have an external client.</li>
+<li>PGBackend::try_rollback() : Some log entries (all of the ones valid
+for the Erasure coded backend) will support local rollback.  In
+those cases, PGLog can avoid adding objects to the missing set when
+identifying divergent objects.</li>
+</ul>
+</div>
+<div class="section" id="peering-and-pg-logs">
+<h2>Peering and PG Logs<a class="headerlink" href="#peering-and-pg-logs" title="Permalink to this headline">¶</a></h2>
+<p>Currently, we select the log with the newest last_update and the
+longest tail to be the authoritative log.  This is fine because we
+aren&#8217;t generally able to roll operations on the other replicas forward
+or backwards, instead relying on our ability to re-replicate divergent
+objects.  With the write approach discussed in the previous section,
+however, the erasure coded backend will rely on being able to roll
+back divergent operations since we may not be able to re-replicate
+divergent objects.  Thus, we must choose the <em>oldest</em> last_update from
+the last interval which went active in order to minimize the number of
+divergent objects.</p>
+<p>The difficulty is that the current code assumes that as long as it has
+an info from at least 1 OSD from the prior interval, it can complete
+peering.  In order to ensure that we do not end up with an
+unrecoverably divergent object, a K+M erasure coded PG must hear from at
+least K of the replicas of the last interval to serve writes.  This ensures
+that we will select a last_update old enough to roll back at least K
+replicas.  If a replica with an older last_update comes along later,
+we will be able to provide at least K chunks of any divergent object.</p>
+<p>Core Changes:</p>
+<ul class="simple">
+<li>PG::choose_acting(), etc. need to be generalized to use PGBackend to
+determine the authoritative log.</li>
+<li>PG::RecoveryState::GetInfo needs to use PGBackend to determine
+whether it has enough infos to continue with authoritative log
+selection.</li>
+</ul>
+<p>PGBackend interfaces:</p>
+<ul class="simple">
+<li>have_enough_infos()</li>
+<li>choose_acting()</li>
+</ul>
+</div>
+<div class="section" id="pgtemp">
+<h2>PGTemp<a class="headerlink" href="#pgtemp" title="Permalink to this headline">¶</a></h2>
+<p>Currently, an OSD is able to request a temp acting set mapping in
+order to allow an up-to-date OSD to serve requests while a new primary
+is backfilled (and for other reasons).  An erasure coded pg needs to
+be able to designate a primary for these reasons without putting it
+in the first position of the acting set.  It also needs to be able
+to leave holes in the requested acting set.</p>
+<p>Core Changes:</p>
+<ul class="simple">
+<li>OSDMap::pg_to_*_osds needs to separately return a primary.  For most
+cases, this can continue to be acting[0].</li>
+<li>MOSDPGTemp (and related OSD structures) needs to be able to specify
+a primary as well as an acting set.</li>
+<li>Much of the existing code base assumes that acting[0] is the primary
+and that all elements of acting are valid.  This needs to be cleaned
+up since the acting set may contain holes.</li>
+</ul>
+</div>
+<div class="section" id="client-reads">
+<h2>Client Reads<a class="headerlink" href="#client-reads" title="Permalink to this headline">¶</a></h2>
+<p>Reads with the replicated strategy can always be satisfied
+synchronously out of the primary OSD.  With an erasure coded strategy,
+the primary will need to request data from some number of replicas in
+order to satisfy a read.  The perform_read() interface for PGBackend
+therefore will be async.</p>
+<p>PGBackend interfaces:</p>
+<ul class="simple">
+<li>perform_read(): as with perform_write() it seems simplest to pass
+the ops vector.  The call to oncomplete will occur once the out_bls
+have been appropriately filled in.</li>
+</ul>
+</div>
+<div class="section" id="distinguished-acting-set-positions">
+<h2>Distinguished acting set positions<a class="headerlink" href="#distinguished-acting-set-positions" title="Permalink to this headline">¶</a></h2>
+<p>With the replicated strategy, all replicas of a PG are
+interchangeable.  With erasure coding, different positions in the
+acting set have different pieces of the erasure coding scheme and are
+not interchangeable.  Worse, crush might cause chunk 2 to be written
+to an OSD which happens already to contain an (old) copy of chunk 4.
+This means that the OSD and PG messages need to work in terms of a
+type like pair&lt;shard_t, pg_t&gt; in order to distinguish different pg
+chunks on a single OSD.</p>
+<p>Because the mapping of object name to object in the filestore must
+be 1-to-1, we must ensure that the objects in chunk 2 and the objects
+in chunk 4 have different names.  To that end, the filestore must
+include the chunk id in the object key.</p>
+<p>Core changes:</p>
+<ul class="simple">
+<li>The filestore <a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/common/hobject.h#L241">ghobject_t needs to also include a chunk id</a> making it more like
+tuple&lt;hobject_t, gen_t, shard_t&gt;.</li>
+<li>coll_t needs to include a shard_t.</li>
+<li>The OSD pg_map and similar pg mappings need to work in terms of a
+spg_t (essentially
+pair&lt;pg_t, shard_t&gt;).  Similarly, pg-&gt;pg messages need to include
+a shard_t</li>
+<li>For client-&gt;PG messages, the OSD will need a way to know which PG
+chunk should get the message since the OSD may contain both a
+primary and non-primary chunk for the same pg</li>
+</ul>
+</div>
+<div class="section" id="object-classes">
+<h2>Object Classes<a class="headerlink" href="#object-classes" title="Permalink to this headline">¶</a></h2>
+<p>We probably won&#8217;t support object classes at first on Erasure coded
+backends.</p>
+</div>
+<div class="section" id="scrub">
+<h2>Scrub<a class="headerlink" href="#scrub" title="Permalink to this headline">¶</a></h2>
+<p>We currently have two scrub modes with different default frequencies:</p>
+<ol class="arabic simple">
+<li>[shallow] scrub: compares the set of objects and metadata, but not
+the contents</li>
+<li>deep scrub: compares the set of objects, metadata, and a crc32 of
+the object contents (including omap)</li>
+</ol>
+<p>The primary requests a scrubmap from each replica for a particular
+range of objects.  The replica fills out this scrubmap for the range
+of objects including, if the scrub is deep, a crc32 of the contents of
+each object.  The primary gathers these scrubmaps from each replica
+and performs a comparison identifying inconsistent objects.</p>
+<p>Most of this can work essentially unchanged with erasure coded PG with
+the caveat that the PGBackend implementation must be in charge of
+actually doing the scan, and that the PGBackend implementation should
+be able to attach arbitrary information to allow PGBackend on the
+primary to scrub PGBackend specific metadata.</p>
+<p>The main catch, however, for erasure coded PG is that sending a crc32
+of the stored chunk on a replica isn&#8217;t particularly helpful since the
+chunks on different replicas presumably store different data.  Because
+we don&#8217;t support overwrites except via DELETE, however, we have the
+option of maintaining a crc32 on each chunk through each append.
+Thus, each replica instead simply computes a crc32 of its own stored
+chunk and compares it with the locally stored checksum.  The replica
+then reports to the primary whether the checksums match.</p>
+<p>PGBackend interfaces:</p>
+<ul class="simple">
+<li>scan()</li>
+<li>scrub()</li>
+<li>compare_scrub_maps()</li>
+</ul>
+</div>
+<div class="section" id="crush">
+<h2>Crush<a class="headerlink" href="#crush" title="Permalink to this headline">¶</a></h2>
+<p>If crush is unable to generate a replacement for a down member of an
+acting set, the acting set should have a hole at that position rather
+than shifting the other elements of the acting set out of position.</p>
+<p>Core changes:</p>
+<ul class="simple">
+<li>Ensure that crush behaves as above for INDEP.</li>
+</ul>
+</div>
+<div class="section" id="recovery">
+<h2>Recovery<a class="headerlink" href="#recovery" title="Permalink to this headline">¶</a></h2>
+<p>The logic for recovering an object depends on the backend.  With
+the current replicated strategy, we first pull the object replica
+to the primary and then concurrently push it out to the replicas.
+With the erasure coded strategy, we probably want to read the
+minimum number of replica chunks required to reconstruct the object
+and push out the replacement chunks concurrently.</p>
+<p>Another difference is that objects in erasure coded pg may be
+unrecoverable without being unfound.  The &#8220;unfound&#8221; concept
+should probably then be renamed to unrecoverable.  Also, the
+PGBackend implementation will have to be able to direct the search
+for pg replicas with unrecoverable object chunks and to be able
+to determine whether a particular object is recoverable.</p>
+<p>Core changes:</p>
+<ul class="simple">
+<li>s/unfound/unrecoverable</li>
+</ul>
+<p>PGBackend interfaces:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L60">on_local_recover_start</a></li>
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L66">on_local_recover</a></li>
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L78">on_global_recover</a></li>
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L83">on_peer_recover</a></li>
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L90">begin_peer_recover</a></li>
+</ul>
+</div>
+<div class="section" id="backfill">
+<h2>Backfill<a class="headerlink" href="#backfill" title="Permalink to this headline">¶</a></h2>
+<p>For the most part, backfill itself should behave similarly between
+replicated and erasure coded pools with a few exceptions:</p>
+<ol class="arabic simple">
+<li>We probably want to be able to backfill multiple OSDs concurrently
+with an erasure coded pool in order to cut down on the read
+overhead.</li>
+<li>We probably want to avoid having to place the backfill peers in the
+acting set for an erasure coded pg because we might have a good
+temporary pg chunk for that acting set slot.</li>
+</ol>
+<p>For 2, we don&#8217;t really need to place the backfill peer in the acting
+set for replicated PGs anyway.
+For 1, PGBackend::choose_backfill() should determine which OSDs are
+backfilled in a particular interval.</p>
+<p>Core changes:</p>
+<ul class="simple">
+<li>Backfill should be capable of handling multiple backfill peers
+concurrently even for
+replicated pgs (easier to test for now)</li>
+<li>Backfill peers should not be placed in the acting set.</li>
+</ul>
+<p>PGBackend interfaces:</p>
+<ul class="simple">
+<li>choose_backfill(): allows the implementation to determine which OSDs
+should be backfilled in a particular interval.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../../">
+              <img class="logo" src="../../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

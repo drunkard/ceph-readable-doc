@@ -153,7 +153,7 @@
 
 #. 用监视器图和密钥环组装守护进程所需的初始数据。 ::
 
-	ceph-mon --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
+	ceph-mon [--cluster {cluster-name}] --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
 
    例如： ::
 
@@ -204,7 +204,7 @@
 
    在 Ubuntu 上用 Upstart ： ::
 
-	sudo start ceph-mon id=node1
+	sudo start ceph-mon id=node1 [cluster={cluster-name}]
 
    要使此守护进程开机自启，需要创建两个空文件，像这样： ::
 
@@ -306,13 +306,13 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 #. 在新 OSD 主机上创建默认目录。 ::
 
 	ssh {new-osd-host}
-	sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
+	sudo mkdir /var/lib/ceph/osd/{cluster-name}-{osd-number}
 
 #. 如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后挂载到刚创建的目录下： ::
 
 	ssh {new-osd-host}
 	sudo mkfs -t {fstype} /dev/{hdd}
-	sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}
+	sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/{cluster-name}-{osd-number}
 
 #. 初始化 OSD 数据目录： ::
 
@@ -325,11 +325,11 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 #. 注册此 OSD 的密钥。路径内 ``ceph-{osd-num}`` 里的 ``ceph`` 其含义为 \
    ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，请指定自己的集群名： ::
 
-	sudo ceph auth add osd.{osd-num} osd 'allow *' mon 'allow profile osd' -i /var/lib/ceph/osd/ceph-{osd-num}/keyring
+	sudo ceph auth add osd.{osd-num} osd 'allow *' mon 'allow profile osd' -i /var/lib/ceph/osd/{cluster-name}-{osd-num}/keyring
 
 #. 把此节点加入 CRUSH 图。 ::
 
-	ceph osd crush add-bucket {hostname} host
+	ceph [--cluster {cluster-name}] osd crush add-bucket {hostname} host
 
    例如： ::
 
@@ -343,7 +343,7 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
    OSD 加入设备列表、对应主机作为桶加入（如果它还不在 CRUSH 图里）、然后此设备作为\
    主机的一个条目、分配权重、重新编译、注入集群。 ::
 
-	ceph osd crush add {id-or-name} {weight} [{bucket-type}={bucket-name} ...]
+	ceph [--cluster {cluster-name}] osd crush add {id-or-name} {weight} [{bucket-type}={bucket-name} ...]
 
    例如： ::
 
@@ -354,7 +354,7 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 
    在 Ubuntu 系统上用 Upstart 启动： ::
 
-	sudo start ceph-osd id={osd-num}
+	sudo start ceph-osd id={osd-num} [cluster={cluster-name}]
 
    例如： ::
 
@@ -363,7 +363,7 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 
    在 Debian/CentOS/RHEL 上用 sysvinit 启动： ::
 
-	sudo /etc/init.d/ceph start osd.{osd-num}
+	sudo /etc/init.d/ceph start osd.{osd-num} [--cluster {cluster-name}]
 
    例如： ::
 

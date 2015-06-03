@@ -43,16 +43,17 @@ CRUSH 是个伪随机数据分布算法，它能高效地把输入值（通常�
 样的通用选项；却可以通过 CEPH_ARGS 环境变量提供。例如，可以这样压制 CRUSH 子\
 系统的所有输出： ::
 
-    CEPH_ARGS="--debug-crush 0" crushtool ...
+	CEPH_ARGS="--debug-crush 0" crushtool ...
 
 
 用 --test 进行测试
 ==================
 
 测试模式会采用指定的 crush 图（用 **-i map** 指定的），并试运行 CRUSH 映射\
-或随机放置（若设置了 **--simulate** ）。完成后可创建两种报告类型： \
-**--show-...** 选项会把人类可读的信息输出到标准错误； **--output-csv** 选项\
-会创建 CSV 文件，具体文档可在 **--help-output** 选项中见到。
+或随机放置（若设置了 **--simulate** ）。完成后可创建两种报告类型：
+1) **--show-...** 选项会把人类可读的信息输出到标准错误；
+2) **--output-csv** 选项会创建 CSV 文件，具体文档可在 **--help-output** 选\
+项中见到。
 
 .. option:: --show-statistics
 

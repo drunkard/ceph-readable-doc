@@ -1,0 +1,263 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Cache pool &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="cache-pool">
+<h1>Cache pool<a class="headerlink" href="#cache-pool" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="purpose">
+<h2>Purpose<a class="headerlink" href="#purpose" title="Permalink to this headline">¶</a></h2>
+<p>Use a pool of fast storage devices (probably SSDs) and use it as a
+cache for an existing larger pool.</p>
+<p>Use a replicated pool as a front-end to service most I/O, and destage
+cold data to a separate erasure coded pool that does not currently (and
+cannot efficiently) handle the workload.</p>
+<p>We should be able to create and add a cache pool to an existing pool
+of data, and later remove it, without disrupting service or migrating
+data around.</p>
+</div>
+<div class="section" id="use-cases">
+<h2>Use cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="read-write-pool-writeback">
+<h3>Read-write pool, writeback<a class="headerlink" href="#read-write-pool-writeback" title="Permalink to this headline">¶</a></h3>
+<p>We have an existing data pool and put a fast cache pool &#8220;in front&#8221; of
+it.  Writes will go to the cache pool and immediately ack.  We flush
+them back to the data pool based on the defined policy.</p>
+</div>
+<div class="section" id="read-only-pool-weak-consistency">
+<h3>Read-only pool, weak consistency<a class="headerlink" href="#read-only-pool-weak-consistency" title="Permalink to this headline">¶</a></h3>
+<p>We have an existing data pool and add one or more read-only cache
+pools.  We copy data to the cache pool(s) on read.  Writes are
+forwarded to the original data pool.  Stale data is expired from the
+cache pools based on the defined policy.</p>
+<p>This is likely only useful for specific applications with specific
+data access patterns.  It may be a match for rgw, for example.</p>
+</div>
+</div>
+<div class="section" id="interface">
+<h2>Interface<a class="headerlink" href="#interface" title="Permalink to this headline">¶</a></h2>
+<p>Set up a read/write cache pool foo-hot for pool foo:</p>
+<div class="highlight-python"><pre>ceph osd tier add foo foo-hot
+ceph osd tier cache-mode foo-hot writeback</pre>
+</div>
+<p>Direct all traffic for foo to foo-hot:</p>
+<div class="highlight-python"><pre>ceph osd tier set-overlay foo foo-hot</pre>
+</div>
+<p>Set the target size and enable the tiering agent for foo-hot:</p>
+<div class="highlight-python"><pre>ceph osd pool set foo-hot hit_set_type bloom
+ceph osd pool set foo-hot hit_set_count 1
+ceph osd pool set foo-hot hit_set_period 3600   # 1 hour
+ceph osd pool set foo-hot target_max_bytes 1000000000000  # 1 TB</pre>
+</div>
+<p>Drain the cache in preparation for turning it off:</p>
+<div class="highlight-python"><pre>ceph osd tier cache-mode foo-hot forward
+rados -p foo-hot cache-flush-evict-all</pre>
+</div>
+<p>When cache pool is finally empty, disable it:</p>
+<div class="highlight-python"><pre>ceph osd tier remove-overlay foo
+ceph osd tier remove foo foo-hot</pre>
+</div>
+<p>Read-only pools with lazy consistency:</p>
+<div class="highlight-python"><pre>ceph osd tier add foo foo-east
+ceph osd tier cache-mode foo-east readonly
+ceph osd tier add foo foo-west
+ceph osd tier cache-mode foo-west readonly</pre>
+</div>
+</div>
+<div class="section" id="tiering-agent">
+<h2>Tiering agent<a class="headerlink" href="#tiering-agent" title="Permalink to this headline">¶</a></h2>
+<p>The tiering policy is defined as properties on the cache pool itself.</p>
+<div class="section" id="hitset-metadata">
+<h3>HitSet metadata<a class="headerlink" href="#hitset-metadata" title="Permalink to this headline">¶</a></h3>
+<p>First, the agent requires HitSet information to be tracked on the
+cache pool in order to determine which objects in the pool are being
+accessed.  This is enabled with:</p>
+<div class="highlight-python"><pre>ceph osd pool set foo-hot hit_set_type bloom
+ceph osd pool set foo-hot hit_set_count 1
+ceph osd pool set foo-hot hit_set_period 3600   # 1 hour</pre>
+</div>
+<p>The supported HitSet types include &#8216;bloom&#8217; (a bloom filter, the
+default), &#8216;explicit_hash&#8217;, and &#8216;explicit_object&#8217;.  The latter two
+explicitly enumerate accessed objects and are less memory efficient.
+They are there primarily for debugging and to demonstrate pluggability
+for the infrastructure.  For the bloom filter type, you can additionally
+define the false positive probability for the bloom filter (default is 0.05):</p>
+<div class="highlight-python"><pre>ceph osd pool set foo-hot hit_set_fpp 0.15</pre>
+</div>
+<p>The hit_set_count and hit_set_period define how much time each HitSet
+should cover, and how many such HitSets to store.  Binning accesses
+over time allows Ceph to independently determine whether an object was
+accessed at least once and whether it was accessed more than once over
+some time period (&#8220;age&#8221; vs &#8220;temperature&#8221;).  Note that the longer the
+period and the higher the count the more RAM will be consumed by the
+ceph-osd process.  In particular, when the agent is active to flush or
+evict cache objects, all hit_set_count HitSets are loaded into RAM.</p>
+<p>Currently there is minimal benefit for hit_set_count &gt; 1 since the
+agent does not yet act intelligently on that information.</p>
+</div>
+<div class="section" id="cache-mode">
+<h3>Cache mode<a class="headerlink" href="#cache-mode" title="Permalink to this headline">¶</a></h3>
+<p>The most important policy is the cache mode:</p>
+<blockquote>
+<div>ceph osd pool set foo-hot cache-mode writeback</div></blockquote>
+<p>The supported modes are &#8216;none&#8217;, &#8216;writeback&#8217;, &#8216;forward&#8217;, and
+&#8216;readonly&#8217;.  Most installations want &#8216;writeback&#8217;, which will write
+into the cache tier and only later flush updates back to the base
+tier.  Similarly, any object that is read will be promoted into the
+cache tier.</p>
+<p>The &#8216;forward&#8217; mode is intended for when the cache is being disabled
+and needs to be drained.  No new objects will be promoted or written
+to the cache pool unless they are already present.  A background
+operation can then do something like:</p>
+<div class="highlight-python"><pre>rados -p foo-hot cache-try-flush-evict-all
+rados -p foo-hot cache-flush-evict-all</pre>
+</div>
+<p>to force all data to be flushed back to the base tier.</p>
+<p>The &#8216;readonly&#8217; mode is intended for read-only workloads that do not
+require consistency to be enforced by the storage system.  Writes will
+be forwarded to the base tier, but objects that are read will get
+promoted to the cache.  No attempt is made by Ceph to ensure that the
+contents of the cache tier(s) are consistent in the presence of object
+updates.</p>
+</div>
+<div class="section" id="cache-sizing">
+<h3>Cache sizing<a class="headerlink" href="#cache-sizing" title="Permalink to this headline">¶</a></h3>
+<p>The agent performs two basic functions: flushing (writing &#8216;dirty&#8217;
+cache objects back to the base tier) and evicting (removing cold and
+clean objects from the cache).</p>
+<p>The thresholds at which Ceph will flush or evict objects is specified
+relative to a &#8216;target size&#8217; of the pool.  For example:</p>
+<div class="highlight-python"><pre>ceph osd pool set foo-hot cache_target_dirty_ratio .4
+ceph osd pool set foo-hot cache_target_full_ratio .8</pre>
+</div>
+<p>will begin flushing dirty objects when 40% of the pool is dirty and begin
+evicting clean objects when we reach 80% of the target size.</p>
+<p>The target size can be specified either in terms of objects or bytes:</p>
+<div class="highlight-python"><pre>ceph osd pool set foo-hot target_max_bytes 1000000000000  # 1 TB
+ceph osd pool set foo-hot target_max_objects 1000000       # 1 million objects</pre>
+</div>
+<p>Note that if both limits are specified, Ceph will begin flushing or
+evicting when either threshold is triggered.</p>
+</div>
+<div class="section" id="other-tunables">
+<h3>Other tunables<a class="headerlink" href="#other-tunables" title="Permalink to this headline">¶</a></h3>
+<p>You can specify a minimum object age before a recently updated object is
+flushed to the base tier:</p>
+<div class="highlight-python"><pre>ceph osd pool set foo-hot cache_min_flush_age 600   # 10 minutes</pre>
+</div>
+<p>You can specify the minimum age of an object before it will be evicted from
+the cache tier:</p>
+<div class="highlight-python"><pre>ceph osd pool set foo-hot cache_min_evict_age 1800   # 30 minutes</pre>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,168 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Filestore filesystem compatilibity &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="filestore-filesystem-compatilibity">
+<h1>Filestore filesystem compatilibity<a class="headerlink" href="#filestore-filesystem-compatilibity" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="http://marc.info/?l=ceph-devel&amp;m=131942130322957&amp;w=2">http://marc.info/?l=ceph-devel&amp;m=131942130322957&amp;w=2</a></p>
+<p>Although running on ext4, xfs, or whatever other non-btrfs you want mostly
+works, there are a few important remaining issues:</p>
+<div class="section" id="osd-journal-replay-of-non-idempotent-transactions">
+<h2>OSD journal replay of non-idempotent transactions<a class="headerlink" href="#osd-journal-replay-of-non-idempotent-transactions" title="Permalink to this headline">¶</a></h2>
+<p><strong>Resolved</strong> with full sync but not ideal.
+See <a class="reference external" href="http://tracker.newdream.net/issues/213">http://tracker.newdream.net/issues/213</a></p>
+<p>On non-btrfs backends, the Ceph OSDs use a write-ahead journal. After
+restart, the OSD does not know exactly which transactions in the
+journal may have already been committed to disk, and may reapply a
+transaction again during replay. For most operations (write, delete,
+truncate) this is fine.</p>
+<p>Some operations, though, are non-idempotent. The simplest example is
+CLONE, which copies (efficiently, on btrfs) data from one object to
+another. If the source object is modified, the osd restarts, and then
+the clone is replayed, the target will get incorrect (newer) data. For
+example,</p>
+<ul class="simple">
+<li>clone A -&gt; B</li>
+<li>modify A</li>
+<li>&lt;osd crash, replay from 1&gt;</li>
+</ul>
+<p>B will get new instead of old contents.</p>
+<p>(This doesn&#8217;t happen on btrfs because the snapshots allow us to replay
+from a known consistent point in time.)</p>
+<p>Possibilities:</p>
+<ul>
+<li><p class="first">full sync after any non-idempotent operation</p>
+</li>
+<li><p class="first">re-evaluate the lower level interface based on needs from higher
+levels, construct only safe operations, be very careful; brittle</p>
+</li>
+<li><p class="first">use xattrs to add sequence numbers to objects:</p>
+<ul class="simple">
+<li>on non-btrfs, we set a xattr on every modified object with the
+op_seq, the unique sequence number for the transaction.</li>
+<li>for any (potentially) non-idempotent operation, we fsync() before
+continuing to the next transaction, to ensure that xattr hits disk.</li>
+<li>on replay, we skip a transaction if the xattr indicates we already
+performed this transaction.</li>
+</ul>
+<p>Because every &#8216;transaction&#8217; only modifies on a single object (file),
+this ought to work. It&#8217;ll make things like clone slow, but let&#8217;s
+face it: they&#8217;re already slow on non-btrfs file systems because they
+actually copy the data (instead of duplicating the extent refs in
+btrfs). And it should make the full ObjectStore interface safe,
+without upper layers having to worry about the kinds and orders of
+transactions they perform.</p>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

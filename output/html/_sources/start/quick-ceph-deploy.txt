@@ -80,33 +80,18 @@
    **注：**\ 如果你执行过 ``ceph-deploy purge`` ，你必须重新执行这一步来安装 \
    Ceph 。
 
-#. 配置初始监视器、并收集所有密钥（ ``ceph-deploy`` v1.1.3新增功能）。 ::
+#. 配置初始监视器、并收集所有密钥： ::
 
 	ceph-deploy mon create-initial
-
-   **注：**\ 如果用的是 ``ceph-deploy`` 的早期版本，你必须依次创建初始监视器、\
-   并收集密钥。首先创建监视器。 ::
-
-	ceph-deploy mon create {ceph-node}
-
-   例如： ::
-
-	ceph-deploy mon create node1
-
-   然后收集密钥。 ::
-
-	ceph-deploy gatherkeys {ceph-node}
-
-   例如： ::
-
-	ceph-deploy gatherkeys node1
 
    完成上述操作后，当前目录里应该会出现这些密钥环：
 
    - ``{cluster-name}.client.admin.keyring``
    - ``{cluster-name}.bootstrap-osd.keyring``
    - ``{cluster-name}.bootstrap-mds.keyring``
+   - ``{cluster-name}.bootstrap-rgw.keyring``
 
+.. note:: 只有在安装 Hammer 或更高版时才会创建 bootstrap-rgw 密钥环。
 
 #. 添加两个 OSD 。为了快速地安装，这篇快速入门把目录而非整个硬盘用于 OSD 守护\
    进程。关于单独把硬盘或分区用于 OSD 及其日志，请参考 `ceph-deploy osd`_ 。登\
@@ -255,6 +240,36 @@ OSD 守护进程和一个元数据服务器。然后分别在 ``node2`` 和 ``no
 
 .. note:: 当前生产环境下的 Ceph 只能运行一个元数据服务器。你可以配置多个，但现\
    在我们还不会为多个并行的元数据服务器提供商业支持。
+
+
+添加 RGW 例程
+-------------
+
+要使用 Ceph 的 :term:`Ceph 对象网关`\ 组件，必须部署 :term:`RGW` 例程。用\
+下列方法创建新 RGW 例程： ::
+
+	ceph-deploy rgw create {gateway-node}
+
+例如： ::
+
+	ceph-deploy rgw create node1
+
+.. note:: 这个功能是 **Hammer** 版才开始有的，还需要 ``ceph-deploy`` v1.5.23 。
+
+:term:`RGW` 例程默认会监听 7480 端口，可以更改 ceph.conf 内与此 \
+:term:`RGW` 相关的配置，如下：
+
+.. code-block:: ini
+
+	[client]
+	rgw frontends = civetweb port=80
+
+用的是 IPv6 地址的话：
+
+.. code-block:: ini
+
+	[client]
+	rgw frontends = civetweb port=[::]:80
 
 
 添加监视器

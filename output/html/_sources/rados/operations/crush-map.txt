@@ -401,7 +401,7 @@ CRUSH 图支持“ CRUSH 规则”概念，用以确定一个存储池里数据�
 
 CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规定 CRUSH 如何放置对象副\
 本。例如，你也许想创建一条规则用以选择一对目的地做双路复制；另一条规则用以选\
-择位于两个数据中心的三个目的地做三路镜像；又一条规则用 6 个设备做 RAID-4 。关\
+择位于两个数据中心的三个目的地做三路镜像；又一条规则用 6 个设备做纠删编码。关\
 于 CRUSH 规则的详细研究见 \
 `CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data`_ ，\
 主要是 **Section 3.2** 。
@@ -411,7 +411,7 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 	rule <rulename> {
 
 		ruleset <ruleset>
-		type [ replicated | raid4 ]
+		type [ replicated | erasure ]
 		min_size <min-size>
 		max_size <max-size>
 		step take <bucket-type>
@@ -438,7 +438,7 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 :类型: String
 :是否必需: Yes
 :默认值: ``replicated``
-:Valid Values: Currently only ``replicated``
+:合法取值: 当前仅支持 ``replicated`` 和 ``erasure``
 
 
 ``min_size``

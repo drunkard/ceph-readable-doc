@@ -1,0 +1,466 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Peering &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="peering">
+<h1>Peering<a class="headerlink" href="#peering" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="concepts">
+<h2>Concepts<a class="headerlink" href="#concepts" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt><em>Peering</em></dt>
+<dd>the process of bringing all of the OSDs that store
+a Placement Group (PG) into agreement about the state
+of all of the objects (and their metadata) in that PG.
+Note that agreeing on the state does not mean that
+they all have the latest contents.</dd>
+<dt><em>Acting set</em></dt>
+<dd>the ordered list of OSDs who are (or were as of some epoch)
+responsible for a particular PG.</dd>
+<dt><em>Up set</em></dt>
+<dd>the ordered list of OSDs responsible for a particular PG for
+a particular epoch according to CRUSH.  Normally this
+is the same as the <em>acting set</em>, except when the <em>acting set</em> has been
+explicitly overridden via <em>PG temp</em> in the OSDMap.</dd>
+<dt><em>PG temp</em></dt>
+<dd>a temporary placement group acting set used while backfilling the
+primary osd. Let say acting is [0,1,2] and we are
+active+clean. Something happens and acting is now [3,1,2]. osd 3 is
+empty and can&#8217;t serve reads although it is the primary. osd.3 will
+see that and request a <em>PG temp</em> of [1,2,3] to the monitors using a
+MOSDPGTemp message so that osd.1 temporarily becomes the
+primary. It will select osd.3 as a backfill peer and continue to
+serve reads and writes while osd.3 is backfilled. When backfilling
+is complete, <em>PG temp</em> is discarded and the acting set changes back
+to [3,1,2] and osd.3 becomes the primary.</dd>
+<dt><em>current interval</em> or <em>past interval</em></dt>
+<dd>a sequence of OSD map epochs during which the <em>acting set</em> and <em>up
+set</em> for particular PG do not change</dd>
+<dt><em>primary</em></dt>
+<dd>the (by convention first) member of the <em>acting set</em>,
+who is responsible for coordination peering, and is
+the only OSD that will accept client initiated
+writes to objects in a placement group.</dd>
+<dt><em>replica</em></dt>
+<dd>a non-primary OSD in the <em>acting set</em> for a placement group
+(and who has been recognized as such and <em>activated</em> by the primary).</dd>
+<dt><em>stray</em></dt>
+<dd>an OSD who is not a member of the current <em>acting set</em>, but
+has not yet been told that it can delete its copies of a
+particular placement group.</dd>
+<dt><em>recovery</em></dt>
+<dd>ensuring that copies of all of the objects in a PG
+are on all of the OSDs in the <em>acting set</em>.  Once
+<em>peering</em> has been performed, the primary can start
+accepting write operations, and <em>recovery</em> can proceed
+in the background.</dd>
+<dt><em>PG info</em> basic metadata about the PG&#8217;s creation epoch, the version</dt>
+<dd>for the most recent write to the PG, <em>last epoch started</em>, <em>last
+epoch clean</em>, and the beginning of the <em>current interval</em>.  Any
+inter-OSD communication about PGs includes the <em>PG info</em>, such that
+any OSD that knows a PG exists (or once existed) also has a lower
+bound on <em>last epoch clean</em> or <em>last epoch started</em>.</dd>
+<dt><em>PG log</em></dt>
+<dd>a list of recent updates made to objects in a PG.
+Note that these logs can be truncated after all OSDs
+in the <em>acting set</em> have acknowledged up to a certain
+point.</dd>
+<dt><em>missing set</em></dt>
+<dd>Each OSD notes update log entries and if they imply updates to
+the contents of an object, adds that object to a list of needed
+updates.  This list is called the <em>missing set</em> for that &lt;OSD,PG&gt;.</dd>
+<dt><em>Authoritative History</em></dt>
+<dd>a complete, and fully ordered set of operations that, if
+performed, would bring an OSD&#8217;s copy of a Placement Group
+up to date.</dd>
+<dt><em>epoch</em></dt>
+<dd>a (monotonically increasing) OSD map version number</dd>
+<dt><em>last epoch start</em></dt>
+<dd>the last epoch at which all nodes in the <em>acting set</em>
+for a particular placement group agreed on an
+<em>authoritative history</em>.  At this point, <em>peering</em> is
+deemed to have been successful.</dd>
+<dt><em>up_thru</em></dt>
+<dd><p class="first">before a primary can successfully complete the <em>peering</em> process,
+it must inform a monitor that is alive through the current
+OSD map epoch by having the monitor set its <em>up_thru</em> in the osd
+map.  This helps peering ignore previous <em>acting sets</em> for which
+peering never completed after certain sequences of failures, such as
+the second interval below:</p>
+<ul class="last simple">
+<li><em>acting set</em> = [A,B]</li>
+<li><em>acting set</em> = [A]</li>
+<li><em>acting set</em> = [] very shortly after (e.g., simultaneous failure, but staggered detection)</li>
+<li><em>acting set</em> = [B] (B restarts, A does not)</li>
+</ul>
+</dd>
+<dt><em>last epoch clean</em></dt>
+<dd>the last epoch at which all nodes in the <em>acting set</em>
+for a particular placement group were completely
+up to date (both PG logs and object contents).
+At this point, <em>recovery</em> is deemed to have been
+completed.</dd>
+</dl>
+</div>
+<div class="section" id="description-of-the-peering-process">
+<h2>Description of the Peering Process<a class="headerlink" href="#description-of-the-peering-process" title="Permalink to this headline">¶</a></h2>
+<p>The <em>Golden Rule</em> is that no write operation to any PG
+is acknowledged to a client until it has been persisted
+by all members of the <em>acting set</em> for that PG.  This means
+that if we can communicate with at least one member of
+each <em>acting set</em> since the last successful <em>peering</em>, someone
+will have a record of every (acknowledged) operation
+since the last successful <em>peering</em>.
+This means that it should be possible for the current
+primary to construct and disseminate a new <em>authoritative history</em>.</p>
+<p>It is also important to appreciate the role of the OSD map
+(list of all known OSDs and their states, as well as some
+information about the placement groups) in the <em>peering</em>
+process:</p>
+<blockquote>
+<div><p>When OSDs go up or down (or get added or removed)
+this has the potential to affect the <em>active sets</em>
+of many placement groups.</p>
+<p>Before a primary successfully completes the <em>peering</em>
+process, the OSD map must reflect that the OSD was alive
+and well as of the first epoch in the <em>current interval</em>.</p>
+<p>Changes can only be made after successful <em>peering</em>.</p>
+</div></blockquote>
+<p>Thus, a new primary can use the latest OSD map along with a recent
+history of past maps to generate a set of <em>past intervals</em> to
+determine which OSDs must be consulted before we can successfully
+<em>peer</em>.  The set of past intervals is bounded by <em>last epoch started</em>,
+the most recent <em>past interval</em> for which we know <em>peering</em> completed.
+The process by with an OSD discovers a PG exists in the first place is
+by exchanging <em>PG info</em> messages, so the OSD always has some lower
+bound on <em>last epoch started</em>.</p>
+<p>The high level process is for the current PG primary to:</p>
+<blockquote>
+<div><blockquote>
+<div><ol class="arabic">
+<li><p class="first">get a recent OSD map (to identify the members of the all
+interesting <em>acting sets</em>, and confirm that we are still the
+primary).</p>
+</li>
+<li><p class="first">generate a list of <em>past intervals</em> since <em>last epoch started</em>.
+Consider the subset of those for which <em>up_thru</em> was greater than
+the first interval epoch by the last interval epoch&#8217;s OSD map; that is,
+the subset for which <em>peering</em> could have completed before the <em>acting
+set</em> changed to another set of OSDs.</p>
+<p>Successful <em>peering</em> will require that we be able to contact at
+least one OSD from each of <em>past interval</em>&#8216;s <em>acting set</em>.</p>
+</li>
+<li><p class="first">ask every node in that list for its <em>PG info</em>, which includes the most
+recent write made to the PG, and a value for <em>last epoch started</em>.  If
+we learn about a <em>last epoch started</em> that is newer than our own, we can
+prune older <em>past intervals</em> and reduce the peer OSDs we need to contact.</p>
+</li>
+</ol>
+<ol class="arabic simple" start="5">
+<li>if anyone else has (in its PG log) operations that I do not have,
+instruct them to send me the missing log entries so that the primary&#8217;s
+<em>PG log</em> is up to date (includes the newest write)..</li>
+</ol>
+<ol class="arabic" start="5">
+<li><p class="first">for each member of the current <em>acting set</em>:</p>
+<ol class="loweralpha">
+<li><p class="first">ask it for copies of all PG log entries since <em>last epoch start</em>
+so that I can verify that they agree with mine (or know what
+objects I will be telling it to delete).</p>
+<p>If the cluster failed before an operation was persisted by all
+members of the <em>acting set</em>, and the subsequent <em>peering</em> did not
+remember that operation, and a node that did remember that
+operation later rejoined, its logs would record a different
+(divergent) history than the <em>authoritative history</em> that was
+reconstructed in the <em>peering</em> after the failure.</p>
+<p>Since the <em>divergent</em> events were not recorded in other logs
+from that <em>acting set</em>, they were not acknowledged to the client,
+and there is no harm in discarding them (so that all OSDs agree
+on the <em>authoritative history</em>).  But, we will have to instruct
+any OSD that stores data from a divergent update to delete the
+affected (and now deemed to be apocryphal) objects.</p>
+</li>
+<li><p class="first">ask it for its <em>missing set</em> (object updates recorded
+in its PG log, but for which it does not have the new data).
+This is the list of objects that must be fully replicated
+before we can accept writes.</p>
+</li>
+</ol>
+</li>
+<li><p class="first">at this point, the primary&#8217;s PG log contains an <em>authoritative history</em> of
+the placement group, and the OSD now has sufficient
+information to bring any other OSD in the <em>acting set</em> up to date.</p>
+</li>
+<li><p class="first">if the primary&#8217;s <em>up_thru</em> value in the current OSD map is not greater than
+or equal to the first epoch in the <em>current interval</em>, send a request to the
+monitor to update it, and wait until receive an updated OSD map that reflects
+the change.</p>
+</li>
+<li><p class="first">for each member of the current <em>acting set</em>:</p>
+<ol class="loweralpha simple">
+<li>send them log updates to bring their PG logs into agreement with
+my own (<em>authoritative history</em>) ... which may involve deciding
+to delete divergent objects.</li>
+<li>await acknowledgment that they have persisted the PG log entries.</li>
+</ol>
+</li>
+<li><p class="first">at this point all OSDs in the <em>acting set</em> agree on all of the meta-data,
+and would (in any future <em>peering</em>) return identical accounts of all
+updates.</p>
+<ol class="loweralpha">
+<li><p class="first">start accepting client write operations (because we have unanimous
+agreement on the state of the objects into which those updates are
+being accepted).  Note, however, that if a client tries to write to an
+object it will be promoted to the front of the recovery queue, and the
+write willy be applied after it is fully replicated to the current <em>acting set</em>.</p>
+</li>
+<li><p class="first">update the <em>last epoch started</em> value in our local <em>PG info</em>, and instruct
+other <em>active set</em> OSDs to do the same.</p>
+</li>
+<li><p class="first">start pulling object data updates that other OSDs have, but I do not.  We may
+need to query OSDs from additional <em>past intervals</em> prior to <em>last epoch started</em>
+(the last time <em>peering</em> completed) and following <em>last epoch clean</em> (the last epoch that
+recovery completed) in order to find copies of all objects.</p>
+</li>
+<li><p class="first">start pushing object data updates to other OSDs that do not yet have them.</p>
+<p>We push these updates from the primary (rather than having the replicas
+pull them) because this allows the primary to ensure that a replica has
+the current contents before sending it an update write.  It also makes
+it possible for a single read (from the primary) to be used to write
+the data to multiple replicas.  If each replica did its own pulls,
+the data might have to be read multiple times.</p>
+</li>
+</ol>
+</li>
+</ol>
+</div></blockquote>
+<ol class="arabic" start="10">
+<li><p class="first">once all replicas store the all copies of all objects (that
+existed prior to the start of this epoch) we can update <em>last
+epoch clean</em> in the <em>PG info</em>, and we can dismiss all of the
+<em>stray</em> replicas, allowing them to delete their copies of objects
+for which they are no longer in the <em>acting set</em>.</p>
+<p>We could not dismiss the <em>strays</em> prior to this because it was possible
+that one of those <em>strays</em> might hold the sole surviving copy of an
+old object (all of whose copies disappeared before they could be
+replicated on members of the current <em>acting set</em>).</p>
+</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="state-model">
+<h2>State Model<a class="headerlink" href="#state-model" title="Permalink to this headline">¶</a></h2>
+<p class="graphviz">
+<img src="../../../_images/graphviz-4358d0071ed1241baaed0a5450debde6eb61e0e3.png" alt="digraph G {
+	size=&quot;7,7&quot;
+	compound=true;
+	subgraph cluster0 {
+		label = &quot;RecoveryMachine&quot;;
+		color = &quot;blue&quot;;
+		Crashed;
+		Initial[shape=Mdiamond];
+		Reset;
+		subgraph cluster1 {
+			label = &quot;Started&quot;;
+			color = &quot;blue&quot;;
+			Start[shape=Mdiamond];
+			subgraph cluster2 {
+				label = &quot;Primary&quot;;
+				color = &quot;blue&quot;;
+				WaitActingChange;
+				subgraph cluster3 {
+					label = &quot;Peering&quot;;
+					color = &quot;blue&quot;;
+					GetInfo[shape=Mdiamond];
+					GetLog;
+					GetMissing;
+					WaitUpThru;
+					Incomplete;
+				}
+				subgraph cluster4 {
+					label = &quot;Active&quot;;
+					color = &quot;blue&quot;;
+					Clean;
+					Recovered;
+					Backfilling;
+					WaitRemoteBackfillReserved;
+					WaitLocalBackfillReserved;
+					NotBackfilling;
+					Recovering;
+					WaitRemoteRecoveryReserved;
+					WaitLocalRecoveryReserved;
+					Activating[shape=Mdiamond];
+				}
+			}
+			subgraph cluster5 {
+				label = &quot;ReplicaActive&quot;;
+				color = &quot;blue&quot;;
+				RepRecovering;
+				RepWaitBackfillReserved;
+				RepWaitRecoveryReserved;
+				RepNotRecovering[shape=Mdiamond];
+			}
+			Stray;
+		}
+	}
+GetInfo -&gt; WaitActingChange [label=&quot;NeedActingChange&quot;,ltail=cluster2,];
+Clean -&gt; WaitLocalRecoveryReserved [label=&quot;DoRecovery&quot;,];
+Activating -&gt; WaitLocalRecoveryReserved [label=&quot;DoRecovery&quot;,];
+Reset -&gt; Start [label=&quot;ActMap&quot;,lhead=cluster1,];
+Recovered -&gt; Clean [label=&quot;GoClean&quot;,];
+Start -&gt; GetInfo [label=&quot;MakePrimary&quot;,lhead=cluster2,];
+Initial -&gt; Crashed [label=&quot;boost::statechart::event_base&quot;,];
+Reset -&gt; Crashed [label=&quot;boost::statechart::event_base&quot;,];
+Start -&gt; Crashed [label=&quot;boost::statechart::event_base&quot;,ltail=cluster1,];
+GetLog -&gt; GetMissing [label=&quot;GotLog&quot;,];
+Initial -&gt; GetInfo [label=&quot;MNotifyRec&quot;,lhead=cluster2,];
+Incomplete -&gt; GetLog [label=&quot;MNotifyRec&quot;,];
+Initial -&gt; Stray [label=&quot;MLogRec&quot;,];
+Stray -&gt; RepNotRecovering [label=&quot;MLogRec&quot;,lhead=cluster5,];
+Activating -&gt; Recovered [label=&quot;AllReplicasRecovered&quot;,];
+Recovering -&gt; Recovered [label=&quot;AllReplicasRecovered&quot;,];
+WaitRemoteRecoveryReserved -&gt; Recovering [label=&quot;AllRemotesReserved&quot;,];
+Initial -&gt; Reset [label=&quot;Initialize&quot;,];
+RepNotRecovering -&gt; RepWaitRecoveryReserved [label=&quot;RequestRecovery&quot;,];
+NotBackfilling -&gt; WaitLocalBackfillReserved [label=&quot;RequestBackfill&quot;,];
+Activating -&gt; WaitLocalBackfillReserved [label=&quot;RequestBackfill&quot;,];
+Recovering -&gt; WaitRemoteBackfillReserved [label=&quot;RequestBackfill&quot;,];
+Initial -&gt; Reset [label=&quot;Load&quot;,];
+GetMissing -&gt; WaitUpThru [label=&quot;NeedUpThru&quot;,];
+RepWaitRecoveryReserved -&gt; RepRecovering [label=&quot;RemoteRecoveryReserved&quot;,];
+WaitLocalRecoveryReserved -&gt; WaitRemoteRecoveryReserved [label=&quot;LocalRecoveryReserved&quot;,];
+RepNotRecovering -&gt; RepWaitBackfillReserved [label=&quot;RequestBackfillPrio&quot;,];
+WaitRemoteBackfillReserved -&gt; Backfilling [label=&quot;AllBackfillsReserved&quot;,];
+Backfilling -&gt; Recovered [label=&quot;Backfilled&quot;,];
+Initial -&gt; Stray [label=&quot;MInfoRec&quot;,];
+Stray -&gt; RepNotRecovering [label=&quot;MInfoRec&quot;,lhead=cluster5,];
+RepRecovering -&gt; RepNotRecovering [label=&quot;RecoveryDone&quot;,];
+RepNotRecovering -&gt; RepNotRecovering [label=&quot;RecoveryDone&quot;,];
+RepRecovering -&gt; RepNotRecovering [label=&quot;RemoteReservationRejected&quot;,];
+Backfilling -&gt; NotBackfilling [label=&quot;RemoteReservationRejected&quot;,];
+WaitRemoteBackfillReserved -&gt; NotBackfilling [label=&quot;RemoteReservationRejected&quot;,];
+RepWaitBackfillReserved -&gt; RepNotRecovering [label=&quot;RemoteReservationRejected&quot;,];
+GetLog -&gt; Incomplete [label=&quot;IsIncomplete&quot;,];
+WaitLocalBackfillReserved -&gt; WaitRemoteBackfillReserved [label=&quot;LocalBackfillReserved&quot;,];
+GetInfo -&gt; Activating [label=&quot;Activate&quot;,ltail=cluster3,lhead=cluster4,];
+GetInfo -&gt; GetLog [label=&quot;GotInfo&quot;,];
+Start -&gt; Reset [label=&quot;AdvMap&quot;,ltail=cluster1,];
+GetInfo -&gt; Reset [label=&quot;AdvMap&quot;,ltail=cluster3,];
+GetLog -&gt; Reset [label=&quot;AdvMap&quot;,];
+WaitActingChange -&gt; Reset [label=&quot;AdvMap&quot;,];
+Incomplete -&gt; Reset [label=&quot;AdvMap&quot;,];
+RepWaitBackfillReserved -&gt; RepRecovering [label=&quot;RemoteBackfillReserved&quot;,];
+Start -&gt; Stray [label=&quot;MakeStray&quot;,];
+}" />
+</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

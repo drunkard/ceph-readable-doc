@@ -1,0 +1,284 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Network Encoding &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="network-encoding">
+<h1>Network Encoding<a class="headerlink" href="#network-encoding" title="Permalink to this headline">¶</a></h1>
+<p>This describes the encoding used to serialize data.  It doesn&#8217;t cover specific
+objects/messages but focuses on the base types.</p>
+<p>The types are not self documenting in any way.  They can not be decoded unless
+you know what they are.</p>
+<div class="section" id="conventions">
+<h2>Conventions<a class="headerlink" href="#conventions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="integers">
+<h3>Integers<a class="headerlink" href="#integers" title="Permalink to this headline">¶</a></h3>
+<p>The integer types used will be named <tt class="docutils literal"><span class="pre">{signed}{size}{endian}</span></tt>.  For example
+<tt class="docutils literal"><span class="pre">u16le</span></tt> is an unsigned 16 bit integer encoded in little endian byte order
+while <tt class="docutils literal"><span class="pre">s64be</span></tt> is a signed 64 bit integer in big endian.  Additionally <tt class="docutils literal"><span class="pre">u8</span></tt>
+and <tt class="docutils literal"><span class="pre">s8</span></tt> will represent signed and unsigned bytes respectively.  Signed
+integers use two&#8217;s complement encoding.</p>
+</div>
+<div class="section" id="complex-types">
+<h3>Complex Types<a class="headerlink" href="#complex-types" title="Permalink to this headline">¶</a></h3>
+<p>This document will use a c-like syntax for describing structures.  The
+structure represents the data that will go over the wire.  There will be no
+padding between the elements and the elements will be sent in the order they
+appear.  For example:</p>
+<div class="highlight-python"><pre>struct foo {
+        u8    tag;
+        u32le data;
+}</pre>
+</div>
+<p>When encoding the values <tt class="docutils literal"><span class="pre">0x05</span></tt> and <tt class="docutils literal"><span class="pre">0x12345678</span></tt> respectively will appear on
+the wire as <tt class="docutils literal"><span class="pre">05</span> <span class="pre">78</span> <span class="pre">56</span> <span class="pre">34</span> <span class="pre">12</span></tt>.</p>
+</div>
+<div class="section" id="variable-arrays">
+<h3>Variable Arrays<a class="headerlink" href="#variable-arrays" title="Permalink to this headline">¶</a></h3>
+<p>Unlike c, length arrays can be used anywhere in structures and will be inline in
+the protocol.  Furthermore the length may be described using an earlier item in
+the structure.</p>
+<div class="highlight-python"><pre>struct blob {
+        u32le size;
+        u8    data[size];
+        u32le checksum;
+}</pre>
+</div>
+<p>This structure is encoded as a 32 bit size, followed by <tt class="docutils literal"><span class="pre">size</span></tt> data bytes,
+then a 32 bit checksum.</p>
+</div>
+<div class="section" id="primitive-aliases">
+<h3>Primitive Aliases<a class="headerlink" href="#primitive-aliases" title="Permalink to this headline">¶</a></h3>
+<p>These types are just aliases for primitive types.</p>
+<div class="highlight-python"><pre>// From /src/include/types.h
+
+typedef u32le epoch_t;
+typedef u32le ceph_seq_t;
+typedef u64le ceph_tid_t;
+typedef u64le version_t;</pre>
+</div>
+</div>
+</div>
+<div class="section" id="structures">
+<h2>Structures<a class="headerlink" href="#structures" title="Permalink to this headline">¶</a></h2>
+<p>These are the way structures are encoded.  Note that these structures don&#8217;t
+actually exist in the source but are the way that different types are encoded.</p>
+<div class="section" id="optional">
+<h3>Optional<a class="headerlink" href="#optional" title="Permalink to this headline">¶</a></h3>
+<p>Optionals are represented as a presence byte, followed by the item if it exists.</p>
+<div class="highlight-python"><pre>struct ceph_optional&lt;T&gt; {
+        u8 present;
+        T  element[present? 1 : 0]; // Only if present is non-zero.
+}</pre>
+</div>
+<p>Optionals are used to encode <tt class="docutils literal"><span class="pre">boost::optional</span></tt>.</p>
+</div>
+<div class="section" id="pair">
+<h3>Pair<a class="headerlink" href="#pair" title="Permalink to this headline">¶</a></h3>
+<p>Pairs are simply the first item followed by the second.</p>
+<div class="highlight-python"><pre>struct ceph_pair&lt;A,B&gt; {
+        A a;
+        B b;
+}</pre>
+</div>
+<p>Pairs are used to encode <tt class="docutils literal"><span class="pre">std::pair</span></tt>.</p>
+</div>
+<div class="section" id="triple">
+<h3>Triple<a class="headerlink" href="#triple" title="Permalink to this headline">¶</a></h3>
+<p>Triples are simply the tree elements one after another.</p>
+<div class="highlight-python"><pre>struct ceph_triple&lt;A,B,C&gt; {
+        A a;
+        B b;
+        C c;
+}</pre>
+</div>
+<p>Triples are used to encode <tt class="docutils literal"><span class="pre">ceph::triple</span></tt>.</p>
+</div>
+<div class="section" id="list">
+<h3>List<a class="headerlink" href="#list" title="Permalink to this headline">¶</a></h3>
+<p>Lists are represented as an element count followed by that many elements.</p>
+<div class="highlight-python"><pre>struct ceph_list&lt;T&gt; {
+        u32le length;
+        T     elements[length];
+}</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The size of the elements in the list are not necessarily uniform.</p>
+</div>
+<p>Lists are used to encode <tt class="docutils literal"><span class="pre">std::list</span></tt>, <tt class="docutils literal"><span class="pre">std::vector</span></tt>, <tt class="docutils literal"><span class="pre">std::deque</span></tt>,
+<tt class="docutils literal"><span class="pre">std::set</span></tt> and <tt class="docutils literal"><span class="pre">ceph::unordered_set</span></tt>.</p>
+</div>
+<div class="section" id="blob">
+<h3>Blob<a class="headerlink" href="#blob" title="Permalink to this headline">¶</a></h3>
+<p>A Blob is simply a list of bytes.</p>
+<div class="highlight-python"><pre>struct ceph_string {
+        ceph_list&lt;u8&gt;;
+}
+
+// AKA
+
+struct ceph_string {
+        u32le size;
+        u8    data[size];
+}</pre>
+</div>
+<p>Blobs are used to encode <tt class="docutils literal"><span class="pre">std::string</span></tt>, <tt class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span></tt> and <tt class="docutils literal"><span class="pre">bufferlist</span></tt>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The content of a Blob is arbratrary binary data.</p>
+</div>
+</div>
+<div class="section" id="map">
+<h3>Map<a class="headerlink" href="#map" title="Permalink to this headline">¶</a></h3>
+<p>Maps are a list of pairs.</p>
+<div class="highlight-python"><pre>struct ceph_map&lt;K,V&gt; {
+        ceph_list&lt;ceph_pair&lt;K,V&gt;&gt;;
+}
+
+// AKA
+
+struct ceph_map&lt;K,V&gt; {
+        u32le length;
+        ceph_pair&lt;K,V&gt; entries[length];
+}</pre>
+</div>
+<p>Maps are used to encode <tt class="docutils literal"><span class="pre">std::map</span></tt>, <tt class="docutils literal"><span class="pre">std::multimap</span></tt> and
+<tt class="docutils literal"><span class="pre">ceph::unordered_map</span></tt>.</p>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>Complex Types<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>These aren&#8217;t hard to find in the source but the common ones are listed here for
+convenience.</p>
+<div class="section" id="utime-t">
+<h3>utime_t<a class="headerlink" href="#utime-t" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-python"><pre>// From /src/include/utime.h
+struct utime_t {
+        u32le tv_sec;  // Seconds since epoch.
+        u32le tv_nsec; // Nanoseconds since the last second.
+}</pre>
+</div>
+</div>
+<div class="section" id="ceph-entity-name">
+<h3>ceph_entity_name<a class="headerlink" href="#ceph-entity-name" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-python"><pre>// From /src/include/msgr.h
+struct ceph_entity_name {
+        u8    type; // CEPH_ENTITY_TYPE_*
+        u64le num;
+}
+
+// CEPH_ENTITY_TYPE_* defined in /src/include/msgr.h</pre>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

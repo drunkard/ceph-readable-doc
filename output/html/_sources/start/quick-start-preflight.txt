@@ -56,7 +56,7 @@ Ceph 部署工具的安装
 
    把如下内容粘帖进去，用最新稳定版 Ceph 名字替换 ``{ceph-stable-release}`` \
    （如 ``firefly`` ）、用你的发行版名字替换 ``{distro}`` （如 ``el6`` 为 \
-   CentOS 6 、 ``el7`` 为 CentOS 7 、 ``rhel6.5`` 为 Red Hat 6.5 、 ``rhel7`` \
+   CentOS 6 、 ``el7`` 为 CentOS 7 、 ``rhel6`` 为 Red Hat 6.5 、 ``rhel7`` \
    为 Red Hat 7 、 ``fc19`` 是 Fedora 19 、 ``fc20`` 是 Fedora 20 。最后保存\
    到 ``/etc/yum.repos.d/ceph.repo`` 文件。 ::
 
@@ -148,10 +148,9 @@ Ceph 节点安装
 允许无密码 SSH 登录
 -------------------
 
-正因为 ``ceph-deploy`` 不支持输入密码，你必须在管理节点上生成 SSH 密钥并把其公\
-钥散布到各 Ceph 节点。
-
-.. note:: ``ceph-deploy`` 的 v1.1.3 版及其后续版本会给初始监视器们生成 SSH 密钥。
+正因为 ``ceph-deploy`` 不支持输入密码，你必须在管理节点上生成 SSH 密钥并\
+把其公钥散布到各 Ceph 节点。 ``ceph-deploy`` 会尝试给初始监视器们生成 SSH \
+密钥对。
 
 #. 生成 SSH 密钥对，但不要用 ``sudo`` 或 ``root`` 用户。口令为空： ::
 

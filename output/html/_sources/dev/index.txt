@@ -35,4 +35,5 @@
 
    *
    osd_internals/index*
+   mds_internals/index*
    radosgw/index*

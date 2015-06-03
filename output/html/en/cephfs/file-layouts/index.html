@@ -1,0 +1,252 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>File layouts &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="file-layouts">
+<h1>File layouts<a class="headerlink" href="#file-layouts" title="Permalink to this headline">¶</a></h1>
+<p>The layout of a file controls how its contents are mapped to Ceph RADOS objects.  You can
+read and write a file&#8217;s layout using <em>virtual extended attributes</em> or xattrs.</p>
+<p>The name of the layout xattrs depends on whether a file is a regular file or a directory.  Regular
+files&#8217; layout xattrs are called <tt class="docutils literal"><span class="pre">ceph.file.layout</span></tt>, whereas directories&#8217; layout xattrs are called
+<tt class="docutils literal"><span class="pre">ceph.dir.layout</span></tt>.  Where subsequent examples refer to <tt class="docutils literal"><span class="pre">ceph.file.layout</span></tt>, substitute <tt class="docutils literal"><span class="pre">dir</span></tt> as appropriate
+when dealing with directories.</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">Your linux distribution may not ship with commands for manipulating xattrs by default,
+the required package is usually called <tt class="docutils literal"><span class="pre">attr</span></tt>.</p>
+</div>
+<div class="section" id="layout-fields">
+<h2>Layout fields<a class="headerlink" href="#layout-fields" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>pool</dt>
+<dd>String, giving ID or name.  Which RADOS pool a file&#8217;s data objects will be stored in.</dd>
+<dt>stripe_unit</dt>
+<dd>Integer in bytes.  The size (in bytes) of a block of data used in the RAID 0 distribution of a file. All stripe units for a file have equal size. The last stripe unit is typically incomplete–i.e. it represents the data at the end of the file as well as unused “space” beyond it up to the end of the fixed stripe unit size.</dd>
+<dt>stripe_count</dt>
+<dd>Integer.  The number of consecutive stripe units that constitute a RAID 0 “stripe” of file data.</dd>
+<dt>object_size</dt>
+<dd>Integer in bytes.  File data is chunked into RADOS objects of this size.</dd>
+</dl>
+</div>
+<div class="section" id="reading-layouts-with-getfattr">
+<h2>Reading layouts with <tt class="docutils literal"><span class="pre">getfattr</span></tt><a class="headerlink" href="#reading-layouts-with-getfattr" title="Permalink to this headline">¶</a></h2>
+<p>Read the layout information as a single string:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>touch file
+<span class="nv">$ </span>getfattr -n ceph.file.layout file
+<span class="c"># file: file</span>
+ceph.file.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=1 object_size=4194304 pool=cephfs_data&quot;</span>
+</pre></div>
+</div>
+<p>Read individual layout fields:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>getfattr -n ceph.file.layout.pool file
+<span class="c"># file: file</span>
+ceph.file.layout.pool<span class="o">=</span><span class="s2">&quot;cephfs_data&quot;</span>
+<span class="nv">$ </span>getfattr -n ceph.file.layout.stripe_unit file
+<span class="c"># file: file</span>
+ceph.file.layout.stripe_unit<span class="o">=</span><span class="s2">&quot;4194304&quot;</span>
+<span class="nv">$ </span>getfattr -n ceph.file.layout.stripe_count file
+<span class="c"># file: file</span>
+ceph.file.layout.stripe_count<span class="o">=</span><span class="s2">&quot;1&quot;</span>
+<span class="nv">$ </span>getfattr -n ceph.file.layout.object_size file
+<span class="c"># file: file</span>
+ceph.file.layout.object_size<span class="o">=</span><span class="s2">&quot;4194304&quot;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When reading layouts, the pool will usually be indicated by name.  However, in
+rare cases when pools have only just been created, the ID may be output instead.</p>
+</div>
+<p>Directories do not have an explicit layout until it is customized.  Attempts to read
+the layout will fail if it has never been modified: this indicates that layout of the
+next ancestor directory with an explicit layout will be used.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>mkdir dir
+<span class="nv">$ </span>getfattr -n ceph.dir.layout dir
+dir: ceph.dir.layout: No such attribute
+<span class="nv">$ </span>setfattr -n ceph.dir.layout.stripe_count -v <span class="m">2</span> dir
+<span class="nv">$ </span>getfattr -n ceph.dir.layout dir
+<span class="c"># file: dir</span>
+ceph.dir.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="writing-layouts-with-setfattr">
+<h2>Writing layouts with <tt class="docutils literal"><span class="pre">setfattr</span></tt><a class="headerlink" href="#writing-layouts-with-setfattr" title="Permalink to this headline">¶</a></h2>
+<p>Layout fields are modified using <tt class="docutils literal"><span class="pre">setfattr</span></tt>:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>ceph osd lspools
+<span class="m">0</span> rbd,1 cephfs_data,2 cephfs_metadata,
+
+<span class="nv">$ </span>setfattr -n ceph.file.layout.stripe_unit -v <span class="m">1048576</span> file2
+<span class="nv">$ </span>setfattr -n ceph.file.layout.stripe_count -v <span class="m">8</span> file2
+<span class="nv">$ </span>setfattr -n ceph.file.layout.object_size -v <span class="m">10485760</span> file2
+<span class="nv">$ </span>setfattr -n ceph.file.layout.pool -v <span class="m">1</span> file2  <span class="c"># Setting pool by ID</span>
+<span class="nv">$ </span>setfattr -n ceph.file.layout.pool -v cephfs_data file2  <span class="c"># Setting pool by name</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="inheritance-of-layouts">
+<h2>Inheritance of layouts<a class="headerlink" href="#inheritance-of-layouts" title="Permalink to this headline">¶</a></h2>
+<p>Files inherit the layout of their parent directory at creation time.  However, subsequent
+changes to the parent directory&#8217;s layout do not affect children.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>getfattr -n ceph.dir.layout dir
+<span class="c"># file: dir</span>
+ceph.dir.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data&quot;</span>
+
+<span class="c"># Demonstrate file1 inheriting its parent&#39;s layout</span>
+<span class="nv">$ </span>touch dir/file1
+<span class="nv">$ </span>getfattr -n ceph.file.layout dir/file1
+<span class="c"># file: dir/file1</span>
+ceph.file.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data&quot;</span>
+
+<span class="c"># Now update the layout of the directory before creating a second file</span>
+<span class="nv">$ </span>setfattr -n ceph.dir.layout.stripe_count -v <span class="m">4</span> dir
+<span class="nv">$ </span>touch dir/file2
+
+<span class="c"># Demonstrate that file1&#39;s layout is unchanged</span>
+<span class="nv">$ </span>getfattr -n ceph.file.layout dir/file1
+<span class="c"># file: dir/file1</span>
+ceph.file.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data&quot;</span>
+
+<span class="c"># ...while file2 has the parent directory&#39;s new layout</span>
+<span class="nv">$ </span>getfattr -n ceph.file.layout dir/file2
+<span class="c"># file: dir/file2</span>
+ceph.file.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data&quot;</span>
+</pre></div>
+</div>
+<p>Files created as descendents of the directory also inherit the layout, if the intermediate
+directories do not have layouts set:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>getfattr -n ceph.dir.layout dir
+<span class="c"># file: dir</span>
+ceph.dir.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data&quot;</span>
+<span class="nv">$ </span>mkdir dir/childdir
+<span class="nv">$ </span>getfattr -n ceph.dir.layout dir/childdir
+dir/childdir: ceph.dir.layout: No such attribute
+<span class="nv">$ </span>touch dir/childdir/grandchild
+<span class="nv">$ </span>getfattr -n ceph.file.layout dir/childdir/grandchild
+<span class="c"># file: dir/childdir/grandchild</span>
+ceph.file.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="adding-a-data-pool-to-the-mds">
+<h2>Adding a data pool to the MDS<a class="headerlink" href="#adding-a-data-pool-to-the-mds" title="Permalink to this headline">¶</a></h2>
+<p>Before you can use a pool with CephFS you have to add it to the Metadata Servers.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>ceph mds add_data_pool cephfs_data_ssd
+<span class="c"># Pool should now show up</span>
+<span class="nv">$ </span>ceph fs ls
+.... data pools: <span class="o">[</span>cephfs_data cephfs_data_ssd <span class="o">]</span>
+</pre></div>
+</div>
+<p>Make sure that your cephx keys allows the client to access this new pool.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

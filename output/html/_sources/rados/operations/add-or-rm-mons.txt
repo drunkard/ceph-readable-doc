@@ -129,37 +129,48 @@ for more than three exists.
 从不健康集群删除监视器
 ----------------------
 
-本步骤从不健康集群删除 ``ceph-mon`` ，即集群有些归置组永久偏离 ``active+clean`` 。
+本步骤从不健康集群删除 ``ceph-mon`` ，例如集群内的监视器不能形成法定人数。
 
-#. 找出活着的监视器，并登录其所在主机。 ::
+#. 停止所有监视器主机上的所有 ``ceph-mon`` 守护进程。 ::
 
-	ceph mon dump
+	ssh {mon-host}
+	service ceph stop mon || stop ceph-mon-all
+	# 要在所有监视器主机上执行
+
+#. 找出一个活着的监视器并登录其所在主机。 ::
+
 	ssh {mon-host}
 
-#. 停止 ``ceph-mon`` 守护进程并提取 monmap 副本。 ::
+#. 提取 monmap 副本。 ::
 
-	service ceph stop mon || stop ceph-mon-all
-        ceph-mon -i {mon-id} --extract-monmap {map-path}
-	# 例如
-        ceph-mon -i a --extract-monmap /tmp/monmap
+	ceph-mon -i {mon-id} --extract-monmap {map-path}
+	# 多数情况下都是：
+	ceph-mon -i `hostname` --extract-monmap /tmp/monmap
 
-#. 删除不保留的监视器。例如，如果你有 3 个监视器 ``mon.a`` 、 ``mon.b`` 和 \
-   ``mon.c`` ，其中仅保留 ``mon.a`` ，按如下步骤： ::
+#. 删除不保留或有问题的监视器。例如，如果你有 3 个监视器 ``mon.a`` 、 \
+   ``mon.b`` 和 ``mon.c`` ，其中仅保留 ``mon.a`` ，按如下步骤： ::
 
 	monmaptool {map-path} --rm {mon-id}
 	# 例如
 	monmaptool /tmp/monmap --rm b
 	monmaptool /tmp/monmap --rm c
 
-#. 把去除过监视器后剩下的运行图注入存活的监视器。比如，用下列命令把一张运行图注入 \
-   ``mon.a`` 监视器： ::
+#. 把去除过监视器后剩下的运行图注入存活的监视器。比如，用下列命令把一张运\
+   行图注入 ``mon.a`` 监视器： ::
 
 	ceph-mon -i {mon-id} --inject-monmap {map-path}
 	# for example,
 	ceph-mon -i a --inject-monmap /tmp/monmap
 
+#. 只启动保留下来的监视器。
+
+#. 确认这些监视器形成了法定人数（ ``ceph -s`` ）。
+
+#. 你也许得把已删除监视器的数据目录 ``/var/lib/ceph/mon`` 备份到安全位置，\
+   如果您对其余监视器很有信心、或者有足够的冗余，也可以删除。
 
 .. _更改监视器的 IP 地址:
+
 
 更改监视器的 IP 地址
 ====================

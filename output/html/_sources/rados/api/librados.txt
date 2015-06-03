@@ -172,5 +172,5 @@ IO 上下文、到 RADOS 的连接： ::
 API calls
 =========
 
- .. doxygenfile:: rados_types.h
- .. doxygenfile:: librados.h
+ .. autodoxygenfile:: rados_types.h
+ .. autodoxygenfile:: librados.h

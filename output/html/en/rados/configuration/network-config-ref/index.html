@@ -1,0 +1,573 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Network Configuration Reference &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="network-configuration-reference">
+<h1>Network Configuration Reference<a class="headerlink" href="#network-configuration-reference" title="Permalink to this headline">¶</a></h1>
+<p>Network configuration is critical for building a high performance  <a class="reference internal" href="../../../../glossary/#term-ceph-storage-cluster"><em class="xref std std-term">Ceph
+Storage Cluster</em></a>. The Ceph Storage Cluster does not perform  request routing or
+dispatching on behalf of the <a class="reference internal" href="../../../../glossary/#term-ceph-client"><em class="xref std std-term">Ceph Client</em></a>. Instead, Ceph Clients make
+requests directly to Ceph OSD Daemons. Ceph OSD Daemons perform data replication
+on behalf of Ceph Clients, which means replication and other factors impose
+additional loads on Ceph Storage Cluster networks.</p>
+<p>Our Quick Start configurations provide a trivial <a class="reference external" href="../../../start/quick-ceph-deploy/#create-a-cluster">Ceph configuration file</a> that
+sets monitor IP addresses and daemon host names only. Unless you specify a
+cluster network, Ceph assumes a single &#8220;public&#8221; network. Ceph functions just
+fine with a public network only, but you may see significant performance
+improvement with a second &#8220;cluster&#8221; network in a large cluster.</p>
+<p>We recommend running a Ceph Storage Cluster with two networks: a public
+(front-side) network and a cluster (back-side) network. To support two networks,
+each <a class="reference internal" href="../../../../glossary/#term-ceph-node"><em class="xref std std-term">Ceph Node</em></a> will need to have more than one NIC. See <a class="reference external" href="../../../start/hardware-recommendations#networks">Hardware
+Recommendations -  Networks</a> for additional details.</p>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-2452ee22ef7d825a489a08e0b935453f2b06b0e6.png"/>
+</p>
+<p>There are several reasons to consider operating two separate networks:</p>
+<ol class="arabic simple">
+<li><strong>Performance:</strong> Ceph OSD Daemons handle data replication for the Ceph
+Clients. When Ceph OSD Daemons replicate data more than once, the network
+load between Ceph OSD Daemons easily dwarfs the network load between Ceph
+Clients and the Ceph Storage Cluster. This can introduce latency and
+create a performance problem. Recovery and rebalancing can
+also introduce significant latency on the public network. See
+<a class="reference external" href="../../../architecture#scalability-and-high-availability">Scalability and High Availability</a> for additional details on how Ceph
+replicates data. See <a class="reference external" href="../mon-osd-interaction">Monitor / OSD Interaction</a>  for details on heartbeat
+traffic.</li>
+<li><strong>Security</strong>: While most people are generally civil, a very tiny segment of
+the population likes to engage in what&#8217;s known as a Denial of Service (DoS)
+attack. When traffic between Ceph OSD Daemons gets disrupted, placement
+groups may no longer reflect an <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt> state, which may prevent
+users from reading and writing data. A great way to defeat this type of
+attack is to maintain a completely separate cluster network that doesn&#8217;t
+connect directly to the internet. Also, consider using <a class="reference external" href="../auth-config-ref#signatures">Message Signatures</a>
+to defeat spoofing attacks.</li>
+</ol>
+<div class="section" id="ip-tables">
+<h2>IP Tables<a class="headerlink" href="#ip-tables" title="Permalink to this headline">¶</a></h2>
+<p>By default, daemons <a class="reference internal" href="#bind">bind</a> to ports within the <tt class="docutils literal"><span class="pre">6800:7300</span></tt> range. You may
+configure this range at your discretion. Before configuring your IP tables,
+check the default <tt class="docutils literal"><span class="pre">iptables</span></tt> configuration.</p>
+<blockquote>
+<div>sudo iptables -L</div></blockquote>
+<p>Some Linux distributions include rules that reject all inbound requests
+except SSH from all network interfaces. For example:</p>
+<div class="highlight-python"><pre>REJECT all -- anywhere anywhere reject-with icmp-host-prohibited</pre>
+</div>
+<p>You will need to delete these rules on both your public and cluster networks
+initially, and replace them with appropriate rules when you are ready to
+harden the ports on your Ceph Nodes.</p>
+<div class="section" id="monitor-ip-tables">
+<h3>Monitor IP Tables<a class="headerlink" href="#monitor-ip-tables" title="Permalink to this headline">¶</a></h3>
+<p>Ceph Monitors listen on port <tt class="docutils literal"><span class="pre">6789</span></tt> by default. Additionally, Ceph Monitors
+always operate on the public network. When you add the rule using the example
+below, make sure you replace <tt class="docutils literal"><span class="pre">{iface}</span></tt> with the public network interface
+(e.g., <tt class="docutils literal"><span class="pre">eth0</span></tt>, <tt class="docutils literal"><span class="pre">eth1</span></tt>, etc.), <tt class="docutils literal"><span class="pre">{ip-address}</span></tt> with  the IP address of the
+public network and <tt class="docutils literal"><span class="pre">{netmask}</span></tt> with the netmask for the public network.</p>
+<div class="highlight-python"><pre>sudo iptables -A INPUT -i {iface} -p tcp -s {ip-address}/{netmask} --dport 6789 -j ACCEPT</pre>
+</div>
+</div>
+<div class="section" id="mds-ip-tables">
+<h3>MDS IP Tables<a class="headerlink" href="#mds-ip-tables" title="Permalink to this headline">¶</a></h3>
+<p>A <a class="reference internal" href="../../../../glossary/#term-ceph-metadata-server"><em class="xref std std-term">Ceph Metadata Server</em></a> listens on the first available port on the public
+network beginning at port 6800. Note that this behavior is not deterministic, so
+if you are running more than one OSD or MDS on the same host, or if you restart
+the daemons within a short window of time, the daemons will bind to higher
+ports. You should open the entire 6800-7300 range by default.  When you add the
+rule using the example below, make sure you replace <tt class="docutils literal"><span class="pre">{iface}</span></tt> with the public
+network interface (e.g., <tt class="docutils literal"><span class="pre">eth0</span></tt>, <tt class="docutils literal"><span class="pre">eth1</span></tt>, etc.), <tt class="docutils literal"><span class="pre">{ip-address}</span></tt> with the IP
+address of the public network and <tt class="docutils literal"><span class="pre">{netmask}</span></tt> with the netmask of the public
+network.</p>
+<p>For example:</p>
+<div class="highlight-python"><pre>sudo iptables -A INPUT -i {iface} -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:7300 -j ACCEPT</pre>
+</div>
+</div>
+<div class="section" id="osd-ip-tables">
+<h3>OSD IP Tables<a class="headerlink" href="#osd-ip-tables" title="Permalink to this headline">¶</a></h3>
+<p>By default, Ceph OSD Daemons <a class="reference internal" href="#bind">bind</a> to the first available ports on a Ceph Node
+beginning at port 6800.  Note that this behavior is not deterministic, so if you
+are running more than one OSD or MDS on the same host, or if you restart the
+daemons within a short window of time, the daemons will bind to higher ports.
+Each Ceph OSD Daemon on a Ceph Node may use up to three ports:</p>
+<ol class="arabic simple">
+<li>One for talking to clients and monitors.</li>
+<li>One for sending data to other OSDs.</li>
+<li>One for heartbeating.</li>
+</ol>
+<p class="ditaa">
+<img src="../../../../_images/ditaa-7aacc46d3624d8b5f65c30b294080e1e69bbd29c.png"/>
+</p>
+<p>When a daemon fails and restarts without letting go of the port, the restarted
+daemon will bind to a new port. You should open the entire 6800-7300 port range
+to handle this possibility.</p>
+<p>If you set up separate public and cluster networks, you must add rules for both
+the public network and the cluster network, because clients will connect using
+the public network and other Ceph OSD Daemons will connect using the cluster
+network. When you add the rule using the example below, make sure you replace
+<tt class="docutils literal"><span class="pre">{iface}</span></tt> with the network interface (e.g., <tt class="docutils literal"><span class="pre">eth0</span></tt>, <tt class="docutils literal"><span class="pre">eth1</span></tt>, etc.),
+<tt class="docutils literal"><span class="pre">{ip-address}</span></tt> with the IP address and <tt class="docutils literal"><span class="pre">{netmask}</span></tt> with the netmask of the
+public or cluster network. For example:</p>
+<div class="highlight-python"><pre>sudo iptables -A INPUT -i {iface}  -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:7300 -j ACCEPT</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">If you run Ceph Metadata Servers on the same Ceph Node as the
+Ceph OSD Daemons, you can consolidate the public network configuration step.</p>
+</div>
+</div>
+</div>
+<div class="section" id="ceph-networks">
+<h2>Ceph Networks<a class="headerlink" href="#ceph-networks" title="Permalink to this headline">¶</a></h2>
+<p>To configure Ceph networks, you must add a network configuration to the
+<tt class="docutils literal"><span class="pre">[global]</span></tt> section of the configuration file. Our 5-minute Quick Start
+provides a trivial <a class="reference external" href="../../../start/quick-ceph-deploy/#create-a-cluster">Ceph configuration file</a> that assumes one public network
+with client and server on the same network and subnet. Ceph functions just fine
+with a public network only. However, Ceph allows you to establish much more
+specific criteria, including multiple IP network and subnet masks for your
+public network. You can also establish a separate cluster network to handle OSD
+heartbeat, object replication and recovery traffic. Don&#8217;t confuse the IP
+addresses you set in your configuration with the public-facing IP addresses
+network clients may use to access your service. Typical internal IP networks are
+often <tt class="docutils literal"><span class="pre">192.168.0.0</span></tt> or <tt class="docutils literal"><span class="pre">10.0.0.0</span></tt>.</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">If you specify more than one IP address and subnet mask for
+either the public or the cluster network, the subnets within the network
+must be capable of routing to each other. Additionally, make sure you
+include each IP address/subnet in your IP tables and open ports for them
+as necessary.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ceph uses <a class="reference external" href="http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing">CIDR</a> notation for subnets (e.g., <tt class="docutils literal"><span class="pre">10.0.0.0/24</span></tt>).</p>
+</div>
+<p>When you&#8217;ve configured your networks, you may restart your cluster or restart
+each daemon. Ceph daemons bind dynamically, so you do not have to restart the
+entire cluster at once if you change your network configuration.</p>
+<div class="section" id="public-network">
+<h3>Public Network<a class="headerlink" href="#public-network" title="Permalink to this headline">¶</a></h3>
+<p>To configure a public network, add the following option to the <tt class="docutils literal"><span class="pre">[global]</span></tt>
+section of your Ceph configuration file.</p>
+<div class="highlight-ini"><pre>[global]
+        ...
+        public network = {public-network/netmask}</pre>
+</div>
+</div>
+<div class="section" id="cluster-network">
+<h3>Cluster Network<a class="headerlink" href="#cluster-network" title="Permalink to this headline">¶</a></h3>
+<p>If you declare a cluster network, OSDs will route heartbeat, object replication
+and recovery traffic over the cluster network. This may improve performance
+compared to using a single network. To configure a cluster network, add the
+following option to the <tt class="docutils literal"><span class="pre">[global]</span></tt> section of your Ceph configuration file.</p>
+<div class="highlight-ini"><pre>[global]
+        ...
+        cluster network = {cluster-network/netmask}</pre>
+</div>
+<p>We prefer that the cluster network is <strong>NOT</strong> reachable from the public network
+or the Internet for added security.</p>
+</div>
+</div>
+<div class="section" id="ceph-daemons">
+<h2>Ceph Daemons<a class="headerlink" href="#ceph-daemons" title="Permalink to this headline">¶</a></h2>
+<p>Ceph has one network configuration requirement that applies to all daemons: the
+Ceph configuration file <strong>MUST</strong> specify the <tt class="docutils literal"><span class="pre">host</span></tt> for each daemon. Ceph also
+requires that a Ceph configuration file specify the monitor IP address and its
+port.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Some deployment tools (e.g., <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>, Chef) may create a
+configuration file for you. <strong>DO NOT</strong> set these values if the deployment
+tool does it for you.</p>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">host</span></tt> setting is the short name of the host (i.e., not
+an fqdn). It is <strong>NOT</strong> an IP address either.  Enter <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-s</span></tt> on
+the command line to retrieve the name of the host.</p>
+</div>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[mon.a]</span>
+
+        <span class="na">host</span> <span class="o">=</span> <span class="s">{hostname}</span>
+<span class="s">        mon addr = {ip-address}:6789</span>
+
+<span class="k">[osd.0]</span>
+        <span class="na">host</span> <span class="o">=</span> <span class="s">{hostname}</span>
+</pre></div>
+</div>
+<p>You do not have to set the host IP address for a daemon. If you have a static IP
+configuration and both public and cluster networks running, the Ceph
+configuration file may specify the IP address of the host for each daemon. To
+set a static IP address for a daemon, the following option(s) should appear in
+the daemon instance sections of your <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file.</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[osd.0]</span>
+        <span class="na">public addr</span> <span class="o">=</span> <span class="s">{host-public-ip-address}</span>
+<span class="s">        cluster addr = {host-cluster-ip-address}</span>
+</pre></div>
+</div>
+<div class="topic">
+<p class="topic-title first">One NIC OSD in a Two Network Cluster</p>
+<p>Generally, we do not recommend deploying an OSD host with a single NIC in a
+cluster with two networks. However, you may accomplish this by forcing the
+OSD host to operate on the public network by adding a <tt class="docutils literal"><span class="pre">public</span> <span class="pre">addr</span></tt> entry
+to the <tt class="docutils literal"><span class="pre">[osd.n]</span></tt> section of the Ceph configuration file, where <tt class="docutils literal"><span class="pre">n</span></tt>
+refers to the number of the OSD with one NIC. Additionally, the public
+network and cluster network must be able to route traffic to each other,
+which we don&#8217;t recommend for security reasons.</p>
+</div>
+</div>
+<div class="section" id="network-config-settings">
+<h2>Network Config Settings<a class="headerlink" href="#network-config-settings" title="Permalink to this headline">¶</a></h2>
+<p>Network configuration settings are not required. Ceph assumes a public network
+with all hosts operating on it unless you specifically configure a cluster
+network.</p>
+<div class="section" id="id1">
+<h3>Public Network<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>The public network configuration allows you specifically define IP addresses
+and subnets for the public network. You may specifically assign static IP
+addresses or override <tt class="docutils literal"><span class="pre">public</span> <span class="pre">network</span></tt> settings using the <tt class="docutils literal"><span class="pre">public</span> <span class="pre">addr</span></tt>
+setting for a specific daemon.</p>
+<p><tt class="docutils literal"><span class="pre">public</span> <span class="pre">network</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The IP address and netmask of the public (front-side) network
+(e.g., <tt class="docutils literal"><span class="pre">192.168.0.0/24</span></tt>). Set in <tt class="docutils literal"><span class="pre">[global]</span></tt>. You may specify
+comma-delimited subnets.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><tt class="docutils literal"><span class="pre">{ip-address}/{netmask}</span> <span class="pre">[,</span> <span class="pre">{ip-address}/{netmask}]</span></tt></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">public</span> <span class="pre">addr</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The IP address for the public (front-side) network.
+Set for each daemon.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">IP Address</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id2">
+<h3>Cluster Network<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>The cluster network configuration allows you to declare a cluster network, and
+specifically define IP addresses and subnets for the cluster network. You may
+specifically assign static IP  addresses or override <tt class="docutils literal"><span class="pre">cluster</span> <span class="pre">network</span></tt>
+settings using the <tt class="docutils literal"><span class="pre">cluster</span> <span class="pre">addr</span></tt> setting for specific OSD daemons.</p>
+<p><tt class="docutils literal"><span class="pre">cluster</span> <span class="pre">network</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The IP address and netmask of the cluster (back-side) network
+(e.g., <tt class="docutils literal"><span class="pre">10.0.0.0/24</span></tt>).  Set in <tt class="docutils literal"><span class="pre">[global]</span></tt>. You may specify
+comma-delimited subnets.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><tt class="docutils literal"><span class="pre">{ip-address}/{netmask}</span> <span class="pre">[,</span> <span class="pre">{ip-address}/{netmask}]</span></tt></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cluster</span> <span class="pre">addr</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The IP address for the cluster (back-side) network.
+Set for each daemon.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Address</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="bind">
+<h3>Bind<a class="headerlink" href="#bind" title="Permalink to this headline">¶</a></h3>
+<p>Bind settings set the default port ranges Ceph OSD and MDS daemons use. The
+default range is <tt class="docutils literal"><span class="pre">6800:7300</span></tt>. Ensure that your <a class="reference internal" href="#ip-tables">IP Tables</a> configuration
+allows you to use the configured port range.</p>
+<p>You may also enable Ceph daemons to bind to IPv6 addresses.</p>
+<p><tt class="docutils literal"><span class="pre">ms</span> <span class="pre">bind</span> <span class="pre">port</span> <span class="pre">min</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The minimum port number to which an OSD or MDS daemon will bind.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">6800</span></tt></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">ms</span> <span class="pre">bind</span> <span class="pre">port</span> <span class="pre">max</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The maximum port number to which an OSD or MDS daemon will bind.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">7300</span></tt></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">No.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">ms</span> <span class="pre">bind</span> <span class="pre">ipv6</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Enables Ceph daemons to bind to IPv6 addresses.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">false</span></tt></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="hosts">
+<h3>Hosts<a class="headerlink" href="#hosts" title="Permalink to this headline">¶</a></h3>
+<p>Ceph expects at least one monitor declared in the Ceph configuration file, with
+a <tt class="docutils literal"><span class="pre">mon</span> <span class="pre">addr</span></tt> setting under each declared monitor. Ceph expects a <tt class="docutils literal"><span class="pre">host</span></tt>
+setting under each declared monitor, metadata server and OSD in the Ceph
+configuration file.</p>
+<p><tt class="docutils literal"><span class="pre">mon</span> <span class="pre">addr</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">A list of <tt class="docutils literal"><span class="pre">{hostname}:{port}</span></tt> entries that clients can use to
+connect to a Ceph monitor. If not set, Ceph searches <tt class="docutils literal"><span class="pre">[mon.*]</span></tt>
+sections.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">N/A</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">host</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The hostname. Use this setting for specific daemon instances
+(e.g., <tt class="docutils literal"><span class="pre">[osd.0]</span></tt>).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes, for daemon instances.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">localhost</span></tt></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">Do not use <tt class="docutils literal"><span class="pre">localhost</span></tt>. To get your host name, execute
+<tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-s</span></tt> on your command line and use the name of your host
+(to the first period, not the fully-qualified domain name).</p>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">You should not specify any value for <tt class="docutils literal"><span class="pre">host</span></tt> when using a third
+party deployment system that retrieves the host name for you.</p>
+</div>
+</div>
+<div class="section" id="tcp">
+<h3>TCP<a class="headerlink" href="#tcp" title="Permalink to this headline">¶</a></h3>
+<p>Ceph disables TCP buffering by default.</p>
+<p><tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">nodelay</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph enables <tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">nodelay</span></tt> so that each request is sent
+immediately (no buffering). Disabling <a class="reference external" href="http://en.wikipedia.org/wiki/Nagle's_algorithm">Nagle&#8217;s algorithm</a>
+increases network traffic, which can introduce latency. If you
+experience large numbers of small packets, you may try
+disabling <tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">nodelay</span></tt>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">true</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">rcvbuf</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The size of the socket buffer on the receiving end of a network
+connection. Disable by default.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">32-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">0</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">ms</span> <span class="pre">tcp</span> <span class="pre">read</span> <span class="pre">timeout</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">If a client or daemon makes a request to another Ceph daemon and
+does not drop an unused connection, the <tt class="docutils literal"><span class="pre">tcp</span> <span class="pre">read</span> <span class="pre">timeout</span></tt>
+defines the connection as idle after the specified number
+of seconds.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Unsigned 64-bit Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">900</span></tt> 15 minutes.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>
