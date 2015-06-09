@@ -60,7 +60,8 @@
 
 :描述: 创建多副本存储池时用哪个默认 CRUSH 规则集。
 :类型: 8-bit Integer
-:默认值: ``0``
+:默认值: ``CEPH_DEFAULT_CRUSH_REPLICATED_RULESET`` ，也就是说，“挑选数\
+	 字 ID 最小的规则集”。这样，没有规则集 0 时也能成功创建存储池。
 
 
 ``osd pool erasure code stripe width``
