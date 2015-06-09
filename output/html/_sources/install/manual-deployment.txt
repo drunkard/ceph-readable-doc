@@ -301,7 +301,7 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 #. 创建 OSD 。如果没有指定 UUID ，将会在 OSD 首次启动时分配一个。下列命令执行完成后\
    将输出 OSD 号，在后续步骤里还会用到这个号。 ::
 
-	ceph osd create [{uuid}]
+	ceph osd create [{uuid} [{id}]]
 
 #. 在新 OSD 主机上创建默认目录。 ::
 

@@ -374,10 +374,10 @@ What should I do if there's a clock skew?
 
 	REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
 
-你也许还要在 Ceph 主机上增加 iptables 规则来放通 Ceph 监视器端口（如默认的 6789 端\
-口）、和 OSD 端口（如默认从 6800 开始的一系列端口）。例如： ::
+你也许还要在 Ceph 主机上增加 iptables 规则来放通 Ceph 监视器端口（即默认\
+的 6789 端口）、和 OSD 端口（默认从 6800 到 7300 ）。例如： ::
 
-	iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:6810 -j ACCEPT
+	iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:7300 -j ACCEPT
 
 
 所有尝试都失败了，怎么办？

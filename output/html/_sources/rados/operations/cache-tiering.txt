@@ -112,8 +112,8 @@
 
 	ceph osd tier cache-mode hot-storage writeback
 
-写缓存层盖在存储层之上，所以要多一步：必须把所有客户端流量从存储池迁移到缓存存储池。\
-用此命令把客户端流量指向缓存存储池： ::
+缓存层盖在后端存储层之上，所以要多一步：必须把所有客户端流量从存储池迁移\
+到缓存存储池。用此命令把客户端流量指向缓存存储池： ::
 
 	ceph osd tier set-overlay {storagepool} {cachepool}
 

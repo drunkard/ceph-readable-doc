@@ -1,0 +1,203 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Temp URL Operations &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="temp-url-operations">
+<h1>Temp URL Operations<a class="headerlink" href="#temp-url-operations" title="Permalink to this headline">¶</a></h1>
+<p>To allow temporary access (for eg for <cite>GET</cite> requests) to objects
+without the need to share credentials, temp url functionality is
+supported by swift endpoint of radosgw. For this functionality,
+initially the value of <cite>X-Account-Meta-Temp-URL-Key</cite> and optionally
+<cite>X-Account-Meta-Temp-URL-Key-2</cite> should be set. The Temp URL
+functionality relies on a HMAC-SHA1 signature against these secret
+keys.</p>
+<div class="section" id="post-temp-url-keys">
+<h2>POST Temp-URL Keys<a class="headerlink" href="#post-temp-url-keys" title="Permalink to this headline">¶</a></h2>
+<p>A <tt class="docutils literal"><span class="pre">POST</span></tt> request to the swift account with the required Key will set
+the secret temp url key for the account against which temporary url
+access can be provided to accounts. Up to two keys are supported, and
+signatures are checked against both the keys, if present, so that keys
+can be rotated without invalidating the temporary urls.</p>
+<div class="section" id="syntax">
+<h3>Syntax<a class="headerlink" href="#syntax" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-python"><pre>POST /{api version}/{account} HTTP/1.1
+Host: {fqdn}
+X-Auth-Token: {auth-token}</pre>
+</div>
+</div>
+<div class="section" id="request-headers">
+<h3>Request Headers<a class="headerlink" href="#request-headers" title="Permalink to this headline">¶</a></h3>
+<p><tt class="docutils literal"><span class="pre">X-Account-Meta-Temp-URL-Key</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">A user-defined key that takes an arbitrary string value.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">X-Account-Meta-Temp-URL-Key-2</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">A user-defined key that takes an arbitrary string value.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="get-temp-url-objects">
+<h2>GET Temp-URL Objects<a class="headerlink" href="#get-temp-url-objects" title="Permalink to this headline">¶</a></h2>
+<p>Temporary URL uses a cryptographic HMAC-SHA1 signature, which includes
+the following elements:</p>
+<ol class="arabic simple">
+<li>The value of the Request method, &#8220;GET&#8221; for instance</li>
+<li>The expiry time, in format of seconds since the epoch, ie Unix time</li>
+<li>The request path starting from &#8220;v1&#8221; onwards</li>
+</ol>
+<p>The above items are normalized with newlines appended between them,
+and a HMAC is generated using the SHA-1 hashing algorithm against one
+of the Temp URL Keys posted earlier.</p>
+<p>A sample python script to demonstrate the above is given below:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">hmac</span>
+<span class="kn">from</span> <span class="nn">hashlib</span> <span class="kn">import</span> <span class="n">sha1</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+
+<span class="n">method</span> <span class="o">=</span> <span class="s">&#39;GET&#39;</span>
+<span class="n">host</span> <span class="o">=</span> <span class="s">&#39;https://objectstore.example.com&#39;</span>
+<span class="n">duration_in_seconds</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c"># Duration for which the url is valid</span>
+<span class="n">expires</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="n">duration_in_seconds</span><span class="p">)</span>
+<span class="n">path</span> <span class="o">=</span> <span class="s">&#39;/v1/your-bucket/your-object&#39;</span>
+<span class="n">key</span> <span class="o">=</span> <span class="s">&#39;secret&#39;</span>
+<span class="n">hmac_body</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">expires</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+<span class="n">hmac_body</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">hmac_body</span><span class="p">,</span> <span class="n">sha1</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+<span class="n">sig</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">hmac_body</span><span class="p">,</span> <span class="n">sha1</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+<span class="n">rest_uri</span> <span class="o">=</span> <span class="s">&quot;{host}{path}?temp_url_sig={sig}&amp;temp_url_expires={expires}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+             <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">sig</span><span class="o">=</span><span class="n">sig</span><span class="p">,</span> <span class="n">expires</span><span class="o">=</span><span class="n">expires</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">rest_uri</span>
+
+<span class="c"># Example Output</span>
+<span class="c"># https://objectstore.example.com/v1/your-bucket/your-object?temp_url_sig=ff4657876227fc6025f04fcf1e82818266d022c6&amp;temp_url_expires=1423200992</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,601 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Troubleshooting PGs &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="troubleshooting-pgs">
+<h1>Troubleshooting PGs<a class="headerlink" href="#troubleshooting-pgs" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="placement-groups-never-get-clean">
+<h2>Placement Groups Never Get Clean<a class="headerlink" href="#placement-groups-never-get-clean" title="Permalink to this headline">¶</a></h2>
+<p>When you create a cluster and your cluster remains in <tt class="docutils literal"><span class="pre">active</span></tt>,
+<tt class="docutils literal"><span class="pre">active+remapped</span></tt> or <tt class="docutils literal"><span class="pre">active+degraded</span></tt> status and never achieve an
+<tt class="docutils literal"><span class="pre">active+clean</span></tt> status, you likely have a problem with your configuration.</p>
+<p>You may need to review settings in the <a class="reference external" href="../../configuration/pool-pg-config-ref">Pool, PG and CRUSH Config Reference</a>
+and make appropriate adjustments.</p>
+<p>As a general rule, you should run your cluster with more than one OSD and a
+pool size greater than 1 object replica.</p>
+<div class="section" id="one-node-cluster">
+<h3>One Node Cluster<a class="headerlink" href="#one-node-cluster" title="Permalink to this headline">¶</a></h3>
+<p>Ceph no longer provides documentation for operating on a single node, because
+you would never deploy a system designed for distributed computing on a single
+node. Additionally, mounting client kernel modules on a single node containing a
+Ceph  daemon may cause a deadlock due to issues with the Linux kernel itself
+(unless you use VMs for the clients). You can experiment with Ceph in a 1-node
+configuration, in spite of the limitations as described herein.</p>
+<p>If you are trying to create a cluster on a single node, you must change the
+default of the <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">chooseleaf</span> <span class="pre">type</span></tt> setting from <tt class="docutils literal"><span class="pre">1</span></tt> (meaning
+<tt class="docutils literal"><span class="pre">host</span></tt> or <tt class="docutils literal"><span class="pre">node</span></tt>) to <tt class="docutils literal"><span class="pre">0</span></tt> (meaning <tt class="docutils literal"><span class="pre">osd</span></tt>) in your Ceph configuration
+file before you create your monitors and OSDs. This tells Ceph that an OSD
+can peer with another OSD on the same host. If you are trying to set up a
+1-node cluster and <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">chooseleaf</span> <span class="pre">type</span></tt> is greater than <tt class="docutils literal"><span class="pre">0</span></tt>,
+Ceph will try to peer the PGs of one OSD with the PGs of another OSD on
+another node, chassis, rack, row, or even datacenter depending on the setting.</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">DO NOT mount kernel clients directly on the same node as your
+Ceph Storage Cluster, because kernel conflicts can arise. However, you
+can mount kernel clients within virtual machines (VMs) on a single node.</p>
+</div>
+<p>If you are creating OSDs using a single disk, you must create directories
+for the data manually first. For example:</p>
+<div class="highlight-python"><pre>mkdir /var/local/osd0 /var/local/osd1
+ceph-deploy osd prepare {localhost-name}:/var/local/osd0 {localhost-name}:/var/local/osd1
+ceph-deploy osd activate {localhost-name}:/var/local/osd0 {localhost-name}:/var/local/osd1</pre>
+</div>
+</div>
+<div class="section" id="fewer-osds-than-replicas">
+<h3>Fewer OSDs than Replicas<a class="headerlink" href="#fewer-osds-than-replicas" title="Permalink to this headline">¶</a></h3>
+<p>If you&#8217;ve brought up two OSDs to an <tt class="docutils literal"><span class="pre">up</span></tt> and <tt class="docutils literal"><span class="pre">in</span></tt> state, but you still
+don&#8217;t see <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt> placement groups, you may have an
+<tt class="docutils literal"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">size</span></tt> set to greater than <tt class="docutils literal"><span class="pre">2</span></tt>.</p>
+<p>There are a few ways to address this situation. If you want to operate your
+cluster in an <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">degraded</span></tt> state with two replicas, you can set the
+<tt class="docutils literal"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">min</span> <span class="pre">size</span></tt> to <tt class="docutils literal"><span class="pre">2</span></tt> so that you can write objects in
+an <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">degraded</span></tt> state. You may also set the <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">size</span></tt>
+setting to <tt class="docutils literal"><span class="pre">2</span></tt> so that you only have two stored replicas (the original and
+one replica), in which case the cluster should achieve an <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt>
+state.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You can make the changes at runtime. If you make the changes in
+your Ceph configuration file, you may need to restart your cluster.</p>
+</div>
+</div>
+<div class="section" id="pool-size-1">
+<h3>Pool Size = 1<a class="headerlink" href="#pool-size-1" title="Permalink to this headline">¶</a></h3>
+<p>If you have the <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">size</span></tt> set to <tt class="docutils literal"><span class="pre">1</span></tt>, you will only have
+one copy of the object. OSDs rely on other OSDs to tell them which objects
+they should have. If a first OSD has a copy of an object and there is no
+second copy, then no second OSD can tell the first OSD that it should have
+that copy. For each placement group mapped to the first OSD (see
+<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">pg</span> <span class="pre">dump</span></tt>), you can force the first OSD to notice the placement groups
+it needs by running:</p>
+<div class="highlight-python"><pre>ceph pg force_create_pg &lt;pgid&gt;</pre>
+</div>
+</div>
+<div class="section" id="crush-map-errors">
+<h3>CRUSH Map Errors<a class="headerlink" href="#crush-map-errors" title="Permalink to this headline">¶</a></h3>
+<p>Another candidate for placement groups remaining unclean involves errors
+in your CRUSH map.</p>
+</div>
+</div>
+<div class="section" id="stuck-placement-groups">
+<h2>Stuck Placement Groups<a class="headerlink" href="#stuck-placement-groups" title="Permalink to this headline">¶</a></h2>
+<p>It is normal for placement groups to enter states like &#8220;degraded&#8221; or &#8220;peering&#8221;
+following a failure.  Normally these states indicate the normal progression
+through the failure recovery process. However, if a placement group stays in one
+of these states for a long time this may be an indication of a larger problem.
+For this reason, the monitor will warn when placement groups get &#8220;stuck&#8221; in a
+non-optimal state.  Specifically, we check for:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">inactive</span></tt> - The placement group has not been <tt class="docutils literal"><span class="pre">active</span></tt> for too long
+(i.e., it hasn&#8217;t been able to service read/write requests).</li>
+<li><tt class="docutils literal"><span class="pre">unclean</span></tt> - The placement group has not been <tt class="docutils literal"><span class="pre">clean</span></tt> for too long
+(i.e., it hasn&#8217;t been able to completely recover from a previous failure).</li>
+<li><tt class="docutils literal"><span class="pre">stale</span></tt> - The placement group status has not been updated by a <tt class="docutils literal"><span class="pre">ceph-osd</span></tt>,
+indicating that all nodes storing this placement group may be <tt class="docutils literal"><span class="pre">down</span></tt>.</li>
+</ul>
+<p>You can explicitly list stuck placement groups with one of:</p>
+<div class="highlight-python"><pre>ceph pg dump_stuck stale
+ceph pg dump_stuck inactive
+ceph pg dump_stuck unclean</pre>
+</div>
+<p>For stuck <tt class="docutils literal"><span class="pre">stale</span></tt> placement groups, it is normally a matter of getting the
+right <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons running again.  For stuck <tt class="docutils literal"><span class="pre">inactive</span></tt> placement
+groups, it is usually a peering problem (see <a class="reference internal" href="../../../../rados/troubleshooting/troubleshooting-pg/#failures-osd-peering"><em>归置组挂了——互联失败</em></a>).  For
+stuck <tt class="docutils literal"><span class="pre">unclean</span></tt> placement groups, there is usually something preventing
+recovery from completing, like unfound objects (see
+<a class="reference internal" href="../../../../rados/troubleshooting/troubleshooting-pg/#failures-osd-unfound"><em>未找到的对象</em></a>);</p>
+</div>
+<div class="section" id="placement-group-down-peering-failure">
+<span id="failures-osd-peering"></span><h2>Placement Group Down - Peering Failure<a class="headerlink" href="#placement-group-down-peering-failure" title="Permalink to this headline">¶</a></h2>
+<p>In certain cases, the <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> <cite>Peering</cite> process can run into
+problems, preventing a PG from becoming active and usable.  For
+example, <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">health</span></tt> might report:</p>
+<div class="highlight-python"><pre>ceph health detail
+HEALTH_ERR 7 pgs degraded; 12 pgs down; 12 pgs peering; 1 pgs recovering; 6 pgs stuck unclean; 114/3300 degraded (3.455%); 1/3 in osds are down
+...
+pg 0.5 is down+peering
+pg 1.4 is down+peering
+...
+osd.1 is down since epoch 69, last address 192.168.106.220:6801/8651</pre>
+</div>
+<p>We can query the cluster to determine exactly why the PG is marked <tt class="docutils literal"><span class="pre">down</span></tt> with:</p>
+<div class="highlight-python"><pre>ceph pg 0.5 query</pre>
+</div>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="p">{</span> <span class="s2">&quot;state&quot;</span><span class="o">:</span> <span class="s2">&quot;down+peering&quot;</span><span class="p">,</span>
+  <span class="p">...</span>
+  <span class="s2">&quot;recovery_state&quot;</span><span class="o">:</span> <span class="p">[</span>
+       <span class="p">{</span> <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;Started\/Primary\/Peering\/GetInfo&quot;</span><span class="p">,</span>
+         <span class="s2">&quot;enter_time&quot;</span><span class="o">:</span> <span class="s2">&quot;2012-03-06 14:40:16.169679&quot;</span><span class="p">,</span>
+         <span class="s2">&quot;requested_info_from&quot;</span><span class="o">:</span> <span class="p">[]},</span>
+       <span class="p">{</span> <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;Started\/Primary\/Peering&quot;</span><span class="p">,</span>
+         <span class="s2">&quot;enter_time&quot;</span><span class="o">:</span> <span class="s2">&quot;2012-03-06 14:40:16.169659&quot;</span><span class="p">,</span>
+         <span class="s2">&quot;probing_osds&quot;</span><span class="o">:</span> <span class="p">[</span>
+               <span class="mi">0</span><span class="p">,</span>
+               <span class="mi">1</span><span class="p">],</span>
+         <span class="s2">&quot;blocked&quot;</span><span class="o">:</span> <span class="s2">&quot;peering is blocked due to down osds&quot;</span><span class="p">,</span>
+         <span class="s2">&quot;down_osds_we_would_probe&quot;</span><span class="o">:</span> <span class="p">[</span>
+               <span class="mi">1</span><span class="p">],</span>
+         <span class="s2">&quot;peering_blocked_by&quot;</span><span class="o">:</span> <span class="p">[</span>
+               <span class="p">{</span> <span class="s2">&quot;osd&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+                 <span class="s2">&quot;current_lost_at&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+                 <span class="s2">&quot;comment&quot;</span><span class="o">:</span> <span class="s2">&quot;starting or marking this osd lost may let us proceed&quot;</span><span class="p">}]},</span>
+       <span class="p">{</span> <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;Started&quot;</span><span class="p">,</span>
+         <span class="s2">&quot;enter_time&quot;</span><span class="o">:</span> <span class="s2">&quot;2012-03-06 14:40:16.169513&quot;</span><span class="p">}</span>
+   <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">recovery_state</span></tt> section tells us that peering is blocked due to
+down <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons, specifically <tt class="docutils literal"><span class="pre">osd.1</span></tt>.  In this case, we can start that <tt class="docutils literal"><span class="pre">ceph-osd</span></tt>
+and things will recover.</p>
+<p>Alternatively, if there is a catastrophic failure of <tt class="docutils literal"><span class="pre">osd.1</span></tt> (e.g., disk
+failure), we can tell the cluster that it is <tt class="docutils literal"><span class="pre">lost</span></tt> and to cope as
+best it can.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">This is dangerous in that the cluster cannot
+guarantee that the other copies of the data are consistent
+and up to date.</p>
+</div>
+<p>To instruct Ceph to continue anyway:</p>
+<div class="highlight-python"><pre>ceph osd lost 1</pre>
+</div>
+<p>Recovery will proceed.</p>
+</div>
+<div class="section" id="unfound-objects">
+<span id="failures-osd-unfound"></span><h2>Unfound Objects<a class="headerlink" href="#unfound-objects" title="Permalink to this headline">¶</a></h2>
+<p>Under certain combinations of failures Ceph may complain about
+<tt class="docutils literal"><span class="pre">unfound</span></tt> objects:</p>
+<div class="highlight-python"><pre>ceph health detail
+HEALTH_WARN 1 pgs degraded; 78/3778 unfound (2.065%)
+pg 2.4 is active+degraded, 78 unfound</pre>
+</div>
+<p>This means that the storage cluster knows that some objects (or newer
+copies of existing objects) exist, but it hasn&#8217;t found copies of them.
+One example of how this might come about for a PG whose data is on ceph-osds
+1 and 2:</p>
+<ul class="simple">
+<li>1 goes down</li>
+<li>2 handles some writes, alone</li>
+<li>1 comes up</li>
+<li>1 and 2 repeer, and the objects missing on 1 are queued for recovery.</li>
+<li>Before the new objects are copied, 2 goes down.</li>
+</ul>
+<p>Now 1 knows that these object exist, but there is no live <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> who
+has a copy.  In this case, IO to those objects will block, and the
+cluster will hope that the failed node comes back soon; this is
+assumed to be preferable to returning an IO error to the user.</p>
+<p>First, you can identify which objects are unfound with:</p>
+<div class="highlight-python"><pre>ceph pg 2.4 list_missing [starting offset, in json]</pre>
+</div>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="p">{</span> <span class="s2">&quot;offset&quot;</span><span class="o">:</span> <span class="p">{</span> <span class="s2">&quot;oid&quot;</span><span class="o">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;key&quot;</span><span class="o">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;snapid&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s2">&quot;hash&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s2">&quot;max&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">},</span>
+ <span class="s2">&quot;num_missing&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+ <span class="s2">&quot;num_unfound&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+ <span class="s2">&quot;objects&quot;</span><span class="o">:</span> <span class="p">[</span>
+    <span class="p">{</span> <span class="s2">&quot;oid&quot;</span><span class="o">:</span> <span class="s2">&quot;object 1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;key&quot;</span><span class="o">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;hash&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+      <span class="s2">&quot;max&quot;</span><span class="o">:</span> <span class="mi">0</span> <span class="p">},</span>
+    <span class="p">...</span>
+ <span class="p">],</span>
+ <span class="s2">&quot;more&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>If there are too many objects to list in a single result, the <tt class="docutils literal"><span class="pre">more</span></tt>
+field will be true and you can query for more.  (Eventually the
+command line tool will hide this from you, but not yet.)</p>
+<p>Second, you can identify which OSDs have been probed or might contain
+data:</p>
+<div class="highlight-python"><pre>ceph pg 2.4 query</pre>
+</div>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="s2">&quot;recovery_state&quot;</span><span class="o">:</span> <span class="p">[</span>
+     <span class="p">{</span> <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;Started\/Primary\/Active&quot;</span><span class="p">,</span>
+       <span class="s2">&quot;enter_time&quot;</span><span class="o">:</span> <span class="s2">&quot;2012-03-06 15:15:46.713212&quot;</span><span class="p">,</span>
+       <span class="s2">&quot;might_have_unfound&quot;</span><span class="o">:</span> <span class="p">[</span>
+             <span class="p">{</span> <span class="s2">&quot;osd&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+               <span class="s2">&quot;status&quot;</span><span class="o">:</span> <span class="s2">&quot;osd is down&quot;</span><span class="p">}]},</span>
+</pre></div>
+</div>
+<p>In this case, for example, the cluster knows that <tt class="docutils literal"><span class="pre">osd.1</span></tt> might have
+data, but it is <tt class="docutils literal"><span class="pre">down</span></tt>.  The full range of possible states include:</p>
+<div class="highlight-python"><pre>* already probed
+* querying
+* OSD is down
+* not queried (yet)</pre>
+</div>
+<p>Sometimes it simply takes some time for the cluster to query possible
+locations.</p>
+<p>It is possible that there are other locations where the object can
+exist that are not listed.  For example, if a ceph-osd is stopped and
+taken out of the cluster, the cluster fully recovers, and due to some
+future set of failures ends up with an unfound object, it won&#8217;t
+consider the long-departed ceph-osd as a potential location to
+consider.  (This scenario, however, is unlikely.)</p>
+<p>If all possible locations have been queried and objects are still
+lost, you may have to give up on the lost objects. This, again, is
+possible given unusual combinations of failures that allow the cluster
+to learn about writes that were performed before the writes themselves
+are recovered.  To mark the &#8220;unfound&#8221; objects as &#8220;lost&#8221;:</p>
+<div class="highlight-python"><pre>ceph pg 2.5 mark_unfound_lost revert|delete</pre>
+</div>
+<p>This the final argument specifies how the cluster should deal with
+lost objects.</p>
+<p>The &#8220;delete&#8221; option will forget about them entirely.</p>
+<p>The &#8220;revert&#8221; option (not available for erasure coded pools) will
+either roll back to a previous version of the object or (if it was a
+new object) forget about it entirely.  Use this with caution, as it
+may confuse applications that expected the object to exist.</p>
+</div>
+<div class="section" id="homeless-placement-groups">
+<h2>Homeless Placement Groups<a class="headerlink" href="#homeless-placement-groups" title="Permalink to this headline">¶</a></h2>
+<p>It is possible for all OSDs that had copies of a given placement groups to fail.
+If that&#8217;s the case, that subset of the object store is unavailable, and the
+monitor will receive no status updates for those placement groups.  To detect
+this situation, the monitor marks any placement group whose primary OSD has
+failed as <tt class="docutils literal"><span class="pre">stale</span></tt>.  For example:</p>
+<div class="highlight-python"><pre>ceph health
+HEALTH_WARN 24 pgs stale; 3/300 in osds are down</pre>
+</div>
+<p>You can identify which placement groups are <tt class="docutils literal"><span class="pre">stale</span></tt>, and what the last OSDs to
+store them were, with:</p>
+<div class="highlight-python"><pre>ceph health detail
+HEALTH_WARN 24 pgs stale; 3/300 in osds are down
+...
+pg 2.5 is stuck stale+active+remapped, last acting [2,0]
+...
+osd.10 is down since epoch 23, last address 192.168.106.220:6800/11080
+osd.11 is down since epoch 13, last address 192.168.106.220:6803/11539
+osd.12 is down since epoch 24, last address 192.168.106.220:6806/11861</pre>
+</div>
+<p>If we want to get placement group 2.5 back online, for example, this tells us that
+it was last managed by <tt class="docutils literal"><span class="pre">osd.0</span></tt> and <tt class="docutils literal"><span class="pre">osd.2</span></tt>.  Restarting those <tt class="docutils literal"><span class="pre">ceph-osd</span></tt>
+daemons will allow the cluster to recover that placement group (and, presumably,
+many others).</p>
+</div>
+<div class="section" id="only-a-few-osds-receive-data">
+<h2>Only a Few OSDs Receive Data<a class="headerlink" href="#only-a-few-osds-receive-data" title="Permalink to this headline">¶</a></h2>
+<p>If you have many nodes in your cluster and only a few of them receive data,
+<a class="reference external" href="../../operations/placement-groups#get-the-number-of-placement-groups">check</a> the number of placement groups in your pool. Since placement groups get
+mapped to OSDs, a small number of placement groups will not distribute across
+your cluster. Try creating a pool with a placement group count that is a
+multiple of the number of OSDs. See <a class="reference external" href="../../operations/placement-groups">Placement Groups</a> for details. The default
+placement group count for pools isn&#8217;t useful, but you can change it <a class="reference external" href="../../configuration/pool-pg-config-ref">here</a>.</p>
+</div>
+<div class="section" id="can-t-write-data">
+<h2>Can&#8217;t Write Data<a class="headerlink" href="#can-t-write-data" title="Permalink to this headline">¶</a></h2>
+<p>If your cluster is up, but some OSDs are down and you cannot write data,
+check to ensure that you have the minimum number of OSDs running for the
+placement group. If you don&#8217;t have the minimum number of OSDs running,
+Ceph will not allow you to write data because there is no guarantee
+that Ceph can replicate your data. See <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">min</span> <span class="pre">size</span></tt>
+in the <a class="reference external" href="../../configuration/pool-pg-config-ref">Pool, PG and CRUSH Config Reference</a> for details.</p>
+</div>
+<div class="section" id="pgs-inconsistent">
+<h2>PGs Inconsistent<a class="headerlink" href="#pgs-inconsistent" title="Permalink to this headline">¶</a></h2>
+<p>If you receive an <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span> <span class="pre">+</span> <span class="pre">inconsistent</span></tt> state, this may happen
+due to an error during scrubbing. If the inconsistency is due to disk errors,
+check your disks.</p>
+<p>You can repair the inconsistent placement group by executing:</p>
+<div class="highlight-python"><pre>ceph pg repair {placement-group-ID}</pre>
+</div>
+<p>If you receive <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span> <span class="pre">+</span> <span class="pre">inconsistent</span></tt> states periodically due to
+clock skew, you may consider configuring your <a class="reference external" href="http://en.wikipedia.org/wiki/Network_Time_Protocol">NTP</a> daemons on your
+monitor hosts to act as peers. See <a class="reference external" href="http://www.ntp.org/">The Network Time Protocol</a> and Ceph
+<a class="reference external" href="../../configuration/mon-config-ref/#clock">Clock Settings</a> for additional details.</p>
+</div>
+<div class="section" id="erasure-coded-pgs-are-not-active-clean">
+<h2>Erasure Coded PGs are not active+clean<a class="headerlink" href="#erasure-coded-pgs-are-not-active-clean" title="Permalink to this headline">¶</a></h2>
+<p>When CRUSH fails to find enough OSDs to map to a PG, it will show as a
+<tt class="docutils literal"><span class="pre">2147483647</span></tt> which is ITEM_NONE or <tt class="docutils literal"><span class="pre">no</span> <span class="pre">OSD</span> <span class="pre">found</span></tt>. For instance:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">2147483647</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="section" id="not-enough-osds">
+<h3>Not enough OSDs<a class="headerlink" href="#not-enough-osds" title="Permalink to this headline">¶</a></h3>
+<p>If the Ceph cluster only has 8 OSDs and the erasure coded pool needs
+9, that is what it will show. You can either create another erasure
+coded pool that requires less OSDs:</p>
+<div class="highlight-python"><pre>ceph osd erasure-code-profile set myprofile k=5 m=3
+ceph osd pool create erasurepool 16 16 erasure myprofile</pre>
+</div>
+<p>or add a new OSDs and the PG will automatically use them.</p>
+</div>
+<div class="section" id="crush-constraints-cannot-be-satisfied">
+<h3>CRUSH constraints cannot be satisfied<a class="headerlink" href="#crush-constraints-cannot-be-satisfied" title="Permalink to this headline">¶</a></h3>
+<p>If the cluster has enough OSDs, it is possible that the CRUSH ruleset
+imposes constraints that cannot be satisfied. If there are 10 OSDs on
+two hosts and the CRUSH rulesets require that no two OSDs from the
+same host are used in the same PG, the mapping may fail because only
+two OSD will be found. You can check the constraint by displaying the
+ruleset:</p>
+<div class="highlight-python"><pre>$ ceph osd crush rule ls
+[
+    "replicated_ruleset",
+    "erasurepool"]
+$ ceph osd crush rule dump erasurepool
+{ "rule_id": 1,
+  "rule_name": "erasurepool",
+  "ruleset": 1,
+  "type": 3,
+  "min_size": 3,
+  "max_size": 20,
+  "steps": [
+        { "op": "take",
+          "item": -1,
+          "item_name": "default"},
+        { "op": "chooseleaf_indep",
+          "num": 0,
+          "type": "host"},
+        { "op": "emit"}]}</pre>
+</div>
+<p>You can resolve the problem by creating a new pool in which PGs are allowed
+to have OSDs residing on the same host with:</p>
+<div class="highlight-python"><pre>ceph osd erasure-code-profile set myprofile ruleset-failure-domain=osd
+ceph osd pool create erasurepool 16 16 erasure myprofile</pre>
+</div>
+</div>
+<div class="section" id="crush-gives-up-too-soon">
+<h3>CRUSH gives up too soon<a class="headerlink" href="#crush-gives-up-too-soon" title="Permalink to this headline">¶</a></h3>
+<p>If the Ceph cluster has just enough OSDs to map the PG (for instance a
+cluster with a total of 9 OSDs and an erasure coded pool that requires
+9 OSDs per PG), it is possible that CRUSH gives up before finding a
+mapping. It can be resolved by:</p>
+<ul class="simple">
+<li>lowering the erasure coded pool requirements to use less OSDs per PG
+(that requires the creation of another pool as erasure code profiles
+cannot be dynamically modified).</li>
+<li>adding more OSDs to the cluster (that does not require the erasure
+coded pool to be modified, it will become clean automatically)</li>
+<li>use a hand made CRUSH ruleset that tries more times to find a good
+mapping. It can be done by setting <tt class="docutils literal"><span class="pre">set_choose_tries</span></tt> to a value
+greater than the default.</li>
+</ul>
+<p>You should first verify the problem with <tt class="docutils literal"><span class="pre">crushtool</span></tt> after
+extracting the crushmap from the cluster so your experiments do not
+modify the Ceph cluster and only work on a local files:</p>
+<div class="highlight-python"><pre>$ ceph osd crush rule dump erasurepool
+{ "rule_name": "erasurepool",
+  "ruleset": 1,
+  "type": 3,
+  "min_size": 3,
+  "max_size": 20,
+  "steps": [
+        { "op": "take",
+          "item": -1,
+          "item_name": "default"},
+        { "op": "chooseleaf_indep",
+          "num": 0,
+          "type": "host"},
+        { "op": "emit"}]}
+$ ceph osd getcrushmap &gt; crush.map
+got crush map from osdmap epoch 13
+$ crushtool -i crush.map --test --show-bad-mappings \
+   --rule 1 \
+   --num-rep 9 \
+   --min-x 1 --max-x $((1024 * 1024))
+bad mapping rule 8 x 43 num_rep 9 result [3,2,7,1,2147483647,8,5,6,0]
+bad mapping rule 8 x 79 num_rep 9 result [6,0,2,1,4,7,2147483647,5,8]
+bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]</pre>
+</div>
+<p>Where <tt class="docutils literal"><span class="pre">--num-rep</span></tt> is the number of OSDs the erasure code crush
+ruleset needs, <tt class="docutils literal"><span class="pre">--rule</span></tt> is the value of the <tt class="docutils literal"><span class="pre">ruleset</span></tt> field
+displayed by <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">rule</span> <span class="pre">dump</span></tt>.  The test will try mapping
+one million values (i.e. the range defined by <tt class="docutils literal"><span class="pre">[--min-x,--max-x]</span></tt>)
+and must display at least one bad mapping. If it outputs nothing it
+means all mappings are successfull and you can stop right there: the
+problem is elsewhere.</p>
+<p>The crush ruleset can be edited by decompiling the crush map:</p>
+<div class="highlight-python"><pre>$ crushtool --decompile crush.map &gt; crush.txt</pre>
+</div>
+<p>and adding the following line to the ruleset:</p>
+<div class="highlight-python"><pre>step set_choose_tries 100</pre>
+</div>
+<p>The relevant part of of the <tt class="docutils literal"><span class="pre">crush.txt</span></tt> file should look something
+like:</p>
+<div class="highlight-python"><pre>rule erasurepool {
+        ruleset 1
+        type erasure
+        min_size 3
+        max_size 20
+        step set_chooseleaf_tries 5
+        step set_choose_tries 100
+        step take default
+        step chooseleaf indep 0 type host
+        step emit
+}</pre>
+</div>
+<p>It can then be compiled and tested again:</p>
+<div class="highlight-python"><pre>$ crushtool --compile crush.txt -o better-crush.map</pre>
+</div>
+<p>When all mappings succeed, an histogram of the number of tries that
+were necessary to find all of them can be displayed with the
+<tt class="docutils literal"><span class="pre">--show-choose-tries</span></tt> option of <tt class="docutils literal"><span class="pre">crushtool</span></tt>:</p>
+<div class="highlight-python"><pre>$ crushtool -i better-crush.map --test --show-bad-mappings \
+   --show-choose-tries \
+   --rule 1 \
+   --num-rep 9 \
+   --min-x 1 --max-x $((1024 * 1024))
+...
+11:        42
+12:        44
+13:        54
+14:        45
+15:        35
+16:        34
+17:        30
+18:        25
+19:        19
+20:        22
+21:        20
+22:        17
+23:        13
+24:        16
+25:        13
+26:        11
+27:        11
+28:        13
+29:        11
+30:        10
+31:         6
+32:         5
+33:        10
+34:         3
+35:         7
+36:         5
+37:         2
+38:         5
+39:         5
+40:         2
+41:         5
+42:         4
+43:         1
+44:         2
+45:         2
+46:         3
+47:         1
+48:         0
+...
+102:         0
+103:         1
+104:         0
+...</pre>
+</div>
+<p>It took 11 tries to map 42 PGs, 12 tries to map 44 PGs etc. The highest number of tries is the minimum value of <tt class="docutils literal"><span class="pre">set_choose_tries</span></tt> that prevents bad mappings (i.e. 103 in the above output because it did not take more than 103 tries for any PG to be mapped).</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

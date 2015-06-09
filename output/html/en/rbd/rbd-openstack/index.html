@@ -1,0 +1,478 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Block Devices and OpenStack &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="block-devices-and-openstack">
+<h1>Block Devices and OpenStack<a class="headerlink" href="#block-devices-and-openstack" title="Permalink to this headline">¶</a></h1>
+<p id="index-0">You may use Ceph Block Device images with OpenStack through <tt class="docutils literal"><span class="pre">libvirt</span></tt>, which
+configures the QEMU interface to <tt class="docutils literal"><span class="pre">librbd</span></tt>. Ceph stripes block device images as
+objects across the cluster, which means that large Ceph Block Device images have
+better performance than a standalone server!</p>
+<p>To use Ceph Block Devices with OpenStack, you must install QEMU, <tt class="docutils literal"><span class="pre">libvirt</span></tt>,
+and OpenStack first. We recommend using a separate physical node for your
+OpenStack installation. OpenStack recommends a minimum of 8GB of RAM and a
+quad-core processor. The following diagram depicts the OpenStack/Ceph
+technology stack.</p>
+<p class="ditaa">
+<img src="../../../_images/ditaa-e4a4957f90e4d8ebac2608e1544c34bf784cfdfb.png"/>
+</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">To use Ceph Block Devices with OpenStack, you must have
+access to a running Ceph Storage Cluster.</p>
+</div>
+<p>Three parts of OpenStack integrate with Ceph&#8217;s block devices:</p>
+<ul class="simple">
+<li><strong>Images</strong>: OpenStack Glance manages images for VMs. Images are immutable.
+OpenStack treats images as binary blobs and downloads them accordingly.</li>
+<li><strong>Volumes</strong>: Volumes are block devices. OpenStack uses volumes to boot VMs,
+or to attach volumes to running VMs. OpenStack manages volumes using
+Cinder services.</li>
+<li><strong>Guest Disks</strong>: Guest disks are guest operating system disks. By default,
+when you boot a virtual machine, its disk appears as a file on the filesystem
+of the hypervisor (usually under <tt class="docutils literal"><span class="pre">/var/lib/nova/instances/&lt;uuid&gt;/</span></tt>). Prior
+to OpenStack Havana, the only way to boot a VM in Ceph was to use the
+boot-from-volume functionality of Cinder. However, now it is possible to boot
+every virtual machine inside Ceph directly without using Cinder, which is
+advantageous because it allows you to perform maintenance operations easily
+with the live-migration process. Additionally, if your hypervisor dies it is
+also convenient to trigger <tt class="docutils literal"><span class="pre">nova</span> <span class="pre">evacuate</span></tt> and  run the virtual machine
+elsewhere almost seamlessly.</li>
+</ul>
+<p>You can use OpenStack Glance to store images in a Ceph Block Device, and you
+can use Cinder to boot a VM using a copy-on-write clone of an image.</p>
+<p>The instructions below detail the setup for Glance, Cinder and Nova, although
+they do not have to be used together. You may store images in Ceph block devices
+while running VMs using a local disk, or vice versa.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Ceph doesn’t support QCOW2 for hosting a virtual machine disk.
+Thus if you want to boot virtual machines in Ceph (ephemeral backend or boot
+from volume), the Glance image format must be <tt class="docutils literal"><span class="pre">RAW</span></tt>.</p>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">This document describes using Ceph Block Devices with OpenStack Havana.
+For earlier versions of OpenStack see
+<a class="reference external" href="http://ceph.com/docs/dumpling/rbd/rbd-openstack">Block Devices and OpenStack (Dumpling)</a>.</p>
+</div>
+<div class="section" id="create-a-pool">
+<span id="index-1"></span><h2>Create a Pool<a class="headerlink" href="#create-a-pool" title="Permalink to this headline">¶</a></h2>
+<p>By default, Ceph block devices use the <tt class="docutils literal"><span class="pre">rbd</span></tt> pool. You may use any available
+pool. We recommend creating a pool for Cinder and a pool for Glance. Ensure
+your Ceph cluster is running, then create the pools.</p>
+<div class="highlight-python"><pre>ceph osd pool create volumes 128
+ceph osd pool create images 128
+ceph osd pool create backups 128
+ceph osd pool create vms 128</pre>
+</div>
+<p>See <a class="reference external" href="../../rados/operations/pools#createpool">Create a Pool</a> for detail on specifying the number of placement groups for
+your pools, and <a class="reference external" href="../../rados/operations/placement-groups">Placement Groups</a> for details on the number of placement
+groups you should set for your pools.</p>
+</div>
+<div class="section" id="configure-openstack-ceph-clients">
+<h2>Configure OpenStack Ceph Clients<a class="headerlink" href="#configure-openstack-ceph-clients" title="Permalink to this headline">¶</a></h2>
+<p>The nodes running <tt class="docutils literal"><span class="pre">glance-api</span></tt>, <tt class="docutils literal"><span class="pre">cinder-volume</span></tt>, <tt class="docutils literal"><span class="pre">nova-compute</span></tt> and
+<tt class="docutils literal"><span class="pre">cinder-backup</span></tt> act as Ceph clients. Each requires the <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file:</p>
+<div class="highlight-python"><pre>ssh {your-openstack-server} sudo tee /etc/ceph/ceph.conf &lt;/etc/ceph/ceph.conf</pre>
+</div>
+<div class="section" id="install-ceph-client-packages">
+<h3>Install Ceph client packages<a class="headerlink" href="#install-ceph-client-packages" title="Permalink to this headline">¶</a></h3>
+<p>On the <tt class="docutils literal"><span class="pre">glance-api</span></tt> node, you&#8217;ll need the Python bindings for <tt class="docutils literal"><span class="pre">librbd</span></tt>:</p>
+<div class="highlight-python"><pre>sudo apt-get install python-rbd
+sudo yum install python-rbd</pre>
+</div>
+<p>On the <tt class="docutils literal"><span class="pre">nova-compute</span></tt>, <tt class="docutils literal"><span class="pre">cinder-backup</span></tt> and on the <tt class="docutils literal"><span class="pre">cinder-volume</span></tt> node,
+use both the Python bindings and the client command line tools:</p>
+<div class="highlight-python"><pre>sudo apt-get install ceph-common
+sudo yum install ceph</pre>
+</div>
+</div>
+<div class="section" id="setup-ceph-client-authentication">
+<h3>Setup Ceph Client Authentication<a class="headerlink" href="#setup-ceph-client-authentication" title="Permalink to this headline">¶</a></h3>
+<p>If you have <a class="reference external" href="../../rados/operations/authentication">cephx authentication</a> enabled, create a new user for Nova/Cinder
+and Glance. Execute the following:</p>
+<div class="highlight-python"><pre>ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'
+ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'
+ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'</pre>
+</div>
+<p>Add the keyrings for <tt class="docutils literal"><span class="pre">client.cinder</span></tt>, <tt class="docutils literal"><span class="pre">client.glance</span></tt>, and
+<tt class="docutils literal"><span class="pre">client.cinder-backup</span></tt> to the appropriate nodes and change their ownership:</p>
+<div class="highlight-python"><pre>ceph auth get-or-create client.glance | ssh {your-glance-api-server} sudo tee /etc/ceph/ceph.client.glance.keyring
+ssh {your-glance-api-server} sudo chown glance:glance /etc/ceph/ceph.client.glance.keyring
+ceph auth get-or-create client.cinder | ssh {your-volume-server} sudo tee /etc/ceph/ceph.client.cinder.keyring
+ssh {your-cinder-volume-server} sudo chown cinder:cinder /etc/ceph/ceph.client.cinder.keyring
+ceph auth get-or-create client.cinder-backup | ssh {your-cinder-backup-server} sudo tee /etc/ceph/ceph.client.cinder-backup.keyring
+ssh {your-cinder-backup-server} sudo chown cinder:cinder /etc/ceph/ceph.client.cinder-backup.keyring</pre>
+</div>
+<p>Nodes running <tt class="docutils literal"><span class="pre">nova-compute</span></tt> need the keyring file for the <tt class="docutils literal"><span class="pre">nova-compute</span></tt>
+process:</p>
+<div class="highlight-python"><pre>ceph auth get-or-create client.cinder | ssh {your-nova-compute-server} sudo tee /etc/ceph/ceph.client.cinder.keyring</pre>
+</div>
+<p>They also need to store the secret key of the <tt class="docutils literal"><span class="pre">client.cinder</span></tt> user in
+<tt class="docutils literal"><span class="pre">libvirt</span></tt>. The libvirt process needs it to access the cluster while attaching
+a block device from Cinder.</p>
+<p>Create a temporary copy of the secret key on the nodes running
+<tt class="docutils literal"><span class="pre">nova-compute</span></tt>:</p>
+<div class="highlight-python"><pre>ceph auth get-key client.cinder | ssh {your-compute-node} tee client.cinder.key</pre>
+</div>
+<p>Then, on the compute nodes, add the secret key to <tt class="docutils literal"><span class="pre">libvirt</span></tt> and remove the
+temporary copy of the key:</p>
+<div class="highlight-python"><pre>uuidgen
+457eb676-33da-42ec-9a8c-9293d545c337
+
+cat &gt; secret.xml &lt;&lt;EOF
+&lt;secret ephemeral='no' private='no'&gt;
+  &lt;uuid&gt;457eb676-33da-42ec-9a8c-9293d545c337&lt;/uuid&gt;
+  &lt;usage type='ceph'&gt;
+    &lt;name&gt;client.cinder secret&lt;/name&gt;
+  &lt;/usage&gt;
+&lt;/secret&gt;
+EOF
+sudo virsh secret-define --file secret.xml
+Secret 457eb676-33da-42ec-9a8c-9293d545c337 created
+sudo virsh secret-set-value --secret 457eb676-33da-42ec-9a8c-9293d545c337 --base64 $(cat client.cinder.key) &amp;&amp; rm client.cinder.key secret.xml</pre>
+</div>
+<p>Save the uuid of the secret for configuring <tt class="docutils literal"><span class="pre">nova-compute</span></tt> later.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">You don&#8217;t necessarily need the UUID on all the compute nodes.
+However from a platform consistency perspective, it&#8217;s better to keep the
+same UUID.</p>
+</div>
+</div>
+</div>
+<div class="section" id="configure-openstack-to-use-ceph">
+<h2>Configure OpenStack to use Ceph<a class="headerlink" href="#configure-openstack-to-use-ceph" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="configuring-glance">
+<h3>Configuring Glance<a class="headerlink" href="#configuring-glance" title="Permalink to this headline">¶</a></h3>
+<p>Glance can use multiple back ends to store images. To use Ceph block devices by
+default, configure Glance like the following.</p>
+<div class="section" id="prior-to-juno">
+<h4>Prior to Juno<a class="headerlink" href="#prior-to-juno" title="Permalink to this headline">¶</a></h4>
+<p>Edit <tt class="docutils literal"><span class="pre">/etc/glance/glance-api.conf</span></tt> and add under the <tt class="docutils literal"><span class="pre">[DEFAULT]</span></tt> section:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">default_store</span> <span class="o">=</span> <span class="n">rbd</span>
+<span class="n">rbd_store_user</span> <span class="o">=</span> <span class="n">glance</span>
+<span class="n">rbd_store_pool</span> <span class="o">=</span> <span class="n">images</span>
+<span class="n">rbd_store_chunk_size</span> <span class="o">=</span> <span class="mi">8</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="juno">
+<h4>Juno<a class="headerlink" href="#juno" title="Permalink to this headline">¶</a></h4>
+<p>Edit <tt class="docutils literal"><span class="pre">/etc/glance/glance-api.conf</span></tt> and add under the <tt class="docutils literal"><span class="pre">[glance_store]</span></tt> section:</p>
+<div class="highlight-python"><pre>[DEFAULT]
+...
+default_store = rbd
+...
+[glance_store]
+stores = rbd
+rbd_store_pool = images
+rbd_store_user = glance
+rbd_store_ceph_conf = /etc/ceph/ceph.conf
+rbd_store_chunk_size = 8</pre>
+</div>
+<p>For more information about the configuration options available in Glance please see: <a class="reference external" href="http://docs.openstack.org/trunk/config-reference/content/section_glance-api.conf.html">http://docs.openstack.org/trunk/config-reference/content/section_glance-api.conf.html</a>.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Glance has not completely moved to &#8216;store&#8217; yet.
+So we still need to configure the store in the DEFAULT section.</p>
+</div>
+</div>
+<div class="section" id="any-openstack-version">
+<h4>Any OpenStack version<a class="headerlink" href="#any-openstack-version" title="Permalink to this headline">¶</a></h4>
+<p>If you want to enable copy-on-write cloning of images, also add under the <tt class="docutils literal"><span class="pre">[DEFAULT]</span></tt> section:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">show_image_direct_url</span> <span class="o">=</span> <span class="bp">True</span>
+</pre></div>
+</div>
+<p>Note that this exposes the back end location via Glance&#8217;s API, so the endpoint
+with this option enabled should not be publicly accessible.</p>
+<p>Disable the Glance cache management to avoid images getting cached under <tt class="docutils literal"><span class="pre">/var/lib/glance/image-cache/</span></tt>,
+assuming your configuration file has <tt class="docutils literal"><span class="pre">flavor</span> <span class="pre">=</span> <span class="pre">keystone+cachemanagement</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="n">paste_deploy</span><span class="p">]</span>
+<span class="n">flavor</span> <span class="o">=</span> <span class="n">keystone</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="configuring-cinder">
+<h3>Configuring Cinder<a class="headerlink" href="#configuring-cinder" title="Permalink to this headline">¶</a></h3>
+<p>OpenStack requires a driver to interact with Ceph block devices. You must also
+specify the pool name for the block device. On your OpenStack node, edit
+<tt class="docutils literal"><span class="pre">/etc/cinder/cinder.conf</span></tt> by adding:</p>
+<div class="highlight-python"><pre>volume_driver = cinder.volume.drivers.rbd.RBDDriver
+rbd_pool = volumes
+rbd_ceph_conf = /etc/ceph/ceph.conf
+rbd_flatten_volume_from_snapshot = false
+rbd_max_clone_depth = 5
+rbd_store_chunk_size = 4
+rados_connect_timeout = -1
+glance_api_version = 2</pre>
+</div>
+<p>If you&#8217;re using <a class="reference external" href="../../rados/operations/authentication">cephx authentication</a>, also configure the user and uuid of
+the secret you added to <tt class="docutils literal"><span class="pre">libvirt</span></tt> as documented earlier:</p>
+<div class="highlight-python"><pre>rbd_user = cinder
+rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337</pre>
+</div>
+<p>Note that if you are configuring multiple cinder back ends,
+<tt class="docutils literal"><span class="pre">glance_api_version</span> <span class="pre">=</span> <span class="pre">2</span></tt> must be in the <tt class="docutils literal"><span class="pre">[DEFAULT]</span></tt> section.</p>
+</div>
+<div class="section" id="configuring-cinder-backup">
+<h3>Configuring Cinder Backup<a class="headerlink" href="#configuring-cinder-backup" title="Permalink to this headline">¶</a></h3>
+<p>OpenStack Cinder Backup requires a specific daemon so don&#8217;t forget to install it.
+On your Cinder Backup node, edit <tt class="docutils literal"><span class="pre">/etc/cinder/cinder.conf</span></tt> and add:</p>
+<div class="highlight-python"><pre>backup_driver = cinder.backup.drivers.ceph
+backup_ceph_conf = /etc/ceph/ceph.conf
+backup_ceph_user = cinder-backup
+backup_ceph_chunk_size = 134217728
+backup_ceph_pool = backups
+backup_ceph_stripe_unit = 0
+backup_ceph_stripe_count = 0
+restore_discard_excess_bytes = true</pre>
+</div>
+</div>
+<div class="section" id="configuring-nova-to-attach-ceph-rbd-block-device">
+<h3>Configuring Nova to attach Ceph RBD block device<a class="headerlink" href="#configuring-nova-to-attach-ceph-rbd-block-device" title="Permalink to this headline">¶</a></h3>
+<p>In order to attach Cinder devices (either normal block or by issuing a boot
+from volume), you must tell Nova (and libvirt) which user and UUID to refer to
+when attaching the device. libvirt will refer to this user when connecting and
+authenticating with the Ceph cluster.</p>
+<div class="highlight-python"><pre>rbd_user = cinder
+rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337</pre>
+</div>
+<p>These two flags are also used by the Nova ephemeral backend.</p>
+</div>
+<div class="section" id="configuring-nova">
+<h3>Configuring Nova<a class="headerlink" href="#configuring-nova" title="Permalink to this headline">¶</a></h3>
+<p>In order to boot all the virtual machines directly into Ceph, you must
+configure the ephemeral backend for Nova.</p>
+<p>It is recommended to enable the RBD cache in your Ceph configuration file
+(enabled by default since Giant). Moreover, enabling the admin socket
+brings a lot of benefits while troubleshoothing. Having one socket
+per virtual machine using a Ceph block device will help investigating performance and/or wrong behaviors.</p>
+<p>This socket can be accessed like this:</p>
+<div class="highlight-python"><pre>ceph daemon /var/run/ceph/ceph-client.cinder.19195.32310016.asok help</pre>
+</div>
+<p>Now on every compute nodes edit your Ceph configuration file:</p>
+<div class="highlight-python"><pre>[client]
+    rbd cache = true
+    rbd cache writethrough until flush = true
+    admin socket = /var/run/ceph/$cluster-$type.$id.$pid.$cctid.asok</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">If your virtual machine is already running you can simply restart it to get the socket</p>
+</div>
+<div class="section" id="havana-and-icehouse">
+<h4>Havana and Icehouse<a class="headerlink" href="#havana-and-icehouse" title="Permalink to this headline">¶</a></h4>
+<p>Havana and Icehouse require patches to implement copy-on-write cloning and fix
+bugs with image size and live migration of ephemeral disks on rbd. These are
+available in branches based on upstream Nova <a class="reference external" href="https://github.com/jdurgin/nova/tree/havana-ephemeral-rbd">stable/havana</a>  and
+<a class="reference external" href="https://github.com/angdraug/nova/tree/rbd-ephemeral-clone-stable-icehouse">stable/icehouse</a>. Using them is not mandatory but <strong>highly recommended</strong> in
+order to take advantage of the copy-on-write clone functionality.</p>
+<p>On every Compute node, edit <tt class="docutils literal"><span class="pre">/etc/nova/nova.conf</span></tt> and add:</p>
+<div class="highlight-python"><pre>libvirt_images_type = rbd
+libvirt_images_rbd_pool = vms
+libvirt_images_rbd_ceph_conf = /etc/ceph/ceph.conf
+libvirt_disk_cachemodes="network=writeback"
+rbd_user = cinder
+rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337</pre>
+</div>
+<p>It is also a good practice to disable file injection. While booting an
+instance, Nova usually attempts to open the rootfs of the virtual machine.
+Then, Nova injects values such as password, ssh keys etc. directly into the
+filesystem. However, it is better to rely on the metadata service and
+<tt class="docutils literal"><span class="pre">cloud-init</span></tt>.</p>
+<p>On every Compute node, edit <tt class="docutils literal"><span class="pre">/etc/nova/nova.conf</span></tt> and add:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">libvirt_inject_password</span> <span class="o">=</span> <span class="n">false</span>
+<span class="n">libvirt_inject_key</span> <span class="o">=</span> <span class="n">false</span>
+<span class="n">libvirt_inject_partition</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span>
+</pre></div>
+</div>
+<p>To ensure a proper live-migration, use the following flags:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">libvirt_live_migration_flag</span><span class="o">=</span><span class="s">&quot;VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id2">
+<h4>Juno<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h4>
+<p>In Juno, Ceph block device was moved under the <tt class="docutils literal"><span class="pre">[libvirt]</span></tt> section.
+On every Compute node, edit <tt class="docutils literal"><span class="pre">/etc/nova/nova.conf</span></tt> under the <tt class="docutils literal"><span class="pre">[libvirt]</span></tt>
+section and add:</p>
+<div class="highlight-python"><pre>[libvirt]
+images_type = rbd
+images_rbd_pool = vms
+images_rbd_ceph_conf = /etc/ceph/ceph.conf
+rbd_user = cinder
+rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+disk_cachemodes="network=writeback"</pre>
+</div>
+<p>It is also a good practice to disable file injection. While booting an
+instance, Nova usually attempts to open the rootfs of the virtual machine.
+Then, Nova injects values such as password, ssh keys etc. directly into the
+filesystem. However, it is better to rely on the metadata service and
+<tt class="docutils literal"><span class="pre">cloud-init</span></tt>.</p>
+<p>On every Compute node, edit <tt class="docutils literal"><span class="pre">/etc/nova/nova.conf</span></tt> and add the following
+under the <tt class="docutils literal"><span class="pre">[libvirt]</span></tt> section:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">inject_password</span> <span class="o">=</span> <span class="n">false</span>
+<span class="n">inject_key</span> <span class="o">=</span> <span class="n">false</span>
+<span class="n">inject_partition</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span>
+</pre></div>
+</div>
+<p>To ensure a proper live-migration, use the following flags:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">live_migration_flag</span><span class="o">=</span><span class="s">&quot;VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST&quot;</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="restart-openstack">
+<h2>Restart OpenStack<a class="headerlink" href="#restart-openstack" title="Permalink to this headline">¶</a></h2>
+<p>To activate the Ceph block device driver and load the block device pool name
+into the configuration, you must restart OpenStack. Thus, for Debian based
+systems execute these commands on the appropriate nodes:</p>
+<div class="highlight-python"><pre>sudo glance-control api restart
+sudo service nova-compute restart
+sudo service cinder-volume restart
+sudo service cinder-backup restart</pre>
+</div>
+<p>For Red Hat based systems execute:</p>
+<div class="highlight-python"><pre>sudo service openstack-glance-api restart
+sudo service openstack-nova-compute restart
+sudo service openstack-cinder-volume restart
+sudo service openstack-cinder-backup restart</pre>
+</div>
+<p>Once OpenStack is up and running, you should be able to create a volume
+and boot from it.</p>
+</div>
+<div class="section" id="booting-from-a-block-device">
+<h2>Booting from a Block Device<a class="headerlink" href="#booting-from-a-block-device" title="Permalink to this headline">¶</a></h2>
+<p>You can create a volume from an image using the Cinder command line tool:</p>
+<div class="highlight-python"><pre>cinder create --image-id {id of image} --display-name {name of volume} {size of volume}</pre>
+</div>
+<p>Note that image must be RAW format. You can use <a class="reference external" href="../qemu-rbd/#running-qemu-with-rbd">qemu-img</a> to convert
+from one format to another. For example:</p>
+<div class="highlight-python"><pre>qemu-img convert -f {source-format} -O {output-format} {source-filename} {output-filename}
+qemu-img convert -f qcow2 -O raw precise-cloudimg.img precise-cloudimg.raw</pre>
+</div>
+<p>When Glance and Cinder are both using Ceph block devices, the image is a
+copy-on-write clone, so it can create a new volume quickly. In the OpenStack
+dashboard, you can boot from that volume by performing the following steps:</p>
+<ol class="arabic simple">
+<li>Launch a new instance.</li>
+<li>Choose the image associated to the copy-on-write clone.</li>
+<li>Select &#8216;boot from volume&#8217;</li>
+<li>Select the volume you created.</li>
+</ol>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -189,13 +189,17 @@
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-rbd--image-features">
-<tt class="descname">--image-features</tt><tt class="descclassname"> features</tt><a class="headerlink" href="#cmdoption-rbd--image-features" title="Permalink to this definition">¶</a></dt>
-<dd><p>创建格式 2 的 RBD 映像时，指定要启用哪些功能。把想要的功能前面的数字累加起来就是参数值：</p>
-<p>+1: 支持分层
-+2: 支持条带化 v2
-+4: 支持独占锁
-+8: 支持对象映射</p>
+<dt id="cmdoption-rbd--image-feature">
+<tt class="descname">--image-feature</tt><tt class="descclassname"> feature</tt><a class="headerlink" href="#cmdoption-rbd--image-feature" title="Permalink to this definition">¶</a></dt>
+<dd><p>创建格式 2 的 RBD 映像时，指定要启用哪些功能。想要启用多个功能的话，可以多次重复使用此选项。当前支持下列功能：</p>
+<ul class="simple">
+<li>layering: 支持分层</li>
+<li>striping: 支持条带化 v2</li>
+<li>exclusive-lock: 支持独占锁</li>
+<li>object-map: 支持对象映射（依赖 exclusive-lock ）</li>
+<li>fast-diff: 快速计算差异（依赖 object-map ）</li>
+<li>deep-flatten: 支持快照扁平化操作</li>
+</ul>
 </dd></dl>
 
 <dl class="option">
@@ -204,12 +208,22 @@
 <dd><p>指定该映像将被多个客户端同时使用。此选项将禁用那些依赖于独占所有权的功能。</p>
 </dd></dl>
 
+<dl class="option">
+<dt id="cmdoption-rbd--object-extents">
+<tt class="descname">--object-extents</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-rbd--object-extents" title="Permalink to this definition">¶</a></dt>
+<dd><p>把 diff 操作范围限定在完整的对象条带级别，而非对象内差异。当某一映像启用了 object-map 功能时，把 diff 操作限定到对象条带会显著地提高性能，因为通过检查驻留于内存中的对象映射就可以计算出差异，而无需针对映像内的各个对象查询 RADOS 。</p>
+</dd></dl>
+
 </div>
 <div class="section" id="id5">
 <h2>命令<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt><strong class="command">ls</strong> [-l | &#8211;long] [pool-name]</dt>
 <dd>列出 rbd_directory 对象中的所有 rbd 映像。加 -l 选项后也显示快照，并用长格式输出，包括大小、父映像（若是克隆品）、格式等等。</dd>
+<dt><strong class="command">du</strong> [&#8211;image <em>image-name</em>] [<em>pool-name</em>]</dt>
+<dd><p class="first">计算指定存储池内所有映像及其相关快照的磁盘使用量，包括分配的和实际使用的。此命令也可用于单个映像。</p>
+<p class="last">如果 RBD 映像的 fast-diff 功能没启用，那么这个操作需向多个 OSD 查询此映像涉及的每个对象。</p>
+</dd>
 <dt><strong class="command">info</strong> [<em>image-name</em>]</dt>
 <dd>显示指定 rbd 映像的信息（如大小和顺序）。若映像是克隆品，会显示相关父快照；若指定了快照，会显示是否被保护。</dd>
 <dt><strong class="command">create</strong> [<em>image-name</em>]</dt>
@@ -236,13 +250,13 @@
 <dd><p class="first">创建一映像，并从目的路径导入数据，用 - （短线）从标准输入导入。如果可能的话，导入操作会试着创建稀疏映像。如果从标准输入导入，稀疏化单位将是目标映像的数据块尺寸（即 1&lt;&lt;order ）。</p>
 <p class="last">参数 &#8211;stripe-unit 和 &#8211;stripe-count 是可选的，但必须同时使用。</p>
 </dd>
-<dt><strong class="command">export-diff</strong> [<em>image-name</em>] [<em>dest-path</em>] [&#8211;from-snap <em>snapname</em>]</dt>
+<dt><strong class="command">export-diff</strong> [<em>image-name</em>] [<em>dest-path</em>] [&#8211;from-snap <em>snapname</em>] [&#8211;object-extents]</dt>
 <dd>导出一映像的增量差异，用-导出到标准输出。若给了起始快照，就只包含与此快照的差异部分；否则包含映像的所有数据部分；结束快照用 &#8211;snap 选项或 &#64;snap （见下文）指定。此映像的差异格式包含了映像尺寸变更的元数据、起始和结束快照，它高效地表达了被忽略或映像内的全 0 区域。</dd>
 <dt><strong class="command">merge-diff</strong> [<em>first-diff-path</em>] [<em>second-diff-path</em>] [<em>merged-diff-path</em>]</dt>
 <dd>把两个连续的增量差异合并为单个差异。前一个差异的末尾快照必须与后一个差异的起始快照相同。前一个差异可以是标准输入 - ，合并后的差异可以是标准输出 - ；这样就可以合并多个差异文件，像这样： &#8216;rbd merge-diff first second - | rbd merge-diff - third result&#8217; 。注意，当前此命令只支持 stripe_count == 1 这样的源增量差异。</dd>
 <dt><strong class="command">import-diff</strong> [<em>src-path</em>] [<em>image-name</em>]</dt>
 <dd>导入一映像的增量差异并应用到当前映像。如果此差异是在起始快照基础上生成的，我们会先校验那个已存在快照再继续；如果指定了结束快照，我们先检查它是否存在、再应用变更，结束后再创建结束快照。</dd>
-<dt><strong class="command">diff</strong> [<em>image-name</em>] [&#8211;from-snap <em>snapname</em>]</dt>
+<dt><strong class="command">diff</strong> [<em>image-name</em>] [&#8211;from-snap <em>snapname</em>] [&#8211;object-extents]</dt>
 <dd>打印出从指定快照点起、或从映像创建点起，映像内的变动区域。输出的各行都包含起始偏移量（按字节）、数据块长度（按字节）、还有 zero 或 data ，用来指示此范围以前是 0 还是其它数据。</dd>
 <dt><strong class="command">cp</strong> [<em>src-image</em>] [<em>dest-image</em>]</dt>
 <dd>把源映像内容复制进新建的目标映像，目标映像和源映像将有相同的尺寸、顺序和格式。</dd>
@@ -256,6 +270,8 @@
 <dd>设置指定元数据关键字的值，会显示在 <cite>metadata-list</cite> 中。</dd>
 <dt><strong class="command">image-meta remove</strong> [<em>image-name</em>] [<em>key</em>]</dt>
 <dd>删除元数据关键字及其值。</dd>
+<dt><strong class="command">object-map</strong> rebuild [<em>image-name</em>]</dt>
+<dd>为指定映像重建无效的对象映射关系。指定映像快照时，将为此快照重建无效的对象映射关系。</dd>
 <dt><strong class="command">snap</strong> ls [<em>image-name</em>]</dt>
 <dd>列出一映像内的快照。</dd>
 <dt><strong class="command">snap</strong> create [<em>image-name</em>]</dt>
@@ -276,7 +292,7 @@
 </dd>
 <dt><strong class="command">map</strong> [<em>image-name</em>] [-o | &#8211;options <em>map-options</em> ] [&#8211;read-only]</dt>
 <dd>通过内核 rbd 模块把指定映像映射到某一块设备。</dd>
-<dt><strong class="command">unmap</strong> [<em>device-path</em>]</dt>
+<dt><strong class="command">unmap</strong> [<em>image-name</em>] | [<em>device-path</em>]</dt>
 <dd>取消通过内核 rbd 模块的映射。</dd>
 <dt><strong class="command">showmapped</strong></dt>
 <dd>显示通过内核 rbd 模块映射过的 rbd 映像。</dd>
@@ -337,6 +353,7 @@
 <li>nocephx_require_signatures - 不要求对 cephx 消息签名（从 3.19 起）。</li>
 <li>tcp_nodelay - 在客户端禁用 Nagle&#8217;s 算法（从 4.0 起默认开启）。</li>
 <li>notcp_nodelay - 在客户端启用 Nagle&#8217;s 算法（从 4.0 起）。</li>
+<li>mount_timeout=x - 执行 <cite>rbd map</cite> 和 <cite>rbd unmap</cite> 时所涉及的各操作步骤的超时值（默认为 60 秒）。特别是从 4.2 起，与集群间没有连接时，即认为 <cite>rbd unmap</cite> 操作超时了。</li>
 <li>osdkeepalive=x - OSD 保持连接的期限（默认为 5 秒）。</li>
 <li>osd_idle_ttl=x - OSD 闲置 TTL （默认为 60 秒）。</li>
 <li>rw - 以读写方式映射映像（默认）。</li>
@@ -459,7 +476,7 @@ rbd import --image-format 2 /tmp/img mypool/myimage2</pre>
 <li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
 </ul>
 

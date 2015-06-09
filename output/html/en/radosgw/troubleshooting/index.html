@@ -1,0 +1,270 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Troubleshooting &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="troubleshooting">
+<h1>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="the-gateway-won-t-start">
+<h2>The Gateway Won&#8217;t Start<a class="headerlink" href="#the-gateway-won-t-start" title="Permalink to this headline">¶</a></h2>
+<p>If you cannot start the gateway (i.e., there is no existing <tt class="docutils literal"><span class="pre">pid</span></tt>),
+check to see if there is an existing <tt class="docutils literal"><span class="pre">.asok</span></tt> file from another
+user. If an <tt class="docutils literal"><span class="pre">.asok</span></tt> file from another user exists and there is no
+running <tt class="docutils literal"><span class="pre">pid</span></tt>, remove the <tt class="docutils literal"><span class="pre">.asok</span></tt> file and try to start the
+process again.</p>
+<p>This may occur when you start the process as a <tt class="docutils literal"><span class="pre">root</span></tt> user and
+the startup script is trying to start the process as a
+<tt class="docutils literal"><span class="pre">www-data</span></tt> or <tt class="docutils literal"><span class="pre">apache</span></tt> user and an existing <tt class="docutils literal"><span class="pre">.asok</span></tt> is
+preventing the script from starting the daemon.</p>
+<p>The radosgw init script (/etc/init.d/radosgw) also has a verbose argument that
+can provide some insight as to what could be the issue:</p>
+<blockquote>
+<div>/etc/init.d/radosgw start -v</div></blockquote>
+<p>or</p>
+<blockquote>
+<div>/etc/init.d radosgw start &#8211;verbose</div></blockquote>
+</div>
+<div class="section" id="http-request-errors">
+<h2>HTTP Request Errors<a class="headerlink" href="#http-request-errors" title="Permalink to this headline">¶</a></h2>
+<p>Examining the access and error logs for the web server itself is
+probably the first step in identifying what is going on.  If there is
+a 500 error, that usually indicates a problem communicating with the
+<tt class="docutils literal"><span class="pre">radosgw</span></tt> daemon.  Ensure the daemon is running, its socket path is
+configured, and that the web server is looking for it in the proper
+location.</p>
+</div>
+<div class="section" id="crashed-radosgw-process">
+<h2>Crashed <tt class="docutils literal"><span class="pre">radosgw</span></tt> process<a class="headerlink" href="#crashed-radosgw-process" title="Permalink to this headline">¶</a></h2>
+<p>If the <tt class="docutils literal"><span class="pre">radosgw</span></tt> process dies, you will normally see a 500 error
+from the web server (apache, nginx, etc.).  In that situation, simply
+restarting radosgw will restore service.</p>
+<p>To diagnose the cause of the crash, check the log in <tt class="docutils literal"><span class="pre">/var/log/ceph</span></tt>
+and/or the core file (if one was generated).</p>
+</div>
+<div class="section" id="blocked-radosgw-requests">
+<h2>Blocked <tt class="docutils literal"><span class="pre">radosgw</span></tt> Requests<a class="headerlink" href="#blocked-radosgw-requests" title="Permalink to this headline">¶</a></h2>
+<p>If some (or all) radosgw requests appear to be blocked, you can get
+some insight into the internal state of the <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemon via
+its admin socket.  By default, there will be a socket configured to
+reside in <tt class="docutils literal"><span class="pre">/var/run/ceph</span></tt>, and the daemon can be queried with:</p>
+<div class="highlight-python"><pre>ceph --admin-daemon /var/run/ceph/client.rgw help
+
+help                list available commands
+objecter_requests   show in-progress osd requests
+perfcounters_dump   dump perfcounters value
+perfcounters_schema dump perfcounters schema
+version             get protocol version</pre>
+</div>
+<p>Of particular interest:</p>
+<div class="highlight-python"><pre>ceph --admin-daemon /var/run/ceph/client.rgw objecter_requests
+...</pre>
+</div>
+<p>will dump information about current in-progress requests with the
+RADOS cluster.  This allows one to identify if any requests are blocked
+by a non-responsive OSD.  For example, one might see:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span> <span class="s">&quot;ops&quot;</span><span class="p">:</span> <span class="p">[</span>
+      <span class="p">{</span> <span class="s">&quot;tid&quot;</span><span class="p">:</span> <span class="mi">1858</span><span class="p">,</span>
+        <span class="s">&quot;pg&quot;</span><span class="p">:</span> <span class="s">&quot;2.d2041a48&quot;</span><span class="p">,</span>
+        <span class="s">&quot;osd&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s">&quot;last_sent&quot;</span><span class="p">:</span> <span class="s">&quot;2012-03-08 14:56:37.949872&quot;</span><span class="p">,</span>
+        <span class="s">&quot;attempts&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s">&quot;object_id&quot;</span><span class="p">:</span> <span class="s">&quot;fatty_25647_object1857&quot;</span><span class="p">,</span>
+        <span class="s">&quot;object_locator&quot;</span><span class="p">:</span> <span class="s">&quot;@2&quot;</span><span class="p">,</span>
+        <span class="s">&quot;snapid&quot;</span><span class="p">:</span> <span class="s">&quot;head&quot;</span><span class="p">,</span>
+        <span class="s">&quot;snap_context&quot;</span><span class="p">:</span> <span class="s">&quot;0=[]&quot;</span><span class="p">,</span>
+        <span class="s">&quot;mtime&quot;</span><span class="p">:</span> <span class="s">&quot;2012-03-08 14:56:37.949813&quot;</span><span class="p">,</span>
+        <span class="s">&quot;osd_ops&quot;</span><span class="p">:</span> <span class="p">[</span>
+              <span class="s">&quot;write 0~4096&quot;</span><span class="p">]},</span>
+      <span class="p">{</span> <span class="s">&quot;tid&quot;</span><span class="p">:</span> <span class="mi">1873</span><span class="p">,</span>
+        <span class="s">&quot;pg&quot;</span><span class="p">:</span> <span class="s">&quot;2.695e9f8e&quot;</span><span class="p">,</span>
+        <span class="s">&quot;osd&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s">&quot;last_sent&quot;</span><span class="p">:</span> <span class="s">&quot;2012-03-08 14:56:37.970615&quot;</span><span class="p">,</span>
+        <span class="s">&quot;attempts&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s">&quot;object_id&quot;</span><span class="p">:</span> <span class="s">&quot;fatty_25647_object1872&quot;</span><span class="p">,</span>
+        <span class="s">&quot;object_locator&quot;</span><span class="p">:</span> <span class="s">&quot;@2&quot;</span><span class="p">,</span>
+        <span class="s">&quot;snapid&quot;</span><span class="p">:</span> <span class="s">&quot;head&quot;</span><span class="p">,</span>
+        <span class="s">&quot;snap_context&quot;</span><span class="p">:</span> <span class="s">&quot;0=[]&quot;</span><span class="p">,</span>
+        <span class="s">&quot;mtime&quot;</span><span class="p">:</span> <span class="s">&quot;2012-03-08 14:56:37.970555&quot;</span><span class="p">,</span>
+        <span class="s">&quot;osd_ops&quot;</span><span class="p">:</span> <span class="p">[</span>
+              <span class="s">&quot;write 0~4096&quot;</span><span class="p">]}],</span>
+<span class="s">&quot;linger_ops&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;pool_ops&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;pool_stat_ops&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;statfs_ops&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+</pre></div>
+</div>
+<p>In this dump, two requests are in progress.  The <tt class="docutils literal"><span class="pre">last_sent</span></tt> field is
+the time the RADOS request was sent.  If this is a while ago, it suggests
+that the OSD is not responding.  For example, for request 1858, you could
+check the OSD status with:</p>
+<div class="highlight-python"><pre>ceph pg map 2.d2041a48
+
+osdmap e9 pg 2.d2041a48 (2.0) -&gt; up [1,0] acting [1,0]</pre>
+</div>
+<p>This tells us to look at <tt class="docutils literal"><span class="pre">osd.1</span></tt>, the primary copy for this PG:</p>
+<div class="highlight-python"><pre>ceph --admin-daemon /var/run/ceph/osd.1.asok
+{ "num_ops": 651,
+ "ops": [
+       { "description": "osd_op(client.4124.0:1858 fatty_25647_object1857 [write 0~4096] 2.d2041a48)",
+         "received_at": "1331247573.344650",
+         "age": "25.606449",
+         "flag_point": "waiting for sub ops",
+         "client_info": { "client": "client.4124",
+             "tid": 1858}},
+...</pre>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">flag_point</span></tt> field indicates that the OSD is currently waiting
+for replicas to respond, in this case <tt class="docutils literal"><span class="pre">osd.0</span></tt>.</p>
+</div>
+<div class="section" id="java-s3-api-troubleshooting">
+<h2>Java S3 API Troubleshooting<a class="headerlink" href="#java-s3-api-troubleshooting" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="peer-not-authenticated">
+<h3>Peer Not Authenticated<a class="headerlink" href="#peer-not-authenticated" title="Permalink to this headline">¶</a></h3>
+<p>You may receive an error that looks like this:</p>
+<div class="highlight-python"><pre>[java] INFO: Unable to execute HTTP request: peer not authenticated</pre>
+</div>
+<p>The Java SDK for S3 requires a valid certificate from a recognized certificate
+authority, because it uses HTTPS by default. If you are just testing the Ceph
+Object Storage services, you can resolve this problem in a few ways:</p>
+<ol class="arabic">
+<li><p class="first">Prepend the IP address or hostname with <tt class="docutils literal"><span class="pre">http://</span></tt>. For example, change this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">conn</span><span class="o">.</span><span class="n">setEndpoint</span><span class="p">(</span><span class="s">&quot;myserver&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>To:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">conn</span><span class="o">.</span><span class="n">setEndpoint</span><span class="p">(</span><span class="s">&quot;http://myserver&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">After setting your credentials, add a client configuration and set the
+protocol to <tt class="docutils literal"><span class="pre">Protocol.HTTP</span></tt>.</p>
+<div class="highlight-python"><pre>AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
+
+ClientConfiguration clientConfig = new ClientConfiguration();
+clientConfig.setProtocol(Protocol.HTTP);
+
+AmazonS3 conn = new AmazonS3Client(credentials, clientConfig);</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="methodnotallowed">
+<h3>405 MethodNotAllowed<a class="headerlink" href="#methodnotallowed" title="Permalink to this headline">¶</a></h3>
+<p>If you receive an 405 error, check to see if you have the S3 subdomain set up correctly.
+You will need to have a wild card setting in your DNS record for subdomain functionality
+to work properly.</p>
+<p>Also, check to ensure that the default site is disabled.</p>
+<div class="highlight-python"><pre>[java] Exception in thread "main" Status Code: 405, AWS Service: Amazon S3, AWS Request ID: null, AWS Error Code: MethodNotAllowed, AWS Error Message: null, S3 Extended Request ID: null</pre>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

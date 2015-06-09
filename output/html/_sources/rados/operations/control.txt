@@ -155,11 +155,6 @@ OSD 子系统
 
 	ceph osd getmaxosd
 
-导入指定 OSD 运行图。注意，此动作有风险，因为 OSD 运行图包含当前 OSD 在线、离线的动\
-态状态，只可用于相当新的副本。 ::
-
-	ceph osd setmap -i file
-
 导入指定 CRUSH 图。 ::
 
 	ceph osd setcrushmap -i file

@@ -1,0 +1,203 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Placement Group Concepts &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="placement-group-concepts">
+<h1>Placement Group Concepts<a class="headerlink" href="#placement-group-concepts" title="Permalink to this headline">¶</a></h1>
+<p>When you execute commands like <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-w</span></tt>, <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">dump</span></tt>, and other
+commands related to placement groups, Ceph may return values using some
+of the following terms:</p>
+<dl class="docutils">
+<dt><em>Peering</em></dt>
+<dd>The process of bringing all of the OSDs that store
+a Placement Group (PG) into agreement about the state
+of all of the objects (and their metadata) in that PG.
+Note that agreeing on the state does not mean that
+they all have the latest contents.</dd>
+<dt><em>Acting Set</em></dt>
+<dd>The ordered list of OSDs who are (or were as of some epoch)
+responsible for a particular placement group.</dd>
+<dt><em>Up Set</em></dt>
+<dd>The ordered list of OSDs responsible for a particular placement
+group for a particular epoch according to CRUSH. Normally this
+is the same as the <em>Acting Set</em>, except when the <em>Acting Set</em> has
+been explicitly overridden via <tt class="docutils literal"><span class="pre">pg_temp</span></tt> in the OSD Map.</dd>
+<dt><em>Current Interval</em> or <em>Past Interval</em></dt>
+<dd>A sequence of OSD map epochs during which the <em>Acting Set</em> and <em>Up
+Set</em> for particular placement group do not change.</dd>
+<dt><em>Primary</em></dt>
+<dd>The member (and by convention first) of the <em>Acting Set</em>,
+that is responsible for coordination peering, and is
+the only OSD that will accept client-initiated
+writes to objects in a placement group.</dd>
+<dt><em>Replica</em></dt>
+<dd>A non-primary OSD in the <em>Acting Set</em> for a placement group
+(and who has been recognized as such and <em>activated</em> by the primary).</dd>
+<dt><em>Stray</em></dt>
+<dd>An OSD that is not a member of the current <em>Acting Set</em>, but
+has not yet been told that it can delete its copies of a
+particular placement group.</dd>
+<dt><em>Recovery</em></dt>
+<dd>Ensuring that copies of all of the objects in a placement group
+are on all of the OSDs in the <em>Acting Set</em>.  Once <em>Peering</em> has
+been performed, the <em>Primary</em> can start accepting write operations,
+and <em>Recovery</em> can proceed in the background.</dd>
+<dt><em>PG Info</em></dt>
+<dd>Basic metadata about the placement group&#8217;s creation epoch, the version
+for the most recent write to the placement group, <em>last epoch started</em>,
+<em>last epoch clean</em>, and the beginning of the <em>current interval</em>.  Any
+inter-OSD communication about placement groups includes the <em>PG Info</em>,
+such that any OSD that knows a placement group exists (or once existed)
+also has a lower bound on <em>last epoch clean</em> or <em>last epoch started</em>.</dd>
+<dt><em>PG Log</em></dt>
+<dd>A list of recent updates made to objects in a placement group.
+Note that these logs can be truncated after all OSDs
+in the <em>Acting Set</em> have acknowledged up to a certain
+point.</dd>
+<dt><em>Missing Set</em></dt>
+<dd>Each OSD notes update log entries and if they imply updates to
+the contents of an object, adds that object to a list of needed
+updates.  This list is called the <em>Missing Set</em> for that <tt class="docutils literal"><span class="pre">&lt;OSD,PG&gt;</span></tt>.</dd>
+<dt><em>Authoritative History</em></dt>
+<dd>A complete, and fully ordered set of operations that, if
+performed, would bring an OSD&#8217;s copy of a placement group
+up to date.</dd>
+<dt><em>Epoch</em></dt>
+<dd>A (monotonically increasing) OSD map version number</dd>
+<dt><em>Last Epoch Start</em></dt>
+<dd>The last epoch at which all nodes in the <em>Acting Set</em>
+for a particular placement group agreed on an
+<em>Authoritative History</em>.  At this point, <em>Peering</em> is
+deemed to have been successful.</dd>
+<dt><em>up_thru</em></dt>
+<dd><p class="first">Before a <em>Primary</em> can successfully complete the <em>Peering</em> process,
+it must inform a monitor that is alive through the current
+OSD map <em>Epoch</em> by having the monitor set its <em>up_thru</em> in the osd
+map.  This helps <em>Peering</em> ignore previous <em>Acting Sets</em> for which
+<em>Peering</em> never completed after certain sequences of failures, such as
+the second interval below:</p>
+<ul class="last simple">
+<li><em>acting set</em> = [A,B]</li>
+<li><em>acting set</em> = [A]</li>
+<li><em>acting set</em> = [] very shortly after (e.g., simultaneous failure, but staggered detection)</li>
+<li><em>acting set</em> = [B] (B restarts, A does not)</li>
+</ul>
+</dd>
+<dt><em>Last Epoch Clean</em></dt>
+<dd>The last <em>Epoch</em> at which all nodes in the <em>Acting set</em>
+for a particular placement group were completely
+up to date (both placement group logs and object contents).
+At this point, <em>recovery</em> is deemed to have been
+completed.</dd>
+</dl>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

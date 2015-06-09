@@ -1,0 +1,892 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuring Federated Gateways &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="configuring-federated-gateways">
+<h1>Configuring Federated Gateways<a class="headerlink" href="#configuring-federated-gateways" title="Permalink to this headline">¶</a></h1>
+<p class="versionadded">
+<span class="versionmodified">New in version 0.67: </span>Dumpling</p>
+<p>In Ceph version 0.67 Dumpling and beyond, you may configure each <a class="reference internal" href="../../../glossary/#term-ceph-object-gateway"><em class="xref std std-term">Ceph
+Object Gateway</em></a> to participate in a federated architecture, with multiple
+regions, and with multiple zones for a region.</p>
+<ul class="simple">
+<li><strong>Region</strong>: A region represents a <em>logical</em> geographic area and contains one
+or more zones. A cluster with multiple regions must specify a master region.</li>
+<li><strong>Zone</strong>: A zone is a <em>logical</em> grouping of one or more Ceph Object Gateway
+instance(s). A region has a master zone that processes client requests.</li>
+</ul>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Only write objects to the master zone in a region. You may read
+objects from secondary zones. Currently, the Gateway does not prevent you
+from writing to a secondary zone, but <strong>DON&#8217;T DO IT</strong>.</p>
+</div>
+<div class="section" id="background">
+<h2>Background<a class="headerlink" href="#background" title="Permalink to this headline">¶</a></h2>
+<p>When you deploy a <a class="reference internal" href="../../../glossary/#term-ceph-object-store"><em class="xref std std-term">Ceph Object Store</em></a> service that spans geographical
+locales, configuring Ceph Object Gateway regions and metadata synchronization
+agents enables the service to maintain a global namespace, even though Ceph
+Object Gateway instances run in different geographic locales and potentially on
+different Ceph Storage Clusters. When you separate one or more Ceph Object
+Gateway instances within a region into separate logical containers to maintain
+an extra copy (or copies) of the data, configuring Ceph Object Gateway zones and
+data synchronization agents enables the service to maintain one or more
+copy(ies) of the master zone&#8217;s data. Extra copies of the data are important for
+failover, backup and disaster recovery.</p>
+<p>You may deploy a single Ceph Storage Cluster with a federated architecture if
+you have low latency network connections (this isn&#8217;t recommended). You may also
+deploy one Ceph Storage Cluster per region with a separate set of  pools for
+each zone (typical). You may also deploy a separate Ceph Storage Cluster for
+each zone if your requirements and resources warrant this level of redundancy.</p>
+</div>
+<div class="section" id="about-this-guide">
+<h2>About this Guide<a class="headerlink" href="#about-this-guide" title="Permalink to this headline">¶</a></h2>
+<p>In the following sections, we will demonstrate how to configure a federated
+cluster in two logical steps:</p>
+<ul class="simple">
+<li><strong>Configure a Master Region:</strong> This section of the guide describes how to
+set up a region with multiple zones, and how to synchronize data between the
+master zone and the secondary zone(s) within the master region.</li>
+<li><strong>Configure a Secondary Region:</strong>  This section of the guide describes how
+to repeat the section on setting up a master region and multiple zones so
+that you have two regions with intra-zone synchronization in each region.
+Finally, you will learn how to set up a metadata synchronization agent so
+that you can maintain a global namespace for the regions in your cluster.</li>
+</ul>
+</div>
+<div class="section" id="configure-a-master-region">
+<h2>Configure a Master Region<a class="headerlink" href="#configure-a-master-region" title="Permalink to this headline">¶</a></h2>
+<p>This section provides an exemplary procedure for setting up a region, and two
+zones within the region. The cluster will comprise two gateway daemon
+instances&#8211;one per zone. This region will serve as the master region.</p>
+<div class="section" id="naming-for-the-master-region">
+<h3>Naming for the Master Region<a class="headerlink" href="#naming-for-the-master-region" title="Permalink to this headline">¶</a></h3>
+<p>Before configuring the cluster, defining region, zone and instance names will
+help you manage your cluster. Let&#8217;s assume the region represents the United
+States, and we refer to it by its standard abbreviation.</p>
+<ul class="simple">
+<li>United States: <tt class="docutils literal"><span class="pre">us</span></tt></li>
+</ul>
+<p>Let&#8217;s assume the zones represent the Eastern and Western United States. For
+continuity, our naming convention will use <tt class="docutils literal"><span class="pre">{region</span> <span class="pre">name}-{zone</span> <span class="pre">name}</span></tt> format,
+but you can use any naming convention you prefer.</p>
+<ul class="simple">
+<li>United States, East Region: <tt class="docutils literal"><span class="pre">us-east</span></tt></li>
+<li>United States, West Region: <tt class="docutils literal"><span class="pre">us-west</span></tt></li>
+</ul>
+<p>Finally, let&#8217;s assume that zones may have more than one Ceph Object Gateway
+instance per zone. For continuity, our naming convention will use
+<tt class="docutils literal"><span class="pre">{region</span> <span class="pre">name}-{zone</span> <span class="pre">name}-{instance}</span></tt> format, but you can use any naming
+convention you prefer.</p>
+<ul class="simple">
+<li>United States Region, Master Zone, Instance 1: <tt class="docutils literal"><span class="pre">us-east-1</span></tt></li>
+<li>United States Region, Secondary Zone, Instance 1: <tt class="docutils literal"><span class="pre">us-west-1</span></tt></li>
+</ul>
+</div>
+<div class="section" id="create-pools">
+<h3>Create Pools<a class="headerlink" href="#create-pools" title="Permalink to this headline">¶</a></h3>
+<p>You may have a Ceph Storage Cluster for the entire region or a Ceph Storage
+Cluster for each zone.</p>
+<p>For continuity, our naming convention will use <tt class="docutils literal"><span class="pre">{region</span> <span class="pre">name}-{zone</span> <span class="pre">name}</span></tt>
+format prepended to the pool name, but you can use any naming convention you
+prefer. For example:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">.us-east.rgw.root</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.rgw.control</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.rgw.gc</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.rgw.buckets</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.rgw.buckets.index</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.rgw.buckets.extra</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.intent-log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.usage</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.users</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.users.email</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.users.swift</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-east.users.uid</span></tt></li>
+</ul>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">.us-west.rgw.root</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.rgw.control</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.rgw.gc</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.rgw.buckets</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.rgw.buckets.index</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.rgw.buckets.extra</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.intent-log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.usage</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.users</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.users.email</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.users.swift</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.us-west.users.uid</span></tt></li>
+</ul>
+<p>See <a class="reference external" href="../config-ref#pools">Configuration Reference - Pools</a> for details on the default pools for
+gateways. See <a class="reference external" href="../../rados/operations/pools">Pools</a> for details on creating pools. Execute the following
+to create a pool:</p>
+<div class="highlight-python"><pre>ceph osd pool create {poolname} {pg-num} {pgp-num} {replicated | erasure} [{erasure-code-profile}]  {ruleset-name} {ruleset-number}</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">When adding a large number of pools, it may take some time for your
+cluster to return to a <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></tt> state.</p>
+</div>
+<div class="topic">
+<p class="topic-title first">CRUSH Maps</p>
+<p>When deploying a Ceph Storage Cluster for the entire region, consider
+using a CRUSH rule for the zone such that you do NOT have overlapping
+failure domains. See <a class="reference external" href="../../rados/operations/crush-map">CRUSH Map</a> for details.</p>
+<p>Ceph supports multiple CRUSH hierarchies and CRUSH rulesets, enabling
+great flexibility in the way you configure your gateway. Pools such
+as <tt class="docutils literal"><span class="pre">rgw.buckets.index</span></tt> may benefit from a modestly sized pool of SSDs
+for fast performance. Backing storage may benefit from the increased economy
+of erasure-coded storage, and/or the improved performance from cache tiering.</p>
+</div>
+<p>When you have completed this step, execute the following to ensure that
+you have created all of the foregoing pools:</p>
+<div class="highlight-python"><pre>rados lspools</pre>
+</div>
+</div>
+<div class="section" id="create-a-keyring">
+<h3>Create a Keyring<a class="headerlink" href="#create-a-keyring" title="Permalink to this headline">¶</a></h3>
+<p>Each instance must have a user name and key to communicate with a Ceph Storage
+Cluster. In the following steps, we use an admin node to create a keyring.
+Then, we create a client user name and key for each instance. Next, we add the
+keys to the Ceph Storage Cluster(s). Finally, we distribute the key ring to
+each node containing an instance.</p>
+<ol class="arabic">
+<li><p class="first">Create a keyring.</p>
+<div class="highlight-python"><pre>sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.radosgw.keyring
+sudo chmod +r /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+<li><p class="first">Generate a Ceph Object Gateway user name and key for each instance.</p>
+<div class="highlight-python"><pre>sudo ceph-authtool /etc/ceph/ceph.client.radosgw.keyring -n client.radosgw.us-east-1 --gen-key
+sudo ceph-authtool /etc/ceph/ceph.client.radosgw.keyring -n client.radosgw.us-west-1 --gen-key</pre>
+</div>
+</li>
+<li><p class="first">Add capabilities to each key. See <a class="reference external" href="../config-ref#pools">Configuration Reference - Pools</a> for details
+on the effect of write permissions for the monitor and creating pools.</p>
+<div class="highlight-python"><pre>sudo ceph-authtool -n client.radosgw.us-east-1 --cap osd 'allow rwx' --cap mon 'allow rwx' /etc/ceph/ceph.client.radosgw.keyring
+sudo ceph-authtool -n client.radosgw.us-west-1 --cap osd 'allow rwx' --cap mon 'allow rwx' /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+<li><p class="first">Once you have created a keyring and key to enable the Ceph Object Gateway
+with access to the Ceph Storage Cluster, add each key as an entry to your
+Ceph Storage Cluster(s). For example:</p>
+<div class="highlight-python"><pre>sudo ceph -k /etc/ceph/ceph.client.admin.keyring auth add client.radosgw.us-east-1 -i /etc/ceph/ceph.client.radosgw.keyring
+sudo ceph -k /etc/ceph/ceph.client.admin.keyring auth add client.radosgw.us-west-1 -i /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+</ol>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us-</span></tt> with <tt class="docutils literal"><span class="pre">eu-</span></tt>. You will have a total of four users <strong>after</strong>
+you create the master region and the secondary region.</p>
+</div>
+</div>
+<div class="section" id="install-apache-fastcgi">
+<h3>Install Apache/FastCGI<a class="headerlink" href="#install-apache-fastcgi" title="Permalink to this headline">¶</a></h3>
+<p>For each <a class="reference internal" href="../../../glossary/#term-ceph-node"><em class="xref std std-term">Ceph Node</em></a> that runs a <a class="reference internal" href="../../../glossary/#term-ceph-object-gateway"><em class="xref std std-term">Ceph Object Gateway</em></a> daemon
+instance, you must install Apache, FastCGI, the Ceph Object Gateway daemon
+(<tt class="docutils literal"><span class="pre">radosgw</span></tt>) and the Ceph Object Gateway Sync Agent (<tt class="docutils literal"><span class="pre">radosgw-agent</span></tt>).
+See <a class="reference external" href="../../install/install-ceph-gateway">Install Ceph Object Gateway</a> for details.</p>
+</div>
+<div class="section" id="create-data-directories">
+<h3>Create Data Directories<a class="headerlink" href="#create-data-directories" title="Permalink to this headline">¶</a></h3>
+<p>Create data directories for each daemon instance on their respective
+hosts.</p>
+<div class="highlight-python"><pre>ssh {us-east-1}
+sudo mkdir -p /var/lib/ceph/radosgw/ceph-radosgw.us-east-1
+
+ssh {us-west-1}
+sudo mkdir -p /var/lib/ceph/radosgw/ceph-radosgw.us-west-1</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us-</span></tt> with <tt class="docutils literal"><span class="pre">eu-</span></tt>. You will have a total of four data directories
+<strong>after</strong> you create the master region and the secondary region.</p>
+</div>
+</div>
+<div class="section" id="create-a-gateway-configuration">
+<h3>Create a Gateway Configuration<a class="headerlink" href="#create-a-gateway-configuration" title="Permalink to this headline">¶</a></h3>
+<p>For each instance, create an Ceph Object Gateway configuration file under the
+<tt class="docutils literal"><span class="pre">/etc/apache2/sites-available</span></tt> directory on the host(s) where you installed
+the Ceph Object Gateway daemon(s). See below for an exemplary embodiment of a
+gateway configuration as discussed in the following text.</p>
+<div class="highlight-ini"><pre>FastCgiExternalServer /var/www/s3gw.fcgi -socket /{path}/{socket-name}.sock
+
+
+&lt;VirtualHost *:80&gt;
+
+	ServerName {fqdn}
+	&lt;!--Remove the comment. Add a server alias with *.{fqdn} for S3 subdomains--&gt;
+	&lt;!--ServerAlias *.{fqdn}--&gt;
+	ServerAdmin {email.address}
+	DocumentRoot /var/www
+	RewriteEngine On
+	RewriteRule  ^/(.*) /s3gw.fcgi?%{QUERY_STRING} [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+	&lt;IfModule mod_fastcgi.c&gt;
+   	&lt;Directory /var/www&gt;
+			Options +ExecCGI
+			AllowOverride All
+			SetHandler fastcgi-script
+			Order allow,deny
+			Allow from all
+			AuthBasicAuthoritative Off
+		&lt;/Directory&gt;
+	&lt;/IfModule&gt;
+
+	AllowEncodedSlashes On
+	ErrorLog /var/log/apache2/error.log
+	CustomLog /var/log/apache2/access.log combined
+	ServerSignature Off
+
+&lt;/VirtualHost&gt;</pre>
+</div>
+<ol class="arabic simple">
+<li>Replace the <tt class="docutils literal"><span class="pre">/{path}/{socket-name}</span></tt> entry with path to the socket and
+the socket name. For example,
+<tt class="docutils literal"><span class="pre">/var/run/ceph/client.radosgw.us-east-1.sock</span></tt>. Ensure that you use the
+same path and socket name in your <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> entry.</li>
+<li>Replace the <tt class="docutils literal"><span class="pre">{fqdn}</span></tt> entry with the fully-qualified domain name of the
+server.</li>
+<li>Replace the <tt class="docutils literal"><span class="pre">{email.address}</span></tt> entry with the email address for the
+server administrator.</li>
+<li>Add a <tt class="docutils literal"><span class="pre">ServerAlias</span></tt> if you wish to use S3-style subdomains
+(of course you do).</li>
+<li>Save the configuration to a file (e.g., <tt class="docutils literal"><span class="pre">rgw-us-east.conf</span></tt>).</li>
+</ol>
+<p>Repeat the process for the secondary zone (e.g., <tt class="docutils literal"><span class="pre">rgw-us-west.conf</span></tt>).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us-</span></tt> with <tt class="docutils literal"><span class="pre">eu-</span></tt>. You will have a total of four gateway
+configuration files on the respective nodes <strong>after</strong>
+you create the master region and the secondary region.</p>
+</div>
+<p>Finally, if you enabled SSL, make sure that you set the port to your SSL port
+(usually 443) and your configuration file includes the following:</p>
+<div class="highlight-python"><pre>SSLEngine on
+SSLCertificateFile /etc/apache2/ssl/apache.crt
+SSLCertificateKeyFile /etc/apache2/ssl/apache.key
+SetEnv SERVER_PORT_SECURE 443</pre>
+</div>
+</div>
+<div class="section" id="enable-the-configuration">
+<h3>Enable the Configuration<a class="headerlink" href="#enable-the-configuration" title="Permalink to this headline">¶</a></h3>
+<p>For each instance, enable the gateway configuration and disable the
+default site.</p>
+<ol class="arabic">
+<li><p class="first">Enable the site for the gateway configuration.</p>
+<div class="highlight-python"><pre>sudo a2ensite {rgw-conf-filename}</pre>
+</div>
+</li>
+<li><p class="first">Disable the default site.</p>
+<div class="highlight-python"><pre>sudo a2dissite default</pre>
+</div>
+</li>
+</ol>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Failure to disable the default site can lead to problems.</p>
+</div>
+</div>
+<div class="section" id="add-a-fastcgi-script">
+<h3>Add a FastCGI Script<a class="headerlink" href="#add-a-fastcgi-script" title="Permalink to this headline">¶</a></h3>
+<p>FastCGI requires a script for each Ceph Object Gateway instance to
+enable the S3-compatible interface. To create the script, execute
+the following procedures.</p>
+<ol class="arabic">
+<li><p class="first">Go to the <tt class="docutils literal"><span class="pre">/var/www</span></tt> directory.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">cd</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">www</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Open an editor with the file name <tt class="docutils literal"><span class="pre">s3gw.fcgi</span></tt>. <strong>Note:</strong> The configuration
+file specifies this filename.</p>
+<div class="highlight-python"><pre>sudo vim s3gw.fcgi</pre>
+</div>
+</li>
+<li><p class="first">Add a shell script with <tt class="docutils literal"><span class="pre">exec</span></tt> and the path to the gateway binary,
+the path to the Ceph configuration file, and the user name (<tt class="docutils literal"><span class="pre">-n</span></tt>;
+the same user name created in step 2 of <a class="reference internal" href="#create-a-keyring">Create a Keyring</a>.
+Copy the following into the editor.</p>
+<div class="highlight-python"><pre>#!/bin/sh
+exec /usr/bin/radosgw -c /etc/ceph/ceph.conf -n client.radosgw.{ID}</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>#!/bin/sh
+exec /usr/bin/radosgw -c /etc/ceph/ceph.conf -n client.radosgw.us-east-1</pre>
+</div>
+</li>
+<li><p class="first">Save the file.</p>
+</li>
+<li><p class="first">Change the permissions on the file so that it is executable.</p>
+<div class="highlight-python"><pre>sudo chmod +x s3gw.fcgi</pre>
+</div>
+</li>
+</ol>
+<p>Repeat the process for the secondary zone.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us-</span></tt> with <tt class="docutils literal"><span class="pre">eu-</span></tt>. You will have a total of four FastCGI scripts
+<strong>after</strong> you create the master region and the secondary region.</p>
+</div>
+</div>
+<div class="section" id="add-instances-to-ceph-config-file">
+<h3>Add Instances to Ceph Config File<a class="headerlink" href="#add-instances-to-ceph-config-file" title="Permalink to this headline">¶</a></h3>
+<p>On an admin node, add an entry for each instance in the Ceph configuration file
+for your Ceph Storage Cluster(s). For example:</p>
+<div class="highlight-python"><pre>...
+
+[client.radosgw.us-east-1]
+rgw region = us
+rgw region root pool = .us.rgw.root
+rgw zone = us-east
+rgw zone root pool = .us-east.rgw.root
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw dns name = {hostname}
+rgw socket path = /var/run/ceph/$name.sock
+host = {host-name}
+
+[client.radosgw.us-west-1]
+rgw region = us
+rgw region root pool = .us.rgw.root
+rgw zone = us-west
+rgw zone root pool = .us-west.rgw.root
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw dns name = {hostname}
+rgw socket path = /var/run/ceph/$name.sock
+host = {host-name}</pre>
+</div>
+<p>Then, update each <a class="reference internal" href="../../../glossary/#term-ceph-node"><em class="xref std std-term">Ceph Node</em></a> with the updated Ceph configuration
+file. For example:</p>
+<div class="highlight-python"><pre>ceph-deploy --overwrite-conf config push {node1} {node2} {nodex}</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us</span></tt> with <tt class="docutils literal"><span class="pre">eu</span></tt> for the name, region, pools and zones.
+You will have a total of four entries <strong>after</strong>
+you create the master region and the secondary region.</p>
+</div>
+</div>
+<div class="section" id="create-a-region">
+<h3>Create a Region<a class="headerlink" href="#create-a-region" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic">
+<li><p class="first">Configure a region infile called <tt class="docutils literal"><span class="pre">us.json</span></tt> for the <tt class="docutils literal"><span class="pre">us</span></tt> region.</p>
+<p>Copy the contents of the following example to a text editor. Set
+<tt class="docutils literal"><span class="pre">is_master</span></tt> to <tt class="docutils literal"><span class="pre">true</span></tt>. Replace <tt class="docutils literal"><span class="pre">{fqdn}</span></tt> with the fully-qualified
+domain name of the endpoint. It will specify a master zone as <tt class="docutils literal"><span class="pre">us-east</span></tt>
+and list it in the <tt class="docutils literal"><span class="pre">zones</span></tt> list along with the <tt class="docutils literal"><span class="pre">us-west</span></tt> zone.
+See <a class="reference external" href="../config-ref#regions">Configuration Reference - Regions</a> for details.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span> <span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;us&quot;</span><span class="p">,</span>
+  <span class="s">&quot;api_name&quot;</span><span class="p">:</span> <span class="s">&quot;us&quot;</span><span class="p">,</span>
+  <span class="s">&quot;is_master&quot;</span><span class="p">:</span> <span class="s">&quot;true&quot;</span><span class="p">,</span>
+  <span class="s">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s">&quot;http:\/\/{fqdn}:80\/&quot;</span><span class="p">],</span>
+  <span class="s">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s">&quot;us-east&quot;</span><span class="p">,</span>
+  <span class="s">&quot;zones&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span> <span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;us-east&quot;</span><span class="p">,</span>
+          <span class="s">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s">&quot;http:\/\/{fqdn}:80\/&quot;</span><span class="p">],</span>
+          <span class="s">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s">&quot;true&quot;</span><span class="p">,</span>
+          <span class="s">&quot;log_data&quot;</span><span class="p">:</span> <span class="s">&quot;true&quot;</span><span class="p">},</span>
+        <span class="p">{</span> <span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;us-west&quot;</span><span class="p">,</span>
+          <span class="s">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s">&quot;http:\/\/{fqdn}:80\/&quot;</span><span class="p">],</span>
+          <span class="s">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s">&quot;true&quot;</span><span class="p">,</span>
+          <span class="s">&quot;log_data&quot;</span><span class="p">:</span> <span class="s">&quot;true&quot;</span><span class="p">}],</span>
+  <span class="s">&quot;placement_targets&quot;</span><span class="p">:</span> <span class="p">[</span>
+   <span class="p">{</span>
+     <span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;default-placement&quot;</span><span class="p">,</span>
+     <span class="s">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[]</span>
+   <span class="p">}</span>
+  <span class="p">],</span>
+  <span class="s">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s">&quot;default-placement&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create the <tt class="docutils literal"><span class="pre">us</span></tt> region using the <tt class="docutils literal"><span class="pre">us.json</span></tt> infile you just
+created.</p>
+<div class="highlight-python"><pre>radosgw-admin region set --infile us.json --name client.radosgw.us-east-1</pre>
+</div>
+</li>
+<li><p class="first">Delete the default region (if it exists).</p>
+<div class="highlight-python"><pre>rados -p .us.rgw.root rm region_info.default</pre>
+</div>
+</li>
+<li><p class="first">Set the <tt class="docutils literal"><span class="pre">us</span></tt> region as the default region.</p>
+<div class="highlight-python"><pre>radosgw-admin region default --rgw-region=us --name client.radosgw.us-east-1</pre>
+</div>
+<p>Only one region can be the default region for a cluster.</p>
+</li>
+<li><p class="first">Update the region map.</p>
+<div class="highlight-python"><pre>radosgw-admin regionmap update --name client.radosgw.us-east-1</pre>
+</div>
+</li>
+</ol>
+<p>If you use different Ceph Storage Cluster instances for regions, you  should
+repeat steps 2, 4 and 5 in by executing them with <tt class="docutils literal"><span class="pre">--name</span>
+<span class="pre">client.radosgw-us-west-1</span></tt>. You may also export the region map from the initial
+gateway instance and import it followed by updating the region map.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us</span></tt> with <tt class="docutils literal"><span class="pre">eu</span></tt>. You will have a total of two regions <strong>after</strong>
+you create the master region and the secondary region.</p>
+</div>
+</div>
+<div class="section" id="create-zones">
+<h3>Create Zones<a class="headerlink" href="#create-zones" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic">
+<li><p class="first">Configure a zone infile called <tt class="docutils literal"><span class="pre">us-east.json</span></tt> for the
+<tt class="docutils literal"><span class="pre">us-east</span></tt> zone.</p>
+<p>Copy the contents of the following example to a text editor.
+This configuration uses pool names prepended with the region name and
+zone name. See <a class="reference external" href="../config-ref#pools">Configuration Reference - Pools</a> for additional details on
+gateway pools. See <a class="reference external" href="../config-ref#zones">Configuration Reference - Zones</a> for additional
+details on zones.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span> <span class="s">&quot;domain_root&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.domain.rgw&quot;</span><span class="p">,</span>
+  <span class="s">&quot;control_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.rgw.control&quot;</span><span class="p">,</span>
+  <span class="s">&quot;gc_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.rgw.gc&quot;</span><span class="p">,</span>
+  <span class="s">&quot;log_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.log&quot;</span><span class="p">,</span>
+  <span class="s">&quot;intent_log_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.intent-log&quot;</span><span class="p">,</span>
+  <span class="s">&quot;usage_log_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.usage&quot;</span><span class="p">,</span>
+  <span class="s">&quot;user_keys_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.users&quot;</span><span class="p">,</span>
+  <span class="s">&quot;user_email_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.users.email&quot;</span><span class="p">,</span>
+  <span class="s">&quot;user_swift_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.users.swift&quot;</span><span class="p">,</span>
+  <span class="s">&quot;user_uid_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.users.uid&quot;</span><span class="p">,</span>
+  <span class="s">&quot;system_key&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;access_key&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">},</span>
+  <span class="s">&quot;placement_pools&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="p">{</span> <span class="s">&quot;key&quot;</span><span class="p">:</span> <span class="s">&quot;default-placement&quot;</span><span class="p">,</span>
+      <span class="s">&quot;val&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;index_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.rgw.buckets.index&quot;</span><span class="p">,</span>
+               <span class="s">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.rgw.buckets&quot;</span><span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Add the <tt class="docutils literal"><span class="pre">us-east</span></tt> zone using the <tt class="docutils literal"><span class="pre">us-east.json</span></tt> infile you
+just created in both the east and west pools by specifying their respective
+user names (i.e., <tt class="docutils literal"><span class="pre">--name</span></tt>).</p>
+<div class="highlight-python"><pre>radosgw-admin zone set --rgw-zone=us-east --infile us-east.json --name client.radosgw.us-east-1
+radosgw-admin zone set --rgw-zone=us-east --infile us-east.json --name client.radosgw.us-west-1</pre>
+</div>
+<p>Repeat step 1 to create a zone infile for <tt class="docutils literal"><span class="pre">us-west</span></tt>. Then add the zone
+using the <tt class="docutils literal"><span class="pre">us-west.json</span></tt> infile in both the east and west pools by
+specifying their respective user names (i.e., <tt class="docutils literal"><span class="pre">--name</span></tt>).</p>
+<div class="highlight-python"><pre>radosgw-admin zone set --rgw-zone=us-west --infile us-west.json --name client.radosgw.us-east-1
+radosgw-admin zone set --rgw-zone=us-west --infile us-west.json --name client.radosgw.us-west-1</pre>
+</div>
+</li>
+<li><p class="first">Delete the default zone (if it exists).</p>
+<div class="highlight-python"><pre>rados -p .rgw.root rm zone_info.default</pre>
+</div>
+</li>
+<li><p class="first">Update the region map.</p>
+<div class="highlight-python"><pre>radosgw-admin regionmap update --name client.radosgw.us-east-1</pre>
+</div>
+</li>
+</ol>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us-</span></tt> with <tt class="docutils literal"><span class="pre">eu-</span></tt>. You will have a total of four zones <strong>after</strong>
+you create the master zone and the secondary zone in each region.</p>
+</div>
+</div>
+<div class="section" id="create-zone-users">
+<h3>Create Zone Users<a class="headerlink" href="#create-zone-users" title="Permalink to this headline">¶</a></h3>
+<p>Ceph Object Gateway stores zone users in the zone pools. So you must create zone
+users after configuring the zones. Copy the <tt class="docutils literal"><span class="pre">access_key</span></tt> and  <tt class="docutils literal"><span class="pre">secret_key</span></tt>
+fields for each user so you can update your zone configuration once you complete
+this step.</p>
+<div class="highlight-python"><pre>radosgw-admin user create --uid="us-east" --display-name="Region-US Zone-East" --name client.radosgw.us-east-1 --system
+radosgw-admin user create --uid="us-west" --display-name="Region-US Zone-West" --name client.radosgw.us-west-1 --system</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us-</span></tt> with <tt class="docutils literal"><span class="pre">eu-</span></tt>. You will have a total of four zone users
+<strong>after</strong> you create the master region and the secondary region and their
+zones. These users are different from the users created in <a class="reference internal" href="#create-a-keyring">Create a
+Keyring</a>.</p>
+</div>
+</div>
+<div class="section" id="update-zone-configurations">
+<h3>Update Zone Configurations<a class="headerlink" href="#update-zone-configurations" title="Permalink to this headline">¶</a></h3>
+<p>You must update the zone configuration with zone users so that
+the synchronization agents can authenticate with the zones.</p>
+<ol class="arabic">
+<li><p class="first">Open your <tt class="docutils literal"><span class="pre">us-east.json</span></tt> zone configuration file and paste the contents of
+the <tt class="docutils literal"><span class="pre">access_key</span></tt> and <tt class="docutils literal"><span class="pre">secret_key</span></tt> fields from the step of creating
+zone users into the <tt class="docutils literal"><span class="pre">system_key</span></tt> field of your zone configuration
+infile.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span> <span class="s">&quot;domain_root&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.domain.rgw&quot;</span><span class="p">,</span>
+  <span class="s">&quot;control_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.rgw.control&quot;</span><span class="p">,</span>
+  <span class="s">&quot;gc_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.rgw.gc&quot;</span><span class="p">,</span>
+  <span class="s">&quot;log_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.log&quot;</span><span class="p">,</span>
+  <span class="s">&quot;intent_log_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.intent-log&quot;</span><span class="p">,</span>
+  <span class="s">&quot;usage_log_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.usage&quot;</span><span class="p">,</span>
+  <span class="s">&quot;user_keys_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.users&quot;</span><span class="p">,</span>
+  <span class="s">&quot;user_email_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.users.email&quot;</span><span class="p">,</span>
+  <span class="s">&quot;user_swift_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.users.swift&quot;</span><span class="p">,</span>
+  <span class="s">&quot;user_uid_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.users.uid&quot;</span><span class="p">,</span>
+  <span class="s">&quot;system_key&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s">&quot;access_key&quot;</span><span class="p">:</span> <span class="s">&quot;{paste-access_key-here}&quot;</span><span class="p">,</span>
+    <span class="s">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s">&quot;{paste-secret_key-here}&quot;</span>
+         <span class="p">},</span>
+  <span class="s">&quot;placement_pools&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="p">{</span> <span class="s">&quot;key&quot;</span><span class="p">:</span> <span class="s">&quot;default-placement&quot;</span><span class="p">,</span>
+      <span class="s">&quot;val&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;index_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.rgw.buckets.index&quot;</span><span class="p">,</span>
+               <span class="s">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s">&quot;.us-east.rgw.buckets&quot;</span><span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Save the <tt class="docutils literal"><span class="pre">us-east.json</span></tt> file. Then, update your zone configuration.</p>
+<div class="highlight-python"><pre>radosgw-admin zone set --rgw-zone=us-east --infile us-east.json --name client.radosgw.us-east-1
+radosgw-admin zone set --rgw-zone=us-east --infile us-east.json --name client.radosgw.us-west-1</pre>
+</div>
+</li>
+<li><p class="first">Repeat step 1 to update the zone infile for <tt class="docutils literal"><span class="pre">us-west</span></tt>. Then, update
+your zone configuration.</p>
+<div class="highlight-python"><pre>radosgw-admin zone set --rgw-zone=us-west --infile us-west.json --name client.radosgw.us-east-1
+radosgw-admin zone set --rgw-zone=us-west --infile us-west.json --name client.radosgw.us-west-1</pre>
+</div>
+</li>
+</ol>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When you use this procedure to configure the secondary region,
+replace <tt class="docutils literal"><span class="pre">us-</span></tt> with <tt class="docutils literal"><span class="pre">eu-</span></tt>. You will have a total of four zones <strong>after</strong>
+you create the master zone and the secondary zone in each region.</p>
+</div>
+</div>
+<div class="section" id="restart-services">
+<h3>Restart Services<a class="headerlink" href="#restart-services" title="Permalink to this headline">¶</a></h3>
+<p>Once you have redeployed your Ceph configuration files, we recommend restarting
+your Ceph Storage Cluster(s) and Apache instances.</p>
+<p>For Ubuntu, use the following on each <a class="reference internal" href="../../../glossary/#term-ceph-node"><em class="xref std std-term">Ceph Node</em></a>:</p>
+<div class="highlight-python"><pre>sudo restart ceph-all</pre>
+</div>
+<p>For Red Hat/CentOS, use the following:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph restart</pre>
+</div>
+<p>To ensure that all components have reloaded their configurations, for each
+gateway instance we recommend restarting the <tt class="docutils literal"><span class="pre">apache2</span></tt> service.  For example:</p>
+<div class="highlight-python"><pre>sudo service apache2 restart</pre>
+</div>
+</div>
+<div class="section" id="start-gateway-instances">
+<h3>Start Gateway Instances<a class="headerlink" href="#start-gateway-instances" title="Permalink to this headline">¶</a></h3>
+<p>Start up the <tt class="docutils literal"><span class="pre">radosgw</span></tt> service.</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/radosgw start</pre>
+</div>
+<p>If you are running multiple instances on the same host, you must specify the
+user name.</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/radosgw start --name client.radosgw.us-east-1</pre>
+</div>
+<p>Open a browser and check the endpoints for each zone. A simple HTTP request
+to the domain name should return the following:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;ListAllMyBucketsResult</span> <span class="na">xmlns=</span><span class="s">&quot;http://s3.amazonaws.com/doc/2006-03-01/&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;Owner&gt;</span>
+                <span class="nt">&lt;ID&gt;</span>anonymous<span class="nt">&lt;/ID&gt;</span>
+                <span class="nt">&lt;DisplayName/&gt;</span>
+        <span class="nt">&lt;/Owner&gt;</span>
+        <span class="nt">&lt;Buckets/&gt;</span>
+<span class="nt">&lt;/ListAllMyBucketsResult&gt;</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="configure-a-secondary-region">
+<h2>Configure a Secondary Region<a class="headerlink" href="#configure-a-secondary-region" title="Permalink to this headline">¶</a></h2>
+<p>This section provides an exemplary procedure for setting up a cluster with
+multiple regions. Configuring a cluster that spans regions requires maintaining
+a global namespace, so that there are no namespace clashes among object names
+stored across in different regions.</p>
+<p>This section extends the procedure in <a class="reference internal" href="#configure-a-master-region">Configure a Master Region</a>, but
+changes the region name and modifies a few procedures. See the following
+sections for details.</p>
+<div class="section" id="naming-for-the-secondary-region">
+<h3>Naming for the Secondary Region<a class="headerlink" href="#naming-for-the-secondary-region" title="Permalink to this headline">¶</a></h3>
+<p>Before configuring the cluster, defining region, zone and instance names will
+help you manage your cluster. Let&#8217;s assume the region represents the European
+Union, and we refer to it by its standard abbreviation.</p>
+<ul class="simple">
+<li>European Union: <tt class="docutils literal"><span class="pre">eu</span></tt></li>
+</ul>
+<p>Let&#8217;s assume the zones represent the Eastern and Western European Union. For
+continuity, our naming convention will use <tt class="docutils literal"><span class="pre">{region</span> <span class="pre">name}-{zone</span> <span class="pre">name}</span></tt>
+format, but you can use any naming convention you prefer.</p>
+<ul class="simple">
+<li>European Union, East Region: <tt class="docutils literal"><span class="pre">eu-east</span></tt></li>
+<li>European Union, West Region: <tt class="docutils literal"><span class="pre">eu-west</span></tt></li>
+</ul>
+<p>Finally, let&#8217;s assume that zones may have more than one Ceph Object Gateway
+instance per zone. For continuity, our naming convention will use
+<tt class="docutils literal"><span class="pre">{region</span> <span class="pre">name}-{zone</span> <span class="pre">name}-{instance}</span></tt> format, but you can use any naming
+convention you prefer.</p>
+<ul class="simple">
+<li>European Union Region, Master Zone, Instance 1: <tt class="docutils literal"><span class="pre">eu-east-1</span></tt></li>
+<li>European Union Region, Secondary Zone, Instance 1: <tt class="docutils literal"><span class="pre">eu-west-1</span></tt></li>
+</ul>
+</div>
+<div class="section" id="configuring-a-secondary-region">
+<h3>Configuring a Secondary Region<a class="headerlink" href="#configuring-a-secondary-region" title="Permalink to this headline">¶</a></h3>
+<p>Repeat the exemplary procedure of <a class="reference internal" href="#configure-a-master-region">Configure a Master Region</a>
+with the following differences:</p>
+<ol class="arabic">
+<li><p class="first">Use <a class="reference internal" href="#naming-for-the-secondary-region">Naming for the Secondary Region</a> in lieu of <a class="reference internal" href="#naming-for-the-master-region">Naming for
+the Master Region</a>.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#create-pools">Create Pools</a> using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of <tt class="docutils literal"><span class="pre">us</span></tt>.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#create-a-keyring">Create a Keyring</a>  and the corresponding keys using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of
+<tt class="docutils literal"><span class="pre">us</span></tt>. You may use the same keyring if you desire, but ensure that you
+create the keys on the Ceph Storage Cluster for that region (or region
+and zone).</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#install-apache-fastcgi">Install Apache/FastCGI</a>.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#create-data-directories">Create Data Directories</a> using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of <tt class="docutils literal"><span class="pre">us</span></tt>.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#create-a-gateway-configuration">Create a Gateway Configuration</a> using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of <tt class="docutils literal"><span class="pre">us</span></tt> for
+the socket names.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#enable-the-configuration">Enable the Configuration</a>.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#add-a-fastcgi-script">Add a FastCGI Script</a> using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of <tt class="docutils literal"><span class="pre">us</span></tt> for the user names.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#add-instances-to-ceph-config-file">Add Instances to Ceph Config File</a> using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of <tt class="docutils literal"><span class="pre">us</span></tt> for the
+pool names.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#create-a-region">Create a Region</a> using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of <tt class="docutils literal"><span class="pre">us</span></tt>. Set <tt class="docutils literal"><span class="pre">is_master</span></tt> to
+<tt class="docutils literal"><span class="pre">false</span></tt>. For consistency, create the master region in the secondary region
+too.</p>
+<div class="highlight-python"><pre>radosgw-admin region set --infile us.json --name client.radosgw.eu-east-1</pre>
+</div>
+</li>
+<li><p class="first"><a class="reference internal" href="#create-zones">Create Zones</a> using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of <tt class="docutils literal"><span class="pre">us</span></tt>. Ensure that you update the
+user name (i.e., <tt class="docutils literal"><span class="pre">--name</span></tt>) so that you create the zones in the correct
+cluster.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#update-zone-configurations">Update Zone Configurations</a> using <tt class="docutils literal"><span class="pre">eu</span></tt> instead of <tt class="docutils literal"><span class="pre">us</span></tt>.</p>
+</li>
+<li><p class="first">Create zones from master region in the secondary region.</p>
+<div class="highlight-python"><pre>radosgw-admin zone set --rgw-zone=us-east --infile us-east.json --name client.radosgw.eu-east-1
+radosgw-admin zone set --rgw-zone=us-east --infile us-east.json --name client.radosgw.eu-west-1
+radosgw-admin zone set --rgw-zone=us-west --infile us-west.json --name client.radosgw.eu-east-1
+radosgw-admin zone set --rgw-zone=us-west --infile us-west.json --name client.radosgw.eu-west-1</pre>
+</div>
+</li>
+<li><p class="first">Create zones from secondary region in the master region.</p>
+<div class="highlight-python"><pre>radosgw-admin zone set --rgw-zone=eu-east --infile eu-east.json --name client.radosgw.us-east-1
+radosgw-admin zone set --rgw-zone=eu-east --infile eu-east.json --name client.radosgw.us-west-1
+radosgw-admin zone set --rgw-zone=eu-west --infile eu-west.json --name client.radosgw.us-east-1
+radosgw-admin zone set --rgw-zone=eu-west --infile eu-west.json --name client.radosgw.us-west-1</pre>
+</div>
+</li>
+<li><p class="first"><a class="reference internal" href="#restart-services">Restart Services</a>.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="#start-gateway-instances">Start Gateway Instances</a>.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="multi-site-data-replication">
+<h2>Multi-Site Data Replication<a class="headerlink" href="#multi-site-data-replication" title="Permalink to this headline">¶</a></h2>
+<p>The data synchronization agent replicates the data of a master zone to a
+secondary zone. The master zone of a region is the source for the secondary zone
+of the region and it gets selected automatically.</p>
+<img alt="../../../_images/zone-sync1.png" src="../../../_images/zone-sync1.png" />
+<p>To configure the synchronization agent, retrieve the access key and secret for
+the source and destination, and the destination URL and port.</p>
+<p>You may use <tt class="docutils literal"><span class="pre">radosgw-admin</span> <span class="pre">zone</span> <span class="pre">list</span></tt> to get a list of zone names. You
+may use <tt class="docutils literal"><span class="pre">radosgw-admin</span> <span class="pre">zone</span> <span class="pre">get</span></tt> to identify the key and secret for the
+zone. You may refer to the gateway configuration file you created under
+<a class="reference internal" href="#create-a-gateway-configuration">Create a Gateway Configuration</a> to identify the port number.</p>
+<p>You only need the hostname and port for a single instance (assuming all
+gateway instances in a region/zone access the same Ceph Storage Cluster).
+Specify these values in a configuration file
+(e.g., <tt class="docutils literal"><span class="pre">cluster-data-sync.conf</span></tt>), and include a <tt class="docutils literal"><span class="pre">log_file</span></tt> name.</p>
+<p>For example:</p>
+<div class="highlight-ini"><pre>src_access_key: {source-access-key}
+src_secret_key: {source-secret-key}
+destination: https://zone-name.fqdn.com:port
+dest_access_key: {destination-access-key}
+dest_secret_key: {destination-secret-key}
+log_file: {log.filename}</pre>
+</div>
+<p>A concrete example may look like this:</p>
+<div class="highlight-ini"><pre>src_access_key: DG8RE354EFPZBICHIAF0
+src_secret_key: i3U0HiRP8CXaBWrcF8bbh6CbsxGYuPPwRkixfFSb
+destination: https://us-west.storage.net:80
+dest_access_key: U60RFI6B08F32T2PD30G
+dest_secret_key: W3HuUor7Gl1Ee93pA2pq2wFk1JMQ7hTrSDecYExl
+log_file: /var/log/radosgw/radosgw-sync-us-east-west.log</pre>
+</div>
+<p>To activate the data synchronization agent, open a terminal and
+execute the following:</p>
+<div class="highlight-python"><pre>radosgw-agent -c region-data-sync.conf</pre>
+</div>
+<p>When the synchronization agent is running, you should see output
+indicating that the agent is synchronizing shards of data.</p>
+<div class="highlight-python"><pre>INFO:radosgw_agent.sync:Starting incremental sync
+INFO:radosgw_agent.worker:17910 is processing shard number 0
+INFO:radosgw_agent.worker:shard 0 has 0 entries after ''
+INFO:radosgw_agent.worker:finished processing shard 0
+INFO:radosgw_agent.worker:17910 is processing shard number 1
+INFO:radosgw_agent.sync:1/64 shards processed
+INFO:radosgw_agent.worker:shard 1 has 0 entries after ''
+INFO:radosgw_agent.worker:finished processing shard 1
+INFO:radosgw_agent.sync:2/64 shards processed
+...</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You must have an agent for each source-destination pair.</p>
+</div>
+</div>
+<div class="section" id="inter-region-metadata-replication">
+<h2>Inter-Region Metadata Replication<a class="headerlink" href="#inter-region-metadata-replication" title="Permalink to this headline">¶</a></h2>
+<p>The data synchronization agent replicates the metadata of master zone in the
+master region to a master zone in a secondary region. Metadata consists of
+gateway users and buckets, but not the objects within the buckets&#8211;ensuring a
+unified namespace across the cluster. The master zone of the master region is
+the source for the master zone of the secondary region and it gets selected
+automatically.</p>
+<img alt="../../../_images/region-sync1.png" class="align-center" src="../../../_images/region-sync1.png" />
+<p>Follow the same steps in <a class="reference internal" href="#multi-site-data-replication">Multi-Site Data Replication</a> by specifying the master
+zone of the master region as the source zone and the master zone of the
+secondary region as the secondary zone. When activating the <tt class="docutils literal"><span class="pre">radosgw-agent</span></tt>,
+specify <tt class="docutils literal"><span class="pre">--metadata-only</span></tt> so that it only copies metadata. For example:</p>
+<div class="highlight-python"><pre>radosgw-agent -c inter-region-data-sync.conf --metadata-only</pre>
+</div>
+<p>Once you have completed the foregoing procedure, you should have a cluster
+consisting of a master region (<tt class="docutils literal"><span class="pre">us</span></tt>) and a secondary region (<tt class="docutils literal"><span class="pre">eu</span></tt>) where
+there is a unified namespace between the two regions.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

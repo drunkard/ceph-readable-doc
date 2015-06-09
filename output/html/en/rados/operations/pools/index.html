@@ -1,0 +1,851 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Pools &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="pools">
+<h1>Pools<a class="headerlink" href="#pools" title="Permalink to this headline">¶</a></h1>
+<p>When you first deploy a cluster without creating a pool, Ceph uses the default
+pools for storing data. A pool provides you with:</p>
+<ul class="simple">
+<li><strong>Resilience</strong>: You can set how many OSD are allowed to fail without losing data.
+For replicated pools, it is the desired number of copies/replicas of an object.
+A typical configuration stores an object and one additional copy
+(i.e., <tt class="docutils literal"><span class="pre">size</span> <span class="pre">=</span> <span class="pre">2</span></tt>), but you can determine the number of copies/replicas.
+For <a class="reference external" href="../erasure-code">erasure coded pools</a>, it is the number of coding chunks
+(i.e. <tt class="docutils literal"><span class="pre">m=2</span></tt> in the <strong>erasure code profile</strong>)</li>
+<li><strong>Placement Groups</strong>: You can set the number of placement groups for the pool.
+A typical configuration uses approximately 100 placement groups per OSD to
+provide optimal balancing without using up too many computing resources. When
+setting up multiple pools, be careful to ensure you set a reasonable number of
+placement groups for both the pool and the cluster as a whole.</li>
+<li><strong>CRUSH Rules</strong>: When you store data in a pool, a CRUSH ruleset mapped to the
+pool enables CRUSH to identify a rule for the placement of the object
+and its replicas (or chunks for erasure coded pools) in your cluster.
+You can create a custom CRUSH rule for your pool.</li>
+<li><strong>Snapshots</strong>: When you create snapshots with <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">mksnap</span></tt>,
+you effectively take a snapshot of a particular pool.</li>
+<li><strong>Set Ownership</strong>: You can set a user ID as the owner of a pool.</li>
+</ul>
+<p>To organize data into pools, you can list, create, and remove pools.
+You can also view the utilization statistics for each pool.</p>
+<div class="section" id="list-pools">
+<h2>List Pools<a class="headerlink" href="#list-pools" title="Permalink to this headline">¶</a></h2>
+<p>To list your cluster&#8217;s pools, execute:</p>
+<div class="highlight-python"><pre>ceph osd lspools</pre>
+</div>
+<p>The default pools include:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">data</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">metadata</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">rbd</span></tt></li>
+</ul>
+</div>
+<div class="section" id="create-a-pool">
+<span id="createpool"></span><h2>Create a Pool<a class="headerlink" href="#create-a-pool" title="Permalink to this headline">¶</a></h2>
+<p>Before creating pools, refer to the <a class="reference external" href="../../configuration/pool-pg-config-ref">Pool, PG and CRUSH Config Reference</a>.
+Ideally, you should override the default value for the number of placement
+groups in your Ceph configuration file, as the default is NOT ideal.
+For example:</p>
+<div class="highlight-python"><pre>osd pool default pg num = 100
+osd pool default pgp num = 100</pre>
+</div>
+<p>To create a pool, execute:</p>
+<div class="highlight-python"><pre>ceph osd pool create {pool-name} {pg-num} [{pgp-num}] [replicated] \
+     [crush-ruleset-name]
+ceph osd pool create {pool-name} {pg-num}  {pgp-num}   erasure \
+     [erasure-code-profile] [crush-ruleset-name]</pre>
+</div>
+<p>Where:</p>
+<p><tt class="docutils literal"><span class="pre">{pool-name}</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The name of the pool. It must be unique.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">{pg-num}</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The total number of placement groups for the pool. See <a class="reference external" href="../placement-groups">Placement
+Groups</a>  for details on calculating a suitable number. The
+default value <tt class="docutils literal"><span class="pre">8</span></tt> is NOT suitable for most systems.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">8</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">{pgp-num}</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The total number of placement groups for placement purposes. This
+<strong>should be equal to the total number of placement groups</strong>, except
+for placement group splitting scenarios.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">Yes. Picks up default or Ceph configuration value if not specified.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">8</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">{replicated|erasure}</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The pool type which may either be <strong>replicated</strong> to
+recover from lost OSDs by keeping multiple copies of the
+objects or <strong>erasure</strong> to get a kind of
+<a class="reference external" href="../erasure-code">generalized RAID5</a> capability.
+The <strong>replicated</strong> pools require more
+raw storage but implement all Ceph operations. The
+<strong>erasure</strong> pools require less raw storage but only
+implement a subset of the available operations.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">replicated</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">[crush-ruleset-name]</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The name of a CRUSH ruleset to use for this pool.  The specified
+ruleset must exist.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body">For <strong>replicated</strong> pools it is the ruleset specified by the <tt class="docutils literal"><span class="pre">osd</span>
+<span class="pre">pool</span> <span class="pre">default</span> <span class="pre">crush</span> <span class="pre">replicated</span> <span class="pre">ruleset</span></tt> config variable.  This
+ruleset must exist.
+For <strong>erasure</strong> pools it is <tt class="docutils literal"><span class="pre">erasure-code</span></tt> if the <tt class="docutils literal"><span class="pre">default</span></tt>
+<a class="reference external" href="../erasure-code-profile">erasure code profile</a> is used or <tt class="docutils literal"><span class="pre">{pool-name}</span></tt> otherwise.  This
+ruleset will be created implicitly if it doesn&#8217;t exist already.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">[erasure-code-profile=profile]</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">For <strong>erasure</strong> pools only. Use the <a class="reference external" href="../erasure-code-profile">erasure code profile</a>. It
+must be an existing profile as defined by
+<strong>osd erasure-code-profile set</strong>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Required:</th><td class="field-body">No.</td>
+</tr>
+</tbody>
+</table>
+<p>When you create a pool, set the number of placement groups to a reasonable value
+(e.g., <tt class="docutils literal"><span class="pre">100</span></tt>). Consider the total number of placement groups per OSD too.
+Placement groups are computationally expensive, so performance will degrade when
+you have many pools with many placement groups (e.g., 50 pools with 100
+placement groups each). The point of diminishing returns depends upon the power
+of the OSD host.</p>
+<p>See <a class="reference external" href="../placement-groups">Placement Groups</a> for details on calculating an appropriate number of
+placement groups for your pool.</p>
+</div>
+<div class="section" id="set-pool-quotas">
+<h2>Set Pool Quotas<a class="headerlink" href="#set-pool-quotas" title="Permalink to this headline">¶</a></h2>
+<p>You can set pool quotas for the maximum number of bytes and/or the maximum
+number of objects per pool.</p>
+<div class="highlight-python"><pre>ceph osd pool set-quota {pool-name} [max_objects {obj-count}] [max_bytes {bytes}]</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>ceph osd pool set-quota data max_objects 10000</pre>
+</div>
+<p>To remove a quota, set its value to <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+</div>
+<div class="section" id="delete-a-pool">
+<h2>Delete a Pool<a class="headerlink" href="#delete-a-pool" title="Permalink to this headline">¶</a></h2>
+<p>To delete a pool, execute:</p>
+<div class="highlight-python"><pre>ceph osd pool delete {pool-name} [{pool-name} --yes-i-really-really-mean-it]</pre>
+</div>
+<p>If you created your own rulesets and rules for a pool you created,  you should
+consider removing them when you no longer need your pool.  If you created users
+with permissions strictly for a pool that no longer exists, you should consider
+deleting those users too.</p>
+</div>
+<div class="section" id="rename-a-pool">
+<h2>Rename a Pool<a class="headerlink" href="#rename-a-pool" title="Permalink to this headline">¶</a></h2>
+<p>To rename a pool, execute:</p>
+<div class="highlight-python"><pre>ceph osd pool rename {current-pool-name} {new-pool-name}</pre>
+</div>
+<p>If you rename a pool and you have per-pool capabilities for an authenticated
+user, you must update the user&#8217;s capabilities (i.e., caps) with the new pool
+name.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Version <tt class="docutils literal"><span class="pre">0.48</span></tt> Argonaut and above.</p>
+</div>
+</div>
+<div class="section" id="show-pool-statistics">
+<h2>Show Pool Statistics<a class="headerlink" href="#show-pool-statistics" title="Permalink to this headline">¶</a></h2>
+<p>To show a pool&#8217;s utilization statistics, execute:</p>
+<div class="highlight-python"><pre>rados df</pre>
+</div>
+</div>
+<div class="section" id="make-a-snapshot-of-a-pool">
+<h2>Make a Snapshot of a Pool<a class="headerlink" href="#make-a-snapshot-of-a-pool" title="Permalink to this headline">¶</a></h2>
+<p>To make a snapshot of a pool, execute:</p>
+<div class="highlight-python"><pre>ceph osd pool mksnap {pool-name} {snap-name}</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Version <tt class="docutils literal"><span class="pre">0.48</span></tt> Argonaut and above.</p>
+</div>
+</div>
+<div class="section" id="remove-a-snapshot-of-a-pool">
+<h2>Remove a Snapshot of a Pool<a class="headerlink" href="#remove-a-snapshot-of-a-pool" title="Permalink to this headline">¶</a></h2>
+<p>To remove a snapshot of a pool, execute:</p>
+<div class="highlight-python"><pre>ceph osd pool rmsnap {pool-name} {snap-name}</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Version <tt class="docutils literal"><span class="pre">0.48</span></tt> Argonaut and above.</p>
+</div>
+</div>
+<div class="section" id="set-pool-values">
+<span id="setpoolvalues"></span><h2>Set Pool Values<a class="headerlink" href="#set-pool-values" title="Permalink to this headline">¶</a></h2>
+<p>To set a value to a pool, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd pool set {pool-name} {key} {value}</pre>
+</div>
+<p>You may set values for the following keys:</p>
+<p><tt class="docutils literal"><span class="pre">size</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Sets the number of replicas for objects in the pool.
+See <a class="reference internal" href="#set-the-number-of-object-replicas">Set the Number of Object Replicas</a> for further details.
+Replicated pools only.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">min_size</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Sets the minimum number of replicas required for I/O.
+See <a class="reference internal" href="#set-the-number-of-object-replicas">Set the Number of Object Replicas</a> for further details.
+Replicated pools only.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Version:</th><td class="field-body"><tt class="docutils literal"><span class="pre">0.54</span></tt> and above</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">crash_replay_interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The number of seconds to allow clients to replay acknowledged,
+but uncommitted requests.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">pgp_num</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The effective number of placement groups to use when calculating
+data placement.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Range:</th><td class="field-body">Equal to or less than <tt class="docutils literal"><span class="pre">pg_num</span></tt>.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">crush_ruleset</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The ruleset to use for mapping object placement in the cluster.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hashpspool</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Set/Unset HASHPSPOOL flag on a given pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Range:</th><td class="field-body">1 sets flag, 0 unsets flag</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Version:</th><td class="field-body">Version <tt class="docutils literal"><span class="pre">0.48</span></tt> Argonaut and above.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">nodelete</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Set/Unset NODELETE flag on a given pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Range:</th><td class="field-body">1 sets flag, 0 unsets flag</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Version:</th><td class="field-body">Version <tt class="docutils literal"><span class="pre">FIXME</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">nopgchange</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Set/Unset NOPGCHANGE flag on a given pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Range:</th><td class="field-body">1 sets flag, 0 unsets flag</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Version:</th><td class="field-body">Version <tt class="docutils literal"><span class="pre">FIXME</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">nosizechange</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Set/Unset NOSIZECHANGE flag on a given pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Range:</th><td class="field-body">1 sets flag, 0 unsets flag</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Version:</th><td class="field-body">Version <tt class="docutils literal"><span class="pre">FIXME</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hit_set_type</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Enables hit set tracking for cache pools.
+See <a class="reference external" href="http://en.wikipedia.org/wiki/Bloom_filter">Bloom Filter</a> for additional information.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Settings:</th><td class="field-body"><tt class="docutils literal"><span class="pre">bloom</span></tt>, <tt class="docutils literal"><span class="pre">explicit_hash</span></tt>, <tt class="docutils literal"><span class="pre">explicit_object</span></tt></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">bloom</span></tt>. Other values are for testing.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hit_set_count</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The number of hit sets to store for cache pools. The higher
+the number, the more RAM consumed by the <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Range:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1</span></tt>. Agent doesn&#8217;t handle &gt; 1 yet.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hit_set_period</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The duration of a hit set period in seconds for cache pools.
+The higher the number, the more RAM consumed by the
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">3600</span></tt> 1hr</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hit_set_fpp</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The false positive probability for the <tt class="docutils literal"><span class="pre">bloom</span></tt> hit set type.
+See <a class="reference external" href="http://en.wikipedia.org/wiki/Bloom_filter">Bloom Filter</a> for additional information.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Range:</th><td class="field-body">0.0 - 1.0</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">0.05</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cache_target_dirty_ratio</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The percentage of the cache pool containing modified (dirty)
+objects before the cache tiering agent will flush them to the
+backing storage pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">.4</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cache_target_full_ratio</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The percentage of the cache pool containing unmodified (clean)
+objects before the cache tiering agent will evict them from the
+cache pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Default:</th><td class="field-body"><tt class="docutils literal"><span class="pre">.8</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">target_max_bytes</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph will begin flushing or evicting objects when the
+<tt class="docutils literal"><span class="pre">max_bytes</span></tt> threshold is triggered.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1000000000000</span></tt>  #1-TB</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">target_max_objects</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph will begin flushing or evicting objects when the
+<tt class="docutils literal"><span class="pre">max_objects</span></tt> threshold is triggered.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1000000</span></tt> #1M objects</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cache_min_flush_age</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The time (in seconds) before the cache tiering agent will flush
+an object from the cache pool to the storage pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">600</span></tt> 10min</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cache_min_evict_age</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The time (in seconds) before the cache tiering agent will evict
+an object from the cache pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><tt class="docutils literal"><span class="pre">1800</span></tt> 30min</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="get-pool-values">
+<h2>Get Pool Values<a class="headerlink" href="#get-pool-values" title="Permalink to this headline">¶</a></h2>
+<p>To get a value from a pool, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd pool get {pool-name} {key}</pre>
+</div>
+<p>You may get values for the following keys:</p>
+<p><tt class="docutils literal"><span class="pre">size</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Gets the number of replicas for objects in the pool.
+See <a class="reference internal" href="#set-the-number-of-object-replicas">Set the Number of Object Replicas</a> for further details.
+Replicated pools only.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">min_size</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Gets the minimum number of replicas required for I/O.
+See <a class="reference internal" href="#set-the-number-of-object-replicas">Set the Number of Object Replicas</a> for further details.
+Replicated pools only.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Version:</th><td class="field-body"><tt class="docutils literal"><span class="pre">0.54</span></tt> and above</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">crash_replay_interval</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The number of seconds to allow clients to replay acknowledged,
+but uncommitted requests.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">pgp_num</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The effective number of placement groups to use when calculating
+data placement.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Range:</th><td class="field-body">Equal to or less than <tt class="docutils literal"><span class="pre">pg_num</span></tt>.</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">crush_ruleset</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The ruleset to use for mapping object placement in the cluster.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hit_set_type</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Enables hit set tracking for cache pools.
+See <a class="reference external" href="http://en.wikipedia.org/wiki/Bloom_filter">Bloom Filter</a> for additional information.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Valid Settings:</th><td class="field-body"><tt class="docutils literal"><span class="pre">bloom</span></tt>, <tt class="docutils literal"><span class="pre">explicit_hash</span></tt>, <tt class="docutils literal"><span class="pre">explicit_object</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hit_set_count</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The number of hit sets to store for cache pools. The higher
+the number, the more RAM consumed by the <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hit_set_period</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The duration of a hit set period in seconds for cache pools.
+The higher the number, the more RAM consumed by the
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemon.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">hit_set_fpp</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The false positive probability for the <tt class="docutils literal"><span class="pre">bloom</span></tt> hit set type.
+See <a class="reference external" href="http://en.wikipedia.org/wiki/Bloom_filter">Bloom Filter</a> for additional information.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cache_target_dirty_ratio</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The percentage of the cache pool containing modified (dirty)
+objects before the cache tiering agent will flush them to the
+backing storage pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cache_target_full_ratio</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The percentage of the cache pool containing unmodified (clean)
+objects before the cache tiering agent will evict them from the
+cache pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Double</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">target_max_bytes</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph will begin flushing or evicting objects when the
+<tt class="docutils literal"><span class="pre">max_bytes</span></tt> threshold is triggered.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">target_max_objects</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">Ceph will begin flushing or evicting objects when the
+<tt class="docutils literal"><span class="pre">max_objects</span></tt> threshold is triggered.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cache_min_flush_age</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The time (in seconds) before the cache tiering agent will flush
+an object from the cache pool to the storage pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">cache_min_evict_age</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Description:</th><td class="field-body">The time (in seconds) before the cache tiering agent will evict
+an object from the cache pool.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body">Integer</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="set-the-number-of-object-replicas">
+<h2>Set the Number of Object Replicas<a class="headerlink" href="#set-the-number-of-object-replicas" title="Permalink to this headline">¶</a></h2>
+<p>To set the number of object replicas on a replicated pool, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd pool set {poolname} size {num-replicas}</pre>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">{num-replicas}</span></tt> includes the object itself.
+If you want the object and two copies of the object for a total of
+three instances of the object, specify <tt class="docutils literal"><span class="pre">3</span></tt>.</p>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>ceph osd pool set data size 3</pre>
+</div>
+<p>You may execute this command for each pool. <strong>Note:</strong> An object might accept
+I/Os in degraded mode with fewer than <tt class="docutils literal"><span class="pre">pool</span> <span class="pre">size</span></tt> replicas.  To set a minimum
+number of required replicas for I/O, you should use the <tt class="docutils literal"><span class="pre">min_size</span></tt> setting.
+For example:</p>
+<div class="highlight-python"><pre>ceph osd pool set data min_size 2</pre>
+</div>
+<p>This ensures that no object in the data pool will receive I/O with fewer than
+<tt class="docutils literal"><span class="pre">min_size</span></tt> replicas.</p>
+</div>
+<div class="section" id="get-the-number-of-object-replicas">
+<h2>Get the Number of Object Replicas<a class="headerlink" href="#get-the-number-of-object-replicas" title="Permalink to this headline">¶</a></h2>
+<p>To get the number of object replicas, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd dump | grep 'replicated size'</pre>
+</div>
+<p>Ceph will list the pools, with the <tt class="docutils literal"><span class="pre">replicated</span> <span class="pre">size</span></tt> attribute highlighted.
+By default, ceph Creates two replicas of an object (a total of three copies, or
+a size of 3).</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

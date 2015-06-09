@@ -1,0 +1,668 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuring Ceph Object Gateway &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="configuring-ceph-object-gateway">
+<h1>Configuring Ceph Object Gateway<a class="headerlink" href="#configuring-ceph-object-gateway" title="Permalink to this headline">¶</a></h1>
+<p>Configuring a Ceph Object Gateway requires a running Ceph Storage Cluster,
+and an Apache web server with the FastCGI module.</p>
+<p>The Ceph Object Gateway is a client of the Ceph Storage Cluster. As a
+Ceph Storage Cluster client, it requires:</p>
+<ul class="simple">
+<li>A name for the gateway instance. We use <tt class="docutils literal"><span class="pre">gateway</span></tt> in this guide.</li>
+<li>A storage cluster user name with appropriate permissions in a keyring.</li>
+<li>Pools to store its data.</li>
+<li>A data directory for the gateway instance.</li>
+<li>An instance entry in the Ceph Configuration file.</li>
+<li>A configuration file for the web server to interact with FastCGI.</li>
+</ul>
+<div class="section" id="create-a-user-and-keyring">
+<h2>Create a User and Keyring<a class="headerlink" href="#create-a-user-and-keyring" title="Permalink to this headline">¶</a></h2>
+<p>Each instance must have a user name and key to communicate with a Ceph Storage
+Cluster. In the following steps, we use an admin node to create a keyring.
+Then, we create a client user name and key. Next, we add the
+key to the Ceph Storage Cluster. Finally, we distribute the key ring to
+the node containing the gateway instance.</p>
+<div class="topic">
+<p class="topic-title first">Monitor Key CAPS</p>
+<p>When you provide CAPS to the key, you MUST provide read capability.
+However, you have the option of providing write capability for the monitor.
+This is an important choice. If you provide write capability to the key,
+the Ceph Object Gateway will have the ability to create pools automatically;
+however, it will create pools with either the default number of placement
+groups (not ideal) or the number of placement groups you specified in your
+Ceph configuration file. If you allow the Ceph Object Gateway to create
+pools automatically, ensure that you have reasonable defaults for the number
+of placement groups first. See <a class="reference external" href="../../rados/configuration/pool-pg-config-ref/">Pool Configuration</a> for details.</p>
+</div>
+<p>See <a class="reference external" href="../../rados/operations/user-management">User Management</a> for additional details on Ceph authentication.</p>
+<ol class="arabic">
+<li><p class="first">Create a keyring for the gateway:</p>
+<div class="highlight-python"><pre>sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.radosgw.keyring
+sudo chmod +r /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+<li><p class="first">Generate a Ceph Object Gateway user name and key for each instance. For
+exemplary purposes, we will use the name <tt class="docutils literal"><span class="pre">gateway</span></tt> after <tt class="docutils literal"><span class="pre">client.radosgw</span></tt>:</p>
+<div class="highlight-python"><pre>sudo ceph-authtool /etc/ceph/ceph.client.radosgw.keyring -n client.radosgw.gateway --gen-key</pre>
+</div>
+</li>
+<li><p class="first">Add capabilities to the key. See <a class="reference external" href="../config-ref#pools">Configuration Reference - Pools</a> for details
+on the effect of write permissions for the monitor and creating pools.</p>
+<div class="highlight-python"><pre>sudo ceph-authtool -n client.radosgw.gateway --cap osd 'allow rwx' --cap mon 'allow rwx' /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+<li><p class="first">Once you have created a keyring and key to enable the Ceph Object Gateway
+with access to the Ceph Storage Cluster, add the key to your
+Ceph Storage Cluster. For example:</p>
+<div class="highlight-python"><pre>sudo ceph -k /etc/ceph/ceph.client.admin.keyring auth add client.radosgw.gateway -i /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+</li>
+<li><p class="first">Distribute the keyring to the node with the gateway instance.</p>
+<div class="highlight-python"><pre>sudo scp /etc/ceph/ceph.client.radosgw.keyring  ceph@{hostname}:/home/ceph
+ssh {hostname}
+sudo mv ceph.client.radosgw.keyring /etc/ceph/ceph.client.radosgw.keyring</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The 5th step is optional if <tt class="docutils literal"><span class="pre">admin</span> <span class="pre">node</span></tt> is the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>.</p>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="create-pools">
+<h2>Create Pools<a class="headerlink" href="#create-pools" title="Permalink to this headline">¶</a></h2>
+<p>Ceph Object Gateways require Ceph Storage Cluster pools to store specific
+gateway data.  If the user you created has permissions, the gateway
+will create the pools automatically. However, you should ensure that you have
+set an appropriate default number of placement groups per pool into your Ceph
+configuration file.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ceph Object Gateways have multiple pools, so don&#8217;t make the number of
+PGs too high considering all of the pools assigned to the same CRUSH
+hierarchy, or performance may suffer.</p>
+</div>
+<p>When configuring a gateway with the default region and zone, the naming
+convention for pools typically omits region and zone naming, but you can use any
+naming convention you prefer. For example:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">.rgw.root</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.control</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.gc</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.buckets</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.buckets.index</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.rgw.buckets.extra</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.intent-log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.usage</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.users</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.users.email</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.users.swift</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">.users.uid</span></tt></li>
+</ul>
+<p>See <a class="reference external" href="../config-ref#pools">Configuration Reference - Pools</a> for details on the default pools for
+gateways. See <a class="reference external" href="../../rados/operations/pools">Pools</a> for details on creating pools. As already said, if
+write permission is given, Ceph Object Gateway will create pools automatically.
+To create a pool manually, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd pool create {poolname} {pg-num} {pgp-num} {replicated | erasure} [{erasure-code-profile}]  {ruleset-name} {ruleset-number}</pre>
+</div>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">Ceph supports multiple CRUSH hierarchies and CRUSH rulesets, enabling
+great flexibility in the way you configure your gateway. Pools such as
+<tt class="docutils literal"><span class="pre">rgw.buckets.index</span></tt> may benefit from a pool of SSDs for fast performance.
+Backing storage may benefit from the increased economy of erasure-coded
+storage, and/or the improved performance from cache tiering.</p>
+</div>
+<p>When you have completed this step, execute the following to ensure that
+you have created all of the foregoing pools:</p>
+<div class="highlight-python"><pre>rados lspools</pre>
+</div>
+</div>
+<div class="section" id="add-a-gateway-configuration-to-ceph">
+<h2>Add a Gateway Configuration to Ceph<a class="headerlink" href="#add-a-gateway-configuration-to-ceph" title="Permalink to this headline">¶</a></h2>
+<p>Add the Ceph Object Gateway configuration to your Ceph Configuration file in
+<tt class="docutils literal"><span class="pre">admin</span> <span class="pre">node</span></tt>. The Ceph Object Gateway configuration requires you to
+identify the Ceph Object Gateway instance. Then, you must specify the host name
+where you installed the Ceph Object Gateway daemon, a keyring (for use with
+cephx), the socket path for FastCGI and a log file.</p>
+<p>For distros with Apache 2.2 and early versions of Apache 2.4 (RHEL 6, Ubuntu
+12.04, 14.04 etc), append the following configuration to <tt class="docutils literal"><span class="pre">/etc/ceph/ceph.conf</span></tt>
+in your <tt class="docutils literal"><span class="pre">admin</span> <span class="pre">node</span></tt>:</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway]
+host = {hostname}
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw socket path = ""
+log file = /var/log/radosgw/client.radosgw.gateway.log
+rgw frontends = fastcgi socket_port=9000 socket_host=0.0.0.0
+rgw print continue = false</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Apache 2.2 and early versions of Apache 2.4 do not use Unix Domain
+Sockets but use localhost TCP.</p>
+</div>
+<p>For distros with Apache 2.4.9 or later (RHEL 7, CentOS 7 etc), append the
+following configuration to <tt class="docutils literal"><span class="pre">/etc/ceph/ceph.conf</span></tt> in your <tt class="docutils literal"><span class="pre">admin</span> <span class="pre">node</span></tt>:</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway]
+host = {hostname}
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+log file = /var/log/radosgw/client.radosgw.gateway.log
+rgw print continue = false</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><tt class="docutils literal"><span class="pre">Apache</span> <span class="pre">2.4.9</span></tt> supports Unix Domain Socket (UDS) but as
+<tt class="docutils literal"><span class="pre">Ubuntu</span> <span class="pre">14.04</span></tt> ships with <tt class="docutils literal"><span class="pre">Apache</span> <span class="pre">2.4.7</span></tt> it doesn&#8217;t have UDS support and
+has to be configured for use with localhost TCP. A bug has been filed for
+backporting UDS support in <tt class="docutils literal"><span class="pre">Apache</span> <span class="pre">2.4.7</span></tt> for <tt class="docutils literal"><span class="pre">Ubuntu</span> <span class="pre">14.04</span></tt>.
+See: <a class="reference external" href="https://bugs.launchpad.net/ubuntu/+source/apache2/+bug/1411030">Backport support for UDS in Ubuntu Trusty</a></p>
+</div>
+<p>Here, <tt class="docutils literal"><span class="pre">{hostname}</span></tt> is the short hostname (output of command <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-s</span></tt>)
+of the node that is going to provide the gateway service i.e, the
+<tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>.</p>
+<p>The <tt class="docutils literal"><span class="pre">[client.radosgw.gateway]</span></tt> portion of the gateway instance identifies this
+portion of the Ceph configuration file as configuring a Ceph Storage Cluster
+client where the client type is a Ceph Object Gateway (i.e., <tt class="docutils literal"><span class="pre">radosgw</span></tt>).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The last line in the configuration i.e, <tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">print</span> <span class="pre">continue</span> <span class="pre">=</span> <span class="pre">false</span></tt>
+is added to avoid issues with <tt class="docutils literal"><span class="pre">PUT</span></tt> operations.</p>
+</div>
+<p>Once you finish the setup procedure, if you encounter issues with your
+configuration, you can add debugging to the <tt class="docutils literal"><span class="pre">[global]</span></tt> section of your Ceph
+configuration file and restart the gateway to help troubleshoot any
+configuration issues. For example:</p>
+<div class="highlight-python"><pre>[global]
+#append the following in the global section.
+debug ms = 1
+debug rgw = 20</pre>
+</div>
+</div>
+<div class="section" id="distribute-updated-ceph-configuration-file">
+<h2>Distribute updated Ceph configuration file<a class="headerlink" href="#distribute-updated-ceph-configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>The updated Ceph configuration file needs to be distributed to all Ceph cluster
+nodes from the <tt class="docutils literal"><span class="pre">admin</span> <span class="pre">node</span></tt>.</p>
+<p>It involves the following steps:</p>
+<ol class="arabic">
+<li><p class="first">Pull the updated <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> from <tt class="docutils literal"><span class="pre">/etc/ceph/</span></tt> to the root directory of
+the cluster in admin node (e.g. <tt class="docutils literal"><span class="pre">my-cluster</span></tt> directory). The contents of
+<tt class="docutils literal"><span class="pre">ceph.conf</span></tt> in <tt class="docutils literal"><span class="pre">my-cluster</span></tt> will get overwritten. To do so, execute the
+following:</p>
+<div class="highlight-python"><pre>ceph-deploy --overwrite-conf config pull {hostname}</pre>
+</div>
+<p>Here, <tt class="docutils literal"><span class="pre">{hostname}</span></tt> is the short hostname of the Ceph admin node.</p>
+</li>
+<li><p class="first">Push the updated <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> file from the admin node to all other nodes in
+the cluster including the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>:</p>
+<div class="highlight-python"><pre>ceph-deploy --overwrite-conf config push [HOST] [HOST...]</pre>
+</div>
+<p>Give the hostnames of the other Ceph nodes in place of <tt class="docutils literal"><span class="pre">[HOST]</span> <span class="pre">[HOST...]</span></tt>.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="copy-ceph-client-admin-keyring-from-admin-node-to-gateway-host">
+<h2>Copy ceph.client.admin.keyring from admin node to gateway host<a class="headerlink" href="#copy-ceph-client-admin-keyring-from-admin-node-to-gateway-host" title="Permalink to this headline">¶</a></h2>
+<p>As the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> can be a different node that is not part of the cluster,
+the <tt class="docutils literal"><span class="pre">ceph.client.admin.keyring</span></tt> needs to be copied from the <tt class="docutils literal"><span class="pre">admin</span> <span class="pre">node</span></tt> to
+the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>. To do so, execute the following on <tt class="docutils literal"><span class="pre">admin</span> <span class="pre">node</span></tt>:</p>
+<div class="highlight-python"><pre>sudo scp /etc/ceph/ceph.client.admin.keyring  ceph@{hostname}:/home/ceph
+ssh {hostname}
+sudo mv ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The above step need not be executed if <tt class="docutils literal"><span class="pre">admin</span> <span class="pre">node</span></tt> is the
+<tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>.</p>
+</div>
+</div>
+<div class="section" id="create-data-directory">
+<h2>Create Data Directory<a class="headerlink" href="#create-data-directory" title="Permalink to this headline">¶</a></h2>
+<p>Deployment scripts may not create the default Ceph Object Gateway data
+directory. Create data directories for each instance of a <tt class="docutils literal"><span class="pre">radosgw</span></tt>
+daemon (if you haven&#8217;t done so already). The <tt class="docutils literal"><span class="pre">host</span></tt> variables in the
+Ceph configuration file determine which host runs each instance of a
+<tt class="docutils literal"><span class="pre">radosgw</span></tt> daemon. The typical form specifies the <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemon,
+the cluster name and the daemon ID.</p>
+<p>To create the directory on the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>, execute the following:</p>
+<div class="highlight-python"><pre>sudo mkdir -p /var/lib/ceph/radosgw/ceph-radosgw.gateway</pre>
+</div>
+</div>
+<div class="section" id="adjust-socket-directory-permissions">
+<h2>Adjust Socket Directory Permissions<a class="headerlink" href="#adjust-socket-directory-permissions" title="Permalink to this headline">¶</a></h2>
+<p>On some distros, the <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemon runs as the unprivileged <tt class="docutils literal"><span class="pre">apache</span></tt>
+UID, and this UID must have write access to the location where it will write
+its socket file.</p>
+<p>To grant permissions to the default socket location, execute the following on
+the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>:</p>
+<div class="highlight-python"><pre>sudo chown apache:apache /var/run/ceph</pre>
+</div>
+</div>
+<div class="section" id="change-log-file-owner">
+<h2>Change Log File Owner<a class="headerlink" href="#change-log-file-owner" title="Permalink to this headline">¶</a></h2>
+<p>On some distros, the <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemon runs as the unprivileged <tt class="docutils literal"><span class="pre">apache</span></tt> UID,
+but the <tt class="docutils literal"><span class="pre">root</span></tt> user owns the log file by default. You must change it to the
+<tt class="docutils literal"><span class="pre">apache</span></tt> user so that Apache can populate the log file. To do so, execute
+the following:</p>
+<div class="highlight-python"><pre>sudo chown apache:apache /var/log/radosgw/client.radosgw.gateway.log</pre>
+</div>
+</div>
+<div class="section" id="start-radosgw-service">
+<h2>Start radosgw service<a class="headerlink" href="#start-radosgw-service" title="Permalink to this headline">¶</a></h2>
+<p>The Ceph Object gateway daemon needs to be started. To do so, execute the
+following on the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>:</p>
+<p>On Debian-based distros:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/radosgw start</pre>
+</div>
+<p>On RPM-based distros:</p>
+<div class="highlight-python"><pre>sudo /etc/init.d/ceph-radosgw start</pre>
+</div>
+</div>
+<div class="section" id="create-a-gateway-configuration-file">
+<h2>Create a Gateway Configuration file<a class="headerlink" href="#create-a-gateway-configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>On the host where you installed the Ceph Object Gateway i.e, <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>,
+create an <tt class="docutils literal"><span class="pre">rgw.conf</span></tt> file. Place the file in <tt class="docutils literal"><span class="pre">/etc/apache2/conf-available</span></tt>
+directory for <tt class="docutils literal"><span class="pre">Debian-based</span></tt> distros and in <tt class="docutils literal"><span class="pre">/etc/httpd/conf.d</span></tt> directory
+for <tt class="docutils literal"><span class="pre">RPM-based</span></tt> distros. It is a Apache configuration file which is needed
+for the <tt class="docutils literal"><span class="pre">radosgw</span></tt> service. This file must be readable by the web server.</p>
+<p>Execute the following steps:</p>
+<ol class="arabic">
+<li><p class="first">Create the file:</p>
+<p>For Debian-based distros, execute:</p>
+<div class="highlight-python"><pre>sudo vi /etc/apache2/conf-available/rgw.conf</pre>
+</div>
+<p>For RPM-based distros, execute:</p>
+<div class="highlight-python"><pre>sudo vi /etc/httpd/conf.d/rgw.conf</pre>
+</div>
+</li>
+<li><p class="first">For distros with Apache 2.2 and early versions of Apache 2.4 that use
+localhost TCP and do not support Unix Domain Socket, add the following
+contents to the file:</p>
+<div class="highlight-python"><pre>&lt;VirtualHost *:80&gt;
+ServerName localhost
+DocumentRoot /var/www/html
+
+ErrorLog /var/log/httpd/rgw_error.log
+CustomLog /var/log/httpd/rgw_access.log combined
+
+# LogLevel debug
+
+RewriteEngine On
+
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+SetEnv proxy-nokeepalive 1
+
+ProxyPass / fcgi://localhost:9000/
+
+&lt;/VirtualHost&gt;</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For Debian-based distros replace <tt class="docutils literal"><span class="pre">/var/log/httpd/</span></tt>
+with <tt class="docutils literal"><span class="pre">/var/log/apache2</span></tt>.</p>
+</div>
+</li>
+<li><p class="first">For distros with Apache 2.4.9 or later that support Unix Domain Socket,
+add the following contents to the file:</p>
+<div class="highlight-python"><pre>&lt;VirtualHost *:80&gt;
+ServerName localhost
+DocumentRoot /var/www/html
+
+ErrorLog /var/log/httpd/rgw_error.log
+CustomLog /var/log/httpd/rgw_access.log combined
+
+# LogLevel debug
+
+RewriteEngine On
+
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+
+SetEnv proxy-nokeepalive 1
+
+ProxyPass / unix:///var/run/ceph/ceph.radosgw.gateway.fastcgi.sock|fcgi://localhost:9000/
+
+&lt;/VirtualHost&gt;</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="restart-apache">
+<h2>Restart Apache<a class="headerlink" href="#restart-apache" title="Permalink to this headline">¶</a></h2>
+<p>The Apache service needs to be restarted to accept the new configuration.</p>
+<p>For Debian-based distros, run:</p>
+<div class="highlight-python"><pre>sudo service apache2 restart</pre>
+</div>
+<p>For RPM-based distros, run:</p>
+<div class="highlight-python"><pre>sudo service httpd restart</pre>
+</div>
+<p>Or:</p>
+<div class="highlight-python"><pre>sudo systemctl restart httpd</pre>
+</div>
+</div>
+<div class="section" id="using-the-gateway">
+<h2>Using The Gateway<a class="headerlink" href="#using-the-gateway" title="Permalink to this headline">¶</a></h2>
+<p>To use the REST interfaces, first create an initial Ceph Object Gateway
+user for the S3 interface. Then, create a subuser for the Swift interface.
+See the <a class="reference external" href="../admin">Admin Guide</a> for more details on user management.</p>
+<div class="section" id="create-a-radosgw-user-for-s3-access">
+<h3>Create a radosgw user for S3 access<a class="headerlink" href="#create-a-radosgw-user-for-s3-access" title="Permalink to this headline">¶</a></h3>
+<p>A <tt class="docutils literal"><span class="pre">radosgw</span></tt> user needs to be created and granted access. The command
+<tt class="docutils literal"><span class="pre">man</span> <span class="pre">radosgw-admin</span></tt> will provide information on additional command options.</p>
+<p>To create the user, execute the following on the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>:</p>
+<div class="highlight-python"><pre>sudo radosgw-admin user create --uid="testuser" --display-name="First User"</pre>
+</div>
+<p>The output of the command will be something like the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span><span class="s">&quot;user_id&quot;</span><span class="p">:</span> <span class="s">&quot;testuser&quot;</span><span class="p">,</span>
+<span class="s">&quot;display_name&quot;</span><span class="p">:</span> <span class="s">&quot;First User&quot;</span><span class="p">,</span>
+<span class="s">&quot;email&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+<span class="s">&quot;suspended&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s">&quot;max_buckets&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+<span class="s">&quot;auid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s">&quot;subusers&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;keys&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="p">{</span> <span class="s">&quot;user&quot;</span><span class="p">:</span> <span class="s">&quot;testuser&quot;</span><span class="p">,</span>
+<span class="s">&quot;access_key&quot;</span><span class="p">:</span> <span class="s">&quot;I0PJDPCIYZ665MW88W9R&quot;</span><span class="p">,</span>
+<span class="s">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s">&quot;dxaXZ8U90SXydYzyS5ivamEP20hkLSUViiaR+ZDA&quot;</span><span class="p">}],</span>
+<span class="s">&quot;swift_keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;caps&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;op_mask&quot;</span><span class="p">:</span> <span class="s">&quot;read, write, delete&quot;</span><span class="p">,</span>
+<span class="s">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+<span class="s">&quot;placement_tags&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+<span class="s">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+<span class="s">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span>
+<span class="s">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+<span class="s">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+<span class="s">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span>
+<span class="s">&quot;temp_url_keys&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The values of <tt class="docutils literal"><span class="pre">keys-&gt;access_key</span></tt> and <tt class="docutils literal"><span class="pre">keys-&gt;secret_key</span></tt> are
+needed for access validation.</p>
+</div>
+</div>
+<div class="section" id="create-a-swift-user">
+<h3>Create a Swift user<a class="headerlink" href="#create-a-swift-user" title="Permalink to this headline">¶</a></h3>
+<p>A Swift subuser needs to be created if this kind of access is needed. Creating
+a Swift user is a two step process. The first step is to create the user.
+The second is to create the secret key.</p>
+<p>Execute the following steps on the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>:</p>
+<p>Create the Swift user:</p>
+<div class="highlight-python"><pre>sudo radosgw-admin subuser create --uid=testuser --subuser=testuser:swift</pre>
+</div>
+<p>The output will be something like the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="o">--</span><span class="n">access</span><span class="o">=</span><span class="n">full</span>
+<span class="p">{</span> <span class="s">&quot;user_id&quot;</span><span class="p">:</span> <span class="s">&quot;testuser&quot;</span><span class="p">,</span>
+<span class="s">&quot;display_name&quot;</span><span class="p">:</span> <span class="s">&quot;First User&quot;</span><span class="p">,</span>
+<span class="s">&quot;email&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+<span class="s">&quot;suspended&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s">&quot;max_buckets&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+<span class="s">&quot;auid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s">&quot;subusers&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="p">{</span> <span class="s">&quot;id&quot;</span><span class="p">:</span> <span class="s">&quot;testuser:swift&quot;</span><span class="p">,</span>
+<span class="s">&quot;permissions&quot;</span><span class="p">:</span> <span class="s">&quot;full-control&quot;</span><span class="p">}],</span>
+<span class="s">&quot;keys&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="p">{</span> <span class="s">&quot;user&quot;</span><span class="p">:</span> <span class="s">&quot;testuser:swift&quot;</span><span class="p">,</span>
+<span class="s">&quot;access_key&quot;</span><span class="p">:</span> <span class="s">&quot;3Y1LNW4Q6X0Y53A52DET&quot;</span><span class="p">,</span>
+<span class="s">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">},</span>
+<span class="p">{</span> <span class="s">&quot;user&quot;</span><span class="p">:</span> <span class="s">&quot;testuser&quot;</span><span class="p">,</span>
+<span class="s">&quot;access_key&quot;</span><span class="p">:</span> <span class="s">&quot;I0PJDPCIYZ665MW88W9R&quot;</span><span class="p">,</span>
+<span class="s">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s">&quot;dxaXZ8U90SXydYzyS5ivamEP20hkLSUViiaR+ZDA&quot;</span><span class="p">}],</span>
+<span class="s">&quot;swift_keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;caps&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;op_mask&quot;</span><span class="p">:</span> <span class="s">&quot;read, write, delete&quot;</span><span class="p">,</span>
+<span class="s">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+<span class="s">&quot;placement_tags&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+<span class="s">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+<span class="s">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span>
+<span class="s">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+<span class="s">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+<span class="s">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span>
+<span class="s">&quot;temp_url_keys&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+</pre></div>
+</div>
+<p>Create the secret key:</p>
+<div class="highlight-python"><pre>sudo radosgw-admin key create --subuser=testuser:swift --key-type=swift --gen-secret</pre>
+</div>
+<p>The output will be something like the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span> <span class="s">&quot;user_id&quot;</span><span class="p">:</span> <span class="s">&quot;testuser&quot;</span><span class="p">,</span>
+<span class="s">&quot;display_name&quot;</span><span class="p">:</span> <span class="s">&quot;First User&quot;</span><span class="p">,</span>
+<span class="s">&quot;email&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+<span class="s">&quot;suspended&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s">&quot;max_buckets&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+<span class="s">&quot;auid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s">&quot;subusers&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="p">{</span> <span class="s">&quot;id&quot;</span><span class="p">:</span> <span class="s">&quot;testuser:swift&quot;</span><span class="p">,</span>
+<span class="s">&quot;permissions&quot;</span><span class="p">:</span> <span class="s">&quot;full-control&quot;</span><span class="p">}],</span>
+<span class="s">&quot;keys&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="p">{</span> <span class="s">&quot;user&quot;</span><span class="p">:</span> <span class="s">&quot;testuser:swift&quot;</span><span class="p">,</span>
+<span class="s">&quot;access_key&quot;</span><span class="p">:</span> <span class="s">&quot;3Y1LNW4Q6X0Y53A52DET&quot;</span><span class="p">,</span>
+<span class="s">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">},</span>
+<span class="p">{</span> <span class="s">&quot;user&quot;</span><span class="p">:</span> <span class="s">&quot;testuser&quot;</span><span class="p">,</span>
+<span class="s">&quot;access_key&quot;</span><span class="p">:</span> <span class="s">&quot;I0PJDPCIYZ665MW88W9R&quot;</span><span class="p">,</span>
+<span class="s">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s">&quot;dxaXZ8U90SXydYzyS5ivamEP20hkLSUViiaR+ZDA&quot;</span><span class="p">}],</span>
+<span class="s">&quot;swift_keys&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="p">{</span> <span class="s">&quot;user&quot;</span><span class="p">:</span> <span class="s">&quot;testuser:swift&quot;</span><span class="p">,</span>
+<span class="s">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s">&quot;244+fz2gSqoHwR3lYtSbIyomyPHf3i7rgSJrF\/IA&quot;</span><span class="p">}],</span>
+<span class="s">&quot;caps&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;op_mask&quot;</span><span class="p">:</span> <span class="s">&quot;read, write, delete&quot;</span><span class="p">,</span>
+<span class="s">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+<span class="s">&quot;placement_tags&quot;</span><span class="p">:</span> <span class="p">[],</span>
+<span class="s">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+<span class="s">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+<span class="s">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span>
+<span class="s">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+<span class="s">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+<span class="s">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span>
+<span class="s">&quot;temp_url_keys&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="access-verification">
+<h2>Access Verification<a class="headerlink" href="#access-verification" title="Permalink to this headline">¶</a></h2>
+<p>You then need to verify if the created users are able to access the gateway.</p>
+<div class="section" id="test-s3-access">
+<h3>Test S3 access<a class="headerlink" href="#test-s3-access" title="Permalink to this headline">¶</a></h3>
+<p>You need to write and run a Python test script for verifying S3 access. The S3
+access test script will connect to the <tt class="docutils literal"><span class="pre">radosgw</span></tt>, create a new bucket and list
+all buckets. The values for <tt class="docutils literal"><span class="pre">aws_access_key_id</span></tt> and <tt class="docutils literal"><span class="pre">aws_secret_access_key</span></tt>
+are taken from the values of <tt class="docutils literal"><span class="pre">access_key</span></tt> and <tt class="docutils literal"><span class="pre">secret_key</span></tt> returned by the
+<tt class="docutils literal"><span class="pre">radosgw_admin</span></tt> command.</p>
+<p>Execute the following steps:</p>
+<ol class="arabic">
+<li><p class="first">You will need to install the <tt class="docutils literal"><span class="pre">python-boto</span></tt> package.</p>
+<p>For Debian-based distros, run:</p>
+<div class="highlight-python"><pre>sudo apt-get install python-boto</pre>
+</div>
+<p>For RPM-based distros, run:</p>
+<div class="highlight-python"><pre>sudo yum install python-boto</pre>
+</div>
+</li>
+<li><p class="first">Create the Python script:</p>
+<div class="highlight-python"><pre>vi s3test.py</pre>
+</div>
+</li>
+<li><p class="first">Add the following contents to the file:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">boto</span>
+<span class="kn">import</span> <span class="nn">boto.s3.connection</span>
+<span class="n">access_key</span> <span class="o">=</span> <span class="s">&#39;I0PJDPCIYZ665MW88W9R&#39;</span>
+<span class="n">secret_key</span> <span class="o">=</span> <span class="s">&#39;dxaXZ8U90SXydYzyS5ivamEP20hkLSUViiaR+ZDA&#39;</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">boto</span><span class="o">.</span><span class="n">connect_s3</span><span class="p">(</span>
+<span class="n">aws_access_key_id</span> <span class="o">=</span> <span class="n">access_key</span><span class="p">,</span>
+<span class="n">aws_secret_access_key</span> <span class="o">=</span> <span class="n">secret_key</span><span class="p">,</span>
+<span class="n">host</span> <span class="o">=</span> <span class="s">&#39;{hostname}&#39;</span><span class="p">,</span>
+<span class="n">is_secure</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+<span class="n">calling_format</span> <span class="o">=</span> <span class="n">boto</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">OrdinaryCallingFormat</span><span class="p">(),</span>
+<span class="p">)</span>
+<span class="n">bucket</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">(</span><span class="s">&#39;my-new-bucket&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">bucket</span> <span class="ow">in</span> <span class="n">conn</span><span class="o">.</span><span class="n">get_all_buckets</span><span class="p">():</span>
+        <span class="k">print</span> <span class="s">&quot;{name}</span><span class="se">\t</span><span class="s">{created}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">created</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">creation_date</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Replace <tt class="docutils literal"><span class="pre">{hostname}</span></tt> with the hostname of the host where you have
+configured the gateway service i.e, the <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt>.</p>
+</li>
+<li><p class="first">Run the script:</p>
+<div class="highlight-python"><pre>python s3test.py</pre>
+</div>
+<p>The output will be something like the following:</p>
+<div class="highlight-python"><pre>my-new-bucket 2015-02-16T17:09:10.000Z</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="test-swift-access">
+<h3>Test swift access<a class="headerlink" href="#test-swift-access" title="Permalink to this headline">¶</a></h3>
+<p>Swift access can be verified via the <tt class="docutils literal"><span class="pre">swift</span></tt> command line client. The command
+<tt class="docutils literal"><span class="pre">man</span> <span class="pre">swift</span></tt> will provide more information on available command line options.</p>
+<p>To install <tt class="docutils literal"><span class="pre">swift</span></tt> client, execute the following:</p>
+<blockquote>
+<div><p>For Debian-based distros:</p>
+<div class="highlight-python"><pre>sudo apt-get install python-setuptools
+sudo easy_install pip
+sudo pip install --upgrade setuptools
+sudo pip install --upgrade python-swiftclient</pre>
+</div>
+<p>For RPM-based distros:</p>
+<div class="highlight-python"><pre>sudo yum install python-setuptools
+sudo easy_install pip
+sudo pip install --upgrade setuptools
+sudo pip install --upgrade python-swiftclient</pre>
+</div>
+</div></blockquote>
+<p>To test swift access, execute the following:</p>
+<div class="highlight-python"><pre>swift -A http://{IP ADDRESS}/auth/1.0 -U testuser:swift -K ‘{swift_secret_key}’ list</pre>
+</div>
+<p>Replace <tt class="docutils literal"><span class="pre">{IP</span> <span class="pre">ADDRESS}</span></tt> with the public IP address of the gateway server and
+<tt class="docutils literal"><span class="pre">{swift_secret_key}</span></tt> with its value from the output of
+<tt class="docutils literal"><span class="pre">radosgw-admin</span> <span class="pre">key</span> <span class="pre">create</span></tt> command executed for the <tt class="docutils literal"><span class="pre">swift</span></tt> user.</p>
+<p>For example:</p>
+<div class="highlight-python"><pre>swift -A http://10.19.143.116/auth/1.0 -U testuser:swift -K ‘244+fz2gSqoHwR3lYtSbIyomyPHf3i7rgSJrF/IA’ list</pre>
+</div>
+<p>The output should be:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">bucket</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

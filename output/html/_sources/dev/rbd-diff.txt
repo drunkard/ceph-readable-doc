@@ -1,5 +1,5 @@
-RBD Incremental Backup
-======================
+RBD 增量备份
+============
 
 This is a simple streaming file format for representing a diff between
 two snapshots (or a snapshot and the head) of an RBD image.
@@ -37,7 +37,7 @@ Size
 ----
 
 - u8: 's'
-- u64: (ending) image size
+- le64: (ending) image size
 
 Data Records
 ~~~~~~~~~~~~

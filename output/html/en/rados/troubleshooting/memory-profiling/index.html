@@ -1,0 +1,236 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Memory Profiling &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="memory-profiling">
+<h1>Memory Profiling<a class="headerlink" href="#memory-profiling" title="Permalink to this headline">¶</a></h1>
+<p>Ceph MON, OSD and MDS can generate heap profiles using
+<tt class="docutils literal"><span class="pre">tcmalloc</span></tt>. To generate heap profiles, ensure you have
+<tt class="docutils literal"><span class="pre">google-perftools</span></tt> installed:</p>
+<div class="highlight-python"><pre>sudo apt-get google-perftools</pre>
+</div>
+<p>The profiler dumps output to your <tt class="docutils literal"><span class="pre">log</span> <span class="pre">file</span></tt> directory (i.e.,
+<tt class="docutils literal"><span class="pre">/var/log/ceph</span></tt>). See <a class="reference external" href="../log-and-debug">Logging and Debugging</a> for details.
+To view the profiler logs with Google&#8217;s performance tools, execute the
+following:</p>
+<div class="highlight-python"><pre>google-pprof --text {path-to-daemon}  {log-path/filename}</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>$ ceph tell osd.0 heap start_profiler
+$ ceph tell osd.0 heap dump
+osd.0 tcmalloc heap stats:------------------------------------------------
+MALLOC:        2632288 (    2.5 MiB) Bytes in use by application
+MALLOC: +       499712 (    0.5 MiB) Bytes in page heap freelist
+MALLOC: +       543800 (    0.5 MiB) Bytes in central cache freelist
+MALLOC: +       327680 (    0.3 MiB) Bytes in transfer cache freelist
+MALLOC: +      1239400 (    1.2 MiB) Bytes in thread cache freelists
+MALLOC: +      1142936 (    1.1 MiB) Bytes in malloc metadata
+MALLOC:   ------------
+MALLOC: =      6385816 (    6.1 MiB) Actual memory used (physical + swap)
+MALLOC: +            0 (    0.0 MiB) Bytes released to OS (aka unmapped)
+MALLOC:   ------------
+MALLOC: =      6385816 (    6.1 MiB) Virtual address space used
+MALLOC:
+MALLOC:            231              Spans in use
+MALLOC:             56              Thread heaps in use
+MALLOC:           8192              Tcmalloc page size
+------------------------------------------------
+Call ReleaseFreeMemory() to release freelist memory to the OS (via madvise()).
+Bytes released to the OS take up virtual address space but no physical memory.
+$ google-pprof --text \
+               /usr/bin/ceph-osd  \
+               /var/log/ceph/ceph-osd.0.profile.0001.heap
+ Total: 3.7 MB
+ 1.9  51.1%  51.1%      1.9  51.1% ceph::log::Log::create_entry
+ 1.8  47.3%  98.4%      1.8  47.3% std::string::_Rep::_S_create
+ 0.0   0.4%  98.9%      0.0   0.6% SimpleMessenger::add_accept_pipe
+ 0.0   0.4%  99.2%      0.0   0.6% decode_message
+ ...</pre>
+</div>
+<p>Another heap dump on the same daemon will add another file. It is
+convenient to compare to a previous heap dump to show what has grown
+in the interval. For instance:</p>
+<div class="highlight-python"><pre>$ google-pprof --text --base out/osd.0.profile.0001.heap \
+      ceph-osd out/osd.0.profile.0003.heap
+ Total: 0.2 MB
+ 0.1  50.3%  50.3%      0.1  50.3% ceph::log::Log::create_entry
+ 0.1  46.6%  96.8%      0.1  46.6% std::string::_Rep::_S_create
+ 0.0   0.9%  97.7%      0.0  26.1% ReplicatedPG::do_op
+ 0.0   0.8%  98.5%      0.0   0.8% __gnu_cxx::new_allocator::allocate</pre>
+</div>
+<p>Refer to <a class="reference external" href="http://google-perftools.googlecode.com/svn/trunk/doc/heapprofile.html">Google Heap Profiler</a> for additional details.</p>
+<p>Once you have the heap profiler installed, start your cluster and
+begin using the heap profiler. You may enable or disable the heap
+profiler at runtime, or ensure that it runs continuously. For the
+following commandline usage, replace <tt class="docutils literal"><span class="pre">{daemon-type}</span></tt> with <tt class="docutils literal"><span class="pre">mon</span></tt>,
+<tt class="docutils literal"><span class="pre">osd</span></tt> or <tt class="docutils literal"><span class="pre">mds</span></tt>, and replace <tt class="docutils literal"><span class="pre">{daemon-id}</span></tt> with the OSD number or
+the MON or MDS id.</p>
+<div class="section" id="starting-the-profiler">
+<h2>Starting the Profiler<a class="headerlink" href="#starting-the-profiler" title="Permalink to this headline">¶</a></h2>
+<p>To start the heap profiler, execute the following:</p>
+<div class="highlight-python"><pre>ceph tell {daemon-type}.{daemon-id} heap start_profiler</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>ceph tell osd.1 heap start_profiler</pre>
+</div>
+<p>Alternatively the profile can be started when the daemon starts
+running if the <tt class="docutils literal"><span class="pre">CEPH_HEAP_PROFILER_INIT=true</span></tt> variable is found in
+the environment.</p>
+</div>
+<div class="section" id="printing-stats">
+<h2>Printing Stats<a class="headerlink" href="#printing-stats" title="Permalink to this headline">¶</a></h2>
+<p>To print out statistics, execute the following:</p>
+<div class="highlight-python"><pre>ceph  tell {daemon-type}.{daemon-id} heap stats</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>ceph tell osd.0 heap stats</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Printing stats does not require the profiler to be running and does
+not dump the heap allocation information to a file.</p>
+</div>
+</div>
+<div class="section" id="dumping-heap-information">
+<h2>Dumping Heap Information<a class="headerlink" href="#dumping-heap-information" title="Permalink to this headline">¶</a></h2>
+<p>To dump heap information, execute the following:</p>
+<div class="highlight-python"><pre>ceph tell {daemon-type}.{daemon-id} heap dump</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>ceph tell mds.a heap dump</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Dumping heap information only works when the profiler is running.</p>
+</div>
+</div>
+<div class="section" id="releasing-memory">
+<h2>Releasing Memory<a class="headerlink" href="#releasing-memory" title="Permalink to this headline">¶</a></h2>
+<p>To release memory that <tt class="docutils literal"><span class="pre">tcmalloc</span></tt> has allocated but which is not being used by
+the Ceph daemon itself, execute the following:</p>
+<div class="highlight-python"><pre>ceph tell {daemon-type}{daemon-id} heap release</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>ceph tell osd.2 heap release</pre>
+</div>
+</div>
+<div class="section" id="stopping-the-profiler">
+<h2>Stopping the Profiler<a class="headerlink" href="#stopping-the-profiler" title="Permalink to this headline">¶</a></h2>
+<p>To stop the heap profiler, execute the following:</p>
+<div class="highlight-python"><pre>ceph tell {daemon-type}.{daemon-id} heap stop_profiler</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>ceph tell osd.0 heap stop_profiler</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">发布时间表</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>
