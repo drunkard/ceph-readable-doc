@@ -54,15 +54,15 @@ FastCGI 功能的网页服务器使用。
 
 .. option:: --rgw-socket-path=path
 
-   指定 unix 域套接字的路径
+   指定 Unix 域套接字的路径
 
 .. option:: --rgw-region=region
 
-   radosgw 所在辖区
+   radosgw 所在 region
 
 .. option:: --rgw-zone=zone
 
-   radosgw 所在的域
+   radosgw 所在的区域
 
 
 配置
@@ -76,11 +76,11 @@ FastCGI 功能的网页服务器使用。
 能启动应用进程。某些平台提供了 ``fcgistarter`` 来实现此功能。然而， FastCGI \
 应用框架有可能具备外部启动或进程管理功能。
 
-``Apache`` 可以通过本机 TCP 连接或 unix 域套接字使用 ``mod_proxy_fcgi`` 模\
-块。不支持 unix 域套接字的 ``mod_proxy_fcgi`` ，像 Apache 2.2 和 2.4 的早\
+``Apache`` 可以通过本机 TCP 连接或 Unix 域套接字使用 ``mod_proxy_fcgi`` 模\
+块。不支持 Unix 域套接字的 ``mod_proxy_fcgi`` ，像 Apache 2.2 和 2.4 的早\
 期版本，必需通过本机 TCP 连接。
 
-#. 更改 ``/etc/ceph/ceph.conf`` 文件，让 radosgw 使用 TCP 而非 unix 域套接字。 ::
+#. 更改 ``/etc/ceph/ceph.conf`` 文件，让 radosgw 使用 TCP 而非 Unix 域套接字。 ::
 
 	[client.radosgw.gateway]
 	host = {hostname}

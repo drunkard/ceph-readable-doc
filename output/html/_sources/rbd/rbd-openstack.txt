@@ -210,17 +210,32 @@ Juno 版
 任意版 OpenStack
 ~~~~~~~~~~~~~~~~
 
-如果你想允许使用映像的写时复制克隆品，把下列内容加到 ``[DEFAULT]`` 段下： ::
+如果你想允许使用映像的写时复制克隆品，还得把下列内容加到 ``[DEFAULT]`` \
+段下： ::
 
 	show_image_direct_url = True
 
-注意，这里通过 Glance 的 API 展示了后端位置，所以此选项启用时的终结点不能公开访问。
+注意，这里通过 Glance 的 API 展示了后端位置，所以此选项启用时的入口不能公\
+开访问。
 
-Disable the Glance cache management to avoid images getting cached under ``/var/lib/glance/image-cache/``,
-assuming your configuration file has ``flavor = keystone+cachemanagement``::
+禁用 Glance 缓存管理，以免映像被缓存到 ``/var/lib/glance/image-cache/`` \
+下；假设你的配置文件里有 ``flavor = keystone+cachemanagement`` ::
 
 	[paste_deploy]
 	flavor = keystone
+
+
+映像属性
+~~~~~~~~
+
+我们建议你配置如下映像属性：
+
+- ``hw_scsi_model=virtio-scsi``: 添加 virtio-scsi 控制器以获得更好的性能、\
+  并支持 discard 操作；
+- ``hw_disk_bus=scsi``: 把所有 cinder 块设备都连到这个控制器；
+- ``hw_qemu_guest_agent=yes``: 启用 QEMU guest agent （访客代理）
+- ``os_require_quiesce=yes``: 通过 QEMU guest agent 向外发送文件系统的 \
+  freeze/thaw 调用
 
 
 配置 Cinder
@@ -278,29 +293,37 @@ authenticating with the Ceph cluster. ::
 These two flags are also used by the Nova ephemeral backend.
 
 
-Configuring Nova
-----------------
+Nova 的配置
+-----------
 
-In order to boot all the virtual machines directly into Ceph, you must
-configure the ephemeral backend for Nova.
+要让所有虚拟机直接从 Ceph 引导，必须配置 Nova 的 ephemeral 后端。
 
-It is recommended to enable the RBD cache in your Ceph configuration file
-(enabled by default since Giant). Moreover, enabling the admin socket
-brings a lot of benefits while troubleshoothing. Having one socket
-per virtual machine using a Ceph block device will help investigating performance and/or wrong behaviors.
+我们建议在 Ceph 配置文件里启用 RBD 缓存（从 Giant 起默认启用）；另外，\
+启用管理套接字对于故障排查来说大有好处，给每个使用 Ceph 块设备的虚拟机\
+分配一个套接字有助于调查性能和/或异常行为。
 
-This socket can be accessed like this::
+可以这样访问套接字： ::
 
 	ceph daemon /var/run/ceph/ceph-client.cinder.19195.32310016.asok help
 
-Now on every compute nodes edit your Ceph configuration file::
+编辑所有计算节点上的 Ceph 配置文件： ::
 
 	[client]
 		rbd cache = true
 		rbd cache writethrough until flush = true
-		admin socket = /var/run/ceph/$cluster-$type.$id.$pid.$cctid.asok
+		admin socket = /var/run/ceph/guests/$cluster-$type.$id.$pid.$cctid.asok
+		log file = /var/log/qemu/qemu-guest-$pid.log
+		rbd concurrent management ops = 20
 
-.. tip:: If your virtual machine is already running you can simply restart it to get the socket
+调整这些路径的权限： ::
+
+	mkdir -p /var/run/ceph/guests/ /var/log/qemu/
+	chown qemu:libvirtd /var/run/ceph/guests /var/log/qemu/
+
+要注意， ``qemu`` 用户和 ``libvirtd`` 组可能因系统不同而不同，前面的实例\
+基于 RedHat 风格的系统。
+
+.. tip:: 如果你的虚拟机已经跑起来了，重启一下就能得到套接字。
 
 
 Havana and Icehouse
@@ -317,6 +340,7 @@ On every Compute node, edit ``/etc/nova/nova.conf`` and add::
 	libvirt_images_type = rbd
 	libvirt_images_rbd_pool = vms
 	libvirt_images_rbd_ceph_conf = /etc/ceph/ceph.conf
+	libvirt_disk_cachemodes="network=writeback"
 	rbd_user = cinder
 	rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
 
@@ -332,9 +356,9 @@ On every Compute node, edit ``/etc/nova/nova.conf`` and add::
 	libvirt_inject_key = false
 	libvirt_inject_partition = -2
 
-To ensure a proper live-migration, use the following flags::
+为确保在线迁移能顺利进行，要使用如下标志： ::
 
-	libvirt_live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST"
+	libvirt_live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"
 
 
 Juno
@@ -350,6 +374,7 @@ section and add::
 	images_rbd_ceph_conf = /etc/ceph/ceph.conf
 	rbd_user = cinder
 	rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+	disk_cachemodes="network=writeback"
 
 
 It is also a good practice to disable file injection. While booting an
@@ -365,16 +390,27 @@ under the ``[libvirt]`` section::
 	inject_key = false
 	inject_partition = -2
 
-To ensure a proper live-migration, use the following flags::
+为确保在线迁移能顺利进行，要使用如下标志（写到 ``[libvirt]`` 段下）： ::
 
-	live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST"
+	live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"
+
+
+Kilo
+~~~~
+
+为虚拟机的 ephemeral 根磁盘启用 discard 功能： ::
+
+	[libvirt]
+	...
+	...
+	hw_disk_discard = unmap # 启用 discard 功能（注意性能）
 
 
 重启 OpenStack
 ==============
 
-要激活 Ceph 块设备驱动、并把块设备存储池名载入配置，必须重启 OpenStack 。在基于 \
-Debian 的系统上需在对应节点上执行这些命令： ::
+要激活 Ceph 块设备驱动、并把块设备存储池名载入配置，必须重启 \
+OpenStack 。在基于 Debian 的系统上需在对应节点上执行这些命令： ::
 
 	sudo glance-control api restart
 	sudo service nova-compute restart
@@ -388,8 +424,6 @@ Debian 的系统上需在对应节点上执行这些命令： ::
 	sudo service openstack-cinder-volume restart
 	sudo service openstack-cinder-backup restart
 
-Once OpenStack is up and running, you should be able to create a volume
-and boot from it.
 一旦 OpenStack 启动并运行正常，应该就可以创建卷宗并用它引导了。
 
 
@@ -405,14 +439,14 @@ and boot from it.
 	qemu-img convert -f {source-format} -O {output-format} {source-filename} {output-filename}
 	qemu-img convert -f qcow2 -O raw precise-cloudimg.img precise-cloudimg.raw
 
-When Glance and Cinder are both using Ceph block devices, the image is a
-copy-on-write clone, so it can create a new volume quickly. In the OpenStack
-dashboard, you can boot from that volume by performing the following steps:
+Glance 和 Cinder 都使用 Ceph 块设备时，此镜像又是个写时复制克隆，就能非常\
+快地创建新卷宗。在 OpenStack 操作板里就能从那个卷宗引导，步骤如下：
 
-#. Launch a new instance.
-#. Choose the image associated to the copy-on-write clone.
-#. Select 'boot from volume'
-#. Select the volume you created.
+#. 启动新例程；
+#. 选择与写时复制克隆关联的镜像；
+#. 选中 'boot from volume' ；
+#. 选中你刚创建的卷宗。
+
 
 .. _qemu-img: ../qemu-rbd/#running-qemu-with-rbd
 .. _块设备与 OpenStack (Dumpling): http://ceph.com/docs/dumpling/rbd/rbd-openstack

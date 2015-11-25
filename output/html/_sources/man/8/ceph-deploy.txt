@@ -180,7 +180,8 @@ mon
 
 	ceph-deploy mon add [HOST] --address [IP]
 
-这里的 [HOST] 是主机名、 [IP] 是目标监视器节点的 IP 地址。
+这里的 [HOST] 是主机名、 [IP] 是目标监视器节点的 IP 地址。要注意，不像其他\
+的 ``mon`` 子命令，这里一次只能指定一个节点。
 
 ``destroy`` 子命令用于从远程主机上完全删除监视器，其参数为主机名。它会停止\
 监视器、确认 ``ceph-mon`` 是否确实停止了、在 ``/var/lib/ceph/`` 下创建存档\
@@ -189,7 +190,7 @@ mon
 
 用法： ::
 
-	ceph-deploy mon destroy [HOST]
+	ceph-deploy mon destroy [HOST] [HOST...]
 
 这里的 [HOST] 是要删除的监视器的主机名。
 

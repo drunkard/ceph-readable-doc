@@ -61,7 +61,7 @@
 
 ``rgw dns name``
 
-:描述: 所服务域的 DNS 名称。请参考辖区配置里的 ``hostnames`` 选项。
+:描述: 所服务域的 DNS 名称。请参考 region 配置里的 ``hostnames`` 选项。
 :类型: String
 :默认值: None
 
@@ -223,7 +223,7 @@
 
 ``rgw relaxed s3 bucket names``
 
-:描述: 对 US 辖区的桶启用宽松的桶名规则。
+:描述: 对 US region 的桶启用宽松的桶名规则。
 :类型: Boolean
 :默认值: ``false``
 
@@ -237,7 +237,7 @@
 
 ``rgw num zone opstate shards``
 
-:描述: 用于保存辖区间复制进度的最大消息片数。
+:描述: 用于保存 region 间复制进度的最大消息片数。
 :类型: Integer
 :默认值: ``128``
 
@@ -284,24 +284,24 @@
 :默认值: ``false``
 
 
-辖区
-====
+region （域组）
+===============
 
-Ceph 从 v0.67 版开始，通过辖区概念支持 Ceph 对象网关联盟部署和统一的命名空\
-间。辖区定义了位于一或多个域内的 Ceph 对象网关例程的地理位置。
+Ceph 从 v0.67 版开始，通过 region 概念支持 Ceph 对象网关联盟部署和统一的命\
+名空间。 region 定义了位于一或多个域内的 Ceph 对象网关例程的地理位置。
 
-辖区的配置不同于一般配置过程，因为不是所有的配置都放在 Ceph 配置文件中。从 \
-Ceph 0.67 版开始，你可以列举辖区、获取辖区配置或设置辖区配置。
+region 的配置不同于一般配置过程，因为不是所有的配置都放在 Ceph 配置文件中。\
+从 Ceph 0.67 版开始，你可以列举 region 、获取 region 配置或设置 region 配置。
 
 
-列举辖区
---------
+罗列 region
+-----------
 
-Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
+Ceph 集群可包含一系列 region ，可用下列命令列举 region ： ::
 
 	sudo radosgw-admin regions list
 
-``radosgw-admin`` 命令会返回 JSON 格式的辖区列表。
+``radosgw-admin`` 命令会返回 JSON 格式的 region 列表。
 
 .. code-block:: javascript
 
@@ -310,10 +310,10 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
 	        "default"]}
 
 
-获取辖区图
-----------
+获取 region-map
+---------------
 
-要获取各辖区的详细情况，可执行： ::
+要获取各 region 的详细情况，可执行： ::
 
 	sudo radosgw-admin region-map get
 
@@ -322,14 +322,14 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
    ``sudo radosgw-admin region-map update`` 。
 
 
-获取单个辖区
-------------
+获取单个 region
+---------------
 
-要查看某辖区的配置，执行： ::
+要查看某 region 的配置，执行： ::
 
 	radosgw-admin region get [--rgw-region=<region>]
 
-``default`` 这个辖区的配置大致如此：
+``default`` 这个 region 的配置大致如此：
 
 .. code-block:: javascript
 
@@ -351,31 +351,31 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
     "default_placement": "default-placement"}
 
 
-设置一辖区
-----------
+设置一 region
+-------------
 
-定义辖区需创建一个 JSON 对象、并提供必需的选项：
+定义 region 需创建一个 JSON 对象、并提供必需的选项：
 
-#. ``name``: 辖区名字，必需。
+#. ``name``: region 名字，必需。
 
-#. ``api_name``: 此辖区的 API 名字，可选。
+#. ``api_name``: 此 region 的 API 名字，可选。
 
-#. ``is_master``: 决定着此辖区是否为主辖区，必需。\ **注：**\ 只能有一个主辖\
-   区。
+#. ``is_master``: 决定着此 region 是否为主 region ，必需。\ **注：**\ 只能\
+   有一个主 region 。
 
-#. ``endpoints``: 辖区内的所有终结点列表。例如，你可以用多个域名指向同一辖\
-   区，记得在斜杠前加反斜杠进行转义（ ``\/`` ）。也可以给终结点指定端口号\
-   （ ``fqdn:port`` ），可选。
+#. ``endpoints``: region 内的所有终结点列表。例如，你可以用多个域名指向同\
+   一 region 区，记得在斜杠前加反斜杠进行转义（ ``\/`` ）。也可以给终结点\
+   指定端口号（ ``fqdn:port`` ），可选。
 
-#. ``hostnames``: 辖区内所有主机名的列表。例如，这样你就可以在同一辖区内使\
-   用多个域名了。可选配置。此列表会自动包含 ``rgw dns name`` 配置。更改此\
-   配置后需重启所有 ``radosgw`` 守护进程。
+#. ``hostnames``: region 内所有主机名的列表。例如，这样你就可以在同一 \
+   region 内使用多个域名了。可选配置。此列表会自动包含 ``rgw dns name`` \
+   配置。更改此配置后需重启所有 ``radosgw`` 守护进程。
 
-#. ``master_zone``: 辖区的主域，可选。若未指定，则选择默认域。\ **注：**\ 每\
-   个辖区只能有一个主域。
+#. ``master_zone``: region 的主域，可选。若未指定，则选择默认域。\
+   **注：**\ 每个 region 只能有一个主域。
 
-#. ``zones``: 辖区内所有域的列表。各个域都有名字（必需的）、一系列终结点（可\
-   选的）、以及网关是否要记录元数据和数据操作（默认不记录）。
+#. ``zones``: region 内所有域的列表。各个域都有名字（必需的）、一系列终结\
+   点（可选的）、以及网关是否要记录元数据和数据操作（默认不记录）。
 
 #. ``placement_targets``: 放置目标列表（可选）。每个放置目标都包含此放置目标\
    的名字（必需）、还有一个标签列表（可选），这样只有带这些标签的用户可以使用\
@@ -385,7 +385,7 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
    ``default-placement`` 。你可以在用户信息里给各用户设置一个用户级的默认放置\
    目标。
 
-要配置起一个辖区，需创建一个包含必需字段的 JSON 对象，把它存入文件（如 \
+要配置起一个 region ，需创建一个包含必需字段的 JSON 对象，把它存入文件（如 \
 ``region.json`` ），然后执行下列命令： ::
 
 	sudo radosgw-admin region set --infile region.json
@@ -393,25 +393,28 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
 其中 ``region.json`` 是你创建的 JSON 文件。
 
 
-.. important:: 默认辖区 ``default`` 的 ``is_master`` 字段值默认为 ``true`` 。\
-   如果你想新建一辖区并让它作为主辖区，那你必须把 ``default`` 辖区的 \
-   ``is_master`` 设置为 ``false`` ，或者干脆删除 ``default`` 辖区。
+.. important:: 默认 region ``default`` 的 ``is_master`` 字段值默认为 \
+   ``true`` 。如果你想新建一 region 并让它作为主 region ，那你必须把 \
+   ``default`` region 的 ``is_master`` 设置为 ``false`` ，或者干脆删除 \
+   ``default`` region 。
 
 
-最后，更新辖区图。 ::
+最后，更新 region 图。 ::
 
 	sudo radosgw-admin region-map update
 
 
-配置辖区图
-----------
+配置 region 图
+--------------
 
-配置辖区图的过程包括创建含一或多个辖区的 JSON 对象，还有设置集群的主辖区 \
-``master_region`` 。辖区图内的各辖区都由键/值对组成，其中 ``key`` 选项等价于\
-单独配置辖区时的 ``name`` 选项， ``val`` 是包含单个辖区完整配置的 JSON 对象。
+配置 region 图的过程包括创建含一或多个 region 的 JSON 对象，还有设置集群的\
+主 region ``master_region`` 。 region 图内的各 region 都由键/值对组成，其\
+中 ``key`` 选项等价于单独配置 region 时的 ``name`` 选项， ``val`` 是包含单\
+个 region 完整配置的 JSON 对象。
 
-你可以只有一个辖区，其 ``is_master`` 设置为 ``true`` ，而且必须在辖区图末尾设\
-置为 ``master_region`` 。下面的 JSON 对象是默认辖区图的实例。
+你可以只有一个 region ，其 ``is_master`` 设置为 ``true`` ，而且必须在 \
+region 图末尾设置为 ``master_region`` 。下面的 JSON 对象是默认 region 图的\
+实例。
 
 
 .. code-block:: javascript
@@ -439,12 +442,12 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
         "master_region": "default"
      }
 
-要配置一个辖区图，执行此命令： ::
+要配置一个 region 图，执行此命令： ::
 
 	sudo radosgw-admin region-map set --infile regionmap.json
 
-其中 ``regionmap.json`` 是创建的 JSON 文件。确保你创建了辖区图里所指的那些\
-域。最后，更新此图。 ::
+其中 ``regionmap.json`` 是创建的 JSON 文件。确保你创建了 region 图里所指\
+的那些域。最后，更新此图。 ::
 
 	sudo radosgw-admin regionmap update
 
@@ -501,8 +504,8 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
 配置域
 ------
 
-配置域时需指定一系列的 Ceph 对象网关存储池。为保持一致性，我们建议用域名字作\
-为存储池名字的前缀。存储池配置见\ `存储池`_\ 。
+配置域时需指定一系列的 Ceph 对象网关存储池。为保持一致性，我们建议用区域名\
+作为存储池名字的前缀。存储池配置见\ `存储池`_\ 。
 
 要配置起一个域，需创建包含存储池的 JSON 对象、并存入文件（如 \
 ``zone.json`` ）；然后执行下列命令，把 ``{zone-name}`` 替换为域名称： ::
@@ -512,8 +515,8 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
 其中， ``zone.json`` 是你创建的 JSON 文件。
 
 
-辖区和域选项
-============
+region 和域选项
+===============
 
 你可以在 Ceph 配置文件中的各例程 ``[client.radosgw.{instance-name}]`` 段下设\
 置下列选项。
@@ -532,7 +535,7 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
 
 ``rgw region``
 
-:描述: 网关例程所在的辖区名。
+:描述: 网关例程所在的 region 名。
 :类型: String
 :默认值: None
 
@@ -541,7 +544,7 @@ Ceph 集群可包含一系列辖区，可用下列命令列举辖区： ::
 
 ``rgw default region info oid``
 
-:描述: 用于保存默认辖区的 OID 。我们不建议更改此选项。
+:描述: 用于保存默认 region 的 OID 。我们不建议更改此选项。
 :类型: String
 :默认值: ``default.region``
 
@@ -573,9 +576,9 @@ Ceph 对象网关的默认域的默认存储池有：
 - ``.users.uid``
 
 你应该能够清晰地判断某个域会怎样访问各存储池。你可以为每个域创建一系列存储\
-池，或者让多个域共用同一系列的存储池。作为最佳实践，我们建议分别位于各辖区\
-中的主域和二级域都要有各自的存储池系列。为某个域创建存储池时，建议默认存储\
-池名以辖区名和域名作为前缀，例如：
+池，或者让多个域共用同一系列的存储池。作为最佳实践，我们建议分别位于各 \
+region 中的主域和二级域都要有各自的存储池系列。为某个域创建存储池时，建议\
+默认存储池名以 region 名和域名作为前缀，例如：
 
 - ``.region1-zone1.domain.rgw``
 - ``.region1-zone1.rgw.control``
@@ -611,7 +614,7 @@ Ceph 对象网关会把桶索引（ ``index_pool`` ）和桶数据（ ``data_poo
 
 ``rgw region root pool``
 
-:描述: 用于存储此辖区所有相关信息的存储池。
+:描述: 用于存储此 region 所有相关信息的存储池。
 :类型: String
 :默认值: ``.rgw.root``
 

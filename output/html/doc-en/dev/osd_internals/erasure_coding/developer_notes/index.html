@@ -1,0 +1,303 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Erasure Code developer notes &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="erasure-code-developer-notes">
+<h1>Erasure Code developer notes<a class="headerlink" href="#erasure-code-developer-notes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Each chapter of this document explains an aspect of the implementation
+of the erasure code within Ceph. It is mostly based on examples being
+explained to demonstrate how things work.</p>
+</div>
+<div class="section" id="reading-and-writing-encoded-chunks-from-and-to-osds">
+<h2>Reading and writing encoded chunks from and to OSDs<a class="headerlink" href="#reading-and-writing-encoded-chunks-from-and-to-osds" title="Permalink to this headline">¶</a></h2>
+<p>An erasure coded pool stores each object as K+M chunks. It is divided
+into K data chunks and M coding chunks. The pool is configured to have
+a size of K+M so that each chunk is stored in an OSD in the acting
+set. The rank of the chunk is stored as an attribute of the object.</p>
+<p>Let&#8217;s say an erasure coded pool is created to use five OSDs ( K+M =
+5 ) and sustain the loss of two of them ( M = 2 ).</p>
+<p>When the object <em>NYAN</em> containing <em>ABCDEFGHI</em> is written to it, the
+erasure encoding function splits the content in three data chunks,
+simply by dividing the content in three : the first contains <em>ABC</em>,
+the second <em>DEF</em> and the last <em>GHI</em>. The content will be padded if the
+content length is not a multiple of K. The function also creates two
+coding chunks : the fourth with <em>YXY</em> and the fifth with <em>GQC</em>. Each
+chunk is stored in an OSD in the acting set. The chunks are stored in
+objects that have the same name ( <em>NYAN</em> ) but reside on different
+OSDs. The order in which the chunks were created must be preserved and
+is stored as an attribute of the object ( shard_t ), in addition to its
+name. Chunk <em>1</em> contains <em>ABC</em> and is stored on <em>OSD5</em> while chunk <em>4</em>
+contains <em>YXY</em> and is stored on <em>OSD3</em>.</p>
+<div class="highlight-python"><pre>                          +-------------------+
+                     name |        NYAN       |
+                          +-------------------+
+                  content |      ABCDEFGHI    |
+                          +--------+----------+
+                                   |
+                                   |
+                                   v
+                            +------+------+
+            +---------------+ encode(3,2) +-----------+
+            |               +--+--+---+---+           |
+            |                  |  |   |               |
+            |          +-------+  |   +-----+         |
+            |          |          |         |         |
+         +--v---+   +--v---+   +--v---+  +--v---+  +--v---+
+   name  | NYAN |   | NYAN |   | NYAN |  | NYAN |  | NYAN |
+         +------+   +------+   +------+  +------+  +------+
+  shard  |  1   |   |  2   |   |  3   |  |  4   |  |  5   |
+         +------+   +------+   +------+  +------+  +------+
+content  | ABC  |   | DEF  |   | GHI  |  | YXY  |  | QGC  |
+         +--+---+   +--+---+   +--+---+  +--+---+  +--+---+
+            |          |          |         |         |
+            |          |          |         |         |
+            |          |       +--+---+     |         |
+            |          |       | OSD1 |     |         |
+            |          |       +------+     |         |
+            |          |       +------+     |         |
+            |          +------&gt;| OSD2 |     |         |
+            |                  +------+     |         |
+            |                  +------+     |         |
+            |                  | OSD3 |&lt;----+         |
+            |                  +------+               |
+            |                  +------+               |
+            |                  | OSD4 |&lt;--------------+
+            |                  +------+
+            |                  +------+
+            +-----------------&gt;| OSD5 |
+                               +------+</pre>
+</div>
+<p>When the object <em>NYAN</em> is read from the erasure coded pool, the
+decoding function reads three chunks : chunk <em>1</em> containing <em>ABC</em>,
+chunk <em>3</em> containing <em>GHI</em> and chunk <em>4</em> containing <em>YXY</em> and rebuild
+the original content of the object <em>ABCDEFGHI</em>. The decoding function
+is informed that the chunks <em>2</em> and <em>5</em> are missing ( they are called
+<em>erasures</em> ). The chunk <em>5</em> could not be read because the <em>OSD4</em> is
+<em>out</em>.</p>
+<p>The decoding function could be called as soon as three chunks are
+read : <em>OSD2</em> was the slowest and its chunk does not need to be taken into
+account. This optimization is not implemented in Firefly.</p>
+<div class="highlight-python"><pre>                          +-------------------+
+                     name |        NYAN       |
+                          +-------------------+
+                  content |      ABCDEFGHI    |
+                          +--------+----------+
+                                   ^
+                                   |
+                                   |
+                            +------+------+
+                            | decode(3,2) |
+                            | erasures 2,5|
+            +--------------&gt;|             |
+            |               +-------------+
+            |                     ^   ^
+            |                     |   +-----+
+            |                     |         |
+         +--+---+   +------+   +--+---+  +--+---+
+   name  | NYAN |   | NYAN |   | NYAN |  | NYAN |
+         +------+   +------+   +------+  +------+
+  shard  |  1   |   |  2   |   |  3   |  |  4   |
+         +------+   +------+   +------+  +------+
+content  | ABC  |   | DEF  |   | GHI  |  | YXY  |
+         +--+---+   +--+---+   +--+---+  +--+---+
+            ^          .          ^         ^
+            |    TOO   .          |         |
+            |    SLOW  .       +--+---+     |
+            |          ^       | OSD1 |     |
+            |          |       +------+     |
+            |          |       +------+     |
+            |          +-------| OSD2 |     |
+            |                  +------+     |
+            |                  +------+     |
+            |                  | OSD3 |-----+
+            |                  +------+
+            |                  +------+
+            |                  | OSD4 | OUT
+            |                  +------+
+            |                  +------+
+            +------------------| OSD5 |
+                               +------+</pre>
+</div>
+</div>
+<div class="section" id="erasure-code-library">
+<h2>Erasure code library<a class="headerlink" href="#erasure-code-library" title="Permalink to this headline">¶</a></h2>
+<p>Using <a class="reference external" href="https://en.wikipedia.org/wiki/Reed_Solomon">Reed-Solomon</a>,
+with parameters K+M, object O is encoded by dividing it into chunks O1,
+O2, ...  OM and computing coding chunks P1, P2, ... PK. Any K chunks
+out of the available K+M chunks can be used to obtain the original
+object.  If data chunk O2 or coding chunk P2 are lost, they can be
+repaired using any K chunks out of the K+M chunks. If more than M
+chunks are lost, it is not possible to recover the object.</p>
+<p>Reading the original content of object O can be a simple
+concatenation of O1, O2, ... OM, because the plugins are using
+<a class="reference external" href="http://en.wikipedia.org/wiki/Systematic_code">systematic codes</a>. Otherwise the chunks
+must be given to the erasure code library <em>decode</em> method to retrieve
+the content of the object.</p>
+<p>Performance depend on the parameters to the encoding functions and
+is also influenced by the packet sizes used when calling the encoding
+functions ( for Cauchy or Liberation for instance ): smaller packets
+means more calls and more overhead.</p>
+<p>Although Reed-Solomon is provided as a default, Ceph uses it via an
+<a class="reference external" href="https://github.com/ceph/ceph/blob/v0.78/src/erasure-code/ErasureCodeInterface.h">abstract API</a> designed to
+allow each pool to choose the plugin that implements it using
+key=value pairs stored in an <a class="reference external" href="../../../erasure-coded-pool">erasure code profile</a>.</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile set myprofile \
+    ruleset-failure-domain=osd
+$ ceph osd erasure-code-profile get myprofile
+directory=/usr/lib/ceph/erasure-code
+k=2
+m=1
+plugin=jerasure
+technique=reed_sol_van
+ruleset-failure-domain=osd
+$ ceph osd pool create ecpool 12 12 erasure myprofile</pre>
+</div>
+<p>The <em>plugin</em> is dynamically loaded from <em>directory</em>  and expected to
+implement the <em>int __erasure_code_init(char *plugin_name, char *directory)</em> function
+which is responsible for registering an object derived from <em>ErasureCodePlugin</em>
+in the registry. The <a class="reference external" href="https://github.com/ceph/ceph/blob/v0.78/src/test/erasure-code/ErasureCodePluginExample.cc">ErasureCodePluginExample</a> plugin reads:</p>
+<div class="highlight-python"><pre>ErasureCodePluginRegistry &amp;instance =
+                           ErasureCodePluginRegistry::instance();
+instance.add(plugin_name, new ErasureCodePluginExample());</pre>
+</div>
+<p>The <em>ErasureCodePlugin</em> derived object must provide a factory method
+from which the concrete implementation of the <em>ErasureCodeInterface</em>
+object can be generated. The <a class="reference external" href="https://github.com/ceph/ceph/blob/v0.78/src/test/osd/ErasureCodePluginExample.cc">ErasureCodePluginExample plugin</a> reads:</p>
+<div class="highlight-python"><pre>virtual int factory(const map&lt;std::string,std::string&gt; &amp;parameters,
+                    ErasureCodeInterfaceRef *erasure_code) {
+  *erasure_code = ErasureCodeInterfaceRef(new ErasureCodeExample(parameters));
+  return 0;
+}</pre>
+</div>
+<p>The <em>parameters</em> argument is the list of <em>key=value</em> pairs that were
+set in the erasure code profile, before the pool was created.</p>
+<div class="highlight-python"><pre>ceph osd erasure-code-profile set myprofile \
+   directory=&lt;dir&gt;         \ # mandatory
+   plugin=jerasure         \ # mandatory
+   m=10                    \ # optional and plugin dependant
+   k=3                     \ # optional and plugin dependant
+   technique=reed_sol_van  \ # optional and plugin dependant</pre>
+</div>
+</div>
+<div class="section" id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Permalink to this headline">¶</a></h2>
+<p>If the objects are large, it may be impractical to encode and decode
+them in memory. However, when using <em>RBD</em> a 1TB device is divided in
+many individual 4MB objects and <em>RGW</em> does the same.</p>
+<p>Encoding and decoding is implemented in the OSD. Although it could be
+implemented client side for read write, the OSD must be able to encode
+and decode on its own when scrubbing.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../../">
+              <img class="logo" src="../../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

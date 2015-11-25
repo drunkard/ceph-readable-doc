@@ -282,11 +282,11 @@ Ceph 存储集群需要至少一个监视器才能运行。为达到高可用性
 
 新增两个监视器到 Ceph 集群。 ::
 
-	ceph-deploy mon create {ceph-node}
+	ceph-deploy mon add {ceph-node}
 
 例如： ::
 
-	ceph-deploy mon create node2 node3
+	ceph-deploy mon add node2 node3
 
 新增监视器后，它会自动开始同步、并形成法定人数。你可以用下面的命令检查法定人数\
 状态： ::

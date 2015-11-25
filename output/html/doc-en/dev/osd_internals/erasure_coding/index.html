@@ -1,0 +1,188 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Erasure Coded Placement Groups &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="erasure-coded-placement-groups">
+<h1>Erasure Coded Placement Groups<a class="headerlink" href="#erasure-coded-placement-groups" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="glossary">
+<h2>Glossary<a class="headerlink" href="#glossary" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt><em>chunk</em></dt>
+<dd>when the encoding function is called, it returns chunks of the same
+size. Data chunks which can be concatenated to reconstruct the original
+object and coding chunks which can be used to rebuild a lost chunk.</dd>
+<dt><em>chunk rank</em></dt>
+<dd>the index of a chunk when returned by the encoding function. The
+rank of the first chunk is 0, the rank of the second chunk is 1
+etc.</dd>
+<dt><em>stripe</em></dt>
+<dd>when an object is too large to be encoded with a single call,
+each set of chunks created by a call to the encoding function is
+called a stripe.</dd>
+<dt><em>shard|strip</em></dt>
+<dd>an ordered sequence of chunks of the same rank from the same
+object.  For a given placement group, each OSD contains shards of
+the same rank. When dealing with objects that are encoded with a
+single operation, <em>chunk</em> is sometime used instead of <em>shard</em>
+because the shard is made of a single chunk. The <em>chunks</em> in a
+<em>shard</em> are ordered according to the rank of the stripe they belong
+to.</dd>
+<dt><em>K</em></dt>
+<dd>the number of data <em>chunks</em>, i.e. the number of <em>chunks</em> in which the
+original object is divided. For instance if <em>K</em> = 2 a 10KB object
+will be divided into <em>K</em> objects of 5KB each.</dd>
+<dt><em>M</em></dt>
+<dd>the number of coding <em>chunks</em>, i.e. the number of additional <em>chunks</em>
+computed by the encoding functions. If there are 2 coding <em>chunks</em>,
+it means 2 OSDs can be out without losing data.</dd>
+<dt><em>N</em></dt>
+<dd>the number of data <em>chunks</em> plus the number of coding <em>chunks</em>,
+i.e. <em>K+M</em>.</dd>
+<dt><em>rate</em></dt>
+<dd>the proportion of the <em>chunks</em> that contains useful information, i.e. <em>K/N</em>.
+For instance, for <em>K</em> = 9 and <em>M</em> = 3 (i.e. <em>K+M</em> = <em>N</em> = 12) the rate is
+<em>K</em> = 9 / <em>N</em> = 12 = 0.75, i.e. 75% of the chunks contain useful information.</dd>
+</dl>
+<p>The definitions are illustrated as follows (PG stands for placement group):</p>
+<div class="highlight-python"><pre>                OSD 40                       OSD 33
+      +-------------------------+ +-------------------------+
+      |      shard 0 - PG 10    | |      shard 1 - PG 10    |
+      |+------ object O -------+| |+------ object O -------+|
+      ||+---------------------+|| ||+---------------------+||
+stripe|||    chunk  0         ||| |||    chunk  1         ||| ...
+  0   |||    stripe 0         ||| |||    stripe 0         |||
+      ||+---------------------+|| ||+---------------------+||
+      ||+---------------------+|| ||+---------------------+||
+stripe|||    chunk  0         ||| |||    chunk  1         ||| ...
+  1   |||    stripe 1         ||| |||    stripe 1         |||
+      ||+---------------------+|| ||+---------------------+||
+      ||+---------------------+|| ||+---------------------+||
+stripe|||    chunk  0         ||| |||    chunk  1         ||| ...
+  2   |||    stripe 2         ||| |||    stripe 2         |||
+      ||+---------------------+|| ||+---------------------+||
+      |+-----------------------+| |+-----------------------+|
+      |         ...             | |         ...             |
+      +-------------------------+ +-------------------------+</pre>
+</div>
+</div>
+<div class="section" id="table-of-content">
+<h2>Table of content<a class="headerlink" href="#table-of-content" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="developer_notes/">Developer notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jerasure/">Jerasure plugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pgbackend/">High level design document</a></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

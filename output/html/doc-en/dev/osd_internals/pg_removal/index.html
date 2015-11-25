@@ -1,0 +1,170 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PG Removal &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="pg-removal">
+<h1>PG Removal<a class="headerlink" href="#pg-removal" title="Permalink to this headline">¶</a></h1>
+<p>See OSD::_remove_pg, OSD::RemoveWQ</p>
+<p>There are two ways for a pg to be removed from an OSD:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>MOSDPGRemove from the primary</li>
+<li>OSD::advance_map finds that the pool has been removed</li>
+</ol>
+</div></blockquote>
+<p>In either case, our general strategy for removing the pg is to
+atomically set the metadata objects (pg-&gt;log_oid, pg-&gt;biginfo_oid) to
+backfill and asynronously remove the pg collections.  We do not do
+this inline because scanning the collections to remove the objects is
+an expensive operation.</p>
+<p>OSDService::deleting_pgs tracks all pgs in the process of being
+deleted.  Each DeletingState object in deleting_pgs lives while at
+least one reference to it remains.  Each item in RemoveWQ carries a
+reference to the DeletingState for the relevant pg such that
+deleting_pgs.lookup(pgid) will return a null ref only if there are no
+collections currently being deleted for that pg.</p>
+<p>The DeletingState for a pg also carries information about the status
+of the current deletion and allows the deletion to be cancelled.
+The possible states are:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>QUEUED: the PG is in the RemoveWQ</li>
+<li>CLEARING_DIR: the PG&#8217;s contents are being removed synchronously</li>
+<li>DELETING_DIR: the PG&#8217;s directories and metadata being queued for removal</li>
+<li>DELETED_DIR: the final removal transaction has been queued</li>
+<li>CANCELED: the deletion has been canceled</li>
+</ol>
+</div></blockquote>
+<p>In 1 and 2, the deletion can be canceled.  Each state transition
+method (and check_canceled) returns false if deletion has been
+canceled and true if the state transition was successful.  Similarly,
+try_stop_deletion() returns true if it succeeds in canceling the
+deletion.  Additionally, try_stop_deletion() in the event that it
+fails to stop the deletion will not return until the final removal
+transaction is queued.  This ensures that any operations queued after
+that point will be ordered after the pg deletion.</p>
+<p>OSD::_create_lock_pg must handle two cases:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Either there is no DeletingStateRef for the pg, or it failed to cancel</li>
+<li>We succeeded in canceling the deletion.</li>
+</ol>
+</div></blockquote>
+<p>In case 1., we proceed as if there were no deletion occurring, except that
+we avoid writing to the PG until the deletion finishes.  In case 2., we
+proceed as in case 1., except that we first mark the PG as backfilling.</p>
+<p>Similarly, OSD::osr_registry ensures that the OpSequencers for those
+pgs can be reused for a new pg if created before the old one is fully
+removed, ensuring that operations on the new pg are sequenced properly
+with respect to operations on the old one.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

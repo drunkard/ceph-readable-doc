@@ -90,6 +90,7 @@ convention for pools typically omits region and zone naming, but you can use any
 naming convention you prefer. For example:
 
 
+- ``.rgw``
 - ``.rgw.root``
 - ``.rgw.control``
 - ``.rgw.gc``

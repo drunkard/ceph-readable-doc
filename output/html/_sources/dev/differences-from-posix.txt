@@ -1,10 +1,9 @@
-========================
- Differences from POSIX
-========================
+=====================
+ 与 POSIX 标准的差异
+=====================
 
-.. todo:: delete http://ceph.com/wiki/Differences_from_POSIX
 
-Ceph does have a few places where it diverges from strict POSIX semantics for various reasons:
+Ceph 确实由于各种原因在某些地方偏离了严谨的 POSIX 语义：
 
 - Sparse files propagate incorrectly to tools like df. They will only
   use up the required space, but in df will increase the "used" space

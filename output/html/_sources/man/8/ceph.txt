@@ -664,6 +664,12 @@ osd
 
 	ceph osd crush show-tunables
 
+子命令 ``tree`` 用树状视图显示各 crush 桶、及各条目。
+
+用法： ::
+
+	ceph osd crush tree
+
 子命令 ``tunables`` 设置 <profile> 中的 crush 可调值。
 
 用法： ::
@@ -838,7 +844,7 @@ osd
 以下命令只适用于分层存储池： ::
 
 	ceph osd pool get <poolname> hit_set_type|hit_set_period|hit_set_count|hit_set_fpp|
-	target_max_objects|target_max_bytes|cache_target_dirty_ratio|
+	target_max_objects|target_max_bytes|cache_target_dirty_ratio|cache_target_dirty_high_ratio|
 	cache_target_full_ratio|cache_min_flush_age|cache_min_evict_age|
 	min_read_recency_for_promote
 
@@ -884,6 +890,7 @@ osd
 	pgp_num|crush_ruleset|hashpspool|nodelete|nopgchange|nosizechange|
 	hit_set_type|hit_set_period|hit_set_count|hit_set_fpp|debug_fake_ec_pool|
 	target_max_bytes|target_max_objects|cache_target_dirty_ratio|
+	cache_target_dirty_high_ratio|
 	cache_target_full_ratio|cache_min_flush_age|cache_min_evict_age|auid|
 	min_read_recency_for_promote|write_fadvise_dontneed
 	<val> {--yes-i-really-mean-it}

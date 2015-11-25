@@ -1,0 +1,282 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Perf counters &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="perf-counters">
+<h1>Perf counters<a class="headerlink" href="#perf-counters" title="Permalink to this headline">¶</a></h1>
+<p>The perf counters provide generic internal infrastructure for gauges and counters.  The counted values can be both integer and float.  There is also an &#8220;average&#8221; type (normally float) that combines a sum and num counter which can be divided to provide an average.</p>
+<p>The intention is that this data will be collected and aggregated by a tool like <tt class="docutils literal"><span class="pre">collectd</span></tt> or <tt class="docutils literal"><span class="pre">statsd</span></tt> and fed into a tool like <tt class="docutils literal"><span class="pre">graphite</span></tt> for graphing and analysis.</p>
+<div class="section" id="access">
+<h2>Access<a class="headerlink" href="#access" title="Permalink to this headline">¶</a></h2>
+<p>The perf counter data is accessed via the admin socket.  For example:</p>
+<div class="highlight-python"><pre>ceph daemon osd.0 perf schema
+ceph daemon osd.0 perf dump</pre>
+</div>
+</div>
+<div class="section" id="collections">
+<h2>Collections<a class="headerlink" href="#collections" title="Permalink to this headline">¶</a></h2>
+<p>The values are grouped into named collections, normally representing a subsystem or an instance of a subsystem.  For example, the internal <tt class="docutils literal"><span class="pre">throttle</span></tt> mechanism reports statistics on how it is throttling, and each instance is named something like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">throttle</span><span class="o">-</span><span class="n">msgr_dispatch_throttler</span><span class="o">-</span><span class="n">hbserver</span>
+<span class="n">throttle</span><span class="o">-</span><span class="n">msgr_dispatch_throttler</span><span class="o">-</span><span class="n">client</span>
+<span class="n">throttle</span><span class="o">-</span><span class="n">filestore_bytes</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="schema">
+<h2>Schema<a class="headerlink" href="#schema" title="Permalink to this headline">¶</a></h2>
+<p>The <tt class="docutils literal"><span class="pre">perf</span> <span class="pre">schema</span></tt> command dumps a json description of which values are available, and what their type is.  Each named value as a <tt class="docutils literal"><span class="pre">type</span></tt> bitfield, with the following bits defined.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="14%" />
+<col width="86%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">bit</th>
+<th class="head">meaning</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>1</td>
+<td>floating point value</td>
+</tr>
+<tr class="row-odd"><td>2</td>
+<td>unsigned 64-bit integer value</td>
+</tr>
+<tr class="row-even"><td>4</td>
+<td>average (sum + count pair)</td>
+</tr>
+<tr class="row-odd"><td>8</td>
+<td>counter (vs gauge)</td>
+</tr>
+</tbody>
+</table>
+<p>Every value with have either bit 1 or 2 set to indicate the type (float or integer).  If bit 8 is set (counter), the reader may want to subtract off the previously read value to get the delta during the previous interval.</p>
+<p>If bit 4 is set (average), there will be two values to read, a sum and a count.  If it is a counter, the average for the previous interval would be sum delta (since the previous read) divided by the count delta.  Alternatively, dividing the values outright would provide the lifetime average value.  Normally these are used to measure latencies (number of requests and a sum of request latencies), and the average for the previous interval is what is interesting.</p>
+<p>Here is an example of the schema output:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span>
+  <span class="s">&quot;throttle-msgr_dispatch_throttler-hbserver&quot;</span> <span class="p">:</span> <span class="p">{</span>
+     <span class="s">&quot;get_or_fail_fail&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;get_sum&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;max&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;put&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;val&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;take&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;get_or_fail_success&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;wait&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">5</span>
+     <span class="p">},</span>
+     <span class="s">&quot;get&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;take_sum&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;put_sum&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="s">&quot;throttle-msgr_dispatch_throttler-client&quot;</span> <span class="p">:</span> <span class="p">{</span>
+     <span class="s">&quot;get_or_fail_fail&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;get_sum&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;max&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;put&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;val&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;take&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;get_or_fail_success&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;wait&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">5</span>
+     <span class="p">},</span>
+     <span class="s">&quot;get&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;take_sum&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">},</span>
+     <span class="s">&quot;put_sum&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;type&quot;</span> <span class="p">:</span> <span class="mi">10</span>
+     <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="dump">
+<h2>Dump<a class="headerlink" href="#dump" title="Permalink to this headline">¶</a></h2>
+<p>The actual dump is similar to the schema, except that average values are grouped.  For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span>
+  <span class="s">&quot;throttle-msgr_dispatch_throttler-hbserver&quot;</span> <span class="p">:</span> <span class="p">{</span>
+     <span class="s">&quot;get_or_fail_fail&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;get_sum&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;max&quot;</span> <span class="p">:</span> <span class="mi">104857600</span><span class="p">,</span>
+     <span class="s">&quot;put&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;val&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;take&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;get_or_fail_success&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;wait&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;avgcount&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s">&quot;sum&quot;</span> <span class="p">:</span> <span class="mi">0</span>
+     <span class="p">},</span>
+     <span class="s">&quot;get&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;take_sum&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;put_sum&quot;</span> <span class="p">:</span> <span class="mi">0</span>
+  <span class="p">},</span>
+  <span class="s">&quot;throttle-msgr_dispatch_throttler-client&quot;</span> <span class="p">:</span> <span class="p">{</span>
+     <span class="s">&quot;get_or_fail_fail&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;get_sum&quot;</span> <span class="p">:</span> <span class="mi">82760</span><span class="p">,</span>
+     <span class="s">&quot;max&quot;</span> <span class="p">:</span> <span class="mi">104857600</span><span class="p">,</span>
+     <span class="s">&quot;put&quot;</span> <span class="p">:</span> <span class="mi">2637</span><span class="p">,</span>
+     <span class="s">&quot;val&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;take&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;get_or_fail_success&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;wait&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="s">&quot;avgcount&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s">&quot;sum&quot;</span> <span class="p">:</span> <span class="mi">0</span>
+     <span class="p">},</span>
+     <span class="s">&quot;get&quot;</span> <span class="p">:</span> <span class="mi">2637</span><span class="p">,</span>
+     <span class="s">&quot;take_sum&quot;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s">&quot;put_sum&quot;</span> <span class="p">:</span> <span class="mi">82760</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,243 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PG (Placement Group) notes &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="pg-placement-group-notes">
+<h1>PG (Placement Group) notes<a class="headerlink" href="#pg-placement-group-notes" title="Permalink to this headline">¶</a></h1>
+<p>Miscellaneous copy-pastes from emails, when this gets cleaned up it
+should move out of /dev.</p>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>PG = &#8220;placement group&#8221;. When placing data in the cluster, objects are
+mapped into PGs, and those PGs are mapped onto OSDs. We use the
+indirection so that we can group objects, which reduces the amount of
+per-object metadata we need to keep track of and processes we need to
+run (it would be prohibitively expensive to track eg the placement
+history on a per-object basis). Increasing the number of PGs can
+reduce the variance in per-OSD load across your cluster, but each PG
+requires a bit more CPU and memory on the OSDs that are storing it. We
+try and ballpark it at 100 PGs/OSD, although it can vary widely
+without ill effects depending on your cluster. You hit a bug in how we
+calculate the initial PG number from a cluster description.</p>
+<p>There are a couple of different categories of PGs; the 6 that exist
+(in the original emailer&#8217;s <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">-s</span></tt> output) are &#8220;local&#8221; PGs which
+are tied to a specific OSD. However, those aren&#8217;t actually used in a
+standard Ceph configuration.</p>
+</div>
+<div class="section" id="mapping-algorithm-simplified">
+<h2>Mapping algorithm (simplified)<a class="headerlink" href="#mapping-algorithm-simplified" title="Permalink to this headline">¶</a></h2>
+<div class="line-block">
+<div class="line">&gt; How does the Object-&gt;PG mapping look like, do you map more than one object on</div>
+<div class="line">&gt; one PG, or do you sometimes map an object to more than one PG? How about the</div>
+<div class="line">&gt; mapping of PGs to OSDs, does one PG belong to exactly one OSD?</div>
+<div class="line">&gt;</div>
+<div class="line">&gt; Does one PG represent a fixed amount of storage space?</div>
+</div>
+<p>Many objects map to one PG.</p>
+<p>Each object maps to exactly one PG.</p>
+<p>One PG maps to a single list of OSDs, where the first one in the list
+is the primary and the rest are replicas.</p>
+<p>Many PGs can map to one OSD.</p>
+<p>A PG represents nothing but a grouping of objects; you configure the
+number of PGs you want (see
+<a class="reference external" href="http://ceph.com/wiki/Changing_the_number_of_PGs">http://ceph.com/wiki/Changing_the_number_of_PGs</a> ), number of
+OSDs * 100 is a good starting point, and all of your stored objects
+are pseudo-randomly evenly distributed to the PGs. So a PG explicitly
+does NOT represent a fixed amount of storage; it represents 1/pg_num
+&#8216;th of the storage you happen to have on your OSDs.</p>
+<p>Ignoring the finer points of CRUSH and custom placement, it goes
+something like this in pseudocode:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">locator</span> <span class="o">=</span> <span class="n">object_name</span>
+<span class="n">obj_hash</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">locator</span><span class="p">)</span>
+<span class="n">pg</span> <span class="o">=</span> <span class="n">obj_hash</span> <span class="o">%</span> <span class="n">num_pg</span>
+<span class="n">OSDs_for_pg</span> <span class="o">=</span> <span class="n">crush</span><span class="p">(</span><span class="n">pg</span><span class="p">)</span>  <span class="c"># returns a list of OSDs</span>
+<span class="n">primary</span> <span class="o">=</span> <span class="n">osds_for_pg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">replicas</span> <span class="o">=</span> <span class="n">osds_for_pg</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+</pre></div>
+</div>
+<p>If you want to understand the crush() part in the above, imagine a
+perfectly spherical datacenter in a vacuum ;) that is, if all OSDs
+have weight 1.0, and there is no topology to the data center (all OSDs
+are on the top level), and you use defaults, etc, it simplifies to
+consistent hashing; you can think of it as:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">crush</span><span class="p">(</span><span class="n">pg</span><span class="p">):</span>
+   <span class="n">all_osds</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;osd.0&#39;</span><span class="p">,</span> <span class="s">&#39;osd.1&#39;</span><span class="p">,</span> <span class="s">&#39;osd.2&#39;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+   <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+   <span class="c"># size is the number of copies; primary+replicas</span>
+   <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">:</span>
+       <span class="n">r</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">pg</span><span class="p">)</span>
+       <span class="n">chosen</span> <span class="o">=</span> <span class="n">all_osds</span><span class="p">[</span> <span class="n">r</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_osds</span><span class="p">)</span> <span class="p">]</span>
+       <span class="k">if</span> <span class="n">chosen</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+           <span class="c"># OSD can be picked only once</span>
+           <span class="k">continue</span>
+       <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chosen</span><span class="p">)</span>
+   <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="user-visible-pg-states">
+<h2>User-visible PG States<a class="headerlink" href="#user-visible-pg-states" title="Permalink to this headline">¶</a></h2>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">diagram of states and how they can overlap</p>
+</div>
+<dl class="docutils">
+<dt><em>creating</em></dt>
+<dd>the PG is still being created</dd>
+<dt><em>active</em></dt>
+<dd>requests to the PG will be processed</dd>
+<dt><em>clean</em></dt>
+<dd>all objects in the PG are replicated the correct number of times</dd>
+<dt><em>down</em></dt>
+<dd>a replica with necessary data is down, so the pg is offline</dd>
+<dt><em>replay</em></dt>
+<dd>the PG is waiting for clients to replay operations after an OSD crashed</dd>
+<dt><em>splitting</em></dt>
+<dd>the PG is being split into multiple PGs (not functional as of 2012-02)</dd>
+<dt><em>scrubbing</em></dt>
+<dd>the PG is being checked for inconsistencies</dd>
+<dt><em>degraded</em></dt>
+<dd>some objects in the PG are not replicated enough times yet</dd>
+<dt><em>inconsistent</em></dt>
+<dd>replicas of the PG are not consistent (e.g. objects are
+the wrong size, objects are missing from one replica <em>after</em> recovery
+finished, etc.)</dd>
+<dt><em>peering</em></dt>
+<dd>the PG is undergoing the <a class="reference internal" href="../../../dev/peering/"><em>Peering</em></a> process</dd>
+<dt><em>repair</em></dt>
+<dd>the PG is being checked and any inconsistencies found will be repaired (if possible)</dd>
+<dt><em>recovering</em></dt>
+<dd>objects are being migrated/synchronized with replicas</dd>
+<dt><em>recovery_wait</em></dt>
+<dd>the PG is waiting for the local/remote recovery reservations</dd>
+<dt><em>backfill</em></dt>
+<dd>a special case of recovery, in which the entire contents of
+the PG are scanned and synchronized, instead of inferring what
+needs to be transferred from the PG logs of recent operations</dd>
+<dt><em>backfill-wait</em></dt>
+<dd>the PG is waiting in line to start backfill</dd>
+<dt><em>backfill_toofull</em></dt>
+<dd>backfill reservation rejected, OSD too full</dd>
+<dt><em>incomplete</em></dt>
+<dd>a pg is missing a necessary period of history from its
+log.  If you see this state, report a bug, and try to start any
+failed OSDs that may contain the needed information.</dd>
+<dt><em>stale</em></dt>
+<dd>the PG is in an unknown state - the monitors have not received
+an update for it since the PG mapping changed.</dd>
+<dt><em>remapped</em></dt>
+<dd>the PG is temporarily mapped to a different set of OSDs from what
+CRUSH specified</dd>
+</dl>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

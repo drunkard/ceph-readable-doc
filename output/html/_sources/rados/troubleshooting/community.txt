@@ -14,9 +14,8 @@ Ceph 社区是极好的信息和帮助来源。想了解与 Ceph 发布相关的
 
 如果你不再想收 ``ceph-devel`` 的邮件，你可以\ `退订 ceph-devel`_\ 。
 
-.. tip:: Ceph 社区在快速成长，如果你提供了问题的详情社区成员就可以帮你解决。你可以\
-   附加你的 Ceph 配置文件、日志文件、 CRUSH 图以及其它细节（如 \
-   ``ceph osd tree`` ），以便人们了解你的问题。
+.. tip:: Ceph 社区在快速成长，如果你提供了问题的详情社区成员就可以帮你解决。\
+   可以附加上 ``ceph report`` 命令的输出，以便大家了解你的问题。
 
 .. _订阅 ceph-devel 邮件列表: mailto:majordomo@vger.kernel.org?body=subscribe+ceph-devel
 .. _退订 ceph-devel: mailto:majordomo@vger.kernel.org?body=unsubscribe+ceph-devel

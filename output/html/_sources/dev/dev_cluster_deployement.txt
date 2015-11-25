@@ -1,25 +1,28 @@
-=================================
- Deploying a development cluster
-=================================
+================
+ 开发集群的部署
+================
 
-In order to develop on ceph, a Ceph utility,
-*vstart.sh*, allows you to deploy fake local cluster for development purpose.
+要从事 ceph 开发，可以用 *vstart.sh* 工具部署一个位于本地的伪集群，以便\
+测试。
 
-Usage
-=====
 
-It allows to deploy a fake local cluster on your machine for development purpose. It starts mon, osd and/or mds, or all of them if not specified.
+用法
+====
 
-To start your development cluster, type the following::
+用此工具可在本机部署伪集群以便开发，它可以启动 rgw 、 mon 、 osd 、和/或 \
+mds ，不指定的话会启动所有类型。
+
+要启动开发集群，执行此命令： ::
 
 	vstart.sh [OPTIONS]... [mon] [osd] [mds]
 
-In order to stop the cluster, you can type::
+要停止集群，可以执行： ::
 
 	./stop.sh
 
-Options
-=======
+
+选项
+====
 
 .. option:: -i ip_address
 

@@ -102,16 +102,16 @@
   禁用配额。
 
 :command:`region get`
-  显示辖区信息。
+  显示 region 信息。
 
 :command:`regions list`
-  列出本集群配置的所有辖区。
+  列出本集群配置的所有 region 。
 
 :command:`region set`
-  设置辖区信息（需要输入文件）。
+  设置 region 信息（需要输入文件）。
 
 :command:`region default`
-  设置默认辖区。
+  设置默认 region 。
 
 :command:`region-map get`
   显示 region-map 。
@@ -321,7 +321,7 @@
 
 .. option:: --rgw-region=<region>
 
-   radosgw 所在的辖区。
+   radosgw 所在的 region 。
 
 .. option:: --rgw-zone=<zone>
 

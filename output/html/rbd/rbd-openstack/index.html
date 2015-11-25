@@ -208,17 +208,26 @@ rbd_store_chunk_size = 8</pre>
 </div>
 <div class="section" id="id6">
 <h4>任意版 OpenStack<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h4>
-<p>如果你想允许使用映像的写时复制克隆品，把下列内容加到 <tt class="docutils literal"><span class="pre">[DEFAULT]</span></tt> 段下：</p>
+<p>如果你想允许使用映像的写时复制克隆品，还得把下列内容加到 <tt class="docutils literal"><span class="pre">[DEFAULT]</span></tt> 段下：</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">show_image_direct_url</span> <span class="o">=</span> <span class="bp">True</span>
 </pre></div>
 </div>
-<p>注意，这里通过 Glance 的 API 展示了后端位置，所以此选项启用时的终结点不能公开访问。</p>
-<p>Disable the Glance cache management to avoid images getting cached under <tt class="docutils literal"><span class="pre">/var/lib/glance/image-cache/</span></tt>,
-assuming your configuration file has <tt class="docutils literal"><span class="pre">flavor</span> <span class="pre">=</span> <span class="pre">keystone+cachemanagement</span></tt>:</p>
+<p>注意，这里通过 Glance 的 API 展示了后端位置，所以此选项启用时的入口不能公开访问。</p>
+<p>禁用 Glance 缓存管理，以免映像被缓存到 <tt class="docutils literal"><span class="pre">/var/lib/glance/image-cache/</span></tt> 下；假设你的配置文件里有 <tt class="docutils literal"><span class="pre">flavor</span> <span class="pre">=</span> <span class="pre">keystone+cachemanagement</span></tt></p>
 <div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="n">paste_deploy</span><span class="p">]</span>
 <span class="n">flavor</span> <span class="o">=</span> <span class="n">keystone</span>
 </pre></div>
 </div>
+</div>
+<div class="section" id="id7">
+<h4>映像属性<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h4>
+<p>我们建议你配置如下映像属性：</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">hw_scsi_model=virtio-scsi</span></tt>: 添加 virtio-scsi 控制器以获得更好的性能、并支持 discard 操作；</li>
+<li><tt class="docutils literal"><span class="pre">hw_disk_bus=scsi</span></tt>: 把所有 cinder 块设备都连到这个控制器；</li>
+<li><tt class="docutils literal"><span class="pre">hw_qemu_guest_agent=yes</span></tt>: 启用 QEMU guest agent （访客代理）</li>
+<li><tt class="docutils literal"><span class="pre">os_require_quiesce=yes</span></tt>: 通过 QEMU guest agent 向外发送文件系统的 freeze/thaw 调用</li>
+</ul>
 </div>
 </div>
 <div class="section" id="cinder">
@@ -265,26 +274,29 @@ rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337</pre>
 </div>
 <p>These two flags are also used by the Nova ephemeral backend.</p>
 </div>
-<div class="section" id="configuring-nova">
-<h3>Configuring Nova<a class="headerlink" href="#configuring-nova" title="Permalink to this headline">¶</a></h3>
-<p>In order to boot all the virtual machines directly into Ceph, you must
-configure the ephemeral backend for Nova.</p>
-<p>It is recommended to enable the RBD cache in your Ceph configuration file
-(enabled by default since Giant). Moreover, enabling the admin socket
-brings a lot of benefits while troubleshoothing. Having one socket
-per virtual machine using a Ceph block device will help investigating performance and/or wrong behaviors.</p>
-<p>This socket can be accessed like this:</p>
+<div class="section" id="nova">
+<h3>Nova 的配置<a class="headerlink" href="#nova" title="Permalink to this headline">¶</a></h3>
+<p>要让所有虚拟机直接从 Ceph 引导，必须配置 Nova 的 ephemeral 后端。</p>
+<p>我们建议在 Ceph 配置文件里启用 RBD 缓存（从 Giant 起默认启用）；另外，启用管理套接字对于故障排查来说大有好处，给每个使用 Ceph 块设备的虚拟机分配一个套接字有助于调查性能和/或异常行为。</p>
+<p>可以这样访问套接字：</p>
 <div class="highlight-python"><pre>ceph daemon /var/run/ceph/ceph-client.cinder.19195.32310016.asok help</pre>
 </div>
-<p>Now on every compute nodes edit your Ceph configuration file:</p>
+<p>编辑所有计算节点上的 Ceph 配置文件：</p>
 <div class="highlight-python"><pre>[client]
         rbd cache = true
         rbd cache writethrough until flush = true
-        admin socket = /var/run/ceph/$cluster-$type.$id.$pid.$cctid.asok</pre>
+        admin socket = /var/run/ceph/guests/$cluster-$type.$id.$pid.$cctid.asok
+        log file = /var/log/qemu/qemu-guest-$pid.log
+        rbd concurrent management ops = 20</pre>
 </div>
+<p>调整这些路径的权限：</p>
+<div class="highlight-python"><pre>mkdir -p /var/run/ceph/guests/ /var/log/qemu/
+chown qemu:libvirtd /var/run/ceph/guests /var/log/qemu/</pre>
+</div>
+<p>要注意， <tt class="docutils literal"><span class="pre">qemu</span></tt> 用户和 <tt class="docutils literal"><span class="pre">libvirtd</span></tt> 组可能因系统不同而不同，前面的实例基于 RedHat 风格的系统。</p>
 <div class="admonition tip">
 <p class="first admonition-title">Tip</p>
-<p class="last">If your virtual machine is already running you can simply restart it to get the socket</p>
+<p class="last">如果你的虚拟机已经跑起来了，重启一下就能得到套接字。</p>
 </div>
 <div class="section" id="havana-and-icehouse">
 <h4>Havana and Icehouse<a class="headerlink" href="#havana-and-icehouse" title="Permalink to this headline">¶</a></h4>
@@ -297,6 +309,7 @@ order to take advantage of the copy-on-write clone functionality.</p>
 <div class="highlight-python"><pre>libvirt_images_type = rbd
 libvirt_images_rbd_pool = vms
 libvirt_images_rbd_ceph_conf = /etc/ceph/ceph.conf
+libvirt_disk_cachemodes="network=writeback"
 rbd_user = cinder
 rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337</pre>
 </div>
@@ -311,13 +324,13 @@ filesystem. However, it is better to rely on the metadata service and
 <span class="n">libvirt_inject_partition</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span>
 </pre></div>
 </div>
-<p>To ensure a proper live-migration, use the following flags:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">libvirt_live_migration_flag</span><span class="o">=</span><span class="s">&quot;VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST&quot;</span>
+<p>为确保在线迁移能顺利进行，要使用如下标志：</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">libvirt_live_migration_flag</span><span class="o">=</span><span class="s">&quot;VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED&quot;</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id7">
-<h4>Juno<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h4>
+<div class="section" id="id8">
+<h4>Juno<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h4>
 <p>In Juno, Ceph block device was moved under the <tt class="docutils literal"><span class="pre">[libvirt]</span></tt> section.
 On every Compute node, edit <tt class="docutils literal"><span class="pre">/etc/nova/nova.conf</span></tt> under the <tt class="docutils literal"><span class="pre">[libvirt]</span></tt>
 section and add:</p>
@@ -326,7 +339,8 @@ images_type = rbd
 images_rbd_pool = vms
 images_rbd_ceph_conf = /etc/ceph/ceph.conf
 rbd_user = cinder
-rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337</pre>
+rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+disk_cachemodes="network=writeback"</pre>
 </div>
 <p>It is also a good practice to disable file injection. While booting an
 instance, Nova usually attempts to open the rootfs of the virtual machine.
@@ -340,15 +354,25 @@ under the <tt class="docutils literal"><span class="pre">[libvirt]</span></tt> s
 <span class="n">inject_partition</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span>
 </pre></div>
 </div>
-<p>To ensure a proper live-migration, use the following flags:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">live_migration_flag</span><span class="o">=</span><span class="s">&quot;VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST&quot;</span>
+<p>为确保在线迁移能顺利进行，要使用如下标志（写到 <tt class="docutils literal"><span class="pre">[libvirt]</span></tt> 段下）：</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">live_migration_flag</span><span class="o">=</span><span class="s">&quot;VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="kilo">
+<h4>Kilo<a class="headerlink" href="#kilo" title="Permalink to this headline">¶</a></h4>
+<p>为虚拟机的 ephemeral 根磁盘启用 discard 功能：</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="n">libvirt</span><span class="p">]</span>
+<span class="o">...</span>
+<span class="o">...</span>
+<span class="n">hw_disk_discard</span> <span class="o">=</span> <span class="n">unmap</span> <span class="c"># 启用 discard 功能（注意性能）</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
-<div class="section" id="id8">
-<h2>重启 OpenStack<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id9">
+<h2>重启 OpenStack<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
 <p>要激活 Ceph 块设备驱动、并把块设备存储池名载入配置，必须重启 OpenStack 。在基于 Debian 的系统上需在对应节点上执行这些命令：</p>
 <div class="highlight-python"><pre>sudo glance-control api restart
 sudo service nova-compute restart
@@ -361,12 +385,10 @@ sudo service openstack-nova-compute restart
 sudo service openstack-cinder-volume restart
 sudo service openstack-cinder-backup restart</pre>
 </div>
-<p>Once OpenStack is up and running, you should be able to create a volume
-and boot from it.
-一旦 OpenStack 启动并运行正常，应该就可以创建卷宗并用它引导了。</p>
+<p>一旦 OpenStack 启动并运行正常，应该就可以创建卷宗并用它引导了。</p>
 </div>
-<div class="section" id="id9">
-<h2>从块设备引导<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id10">
+<h2>从块设备引导<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
 <p>你可以用 Cinder 命令行工具从一映像创建卷宗：</p>
 <div class="highlight-python"><pre>cinder create --image-id {id of image} --display-name {name of volume} {size of volume}</pre>
 </div>
@@ -374,14 +396,12 @@ and boot from it.
 <div class="highlight-python"><pre>qemu-img convert -f {source-format} -O {output-format} {source-filename} {output-filename}
 qemu-img convert -f qcow2 -O raw precise-cloudimg.img precise-cloudimg.raw</pre>
 </div>
-<p>When Glance and Cinder are both using Ceph block devices, the image is a
-copy-on-write clone, so it can create a new volume quickly. In the OpenStack
-dashboard, you can boot from that volume by performing the following steps:</p>
+<p>Glance 和 Cinder 都使用 Ceph 块设备时，此镜像又是个写时复制克隆，就能非常快地创建新卷宗。在 OpenStack 操作板里就能从那个卷宗引导，步骤如下：</p>
 <ol class="arabic simple">
-<li>Launch a new instance.</li>
-<li>Choose the image associated to the copy-on-write clone.</li>
-<li>Select &#8216;boot from volume&#8217;</li>
-<li>Select the volume you created.</li>
+<li>启动新例程；</li>
+<li>选择与写时复制克隆关联的镜像；</li>
+<li>选中 &#8216;boot from volume&#8217; ；</li>
+<li>选中你刚创建的卷宗。</li>
 </ol>
 </div>
 </div>
@@ -421,20 +441,22 @@ dashboard, you can boot from that volume by performing the following steps:</p>
 <li class="toctree-l5"><a class="reference internal" href="#juno">低于 Juno 的版本</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id5">Juno 版</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id6">任意版 OpenStack</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id7">映像属性</a></li>
 </ul>
 </li>
 <li class="toctree-l4"><a class="reference internal" href="#cinder">配置 Cinder</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#configuring-cinder-backup">Configuring Cinder Backup</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#configuring-nova-to-attach-ceph-rbd-block-device">Configuring Nova to attach Ceph RBD block device</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#configuring-nova">Configuring Nova</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#nova">Nova 的配置</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#havana-and-icehouse">Havana and Icehouse</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id7">Juno</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id8">Juno</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#kilo">Kilo</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#id8">重启 OpenStack</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id9">从块设备引导</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">重启 OpenStack</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">从块设备引导</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../rbd-cloudstack/">CloudStack</a></li>

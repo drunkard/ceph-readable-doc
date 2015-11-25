@@ -1,0 +1,203 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Corpus structure &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="corpus-structure">
+<h1>Corpus structure<a class="headerlink" href="#corpus-structure" title="Permalink to this headline">¶</a></h1>
+<p>ceph.git/ceph-object-corpus is a submodule.:</p>
+<div class="highlight-python"><pre>bin/   # misc scripts
+archive/$version/objects/$type/$hash  # a sample of encoded objects from a specific version</pre>
+</div>
+<p>You can also mark known or deliberate incompatibilities between versions with:</p>
+<div class="highlight-python"><pre>archive/$version/forward_incompat/$type</pre>
+</div>
+<p>The presence of a file indicates that new versions of code cannot
+decode old objects across that $version (this is normally the case).</p>
+<div class="section" id="how-to-generate-an-object-corpus">
+<h2>How to generate an object corpus<a class="headerlink" href="#how-to-generate-an-object-corpus" title="Permalink to this headline">¶</a></h2>
+<p>We can generate an object corpus for a particular version of ceph like so.</p>
+<ol class="arabic">
+<li><p class="first">Checkout a clean repo (best not to do this where you normally work):</p>
+<div class="highlight-python"><pre>git clone ceph.git
+cd ceph
+git submodule update --init --recursive</pre>
+</div>
+</li>
+<li><p class="first">Build with flag to dump objects to /tmp/foo:</p>
+<div class="highlight-python"><pre>rm -rf /tmp/foo ; mkdir /tmp/foo
+./do_autogen.sh -e /tmp/foo
+make</pre>
+</div>
+</li>
+<li><p class="first">Start via vstart:</p>
+<div class="highlight-python"><pre>cd src
+MON=3 OSD=3 MDS=3 RGW=1 ./vstart.sh -n -x</pre>
+</div>
+</li>
+<li><p class="first">Use as much functionality of the cluster as you can, to exercise as many object encoder methods as possible:</p>
+<div class="highlight-python"><pre>./rados -p rbd bench 10 write -b 123
+./ceph osd out 0
+./init-ceph stop osd.1
+for f in ../qa/workunits/cls/*.sh ; do PATH=".:$PATH" $f ; done
+../qa/workunits/rados/test.sh
+./ceph_test_librbd
+./ceph_test_libcephfs
+./init-ceph restart mds.a</pre>
+</div>
+</li>
+</ol>
+<p>Do some more stuff with rgw if you know how.</p>
+<ol class="arabic">
+<li><p class="first">Stop:</p>
+<div class="highlight-python"><pre>./stop.sh</pre>
+</div>
+</li>
+<li><p class="first">Import the corpus (this will take a few minutes):</p>
+<div class="highlight-python"><pre>test/encoding/import.sh /tmp/foo `./ceph-dencoder version` ../ceph-object-corpus/archive
+test/encoding/import-generated.sh ../ceph-object-corpus/archive</pre>
+</div>
+</li>
+<li><p class="first">Prune it!  There will be a bazillion copies of various objects, and we only want a representative sample.:</p>
+<div class="highlight-python"><pre>pushd ../ceph-object-corpus
+bin/prune-archive.sh
+popd</pre>
+</div>
+</li>
+<li><p class="first">Verify the tests pass:</p>
+<div class="highlight-python"><pre>make check-local</pre>
+</div>
+</li>
+<li><p class="first">Commit it to the corpus repo and push:</p>
+<div class="highlight-python"><pre>pushd ../ceph-object-corpus
+git checkout -b wip-new
+git add archive/`../src/ceph-dencoder version`
+git commit -m `../src/ceph-dencoder version`
+git remote add cc ceph.com:/git/ceph-object-corpus.git
+git push cc wip-new
+popd</pre>
+</div>
+</li>
+<li><p class="first">Go test it out:</p>
+<div class="highlight-python"><pre>cd my/regular/tree
+cd ceph-object-corpus
+git fetch origin
+git checkout wip-new
+cd ../src
+make check-local</pre>
+</div>
+</li>
+<li><p class="first">If everything looks good, update the submodule master branch, and commit the submodule in ceph.git.</p>
+</li>
+</ol>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -31,11 +31,10 @@ calm down, take a breath and try answering our initial troubleshooting script.
   the server and, if that succeeds, try connecting to the monitor's port
   using you tool of choice (telnet, nc,...).
 
-**Does ``ceph -s`` run and obtain a reply from the cluster?**
+**ceph -s 是否能运行并收到集群回复？**
 
-  If the answer is yes then your cluster is up and running.  One thing you
-  can take for granted is that the monitors will only answer to a ``status``
-  request if there is a formed quorum.
+  如果答案是肯定的，那么你的集群已启动并运行着。你可以想当然地认为如果已经\
+  形成法定人数，监视器们就只会响应 ``status`` 请求。
 
   If ``ceph -s`` blocked however, without obtaining a reply from the cluster
   or showing a lot of ``fault`` messages, then it is likely that your monitors
@@ -43,7 +42,7 @@ calm down, take a breath and try answering our initial troubleshooting script.
   enough to form a quorum (keep in mind that a quorum if formed by a majority
   of monitors).
 
-**What if ``ceph -s`` doesn't finish?**
+**ceph -s 没完成是什么情况？**
 
   If you haven't gone through all the steps so far, please go back and do.
 

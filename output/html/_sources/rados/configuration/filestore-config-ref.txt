@@ -83,13 +83,13 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 回写器
 ======
 
-文件存储回写器强制使用 ``sync file range`` 来写出大块数据，这样处理有望减小最终同\
-步的代价。实践中，禁用“文件存储回写器”有时候能提升性能。
+filestore 回写器强制使用 ``sync file range`` 来写出大块数据，这样处理有望减小最终同\
+步的代价。实践中，禁用“ filestore 回写器”有时候能提升性能。
 
 
 ``filestore flusher``
 
-:描述: 启用文件存储回写器。
+:描述: 启用 filestore 回写器。
 :类型: Boolean
 :是否必需: No
 :默认值: ``false``
@@ -127,12 +127,12 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 队列
 ====
 
-下面的选项能限制文件存储队列的尺寸。
+下面的选项能限制 filestore 队列的尺寸。
 
 
 ``filestore queue max ops``
 
-:描述: 文件存储操作接受的最大并发数，超过此设置的请求会被拒绝。
+:描述: 文件存储操作接受的最大并发数，超过此设置的请求会被阻塞。
 :类型: Integer
 :是否必需: 无。对性能影响最小。
 :默认值: ``500``
@@ -148,7 +148,7 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 
 ``filestore queue committing max ops``
 
-:描述: 文件存储能提交的最大操作数。
+:描述: filestore 能提交的最大操作数。
 :类型: Integer
 :是否必需: No
 :默认值: ``500``
@@ -156,7 +156,7 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 
 ``filestore queue committing max bytes``
 
-:描述: 文件存储器能提交的最大字节数。
+:描述: filestore 器能提交的最大字节数。
 :类型: Integer
 :是否必需: No
 :默认值: ``100 << 20``
@@ -200,7 +200,7 @@ B-Tree 文件系统
 
 ``filestore btrfs snap``
 
-:描述: 对 ``btrfs`` 文件存储器启用快照功能。
+:描述: 对 ``btrfs`` filestore 启用快照功能。
 :类型: Boolean
 :是否必需: 不。仅适用于 ``btrfs`` 。
 :默认值: ``true``
@@ -208,7 +208,7 @@ B-Tree 文件系统
 
 ``filestore btrfs clone range``
 
-:描述: 允许 ``btrfs`` 文件存储克隆动作排队。
+:描述: 允许 ``btrfs`` filestore 克隆操作排队。
 :类型: Boolean
 :是否必需: 不。仅适用于 ``btrfs`` 。
 :默认值: ``true``
@@ -268,7 +268,7 @@ B-Tree 文件系统
 
 ``filestore update to``
 
-:描述: 限制文件存储自动更新到某个指定版本。
+:描述: 限制 filestore 自动更新到某个指定版本。
 :类型: Integer
 :是否必需: No
 :默认值: ``1000``

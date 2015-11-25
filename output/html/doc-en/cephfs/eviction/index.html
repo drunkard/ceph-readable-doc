@@ -1,0 +1,217 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Ceph filesystem client eviction &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="ceph-filesystem-client-eviction">
+<h1>Ceph filesystem client eviction<a class="headerlink" href="#ceph-filesystem-client-eviction" title="Permalink to this headline">¶</a></h1>
+<p>When a filesystem client is unresponsive or otherwise misbehaving, it
+may be necessary to forcibly terminate its access to the filesystem.  This
+process is called <em>eviction</em>.</p>
+<p>This process is somewhat thorough in order to protect against data inconsistency
+resulting from misbehaving clients.</p>
+<div class="section" id="osd-blacklisting">
+<h2>OSD blacklisting<a class="headerlink" href="#osd-blacklisting" title="Permalink to this headline">¶</a></h2>
+<p>First, prevent the client from performing any more data operations by <em>blacklisting</em>
+it at the RADOS level.  You may be familiar with this concept as <em>fencing</em> in other
+storage systems.</p>
+<p>Identify the client to evict from the MDS session list:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># ceph daemon mds.a session ls</span>
+<span class="p">[</span>
+    <span class="p">{</span> <span class="s">&quot;id&quot;</span><span class="p">:</span> <span class="mi">4117</span><span class="p">,</span>
+      <span class="s">&quot;num_leases&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+      <span class="s">&quot;num_caps&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s">&quot;state&quot;</span><span class="p">:</span> <span class="s">&quot;open&quot;</span><span class="p">,</span>
+      <span class="s">&quot;replay_requests&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+      <span class="s">&quot;reconnecting&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+      <span class="s">&quot;inst&quot;</span><span class="p">:</span> <span class="s">&quot;client.4117 172.16.79.251:0\/3271&quot;</span><span class="p">,</span>
+      <span class="s">&quot;client_metadata&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;entity_id&quot;</span><span class="p">:</span> <span class="s">&quot;admin&quot;</span><span class="p">,</span>
+          <span class="s">&quot;hostname&quot;</span><span class="p">:</span> <span class="s">&quot;fedoravm.localdomain&quot;</span><span class="p">,</span>
+          <span class="s">&quot;mount_point&quot;</span><span class="p">:</span> <span class="s">&quot;\/home\/user\/mnt&quot;</span><span class="p">}}]</span>
+</pre></div>
+</div>
+<p>In this case the &#8216;fedoravm&#8217; client has address <tt class="docutils literal"><span class="pre">172.16.79.251:0/3271</span></tt>, so we blacklist
+it as follows:</p>
+<div class="highlight-python"><pre># ceph osd blacklist add 172.16.79.251:0/3271
+blacklisting 172.16.79.251:0/3271 until 2014-12-09 13:09:56.569368 (3600 sec)</pre>
+</div>
+</div>
+<div class="section" id="osd-epoch-barrier">
+<h2>OSD epoch barrier<a class="headerlink" href="#osd-epoch-barrier" title="Permalink to this headline">¶</a></h2>
+<p>While the evicted client is now marked as blacklisted in the central (mon) copy of the OSD
+map, it is now necessary to ensure that this OSD map update has propagated to all daemons
+involved in subsequent filesystem I/O.  To do this, use the <tt class="docutils literal"><span class="pre">osdmap</span> <span class="pre">barrier</span></tt> MDS admin
+socket command.</p>
+<p>First read the latest OSD epoch:</p>
+<div class="highlight-python"><pre># ceph osd dump
+epoch 12
+fsid fd61ca96-53ff-4311-826c-f36b176d69ea
+created 2014-12-09 12:03:38.595844
+modified 2014-12-09 12:09:56.619957
+...</pre>
+</div>
+<p>In this case it is 12.  Now request the MDS to barrier on this epoch:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># ceph daemon mds.a osdmap barrier 12</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="mds-session-eviction">
+<h2>MDS session eviction<a class="headerlink" href="#mds-session-eviction" title="Permalink to this headline">¶</a></h2>
+<p>Finally, it is safe to evict the client&#8217;s MDS session, such that any capabilities it held
+may be issued to other clients.  The ID here is the <tt class="docutils literal"><span class="pre">id</span></tt> attribute from the <tt class="docutils literal"><span class="pre">session</span> <span class="pre">ls</span></tt>
+output:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># ceph daemon mds.a session evict 4117</span>
+</pre></div>
+</div>
+<p>That&#8217;s it!  The client has now been evicted, and any resources it had locked will
+now be available for other clients.</p>
+</div>
+<div class="section" id="background-osd-epoch-barrier">
+<h2>Background: OSD epoch barrier<a class="headerlink" href="#background-osd-epoch-barrier" title="Permalink to this headline">¶</a></h2>
+<p>The purpose of the barrier is to ensure that when we hand out any
+capabilities which might allow touching the same RADOS objects, the
+clients we hand out the capabilities to must have a sufficiently recent
+OSD map to not race with cancelled operations (from ENOSPC) or
+blacklisted clients (from evictions)</p>
+<p>More specifically, the cases where we set an epoch barrier are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Client eviction (where the client is blacklisted and other clients
+must wait for a post-blacklist epoch to touch the same objects)</li>
+<li>OSD map full flag handling in the client (where the client may
+cancel some OSD ops from a pre-full epoch, so other clients must
+wait until the full epoch or later before touching the same objects).</li>
+<li>MDS startup, because we don&#8217;t persist the barrier epoch, so must
+assume that latest OSD map is always required after a restart.</li>
+</ul>
+</div></blockquote>
+<p>Note that this is a global value for simplicity: we could maintain this on
+a per-inode basis.  We don&#8217;t, because:</p>
+<blockquote>
+<div><ul class="simple">
+<li>It would be more complicated</li>
+<li>It would use an extra 4 bytes of memory for every inode</li>
+<li>It would not be much more efficient as almost always everyone has the latest
+OSD map anyway, in most cases everyone will breeze through this barrier
+rather than waiting.</li>
+<li>We only do this barrier in very rare cases, so any benefit from per-inode
+granularity would only very rarely be seen.</li>
+</ul>
+</div></blockquote>
+<p>The epoch barrier is transmitted along with all capability messages, and
+instructs the receiver of the message to avoid sending any more RADOS
+operations to OSDs until it has seen this OSD epoch.  This mainly applies
+to clients (doing their data writes directly to files), but also applies
+to the MDS because things like file size probing and file deletion are
+done directly from the MDS.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

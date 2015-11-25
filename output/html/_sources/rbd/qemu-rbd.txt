@@ -30,35 +30,31 @@ Ceph 块设备可以和 QEMU 虚拟机集成到一起，关于 QEMU 见 `QEMU �
 用法
 ====
 
-The QEMU command line expects you to specify the pool name and image name. You
-may also specify a snapshot name.
+QEMU 命令行要求你指定 pool 名字和映像名字，还可以指定快照名。
 
-QEMU will assume that the Ceph configuration file resides in the default
-location (e.g., ``/etc/ceph/$cluster.conf``) and that you are executing
-commands as the default ``client.admin`` user unless you expressly specify
-another Ceph configuration file path or another user. When specifying a user,
-QEMU uses the ``ID`` rather than the full ``TYPE:ID``. See `用户管理——用户`_ for details. Do not prepend the client type (i.e., ``client.``) to the
-beginning of the user  ID, or you will receive an authentication error. You
-should have the key for the ``admin`` user or the key of another user you
-specify with the ``:id={user}`` option in a keyring file stored in default path
-(i.e., ``/etc/ceph`` or the local directory with appropriate file ownership and
-permissions. Usage takes the following form::
+QEMU 会假设 Ceph 配置文件位于默认位置（如 ``/etc/ceph/$cluster.conf`` ）、\
+并且你会以默认的 ``client.admin`` 用户执行命令，除非你另外指定了其它 Ceph \
+配置文件路径或者其他用户。指定用户时， QEMU 只需要 ``ID`` 部分，无需完整地\
+指定 ``TYPE:ID`` ，详情见\ `用户管理——用户`_\ 。别在用户 ``ID`` 前面加客户\
+端类型（即 ``client.`` ），否则认证会失败。还应该把 ``admin`` 用户、或者你\
+用 ``:id={user}`` 选项所指定用户的密钥保存到默认路径（即 ``/etc/ceph`` ）\
+或本地目录内的密钥环，并修正密钥环文件的所有权和权限位。命令格式如下： ::
 
 	qemu-img {command} [options] rbd:{pool-name}/{image-name}[@snapshot-name][:option1=value1][:option2=value2...]
 
-For example, specifying the ``id`` and ``conf`` options might look like the following::
+例如，应该这样指定 ``id`` 和 ``conf`` 选项： ::
 
 	qemu-img {command} [options] rbd:glance-pool/maipo:id=glance:conf=/etc/ceph/ceph.conf
 
-.. tip:: 配置中的值如果包含这些字符： ``:`` 、 ``@`` 、 ``=`` ，可在此符号前加反斜\
-   线 ``\`` 转义。
+.. tip:: 配置中的值如果包含这些字符： ``:`` 、 ``@`` 、 ``=`` ，可在此符号\
+   前加反斜线 ``\`` 转义。
 
 
 用 QEMU 创建映像
 ================
 
-你可以用 QEMU 创建块设备映像。必须指定 ``rbd`` 、存储池名、要创建的映像名以及映像尺\
-寸。 ::
+你可以用 QEMU 创建块设备映像。必须指定 ``rbd`` 、存储池名、要创建的映像名\
+以及映像尺寸。 ::
 
 	qemu-img create -f raw rbd:{pool-name}/{image-name} {size}
 

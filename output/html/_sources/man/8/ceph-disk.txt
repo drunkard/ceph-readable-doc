@@ -39,10 +39,7 @@
 prepare
 -------
 
-用法： ceph-disk prepare --cluster [cluster-name] --cluster-uuid [uuid]
---fs-type [ext4|xfs|btrfs] [data-path] [journal-path]
-
-预处理用作 Ceph OSD 的目录、硬盘或驱动器。它会创建 GPT 分区、给分区打上 \
+预处理用作 Ceph OSD 的目录、磁盘。它会创建 GPT 分区、给分区打上 \
 Ceph 风格的 ``uuid`` 标记、创建文件系统、把此文件系统标记为已就绪、使用日志\
 磁盘的整个分区并新增一分区。可单独使用，也可由 :program:`ceph-deploy` 用。
 

@@ -1,0 +1,189 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Watch Notify &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="watch-notify">
+<h1>Watch Notify<a class="headerlink" href="#watch-notify" title="Permalink to this headline">¶</a></h1>
+<p>See librados for the watch/notify interface.</p>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>The object_info (See osd/osd_types.h) tracks the set of watchers for
+a particular object persistently in the object_info_t::watchers map.
+In order to track notify progress, we also maintain some ephemeral
+structures associated with the ObjectContext.</p>
+<p>Each Watch has an associated Watch object (See osd/Watch.h).  The
+ObjectContext for a watched object will have a (strong) reference
+to one Watch object per watch, and each Watch object holds a
+reference to the corresponding ObjectContext.  This circular reference
+is deliberate and is broken when the Watch state is discarded on
+a new peering interval or removed upon timeout expiration or an
+unwatch operation.</p>
+<p>A watch tracks the associated connection via a strong
+ConnectionRef Watch::conn.  The associated connection has a
+WatchConState stashed in the OSD::Session for tracking associated
+Watches in order to be able to notify them upon ms_handle_reset()
+(via WatchConState::reset()).</p>
+<p>Each Watch object tracks the set of currently un-acked notifies.
+start_notify() on a Watch object adds a reference to a new in-progress
+Notify to the Watch and either:</p>
+<ul class="simple">
+<li>if the Watch is <em>connected</em>, sends a Notify message to the client</li>
+<li>if the Watch is <em>unconnected</em>, does nothing.</li>
+</ul>
+<p>When the Watch becomes connected (in ReplicatedPG::do_osd_op_effects),
+Notifies are resent to all remaining tracked Notify objects.</p>
+<p>Each Notify object tracks the set of un-notified Watchers via
+calls to complete_watcher().  Once the remaining set is empty or the
+timeout expires (cb, registered in init()) a notify completion
+is sent to the client.</p>
+</div>
+<div class="section" id="watch-lifecycle">
+<h2>Watch Lifecycle<a class="headerlink" href="#watch-lifecycle" title="Permalink to this headline">¶</a></h2>
+<p>A watch may be in one of 5 states:</p>
+<ol class="arabic simple">
+<li>Non existent.</li>
+<li>On disk, but not registered with an object context.</li>
+<li>Connected</li>
+<li>Disconnected, callback registered with timer</li>
+<li>Disconnected, callback in queue for scrub or is_degraded</li>
+</ol>
+<p>Case 2 occurs between when an OSD goes active and the ObjectContext
+for an object with watchers is loaded into memory due to an access.
+During Case 2, no state is registered for the watch.  Case 2
+transitions to Case 4 in ReplicatedPG::populate_obc_watchers() during
+ReplicatedPG::find_object_context.  Case 1 becomes case 3 via
+OSD::do_osd_op_effects due to a watch operation.  Case 4,5 become case
+3 in the same way. Case 3 becomes case 4 when the connection resets
+on a watcher&#8217;s session.</p>
+<p>Cases 4&amp;5 can use some explanation.  Normally, when a Watch enters Case
+4, a callback is registered with the OSDService::watch_timer to be
+called at timeout expiration.  At the time that the callback is
+called, however, the pg might be in a state where it cannot write
+to the object in order to remove the watch (i.e., during a scrub
+or while the object is degraded).  In that case, we use
+Watch::get_delayed_cb() to generate another Context for use from
+the callbacks_for_degraded_object and Scrubber::callbacks lists.
+In either case, Watch::unregister_cb() does the right thing
+(SafeTimer::cancel_event() is harmless for contexts not registered
+with the timer).</p>
+</div>
+<div class="section" id="notify-lifecycle">
+<h2>Notify Lifecycle<a class="headerlink" href="#notify-lifecycle" title="Permalink to this headline">¶</a></h2>
+<p>The notify timeout is simpler: a timeout callback is registered when
+the notify is init()&#8217;d.  If all watchers ack notifies before the
+timeout occurs, the timeout is canceled and the client is notified
+of the notify completion.  Otherwise, the timeout fires, the Notify
+object pings each Watch via cancel_notify to remove itself, and
+sends the notify completion to the client early.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

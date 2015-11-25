@@ -1,0 +1,238 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Snaps &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="snaps">
+<h1>Snaps<a class="headerlink" href="#snaps" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Rados supports two related snapshotting mechanisms:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><em>pool snaps</em>: snapshots are implicitely applied to all objects
+in a pool</li>
+<li><em>self managed snaps</em>: the user must provide the current <em>SnapContext</em>
+on each write.</li>
+</ol>
+</div></blockquote>
+<p>These two are mutually exclusive, only one or the other can be used on
+a particular pool.</p>
+<p>The <em>SnapContext</em> is the set of snapshots currently defined for an object
+as well as the most recent snapshot (the <em>seq</em>) requested from the mon for
+sequencing purposes (a <em>SnapContext</em> with a newer <em>seq</em> is considered to
+be more recent).</p>
+<p>The difference between <em>pool snaps</em> and <em>self managed snaps</em> from the
+OSD&#8217;s point of view lies in whether the <em>SnapContext</em> comes to the OSD
+via the client&#8217;s MOSDOp or via the most recent OSDMap.</p>
+<p>See OSD::make_writeable</p>
+</div>
+<div class="section" id="ondisk-structures">
+<h2>Ondisk Structures<a class="headerlink" href="#ondisk-structures" title="Permalink to this headline">¶</a></h2>
+<p>Each object has in the pg collection a <em>head</em> object (or <em>snapdir</em>, which we
+will come to shortly) and possibly a set of <em>clone</em> objects.
+Each hobject_t has a snap field.  For the <em>head</em> (the only writeable version
+of an object), the snap field is set to CEPH_NOSNAP.  For the <em>clones</em>, the
+snap field is set to the <em>seq</em> of the <em>SnapContext</em> at their creation.
+When the OSD services a write, it first checks whether the most recent
+<em>clone</em> is tagged with a snapid prior to the most recent snap represented
+in the <em>SnapContext</em>.  If so, at least one snapshot has occurred between
+the time of the write and the time of the last clone.  Therefore, prior
+to performing the mutation, the OSD creates a new clone for servicing
+reads on snaps between the snapid of the last clone and the most recent
+snapid.</p>
+<p>The <em>head</em> object contains a <em>SnapSet</em> encoded in an attribute, which tracks</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>The full set of snaps defined for the object</li>
+<li>The full set of clones which currently exist</li>
+<li>Overlapping intervals between clones for tracking space usage</li>
+<li>Clone size</li>
+</ol>
+</div></blockquote>
+<p>If the <em>head</em> is deleted while there are still clones, a <em>snapdir</em> object
+is created instead to house the <em>SnapSet</em>.</p>
+<p>Additionally, the <em>object_info_t</em> on each clone includes a vector of snaps
+for which clone is defined.</p>
+</div>
+<div class="section" id="snap-removal">
+<h2>Snap Removal<a class="headerlink" href="#snap-removal" title="Permalink to this headline">¶</a></h2>
+<p>To remove a snapshot, a request is made to the <em>Monitor</em> cluster to
+add the snapshot id to the list of purged snaps (or to remove it from
+the set of pool snaps in the case of <em>pool snaps</em>).  In either case,
+the <em>PG</em> adds the snap to its <em>snap_trimq</em> for trimming.</p>
+<p>A clone can be removed when all of its snaps have been removed.  In
+order to determine which clones might need to be removed upon snap
+removal, we maintain a mapping from snap to <em>hobject_t</em> using the
+<em>SnapMapper</em>.</p>
+<p>See ReplicatedPG::SnapTrimmer, SnapMapper</p>
+<p>This trimming is performed asynchronously by the snap_trim_wq while the
+pg is clean and not scrubbing.</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>The next snap in PG::snap_trimq is selected for trimming</li>
+<li>We determine the next object for trimming out of PG::snap_mapper.
+For each object, we create a log entry and repop updating the
+object info and the snap set (including adjusting the overlaps).</li>
+<li>We also locally update our <em>SnapMapper</em> instance with the object&#8217;s
+new snaps.</li>
+<li>The log entry containing the modification of the object also
+contains the new set of snaps, which the replica uses to update
+its own <em>SnapMapper</em> instance.</li>
+<li>The primary shares the info with the replica, which persists
+the new set of purged_snaps along with the rest of the info.</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="recovery">
+<h2>Recovery<a class="headerlink" href="#recovery" title="Permalink to this headline">¶</a></h2>
+<p>Because the trim operations are implemented using repops and log entries,
+normal pg peering and recovery maintain the snap trimmer operations with
+the caveat that push and removal operations need to update the local
+<em>SnapMapper</em> instance.  If the purged_snaps update is lost, we merely
+retrim a now empty snap.</p>
+</div>
+<div class="section" id="snapmapper">
+<h2>SnapMapper<a class="headerlink" href="#snapmapper" title="Permalink to this headline">¶</a></h2>
+<p><em>SnapMapper</em> is implemented on top of map_cacher&lt;string, bufferlist&gt;,
+which provides an interface over a backing store such as the filesystem
+with async transactions.  While transactions are incomplete, the map_cacher
+instance buffers unstable keys allowing consistent access without having
+to flush the filestore.  <em>SnapMapper</em> provides two mappings:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>hobject_t -&gt; set&lt;snapid_t&gt;: stores the set of snaps for each clone
+object</li>
+<li>snapid_t -&gt; hobject_t: stores the set of hobjects with the snapshot
+as one of its snaps</li>
+</ol>
+</div></blockquote>
+<p>Assumption: there are lots of hobjects and relatively few snaps.  The
+first encoding has a stringification of the object as the key and an
+encoding of the set of snaps as a value.  The second mapping, because there
+might be many hobjects for a single snap, is stored as a collection of keys
+of the form stringify(snap)_stringify(object) such that stringify(snap)
+is constant length.  These keys have a bufferlist encoding
+pair&lt;snapid, hobject_t&gt; as a value.  Thus, creating or trimming a single
+object does not involve reading all objects for any snap.  Additionally,
+upon construction, the <em>SnapMapper</em> is provided with a mask for filtering
+the objects in the single SnapMapper keyspace belonging to that pg.</p>
+</div>
+<div class="section" id="split">
+<h2>Split<a class="headerlink" href="#split" title="Permalink to this headline">¶</a></h2>
+<p>The snapid_t -&gt; hobject_t key entries are arranged such that for any pg,
+up to 8 prefixes need to be checked to determine all hobjects in a particular
+snap for a particular pg.  Upon split, the prefixes to check on the parent
+are adjusted such that only the objects remaining in the pg will be visible.
+The children will immediately have the correct mapping.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../">
+              <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

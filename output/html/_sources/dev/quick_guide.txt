@@ -15,12 +15,12 @@
 	$ ./run-make-check.sh
 
 
-进行开发环境部署
-----------------
+开发集群的部署
+--------------
 
-Ceph contains a script called ``vstart.sh`` which allows developers to quickly test their code using
-a simple deployment on your development system. Once the build finishes successfully, start the ceph
-deployment using the following command:
+Ceph 包含一个名为 ``vstart.sh`` 的脚本（还有\ \
+:doc:`/dev/dev_cluster_deployement`\ ），可以让开发者们在开发系统上用\
+最简部署快速地测试代码。编译成功后，用下列命令开始部署：
 
 .. code::
 

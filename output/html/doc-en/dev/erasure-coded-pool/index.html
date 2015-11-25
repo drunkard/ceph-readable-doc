@@ -1,0 +1,236 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Erasure Coded pool &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="erasure-coded-pool">
+<h1>Erasure Coded pool<a class="headerlink" href="#erasure-coded-pool" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="purpose">
+<h2>Purpose<a class="headerlink" href="#purpose" title="Permalink to this headline">¶</a></h2>
+<p>Erasure-coded pools require less storage space compared to replicated
+pools.  The erasure-coding support has higher computational requirements and
+only supports a subset of the operations allowed on an object (for instance,
+partial write is not supported).</p>
+</div>
+<div class="section" id="use-cases">
+<h2>Use cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="cold-storage">
+<h3>Cold storage<a class="headerlink" href="#cold-storage" title="Permalink to this headline">¶</a></h3>
+<p>An erasure-coded pool is created to store a large number of 1GB
+objects (imaging, genomics, etc.) and 10% of them are read per
+month. New objects are added every day and the objects are not
+modified after being written. On average there is one write for 10,000
+reads.</p>
+<p>A replicated pool is created and set as a cache tier for the
+erasure coded pool. An agent demotes objects (i.e. moves them from the
+replicated pool to the erasure-coded pool) if they have not been
+accessed in a week.</p>
+<p>The erasure-coded pool crush ruleset targets hardware designed for
+cold storage with high latency and slow access time. The replicated
+pool crush ruleset targets faster hardware to provide better response
+times.</p>
+</div>
+<div class="section" id="cheap-multidatacenter-storage">
+<h3>Cheap multidatacenter storage<a class="headerlink" href="#cheap-multidatacenter-storage" title="Permalink to this headline">¶</a></h3>
+<p>Ten datacenters are connected with dedicated network links. Each
+datacenter contains the same amount of storage with no power-supply
+backup and no air-cooling system.</p>
+<p>An erasure-coded pool is created with a crush map ruleset that will
+ensure no data loss if at most three datacenters fail
+simultaneously. The overhead is 50% with erasure code configured to
+split data in six (k=6) and create three coding chunks (m=3). With
+replication the overhead would be 400% (four replicas).</p>
+</div>
+</div>
+<div class="section" id="interface">
+<h2>Interface<a class="headerlink" href="#interface" title="Permalink to this headline">¶</a></h2>
+<p>Set up an erasure-coded pool:</p>
+<div class="highlight-python"><pre>$ ceph osd pool create ecpool 12 12 erasure</pre>
+</div>
+<p>Set up an erasure-coded pool and the associated crush ruleset:</p>
+<div class="highlight-python"><pre>$ ceph osd crush rule create-erasure ecruleset
+$ ceph osd pool create ecpool 12 12 erasure \
+    default ecruleset</pre>
+</div>
+<p>Set the ruleset failure domain to osd (instead of the host which is the default):</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile set myprofile \
+    ruleset-failure-domain=osd
+$ ceph osd erasure-code-profile get myprofile
+k=2
+m=1
+plugin=jerasure
+technique=reed_sol_van
+ruleset-failure-domain=osd
+$ ceph osd pool create ecpool 12 12 erasure myprofile</pre>
+</div>
+<p>Control the parameters of the erasure code plugin:</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile set myprofile \
+    k=3 m=1
+$ ceph osd erasure-code-profile get myprofile
+k=3
+m=1
+plugin=jerasure
+technique=reed_sol_van
+$ ceph osd pool create ecpool 12 12 erasure \
+    myprofile</pre>
+</div>
+<p>Choose an alternate erasure code plugin:</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile set myprofile \
+    plugin=example technique=xor
+$ ceph osd erasure-code-profile get myprofile
+k=2
+m=1
+plugin=example
+technique=xor
+$ ceph osd pool create ecpool 12 12 erasure \
+    myprofile</pre>
+</div>
+<p>Display the default erasure code profile:</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile ls
+default
+$ ceph osd erasure-code-profile get default
+k=2
+m=1
+plugin=jerasure
+technique=reed_sol_van</pre>
+</div>
+<p>Create a profile to set the data to be distributed on six OSDs (k+m=6) and sustain the loss of three OSDs (m=3) without losing data:</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile set myprofile k=3 m=3
+$ ceph osd erasure-code-profile get myprofile
+k=3
+m=3
+plugin=jerasure
+technique=reed_sol_van
+$ ceph osd erasure-code-profile ls
+default
+myprofile</pre>
+</div>
+<p>Remove a profile that is no longer in use (otherwise it will fail with EBUSY):</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile ls
+default
+myprofile
+$ ceph osd erasure-code-profile rm myprofile
+$ ceph osd erasure-code-profile ls
+default</pre>
+</div>
+<p>Set the ruleset to take ssd (instead of default):</p>
+<div class="highlight-python"><pre>$ ceph osd erasure-code-profile set myprofile \
+    ruleset-root=ssd
+$ ceph osd erasure-code-profile get myprofile
+k=2
+m=1
+plugin=jerasure
+technique=reed_sol_van
+ruleset-root=ssd</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>
