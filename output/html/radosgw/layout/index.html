@@ -1,0 +1,209 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Rados 网关的数据布局 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="rados">
+<h1>Rados 网关的数据布局<a class="headerlink" href="#rados" title="Permalink to this headline">¶</a></h1>
+<p>虽说源代码才是终极手册，但本文档能让新开发者更快地了解实现细节。</p>
+<div class="section" id="id1">
+<h2>简介<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>Swift 提供了名为容器（ container ）的东西，在这里它等价于桶（ bucket ）概念。也可以说 RGW 用桶实现了 Swift 的容器功能。</p>
+<p>本文档没有考虑 RGW 如何操作这些数据结构，比如说，为了序列化怎样使用 encode() 和 decode() 方法、等等。</p>
+</div>
+<div class="section" id="id2">
+<h2>概念预览<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>虽然 RADOS 只知道 pool 、对象（及其 xattr ）和 omap[1] ，但是从概念上 RGW 把它的数据组织成了三种不同的类型：元数据、桶索引和数据。</p>
+<ul class="simple">
+<li>元数据</li>
+</ul>
+<p>我们有三“部分”元数据： user 、 bucket 、和 bucket.instance 。你可以用下面的命令调查这几种元数据：</p>
+<div class="highlight-python"><pre>radosgw-admin metadata list
+
+radosgw-admin metadata list bucket
+radosgw-admin metadata list bucket.instance
+radosgw-admin metadata list user
+
+radosgw-admin metadata get bucket:&lt;bucket&gt;
+radosgw-admin metadata get bucket.instance:&lt;bucket&gt;:&lt;bucket_id&gt;
+radosgw-admin metadata get user:&lt;user&gt;   # or set</pre>
+</div>
+<p>user: 保存着用户信息
+bucket: 保存着桶名与其例程 ID 的映射关系
+bucket.instance: 保存着桶例程信息 [2]</p>
+<p>每个元数据条目都存储于独立的 rados 对象。
+实现细节见下文。</p>
+<p>要注意，元数据没被索引过。所以，罗列元数据部分的时候，其实是在包含它们的存储池里做 rados pgls 操作。</p>
+<ul class="simple">
+<li>桶索引</li>
+</ul>
+<p>它是另一种元数据，也是独立保存的。桶索引是在 rados 对象里保存的键值映射，默认情况下，每个桶占用一个 rados 对象，但是从 Hammer 起，这些映射可以分片存入多个 rados 对象。这个映射本身是保存在 omap 里的，并与各 rados 对象关联。各 omap 的键名是对象名、值是此对象的基本元数据——罗列此桶时显示的就是元数据。另外，各 omap 都有一个头，保存着桶的一些统计元数据（如对象数量、总尺寸等等）。</p>
+<p>另外，桶索引里还有其它信息，是保存在其它键名空间里的。比如，我们可以在这里存桶索引日志、而且对于版本化的对象，有更多信息要保存。</p>
+<ul class="simple">
+<li>数据</li>
+</ul>
+<p>各个 rgw 对象的数据保存在一或多个 rados 对象里。</p>
+</div>
+<div class="section" id="id3">
+<h2>对象定位路径<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>访问对象时， ReST 风格的 API 要提供给 RGW 三个参数：帐户信息（ S3 的访问密钥或者 Swift 的帐户名）、桶或容器名、和对象名（或键名）。当前， RGW 只用帐户信息查找用户 ID 并用于访问控制，只用桶名和对象键名就能定位存储池内的对象。</p>
+<p>在 RGW 里，用户 ID 是个字符串，通常是用户凭据里的真实用户名，而不是其哈希值或者映射过的标识符。</p>
+<p>访问用户的数据时，用户记录要从 .users.uid 存储池里的 &lt;user_id&gt; 对象载入。</p>
+<p>桶名即 .rgw 存储池内的对象名。要载入桶记录，以便获取所谓的记号（ marker ），它作为桶的唯一标识符。</p>
+<p>对象数据位于 .rgw.buckets 存储池内。对象名是 &#8220;&lt;marker&gt;_&lt;key&gt;&#8221; ，如 default.7593.4_image.png ，其中 marker 是 default.7593.4 、键名是 image.png 。正因为这些组合起来的名字没被解析过，只是传递给了 RADOS ，所以分隔符的选择就没那么重要、不会引起歧义；正因为如此，斜杠也允许作为对象名（键名）。</p>
+<p>也可以创建并使用多个数据存储池，这样不同的用户、桶就可以默认放到不同的 rados 存储池里了，以此提供了必要的伸缩性。这样的布局和这些存储池的命名是由 policy 选项 [3] 配置的。</p>
+<p>一个 RGW 对象可由多个 RADOS 对象组成，其中的第一个对象是头儿，它包含着元数据，像载荷清单、 ACL 、内容类型、 ETag 、和用户自定义的元数据，这些元数据是存储在 xattr 里的。为保证高效性、原子性，这个头还可以存储最多 512 KB 的对象数据。载荷清单描述了各对象是如何存储在 RADOS 对象里的。</p>
+</div>
+<div class="section" id="id4">
+<h2>桶和对象列表<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>某一用户的桶存在 .users.uid 存储池里、名为 &lt;user_id&gt;.buckets 的对象（如 foo.buckets ）的 omap 里。在罗列桶、更新桶内容、以及更新和检索桶的统计信息（例如配额信息）时要访问这些对象。</p>
+<p>这些 omap 条目的值位于用户可见、编码过的 cls_user_bucket_entry 类和它的嵌套类 cls_user_bucket 里面。</p>
+<p>这些列表以桶名持久化、存储在 .rgw 存储池里面。</p>
+<p>某一桶内所包含的对象罗列在桶索引里，这已经在前面的“桶索引”小段里说过了。在 .rgw.buckets.index 存储池里、索引对象的默认命名规则是 .dir.&lt;marker&gt; 。</p>
+</div>
+<div class="section" id="id5">
+<h2>附注<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>[1] Omap 是个与对象相关联的键值存储，类似扩展属性与 POSIX 文件的关联一样。对象的 omap 与对象数据在物理上是分离的，但是对 RADOS 网关来说是不可见、无形的。在 Hammer 版里，每个 OSD 都有一个用于存储 omap 的 LevelDB 数据库。</p>
+<p>[2] 在 Dumpling 版之前还没有 bucket.instance 元数据，这些信息存储在bucket 元数据里。所以，在较老的集群里有可能碰到这样的桶。</p>
+<p>[3] 在 Infernalis 版有个尚未被主线合并的提交，它实现了这样的功能，不必再以句点作为 rgw 系统存储池的前缀，并且重命名了所有默认存储池。详情见 Github 里的拉取请求 #4944 &#8220;rgw noperiod&#8221; 。</p>
+</div>
+<div class="section" id="id6">
+<h2>附录：简介<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>已知存储池：</p>
+<dl class="docutils">
+<dt>.rgw.root</dt>
+<dd>不确定的 region 、 zone 以及全局信息，每条使用一个对象。</dd>
+<dt>.rgw.control</dt>
+<dd>notify.&lt;N&gt;</dd>
+<dt>.rgw</dt>
+<dd>&lt;bucket&gt;
+.bucket.meta.&lt;bucket&gt;:&lt;marker&gt;</dd>
+<dt>.rgw.gc</dt>
+<dd>gc.&lt;N&gt;</dd>
+<dt>.users.uid</dt>
+<dd>包含两种信息，存储于 &lt;user&gt; 对象里的各个用户信息（RGWUserInfo）、及其桶列表，以 omap 格式储存在名为 &#8220;&lt;user&gt;.buckets&#8221; 的对象里。</dd>
+<dt>.users.email</dt>
+<dd>不重要</dd>
+<dt>.users</dt>
+<dd>47UA98JSTJZ9YAN3OS3O
+不明白为什么这里没用用户 ID 作为对象名。</dd>
+<dt>.users.swift</dt>
+<dd>test:tester</dd>
+<dt>.rgw.buckets.index</dt>
+<dd>对象命名为 .dir.&lt;marker&gt; ，它们分别包含一个桶索引。</dd>
+<dt>.rgw.buckets</dt>
+<dd>default.7593.4__shadow_.488urDFerTYXavx4yAd-Op8mxehnvTI_1
+&lt;marker&gt;_&lt;key&gt;</dd>
+</dl>
+<p>marker 长得像 &#8220;default.16004.1&#8221; 或者 &#8220;default.7593.4&#8221; 。</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2014, Inktank Storage, Inc. and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

@@ -338,6 +338,8 @@ Map 选项
 这里的大多数选项主要适用于调试和压力测试。默认值设置于内核中，因此还与所用内\
 核的版本有关。
 
+libceph （每个客户端例程）选项：
+
 * fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee - 应该由客户端提供的 FSID 。
 
 * ip=a.b.c.d[:p] - IP 还有客户端可选的端口。
@@ -350,8 +352,8 @@ Map 选项
 
 * nocrc - 在写入数据时不计算 CRC32C 校验值。
 
-* cephx_require_signatures - 要求对 cephx 消息签名，即设置 MSG_AUTH 功能位\
-  （从 3.19 起默认开启）。
+* cephx_require_signatures - 要求对 cephx 消息签名（从 3.19 起默认开\
+  启）。
 
 * nocephx_require_signatures - 不要求对 cephx 消息签名（从 3.19 起）。
 
@@ -367,9 +369,13 @@ Map 选项
 
 * osd_idle_ttl=x - OSD 闲置 TTL （默认为 60 秒）。
 
+映射（每个块设备例程）选项：
+
 * rw - 以读写方式映射映像（默认）。
 
 * ro - 以只读方式映射映像，等价于 --read-only 。
+
+* queue_depth=x - 队列深度（从 4.2 起默认为 128 个请求）。
 
 
 实例

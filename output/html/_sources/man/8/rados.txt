@@ -57,12 +57,17 @@ cluster (RADOS), part of the Ceph distributed storage system.
 
    设置块尺寸，适用于 put/get 操作、及写入压力测试。
 
+.. option:: --striper
+
+   使用 rados 的条带化 API 而非默认的，支持的操作有 stat 、 get 、 \
+   put 、 truncate 、 rm 、 ls 以及所有与 xattr 相关的操作。
+
 
 全局命令
 ========
 
 :command:`lspools`
-  List object pools
+  罗列对象存储池
 
 :command:`df`
   Show utilization statistics, including disk usage (bytes) and object
