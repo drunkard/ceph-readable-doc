@@ -182,7 +182,7 @@
 :默认值: ``false``
 
 
-``rgw object stripe size``
+``rgw obj stripe size``
 
 :描述: Ceph 对象网关的对象条带尺寸。关于条带化请参考\ `体系结构`_\ 。
 :类型: Integer

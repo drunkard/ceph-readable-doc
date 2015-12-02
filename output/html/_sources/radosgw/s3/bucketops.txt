@@ -4,6 +4,7 @@
 
 PUT Bucket
 ----------
+
 Creates a new bucket. To create a bucket, you must have a user ID and a valid AWS Access Key ID to authenticate requests. You may not
 create buckets as an anonymous user.
 
@@ -17,8 +18,8 @@ In general, bucket names should follow domain name constraints.
 - Bucket names must begin and end with a lowercase letter.
 - Bucket names may contain a dash (-).
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -28,8 +29,8 @@ Syntax
 
     Authorization: AWS {access-key}:{hash-of-header-and-secret}
 
-Parameters
-~~~~~~~~~~
+参数
+~~~~
 
 +---------------+----------------------+-----------------------------------------------------------------------------+------------+
 | Name          | Description          | Valid Values                                                                | Required   |
@@ -38,9 +39,8 @@ Parameters
 +---------------+----------------------+-----------------------------------------------------------------------------+------------+
 
 
-
-HTTP Response
-~~~~~~~~~~~~~
+HTTP 响应
+~~~~~~~~~
 
 If the bucket name is unique, within constraints and unused, the operation will succeed.
 If a bucket with the same name already exists and the user is the bucket owner, the operation will succeed.
@@ -345,3 +345,39 @@ Response Entities
 +-----------------------------------------+-------------+----------------------------------------------------------------------------------------------------------+
 | ``CommonPrefixes.Prefix``               | String      | The substring of the key after the prefix as defined by the ``prefix`` request parameter.                |
 +-----------------------------------------+-------------+----------------------------------------------------------------------------------------------------------+
+
+ENABLE/SUSPEND BUCKET VERSIONING
+--------------------------------
+
+``PUT /?versioning`` 这个子资源用于设置已有桶的版本化状态。只有桶\
+所有者才能设置版本化状态。
+
+版本化状态可以设置为如下取值之一：
+
+- Enabled : 为桶内的对象启用版本化支持，放入桶内的对象都会收到一个\
+  唯一的版本 ID 。
+- Suspended : 为桶内的对象禁用版本化支持，放入桶内的对象其版本 ID \
+  都是 null 。
+
+如果从没给某一个桶设置过版本化状态，那它就没有版本化状态； \
+GET versioning 请求就不会返回版本化状态值。
+
+
+语法
+~~~~
+
+::
+
+	PUT  /{bucket}?versioning  HTTP/1.1
+
+
+请求实体
+~~~~~~~~
+
++-----------------------------+-----------+------------------------------------------------+
+| 名称                        | 类型      | 描述                                           |
++=============================+===========+================================================+
+| ``VersioningConfiguration`` | Container | 用于包装此请求的容器。                         |
++-----------------------------+-----------+------------------------------------------------+
+| ``Status``                  | String    | 设置桶的版本化状态，可用值： Suspended/Enabled |
++-----------------------------+-----------+------------------------------------------------+

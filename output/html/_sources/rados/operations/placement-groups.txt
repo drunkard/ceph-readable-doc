@@ -34,8 +34,9 @@ leads to data loss).
 归置组是如何使用的？
 ====================
 
-存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的位置及其元数据需要大\
-量计算——即一个拥有数百万对象的系统，不可能在对象这一级追踪位置。
+存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的位置\
+及其元数据需要大量计算——即一个拥有数百万对象的系统，不可能在对象这\
+一级追踪位置。
 
 .. ditaa::
            /-----\  /-----\  /-----\  /-----\  /-----\
@@ -58,11 +59,9 @@ leads to data loss).
                   |                       |
                   +-----------------------+
 
-Placement groups are invisible to the Ceph user: the CRUSH algorithm
-determines in which placement group the object will be
-placed. Although CRUSH is a deterministic function using the object
-name as a parameter, there is no way to force an object into a given
-placement group.
+Ceph 客户端会计算某一对象应该位于哪个归置组里，它是这样实现的，先给\
+对象 ID 做哈希操作，然后再根据指定存储池里的 PG 数量、存储池 ID 做\
+一个运算。详情见 `PG 映射到 OSD`_ 。
 
 The object's contents within a placement group are stored in a set of
 OSDs. For instance, in a replicated pool of size two, each placement
@@ -404,3 +403,4 @@ Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目
 
 
 .. _创建存储池: ../pools#createpool
+.. _PG 映射到 OSD: ../../../architecture#mapping-pgs-to-osds

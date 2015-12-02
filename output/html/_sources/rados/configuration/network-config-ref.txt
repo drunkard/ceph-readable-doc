@@ -350,18 +350,18 @@ TCP
 Ceph 默认禁用 TCP 缓冲。
 
 
-``tcp nodelay``
+``ms tcp nodelay``
 
-:描述: Ceph 用 ``tcp nodelay`` 使系统尽快（不缓冲）发送每个请求。禁用 \
-       `Nagle 算法`_\ 可增加吞吐量，但会引进延时。如果你遇到大量小包，可以禁\
-       用 ``tcp nodelay`` 试试。
+:描述: Ceph 用 ``ms tcp nodelay`` 使系统尽快（不缓冲）发送每个\
+       请求。禁用 `Nagle 算法`_\ 可增加吞吐量，但会引进延时。\
+       如果你遇到大量小包，可以禁用 ``ms tcp nodelay`` 试试。
 
 :类型: Boolean
 :是否必需: No
 :默认值: ``true``
 
 
-``tcp rcvbuf``
+``ms tcp rcvbuf``
 
 :描述: 网络套接字接收缓冲尺寸，默认禁用。
 :类型: 32-bit Integer
@@ -371,8 +371,9 @@ Ceph 默认禁用 TCP 缓冲。
 
 ``ms tcp read timeout``
 
-:描述: 如果一客户端或守护进程请求连接到另一个 Ceph 守护进程，且没有断开不再\
-       使用的连接，在 ``tcp read timeout`` 指定的秒数之后它将被标记为空闲。
+:描述: 如果一客户端或守护进程发送请求到另一个 Ceph 守护进程，且\
+       没有断开不再使用的连接，在 ``ms tcp read timeout`` 指定的\
+       秒数之后它将被标记为空闲。
 
 :类型: Unsigned 64-bit Integer
 :是否必需: No

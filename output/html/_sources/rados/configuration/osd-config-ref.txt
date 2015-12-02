@@ -183,6 +183,24 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 :默认值: ``1``
 
 
+``osd scrub begin hour``
+
+:描述: 被调度的洗刷操作在一天中可以运行的时间下限。
+:类型: 0 到 24 之间的整数
+:默认值: ``0``
+
+
+``osd scrub end hour``
+
+:描述: 被调度的洗刷操作在一天中可以运行的时间上限。本选项与 \
+       ``osd scrub begin hour`` 一起定义了一个时间窗口，在此\
+       期间可以进行洗刷操作。但是，在某个归置组的洗刷间隔超过 \
+       ``osd scrub max interval`` 时，不管这个时间窗口是否合\
+       适都会执行。
+:类型: 0 到 24 之间的整数
+:默认值: ``24``
+
+
 ``osd scrub thread timeout``
 
 :描述: 洗刷线程最大死亡时值。
@@ -199,8 +217,8 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 
 ``osd scrub load threshold``
 
-:描述: 最大负载，当前系统负载（ ``getloadavg()`` 所定义的）高于此值时 Ceph \
-       不会洗刷。默认 ``0.5`` 。
+:描述: 最大负载，当前系统负载（ ``getloadavg()`` 所定义的）高于\
+       此值时 Ceph 不会洗刷。默认 ``0.5`` 。
 
 :类型: Float
 :默认值: ``0.5``
@@ -227,6 +245,18 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 
 :类型: Float
 :默认值: 每周一次。 ``60*60*24*7``
+
+
+``osd scrub interval randomize ratio``
+
+:描述: 在给某一归置组调度下一个洗刷作业时，给 \
+       ``osd scrub min interval`` 增加个随机延时，这个延时是个小于 \
+       ``osd scrub min interval`` \* \
+       ``osd scrub interval randomized ratio`` 的随机值。所以在实践\
+       中，这个默认设置会把洗刷操作随机地散布到允许的时间窗口内，\
+       即 ``[1, 1.5]`` \* ``osd scrub min interval`` 。
+:类型: Float
+:默认值: ``0.5``
 
 
 ``osd deep scrub stride``

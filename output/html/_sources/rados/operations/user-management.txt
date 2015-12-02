@@ -576,7 +576,7 @@ Ceph 支持用户名和密钥的下列用法：
        ``ceph auth get-or-create`` 获取密钥环并保存在本地，然后您就可以改\
        用其他用户而无需重指定密钥环路径了。 ::
 
-               sudo rbd map foo --pool rbd myimage --id client.foo --keyring /path/to/keyring
+               sudo rbd map --id foo --keyring /path/to/keyring mypool/myimage
 
 
 .. _pools: ../pools

@@ -18,25 +18,27 @@
 映射块设备
 ==========
 
-用 ``rbd`` 把映像名映射为内核模块。必须指定映像名、存储池名、和用户名。若 RBD 内核\
-模块尚未加载， ``rbd`` 命令会自动加载。 ::
+用 ``rbd`` 把映像名映射为内核模块。必须指定映像名、存储池名、和用户\
+名。若 RBD 内核模块尚未加载， ``rbd`` 命令会自动加载。 ::
 
-	sudo rbd map {image-name} --pool {pool-name} --id {user-name}
+	sudo rbd map {pool-name}/{image-name} --id {user-name}
 
 例如： ::
 
-	sudo rbd map --pool rbd myimage --id admin
+	sudo rbd map rbd/myimage --id admin
 
-如果你启用了 `cephx`_ 认证，你必须提供密钥，可以从密钥环或文件获取。 ::
+如果你启用了 `cephx`_ 认证，还必须提供密钥，可以用密钥环或密钥文件\
+指定密钥。 ::
 
-	sudo rbd map --pool rbd myimage --id admin --keyring /path/to/keyring
-	sudo rbd map --pool rbd myimage --id admin --keyfile /path/to/file
+	sudo rbd map rbd/myimage --id admin --keyring /path/to/keyring
+	sudo rbd map rbd/myimage --id admin --keyfile /path/to/file
 
 
 查看已映射块设备
 ================
 
-可以用 ``rbd`` 命令的 ``showmapped`` 选项查看映射为内核模块的块设备映像。 ::
+可以用 ``rbd`` 命令的 ``showmapped`` 选项查看映射为内核模块的块设备\
+映像。 ::
 
 	rbd showmapped
 
@@ -44,8 +46,8 @@
 取消块设备映射
 ==============
 
-要取消块设备映射，用 ``rbd`` 命令、指定 ``unmap`` 选项和设备名（即为方便起见使用的\
-同名块设备映像）。 ::
+要取消块设备映射，用 ``rbd`` 命令、指定 ``unmap`` 选项和设备名（即\
+为方便起见使用的同名块设备映像）。 ::
 
 	sudo rbd unmap /dev/rbd/{poolname}/{imagename}
 

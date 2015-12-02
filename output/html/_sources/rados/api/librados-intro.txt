@@ -69,7 +69,8 @@ headers for C/C++ under ``/usr/include/rados``. ::
 
 	sudo apt-get install python-rados
 
-要在 RHEL/CentOS 发行版上安装 ``librados`` 的 C/C++ 开发支持文件，用此命令： ::
+要在 RHEL/CentOS 发行版上安装 ``librados`` 的 Python 开发支持文件，\
+用此命令： ::
 
 	sudo yum install python-rados
 

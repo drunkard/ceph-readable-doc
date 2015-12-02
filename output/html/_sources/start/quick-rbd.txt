@@ -55,7 +55,7 @@
 #. 在 ``ceph-client`` 节点上，把映像映射为块设备。
    ::
 
-	sudo rbd map foo --pool rbd --name client.admin [-m {mon-IP}] [-k /path/to/ceph.client.admin.keyring]
+	sudo rbd map foo --name client.admin [-m {mon-IP}] [-k /path/to/ceph.client.admin.keyring]
 
 #. 在 ``ceph-client`` 节点上，创建文件系统后就可以使用了。
    ::

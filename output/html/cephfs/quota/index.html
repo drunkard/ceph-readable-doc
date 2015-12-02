@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>处理占满的 Ceph 文件系统 &mdash; Ceph Documentation</title>
+    <title>CephFS 配额管理 &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -27,8 +27,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
     <link rel="up" title="Ceph 文件系统" href="../" />
-    <link rel="next" title="故障排除" href="../troubleshooting/" />
-    <link rel="prev" title="Ceph 文件系统客户端的驱逐" href="../eviction/" />
+    <link rel="next" title="在 CephFS 上使用 Hadoop" href="../hadoop/" />
+    <link rel="prev" title="mount.ceph – 用于挂载 Ceph 文件系统" href="../../man/8/mount.ceph/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,10 +43,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../troubleshooting/" title="故障排除"
+          <a href="../hadoop/" title="在 CephFS 上使用 Hadoop"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../eviction/" title="Ceph 文件系统客户端的驱逐"
+          <a href="../../man/8/mount.ceph/" title="mount.ceph – 用于挂载 Ceph 文件系统"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
@@ -58,35 +58,43 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="ceph">
-<h1>处理占满的 Ceph 文件系统<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
-<p>当 RADOS 集群使用率达到总容量的 <tt class="docutils literal"><span class="pre">mon_osd_full_ratio</span></tt> （默认 95% ）时，它会被打上 OSD full 标记。在问题解决前（如扩容集群），此标记会使大多数常规 RADOS 客户端暂停所有操作。</p>
-<p>文件系统对 full 标记还有些特殊处理，下文详述。</p>
-<div class="section" id="hammer">
-<h2>Hammer 及更高版<a class="headerlink" href="#hammer" title="Permalink to this headline">¶</a></h2>
-<p>从 hammer 发布开始，以下行为会导致占满的文件系统返回 ENOSPC 错误：</p>
+  <div class="section" id="cephfs">
+<h1>CephFS 配额管理<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
+<p>CephFS 允许给系统内的任意目录设置配额，这个配额可以限制目录树中这一点以下的<em>字节</em>数或者<em>文件</em>数。</p>
+<div class="section" id="id1">
+<h2>局限性<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><em>配额是合作性的、非对抗性的。</em> CephFS 的配额功能依赖于挂载它的客户端的合作，在达到上限时要停止写入；无法阻止篡改过的或者对抗性的客户端，它们可以想写多少就写多少。在客户端完全不可信时，用配额防止多占空间是靠不住的。</li>
+<li><em>配额是不准确的。</em> 在达到配额限制一小段时间后，正在写入文件系统的进程才会被停止。很难避免它们超过配置的限额、多写入一些数据。会超过配额多大幅度主要取决于时间长短，而非数据量。一般来说，超出配置的限额之后 10 秒内，写入会被停掉。</li>
+<li><em>内核客户端还没实现配额功能。</em> 用户空间客户端（ libcephfs 、 ceph-fuse ）已经支持配额了，但是 Linux 内核客户端还没实现。</li>
+<li><em>基于路径限制挂载时必须谨慎地配置配额。</em> 客户端必须能够访问配置了配额的那个目录的索引节点，这样才能执行配额管理。如果某一客户端被 MDS 能力限制成了只能访问一个特定路径（如 <tt class="docutils literal"><span class="pre">/home/user</span></tt> ），并且它们无权访问配置了配额的父目录（如 <tt class="docutils literal"><span class="pre">/home</span></tt> ），这个客户端就不会按配额执行。所以，基于路径做访问控制时，最好在限制了客户端的那个目录（如 <tt class="docutils literal"><span class="pre">/home/user</span></tt> ）、或者它下面的子目录上配置配额。</li>
+</ol>
+</div>
+<div class="section" id="id2">
+<h2>配置<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>就像 CephFS 里的其它配置一样，配额也是用虚拟扩展属性来配置的：</p>
 <blockquote>
 <div><ul class="simple">
-<li>客户端写入数据</li>
-<li>删除和裁剪以外的其它元数据操作</li>
+<li><tt class="docutils literal"><span class="pre">ceph.quota.max_files</span></tt> &#8211; file limit</li>
+<li><tt class="docutils literal"><span class="pre">ceph.quota.max_bytes</span></tt> &#8211; byte limit</li>
 </ul>
 </div></blockquote>
-<p>因为只有在数据刷回到硬盘（有时是 <tt class="docutils literal"><span class="pre">write</span></tt> 返回 0 之后）才可能遇到占满的情况，所以应用程序调用 <tt class="docutils literal"><span class="pre">fsync</span></tt> 或 <tt class="docutils literal"><span class="pre">fclose</span></tt> （或等价操作）进行文件处理时才可能遇到 ENOSPC 错误。</p>
-<p>调用 <tt class="docutils literal"><span class="pre">fsync</span></tt> 能可靠地反映数据是否写入了硬盘，并且在没写入时返回错误。 <tt class="docutils literal"><span class="pre">fclose</span></tt> 只有在缓冲的数据从上次写入以来被偶尔刷回过才会返回错误［译者：原文可能有误］—— <tt class="docutils literal"><span class="pre">fclose</span></tt> 成功并不能保证数据写入了硬盘，而且在空间占满时， <tt class="docutils literal"><span class="pre">fclose</span></tt> 之后如果没地方存储缓冲的数据，它们就可能被丢弃。</p>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">如果某一应用程序在占满的文件系统上行为异常，有必要检查下它调用了 <tt class="docutils literal"><span class="pre">fsync()</span></tt> 来确保数据已写入硬盘，然后再继续。</p>
+<p>如果这些属性出现在目录索引节点里，就意味着那里配置了配额；如果不存在，那么那个目录就没设置配额（然而父目录仍然有可能配置了）。</p>
+<p>要设置配额：</p>
+<div class="highlight-python"><pre># 100 MB
+setfattr -n ceph.quota.max_bytes -v 100000000 /some/dir
+# 10000 个文件
+setfattr -n ceph.quota.max_files -v 10000 /some/dir</pre>
 </div>
-<p>如果客户端运行时已经看到了 OSD full 标记，写数据操作可能被取消。各个客户端取消操作并释放文件能力时会更新 <tt class="docutils literal"><span class="pre">osd_epoch_barrier</span></tt> ，以确保这些取消的操作不会妨碍 MDS 或其它客户端对这些数据对象的访问。要了解元图屏蔽机制，请参考 <a class="reference internal" href="../eviction/"><em>Ceph 文件系统客户端的驱逐</em></a> 。</p>
+<p>要查看设置的配额：</p>
+<div class="highlight-python"><pre>getfattr -n ceph.quota.max_bytes /some/dir
+getfattr -n ceph.quota.max_files /some/dir</pre>
 </div>
-<div class="section" id="id1">
-<h2>老版本（ hammer 之前）的行为<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>在 hammer 之前的 Ceph 版本中， MDS 会忽略 RADOS 集群的占满状态，而且客户端的任意数据写入都会卡死，直到集群脱离占满状态。</p>
-<p>出现这种行为时有两种危险情形要注意：</p>
-<ul class="simple">
-<li>如果一客户端到一个文件的写入未完成，那么它不可能把文件释放给 MDS 让它删除，这样就很难清理占满的文件系统。</li>
-<li>如果客户端持续地创建大量空文件，来自 MDS 的元数据写入操作终将会耗尽 OSD 空间，这样就再也不能执行删除动作了。</li>
-</ul>
+<p>需要留意的是，如果这些扩展属性的值是 <tt class="docutils literal"><span class="pre">0</span></tt> ，就说明没设置配额。</p>
+<p>要删除配额：</p>
+<div class="highlight-python"><pre>setfattr -n ceph.quota.max_bytes -v 0 /some/dir
+setfattr -n ceph.quota.max_files -v 0 /some/dir</pre>
+</div>
 </div>
 </div>
 
@@ -117,17 +125,17 @@
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">cephfs 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">CephFS 配额管理</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">局限性</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">配置</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="">文件系统占满的处理</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#hammer">Hammer 及更高版</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id1">老版本（ hammer 之前）的行为</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
 </ul>
@@ -172,10 +180,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../troubleshooting/" title="故障排除"
+          <a href="../hadoop/" title="在 CephFS 上使用 Hadoop"
              >next</a> |</li>
         <li class="right" >
-          <a href="../eviction/" title="Ceph 文件系统客户端的驱逐"
+          <a href="../../man/8/mount.ceph/" title="mount.ceph – 用于挂载 Ceph 文件系统"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 

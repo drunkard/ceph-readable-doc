@@ -48,14 +48,13 @@ Cephx 注意事项
 创建快照
 --------
 
-用 ``rbd`` 命令创建快照，要指定 ``snap create`` 选项、外加存储池名、映像名。 ::
+用 ``rbd`` 命令创建快照，要指定 ``snap create`` 子命令、外加存储池\
+名、映像名。 ::
 
-	rbd --pool {pool-name} snap create --snap {snap-name} {image-name}
 	rbd snap create {pool-name}/{image-name}@{snap-name}
 
 例如： ::
 
-	rbd --pool rbd snap create --snap snapname foo
 	rbd snap create rbd/foo@snapname
 
 
@@ -64,60 +63,56 @@ Cephx 注意事项
 
 要列出一映像的快照，指定存储池名和映像名。 ::
 
-	rbd --pool {pool-name} snap ls {image-name}
 	rbd snap ls {pool-name}/{image-name}
 
 例如： ::
 
-	rbd --pool rbd snap ls foo
 	rbd snap ls rbd/foo
 
 
 回滚快照
 --------
 
-要用 ``rbd`` 回滚到一映像，指定 ``snap rollback`` 选项、存储池名、映像名和快照名。 ::
+要用 ``rbd`` 命令回滚到某一快照，指定 ``snap rollback`` 选项、存储\
+池名、映像名和快照名。 ::
 
-	rbd --pool {pool-name} snap rollback --snap {snap-name} {image-name}
 	rbd snap rollback {pool-name}/{image-name}@{snap-name}
 
 例如： ::
 
-	rbd --pool rbd snap rollback --snap snapname foo
 	rbd snap rollback rbd/foo@snapname
 
-.. note:: 把映像回滚到一快照的意思是，用快照中的数据覆盖映像的当前版本，此过程花费\
-   的时间随映像尺寸增长。从快照\ **克隆要快于回滚**\ 到某快照，这也是回到先前状态的\
-   首选方法。
+.. note:: 把映像回滚到一快照的意思是，用快照中的数据覆盖映像的当前\
+   版本，此过程花费的时间随映像尺寸增长。从快照\ **克隆要快于回滚**\
+   \ 到某快照，这也是回到先前状态的首选方法。
 
 
 删除快照
 --------
 
-要用 ``rbd`` 删除一快照，指定 ``snap rm`` 选项、存储池名、映像名和快照名。 ::
+要用 ``rbd`` 删除一快照，指定 ``snap rm`` 选项、存储池名、映像名和\
+快照名。 ::
 
-	rbd --pool {pool-name} snap rm --snap {snap-name} {image-name}
 	rbd snap rm {pool-name}/{image-name}@{snap-name}
 
 例如： ::
 
-	rbd --pool rbd snap rm --snap snapname foo
 	rbd snap rm rbd/foo@snapname
 
-.. note:: Ceph 的 OSD 异步地删除数据，所以删除快照后不会立即释放磁盘空间。
+.. note:: Ceph 的 OSD 异步地删除数据，所以删除快照后不会立即释放\
+   磁盘空间。
 
 
 清除快照
 --------
 
-要用 ``rbd`` 删除一映像的所有快照，指定 ``snap purge`` 选项和映像名。 ::
+要用 ``rbd`` 删除一映像的所有快照，指定 ``snap purge`` 选项和映像\
+名。 ::
 
-	rbd --pool {pool-name} snap purge {image-name}
 	rbd snap purge {pool-name}/{image-name}
 
 例如： ::
 
-	rbd --pool rbd snap purge foo
 	rbd snap purge rbd/foo
 
 
@@ -126,10 +121,10 @@ Cephx 注意事项
 分层
 ====
 
-Ceph 支持创建某一设备快照的很多写时复制（ COW ）克隆。分层快照使得 Ceph 块设备客户\
-端可以很快地创建映像。例如，你可以创建一个块设备映像，其中有 Linux VM ；然后拍快\
-照、保护快照，再创建任意多写时复制克隆。快照是只读的，所以简化了克隆快照的语义——使得\
-克隆很迅速。
+Ceph 支持创建某一设备快照的很多写时复制（ COW ）克隆。分层快照使得 \
+Ceph 块设备客户端可以很快地创建映像。例如，你可以创建一个块设备映\
+像，其中有 Linux VM ；然后拍快照、保护快照，再创建任意多写时复制克\
+隆。快照是只读的，所以简化了克隆快照的语义——使得克隆很迅速。
 
 
 .. ditaa:: +-------------+              +-------------+
@@ -203,15 +198,13 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 保护快照
 --------
 
-克隆品要访问父快照。如果哪个用户不小心删除了父快照，所有克隆品都会损坏。为防止数据丢\
-失，\ **必须**\ 先保护、然后再克隆快照。 ::
+克隆品要访问父快照。如果哪个用户不小心删除了父快照，所有克隆品都会\
+损坏。为防止数据丢失，\ **必须**\ 先保护、然后再克隆快照。 ::
 
-	rbd --pool {pool-name} snap protect --image {image-name} --snap {snapshot-name}
 	rbd snap protect {pool-name}/{image-name}@{snapshot-name}
 
 例如： ::
 
-	rbd --pool rbd snap protect --image my-image --snap my-snapshot
 	rbd snap protect rbd/my-image@my-snapshot
 
 .. note:: 你删除不了受保护的快照。
@@ -220,31 +213,30 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 克隆快照
 --------
 
-要克隆快照，你得指定父存储池、映像、和快照，还有子存储池和映像名。克隆前必须先保护它。 ::
+要克隆快照，你得指定父存储池、映像、和快照，还有子存储池和映像名。\
+克隆前必须先保护它。 ::
 
-	rbd --pool {pool-name} --image {parent-image} --snap {snap-name} --dest-pool {pool-name} --dest {child-image}
 	rbd clone {pool-name}/{parent-image}@{snap-name} {pool-name}/{child-image-name}
 
 例如： ::
 
 	rbd clone rbd/my-image@my-snapshot rbd/new-image
 
-.. note:: 你可以把一存储池中映像的快照克隆到另一存储池。例如，你可以把一存储池中的\
-   只读映像及其快照当模板维护、却把可写克隆置于另一存储池。
+.. note:: 你可以把一存储池中映像的快照克隆到另一存储池。例如，你可\
+   以把一存储池中的只读映像及其快照当模板维护、却把可写克隆置于另一\
+   存储池。
 
 
 取消快照保护
 ------------
 
-删除快照前，必须先取消保护。另外，你\ *不能*\ 删除被克隆品引用的快照，所以删除快照\
-前必须先拍平此快照的各个克隆。 ::
+删除快照前，必须先取消保护。另外，你\ *不能*\ 删除被克隆品引用的快\
+照，所以删除快照前必须先拍平此快照的各个克隆。 ::
 
-	rbd --pool {pool-name} snap unprotect --image {image-name} --snap {snapshot-name}
 	rbd snap unprotect {pool-name}/{image-name}@{snapshot-name}
 
 例如： ::
 
-	rbd --pool rbd snap unprotect --image my-image --snap my-snapshot
 	rbd snap unprotect rbd/my-image@my-snapshot
 
 
@@ -253,28 +245,24 @@ ID 意味着你可以把一存储池内的快照克隆到别的存储池。
 
 用下列命令罗列一快照的子孙： ::
 
-	rbd --pool {pool-name} children --image {image-name} --snap {snap-name}
 	rbd children {pool-name}/{image-name}@{snapshot-name}
 
 例如： ::
 
-	rbd --pool rbd children --image my-image --snap my-snapshot
 	rbd children rbd/my-image@my-snapshot
 
 
 拍平克隆品映像
 --------------
 
-克隆来的映像仍保留了父快照的引用。要从子克隆删除这些到父快照的引用，你可以把快照的信\
-息复制给子克隆，也就是“拍平”它。拍平克隆品的时间因快照尺寸而不同。要删除快照，必须先\
-拍平子映像。 ::
+克隆来的映像仍保留了父快照的引用。要从子克隆删除这些到父快照的引用，\
+你可以把快照的信息复制给子克隆，也就是“拍平”它。拍平克隆品的时间因\
+快照尺寸而不同。要删除快照，必须先拍平子映像。 ::
 
-	rbd --pool {pool-name} flatten --image {image-name}
 	rbd flatten {pool-name}/{image-name}
 
 例如： ::
 
-	rbd --pool rbd flatten --image my-image
 	rbd flatten rbd/my-image
 
 .. note:: 因为拍平的映像包含了快照的所有信息，所以拍平的映像占用的存储空间会比分层\

@@ -53,8 +53,9 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 
 	</td><td><h3>步骤二：挂载 CephFS</h3>
 
-一旦有了健康的 Ceph 存储集群，及其配套的元数据服务器，你就可以创建并挂载自己的 \
-Ceph 文件系统了。首先确认下你的客户端的网络连通性和认证密钥。
+一旦有了健康的 Ceph 存储集群，及其配套的元数据服务器，你就可以创建\
+并挂载自己的 Ceph 文件系统了。首先确认下你的客户端的网络连通性和认\
+证密钥。
 
 .. toctree::
 	:maxdepth: 1
@@ -75,6 +76,7 @@ Ceph 文件系统了。首先确认下你的客户端的网络连通性和认证
 .. toctree::
 	:maxdepth: 1
 
+	CephFS 配额管理 <quota>
 	在 Ceph 上使用 Hadoop <hadoop>
 	libcephfs <../../api/libcephfs-java/>
 	cephfs-journal-tool <cephfs-journal-tool>

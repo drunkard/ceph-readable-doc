@@ -2,7 +2,7 @@
  Ceph 对象网关 Swift API
 =========================
 
-Ceph 支持 REST 风格的 API ，它与 Swift API 的基本访问模型兼容。
+Ceph 支持 REST 风格的 API ，它与 `Swift API`_ 的基本访问模型兼容。
 
 
 API
@@ -73,3 +73,5 @@ API
 | **CORS**                        | 不支持          |                                        |
 +---------------------------------+-----------------+----------------------------------------+
 
+
+.. _Swift API: http://developer.openstack.org/api-ref-objectstorage-v1.html
