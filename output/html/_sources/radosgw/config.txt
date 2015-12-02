@@ -415,25 +415,24 @@ The output of the command will be something like the following::
 	"temp_url_keys": []}
 
 
-.. note:: The values of ``keys->access_key`` and ``keys->secret_key`` are
-   needed for access validation.
+.. note:: 验证访问时， ``keys->access_key`` 和 ``keys->secret_key`` \
+   的值是必需的。
 
-Create a Swift user
+
+创建一个 Swift 用户
 -------------------
 
-A Swift subuser needs to be created if this kind of access is needed. Creating
-a Swift user is a two step process. The first step is to create the user.
-The second is to create the secret key.
+如果要通过 Swift 访问，必须创建一个 Swift 子用户。需要分两步完成，\
+第一步是创建用户，第二步创建密钥。
 
-Execute the following steps on the ``gateway host``:
+在 ``gateway host`` 主机上进行如下操作：
 
-Create the Swift user::
+创建 Swift 用户： ::
 
-	sudo radosgw-admin subuser create --uid=testuser --subuser=testuser:swift
+	sudo radosgw-admin subuser create --uid=testuser --subuser=testuser:swift --access=full
 
-The output will be something like the following::
+此命令的输出类似如下： ::
 
-	--access=full
 	{ "user_id": "testuser",
 	"display_name": "First User",
 	"email": "",
@@ -463,11 +462,11 @@ The output will be something like the following::
 	"max_objects": -1},
 	"temp_url_keys": []}
 
-Create the secret key::
+创建用户的密钥： ::
 
 	sudo radosgw-admin key create --subuser=testuser:swift --key-type=swift --gen-secret
 
-The output will be something like the following::
+此命令的输出类似如下： ::
 
 	{ "user_id": "testuser",
 	"display_name": "First User",
@@ -500,13 +499,15 @@ The output will be something like the following::
 	"max_objects": -1},
 	"temp_url_keys": []}
 
-Access Verification
-===================
 
-You then need to verify if the created users are able to access the gateway.
+访问验证
+========
 
-Test S3 access
---------------
+然后你得验证一下刚创建的用户是否能访问网关。
+
+
+测试 S3 访问
+------------
 
 You need to write and run a Python test script for verifying S3 access. The S3
 access test script will connect to the ``radosgw``, create a new bucket and list

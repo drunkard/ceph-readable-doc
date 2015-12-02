@@ -66,9 +66,9 @@ Linux 内核驱动和 rbd 存储驱动使用 RBD 。 RBD 映像是简单的块�
    指定对象尺寸。用位数表示，即对象大小为 ``1 << order`` ，默认为 \
    22 （ 4MB ）。
 
-.. option:: --stripe-unit size-in-bytes
+.. option:: --stripe-unit size-in-B/K/M
 
-   指定条带单元尺寸，字节数。详情见下面的条带化一段。
+   指定条带单元尺寸，单位可以是 B/K/M 。详情见下面的条带化一段。
 
 .. option:: --stripe-count num
 
@@ -82,15 +82,15 @@ Linux 内核驱动和 rbd 存储驱动使用 RBD 。 RBD 映像是简单的块�
 
    指定 map 命令要用到的用户名（不含 ``client.`` 前缀）。
 
-.. option:: --keyfile filename
-
-   为 map 命令指定一个包含密钥的文件。如果没指定，默认使用 \
-   ``client.admin`` 。
-
 .. option:: --keyring filename
 
    因 map 命令所需，指定一个用户及其密钥文件。如果未指定，从默认密\
    钥环里找。
+
+.. option:: --keyfile filename
+
+   因 map 命令所需，给 ``--id user`` 用户指定一个包含密钥的文件。\
+   如果同时指定了 ``--keyring`` 选项，本选项就会被覆盖。
 
 .. option:: --shared lock-tag
 
@@ -309,7 +309,7 @@ Linux 内核驱动和 rbd 存储驱动使用 RBD 。 RBD 映像是简单的块�
 
 :command:`bench-write` [--io-size *size-in-B/K/M/G/T*] [--io-threads *num-ios-in-flight*] [--io-total *total-size-to-write-in-B/K/M/G/T*] [--io-pattern seq | rand] *image-spec*
   向某一映像生成一系列写操作，以此衡量写吞吐量和延时。默认参数为 \
-  --io-size 4096 、 --io-threads 16 、 --io-total 1GB 、 \
+  --io-size 4096 、 --io-threads 16 、 --io-total 1G 、 \
   --io-pattern seq 。
 
 
@@ -448,7 +448,7 @@ libceph （每个客户端例程）选项：
 
 新建一 stripe_unit 较小的映像（在某些情况下可更好地分布少量写）： ::
 
-	rbd create mypool/myimage --size 102400 --stripe-unit 65536 --stripe-count 16
+	rbd create mypool/myimage --size 102400 --stripe-unit 65536B --stripe-count 16
 
 更改一映像的格式，先导出、再导入为期望格式： ::
 

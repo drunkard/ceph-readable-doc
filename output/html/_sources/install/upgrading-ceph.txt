@@ -478,9 +478,10 @@ Ceph 配置文件变更
    你可以用 ``ceph-deploy`` 一次升级所有监视器节点，如： ::
 
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
-	ceph-deploy install --release dumpling mon1 mon2 mon3
+	ceph-deploy install --release hammer mon1 mon2 mon3
 
-   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上软件包的步骤如下： ::
+   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上\
+   软件包的步骤如下： ::
 
 	ssh {mon-host}
 	sudo apt-get update && sudo apt-get install ceph
@@ -518,9 +519,10 @@ Ceph 配置文件变更
    你可以用 ``ceph-deploy`` 一次升级所有 OSD 守护进程，如： ::
 
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
-	ceph-deploy install --release dumpling mon1 mon2 mon3
+	ceph-deploy install --release hammer osd1 osd2 osd3
 
-   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上软件包的步骤如下。 ::
+   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上\
+   软件包的步骤如下。 ::
 
 	ssh {osd-host}
 	sudo apt-get update && sudo apt-get install ceph
@@ -554,11 +556,11 @@ Ceph 配置文件变更
 
 要升级单个 Ceph 元数据服务器，挨个执行下列步骤：
 
-#. 升级二进制包。你可以用 ``ceph-deploy`` 一次升级所有 MDS 节点，也可以在各节点用\
-   包管理器升级，如： ::
+#. 升级二进制包。你可以用 ``ceph-deploy`` 一次升级所有 MDS 节点，\
+   也可以在各节点用包管理器升级，如： ::
 
-	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
-	ceph-deploy install --release dumpling mon1 mon2 mon3
+	ceph-deploy install --release {release-name} ceph-node1
+	ceph-deploy install --release hammer mds1
 
    在 Debian/Ubuntu 主机上可这样手动升级。 ::
 

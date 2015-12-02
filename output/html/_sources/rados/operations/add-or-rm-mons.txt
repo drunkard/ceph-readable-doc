@@ -90,13 +90,9 @@ for more than three exists.
 
 	sudo ceph-mon -i {mon-id} --mkfs --monmap {tmp}/{map-filename} --keyring {tmp}/{key-filename}
 
-#. 把新监视器添加到集群的监视器列表里（运行时），这允许其它节点开始启动时使用这个节点。 ::
-
-	ceph mon add <mon-id> <ip>[:<port>]
-
-#. 启动新监视器，它会自动加入机器。守护进程需知道绑定到哪个地址，通过 \
-   ``--public-addr {ip:port}`` 或在 ``ceph.conf`` 里的相应段设置 ``mon addr`` 可\
-   以指定。 ::
+#. 启动新监视器，它会自动加入机器。守护进程需知道绑定到哪个地址，\
+   通过 ``--public-addr {ip:port}`` 或在 ``ceph.conf`` 里的相应段\
+   设置 ``mon addr`` 可以指定。 ::
 
 	ceph-mon -i {mon-id} --public-addr {ip:port}
 

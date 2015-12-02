@@ -105,7 +105,9 @@
 
 ``rgw op thread suicide timeout``
 
-:描述: Ceph 对象网关进程的自杀超时值（ ``timeout`` ）。设置为 ``0`` 时禁用。
+:描述: Ceph 对象网关进程的自杀超时值（ ``timeout`` ）。设置为 \
+       ``0`` 时禁用。
+
 :类型: Integer
 :默认值: ``0``
 
@@ -115,6 +117,17 @@
 :描述: 线程池的尺寸。
 :类型: Integer
 :默认值: 100 threads.
+
+
+``rgw num rados handles``
+
+:描述: Ceph 对象网关的 `RADOS 集群处理器`_\ 数量。通过配置 RADOS \
+       处理器数量可以使得各种类型的载荷都明显地提升性能，因为各个 \
+       RGW 工作线程在其短暂的活跃期内都可以分别挂靠一个 RADOS 处理\
+       器。
+
+:类型: Integer
+:默认值: ``1``
 
 
 ``rgw num control oids``
@@ -233,6 +246,15 @@
 :描述: 列举用户桶时，每次检出的最大桶数。
 :类型: Integer
 :默认值: ``1000``
+
+
+``rgw override bucket index max shards``
+
+:描述: 桶索引对象的分片数量， 0 表示没有分片。我们不建议把这个值\
+       设置得太大（比如大于 1000 ），因为这样会增加罗列桶时的开销。
+
+:类型: Integer
+:默认值: ``0``
 
 
 ``rgw num zone opstate shards``
@@ -862,3 +884,4 @@ Keystone 选项
 .. _体系结构: ../../architecture#data-striping
 .. _存储池配置: ../../rados/configuration/pool-pg-config-ref/
 .. _集群存储池: ../../rados/operations/pools
+.. _RADOS 集群处理器: ../../rados/api/librados-intro/#step-2-configuring-a-cluster-handle

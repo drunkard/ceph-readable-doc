@@ -88,38 +88,38 @@ wherever possible.
 授权（能力）
 ------------
 
-Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的授权，这样才能使用监\
-视器、 OSD 、和元数据服务器的功能。能力也用于限制对一存储池内的数据或某个名字空间的\
-访问。 Ceph 的管理用户可在创建或更新某用户时赋予他能力。
+Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的授权，\
+这样才能使用监视器、 OSD 、和元数据服务器的功能。能力也用于限制对一\
+存储池内的数据或某个名字空间的访问。 Ceph 的管理用户可在创建或更新\
+某用户时赋予他能力。
 
 能力的语法符合下面的形式： ::
 
 	{daemon-type} 'allow {capability}' [{daemon-type} 'allow {capability}']
 
 
-- **Monitor Caps:** Monitor capabilities include ``r``, ``w``, ``x`` and 
-  ``allow profile {cap}``. For example:: 
+- **监视器能力：** 监视器能力包括 ``r`` 、 ``w`` 、 ``x`` 和 \
+  ``allow profile {cap}`` ，例如： ::
 
-	mon 'allow rwx`
+	mon 'allow rwx'
 	mon 'allow profile osd'
 
-- **OSD Caps:** OSD capabilities include ``r``, ``w``, ``x``, ``class-read``, 
-  ``class-write`` and ``profile osd``. Additionally, OSD capabilities also 
-  allow for pool and namespace settings. ::
+- **OSD 能力：** OSD 能力包括 ``r`` 、 ``w`` 、 ``x`` 、 \
+  ``class-read`` 、 ``class-write`` 和 ``profile osd`` 。另外， \
+  OSD 能力还支持存储池和命名空间的配置。 ::
 
 	osd 'allow {capability}' [pool={poolname}] [namespace={namespace-name}]
 
-- **Metadata Server Caps:** Metadata server capability simply requires ``allow``, 
-  or blank and does not parse anything further. :: 
+- **元数据服务器能力：** 元数据服务器能力比较简单，只需要 \
+  ``allow`` 或者空白，也不会解析更多选项。 ::
   
 	mds 'allow'
 
+.. note:: Ceph 对象网关守护进程（ ``radosgw`` ）是 Ceph 存储集群\
+   的一种客户端，所以它没被表示成一种独立的 Ceph 存储集群守护进程\
+   类型。
 
-.. note:: The Ceph Object Gateway daemon (``radosgw``) is a client of the 
-          Ceph Storage Cluster, so it isn't represented as a Ceph Storage 
-          Cluster daemon type.
-
-下面描述了各能力。
+下面描述了各种能力。
 
 
 ``allow``
@@ -344,13 +344,16 @@ are often restricted to accessing a particular pool. ::
 修改用户能力
 ------------
 
-The ``ceph auth caps`` command allows you to specify a user and change the 
-user's capabilties. To add capabilities, use the form:: 
+``ceph auth caps`` 命令可以用来修改指定用户的能力。设置新能力时会\
+覆盖当前能力。查看用户当前的能力可以用 \
+``ceph auth get USERTYPE.USERID`` ；增加能力时应该加上当前已经有的\
+能力，命令格式如下： ::
 
-	ceph auth caps USERTYPE.USERID {daemon} 'allow [r|w|x|*|...] [pool={pool-name}] [namespace={namespace-name}'
+	ceph auth caps USERTYPE.USERID {daemon} 'allow [r|w|x|*|...] [pool={pool-name}] [namespace={namespace-name}]' [{daemon} 'allow [r|w|x|*|...] [pool={pool-name}] [namespace={namespace-name}]']
 
-For example:: 
+例如： ::
 
+	ceph auth get client.john
 	ceph auth caps client.john mon 'allow r' osd 'allow rw pool=liverpool'
 	ceph auth caps client.paul mon 'allow rw' osd 'allow rwx pool=liverpool'
 	ceph auth caps client.brian-manager mon 'allow *' osd 'allow *'
