@@ -1,6 +1,6 @@
-==================
-Writeback Throttle
-==================
+==========
+ 回写抑制
+==========
 
 Previously, the filestore had a problem when handling large numbers of
 small ios.  We throttle dirty data implicitely via the journal, but
@@ -24,5 +24,5 @@ Filestore syncs have a sideeffect of flushing all outstanding objects
 in the wbthrottle.
 
 lfn_unlink clears the cached FDRef and wbthrottle entries for the
-unlinked object when then last link is removed and asserts that all
+unlinked object when the last link is removed and asserts that all
 outstanding FDRefs for that object are dead.

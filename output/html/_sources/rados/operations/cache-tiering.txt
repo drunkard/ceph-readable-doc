@@ -112,8 +112,8 @@
 
 	ceph osd tier cache-mode hot-storage writeback
 
-缓存层盖在后端存储层之上，所以要多一步：必须把所有客户端流量从存储池迁移\
-到缓存存储池。用此命令把客户端流量指向缓存存储池： ::
+缓存层盖在后端存储层之上，所以要多一步：必须把所有客户端流量从存储\
+池迁移到缓存存储池。用此命令把客户端流量指向缓存存储池： ::
 
 	ceph osd tier set-overlay {storagepool} {cachepool}
 
@@ -143,19 +143,34 @@
 
 	ceph osd pool set hot-storage hit_set_type bloom
 
-``hit_set_count`` 和 ``hit_set_period`` 选项可控制各 HitSet 计算的时间区间、以及\
-保留多少个这样的 HitSet 。当前， ``hit_set_count`` > 1 有微小的优势，因为代理还不\
-能处理复杂信息。 ::
+``hit_set_count`` 和 ``hit_set_period`` 选项分别定义了 HitSet 覆盖\
+的时间区间、以及保留多少个这样的 HitSet 。 ::
 
 	ceph osd pool set {cachepool} hit_set_count 1
 	ceph osd pool set {cachepool} hit_set_period 3600
 	ceph osd pool set {cachepool} target_max_bytes 1000000000000
 
-保留一段时间以来的访问记录，这样 Ceph 就能判断一客户端在一段时间内访问了某对象一\
-次、还是多次（存活期与热度）。
+保留一段时间以来的访问记录，这样 Ceph 就能判断一客户端在一段时间内\
+访问了某对象一次、还是多次（存活期与热度）。
 
-.. note:: 统计时间越长、数量越多， ``ceph-osd`` 进程消耗的内存就越多，特别是代理正\
-   忙着刷回或赶出对象时，此时所有 ``hit_set_count`` 个 HitSet 都要载入内存。
+``min_read_recency_for_promote`` 定义了在处理一个对象的读操作时检\
+查多少个 HitSet ，检查结果将用于决定是否异步地提升对象。它的取值应\
+该在 0 和 ``hit_set_count`` 之间，如果设置为 0 ，对象会一直被提\
+升；如果设置为 1 ，就只检查当前 HitSet ，如果此对象在当前 HitSet \
+里就提升它，否则就不提升；设置为其它值时，就要挨个检查此数量的历\
+史 HitSet ，如果此对象出现在 ``min_read_recency_for_promote`` 个 \
+HitSet 里的任意一个，那就提升它。
+
+还有一个相似的参数用于配置写操作，它是 \
+``min_write_recency_for_promote`` 。 ::
+
+	ceph osd pool set {cachepool} min_read_recency_for_promote 1
+	ceph osd pool set {cachepool} min_write_recency_for_promote 1
+
+.. note:: 统计时间越长、 ``min_read_recency_for_promote`` 或 \
+   ``min_write_recency_for_promote`` 取值越高， ``ceph-osd`` 进程\
+   消耗的内存就越多，特别是代理正忙着刷回或赶出对象时，此时所有 \
+   ``hit_set_count`` 个 HitSet 都要载入内存。
 
 
 缓存空间消长

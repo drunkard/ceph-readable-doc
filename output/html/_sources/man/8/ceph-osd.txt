@@ -28,12 +28,21 @@
 
 .. option:: -f, --foreground
 
-   前台：启动后不要作为守护进程，仍在前台运行。不要生成 PID 文件。 通过 \
-   :doc:`ceph-run <ceph-run>`\(8) 运行时此选项有用。
+   前台：启动后不要作为守护进程，仍在前台运行。不要生成 PID 文件。\
+   通过 :doc:`ceph-run <ceph-run>`\(8) 运行时此选项有用。
 
 .. option:: -d
 
    调试模式：类似 ``-f`` ，还会把所有日志发到了标准错误。
+
+.. option:: --setuser userorgid
+
+   启动后设置 UID 。如果指定的是用户名，会查询用户记录以获取 UID \
+   及其 GID ，同时设置 GID ，除非还指定了 --setgroup 选项。
+
+.. option:: --setgroup grouporgid
+
+   启动后设置 GID 。如果指定的是组名，会查询组记录以获取 GID 。
 
 .. option:: --osd-data osddata
 

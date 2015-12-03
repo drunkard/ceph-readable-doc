@@ -102,7 +102,9 @@ ceph osd tier cache-mode foo-hot writeback</pre>
 <div class="highlight-python"><pre>ceph osd pool set foo-hot hit_set_type bloom
 ceph osd pool set foo-hot hit_set_count 1
 ceph osd pool set foo-hot hit_set_period 3600   # 1 hour
-ceph osd pool set foo-hot target_max_bytes 1000000000000  # 1 TB</pre>
+ceph osd pool set foo-hot target_max_bytes 1000000000000  # 1 TB
+ceph osd pool set foo-hot min_read_recency_for_promote 1
+ceph osd pool set foo-hot min_write_recency_for_promote 1</pre>
 </div>
 <p>Drain the cache in preparation for turning it off:</p>
 <div class="highlight-python"><pre>ceph osd tier cache-mode foo-hot forward
@@ -143,12 +145,24 @@ define the false positive probability for the bloom filter (default is 0.05):</p
 should cover, and how many such HitSets to store.  Binning accesses
 over time allows Ceph to independently determine whether an object was
 accessed at least once and whether it was accessed more than once over
-some time period (&#8220;age&#8221; vs &#8220;temperature&#8221;).  Note that the longer the
-period and the higher the count the more RAM will be consumed by the
-ceph-osd process.  In particular, when the agent is active to flush or
-evict cache objects, all hit_set_count HitSets are loaded into RAM.</p>
-<p>Currently there is minimal benefit for hit_set_count &gt; 1 since the
-agent does not yet act intelligently on that information.</p>
+some time period (&#8220;age&#8221; vs &#8220;temperature&#8221;).</p>
+<p>The <tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt> defines how many HitSets to check for the
+existence of an object when handling a read operation. The checking result is
+used to decide whether to promote the object asynchronously. Its value should be
+between 0 and <tt class="docutils literal"><span class="pre">hit_set_count</span></tt>. If it&#8217;s set to 0, the object is always promoted.
+If it&#8217;s set to 1, the current HitSet is checked. And if this object is in the
+current HitSet, it&#8217;s promoted. Otherwise not. For the other values, the exact
+number of archive HitSets are checked. The object is promoted if the object is
+found in any of the most recent <tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt> HitSets.</p>
+<p>A similar parameter can be set for the write operation, which is
+<tt class="docutils literal"><span class="pre">min_write_recency_for_promote</span></tt>.</p>
+<div class="highlight-python"><pre>ceph osd pool set {cachepool} min_read_recency_for_promote 1
+ceph osd pool set {cachepool} min_write_recency_for_promote 1</pre>
+</div>
+<p>Note that the longer the <tt class="docutils literal"><span class="pre">hit_set_period</span></tt> and the higher the
+<tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt>/<tt class="docutils literal"><span class="pre">min_write_recency_for_promote</span></tt> the more RAM
+will be consumed by the ceph-osd process. In particular, when the agent is active
+to flush or evict cache objects, all hit_set_count HitSets are loaded into RAM.</p>
 </div>
 <div class="section" id="cache-mode">
 <h3>Cache mode<a class="headerlink" href="#cache-mode" title="Permalink to this headline">¶</a></h3>

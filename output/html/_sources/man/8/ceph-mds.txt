@@ -40,9 +40,19 @@
 
    调试模式：像 ``-f`` ，但它也把所有输出日志发到了标准错误。
 
+.. option:: --setuser userorgid
+
+   启动后设置 UID 。如果指定的是用户名，会查询用户记录以获取 UID \
+   及其 GID ，同时设置 GID ，除非还指定了 --setgroup 选项。
+
+.. option:: --setgroup grouporgid
+
+   启动后设置 GID 。如果指定的是组名，会查询组记录以获取 GID 。
+
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   在启动时用 *ceph.conf* 而非默认的 ``/etc/ceph/ceph.conf`` 来确定监视器地址。
+   在启动时用 *ceph.conf* 而非默认的 ``/etc/ceph/ceph.conf`` 来确\
+   定监视器地址。
 
 .. option:: -m monaddress[:port]
 
@@ -60,8 +70,8 @@
 使用范围
 ========
 
-**ceph-mds** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
-更多信息参见 http://ceph.com/docs 。
+**ceph-mds** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储\
+系统，更多信息参见 http://ceph.com/docs 。
 
 
 参考
