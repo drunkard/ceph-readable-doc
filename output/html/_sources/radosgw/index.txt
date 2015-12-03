@@ -40,7 +40,7 @@ RADOS 要有它自己的用户管理。 Ceph 对象网关可与 Ceph FS 客户�
 	S3 API <s3>
 	Swift API <swift>
 	管理操作 API <adminops>
-	与 OpenStack Keystone 集成 <keystone>
+	与 OpenStack Keystone 对接 <keystone>
 	troubleshooting
 	radosgw 手册页 <../../man/8/radosgw>
 	radosgw-admin 手册页 <../../man/8/radosgw-admin>
