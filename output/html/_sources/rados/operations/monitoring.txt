@@ -245,11 +245,17 @@ Ceph 会返回法定人数状态，例如，包含 3 个监视器的 Ceph 集群
 Ceph 管理套接字允许你通过套接字接口查询守护进程，它们默认存在于 ``/var/run/ceph`` \
 下。要通过管理套接字访问某个守护进程，先登录它所在的主机、再执行下列命令： ::
 
-	ceph --admin-daemon /var/run/ceph/{socket-name}
+	ceph daemon {daemon-name}
+	ceph daemon {path-to-socket-file}
+
+比如，这是下面这两种用法是等价的： ::
+
+	ceph daemon osd.0 foo
+	ceph daemon /var/run/ceph/ceph-osd.0.asok foo
 
 用下列命令查看可用的管理套接字命令： ::
 
-	ceph --admin-daemon /var/run/ceph/{socket-name} help
+	ceph daemon {daemon-name} help
 
 管理套接字命令允许你在运行时查看和修改配置，见\ `查看运行时配置`_\ 。
 

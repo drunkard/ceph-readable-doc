@@ -34,11 +34,7 @@
 
 	ceph osd lspools
 
-默认存储池有：
-
-- ``data``
-- ``metadata``
-- ``rbd``
+在新安装好的集群上，只有一个 ``rbd`` 存储池。
 
 
 .. _createpool:

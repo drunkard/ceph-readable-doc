@@ -12,23 +12,23 @@
 
 	ceph osd pool create {pool-name} pg_num
 
-it is mandatory to choose the value of ``pg_num`` because it cannot be
-calculated automatically. Here are a few values commonly used:
+确定 ``pg_num`` 取值是强制性的，因为不能自动计算。下面是几个常用\
+的值：
 
-- Less than 5 OSDs set ``pg_num`` to 128
+- 少于 5 个 OSD 时可把 ``pg_num`` 设置为 128
 
-- Between 5 and 10 OSDs set ``pg_num`` to 512
+- OSD 数量在 5 到 10 个时，可把 ``pg_num`` 设置为 512
 
-- Between 10 and 50 OSDs set ``pg_num`` to 4096
+- OSD 数量在 10 到 50 个时，可把 ``pg_num`` 设置为 4096
 
-- If you have more than 50 OSDs, you need to understand the tradeoffs
-  and how to calculate the ``pg_num`` value by yourself
+- OSD 数量大于 50 时，你得理解权衡方法、以及如何自己计算 \
+  ``pg_num`` 取值
 
-As the number of OSDs increases, chosing the right value for pg_num
-becomes more important because it has a significant influence on the
-behavior of the cluster as well as the durability of the data when
-something goes wrong (i.e. the probability that a catastrophic event
-leads to data loss).
+- 自己计算 ``pg_num`` 取值时可借助 `pgcalc`_ 工具
+
+随着 OSD 数量的增加，正确的 pg_num 取值变得更加重要，因为它显著地\
+影响着集群的行为、以及出错时的数据持久性（即灾难性事件导致数据丢\
+失的概率）。
 
 
 归置组是如何使用的？
@@ -404,3 +404,4 @@ Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目
 
 .. _创建存储池: ../pools#createpool
 .. _PG 映射到 OSD: ../../../architecture#mapping-pgs-to-osds
+.. _pgcalc: http://ceph.com/pgcalc/

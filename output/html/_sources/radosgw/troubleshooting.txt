@@ -41,93 +41,92 @@ location.
 ``radosgw`` 崩溃
 ================
 
-If the ``radosgw`` process dies, you will normally see a 500 error
-from the web server (apache, nginx, etc.).  In that situation, simply
-restarting radosgw will restore service.
+如果 ``radosgw`` 进程挂了，一般会看到网页服务器（ apache 、 nginx \
+等）返回 500 错误，这种情况下，只要重启 radosgw 就能恢复服务。
 
-To diagnose the cause of the crash, check the log in ``/var/log/ceph``
-and/or the core file (if one was generated).
+要调查崩溃原因，请检查 ``/var/log/ceph`` 里的日志、以及核心转储\
+文件（如果生成了）。
 
 
-Blocked ``radosgw`` Requests
-============================
+阻塞的 ``radosgw`` 请求
+=======================
 
-If some (or all) radosgw requests appear to be blocked, you can get
-some insight into the internal state of the ``radosgw`` daemon via
-its admin socket.  By default, there will be a socket configured to
-reside in ``/var/run/ceph``, and the daemon can be queried with::
+如果某些（或者所有） radosgw 请求被阻塞了，你可以通过管理套接字深\
+入了解 ``radosgw`` 守护进程的内部状态。默认情况下，套接字文件位于\
+\ ``/var/run/ceph`` ，可以这样查询： ::
 
- ceph --admin-daemon /var/run/ceph/client.rgw help
- 
- help                list available commands
- objecter_requests   show in-progress osd requests
- perfcounters_dump   dump perfcounters value
- perfcounters_schema dump perfcounters schema
- version             get protocol version
+	ceph daemon /var/run/ceph/client.rgw help
 
-Of particular interest::
+	help                list available commands
+	objecter_requests   show in-progress osd requests
+	perfcounters_dump   dump perfcounters value
+	perfcounters_schema dump perfcounters schema
+	version             get protocol version
 
- ceph --admin-daemon /var/run/ceph/client.rgw objecter_requests
- ...
+某个特定请求： ::
 
-will dump information about current in-progress requests with the
-RADOS cluster.  This allows one to identify if any requests are blocked
-by a non-responsive OSD.  For example, one might see::
+	ceph daemon /var/run/ceph/client.rgw objecter_requests
+	...
 
-  { "ops": [
-        { "tid": 1858,
-          "pg": "2.d2041a48",
-          "osd": 1,
-          "last_sent": "2012-03-08 14:56:37.949872",
-          "attempts": 1,
-          "object_id": "fatty_25647_object1857",
-          "object_locator": "@2",
-          "snapid": "head",
-          "snap_context": "0=[]",
-          "mtime": "2012-03-08 14:56:37.949813",
-          "osd_ops": [
-                "write 0~4096"]},
-        { "tid": 1873,
-          "pg": "2.695e9f8e",
-          "osd": 1,
-          "last_sent": "2012-03-08 14:56:37.970615",
-          "attempts": 1,
-          "object_id": "fatty_25647_object1872",
-          "object_locator": "@2",
-          "snapid": "head",
-          "snap_context": "0=[]",
-          "mtime": "2012-03-08 14:56:37.970555",
-          "osd_ops": [
-                "write 0~4096"]}],
-  "linger_ops": [],
-  "pool_ops": [],
-  "pool_stat_ops": [],
-  "statfs_ops": []}
+它会显示当前正在进行的、发往 RADOS 集群的请求。用这个功能你就能\
+确定是否有请求因 OSD 不响应而被阻塞，比如，你也许能看到： ::
 
-In this dump, two requests are in progress.  The ``last_sent`` field is
-the time the RADOS request was sent.  If this is a while ago, it suggests
-that the OSD is not responding.  For example, for request 1858, you could
-check the OSD status with::
+	{ "ops": [
+	      { "tid": 1858,
+	        "pg": "2.d2041a48",
+	        "osd": 1,
+	        "last_sent": "2012-03-08 14:56:37.949872",
+	        "attempts": 1,
+	        "object_id": "fatty_25647_object1857",
+	        "object_locator": "@2",
+	        "snapid": "head",
+	        "snap_context": "0=[]",
+	        "mtime": "2012-03-08 14:56:37.949813",
+	        "osd_ops": [
+	              "write 0~4096"]},
+	      { "tid": 1873,
+	        "pg": "2.695e9f8e",
+	        "osd": 1,
+	        "last_sent": "2012-03-08 14:56:37.970615",
+	        "attempts": 1,
+	        "object_id": "fatty_25647_object1872",
+	        "object_locator": "@2",
+	        "snapid": "head",
+	        "snap_context": "0=[]",
+	        "mtime": "2012-03-08 14:56:37.970555",
+	        "osd_ops": [
+	              "write 0~4096"]}],
+	"linger_ops": [],
+	"pool_ops": [],
+	"pool_stat_ops": [],
+	"statfs_ops": []
+	}
 
- ceph pg map 2.d2041a48
- 
- osdmap e9 pg 2.d2041a48 (2.0) -> up [1,0] acting [1,0]
+在上面的显示中，有两个请求正在进行。 ``last_sent`` 字段是 RADOS \
+请求发出的时间，如果以及有一段时间了，说明那个 OSD 没响应。例如，\
+对于 1858 这个请求，你可以这样检查 OSD 状态： ::
 
-This tells us to look at ``osd.1``, the primary copy for this PG::
+	ceph pg map 2.d2041a48
 
- ceph --admin-daemon /var/run/ceph/osd.1.asok
- { "num_ops": 651,
-  "ops": [
-        { "description": "osd_op(client.4124.0:1858 fatty_25647_object1857 [write 0~4096] 2.d2041a48)",
-          "received_at": "1331247573.344650",
-          "age": "25.606449",
-          "flag_point": "waiting for sub ops",
-          "client_info": { "client": "client.4124",
-              "tid": 1858}},
- ...
+	osdmap e9 pg 2.d2041a48 (2.0) -> up [1,0] acting [1,0]
 
-The ``flag_point`` field indicates that the OSD is currently waiting
-for replicas to respond, in this case ``osd.0``.
+这说明，我们得查看 ``osd.1`` ，它是这个 PG 的主副本： ::
+
+	ceph daemon osd.1 ops
+	{
+	    "num_ops": 651,
+	    "ops": [
+	        {
+		 "description": "osd_op(client.4124.0:1858 fatty_25647_object1857 [write 0~4096] 2.d2041a48)",
+	         "received_at": "1331247573.344650",
+	         "age": "25.606449",
+	         "flag_point": "waiting for sub ops",
+	         "client_info": { "client": "client.4124",
+	             "tid": 1858}},
+	...
+
+``flag_point`` 字段表明这个 OSD 正在等待副本（本例中是 ``osd.0`` ）\
+的响应。
 
 
 Java S3 API 故障排除

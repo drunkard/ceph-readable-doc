@@ -86,12 +86,14 @@ Ceph 节点上创建对象复制品来确保数据安全和高可用性；为保
 CRUSH 简介
 ~~~~~~~~~~
 
-Ceph 客户端和 OSD 守护进程都用 :abbr:`CRUSH (Controlled Replication Under \
-Scalable Hashing)` 算法来按需计算对象的位置信息，而不是查询某个集中的表。和以往方\
-法相比， CRUSH 的数据管理机制更好，它很干脆地把某些工作丢给集群内的所有客户端和 \
-OSD 来处理，因此具有极大的伸缩性。 CRUSH 用智能数据复制确保弹性，更能适应超大规模存\
-储。下列几段描述了 CRUSH 如何工作，更详细的机制请参阅论文： \
-`CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data`_ 。
+Ceph 客户端和 OSD 守护进程都用 \
+:abbr:`CRUSH (Controlled Replication Under Scalable Hashing)` \
+算法来按需计算对象的位置信息，而不是查询某个集中的表。和以往方\
+法相比， CRUSH 的数据管理机制更好，它很干脆地把某些工作丢给集群\
+内的所有客户端和 OSD 来处理，因此具有极大的伸缩性。 CRUSH 用智\
+能数据复制确保弹性，更能适应超大规模存储。下列几段描述了 CRUSH \
+如何工作，更详细的机制请参阅论文： \
+`CRUSH - 可控、可伸缩、分布式地归置多副本数据`_ 。
 
 
 .. index:: architecture; cluster map
@@ -1359,7 +1361,7 @@ Ceph FS 从数据中分离出了元数据、并存储于 MDS ，文件数据存�
 .. _监控 OSD 和归置组: ../rados/operations/monitoring-osd-pg
 .. _心跳: ../rados/configuration/mon-osd-interaction
 .. _监控 OSD: ../rados/operations/monitoring-osd-pg/#monitoring-osds
-.. _CRUSH - Controlled, Scalable, Decentralized Placement of Replicated Data: http://ceph.com/papers/weil-crush-sc06.pdf
+.. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: http://ceph.com/papers/weil-crush-sc06.pdf
 .. _数据洗刷: ../rados/configuration/osd-config-ref#scrubbing
 .. _报告互联失败: ../rados/configuration/mon-osd-interaction#osds-report-peering-failure
 .. _互联失败排障: ../rados/troubleshooting/troubleshooting-pg#placement-group-down-peering-failure

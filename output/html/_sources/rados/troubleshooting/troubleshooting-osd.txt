@@ -35,9 +35,15 @@ Ceph 日志
 
 	ls /var/run/ceph
 
-然后，执行下例命令显示可用选项，用实际的套接字名字取代 ``{socket-name}`` ： ::
+然后，执行下例命令显示可用选项，把 ``{daemon-name}`` 换成实际的\
+守护进程（如 ``osd.0`` ）： ::
 
-	ceph --admin-daemon /var/run/ceph/{socket-name} help
+	ceph daemon osd.0 help
+
+另外，你也可以指定一个 ``{socket-file}`` （如 ``/var/run/ceph`` \
+下的文件）： ::
+
+	ceph daemon {socket-file} help
 
 和其它手段相比，管理接口允许你：
 

@@ -95,4 +95,4 @@
 
 完成飞前检查后，你就可以开始用 ``ceph-deploy`` 部署了。
 
-.. _操作系统推荐: ../../../install/os-recommendations
+.. _操作系统推荐: ../../../start/os-recommendations

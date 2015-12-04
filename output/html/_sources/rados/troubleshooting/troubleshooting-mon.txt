@@ -63,35 +63,32 @@ For other specific issues, keep on reading.
 使用监视器的管理套接字
 ======================
 
-The admin socket allows you to interact with a given daemon directly using a
-Unix socket file. This file can be found in your monitor's ``run`` directory.
-By default, the admin socket will be kept in ``/var/run/ceph/ceph-mon.ID.asok``
-but this can vary if you defined it otherwise. If you don't find it there,
-please check your ``ceph.conf`` for an alternative path or run::
+通过管理套接字，你可以用 Unix 套接字文件直接与指定守护进程交互。\
+这个文件位于你监视器的 ``run`` 目录下，默认配置时它位于 \
+``/var/run/ceph/ceph-mon.ID.asok`` ，但你要是改过就不一定在那里\
+了。如果你在那里没找到它，请看看 ``ceph.conf`` 里是否配置了其它\
+路径、或者用下面的命令获取： ::
 
 	ceph-conf --name mon.ID --show-config-value admin_socket
 
-Please bear in mind that the admin socket will only be available while the
-monitor is running. When the monitor is properly shutdown, the admin socket
-will be removed. If however the monitor is not running and the admin socket
-still persists, it is likely that the monitor was improperly shutdown.
-Regardless, if the monitor is not running, you will not be able to use the
-admin socket, with ``ceph`` likely returning ``Error 111: Connection Refused``.
+请牢记，只有在监视器运行时管理套接字才可用。监视器正常关闭时，\
+管理套接字会被删除；如果监视器不运行了、但管理套接字还存在，就\
+说明监视器不是正常关闭的。不管怎样，监视器没在运行，你就不能使\
+用管理套接字， ``ceph`` 命令会返回类似 \
+``Error 111: Connection Refused`` 的错误消息。
 
-Accessing the admin socket is as simple as telling the ``ceph`` tool to use
-the ``asok`` file.  In pre-Dumpling Ceph, this can be achieved by::
+访问管理套接字很简单，就是让 ``ceph`` 工具使用 ``asok`` 文件。\
+对于 Dumpling 之前的版本，命令是这样的： ::
 
-	ceph --admin-daemon /var/run/ceph/ceph-mon.ID.asok <command>
+	ceph --admin-daemon /var/run/ceph/ceph-mon.<id>.asok <command>
 
-while in Dumpling and beyond you can use the alternate (and recommended)
-format::
+对于 Dumpling 及后续版本，你可以用另一个（推荐的）命令： ::
 
-	ceph daemon mon.ID <command>
+	ceph daemon mon.<id> <command>
 
-Using ``help`` as the command to the ``ceph`` tool will show you the
-supported commands available through the admin socket. Please take a look
-at ``config get``, ``config show``, ``mon_status`` and ``quorum_status``,
-as those can be enlightening when troubleshooting a monitor.
+``ceph`` 工具的 ``help`` 命令会显示管理套接字支持的其它命令。请\
+仔细了解一下 ``config get`` 、 ``config show`` 、 ``mon_status`` \
+和 ``quorum_status`` 命令，在排除监视器故障时它们能给你些启发。
 
 
 理解 mon_status

@@ -15,9 +15,9 @@
 描述
 ====
 
-:program:`radosgw` 是 RADOS 对象存储的一个 HTTP REST 网关，是 Ceph 分布式\
-存储系统的一部分。它是用 libfcgi 实现的一个 FastCGI 模块，可联合任何支持 \
-FastCGI 功能的网页服务器使用。
+:program:`radosgw` 是 RADOS 对象存储的一个 HTTP REST 网关，是 \
+Ceph 分布式存储系统的一部分。它是用 libfcgi 实现的一个 FastCGI \
+模块，可联合任何支持 FastCGI 功能的网页服务器使用。
 
 
 选项
@@ -25,8 +25,8 @@ FastCGI 功能的网页服务器使用。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   用指定的 ``ceph.conf`` 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定启\
-   动时所需的监视器地址。
+   用指定的 ``ceph.conf`` 配置文件而非默认的 \
+   ``/etc/ceph/ceph.conf`` 来确定启动时所需的监视器地址。
 
 .. option:: -m monaddress[:port]
 
@@ -68,31 +68,34 @@ FastCGI 功能的网页服务器使用。
 配置
 ====
 
-先前的 RADOS 网关配置依赖 ``Apache`` 和 ``mod_fastcgi`` ；现在则用 \
-``mod_proxy_fcgi`` 替换了 ``mod_fastcgi`` ，因为后者使用了非自由许可证。 \
-``mod_proxy_fcgi`` 不同于传统的 FastCGI 模块，它需要 ``mod_proxy`` 模块所\
-支持的 FastCGI 协议。所以，要处理 FastCGI 协议，服务器需同时有 ``mod_proxy`` \
-和 ``mod_proxy_fcgi`` 模块。不像 ``mod_fastcgi`` ， ``mod_proxy_fcgi`` 不\
-能启动应用进程。某些平台提供了 ``fcgistarter`` 来实现此功能。然而， FastCGI \
-应用框架有可能具备外部启动或进程管理功能。
+先前的 RADOS 网关配置依赖 ``Apache`` 和 ``mod_fastcgi`` ；现在则\
+用 ``mod_proxy_fcgi`` 替换了 ``mod_fastcgi`` ，因为后者使用了非\
+自由许可证。 ``mod_proxy_fcgi`` 不同于传统的 FastCGI 模块，它需\
+要 ``mod_proxy`` 模块所支持的 FastCGI 协议。所以，要处理 FastCGI \
+协议，服务器需同时有 ``mod_proxy`` 和 ``mod_proxy_fcgi`` 模块。\
+不像 ``mod_fastcgi`` ， ``mod_proxy_fcgi`` 不能启动应用进程。某\
+些平台提供了 ``fcgistarter`` 来实现此功能。然而， FastCGI 应用框\
+架有可能具备外部启动或进程管理功能。
 
-``Apache`` 可以通过本机 TCP 连接或 Unix 域套接字使用 ``mod_proxy_fcgi`` 模\
-块。不支持 Unix 域套接字的 ``mod_proxy_fcgi`` ，像 Apache 2.2 和 2.4 的早\
-期版本，必需通过本机 TCP 连接。
+``Apache`` 可以通过本机 TCP 连接或 Unix 域套接字使用 \
+``mod_proxy_fcgi`` 模块。不支持 Unix 域套接字的 \
+``mod_proxy_fcgi`` ，像 Apache 2.2 和 2.4 的早期版本，必需通过本\
+机 TCP 连接。
 
-#. 更改 ``/etc/ceph/ceph.conf`` 文件，让 radosgw 使用 TCP 而非 Unix 域套接字。 ::
+#. 更改 ``/etc/ceph/ceph.conf`` 文件，让 radosgw 使用 TCP 而非 \
+   Unix 域套接字。 ::
 
 	[client.radosgw.gateway]
 	host = {hostname}
 	keyring = /etc/ceph/ceph.client.radosgw.keyring
 	rgw socket path = ""
-	log file = /var/log/radosgw/client.radosgw.gateway.log
+	log file = /var/log/ceph/client.radosgw.gateway.log
 	rgw frontends = fastcgi socket_port=9000 socket_host=0.0.0.0
 	rgw print continue = false
 
 #. 把下列内容加入网关配置文件：
 
-   在 Debian/Ubuntu 上，加入 ``/etc/apache2/conf-available/rgw.conf``::
+   在 Debian/Ubuntu 上，加入 ``/etc/apache2/conf-available/rgw.conf`` ::
 
 		<VirtualHost *:80>
 		ServerName localhost
@@ -134,14 +137,14 @@ FastCGI 功能的网页服务器使用。
 
 		</VirtualHost>
 
-#. 对于搭载了支持 Unix 域套接字的 Apache 2.4.9 及更高版的发行版，可使用下\
-   列配置： ::
+#. 对于搭载了支持 Unix 域套接字的 Apache 2.4.9 及更高版的发行版，\
+   可使用下列配置： ::
 
 	[client.radosgw.gateway]
 	host = {hostname}
 	keyring = /etc/ceph/ceph.client.radosgw.keyring
 	rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
-	log file = /var/log/radosgw/client.radosgw.gateway.log
+	log file = /var/log/ceph/client.radosgw.gateway.log
 	rgw print continue = false
 
 #. 把下列内容加入网关配置文件中：
@@ -167,11 +170,11 @@ FastCGI 功能的网页服务器使用。
 
 		</VirtualHost>
 
-   Ubuntu 14.04 自带 ``Apache 2.4.7`` ，它不支持 Unix 域套接字，所以必须配\
-   置成本机 TCP 。 Unix 域套接字支持存在于 ``Apache 2.4.9`` 及其后续版本\
-   中。已经有人提交了申请，要求把 UDS 支持移植到 ``Ubuntu 14.04`` 的 \
-   ``Apache 2.4.7`` 。
-   在这里： https://bugs.launchpad.net/ubuntu/+source/apache2/+bug/1411030
+   Ubuntu 14.04 自带 ``Apache 2.4.7`` ，它不支持 Unix 域套接字，\
+   所以必须配置成本机 TCP 。 Unix 域套接字支持存在于 \
+   ``Apache 2.4.9`` 及其后续版本中。已经有人提交了申请，要求把 \
+   UDS 支持移植到 ``Ubuntu 14.04`` 的 ``Apache 2.4.7`` 。在这里：\
+   https://bugs.launchpad.net/ubuntu/+source/apache2/+bug/1411030
 
 #. 给 radosgw 生成一个密钥，用于到集群认证。 ::
 

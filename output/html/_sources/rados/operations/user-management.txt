@@ -139,7 +139,8 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 
 ``x``
 
-:描述: 授予用户调用类方法的能力，即同时有读和写；且在监视器上执行 ``auth`` 操作。
+:描述: 授予用户调用类方法的能力，即同时有读和写，且能在监视器上\
+       执行 ``auth`` 操作。
 
 
 ``class-read``
@@ -159,8 +160,8 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 
 ``profile osd``
 
-:描述: 授权一个用户以 OSD 身份连接其它 OSD 或监视器。授予 OSD 们允许其它 OSD \
-       处理复制、心跳流量和状态报告。
+:描述: 授权一个用户以 OSD 身份连接其它 OSD 或监视器。授予 OSD \
+       们允许其它 OSD 处理复制、心跳流量和状态报告。
 
 
 ``profile mds``
@@ -170,26 +171,26 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 
 ``profile bootstrap-osd``
 
-:描述: 授权一用户自举引导一 OSD 。授予部署工具，像 ``ceph-disk`` 、 \
-       ``ceph-deploy`` 等等，这样它们在自举引导 OSD 时就有权限增加密钥了。
+:描述: 授权一用户自举引导一 OSD 。授予部署工具，像 \
+       ``ceph-disk`` 、 ``ceph-deploy`` 等等，这样它们在自举引导 \
+       OSD 时就有权限增加密钥了。
 
 
 ``profile bootstrap-mds``
 
-:描述: 授权一用户自举引导一元数据服务器。授予像 ``ceph-deploy`` 一样的部署工\
-       具，这样它们在自举引导元数据服务器时就有权限增加密钥了。
+:描述: 授权一用户自举引导一元数据服务器。授予像 ``ceph-deploy`` \
+       一样的部署工具，这样它们在自举引导元数据服务器时就有权限\
+       增加密钥了。
 
 
 存储池
 ------
 
-A pool is a logical partition where users store data. By default, a Ceph Storage
-Cluster has `pools`_ for ``data``, ``rbd`` and ``metadata`` (metadata server).
-In Ceph deployments, it is common to create a pool as a logical partition for
-similar types of data. For example, when deploying Ceph as a backend for
-OpenStack, a typical deployment would have pools for volumes, images, backups
-and virtual machines, and users such as ``client.glance``, ``client.cinder``,
-etc.
+存储池是用户存储数据的逻辑分区。在 Ceph 部署中，经常创建存储池作\
+为逻辑分区、用以归类相似的数据。例如，用 Ceph 作为 OpenStack 的\
+后端时，典型的部署通常会创建多个存储池，分别用于存储卷宗、映像、\
+备份和虚拟机，以及用户（如 ``client.glance`` 、 \
+``client.cinder`` 等）。
 
 
 命名空间
