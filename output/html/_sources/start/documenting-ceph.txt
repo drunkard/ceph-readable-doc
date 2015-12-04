@@ -298,8 +298,8 @@ CentOS/RHEL7 下 `ditaa`_ 依赖下列软件包：
 - jai-imageio-core
 - batik
 
-到 http://rpmfind.net/ 找兼容的 ``ditaa`` 及其依赖，然后从某个镜像下载并安装它\
-们。例如： ::
+到 http://rpmfind.net/ 找兼容的 ``ditaa`` 及其依赖，然后从某个镜像\
+下载并安装它们。例如： ::
 
 	wget ftp://rpmfind.net/linux/fedora/linux/releases/20/Everything/x86_64/os/Packages/j/jericho-html-3.2-6.fc20.noarch.rpm
 	sudo yum install jericho-html-3.2-6.fc20.noarch.rpm
@@ -310,11 +310,12 @@ CentOS/RHEL7 下 `ditaa`_ 依赖下列软件包：
 	wget ftp://rpmfind.net/linux/fedora/linux/releases/20/Everything/x86_64/os/Packages/d/ditaa-0.9-10.r74.fc20.noarch.rpm
 	sudo yum install ditaa-0.9-10.r74.fc20.noarch.rpm
 
-.. important:: 不要安装含 ``fc21`` 的 ``ditaa`` rpm包，因为它使用的 ``JRE`` \
-   比 CentOS/RHEL7 自带的新，这样会导致冲突并抛出异常 ``Exception`` ，程序也因\
-   此不能运行。
+.. important:: 不要安装含 ``fc21`` 的 ``ditaa`` rpm包，因为它使用\
+   的 ``JRE`` 比 CentOS/RHEL7 自带的新，这样会导致冲突并抛出异常 \
+   ``Exception`` ，程序也因此不能运行。
 
-安装好所有这些包之后，就可以按照\ ``构建文档源码``\ 里的步骤构建文档了。
+安装好所有这些包之后，就可以按照\ ``构建文档源码``\ 里的步骤构建\
+文档了。
 
 
 提交变更
@@ -322,18 +323,19 @@ CentOS/RHEL7 下 `ditaa`_ 依赖下列软件包：
 
 Ceph文档的提交虽然简单，却遵循着严格的惯例：
 
-- 一次提交\ **应该**\ 只涉及一个文件（方便回退），也\ **可以**\ 一次提交有关联\
-  的多个文件。不相干的变更\ **不应该**\ 放到同一提交内；
+- 一次提交\ **应该**\ 只涉及一个文件（方便回退），也\ **可以**\ \
+  一次提交有关联的多个文件。不相干的变更\ **不应该**\ 放到同一提\
+  交内；
 - 每个提交都\ **必须**\ 有注释；
 - 提交的注释\ **必须**\ 以 ``doc:`` 打头（应严格遵守）；
 - 注释摘要\ **必须**\ 只有一行（应严格遵守）；
 - 额外的注释\ **可以**\ 写到摘要下面空一行的地方，但应该简单明了；
 - 提交\ **可以**\ 包含 ``Fixes: #{bug number}`` 字样；
-- 提交\ **必须**\ 包含 ``Signed-off-by: Firstname Lasname <email>`` （应严格遵\
-  守）。
+- 提交\ **必须**\ 包含 \
+  ``Signed-off-by: Firstname Lasname <email>`` （应严格遵守）。
 
-.. tip:: 请遵守前述惯例，特别是标明了 ``（应严格遵守）`` 的那些，否则你的提交\
-   会被打回，修正后才能重新提交。
+.. tip:: 请遵守前述惯例，特别是标明了 ``（应严格遵守）`` 的那些，\
+   否则你的提交会被打回，修正后才能重新提交。
 
 下面是个通用提交的注释（首选）： ::
 
@@ -366,26 +368,19 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 	git commit -a
 
 
-管理文档提交的一个比较简单的方法是用 ``git`` 的图形化前端，如 ``gitk`` 提供了\
-可查看仓库历史的图形界面； ``git-gui`` 提供的图形界面可查看未提交的变更、把未\
-提交变更暂存起来、提交变更、并推送到自己的 Ceph 分支仓库。
+管理文档提交的一个比较简单的方法是用 ``git`` 的图形化前端，如 \
+``gitk`` 提供了可查看仓库历史的图形界面； ``git-gui`` 提供的图\
+形界面可查看未提交的变更、把未提交变更暂存起来、提交变更、并推\
+送到自己的 Ceph 分支仓库。
 
 
 在 Debian/Ubuntu 上执行以下命令安装： ::
 
 	sudo apt-get install gitk git-gui
 
-在 Fedora 上执行以下命令安装： ::
+在 Fedora/CentOS/RHEL 上执行以下命令安装： ::
 
 	sudo yum install gitk git-gui
-
-在 CentOS/RHEL7 上， ``gitk`` 和 ``git-gui`` 都不在默认和 ``epel`` 软件库里，\
-所以得到 http://rpmfind.net/ 上找，然后从合适的镜像下载并安装它们，例如： ::
-
-	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/gitk-1.8.3.1-4.el7.noarch.rpm
-	sudo yum install gitk-1.8.3.1-4.el7.noarch.rpm
-	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/git-gui-1.8.3.1-4.el7.noarch.rpm
-	sudo yum install git-gui-1.8.3.1-4.el7.noarch.rpm
 
 然后执行 ::
 
