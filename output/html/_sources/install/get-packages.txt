@@ -21,30 +21,28 @@ Ceph 对象存储`_\ 。
 准备工作
 ========
 
-所有 Ceph 部署都需要 Ceph 软件包（除非是开发），你应该安装相应的密钥和推荐的软件包。
+所有 Ceph 部署都需要 Ceph 软件包（除非是开发），你应该安装相应的\
+密钥和推荐的软件包。
 
-- **密钥：（推荐）** 不管你是用仓库还是手动下载，你都需要用密钥校验软件包。如果你没\
-  有密钥，就会收到安全警告。有两个密钥：一个用于发布（常用）、一个用于开发（仅适用于\
-  程序员和 QA ），请按需选择，详情见\ `安装密钥`_\ 。
+- **密钥：（推荐）** 不管你是用仓库还是手动下载，你都需要用密钥\
+  校验软件包。如果你没有密钥，就会收到安全警告。有两个密钥：一个\
+  用于发布（常用）、一个用于开发（仅适用于程序员和 QA ），请按需\
+  选择，详情见\ `安装密钥`_\ 。
 
-- **Ceph Extras:（必要）** Ceph 附加库提供了它所依赖的软件包，这些软件包比发行版\
-  自带的更新，它们对于 Ceph 的正常运行是必要的。比如，适合 CentOS/RHEL 发行版的 \
-  QEMU 包、 iSCSI 相关的包。如果你想用其中的任何一个，都需要添加 Ceph Extra 源、\
-  或手动下载；此库也包含 Ceph 的依赖，因为有些人想手动安装。详情见\ \
-  `添加 Ceph Extra 库`_\ 。
+- **Ceph:（必要）** 所有 Ceph 部署都需要 Ceph 发布的软件包，除非\
+  你部署开发版软件包（仅有开发版、 QA 、和尖端部署）。详情见\ \
+  `添加 Ceph 库`_\ 。
 
-- **Ceph:（必要）** 所有 Ceph 部署都需要 Ceph 发布的软件包，除非你部署开发版软件\
-  包（仅有开发版、 QA 、和尖端部署）。详情见\ `添加 Ceph 库`_\ 。
+- **Ceph Development:（可选）** 如果你在做 Ceph 开发、为 Ceph 做\
+  构建测试、或者急需开发版中的尖端功能，可以安装开发版软件包，详\
+  情见 `添加 Ceph 开发库`_ 。
 
-- **Ceph Development:（可选）** 如果你在做 Ceph 开发、为 Ceph 做构建测试、或者急\
-  需开发版中的尖端功能，可以安装开发版软件包，详情见 `添加 Ceph 开发库`_ 。
-
-- **Apache/FastCGI:（可选）** 如果你想部署 :term:`Ceph 对象存储`\ 服务，那么必须\
-  安装 Apache 和 FastCGI 。 Ceph 库提供的 Apache 和 FastCGI 二进制包和来自 \
-  Apache 的是一样的，但它打开了 100-continue 支持。如果你想启用 \
-  :term:`Ceph 对象网关`\ 、且支持 100-continue ，那必须从 Ceph 库下载 \
-  Apache/FastCGI 软件包。详情见\ `添加 Apache/CGI 源`_\ 。
-
+- **Apache/FastCGI:（可选）** 如果你想部署 \
+  :term:`Ceph 对象存储`\ 服务，那么必须安装 Apache 和 FastCGI 。 \
+  Ceph 库提供的 Apache 和 FastCGI 二进制包和来自 Apache 的是一样\
+  的，但它打开了 100-continue 支持。如果你想启用 \
+  :term:`Ceph 对象网关`\ 、且支持 100-continue ，那必须从 Ceph \
+  库下载 Apache/FastCGI 软件包。详情见\ `添加 Apache/CGI 源`_\ 。
 
 如果你想手动下载二进制包，请参考\ `下载软件包`_\ 。
 
@@ -82,6 +80,27 @@ RPM
 	sudo rpm --import 'https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc'
 
 
+.. _mirrors:
+
+镜像
+====
+
+为提升用户体验，世界各地有多个 Ceph 镜像。
+
+这些镜像位于如下地点：
+
+- **EU**: http://eu.ceph.com/
+- **AU**: http://au.ceph.com/
+
+你可以把所有的 ceph.com URL 替换成任意镜像，例如：
+
+  http://download.ceph.com/debian-hammer
+
+可以改成：
+
+  http://eu.ceph.com/debian-hammer
+
+
 添加 Ceph 库
 ============
 
@@ -107,15 +126,11 @@ Ceph 的主要发布包括：
 - **Firefly:** 是 Ceph 的第六个重要发布。这些包适合于生产环境，重要\
   的缺陷修正会移植回来、并在必要时发布修正版。
 
-- **Emperor:** 是 Ceph 的第五个重要发布。这些包比较老了，而且已没有\
-  后续支持，所以我们建议升级到 Firefly 。
-  
-- **Dumpling:** 是 Ceph 的第四个重要发布。这些包比较老了，不建议新\
-  用户使用，但重大缺陷在必要时仍会修复。我们鼓励所有 Dumpling 用户\
-  尽快升级到 Firefly 。
+- **Emperor:** 是 Ceph 的第五个重要发布。这些包比较老了，而且已不再\
+  维护了，所以我们建议升级到 Firefly 。
 
-- **Argonaut, Bobtail, Cuttlefish:** 这些是 Ceph 的前三个主要发布，\
-  它们都很老了，且不再维护，所以请升级到仍支持的版本。
+- **Argonaut, Bobtail, Cuttlefish, Dumpling:** 这些是 Ceph 的前 4 \
+  个主要发布，它们都很老了，且不再维护，所以请升级到近期版本。
 
 .. tip:: 荷兰有个镜像 http://eu.ceph.com/ ，适合欧洲用户使用。
 

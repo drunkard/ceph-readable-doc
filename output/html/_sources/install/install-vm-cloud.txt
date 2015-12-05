@@ -27,16 +27,16 @@ of Cloud Platforms include OpenStack, CloudStack, OpenNebula, etc.
 安装 QEMU
 =========
 
-QEMU KVM can interact with Ceph Block Devices via ``librbd``, which is an
-important feature for using Ceph with cloud platforms. Once you install QEMU,
-see `QEMU and Block Devices`_ for usage. 
+QEMU KVM 能通过 ``librbd`` 库使用 Ceph 块设备，这对云平台是否能\
+采用 Ceph 来说很重要。装好 QEMU 后，可以参考 `QEMU 和块设备`_\ \
+把它用起来。
 
 
 Debian 软件包
 -------------
 
-QEMU packages are incorporated into Ubuntu 12.04 Precise Pangolin and later
-versions. To  install QEMU, execute the following:: 
+QEMU 二进制包从 Ubuntu 12.04 Precise Pangolin 版起就被合并到了 \
+Ubuntu 官方库。执行下面的命令安装 QEMU ： ::
 
 	sudo apt-get install qemu
 
@@ -44,58 +44,17 @@ versions. To  install QEMU, execute the following::
 RPM 软件包
 ----------
 
-To install QEMU, execute the following:
+要安装 QEMU ，可按如下步骤：
 
-#. Install ``yum-plugin-priorities``. ::
-
-	sudo yum install yum-plugin-priorities
-
-#. Ensure ``/etc/yum/pluginconf.d/priorities.conf`` exists.
-
-#. Ensure ``priorities.conf`` enables the plugin. :: 
-
-	[main]
-	enabled = 1
-
-.. note:: 在基于 RPM 的系统中，只有基于 EL6 的发行版（ RHEL 6 、 CentOS 6 、 \
-   Scientific Linux 6）需要 ceph-extras ； Fedora 或 RHEL 7+ 系统不需要。
-
-#. Create a ``/etc/yum.repos.d/ceph-extras.repo`` file with the following 
-   contents, and replace ``{distro}`` with your Linux distribution. Follow
-   the ``baseurl`` path below to see which distributions Ceph supports:: 
-
-	[ceph-extras]
-	name=Ceph Extras
-	baseurl=http://ceph.com/packages/ceph-extras/rpm/{distro}/$basearch
-	enabled=1
-	priority=2
-	gpgcheck=1
-	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
-
-	[ceph-qemu-source]
-	name=Ceph Extras Sources
-	baseurl=http://ceph.com/packages/ceph-extras/rpm/{distro}/SRPMS
-	enabled=1
-	priority=2
-	gpgcheck=1
-	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
-
-#. Update your repositories. :: 
+#. 更新软件库： ::
 
 	sudo yum update
 
-#. Ensure that non-priority versions are removed. ::
-
-	sudo yum remove qemu-kvm qemu-kvm-tools qemu-img
-	sudo yum clean all
-
-#. Install QEMU for Ceph. :: 
+#. 安装能和 Ceph 对接的 QEMU ： ::
 
 	sudo yum install qemu-kvm qemu-kvm-tools qemu-img
 
-#. Install additional QEMU packages (optional):: 
+#. 安装其它的 QEMU 软件包（可选的）： ::
 
 	sudo yum install qemu-guest-agent qemu-guest-agent-win32
 
@@ -124,9 +83,9 @@ Device`_ for usage.
 Debian 软件包
 -------------
 
-``libvirt`` packages are incorporated into Ubuntu 12.04 Precise Pangolin and
-later versions of Ubuntu. To install ``libvirt`` on these distributions,
-execute the following:: 
+``libvirt`` 软件包从 Ubuntu 12.04 Precise Pangolin 起就被并入\
+了 Ubuntu 官方库。要在这些发行版上安装 ``libvirt`` ，可用下面\
+的命令： ::
 
 	sudo apt-get update && sudo apt-get install libvirt-bin
 
@@ -134,13 +93,12 @@ execute the following::
 RPM 软件包
 ----------
 
-To use ``libvirt`` with a Ceph Storage Cluster, you must  have a running Ceph
-Storage Cluster and you must also install a version of QEMU with ``rbd`` format
-support.  See `安装 QEMU`_ for details.
+要通过 ``libvirt`` 使用 Ceph 存储集群，你必须有个正常运行的 \
+Ceph 集群、还必须安装支持 ``rbd`` 格式的 QEMU 。详情见 \
+`安装 QEMU`_ 。
 
-
-``libvirt`` packages are incorporated into the recent CentOS/RHEL distributions. 
-To install ``libvirt``, execute the following:: 
+近期的 CentOS/RHEL 发行版都集成了 ``libvirt`` 软件包。可执行\
+如下命令安装 ``libvirt`` ： ::
 
 	sudo yum install libvirt
 
@@ -156,12 +114,12 @@ complete the installation. For example::
 	cd libvirt
 	./autogen.sh
 	make
-	sudo make install 
+	sudo make install
 
-See `libvirt Installation`_ for details.
+详情见 `libvirt 安装手册`_\ 。
 
 
-.. _libvirt Installation: http://www.libvirt.org/compiling.html
+.. _libvirt 安装手册: http://www.libvirt.org/compiling.html
 .. _AutoGen: http://www.gnu.org/software/autogen/
-.. _QEMU and Block Devices: ../../rbd/qemu-rbd
+.. _QEMU 和块设备: ../../rbd/qemu-rbd
 .. _Using libvirt with Ceph Block Device: ../../rbd/libvirt

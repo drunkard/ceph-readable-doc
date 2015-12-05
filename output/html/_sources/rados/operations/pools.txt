@@ -276,6 +276,35 @@
 :适用版本: Version ``FIXME``
 
 
+.. _write_fadvise_dontneed:
+
+``write_fadvise_dontneed``
+
+:描述: 设置或取消指定存储池的 WRITE_FADVISE_DONTNEED 标志。
+:类型: Integer
+:有效范围: 1 开启， 0 取消
+
+
+.. _noscrub:
+
+``noscrub``
+
+:描述: 设置或取消指定存储池的 NOSCRUB 标志。
+:类型: Integer
+:有效范围: 1 设置， 0 取消
+
+
+.. _nodeep-scrub:
+
+``nodeep-scrub``
+
+:描述: 设置或取消指定存储池的 NODEEP_SCRUB 标志。
+:类型: Integer
+:有效范围: 1 开启， 0 取消
+
+
+.. _hit_set_type:
+
 ``hit_set_type``
 
 :描述: 启用缓存存储池的命中集跟踪，详情见 `Bloom 过滤器`_\ 。
@@ -349,16 +378,67 @@
 
 ``cache_min_flush_age``
 
-:描述: 达到此时间（单位为秒）时，缓存代理就把某些对象从缓存存储池刷回到存储池。
+:描述: 达到此时间（单位为秒）时，缓存代理就把某些对象从缓存存储池\
+       刷回到存储池。
+
 :类型: 整数
 :实例: ``600`` 10min
 
 
 ``cache_min_evict_age``
 
-:描述: 达到此时间（单位为秒）时，缓存代理就把某些对象从缓存存储池赶出。
+:描述: 达到此时间（单位为秒）时，缓存代理就把某些对象从缓存存储池\
+       赶出。
+
 :类型: 整数
 :实例: ``1800`` 30min
+
+
+.. _fast_read:
+
+``fast_read``
+
+:描述: 在纠删码存储池上，如果打开了这个标志，读请求会向所有分片\
+       发送子操作读，然后等着，直到收到的分片足以解码给客户端。\
+       对 jerasure 和 isa 纠删码插件来说，只要前 K 个请求返回，\
+       就能立即解码、并先把这些数据发给客户端。这样有助于资源折\
+       衷，以提升性能。当前，这些标志还只能用于纠删码存储池。
+
+:类型: Boolean
+:默认值: ``0``
+
+
+.. _scrub_min_interval:
+
+``scrub_min_interval``
+
+:描述: 在负载低时，洗刷存储池的最大间隔秒数。如果是 0 ，就按照\
+       配置文件里的 osd_scrub_min_interval 。
+
+:类型: Double
+:默认值: ``0``
+
+
+.. _scrub_max_interval:
+
+``scrub_max_interval``
+
+:描述: 不管集群负载如何，都要洗刷存储池的最大间隔秒数。如果是 \
+       0 ，就按照配置文件里的 osd_scrub_max_interval 。
+
+:类型: Double
+:默认值: ``0``
+
+
+.. _deep_scrub_interval:
+
+``deep_scrub_interval``
+
+:描述: “深度”洗刷存储池的间隔秒数。如果是 0 ，就按照配置文件里\
+       的 osd_deep_scrub_interval 。
+
+:类型: Double
+:默认值: ``0``
 
 
 获取存储池选项值
