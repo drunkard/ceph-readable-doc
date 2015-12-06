@@ -2,17 +2,18 @@
  安装 Ceph 存储集群
 ====================
 
-本指南说明了如何手动安装 Ceph 软件包，此方法只适用于那些没采用部署工具（如 \
-``ceph-deploy`` 、 ``chef`` 、 ``juju`` 等）的用户。
+本指南说明了如何手动安装 Ceph 软件包，此方法只适用于那些没采用\
+部署工具（如 ``ceph-deploy`` 、 ``chef`` 、 ``juju`` 等）的用户。
 
-.. tip:: 你也可以用 ``ceph-deploy`` 安装 Ceph 软件包，也许它更方便，因为只需一个\
-   命令就可以把 ``ceph`` 安装到多台主机。
+.. tip:: 你也可以用 ``ceph-deploy`` 安装 Ceph 软件包，也许它更\
+   方便，因为只需一个命令就可以把 ``ceph`` 安装到多台主机。
 
 
 用 APT 安装
 ===========
 
-只要把正式版或开发版软件包源加入了 APT ，你就可以更新 APT 数据库并安装 Ceph 了： ::
+只要把正式版或开发版软件包源加入了 APT ，你就可以更新 APT 数据\
+库并安装 Ceph 了： ::
 
 	sudo apt-get update && sudo apt-get install ceph ceph-mds
 
@@ -33,42 +34,43 @@
 	[main]
 	enabled = 1
 
-#. 确认你的 YUM ``ceph.repo`` 库文件条目包含 ``priority=2`` ，详情见\ \
-   `获取软件包`_\ ： ::
+#. 确认你的 YUM ``ceph.repo`` 库文件条目包含 ``priority=2`` ，\
+   详情见\ `获取软件包`_\ ： ::
 
 	[ceph]
 	name=Ceph packages for $basearch
-	baseurl=http://ceph.com/rpm-{ceph-release}/{distro}/$basearch
+	baseurl=http://download.ceph.com/rpm-{ceph-release}/{distro}/$basearch
 	enabled=1
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-noarch]
 	name=Ceph noarch packages
-	baseurl=http://ceph.com/rpm-{ceph-release}/{distro}/noarch
+	baseurl=http://download.ceph.com/rpm-{ceph-release}/{distro}/noarch
 	enabled=1
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-source]
 	name=Ceph source packages
-	baseurl=http://ceph.com/rpm-{ceph-release}/{distro}/SRPMS
+	baseurl=http://download.ceph.com/rpm-{ceph-release}/{distro}/SRPMS
 	enabled=0
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
-
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 #. 安装依赖的的软件包： ::
 
 	sudo yum install snappy leveldb gdisk python-argparse gperftools-libs
 
-成功添加正式版或开发版软件包的库文件之后，或把 ``ceph.repo`` 文件放入 ``/etc/yum.repos.d`` 之后，你就可以安装 Ceph 软件包了。 ::
+成功添加正式版或开发版软件包的库文件之后，或把 ``ceph.repo`` \
+文件放入 ``/etc/yum.repos.d`` 之后，你就可以安装 Ceph 软件包\
+了。 ::
 
 	sudo yum install ceph
 
@@ -80,7 +82,9 @@
 
 	sudo make install
 
-如果你是本地安装的， ``make`` 会把可执行文件放到 ``usr/local/bin`` 里面。你可以\
-把 Ceph 配置文件放到 ``usr/local/bin`` 目录下，这样就能从这个目录运行 Ceph 了。
+如果你是本地安装的， ``make`` 会把可执行文件放到 ``usr/local/bin`` \
+里面。你可以把 Ceph 配置文件放到 ``usr/local/bin`` 目录下，这样就\
+能从这个目录运行 Ceph 了。
+
 
 .. _获取软件包: ../get-packages

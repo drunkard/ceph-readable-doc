@@ -1,6 +1,6 @@
-=============
- Admin Guide
-=============
+==========
+ 管理手册
+==========
 
 Once you have your Ceph Object Storage service up and running, you may
 administer the service with user management, access controls, quotas 
@@ -287,13 +287,13 @@ For example::
 	radosgw-admin caps add --uid=johndoe --caps="users=*"
 
 
-To remove administrative capabilities from a user, execute the following:: 
+要删除某用户的管理能力，可用下面的命令： ::
 
-	radosgw-admin caps remove --uid=johndoe --caps={caps}
+	radosgw-admin caps rm --uid=johndoe --caps={caps}
 
 
-Quota Management
-================
+配额管理
+========
 
 The Ceph Object Gateway enables you to set quotas on users and buckets owned by
 users. Quotas include the maximum number of objects in a bucket and the maximum

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>CephFS 配额管理 &mdash; Ceph Documentation</title>
+    <title>CephFS Quotas &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -26,9 +26,9 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
-    <link rel="up" title="Ceph 文件系统" href="../" />
-    <link rel="next" title="在 CephFS 上使用 Hadoop" href="../hadoop/" />
-    <link rel="prev" title="mount.ceph – 用于挂载 Ceph 文件系统" href="../../man/8/mount.ceph/" />
+    <link rel="up" title="Ceph Filesystem" href="../" />
+    <link rel="next" title="Using Hadoop with CephFS" href="../hadoop/" />
+    <link rel="prev" title="mount.ceph – mount a ceph file system" href="../../man/8/mount.ceph/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,13 +43,13 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../hadoop/" title="在 CephFS 上使用 Hadoop"
+          <a href="../hadoop/" title="Using Hadoop with CephFS"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../../man/8/mount.ceph/" title="mount.ceph – 用于挂载 Ceph 文件系统"
+          <a href="../../man/8/mount.ceph/" title="mount.ceph – mount a ceph file system"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
+          <li><a href="../" accesskey="U">Ceph Filesystem</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -58,40 +58,66 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="cephfs">
-<h1>CephFS 配额管理<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
-<p>CephFS 允许给系统内的任意目录设置配额，这个配额可以限制目录树中这一点以下的<em>字节</em>数或者<em>文件</em>数。</p>
-<div class="section" id="id1">
-<h2>局限性<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="cephfs-quotas">
+<h1>CephFS Quotas<a class="headerlink" href="#cephfs-quotas" title="Permalink to this headline">¶</a></h1>
+<p>CephFS allows quotas to be set on any directory in the system.  The
+quota can restrict the number of <em>bytes</em> or the number of <em>files</em>
+stored beneath that point in the directory hierarchy.</p>
+<div class="section" id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li><em>配额是合作性的、非对抗性的。</em> CephFS 的配额功能依赖于挂载它的客户端的合作，在达到上限时要停止写入；无法阻止篡改过的或者对抗性的客户端，它们可以想写多少就写多少。在客户端完全不可信时，用配额防止多占空间是靠不住的。</li>
-<li><em>配额是不准确的。</em> 在达到配额限制一小段时间后，正在写入文件系统的进程才会被停止。很难避免它们超过配置的限额、多写入一些数据。会超过配额多大幅度主要取决于时间长短，而非数据量。一般来说，超出配置的限额之后 10 秒内，写入会被停掉。</li>
-<li><em>内核客户端还没实现配额功能。</em> 用户空间客户端（ libcephfs 、 ceph-fuse ）已经支持配额了，但是 Linux 内核客户端还没实现。</li>
-<li><em>基于路径限制挂载时必须谨慎地配置配额。</em> 客户端必须能够访问配置了配额的那个目录的索引节点，这样才能执行配额管理。如果某一客户端被 MDS 能力限制成了只能访问一个特定路径（如 <tt class="docutils literal"><span class="pre">/home/user</span></tt> ），并且它们无权访问配置了配额的父目录（如 <tt class="docutils literal"><span class="pre">/home</span></tt> ），这个客户端就不会按配额执行。所以，基于路径做访问控制时，最好在限制了客户端的那个目录（如 <tt class="docutils literal"><span class="pre">/home/user</span></tt> ）、或者它下面的子目录上配置配额。</li>
+<li><em>Quotas are cooperative and non-adversarial.</em> CephFS quotas rely on
+the cooperation of the client who is mounting the file system to
+stop writers when a limit is reached.  A modified or adversarial
+client cannot be prevented from writing as much data as it needs.
+Quotas should not be relied on to prevent filling the system in
+environments where the clients are fully untrusted.</li>
+<li><em>Quotas are imprecise.</em> Processes that are writing to the file
+system will be stopped a short time after the quota limit is
+reached.  They will inevitably be allowed to write some amount of
+data over the configured limit.  How far over the quota they are
+able to go depends primarily on the amount of time, not the amount
+of data.  Generally speaking writers will be stopped within 10s of
+seconds of crossing the configured limit.</li>
+<li><em>Quotas are not yet implemented in the kernel client.</em> Quotas are
+supported by the userspace client (libcephfs, ceph-fuse) but are
+not yet implemented in the Linux kernel client.</li>
+<li><em>Quotas must be configured carefully when used with path-based
+mount restrictions.</em> The client needs to have access to the
+directory inode on which quotas are configured in order to enforce
+them.  If the client has restricted access to a specific path
+(e.g., <tt class="docutils literal"><span class="pre">/home/user</span></tt>) based on the MDS capability, and a quota is
+configured on an ancestor directory they do not have access to
+(e.g., <tt class="docutils literal"><span class="pre">/home</span></tt>), the client will not enforce it.  When using
+path-based access restrictions be sure to configure the quota on
+the directory the client is restricted too (e.g., <tt class="docutils literal"><span class="pre">/home/user</span></tt>)
+or something nested beneath it.</li>
 </ol>
 </div>
-<div class="section" id="id2">
-<h2>配置<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<p>就像 CephFS 里的其它配置一样，配额也是用虚拟扩展属性来配置的：</p>
+<div class="section" id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
+<p>Like most other things in CephFS, quotas are configured using virtual
+extended attributes:</p>
 <blockquote>
 <div><ul class="simple">
 <li><tt class="docutils literal"><span class="pre">ceph.quota.max_files</span></tt> &#8211; file limit</li>
 <li><tt class="docutils literal"><span class="pre">ceph.quota.max_bytes</span></tt> &#8211; byte limit</li>
 </ul>
 </div></blockquote>
-<p>如果这些属性出现在目录索引节点里，就意味着那里配置了配额；如果不存在，那么那个目录就没设置配额（然而父目录仍然有可能配置了）。</p>
-<p>要设置配额：</p>
-<div class="highlight-python"><pre># 100 MB
-setfattr -n ceph.quota.max_bytes -v 100000000 /some/dir
-# 10000 个文件
-setfattr -n ceph.quota.max_files -v 10000 /some/dir</pre>
+<p>If the attributes appear on a directory inode that means a quota is
+configured there.  If they are not present then no quota is set on
+that directory (although one may still be configured on a parent directory).</p>
+<p>To set a quota:</p>
+<div class="highlight-python"><pre>setfattr -n ceph.quota.max_bytes -v 100000000 /some/dir     # 100 MB
+setfattr -n ceph.quota.max_files -v 10000 /some/dir         # 10,000 files</pre>
 </div>
-<p>要查看设置的配额：</p>
+<p>To view quota settings:</p>
 <div class="highlight-python"><pre>getfattr -n ceph.quota.max_bytes /some/dir
 getfattr -n ceph.quota.max_files /some/dir</pre>
 </div>
-<p>需要留意的是，如果这些扩展属性的值是 <tt class="docutils literal"><span class="pre">0</span></tt> ，就说明没设置配额。</p>
-<p>要删除配额：</p>
+<p>Note that if the value of the extended attribute is <tt class="docutils literal"><span class="pre">0</span></tt> that means
+the quota is not set.</p>
+<p>To remove a quota:</p>
 <div class="highlight-python"><pre>setfattr -n ceph.quota.max_bytes -v 0 /some/dir
 setfattr -n ceph.quota.max_files -v 0 /some/dir</pre>
 </div>
@@ -109,45 +135,45 @@ setfattr -n ceph.quota.max_files -v 0 /some/dir</pre>
             </a></p>
 <h3><a href="../../">Table Of Contents</a></h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">增加/删除 MDS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../mds-config-ref/">MDS 配置</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">cephfs 手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="">CephFS 配额管理</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">局限性</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id2">配置</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (Quick)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Filesystem</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">Add/Remove MDS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds-config-ref/">MDS Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../journaler/">Journaler Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-mds/">Manpage ceph-mds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../createfs/">Create CephFS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel/">Mount CephFS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fuse/">Mount CephFS as FUSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fstab/">Mount CephFS in fstab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">Manpage cephfs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">Manpage ceph-fuse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">Manpage mount.ceph</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">CephFS Quotas</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#limitations">Limitations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuration">Configuration</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../hadoop/">Using Ceph with Hadoop</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-layouts/">File layouts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../eviction/">Client eviction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../full/">Handling full filesystems</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">Disaster recovery</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Development</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
 </ul>
 
 
@@ -180,13 +206,13 @@ setfattr -n ceph.quota.max_files -v 0 /some/dir</pre>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../hadoop/" title="在 CephFS 上使用 Hadoop"
+          <a href="../hadoop/" title="Using Hadoop with CephFS"
              >next</a> |</li>
         <li class="right" >
-          <a href="../../man/8/mount.ceph/" title="mount.ceph – 用于挂载 Ceph 文件系统"
+          <a href="../../man/8/mount.ceph/" title="mount.ceph – mount a ceph file system"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 
+          <li><a href="../" >Ceph Filesystem</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

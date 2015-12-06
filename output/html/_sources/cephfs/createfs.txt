@@ -40,8 +40,8 @@
     $ ceph fs ls
     name: cephfs, metadata pool: cephfs_metadata, data pools: [cephfs_data ]
 
-文件系统创建完毕后， MDS 服务器就能达到 *active* 状态了，比如在一个单 MDS 系\
-统中：
+文件系统创建完毕后， MDS 服务器就能达到 *active* 状态了，比如在\
+一个单 MDS 系统中：
 
 .. code:: bash
 
@@ -50,9 +50,8 @@
 
 建好文件系统且 MDS 活跃后，你就可以挂载此文件系统了：
 
-.. toctree:: 
-	:maxdepth: 1
+	- `挂载 CephFS 文件系统`_
+	- `把 CephFS 挂载为用户空间文件系统`_
 
-	挂载 Ceph 文件系统 <kernel>
-	把 Ceph FS 挂载为 FUSE <fuse>
-
+.. _挂载 CephFS 文件系统: ../../cephfs/kernel
+.. _把 CephFS 挂载为用户空间文件系统: ../../cephfs/fuse

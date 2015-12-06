@@ -311,10 +311,6 @@
 
    删除桶前先删除其内所有对象。
 
-.. option:: --lazy-remove
-
-   推迟对象尾部的删除。
-
 .. option:: --metadata-key=<key>
 
    用 ``metadata get`` 检索元数据时用的密钥。

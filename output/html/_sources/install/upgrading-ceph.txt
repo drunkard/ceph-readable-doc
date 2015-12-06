@@ -69,7 +69,7 @@ Argonaut 到 Bobtail
 确保你先更新软件库路径，如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
-	echo deb http://ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb http://download.ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 详情见如下几段。
 
@@ -130,51 +130,55 @@ Bobtail 版现在支持 ``format 2`` 格式的映像了！但是在所有 ``ceph
 Argonaut 到 Cuttlefish
 ======================
 
-要从 Argonaut 升级到 Cuttlefish ，请仔细阅读本段、以及从 Argonaut 升到 Bobtail 、\
-还有从 Bobtail 升级到 Cuttlefish 。从 Argonaut 升级到 Cuttlefish 时，\ **你必须先\
-把所有监视器从 Argonaut 升级到 Bobtail v0.56.5** ！！！所有其他的守护进程都可以从 \
-Argonaut 直接升级到 Cuttlefish ，无需间接地从 Bobtail 过渡一次。
+要从 Argonaut 升级到 Cuttlefish ，请仔细阅读本段、以及从 Argonaut \
+升到 Bobtail 、还有从 Bobtail 升级到 Cuttlefish 。从 Argonaut 升\
+级到 Cuttlefish 时，\ **你必须先把所有监视器从 Argonaut 升级到 \
+Bobtail v0.56.5** ！！！所有其他的守护进程都可以从 Argonaut 直接\
+升级到 Cuttlefish ，无需间接地从 Bobtail 过渡一次。
 
 .. important:: 确保软件仓库指定的是 Bobtail ，而不是 Cuttlefish 。
 
 例如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
-	echo deb http://ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb http://download.ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-我们建议把监视器升级到 Cuttlefish 之前，先升级到 Bobtail 。混用 Bobtail 和 \
-Argonaut 监视器将导致旧监视器不能使用新线上协议，因为此协议在 Bobtail 及更高版本上\
-才可用。只升级大多数（如三个中的两个）监视器也会导致潜在风险，即再失效一个就会丧失可\
-用性（因为未升级的守护进程不能参与新协议构成的通讯）。我们建议各 ``ceph-mon`` 升级\
-期间不要等待。详情见\ `升级监视器`_\ 。
+我们建议把监视器升级到 Cuttlefish 之前，先升级到 Bobtail 。混用 \
+Bobtail 和 Argonaut 监视器将导致旧监视器不能使用新线上协议，因为\
+此协议在 Bobtail 及更高版本上才可用。只升级大多数（如三个中的两\
+个）监视器也会导致潜在风险，即再失效一个就会丧失可用性（因为未升\
+级的守护进程不能参与新协议构成的通讯）。我们建议各 ``ceph-mon`` \
+升级期间不要等待。详情见\ `升级监视器`_\ 。
 
 .. note:: 关于 Bobtail 的认证及向后兼容性请参考\ `认证`_\ 和
    `Ceph 认证——向后兼容性`_\ 。
 
-把监视器从 Argonaut 升级到 Bobtail 、并重启无误（可以形成法定人数）后，还必须从 \
-Bobtail 再升级到 Cuttlefish 。再次升级前，记得更改到 Cuttlefish 软件库的引用，例如： ::
+把监视器从 Argonaut 升级到 Bobtail 、并重启无误（可以形成法定人\
+数）后，还必须从 Bobtail 再升级到 Cuttlefish 。再次升级前，记得\
+更改到 Cuttlefish 软件库的引用，例如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
-	echo deb http://ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb http://download.ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 详情见\ `升级监视器`_\ 。
 
-Argonaut 和 Cuttlefish 的监视器架构差异较大，详情见\ `监视器配置`_\ 和 \
-`Joao 的博客文章`_\ 。完成监视器的升级后， OSD 和 MDS 守护进程可以按照常规步骤升\
-级，详情见\ `升级单个 OSD`_ 和\ `升级单个元数据服务器`_\ 。
+Argonaut 和 Cuttlefish 的监视器架构差异较大，详情见\ \
+`监视器配置`_\ 和 `Joao 的博客文章`_\ 。完成监视器的升级后， \
+OSD 和 MDS 守护进程可以按照常规步骤升级，详情见\ \
+`升级单个 OSD`_ 和\ `升级单个元数据服务器`_\ 。
 
 
 Bobtail 到 Cuttlefish
 =====================
 
-从 Bobtail 升级到 Cuttlefish 有几点要特别注意，首先，监视器架构大变，所以你应该把\
-所有监视器都升级到 Cuttlefish ；其次，如果你的集群有多个元数据服务器，应该确保它们\
-的名字都唯一。详情如下。
+从 Bobtail 升级到 Cuttlefish 有几点要特别注意，首先，监视器架构\
+大变，所以你应该把所有监视器都升级到 Cuttlefish ；其次，如果你的\
+集群有多个元数据服务器，应该确保它们的名字都唯一。详情如下。
 
 把较老的 ``apt`` 源替换为 Cuttlefish ，如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
-	echo deb http://ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb http://download.ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 
 监视器
@@ -213,7 +217,7 @@ Dumpling ，因为协议有变动。
 把较老的软件库源替换为 Dumpling 源，例如用 ``apt`` 执行： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
-	echo deb http://ceph.com/debian-dumpling/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb http://download.ceph.com/debian-dumpling/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 在 CentOS/Red Hat 发行版上可删除旧源。 ::
 
@@ -225,17 +229,18 @@ Dumpling ，因为协议有变动。
 
 	[ceph]
 	name=Ceph Packages and Backports $basearch
-	baseurl=http://ceph.com/rpm/el6/$basearch
+	baseurl=http://download.ceph.com/rpm/el6/$basearch
 	enabled=1
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 
-.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 http://ceph.com/rpm 。
+.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 \
+   http://download.ceph.com/rpm 。
 
-.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓库加到运行 \
-   ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
+.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓\
+   库加到运行 ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
 
 
 Dumpling 到 Emperor
@@ -246,43 +251,44 @@ Dumpling (v0.64) 可滚动升级。
 把较老的软件库源替换为 Emperor 源，例如用 ``apt`` 执行： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
-	echo deb http://ceph.com/debian-emperor/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb http://download.ceph.com/debian-emperor/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 在 CentOS/Red Hat 发行版上可删除旧源。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
-然后新增软件库 ``ceph.repo`` ，其内容如下，要用自己的发行版名字（如 ``el6`` 、 \
-``rhel6`` 等等）替换 ``{disro}`` 。
+然后新增软件库 ``ceph.repo`` ，其内容如下，要用自己的发行版名字\
+（如 ``el6`` 、 ``rhel6`` 等等）替换 ``{disro}`` 。
 
 .. code-block:: ini
 
 	[ceph]
 	name=Ceph Packages and Backports $basearch
-	baseurl=http://ceph.com/rpm-emperor/{distro}/$basearch
+	baseurl=http://download.ceph.com/rpm-emperor/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 
-.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 http://ceph.com/rpm 。
+.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 \
+   http://download.ceph.com/rpm 。
 
-.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓库加到运行 \
-   ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
+.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓\
+   库加到运行 ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
 
 
 命令行工具
 ----------
 
-在 v0.65 中， ``ceph`` 命令行接口（ CLI ）工具变动很大；老的 CLI 不能与 Dumpling \
-通讯，也就是说，要用 ``ceph`` 命令访问 Ceph 存储集群的所有节点其 ``ceph-common`` \
-库必须升级。 ::
+在 v0.65 中， ``ceph`` 命令行接口（ CLI ）工具变动很大；老的 CLI \
+不能与 Dumpling 通讯，也就是说，要用 ``ceph`` 命令访问 Ceph 存储\
+集群的所有节点其 ``ceph-common`` 库必须升级。 ::
 
 	sudo apt-get update && sudo apt-get install ceph-common
 
-确保你已安装最新版（ v0.67 或更新）。如果还没有，你也许得卸载、清除相关依赖，然后重\
-新安装。
+确保你已安装最新版（ v0.67 或更新）。如果还没有，你也许得卸载、\
+清除相关依赖，然后重新安装。
 
 关于新命令行的细节在 `v0.65`_ 。
 
@@ -344,7 +350,8 @@ Firefly 。也就是说，在升级 Ceph 守护进程前，要用 ``ceph`` 命�
 
 	sudo yum install ceph-common
 
-确保你已安装最新版。如果还没有，你也许得卸载、清除相关依赖，然后重新安装。
+确保你已安装最新版。如果还没有，你也许得卸载、清除相关依赖，然\
+后重新安装。
 
 关于新命令行界面的详细情况请参考 `v0.65`_ 。
 
@@ -357,24 +364,25 @@ Firefly 。也就是说，在升级 Ceph 守护进程前，要用 ``ceph`` 命�
 把旧版软件库改为 Firefly 的，例如用 ``apt`` 命令执行此命令： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
-	echo deb http://ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb http://download.ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 对于 CentOS/Red Hat 发行版，先删除旧版软件库。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
-然后新增一个 ``ceph.repo`` 软件库条目，其内容如下，还有把 ``{distro}`` 替换为你的\
-发行版名字（如 ``el6`` 、 ``rhel6`` 、 ``rhel7`` 等等）。
+然后新增一个 ``ceph.repo`` 软件库条目，其内容如下，还有把 \
+``{distro}`` 替换为你的发行版名字（如 ``el6`` 、 ``rhel6`` 、 \
+``rhel7`` 等等）。
 
 .. code-block:: ini
 
 	[ceph]
 	name=Ceph Packages and Backports $basearch
-	baseurl=http://ceph.com/rpm-firefly/{distro}/$basearch
+	baseurl=http://download.ceph.com/rpm-firefly/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 
 按如下顺序升级守护进程：
@@ -405,12 +413,14 @@ Emperor 到 Firefly
 Ceph 配置文件变更
 -----------------
 
-我们建议升级前先把下列配置加入 ``ceph.conf`` 配置文件的 ``[mon]`` 段下： ::
+我们建议升级前先把下列配置加入 ``ceph.conf`` 配置文件的 ``[mon]`` \
+段下： ::
 
     mon warn on legacy crush tunables = false
 
-此配置可消除因用着老 CRUSH 归置法而引起的健康告警。虽说可以在全集群范围内重均衡已有\
-数据，但我们不建议生产集群做，因为它涉及大量数据，而且重均衡会导致严重的性能降级。
+此配置可消除因用着老 CRUSH 归置法而引起的健康告警。虽说可以在全\
+集群范围内重均衡已有数据，但我们不建议生产集群做，因为它涉及大量\
+数据，而且重均衡会导致严重的性能降级。
 
 
 升级顺序
@@ -419,44 +429,48 @@ Ceph 配置文件变更
 把旧版软件库改为 Firefly 的，例如用 ``apt`` 命令执行此命令： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
-	echo deb http://ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb http://download.ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 对于 CentOS/Red Hat 发行版，先删除旧版软件库。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
-然后新增一个 ``ceph.repo`` 软件库条目，其内容如下，还有把 ``{distro}`` 替换为你的\
-发行版名字（如 ``el6`` 、 ``rhel6`` 、 ``rhel7`` 等等）。
+然后新增一个 ``ceph.repo`` 软件库条目，其内容如下，还有把 \
+``{distro}`` 替换为你的发行版名字（如 ``el6`` 、 ``rhel6`` 、 \
+``rhel7`` 等等）。
 
 .. code-block:: ini
 
 	[ceph]
 	name=Ceph Packages and Backports $basearch
-	baseurl=http://ceph.com/rpm/{distro}/$basearch
+	baseurl=http://download.ceph.com/rpm/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 
-.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 http://ceph.com/rpm 。
+.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 \
+   http://download.ceph.com/rpm 。
 
-.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓库加到运行 \
-   ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
+.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓\
+   库加到运行 ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
 
 
 按如下顺序升级守护进程：
 
-#. **监视器：** 如果 ``ceph-mon`` 守护进程晚于 ``ceph-osd`` 守护进程启动，那么这\
-   些监视器就不能正确注册其能力，新功能也不可用，除非再次重启。
+#. **监视器：** 如果 ``ceph-mon`` 守护进程晚于 ``ceph-osd`` 守\
+   护进程启动，那么这些监视器就不能正确注册其能力，新功能也不可\
+   用，除非再次重启。
 
 #. **OSD**
 
-#. **元数据服务器：** 如果 ``ceph-mds`` 守护进程先被重启了，它只能先等着，直到所\
-   有 OSD 都升级完，它才能完全启动。
+#. **元数据服务器：** 如果 ``ceph-mds`` 守护进程先被重启了，它\
+   只能先等着，直到所有 OSD 都升级完，它才能完全启动。
 
-#. **网关：** 一起升级 ``radosgw`` 守护进程。多片上传功能有微小的行为变化，它会阻\
-   止由新版 ``radosgw`` 发起、却由旧版 ``radosgw`` 完成的多片上传请求。
+#. **网关：** 一起升级 ``radosgw`` 守护进程。多片上传功能有微小\
+   的行为变化，它会阻止由新版 ``radosgw`` 发起、却由旧版 \
+   ``radosgw`` 完成的多片上传请求。
 
 
 升级过程
@@ -464,8 +478,8 @@ Ceph 配置文件变更
 
 下面是具体升级进程。
 
-.. important:: Ceph 的各版本可能有不同的步骤，所以\ **升级前**\ 请参考此版本特定的\
-   升级步骤。
+.. important:: Ceph 的各版本可能有不同的步骤，所以\ **升级前**\
+   请参考此版本特定的升级步骤。
 
 
 升级监视器
@@ -499,8 +513,8 @@ Ceph 配置文件变更
 
 	sudo /etc/init.d/ceph restart {mon-id}
 
-   用 ``ceph-deploy`` 部署的 CentOS/Red Hat 发行版，其监视器 ID 通常是 \
-   ``mon.{hostname}`` 。
+   用 ``ceph-deploy`` 部署的 CentOS/Red Hat 发行版，其监视器 ID \
+   通常是 ``mon.{hostname}`` 。
 
 #. 确保各监视器都重回法定人数。 ::
 

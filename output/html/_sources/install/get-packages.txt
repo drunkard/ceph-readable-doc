@@ -50,10 +50,11 @@ Ceph 对象存储`_\ 。
 安装密钥
 ========
 
-把密钥加入你系统的可信密钥列表内，以消除安全告警。对主要发行版（如 ``dumpling`` 、 \
-``emperor`` 、 ``firefly`` ）和开发版（如 ``release-name-rc1`` 、 \
-``release-name-rc2`` ）应该用 ``release.asc`` 密钥；开发中的测试版应使用 \
-``autobuild.asc`` 密钥（开发者和 QA ）。
+把密钥加入你系统的可信密钥列表内，以消除安全告警。对主要发行版\
+（如 ``dumpling`` 、 ``emperor`` 、 ``firefly`` ）和开发版（如 \
+``release-name-rc1`` 、 ``release-name-rc2`` ）应该用 \
+``release.asc`` 密钥；开发中的测试版应使用 ``autobuild.asc`` \
+密钥（开发者和 QA ）。
 
 
 APT
@@ -61,11 +62,12 @@ APT
 
 执行下列命令安装 ``release.asc`` 内的密钥： ::
 
-	wget -q -O- 'https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc' | sudo apt-key add -
+	wget -q -O- 'https://download.ceph.com/keys/release.asc' | sudo apt-key add -
 
-执行下列命令安装 ``autobuild.asc`` 密钥（仅适用于 QA 和开发者）： ::
+执行下列命令安装 ``autobuild.asc`` 密钥（仅适用于 QA 和开发\
+者）： ::
 
-	wget -q -O- 'https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc' | sudo apt-key add -
+	wget -q -O- 'https://download.ceph.com/keys/autobuild.asc' | sudo apt-key add -
 
 
 RPM
@@ -73,11 +75,11 @@ RPM
 
 执行下列命令安装 ``release.asc`` 密钥： ::
 
-	sudo rpm --import 'https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc'
+	sudo rpm --import 'https://download.ceph.com/keys/release.asc'
 
 执行下列命令安装 ``autobuild.asc`` 密钥（仅对 QA 和开发者）： ::
 
-	sudo rpm --import 'https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc'
+	sudo rpm --import 'https://download.ceph.com/keys/autobuild.asc'
 
 
 .. _mirrors:
@@ -192,7 +194,7 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-noarch]
 	name=Ceph noarch packages
@@ -201,7 +203,7 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-source]
 	name=Ceph source packages
@@ -210,7 +212,7 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 
 如果想用开发版，你也可以用相应配置： ::
@@ -222,7 +224,7 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-noarch]
 	name=Ceph noarch packages
@@ -231,7 +233,7 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-source]
 	name=Ceph source packages
@@ -240,7 +242,7 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+	gpgkey=https://download.ceph.com/keys/release.asc
 
 
 对于某些包，你可以通过名字直接下载。按照我们的开发进度，每 3-4 \
@@ -296,7 +298,7 @@ RPM 二进制包
 	enabled=0
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc
+	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 
 你可以到 http://gitbuilder.ceph.com 查看 Ceph 支持哪些发行版。
@@ -334,7 +336,7 @@ RPM 二进制包
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc
+	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 	[apache2-ceph-source]
 	name=Apache source packages for Ceph
@@ -343,7 +345,7 @@ RPM 二进制包
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc
+	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 
 仿照前述步骤创建 ``ceph-fastcgi.repo`` 文件。 ::
@@ -355,7 +357,7 @@ RPM 二进制包
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc
+	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 	[fastcgi-ceph-noarch]
 	name=FastCGI noarch packages for Ceph
@@ -364,7 +366,7 @@ RPM 二进制包
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc
+	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 	[fastcgi-ceph-source]
 	name=FastCGI source packages for Ceph
@@ -373,7 +375,7 @@ RPM 二进制包
 	priority=2
 	gpgcheck=1
 	type=rpm-md
-	gpgkey=https://git.ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc
+	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 
 下载软件包
@@ -445,5 +447,5 @@ Ceph 库配置文件，这样 ``yum`` 或 ``up2date`` 就可以使用这些配�
 
 
 .. _安装 Ceph 对象存储: ../install-storage-cluster
-.. _Debian 测试版软件库: http://ceph.com/debian-testing/dists
+.. _Debian 测试版软件库: http://download.ceph.com/debian-testing/dists
 .. _the gitbuilder page: http://gitbuilder.ceph.com

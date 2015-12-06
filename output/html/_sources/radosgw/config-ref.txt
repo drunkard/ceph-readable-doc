@@ -188,8 +188,8 @@
 
 ``rgw resolve cname``
 
-:描述: 如果主机名与 ``rgw dns name`` 不同， ``rgw`` 是否应该用请求的 \
-       hostname 字段的 DNS CNAME 记录。
+:描述: 如果主机名与 ``rgw dns name`` 不同， ``rgw`` 是否应该用\
+       请求的 hostname 字段的 DNS CNAME 记录。
 
 :类型: Boolean
 :默认值: ``false``
@@ -197,20 +197,23 @@
 
 ``rgw obj stripe size``
 
-:描述: Ceph 对象网关的对象条带尺寸。关于条带化请参考\ `体系结构`_\ 。
+:描述: Ceph 对象网关的对象条带尺寸。关于条带化请参考\ \
+       `体系结构`_\ 。
+
 :类型: Integer
 :默认值: ``4 << 20``
 
 
 ``rgw extended http attrs``
 
-:描述: 为对象增加支持的属性集。可以在上传对象时把这些额外属性设置到 HTTP 头\
-       的字段里；如果设置过，在此对象上执行 GET/HEAD 操作时这些属性就能作为 \
-       HTTP 头的字段返回。
+:描述: 为实体（用户、桶或对象）新增可设置的属性集。可以在上传实\
+       体时把这些额外属性设置在 HTTP 头的字段里、或者用 POST 方\
+       法修改；如果设置过，在此实体上执行 GET/HEAD 操作时这些属\
+       性就会以 HTTP 头的字段返回。
 
 :类型: String
 :默认值: None
-:实例: "content_foo, content_bar"
+:实例: "content_foo, content_bar, x-foo-bar"
 
 
 ``rgw exit timeout secs``
