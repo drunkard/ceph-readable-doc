@@ -132,7 +132,8 @@ Ceph 的主要发布包括：
 - **Argonaut, Bobtail, Cuttlefish, Dumpling:** 这些是 Ceph 的前 4 \
   个主要发布，它们都很老了，且不再维护，所以请升级到近期版本。
 
-.. tip:: 荷兰有个镜像 http://eu.ceph.com/ ，适合欧洲用户使用。
+.. tip:: 对国际用户来说，在全球有很多镜像可用。请参考 \
+   :ref:`mirrors` 。
 
 
 Debian 二进制包
@@ -168,6 +169,9 @@ http://download.ceph.com/packages/google-perftools/debian 。 ::
 `Debian 测试版软件库`_ 是已支持的 Debian/Ubuntu 列表。 ::
 
 	echo deb http://download.ceph.com/debian-testing/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+
+.. tip:: 对国际用户来说，在全球有很多镜像可用。请参考 \
+   :ref:`mirrors` 。
 
 
 RPM 二进制包
@@ -252,6 +256,9 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
 你可以从这个地址直接下载 RPM ： ::
 
 	http://download.ceph.com/rpm-testing
+
+.. tip:: 对国际用户来说，在全球有很多镜像可用。请参考 \
+   :ref:`mirrors` 。
 
 
 添加 Ceph 开发库

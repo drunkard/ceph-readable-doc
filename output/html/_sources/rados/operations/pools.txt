@@ -54,9 +54,9 @@
 要创建一个存储池，执行： ::
 
 	ceph osd pool create {pool-name} {pg-num} [{pgp-num}] [replicated] \
-             [crush-ruleset-name]
+		[crush-ruleset-name] [expected-num-objects]
 	ceph osd pool create {pool-name} {pg-num}  {pgp-num}   erasure \
-             [erasure-code-profile] [crush-ruleset-name]
+		[erasure-code-profile] [crush-ruleset-name] [expected_num_objects]
 
 参数含义如下：
 
@@ -125,13 +125,25 @@
 
 .. _纠删码配置: ../erasure-code-profile
 
-创建存储池时，要设置一个合理的归置组数量（如 ``100`` ）。也要考虑到每 OSD 的归置组\
-总数，因为归置组很耗计算资源，所以很多存储池和很多归置组（如 50 个存储池，各包含 \
-100 归置组）会导致性能下降。收益递减点取决于 OSD 主机的强大。
+创建存储池时，要设置一个合理的归置组数量（如 ``100`` ）。也要考虑\
+到每 OSD 的归置组总数，因为归置组很耗计算资源，所以很多存储池和很\
+多归置组（如 50 个存储池，各包含 100 归置组）会导致性能下降。收益\
+递减点取决于 OSD 主机的强大。
 
 如何为存储池计算合适的归置组数量请参见\ `归置组`_\ 。
 
 .. _归置组: ../placement-groups
+
+
+``[expected-num-objects]``
+
+:描述: 为这个存储池预估的对象数。设置此值（要同时把 \
+       **filestore merge threshold** 设置为负数）后，在创建存储\
+       池时就会拆分 PG 文件夹，以免运行时拆分文件夹导致延时增大。
+
+:类型: Integer
+:是否必需: No.
+:默认值: 0 ，创建存储池时不拆分目录。
 
 
 设置存储池配额
@@ -212,24 +224,36 @@
 你可以设置下列键的值：
 
 
+.. _size:
+
 ``size``
 
-:描述: 设置存储池中的对象副本数，详情参见\ `设置对象副本数`_\ 。仅适用于副本存储池。
+:描述: 设置存储池中的对象副本数，详情参见\ `设置对象副本数`_\ 。\
+       仅适用于副本存储池。
+
 :类型: 整数
 
+
+.. _min_size:
 
 ``min_size``
 
-:描述: 设置 I/O 需要的最小副本数，详情参见\ `设置对象副本数`_\ 。仅适用于副本存储池。
+:描述: 设置 I/O 需要的最小副本数，详情参见\ `设置对象副本数`_\ 。\
+       仅适用于副本存储池。
+
 :类型: 整数
 :适用版本: ``0.54`` 及以上。
 
+
+.. _crash_replay_interval:
 
 ``crash_replay_interval``
 
 :描述: 允许客户端重放确认而未提交请求的秒数。
 :类型: 整数
 
+
+.. _pgp_num:
 
 ``pgp_num``
 
@@ -238,11 +262,15 @@
 :有效范围: 等于或小于 ``pg_num`` 。
 
 
+.. _crush_ruleset:
+
 ``crush_ruleset``
 
 :描述: 集群内映射对象归置时使用的规则集。
 :类型: 整数
 
+
+.. _hashpspool:
 
 ``hashpspool``
 
@@ -252,6 +280,8 @@
 :适用版本: ``0.48`` 及以上。
 
 
+.. _nodelete:
+
 ``nodelete``
 
 :描述: 给指定存储池设置/取消 NODELETE 标志。
@@ -260,6 +290,8 @@
 :适用版本: Version ``FIXME``
 
 
+.. _nopgchange:
+
 ``nopgchange``
 
 :描述: 给指定存储池设置/取消 NOPGCHANGE 标志。
@@ -267,6 +299,8 @@
 :有效范围: 1 开启， 0 取消
 :适用版本: Version ``FIXME``
 
+
+.. _nosizechange:
 
 ``nosizechange``
 
@@ -309,23 +343,31 @@
 
 :描述: 启用缓存存储池的命中集跟踪，详情见 `Bloom 过滤器`_\ 。
 :类型: String
-:Valid Settings: ``bloom``, ``explicit_hash``, ``explicit_object``
+:有效值: ``bloom``, ``explicit_hash``, ``explicit_object``
 :默认值: ``bloom`` ，其它是用于测试的。
 
 
+.. _hit_set_count:
+
 ``hit_set_count``
 
-:描述: 为缓存存储池保留的命中集数量。此值越高， ``ceph-osd`` 守护进程消耗的内存越多。
+:描述: 为缓存存储池保留的命中集数量。此值越高， ``ceph-osd`` \
+       守护进程消耗的内存越多。
 :类型: 整数
 :有效范围: ``1``. Agent doesn't handle > 1 yet.
 
 
+.. _hit_set_period:
+
 ``hit_set_period``
 
-:描述: 为缓存存储池保留的命中集有效期。此值越高， ``ceph-osd`` 消耗的内存越多。
+:描述: 为缓存存储池保留的命中集有效期。此值越高， ``ceph-osd`` \
+       消耗的内存越多。
 :类型: 整数
 :实例: ``3600`` 1hr
 
+
+.. _hit_set_fpp:
 
 ``hit_set_fpp``
 
@@ -335,9 +377,12 @@
 :默认值: ``0.05``
 
 
+.. _cache_target_dirty_ratio:
+
 ``cache_target_dirty_ratio``
 
-:描述: 缓存存储池包含的脏对象达到多少比例时就把它们回写到后端的存储池。
+:描述: 缓存存储池包含的脏对象达到多少比例时就把它们回写到后端的\
+       存储池。
 :类型: Double
 :默认值: ``.4``
 
@@ -346,8 +391,8 @@
 
 ``cache_target_dirty_high_ratio``
 
-:描述: 缓存存储池内包含的已修改（脏的）对象达到此比例时，缓存层代理就会\
-       更快地把脏对象刷回到后端存储池。
+:描述: 缓存存储池内包含的已修改（脏的）对象达到此比例时，缓存层\
+       代理就会更快地把脏对象刷回到后端存储池。
 
 :类型: Double
 :默认值: ``.6``
@@ -357,10 +402,13 @@
 
 ``cache_target_full_ratio``
 
-:描述: 缓存存储池包含的干净对象达到多少比例时，缓存代理就把它们赶出缓存存储池。
+:描述: 缓存存储池包含的干净对象达到多少比例时，缓存代理就把它们\
+       赶出缓存存储池。
 :类型: Double
 :默认值: ``.8``
 
+
+.. _target_max_bytes:
 
 ``target_max_bytes``
 
@@ -369,12 +417,16 @@
 :实例: ``1000000000000``  #1-TB
 
 
+.. _target_max_objects:
+
 ``target_max_objects``
 
 :描述: 达到 ``max_objects`` 阀值时 Ceph 就回写或赶出对象。
 :类型: 整数
 :实例: ``1000000`` #1M objects
 
+
+.. _cache_min_flush_age:
 
 ``cache_min_flush_age``
 
@@ -384,6 +436,8 @@
 :类型: 整数
 :实例: ``600`` 10min
 
+
+.. _cache_min_evict_age:
 
 ``cache_min_evict_age``
 
@@ -453,16 +507,14 @@
 
 ``size``
 
-:描述: 获取此存储池中对象的副本数。更多细节见\ `设置对象副本数`_\ 。仅适用于\
-       副本存储池。
+:描述: 见 size_
 
 :类型: 整数
 
 
 ``min_size``
 
-:描述: 获取为保证 I/O 所需的最小副本数。更多细节见\ `设置对象副本数`_\ 。仅\
-       适用于副本存储池。
+:描述: 见 min_size_
 
 :类型: 整数
 :适用版本: ``0.54`` 及以上
@@ -470,58 +522,57 @@
 
 ``crash_replay_interval``
 
-:描述: 允许客户端重放已确认、但未提交的请求的时间间隔，秒。
-:类型: 整数
+:描述: 见 crash_replay_interval_
 
-
-``pg_num`` 获取不到？
-
-:描述: 存储池的归置组数量。
 :类型: 整数
 
 
 ``pgp_num``
 
-:描述: 计算数据归置时使用的归置组有效数量。
+:描述: 见 pgp_num_
+
 :类型: 整数
 :有效范围: 小于等于 ``pg_num`` 。
 
 
 ``crush_ruleset``
 
-:描述: 在集群中映射对象位置的规则集。
+:描述: 见 crush_ruleset_
 :类型: 整数
 
 
 ``hit_set_type``
 
-:描述: 允许缓存存储池跟踪命中集。详情见 `Bloom 过滤器`_\ 。
+:描述: 见 hit_set_type_
+
 :类型: String
 :有效选项: ``bloom`` 、 ``explicit_hash`` 、 ``explicit_object``
 
 
 ``hit_set_count``
 
-:描述: 为缓存存储池保留的命中集数量。此数值越高， ``ceph-osd`` 消耗内存越多。
+:描述: 见 hit_set_count_
+
 :类型: 整数
 
 
 ``hit_set_period``
 
-:描述: 缓存存储池的命中集的统计时长。此数值越高， ``ceph-osd`` 消耗内存越多。
+:描述: 见 hit_set_period_
+
 :类型: 整数
 
 
 ``hit_set_fpp``
 
-:描述: ``bloom`` 命中集的假阳性概率，详情见 `Bloom 过滤器`_\ 。
+:描述: 见 hit_set_fpp_
+
 :类型: Double
 
 
 ``cache_target_dirty_ratio``
 
-:描述: 缓存存储池内的变更（脏的）对象达到此百分比时，缓存分级代理就把它们刷\
-       回后端存储池。
+:描述: 见 cache_target_dirty_ratio_
 
 :类型: Double
 
@@ -535,34 +586,65 @@
 
 ``cache_target_full_ratio``
 
-:描述: 缓存存储池内的未修改（干净的）对象达到此百分比时，缓存分级代理就把它\
-       们赶出缓存存储池。
+:描述: 见 cache_target_full_ratio_
 
 :类型: Double
 
 
 ``target_max_bytes``
 
-:描述: 触发 ``max_bytes`` 阀值时 Ceph 将开始刷回或赶出对象。
+:描述: 见 target_max_bytes_
+
 :类型: 整数
 
 
 ``target_max_objects``
 
-:描述: 触发 ``max_objects`` 阀值时 Ceph 将开始刷回或赶出对象。
+:描述: 见 target_max_objects_
+
 :类型: 整数
 
 
 ``cache_min_flush_age``
 
-:描述: 缓存分级代理开始把缓存存储池中的对象刷回后端存储池前等待的最短时间，秒。
+:描述: 见 cache_min_flush_age_
+
 :类型: 整数
 
 
 ``cache_min_evict_age``
 
-:描述: 缓存分级代理开始从缓存存储池赶出对象前等待的最短时间，秒。
+:描述: 见 cache_min_evict_age_
+
 :类型: 整数
+
+
+``fast_read``
+
+:描述: 见 fast_read_
+
+:类型: Boolean
+
+
+``scrub_min_interval``
+
+:描述: 见 scrub_min_interval_
+
+:类型: Double
+
+
+``scrub_max_interval``
+
+:描述: 见 scrub_max_interval_
+
+:类型: Double
+
+
+``deep_scrub_interval``
+
+:描述: 见 deep_scrub_interval_
+
+:类型: Double
 
 
 设置对象副本数
@@ -572,8 +654,8 @@
 
 	ceph osd pool set {poolname} size {num-replicas}
 
-.. important:: ``{num-replicas}`` 包括对象自身，如果你想要对象自身及其两份拷贝共\
-   计三份，指定 3 。
+.. important:: ``{num-replicas}`` 包括对象自身，如果你想要对象\
+   自身及其两份拷贝共计三份，指定 3 。
 
 例如： ::
 
