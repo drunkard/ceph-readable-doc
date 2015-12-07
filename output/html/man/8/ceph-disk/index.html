@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ceph-disk – Ceph 上的 OSD 数据硬盘准备和激活工具 &mdash; Ceph Documentation</title>
+    <title>ceph-disk – Ceph 的硬盘管理工具 &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -59,8 +59,8 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="ceph-disk-ceph-osd">
-<h1>ceph-disk &#8211; Ceph 上的 OSD 数据硬盘准备和激活工具<a class="headerlink" href="#ceph-disk-ceph-osd" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="ceph-disk-ceph">
+<h1>ceph-disk &#8211; Ceph 的硬盘管理工具<a class="headerlink" href="#ceph-disk-ceph" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id1">
 <h2>提纲<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <div class="line-block">
@@ -70,7 +70,7 @@
 <div class="line-block">
 <div class="line"><strong>ceph-disk</strong> <strong>activate</strong> [<em>data-path</em>] [&#8211;activate-key <em>path</em>]
 [&#8211;mark-init <em>sysvinit|upstart|systemd|auto|none</em>]
-[&#8211;no-start-daemon]</div>
+[&#8211;no-start-daemon] [&#8211;reactivate]</div>
 </div>
 <div class="line-block">
 <div class="line"><strong>ceph-disk</strong> <strong>activate-all</strong></div>
@@ -78,11 +78,20 @@
 <div class="line-block">
 <div class="line"><strong>ceph-disk</strong> <strong>list</strong></div>
 </div>
+<div class="line-block">
+<div class="line"><strong>ceph-disk</strong> <strong>deactivate</strong> [&#8211;cluster <em>clustername</em>] [<em>device-path</em>]
+[&#8211;deactivate-by-id <em>id</em>] [&#8211;mark-out]</div>
+</div>
+<div class="line-block">
+<div class="line"><strong>ceph-disk</strong> <strong>destroy</strong> [&#8211;cluster <em>clustername</em>] [<em>device-path</em>]
+[&#8211;destroy-by-id <em>id</em>] [&#8211;dmcrypt-key-dir <em>KEYDIR</em>] [&#8211;zap]</div>
+</div>
 </div>
 <div class="section" id="id2">
 <h2>描述<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <p><strong class="program">ceph-disk</strong> 工具可把硬盘、分区或目录预处理并激活为 OSD 。可单独使用，也可由 <strong class="program">ceph-deploy</strong> 或 <tt class="docutils literal"><span class="pre">udev</span></tt> 调用，还可由其他部署工具，如 <tt class="docutils literal"><span class="pre">Chef</span></tt> 、 <tt class="docutils literal"><span class="pre">Juju</span></tt> 、 <tt class="docutils literal"><span class="pre">Puppet</span></tt> 调用。</p>
 <p>其实它是把手动创建并启动 OSD 的步骤自动化成了两步：预处理和激活，分别对应两个子命令 <tt class="docutils literal"><span class="pre">prepare</span></tt> 和 <tt class="docutils literal"><span class="pre">activate</span></tt> 。</p>
+<p><strong class="program">ceph-disk</strong> 也把手动停止和销毁某一 OSD 的多个步骤自动化成了两步：去激活和销毁，分别对应 <tt class="docutils literal"><span class="pre">deactivate</span></tt> 和 <tt class="docutils literal"><span class="pre">destroy</span></tt> 子命令。</p>
 </div>
 <div class="section" id="id3">
 <h2>子命令<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
@@ -111,6 +120,10 @@
 <div class="highlight-python"><pre>ceph-disk activate [PATH] [--mark-init *sysvinit|upstart|systemd|auto|none*]</pre>
 </div>
 <p>如果加了 <em class="xref std std-option">--no-start-daemon</em> 选项，就只进行激活，而不启动 OSD 守护进程。</p>
+<p>用 <em class="xref std std-option">--reactivate</em> 选项可以重新激活已经被 <tt class="docutils literal"><span class="pre">deactivate</span></tt> 子命令去激活的 OSD 。</p>
+<p>用法：</p>
+<div class="highlight-python"><pre>ceph-disk activate [PATH] [--reactivate]</pre>
+</div>
 </div>
 <div class="section" id="activate-journal">
 <h3>activate-journal<a class="headerlink" href="#activate-journal" title="Permalink to this headline">¶</a></h3>
@@ -159,6 +172,35 @@
 <div class="highlight-python"><pre>ceph-disk unsuppress-activate [PATH]</pre>
 </div>
 <p>这里的 [PATH] 是某一块设备或目录的路径。</p>
+</div>
+<div class="section" id="deactivate">
+<h3>deactivate<a class="headerlink" href="#deactivate" title="Permalink to this headline">¶</a></h3>
+<p>去激活 Ceph OSD 。它会停止 OSD 守护进程、还可以同时标记为 out 。此 OSD 的内容还保留着，但是 <em>ready</em> 、 <em>active</em> 、<em>初始化相关的</em>文件都删除了（这样它就不会被 <tt class="docutils literal"><span class="pre">udev</span></tt> 规则自动重激活了），并且创建了 deactive 文件以示此 OSD 被去激活了；如果此 OSD 是 dmcrypt ，还会删除数据的 dmcrypt 映射图。去激活完成后， OSD 状态为 <tt class="docutils literal"><span class="pre">down</span></tt> 。已经去激活的 OSD 还可以用 <tt class="docutils literal"><span class="pre">activate</span></tt> 子命令加 <em class="xref std std-option">--reactivate</em> 选项重新激活。</p>
+<p>用法：</p>
+<div class="highlight-python"><pre>ceph-disk deactivate [PATH]</pre>
+</div>
+<p>这里的 [PATH] 是块设备或目录的路径。</p>
+<p>这个子命令还支持 <em class="xref std std-option">--mark-out</em> 选项。 <tt class="docutils literal"><span class="pre">--mark-out</span></tt> 会把 OSD 标记为 out ，其内的对象会被重映射。如果你还不确定要不要销毁这个 OSD ，最好别用这个选项。</p>
+<p>去激活一个 OSD 时你也可以指定一个 OSD 的 ID ，要用到 <em class="xref std std-option">--deactivate-by-id</em> 选项。</p>
+<p>用法：</p>
+<div class="highlight-python"><pre>ceph-disk deactivate --deactivate-by-id [OSD-ID]</pre>
+</div>
+</div>
+<div class="section" id="destroy">
+<h3>destroy<a class="headerlink" href="#destroy" title="Permalink to this headline">¶</a></h3>
+<p>销毁 Ceph OSD 。它会从集群、 crushmap 删除 OSD ，并回收 OSD ID 。它只能销毁处于 <em>down</em> 状态的 OSD 。</p>
+<p>用法：</p>
+<div class="highlight-python"><pre>ceph-disk destroy [PATH]</pre>
+</div>
+<p>这里的 [PATH] 是块设备或目录的路径。</p>
+<p>这个子命令还支持 <em class="xref std std-option">--zap</em> 选项。 <tt class="docutils literal"><span class="pre">--zap</span></tt> 选项会销毁分区表和硬盘内容。</p>
+<p>用法：</p>
+<div class="highlight-python"><pre>ceph-disk destroy [PATH] [--zap]</pre>
+</div>
+<p>除了路径，你也可以指定 OSD 的 ID ，用 <em class="xref std std-option">--destroy-by-id</em> 选项。</p>
+<p>用法：</p>
+<div class="highlight-python"><pre>ceph-disk destroy --destroy-by-id [OSD-ID]</pre>
+</div>
 </div>
 <div class="section" id="zap">
 <h3>zap<a class="headerlink" href="#zap" title="Permalink to this headline">¶</a></h3>
@@ -264,7 +306,7 @@
 <dl class="option">
 <dt id="cmdoption-ceph-disk--activate-key">
 <tt class="descname">--activate-key</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-ceph-disk--activate-key" title="Permalink to this definition">¶</a></dt>
-<dd><p>若 OSD 节点上没有 <tt class="docutils literal"><span class="pre">/var/lib/ceph/bootstrap-osd/{cluster}.keyring</span></tt> 副本，可以用此选项追加密钥环路径。</p>
+<dd><p>如果 OSD 节点上没有 <tt class="docutils literal"><span class="pre">/var/lib/ceph/bootstrap-osd/{cluster}.keyring</span></tt> 副本，可以用此选项追加密钥环路径。</p>
 </dd></dl>
 
 <dl class="option">
@@ -304,7 +346,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../rados/deployment/">部署</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../rados/operations/">运维</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../../../rados/man/">手册页</a><ul class="current">
-<li class="toctree-l3 current"><a class="current reference internal" href="">ceph-disk &#8211; Ceph 上的 OSD 数据硬盘准备和激活工具</a><ul>
+<li class="toctree-l3 current"><a class="current reference internal" href="">ceph-disk &#8211; Ceph 的硬盘管理工具</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id1">提纲</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id2">描述</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id3">子命令</a><ul>
@@ -315,6 +357,8 @@
 <li class="toctree-l5"><a class="reference internal" href="#list">list</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#suppress-activate">suppress-activate</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#unsuppress-activate">unsuppress-activate</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#deactivate">deactivate</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#destroy">destroy</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#zap">zap</a></li>
 </ul>
 </li>

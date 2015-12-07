@@ -426,6 +426,22 @@
 :实例: ``1000000`` #1M objects
 
 
+``hit_set_grade_decay_rate``
+
+:描述: 在两个连续 hit_sets 间的热度衰退速率。
+:类型: Integer
+:有效范围: 0 - 100
+:默认值: ``20``
+
+
+``hit_set_grade_search_last_n``
+
+:描述: 计算热度时，在 hit_sets 里最多计数 N 次。
+:类型: Integer
+:有效范围: 0 - hit_set_count
+:默认值: ``1``
+
+
 .. _cache_min_flush_age:
 
 ``cache_min_flush_age``

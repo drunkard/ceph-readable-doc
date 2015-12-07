@@ -644,15 +644,15 @@ osd
 
 	ceph osd crush set
 
-子命令 ``set`` 为 osdname 或 osd.id 更新 crush 图的位置和权重信息，把名为 \
-<name> 的 OSD 权重设置为 <weight> 、位置设置为 <args> 。
+子命令 ``set`` 为 osdname 或 osd.id 更新 crush 图的位置和权重信\
+息，把名为 <name> 的 OSD 权重设置为 <weight> 、位置设置为 <args> 。
 
 用法： ::
 
 	ceph osd crush set <osdname (id|osd.id)> <float[0.0-]> <args> [<args>...]
 
-子命令 ``set-tunable`` 把可调值 <tunable> 设置为 <value> 。唯一能设置的可\
-调值是 straw_calc_version 。
+子命令 ``set-tunable`` 把可调值 <tunable> 设置为 <value> 。唯一\
+能设置的可调值是 straw_calc_version 。
 
 用法： ::
 
@@ -676,8 +676,8 @@ osd
 
 	ceph osd crush tunables legacy|argonaut|bobtail|firefly|hammer|optimal|default
 
-子命令 ``unlink`` 从 crush 图中解链接出 <name> （任意位置，或 <ancestor> 之\
-下的）。
+子命令 ``unlink`` 从 crush 图中解链接出 <name> （任意位置，或 \
+<ancestor> 之下的）。
 
 用法： ::
 
@@ -727,8 +727,8 @@ osd
 
 	ceph osd erasure-code-profile rm <name>
 
-子命令 ``set`` 用给定的参数 [<key[=value]> ...] 创建纠删码配置 <name> 。末尾\
-加 --force 可覆盖已有配置（慎用）。
+子命令 ``set`` 用给定的参数 [<key[=value]> ...] 创建纠删码配置 \
+<name> 。末尾加 --force 可覆盖已有配置（慎用）。
 
 用法： ::
 
@@ -764,8 +764,8 @@ osd
 
 	ceph osd in <ids> [<ids>...]
 
-子命令 ``lost`` 把 OSD 标识为永久丢失。如果没有多个副本，此命令会导致数据丢\
-失，慎用。
+子命令 ``lost`` 把 OSD 标识为永久丢失。如果没有多个副本，此命令\
+会导致数据丢失，慎用。
 
 用法： ::
 
@@ -813,7 +813,8 @@ osd
 
 	ceph osd perf
 
-子命令 ``pg-temp`` 设置 pg_temp 映射 pgid:[<id> [<id>...]] ，适用于开发者。
+子命令 ``pg-temp`` 设置 pg_temp 映射 pgid:[<id> [<id>...]] ，适\
+用于开发者。
 
 用法： ::
 
@@ -846,7 +847,7 @@ osd
 	ceph osd pool get <poolname> hit_set_type|hit_set_period|hit_set_count|hit_set_fpp|
 	target_max_objects|target_max_bytes|cache_target_dirty_ratio|cache_target_dirty_high_ratio|
 	cache_target_full_ratio|cache_min_flush_age|cache_min_evict_age|
-	min_read_recency_for_promote
+	min_read_recency_for_promote|hit_set_grade_decay_rate|hit_set_search_last_n
 
 以下命令只适用于纠删码存储池： ::
 
@@ -892,7 +893,8 @@ osd
 	target_max_bytes|target_max_objects|cache_target_dirty_ratio|
 	cache_target_dirty_high_ratio|
 	cache_target_full_ratio|cache_min_flush_age|cache_min_evict_age|auid|
-	min_read_recency_for_promote|write_fadvise_dontneed
+	min_read_recency_for_promote|write_fadvise_dontneed|hit_set_grade_decay_rate|
+	hit_set_search_last_n
 	<val> {--yes-i-really-mean-it}
 
 子命令 ``set-quota`` 设置存储池的对象或字节数限额。

@@ -34,6 +34,10 @@ Linux 内核驱动和 rbd 存储驱动使用 RBD 。 RBD 映像是简单的块�
 
    连接到指定监视器，无需通过 ceph.conf 查找。
 
+.. option:: --cluster cluster name
+
+   使用非默认的集群名字，即不是 *ceph* 的集群名。
+
 .. option:: -p pool-name, --pool pool-name
 
    在指定存储池下操作，大多数命令都得指定。
@@ -126,6 +130,7 @@ Linux 内核驱动和 rbd 存储驱动使用 RBD 。 RBD 映像是简单的块�
    * object-map: 支持对象映射（依赖 exclusive-lock ）
    * fast-diff: 快速计算差异（依赖 object-map ）
    * deep-flatten: 支持快照扁平化操作
+   * journaling: 支持记录 IO 操作（依赖独占锁）
 
 .. option:: --image-shared
 
@@ -329,9 +334,9 @@ Linux 内核驱动和 rbd 存储驱动使用 RBD 。 RBD 映像是简单的块�
 条带化
 ======
 
-RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存储（ RADOS ）集群中。\
-因此，到此映像的读和写请求会被分布到集群内的很多节点，也因此避免了映像巨大或\
-繁忙时可能出现的单节点瓶颈。
+RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存储\
+（ RADOS ）集群中。因此，到此映像的读和写请求会被分布到集群内的\
+很多节点，也因此避免了映像巨大或繁忙时可能出现的单节点瓶颈。
 
 条带化由三个参数控制：
 
@@ -345,24 +350,26 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
 
 .. option:: stripe_count
 
-   我们把 [*stripe_unit*] 个字节写够 [*stripe_count*] 个对象后，再转回到第一\
-   个对象写另一轮条带，直到达到对象的最大尺寸（由 [*order*] 影响）。此时，我\
-   们再用下一轮 [*stripe_count*] 个对象。
+   我们把 [*stripe_unit*] 个字节写够 [*stripe_count*] 个对象后，\
+   再转回到第一个对象写另一轮条带，直到达到对象的最大尺寸（由 \
+   [*order*] 影响）。此时，我们再用下一轮 [*stripe_count*] 个对\
+   象。
 
-默认情况下， [*stripe_unit*] 和对象尺寸相同、且 [*stripe_count*] 为 1 ；另外\
-指定 [*stripe_unit*] 需 STRIPINGV2 功能（ Ceph 0.53 起加入）并使用 format 2 \
-格式的映像。
+默认情况下， [*stripe_unit*] 和对象尺寸相同、且 [*stripe_count*] \
+为 1 ；另外指定 [*stripe_unit*] 需 STRIPINGV2 功能（ Ceph 0.53 起\
+加入）并使用 format 2 格式的映像。
 
 
 Map 选项
 ========
 
-这里的大多数选项主要适用于调试和压力测试。默认值设置于内核中，因此还与所用内\
-核的版本有关。
+这里的大多数选项主要适用于调试和压力测试。默认值设置于内核中，\
+因此还与所用内核的版本有关。
 
 libceph （每个客户端例程）选项：
 
-* fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee - 应该由客户端提供的 FSID 。
+* fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee - 应该由客户端提供\
+  的 FSID 。
 
 * ip=a.b.c.d[:p] - IP 还有客户端可选的端口。
 
@@ -374,18 +381,23 @@ libceph （每个客户端例程）选项：
 
 * nocrc - 在写入数据时不计算 CRC32C 校验值。
 
-* cephx_require_signatures - 要求对 cephx 消息签名（从 3.19 起默认开\
-  启）。
+* cephx_require_signatures - 要求对 cephx 消息签名（从 3.19 起\
+  默认开启）。
 
-* nocephx_require_signatures - 不要求对 cephx 消息签名（从 3.19 起）。
+* nocephx_require_signatures - 不要求对 cephx 消息签名（从 3.19 \
+  起）。
 
 * tcp_nodelay - 在客户端禁用 Nagle's 算法（从 4.0 起默认开启）。
 
 * notcp_nodelay - 在客户端启用 Nagle's 算法（从 4.0 起）。
 
-* mount_timeout=x - 执行 `rbd map` 和 `rbd unmap` 时所涉及的各操作步骤的\
-  超时值（默认为 60 秒）。特别是从 4.2 起，与集群间没有连接时，即认为 \
-  `rbd unmap` 操作超时了。
+* cephx_sign_messages - 启用消息签名（从 4.4 起默认开启）。
+
+* nocephx_sign_messages - 禁用消息签名（从 4.4 起）。
+
+* mount_timeout=x - 执行 `rbd map` 和 `rbd unmap` 时所涉及的各\
+  操作步骤的超时值（默认为 60 秒）。特别是从 4.2 起，与集群间没\
+  有连接时，即认为 `rbd unmap` 操作超时了。
 
 * osdkeepalive=x - OSD 保持连接的期限（默认为 5 秒）。
 
@@ -434,6 +446,10 @@ libceph （每个客户端例程）选项：
 启用 cephx 时通过内核映射一映像： ::
 
 	rbd map mypool/myimage --id admin --keyfile secretfile
+
+要通过内核把某一映像映射到没用默认名字 *ceph* 的集群： ::
+
+	rbd map mypool/myimage --cluster *cluster name*
 
 取消映像映射： ::
 
