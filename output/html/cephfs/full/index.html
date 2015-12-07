@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Handling a full Ceph filesystem &mdash; Ceph Documentation</title>
+    <title>处理占满的 Ceph 文件系统 &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -26,9 +26,9 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
-    <link rel="up" title="Ceph Filesystem" href="../" />
-    <link rel="next" title="Troubleshooting" href="../troubleshooting/" />
-    <link rel="prev" title="Ceph filesystem client eviction" href="../eviction/" />
+    <link rel="up" title="Ceph 文件系统" href="../" />
+    <link rel="next" title="故障排除" href="../troubleshooting/" />
+    <link rel="prev" title="Ceph 文件系统客户端的驱逐" href="../eviction/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,13 +43,13 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../troubleshooting/" title="Troubleshooting"
+          <a href="../troubleshooting/" title="故障排除"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../eviction/" title="Ceph filesystem client eviction"
+          <a href="../eviction/" title="Ceph 文件系统客户端的驱逐"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" accesskey="U">Ceph Filesystem</a> &raquo;</li> 
+          <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -58,59 +58,34 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="handling-a-full-ceph-filesystem">
-<h1>Handling a full Ceph filesystem<a class="headerlink" href="#handling-a-full-ceph-filesystem" title="Permalink to this headline">¶</a></h1>
-<p>When a RADOS cluster reaches its <tt class="docutils literal"><span class="pre">mon_osd_full_ratio</span></tt> (default
-95%) capacity, it is marked with the OSD full flag.  This flag causes
-most normal RADOS clients to pause all operations until it is resolved
-(for example by adding more capacity to the cluster).</p>
-<p>The filesystem has some special handling of the full flag, explained below.</p>
-<div class="section" id="hammer-and-later">
-<h2>Hammer and later<a class="headerlink" href="#hammer-and-later" title="Permalink to this headline">¶</a></h2>
-<p>Since the hammer release, a full filesystem will lead to ENOSPC
-results from:</p>
+  <div class="section" id="ceph">
+<h1>处理占满的 Ceph 文件系统<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
+<p>当 RADOS 集群使用率达到总容量的 <tt class="docutils literal"><span class="pre">mon_osd_full_ratio</span></tt> （默认 95% ）时，它会被打上 OSD full 标记。在问题解决前（如扩容集群），此标记会使大多数常规 RADOS 客户端暂停所有操作。</p>
+<p>文件系统对 full 标记还有些特殊处理，下文详述。</p>
+<div class="section" id="hammer">
+<h2>Hammer 及更高版<a class="headerlink" href="#hammer" title="Permalink to this headline">¶</a></h2>
+<p>从 hammer 发布开始，以下行为会导致占满的文件系统返回 ENOSPC 错误：</p>
 <blockquote>
 <div><ul class="simple">
-<li>Data writes on the client</li>
-<li>Metadata operations other than deletes and truncates</li>
+<li>客户端写入数据</li>
+<li>删除和裁剪以外的其它元数据操作</li>
 </ul>
 </div></blockquote>
-<p>Because the full condition may not be encountered until
-data is flushed to disk (sometime after a <tt class="docutils literal"><span class="pre">write</span></tt> call has already
-returned 0), the ENOSPC error may not be seen until the application
-calls <tt class="docutils literal"><span class="pre">fsync</span></tt> or <tt class="docutils literal"><span class="pre">fclose</span></tt> (or equivalent) on the file handle.</p>
-<p>Calling <tt class="docutils literal"><span class="pre">fsync</span></tt> is guaranteed to reliably indicate whether the data
-made it to disk, and will return an error if it doesn&#8217;t.  <tt class="docutils literal"><span class="pre">fclose</span></tt> will
-only return an error if buffered data happened to be flushed since
-the last write &#8211; a successful <tt class="docutils literal"><span class="pre">fclose</span></tt> does not guarantee that the
-data made it to disk, and in a full-space situation, buffered data
-may be discarded after an <tt class="docutils literal"><span class="pre">fclose</span></tt> if no space is available to persist it.</p>
+<p>因为只有在数据刷回到硬盘（有时是 <tt class="docutils literal"><span class="pre">write</span></tt> 返回 0 之后）才可能遇到占满的情况，所以应用程序调用 <tt class="docutils literal"><span class="pre">fsync</span></tt> 或 <tt class="docutils literal"><span class="pre">fclose</span></tt> （或等价操作）进行文件处理时才可能遇到 ENOSPC 错误。</p>
+<p>调用 <tt class="docutils literal"><span class="pre">fsync</span></tt> 能可靠地反映数据是否写入了硬盘，并且在没写入时返回错误。 <tt class="docutils literal"><span class="pre">fclose</span></tt> 只有在缓冲的数据从上次写入以来被偶尔刷回过才会返回错误［译者：原文可能有误］—— <tt class="docutils literal"><span class="pre">fclose</span></tt> 成功并不能保证数据写入了硬盘，而且在空间占满时， <tt class="docutils literal"><span class="pre">fclose</span></tt> 之后如果没地方存储缓冲的数据，它们就可能被丢弃。</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">If an application appears to be misbehaving on a full filesystem,
-check that it is performing <tt class="docutils literal"><span class="pre">fsync()</span></tt> calls as necessary to ensure
-data is on disk before proceeding.</p>
+<p class="last">如果某一应用程序在占满的文件系统上行为异常，有必要检查下它调用了 <tt class="docutils literal"><span class="pre">fsync()</span></tt> 来确保数据已写入硬盘，然后再继续。</p>
 </div>
-<p>Data writes may be cancelled by the client if they are in flight at the
-time the OSD full flag is sent.  Clients update the <tt class="docutils literal"><span class="pre">osd_epoch_barrier</span></tt>
-when releasing capabilities on files affected by cancelled operations, in
-order to ensure that these cancelled operations do not interfere with
-subsequent access to the data objects by the MDS or other clients.  For
-more on the epoch barrier mechanism, see <a class="reference internal" href="../eviction/"><em>Ceph filesystem client eviction</em></a>.</p>
+<p>如果客户端运行时已经看到了 OSD full 标记，写数据操作可能被取消。各个客户端取消操作并释放文件能力时会更新 <tt class="docutils literal"><span class="pre">osd_epoch_barrier</span></tt> ，以确保这些取消的操作不会妨碍 MDS 或其它客户端对这些数据对象的访问。要了解元图屏蔽机制，请参考 <a class="reference internal" href="../eviction/"><em>Ceph 文件系统客户端的驱逐</em></a> 。</p>
 </div>
-<div class="section" id="legacy-pre-hammer-behavior">
-<h2>Legacy (pre-hammer) behavior<a class="headerlink" href="#legacy-pre-hammer-behavior" title="Permalink to this headline">¶</a></h2>
-<p>In versions of Ceph earlier than hammer, the MDS would ignore
-the full status of the RADOS cluster, and any data writes from
-clients would stall until the cluster ceased to be full.</p>
-<p>There are two dangerous conditions to watch for with this behaviour:</p>
+<div class="section" id="id1">
+<h2>老版本（ hammer 之前）的行为<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>在 hammer 之前的 Ceph 版本中， MDS 会忽略 RADOS 集群的占满状态，而且客户端的任意数据写入都会卡死，直到集群脱离占满状态。</p>
+<p>出现这种行为时有两种危险情形要注意：</p>
 <ul class="simple">
-<li>If a client had pending writes to a file, then it was not possible
-for the client to release the file to the MDS for deletion: this could
-lead to difficulty clearing space on a full filesystem</li>
-<li>If clients continued to create a large number of empty files, the
-resulting metadata writes from the MDS could lead to total exhaustion
-of space on the OSDs such that no further deletions could be performed.</li>
+<li>如果一客户端到一个文件的写入未完成，那么它不可能把文件释放给 MDS 让它删除，这样就很难清理占满的文件系统。</li>
+<li>如果客户端持续地创建大量空文件，来自 MDS 的元数据写入操作终将会耗尽 OSD 空间，这样就再也不能执行删除动作了。</li>
 </ul>
 </div>
 </div>
@@ -126,45 +101,45 @@ of space on the OSDs such that no further deletions could be performed.</li>
             </a></p>
 <h3><a href="../../">Table Of Contents</a></h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (Quick)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Filesystem</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">Add/Remove MDS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../mds-config-ref/">MDS Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../journaler/">Journaler Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-mds/">Manpage ceph-mds</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../createfs/">Create CephFS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../kernel/">Mount CephFS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../fuse/">Mount CephFS as FUSE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../fstab/">Mount CephFS in fstab</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">Manpage cephfs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">Manpage ceph-fuse</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">Manpage mount.ceph</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS Quotas</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../hadoop/">Using Ceph with Hadoop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">增加/删除 MDS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds-config-ref/">MDS 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">cephfs 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../file-layouts/">File layouts</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../eviction/">Client eviction</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="">Handling full filesystems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#hammer-and-later">Hammer and later</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#legacy-pre-hammer-behavior">Legacy (pre-hammer) behavior</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">文件系统占满的处理</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#hammer">Hammer 及更高版</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">老版本（ hammer 之前）的行为</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">Disaster recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph Block Device</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../dev/">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
 </ul>
 
 
@@ -197,13 +172,13 @@ of space on the OSDs such that no further deletions could be performed.</li>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../troubleshooting/" title="Troubleshooting"
+          <a href="../troubleshooting/" title="故障排除"
              >next</a> |</li>
         <li class="right" >
-          <a href="../eviction/" title="Ceph filesystem client eviction"
+          <a href="../eviction/" title="Ceph 文件系统客户端的驱逐"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" >Ceph Filesystem</a> &raquo;</li> 
+          <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
