@@ -11,8 +11,8 @@
 实例：连接并写入一个对象
 ========================
 
-要使用 `Librados` ，先实例化一个 :c:type:`rados_t` 变量（集群句柄）、再用指向它的\
-指针调用 c:func:`rados_create()` ： ::
+要使用 `Librados` ，先实例化一个 :c:type:`rados_t` 变量（集群\
+句柄）、再用指向它的指针调用 c:func:`rados_create()` ： ::
 
 	int err;
 	rados_t cluster;
@@ -23,9 +23,11 @@
 		exit(1);
 	}
 
-然后配置 :c:type:`rados_t` 以连接集群，可以挨个配置\（ :c:func:`rados_conf_set()` ）、\
-或用配置文件（ :c:func:`rados_conf_read_file()` ）、或命令行选项（ \
-:c:func:`rados_conf_parse_argv()` ）、或环境变量（ :c:func:`rados_conf_parse_env()` ）： ::
+然后配置 :c:type:`rados_t` 以连接集群，可以挨个配置（ \
+:c:func:`rados_conf_set()` ）、或用配置文件（ \
+:c:func:`rados_conf_read_file()` ）、或命令行选项（ \
+:c:func:`rados_conf_parse_argv()` ）、或环境变量（ \
+:c:func:`rados_conf_parse_env()` ）： ::
 
 	err = rados_conf_read_file(cluster, "/path/to/myceph.conf");
 	if (err < 0) {
@@ -41,7 +43,8 @@
 		exit(1);
 	}
 
-然后打开一个“ IO 上下文”，用 :c:func:`rados_ioctx_create()` 打开 :c:type:`rados_ioctx_t` ： ::
+然后打开一个“ IO 上下文”，用 :c:func:`rados_ioctx_create()` 打开\
+:c:type:`rados_ioctx_t` ： ::
 
 	rados_ioctx_t io;
 	char *poolname = "mypool";
@@ -55,8 +58,8 @@
 
 注意，你访问的存储池必须存在。
 
-这时你能用 RADOS 数据修改函数了，例如用 :c:func:`rados_write_full()` 写入名为 \
-``greeting`` 的对象： ::
+这时你能用 RADOS 数据修改函数了，例如用 \
+:c:func:`rados_write_full()` 写入名为 ``greeting`` 的对象： ::
 
 	err = rados_write_full(io, "greeting", "hello", 5);
 	if (err < 0) {
@@ -66,8 +69,8 @@
 		exit(1);
 	}
 
-最后，用 :c:func:`rados_ioctx_destroy()` 和 :c:func:`rados_shutdown()` 分别关闭 \
-IO 上下文、到 RADOS 的连接： ::
+最后，用 :c:func:`rados_ioctx_destroy()` 和 \
+:c:func:`rados_shutdown()` 分别关闭 IO 上下文、到 RADOS 的连接： ::
 
 	rados_ioctx_destroy(io);
 	rados_shutdown(cluster);
@@ -76,16 +79,18 @@ IO 上下文、到 RADOS 的连接： ::
 异步 IO
 =======
 
-处理大量 IO 时，通常不必等一个完成再开始下一个。 `Librados` 提供了几种操作的异步版本：
+处理大量 IO 时，通常不必等一个完成再开始下一个。 `Librados` 提供\
+了几种操作的异步版本：
 
 * :c:func:`rados_aio_write`
 * :c:func:`rados_aio_append`
 * :c:func:`rados_aio_write_full`
 * :c:func:`rados_aio_read`
 
-对每种操作，都必须先创建一个 :c:type:`rados_completion_t` 数据结构来表达做什么、何\
-时安全或显式地调用 :c:func:`rados_aio_create_completion()` 来结束，如果没什么特殊\
-需求，可以仅传递 NULL ： ::
+对每种操作，都必须先创建一个 :c:type:`rados_completion_t` 数据结\
+构来表达做什么、何时安全或显式地调用 \
+:c:func:`rados_aio_create_completion()` 来结束，如果没什么特殊需\
+求，可以仅传递 NULL ： ::
 
 	rados_completion_t comp;
 	err = rados_aio_create_completion(NULL, NULL, NULL, &comp);
@@ -96,7 +101,8 @@ IO 上下文、到 RADOS 的连接： ::
 		exit(1);
 	}
 
-现在你可以调用任意一种异步 IO 操作了，然后等它出现在内存、所有复制所在的硬盘里： ::
+现在你可以调用任意一种异步 IO 操作了，然后等它出现在内存、所有复\
+制所在的硬盘里： ::
 
 	err = rados_aio_write(io, "foo", comp, "bar", 3, 0);
 	if (err < 0) {
@@ -113,9 +119,10 @@ IO 上下文、到 RADOS 的连接： ::
 
 	rados_aio_release(comp);
 
-你可以用各种回叫函数告知应用程序何时可以持续写入、或何时读缓冲是满的。例如，如果你追\
-加几个对象时想衡量每个操作的延时，可以调度几个写操作、并把确认和提交时间保存到相应回\
-叫函数，然后用 :c:func:`rados_aio_flush()` 等它们完成，然后就可以分析延时了： ::
+你可以用各种回叫函数告知应用程序何时可以持续写入、或何时读缓冲是\
+满的。例如，如果你追加几个对象时想衡量每个操作的延时，可以调度几\
+个写操作、并把确认和提交时间保存到相应回叫函数，然后用 \
+:c:func:`rados_aio_flush()` 等它们完成，然后就可以分析延时了： ::
 
 	typedef struct {
 		struct timeval start;
@@ -166,7 +173,8 @@ IO 上下文、到 RADOS 的连接： ::
 		return 0;
 	}
 
-注意，所有 :c:type:`rados_completion_t` 都必须用 :c:func:`rados_aio_release()` 释放内存，以免造成内存泄漏。
+注意，所有 :c:type:`rados_completion_t` 都必须用 \
+:c:func:`rados_aio_release()` 释放内存，以免造成内存泄漏。
 
 
 API calls
