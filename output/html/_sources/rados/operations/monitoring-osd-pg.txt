@@ -73,7 +73,8 @@ OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD �
 	1	1				osd.1	down	1
 
 
-.. tip:: 精心设计的 CRUSH 分级结构可以帮你更快的定位到物理位置、加快故障排除。
+.. tip:: 精心设计的 CRUSH 分级结构可以帮你更快的定位到物理位置、\
+   加快故障排除。
 
 若一个 OSD 状态为 ``down`` ，启动它： ::
 
@@ -85,39 +86,45 @@ OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD �
 归置组集
 ========
 
-CRUSH 要把归置组分配到 OSD 时，它先查询这个存储池的副本数设置，再把归置组分配到 \
-OSD ，这样就把各副本分配到了不同 OSD 。比如，如果存储池要求归置组有 3 个副本， \
-CRUSH 可能把它们分别分配到 ``osd.1`` 、 ``osd.2`` 、 ``osd.3`` 。考虑到你设置于 \
-`CRUSH 运行图`_\ 中的失败域，实际上 CRUSH 找出的是伪随机位置，所以在大型集群中，你\
-很少能看到归置组被分配到了相邻的 OSD 。我们把涉及某个特定归置组副本的一组 OSD 称为 \
-**acting set** 。在一些情况下，位于 acting set 中的一个 OSD ``down`` 了或者不能为\
+CRUSH 要把归置组分配到 OSD 时，它先查询这个存储池的副本数设置，\
+再把归置组分配到 OSD ，这样就把各副本分配到了不同 OSD 。比如，\
+如果存储池要求归置组有 3 个副本， CRUSH 可能把它们分别分配到 \
+``osd.1`` 、 ``osd.2`` 、 ``osd.3`` 。考虑到你设置于 \
+`CRUSH 运行图`_\ 中的失败域，实际上 CRUSH 找出的是伪随机位置，\
+所以在大型集群中，你很少能看到归置组被分配到了相邻的 OSD 。我\
+们把涉及某个特定归置组副本的一组 OSD 称为 **acting set** 。在\
+一些情况下，位于 acting set 中的一个 OSD ``down`` 了或者不能为\
 归置组内的对象提供服务，这些情形发生时无需惊慌，常见原因如下：
 
-- 你增加或拆除了一 OSD 。然后 CRUSH 把那个归置组分配到了其他 OSD ，因此改变了 \
-  Acting Set 的构成、并且用 backfill 进程启动了数据迁移；
+- 你增加或拆除了一 OSD 。然后 CRUSH 把那个归置组分配到了其他 OSD ，\
+  因此改变了 Acting Set 的构成、并且用 backfill 进程启动了数据迁移；
 - 一 OSD ``down`` 了、重启了、而现在正恢复（ ``recovering`` ）；
-- acting set 中的一个 OSD 挂了，不能提供服务，另一个 OSD 临时接替其工作。
+- acting set 中的一个 OSD 挂了，不能提供服务，另一个 OSD 临时接替\
+  其工作。
 
-Ceph 靠 **up set** 处理客户端请求，它们是最终处理请求的一系列 OSD 。大多数情况下 \
-up set 和 acting set 本质上相同，如果不同，说明可能 Ceph 在迁移数据、某 OSD 在恢\
-复、或者哪里有问题。这种情况下， Ceph 通常表现为 HEALTH WARN 状态，还有 "stuck \
-stale" 消息。
+Ceph 靠 **up set** 处理客户端请求，它们是最终处理请求的一系列 \
+OSD 。大多数情况下 up set 和 acting set 本质上相同，如果不同，\
+说明可能 Ceph 在迁移数据、某 OSD 在恢复、或者哪里有问题。这种情\
+况下， Ceph 通常表现为 HEALTH WARN 状态，还有 "stuck stale" 消\
+息。
 
 用下列命令获取归置组列表： ::
 
 	ceph pg dump
 
-要根据指定归置组号查看哪些 OSD 位于 Acting Set 或 Up Set 里，执行： ::
+要根据指定归置组号查看哪些 OSD 位于 Acting Set 或 Up Set 里，\
+执行： ::
 
 	ceph pg map {pg-num}
 
-其结果会告诉你 osdmap 版本（ eNNN ）、归置组号（ {pg-num} ）、 Up Set 内的 OSD \
-（ up[] ）、和 Acting Set 内的 OSD （ acting[] ）。 ::
+其结果会告诉你 osdmap 版本（ eNNN ）、归置组号（ {pg-num} ）、 \
+Up Set 内的 OSD （ up[] ）、和 Acting Set 内的 OSD （ acting[] \
+）。 ::
 
 	osdmap eNNN pg {pg-num} -> up [0,1,2] acting [0,1,2]
 
-.. note:: 如果 Up Set 和 Acting Set 不一致，这可能表明集群内部在重均衡或者有潜在\
-   问题。
+.. note:: 如果 Up Set 和 Acting Set 不一致，这可能表明集群内部\
+   在重均衡或者有潜在问题。
 
 
 节点互联

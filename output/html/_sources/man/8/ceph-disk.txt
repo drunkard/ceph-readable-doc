@@ -327,16 +327,6 @@ zap
 
    保存 ``dm-crypt`` 密钥的目录。
 
-.. option:: --activate-key
-
-   如果 OSD 节点上没有 \
-   ``/var/lib/ceph/bootstrap-osd/{cluster}.keyring`` 副本，可以\
-   用此选项追加密钥环路径。
-
-.. option:: --mark-init
-
-   指定用 init 系统管理此 OSD 目录。
-
 
 使用范围
 ========

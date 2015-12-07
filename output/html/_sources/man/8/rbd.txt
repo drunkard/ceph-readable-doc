@@ -291,6 +291,15 @@ Linux 内核驱动和 rbd 存储驱动使用 RBD 。 RBD 映像是简单的块�
 :command:`showmapped`
   显示通过内核 rbd 模块映射过的 rbd 映像。
 
+:command:`nbd map` [--device *device-path*] [--read-only] *image-spec* | *snap-spec*
+  通过 rbd-nbd 工具把指定映像映射成一个块设备。
+
+:command:`nbd unmap` *device-path*
+  取消映射的块设备，之前通过 rbd-nbd 工具映射好的。
+
+:command:`nbd list`
+  显示用着的 nbd 设备，通过 rbd-nbd 工具映射的。
+
 :command:`status` *image-spec*
   显示映像状态，包括哪个客户端打开着它。
 
