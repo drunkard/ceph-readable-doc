@@ -145,6 +145,7 @@
 
 :command:`log show`
   显示指定对象内（或指定桶、日期、桶标识符）的日志。
+  （注意：日期格式必须是 YYYY-MM-DD-hh ）
 
 :command:`log rm`
   删除日志对象。
@@ -428,7 +429,7 @@
 
 显示一个桶从 2012 年 4 月 1 日起的日志： ::
 
-        $ radosgw-admin log show --bucket=foo --date=2012-04-01
+        $ radosgw-admin log show --bucket=foo --date=2012-04-01-01 --bucket-id=default.14193.1
 
 显示某用户 2012 年 3 月 1 日（不含）到 4 月 1 日期间的使用情况： ::
 

@@ -108,11 +108,16 @@ cluster (RADOS), part of the Ceph distributed storage system.
   Remove pool snapshot named *foo*.
 
 :command:`bench` *seconds* *mode* [ -b *objsize* ] [ -t *threads* ]
-  压力测试 *seconds* 秒。 mode 可以是 *write* 、 *seq* 或 *rand* 。 *seq* \
-  和 *rand* 分别是顺序读、随机读压力测试，要想做读压力测试，先得加 \
-  *--no-cleanup* 选项做一次写压力测试。默认对象尺寸是 4 MB ，默认模拟线程\
-  数为 16 。
+  压力测试 *seconds* 秒。 *mode* 可以是 *write* 、 *seq* 或 \
+  *rand* 。 *seq* 和 *rand* 分别是顺序读、随机读压力测试，要想\
+  做读压力测试，先得加 *--no-cleanup* 选项做一次写压力测试。默\
+  认对象尺寸是 4 MB ，默认的模拟线程数（并行写操作）为 16 。\
+  *--run-name <label>* 选项适用于多个客户端并行测试以评估最大\
+  载荷。 *<label>* 表示任意对象名，默认为 \
+  "benchmark_last_metadata" ，且作为“读”和“写”操作的底层对象名。
   注： -b *objsize* 仅适用于 *write* 模式。
+  注： *write* 和 *seq* 必须运行在相同的主机上，否则 *write* \
+  所创建对象的名字不能被 *seq* 所接受。
 
 :command:`cleanup`
 

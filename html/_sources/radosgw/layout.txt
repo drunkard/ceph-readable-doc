@@ -26,15 +26,15 @@ encode() 和 decode() 方法、等等。
 我们有三“部分”元数据： user 、 bucket 、和 bucket.instance 。你可以\
 用下面的命令调查这几种元数据： ::
 
-        radosgw-admin metadata list
+        $ radosgw-admin metadata list
 
-        radosgw-admin metadata list bucket
-        radosgw-admin metadata list bucket.instance
-        radosgw-admin metadata list user
+        $ radosgw-admin metadata list bucket
+        $ radosgw-admin metadata list bucket.instance
+        $ radosgw-admin metadata list user
 
-        radosgw-admin metadata get bucket:<bucket>
-        radosgw-admin metadata get bucket.instance:<bucket>:<bucket_id>
-        radosgw-admin metadata get user:<user>   # or set
+        $ radosgw-admin metadata get bucket:<bucket>
+        $ radosgw-admin metadata get bucket.instance:<bucket>:<bucket_id>
+        $ radosgw-admin metadata get user:<user>   # get or set
 
 user: 保存着用户信息
 bucket: 保存着桶名与其例程 ID 的映射关系
@@ -143,7 +143,16 @@ RADOS 对象里的。
 
 .rgw
   <bucket>
-  .bucket.meta.<bucket>:<marker>
+  .bucket.meta.<bucket>:<marker>   # see put_bucket_instance_info()
+
+  租户（tenant）这个概念是用来界定桶的，而不是桶例程。例如：
+
+  .bucket.meta.prodtx:test%25star:default.84099.6
+  .bucket.meta.testcont:default.4126.1
+  .bucket.meta.prodtx:testcont:default.84099.4
+  prodtx/testcont
+  prodtx/test%25star
+  testcont
 
 .rgw.gc
   gc.<N>
