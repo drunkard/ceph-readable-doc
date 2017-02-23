@@ -3,8 +3,7 @@
 ===================
 
 这里是 Ceph 文档中文版的源码，编译好的位于：
-
-https://github.com/drunkard/ceph-readable-doc/tree/master/output/html
+https://github.com/drunkard/ceph-readable-doc
 
 
 ======

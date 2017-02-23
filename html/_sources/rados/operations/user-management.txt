@@ -478,6 +478,8 @@ that you execute ``chown`` or ``chmod`` to establish appropriate keyring
 ownership and access.
 
 
+.. _Add a User to a Keyring:
+
 把用户加入密钥环
 ----------------
 

@@ -96,6 +96,22 @@ object_size
     $ setfattr -n ceph.file.layout.pool -v 1 file2  # Setting pool by ID
     $ setfattr -n ceph.file.layout.pool -v cephfs_data file2  # Setting pool by name
 
+.. note::
+   用 ``setfattr`` 命令修改文件的布局字段时，此文件必须是空\
+   的，否则会报错。
+
+.. code-block:: bash
+
+    # 创建空文件
+    $ touch file1
+    # 可如愿修改布局字段
+    $ setfattr -n ceph.file.layout.stripe_count -v 3 file1
+
+    # 向文件写入些东西
+    $ echo "hello world" > file1
+    $ setfattr -n ceph.file.layout.stripe_count -v 4 file1
+    setfattr: file1: Directory not empty
+
 
 布局的继承
 ----------

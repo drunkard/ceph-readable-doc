@@ -158,8 +158,15 @@ RADOS 对象里的。
   gc.<N>
 
 .users.uid
-  包含两种信息，存储于 <user> 对象里的各个用户信息（RGWUserInfo）、\
-  及其桶列表，以 omap 格式储存在名为 "<user>.buckets" 的对象里。
+  包含两种信息，存储于 <user> 对象里的各个用户信息\
+  （ RGWUserInfo ）、及其各个桶的列表，储存在
+  "<user>.buckets" 对象的 omap 内。 <user> 如果不是空的，其\
+  内可能包含租户，如：
+
+  prodtx$prodt
+  test2.buckets
+  prodtx$prodt.buckets
+  test2
 
 .users.email
   不重要
@@ -172,10 +179,14 @@ RADOS 对象里的。
   test:tester
 
 .rgw.buckets.index
-  对象命名为 .dir.<marker> ，它们分别包含一个桶索引。
+  对象命名为 .dir.<marker> ，它们都有自己的桶索引。如果索引\
+  分片了，各个分片的标记之后还追加了分片索引。
 
 .rgw.buckets
   default.7593.4__shadow_.488urDFerTYXavx4yAd-Op8mxehnvTI_1
   <marker>_<key>
 
-marker 长得像 "default.16004.1" 或者 "default.7593.4" 。
+marker 长得像 "default.16004.1" 或者 "default.7593.4" 。\
+当前，其格式为 "<zone>.<instance_id>.<bucket_id>" ，可是\
+一旦生成， marker 就不会再被解析，所以未来它的格式可以自\
+由更改。
