@@ -74,7 +74,9 @@ OSD 限定
 ========
 
 为防止客户端读取、或写入给 CephFS 所分配存储池之外的其它存储\
-池，可设置 OSD 鉴权能力，把访问限定到 CephFS 的数据存储池内。 ::
+池，可设置 OSD 鉴权能力，把访问限定到 CephFS 的数据存储池内。
+
+::
 
     client.0
         key: AQAz7EVWygILFRAAdIcuJ12opU/JKyfFmxhuaw==

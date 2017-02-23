@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>CephFS 客户端能力 &mdash; Ceph Documentation</title>
+    <title>与 POSIX 标准的差异 &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -27,8 +27,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
     <link rel="up" title="Ceph 文件系统" href="../" />
-    <link rel="next" title="Ceph 块设备" href="../../rbd/rbd/" />
-    <link rel="prev" title="灾难恢复" href="../disaster-recovery/" />
+    <link rel="next" title="CephFS 配额管理" href="../quota/" />
+    <link rel="prev" title="mount.ceph – 用于挂载 Ceph 文件系统" href="../../man/8/mount.ceph/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,10 +43,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../../rbd/rbd/" title="Ceph 块设备"
+          <a href="../quota/" title="CephFS 配额管理"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../disaster-recovery/" title="灾难恢复"
+          <a href="../../man/8/mount.ceph/" title="mount.ceph – 用于挂载 Ceph 文件系统"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
@@ -58,80 +58,49 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="cephfs">
-<h1>CephFS 客户端能力<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
-<p>通过 Ceph 鉴权能力，你可以把文件系统客户端所需权限限制到尽可能低的水平。</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">路径限定和布局更改限定是 Ceph 从 Jewel 版起才具备的新功能。</p>
-</div>
-<div class="section" id="id1">
-<h2>路径限定<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>默认情况下，客户端不会被限定在它们被允许挂载的路径下；而且，当客户端挂载了一个子目录后，如 /home/user ， MDS 默认情况下也不会检查后续操作都“锁定”在那个目录里面。</p>
-<p>要把客户端限定为只能挂载某个特定目录、且只能在其内工作，可以用基于路径的 MDS 鉴权能力实现。</p>
-<div class="section" id="id2">
-<h3>语法<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>如果只想授予指定目录读写（ rw ）权限，我们在给这个客户端创建密钥时就要提及这个目录，语法如下：</p>
-<div class="highlight-python"><pre>ceph auth get-or-create client.*client_name* mon 'allow r' mds 'allow r, allow rw path=/*specified_directory*' osd 'allow rw pool=data'</pre>
-</div>
-<p>比如，要想把 <tt class="docutils literal"><span class="pre">foo</span></tt> 客户端限定为只能在 <tt class="docutils literal"><span class="pre">bar</span></tt> 目录下写，命令如下：</p>
-<div class="highlight-python"><pre>ceph auth get-or-create client.foo mon 'allow r' mds 'allow r, allow rw path=/bar' osd 'allow rw pool=data'</pre>
-</div>
-<p>要完全把此客户端限定在 <tt class="docutils literal"><span class="pre">bar</span></tt> 目录下，去掉不限制的 &#8220;allow r&#8221;
-子句即可：</p>
-<div class="highlight-python"><pre>ceph auth get-or-create client.foo mon 'allow r' mds 'allow rw path=/bar' osd 'allow rw pool=data'</pre>
-</div>
-<p>需要注意的是，如果一个客户端的读权限被限定到了某一路径，它们就只能挂载文件系统下的这个可读路径，在挂载命令里必须指定（如下）。</p>
-<p>关于用户管理的细节，请参阅<a class="reference external" href="../../rados/operations/user-management/#add-a-user-to-a-keyring">用户管理 - 把用户加入密钥环</a>。</p>
-<p>要把客户端限定于指定的子目录，在挂载时还需指定这个目录，语法如下：</p>
-<div class="highlight-python"><pre>ceph-fuse -n client.*client_name* *mount_path* -r *directory_to_be_mounted*</pre>
-</div>
-<p>例如，要把客户端 <tt class="docutils literal"><span class="pre">foo</span></tt> 限定于 <tt class="docutils literal"><span class="pre">mnt/bar</span></tt> 目录，可用此命令：</p>
-<div class="highlight-python"><pre>ceph-fuse -n client.foo mnt -r /bar</pre>
-</div>
-</div>
-<div class="section" id="id3">
-<h3>报告的空闲空间<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
-<p>默认情况下，在客户端挂载子目录时，报告的已用空间（ <tt class="docutils literal"><span class="pre">df</span></tt> ）是根据这个子目录的配额计算出来的，而不是整个集群的已用空间。</p>
-<p>如果你想让客户端报告整个文件系统的总体使用情况，而不止是已挂载子目录的配额使用情况，可以给客户端加如下配置：</p>
-<div class="highlight-python"><pre>client quota df = false</pre>
-</div>
-<p>如果没有启用配额、或者没有给挂载的子目录设置配额，那么不管这个选项配置成什么，都会报告整个文件系统的使用情况。</p>
-</div>
-</div>
-<div class="section" id="osd">
-<h2>OSD 限定<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h2>
-<p>为防止客户端读取、或写入给 CephFS 所分配存储池之外的其它存储池，可设置 OSD 鉴权能力，把访问限定到 CephFS 的数据存储池内。</p>
-<div class="highlight-python"><pre>client.0
-    key: AQAz7EVWygILFRAAdIcuJ12opU/JKyfFmxhuaw==
-    caps: [mds] allow rw
-    caps: [mon] allow r
-    caps: [osd] allow rw pool=data1, allow rw pool=data2</pre>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">没有相呼应的 MDS 路径限定，上述 OSD 能力<strong>不能</strong>限定
-<tt class="docutils literal"><span class="pre">data1</span></tt> 和 <tt class="docutils literal"><span class="pre">data2</span></tt> 之外的文件删除操作。</p>
-</div>
-<p>你也可以把 OSD 能力中的 rw 替换为 r 来限定客户端，防止它们写入数据。这不会影响客户端更新那些文件的文件系统元数据，但会阻止它们写入能被其它客户端看到的持久数据。</p>
-</div>
-<div class="section" id="id4">
-<h2>布局更改限定<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
-<p>为防止用户更改用于存储文件和目录的数据存储池，可在 MDS 鉴权能力中加入 p 修饰符。</p>
-<p>例如，在下面的配置片段中， client.0 可以更改用来存储文件的存储池，而 client.1 却不能。</p>
-<div class="highlight-python"><pre>client.0
-    key: AQAz7EVWygILFRAAdIcuJ12opU/JKyfFmxhuaw==
-    caps: [mds] allow rwp
-    caps: [mon] allow r
-    caps: [osd] allow rw pool=data
-
-client.1
-    key: AQAz7EVWygILFRAAdIcuJ12opU/JKyfFmxhuaw==
-    caps: [mds] allow rw
-    caps: [mon] allow r
-    caps: [osd] allow rw pool=data</pre>
-</div>
-</div>
+  <div class="section" id="posix">
+<h1>与 POSIX 标准的差异<a class="headerlink" href="#posix" title="Permalink to this headline">¶</a></h1>
+<p>CephFS 尽可能地严格遵循 POSIX 语义，比如，与其他很多网络文件系统（如 NFS ）相反， CephFS 与各个客户端之间维持着缓存的强一致性。目的就是为了让不同主机上的进程通过这个文件系统通讯时，可以表现得与本机进程间的通讯一样。</p>
+<p>然而，CephFS 确实由于各种原因在某些地方偏离了严谨的 POSIX
+语义：</p>
+<ul class="simple">
+<li>If a client is writing to a file and fails, its writes are not
+necessarily atomic. That is, the client may call write(2) on a file
+opened with O_SYNC with an 8 MB buffer and then crash and the write
+may be only partially applied.  (Almost all file systems, even local
+file systems, have this behavior.)</li>
+<li>In shared simultaneous writer situations, a write that crosses
+object boundaries is not necessarily atomic. This means that you
+could have writer A write &#8220;aa|aa&#8221; and writer B write &#8220;bb|bb&#8221;
+simultaneously (where | is the object boundary), and end up with
+&#8220;aa|bb&#8221; rather than the proper &#8220;aa|aa&#8221; or &#8220;bb|bb&#8221;.</li>
+<li>POSIX includes the telldir(2) and seekdir(2) system calls that allow
+you to obtain the current directory offset and seek back to it.
+Because CephFS may refragment directories at any time, it is
+difficult to return a stable integer offset for a directory.  As
+such, a seekdir to a non-zero offset may often work but is not
+guaranteed to do so.  A seekdir to offset 0 will always work (and is
+equivalent to rewinddir(2)).</li>
+<li>Sparse files propagate incorrectly to the stat(2) st_blocks field.
+Because CephFS does not explicitly track which parts of a file are
+allocated/written, the st_blocks field is always populated by the
+file size divided by the block size.  This will cause tools like
+du(1) to overestimate consumed space.  (The recursive size field,
+maintained by CephFS, also includes file &#8220;holes&#8221; in its count.)</li>
+<li>When a file is mapped into memory via mmap(2) on multiple hosts,
+writes are not coherently propagated to other clients&#8217; caches.  That
+is, if a page is cached on host A, and then updated on host B, host
+A&#8217;s page is not coherently invalidated.  (Shared writable mmap
+appears to be quite rare&#8211;we have yet to here any complaints about this
+behavior, and implementing cache coherency properly is complex.)</li>
+<li>CephFS clients present a hidden <tt class="docutils literal"><span class="pre">.snap</span></tt> directory that is used to
+access, create, delete, and rename snapshots.  Although the virtual
+directory is excluded from readdir(2), any process that tries to
+create a file or directory with the same name will get an error
+code.  The name of this hidden directory can be changed at mount
+time with <tt class="docutils literal"><span class="pre">-o</span> <span class="pre">snapdirname=.somethingelse</span></tt> (Linux) or the config
+option <tt class="docutils literal"><span class="pre">client_snapdir</span></tt> (libcephfs, ceph-fuse).</li>
+</ul>
 </div>
 
 
@@ -161,7 +130,7 @@ client.1
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">cephfs 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">POSIX 兼容性</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
@@ -171,16 +140,7 @@ client.1
 <li class="toctree-l2"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="">客户端认证</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">路径限定</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id2">语法</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id3">报告的空闲空间</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="#osd">OSD 限定</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id4">布局更改限定</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
@@ -223,10 +183,10 @@ client.1
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../../rbd/rbd/" title="Ceph 块设备"
+          <a href="../quota/" title="CephFS 配额管理"
              >next</a> |</li>
         <li class="right" >
-          <a href="../disaster-recovery/" title="灾难恢复"
+          <a href="../../man/8/mount.ceph/" title="mount.ceph – 用于挂载 Ceph 文件系统"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 

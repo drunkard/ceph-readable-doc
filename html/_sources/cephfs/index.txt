@@ -76,6 +76,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 .. toctree::
 	:maxdepth: 1
 
+	POSIX 兼容性 <posix>
 	CephFS 配额管理 <quota>
 	在 Ceph 上使用 Hadoop <hadoop>
 	libcephfs <../../api/libcephfs-java/>
