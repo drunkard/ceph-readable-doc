@@ -183,12 +183,45 @@ HitSet 里的任意一个，那就提升它。
 - **赶出：** 代理找出未修改（或干净）的对象、并把最近未用过的赶出缓存。
 
 
+.. _absolute-sizing:
+
+绝对空间消长
+~~~~~~~~~~~~
+
+缓存分层代理可根据总字节数或对象数量来刷回或赶出对象，用下列\
+命令可指定最大字节数： ::
+
+	ceph osd pool set {cachepool} target_max_bytes {#bytes}
+
+例如，用下列命令配置在达到 1TB 时刷回或赶出： ::
+
+	ceph osd pool set hot-storage target_max_bytes 1000000000000
+
+
+用下列命令指定缓存对象的最大数量： ::
+
+	ceph osd pool set {cachepool} target_max_objects {#objects}
+
+例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出： ::
+
+	ceph osd pool set hot-storage target_max_objects 1000000
+
+.. note:: Ceph 不能自动确定缓存池的大小，所以这里必须配置绝\
+   对尺寸，否则刷回、或赶出就不会生效。如果两个都配置了，缓\
+   存分层代理会按先达到的阀值执行刷回或赶出。
+
+.. note:: 只有在达到 ``target_max_bytes`` 或
+   ``target_max_objects`` 阀值时，所有客户端的请求才会被阻塞。
+
+
 相对空间消长
 ~~~~~~~~~~~~
 
-缓存分层代理可根据缓存存储池相对大小刷回或赶出对象。当缓存池包含的已修\
-改（或脏）对象达到一定比例时，缓存分层代理就把它们刷回到存储池。用下列\
-命令设置 ``cache_target_dirty_ratio`` ： ::
+缓存分层代理可根据缓存存储池相对大小（\ `绝对空间消长`_\ 里由
+``target_max_bytes`` 和 ``target_max_objects`` 确定的）刷回或\
+赶出对象。当缓存池包含的已修改（或脏）对象达到一定比例时，缓\
+存分层代理就把它们刷回到存储池。用下列命令设置
+``cache_target_dirty_ratio`` ： ::
 
 	ceph osd pool set {cachepool} cache_target_dirty_ratio {0.0..1.0}
 
@@ -214,29 +247,6 @@ HitSet 里的任意一个，那就提升它。
 例如，设置为 ``0.8`` 时，干净对象占到总容量的 80% 就开始赶出缓存池： ::
 
 	ceph osd pool set hot-storage cache_target_full_ratio 0.8
-
-
-绝对空间消长
-~~~~~~~~~~~~
-
-缓存分层代理可根据总字节数或对象数量来刷回或赶出对象，用下列命令可指定最大字节数： ::
-
-	ceph osd pool set {cachepool} target_max_bytes {#bytes}
-
-例如，用下列命令配置在达到 1TB 时刷回或赶出： ::
-
-	ceph osd pool set hot-storage target_max_bytes 1000000000000
-
-
-用下列命令指定缓存对象的最大数量： ::
-
-	ceph osd pool set {cachepool} target_max_objects {#objects}
-
-例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出： ::
-
-	ceph osd pool set hot-storage target_max_objects 1000000
-
-.. note:: 如果两个都配置了，缓存分层代理会按先到的阀值执行刷回或赶出。
 
 
 缓存时长

@@ -32,7 +32,7 @@ RADOS 要有它自己的用户管理。 Ceph 对象网关可与 Ceph FS 客户�
 	:maxdepth: 1
 
 	手动安装 <../../install/install-ceph-gateway>
-	简单配置 <config>
+	用 FastCGI 的简单配置 <config-fcgi>
 	联盟配置 <federated-config>
 	配置参考 <config-ref>
 	管理指南 <admin>
