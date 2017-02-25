@@ -92,6 +92,9 @@ cluster (RADOS), part of the Ceph distributed storage system.
 :command:`rm` *name*
   Remove object name.
 
+:command:`listwatchers` *name*
+  罗列此对象名的关注者。
+
 :command:`ls` *outfile*
   List objects in given pool and write to outfile.
 

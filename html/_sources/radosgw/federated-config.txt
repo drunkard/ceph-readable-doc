@@ -438,7 +438,8 @@ Apache 、 FastCGI 、 Ceph 对象网关守护进程（ ``radosgw`` ），还有
 
 #. 删除默认域（如果有的话）。 ::
 
-	rados -p .rgw.root rm zone_info.default
+	rados -p .us-east.rgw.root rm zone_info.default
+	rados -p .us-west.rgw.root rm zone_info.default
 
 
 #. 更新 region 图。 ::

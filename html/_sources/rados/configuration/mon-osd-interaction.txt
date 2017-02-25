@@ -255,9 +255,13 @@ OSD 报告自己的状态
 :默认值: ``300``
 
 
-``mon osd downout subtree limit``
+``mon osd down out subtree limit``
 
-:描述: Ceph 可以把最大为多少的 :term:`CRUSH` 单元自动标记为 ``out`` 。
+:描述: Ceph **不会**\ 自动标记为 out 的最小 :term:`CRUSH`
+       单元类型。例如，如果设置为 ``host`` ，且某一主机上的\
+       所有 OSD 都离线了， Ceph 也不会自动把这些 OSD 标记为
+       out 。
+
 :类型: String
 :默认值: ``rack``
 

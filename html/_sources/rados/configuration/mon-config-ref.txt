@@ -626,7 +626,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 ------
 
 
-``mon client hung interval``
+``mon client hunt interval``
 
 :描述: 客户端每 ``N`` 秒尝试一个新监视器，直到它建立连接。
 :类型: Double

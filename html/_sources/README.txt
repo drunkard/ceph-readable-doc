@@ -97,6 +97,6 @@ Java 虚拟机应该用 oracle-jdk-bin-1.8 或 oracle-jdk-bin-1.7 ， jre \
 	# 更新一或多个 commit 后提交到 git 库：
 	./commit-updated.sh
 	git push origin
-	vi update-doc.sh	# 更新 CUR 变量
+	vi update-doc.sh	# 更新 SYNC_START 变量
 
 然后可以在 github 上向我反馈您的更新 :-)
