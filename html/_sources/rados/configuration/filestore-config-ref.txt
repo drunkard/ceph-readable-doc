@@ -26,18 +26,10 @@ Ceph 扩展属性用底层文件系统的 XATTR （如果没有尺寸限制）�
 ``omap`` ）。
 
 
-``filestore xattr use omap``
-
-:描述: 用 XATTR 存储对象图，采用 ``ext4`` 文件系统时要设置为 ``true`` 。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
 ``filestore max inline xattr size``
 
-:描述: 每个对象在文件系统（如 XFS 、 btrfs 、 ext4 等）里存储的 XATTR 最大\
-       尺寸，应该小于文件系统支持的尺寸。
+:描述: 每个对象在文件系统（如 XFS 、 btrfs 、 ext4 等）里存\
+       储的 XATTR 最大尺寸，应该小于文件系统支持的尺寸。
 
 :类型: Unsigned 32-bit Integer
 :是否必需: No

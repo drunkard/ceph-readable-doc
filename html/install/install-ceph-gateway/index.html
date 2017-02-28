@@ -60,189 +60,492 @@
             
   <div class="section" id="ceph">
 <h1>安装 Ceph 对象网关<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
+<p>从 <cite>firefly</cite> (v0.80) 起， Ceph 对象网关开始运行在 Civetweb
+（嵌入进了 <tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt> 守护进程）之上，不再依赖 Apache
+和 FastCGI 。基于 Civetweb 的用法简化了 Ceph 对象网关的安装和配置。</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">要提供 Ceph 网关服务，你得有正常运行的 Ceph 集群、网关主机能访问存储集群的公共网、且在基于 RPM 的发行版上 SELinux 应该处于 permissive 模式。</p>
+<p class="last">要提供 Ceph 对象网关服务，你得有正常运行的 Ceph
+存储集群、且它的网关主机能访问存储集群的公共网。</p>
 </div>
-<p><a class="reference internal" href="../../glossary/#term-34"><em class="xref std std-term">Ceph 对象网关</em></a>守护进程运行在 Apache 和 FastCGI 之上。</p>
-<p>要提供 <a class="reference internal" href="../../glossary/#term-30"><em class="xref std std-term">Ceph 对象存储</em></a>服务，你必须在对应主机（即 <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> ）上安装 Apache 和 Ceph 对象网关守护进程。如果你打算运行联盟架构（多个 region 和区域）的 Ceph 对象存储服务，还必须安装同步代理。</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Ceph 以前需要 <tt class="docutils literal"><span class="pre">mod_fastcgi</span></tt> ，而现在需要的是 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 。</p>
-</div>
-<p>默认提供 Apache 2.4 的发行版（像 RHEL 7 、 CentOS 7 或 Ubuntu 14.04 <tt class="docutils literal"><span class="pre">Trusty</span></tt> ）上已经有 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 模块了。在用 <tt class="docutils literal"><span class="pre">yum</span></tt> 安装 <tt class="docutils literal"><span class="pre">httpd</span></tt> 包、或者用 <tt class="docutils literal"><span class="pre">apt-get</span></tt> 装 <tt class="docutils literal"><span class="pre">apache2</span></tt> 的时候，就已经安装了 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 模块。</p>
-<p>默认提供 Apache 2.2 的发行版（像 RHEL 6 、 CentOS 6 或 Ubuntu 12.04 <tt class="docutils literal"><span class="pre">Precise</span></tt> ）， <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 在单独的软件包中。在 <strong>RHEL 6/CentOS 6</strong> 上，需启用 <tt class="docutils literal"><span class="pre">EPEL</span> <span class="pre">6</span></tt> 软件库，然后用 <tt class="docutils literal"><span class="pre">yum</span> <span class="pre">install</span> <span class="pre">mod_proxy_fcgi</span></tt> 命令安装；在 <strong>Ubuntu 12.04</strong> 上，移植 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 的工作正在进行，详情见 <a class="reference external" href="https://bugs.launchpad.net/precise-backports/+bug/1422417">ceph radosgw 需要适用于 apache 2.2 的 mod-proxy-fcgi</a> 。</p>
-<div class="section" id="apache">
-<h2>安装 Apache<a class="headerlink" href="#apache" title="Permalink to this headline">¶</a></h2>
-<p>要在 <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> 上安装 Apache ，按如下步骤：</p>
-<p>在基于 Debian 的发行版上，执行：</p>
-<div class="highlight-python"><pre>sudo apt-get install apache2</pre>
-</div>
-<p>在基于 RPM 的发行版上，执行：</p>
-<div class="highlight-python"><pre>sudo yum install httpd</pre>
-</div>
+<p class="last">0.80 版时， Ceph 对象网关还不支持 SSL ，你可以配置个支持 SSL 的反向代理，用来把 HTTPS 请求脱壳为 HTTP 、并调度到 Civetweb 。</p>
 </div>
 <div class="section" id="id1">
-<h2>配置 Apache<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p><tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> 上的 Apache 配置还得改一下：</p>
-<div class="section" id="debian">
-<h3>基于 Debian 的发行版<a class="headerlink" href="#debian" title="Permalink to this headline">¶</a></h3>
-<ol class="arabic">
-<li><p class="first">在 <tt class="docutils literal"><span class="pre">/etc/apache2/apache2.conf</span></tt> 里新增一行 <tt class="docutils literal"><span class="pre">ServerName</span></tt> 配置，其值是服务器的全资域名（如 <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-f</span></tt> ）：</p>
-<div class="highlight-python"><pre>ServerName {fqdn}</pre>
-</div>
-</li>
-<li><p class="first">加载 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 模块。</p>
-<p>执行：</p>
-<div class="highlight-python"><pre>sudo a2enmod proxy_fcgi</pre>
-</div>
-</li>
-<li><p class="first">启动 Apache 服务：</p>
-<div class="highlight-python"><pre>sudo service apache2 start</pre>
-</div>
-</li>
-</ol>
-</div>
-<div class="section" id="rpm">
-<h3>基于 RPM 的发行版<a class="headerlink" href="#rpm" title="Permalink to this headline">¶</a></h3>
-<ol class="arabic">
-<li><p class="first">打开 <tt class="docutils literal"><span class="pre">httpd.conf</span></tt> 文件：</p>
-<div class="highlight-python"><pre>sudo vim /etc/httpd/conf/httpd.conf</pre>
-</div>
-</li>
-<li><p class="first">删掉此文件内 <tt class="docutils literal"><span class="pre">#ServerName</span></tt> 前的 # ，后面再加上服务器名字，应该是服务器的全资域名（如 <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-f</span></tt> ）：</p>
-<div class="highlight-python"><pre>ServerName {fqdn}</pre>
-</div>
-</li>
-<li><p class="first">确保 <tt class="docutils literal"><span class="pre">/etc/httpd/conf/httpd.conf</span></tt> 里加载了 <tt class="docutils literal"><span class="pre">mod_proxy_fcgi</span></tt> 模块，加上下面这段：</p>
-<div class="highlight-python"><pre>&lt;IfModule !proxy_fcgi_module&gt;
-LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
-&lt;/IfModule&gt;</pre>
-</div>
-</li>
-<li><p class="first">编辑 <tt class="docutils literal"><span class="pre">/etc/httpd/conf/httpd.conf</span></tt> 里的 <tt class="docutils literal"><span class="pre">Listen</span> <span class="pre">80</span></tt> 这一行，前面加上用作网关服务器的 IP 地址，改成 <tt class="docutils literal"><span class="pre">Listen</span> <span class="pre">{IP</span> <span class="pre">ADDRESS}:80</span></tt> 这样的。</p>
-</li>
-<li><p class="first">启动 httpd 服务。</p>
-<p>执行：</p>
-<div class="highlight-python"><pre>sudo service httpd start</pre>
-</div>
-<p>或者：</p>
-<div class="highlight-python"><pre>sudo systemctl start httpd</pre>
-</div>
-</li>
-</ol>
-</div>
-</div>
-<div class="section" id="ssl">
-<h2>启用 SSL<a class="headerlink" href="#ssl" title="Permalink to this headline">¶</a></h2>
-<p>有些 REST 客户端默认使用 HTTPS ，所以应该考虑在 Apache 上启用 SSL 。请按下述步骤启用 SSL 。</p>
+<h2>安装前的准备工作<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>参考<a class="reference external" href="../../start/quick-start-preflight">飞前检查</a>，先在 Ceph 对象网关节点上完成安装前的准备工作。特别要注意， Ceph 部署用户的 <tt class="docutils literal"><span class="pre">requiretty</span></tt> 需禁用，
+SELinux 需设置为 <tt class="docutils literal"><span class="pre">Permissive</span></tt> ， Ceph 部署用户执行
+<tt class="docutils literal"><span class="pre">sudo</span></tt> 要配置为无需密码。对于 Ceph 对象网关，你得开放
+Civetweb 在生产环境下要用到的端口。</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">你可以采用自认证证书。有些客户端 API 会检查可信证书颁发机构，这样的话你得向可信机构申请 SSL 证书，才能使用那些客户端 API 。</p>
+<p class="last">Civetweb 默认使用 <tt class="docutils literal"><span class="pre">7480</span></tt> 端口。</p>
+</div>
 </div>
 <div class="section" id="id2">
-<h3>基于 Debian 的发行版<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>要在基于 Debian 的系统上启用 SSL ，执行下列步骤：</p>
-<ol class="arabic">
-<li><p class="first">确保装上了所需依赖。</p>
-<div class="highlight-python"><pre>sudo apt-get install openssl ssl-cert</pre>
+<h2>安装 Ceph 对象网关<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>在管理服务器的工作目录下，把 Ceph 对象网关软件包安装到 Ceph
+对象网关节点上。例如：</p>
+<div class="highlight-python"><pre>ceph-deploy install --rgw &lt;gateway-node1&gt; [&lt;gateway-node2&gt; ...]</pre>
 </div>
-</li>
-<li><p class="first">启用 SSL 模块。</p>
-<div class="highlight-python"><pre>sudo a2enmod ssl</pre>
+<p>其中， <tt class="docutils literal"><span class="pre">ceph-common</span></tt> 软件包是依赖，所以 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>
+也会安装它。 <tt class="docutils literal"><span class="pre">ceph</span></tt> 命令行工具包是用于管理的。要想让你的
+Ceph 对象网关节点兼具管理节点的功能，可以在管理节点的工作目录下执行下列命令：</p>
+<div class="highlight-python"><pre>ceph-deploy admin &lt;node-name&gt;</pre>
 </div>
-</li>
-<li><p class="first">生成证书。</p>
-<div class="highlight-python"><pre>sudo mkdir /etc/apache2/ssl
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/apache2/ssl/apache.key -out /etc/apache2/ssl/apache.crt</pre>
-</div>
-</li>
-<li><p class="first">重启 Apache 。</p>
-<div class="highlight-python"><pre>sudo service apache2 restart</pre>
-</div>
-</li>
-</ol>
-<p>详情见 <a class="reference external" href="https://help.ubuntu.com/12.04/serverguide/httpd.html">Ubuntu 服务器指南</a>。</p>
 </div>
 <div class="section" id="id3">
-<h3>基于 RPM 的发行版<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
-<p>在基于 RPM 的发行版上启用 SSL 可按如下步骤进行：</p>
-<ol class="arabic">
-<li><p class="first">确认所需软件包已安装。</p>
-<div class="highlight-python"><pre>sudo yum install mod_ssl openssl</pre>
+<h2>创建网关例程<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>在管理服务器的工作目录下，为 Ceph 网关节点创建一个例程。例如：</p>
+<div class="highlight-python"><pre>ceph-deploy rgw create &lt;gateway-node1&gt;</pre>
 </div>
-</li>
-<li><p class="first">生成私钥。</p>
-<div class="highlight-python"><pre>openssl genrsa -out ca.key 2048</pre>
+<p>网关运行后，你就应该能通过 <tt class="docutils literal"><span class="pre">7480</span></tt> 端口访问了，比如用下面这个尚未认证的请求：</p>
+<div class="highlight-python"><pre>http://client-node:7480</pre>
 </div>
-</li>
-<li><p class="first">生成 CSR 。</p>
-<div class="highlight-python"><pre>openssl req -new -key ca.key -out ca.csr</pre>
+<p>如果网关例程可以正常工作，你应该能看到类似如下的响应：</p>
+<div class="highlight-python"><pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"&gt;
+    &lt;Owner&gt;
+        &lt;ID&gt;anonymous&lt;/ID&gt;
+        &lt;DisplayName&gt;&lt;/DisplayName&gt;
+    &lt;/Owner&gt;
+    &lt;Buckets&gt;
+    &lt;/Buckets&gt;
+&lt;/ListAllMyBucketsResult&gt;</pre>
 </div>
-</li>
-<li><p class="first">生成证书。</p>
-<div class="highlight-python"><pre>openssl x509 -req -days 365 -in ca.csr -signkey ca.key -out ca.crt</pre>
+<p>如果当中哪一步遇到问题了，想重来一次，可以用下列命令清除配置：</p>
+<div class="highlight-python"><pre>ceph-deploy purge &lt;gateway-node1&gt; [&lt;gateway-node2&gt;]
+ceph-deploy purgedata &lt;gateway-node1&gt; [&lt;gateway-node2&gt;]</pre>
 </div>
-</li>
-<li><p class="first">把前面的文件复制到合适的位置。</p>
-<div class="highlight-python"><pre>cp ca.crt /etc/pki/tls/certs
-cp ca.key /etc/pki/tls/private/ca.key
-cp ca.csr /etc/pki/tls/private/ca.csr</pre>
-</div>
-</li>
-<li><p class="first">更新 Apache 的 SSL 配置文件 <tt class="docutils literal"><span class="pre">/etc/httpd/conf.d/ssl.conf</span></tt> 。</p>
-<p>提供 <tt class="docutils literal"><span class="pre">SSLCertificateFile</span></tt> 的正确路径。</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">SSLCertificateFile</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">pki</span><span class="o">/</span><span class="n">tls</span><span class="o">/</span><span class="n">certs</span><span class="o">/</span><span class="n">ca</span><span class="o">.</span><span class="n">crt</span>
-</pre></div>
-</div>
-<p>提供 <tt class="docutils literal"><span class="pre">SSLCertificateKeyFile</span></tt> 的正确路径。</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">SSLCertificateKeyFile</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">pki</span><span class="o">/</span><span class="n">tls</span><span class="o">/</span><span class="n">private</span><span class="o">/</span><span class="n">ca</span><span class="o">.</span><span class="n">key</span>
-</pre></div>
-</div>
-<p>保存更改。</p>
-</li>
-<li><p class="first">重启 Apache 。</p>
-<p>执行：</p>
-<div class="highlight-python"><pre>sudo service httpd restart</pre>
-</div>
-<p>或者：</p>
-<div class="highlight-python"><pre>sudo systemctl restart httpd</pre>
-</div>
-</li>
-</ol>
-<p>详情见<a class="reference external" href="http://wiki.centos.org/HowTos/Https">用 CentOS 配置受 SSL 保护的网页服务器</a>。</p>
-</div>
+<p>如果你执行的是 <tt class="docutils literal"><span class="pre">purge</span></tt> ，那你得重新安装 Ceph 软件包。</p>
 </div>
 <div class="section" id="id4">
-<h2>安装 Ceph 对象网关守护进程<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
-<p>Ceph 对象存储服务通过 Ceph 对象网关守护进程（ <tt class="docutils literal"><span class="pre">radosgw</span></tt> ）提供网关。在联盟体系结构下，同步代理（ <tt class="docutils literal"><span class="pre">radosgw-agent</span></tt> ）可实现 region 和区域间的数据、元数据同步。</p>
-<div class="section" id="id5">
-<h3>基于 Debian 的发行版<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
-<p>执行下列命令在 <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> 上安装 Ceph 对象网关守护进程：</p>
-<div class="highlight-python"><pre>sudo apt-get install radosgw</pre>
+<h2>更改默认端口<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>Civetweb 默认使用 <tt class="docutils literal"><span class="pre">7480</span></tt> 端口。要改变默认端口（如改成
+<tt class="docutils literal"><span class="pre">80</span></tt> 端口），可以在管理服务器的工作目录下修改配置文件，新增名为 <tt class="docutils literal"><span class="pre">[client.rgw.&lt;gateway-node&gt;]</span></tt> 的段，其中，要把
+<tt class="docutils literal"><span class="pre">&lt;gateway-node&gt;</span></tt> 替换为你 Ceph 对象网关节点的短主机名（即 <tt class="docutils literal"><span class="pre">hostname</span> <span class="pre">-s</span></tt> ）。</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">从 11.0.1 版起， Ceph 对象网关<strong>才支持</strong> SSL 。如何配置请参考<a class="reference internal" href="#civetweb-ssl">在 Civetweb 上使用 SSL</a> 。</p>
 </div>
-<p>执行下列命令安装 Ceph 对象网关同步代理：</p>
-<div class="highlight-python"><pre>sudo apt-get install radosgw-agent</pre>
+<p>例如，假设你的节点名为 <tt class="docutils literal"><span class="pre">gateway-node1</span></tt> ，可以在
+<tt class="docutils literal"><span class="pre">[global]</span></tt> 段之后加这样一段：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">gateway</span><span class="o">-</span><span class="n">node1</span><span class="p">]</span>
+<span class="n">rgw_frontends</span> <span class="o">=</span> <span class="s2">&quot;civetweb port=80&quot;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">切记，在 <tt class="docutils literal"><span class="pre">rgw_frontends</span></tt> 键值对里的
+<tt class="docutils literal"><span class="pre">port=&lt;port-number&gt;</span></tt> 之中不要加空格。
+<tt class="docutils literal"><span class="pre">[client.rgw.gateway-node1]</span></tt> 标题表明，这部分 Ceph
+配置文件是用于配置 Ceph 存储集群客户端的、客户端类型为 Ceph 对象网关（即 <tt class="docutils literal"><span class="pre">rgw</span></tt> ）、且例程名字是
+<tt class="docutils literal"><span class="pre">gateway-node1</span></tt> 。</p>
+</div>
+<p>把更新过的配置文件推送到 Ceph 对象网关节点（以及其它 Ceph
+节点）：</p>
+<div class="highlight-python"><pre>ceph-deploy --overwrite-conf config push &lt;gateway-node&gt; [&lt;other-nodes&gt;]</pre>
+</div>
+<p>要使新的端口配置生效，重启 Ceph 对象网关即可：</p>
+<div class="highlight-python"><pre>sudo systemctl restart ceph-radosgw.service</pre>
+</div>
+<p>最后，检查下你选用的端口在防火墙上是否开放了（如 <tt class="docutils literal"><span class="pre">80</span></tt>
+端口），如果没开放，加上这个端口并重载防火墙配置。如果你用的是 <tt class="docutils literal"><span class="pre">firewalld</span></tt> 守护进程，可执行：</p>
+<div class="highlight-python"><pre>sudo firewall-cmd --list-all
+sudo firewall-cmd --zone=public --add-port 80/tcp --permanent
+sudo firewall-cmd --reload</pre>
+</div>
+<p>如果用的是 <tt class="docutils literal"><span class="pre">iptables</span></tt> ，可执行：</p>
+<div class="highlight-python"><pre>sudo iptables --list
+sudo iptables -I INPUT 1 -i &lt;iface&gt; -p tcp -s &lt;ip-address&gt;/&lt;netmask&gt; --dport 80 -j ACCEPT</pre>
+</div>
+<p>需把命令中的 <tt class="docutils literal"><span class="pre">&lt;iface&gt;</span></tt> 和 <tt class="docutils literal"><span class="pre">&lt;ip-address&gt;/&lt;netmask&gt;</span></tt> 替换成你的 Ceph 对象网关节点上的相关值。</p>
+<p>配置完 <tt class="docutils literal"><span class="pre">iptables</span></tt> 之后，你得保存配置，如此一来你的 Ceph
+对象网关节点重启后防火墙配置还依然有效。命令如下：</p>
+<div class="highlight-python"><pre>sudo apt-get install iptables-persistent</pre>
+</div>
+<p>会出现一个终端对话框。提示你是否把当前 iptables 的 <tt class="docutils literal"><span class="pre">IPv4</span></tt>
+规则保存为 <tt class="docutils literal"><span class="pre">/etc/iptables/rules.v4</span></tt> 、 <tt class="docutils literal"><span class="pre">IPv6</span></tt> 规则保存为
+<tt class="docutils literal"><span class="pre">/etc/iptables/rules.v6</span></tt> 时选 <tt class="docutils literal"><span class="pre">yes</span></tt> 。</p>
+<p>前面我们配置的 <tt class="docutils literal"><span class="pre">IPv4</span></tt> 的 iptables 规则会从
+<tt class="docutils literal"><span class="pre">/etc/iptables/rules.v4</span></tt> 载入，且重启后仍然有效。</p>
+<p>如果在安装 <tt class="docutils literal"><span class="pre">iptables-persistent</span></tt> 之后你还新增过 <tt class="docutils literal"><span class="pre">IPv4</span></tt>
+的 iptables 规则，你还得把它们手动存入规则文件，这时，你得以 <tt class="docutils literal"><span class="pre">root</span></tt> 用户执行下面的命令：</p>
+<div class="highlight-python"><pre>iptables-save &gt; /etc/iptables/rules.v4</pre>
+</div>
+</div>
+<div class="section" id="civetweb-ssl">
+<span id="using-ssl-with-civetweb"></span><h2>在 Civetweb 上使用 SSL<a class="headerlink" href="#civetweb-ssl" title="Permalink to this headline">¶</a></h2>
+<p>要在 civetweb 上启用 SSL ，首先你需要一个证书、它应该与提供
+Ceph 对象网关服务的域名相对应。考虑到灵活性，你也许应该申请有 <cite>subject alternate name</cite> 字段的证书；如果你想使用 S3 风格的子域名（<a class="reference internal" href="#dns">增加 DNS 通配符</a>），你得申请通配型证书（
+<cite>wildcard certificate</cite> ）。</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">译者注：你可以采用自认证证书。有些客户端 API 会检查可信证书颁发机构，这样的话你只能向可信机构（如
+<a class="reference external" href="https://letsencrypt.org">https://letsencrypt.org</a> ）申请 SSL 证书，才能使用那些客户端 API 。</p>
+</div>
+<p>Civetweb 要求服务器密钥、服务器证书、以及其它 CA 或者中间证书都在同一个文件里，而且它们都必须是 <cite>pem</cite> 格式。这个整合的文件包含了密钥，所以应该把它保护起来，防止未经授权的访问。</p>
+<p>要启用 SSL ，在端口号后面加 <tt class="docutils literal"><span class="pre">s</span></tt> （当前的 radosgw 还不能同时支持 http 和 https ，你必须二选一。）如：</p>
+<div class="highlight-python"><pre>[client.rgw.gateway-node1]
+rgw_frontends = civetweb port=443s ssl_certificate=/etc/ceph/private/keyandcert.pem</pre>
+</div>
+</div>
+<div class="section" id="apache-civetweb">
+<h2>从 Apache 迁移到 Civetweb<a class="headerlink" href="#apache-civetweb" title="Permalink to this headline">¶</a></h2>
+<p>如果你是基于 Apache 和 FastCGI 运行 Ceph 对象网关的， 而且
+Ceph 存储版本是 v0.80 或更高，那么你有条件切换到 Civetweb
+——它随 <tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt> 守护进程启动、默认运行在 7480 端口上，所以不会与 Apache 和 FastCGI 冲突，与其它常见的网页服务端口也没冲突。向 Civetweb 迁移主要包括删除 Apache 软件包、清除 Ceph 配置文件里的 Apache 和 FastCGI 配置、把
+<tt class="docutils literal"><span class="pre">rgw_frontends</span></tt> 重置为 Civetweb 。</p>
+<p>根据前面的用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 安装 Ceph 对象网关里面的描述，当时的配置文件只配置了 <tt class="docutils literal"><span class="pre">rgw_frontends</span></tt> （而且假设你更改了默认端口）， <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 工具为你生成了数据目录和密钥环——且把密钥环放到了 <tt class="docutils literal"><span class="pre">/var/lib/ceph/radosgw/{rgw-intance}</span></tt> 。这个守护进程会到默认位置找密钥，除非你在 Ceph 配置文件里另有配置。你已经有密钥和数据目录了，如果不想用默认路径，你必须在
+Ceph 配置文件里单独维护这些路径。</p>
+<p>如果基于 Apache 部署，典型的 Ceph 对象网关配置文件类似如下：</p>
+<p>在 Red Hat Enterprise Linux 上：</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway-node1]
+host = {hostname}
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw socket path = ""
+log file = /var/log/radosgw/client.radosgw.gateway-node1.log
+rgw frontends = fastcgi socket\_port=9000 socket\_host=0.0.0.0
+rgw print continue = false</pre>
+</div>
+<p>在 Ubuntu 上：</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway-node]
+host = {hostname}
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+rgw socket path = /var/run/ceph/ceph.radosgw.gateway.fastcgi.sock
+log file = /var/log/radosgw/client.radosgw.gateway-node1.log</pre>
+</div>
+<p>要改成基于 Civetweb 的，删除 Apache 的专有配置即可，如
+<tt class="docutils literal"><span class="pre">rgw_socket_path</span></tt> 和 <tt class="docutils literal"><span class="pre">rgw_print_continue</span></tt> ；然后，把
+<tt class="docutils literal"><span class="pre">rgw_frontends</span></tt> 配置内容改成 Civetweb 的、而非 Apache
+FastCGI 前端，并指定你想用的端口。例如：</p>
+<div class="highlight-python"><pre>[client.radosgw.gateway-node1]
+host = {hostname}
+keyring = /etc/ceph/ceph.client.radosgw.keyring
+log file = /var/log/radosgw/client.radosgw.gateway-node1.log
+rgw_frontends = civetweb port=80</pre>
+</div>
+<p>最后，重启 Ceph 对象网关进程。在 Red Hat Enterprise Linux
+上执行：</p>
+<div class="highlight-python"><pre>sudo systemctl restart ceph-radosgw.service</pre>
+</div>
+<p>在 Ubuntu 上执行：</p>
+<div class="highlight-python"><pre>sudo service radosgw restart id=rgw.&lt;short-hostname&gt;</pre>
+</div>
+<p>如果你选用的端口没有开放，你还得在防火墙上开放它。</p>
+</div>
+<div class="section" id="id5">
+<h2>桶分片的配置<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>Ceph 对象网关把桶的索引数据存储在 <tt class="docutils literal"><span class="pre">index_pool</span></tt> 里面，它默认是 <tt class="docutils literal"><span class="pre">.rgw.buckets.index</span></tt> 。有时候，用户们会用单个桶放置很多（数十到数百万个对象）对象，如果你没用网关管理接口配置配额、限制单个桶允许的最大对象数，这个桶索引的性能就会明显下降。</p>
+<p>在 Ceph 0.94 版中，如果你允许桶内有很多对象，可以把桶索引分片，以此来防止性能瓶颈。
+<tt class="docutils literal"><span class="pre">rgw_override_bucket_index_max_shards</span></tt> 选项允许你设置每个桶所允许的最大对象数，其默认值是 <tt class="docutils literal"><span class="pre">0</span></tt> ，也就是说桶索引的分片功能默认是关闭的。</p>
+<p>要打开桶索引分片功能，把
+<tt class="docutils literal"><span class="pre">rgw_override_bucket_index_max_shards</span></tt> 设置为大于 <tt class="docutils literal"><span class="pre">0</span></tt>
+的值即可。</p>
+<p>想简化配置的话，把 <tt class="docutils literal"><span class="pre">rgw_override_bucket_index_max_shards</span></tt>
+选项写入 Ceph 配置文件的 <tt class="docutils literal"><span class="pre">[global]</span></tt> 段下即可，这样它是系统级的配置，你也可以分别给各个例程单独配置。</p>
+<p>在 Ceph 配置文件里改完桶的分片配置后，需重启网关进程。在
+Red Hat Enteprise Linux 上需执行：</p>
+<div class="highlight-python"><pre>sudo systemctl restart ceph-radosgw.service</pre>
+</div>
+<p>在 Ubuntu 上需执行：</p>
+<div class="highlight-python"><pre>sudo service radosgw restart id=rgw.&lt;short-hostname&gt;</pre>
+</div>
+<p>在联盟化配置中，为实现故障切换，各区域的 <tt class="docutils literal"><span class="pre">index_pool</span></tt> 可能配置得不一样，为使一个 region 内的各个域的配置保持一致，你可以在网关的 region 配置中设置
+<tt class="docutils literal"><span class="pre">rgw_override_bucket_index_max_shards</span></tt> 。例如：</p>
+<div class="highlight-python"><pre>radosgw-admin region get &gt; region.json</pre>
+</div>
+<p>打开 <tt class="docutils literal"><span class="pre">region.json</span></tt> 文件、编辑相关各域的
+<tt class="docutils literal"><span class="pre">bucket_index_max_shards</span></tt> 选项，保存到 <tt class="docutils literal"><span class="pre">region.json</span></tt>
+文件、并重置此 region ，例如：</p>
+<div class="highlight-python"><pre>radosgw-admin region set &lt; region.json</pre>
+</div>
+<p>更新完 region 后，再更新 region 映射图，例如：</p>
+<div class="highlight-python"><pre>radosgw-admin regionmap update --name client.rgw.ceph-client</pre>
+</div>
+<p>其中， <tt class="docutils literal"><span class="pre">client.rgw.ceph-client</span></tt> 是网关用户的用户名。</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">把索引存储池（每个域的索引存储池，可能的话）指向使用 SSD 的 OSD 组成的规则集也有助于提升桶索引性能。</p>
+</div>
+</div>
+<div class="section" id="dns">
+<span id="add-wildcard-to-dns"></span><h2>增加 DNS 通配符<a class="headerlink" href="#dns" title="Permalink to this headline">¶</a></h2>
+<p>要想在 Ceph 上使用 S3 风格的子域名（如
+bucket-name.domain-name.com ），需要在 DNS 服务器上给这个
+<tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt> 守护进程使用的域名加一条通配符记录。</p>
+<p>DNS 的地址也必须写入 Ceph 配置文件，选项为
+<tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">dns</span> <span class="pre">name</span> <span class="pre">=</span> <span class="pre">{hostname}</span></tt> 。</p>
+<p>对 <tt class="docutils literal"><span class="pre">dnsmasq</span></tt> 来说，需增加下面的 address 选项，在主机名前加一点（ . ）：</p>
+<div class="highlight-python"><pre>address=/.{hostname-or-fqdn}/{host-ip-address}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>address=/.gateway-node1/192.168.122.75</pre>
+</div>
+<p>对 <tt class="docutils literal"><span class="pre">bind</span></tt> 来说，需加一条通配符记录，例如：</p>
+<div class="highlight-python"><pre>$TTL    604800
+@       IN      SOA     gateway-node1. root.gateway-node1. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      gateway-node1.
+@       IN      A       192.168.122.113
+*       IN      CNAME   @</pre>
+</div>
+<p>重启 DNS 服务器、然后用一个子域名 ping 网关服务器，以确保
+DNS 解析配置无误：</p>
+<div class="highlight-python"><pre>ping mybucket.{hostname}</pre>
+</div>
+<p>例如：</p>
+<div class="highlight-python"><pre>ping mybucket.gateway-node1</pre>
 </div>
 </div>
 <div class="section" id="id6">
-<h3>基于 RPM 的发行版<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
-<p>执行下列命令在 <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> 上安装 Ceph 对象网关守护进程：</p>
-<div class="highlight-python"><pre>sudo yum install ceph-radosgw</pre>
-</div>
-<p>执行下列命令安装 Ceph 对象网关同步代理：</p>
-<div class="highlight-python"><pre>sudo yum install radosgw-agent</pre>
-</div>
+<h2>开启调试选项（如有必要）<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>完成上述配置后，如果它们不如所愿，可以在 Ceph 配置文件的
+<tt class="docutils literal"><span class="pre">[global]</span></tt> 段下加入调试选项，并重启网关，试着排除配置问题。例如：</p>
+<div class="highlight-python"><pre>[global]
+#append the following in the global section.
+debug ms = 1
+debug rgw = 20</pre>
 </div>
 </div>
 <div class="section" id="id7">
-<h2>配置网关<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
-<p>安装好 Ceph 对象网关软件包之后，下一步就是配置 Ceph 对象网关，有两种方法：</p>
-<ul class="simple">
-<li><strong>简易配置：</strong> <a class="reference external" href="../../radosgw/config">简易的</a> Ceph 对象网关配置意味着你在单个数据中心运行了一套 Ceph 对象存储服务，所以你配置 Ceph 对象网关时无需考虑 region 和区域。</li>
-<li><strong>联盟配置：</strong> <a class="reference external" href="../../radosgw/federated-config">联盟的</a> Ceph 对象网关配置意味着你在地理上分散的方式运行着一套 Ceph 对象存储服务，以实现更好的容灾和故障转移。这需要给 Ceph 对象网关例程配置 region 和区域。</li>
-</ul>
-<p>请选择最适合自己的方式。</p>
+<h2>试用网关<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<p>要使用 REST 接口，首先得创建一个适用于 S3 接口的 Ceph 对象网关用户，然后创建用于 Swift 接口的子用户。之后验证创建的用户是否能访问网关。</p>
+<div class="section" id="s3-radosgw">
+<h3>创建用于 S3 访问的 RADOSGW 用户<a class="headerlink" href="#s3-radosgw" title="Permalink to this headline">¶</a></h3>
+<p>需创建 <tt class="docutils literal"><span class="pre">radosgw</span></tt> 用户、并授予权限。其它的命令选项可以查看
+<tt class="docutils literal"><span class="pre">man</span> <span class="pre">radosgw-admin</span></tt> 。</p>
+<p>创建用户可以在 <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> 上执行下面的命令：</p>
+<div class="highlight-python"><pre>sudo radosgw-admin user create --uid="testuser" --display-name="First User"</pre>
+</div>
+<p>此命令的输出类似如下：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;display_name&quot;</span><span class="p">:</span> <span class="s2">&quot;First User&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;suspended&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;max_buckets&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="s2">&quot;auid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;subusers&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;keys&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;I0PJDPCIYZ665MW88W9R&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;dxaXZ8U90SXydYzyS5ivamEP20hkLSUViiaR+ZDA&quot;</span>
+    <span class="p">}],</span>
+    <span class="s2">&quot;swift_keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;caps&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;op_mask&quot;</span><span class="p">:</span> <span class="s2">&quot;read, write, delete&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;placement_tags&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;temp_url_keys&quot;</span><span class="p">:</span> <span class="p">[]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">访问验证需要 <tt class="docutils literal"><span class="pre">keys-&gt;access_key</span></tt> 和
+<tt class="docutils literal"><span class="pre">keys-&gt;secret_key</span></tt> 的值。</p>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">仔细检查输出的密钥。有时候 <tt class="docutils literal"><span class="pre">radosgw-admin</span></tt>
+生成的 JSON 里的 <tt class="docutils literal"><span class="pre">access_key</span></tt> 或 <tt class="docutils literal"><span class="pre">secret_key</span></tt> 里面有转义字符 <tt class="docutils literal"><span class="pre">\</span></tt> ，而有些客户端不能处理 JSON 转义字符。补救方法可以是删除 JSON 转义字符 <tt class="docutils literal"><span class="pre">\</span></tt> 、并用引号把它们包起来；重新生成不含 JSON 转义字符的 key ；或者手动指定 key
+和密钥。或者，如果 <tt class="docutils literal"><span class="pre">radosgw-admin</span></tt> 生成的 JSON 同时包含转义字符 <tt class="docutils literal"><span class="pre">\</span></tt> 和正斜线 <tt class="docutils literal"><span class="pre">/</span></tt> ，如 <tt class="docutils literal"><span class="pre">\/</span></tt> ，只需删除
+JSON 转义字符即可，不要删除正斜线 <tt class="docutils literal"><span class="pre">/</span></tt> ，因为它是 key
+的合法字符。</p>
+</div>
+</div>
+<div class="section" id="swift">
+<h3>创建 Swift 用户<a class="headerlink" href="#swift" title="Permalink to this headline">¶</a></h3>
+<p>如果要通过 Swift 接口访问，需创建 Swift 子用户。 Swift 用户的创建包含两步，第一步是创建用户，第二步是创建密钥。</p>
+<p>在 <tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> 上执行以下各步骤：</p>
+<p>创建 Swift 用户：</p>
+<div class="highlight-python"><pre>sudo radosgw-admin subuser create --uid=testuser --subuser=testuser:swift --access=full</pre>
+</div>
+<p>其输出类似如下：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;display_name&quot;</span><span class="p">:</span> <span class="s2">&quot;First User&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;suspended&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;max_buckets&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="s2">&quot;auid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;subusers&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser:swift&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;permissions&quot;</span><span class="p">:</span> <span class="s2">&quot;full-control&quot;</span>
+    <span class="p">}],</span>
+    <span class="s2">&quot;keys&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser:swift&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;3Y1LNW4Q6X0Y53A52DET&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span>
+    <span class="p">},</span> <span class="p">{</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;I0PJDPCIYZ665MW88W9R&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;dxaXZ8U90SXydYzyS5ivamEP20hkLSUViiaR+ZDA&quot;</span>
+    <span class="p">}],</span>
+    <span class="s2">&quot;swift_keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;caps&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;op_mask&quot;</span><span class="p">:</span> <span class="s2">&quot;read, write, delete&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;placement_tags&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;temp_url_keys&quot;</span><span class="p">:</span> <span class="p">[]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>创建密钥：</p>
+<div class="highlight-python"><pre>sudo radosgw-admin key create --subuser=testuser:swift --key-type=swift --gen-secret</pre>
+</div>
+<p>其输出类似如下：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;display_name&quot;</span><span class="p">:</span> <span class="s2">&quot;First User&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;suspended&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;max_buckets&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="s2">&quot;auid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;subusers&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser:swift&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;permissions&quot;</span><span class="p">:</span> <span class="s2">&quot;full-control&quot;</span>
+    <span class="p">}],</span>
+    <span class="s2">&quot;keys&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser:swift&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;3Y1LNW4Q6X0Y53A52DET&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span>
+    <span class="p">},</span> <span class="p">{</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;I0PJDPCIYZ665MW88W9R&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;dxaXZ8U90SXydYzyS5ivamEP20hkLSUViiaR+ZDA&quot;</span>
+    <span class="p">}],</span>
+    <span class="s2">&quot;swift_keys&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="s2">&quot;testuser:swift&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;244+fz2gSqoHwR3lYtSbIyomyPHf3i7rgSJrF\/IA&quot;</span>
+    <span class="p">}],</span>
+    <span class="s2">&quot;caps&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;op_mask&quot;</span><span class="p">:</span> <span class="s2">&quot;read, write, delete&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;placement_tags&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;temp_url_keys&quot;</span><span class="p">:</span> <span class="p">[]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id8">
+<h3>访问验证<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="s3">
+<h4>测试 S3 访问<a class="headerlink" href="#s3" title="Permalink to this headline">¶</a></h4>
+<p>你得写个 Python 测试脚本并运行它来验证 S3 访问。这个 S3 访问测试脚本会连接到 <tt class="docutils literal"><span class="pre">radosgw</span></tt> 、创建新桶、并罗列所有桶。其中， <tt class="docutils literal"><span class="pre">aws_access_key_id</span></tt> 和 <tt class="docutils literal"><span class="pre">aws_secret_access_key</span></tt> 的值取自 <tt class="docutils literal"><span class="pre">radosgw_admin</span></tt> 命令返回的 <tt class="docutils literal"><span class="pre">access_key</span></tt> 和
+<tt class="docutils literal"><span class="pre">secret_key</span></tt> 的值。</p>
+<p>执行下列步骤：</p>
+<ol class="arabic">
+<li><p class="first">先要安装 <tt class="docutils literal"><span class="pre">python-boto</span></tt> 软件包：</p>
+<div class="highlight-python"><pre>sudo yum install python-boto</pre>
+</div>
+</li>
+<li><p class="first">创建 Python 脚本：</p>
+<div class="highlight-python"><pre>vi s3test.py</pre>
+</div>
+</li>
+<li><p class="first">把下面的内容写入这个脚本文件：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">boto.s3.connection</span>
+
+<span class="n">access_key</span> <span class="o">=</span> <span class="s1">&#39;I0PJDPCIYZ665MW88W9R&#39;</span>
+<span class="n">secret_key</span> <span class="o">=</span> <span class="s1">&#39;dxaXZ8U90SXydYzyS5ivamEP20hkLSUViiaR+ZDA&#39;</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">boto</span><span class="o">.</span><span class="n">connect_s3</span><span class="p">(</span>
+        <span class="n">aws_access_key_id</span><span class="o">=</span><span class="n">access_key</span><span class="p">,</span>
+        <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="n">secret_key</span><span class="p">,</span>
+        <span class="n">host</span><span class="o">=</span><span class="s1">&#39;{hostname}&#39;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="p">{</span><span class="n">port</span><span class="p">},</span>
+        <span class="n">is_secure</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">calling_format</span><span class="o">=</span><span class="n">boto</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">OrdinaryCallingFormat</span><span class="p">(),</span>
+       <span class="p">)</span>
+
+<span class="n">bucket</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">(</span><span class="s1">&#39;my-new-bucket&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">bucket</span> <span class="ow">in</span> <span class="n">conn</span><span class="o">.</span><span class="n">get_all_buckets</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s2">&quot;{name} {created}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">bucket</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">created</span><span class="o">=</span><span class="n">bucket</span><span class="o">.</span><span class="n">creation_date</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>把上面的 <tt class="docutils literal"><span class="pre">{hostname}</span></tt> 替换成你配置了网关服务（即
+<tt class="docutils literal"><span class="pre">gateway</span> <span class="pre">host</span></tt> ）的主机名，把 <tt class="docutils literal"><span class="pre">{port}</span></tt> 替换为你配置的 Civetweb 端口号。</p>
+</li>
+<li><p class="first">运行此脚本：</p>
+<div class="highlight-python"><pre>python s3test.py</pre>
+</div>
+<p>其输出应该类似如下：</p>
+<div class="highlight-python"><pre>my-new-bucket 2015-02-16T17:09:10.000Z</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="id9">
+<h4>测试 Swift 访问<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h4>
+<p>Swift 访问可用 <tt class="docutils literal"><span class="pre">swift</span></tt> 命令行客户端验证，其命令行选项可用
+<tt class="docutils literal"><span class="pre">man</span> <span class="pre">swift</span></tt> 获取。</p>
+<p><tt class="docutils literal"><span class="pre">swift</span></tt> 客户端的安装可用下列命令。在 Red Hat Enteprise
+Linux 上：</p>
+<div class="highlight-python"><pre>sudo yum install python-setuptools
+sudo easy_install pip
+sudo pip install --upgrade setuptools
+sudo pip install --upgrade python-swiftclient</pre>
+</div>
+<p>在基于 Debian 的发行版上：</p>
+<div class="highlight-python"><pre>sudo apt-get install python-setuptools
+sudo easy_install pip
+sudo pip install --upgrade setuptools
+sudo pip install --upgrade python-swiftclient</pre>
+</div>
+<p>swift 访问可用下列命令验证：</p>
+<div class="highlight-python"><pre>swift -A http://{IP ADDRESS}:{port}/auth/1.0 -U testuser:swift -K '{swift_secret_key}' list</pre>
+</div>
+<p>把 <tt class="docutils literal"><span class="pre">{IP</span> <span class="pre">ADDRESS}</span></tt> 替换成网关服务器的公网 IP 地址；
+<tt class="docutils literal"><span class="pre">{swift_secret_key}</span></tt> 替换为创建 <tt class="docutils literal"><span class="pre">swift</span></tt> 用户（从
+<tt class="docutils literal"><span class="pre">radosgw-admin</span> <span class="pre">key</span> <span class="pre">create</span></tt> 命令的输出里提取）时取得的密钥； <tt class="docutils literal"><span class="pre">{port}</span></tt> 替换为你配置的 Civetweb 端口号（如默认的
+<tt class="docutils literal"><span class="pre">7480</span></tt> ），如果你不替换，它将默认为 <tt class="docutils literal"><span class="pre">80</span></tt> 端口。</p>
+<p>例如：</p>
+<div class="highlight-python"><pre>swift -A http://10.19.143.116:7480/auth/1.0 -U testuser:swift -K '244+fz2gSqoHwR3lYtSbIyomyPHf3i7rgSJrF/IA' list</pre>
+</div>
+<p>其输出应该是：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">bucket</span>
+</pre></div>
+</div>
+</div>
+</div>
 </div>
 </div>
 
@@ -265,23 +568,25 @@ cp ca.csr /etc/pki/tls/private/ca.csr</pre>
 <li class="toctree-l3"><a class="reference internal" href="../install-ceph-deploy/">     安装 ceph-deploy</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../install-storage-cluster/">     安装 Ceph 存储集群</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="">     安装 Ceph 对象网关</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#apache">安装 Apache</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id1">配置 Apache</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#debian">基于 Debian 的发行版</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#rpm">基于 RPM 的发行版</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1">安装前的准备工作</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">安装 Ceph 对象网关</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">创建网关例程</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">更改默认端口</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#civetweb-ssl">在 Civetweb 上使用 SSL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#apache-civetweb">从 Apache 迁移到 Civetweb</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">桶分片的配置</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dns">增加 DNS 通配符</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">开启调试选项（如有必要）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">试用网关</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#s3-radosgw">创建用于 S3 访问的 RADOSGW 用户</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#swift">创建 Swift 用户</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id8">访问验证</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="#s3">测试 S3 访问</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#id9">测试 Swift 访问</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#ssl">启用 SSL</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id2">基于 Debian 的发行版</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id3">基于 RPM 的发行版</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#id4">安装 Ceph 对象网关守护进程</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id5">基于 Debian 的发行版</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id6">基于 RPM 的发行版</a></li>
-</ul>
-</li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">配置网关</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../install-vm-cloud/">     作为虚拟化的块设备</a></li>
@@ -296,23 +601,25 @@ cp ca.csr /etc/pki/tls/private/ca.csr</pre>
 <li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="">手动安装</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#apache">安装 Apache</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id1">配置 Apache</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#debian">基于 Debian 的发行版</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#rpm">基于 RPM 的发行版</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">安装前的准备工作</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">安装 Ceph 对象网关</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">创建网关例程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">更改默认端口</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#civetweb-ssl">在 Civetweb 上使用 SSL</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#apache-civetweb">从 Apache 迁移到 Civetweb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">桶分片的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dns">增加 DNS 通配符</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">开启调试选项（如有必要）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">试用网关</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#s3-radosgw">创建用于 S3 访问的 RADOSGW 用户</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#swift">创建 Swift 用户</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">访问验证</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#s3">测试 S3 访问</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id9">测试 Swift 访问</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#ssl">启用 SSL</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id2">基于 Debian 的发行版</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id3">基于 RPM 的发行版</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#id4">安装 Ceph 对象网关守护进程</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id5">基于 Debian 的发行版</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6">基于 RPM 的发行版</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="#id7">配置网关</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../radosgw/config-fcgi/">用 FastCGI 的简单配置</a></li>

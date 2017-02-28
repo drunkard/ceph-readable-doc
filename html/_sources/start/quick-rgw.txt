@@ -68,7 +68,8 @@
    已开放。如果没开放，就加上这个端口、然后重载下防火墙配置。\
    例如：::
 
-    sudo firewall-cmd --list-all sudo firewall-cmd --zone=public --add-port 80/tcp --permanent
+    sudo firewall-cmd --list-all
+    sudo firewall-cmd --zone=public --add-port 80/tcp --permanent
     sudo firewall-cmd --reload
 
    关于用 ``firewall-cmd`` 或 ``iptables`` 配置防火墙的详情见\

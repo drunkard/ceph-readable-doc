@@ -76,6 +76,23 @@ mds ，不指定的话会启动所有类型。
 
     Launch the osd/mds/mon/all the ceph binaries using valgrind with the specified tool and arguments.
 
+.. option:: --{mon,osd,mds}_num
+
+    设置 mon/osd/mds 守护进程的数量。
+
+.. option:: --bluestore
+
+    指定 bluestore 作为 OSD 的对象存储后端。
+
+.. option:: --memstore
+
+    指定 memstore 作为 OSD 的对象存储后端。
+
+.. option:: --cache <pool>
+
+    给指定存储池配置一个缓存层。
+
+
 Environment variables
 =====================
 

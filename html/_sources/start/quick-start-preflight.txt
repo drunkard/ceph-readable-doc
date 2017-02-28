@@ -45,11 +45,22 @@ Ceph 部署工具的安装
    ``http://ceph.com/`` 替换成 ``http://eu.ceph.com/`` 即可。
 
 
-红帽包管理工具（RPM）
----------------------
+RHEL/CentOS
+-----------
 
-在 Red Hat （rhel6、rhel7）、CentOS （el6、el7）和 Fedora 19-21 \
-(f19-f21) 上执行下列步骤：
+对于 CentOS 7 ，可执行下列步骤：
+
+#. 在 Red Hat Enterprise Linux 7 上，用 ``subscription-manager`` 注册主机，核对你的订阅，然后启用 Extras 软件库，以解决软件包依赖。例如： ::
+
+        sudo subscription-manager repos --enable=rhel-7-server-extras-rpms
+
+
+#. 安装并启用企业 Linux (EPEL) 附加软件包： ::
+
+        sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+   背景信息请参考 `EPEL 百科`_\ 。
+
 
 #. 把软件包源加入软件库，用文本编辑器创建一个 YUM (Yellowdog \
    Updater, Modified) 库文件，其路径为 \
@@ -308,3 +319,4 @@ SELinux 设置为 ``Permissive`` ： ::
 .. _时钟: ../../rados/configuration/mon-config-ref#clock
 .. _NTP: http://www.ntp.org/
 .. _Infernalis 版: ../../release-notes/#v9-1-0-infernalis-release-candidate
+.. _EPEL 百科: https://fedoraproject.org/wiki/EPEL

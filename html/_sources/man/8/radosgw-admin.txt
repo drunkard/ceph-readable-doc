@@ -213,6 +213,12 @@
 :command:`replicalog delete`
   删除复制元数据日志条目。
 
+:command:`orphans find`
+  初始化、并开始检索遗漏的 RADOS 对象。
+
+:command:`orphans finish`
+  清理遗漏 RADOS 对象的检索结果。
+
 
 选项
 ====
@@ -395,6 +401,32 @@
 .. option:: --quota-scope
 
    配额有效范围（桶、用户）。
+
+
+捡漏（ Orphans ）选项
+=====================
+
+.. option:: --pool
+
+	指定需要检索遗漏 RADOS 对象的存储池。
+
+.. option:: --num-shards
+
+	用多少个分片临时保存扫描信息。
+
+.. option:: --orphan-stale-secs
+
+        对象被遗漏多久才被当作孤儿，单位是秒。
+        默认是 86400 （ 24 小时）。
+
+.. option:: --job-id
+
+        设置作业标识符（适用于 ``orphans find`` ）。
+
+.. option:: --max-concurrent-ios
+
+        ``orphans find`` 命令运行的最大并行 IO 数量。
+        默认是 32 。
 
 
 实例

@@ -435,7 +435,7 @@ CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规�
 		type [ replicated | erasure ]
 		min_size <min-size>
 		max_size <max-size>
-		step take <bucket-type>
+		step take <bucket-name>
 		step [choose|chooseleaf] [firstn|indep] <N> <bucket-type>
 		step emit
 	}

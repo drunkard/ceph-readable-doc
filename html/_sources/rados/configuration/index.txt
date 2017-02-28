@@ -46,7 +46,6 @@ Ceph 启动时要激活三类守护进程：
 	心跳选项 <mon-osd-interaction>
 	OSD 选项 <osd-config-ref>
 	filestore 选项 <filestore-config-ref>
-	键/值存储选项 <keyvaluestore-config-ref>
 	日志选项 <journal-ref>
 	存储池、归置组和 CRUSH 选项 <pool-pg-config-ref.rst>
 	消息传递选项 <ms-ref>
