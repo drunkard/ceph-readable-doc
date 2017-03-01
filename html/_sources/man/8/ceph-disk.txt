@@ -1,30 +1,45 @@
 :orphan:
 
-==================================
- ceph-disk -- Ceph 的硬盘管理工具
-==================================
+==========================================
+ ceph-disk -- Ceph 的磁盘工具，适用于 OSD
+==========================================
 
 .. program:: ceph-disk
 
 提纲
 ====
 
-| **ceph-disk** **prepare** [--cluster *clustername*] [--cluster-uuid *uuid*]
-	[--fs-type *xfs|ext4|btrfs*] [*data-path*] [*journal-path*]
+| **ceph-disk** [-h] [-v] [--log-stdout] [--prepend-to-path PATH]
+                [--statedir PATH] [--sysconfdir PATH]
+                [--setuser USER] [--setgroup GROUP]
+                ...
 
-| **ceph-disk** **activate** [*data-path*] [--activate-key *path*]
-	[--mark-init *sysvinit|upstart|systemd|auto|none*]
-	[--no-start-daemon] [--reactivate]
+| 可选参数:
+  -h, --help            显示本帮助消息后退出
+  -v, --verbose         输出得更详细些
+  --log-stdout          日志输出到 stdout
+  --prepend-to-path PATH
+                        把 PATH 安插到 $PATH 前面，为保持向后兼容性（默认为 /usr/bin ）
+  --statedir PATH       用于存放 Ceph 状态的目录（默认为 /var/lib/ceph ）
+  --sysconfdir PATH     用于存放 Ceph 配置文件的目录（默认为 /etc/ceph ）
+  --setuser USER        指定子进程的所属用户，取代默认的 ceph 或 root
+  --setgroup GROUP      指定子进程的所属用户组，取代默认的 ceph 或 root
 
-| **ceph-disk** **activate-all**
+| 子命令:
 
-| **ceph-disk** **list**
-
-| **ceph-disk** **deactivate** [--cluster *clustername*] [*device-path*]
-        [--deactivate-by-id *id*] [--mark-out]
-
-| **ceph-disk** **destroy** [--cluster *clustername*] [*device-path*]
-        [--destroy-by-id *id*] [--dmcrypt-key-dir *KEYDIR*] [--zap]
+    prepare              为 Ceph OSD 准备一个目录或磁盘
+    activate             激活一个 Ceph OSD
+    activate-lockbox     激活一个 Ceph lockbox
+    activate-block       通过其块设备激活一个 OSD
+    activate-journal     通过其日志设备激活一个 OSD
+    activate-all         激活所有标记过的 OSD 分区
+    list                 罗列磁盘、分区、和 Ceph OSD
+    suppress-activate    抑制设备，防止被激活（前缀）
+    unsuppress-activate  取消对设备的抑制（前缀）
+    deactivate           弄死一个 Ceph OSD
+    destroy              拆除一个 Ceph OSD
+    zap                  干掉、擦除、破坏某一设备的分区表（及其内容）
+    trigger              触发一个事件（底层为 udev ）
 
 
 描述

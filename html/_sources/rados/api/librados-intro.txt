@@ -60,12 +60,13 @@ headers for C/C++ under ``/usr/include/rados``. ::
 获取 librados 的 Python 支持
 ----------------------------
 
-``rados.py`` 模块为 Python 应用提供了 ``librados`` 支持。在 Debian/Ubuntu \
-下软件包名为 ``librados-dev`` ，在 RHEL/CentOS 下是 ``librados2-devel`` ，\
-它们包含了 ``python-rados`` 包。你也可以直接安装 ``python-rados`` 。
+``rados`` 模块为 Python 应用提供了 ``librados`` 支持。在
+Debian/Ubuntu 下软件包名为 ``librados-dev`` ，在 RHEL/CentOS
+下是 ``librados2-devel`` ，它们包含了 ``python-rados`` 包。\
+你也可以直接安装 ``python-rados`` 。
 
-要在 Debian/Ubuntu 发行版上安装 ``librados`` 的 Python 开发支持文件，用此\
-命令： ::
+要在 Debian/Ubuntu 发行版上安装 ``librados`` 的 Python 开发\
+支持文件，用此命令： ::
 
 	sudo apt-get install python-rados
 
