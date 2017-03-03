@@ -26,4 +26,4 @@
 Note
 ----
 
-PDF 版已死，不再维护了，位于 DEAD/ 。
+PDF 版已死，不再维护了，位于 `DEAD/ 目录下 <https://github.com/drunkard/ceph-readable-doc/tree/master/DEAD>`_\ 。
