@@ -15,8 +15,10 @@
 
 * man - Ceph 命令手册，用 man 命令查看；
 
-文档源码位于 https://github.com/drunkard/ceph-Chinese-doc ，结构与官方文
+文档源码位于 https://github.com/drunkard/ceph-Chinese-doc ，结构与官方文\
 档完全一样。
+
+在线阅读可以到 `Ceph 中国社区 <http://docs.ceph.org.cn/>`_ 。
 
 希望对您有用，有问题可以联系： gongfan193@gmail.com
 
