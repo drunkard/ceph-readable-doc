@@ -232,8 +232,9 @@ HitSet 里的任意一个，那就提升它。
 
 	ceph osd pool set {cachepool} cache_target_dirty_high_ratio {0.0..1.0}
 
-例如，设置为 ``0.6`` 表示：脏对象达到缓存存储池容量的 60% 时，将开始更\
-激进地刷回脏对象。显然，其值最好在 dirty_ratio 和 full_ratio 之间： ::
+例如，设置为 ``0.6`` 表示：脏对象达到缓存存储池容量的 60%
+时，将开始更激进地刷回脏对象。显然，其值最好在 dirty_ratio
+和 full_ratio 之间： ::
 
 	ceph osd pool set hot-storage cache_target_dirty_high_ratio 0.6
 
