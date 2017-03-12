@@ -715,6 +715,34 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :默认值: ``4096``
 
 
+``mon osd prime pg temp``
+
+:描述: 当一个先前处于 out 状态的 OSD 回到集群时，捡回（
+       prime ）还是不捡回包含先前各 OSD 的 PGMap 。设置为
+       ``true`` 时，客户端们会继续使用先前的 OSD 们，直到\
+       新增了 OSD ，因为原来的 PG 照旧互联。
+
+       .. note::
+       
+          译者注：原文的 priming 翻译为“捡回”。因为此字意为：\
+          底漆、启动、起爆剂、点火装置等，我的理解是，旧版的
+          PGMap 已经一层层盖着压箱底了，新的本应从当前运行的\
+          集群里汇总，可这里启用了旧的，相当于扒了一层底漆、\
+          或者点燃了装填好的弹药，故译为捡回。
+
+:类型: Boolean
+:默认: ``true``
+
+
+``mon osd prime pg temp max time``
+
+:描述: 当某一先前状态为 out 的 OSD 回到集群、监视器在捡回
+       PGMap 时尝试的最大时间，单位为秒。
+
+:类型: Float
+:默认: ``0.5``
+
+
 .. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)
 .. _监视器密钥环: ../../operations/authentication#monitor-keyrings
 .. _Ceph 配置文件: ../../../start/quick-start/#add-a-configuration-file

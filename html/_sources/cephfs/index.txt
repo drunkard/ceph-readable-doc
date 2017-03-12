@@ -87,6 +87,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 	故障排除 <troubleshooting>
 	灾难恢复 <disaster-recovery>
 	客户端认证 <client-auth>
+        旧文件系统的升级 <upgrading>
 
 .. raw:: html
 
