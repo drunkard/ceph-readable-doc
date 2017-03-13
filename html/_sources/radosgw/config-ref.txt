@@ -2,9 +2,9 @@
  Ceph 对象网关配置参考
 =======================
 
-下列的选项可加入 Ceph 配置文件（一般是 ``ceph.conf`` ）的 \
-``[client.radosgw.{instance-name}]`` 段下，很多选项都有默认值，你若未指定，自\
-然用默认。
+下列的选项可加入 Ceph 配置文件（一般是 ``ceph.conf`` ）的
+``[client.radosgw.{instance-name}]`` 段下，很多选项都有默\
+认值，你若未指定，自然用默认。
 
 
 ``rgw data``
@@ -882,6 +882,13 @@ Keystone 选项
 :描述: 令牌有效期查验的周期，秒。
 :类型: Integer
 :默认值: ``15 * 60``
+
+
+``rgw keystone verify ssl``
+
+:描述: 向 keystone 发出令牌请求时要核对 SSL 证书。
+:类型: Boolean
+:默认值: ``true``
 
 
 .. _体系结构: ../../architecture#data-striping

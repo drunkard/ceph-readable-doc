@@ -18,6 +18,7 @@
 	获取源码包 <get-tarballs>
 	克隆源码 <clone-source>
 	构建 Ceph <build-ceph>
+	Ceph 镜像 <mirrors>
 
 
 安装软件

@@ -940,6 +940,7 @@ osd
 用法： ::
 
 	ceph osd reweight-by-pg {<int[100-]>} {<poolname> [<poolname...]}
+	{--no-increasing}
 
 子命令 ``reweight-by-utilization`` 按利用率调整 OSD 的权重，还需考虑负载比\
 率，默认 120 。
@@ -947,6 +948,7 @@ osd
 用法： ::
 
 	ceph osd reweight-by-utilization {<int[100-]>}
+	{--no-increasing}
 
 子命令 ``rm`` 删除集群中的 OSD ，其编号为 <id> [<id>...] 。
 

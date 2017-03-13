@@ -2,8 +2,8 @@
  获取二进制包
 ==============
 
-要安装 Ceph 及其依赖软件，你需要参考本手册从 Ceph 软件库下载，然后继续看\ `安装 
-Ceph 对象存储`_\ 。
+要安装 Ceph 及其依赖软件，你需要参考本手册从 Ceph 软件库下\
+载，然后继续看\ `安装 Ceph 对象存储`_\ 。
 
 
 获取软件包
@@ -11,11 +11,12 @@ Ceph 对象存储`_\ 。
 
 有两种方法获取软件包：
 
-- **增加源：** 增加源是获取二进制包的最简方法，因为多数情况下包管理工具都能自动下\
-  载、并解决依赖关系。然而，这种方法要求各 :term:`Ceph 节点`\ 都能连接互联网。
+- **增加源：** 增加源是获取二进制包的最简方法，因为多数情\
+  况下包管理工具都能自动下载、并解决依赖关系。然而，这种方\
+  法要求各 :term:`Ceph 节点`\ 都能连接互联网。
   
-- **手动下载：** 如果你的环境不允许 :term:`Ceph 节点`\ 访问互联网，手动下载软件包\
-  安装 Ceph 也不复杂。
+- **手动下载：** 如果你的环境不允许 :term:`Ceph 节点`\ 访\
+  问互联网，手动下载软件包安装 Ceph 也不复杂。
 
 
 准备工作
@@ -82,27 +83,6 @@ RPM
 	sudo rpm --import 'https://download.ceph.com/keys/autobuild.asc'
 
 
-.. _mirrors:
-
-镜像
-====
-
-为提升用户体验，世界各地有多个 Ceph 镜像。
-
-这些镜像位于如下地点：
-
-- **EU**: http://eu.ceph.com/
-- **AU**: http://au.ceph.com/
-
-你可以把所有的 ceph.com URL 替换成任意镜像，例如：
-
-  http://download.ceph.com/debian-hammer
-
-可以改成：
-
-  http://eu.ceph.com/debian-hammer
-
-
 添加 Ceph 库
 ============
 
@@ -134,8 +114,8 @@ Ceph 的主要发布包括：
 - **Argonaut, Bobtail, Cuttlefish, Dumpling:** 这些是 Ceph 的前 4 \
   个主要发布，它们都很老了，且不再维护，所以请升级到近期版本。
 
-.. tip:: 对国际用户来说，在全球有很多镜像可用。请参考 \
-   :ref:`mirrors` 。
+.. tip:: 对国际用户来说，你也许可以从比较近的镜像下载 Ceph 。\
+   请参考 `Ceph 镜像`_\ 。
 
 
 Debian 二进制包
@@ -172,8 +152,8 @@ http://download.ceph.com/packages/google-perftools/debian 。 ::
 
 	echo deb http://download.ceph.com/debian-testing/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-.. tip:: 对国际用户来说，在全球有很多镜像可用。请参考 \
-   :ref:`mirrors` 。
+.. tip:: 对国际用户来说，你也许可以从比较近的镜像下载 Ceph 。\
+   请参考 `Ceph 镜像`_\ 。
 
 
 RPM 二进制包
@@ -259,8 +239,8 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
 
 	http://download.ceph.com/rpm-testing
 
-.. tip:: 对国际用户来说，在全球有很多镜像可用。请参考 \
-   :ref:`mirrors` 。
+.. tip:: 对国际用户来说，你也许可以从比较近的镜像下载 Ceph 。\
+   请参考 `Ceph 镜像`_\ 。
 
 
 添加 Ceph 开发库
@@ -449,3 +429,4 @@ Ceph 库配置文件，这样 ``yum`` 或 ``up2date`` 就可以使用这些配�
 .. _安装 Ceph 对象存储: ../install-storage-cluster
 .. _Debian 测试版软件库: http://download.ceph.com/debian-testing/dists
 .. _the gitbuilder page: http://gitbuilder.ceph.com
+.. _Ceph 镜像: ../mirrors

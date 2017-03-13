@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>CephFS 配额管理 &mdash; Ceph Documentation</title>
+    <title>CephFS 管理命令 &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -27,8 +27,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
     <link rel="up" title="Ceph 文件系统" href="../" />
-    <link rel="next" title="在 CephFS 上使用 Hadoop" href="../hadoop/" />
-    <link rel="prev" title="与 POSIX 标准的差异" href="../posix/" />
+    <link rel="next" title="与 POSIX 标准的差异" href="../posix/" />
+    <link rel="prev" title="mount.ceph – 用于挂载 Ceph 文件系统" href="../../man/8/mount.ceph/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,10 +43,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../hadoop/" title="在 CephFS 上使用 Hadoop"
+          <a href="../posix/" title="与 POSIX 标准的差异"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../posix/" title="与 POSIX 标准的差异"
+          <a href="../../man/8/mount.ceph/" title="mount.ceph – 用于挂载 Ceph 文件系统"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
@@ -59,41 +59,81 @@
           <div class="body">
             
   <div class="section" id="cephfs">
-<h1>CephFS 配额管理<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
-<p>CephFS 允许给系统内的任意目录设置配额，这个配额可以限制目录树中这一点以下的<em>字节</em>数或者<em>文件</em>数。</p>
+<h1>CephFS 管理命令<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id1">
-<h2>局限性<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<ol class="arabic simple">
-<li><em>配额是合作性的、非对抗性的。</em> CephFS 的配额功能依赖于挂载它的客户端的合作，在达到上限时要停止写入；无法阻止篡改过的或者对抗性的客户端，它们可以想写多少就写多少。在客户端完全不可信时，用配额防止多占空间是靠不住的。</li>
-<li><em>配额是不准确的。</em> 在达到配额限制一小段时间后，正在写入文件系统的进程才会被停止。很难避免它们超过配置的限额、多写入一些数据。会超过配额多大幅度主要取决于时间长短，而非数据量。一般来说，超出配置的限额之后 10 秒内，写入会被停掉。</li>
-<li><em>内核客户端还没实现配额功能。</em> 用户空间客户端（ libcephfs 、 ceph-fuse ）已经支持配额了，但是 Linux 内核客户端还没实现。</li>
-<li><em>基于路径限制挂载时必须谨慎地配置配额。</em> 客户端必须能够访问配置了配额的那个目录的索引节点，这样才能执行配额管理。如果某一客户端被 MDS 能力限制成了只能访问一个特定路径（如 <tt class="docutils literal"><span class="pre">/home/user</span></tt> ），并且它们无权访问配置了配额的父目录（如 <tt class="docutils literal"><span class="pre">/home</span></tt> ），这个客户端就不会按配额执行。所以，基于路径做访问控制时，最好在限制了客户端的那个目录（如 <tt class="docutils literal"><span class="pre">/home/user</span></tt> ）、或者它下面的子目录上配置配额。</li>
-</ol>
+<h2>文件系统管理<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>这些命令适用于 Ceph 集群的 CephFS 文件系统。注意，默认情况下，只允许一个文件系统；执行
+<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">fs</span> <span class="pre">flag</span> <span class="pre">set</span> <span class="pre">enable_multiple</span> <span class="pre">true</span></tt> 后才允许创建多个文件系统。</p>
+<div class="highlight-python"><pre>fs new &lt;filesystem name&gt; &lt;metadata pool name&gt; &lt;data pool name&gt;</pre>
+</div>
+<div class="highlight-python"><pre>fs ls</pre>
+</div>
+<div class="highlight-python"><pre>fs rm &lt;filesystem name&gt; [--yes-i-really-mean-it]</pre>
+</div>
+<div class="highlight-python"><pre>fs reset &lt;filesystem name&gt;</pre>
+</div>
+<div class="highlight-python"><pre>fs get &lt;filesystem name&gt;</pre>
+</div>
+<div class="highlight-python"><pre>fs set &lt;filesystem name&gt; &lt;var&gt; &lt;val&gt;</pre>
+</div>
+<div class="highlight-python"><pre>fs add_data_pool &lt;filesystem name&gt; &lt;pool name/id&gt;</pre>
+</div>
+<div class="highlight-python"><pre>fs rm_data_pool &lt;filesystem name&gt; &lt;pool name/id&gt;</pre>
+</div>
 </div>
 <div class="section" id="id2">
-<h2>配置<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<p>就像 CephFS 里的其它配置一样，配额也是用虚拟扩展属性来配置的：</p>
-<blockquote>
-<div><ul class="simple">
-<li><tt class="docutils literal"><span class="pre">ceph.quota.max_files</span></tt> &#8211; file limit</li>
-<li><tt class="docutils literal"><span class="pre">ceph.quota.max_bytes</span></tt> &#8211; byte limit</li>
-</ul>
-</div></blockquote>
-<p>如果这些属性出现在目录索引节点里，就意味着那里配置了配额；如果不存在，那么那个目录就没设置配额（然而父目录仍然有可能配置了）。</p>
-<p>要设置配额：</p>
-<div class="highlight-python"><pre># 100 MB
-setfattr -n ceph.quota.max_bytes -v 100000000 /some/dir
-# 10000 个文件
-setfattr -n ceph.quota.max_files -v 10000 /some/dir</pre>
+<h2>守护进程管理<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>以下命令适用于指定的 mds 守护进程或 rank 。</p>
+<div class="highlight-python"><pre>mds fail &lt;gid/name/role</pre>
 </div>
-<p>要查看设置的配额：</p>
-<div class="highlight-python"><pre>getfattr -n ceph.quota.max_bytes /some/dir
-getfattr -n ceph.quota.max_files /some/dir</pre>
+<p>下面的命令用于停用一个 MDS ，让它把所有日志刷回后端的
+RADOS 对象、并关闭所有打开的客户端会话。 MDS 的停用功能主要是用于减少活跃 MDS （ max_mds ）后、拆除 rank 。</p>
+<div class="highlight-python"><pre>mds deactivate &lt;role&gt;</pre>
 </div>
-<p>需要留意的是，如果这些扩展属性的值是 <tt class="docutils literal"><span class="pre">0</span></tt> ，就说明没设置配额。</p>
-<p>要删除配额：</p>
-<div class="highlight-python"><pre>setfattr -n ceph.quota.max_bytes -v 0 /some/dir
-setfattr -n ceph.quota.max_files -v 0 /some/dir</pre>
+<div class="highlight-python"><pre>tell mds.&lt;daemon name&gt;</pre>
+</div>
+<div class="highlight-python"><pre>mds metadata &lt;gid/name/role&gt;</pre>
+</div>
+<div class="highlight-python"><pre>mds repaired &lt;role&gt;</pre>
+</div>
+</div>
+<div class="section" id="id3">
+<h2>全局配置选项<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><pre>fs dump</pre>
+</div>
+<div class="highlight-python"><pre>fs flag set &lt;flag name&gt; &lt;flag val&gt; [&lt;confirmation string&gt;]</pre>
+</div>
+<p>&lt;flag name&gt; 必须是 [&#8216;enable_multiple&#8217;] 之一</p>
+<p>有些标志会强迫你用 <tt class="docutils literal"><span class="pre">--yes-i-really-mean-it</span></tt> 或者类似的语句（执行时会提示）来确认你的意图。运行这类命令时要三思而后行，它们通常用于提示非常危险的动作。</p>
+</div>
+<div class="section" id="id4">
+<h2>高级选项<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>以下这些命令在常规操作中用不到，在遇到异常时才需要。这些命令若使用不当会产生严重问题，甚至会导致文件系统无法访问。</p>
+<div class="highlight-python"><pre>mds compat rm_compat</pre>
+</div>
+<div class="highlight-python"><pre>mds compat rm_incompat</pre>
+</div>
+<div class="highlight-python"><pre>mds compat show</pre>
+</div>
+<div class="highlight-python"><pre>mds getmap</pre>
+</div>
+<div class="highlight-python"><pre>mds set_state</pre>
+</div>
+<div class="highlight-python"><pre>mds rmfailed</pre>
+</div>
+</div>
+<div class="section" id="id5">
+<h2>旧命令<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><pre>mds stat
+mds dump  # replaced by "fs get"
+mds stop  # replaced by "mds deactivate"
+mds set_max_mds  # replaced by "fs set max_mds"
+mds set  # replaced by "fs set"
+mds cluster_down  # replaced by "fs set cluster_down"
+mds cluster_up  # replaced by "fs set cluster_up"
+mds newfs  # replaced by "fs new"
+mds add_data_pool  # replaced by "fs add_data_pool"
+mds remove_data_pool # replaced by "fs remove_data_pool"</pre>
 </div>
 </div>
 </div>
@@ -125,13 +165,16 @@ setfattr -n ceph.quota.max_files -v 0 /some/dir</pre>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">cephfs 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="">CephFS 配额管理</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">局限性</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id2">配置</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">CephFS 管理命令</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">文件系统管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">守护进程管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">全局配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">高级选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">旧命令</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
@@ -184,10 +227,10 @@ setfattr -n ceph.quota.max_files -v 0 /some/dir</pre>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../hadoop/" title="在 CephFS 上使用 Hadoop"
+          <a href="../posix/" title="与 POSIX 标准的差异"
              >next</a> |</li>
         <li class="right" >
-          <a href="../posix/" title="与 POSIX 标准的差异"
+          <a href="../../man/8/mount.ceph/" title="mount.ceph – 用于挂载 Ceph 文件系统"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 

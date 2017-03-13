@@ -4,13 +4,15 @@
 
 .. index:: Ceph Block Device; OpenStack
 
-通过 ``libvirt`` 你可以把 Ceph 块设备用于 OpenStack ，它配置了 QEMU 到 \
-``librbd`` 的接口。 Ceph 把块设备分块为对象并分布到集群中，这意味着大个的 Ceph 块\
-设备映像其性能会比独立服务器更好。
+通过 ``libvirt`` 你可以把 Ceph 块设备用于 OpenStack ，它配\
+置了 QEMU 到 ``librbd`` 的接口。 Ceph 把块设备分块为对象并\
+分布到集群中，这意味着大个的 Ceph 块设备映像其性能会比独立\
+服务器更好。
 
-要把 Ceph 块设备用于 OpenStack ，必须先安装 QEMU 、 ``libvirt`` 和 OpenStack 。我\
-们建议用一台独立的物理主机安装 OpenStack ，此主机最少需 8GB 内存和一个 4 核 CPU 。\
-下面的图表描述了 OpenStack/Ceph 技术栈。
+要把 Ceph 块设备用于 OpenStack ，必须先安装 QEMU 、
+``libvirt`` 和 OpenStack 。我们建议用一台独立的物理主机安\
+装 OpenStack ，此主机最少需 8GB 内存和一个 4 核 CPU 。下面\
+的图表描述了 OpenStack/Ceph 技术栈。
 
 
 .. ditaa::  +---------------------------------------------------+
@@ -31,15 +33,16 @@
             |          OSDs          | |        Monitors        |
             +------------------------+ +------------------------+
 
-.. important:: 要让 OpenStack 使用 Ceph 块设备，你必须有相应的 Ceph 集群访问权限。
+.. important:: 要让 OpenStack 使用 Ceph 块设备，你必须有相\
+   应的 Ceph 集群访问权限。
 
 OpenStack 里有三个地方和 Ceph 块设备结合：
 
-- **映像：** OpenStack 的 Glance 管理着 VM 的映像。映像相对恒定， OpenStack 把它\
-  们当作大块二进制数据、并按需下载。
+- **映像：** OpenStack 的 Glance 管理着 VM 的映像。映像相对\
+  恒定， OpenStack 把它们当作大块二进制数据、并按需下载。
 
-- **卷宗：** 卷宗是块设备， OpenStack 用它们引导虚拟机、或挂到运行着的虚拟机上。 \
-  OpenStack 用 Cinder 服务管理卷宗。
+- **卷宗：** 卷宗是块设备， OpenStack 用它们引导虚拟机、或\
+  挂到运行着的虚拟机上。 OpenStack 用 Cinder 服务管理卷宗。
 
 - **Guest Disks**: Guest disks are guest operating system disks. By default,
   when you boot a virtual machine, its disk appears as a file on the filesystem
@@ -241,9 +244,15 @@ Juno 版
 配置 Cinder
 -----------
 
-OpenStack 需要一个驱动和 Ceph 块设备交互，还得指定块设备所在的存储池名字。编辑 \
-OpenStack 节点上的 ``/etc/cinder/cinder.conf`` ，添加： ::
+OpenStack 需要一个驱动和 Ceph 块设备交互，还得指定块设备所\
+在的存储池名字。编辑 OpenStack 节点上的
+``/etc/cinder/cinder.conf`` ，添加： ::
 
+	[DEFAULT]
+	...
+	enabled_backends = ceph
+	...
+	[ceph]
 	volume_driver = cinder.volume.drivers.rbd.RBDDriver
 	rbd_pool = volumes
 	rbd_ceph_conf = /etc/ceph/ceph.conf
@@ -253,9 +262,11 @@ OpenStack 节点上的 ``/etc/cinder/cinder.conf`` ，添加： ::
 	rados_connect_timeout = -1
 	glance_api_version = 2
 
-如果你在用 `cephx 认证`_\ ，还需要配置用户及其密钥（前述文档中存进了 ``libvirt`` ）\
-的 uuid ：
+如果你在用 `cephx 认证`_\ ，还需要配置用户及其密钥（前述文\
+档中存进了 ``libvirt`` ）的 uuid ： ::
 
+	[ceph]
+	...
 	rbd_user = cinder
 	rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
 

@@ -111,3 +111,11 @@ requests to the nss db format, for example::
 		certutil -d /var/ceph/nss -A -n ca -t "TCu,Cu,Tuw"
 	openssl x509 -in /etc/keystone/ssl/certs/signing_cert.pem -pubkey | \
 		certutil -A -d /var/ceph/nss -n signing_cert -t "P,P,P"
+
+
+OpenStack 的 keystone 组件也可以用自签名的 SSL 证书来终结，\
+要使 radosgw 有能力与这种 keystone 交互，你可以在运行
+radosgw 的节点上安装 keystone 的 SSL 证书；另外， radosgw
+也可以配置为根本不校验 SSL 证书（类似加了 ``--insecure``
+开关的 openstack 客户端请求），即把
+``rgw keystone verify ssl`` 配置为 ``false`` 。
