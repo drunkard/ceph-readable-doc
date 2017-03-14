@@ -680,9 +680,15 @@ Swift 选项
 
 ``rgw swift url prefix``
 
-:描述: Swift API 的 URL 前缀。
+:描述: Swift StorageURL 的前缀 URL ，位于 /v1 之前的部分。\
+       用这个此选项可以做到在同一主机上运行多个网关例程。\
+       为保持兼容性，此选项配置为空时将默认使用 /swift 。\
+       指定的 StorageURL 以 / 打头时表示访问根目录。警告：\
+       启用了 S3 API 时，如果这里设置为 / ， S3 API 就\ \
+       **不能**\ 正常运作。换个角度说，禁用 S3 后也不可能\
+       部署多站点 RadosGW 了。
 :默认值: ``swift``
-:实例: http://fqdn.com/swift
+:实例: ``/swift-testing``
 
 
 ``rgw swift auth url``
