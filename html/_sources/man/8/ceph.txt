@@ -33,7 +33,7 @@
 
 | **ceph** **log** *<logtext>* [ *<logtext>*... ]
 
-| **ceph** **mds** [ *add_data_pool* \| *cluster_down* \| *cluster_up* \| *compat* \| *deactivate* \| *dump* \| *fail* \| *getmap* \| *newfs* \| *remove_data_pool* \| *rm* \| *rmfailed* \| *set* \| *set_max_mds* \| *set_state* \| *setmap* \| *stat* \| *stop* \| *tell* ] ...
+| **ceph** **mds** [ *add_data_pool* \| *cluster_down* \| *cluster_up* \| *compat* \| *deactivate* \| *dump* \| *fail* \| *getmap* \| *newfs* \| *remove_data_pool* \| *rm* \| *rmfailed* \| *set* \| *set_max_mds* \| *set_state* \| *stat* \| *stop* \| *tell* ] ...
 
 | **ceph** **mon** [ *add* \| *dump* \| *getmap* \| *remove* \| *stat* ] ...
 
@@ -402,12 +402,6 @@ mds
 用法： ::
 
 	ceph mds set_state <int[0-]> <int[0-20]>
-
-子命令 ``setmap`` 设置 mds 图，必须提供正确的 epoch 号。
-
-用法： ::
-
-	ceph mds setmap <int[0-]>
 
 子命令 ``stat`` 显示 MDS 状态。
 
