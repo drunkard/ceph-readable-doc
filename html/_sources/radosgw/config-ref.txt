@@ -640,9 +640,18 @@ Ceph 对象网关会把桶索引（ ``index_pool`` ）和桶数据（ ``data_poo
 ``rgw region root pool``
 
 :描述: 用于存储此 region 所有相关信息的存储池。
+       ``Jewel`` 版起不再使用。
 :类型: String
 :默认值: ``.rgw.root``
 
+
+.. versionadded:: Jewel
+
+``rgw zonegroup root pool``
+
+:描述: 用于存储此 zonegroup 所有相关信息的存储池。
+:类型: String
+:默认值: ``.rgw.root``
 
 
 .. versionadded:: v.67

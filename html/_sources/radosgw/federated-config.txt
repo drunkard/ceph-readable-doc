@@ -289,16 +289,22 @@ Apache 、 FastCGI 、 Ceph 对象网关守护进程（ ``radosgw`` ），还有
 
 在二级域上重复以上步骤。
 
-.. note:: 按照以上步骤配置二级 region 时，需把 ``us-`` 替换为 ``eu-`` 。\
-   创建主 region 和二级 region **后**\ ，你一共会拥有四个 FastCGI 脚本。
+.. note:: 按照以上步骤配置二级 region 时，需把 ``us-`` 替换为
+   ``eu-`` 。创建主 region 和二级 region **后**\ ，你一共会拥\
+   有四个 FastCGI 脚本。
 
+
+.. _Add Instances to Ceph Config File:
 
 把各例程加入 Ceph 配置文件
 --------------------------
 
-在管理节点上，把各例程的配置写入 Ceph 存储集群的配置文件。例如： ::
+在管理节点上，把各例程的配置写入 Ceph 存储集群的配置文件。\
+例如： ::
 
-	...
+	[global]
+	rgw region root pool = .us.rgw.root     # Deprecated in Jewel
+	rgw zonegroup root pool = .us.rgw.root  # From Jewel
 
 	[client.radosgw.us-east-1]
 	rgw region = us
@@ -312,7 +318,6 @@ Apache 、 FastCGI 、 Ceph 对象网关守护进程（ ``radosgw`` ），还有
 
 	[client.radosgw.us-west-1]
 	rgw region = us
-	rgw region root pool = .us.rgw.root
 	rgw zone = us-west
 	rgw zone root pool = .us-west.rgw.root
 	keyring = /etc/ceph/ceph.client.radosgw.keyring
@@ -320,25 +325,26 @@ Apache 、 FastCGI 、 Ceph 对象网关守护进程（ ``radosgw`` ），还有
 	rgw socket path = /var/run/ceph/$name.sock
 	host = {host-name}
 
-
 然后，把更新过的 Ceph 配置文件推送到各 :term:`Ceph 节点`\ 如： ::
 
 	ceph-deploy --overwrite-conf config push {node1} {node2} {nodex}
 
+.. note:: 按照以上步骤配置二级 region 时，需把 region 、存储池\
+   和域的名字都从 ``us`` 替换为 ``eu`` 。创建主 region 和二级
+   region **后**\ ，你一共会有四条类似配置。
 
-.. note:: 按照以上步骤配置二级 region 时，需把 region 、存储池和域的名字都\
-   从 ``us`` 替换为 ``eu`` 。创建主 region 和二级 region **后**\ ，你一共\
-   会有四条类似配置。
 
+.. _Create a Region:
 
 创建 region
 -----------
 
 #. 为 ``us`` region 创建个 region 配置文件，名为 ``us.json`` 。
 
-   把下列实例的内容复制进文本编辑器，把 ``is_master`` 设置为 ``true`` ，用终\
-   结点的全资域名替换 ``{fqdn}`` 。这样，主域就是 ``us-east`` ，另外 \
-   ``zones`` 列表中还会有 ``us-west`` 。详情见\ `配置参考——region`_ 。 ::
+   把下列实例的内容复制进文本编辑器，把 ``is_master`` 设置为
+   ``true`` ，用终结点的全资域名替换 ``{fqdn}`` 。这样，主域就\
+   是 ``us-east`` ，另外 ``zones`` 列表中还会有 ``us-west`` 。\
+   详情见\ `配置参考——region`_ 。 ::
 
 	{ "name": "us",
 	  "api_name": "us",
@@ -364,7 +370,6 @@ Apache 、 FastCGI 、 Ceph 对象网关守护进程（ ``radosgw`` ），还有
 	   }
 	  ],
 	  "default_placement": "default-placement"}
-
 
 #. 用刚刚创建的 ``us.json`` 输入文件创建 ``us`` region 。 ::
 
@@ -392,6 +397,8 @@ Apache 、 FastCGI 、 Ceph 对象网关守护进程（ ``radosgw`` ），还有
 .. note:: 按照以上步骤配置二级 region 时，需把 ``us`` 替换为 ``eu`` 。\
    创建主 region 和二级 region **后**\ ，你一共会有两个 region 。
 
+
+.. _Create Zones:
 
 创建域
 ------

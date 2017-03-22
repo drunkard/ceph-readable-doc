@@ -2,13 +2,15 @@
  块设备与 CloudStack
 =====================
 
-CloudStack 4.0 及以上版本可以通过 ``libvirt`` 使用 Ceph 块设备， ``libvirt`` 会配\
-置 QEMU 与 ``librbd`` 交互。 Ceph 会把块设备映像条带化为对象并分布到整个集群，这意\
-味着大个的 Ceph 块设备性能会优于单体服务器。
+CloudStack 4.0 及以上版本可以通过 ``libvirt`` 使用 Ceph 块设\
+备， ``libvirt`` 会配置 QEMU 与 ``librbd`` 交互。 Ceph 会把\
+块设备映像条带化为对象并分布到整个集群，这意味着大个的 Ceph
+块设备性能会优于单体服务器。
 
-要让 CloudStack 4.0 及更高版使用 Ceph 块设备，你得先安装 QEMU 、 ``libvirt`` 、\
-和 CloudStack 。我们建议在另外一台物理服务器上安装 CloudStack ，此软件最低需要 \
-4GB 内存和一个双核 CPU ，但是资源越多越好。下图描述了 CloudStack/Ceph 技术栈。
+要让 CloudStack 4.0 及更高版使用 Ceph 块设备，你得先安装
+QEMU 、 ``libvirt`` 、和 CloudStack 。我们建议在另外一台物理\
+服务器上安装 CloudStack ，此软件最低需要 4GB 内存和一个双核
+CPU ，但是资源越多越好。下图描述了 CloudStack/Ceph 技术栈。
 
 
 .. ditaa::  +---------------------------------------------------+
@@ -29,28 +31,21 @@ CloudStack 4.0 及以上版本可以通过 ``libvirt`` 使用 Ceph 块设备， 
             |          OSDs          | |        Monitors        |
             +------------------------+ +------------------------+
 
-.. important:: 要让 CloudStack 使用 Ceph 块设备，你必须有 Ceph 存储集群的访问权限。
+.. important:: 要让 CloudStack 使用 Ceph 块设备，你必须有
+   Ceph 存储集群的访问权限。
 
-CloudStack 集成了 Ceph 的块设备作为它的主要存储（ Primary Storage ），下列指令详述\
-了 CloudStack 的安装。
+CloudStack 集成了 Ceph 的块设备作为它的主要存储（ Primary
+Storage ），下列指令详述了 CloudStack 的安装。
 
-.. note:: 我们建议您安装 Ubuntu 14.04 或更高版本，这样就不用手动编译 libvirt 了。
+.. note:: 我们建议您安装 Ubuntu 14.04 或更高版本，这样就不用\
+   手动编译 libvirt 了。
 
-.. note:: Make sure the /tmp partition on your hypervisors is at least 25GB.
-   When deploying from a template from the first time /tmp will be used for
-   converting the template from QCOW2 to RAW for storage on RBD. This is no
-   longer valid starting from CloudStack version 4.4.0
+安装、配置 QEMU 用于 CloudStack 不需要任何特殊处理。确保你的
+Ceph 存储集群在运行，配置好 QEMU 即可；然后安装 ``libvirt``
+0.9.13 或更高版本（也许得手动编译）并确保它与 Ceph 磨合正常。
 
-.. note:: To use RBD with CloudStack 4.4.0 you require at least librbd version
-   0.67.7 (Ceph Dumpling). Otherwise template deployments and template backups
-   will fail. In case you use Ubuntu we recommend at least LTS version 14.04
-
-安装、配置 QEMU 用于 CloudStack 不需要任何特殊处理。确保你的 Ceph 存储集群在运行，\
-配置好 QEMU 即可；然后安装 ``libvirt`` 0.9.13 或更高版本（也许得手动编译）并确保它\
-与 Ceph 磨合正常。
-
-.. note:: Ubuntu 13.04 版搭载了 ``libvirt`` 0.9.13 或更高版本，而且默认启用了 \
-   RBD 存储池。
+.. note:: Ubuntu 14.04 和 CentOS 7.2 版搭载了 ``libvirt`` ，
+   而且默认启用了 RBD 存储池支持。
 
 
 .. index:: pools; CloudStack
@@ -110,11 +105,13 @@ Primary Storage.
 （即 ``clouldstack`` ）。
 
 
+.. _Limitations:
+
 局限性
 ======
 
-- ClouldStack 只能绑定一个监视器（但你可以创建一个轮询域名来滚动多个监视器）
-- 在 Ubuntu 下你也许得手动编译 ``libvirt`` 0.9.13 。
+- ClouldStack 只能绑定一个监视器（但你可以创建一个轮询域名来\
+  滚动多个监视器）
 
 
 .. _创建存储池: ../../rados/operations/pools#createpool
