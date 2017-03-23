@@ -9,8 +9,10 @@ The response entity type (XML or JSON) may be specified as the 'format' option i
 request and defaults to JSON if not specified.
 
 
-Get Usage
-=========
+.. _Get Usage:
+
+GET 用法
+========
 
 请求带宽利用率信息。
 
@@ -30,143 +32,146 @@ Get Usage
 
 ``uid``
 
-:Description: The user for which the information is requested. If not specified will apply to all users.
-:Type: String
-:Example: ``foo_user``
-:Required: No
+:描述: The user for which the information is requested. If not specified will apply to all users.
+:类型: String
+:实例: ``foo_user``
+:是否必需: No
 
 ``start``
 
-:Description: Date and (optional) time that specifies the start time of the requested data.
-:Type: String
-:Example: ``2012-09-25 16:00:00``
-:Required: No
+:描述: Date and (optional) time that specifies the start time of the requested data.
+:类型: String
+:实例: ``2012-09-25 16:00:00``
+:是否必需: No
 
 ``end``
 
-:Description: Date and (optional) time that specifies the end time of the requested data (non-inclusive).
-:Type: String
-:Example: ``2012-09-25 16:00:00``
-:Required: No
+:描述: Date and (optional) time that specifies the end time of the requested data (non-inclusive).
+:类型: String
+:实例: ``2012-09-25 16:00:00``
+:是否必需: No
 
 
 ``show-entries``
 
-:Description: Specifies whether data entries should be returned.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:描述: Specifies whether data entries should be returned.
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
 
 ``show-summary``
 
-:Description: Specifies whether data summary should be returned.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:描述: Specifies whether data summary should be returned.
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
 
+响应内容解析
+~~~~~~~~~~~~
 
-Response Entities
-~~~~~~~~~~~~~~~~~
-
-If successful, the response contains the requested information.
+如果成功，响应会包含请求的信息。
 
 ``usage``
 
-:Description: A container for the usage information.
-:Type: Container
+:描述: A container for the usage information.
+:类型: Container
 
 ``entries``
 
-:Description: A container for the usage entries information.
-:Type: Container
+:描述: A container for the usage entries information.
+:类型: Container
 
 ``user``
 
-:Description: A container for the user data information.
-:Type: Container
+:描述: A container for the user data information.
+:类型: Container
 
 ``owner``
 
-:Description: The name of the user that owns the buckets.
-:Type: String
+:描述: The name of the user that owns the buckets.
+:类型: String
 
 ``bucket``
 
-:Description: The bucket name.
-:Type: String
+:描述: The bucket name.
+:类型: String
 
 ``time``
 
-:Description: Time lower bound for which data is being specified (rounded to the beginning of the first relevant hour).
-:Type: String
+:描述: Time lower bound for which data is being specified (rounded to the beginning of the first relevant hour).
+:类型: String
 
 ``epoch``
 
-:Description: The time specified in seconds since 1/1/1970.
-:Type: String
+:描述: The time specified in seconds since 1/1/1970.
+:类型: String
 
 ``categories``
 
-:Description: A container for stats categories.
-:Type: Container
+:描述: A container for stats categories.
+:类型: Container
 
 ``entry``
 
-:Description: A container for stats entry.
-:Type: Container
+:描述: A container for stats entry.
+:类型: Container
 
 ``category``
 
-:Description: Name of request category for which the stats are provided.
-:Type: String
+:描述: Name of request category for which the stats are provided.
+:类型: String
 
 ``bytes_sent``
 
-:Description: Number of bytes sent by the RADOS Gateway.
-:Type: Integer
+:描述: Number of bytes sent by the RADOS Gateway.
+:类型: Integer
 
 ``bytes_received``
 
-:Description: Number of bytes received by the RADOS Gateway.
-:Type: Integer
+:描述: Number of bytes received by the RADOS Gateway.
+:类型: Integer
 
 ``ops``
 
-:Description: Number of operations.
-:Type: Integer
+:描述: Number of operations.
+:类型: Integer
 
 ``successful_ops``
 
-:Description: Number of successful operations.
-:Type: Integer
+:描述: Number of successful operations.
+:类型: Integer
 
 ``summary``
 
-:Description: A container for stats summary.
-:Type: Container
+:描述: A container for stats summary.
+:类型: Container
 
 ``total``
 
-:Description: A container for stats summary aggregated total.
-:Type: Container
+:描述: A container for stats summary aggregated total.
+:类型: Container
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+
+特殊错误响应
+~~~~~~~~~~~~
 
 TBD.
 
-Trim Usage
-==========
+
+.. _Trim Usage:
+
+裁剪用法
+========
 
 Remove usage information. With no dates specified, removes all usage
 information.
 
 :caps: usage=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -174,43 +179,43 @@ Syntax
 	Host: {fqdn}
 
 
-
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+请求参数
+~~~~~~~~
 
 ``uid``
 
-:Description: The user for which the information is requested. If not specified will apply to all users.
-:Type: String
-:Example: ``foo_user``
-:Required: No
+:描述: The user for which the information is requested. If not specified will apply to all users.
+:类型: String
+:实例: ``foo_user``
+:是否必需: No
 
 ``start``
 
-:Description: Date and (optional) time that specifies the start time of the requested data.
-:Type: String
-:Example: ``2012-09-25 16:00:00``
-:Required: No
+:描述: Date and (optional) time that specifies the start time of the requested data.
+:类型: String
+:实例: ``2012-09-25 16:00:00``
+:是否必需: No
 
 ``end``
 
-:Description: Date and (optional) time that specifies the end time of the requested data (none inclusive).
-:Type: String
-:Example: ``2012-09-25 16:00:00``
-:Required: No
+:描述: Date and (optional) time that specifies the end time of the requested data (none inclusive).
+:类型: String
+:实例: ``2012-09-25 16:00:00``
+:是否必需: No
 
 
 ``remove-all``
 
-:Description: Required when uid is not specified, in order to acknowledge multi user data removal.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:描述: 是否必需 when uid is not specified, in order to acknowledge multi user data removal.
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 TBD.
+
 
 Get User Info
 =============
@@ -221,8 +226,8 @@ information.
 :caps: users=read
 
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -235,72 +240,72 @@ Request Parameters
 
 ``uid``
 
-:Description: The user for which the information is requested.
-:Type: String
-:Example: ``foo_user``
-:Required: No
+:描述: The user for which the information is requested.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 
-Response Entities
-~~~~~~~~~~~~~~~~~
+响应内容解析
+~~~~~~~~~~~~
 
-If successful, the response contains the user information.
+如果成功了，这个响应会包含此用户的信息。
 
 ``user``
 
-:Description: A container for the user data information.
-:Type: Container
+:描述: 用户数据信息的一个容器。
+:类型: Container
 
 ``user_id``
 
-:Description: The user id.
-:Type: String
-:Parent: ``user``
+:描述: 此用户的标识符。
+:类型: String
+:父节点: ``user``
 
 ``display_name``
 
-:Description: Display name for the user.
-:Type: String
-:Parent: ``user``
+:描述: 用户对外显示的名字。
+:类型: String
+:父节点: ``user``
 
 ``suspended``
 
-:Description: True if the user is suspended.
-:Type: Boolean
-:Parent: ``user``
+:描述: 如果此用户被暂停，其值为 True 。
+:类型: Boolean
+:父节点: ``user``
 
 ``max_buckets``
 
-:Description: The maximum number of buckets to be owned by the user.
-:Type: Integer
-:Parent: ``user``
+:描述: The maximum number of buckets to be owned by the user.
+:类型: Integer
+:父节点: ``user``
 
 ``subusers``
 
-:Description: Subusers associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: Subusers associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 ``keys``
 
-:Description: S3 keys associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: S3 keys associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 ``swift_keys``
 
-:Description: Swift keys associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: Swift keys associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 ``caps``
 
-:Description: User capabilities.
-:Type: Container
-:Parent: ``user``
+:描述: User capabilities.
+:类型: Container
+:父节点: ``user``
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 None.
 
@@ -316,8 +321,8 @@ then it will be modified.
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -331,75 +336,75 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID to be created.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID to be created.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 ``display-name``
 
-:Description: The display name of the user to be created.
-:Type: String
-:Example: ``foo user``
-:Required: Yes
+:描述: The display name of the user to be created.
+:类型: String
+:实例: ``foo user``
+:是否必需: Yes
 
 
 ``email``
 
-:Description: The email address associated with the user.
-:Type: String
-:Example: ``foo@bar.com``
-:Required: No
+:描述: The email address associated with the user.
+:类型: String
+:实例: ``foo@bar.com``
+:是否必需: No
 
 ``key-type``
 
-:Description: Key type to be generated, options are: swift, s3 (default).
-:Type: String
-:Example: ``s3`` [``s3``]
-:Required: No
+:描述: Key type to be generated, options are: swift, s3 (default).
+:类型: String
+:实例: ``s3`` [``s3``]
+:是否必需: No
 
 ``access-key``
 
-:Description: Specify access key.
-:Type: String
-:Example: ``ABCD0EF12GHIJ2K34LMN``
-:Required: No
+:描述: Specify access key.
+:类型: String
+:实例: ``ABCD0EF12GHIJ2K34LMN``
+:是否必需: No
 
 
 ``secret-key``
 
-:Description: Specify secret key.
-:Type: String
-:Example: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
-:Required: No
+:描述: Specify secret key.
+:类型: String
+:实例: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
+:是否必需: No
 
 ``user-caps``
 
-:Description: User capabilities.
-:Type: String
-:Example: ``usage=read, write; users=read``
-:Required: No
+:描述: User capabilities.
+:类型: String
+:实例: ``usage=read, write; users=read``
+:是否必需: No
 
 ``generate-key``
 
-:Description: Generate a new key pair and add to the existing keyring.
-:Type: Boolean
-:Example: True [True]
-:Required: No
+:描述: Generate a new key pair and add to the existing keyring.
+:类型: Boolean
+:实例: True [True]
+:是否必需: No
 
 ``max-buckets``
 
-:Description: Specify the maximum number of buckets the user can own.
-:Type: Integer
-:Example: 500 [1000]
-:Required: No
+:描述: Specify the maximum number of buckets the user can own.
+:类型: Integer
+:实例: 500 [1000]
+:是否必需: No
 
 ``suspended``
 
-:Description: Specify whether the user should be suspended.
-:Type: Boolean
-:Example: False [False]
-:Required: No
+:描述: Specify whether the user should be suspended.
+:类型: Boolean
+:实例: False [False]
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
@@ -408,99 +413,99 @@ If successful, the response contains the user information.
 
 ``user``
 
-:Description: A container for the user data information.
-:Type: Container
+:描述: A container for the user data information.
+:类型: Container
 
 ``user_id``
 
-:Description: The user id.
-:Type: String
-:Parent: ``user``
+:描述: The user id.
+:类型: String
+:父节点: ``user``
 
 ``display_name``
 
-:Description: Display name for the user.
-:Type: String
-:Parent: ``user``
+:描述: Display name for the user.
+:类型: String
+:父节点: ``user``
 
 ``suspended``
 
-:Description: True if the user is suspended.
-:Type: Boolean
-:Parent: ``user``
+:描述: True if the user is suspended.
+:类型: Boolean
+:父节点: ``user``
 
 ``max_buckets``
 
-:Description: The maximum number of buckets to be owned by the user.
-:Type: Integer
-:Parent: ``user``
+:描述: The maximum number of buckets to be owned by the user.
+:类型: Integer
+:父节点: ``user``
 
 ``subusers``
 
-:Description: Subusers associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: Subusers associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 ``keys``
 
-:Description: S3 keys associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: S3 keys associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 ``swift_keys``
 
-:Description: Swift keys associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: Swift keys associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 ``caps``
 
-:Description: User capabilities.
-:Type: Container
-:Parent: ``user``
+:描述: User capabilities.
+:类型: Container
+:父节点: ``user``
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``UserExists``
 
-:Description: Attempt to create existing user.
-:Code: 409 Conflict
+:描述: Attempt to create existing user.
+:状态码: 409 Conflict
 
 ``InvalidAccessKey``
 
-:Description: Invalid access key specified.
-:Code: 400 Bad Request
+:描述: Invalid access key specified.
+:状态码: 400 Bad Request
 
-``InvalidKeyType``
+``InvalidKey类型``
 
-:Description: Invalid key type specified.
-:Code: 400 Bad Request
+:描述: Invalid key type specified.
+:状态码: 400 Bad Request
 
 ``InvalidSecretKey``
 
-:Description: Invalid secret key specified.
-:Code: 400 Bad Request
+:描述: Invalid secret key specified.
+:状态码: 400 Bad Request
 
-``InvalidKeyType``
+``InvalidKey类型``
 
-:Description: Invalid key type specified.
-:Code: 400 Bad Request
+:描述: Invalid key type specified.
+:状态码: 400 Bad Request
 
 ``KeyExists``
 
-:Description: Provided access key exists and belongs to another user.
-:Code: 409 Conflict
+:描述: Provided access key exists and belongs to another user.
+:状态码: 409 Conflict
 
 ``EmailExists``
 
-:Description: Provided email address exists.
-:Code: 409 Conflict
+:描述: Provided email address exists.
+:状态码: 409 Conflict
 
 ``InvalidCapability``
 
-:Description: Attempt to grant invalid admin capability.
-:Code: 400 Bad Request
+:描述: Attempt to grant invalid admin capability.
+:状态码: 400 Bad Request
 
 
 Modify User
@@ -510,8 +515,8 @@ Modify a user.
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -524,73 +529,73 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID to be modified.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID to be modified.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 ``display-name``
 
-:Description: The display name of the user to be modified.
-:Type: String
-:Example: ``foo user``
-:Required: No
+:描述: The display name of the user to be modified.
+:类型: String
+:实例: ``foo user``
+:是否必需: No
 
 ``email``
 
-:Description: The email address to be associated with the user.
-:Type: String
-:Example: ``foo@bar.com``
-:Required: No
+:描述: The email address to be associated with the user.
+:类型: String
+:实例: ``foo@bar.com``
+:是否必需: No
 
 ``generate-key``
 
-:Description: Generate a new key pair and add to the existing keyring.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:描述: Generate a new key pair and add to the existing keyring.
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
 ``access-key``
 
-:Description: Specify access key.
-:Type: String
-:Example: ``ABCD0EF12GHIJ2K34LMN``
-:Required: No
+:描述: Specify access key.
+:类型: String
+:实例: ``ABCD0EF12GHIJ2K34LMN``
+:是否必需: No
 
 ``secret-key``
 
-:Description: Specify secret key.
-:Type: String
-:Example: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
-:Required: No
+:描述: Specify secret key.
+:类型: String
+:实例: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
+:是否必需: No
 
 ``key-type``
 
-:Description: Key type to be generated, options are: swift, s3 (default).
-:Type: String
-:Example: ``s3``
-:Required: No
+:描述: Key type to be generated, options are: swift, s3 (default).
+:类型: String
+:实例: ``s3``
+:是否必需: No
 
 ``user-caps``
 
-:Description: User capabilities.
-:Type: String
-:Example: ``usage=read, write; users=read``
-:Required: No
+:描述: User capabilities.
+:类型: String
+:实例: ``usage=read, write; users=read``
+:是否必需: No
 
 ``max-buckets``
 
-:Description: Specify the maximum number of buckets the user can own.
-:Type: Integer
-:Example: 500 [1000]
-:Required: No
+:描述: Specify the maximum number of buckets the user can own.
+:类型: Integer
+:实例: 500 [1000]
+:是否必需: No
 
 ``suspended``
 
-:Description: Specify whether the user should be suspended.
-:Type: Boolean
-:Example: False [False]
-:Required: No
+:描述: Specify whether the user should be suspended.
+:类型: Boolean
+:实例: False [False]
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
@@ -599,96 +604,96 @@ If successful, the response contains the user information.
 
 ``user``
 
-:Description: A container for the user data information.
-:Type: Container
+:描述: A container for the user data information.
+:类型: Container
 
 ``user_id``
 
-:Description: The user id.
-:Type: String
-:Parent: ``user``
+:描述: The user id.
+:类型: String
+:父节点: ``user``
 
 ``display_name``
 
-:Description: Display name for the user.
-:Type: String
-:Parent: ``user``
+:描述: Display name for the user.
+:类型: String
+:父节点: ``user``
 
 
 ``suspended``
 
-:Description: True if the user is suspended.
-:Type: Boolean
-:Parent: ``user``
+:描述: True if the user is suspended.
+:类型: Boolean
+:父节点: ``user``
 
 
 ``max_buckets``
 
-:Description: The maximum number of buckets to be owned by the user.
-:Type: Integer
-:Parent: ``user``
+:描述: The maximum number of buckets to be owned by the user.
+:类型: Integer
+:父节点: ``user``
 
 
 ``subusers``
 
-:Description: Subusers associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: Subusers associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 
 ``keys``
 
-:Description: S3 keys associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: S3 keys associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 
 ``swift_keys``
 
-:Description: Swift keys associated with this user account.
-:Type: Container
-:Parent: ``user``
+:描述: Swift keys associated with this user account.
+:类型: Container
+:父节点: ``user``
 
 
 ``caps``
 
-:Description: User capabilities.
-:Type: Container
-:Parent: ``user``
+:描述: User capabilities.
+:类型: Container
+:父节点: ``user``
 
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``InvalidAccessKey``
 
-:Description: Invalid access key specified.
-:Code: 400 Bad Request
+:描述: Invalid access key specified.
+:状态码: 400 Bad Request
 
-``InvalidKeyType``
+``InvalidKey类型``
 
-:Description: Invalid key type specified.
-:Code: 400 Bad Request
+:描述: Invalid key type specified.
+:状态码: 400 Bad Request
 
 ``InvalidSecretKey``
 
-:Description: Invalid secret key specified.
-:Code: 400 Bad Request
+:描述: Invalid secret key specified.
+:状态码: 400 Bad Request
 
 ``KeyExists``
 
-:Description: Provided access key exists and belongs to another user.
-:Code: 409 Conflict
+:描述: Provided access key exists and belongs to another user.
+:状态码: 409 Conflict
 
 ``EmailExists``
 
-:Description: Provided email address exists.
-:Code: 409 Conflict
+:描述: Provided email address exists.
+:状态码: 409 Conflict
 
 ``InvalidCapability``
 
-:Description: Attempt to grant invalid admin capability.
-:Code: 400 Bad Request
+:描述: Attempt to grant invalid admin capability.
+:状态码: 400 Bad Request
 
 Remove User
 ===========
@@ -697,8 +702,8 @@ Remove an existing user.
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -711,26 +716,26 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID to be removed.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes.
+:描述: The user ID to be removed.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes.
 
 ``purge-data``
 
-:Description: When specified the buckets and objects belonging
+:描述: When specified the buckets and objects belonging
               to the user will also be removed.
-:Type: Boolean
-:Example: True
-:Required: No
+:类型: Boolean
+:实例: True
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
 
 None
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 None.
 
@@ -746,8 +751,8 @@ be automatically generated.
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -760,47 +765,47 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID under which a subuser is to  be created.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID under which a subuser is to  be created.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 
 ``subuser``
 
-:Description: Specify the subuser ID to be created.
-:Type: String
-:Example: ``sub_foo``
-:Required: No
+:描述: Specify the subuser ID to be created.
+:类型: String
+:实例: ``sub_foo``
+:是否必需: No
 
 ``secret-key``
 
-:Description: Specify secret key.
-:Type: String
-:Example: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
-:Required: No
+:描述: Specify secret key.
+:类型: String
+:实例: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
+:是否必需: No
 
 ``key-type``
 
-:Description: Key type to be generated, options are: swift (default), s3.
-:Type: String
-:Example: ``swift`` [``swift``]
-:Required: No
+:描述: Key type to be generated, options are: swift (default), s3.
+:类型: String
+:实例: ``swift`` [``swift``]
+:是否必需: No
 
 ``access``
 
-:Description: Set access permissions for sub-user, should be one
+:描述: Set access permissions for sub-user, should be one
               of ``read, write, readwrite, full``.
-:Type: String
-:Example: ``read``
-:Required: No
+:类型: String
+:实例: ``read``
+:是否必需: No
 
 ``generate-secret``
 
-:Description: Generate the secret key.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:描述: Generate the secret key.
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
@@ -810,43 +815,43 @@ If successful, the response contains the subuser information.
 
 ``subusers``
 
-:Description: Subusers associated with the user account.
-:Type: Container
+:描述: Subusers associated with the user account.
+:类型: Container
 
 ``id``
 
-:Description: Subuser id.
-:Type: String
-:Parent: ``subusers``
+:描述: Subuser id.
+:类型: String
+:父节点: ``subusers``
 
 ``permissions``
 
-:Description: Subuser access to user account.
-:Type: String
-:Parent: ``subusers``
+:描述: Subuser access to user account.
+:类型: String
+:父节点: ``subusers``
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``SubuserExists``
 
-:Description: Specified subuser exists.
-:Code: 409 Conflict
+:描述: Specified subuser exists.
+:状态码: 409 Conflict
 
-``InvalidKeyType``
+``InvalidKey类型``
 
-:Description: Invalid key type specified.
-:Code: 400 Bad Request
+:描述: Invalid key type specified.
+:状态码: 400 Bad Request
 
 ``InvalidSecretKey``
 
-:Description: Invalid secret key specified.
-:Code: 400 Bad Request
+:描述: Invalid secret key specified.
+:状态码: 400 Bad Request
 
 ``InvalidAccess``
 
-:Description: Invalid subuser access specified.
-:Code: 400 Bad Request
+:描述: Invalid subuser access specified.
+:状态码: 400 Bad Request
 
 Modify Subuser
 ==============
@@ -855,8 +860,8 @@ Modify an existing subuser
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -869,47 +874,47 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID under which the subuser is to be modified.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID under which the subuser is to be modified.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 ``subuser``
 
-:Description: The subuser ID to be modified.
-:Type: String
-:Example: ``sub_foo``
-:Required: Yes
+:描述: The subuser ID to be modified.
+:类型: String
+:实例: ``sub_foo``
+:是否必需: Yes
 
 ``generate-secret``
 
-:Description: Generate a new secret key for the subuser,
+:描述: Generate a new secret key for the subuser,
               replacing the existing key.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
 ``secret``
 
-:Description: Specify secret key.
-:Type: String
-:Example: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
-:Required: No
+:描述: Specify secret key.
+:类型: String
+:实例: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
+:是否必需: No
 
 ``key-type``
 
-:Description: Key type to be generated, options are: swift (default), s3 .
-:Type: String
-:Example: ``swift`` [``swift``]
-:Required: No
+:描述: Key type to be generated, options are: swift (default), s3 .
+:类型: String
+:实例: ``swift`` [``swift``]
+:是否必需: No
 
 ``access``
 
-:Description: Set access permissions for sub-user, should be one
+:描述: Set access permissions for sub-user, should be one
               of ``read, write, readwrite, full``.
-:Type: String
-:Example: ``read``
-:Required: No
+:类型: String
+:实例: ``read``
+:是否必需: No
 
 
 Response Entities
@@ -920,38 +925,38 @@ If successful, the response contains the subuser information.
 
 ``subusers``
 
-:Description: Subusers associated with the user account.
-:Type: Container
+:描述: Subusers associated with the user account.
+:类型: Container
 
 ``id``
 
-:Description: Subuser id.
-:Type: String
-:Parent: ``subusers``
+:描述: Subuser id.
+:类型: String
+:父节点: ``subusers``
 
 ``permissions``
 
-:Description: Subuser access to user account.
-:Type: String
-:Parent: ``subusers``
+:描述: Subuser access to user account.
+:类型: String
+:父节点: ``subusers``
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
-``InvalidKeyType``
+``InvalidKey类型``
 
-:Description: Invalid key type specified.
-:Code: 400 Bad Request
+:描述: Invalid key type specified.
+:状态码: 400 Bad Request
 
 ``InvalidSecretKey``
 
-:Description: Invalid secret key specified.
-:Code: 400 Bad Request
+:描述: Invalid secret key specified.
+:状态码: 400 Bad Request
 
 ``InvalidAccess``
 
-:Description: Invalid subuser access specified.
-:Code: 400 Bad Request
+:描述: Invalid subuser access specified.
+:状态码: 400 Bad Request
 
 Remove Subuser
 ==============
@@ -960,8 +965,8 @@ Remove an existing subuser
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -974,33 +979,34 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID under which the subuser is to be removed.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID under which the subuser is to be removed.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 
 ``subuser``
 
-:Description: The subuser ID to be removed.
-:Type: String
-:Example: ``sub_foo``
-:Required: Yes
+:描述: The subuser ID to be removed.
+:类型: String
+:实例: ``sub_foo``
+:是否必需: Yes
 
 ``purge-keys``
 
-:Description: Remove keys belonging to the subuser.
-:Type: Boolean
-:Example: True [True]
-:Required: No
+:描述: Remove keys belonging to the subuser.
+:类型: Boolean
+:实例: True [True]
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
 
 None.
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
+
 None.
 
 Create Key
@@ -1020,8 +1026,8 @@ each user or subuser.
 :caps: users=write
 
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1034,45 +1040,45 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID to receive the new key.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID to receive the new key.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 ``subuser``
 
-:Description: The subuser ID to receive the new key.
-:Type: String
-:Example: ``sub_foo``
-:Required: No
+:描述: The subuser ID to receive the new key.
+:类型: String
+:实例: ``sub_foo``
+:是否必需: No
 
 ``key-type``
 
-:Description: Key type to be generated, options are: swift, s3 (default).
-:Type: String
-:Example: ``s3`` [``s3``]
-:Required: No
+:描述: Key type to be generated, options are: swift, s3 (default).
+:类型: String
+:实例: ``s3`` [``s3``]
+:是否必需: No
 
 ``access-key``
 
-:Description: Specify the access key.
-:Type: String
-:Example: ``AB01C2D3EF45G6H7IJ8K``
-:Required: No
+:描述: Specify the access key.
+:类型: String
+:实例: ``AB01C2D3EF45G6H7IJ8K``
+:是否必需: No
 
 ``secret-key``
 
-:Description: Specify the secret key.
-:Type: String
-:Example: ``0ab/CdeFGhij1klmnopqRSTUv1WxyZabcDEFgHij``
-:Required: No
+:描述: Specify the secret key.
+:类型: String
+:实例: ``0ab/CdeFGhij1klmnopqRSTUv1WxyZabcDEFgHij``
+:是否必需: No
 
 ``generate-key``
 
-:Description: Generate a new key pair and add to the existing keyring.
-:Type: Boolean
-:Example: True [``True``]
-:Required: No
+:描述: Generate a new key pair and add to the existing keyring.
+:类型: Boolean
+:实例: True [``True``]
+:是否必需: No
 
 
 Response Entities
@@ -1080,55 +1086,55 @@ Response Entities
 
 ``keys``
 
-:Description: Keys of type created associated with this user account.
-:Type: Container
+:描述: Keys of type created associated with this user account.
+:类型: Container
 
 ``user``
 
-:Description: The user account associated with the key.
-:Type: String
-:Parent: ``keys``
+:描述: The user account associated with the key.
+:类型: String
+:父节点: ``keys``
 
 ``access-key``
 
-:Description: The access key.
-:Type: String
-:Parent: ``keys``
+:描述: The access key.
+:类型: String
+:父节点: ``keys``
 
 ``secret-key``
 
-:Description: The secret key
-:Type: String
-:Parent: ``keys``
+:描述: The secret key
+:类型: String
+:父节点: ``keys``
 
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``InvalidAccessKey``
 
-:Description: Invalid access key specified.
-:Code: 400 Bad Request
+:描述: Invalid access key specified.
+:状态码: 400 Bad Request
 
-``InvalidKeyType``
+``InvalidKey类型``
 
-:Description: Invalid key type specified.
-:Code: 400 Bad Request
+:描述: Invalid key type specified.
+:状态码: 400 Bad Request
 
 ``InvalidSecretKey``
 
-:Description: Invalid secret key specified.
-:Code: 400 Bad Request
+:描述: Invalid secret key specified.
+:状态码: 400 Bad Request
 
-``InvalidKeyType``
+``InvalidKey类型``
 
-:Description: Invalid key type specified.
-:Code: 400 Bad Request
+:描述: Invalid key type specified.
+:状态码: 400 Bad Request
 
 ``KeyExists``
 
-:Description: Provided access key exists and belongs to another user.
-:Code: 409 Conflict
+:描述: Provided access key exists and belongs to another user.
+:状态码: 409 Conflict
 
 Remove Key
 ==========
@@ -1137,8 +1143,8 @@ Remove an existing key.
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1151,35 +1157,35 @@ Request Parameters
 
 ``access-key``
 
-:Description: The S3 access key belonging to the S3 key pair to remove.
-:Type: String
-:Example: ``AB01C2D3EF45G6H7IJ8K``
-:Required: Yes
+:描述: The S3 access key belonging to the S3 key pair to remove.
+:类型: String
+:实例: ``AB01C2D3EF45G6H7IJ8K``
+:是否必需: Yes
 
 ``uid``
 
-:Description: The user to remove the key from.
-:Type: String
-:Example: ``foo_user``
-:Required: No
+:描述: The user to remove the key from.
+:类型: String
+:实例: ``foo_user``
+:是否必需: No
 
 ``subuser``
 
-:Description: The subuser to remove the key from.
-:Type: String
-:Example: ``sub_foo``
-:Required: No
+:描述: The subuser to remove the key from.
+:类型: String
+:实例: ``sub_foo``
+:是否必需: No
 
 ``key-type``
 
-:Description: Key type to be removed, options are: swift, s3.
-              NOTE: Required to remove swift key.
-:Type: String
-:Example: ``swift``
-:Required: No
+:描述: Key type to be removed, options are: swift, s3.
+              NOTE: 是否必需 to remove swift key.
+:类型: String
+:实例: ``swift``
+:是否必需: No
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 None.
 
@@ -1198,8 +1204,8 @@ retrieved.
 
 :caps: buckets=read
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1212,24 +1218,24 @@ Request Parameters
 
 ``bucket``
 
-:Description: The bucket to return info on.
-:Type: String
-:Example: ``foo_bucket``
-:Required: No
+:描述: The bucket to return info on.
+:类型: String
+:实例: ``foo_bucket``
+:是否必需: No
 
 ``uid``
 
-:Description: The user to retrieve bucket information for.
-:Type: String
-:Example: ``foo_user``
-:Required: No
+:描述: The user to retrieve bucket information for.
+:类型: String
+:实例: ``foo_user``
+:是否必需: No
 
 ``stats``
 
-:Description: Return bucket statistics.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:描述: Return bucket statistics.
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
@@ -1239,69 +1245,69 @@ the desired bucket information.
 
 ``stats``
 
-:Description: Per bucket information.
-:Type: Container
+:描述: Per bucket information.
+:类型: Container
 
 ``buckets``
 
-:Description: Contains a list of one or more bucket containers.
-:Type: Container
+:描述: Contains a list of one or more bucket containers.
+:类型: Container
 
 ``bucket``
 
-:Description: Container for single bucket information.
-:Type: Container
-:Parent: ``buckets``
+:描述: Container for single bucket information.
+:类型: Container
+:父节点: ``buckets``
 
 ``name``
 
-:Description: The name of the bucket.
-:Type: String
-:Parent: ``bucket``
+:描述: The name of the bucket.
+:类型: String
+:父节点: ``bucket``
 
 ``pool``
 
-:Description: The pool the bucket is stored in.
-:Type: String
-:Parent: ``bucket``
+:描述: The pool the bucket is stored in.
+:类型: String
+:父节点: ``bucket``
 
 ``id``
 
-:Description: The unique bucket id.
-:Type: String
-:Parent: ``bucket``
+:描述: The unique bucket id.
+:类型: String
+:父节点: ``bucket``
 
 ``marker``
 
-:Description: Internal bucket tag.
-:Type: String
-:Parent: ``bucket``
+:描述: Internal bucket tag.
+:类型: String
+:父节点: ``bucket``
 
 ``owner``
 
-:Description: The user id of the bucket owner.
-:Type: String
-:Parent: ``bucket``
+:描述: The user id of the bucket owner.
+:类型: String
+:父节点: ``bucket``
 
 ``usage``
 
-:Description: Storage usage information.
-:Type: Container
-:Parent: ``bucket``
+:描述: Storage usage information.
+:类型: Container
+:父节点: ``bucket``
 
 ``index``
 
-:Description: Status of bucket index.
-:Type: String
-:Parent: ``bucket``
+:描述: Status of bucket index.
+:类型: String
+:父节点: ``bucket``
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``IndexRepairFailed``
 
-:Description: Bucket index repair failed.
-:Code: 409 Conflict
+:描述: Bucket index repair failed.
+:状态码: 409 Conflict
 
 Check Bucket Index
 ==================
@@ -1311,8 +1317,8 @@ accounting with ``check-objects``, ``fix`` must be set to True.
 
 :caps: buckets=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1325,40 +1331,40 @@ Request Parameters
 
 ``bucket``
 
-:Description: The bucket to return info on.
-:Type: String
-:Example: ``foo_bucket``
-:Required: Yes
+:描述: The bucket to return info on.
+:类型: String
+:实例: ``foo_bucket``
+:是否必需: Yes
 
 ``check-objects``
 
-:Description: Check multipart object accounting.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:描述: Check multipart object accounting.
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
 ``fix``
 
-:Description: Also fix the bucket index when checking.
-:Type: Boolean
-:Example: False [False]
-:Required: No
+:描述: Also fix the bucket index when checking.
+:类型: Boolean
+:实例: False [False]
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
 
 ``index``
 
-:Description: Status of bucket index.
-:Type: String
+:描述: Status of bucket index.
+:类型: String
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``IndexRepairFailed``
 
-:Description: Bucket index repair failed.
-:Code: 409 Conflict
+:描述: Bucket index repair failed.
+:状态码: 409 Conflict
 
 Remove Bucket
 =============
@@ -1367,8 +1373,8 @@ Delete an existing bucket.
 
 :caps: buckets=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1382,35 +1388,35 @@ Request Parameters
 
 ``bucket``
 
-:Description: The bucket to remove.
-:Type: String
-:Example: ``foo_bucket``
-:Required: Yes
+:描述: The bucket to remove.
+:类型: String
+:实例: ``foo_bucket``
+:是否必需: Yes
 
 ``purge-objects``
 
-:Description: Remove a buckets objects before deletion.
-:Type: Boolean
-:Example: True [False]
-:Required: No
+:描述: Remove a buckets objects before deletion.
+:类型: Boolean
+:实例: True [False]
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
 
 None.
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``BucketNotEmpty``
 
-:Description: Attempted to delete non-empty bucket.
-:Code: 409 Conflict
+:描述: Attempted to delete non-empty bucket.
+:状态码: 409 Conflict
 
 ``ObjectRemovalFailed``
 
-:Description: Unable to remove objects.
-:Code: 409 Conflict
+:描述: Unable to remove objects.
+:状态码: 409 Conflict
 
 Unlink Bucket
 =============
@@ -1420,8 +1426,8 @@ bucket ownership.
 
 :caps: buckets=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1434,30 +1440,30 @@ Request Parameters
 
 ``bucket``
 
-:Description: The bucket to unlink.
-:Type: String
-:Example: ``foo_bucket``
-:Required: Yes
+:描述: The bucket to unlink.
+:类型: String
+:实例: ``foo_bucket``
+:是否必需: Yes
 
 ``uid``
 
-:Description: The user ID to unlink the bucket from.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID to unlink the bucket from.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
 
 None.
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``BucketUnlinkFailed``
 
-:Description: Unable to unlink bucket from specified user.
-:Code: 409 Conflict
+:描述: Unable to unlink bucket from specified user.
+:状态码: 409 Conflict
 
 Link Bucket
 ===========
@@ -1467,8 +1473,8 @@ any previous user.
 
 :caps: buckets=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1481,80 +1487,80 @@ Request Parameters
 
 ``bucket``
 
-:Description: The bucket to unlink.
-:Type: String
-:Example: ``foo_bucket``
-:Required: Yes
+:描述: The bucket to unlink.
+:类型: String
+:实例: ``foo_bucket``
+:是否必需: Yes
 
 ``uid``
 
-:Description: The user ID to link the bucket to.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID to link the bucket to.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
 
 ``bucket``
 
-:Description: Container for single bucket information.
-:Type: Container
+:描述: Container for single bucket information.
+:类型: Container
 
 ``name``
 
-:Description: The name of the bucket.
-:Type: String
-:Parent: ``bucket``
+:描述: The name of the bucket.
+:类型: String
+:父节点: ``bucket``
 
 ``pool``
 
-:Description: The pool the bucket is stored in.
-:Type: String
-:Parent: ``bucket``
+:描述: The pool the bucket is stored in.
+:类型: String
+:父节点: ``bucket``
 
 ``id``
 
-:Description: The unique bucket id.
-:Type: String
-:Parent: ``bucket``
+:描述: The unique bucket id.
+:类型: String
+:父节点: ``bucket``
 
 ``marker``
 
-:Description: Internal bucket tag.
-:Type: String
-:Parent: ``bucket``
+:描述: Internal bucket tag.
+:类型: String
+:父节点: ``bucket``
 
 ``owner``
 
-:Description: The user id of the bucket owner.
-:Type: String
-:Parent: ``bucket``
+:描述: The user id of the bucket owner.
+:类型: String
+:父节点: ``bucket``
 
 ``usage``
 
-:Description: Storage usage information.
-:Type: Container
-:Parent: ``bucket``
+:描述: Storage usage information.
+:类型: Container
+:父节点: ``bucket``
 
 ``index``
 
-:Description: Status of bucket index.
-:Type: String
-:Parent: ``bucket``
+:描述: Status of bucket index.
+:类型: String
+:父节点: ``bucket``
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``BucketUnlinkFailed``
 
-:Description: Unable to unlink bucket from specified user.
-:Code: 409 Conflict
+:描述: Unable to unlink bucket from specified user.
+:状态码: 409 Conflict
 
 ``BucketLinkFailed``
 
-:Description: Unable to link bucket to specified user.
-:Code: 409 Conflict
+:描述: Unable to link bucket to specified user.
+:状态码: 409 Conflict
 
 Remove Object
 =============
@@ -1563,8 +1569,8 @@ Remove an existing object. NOTE: Does not require owner to be non-suspended.
 
 :caps: buckets=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1576,35 +1582,35 @@ Request Parameters
 
 ``bucket``
 
-:Description: The bucket containing the object to be removed.
-:Type: String
-:Example: ``foo_bucket``
-:Required: Yes
+:描述: The bucket containing the object to be removed.
+:类型: String
+:实例: ``foo_bucket``
+:是否必需: Yes
 
 ``object``
 
-:Description: The object to remove.
-:Type: String
-:Example: ``foo.txt``
-:Required: Yes
+:描述: The object to remove.
+:类型: String
+:实例: ``foo.txt``
+:是否必需: Yes
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
 
 None.
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``NoSuchObject``
 
-:Description: Specified object does not exist.
-:Code: 404 Not Found
+:描述: Specified object does not exist.
+:状态码: 404 Not Found
 
 ``ObjectRemovalFailed``
 
-:Description: Unable to remove objects.
-:Code: 409 Conflict
+:描述: Unable to remove objects.
+:状态码: 409 Conflict
 
 
 
@@ -1615,8 +1621,8 @@ Read the policy of an object or bucket.
 
 :caps: buckets=read
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1629,17 +1635,17 @@ Request Parameters
 
 ``bucket``
 
-:Description: The bucket to read the policy from.
-:Type: String
-:Example: ``foo_bucket``
-:Required: Yes
+:描述: The bucket to read the policy from.
+:类型: String
+:实例: ``foo_bucket``
+:是否必需: Yes
 
 ``object``
 
-:Description: The object to read the policy from.
-:Type: String
-:Example: ``foo.txt``
-:Required: No
+:描述: The object to read the policy from.
+:类型: String
+:实例: ``foo.txt``
+:是否必需: No
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
@@ -1648,17 +1654,17 @@ If successful, returns the object or bucket policy
 
 ``policy``
 
-:Description: Access control policy.
-:Type: Container
+:描述: Access control policy.
+:类型: Container
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``IncompleteBody``
 
-:Description: Either bucket was not specified for a bucket policy request or bucket
+:描述: Either bucket was not specified for a bucket policy request or bucket
               and object were not specified for an object policy request.
-:Code: 400 Bad Request
+:状态码: 400 Bad Request
 
 Add A User Capability
 =====================
@@ -1667,8 +1673,8 @@ Add an administrative capability to a specified user.
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1680,17 +1686,17 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID to add an administrative capability to.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID to add an administrative capability to.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 ``user-caps``
 
-:Description: The administrative capability to add to the user.
-:Type: String
-:Example: ``usage=read, write``
-:Required: Yes
+:描述: The administrative capability to add to the user.
+:类型: String
+:实例: ``usage=read, write``
+:是否必需: Yes
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
@@ -1699,39 +1705,39 @@ If successful, the response contains the user's capabilities.
 
 ``user``
 
-:Description: A container for the user data information.
-:Type: Container
-:Parent: ``user``
+:描述: A container for the user data information.
+:类型: Container
+:父节点: ``user``
 
 ``user_id``
 
-:Description: The user id.
-:Type: String
-:Parent: ``user``
+:描述: The user id.
+:类型: String
+:父节点: ``user``
 
 ``caps``
 
-:Description: User capabilities.
-:Type: Container
-:Parent: ``user``
+:描述: User capabilities.
+:类型: Container
+:父节点: ``user``
 
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``InvalidCapability``
 
-:Description: Attempt to grant invalid admin capability.
-:Code: 400 Bad Request
+:描述: Attempt to grant invalid admin capability.
+:状态码: 400 Bad Request
 
-Example Request
+实例 Request
 ~~~~~~~~~~~~~~~
 
 ::
 
 	PUT /{admin}/user?caps&format=json HTTP/1.1
 	Host: {fqdn}
-	Content-Type: text/plain
+	Content-类型: text/plain
 	Authorization: {your-authorization-token}
 
 	usage=read
@@ -1744,8 +1750,8 @@ Remove an administrative capability from a specified user.
 
 :caps: users=write
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -1757,17 +1763,17 @@ Request Parameters
 
 ``uid``
 
-:Description: The user ID to remove an administrative capability from.
-:Type: String
-:Example: ``foo_user``
-:Required: Yes
+:描述: The user ID to remove an administrative capability from.
+:类型: String
+:实例: ``foo_user``
+:是否必需: Yes
 
 ``user-caps``
 
-:Description: The administrative capabilities to remove from the user.
-:Type: String
-:Example: ``usage=read, write``
-:Required: Yes
+:描述: The administrative capabilities to remove from the user.
+:类型: String
+:实例: ``usage=read, write``
+:是否必需: Yes
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
@@ -1776,44 +1782,46 @@ If successful, the response contains the user's capabilities.
 
 ``user``
 
-:Description: A container for the user data information.
-:Type: Container
-:Parent: ``user``
+:描述: A container for the user data information.
+:类型: Container
+:父节点: ``user``
 
 ``user_id``
 
-:Description: The user id.
-:Type: String
-:Parent: ``user``
+:描述: The user id.
+:类型: String
+:父节点: ``user``
 
 ``caps``
 
-:Description: User capabilities.
-:Type: Container
-:Parent: ``user``
+:描述: User capabilities.
+:类型: Container
+:父节点: ``user``
 
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 ``InvalidCapability``
 
-:Description: Attempt to remove an invalid admin capability.
-:Code: 400 Bad Request
+:描述: Attempt to remove an invalid admin capability.
+:状态码: 400 Bad Request
 
 ``NoSuchCap``
 
-:Description: User does not possess specified capability.
-:Code: 404 Not Found
+:描述: User does not possess specified capability.
+:状态码: 404 Not Found
 
-Special Error Responses
-~~~~~~~~~~~~~~~~~~~~~~~
+特殊错误响应
+~~~~~~~~~~~~
 
 None.
 
 
-Quotas
-======
+.. _Quotas:
+
+配额
+====
 
 The Admin Operations API enables you to set quotas on users and on bucket owned
 by users. See `Quota Management`_ for additional details. Quotas include the
@@ -1838,9 +1846,10 @@ Valid parameters for quotas include:
   The options are ``bucket`` and ``user``.
 
 
+.. _Get User Quota:
 
-Get User Quota
-~~~~~~~~~~~~~~
+读取用户配额
+~~~~~~~~~~~~
 
 To get a quota, the user must have ``users`` capability set with ``read`` 
 permission. ::
@@ -1848,21 +1857,24 @@ permission. ::
 	GET /admin/user?quota&uid=<uid>&quota-type=user
 
 
-Set User Quota
-~~~~~~~~~~~~~~
+.. _Set User Quota:
+
+设置用户配额
+~~~~~~~~~~~~
 
 To set a quota, the user must have ``users`` capability set with ``write`` 
 permission. ::
 
 	PUT /admin/user?quota&uid=<uid>&quota-type=user
 
-
 The content must include a JSON representation of the quota settings
 as encoded in the corresponding read operation.
 
 
-Get Bucket Quota
-~~~~~~~~~~~~~~~~
+.. _Get Bucket Quota:
+
+读取桶配额
+~~~~~~~~~~
 
 To get a quota, the user must have ``users`` capability set with ``read`` 
 permission. ::
@@ -1870,8 +1882,10 @@ permission. ::
 	GET /admin/user?quota&uid=<uid>&quota-type=bucket
 
 
-Set Bucket Quota
-~~~~~~~~~~~~~~~~
+.. _Set Bucket Quota:
+
+设置桶配额
+~~~~~~~~~~
 
 To set a quota, the user must have ``users`` capability set with ``write`` 
 permission. ::
@@ -1884,34 +1898,35 @@ as encoded in the corresponding read operation.
 
 
 
-Standard Error Responses
-========================
+.. _Standard Error Responses:
+
+标准错误响应
+============
 
 ``AccessDenied``
 
-:Description: Access denied.
-:Code: 403 Forbidden
+:描述: 访问被拒绝。
+:状态码: 403 Forbidden
 
 ``InternalError``
 
-:Description: Internal server error.
-:Code: 500 Internal Server Error
+:描述: 服务器内部错误。
+:状态码: 500 Internal Server Error
 
 ``NoSuchUser``
 
-:Description: User does not exist.
-:Code: 404 Not Found
+:描述: 用户不存在。
+:状态码: 404 Not Found
 
 ``NoSuchBucket``
 
-:Description: Bucket does not exist.
-:Code: 404 Not Found
+:描述: 桶不存在。
+:状态码: 404 Not Found
 
 ``NoSuchKey``
 
-:Description: No such access key.
-:Code: 404 Not Found
-
+:描述: 此访问密钥不存在。
+:状态码: 404 Not Found
 
 
 .. _Admin Guide: ../admin

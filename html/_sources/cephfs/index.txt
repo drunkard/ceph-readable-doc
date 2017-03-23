@@ -78,6 +78,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 
 	CephFS 管理命令 <administration>
 	POSIX 兼容性 <posix>
+	实验性功能 <experimental-features>
 	CephFS 配额管理 <quota>
 	在 Ceph 上使用 Hadoop <hadoop>
 	libcephfs <../../api/libcephfs-java/>
@@ -93,3 +94,15 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 .. raw:: html
 
 	</td></tr></tbody></table>
+
+.. _For developers:
+
+开发者文档
+==========
+
+.. toctree:: 
+    :maxdepth: 1
+
+    客户端的能力 <capabilities>
+    libcephfs <../../api/libcephfs-java/>
+    Mantle <mantle>

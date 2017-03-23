@@ -104,7 +104,7 @@
 :command:`region get`
   显示 region 信息。
 
-:command:`regions list`
+:command:`region list`
   列出本集群配置的所有 region 。
 
 :command:`region set`

@@ -304,19 +304,24 @@
 
 ``rgw content length compat``
 
-:描述: 允许兼容设置了 CONTENT_LENGTH 和 HTTP_CONTENT_LENGTH 的 FCGI 请求。
+:描述: 允许兼容设置了 CONTENT_LENGTH 和 HTTP_CONTENT_LENGTH 的
+       FCGI 请求。
 :类型: Boolean
 :默认值: ``false``
 
 
+.. _Regions:
+
 region （域组）
 ===============
 
-Ceph 从 v0.67 版开始，通过 region 概念支持 Ceph 对象网关联盟部署和统一的命\
-名空间。 region 定义了位于一或多个域内的 Ceph 对象网关例程的地理位置。
+Ceph 从 v0.67 版开始，通过 region 概念支持 Ceph 对象网关联盟\
+部署和统一的命名空间。 region 定义了位于一或多个域内的 Ceph
+对象网关例程的地理位置。
 
-region 的配置不同于一般配置过程，因为不是所有的配置都放在 Ceph 配置文件中。\
-从 Ceph 0.67 版开始，你可以列举 region 、获取 region 配置或设置 region 配置。
+region 的配置不同于一般配置过程，因为不是所有的配置都放在 Ceph
+配置文件中。从 Ceph 0.67 版开始，你可以列举 region 、获取
+region 配置或设置 region 配置。
 
 
 罗列 region
@@ -324,7 +329,7 @@ region 的配置不同于一般配置过程，因为不是所有的配置都放�
 
 Ceph 集群可包含一系列 region ，可用下列命令列举 region ： ::
 
-	sudo radosgw-admin regions list
+	sudo radosgw-admin region list
 
 ``radosgw-admin`` 命令会返回 JSON 格式的 region 列表。
 
@@ -342,9 +347,8 @@ Ceph 集群可包含一系列 region ，可用下列命令列举 region ： ::
 
 	sudo radosgw-admin region-map get
 
-
-.. note:: 如果你的到了 ``failed to read region map`` 错误，先试试 \
-   ``sudo radosgw-admin region-map update`` 。
+.. note:: 如果你的到了 ``failed to read region map`` 错误，\
+   先试试 ``sudo radosgw-admin region-map update`` 。
 
 
 获取单个 region

@@ -1,0 +1,228 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>CephFS 快照 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="cephfs">
+<span id="cephfs-snapshots"></span><h1>CephFS 快照<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
+<p>CephFS supports snapshots, generally created by invoking mkdir against the
+(hidden, special) .snap directory.</p>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Generally, snapshots do what they sound like: they create an immutable view
+of the filesystem at the point in time they&#8217;re taken. There are some headline
+features that make CephFS snapshots different from what you might expect:</p>
+<ul class="simple">
+<li>Arbitrary subtrees. Snapshots are created within any directory you choose,
+and cover all data in the filesystem under that directory.</li>
+<li>Asynchronous. If you create a snapshot, buffered data is flushed out lazily,
+including from other clients. As a result, &#8220;creating&#8221; the snapshot is
+very fast.</li>
+</ul>
+</div>
+<div class="section" id="important-data-structures">
+<h2>Important Data Structures<a class="headerlink" href="#important-data-structures" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>SnapRealm: A <cite>SnapRealm</cite> is created whenever you create a snapshot at a new
+point in the hierarchy (or, when a snapshotted inode is moved outside of its
+parent snapshot). SnapRealms contain an <cite>sr_t srnode</cite>, links to <cite>past_parents</cite>
+and <cite>past_children</cite>, and all <cite>inodes_with_caps</cite> that are part of the snapshot.
+Clients also have a SnapRealm concept that maintains less data but is used to
+associate a <cite>SnapContext</cite> with each open file for writing.</li>
+<li>sr_t: An <cite>sr_t</cite> is the on-disk snapshot metadata. It is part of the containing
+directory and contains sequence counters, timestamps, the list of associated
+snapshot IDs, and <cite>past_parents</cite>.</li>
+<li>snaplink_t: <cite>past_parents</cite> et al are stored on-disk as a <cite>snaplink_t</cite>, holding
+the inode number and first <cite>snapid</cite> of the inode/snapshot referenced.</li>
+</ul>
+</div>
+<div class="section" id="creating-a-snapshot">
+<h2>Creating a snapshot<a class="headerlink" href="#creating-a-snapshot" title="Permalink to this headline">¶</a></h2>
+<p>To make a snapshot on directory &#8220;/1/2/3/foo&#8221;, the client invokes &#8220;mkdir&#8221; on
+&#8220;/1/2/3/foo/.snaps&#8221; directory. This is transmitted to the MDS Server as a
+CEPH_MDS_OP_MKSNAP-tagged <cite>MClientRequest</cite>, and initially handled in
+Server::handle_client_mksnap(). It allocates a <cite>snapid</cite> from the <cite>SnapServer</cite>,
+projects a new inode with the new SnapRealm, and commits it to the MDLog as
+usual. When committed, it invokes
+<cite>MDCache::do_realm_invalidate_and_update_notify()</cite>, which triggers most of the
+real work of the snapshot.</p>
+<p>If there were already snapshots above directory &#8220;foo&#8221; (rooted at &#8220;/1&#8221;, say),
+the new SnapRealm adds its most immediate ancestor as a <cite>past_parent</cite> on
+creation. After committing to the MDLog, all clients with caps on files in
+&#8220;/1/2/3/foo/&#8221; are notified (MDCache::send_snaps()) of the new SnapRealm, and
+update the <cite>SnapContext</cite> they are using with that data. Note that this
+<em>is not</em> a synchronous part of the snapshot creation!</p>
+</div>
+<div class="section" id="updating-a-snapshot">
+<h2>Updating a snapshot<a class="headerlink" href="#updating-a-snapshot" title="Permalink to this headline">¶</a></h2>
+<p>If you delete a snapshot, or move data out of the parent snapshot&#8217;s hierarchy,
+a similar process is followed. Extra code paths check to see if we can break
+the <cite>past_parent</cite> links between SnapRealms, or eliminate them entirely.</p>
+</div>
+<div class="section" id="generating-a-snapcontext">
+<h2>Generating a SnapContext<a class="headerlink" href="#generating-a-snapcontext" title="Permalink to this headline">¶</a></h2>
+<p>A RADOS <cite>SnapContext</cite> consists of a snapshot sequence ID (<cite>snapid</cite>) and all
+the snapshot IDs that an object is already part of. To generate that list, we
+generate a list of all <cite>snapids</cite> associated with the SnapRealm and all its
+<cite>past_parents</cite>.</p>
+</div>
+<div class="section" id="storing-snapshot-data">
+<h2>Storing snapshot data<a class="headerlink" href="#storing-snapshot-data" title="Permalink to this headline">¶</a></h2>
+<p>File data is stored in RADOS &#8220;self-managed&#8221; snapshots. Clients are careful to
+use the correct <cite>SnapContext</cite> when writing file data to the OSDs.</p>
+</div>
+<div class="section" id="storing-snapshot-metadata">
+<h2>Storing snapshot metadata<a class="headerlink" href="#storing-snapshot-metadata" title="Permalink to this headline">¶</a></h2>
+<p>Snapshotted dentries (and their inodes) are stored in-line as part of the
+directory they were in at the time of the snapshot. <em>All dentries</em> include a
+<cite>first</cite> and <cite>last</cite> snapid for which they are valid. (Non-snapshotted dentries
+will have their <cite>last</cite> set to CEPH_NOSNAP).</p>
+</div>
+<div class="section" id="snapshot-writeback">
+<h2>Snapshot writeback<a class="headerlink" href="#snapshot-writeback" title="Permalink to this headline">¶</a></h2>
+<p>There is a great deal of code to handle writeback efficiently. When a Client
+receives an <cite>MClientSnap</cite> message, it updates the local <cite>SnapRealm</cite>
+representation and its links to specific <cite>Inodes</cite>, and generates a <cite>CapSnap</cite>
+for the <cite>Inode</cite>. The <cite>CapSnap</cite> is flushed out as part of capability writeback,
+and if there is dirty data the <cite>CapSnap</cite> is used to block fresh data writes
+until the snapshot is completely flushed to the OSDs.</p>
+<p>In the MDS, we generate snapshot-representing dentries as part of the regular
+process for flushing them. Dentries with outstanding <cite>CapSnap</cite> data is kept
+pinned and in the journal.</p>
+</div>
+<div class="section" id="deleting-snapshots">
+<h2>Deleting snapshots<a class="headerlink" href="#deleting-snapshots" title="Permalink to this headline">¶</a></h2>
+<p>Snapshots are deleted by invoking &#8220;rmdir&#8221; on the &#8221;.snaps&#8221; directory they are
+rooted in. (Attempts to delete a directory which roots snapshots <em>will fail</em>;
+you must delete the snapshots first.) Once deleted, they are entered into the
+<cite>OSDMap</cite> list of deleted snapshots and the file data is removed by the OSDs.
+Metadata is cleaned up as the directory objects are read in and written back
+out again.</p>
+</div>
+<div class="section" id="hard-links">
+<h2>Hard links<a class="headerlink" href="#hard-links" title="Permalink to this headline">¶</a></h2>
+<p>Hard links do not interact well with snapshots. A file is snapshotted when its
+primary link is part of a SnapRealm; other links <em>will not</em> preserve data.
+Generally the location where a file was first created will be its primary link,
+but if the original link has been deleted it is not easy (nor always
+determnistic) to find which link is now the primary.</p>
+</div>
+<div class="section" id="multi-fs">
+<h2>Multi-FS<a class="headerlink" href="#multi-fs" title="Permalink to this headline">¶</a></h2>
+<p>Snapshots and multiiple filesystems don&#8217;t interact well. Specifically, each
+MDS cluster allocates <cite>snapids</cite> independently; if you have multiple filesystems
+sharing a single pool (via namespaces), their snapshots <em>will</em> collide and
+deleting one will result in missing file data for others. (This may even be
+invisible, not throwing errors to the user.) If each FS gets its own
+pool things probably work, but this isn&#8217;t tested and may not be true.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

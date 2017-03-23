@@ -92,8 +92,9 @@ Create a Pool
 配置 OpenStack 的 Ceph 客户端
 =============================
 
-运行着 ``glance-api`` 、 ``cinder-volume`` 、 ``nova-compute`` 或 \
-``cinder-backup`` 的主机被当作 Ceph 客户端，它们都需要 ``ceph.conf`` 文件。 ::
+运行着 ``glance-api`` 、 ``cinder-volume`` 、 ``nova-compute``
+或 ``cinder-backup`` 的主机被当作 Ceph 客户端，它们都需要
+``ceph.conf`` 文件。 ::
 
 	ssh {your-openstack-server} sudo tee /etc/ceph/ceph.conf </etc/ceph/ceph.conf
 
@@ -101,29 +102,33 @@ Create a Pool
 安装 Ceph 客户端软件包
 ----------------------
 
-在运行 ``glance-api`` 的节点上你需要 ``librbd`` 的 Python 接口： ::
+在运行 ``glance-api`` 的节点上你得安装 ``librbd`` 的 Python 绑定： ::
 
 	sudo apt-get install python-rbd
 	sudo yum install python-rbd
 
-在 ``nova-compute`` 、 ``cinder-backup`` 和 ``cinder-volume`` 节点上，要安装 \
-Python 绑定和客户端命令行工具： ::
+在 ``nova-compute`` 、 ``cinder-backup`` 和 ``cinder-volume``
+节点上，要安装 Python 绑定和客户端命令行工具： ::
 
 	sudo apt-get install ceph-common
-	sudo yum install ceph
+	sudo yum install ceph-common
 
+
+.. _Setup Ceph Client Authentication:
 
 配置 Ceph 客户端认证
 --------------------
 
-如果你启用了 `cephx 认证`_\ ，需要分别为 Nova/Cinder 和 Glance 创建新用户。命令如下： ::
+如果你启用了 `cephx 认证`_\ ，需要分别为 Nova/Cinder 和 Glance
+创建新用户。命令如下： ::
 
 	ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'
 	ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'
 	ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'
 
-把这些用户 ``client.cinder`` 、 ``client.glance`` 和 ``client.cinder-backup`` 的\
-密钥环复制到各自所在节点，并修正所有权： ::
+把这些用户 ``client.cinder`` 、 ``client.glance`` 和
+``client.cinder-backup`` 的密钥环复制到各自所在节点，并修正\
+所有权： ::
 
 	ceph auth get-or-create client.glance | ssh {your-glance-api-server} sudo tee /etc/ceph/ceph.client.glance.keyring
 	ssh {your-glance-api-server} sudo chown glance:glance /etc/ceph/ceph.client.glance.keyring

@@ -45,7 +45,7 @@ https://github.com/drunkard/ceph-readable-doc
 #. 执行 ceph 库内 admin 目录下的 build-doc 开始构建文档； ::
 
 	cd /git/ceph
-	./admin/build-doc
+	./admin/build-doc html man
 
 #. 启动文档服务器，这样就可以通过 http://localhost:8080/ 阅读文档了。 ::
 

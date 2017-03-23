@@ -1,0 +1,396 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Mantle &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="Ceph 文件系统" href="../" />
+    <link rel="next" title="Ceph 块设备" href="../../rbd/rbd/" />
+    <link rel="prev" title="Libcephfs (JavaDoc)" href="../../api/libcephfs-java/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../rbd/rbd/" title="Ceph 块设备"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../../api/libcephfs-java/" title="Libcephfs (JavaDoc)"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="mantle">
+<h1>Mantle<a class="headerlink" href="#mantle" title="Permalink to this headline">¶</a></h1>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Mantle 的本意是用于研究和开发元数据均衡算法，不是给 CephFS
+生产集群用的。</p>
+</div>
+<p>Multiple, active MDSs can migrate directories to balance metadata load. The
+policies for when, where, and how much to migrate are hard-coded into the
+metadata balancing module. Mantle is a programmable metadata balancer built
+into the MDS. The idea is to protect the mechanisms for balancing load
+(migration, replication, fragmentation) but stub out the balancing policies
+using Lua. Mantle is based on [1] but the current implementation does <em>NOT</em>
+have the following features from that paper:</p>
+<ol class="arabic simple">
+<li>Balancing API: in the paper, the user fills in when, where, how much, and
+load calculation policies; currently, Mantle only requires that Lua policies
+return a table of target loads (e.g., how much load to send to each MDS)</li>
+<li>&#8220;How much&#8221; hook: in the paper, there was a hook that let the user control
+the fragment selector policy; currently, Mantle does not have this hook</li>
+<li>Instantaneous CPU utilization as a metric</li>
+</ol>
+<p>[1] Supercomputing &#8216;15 Paper:
+<a class="reference external" href="http://sc15.supercomputing.org/schedule/event_detail-evid=pap168.html">http://sc15.supercomputing.org/schedule/event_detail-evid=pap168.html</a></p>
+<div class="section" id="vstart">
+<span id="quickstart-with-vstart"></span><h2>vstart 快速入门<a class="headerlink" href="#vstart" title="Permalink to this headline">¶</a></h2>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Developing balancers with vstart is difficult because running all daemons
+and clients on one node can overload the system. Let it run for a while, even
+though you will likely see a bunch of lost heartbeat and laggy MDS warnings.
+Most of the time this guide will work but sometimes all MDSs lock up and you
+cannot actually see them spill. It is much better to run this on a cluster.</p>
+</div>
+<p>As a pre-requistie, we assume you&#8217;ve installed <a class="reference external" href="https://sourceforge.net/projects/mdtest/">mdtest</a> or pulled the <a class="reference external" href="https://hub.docker.com/r/michaelsevilla/mdtest/">Docker image</a>. We use mdtest because we
+need to generate enough load to get over the MIN_OFFLOAD threshold that is
+arbitrarily set in the balancer. For example, this does not create enough
+metadata load:</p>
+<div class="highlight-python"><pre>while true; do
+  touch "/cephfs/blah-`date`"
+done</pre>
+</div>
+<div class="section" id="mantle-with-vstart-sh">
+<h3>Mantle with <cite>vstart.sh</cite><a class="headerlink" href="#mantle-with-vstart-sh" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Start Ceph and tune the logging so we can see migrations happen:</li>
+</ol>
+<div class="highlight-python"><pre>cd build
+../src/vstart.sh -n -l
+for i in a b c; do
+  bin/ceph --admin-daemon out/mds.$i.asok config set debug_ms 0
+  bin/ceph --admin-daemon out/mds.$i.asok config set debug_mds 2
+  bin/ceph --admin-daemon out/mds.$i.asok config set mds_beacon_grace 1500
+done</pre>
+</div>
+<ol class="arabic simple" start="2">
+<li>Put the balancer into RADOS:</li>
+</ol>
+<div class="highlight-python"><pre>bin/rados put --pool=cephfs_metadata_a greedyspill.lua ../src/mds/balancers/greedyspill.lua</pre>
+</div>
+<ol class="arabic simple" start="3">
+<li>Activate Mantle:</li>
+</ol>
+<div class="highlight-python"><pre>bin/ceph fs set cephfs allow_multimds true --yes-i-really-mean-it
+bin/ceph fs set cephfs max_mds 5
+bin/ceph fs set cephfs_a balancer greedyspill.lua</pre>
+</div>
+<ol class="arabic simple" start="4">
+<li>Mount CephFS in another window:</li>
+</ol>
+<div class="highlight-python"><pre>  bin/ceph-fuse /cephfs -o allow_other &amp;
+  tail -f out/mds.a.log
+
+
+Note that if you look at the last MDS (which could be a, b, or c -- it's
+random), you will see an an attempt to index a nil value. This is because the
+last MDS tries to check the load of its neighbor, which does not exist.</pre>
+</div>
+<ol class="arabic simple" start="5">
+<li>Run a simple benchmark. In our case, we use the Docker mdtest image to
+create load:</li>
+</ol>
+<div class="highlight-python"><pre>for i in 0 1 2; do
+  docker run -d \
+    --name=client$i \
+    -v /cephfs:/cephfs \
+    michaelsevilla/mdtest \
+    -F -C -n 100000 -d "/cephfs/client-test$i"
+done</pre>
+</div>
+<ol class="arabic simple" start="6">
+<li>When you&#8217;re done, you can kill all the clients with:</li>
+</ol>
+<div class="highlight-python"><pre>for i in 0 1 2 3; do docker rm -f client$i; done</pre>
+</div>
+</div>
+<div class="section" id="output">
+<span id="id1"></span><h3>输出解析<a class="headerlink" href="#output" title="Permalink to this headline">¶</a></h3>
+<p>Looking at the log for the first MDS (could be a, b, or c), we see that
+everyone has no load:</p>
+<div class="highlight-python"><pre>2016-08-21 06:44:01.763930 7fd03aaf7700  0 lua.balancer MDS0: &lt; auth.meta_load=0.0 all.meta_load=0.0 req_rate=1.0 queue_len=0.0 cpu_load_avg=1.35 &gt; load=0.0
+2016-08-21 06:44:01.763966 7fd03aaf7700  0 lua.balancer MDS1: &lt; auth.meta_load=0.0 all.meta_load=0.0 req_rate=0.0 queue_len=0.0 cpu_load_avg=1.35 &gt; load=0.0
+2016-08-21 06:44:01.763982 7fd03aaf7700  0 lua.balancer MDS2: &lt; auth.meta_load=0.0 all.meta_load=0.0 req_rate=0.0 queue_len=0.0 cpu_load_avg=1.35 &gt; load=0.0
+2016-08-21 06:44:01.764010 7fd03aaf7700  2 lua.balancer when: not migrating! my_load=0.0 hisload=0.0
+2016-08-21 06:44:01.764033 7fd03aaf7700  2 mds.0.bal  mantle decided that new targets={}</pre>
+</div>
+<p>After the jobs starts, MDS0 gets about 1953 units of load. The greedy spill
+balancer dictates that half the load goes to your neighbor MDS, so we see that
+Mantle tries to send 1953 load units to MDS1.</p>
+<div class="highlight-python"><pre>2016-08-21 06:45:21.869994 7fd03aaf7700  0 lua.balancer MDS0: &lt; auth.meta_load=5834.188908912 all.meta_load=1953.3492228857 req_rate=12591.0 queue_len=1075.0 cpu_load_avg=3.05 &gt; load=1953.3492228857
+2016-08-21 06:45:21.870017 7fd03aaf7700  0 lua.balancer MDS1: &lt; auth.meta_load=0.0 all.meta_load=0.0 req_rate=0.0 queue_len=0.0 cpu_load_avg=3.05 &gt; load=0.0
+2016-08-21 06:45:21.870027 7fd03aaf7700  0 lua.balancer MDS2: &lt; auth.meta_load=0.0 all.meta_load=0.0 req_rate=0.0 queue_len=0.0 cpu_load_avg=3.05 &gt; load=0.0
+2016-08-21 06:45:21.870034 7fd03aaf7700  2 lua.balancer when: migrating! my_load=1953.3492228857 hisload=0.0
+2016-08-21 06:45:21.870050 7fd03aaf7700  2 mds.0.bal  mantle decided that new targets={0=0,1=976.675,2=0}
+2016-08-21 06:45:21.870094 7fd03aaf7700  0 mds.0.bal    - exporting [0,0.52287 1.04574] 1030.88 to mds.1 [dir 100000006ab /client-test2/ [2,head] auth pv=33 v=32 cv=32/0 ap=2+3+4 state=1610612802|complete f(v0 m2016-08-21 06:44:20.366935 1=0+1) n(v2 rc2016-08-21 06:44:30.946816 3790=3788+2) hs=1+0,ss=0+0 dirty=1 | child=1 dirty=1 authpin=1 0x55d2762fd690]
+2016-08-21 06:45:21.870151 7fd03aaf7700  0 mds.0.migrator nicely exporting to mds.1 [dir 100000006ab /client-test2/ [2,head] auth pv=33 v=32 cv=32/0 ap=2+3+4 state=1610612802|complete f(v0 m2016-08-21 06:44:20.366935 1=0+1) n(v2 rc2016-08-21 06:44:30.946816 3790=3788+2) hs=1+0,ss=0+0 dirty=1 | child=1 dirty=1 authpin=1 0x55d2762fd690]</pre>
+</div>
+<p>Eventually load moves around:</p>
+<div class="highlight-python"><pre>2016-08-21 06:47:10.210253 7fd03aaf7700  0 lua.balancer MDS0: &lt; auth.meta_load=415.77414300449 all.meta_load=415.79000078186 req_rate=82813.0 queue_len=0.0 cpu_load_avg=11.97 &gt; load=415.79000078186
+2016-08-21 06:47:10.210277 7fd03aaf7700  0 lua.balancer MDS1: &lt; auth.meta_load=228.72023977691 all.meta_load=186.5606496623 req_rate=28580.0 queue_len=0.0 cpu_load_avg=11.97 &gt; load=186.5606496623
+2016-08-21 06:47:10.210290 7fd03aaf7700  0 lua.balancer MDS2: &lt; auth.meta_load=0.0 all.meta_load=0.0 req_rate=1.0 queue_len=0.0 cpu_load_avg=11.97 &gt; load=0.0
+2016-08-21 06:47:10.210298 7fd03aaf7700  2 lua.balancer when: not migrating! my_load=415.79000078186 hisload=186.5606496623
+2016-08-21 06:47:10.210311 7fd03aaf7700  2 mds.0.bal  mantle decided that new targets={}</pre>
+</div>
+</div>
+</div>
+<div class="section" id="implementation-details">
+<span id="id2"></span><h2>实现细节<a class="headerlink" href="#implementation-details" title="Permalink to this headline">¶</a></h2>
+<p>Most of the implementation is in MDBalancer. Metrics are passed to the balancer
+policies via the Lua stack and a list of loads is returned back to MDBalancer.
+It sits alongside the current balancer implementation and it&#8217;s enabled with a
+Ceph CLI command (&#8220;ceph fs set cephfs balancer mybalancer.lua&#8221;). If the Lua policy
+fails (for whatever reason), we fall back to the original metadata load
+balancer. The balancer is stored in the RADOS metadata pool and a string in the
+MDSMap tells the MDSs which balancer to use.</p>
+<div class="section" id="exposing-metrics-to-lua">
+<h3>Exposing Metrics to Lua<a class="headerlink" href="#exposing-metrics-to-lua" title="Permalink to this headline">¶</a></h3>
+<p>Metrics are exposed directly to the Lua code as global variables instead of
+using a well-defined function signature. There is a global &#8220;mds&#8221; table, where
+each index is an MDS number (e.g., 0) and each value is a dictionary of metrics
+and values. The Lua code can grab metrics using something like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">mds</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;queue_len&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>This is in contrast to cls-lua in the OSDs, which has well-defined arguments
+(e.g., input/output bufferlists). Exposing the metrics directly makes it easier
+to add new metrics without having to change the API on the Lua side; we want
+the API to grow and shrink as we explore which metrics matter. The downside of
+this approach is that the person programming Lua balancer policies has to look
+at the Ceph source code to see which metrics are exposed. We figure that the
+Mantle developer will be in touch with MDS internals anyways.</p>
+<p>The metrics exposed to the Lua policy are the same ones that are already stored
+in mds_load_t: auth.meta_load(), all.meta_load(), req_rate, queue_length,
+cpu_load_avg.</p>
+</div>
+<div class="section" id="compile-execute-the-balancer">
+<h3>Compile/Execute the Balancer<a class="headerlink" href="#compile-execute-the-balancer" title="Permalink to this headline">¶</a></h3>
+<p>Here we use <cite>lua_pcall</cite> instead of <cite>lua_call</cite> because we want to handle errors
+in the MDBalancer. We do not want the error propagating up the call chain. The
+cls_lua class wants to handle the error itself because it must fail gracefully.
+For Mantle, we don&#8217;t care if a Lua error crashes our balancer &#8211; in that case,
+we&#8217;ll fall back to the original balancer.</p>
+<p>The performance improvement of using <cite>lua_call</cite> over <cite>lua_pcall</cite> would not be
+leveraged here because the balancer is invoked every 10 seconds by default.</p>
+</div>
+<div class="section" id="returning-policy-decision-to-c">
+<h3>Returning Policy Decision to C++<a class="headerlink" href="#returning-policy-decision-to-c" title="Permalink to this headline">¶</a></h3>
+<p>We force the Lua policy engine to return a table of values, corresponding to
+the amount of load to send to each MDS. These loads are inserted directly into
+the MDBalancer &#8220;my_targets&#8221; vector. We do not allow the MDS to return a table
+of MDSs and metrics because we want the decision to be completely made on the
+Lua side.</p>
+<p>Iterating through tables returned by Lua is done through the stack. In Lua
+jargon: a dummy value is pushed onto the stack and the next iterator replaces
+the top of the stack with a (k, v) pair. After reading each value, pop that
+value but keep the key for the next call to <cite>lua_next</cite>.</p>
+</div>
+<div class="section" id="reading-from-rados">
+<h3>Reading from RADOS<a class="headerlink" href="#reading-from-rados" title="Permalink to this headline">¶</a></h3>
+<p>All MDSs will read balancing code from RADOS when the balancer version changes
+in the MDS Map. The balancer pulls the Lua code from RADOS synchronously. We do
+this with a timeout: if the asynchronous read does not come back within half
+the balancing tick interval the operation is cancelled and a Connection Timeout
+error is returned. By default, the balancing tick interval is 10 seconds, so
+Mantle will use a 5 second second timeout. This design allows Mantle to
+immediately return an error if anything RADOS-related goes wrong.</p>
+<p>We use this implementation because we do not want to do a blocking OSD read
+from inside the global MDS lock. Doing so would bring down the MDS cluster if
+any of the OSDs are not responsive &#8211; this is tested in the ceph-qa-suite by
+setting all OSDs to down/out and making sure the MDS cluster stays active.</p>
+<p>One approach would be to asynchronously fire the read when handling the MDS Map
+and fill in the Lua code in the background. We cannot do this because the MDS
+does not support daemon-local fallbacks and the balancer assumes that all MDSs
+come to the same decision at the same time (e.g., importers, exporters, etc.).</p>
+</div>
+<div class="section" id="debugging">
+<h3>Debugging<a class="headerlink" href="#debugging" title="Permalink to this headline">¶</a></h3>
+<p>Logging in a Lua policy will appear in the MDS log. The syntax is the same as
+the cls logging interface:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">BAL_LOG</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;this is a log message&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It is implemented by passing a function that wraps the <cite>dout</cite> logging framework
+(<cite>dout_wrapper</cite>) to Lua with the <cite>lua_register()</cite> primitive. The Lua code is
+actually calling the <cite>dout</cite> function in C++.</p>
+<p>Warning and Info messages are centralized using the clog/Beacon. Successful
+messages are only sent on version changes by the first MDS to avoid spamming
+the <cite>ceph -w</cite> utility. These messages are used for the integration tests.</p>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<p>Testing is done with the ceph-qa-suite (tasks.cephfs.test_mantle). We do not
+test invalid balancer logging and loading the actual Lua VM.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">增加/删除 MDS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds-config-ref/">MDS 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">cephfs 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../experimental-features/">实验性功能</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../upgrading/">旧文件系统的升级</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../#for-developers">开发者文档</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../capabilities/">客户端的能力</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">Mantle</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#vstart">vstart 快速入门</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#mantle-with-vstart-sh">Mantle with <cite>vstart.sh</cite></a></li>
+<li class="toctree-l5"><a class="reference internal" href="#output">输出解析</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#implementation-details">实现细节</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#exposing-metrics-to-lua">Exposing Metrics to Lua</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#compile-execute-the-balancer">Compile/Execute the Balancer</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#returning-policy-decision-to-c">Returning Policy Decision to C++</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#reading-from-rados">Reading from RADOS</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#debugging">Debugging</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#testing">Testing</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../rbd/rbd/" title="Ceph 块设备"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../../api/libcephfs-java/" title="Libcephfs (JavaDoc)"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

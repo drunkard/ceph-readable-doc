@@ -9,21 +9,31 @@
 提纲
 ====
 
-| **ceph-authtool** *keyringfile* [ -l | --list ] [ -C | --create-keyring
-  ] [ -p | --print ] [ -n | --name *entityname* ] [ --gen-key ] [ -a |
-  --add-key *base64_key* ] [ --caps *capfile* ]
+| **ceph-authtool** *keyringfile*
+  [ -l | --list ]
+  [ -p | --print-key ]
+  [ -C | --create-keyring ]
+  [ -g | --gen-key ]
+  [ --gen-print-key ]
+  [ --import-keyring *otherkeyringfile* ]
+  [ -n | --name *entityname* ]
+  [ -u | --set-uid *auid* ]
+  [ -a | --add-key *base64_key* ]
+  [ --cap *subsystem* *capability* ]
+  [ --caps *capfile* ]
 
 
 描述
 ====
 
-**ceph-authtool** 工具用于创建、查看和修改 Ceph 密钥环文件。密钥环文件内存储\
-着一或多个 Ceph 认证密钥、可能还有被授予的能力。每个密钥都与其类型名关联，格\
-式为 ``{client,mon,mds,osd}.name`` 。
+**ceph-authtool** 工具用于创建、查看和修改 Ceph 密钥环文件。\
+密钥环文件内存储着一或多个 Ceph 认证密钥、可能还有被授予的能\
+力。每个密钥都与其类型名关联，格式为
+``{client,mon,mds,osd}.name`` 。
 
-**警告：** 在私钥保护得当的前提下， Ceph 能提供认证和防中间人攻击的保护。然\
-而，传输中的数据是未加密的，这些数据中可能就有配置密钥的消息。此系统意在运行\
-于可信环境中。
+**警告：** 在私钥保护得当的前提下， Ceph 能提供认证和防中间\
+人攻击的保护。然而，传输中的数据是未加密的，这些数据中可能就\
+有配置密钥的消息。此系统意在运行于可信环境中。
 
 
 选项
@@ -35,25 +45,43 @@
 
 .. option:: -p, --print
 
-   打印指定条目的已编码密钥，它适合作为 ``mount -o secret=`` 的参数
+   打印指定条目的已编码密钥，它适合作为 ``mount -o secret=``
+   的参数
 
 .. option:: -C, --create-keyring
 
    创建新密钥环，覆盖已有密钥环文件
 
-.. option:: --gen-key
+.. option:: -g, --gen-key
 
    为指定实体名生成新私钥
 
-.. option:: --add-key
+.. option:: --gen-print-key
 
-   把已编码密钥加进密钥环
+   为指定条目（ entityname ）生成新密钥，不会修改密钥环文件（
+   keyringfile ），只打印到标准输出。
 
-.. option:: --cap subsystem capability
+.. option:: --import-keyring *secondkeyringfile*
+
+   把此选项所指定密钥环的内容导入密钥环（ keyringfile ）
+
+.. option:: -n, --name *name*
+
+   指定要操作的条目名（ entityname ）
+
+.. option:: -u, --set-uid *auid*
+
+   设置指定条目（ entityname ）的 auid （已认证用户的标识符）
+
+.. option:: -a, --add-key *base64_key*
+
+   把编码好的密钥加进密钥环
+
+.. option:: --cap *subsystem* *capability*
 
    设置指定子系统的能力
 
-.. option:: --caps capsfile
+.. option:: --caps *capsfile*
 
    在所有子系统内设置与给定密钥相关的所有能力
 
@@ -61,21 +89,22 @@
 能力
 ====
 
-subsystem 代表 Ceph 子系统的名字： ``mon`` 、 ``mds`` 、 ``osd`` 。
+subsystem 代表 Ceph 子系统的名字： ``mon`` 、 ``mds`` 、或
+``osd`` 。
 
-能力是一个字符串，描述了允许此用户干什么。格式为逗号分隔的允许声明列表，此声\
-明包含一或多个 rwx （分别表示读、写、执行权限）。 ``allow *`` 将在指定子系统\
-下授予完整的超级用户权限。
+能力是一个字符串，描述了允许此用户干什么。格式为逗号分隔的允\
+许声明列表，此声明包含一或多个 rwx （分别表示读、写、执行权\
+限）。 ``allow *`` 将在指定子系统下授予完整的超级用户权限。
 
 例如： ::
 
-	# 可读、写、执行对象
+        # 可读、写、执行对象
         osd = "allow rwx"
 
-	# 可访问 MDS 服务器
+        # 可访问 MDS 服务器
         mds = "allow"
 
-	# 可更改集群状态（即它是服务器守护进程）
+        # 可更改集群状态（即它是服务器守护进程）
         mon = "allow rwx"
 
 被限定到单个存储池的 librados 用户的能力大致如此： ::

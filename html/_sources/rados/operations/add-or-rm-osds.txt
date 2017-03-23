@@ -156,36 +156,40 @@ CRUSH 图。
 观察数据迁移
 ------------
 
-把新 OSD 加入 CRUSH 图后， Ceph 会重新均衡服务器，一些归置组会迁移到新 OSD 里，你\
-可以用 `ceph`_ 命令观察此过程。 ::
+把新 OSD 加入 CRUSH 图后， Ceph 会重新均衡服务器，一些归置组会\
+迁移到新 OSD 里，你可以用 `ceph`_ 命令观察此过程。 ::
 
 	ceph -w
 
-你会看到归置组状态从 ``active+clean`` 变为 ``active, some degraded objects`` \
-（有降级的对象)、且迁移完成后回到 ``active+clean`` 状态。（ Ctrl-c 退出）
+你会看到归置组状态从 ``active+clean`` 变为
+``active, some degraded objects`` （有降级的对象）、且迁移完成\
+后回到 ``active+clean`` 状态。（ Ctrl-c 退出）
 
 
 .. _增加/移动 OSD: ../crush-map#addosd
 .. _ceph: ../monitoring
 
 
+.. _Removing OSDs (Manual):
+
 删除 OSD （手动）
 =================
 
-要想缩减集群尺寸或替换硬件，可在运行时删除 OSD 。在 Ceph 里，一个 OSD 通常是一台主\
-机上的一个 ``ceph-osd`` 守护进程、它运行在一个硬盘之上。如果一台主机上有多个数据\
-盘，你得挨个删除其对应 ``ceph-osd`` 。通常，操作前应该检查集群容量，看是否快达到上\
-限了，确保删除 OSD 后不会使集群达到 ``near full`` 比率。
+要想缩减集群尺寸或替换硬件，可在运行时删除 OSD 。在 Ceph 里，\
+一个 OSD 通常是一台主机上的一个 ``ceph-osd`` 守护进程、它运行\
+在一个硬盘之上。如果一台主机上有多个数据盘，你得挨个删除其对应
+``ceph-osd`` 。通常，操作前应该检查集群容量，看是否快达到上限\
+了，确保删除 OSD 后不会使集群达到 ``near full`` 比率。
 
-.. warning:: 删除 OSD 时不要让集群达到 ``full ratio`` 值，删除 OSD 可能导致集群达\
-   到或超过 ``full ratio`` 值。
+.. warning:: 删除 OSD 时不要让集群达到 ``full ratio`` 值，删除
+   OSD 可能导致集群达到或超过 ``full ratio`` 值。
 
 
 把 OSD 踢出集群
 ---------------
 
-删除 OSD 前，它通常是 ``up`` 且 ``in`` 的，要先把它踢出集群，以使 Ceph 启动重新均\
-衡、把数据拷贝到其他 OSD 。 ::
+删除 OSD 前，它通常是 ``up`` 且 ``in`` 的，要先把它踢出集群，\
+以使 Ceph 启动重新均衡、把数据拷贝到其他 OSD 。 ::
 
 	ceph osd out {osd-num}
 

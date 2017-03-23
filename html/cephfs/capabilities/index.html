@@ -1,0 +1,257 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>CephFS 支持的能力 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="Ceph 文件系统" href="../" />
+    <link rel="next" title="Libcephfs (JavaDoc)" href="../../api/libcephfs-java/" />
+    <link rel="prev" title="升级比 Firefly 老的文件系统，需过 Jewel 这个槛" href="../upgrading/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../api/libcephfs-java/" title="Libcephfs (JavaDoc)"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../upgrading/" title="升级比 Firefly 老的文件系统，需过 Jewel 这个槛"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="cephfs">
+<span id="capabilities-in-cephfs"></span><h1>CephFS 支持的能力<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
+<p>When a client wants to operate on an inode, it will query the MDS in various
+ways, which will then grant the client a set of <strong>capabilities</strong>. These
+grant the client permissions to operate on the inode in various ways. One
+of the major differences from other network filesystems (e.g NFS or SMB) is
+that the capabilities granted are quite granular, and it&#8217;s possible that
+multiple clients can hold different capabilities on the same inodes.</p>
+<div class="section" id="types-of-capabilities">
+<span id="id1"></span><h2>能力的种类<a class="headerlink" href="#types-of-capabilities" title="Permalink to this headline">¶</a></h2>
+<p>There are several &#8220;generic&#8221; capability bits. These denote what sort of ability
+the capability grants.</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cm">/* generic cap bits */</span>
+<span class="cp">#define CEPH_CAP_GSHARED     1  </span><span class="cm">/* client can reads (s) */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_GEXCL       2  </span><span class="cm">/* client can read and update (x) */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_GCACHE      4  </span><span class="cm">/* (file) client can cache reads (c) */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_GRD         8  </span><span class="cm">/* (file) client can read (r) */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_GWR        16  </span><span class="cm">/* (file) client can write (w) */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_GBUFFER    32  </span><span class="cm">/* (file) client can buffer writes (b) */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_GWREXTEND  64  </span><span class="cm">/* (file) client can extend EOF (a) */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_GLAZYIO   128  </span><span class="cm">/* (file) client can perform lazy io (l) */</span><span class="cp"></span>
+</pre></div>
+</div>
+<p>These are then shifted by a particular number of bits. These denote a part of
+the inode&#8217;s data or metadata on which the capability is being granted:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cm">/* per-lock shift */</span>
+<span class="cp">#define CEPH_CAP_SAUTH      2 </span><span class="cm">/* A */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_SLINK      4 </span><span class="cm">/* L */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_SXATTR     6 </span><span class="cm">/* X */</span><span class="cp"></span>
+<span class="cp">#define CEPH_CAP_SFILE      8 </span><span class="cm">/* F */</span><span class="cp"></span>
+</pre></div>
+</div>
+<p>Only certain generic cap types are ever granted for some of those &#8220;shifts&#8221;,
+however. In particular, only the FILE shift ever has more than the first two
+bits.</p>
+<div class="highlight-python"><pre>| AUTH | LINK | XATTR | FILE
+2      4      6       8</pre>
+</div>
+<p>From the above, we get a number of constants, that are generated by taking
+each bit value and shifting to the correct bit in the word:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#define CEPH_CAP_AUTH_SHARED  (CEPH_CAP_GSHARED  &lt;&lt; CEPH_CAP_SAUTH)</span>
+</pre></div>
+</div>
+<p>These bits can then be or&#8217;ed together to make a bitmask denoting a set of
+capabilities.</p>
+<p>There is one exception:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#define CEPH_CAP_PIN  1  </span><span class="cm">/* no specific capabilities beyond the pin */</span><span class="cp"></span>
+</pre></div>
+</div>
+<p>The &#8220;pin&#8221; just pins the inode into memory, without granting any other caps.</p>
+<p>图形化就是：</p>
+<div class="highlight-python"><pre>+---+---+---+---+---+---+---+---+
+| p | _ |As   x |Ls   x |Xs   x |
++---+---+---+---+---+---+---+---+
+|Fs   x   c   r   w   b   a   l |
++---+---+---+---+---+---+---+---+</pre>
+</div>
+<p>当前尚未使用第二个 bit 。</p>
+</div>
+<div class="section" id="cap">
+<span id="abilities-granted-by-each-cap"></span><h2>各个 cap 授予的能力：<a class="headerlink" href="#cap" title="Permalink to this headline">¶</a></h2>
+<p>While that is how capabilities are granted (and communicated), the important
+bit is what they actually allow the client to do:</p>
+<ul class="simple">
+<li>PIN: this just pins the inode into memory. This is sufficient to allow the
+client to get to the inode number, as well as other immutable things like
+major or minor numbers in a device inode, or symlink contents.</li>
+<li>AUTH: this grants the ability to get to the authentication-related metadata.
+In particular, the owner, group and mode. Note that doing a full permission
+check may require getting at ACLs as well, which are stored in xattrs.</li>
+<li>LINK: the link count of the inode</li>
+<li>XATTR: ability to access or manipulate xattrs. Note that since ACLs are
+stored in xattrs, it&#8217;s also sometimes necessary to access them when checking
+permissions.</li>
+<li>FILE: this is the big one. These allow the client to access and manipulate
+file data. It also covers certain metadata relating to file data &#8211; the
+size, mtime, atime and ctime, in particular.</li>
+</ul>
+</div>
+<div class="section" id="shorthand">
+<span id="id2"></span><h2>简写<a class="headerlink" href="#shorthand" title="Permalink to this headline">¶</a></h2>
+<p>需要注意的是，客户端日志里会紧凑地表达各个能力，例如：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">pAsLsXsFs</span>
+</pre></div>
+</div>
+<p>其中， p 表示 pin ，各大写字母对应位移值，而位移值后面的小写字母是真正赋予此位置的的能力。</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">增加/删除 MDS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds-config-ref/">MDS 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/cephfs/">cephfs 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../experimental-features/">实验性功能</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../upgrading/">旧文件系统的升级</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../#for-developers">开发者文档</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="">客户端的能力</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#types-of-capabilities">能力的种类</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cap">各个 cap 授予的能力：</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#shorthand">简写</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mantle/">Mantle</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../api/libcephfs-java/" title="Libcephfs (JavaDoc)"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../upgrading/" title="升级比 Firefly 老的文件系统，需过 Jewel 这个槛"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>
