@@ -129,24 +129,28 @@ qcow2 映像，可以这样转： ::
 
 .. index:: Ceph Block Device; discard trim and libvirt
 
+.. _Enabling Discard/TRIM:
+
 启用 Discard/TRIM 功能
 ======================
 
-从 Ceph 0.46 和 QEMU 1.1 起， Ceph 块设备设备支持 discard 操作，这意味着访客可以\
-发送 TRIM 请求来让 Ceph 块设备回收未使用的空间。此功能可在访客上挂载 ``ext4`` 或 \
-XFS 时用 ``discard`` 选项启用。
+从 Ceph 0.46 和 QEMU 1.1 起， Ceph 块设备设备支持 discard 操\
+作，这意味着访客可以发送 TRIM 请求来让 Ceph 块设备回收未使用\
+的空间。此功能可在访客上挂载 ``XFS`` 或 ``ext4`` 时用
+``discard`` 选项启用。
 
-要使此功能对访客可用，必须对块设备显式启用。为此，你必须指定在驱动器上指定 \
-``discard_granularity`` ： ::
+要使此功能对访客可用，必须对块设备显式启用。为此，你必须指定\
+在驱动器上指定 ``discard_granularity`` ： ::
 
 	qemu -m 1024 -drive format=raw,file=rbd:data/squeeze,id=drive1,if=none \
 		-device driver=ide-hd,drive=drive1,discard_granularity=512
 
 注意这个使用 IDE 驱动器， virtio 驱动不支持 discard 。
 
-如果用的是 libvirt ，得用 ``virsh edit`` 编辑配置文件，加上 ``xmlns:qemu`` 值。然\
-后加一个 ``qemu:commandline`` 块作为那个域的子域。下例展示了如何用 ``qemu id=`` \
-为两个设备设置不同的 ``discard_granularity`` 值。
+如果用的是 libvirt ，得用 ``virsh edit`` 编辑配置文件，加上
+``xmlns:qemu`` 值。然后加一个 ``qemu:commandline`` 块作为那个\
+域的子域。下例展示了如何用 ``qemu id=`` 为两个设备设置不同的
+``discard_granularity`` 值。
 
 .. code-block:: guess
 

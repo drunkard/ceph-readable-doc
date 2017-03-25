@@ -11,19 +11,23 @@
 :默认值: ``0``
 
 
+.. _Extended Attributes:
+
 .. index:: filestore; extended attributes
 
 扩展属性
 ========
 
-扩展属性（ XATTR ）是配置里的重要部分。一些文件系统对 XATTR 字节数有限制，另外在某\
-些情况下文件系统存储 XATTR 的速度不如其他方法。下面的选项让你用独立于文件系统的存储\
-方法，或许能提升性能。
+扩展属性（ XATTR ）是配置里的重要部分。一些文件系统对 XATTR
+字节数有限制，另外在某些情况下文件系统存储 XATTR 的速度不如\
+其他方法。下面的选项让你用独立于文件系统的存储方法，或许能\
+提升性能。
 
-Ceph 扩展属性用底层文件系统的 XATTR （如果没有尺寸限制）存储为 ``inline xattr`` 。\
-如果有限制，如 ext4 限制为 4KB ，达到 ``filestore max inline xattr size`` 或 \
-``filestore max inline xattrs`` 阀值时一些 XATTR 将存储为键/值数据库（也叫 \
-``omap`` ）。
+Ceph 扩展属性用底层文件系统的 XATTR （如果没有尺寸限制）存储\
+为 ``inline xattr`` 。如果有限制，如 ext4 限制为 4KB ，达到
+``filestore max inline xattr size`` 或
+``filestore max inline xattrs`` 阀值时一些 XATTR 将存储到键/\
+值数据库内。
 
 
 ``filestore max inline xattr size``

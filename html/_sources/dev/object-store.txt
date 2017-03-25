@@ -1,6 +1,8 @@
-====================================
- Object Store Architecture Overview
-====================================
+.. _Object Store Architecture Overview:
+
+==================
+ 对象存储架构概述
+==================
 
 .. graphviz::
 
@@ -9,7 +11,7 @@
    */
 
   digraph object_store {
-    size="7,7";
+    size="12,12";
     node [color=lightblue2, style=filled, fontname="Serif"];
 
     "testrados" -> "librados"
@@ -49,18 +51,18 @@
 
     "OSDMapTool" -> "OSDMap"
 
-    "PG" -> "ReplicatedPG"
+    "PG" -> "PrimaryLogPG"
     "PG" -> "ObjectStore"
     "PG" -> "OSDMap"
 
-    "ReplicatedPG" -> "ObjectStore"
-    "ReplicatedPG" -> "OSDMap"
+    "PrimaryLogPG" -> "ObjectStore"
+    "PrimaryLogPG" -> "OSDMap"
 
     "ObjectStore" -> "FileStore"
 
-    "FileStore" -> "ext3"
-    "FileStore" -> "ext4"
+    "FileStore" -> "xfs"
     "FileStore" -> "btrfs"
+    "FileStore" -> "ext4"
   }
 
 

@@ -243,19 +243,21 @@ http://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪些发\
    请参考 `Ceph 镜像`_\ 。
 
 
+.. _Add Ceph Development:
+
 添加 Ceph 开发库
 ================
 
-开发库用 ``autobuild.asc`` 密钥校验软件包。如果你在参与 Ceph 开\
-发，想要部署并测试某个分支，确保先删除（或禁用）主要版本库的配\
-置文件。
+开发库用 ``autobuild.asc`` 密钥校验软件包。如果你在参与 Ceph
+开发，想要部署并测试某个分支，确保先删除（或禁用）主要版本库\
+的配置文件。
 
 
 Debian 二进制包
 --------------- 
 
-我们自动为 Debian 和 Ubuntu 构建 Ceph 当前分支的二进制包，这些包\
-只适合开发者和质检人员。
+我们自动为 Debian 和 Ubuntu 构建 Ceph 当前分支的二进制包，这\
+些包只适合开发者和质检人员。
 
 把此仓库加入 APT 源，用你要测试的分支名（如 chef-3 、 wip-hack 、 \
 master ）替换 ``{BRANCH}`` 。我们所构建的完整分支列表在 \

@@ -508,7 +508,8 @@ calamari 的初始配置、安装 salt-minion 软件包。如果是 Redhat/CentO
 
 .. option:: --fs-type
 
-   格式化硬盘时指定的文件系统 ``(xfs, btrfs or ext4)`` 。
+   格式化磁盘时指定的文件系统（如 ``xfs`` 、 ``btrfs`` 或
+   ``ext4`` ）。
 
 .. option:: --dmcrypt
 
