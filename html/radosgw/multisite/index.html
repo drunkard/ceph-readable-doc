@@ -1,0 +1,838 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>RGW 多站 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="Ceph 对象网关" href="../" />
+    <link rel="next" title="Ceph 对象网关配置参考" href="../config-ref/" />
+    <link rel="prev" title="联盟网关的配置" href="../federated-config/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../config-ref/" title="Ceph 对象网关配置参考"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../federated-config/" title="联盟网关的配置"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" accesskey="U">Ceph 对象网关</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="rgw">
+<span id="rgw-multisite"></span><h1>RGW 多站<a class="headerlink" href="#rgw" title="Permalink to this headline">¶</a></h1>
+<p class="versionadded">
+<span class="versionmodified">New in version Jewel.</span></p>
+<p>Ceph 从 Jewel 版起，你可以让各个 <a class="reference internal" href="../../glossary/#term-34"><em class="xref std std-term">Ceph 对象网关</em></a>在多活域内运行，多活域允许写入非主域。下面是会用到的基本术语：</p>
+<ul class="simple">
+<li><strong>域 (Zone)</strong>: 域是一或多个 Ceph 对象网关例程的<em>逻辑</em>分组。每个域组应该指定一个域为主域，由它负责所有桶和用户的创建。</li>
+<li><strong>域组 (Zonegroup)</strong>: 域组由多个域组成，此概念大致相当于
+Jewel 版以前联盟部署中的辖区（ region ）。应该有一个主域组，负责处理系统配置变更。</li>
+<li><strong>域组映射图 (Zonegroup map)</strong>: 域组映射图是个配置的数据结构，它保存着整个系统的映射图，也就是哪个域组是主的、各个域组间的关系、以及其它可配置信息，如存储策略。</li>
+<li><strong>组界 (Realm)</strong>: 组界是域组的容器，有了它就能跨集群划分域组。系统允许创建多个组界，这样就能轻易地在同一集群内跑多个不同的配置。</li>
+<li><strong>界期 (Period)</strong>: 界期保存着组界当前状态的配置数据结构。每个界期都包含一个唯一标识符和一个时间结（ epoch )，每个提交操作都会使界期的时间结递增。每个组界都有一个相关联的当前界期，它保存着当前配置的域组和存储策略。任何非主域的变更都会引起界期的时间结递增。把主域改为另一个域会牵涉以下变更：<ul>
+<li>根据新界期和为 1 的时间结生成新的界期；</li>
+<li>更新组界的当前界期，指向新生成的界期标识符；</li>
+<li>组界的时间结递增；</li>
+</ul>
+</li>
+</ul>
+<div class="section" id="about-this-guide">
+<span id="id1"></span><h2>关于此指南<a class="headerlink" href="#about-this-guide" title="Permalink to this headline">¶</a></h2>
+<p>在本指南中，我们要用到两个 Ceph 集群，只创建一个域组，以及三个域，它们之间会活跃地同步数据。为达成目标，我们会在同一集群内创建 2 个域、在另一集群内创建 1 个域。不涉及在 Ceph 对象网关例程间镜像数据变更的同步代理，这样的话配置方案和多活配置简单得多。需要注意的是，像用户创建这类元数据操作仍然需要主域处理，然而，数据操作（像桶、对象的创建）可以由任意域处理。</p>
+<div class="section" id="system-keys">
+<span id="id2"></span><h3>系统密钥<a class="headerlink" href="#system-keys" title="Permalink to this headline">¶</a></h3>
+<p>配置各个域时， Ceph 对象网关例程希望创建的域内有系统用户，此用户有 S3 风格的访问密钥和秘密密钥。这样其它 Ceph 对象网关例程用访问密钥和秘密密钥就能远程拉取它的配置。为了能更简单地实现脚本化、或者配置管理工具的使用，应该事先生成访问密钥和秘密密钥，后面就用这些。在本文档中，我们把访问密钥和秘密密钥设置在环境变量中，例如：</p>
+<div class="highlight-python"><pre>$ SYSTEM_ACCESS_KEY=1555b35654ad1656d805
+$ SYSTEM_SECRET_KEY=h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q12</pre>
+</div>
+<p>通常，访问密钥是 20 个字母数字组成的字符串，秘密密钥是 40 个字母数字组成的字符串（它们也可以包含 +/= ），这些密钥可以在
+shell 中生成，例如：</p>
+<div class="highlight-python"><pre>$ SYSTEM_ACCESS_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+$ SYSTEM_SECRET_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 40 | head -n 1)</pre>
+</div>
+<p>然后我们用下列命令创建系统用户：</p>
+<div class="highlight-python"><pre>$ radosgw-admin user create --uid=zone.user --display-name="Zone User" \
+               --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --system</pre>
+</div>
+</div>
+<div class="section" id="naming-conventions">
+<span id="id3"></span><h3>命名惯例<a class="headerlink" href="#naming-conventions" title="Permalink to this headline">¶</a></h3>
+<p>本段描述了配置一个主域的过程。在本指南中，我们假设一个名为
+<tt class="docutils literal"><span class="pre">us</span></tt> 的域组，位于美国，它是我们的主域组，包含两个域，其名字格式为 <tt class="docutils literal"><span class="pre">{zonegroup}-{zone}</span></tt> ，这仅仅是个惯例，你可以用自己喜欢的方式命名。总的来说：</p>
+<ul class="simple">
+<li>主域组：美国 <tt class="docutils literal"><span class="pre">us</span></tt></li>
+<li>主域：美国，东区 1 ： <tt class="docutils literal"><span class="pre">us-east-1</span></tt></li>
+<li>第二域：美国，东区 2 ： <tt class="docutils literal"><span class="pre">us-east-2</span></tt></li>
+<li>第二域：美国，西区： <tt class="docutils literal"><span class="pre">us-west</span></tt></li>
+</ul>
+<p>这些只是更大组界（假设为 <tt class="docutils literal"><span class="pre">gold</span></tt> ）的一部分， <tt class="docutils literal"><span class="pre">us-east-1</span></tt>
+和 <tt class="docutils literal"><span class="pre">us-east-2</span></tt> 是同一 Ceph 集群的一部分，其中，把
+<tt class="docutils literal"><span class="pre">us-east-1</span></tt> 配置为主的， <tt class="docutils literal"><span class="pre">us-west</span></tt> 将位于另一个不同的
+Ceph 集群。</p>
+</div>
+<div class="section" id="id4">
+<h3>创建存储池<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>如果权限配置得当， Ceph 对象网关例程可以自己创建各存储池，需要用到 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 里的 <tt class="docutils literal"><span class="pre">pg_num</span></tt> 和 <tt class="docutils literal"><span class="pre">pgp_num</span></tt> 的配置值。具体细节请参考 <a class="reference external" href="../config#create-pools">Ceph 对象网关——创建存储池</a>。某一域内的存储池按惯例以 <tt class="docutils literal"><span class="pre">{zone-name}.pool-name</span></tt> 命名，以 <tt class="docutils literal"><span class="pre">us-east-1</span></tt>
+域为例，按默认配置将创建以下存储池：</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">.rgw.root</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.control</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.data.root</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.gc</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.intent-log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.usage</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.users.keys</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.users.email</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.users.swift</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.users.uid</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.buckets.index</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.buckets.data</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.meta</span></tt></li>
+</ul>
+<p>其它域内也需要创建这些存储池，但需把存储池名中的 <tt class="docutils literal"><span class="pre">us-east-1</span></tt>
+替换为规划的名字。</p>
+</div>
+</div>
+<div class="section" id="configuring-the-master-zone-in-the-primary-cluster">
+<span id="id5"></span><h2>配置主集群的主域<a class="headerlink" href="#configuring-the-master-zone-in-the-primary-cluster" title="Permalink to this headline">¶</a></h2>
+<p>首先，我们要配置主域组 <tt class="docutils literal"><span class="pre">us</span></tt> 内的主域 <tt class="docutils literal"><span class="pre">us-east-1</span></tt> ，它将作为主域负责所有的原数据操作，因此所有的用户创建之类的操作将由这个域处理。</p>
+<div class="section" id="creating-a-realm">
+<span id="id6"></span><h3>创建组界<a class="headerlink" href="#creating-a-realm" title="Permalink to this headline">¶</a></h3>
+<p>配置一个名为 <tt class="docutils literal"><span class="pre">gold</span></tt> 的组界，并使其成为默认的：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm create --rgw-realm=gold --default</span>
+<span class="p">{</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;gold&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;current_period&quot;</span><span class="p">:</span> <span class="s2">&quot;09559832-67a4-4101-8b3f-10dfcd6b2707&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="mi">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>注意，每个组界都有一个 id ，这样就能为某些操作提供便利，像后面的组界重命名就会用到； <tt class="docutils literal"><span class="pre">current_period</span></tt> 会随主域的任何变动而变化； <tt class="docutils literal"><span class="pre">epoch</span></tt> 在主域配置变更时会递增，因为它导致当前界期变化了。</p>
+</div>
+<div class="section" id="deleting-the-default-zonegroup">
+<span id="id7"></span><h3>删除默认域组<a class="headerlink" href="#deleting-the-default-zonegroup" title="Permalink to this headline">¶</a></h3>
+<p>安装 Ceph 对象网关时，它会假设默认的域组名为 default ，我们不需要这个，所以先删掉默认域组：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup delete --rgw-zonegroup=default</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="creating-a-master-zonegroup">
+<span id="id8"></span><h3>创建主域组<a class="headerlink" href="#creating-a-master-zonegroup" title="Permalink to this headline">¶</a></h3>
+<p>我们将创建名为 <tt class="docutils literal"><span class="pre">us</span></tt> 的域组，作为主域组。主域组将会控制域组映射图、并负责把变更传达给系统的其余部分。我们还得把它设置为默认域组，这样后续命令就可以直接使用此域组了，无须再加
+<tt class="docutils literal"><span class="pre">--rgw-zonegroup</span></tt> 选项了。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup create --rgw-zonegroup=us --endpoints=http://rgw1:80 --master --default</span>
+<span class="p">{</span>
+ <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;d4018b8d-8c0d-4072-8919-608726fa369e&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;api_name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;is_master&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+     <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
+ <span class="p">],</span>
+ <span class="s2">&quot;hostnames&quot;</span><span class="p">:</span> <span class="p">[],</span>
+ <span class="s2">&quot;hostnames_s3website&quot;</span><span class="p">:</span> <span class="p">[],</span>
+ <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;zones&quot;</span><span class="p">:</span> <span class="p">[],</span>
+ <span class="s2">&quot;placement_targets&quot;</span><span class="p">:</span> <span class="p">[],</span>
+ <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span>
+ <span class="p">}</span>
+</pre></div>
+</div>
+<p>或者用下面的命令把此域组设置为默认域组：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup default --rgw-zonegroup=us</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="creating-a-master-zone">
+<span id="id9"></span><h3>创建主域<a class="headerlink" href="#creating-a-master-zone" title="Permalink to this headline">¶</a></h3>
+<p>下面创建一个域，并使其成为默认域。注意，进行元数据操作（如创建用户）时要用到此域。我们还要把它加进前面创建的域组里。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-east-1 --endpoints=http://rgw1:80 --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --default --master</span>
+<span class="p">{</span>
+ <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;domain_root&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.data.root&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;control_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.control&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;gc_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.gc&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.log&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;intent_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.intent-log&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;usage_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.usage&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;user_keys_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.users.keys&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;user_email_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.users.email&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;user_swift_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.users.swift&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;user_uid_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.users.uid&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;system_key&quot;</span><span class="p">:</span> <span class="p">{</span>
+     <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;1555b35654ad1656d804&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;h7GhxuBLTrlhVUyxSPUKUV8r\/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==&quot;</span>
+ <span class="p">},</span>
+ <span class="s2">&quot;placement_pools&quot;</span><span class="p">:</span> <span class="p">[</span>
+     <span class="p">{</span>
+         <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+         <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="p">{</span>
+             <span class="s2">&quot;index_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.buckets.index&quot;</span><span class="p">,</span>
+             <span class="s2">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.buckets.data&quot;</span><span class="p">,</span>
+             <span class="s2">&quot;data_extra_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.buckets.non-ec&quot;</span><span class="p">,</span>
+             <span class="s2">&quot;index_type&quot;</span><span class="p">:</span> <span class="mi">0</span>
+         <span class="p">}</span>
+     <span class="p">}</span>
+ <span class="p">],</span>
+ <span class="s2">&quot;metadata_heap&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.meta&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span>
+ <span class="p">}</span>
+</pre></div>
+</div>
+<p>上面的命令中， <tt class="docutils literal"><span class="pre">--rgw-zonegroup</span></tt> 和 <tt class="docutils literal"><span class="pre">--default</span></tt> 选项把域加进了域组、也使其成为默认域了。下列命令也异曲同工：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone default --rgw-zone=us-east-1</span>
+<span class="c1"># radosgw-admin zonegroup add --rgw-zonegroup=us --rgw-zone=us-east-1</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="creating-system-users">
+<span id="id10"></span><h3>创建系统用户<a class="headerlink" href="#creating-system-users" title="Permalink to this headline">¶</a></h3>
+<p>接下来我们创建用于访问域存储池的系统用户，注意，这些密钥在配置第二域时还要用到：</p>
+<div class="highlight-python"><pre># radosgw-admin user create --uid=zone.user --display-name="Zone
+User" --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --system
+{
+  "user_id": "zone.user",
+  "display_name": "Zone User",
+  "email": "",
+  "suspended": 0,
+  "max_buckets": 1000,
+  "auid": 0,
+  "subusers": [],
+  "keys": [
+      {
+          "user": "zone.user",
+          "access_key": "1555b35654ad1656d804",
+          "secret_key": "h7GhxuBLTrlhVUyxSPUKUV8r\/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
+      }
+  ],
+  "swift_keys": [],
+  "caps": [],
+  "op_mask": "read, write, delete",
+  "system": "true",
+  "default_placement": "",
+  "placement_tags": [],
+  "bucket_quota": {
+      "enabled": false,
+      "max_size_kb": -1,
+      "max_objects": -1
+  },
+  "user_quota": {
+      "enabled": false,
+      "max_size_kb": -1,
+      "max_objects": -1
+  },
+  "temp_url_keys": []
+}</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">要注意的是，系统用户在整个域里都有超级用户权限，其操作的行为也和普通用户不一样，像创建桶、对象等等操作，因为它的输出包含额外的 json 字段，这些字段维护着元数据。</p>
+</div>
+</div>
+<div class="section" id="update-the-period">
+<span id="id11"></span><h3>更新界期<a class="headerlink" href="#update-the-period" title="Permalink to this headline">¶</a></h3>
+<p>我们更改了主域配置，因此需要提交这些变更，以反映组界的配置结构。这是初始的界期：</p>
+<div class="highlight-python"><pre># radosgw-admin period get
+ {
+  "id": "09559832-67a4-4101-8b3f-10dfcd6b2707",
+  "epoch": 1,
+  "predecessor_uuid": "",
+  "sync_status": [],
+  "period_map": {
+      "id": "09559832-67a4-4101-8b3f-10dfcd6b2707",
+      "zonegroups": [],
+      "short_zone_ids": []
+  },
+  "master_zonegroup": "",
+  "master_zone": "",
+  "period_config": {
+      "bucket_quota": {
+          "enabled": false,
+          "max_size_kb": -1,
+          "max_objects": -1
+      },
+      "user_quota": {
+          "enabled": false,
+          "max_size_kb": -1,
+          "max_objects": -1
+      }
+  },
+  "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7",
+  "realm_name": "gold",
+  "realm_epoch": 1
+  }</pre>
+</div>
+<p>现在，更新界期并提交变更：</p>
+<div class="highlight-python"><pre># radosgw-admin period update --commit
+{
+  "id": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
+  "epoch": 1,
+  "predecessor_uuid": "09559832-67a4-4101-8b3f-10dfcd6b2707",
+  "sync_status": [ ""... # truncating the output here
+  ],
+  "period_map": {
+      "id": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
+      "zonegroups": [
+          {
+              "id": "d4018b8d-8c0d-4072-8919-608726fa369e",
+              "name": "us",
+              "api_name": "us",
+              "is_master": "true",
+              "endpoints": [
+                  "http:\/\/rgw1:80"
+              ],
+              "hostnames": [],
+              "hostnames_s3website": [],
+              "master_zone": "83859a9a-9901-4f00-aa6d-285c777e10f0",
+              "zones": [
+                  {
+                      "id": "83859a9a-9901-4f00-aa6d-285c777e10f0",
+                      "name": "us-east-1",
+                      "endpoints": [
+                          "http:\/\/rgw1:80"
+                      ],
+                      "log_meta": "true",
+                      "log_data": "false",
+                      "bucket_index_max_shards": 0,
+                      "read_only": "false"
+                  }
+              ],
+              "placement_targets": [
+                  {
+                      "name": "default-placement",
+                      "tags": []
+                  }
+              ],
+              "default_placement": "default-placement",
+              "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7"
+          }
+      ],
+      "short_zone_ids": [
+          {
+              "key": "83859a9a-9901-4f00-aa6d-285c777e10f0",
+              "val": 630926044
+          }
+      ]
+  },
+  "master_zonegroup": "d4018b8d-8c0d-4072-8919-608726fa369e",
+  "master_zone": "83859a9a-9901-4f00-aa6d-285c777e10f0",
+  "period_config": {
+      "bucket_quota": {
+          "enabled": false,
+          "max_size_kb": -1,
+          "max_objects": -1
+      },
+      "user_quota": {
+          "enabled": false,
+          "max_size_kb": -1,
+          "max_objects": -1
+      }
+  },
+  "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7",
+  "realm_name": "gold",
+  "realm_epoch": 2
+  }</pre>
+</div>
+</div>
+<div class="section" id="ceph">
+<span id="starting-the-ceph-object-gateway-instance"></span><h3>启动 Ceph 对象网关例程<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h3>
+<p>启动 Ceph 对象网关例程前，需在配置文件里配置好 <tt class="docutils literal"><span class="pre">rgw_zone</span></tt>
+和 <tt class="docutils literal"><span class="pre">rgw_frontends</span></tt> 选项，请参考<a class="reference external" href="../../install/install-ceph-gateway">安装 Ceph 网关</a>。
+Ceph 对象网关例程的配置段应该类似如下：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">us</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">rgw_frontends</span><span class="o">=</span><span class="s2">&quot;civetweb port=80&quot;</span>
+<span class="n">rgw_zone</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>然后启动 Ceph 对象网关例程（有别于你的操作系统）：</p>
+<div class="highlight-python"><pre>$ sudo systemctl start ceph-radosgw@rgw.us-east-1</pre>
+</div>
+</div>
+</div>
+<div class="section" id="configuring-the-second-zone-in-same-cluster">
+<span id="id12"></span><h2>在同一集群内配置第二域<a class="headerlink" href="#configuring-the-second-zone-in-same-cluster" title="Permalink to this headline">¶</a></h2>
+<p>接下来配置第二域 <tt class="docutils literal"><span class="pre">us-east-2</span></tt> ，还在同一集群内。在同一集群内，下面的所有命令都能在主域所在的节点上执行。</p>
+<div class="section" id="creating-the-second-zone">
+<span id="id13"></span><h3>创建第二域<a class="headerlink" href="#creating-the-second-zone" title="Permalink to this headline">¶</a></h3>
+<p>与创建主域的步骤相似，只是这里要去掉 <tt class="docutils literal"><span class="pre">--master</span></tt> 选项：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-east-2 --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --endpoints=http://rgw2:80</span>
+<span class="p">{</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;950c1a43-6836-41a2-a161-64777e07e8b8&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;domain_root&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.data.root&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;control_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.control&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;gc_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.gc&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.log&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;intent_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.intent-log&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;usage_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.usage&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;user_keys_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.users.keys&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;user_email_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.users.email&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;user_swift_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.users.swift&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;user_uid_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.users.uid&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;system_key&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;1555b35654ad1656d804&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;h7GhxuBLTrlhVUyxSPUKUV8r\/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==&quot;</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;placement_pools&quot;</span><span class="p">:</span> <span class="p">[</span>
+      <span class="p">{</span>
+          <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;index_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.buckets.index&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.buckets.data&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;data_extra_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.buckets.non-ec&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;index_type&quot;</span><span class="p">:</span> <span class="mi">0</span>
+          <span class="p">}</span>
+      <span class="p">}</span>
+  <span class="p">],</span>
+  <span class="s2">&quot;metadata_heap&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.meta&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;815d74c2-80d6-4e63-8cfc-232037f7ff5c&quot;</span>
+  <span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="updating-the-period">
+<span id="id14"></span><h3>更新界期<a class="headerlink" href="#updating-the-period" title="Permalink to this headline">¶</a></h3>
+<p>接下来，我们把系统映射的变更通知到所有 Ceph 对象网关例程，需更新界期、并提交变更：</p>
+<div class="highlight-python"><pre># radosgw-admin period update --commit
+{
+  "id": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
+  "epoch": 2,
+  "predecessor_uuid": "09559832-67a4-4101-8b3f-10dfcd6b2707",
+  "sync_status": [ ""... # truncating the output here
+  ],
+  "period_map": {
+      "id": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
+      "zonegroups": [
+          {
+              "id": "d4018b8d-8c0d-4072-8919-608726fa369e",
+              "name": "us",
+              "api_name": "us",
+              "is_master": "true",
+              "endpoints": [
+                  "http:\/\/rgw1:80"
+              ],
+              "hostnames": [],
+              "hostnames_s3website": [],
+              "master_zone": "83859a9a-9901-4f00-aa6d-285c777e10f0",
+              "zones": [
+                  {
+                      "id": "83859a9a-9901-4f00-aa6d-285c777e10f0",
+                      "name": "us-east-1",
+                      "endpoints": [
+                          "http:\/\/rgw1:80"
+                      ],
+                      "log_meta": "true",
+                      "log_data": "false",
+                      "bucket_index_max_shards": 0,
+                      "read_only": "false"
+                  },
+                  {
+                      "id": "950c1a43-6836-41a2-a161-64777e07e8b8",
+                      "name": "us-east-2",
+                      "endpoints": [
+                          "http:\/\/rgw2:80"
+                      ],
+                      "log_meta": "false",
+                      "log_data": "true",
+                      "bucket_index_max_shards": 0,
+                      "read_only": "false"
+                  }
+
+              ],
+              "placement_targets": [
+                  {
+                      "name": "default-placement",
+                      "tags": []
+                  }
+              ],
+              "default_placement": "default-placement",
+              "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7"
+          }
+      ],
+      "short_zone_ids": [
+          {
+              "key": "83859a9a-9901-4f00-aa6d-285c777e10f0",
+              "val": 630926044
+          },
+          {
+              "key": "950c1a43-6836-41a2-a161-64777e07e8b8",
+              "val": 4276257543
+          }
+
+      ]
+  },
+  "master_zonegroup": "d4018b8d-8c0d-4072-8919-608726fa369e",
+  "master_zone": "83859a9a-9901-4f00-aa6d-285c777e10f0",
+  "period_config": {
+      "bucket_quota": {
+          "enabled": false,
+          "max_size_kb": -1,
+          "max_objects": -1
+      },
+      "user_quota": {
+          "enabled": false,
+          "max_size_kb": -1,
+          "max_objects": -1
+      }
+  },
+  "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7",
+  "realm_name": "gold",
+  "realm_epoch": 2
+  }</pre>
+</div>
+</div>
+<div class="section" id="id15">
+<h3>启动 Ceph 对象网关<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<p>现在，在对应节点上启动属于第二域的 Ceph 对象网关例程，与
+<tt class="docutils literal"><span class="pre">client.rgw.us-east-1</span></tt> 这个 Ceph 对象网关例程的类似，这里只需把配置文件里的 <tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">zone=us-east-2</span></tt> 改掉即可，例如：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">us</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+<span class="n">rgw_frontends</span><span class="o">=</span><span class="s2">&quot;civetweb port=80&quot;</span>
+<span class="n">rgw_zone</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">2</span>
+</pre></div>
+</div>
+<p>然后启动这个 Ceph 对象网关例程（有别于你的操作系统）：</p>
+<div class="highlight-python"><pre>$ sudo systemctl start ceph-radosgw@rgw.us-east-2</pre>
+</div>
+</div>
+</div>
+<div class="section" id="configuring-the-ceph-object-gateway-in-the-second-ceph-cluster">
+<span id="id16"></span><h2>在第二集群配置 Ceph 对象网关<a class="headerlink" href="#configuring-the-ceph-object-gateway-in-the-second-ceph-cluster" title="Permalink to this headline">¶</a></h2>
+<p>下面继续配置第二个集群里的 Ceph 对象网关，它可以是地理上分开的，但划分进了相同的域组。</p>
+<p>因为我们已经在第一个集群里配置了组界，这里把配置拉取过来、并使其成为默认组界即可。还需要从主域拉取配置，拉取界期即可：</p>
+<div class="highlight-python"><pre># radosgw-admin realm pull --url=http://rgw1:80
+--access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY
+{
+  "id": "4a367026-bd8f-40ee-b486-8212482ddcd7",
+  "name": "gold",
+  "current_period": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
+  "epoch": 2
+}
+
+# radosgw-admin period pull --url=http://rgw1:80 --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY
+# radosgw-admin realm default --rgw-realm=gold</pre>
+</div>
+<p>也把它的默认域组设置为前面创建的 <tt class="docutils literal"><span class="pre">us</span></tt> 域组：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup default --rgw-zonegroup=us</span>
+</pre></div>
+</div>
+<div class="section" id="id17">
+<h3>配置第二域<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
+<p>用相同的系统密钥创建个新的域 <tt class="docutils literal"><span class="pre">us-west</span></tt> ：</p>
+<div class="highlight-python"><pre># radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-west
+--access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --endpoints=http://rgw3:80 --default
+{
+  "id": "d9522067-cb7b-4129-8751-591e45815b16",
+  "name": "us-west",
+  "domain_root": "us-west.rgw.data.root",
+  "control_pool": "us-west.rgw.control",
+  "gc_pool": "us-west.rgw.gc",
+  "log_pool": "us-west.rgw.log",
+  "intent_log_pool": "us-west.rgw.intent-log",
+  "usage_log_pool": "us-west.rgw.usage",
+  "user_keys_pool": "us-west.rgw.users.keys",
+  "user_email_pool": "us-west.rgw.users.email",
+  "user_swift_pool": "us-west.rgw.users.swift",
+  "user_uid_pool": "us-west.rgw.users.uid",
+  "system_key": {
+      "access_key": "1555b35654ad1656d804",
+      "secret_key": "h7GhxuBLTrlhVUyxSPUKUV8r\/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
+  },
+  "placement_pools": [
+      {
+          "key": "default-placement",
+          "val": {
+              "index_pool": "us-west.rgw.buckets.index",
+              "data_pool": "us-west.rgw.buckets.data",
+              "data_extra_pool": "us-west.rgw.buckets.non-ec",
+              "index_type": 0
+          }
+      }
+  ],
+  "metadata_heap": "us-west.rgw.meta",
+  "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7"
+  }</pre>
+</div>
+</div>
+<div class="section" id="id18">
+<h3>更新界期<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h3>
+<p>要让域组映射图的变更传播出去，我们得更新并提交界期：:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit --rgw-zone=us-west</span>
+<span class="p">{</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;b5e4d3ec-2a62-4746-b479-4b2bc14b27d1&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+  <span class="s2">&quot;predecessor_uuid&quot;</span><span class="p">:</span> <span class="s2">&quot;09559832-67a4-4101-8b3f-10dfcd6b2707&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;sync_status&quot;</span><span class="p">:</span> <span class="p">[</span>
+      <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="c1"># truncated</span>
+  <span class="p">],</span>
+  <span class="s2">&quot;period_map&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;b5e4d3ec-2a62-4746-b479-4b2bc14b27d1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;zonegroups&quot;</span><span class="p">:</span> <span class="p">[</span>
+          <span class="p">{</span>
+              <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;d4018b8d-8c0d-4072-8919-608726fa369e&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;api_name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;is_master&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                  <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
+              <span class="p">],</span>
+              <span class="s2">&quot;hostnames&quot;</span><span class="p">:</span> <span class="p">[],</span>
+              <span class="s2">&quot;hostnames_s3website&quot;</span><span class="p">:</span> <span class="p">[],</span>
+              <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;zones&quot;</span><span class="p">:</span> <span class="p">[</span>
+                  <span class="p">{</span>
+                      <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                          <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
+                      <span class="p">],</span>
+                      <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                      <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
+                  <span class="p">},</span>
+                                  <span class="p">{</span>
+                      <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;950c1a43-6836-41a2-a161-64777e07e8b8&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                          <span class="s2">&quot;http:\/\/rgw2:80&quot;</span>
+                      <span class="p">],</span>
+                      <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                      <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
+                  <span class="p">},</span>
+                  <span class="p">{</span>
+                      <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;d9522067-cb7b-4129-8751-591e45815b16&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-west&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                          <span class="s2">&quot;http:\/\/rgw3:80&quot;</span>
+                      <span class="p">],</span>
+                      <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                      <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
+                  <span class="p">}</span>
+              <span class="p">],</span>
+              <span class="s2">&quot;placement_targets&quot;</span><span class="p">:</span> <span class="p">[</span>
+                  <span class="p">{</span>
+                      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[]</span>
+                  <span class="p">}</span>
+              <span class="p">],</span>
+              <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span>
+          <span class="p">}</span>
+      <span class="p">],</span>
+      <span class="s2">&quot;short_zone_ids&quot;</span><span class="p">:</span> <span class="p">[</span>
+          <span class="p">{</span>
+              <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="mi">630926044</span>
+          <span class="p">},</span>
+          <span class="p">{</span>
+              <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;950c1a43-6836-41a2-a161-64777e07e8b8&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="mi">4276257543</span>
+          <span class="p">},</span>
+          <span class="p">{</span>
+              <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;d9522067-cb7b-4129-8751-591e45815b16&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="mi">329470157</span>
+          <span class="p">}</span>
+      <span class="p">]</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;master_zonegroup&quot;</span><span class="p">:</span> <span class="s2">&quot;d4018b8d-8c0d-4072-8919-608726fa369e&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;period_config&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+          <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+          <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+          <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+      <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;realm_name&quot;</span><span class="p">:</span> <span class="s2">&quot;gold&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;realm_epoch&quot;</span><span class="p">:</span> <span class="mi">2</span>
+  <span class="p">}</span>
+</pre></div>
+</div>
+<p>可以看到，界期的时间结（ epoch ）数字递增了，说明配置有变化。</p>
+</div>
+<div class="section" id="id19">
+<h3>启动 Ceph 对象网关例程<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 对象网关例程的启动与在第一个域时相似，唯一不同的就是
+<tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">zone</span></tt> 选项，这里应该设置为 <tt class="docutils literal"><span class="pre">us-west</span></tt> ：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">us</span><span class="o">-</span><span class="n">west</span><span class="p">]</span>
+<span class="n">rgw_frontends</span><span class="o">=</span><span class="s2">&quot;civetweb port=80&quot;</span>
+<span class="n">rgw_zone</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">west</span>
+</pre></div>
+</div>
+<p>然后启动 Ceph 对象网关例程（有别于你的操作系统）：</p>
+<div class="highlight-python"><pre>$ sudo systemctl start ceph-radosgw@rgw.us-west</pre>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 对象网关</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">手动安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-fcgi/">用 FastCGI 的简单配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../federated-config/">联盟配置</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">多站配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#about-this-guide">关于此指南</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#system-keys">系统密钥</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#naming-conventions">命名惯例</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">创建存储池</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-the-master-zone-in-the-primary-cluster">配置主集群的主域</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#creating-a-realm">创建组界</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#deleting-the-default-zonegroup">删除默认域组</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#creating-a-master-zonegroup">创建主域组</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#creating-a-master-zone">创建主域</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#creating-system-users">创建系统用户</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#update-the-period">更新界期</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ceph">启动 Ceph 对象网关例程</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-the-second-zone-in-same-cluster">在同一集群内配置第二域</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#creating-the-second-zone">创建第二域</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#updating-the-period">更新界期</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">启动 Ceph 对象网关</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-the-ceph-object-gateway-in-the-second-ceph-cluster">在第二集群配置 Ceph 对象网关</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id17">配置第二域</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id18">更新界期</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id19">启动 Ceph 对象网关例程</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">配置参考</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../purge-temp/">清除临时数据</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">管理操作 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../config-ref/" title="Ceph 对象网关配置参考"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../federated-config/" title="联盟网关的配置"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" >Ceph 对象网关</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

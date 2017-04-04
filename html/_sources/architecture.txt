@@ -1288,32 +1288,40 @@ Ceph 对象存储守护进程是 ``radosgw`` ，它是一个 FastCGI 服务，�
 
 .. index:: Ceph Block Device; block device; RBD; Rados Block Device
 
+.. _Ceph Block Device:
+
 Ceph 块设备
 -----------
 
-Ceph 块设备把一个设备映像条带化到集群内的多个对象，其中各对象映射到一个归置组并分布\
-出去，这些归置组会散播到整个集群的某些 ``ceph-osd`` 守护进程。
+Ceph 块设备把一个设备映像条带化到集群内的多个对象，其中各对象\
+映射到一个归置组并分布出去，这些归置组会散播到整个集群的某些
+``ceph-osd`` 守护进程。
 
 .. important:: 条带化会使 RBD 块设备比单台服务器运行的更好！
 
-瘦接口、可快照的 Ceph 块设备对虚拟化和云计算很有吸引力。在虚拟机场景中，人们一般会\
-用 Qemu/KVM 中的 ``rbd`` 网络存储驱动部署 Ceph 块设备，其中宿主机用 ``librbd`` 向\
-访客提供块设备服务；很多云计算堆栈用 ``libvirt`` 和管理程序集成。你可以用简配的 \
-Ceph 块设备搭配 Qemu 和``libvirt`` 来支持 OpenStack 和 CloudStack ，一起构成完整\
-的方案。
+瘦接口、可快照的 Ceph 块设备对虚拟化和云计算很有吸引力。在虚拟\
+机场景中，人们一般会用 QEMU/KVM 中的 ``rbd`` 网络存储驱动部署
+Ceph 块设备，其中宿主机用 ``librbd`` 向访客提供块设备服务；很\
+多云计算堆栈用 ``libvirt`` 和管理程序集成。你可以用简配的 Ceph
+块设备搭配 QEMU 和``libvirt`` 来支持 OpenStack 和 CloudStack ，\
+一起构成完整的方案。
 
-现在还没其它管理程序支持 ``librbd`` ，你可以用 Ceph 块设备内核对象向客户端提供块设\
-备。其它虚拟化技术，像 Xen 能访问 Ceph 块设备内核对象，用命令行工具 ``rbd`` 实现。
+现在还没其它管理程序支持 ``librbd`` ，你可以用 Ceph 块设备内核\
+对象向客户端提供块设备。其它虚拟化技术，像 Xen 能访问 Ceph 块\
+设备内核对象，用命令行工具 ``rbd`` 实现。
 
 
 .. index:: Ceph FS; Ceph Filesystem; libcephfs; MDS; metadata server; ceph-mds
 
+.. _Ceph Filesystem:
+
 Ceph 文件系统
 -------------
 
-Ceph 文件系统（ Ceph FS ）是与 POSIX 兼容的文件系统服务，坐落于基于对象的 Ceph 存\
-储集群之上，其内的文件被映射到 Ceph 存储集群内的对象。客户端可以把此文件系统挂载为\
-内核对象或用户空间文件系统（ FUSE ）。
+Ceph 文件系统（ Ceph FS ）是与 POSIX 兼容的文件系统服务，坐落\
+于基于对象的 Ceph 存储集群之上，其内的文件被映射到 Ceph 存储集\
+群内的对象。客户端可以把此文件系统挂载为内核对象或用户空间文件\
+系统（ FUSE ）。
 
 .. ditaa::
             +-----------------------+  +------------------------+

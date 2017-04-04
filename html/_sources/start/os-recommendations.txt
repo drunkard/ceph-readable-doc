@@ -34,6 +34,8 @@ Linux 内核
   Linux 内核（ 3.14 或更新）。
 
 
+.. _Platforms:
+
 系统平台
 ========
 
@@ -41,8 +43,8 @@ Linux 内核
 来说， Ceph 对内核和系统初始化阶段的依赖很少（如 sysvinit 、 \
 upstart 、 systemd ）。
 
-Infernalis (9.1.0)
-------------------
+Infernalis (9.2.z) and Jewel (10.2.z)
+-------------------------------------
 
 +----------+----------+--------------------+--------------+---------+------------+
 | Distro   | Release  | Code Name          | Kernel       | Notes   | Testing    | 

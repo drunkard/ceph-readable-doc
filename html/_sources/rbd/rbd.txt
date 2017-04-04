@@ -28,8 +28,8 @@ Ceph 块设备均衡多个 \
    程序， Ceph 可提供 `RBD 缓存`_\ 。
 
 Ceph 块设备靠无限伸缩性提供了高性能，如向\ `内核模块`_\ 、或向 \
-abbr:`KVM (kernel virtual machines)` （如 `Qemu`_ 、依赖 libvirt \
-和 Qemu 的 `OpenStack`_ 和 `CloudStack`_ 云计算系统都可与 Ceph \
+abbr:`KVM (kernel virtual machines)` （如 `QEMU`_ 、依赖 libvirt \
+和 QEMU 的 `OpenStack`_ 和 `CloudStack`_ 云计算系统都可与 Ceph \
 块设备集成）。你可以用同一个集群同时运行 `Ceph RADOS 网关`_\ 、 \
 `Ceph FS 文件系统`_\ 、和 Ceph 块设备。
 
@@ -60,7 +60,7 @@ abbr:`KVM (kernel virtual machines)` （如 `Qemu`_ 、依赖 libvirt \
 
 .. _RBD 缓存: ../rbd-config-ref/
 .. _内核模块: ../rbd-ko/
-.. _Qemu: ../qemu-rbd/
+.. _QEMU: ../qemu-rbd/
 .. _OpenStack: ../rbd-openstack
 .. _CloudStack: ../rbd-cloudstack
 .. _Ceph RADOS 网关: ../../radosgw/
