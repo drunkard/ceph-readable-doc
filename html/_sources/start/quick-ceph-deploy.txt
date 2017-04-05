@@ -1,35 +1,42 @@
+.. _Storage Cluster Quick Start:
+
 ==============
  存储集群入门
 ==============
 
-如果你还没完成\ `飞前检查`_\ ，先做完。本篇\ **入门**\ 用 ``ceph-deploy`` 从管\
-理节点配置一个 :term:`Ceph 存储集群`\ ，创建了一个三节点的集群，以此发掘 Ceph \
-功能。
+如果你还没完成\ `飞前检查`_\ ，先做完。本篇\ **入门**\ 用
+``ceph-deploy`` 从管理节点配置一个 :term:`Ceph 存储集群`\ ，\
+创建了一个三节点的集群，以此发掘 Ceph 功能。
 
 .. include:: quick-common.rst
 
-第一次练习时，我们创建一个 Ceph 存储集群，它有一个监视器、两个 OSD 守护进程。\
-一旦集群达到 ``active + clean`` 状态，再扩展它：增加第三个 OSD 、增加元数据服\
-务器、和两个 Ceph 监视器。为获得最佳体验，先在管理节点上创建一个目录，用于保\
-存 ``ceph-deploy`` 生成的配置文件和密钥对。 ::
+第一次练习时，我们创建一个 Ceph 存储集群，它有一个监视器、两个
+OSD 守护进程。一旦集群达到 ``active + clean`` 状态，再扩展它：\
+增加第三个 OSD 、增加元数据服务器、和两个 Ceph 监视器。为获得\
+最佳体验，先在管理节点上创建一个目录，用于保存 ``ceph-deploy``
+生成的配置文件和密钥对。 ::
 
 	mkdir my-cluster
 	cd my-cluster
 
-``ceph-deploy`` 会把文件输出到当前目录，所以执行的时候要先进入此目录。
+``ceph-deploy`` 会把文件输出到当前目录，所以执行的时候要先进\
+入此目录。
 
-.. important:: 不要用 ``sudo`` 或在另一普通用户下以 ``root`` 身份运行 \
-   ``ceph-deploy`` ，因为它不能在远程主机上调用 ``sudo`` ，而 ``root`` 权限又\
-   是必需的。
+.. important:: 不要用 ``sudo`` 或在另一普通用户下以 ``root``
+   身份运行 ``ceph-deploy`` ，因为它不能在远程主机上调用
+   ``sudo`` ，而 ``root`` 权限又是必需的。
 
 .. topic:: 禁用 ``requiretty``
 
-   在某些发行版（如 CentOS ）上，执行 ``ceph-deploy`` 命令时，如果你的 Ceph 节\
-   点默认设置了 ``requiretty`` 那就会遇到报错。可以这样禁用此功能，执行 \
-   ``sudo visudo`` ，找到 ``Defaults requiretty`` 选项，把它改为 \
-   ``Defaults:ceph !requiretty`` ，这样 ``ceph-deploy`` 就能用 ``ceph`` 用户登\
-   录并使用 ``sudo`` 了。
+   在某些发行版（如 CentOS ）上，执行 ``ceph-deploy`` 命令\
+   时，如果你的 Ceph 节点默认设置了 ``requiretty`` 那就会遇\
+   到报错。可以这样禁用此功能，执行 ``sudo visudo`` ，找到
+   ``Defaults requiretty`` 选项，把它改为
+   ``Defaults:ceph !requiretty`` ，这样 ``ceph-deploy`` 就能用
+   ``ceph`` 用户登录并使用 ``sudo`` 了。
 
+
+.. _Create a Cluster:
 
 创建一集群
 ==========
@@ -45,7 +52,8 @@
 
 如果执行了 ``purge`` ，你必须重新安装 Ceph 。
 
-在管理节点上，进入刚创建的放置配置文件的目录，用 ``ceph-deploy`` 执行如下步骤。
+在管理节点上，进入刚创建的放置配置文件的目录，用
+``ceph-deploy`` 执行如下步骤。
 
 #. 创建集群。 ::
 
@@ -55,16 +63,18 @@
 
 	ceph-deploy new node1
 
-   用 ``ls`` 和 ``cat`` 检查 ``ceph-deploy`` 的输出，应该有一个 Ceph 配置文件、\
-   一个监视器密钥环、和一个日志文件。详情见 `ceph-deploy new -h`_ 。
+   用 ``ls`` 和 ``cat`` 检查 ``ceph-deploy`` 的输出，应该有一个
+   Ceph 配置文件、一个监视器密钥环、和一个日志文件。详情见
+   `ceph-deploy new -h`_ 。
 
-#. 把 Ceph 配置文件里的默认副本数从 ``3`` 改成 ``2`` ，这样只有两个 OSD 也可以\
-   达到 ``active + clean`` 状态。把下面这行加入 ``[global]`` 段： ::
+#. 把 Ceph 配置文件里的默认副本数从 ``3`` 改成 ``2`` ，这样只\
+   有两个 OSD 也可以达到 ``active + clean`` 状态。把下面这行加\
+   入 ``[global]`` 段： ::
 
 	osd pool default size = 2
 
-#. 如果你有多个网卡，可以把 ``public network`` 写入 Ceph 配置文件的 \
-   ``[global]`` 段下。详情见\ `网络配置参考`_\ 。 ::
+#. 如果你有多个网卡，可以把 ``public network`` 写入 Ceph 配置\
+   文件的 ``[global]`` 段下。详情见\ `网络配置参考`_\ 。 ::
 
 	public network = {ip-address}/{netmask}
 
@@ -77,8 +87,8 @@
 	ceph-deploy install admin-node node1 node2 node3
 
    ``ceph-deploy`` 将在各节点安装 Ceph 。
-   **注：**\ 如果你执行过 ``ceph-deploy purge`` ，你必须重新执行这一步来安装 \
-   Ceph 。
+   **注：**\ 如果你执行过 ``ceph-deploy purge`` ，你必须重新\
+   执行这一步来安装 Ceph 。
 
 #. 配置初始监视器、并收集所有密钥： ::
 
@@ -91,11 +101,18 @@
    - ``{cluster-name}.bootstrap-mds.keyring``
    - ``{cluster-name}.bootstrap-rgw.keyring``
 
-.. note:: 只有在安装 Hammer 或更高版时才会创建 bootstrap-rgw 密钥环。
+.. note:: 只有在安装 Hammer 或更高版时才会创建 bootstrap-rgw
+   密钥环。
 
-#. 添加两个 OSD 。为了快速地安装，这篇快速入门把目录而非整个硬盘用于 OSD 守护\
-   进程。关于单独把硬盘或分区用于 OSD 及其日志，请参考 `ceph-deploy osd`_ 。登\
-   录到 Ceph 节点、并给 OSD 守护进程创建一目录。 ::
+.. note:: 如果这里失败了，提示消息类似
+   "Unable to find /etc/ceph/ceph.client.admin.keyring" ，需\
+   核实 ceph.conf 里的监视器节点的 IP 地址，应该是公网 IP 而\
+   非私网 IP 。
+
+#. 添加两个 OSD 。为了快速地安装，这篇快速入门把目录而非整个\
+   硬盘用于 OSD 守护进程。关于单独把硬盘或分区用于 OSD 及其\
+   日志，请参考 `ceph-deploy osd`_ 。登录到 Ceph 节点、并给
+   OSD 守护进程创建一目录。 ::
 
 	ssh node2
 	sudo mkdir /var/local/osd0
@@ -121,9 +138,9 @@
 
 	ceph-deploy osd activate node2:/var/local/osd0 node3:/var/local/osd1
 
-#. 用 ``ceph-deploy`` 把配置文件和 admin 密钥拷贝到管理节点、和 Ceph 节点，这\
-   样你每次执行 Ceph 命令行时就无需指定监视器地址和 \
-   ``ceph.client.admin.keyring`` 了。 ::
+#. 用 ``ceph-deploy`` 把配置文件和 admin 密钥拷贝到管理节点、\
+   和 Ceph 节点，这样你每次执行 Ceph 命令行时就无需指定监视器\
+   地址和 ``ceph.client.admin.keyring`` 了。 ::
 
 	ceph-deploy admin {admin-node} {ceph-node}
 
@@ -131,8 +148,9 @@
 
 	ceph-deploy admin admin-node node1 node2 node3
 
-   ``ceph-deploy`` 和本地管理主机（ ``admin-node`` ）通信时，所有主机都必须通\
-   过主机名可达。必要时可修改 ``/etc/hosts`` ，加入管理主机的名字。
+   ``ceph-deploy`` 和本地管理主机（ ``admin-node`` ）通信时，\
+   所有主机都必须通过主机名可达。必要时可修改 ``/etc/hosts`` ，\
+   加入管理主机的名字。
 
 #. 确保 ``ceph.client.admin.keyring`` 的权限位正确无误。 ::
 

@@ -68,21 +68,27 @@
 运营集群时，跟踪这些状态是系统管理任务的重要部分。详情见\ `监控集群`_\ 和\ \
 `监控 OSD 和归置组`_\ 。
 
+
 .. index:: high availability; quorum
+
+.. _Monitor Quorum:
 
 监视器法定人数
 --------------
 
-本文入门部分提供了一个简陋的 `Ceph 配置文件`_\ ，它提供了一个监视器用于测试。只用\
-一个监视器集群可以良好地运行，然而\ **单监视器是一个单故障点**\ ，生产集群要实现高\
-可用性的话得配置多个监视器，这样单个监视器的失效才\ **不会**\ 影响整个集群。
+本文配置部分提供了一个简陋的 `Ceph 配置文件`_\ ，它提供了一个\
+监视器用于测试。只用一个监视器集群可以良好地运行，然而\
+**单监视器是一个单故障点**\ ，生产集群要实现高可用性的话得配\
+置多个监视器，这样单个监视器的失效才\ **不会**\ 影响整个集群。
 
-集群用多个监视器实现高可用性时，多个监视器用 `Paxos`_ 算法对主集群运行图达成一致，\
-这里的一致要求大多数监视器都在运行且够成法定人数（如 1 个、 3 之 2 在运行、 5 之 \
-3 、 6 之 4 等等）。
+集群用多个监视器实现高可用性时，多个监视器用 `Paxos`_ 算法对\
+主集群运行图达成一致，这里的一致要求大多数监视器都在运行且够\
+成法定人数（如 1 个、 3 之 2 在运行、 5 之 3 、 6 之 4 等等）。
 
 
 .. index:: Ceph Monitor; consistency
+
+.. _Consistency:
 
 一致性
 ------
@@ -754,7 +760,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 .. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)
 .. _监视器密钥环: ../../operations/authentication#monitor-keyrings
-.. _Ceph 配置文件: ../../../start/quick-start/#add-a-configuration-file
+.. _Ceph 配置文件: ../ceph-conf/#monitors
 .. _网络配置参考: ../network-config-ref
 .. _ACID: http://en.wikipedia.org/wiki/ACID
 .. _增加/删除监视器: ../../operations/add-or-rm-mons

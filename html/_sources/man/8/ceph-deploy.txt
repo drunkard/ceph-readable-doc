@@ -299,8 +299,9 @@ osd
 admin
 -----
 
-把配置和 ``client.admin`` 密钥推送到远程主机，它把管理节点上的 \
-``{cluster}.client.admin.keyring`` 复制到目标节点的 ``/etc/ceph`` 目录下。
+把配置和 ``client.admin`` 密钥推送到远程主机，它把管理节点上的
+``{cluster}.client.admin.keyring`` 复制到目标节点的
+``/etc/ceph`` 目录下。
 
 用法： ::
 
@@ -312,15 +313,16 @@ admin
 config
 ------
 
-把配置文件推送到远程主机、或从远程主机拉取。它用 ``push`` 子命令把管理主机上\
-的配置文件写入远程主机的 ``/etc/ceph`` 目录下； ``pull`` 子命令则相反，也就\
-是把远程主机 ``/etc/ceph`` 目录下的配置文件拉取到管理节点上。
+把配置文件推送到远程主机、或从远程主机拉取。它用 ``push``
+子命令把管理主机上的配置文件写入远程主机的 ``/etc/ceph``
+目录下； ``pull`` 子命令则相反，也就是把远程主机 ``/etc/ceph``
+目录下的配置文件拉取到管理节点上。
 
 用法： ::
 
-	ceph-deploy push [HOST] [HOST...]
+	ceph-deploy config push [HOST] [HOST...]
 
-	ceph-deploy pull [HOST] [HOST...]
+	ceph-deploy config pull [HOST] [HOST...]
 
 这里的 [HOST] 是节点主机名，将到这里推送或拉取配置文件。
 
