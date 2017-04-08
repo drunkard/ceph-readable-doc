@@ -186,7 +186,7 @@ OSD 守护进程和一个元数据服务器。然后分别在 ``node2`` 和 ``no
 
 .. ditaa::
            /------------------\         /----------------\
-           |    ceph–deploy   |         |     node1      |
+           |    ceph-deploy   |         |     node1      |
            |    Admin Node    |         | cCCC           |
            |                  +-------->+   mon.node1    |
            |                  |         |     osd.2      |

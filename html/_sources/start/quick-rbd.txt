@@ -1,48 +1,55 @@
+.. _Block Device Quick Start:
+
 ============
  块设备入门
 ============
 
-要实践本手册，你必须先完成\ `存储集群入门`_ ，并确保 :term:`Ceph 存储集群`\ 处\
-于 ``active + clean`` 状态，这样才能使用 :term:`Ceph 块设备`\ 。
+要实践本手册，你必须先完成\ `存储集群入门`_ ，并确保
+:term:`Ceph 存储集群`\ 处于 ``active + clean`` 状态，这样才能\
+使用 :term:`Ceph 块设备`\ 。
 
 .. note:: Ceph 块设备也叫 :term:`RBD` 或 :term:`RADOS` 块设备。
 
 
 .. ditaa::
            /------------------\         /----------------\
-           |    Admin Node    |         |   ceph–client  |
+           |    Admin Node    |         |   ceph-client  |
            |                  +-------->+ cCCC           |
-           |    ceph–deploy   |         |      ceph      |
+           |    ceph-deploy   |         |      ceph      |
            \------------------/         \----------------/
 
 
-你可以在虚拟机上运行 ``ceph-client`` 节点，但是不能在与 Ceph 存储集群（除非它\
-们也用 VM ）相同的物理节点上执行下列步骤。详情见 `FAQ`_ 。
+你可以在虚拟机上运行 ``ceph-client`` 节点，但是不能在与 Ceph
+存储集群（除非它们也用 VM ）相同的物理节点上执行下列步骤。详\
+情见 `FAQ`_ 。
 
+
+.. _Install Ceph:
 
 安装 Ceph
 =========
 
-#. 确认下你的内核版本没问题，详情见\ `操作系统推荐`_\ 。
-   ::
+#. 确认下你的内核版本没问题，详情见\ `操作系统推荐`_\ 。 ::
 
 	lsb_release -a
 	uname -r
 
-#. 在管理节点上，通过 ``ceph-deploy`` 把 Ceph 安装到 ``ceph-client`` 节点。
-   ::
+#. 在管理节点上，通过 ``ceph-deploy`` 把 Ceph 安装到
+   ``ceph-client`` 节点。 ::
 
 	ceph-deploy install ceph-client
 
 #. 在管理节点上，用 ``ceph-deploy`` 把 Ceph 配置文件和 \
-   ``ceph.client.admin.keyring`` 拷贝到 ``ceph-client`` 。
-   ::
+   ``ceph.client.admin.keyring`` 拷贝到 ``ceph-client`` 。 ::
 
 	ceph-deploy admin ceph-client
 
-   ``ceph-deploy`` 工具会把密钥环复制到 ``/etc/ceph`` 目录，要确保此密钥环文件\
-   可读（如 ``sudo chmod +r /etc/ceph/ceph.client.admin.keyring`` ）。
+   ``ceph-deploy`` 工具会把密钥环复制到 ``/etc/ceph`` 目录，要\
+   确保此密钥环文件可读（如
+   ``sudo chmod +r /etc/ceph/ceph.client.admin.keyring`` ）。
 
+
+.. _Configure a Block Device:
 
 配置块设备
 ==========

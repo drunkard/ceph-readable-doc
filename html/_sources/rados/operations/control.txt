@@ -5,6 +5,8 @@
 ==========
 
 
+.. _Monitor Commands:
+
 监视器命令
 ==========
 
@@ -16,6 +18,8 @@
 
 	ceph {subsystem} {command}
 
+
+.. _System Commands:
 
 系统命令
 ========
@@ -29,7 +33,8 @@
 
 	ceph -w
 
-下列命令显示监视器法定人数状态，包括哪些监视器参与着、哪个是首领。 ::
+下列命令显示监视器法定人数状态，包括哪些监视器参与着、哪个是首\
+领。 ::
 
 	ceph quorum_status
 
@@ -37,6 +42,8 @@
 
 	ceph [-m monhost] mon_status
 
+
+.. _Authentication Subsystem:
 
 认证子系统
 ==========
@@ -49,6 +56,8 @@
 
 	ceph auth list
 
+
+.. _Placement Group Subsystem:
 
 归置组子系统
 ============
@@ -68,17 +77,21 @@
 
 ``--threshold`` 定义了多久算“卡住了”（默认 300 秒）
 
-**Inactive** 归置组不能处理读或写，因为它们在等待数据及时更新的 OSD 回来。
+**Inactive** 归置组不能处理读或写，因为它们在等待数据及时更新的
+OSD 回来。
 
 **Unclean** 归置组包含副本数未达期望值的对象，它们应该在恢复中。
 
-**Stale** 归置组处于未知状态——归置组所托付的 OSD 有一阵没向监视器报告了（由 \
-``mon osd report timeout`` 配置）。
+**Stale** 归置组处于未知状态——归置组所托付的 OSD 有一阵没向监\
+视器报告了（由 ``mon osd report timeout`` 配置）。
 
-删除“丢失”对象，或者恢复到其先前状态，可以是前一版本、或如果刚创建就干脆删除。 ::
+删除“丢失”对象，或者恢复到其先前状态，可以是前一版本、或如果刚\
+创建就干脆删除。 ::
 
 	ceph pg {pgid} mark_unfound_lost revert|delete
 
+
+.. _OSD Subsystem:
 
 OSD 子系统
 ==========
@@ -102,8 +115,8 @@ OSD 子系统
 	ceph osd getmap -o /tmp/osdmap
 	osdmaptool /tmp/osdmap --export-crush file
 
-转储 OSD 运行图， ``-f`` 的可用格式有 ``plain`` 和 ``json`` ，如未指定 \
-``--format`` 则转储为纯文本。 ::
+转储 OSD 运行图， ``-f`` 的可用格式有 ``plain`` 和 ``json`` ，\
+如未指定 ``--format`` 则转储为纯文本。 ::
 
 	ceph osd dump [--format {format}]
 
@@ -179,30 +192,38 @@ OSD 子系统
 
 	ceph class list
 
-设置或清空 OSD 运行图里的暂停标记。若设置了，不会有 IO 请求发送到任何 OSD ；用 \
-``unpause`` 清空此标记会导致重发未决的请求。 ::
+设置或清空 OSD 运行图里的暂停标记。若设置了，不会有 IO 请求发\
+送到任何 OSD ；用 ``unpause`` 清空此标记会导致重发未决的请求。 ::
 
 	ceph osd pause
 	ceph osd unpause
 
-把 ``{osd-num}`` 的权重设置为 ``{weight}`` ，权重相同的两个 OSD 大致会收到相同的 \
-I/O 请求、并存储相同数量的数据。 ``ceph osd reweight`` 命令可给 OSD 设置一个增益\
-权重，有效值在 0 和 1 之间，它使得 CRUSH 重新归置一定数量的、本应该放到此处的数据。\
-它不会影响 crush 图里所分配的权重，在 CRUSH 分布算法没能理想地执行时，它可作为一种\
-纠正手段。比如，假设你的某个 OSD 使用率达到了 90% ，但其它的大致都在 50% ，这时你就\
-可以试着下调此权重来补偿它。 ::
+把 ``{osd-num}`` 的权重设置为 ``{weight}`` ，权重相同的两个
+OSD 大致会收到相同的 I/O 请求、并存储相同数量的数据。
+``ceph osd reweight`` 命令可给 OSD 设置一个增益权重，有效值在
+0 和 1 之间，它使得 CRUSH 重新归置一定数量的、本应该放到此处的\
+数据。它不会影响 crush 图里所分配的权重，在 CRUSH 分布算法没能\
+理想地执行时，它可作为一种纠正手段。比如，假设你的某个 OSD 使\
+用率达到了 90% ，但其它的大致都在 50% ，这时你就可以试着下调此\
+权重来补偿它。 ::
 
 	ceph osd reweight {osd-num} {weight}
 
-重设所有滥用 OSD 的权重，它默认会下调达到平均利用率 120% 的那些OSD ，除非你指定了阀\
-值。 ::
+重设所有滥用 OSD 的权重，它默认会下调达到平均利用率 120% 的那\
+些 OSD ，除非你指定了阀值。 ::
 
 	ceph osd reweight-by-utilization [threshold]
 
-增加、删除黑名单里的地址。增加地址的时候可以指定有效期，否则有效期为 1 小时。黑名单\
-里的地址不允许连接任何 OSD ，此技术常用于防止滞后的元数据服务器“错爱” OSD 上的数据。
+描述 reweight-by-utilization 会干什么。 ::
 
-这些命令大多只在故障测试时有用，因为黑名单是自动维护的，无需手动干涉。 ::
+	ceph osd test-reweight-by-utilization
+
+增加、删除黑名单里的地址。增加地址的时候可以指定有效期，否则有\
+效期为 1 小时。黑名单里的地址不允许连接任何 OSD ，此技术常用于\
+防止滞后的元数据服务器“错爱” OSD 上的数据。
+
+这些命令大多只在故障测试时有用，因为黑名单是自动维护的，无需手\
+动干涉。 ::
 
 	ceph osd blacklist add ADDRESS[:source_port] [TIME]
 	ceph osd blacklist rm ADDRESS[:source_port]
@@ -225,7 +246,8 @@ I/O 请求、并存储相同数量的数据。 ``ceph osd reweight`` 命令可�
 可用的 field 值有：
 
 	* ``size``: 设置存储池内数据的副本数；
-	* ``crash_replay_interval``: 允许客户端重放确认而未提交的请求前等待的时间，秒；
+	* ``crash_replay_interval``: 允许客户端重放确认而未提\
+	  交的请求前等待的时间，秒；
 	* ``pg_num``: 归置组数量；
 	* ``pgp_num``: 计算归置组存放的有效数量；
 	* ``crush_ruleset``: 用于归置映射的规则号。
@@ -242,7 +264,8 @@ I/O 请求、并存储相同数量的数据。 ``ceph osd reweight`` 命令可�
 	* ``lpgp_num``: 用于存放本地归置组的数量。
 
 
-向 OSD ``{osd-num}`` 下达一个洗刷命令，用通配符 ``*`` 把命令下达到所有 OSD 。 ::
+向 OSD ``{osd-num}`` 下达一个洗刷命令，用通配符 ``*`` 把命令下\
+达到所有 OSD 。 ::
 
 	ceph osd scrub {osd-num}
 
@@ -250,13 +273,15 @@ I/O 请求、并存储相同数量的数据。 ``ceph osd reweight`` 命令可�
 
 	ceph osd repair N
 
-在 osdN 上进行个简单的吞吐量测试，每次写入 ``BYTES_PER_WRITE`` 、一共写入 \
-``TOTAL_BYTES`` 。默认以 4MB 增量写入 1GB 。
-此压力测试是非破坏性的，不会覆盖已有 OSD 数据，但可能会暂时影响同时访问此 \
-OSD 的客户端性能。 ::
+在 osdN 上做个简单的吞吐量测试，每次写入 ``BYTES_PER_WRITE`` 、\
+一共写入 ``TOTAL_BYTES`` 。默认以 4MB 增量写入 1GB 。此压力测\
+试是非破坏性的，不会覆盖已有 OSD 数据，但可能会暂时影响同时访\
+问此 OSD 的客户端性能。 ::
 
 	ceph tell osd.N bench [NUMER_OF_OBJECTS] [BYTES_PER_WRITE]
 
+
+.. _MDS Subsystem:
 
 MDS 子系统
 ==========
@@ -281,6 +306,8 @@ MDS 子系统
 
 .. todo:: ``ceph mds`` 子命令缺少文档：set, dump, getmap, stop, setmap
 
+
+.. _Mon Subsystem:
 
 监视器子系统
 ============
