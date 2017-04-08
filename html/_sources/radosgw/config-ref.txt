@@ -875,9 +875,64 @@ Keystone 选项
 :默认值: None
 
 
+``rgw keystone api version``
+
+:描述: 与 Keystone 服务器通讯时，使用哪个版本（ 2 或 3 ）的
+       OpenStack Identity API 。
+:类型: Integer
+:默认值: ``2``
+
+
+``rgw keystone admin domain``
+
+:描述: 使用 v3 版本的 OpenStack Identity API 时，需在这里设置\
+       具备管理权限的 OpenStack 域名。
+:类型: String
+:默认值: None
+
+
+``rgw keystone admin project``
+
+:描述: 使用 v3 版本的 OpenStack Identity API 时，需在这里设置\
+       具备管理权限的 OpenStack 项目名。未设置时，将采用
+       ``rgw keystone admin tenant`` 的值。
+:类型: String
+:默认值: None
+
+
 ``rgw keystone admin token``
 
-:描述: Keystone 的管理令牌（共享密钥）。
+:描述: Keystone 的管理令牌（共享密钥）。在 Ceph RadosGW 认证\
+       时，会优先用管理令牌，然后才是管理凭证（
+       ``rgw keystone admin user`` 、 ``rgw keystone admin password`` 、
+       ``rgw keystone admin tenant`` 、 ``rgw keystone admin project`` 、
+       ``rgw keystone admin domain`` ）。管理令牌功能正在被废弃。
+:类型: String
+:默认值: None
+
+
+``rgw keystone admin tenant``
+
+:描述: 使用 v2 版本的 OpenStack Identity API 时，在这里配置具\
+       备管理权限的 OpenStack 租户（服务租户， Service Tenant
+       ）的名字。
+:类型: String
+:默认值: None
+
+
+``rgw keystone admin user``
+
+:描述: 使用 v2 版本的 OpenStack Identity API 时，在这里配置具\
+       备管理权限的 OpenStack 用户的名字，用来与 Keystone 认证\
+       （服务用户， Service User ）。
+:类型: String
+:默认值: None
+
+
+``rgw keystone admin password``
+
+:描述: 使用 v2 版本的 OpenStack Identity API 时，在这里配置
+       OpenStack 管理用户的密码。
 :类型: String
 :默认值: None
 

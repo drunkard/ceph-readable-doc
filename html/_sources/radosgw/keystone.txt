@@ -1,14 +1,15 @@
+.. _Integrating with OpenStack Keystone:
+
 ============================
  与 OpenStack Keystone 对接
 ============================
 
-It is possible to integrate the Ceph Object Gateway with Keystone, the OpenStack
-identity service. This sets up the gateway to accept Keystone as the users
-authority. A user that Keystone authorizes to access the gateway will also be
-automatically created on the Ceph Object Gateway (if didn't exist beforehand). A
-token that Keystone validates will be considered as valid by the gateway.
+Ceph 对象网关可以与 Keystone 对接，它是 OpenStack 的鉴权服务。\
+这需要让网关把 Keystone 当作用户认证机构，经过 Keystone 授权、\
+允许访问网关的用户， Ceph 对象网关内也会自动创建此用户（如果此\
+前还没有）。 Keystone 认定有效的令牌，网关也会认为有效。
 
-The following configuration options are available for Keystone integration::
+与 Keystone 对接相关的网关配置选项有： ::
 
 	[client.radosgw.gateway]
 	rgw keystone url = {keystone server url:keystone server admin port}
@@ -20,18 +21,36 @@ The following configuration options are available for Keystone integration::
 	rgw s3 auth use keystone = true
 	nss db path = {path to nss db}
 
-A Ceph Object Gateway user is mapped into a Keystone ``tenant``. A Keystone user
-has different roles assigned to it on possibly more than a single tenant. When
-the Ceph Object Gateway gets the ticket, it looks at the tenant, and the user
-roles that are assigned to that ticket, and accepts/rejects the request
-according to the ``rgw keystone accepted roles`` configurable.
+也能配置 Keystone 服务的租户、用户名、密码（适用于 v2.0 版的
+OpenStack Identity API ），与 OpenStack 服务的配置过程相似，这\
+样可避免在配置文件中设置共享密钥 ``rgw keystone admin token`` ，\
+因为这在生产环境下是不推进的配置方法。此处，服务的租户凭证应该\
+有管理员权限，详情见 `Openstack keystone 文档`_\ ，里面详细解\
+释了机制。必需的配置选项有： ::
 
+        rgw keystone admin user = {keystone service tenant user name}
+        rgw keystone admin password = {keystone service tenant user password}
+        rgw keystone admin tenant = {keystone service tenant name}
+
+Ceph 对象网关的用户被映射为 Keystone 的 ``tenant`` 。 Keystone
+用户具有不同的角色，角色可能对应着不止一个租户。 Ceph 拿到票据\
+后，它会检查其租户、以及给此票据分配的用户角色，然后根据配置的
+``rgw keystone accepted roles`` 决定接受、或拒绝此请求。
+
+对于 v3 版本的 Openstack Identity API ，需要把
+``rgw keystone admin tenant`` 换成： ::
+
+        rgw keystone admin domain = {keystone admin domain name}
+        rgw keystone admin project = {keystone admin project name}
+
+
+.. _Prior to Kilo:
 
 Kilo 之前
 ---------
 
-Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置为指向 Ceph 对\
-象网关。 ::
+Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置为\
+指向 Ceph 对象网关。 ::
 
 	keystone service-create --name swift --type object-store
 	keystone endpoint-create --service-id <id> \
@@ -43,8 +62,8 @@ Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置�
 从 Kilo 起
 ----------
 
-Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置为指向 Ceph 对\
-象网关。 ::
+Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置为\
+指向 Ceph 对象网关。 ::
 
   openstack service create --name=swift \
                            --description="Swift Service" \
@@ -120,3 +139,6 @@ radosgw 的节点上安装 keystone 的 SSL 证书；另外， radosgw
 也可以配置为根本不校验 SSL 证书（类似加了 ``--insecure``
 开关的 openstack 客户端请求），即把
 ``rgw keystone verify ssl`` 配置为 ``false`` 。
+
+
+.. _Openstack keystone 文档: http://docs.openstack.org/developer/keystone/configuringservices.html#setting-up-projects-users-and-roles

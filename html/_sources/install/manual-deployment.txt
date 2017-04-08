@@ -1,3 +1,5 @@
+.. _Manual Deployment:
+
 ==========
  手动部署
 ==========
@@ -127,13 +129,14 @@
 
 #. 生成管理员密钥环，生成 ``client.admin`` 用户并加入密钥环。 ::
 
-	ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
+	sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
 
 #. 把 ``client.admin`` 密钥加入 ``ceph.mon.keyring`` 。 ::
 
 	ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 
-#. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，并保存为 ``/tmp/monmap`` 。 ::
+#. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，\
+   并保存为 ``/tmp/monmap`` 。 ::
 
 	monmaptool --create --add {hostname} {ip-address} --fsid {uuid} /tmp/monmap
 
@@ -153,11 +156,11 @@
 
 #. 用监视器图和密钥环组装守护进程所需的初始数据。 ::
 
-	ceph-mon [--cluster {cluster-name}] --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
+	sudo -u ceph ceph-mon [--cluster {cluster-name}] --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
 
    例如： ::
 
-	ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
+	sudo -u ceph ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
 
 #. 仔细斟酌 Ceph 配置文件，公共的全局配置包括这些： ::
 
@@ -242,6 +245,8 @@
    **注意：** 一旦你添加了 OSD 并启动，归置组健康错误应该消失，详情见下一节。
 
 
+.. _Adding OSDs:
+
 添加 OSD
 ========
 
@@ -250,6 +255,8 @@
 至少 2 个 OSD ）。在完成监视器自举引导后，集群就有了默认的 CRUSH 图，但现在此图还是\
 空的，里面没有任何 OSD 映射到 Ceph 节点。
 
+
+.. _Short Form:
 
 精简型
 ------
@@ -282,11 +289,14 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
    那么应该外加 ``--activate-key`` 参数。
 
 
+.. _Long Form:
+
 细致型
 ------
 
-要是不想借助任何辅助工具，可按下列步骤创建 OSD 、将之加入集群和 CRUSH 图。按下列详\
-细步骤可在 ``node2`` 和 ``node3`` 上增加前 2 个 OSD ：
+要是不想借助任何辅助工具，可按下列步骤创建 OSD 、将之加入集群和
+CRUSH 图。按下列详细步骤可在 ``node2`` 和 ``node3`` 上增加前 2
+个 OSD ：
 
 #. 登录到OSD主机。 ::
 

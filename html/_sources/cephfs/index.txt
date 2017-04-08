@@ -45,7 +45,8 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 	:maxdepth: 1
 
 	增加/删除 MDS <../../rados/deployment/ceph-deploy-mds>
-	MDS 配置 <mds-config-ref>
+	MDS 故障切换和灾备配置 <standby>
+	MDS 配置选项 <mds-config-ref>
 	Journaler 配置 <journaler>
 	ceph-mds 手册页 <../../man/8/ceph-mds>
 

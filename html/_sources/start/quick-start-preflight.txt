@@ -31,9 +31,8 @@ Ceph 部署工具的安装
 
 	wget -q -O- 'https://download.ceph.com/keys/release.asc' | sudo apt-key add -
 
-#. 添加Ceph软件包源，用稳定版Ceph（如 ``cuttlefish`` 、 \
-   ``dumpling`` 、 ``emperor`` 、 ``firefly`` 等等）替换掉 \
-   ``{ceph-stable-release}`` 。例如： ::
+#. 添加 Ceph 软件包源，用稳定版 Ceph （如 ``hammer`` 、
+   ``jewel`` 等等）替换掉 ``{ceph-stable-release}`` 。例如： ::
 
 	echo deb http://download.ceph.com/debian-{ceph-stable-release}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
@@ -50,10 +49,11 @@ RHEL/CentOS
 
 对于 CentOS 7 ，可执行下列步骤：
 
-#. 在 Red Hat Enterprise Linux 7 上，用 ``subscription-manager`` 注册主机，核对你的订阅，然后启用 Extras 软件库，以解决软件包依赖。例如： ::
+#. 在 Red Hat Enterprise Linux 7 上，用 ``subscription-manager``
+   注册主机，核对你的订阅，然后启用 Extras 软件库，以解决软件\
+   包依赖。例如： ::
 
         sudo subscription-manager repos --enable=rhel-7-server-extras-rpms
-
 
 #. 安装并启用企业 Linux (EPEL) 附加软件包： ::
 
@@ -69,11 +69,9 @@ RHEL/CentOS
 	sudo vim /etc/yum.repos.d/ceph.repo
 
    把如下内容粘帖进去，用最新稳定版 Ceph 名字替换 \
-   ``{ceph-stable-release}`` （如 ``firefly`` ）、用你的发行版\
-   名字替换 ``{distro}`` （如 ``el6`` 为 CentOS 6 、 ``el7`` \
-   为 CentOS 7 、 ``rhel6`` 为 Red Hat 6.5 、 ``rhel7`` 为 \
-   Red Hat 7 、 ``fc19`` 是 Fedora 19 、 ``fc20`` 是 Fedora \
-   20 。最后保存到 ``/etc/yum.repos.d/ceph.repo`` 文件。 ::
+   ``{ceph-stable-release}`` （如 ``jewel`` ）、用你的发行版\
+   名字替换 ``{distro}`` （如 ``el7`` 为 CentOS 7 ）。最后保\
+   存到 ``/etc/yum.repos.d/ceph.repo`` 文件。 ::
 
 	[ceph-noarch]
 	name=Ceph noarch packages

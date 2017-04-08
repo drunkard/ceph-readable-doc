@@ -759,7 +759,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 
 .. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)
-.. _监视器密钥环: ../../operations/authentication#monitor-keyrings
+.. _监视器密钥环: ../../../dev/mon-bootstrap#secret-keys
 .. _Ceph 配置文件: ../ceph-conf/#monitors
 .. _网络配置参考: ../network-config-ref
 .. _ACID: http://en.wikipedia.org/wiki/ACID
