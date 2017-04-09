@@ -1365,12 +1365,19 @@ version
 
    设置连接集群的超时值。
 
+.. option:: --no-increasing
+
+   ``--no-increasing`` 默认是关闭的，所以 ``reweight-by-utilization``
+   或 ``test-reweight-by-utilization`` 命令可以增加 osd 权重。\
+   如果运行这些命令时加上这个选项，即使 osd 利用率偏低它也不会\
+   增加 osd 权重。
+
 
 使用范围
 ========
 
-:program:`ceph` 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
-更多信息参见 http://ceph.com/docs 。
+:program:`ceph` 是 Ceph 的一部分，这是个伸缩力强、开源、分布式\
+的存储系统，更多信息参见 http://ceph.com/docs 。
 
 
 参考

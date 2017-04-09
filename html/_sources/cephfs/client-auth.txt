@@ -55,6 +55,8 @@
         ceph-fuse -n client.foo mnt -r /bar
 
 
+.. _Free space reporting:
+
 报告的空闲空间
 --------------
 
@@ -69,6 +71,8 @@
 如果没有启用配额、或者没有给挂载的子目录设置配额，那么不管这\
 个选项配置成什么，都会报告整个文件系统的使用情况。
 
+
+.. _OSD restriction:
 
 OSD 限定
 ========
