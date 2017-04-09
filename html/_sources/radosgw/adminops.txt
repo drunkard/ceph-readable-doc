@@ -160,8 +160,6 @@ GET 用法
 TBD.
 
 
-.. _Trim Usage:
-
 裁剪用法
 ========
 
@@ -1857,8 +1855,6 @@ permission. ::
 	GET /admin/user?quota&uid=<uid>&quota-type=user
 
 
-.. _Set User Quota:
-
 设置用户配额
 ~~~~~~~~~~~~
 
@@ -1881,8 +1877,6 @@ permission. ::
 
 	GET /admin/user?quota&uid=<uid>&quota-type=bucket
 
-
-.. _Set Bucket Quota:
 
 设置桶配额
 ~~~~~~~~~~

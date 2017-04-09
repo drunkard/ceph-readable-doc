@@ -15,7 +15,8 @@
 描述
 ====
 
-:program:`radosgw-admin` 是 RADOS 网关用户管理工具，可用于创建和修改用户。
+:program:`radosgw-admin` 是 RADOS 网关用户管理工具，可用于创建\
+和修改用户。
 
 
 命令
@@ -156,11 +157,9 @@
 :command:`usage trim`
   修剪使用率信息（可选选项有用户和数据范围）。
 
-:command:`temp remove`
-  删除指定日期（时间可选）之前创建的临时对象。
-
 :command:`gc list`
-  显示过期的垃圾回收对象（加 --include-all 选项罗列所有条目，包括未过期的）。
+  显示过期的垃圾回收对象（加 --include-all 选项罗列所有条目，\
+  包括未过期的）。
 
 :command:`gc process`
   手动处理垃圾。
@@ -225,8 +224,8 @@
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   用指定的 ``ceph.conf`` 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定启\
-   动时所需的监视器地址。
+   用指定的 ``ceph.conf`` 配置文件而非默认的
+   ``/etc/ceph/ceph.conf`` 来确定启动时所需的监视器地址。
 
 .. option:: -m monaddress[:port]
 
@@ -299,8 +298,8 @@
 .. option:: --shard-id=<shard-id>
 
    执行 ``mdlog list`` 时为可选项。对 ``mdlog trim`` 、 \
-   ``replica mdlog get/delete`` 、 ``replica datalog get/delete`` 来说是必\
-   须的。
+   ``replica mdlog get/delete`` 、 ``replica datalog get/delete``
+   来说是必须的。
 
 .. option:: --auth-uid=auid
 
@@ -344,7 +343,8 @@
 
 .. option:: --sync-stats
 
-   ``user stats`` 的选项，收集用户的桶索引状态、并同步到用户状态。
+   ``user stats`` 的选项，收集用户的桶索引状态、并同步到用户状\
+   态。
 
 .. option:: --show-log-entries=<flag>
 
@@ -368,7 +368,8 @@
 
 .. option:: --replica-log-type
 
-   复制日志类型（ metadata 、 data 、 bucket ），操作复制日志时需要。
+   复制日志类型（ metadata 、 data 、 bucket ），操作复制日志\
+   时需要。
 
 .. option:: --categories=<list>
 

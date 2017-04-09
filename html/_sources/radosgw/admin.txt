@@ -7,8 +7,10 @@ administer the service with user management, access controls, quotas
 and usage tracking among other features.
 
 
-User Management
-===============
+.. _User Management:
+
+用户管理
+========
 
 Ceph Object Storage user management refers to users of the Ceph Object Storage
 service (i.e., not the Ceph Object Gateway as a user of the Ceph Storage
@@ -38,8 +40,10 @@ to an S3 key type and subuser IDs correspond to a swift key type. Swift keys
 also have access levels of ``read``, ``write``, ``readwrite`` and ``full``.
 
 
-Create a User
--------------
+.. _Create a User:
+
+创建用户
+--------
 
 To create a user (S3 interface), execute the following::
 
@@ -87,20 +91,22 @@ with any S3 API-compatible client.
    manually.
 
 
-Create a Subuser
-----------------
+.. _Create a Subuser:
 
-To create a subuser (Swift interface) for the user, you must specify the user ID
-(``--uid={username}``), a subuser ID and the access level for the subuser. ::
+创建子用户
+----------
+
+要创建用户的子用户（ Swift 接口），必须指定用户 ID （
+``--uid={username}`` ）、子用户 ID 和这个子用户的访问级别。 ::
 
   radosgw-admin subuser create --uid={uid} --subuser={uid} --access=[ read | write | readwrite | full ]
 
-For example::
+例如： ::
 
   radosgw-admin subuser create --uid=johndoe --subuser=johndoe:swift --access=full
 
-
-.. note:: ``full`` is not ``readwrite``, as it also includes the access control policy.
+.. note:: ``full`` 不等于 ``readwrite`` ，因为它还包括访问控制\
+  策略。
 
 .. code-block:: javascript
 
@@ -131,18 +137,21 @@ For example::
     "temp_url_keys": []}
 
 
-Get User Info
--------------
+.. _Get User Info:
 
-To get information about a user, you must specify ``user info`` and the user ID
-(``--uid={username}``) . :: 
+获取用户信息
+------------
+
+要获取某一用户的信息，可指定 ``user info`` 和用户 ID （
+``--uid={username}`` ）。 ::
 
 	radosgw-admin user info --uid=johndoe
 
 
+.. _Modify User Info:
 
-Modify User Info
-----------------
+修改用户信息
+------------
 
 To modify information about a user, you must specify the user ID (``--uid={username}``)
 and the attributes you want to modify. Typical modifications are to keys and secrets,
@@ -155,8 +164,10 @@ To modify subuser values, specify ``subuser modify`` and the subuser ID. For exa
 	radosgw-admin subuser modify --uid=johndoe:swift --access=full
 
 
-User Enable/Suspend
--------------------
+.. _User Enable/Suspend:
+
+用户的暂停、启用
+----------------
 
 When you create a user, the user is enabled by default. However, you may suspend
 user  privileges and re-enable them at a later time. To suspend a user, specify
@@ -188,7 +199,7 @@ To re-enable a suspended user, specify ``user enable`` and the user ID. ::
 
 - **清除数据：** 加 ``--purge-data`` 选项可清除与此 UID 相关的所有\
   数据。
-  
+
 - **清除密钥：** 加 ``--purge-keys`` 选项可清除与此 UID 相关的所有\
   密钥。
 
@@ -207,8 +218,10 @@ To re-enable a suspended user, specify ``user enable`` and the user ID. ::
   密钥。
 
 
-Create a Key
-------------
+.. _Create a Key:
+
+创建密钥
+--------
 
 To create a key for a user, you must specify ``key create``. For a user, specify
 the user ID and the ``s3`` key type. To create a key for subuser, you must
@@ -235,9 +248,10 @@ specify the subuser ID and the ``swift`` keytype. For example::
         "secret_key": "E9T2rUZNu2gxUjcwUBO8n\/Ev4KX6\/GprEuH4qhu1"}]}
 
 
+.. _Add / Remove Access Keys:
 
-Add / Remove Access Keys
-------------------------
+增加、删除访问密钥
+------------------
 
 Users and subusers must have access keys to use the S3 and Swift
 interfaces. When you create a user or subuser and you do not specify 
@@ -263,9 +277,10 @@ To remove an access key, specify the user. ::
 	radosgw-admin key rm --uid=johndoe
 
 
+.. _Add / Remove Admin Capabilities:
 
-Add / Remove Admin Capabilities
--------------------------------
+增加、删除管理能力
+------------------
 
 The Ceph Storage Cluster provides an administrative API that enables  users to
 execute administrative functions via the REST API. By default, users do NOT have
@@ -282,7 +297,7 @@ usage (utilization). For example::
 
 	--caps="[users|buckets|metadata|usage|zone]=[*|read|write|read, write]"
 
-For example::
+例如： ::
 
 	radosgw-admin caps add --uid=johndoe --caps="users=*"
 
@@ -291,6 +306,8 @@ For example::
 
 	radosgw-admin caps rm --uid=johndoe --caps={caps}
 
+
+.. _Quota Management:
 
 配额管理
 ========
@@ -306,44 +323,47 @@ storage size in megabytes.
   the maximum number of objects. A negative value disables this setting.
   
 - **Maximum Size:** The ``--max-size`` option allows you to specify a quota
-  for the maximum number of bytes. A negative value disables this setting.
+  size in B/K/M/G/T. A negative value disables this setting.
   
 - **Quota Scope:** The ``--quota-scope`` option sets the scope for the quota.
   The options are ``bucket`` and ``user``. Bucket quotas apply to buckets a 
   user owns. User quotas apply to a user.
 
 
-Set User Quota
---------------
+.. _Set User Quota:
 
-Before you enable a quota, you must first set the quota parameters.
-For example:: 
+设置用户配额
+------------
+
+启用配额前，必须先配置配额参数。例如： ::
 
 	radosgw-admin quota set --quota-scope=user --uid=<uid> [--max-objects=<num objects>] [--max-size=<max size>]
 
-For example:: 
+例如： ::
 
-	radosgw-admin quota set --quota-scope=user --uid=johndoe --max-objects=1024 --max-size=1024
+	radosgw-admin quota set --quota-scope=user --uid=johndoe --max-objects=1024 --max-size=1024B
 
-
-A negative value for num objects and / or max size means that the
-specific quota attribute check is disabled.
+对象数和、或最大尺寸为负值时，表示不再检查这种配额属性。
 
 
-Enable/Disable User Quota
--------------------------
+.. _Enable/Disable User Quota:
 
-Once you set a user quota, you may enable it. For example:: 
+启用或禁用用户配额
+------------------
+
+设置好用户配额后就可以启用了。例如： ::
 
 	radosgw-admin quota enable --quota-scope=user --uid=<uid>
 
-You may disable an enabled user quota. For example:: 
+你也可以关闭已启用的用户配额功能。例如： ::
 
 	radosgw-admin quota disable --quota-scope=user --uid=<uid>
 
 
-Set Bucket Quota
-----------------
+.. _Set Bucket Quota:
+
+设置桶配额
+----------
 
 Bucket quotas apply to the buckets owned by the specified ``uid``. They are
 independent of the user. ::
@@ -354,14 +374,16 @@ A negative value for num objects and / or max size means that the
 specific quota attribute check is disabled.
 
 
-Enable/Disable Bucket Quota
----------------------------
+.. _Enable/Disable Bucket Quota:
 
-Once you set a bucket quota, you may enable it. For example:: 
+启用、禁用桶配额
+----------------
+
+设置好桶配额后，你可以这样启用： ::
 
 	radosgw-admin quota enable --quota-scope=bucket --uid=<uid>
 
-You may disable an enabled bucket quota. For example:: 
+已启用的桶配额可禁用。例如： ::
 
 	radosgw-admin quota disable --quota-scope=bucket --uid=<uid>
 
@@ -436,8 +458,10 @@ Options include:
    with 1 hour resolution.
 
 
-Show Usage
-----------
+.. _Show Usage:
+
+Show 的用法
+-----------
 
 To show usage statistics, specify the ``usage show``. To show usage for a
 particular user, you must specify a user ID. You may also specify a start date,
@@ -450,8 +474,10 @@ You may also show a summary of usage information for all users by omitting a use
 	radosgw-admin usage show --show-log-entries=false
 
 
-Trim Usage
-----------
+.. _Trim Usage:
+
+Trim 的用法
+-----------
 
 With heavy use, usage logs can begin to take up storage space. You can trim
 usage logs for all users and for specific users. You may also specify date

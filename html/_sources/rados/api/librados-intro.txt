@@ -567,17 +567,19 @@ the read operations, the examples illustrate how to use asynchronous mode.
    a pool, the pool and ALL DATA in the pool will be lost.
 
 
-C Example
----------
+.. _C Example:
 
+C 实例
+------
 
 .. code-block:: c
 
 	#include <stdio.h>
+	#include <stdlib.h>
 	#include <string.h>
 	#include <rados/librados.h>
 
-	int main (int argc, const char argv**) 
+	int main (int argc, const char **argv)
 	{
 		/* 
 		 * Continued from previous C example, where cluster handle and

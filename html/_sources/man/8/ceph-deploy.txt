@@ -108,23 +108,21 @@ Fedora 、 CentOS/RHEL 等），那么安装时就不能定制集群名，且自
 mds
 ---
 
-在远程主机上部署 Ceph 元数据服务器。元数据服务器对 CephFS 来说是必需的， \
-``mds`` 命令可用于在指定节点上创建它。 ``create`` 子命令就是做这个的，它首先\
-获取目标 mds 主机的主机名和发行版信息，之后尝试读取集群的 ``bootstrap-mds`` \
-密钥并部署到目标主机。密钥格式通常是 ``{cluster}.bootstrap-mds.keyring`` ，\
-如果它没找到此密钥环，就用 ``gatherkeys`` 来获取此密钥环；然后在目标主机上创\
-建 mds （在 ``/var/lib/ceph/mds/`` 路径下、按 \
-``/var/lib/ceph/mds/{cluster}-{name}`` 格式）和自举引导密钥环（在 \
-``/var/lib/ceph/bootstrap-mds/`` 下、按 \
-``/var/lib/ceph/bootstrap-mds/{cluster}.keyring`` 格式）；然后根据 \
-``distro.init`` 运行相应命令来启动 ``mds`` 。要删除 mds ，可用 ``destroy`` \
-子命令。
+在远程主机上部署 Ceph 元数据服务器。元数据服务器对 CephFS 来说\
+是必需的， ``mds`` 命令可用于在指定节点上创建它。 ``create``
+子命令就是做这个的，它首先获取目标 mds 主机的主机名和发行版信\
+息，之后尝试读取集群的 ``bootstrap-mds`` 密钥并部署到目标主机。\
+密钥格式通常是 ``{cluster}.bootstrap-mds.keyring`` ，如果它没\
+找到此密钥环，就用 ``gatherkeys`` 来获取此密钥环；然后在目标主\
+机上创建 mds （在 ``/var/lib/ceph/mds/`` 路径下、按 \
+``/var/lib/ceph/mds/{cluster}-{name}`` 格式）和自举引导密钥环\
+（在 ``/var/lib/ceph/bootstrap-mds/`` 下、按 \
+``/var/lib/ceph/bootstrap-mds/{cluster}.keyring`` 格式）；然后\
+根据 ``distro.init`` 运行相应命令来启动 ``mds`` 。
 
 用法： ::
 
 	ceph-deploy mds create [HOST[:DAEMON-NAME]] [HOST[:DAEMON-NAME]...]
-
-	ceph-deploy mds destroy [HOST[:DAEMON-NAME]] [HOST[:DAEMON-NAME]...]
 
 [DAEMON-NAME] 是可选项。
 
