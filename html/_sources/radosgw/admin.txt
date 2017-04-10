@@ -419,8 +419,23 @@ To see how much of the quota a user has consumed, execute the following::
    ``--sync-stats`` option to receive the latest data.
 
 
-Reading / Writing Global Quotas
--------------------------------
+.. _Default Quotas:
+
+默认配额
+--------
+
+你可以在配置文件里设置默认配额，新增用户会采用这些默认值，而已\
+经存在的用户不受影响。如果相关的默认配额是写在配置文件里的，那\
+么这些配额会分配给新用户，并对其启用配额管理功能。请参考
+`Ceph 对象网关配置参考`_\ 里的 ``rgw bucket default quota max objects`` 、
+``rgw bucket default quota max size`` 、 ``rgw user default quota max objects``
+和 ``rgw user default quota max size`` 。
+
+
+.. _Reading / Writing Global Quotas:
+
+读取、写入全局配额
+------------------
 
 You can read and write quota settings in a region map. To get a
 region map, execute the following. :: 
@@ -436,8 +451,8 @@ update the region map. ::
 .. note:: After updating the region map, you must restart the gateway.
 
 
-Usage
-=====
+使用情况
+========
 
 The Ceph Object Gateway logs usage for each user. You can track
 user usage within date ranges too.
@@ -460,8 +475,8 @@ Options include:
 
 .. _Show Usage:
 
-Show 的用法
------------
+查看使用情况
+------------
 
 To show usage statistics, specify the ``usage show``. To show usage for a
 particular user, you must specify a user ID. You may also specify a start date,
@@ -476,8 +491,8 @@ You may also show a summary of usage information for all users by omitting a use
 
 .. _Trim Usage:
 
-Trim 的用法
------------
+清理统计日志
+------------
 
 With heavy use, usage logs can begin to take up storage space. You can trim
 usage logs for all users and for specific users. You may also specify date
@@ -490,3 +505,4 @@ ranges for trim operations. ::
 
 .. _radosgw-admin: ../../man/8/radosgw-admin/
 .. _Pool Configuration: ../../rados/configuration/pool-pg-config-ref/
+.. _Ceph 对象网关配置参考: ../config-ref/

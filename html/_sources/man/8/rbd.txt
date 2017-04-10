@@ -338,8 +338,9 @@
 :command:`lock remove` *image-spec* *lock-id* *locker*
   释放映像上的锁。锁标识和其持有者来自 lock ls 。
 
-:command:`bench-write` [--io-size *size-in-B/K/M/G/T*] [--io-threads *num-ios-in-flight*] [--io-total *total-size-to-write-in-B/K/M/G/T*] [--io-pattern seq | rand] *image-spec*
-  向某一映像生成一系列写操作，以此衡量写吞吐量和延时。默认参数\
+:command:`bench` --io-type <read | write> [--io-size *size-in-B/K/M/G/T*] [--io-threads *num-ios-in-flight*] [--io-total *size-in-B/K/M/G/T*] [--io-pattern seq | rand] *image-spec*
+  向指定映像生成一系列 IO 操作，以此衡量 IO 吞吐量和延时。如果\
+  不加后缀， --io-size 和 --io-total 的单位就当是 B 。默认参数\
   为 --io-size 4096 、 --io-threads 16 、 --io-total 1G 、 \
   --io-pattern seq 。
 

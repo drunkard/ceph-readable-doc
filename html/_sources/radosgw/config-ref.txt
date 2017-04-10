@@ -314,6 +314,39 @@
 :默认值: ``false``
 
 
+``rgw bucket default quota max objects``
+
+:描述: 每个桶默认的最大对象数量。如果没其它配额操作，只给新用\
+       户设置。对已有用户没影响。
+:类型: Integer
+:默认值: ``-1``
+
+
+``rgw bucket default quota max size``
+
+:描述: 每个桶默认的最大容量，单位为字节。如果没其它配额操作，\
+       只给新用户设置。对已有用户没影响。
+:类型: Integer
+:默认值: ``-1``
+
+
+``rgw user default quota max objects``
+
+:描述: 用户默认的最大对象数，此用户的所有桶内的所有对象都计算\
+       在内。如果没其它配额操作，只给新用户设置。对已有用户没\
+       影响。
+:类型: Integer
+:默认值: ``-1``
+
+
+``rgw user default quota max size``
+
+:描述: 用户默认的最大容量，单位为字节。如果没其它配额操作，只\
+       给新用户设置。对已有用户没影响。
+:类型: Integer
+:默认值: ``-1``
+
+
 .. _Regions:
 
 region （域组）
