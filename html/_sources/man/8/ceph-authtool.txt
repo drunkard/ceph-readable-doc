@@ -43,7 +43,7 @@
 
    列出密钥环内的所有密钥及其能力
 
-.. option:: -p, --print
+.. option:: -p, --print-key
 
    打印指定条目的已编码密钥，它适合作为 ``mount -o secret=``
    的参数

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>下载 Ceph 源码包 &mdash; Ceph Documentation</title>
+    <title>BlueStore Internals &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -26,9 +26,6 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
-    <link rel="up" title="安装（手动）" href="../" />
-    <link rel="next" title="克隆 Ceph 源码库" href="../clone-source/" />
-    <link rel="prev" title="获取二进制包" href="../get-packages/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -42,14 +39,7 @@
         <li class="right" >
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
-        <li class="right" >
-          <a href="../clone-source/" title="克隆 Ceph 源码库"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="../get-packages/" title="获取二进制包"
-             accesskey="P">previous</a> |</li>
-        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" accesskey="U">安装（手动）</a> &raquo;</li> 
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -58,13 +48,147 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="ceph">
-<h1>下载 Ceph 源码包<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
-<p>随着 Ceph 开发的推进， Ceph 团队会不断发布源码，你可以在以下这些地方下载发布的源码：</p>
-<p><a class="reference external" href="https://download.ceph.com/tarballs/">Ceph 发布的源码包</a></p>
-<div class="admonition tip">
-<p class="first admonition-title">Tip</p>
-<p class="last">对国际用户来说，你也许可以从比较近的镜像下载 Ceph 。请参考 <a class="reference external" href="../mirrors">Ceph 镜像</a>。</p>
+  <div class="section" id="bluestore-internals">
+<h1>BlueStore Internals<a class="headerlink" href="#bluestore-internals" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="small-write-strategies">
+<h2>Small write strategies<a class="headerlink" href="#small-write-strategies" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><em>U</em>: Uncompressed write of a complete, new blob.<ul>
+<li>write to new blob</li>
+<li>kv commit</li>
+</ul>
+</li>
+<li><em>P</em>: Uncompressed partial write to unused region of an existing
+blob.<ul>
+<li>write to unused chunk(s) of existing blob</li>
+<li>kv commit</li>
+</ul>
+</li>
+<li><em>W</em>: WAL overwrite: commit intent to overwrite, then overwrite
+async.  Must be chunk_size = MAX(block_size, csum_block_size)
+aligned.<ul>
+<li>kv commit</li>
+<li>wal overwrite (chunk-aligned) of existing blob</li>
+</ul>
+</li>
+<li><em>N</em>: Uncompressed partial write to a new blob.  Initially sparsely
+utilized.  Future writes will either be <em>P</em> or <em>W</em>.<ul>
+<li>write into a new (sparse) blob</li>
+<li>kv commit</li>
+</ul>
+</li>
+<li><em>R+W</em>: Read partial chunk, then to WAL overwrite.<ul>
+<li>read (out to chunk boundaries)</li>
+<li>kv commit</li>
+<li>wal overwrite (chunk-aligned) of existing blob</li>
+</ul>
+</li>
+<li><em>C</em>: Compress data, write to new blob.<ul>
+<li>compress and write to new blob</li>
+<li>kv commit</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="possible-future-modes">
+<h2>Possible future modes<a class="headerlink" href="#possible-future-modes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><em>F</em>: Fragment lextent space by writing small piece of data into a
+piecemeal blob (that collects random, noncontiguous bits of data we
+need to write).<ul>
+<li>write to a piecemeal blob (min_alloc_size or larger, but we use just one block of it)</li>
+<li>kv commit</li>
+</ul>
+</li>
+<li><em>X</em>: WAL read/modify/write on a single block (like legacy
+bluestore).  No checksum.<ul>
+<li>kv commit</li>
+<li>wal read/modify/write</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="mapping">
+<h2>Mapping<a class="headerlink" href="#mapping" title="Permalink to this headline">¶</a></h2>
+<p>This very roughly maps the type of write onto what we do when we
+encounter a given blob.  In practice it&#8217;s a bit more complicated since there
+might be several blobs to consider (e.g., we might be able to <em>W</em> into one or
+<em>P</em> into another), but it should communicate a rough idea of strategy.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="29%" />
+<col width="9%" />
+<col width="16%" />
+<col width="14%" />
+<col width="16%" />
+<col width="17%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>&nbsp;</td>
+<td>raw</td>
+<td>raw (cached)</td>
+<td>csum (4 KB)</td>
+<td>csum (16 KB)</td>
+<td>comp (128 KB)</td>
+</tr>
+<tr class="row-even"><td>128+ KB (over)write</td>
+<td>U</td>
+<td>U</td>
+<td>U</td>
+<td>U</td>
+<td>C</td>
+</tr>
+<tr class="row-odd"><td>64 KB (over)write</td>
+<td>U</td>
+<td>U</td>
+<td>U</td>
+<td>U</td>
+<td>U or C</td>
+</tr>
+<tr class="row-even"><td>4 KB overwrite</td>
+<td>W</td>
+<td>P | W</td>
+<td>P | W</td>
+<td>P | R+W</td>
+<td>P | N (F?)</td>
+</tr>
+<tr class="row-odd"><td>100 byte overwrite</td>
+<td>R+W</td>
+<td>P | W</td>
+<td>P | R+W</td>
+<td>P | R+W</td>
+<td>P | N (F?)</td>
+</tr>
+<tr class="row-even"><td>100 byte append</td>
+<td>R+W</td>
+<td>P | W</td>
+<td>P | R+W</td>
+<td>P | R+W</td>
+<td>P | N (F?)</td>
+</tr>
+<tr class="row-odd"><td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>4 KB clone overwrite</td>
+<td>P | N</td>
+<td>P | N</td>
+<td>P | N</td>
+<td>P | N</td>
+<td>N (F?)</td>
+</tr>
+<tr class="row-odd"><td>100 byte clone overwrite</td>
+<td>P | N</td>
+<td>P | N</td>
+<td>P | N</td>
+<td>P | N</td>
+<td>N (F?)</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 
@@ -78,30 +202,17 @@
               <img class="logo" src="../../_static/logo.png" alt="Logo"/>
             </a></p>
 <h3><a href="../../">Table Of Contents</a></h3>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../">安装（手动）</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="../#id2">获取软件</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="../get-packages/">     获取二进制包</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="">     获取源码包</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../clone-source/">     克隆源码</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../build-ceph/">     构建 Ceph</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../mirrors/">     Ceph 镜像</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../#id3">安装软件</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../#id4">手动部署集群</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../#id5">升级软件</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../">开发文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
@@ -136,14 +247,7 @@
         <li class="right" >
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
-        <li class="right" >
-          <a href="../clone-source/" title="克隆 Ceph 源码库"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="../get-packages/" title="获取二进制包"
-             >previous</a> |</li>
-        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" >安装（手动）</a> &raquo;</li> 
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

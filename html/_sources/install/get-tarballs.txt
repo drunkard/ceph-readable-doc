@@ -11,5 +11,5 @@
    请参考 `Ceph 镜像`_\ 。
 
 
-.. _Ceph 发布的源码包: http://ceph.com/download/
+.. _Ceph 发布的源码包: https://download.ceph.com/tarballs/
 .. _Ceph 镜像: ../mirrors

@@ -147,6 +147,10 @@
    条带会显著地提高性能，因为通过检查驻留于内存中的对象映射就\
    可以计算出差异，而无需针对映像内的各个对象查询 RADOS 。
 
+.. option:: --limit
+
+   指定快照的数量上限。
+
 
 命令
 ====
@@ -288,6 +292,12 @@
   位于不同于父快照的存储池。）
 
   只适用于 format 2 。
+
+:command:`snap limit set` [--limit] *limit* *image-spec*
+  设置一个映像所允许的快照数量上限。
+
+:command:`snap limit clear` *image-spec*
+  清除先前设置的映像所允许的快照数量上限。
 
 :command:`map` [-o | --options *map-options* ] [--read-only] *image-spec* | *snap-spec*
   通过内核 rbd 模块把指定映像映射到某一块设备。

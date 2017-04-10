@@ -1,3 +1,5 @@
+.. _Ceph Object Gateway Config Reference:
+
 =======================
  Ceph 对象网关配置参考
 =======================
@@ -37,9 +39,9 @@
 
 ``rgw socket path``
 
-:描述: 域套接字的路径， ``FastCgiExternalServer`` 要使用此套接字。若未指定， \
-       Ceph 对象网关就不会以外部服务器运行。这里的路径必须与 ``rgw.conf`` 里\
-       的路径相同。
+:描述: 域套接字的路径， ``FastCgiExternalServer`` 要使用此套接\
+       字。若未指定， Ceph 对象网关就不会以外部服务器运行。这\
+       里的路径必须与 ``rgw.conf`` 里的路径相同。
 
 :类型: String
 :默认值: N/A
@@ -54,14 +56,16 @@
 
 ``rgw port``
 
-:描述: 例程接受请求的端口。若未指定， Ceph 对象网关将运行外部 FastCGI 。
+:描述: 例程接受请求的端口。若未指定， Ceph 对象网关将运行外部
+       FastCGI 。
 :类型: String
 :默认值: None
 
 
 ``rgw dns name``
 
-:描述: 所服务域的 DNS 名称。请参考 region 配置里的 ``hostnames`` 选项。
+:描述: 所服务域的 DNS 名称。请参考 region 配置里的 ``hostnames``
+       选项。
 :类型: String
 :默认值: None
 
@@ -89,8 +93,8 @@
 
 ``rgw remote addr param``
 
-:描述: 远端地址参数。例如， HTTP 字段或者 ``X-Forwarded-For`` 地址（如果用了\
-       反向代理）。
+:描述: 远端地址参数。例如， HTTP 字段或者 ``X-Forwarded-For``
+       地址（如果用了反向代理）。
 
 :类型: String
 :默认值: ``REMOTE_ADDR``
@@ -121,10 +125,10 @@
 
 ``rgw num rados handles``
 
-:描述: Ceph 对象网关的 `RADOS 集群处理器`_\ 数量。通过配置 RADOS \
-       处理器数量可以使得各种类型的载荷都明显地提升性能，因为各个 \
-       RGW 工作线程在其短暂的活跃期内都可以分别挂靠一个 RADOS 处理\
-       器。
+:描述: Ceph 对象网关的 `RADOS 集群处理器`_\ 数量。通过配置
+       RADOS 处理器数量可以使得各种类型的载荷都明显地提升性\
+       能，因为各个 RGW 工作线程在其短暂的活跃期内都可以分别\
+       挂靠一个 RADOS 处理器。
 
 :类型: Integer
 :默认值: ``1``
@@ -324,6 +328,8 @@ region 的配置不同于一般配置过程，因为不是所有的配置都放�
 region 配置或设置 region 配置。
 
 
+.. _List Regions:
+
 罗列 region
 -----------
 
@@ -340,6 +346,8 @@ Ceph 集群可包含一系列 region ，可用下列命令列举 region ： ::
 	        "default"]}
 
 
+.. _Get a Region Map:
+
 获取 region-map
 ---------------
 
@@ -350,6 +358,8 @@ Ceph 集群可包含一系列 region ，可用下列命令列举 region ： ::
 .. note:: 如果你的到了 ``failed to read region map`` 错误，\
    先试试 ``sudo radosgw-admin region-map update`` 。
 
+
+.. _Get a Region:
 
 获取单个 region
 ---------------
@@ -379,6 +389,8 @@ Ceph 集群可包含一系列 region ，可用下列命令列举 region ： ::
        "tags": [] }],
     "default_placement": "default-placement"}
 
+
+.. _Set a Region:
 
 设置一 region
 -------------
@@ -433,17 +445,20 @@ Ceph 集群可包含一系列 region ，可用下列命令列举 region ： ::
 	sudo radosgw-admin region-map update
 
 
+.. _Set a Region Map:
+
 配置 region 图
 --------------
 
-配置 region 图的过程包括创建含一或多个 region 的 JSON 对象，还有设置集群的\
-主 region ``master_region`` 。 region 图内的各 region 都由键/值对组成，其\
-中 ``key`` 选项等价于单独配置 region 时的 ``name`` 选项， ``val`` 是包含单\
-个 region 完整配置的 JSON 对象。
+配置 region 图的过程包括创建含一或多个 region 的 JSON 对象，还\
+有设置集群的主 region ``master_region`` 。 region 图内的各
+region 都由键/值对组成，其中 ``key`` 选项等价于单独配置 region
+时的 ``name`` 选项， ``val`` 是包含单个 region 完整配置的 JSON
+对象。
 
-你可以只有一个 region ，其 ``is_master`` 设置为 ``true`` ，而且必须在 \
-region 图末尾设置为 ``master_region`` 。下面的 JSON 对象是默认 region 图的\
-实例。
+你可以只有一个 region ，其 ``is_master`` 设置为 ``true`` ，而\
+且必须在 region 图末尾设置为 ``master_region`` 。下面的 JSON
+对象是默认 region 图的实例。
 
 
 .. code-block:: javascript
@@ -475,20 +490,22 @@ region 图末尾设置为 ``master_region`` 。下面的 JSON 对象是默认 re
 
 	sudo radosgw-admin region-map set --infile regionmap.json
 
-其中 ``regionmap.json`` 是创建的 JSON 文件。确保你创建了 region 图里所指\
-的那些域。最后，更新此图。 ::
+其中 ``regionmap.json`` 是创建的 JSON 文件。确保你创建了 region
+图里所指的那些域。最后，更新此图。 ::
 
 	sudo radosgw-admin regionmap update
 
 
+.. _Zones:
+
 域
 ==
 
-从 Ceph v0.67 版起， Ceph 对象网关支持域概念，它是一或多个 Ceph 对象网关例程\
-组成的逻辑组。
+从 Ceph v0.67 版起， Ceph 对象网关支持域概念，它是一或多个 Ceph
+对象网关例程组成的逻辑组。
 
-域的配置不同于典型配置过程，因为并非所有配置都位于 Ceph 配置文件内。从 0.67 \
-版起，你可以列举域、获取域配置、设置域配置。
+域的配置不同于典型配置过程，因为并非所有配置都位于 Ceph 配置文\
+件内。从 0.67 版起，你可以列举域、获取域配置、设置域配置。
 
 
 列举域
@@ -533,22 +550,25 @@ region 图末尾设置为 ``master_region`` 。下面的 JSON 对象是默认 re
 配置域
 ------
 
-配置域时需指定一系列的 Ceph 对象网关存储池。为保持一致性，我们建议用区域名\
-作为存储池名字的前缀。存储池配置见\ `存储池`_\ 。
+配置域时需指定一系列的 Ceph 对象网关存储池。为保持一致性，我们\
+建议用区域名作为存储池名字的前缀。存储池配置见\ `存储池`_\ 。
 
 要配置起一个域，需创建包含存储池的 JSON 对象、并存入文件（如 \
-``zone.json`` ）；然后执行下列命令，把 ``{zone-name}`` 替换为域名称： ::
+``zone.json`` ）；然后执行下列命令，把 ``{zone-name}`` 替换为\
+域名称： ::
 
 	sudo radosgw-admin zone set --rgw-zone={zone-name} --infile zone.json
 
 其中， ``zone.json`` 是你创建的 JSON 文件。
 
 
+.. _Region/Zone Settings:
+
 region 和域选项
 ===============
 
-你可以在 Ceph 配置文件中的各例程 ``[client.radosgw.{instance-name}]`` 段下设\
-置下列选项。
+你可以在 Ceph 配置文件中的各例程 ``[client.radosgw.{instance-name}]``
+段下设置下列选项。
 
 
 .. versionadded:: v.67
@@ -577,6 +597,8 @@ region 和域选项
 :类型: String
 :默认值: ``default.region``
 
+
+.. _Pools:
 
 存储池
 ======
@@ -630,8 +652,8 @@ Ceph 对象网关会把桶索引（ ``index_pool`` ）和桶数据（ ``data_poo
 
 ``rgw cluster root pool``
 
-:描述: 为此例程存储 ``radosgw`` 元数据的存储池。从 v0.67 之后不再支持，可改\
-       用 ``rgw zone root pool`` 。
+:描述: 为此例程存储 ``radosgw`` 元数据的存储池。从 v0.67 之后\
+       不再支持，可改用 ``rgw zone root pool`` 。
 
 :类型: String
 :是否必需: No
@@ -666,6 +688,8 @@ Ceph 对象网关会把桶索引（ ``index_pool`` ）和桶数据（ ``data_poo
 :类型: String
 :默认值: ``.rgw.root``
 
+
+.. _Swift Settings:
 
 Swift 选项
 ==========
@@ -718,6 +742,19 @@ Swift 选项
 :默认值: ``auth``
 
 
+``rgw swift versioning enabled``
+
+:描述: 启用 OpenStack 对象存储 API 的对象版本控制功能，这样客\
+       户端就能在想要做版本控制的容器上设置
+       ``X-Versions-Location`` 属性了，该属性用于指定存储着存\
+       档版本的容器。做版本控制的容器必须是同一个用户拥有的，\
+       因为要通过访问控制验证—— ACL **不会**\ 被纳入版本控制。\
+       容器版本控制与 S3 对象版本控制机制不兼容。
+:类型: Boolean
+:默认值: ``false``
+
+
+.. _Logging Settings:
 
 日志记录选项
 ============
@@ -739,7 +776,8 @@ Swift 选项
 
 ``rgw log object name utc``
 
-:描述: 记录的对象名是否需包含 UTC 时间，设置为 ``false`` 时将使用本地时间。
+:描述: 记录的对象名是否需包含 UTC 时间，设置为 ``false`` 时将\
+       使用本地时间。
 :类型: Boolean
 :默认值: ``false``
 
@@ -816,7 +854,8 @@ Swift 选项
 
 ``rgw intent log object name utc``
 
-:描述: 意图日志对象名是否应包含 UTC 时间，设置为 ``false`` 时使用本地时间。
+:描述: 意图日志对象名是否应包含 UTC 时间，设置为 ``false`` 时\
+       使用本地时间。
 :类型: Boolean
 :默认值: ``false``
 
@@ -863,6 +902,7 @@ Swift 选项
 :默认值: ``64``
 
 
+.. _Keystone Settings:
 
 Keystone 选项
 =============
