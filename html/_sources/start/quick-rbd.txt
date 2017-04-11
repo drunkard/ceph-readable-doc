@@ -54,34 +54,30 @@
 配置块设备
 ==========
 
-#. 在 ``ceph-client`` 节点上创建一个块设备映像。
-   ::
+#. 在 ``ceph-client`` 节点上创建一个块设备映像。 ::
 
 	rbd create foo --size 4096 [-m {mon-IP}] [-k /path/to/ceph.client.admin.keyring]
 
-#. 在 ``ceph-client`` 节点上，把映像映射为块设备。
-   ::
+#. 在 ``ceph-client`` 节点上，把映像映射为块设备。 ::
 
 	sudo rbd map foo --name client.admin [-m {mon-IP}] [-k /path/to/ceph.client.admin.keyring]
 
-#. 在 ``ceph-client`` 节点上，创建文件系统后就可以使用了。
-   ::
+#. 在 ``ceph-client`` 节点上，创建文件系统后就可以使用了。 ::
 
 	sudo mkfs.ext4 -m0 /dev/rbd/rbd/foo
 
    此命令可能耗时较长。
 
-#. 在 ``ceph-client`` 节点上挂载此文件系统。
-   ::
+#. 在 ``ceph-client`` 节点上挂载此文件系统。 ::
 
 	sudo mkdir /mnt/ceph-block-device
 	sudo mount /dev/rbd/rbd/foo /mnt/ceph-block-device
 	cd /mnt/ceph-block-device
 
-
 详情见\ `块设备`_ 。
+
 
 .. _存储集群入门: ../quick-ceph-deploy
 .. _块设备: ../../rbd/rbd
-.. _FAQ: http://wiki.ceph.com/FAQs/How_Can_I_Give_Ceph_a_Try%3F
+.. _FAQ: http://wiki.ceph.com/How_Can_I_Give_Ceph_a_Try
 .. _操作系统推荐: ../os-recommendations

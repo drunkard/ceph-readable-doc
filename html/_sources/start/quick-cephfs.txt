@@ -94,11 +94,12 @@ Ceph 存储集群默认要求认证，需指定相应的密钥环文件，除非
 额外信息
 ========
 
-额外信息见 `Ceph FS`_ 。 Ceph FS 还不像 Ceph 块设备和 Ceph 对象存储那么稳定，\
-如果遇到问题请参考\ `故障排除`_\ 。
+额外信息见 `Ceph FS`_ 。 Ceph FS 还不像 Ceph 块设备和 Ceph 对\
+象存储那么稳定，如果遇到问题请参考\ `故障排除`_\ 。
+
 
 .. _存储集群入门: ../quick-ceph-deploy
 .. _Ceph FS: ../../cephfs/
-.. _FAQ: http://wiki.ceph.com/03FAQs/01General_FAQ#How_Can_I_Give_Ceph_a_Try.3F
+.. _FAQ: http://wiki.ceph.com/How_Can_I_Give_Ceph_a_Try
 .. _故障排除: ../../cephfs/troubleshooting
 .. _操作系统推荐: ../os-recommendations

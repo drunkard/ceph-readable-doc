@@ -2,14 +2,13 @@
  Ceph 文件系统
 ===============
 
-:term:`Ceph 文件系统`\ （ Ceph FS ）是个 POSIX 兼容的文件系统，它使用 \
-Ceph 存储集群来存储数据。 Ceph 文件系统与 Ceph 块设备、同时提供 S3 和 \
-Swift API 的 Ceph 对象存储、或者原生库（ librados ）一样，都使用着相同\
-的 Ceph 存储集群系统。
+:term:`Ceph 文件系统`\ （ Ceph FS ）是个与 POSIX 标准兼容的文\
+件系统，它使用 Ceph 存储集群来存储数据。 Ceph 文件系统与 Ceph
+块设备、同时提供 S3 和 Swift API 的 Ceph 对象存储、或者原生库\
+（ librados ）一样，都使用着相同的 Ceph 存储集群系统。
 
-.. important:: 当前， CephFS 还缺乏健壮得像 'fsck' 这样的检查和修复\
-   功能。存储重要数据时需小心使用，因为灾难恢复工具还没开发完。更多\
-   的 CephFS 使用现状见 :doc:`/cephfs/early-adopters` 。
+.. note:: 如果你是第一次评测 CephFS ，请仔细看看部署的最佳实践\
+   文档： :doc:`/cephfs/best-practices` 。
 
 .. ditaa::
             +-----------------------+  +------------------------+
