@@ -33,19 +33,20 @@ API 写、然后用另一个检出。
 
 
 .. toctree::
-	:maxdepth: 1
+   :maxdepth: 1
 
-	手动安装 <../../install/install-ceph-gateway>
-	用 FastCGI 的简单配置 <config-fcgi>
-	联盟配置 <federated-config>
-	多站配置 <multisite>
-	配置参考 <config-ref>
-	管理指南 <admin>
-	S3 API <s3>
-	Swift API <swift>
-	管理操作 API <adminops>
-	与 OpenStack Keystone 对接 <keystone>
-	RADOS 中的数据布局 <layout>
-	troubleshooting
-	radosgw 手册页 <../../man/8/radosgw>
-	radosgw-admin 手册页 <../../man/8/radosgw-admin>
+   手动安装 <../../install/install-ceph-gateway>
+   用 FastCGI 的简单配置 <config-fcgi>
+   联盟配置 <federated-config>
+   多站配置 <multisite>
+   配置参考 <config-ref>
+   管理指南 <admin>
+   S3 API <s3>
+   Swift API <swift>
+   管理操作 API <adminops>
+   与 OpenStack Keystone 对接 <keystone>
+   多租户 <multitenancy>
+   RADOS 中的数据布局 <layout>
+   troubleshooting
+   radosgw 手册页 <../../man/8/radosgw>
+   radosgw-admin 手册页 <../../man/8/radosgw-admin>

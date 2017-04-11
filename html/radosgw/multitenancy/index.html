@@ -1,0 +1,259 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>RGW 多租户 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="Ceph 对象网关" href="../" />
+    <link rel="next" title="Rados 网关的数据布局" href="../layout/" />
+    <link rel="prev" title="与 OpenStack Keystone 对接" href="../keystone/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../layout/" title="Rados 网关的数据布局"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../keystone/" title="与 OpenStack Keystone 对接"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" accesskey="U">Ceph 对象网关</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="rgw">
+<span id="rgw-multi-tenancy"></span><h1>RGW 多租户<a class="headerlink" href="#rgw" title="Permalink to this headline">¶</a></h1>
+<p class="versionadded">
+<span class="versionmodified">New in version Jewel.</span></p>
+<p>The multi-tenancy feature allows to use buckets and users of the same
+name simultaneously by segregating them under so-called <tt class="docutils literal"><span class="pre">tenants</span></tt>.
+This may be useful, for instance, to permit users of Swift API to
+create buckets with easily conflicting names such as &#8220;test&#8221; or &#8220;trove&#8221;.</p>
+<p>From the Jewel release onward, each user and bucket lies under a tenant.
+For compatibility, a &#8220;legacy&#8221; tenant with an empty name is provided.
+Whenever a bucket is referred without an explicit tenant, an implicit
+tenant is used, taken from the user performing the operation. Since
+the pre-existing users are under the legacy tenant, they continue
+to create and access buckets as before. The layout of objects in RADOS
+is extended in a compatible way, ensuring a smooth upgrade to Jewel.</p>
+<div class="section" id="administering-users-with-explicit-tenants">
+<span id="id1"></span><h2>指定租户内的用户管理<a class="headerlink" href="#administering-users-with-explicit-tenants" title="Permalink to this headline">¶</a></h2>
+<p>Tenants as such do not have any operations on them. They appear and
+and disappear as needed, when users are administered. In order to create,
+modify, and remove users with explicit tenants, either an additional
+option &#8211;tenant is supplied, or a syntax &#8220;&lt;tenant&gt;$&lt;user&gt;&#8221; is used
+in the parameters of the radosgw-admin command.</p>
+<div class="section" id="id2">
+<h3>实例<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>创建用户 testx$tester ，用于 S3 接口的访问：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin --tenant testx --uid tester --display-name &quot;Test User&quot; --access_key TESTER --secret test123 user create</span>
+</pre></div>
+</div>
+<p>创建用户 testx$tester ，用于 Swift 接口的访问：</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin --tenant testx --uid tester --display-name &quot;Test User&quot; --subuser tester:test --key-type swift --access full user create</span>
+<span class="c1"># radosgw-admin --subuser &#39;testx$tester:test&#39; --key-type swift --secret test123</span>
+</pre></div>
+</div>
+<p>Note that the subuser with explicit tenant had to be quoted in the shell.</p>
+</div>
+</div>
+<div class="section" id="accessing-buckets-with-explicit-tenants">
+<span id="id3"></span><h2>访问指定租户的桶<a class="headerlink" href="#accessing-buckets-with-explicit-tenants" title="Permalink to this headline">¶</a></h2>
+<p>When a client application accesses buckets, it always operates with
+credentials of a particular user. As mentioned above, every user belongs
+to a tenant. Therefore, every operation has an implicit tenant in its
+context, to be used if no tenant is specified explicitly. Thus a complete
+compatibility is maintained with previous releases, as long as the
+referred buckets and referring user belong to the same tenant.
+In other words, anything unusual occurs when accessing another tenant&#8217;s
+buckets <em>only</em>.</p>
+<p>Extensions employed to specify an explicit tenant differ according
+to the protocol and authentication system used.</p>
+<div class="section" id="s3">
+<h3>S3<a class="headerlink" href="#s3" title="Permalink to this headline">¶</a></h3>
+<p>In case of S3, a colon character is used to separate tenant and bucket.
+Thus a sample URL would be:</p>
+<div class="highlight-python"><pre>https://ep.host.dom/tenant:bucket</pre>
+</div>
+<p>Here&#8217;s a simple Python sample:</p>
+<div class="highlight-python"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6
+7</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="kn">from</span> <span class="nn">boto.s3.connection</span> <span class="kn">import</span> <span class="n">S3Connection</span><span class="p">,</span> <span class="n">OrdinaryCallingFormat</span>
+     <span class="n">c</span> <span class="o">=</span> <span class="n">S3Connection</span><span class="p">(</span>
+             <span class="n">aws_access_key_id</span><span class="o">=</span><span class="s2">&quot;TESTER&quot;</span><span class="p">,</span>
+             <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="s2">&quot;test123&quot;</span><span class="p">,</span>
+             <span class="n">host</span><span class="o">=</span><span class="s2">&quot;ep.host.dom&quot;</span><span class="p">,</span>
+             <span class="n">calling_format</span> <span class="o">=</span> <span class="n">OrdinaryCallingFormat</span><span class="p">())</span>
+     <span class="n">bucket</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">get_bucket</span><span class="p">(</span><span class="s2">&quot;test5b:testbucket&quot;</span><span class="p">)</span>
+</pre></div>
+</td></tr></table></div>
+<p>Note that it&#8217;s not possible to supply an explicit tenant using
+a hostname. Hostnames cannot contain colons, or any other separators
+that are not already valid in bucket names. Using a period creates an
+ambiguous syntax. Therefore, the bucket-in-URL-path format has to be
+used.</p>
+</div>
+<div class="section" id="swift">
+<span id="swift-with-built-in-authenticator"></span><h3>用内置认证器的 Swift 接口<a class="headerlink" href="#swift" title="Permalink to this headline">¶</a></h3>
+<p>TBD &#8211; not in test_multen.py yet</p>
+</div>
+<div class="section" id="keystone-swift">
+<span id="swift-with-keystone"></span><h3>用 Keystone 认证的 Swift 接口<a class="headerlink" href="#keystone-swift" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt>TBD &#8211; don&#8217;t forget to explain the function of</dt>
+<dd>rgw keystone implicit tenants = true
+in commit e9259486decab52a362443d3fd3dec33b0ec654f</dd>
+</dl>
+</div>
+<div class="section" id="notes-and-known-issues">
+<span id="id4"></span><h3>注意事项和已知问题<a class="headerlink" href="#notes-and-known-issues" title="Permalink to this headline">¶</a></h3>
+<p>Just to be clear, it is not possible to create buckets in other
+tenants at present. The owner of newly created bucket is extracted
+from authentication information.</p>
+<p>This document needs examples of administration of Keystone users.
+The keystone.rst may need to be updated.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 对象网关</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">手动安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-fcgi/">用 FastCGI 的简单配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../federated-config/">联盟配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multisite/">多站配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">配置参考</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">管理操作 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 对接</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">多租户</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#administering-users-with-explicit-tenants">指定租户内的用户管理</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id2">实例</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#accessing-buckets-with-explicit-tenants">访问指定租户的桶</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#s3">S3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#swift">用内置认证器的 Swift 接口</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#keystone-swift">用 Keystone 认证的 Swift 接口</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#notes-and-known-issues">注意事项和已知问题</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../layout/">RADOS 中的数据布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../layout/" title="Rados 网关的数据布局"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../keystone/" title="与 OpenStack Keystone 对接"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" >Ceph 对象网关</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>
