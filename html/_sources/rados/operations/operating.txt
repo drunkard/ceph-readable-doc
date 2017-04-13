@@ -1,21 +1,27 @@
+.. _Operating a Cluster:
+
 ==========
  操纵集群
 ==========
 
-.. index:: Upstart; operating a cluster
 
-用 upstart 控制 Ceph
+.. index:: systemd; operating a cluster
+
+.. _Running Ceph with systemd:
+
+用 systemd 控制 Ceph
 ====================
 
-用 ``ceph-deploy`` 把 Ceph Cuttlefish 及更高版部署到 Ubuntu 之后，你可以用基于事\
-件的 `Upstart`_ 来启动、关闭 :term:`Ceph 节点`\ 上的守护进程。 Upstart 不要求你在\
-配置文件里定义守护进程例程。
+现在，所有支持 systemd 的发行版（ CentOS 7 、 Fedora 、
+Debian Jessie 8.x 、 SUSE ）都用原生的 systemd 文件来管理 ceph
+守护进程，不再使用原来的 sysvinit 脚本了。例如： ::
 
-用下列命令列出 Ceph 作业和例程： ::
+        sudo systemctl start ceph.target       # start all daemons
+        sudo systemctl status ceph-osd@12      # check status of osd.12
 
-	sudo initctl list | grep ceph
+罗列节点上 Ceph 的 systemd unit 用此命令： ::
 
-详情参见 `initctl`_ 。
+        sudo systemctl status ceph\*.service ceph\*.target
 
 
 启动所有守护进程
@@ -23,7 +29,7 @@
 
 要启动一 Ceph 节点（任何类型）上的所有守护进程，用下列命令： ::
 
-	sudo start ceph-all
+        sudo systemctl start ceph.target
 
 
 停止所有守护进程
@@ -31,7 +37,7 @@
 
 要停止一 Ceph 节点（任何类型）上的所有守护进程，用下列命令： ::
 
-	sudo stop ceph-all
+        sudo systemctl stop ceph\*.service ceph\*.target
 
 
 按类型启动所有守护进程
@@ -39,63 +45,152 @@
 
 要启动一节点上的某一类守护进程，用下列命令： ::
 
-	sudo start ceph-osd-all
-	sudo start ceph-mon-all
-	sudo start ceph-mds-all
+        sudo systemctl start ceph-osd.target
+        sudo systemctl start ceph-mon.target
+        sudo systemctl start ceph-mds.target
 
 
 按类型停止所有守护进程
 ----------------------
 
-要停止一节点上的某一类守护进程，用下列命令：
+要停止一节点上的某一类守护进程，用下列命令： ::
 
-	sudo stop ceph-osd-all
-	sudo stop ceph-mon-all
-	sudo stop ceph-mds-all
+        sudo systemctl stop ceph-mon\*.service ceph-mon.target
+        sudo systemctl stop ceph-osd\*.service ceph-osd.target
+        sudo systemctl stop ceph-mds\*.service ceph-mds.target
 
 
 启动单个进程
 ------------
 
-要启动某节点上一指定守护进程例程，用下列命令之一： ::
+要启动某节点上的某个守护进程例程，用下列命令之一： ::
 
-	sudo start ceph-osd id={id}
-	sudo start ceph-mon id={hostname}
-	sudo start ceph-mds id={hostname}
+        sudo systemctl start ceph-osd@{id}
+        sudo systemctl start ceph-mon@{hostname}
+        sudo systemctl start ceph-mds@{hostname}
 
 例如： ::
 
-	sudo start ceph-osd id=1
-	sudo start ceph-mon id=ceph-server
-	sudo start ceph-mds id=ceph-server
+        sudo systemctl start ceph-osd@1
+        sudo systemctl start ceph-mon@ceph-server
+        sudo systemctl start ceph-mds@ceph-server
 
 
 停止单个进程
 ------------
 
-要停止某节点上一指定守护进程例程，用下列命令之一： ::
+要停止某节点上的某个守护进程例程，用下列命令之一： ::
 
-	sudo stop ceph-osd id={id}
-	sudo stop ceph-mon id={hostname}
-	sudo stop ceph-mds id={hostname}
+        sudo systemctl stop ceph-osd@{id}
+        sudo systemctl stop ceph-mon@{hostname}
+        sudo systemctl stop ceph-mds@{hostname}
 
 例如： ::
 
-	sudo stop ceph-osd id=1
-	sudo start ceph-mon id=ceph-server
-	sudo start ceph-mds id=ceph-server
+        sudo systemctl stop ceph-osd@1
+        sudo systemctl stop ceph-mon@ceph-server
+        sudo systemctl stop ceph-mds@ceph-server
+
+
+.. index:: Ceph service; Upstart; operating a cluster
+
+.. _Running Ceph with Upstart:
+
+用 Upstart 控制 Ceph
+====================
+
+用 ``ceph-deploy`` 在 Ubuntu Trusty 上部署 Ceph 后，你可以用基\
+于事件的 `Upstart`_ 来启动、停止某一 :term:`Ceph 节点`\ 上的
+Ceph 守护进程。 Upstart 不要求在 Ceph 配置文件里定义守护进程例\
+程。
+
+要罗列一个节点上 Ceph 的 Upstart 作业，用下列命令： ::
+
+        sudo initctl list | grep ceph
+
+详细了解请看 `initctl`_ 。
+
+
+启动所有守护进程
+----------------
+
+要启动一 Ceph 节点（任何类型）上的所有守护进程，用下列命令： ::
+
+        sudo start ceph-all
+
+
+停止所有守护进程
+----------------
+
+要停止一 Ceph 节点（任何类型）上的所有守护进程，用下列命令： ::
+
+        sudo stop ceph-all
+
+
+按类型启动所有守护进程
+----------------------
+
+要启动一节点上的某一类守护进程，用下列命令： ::
+
+        sudo start ceph-osd-all
+        sudo start ceph-mon-all
+        sudo start ceph-mds-all
+
+
+按类型停止所有守护进程
+----------------------
+
+要停止一节点上的某一类守护进程，用下列命令： ::
+
+        sudo stop ceph-osd-all
+        sudo stop ceph-mon-all
+        sudo stop ceph-mds-all
+
+
+启动单个进程
+------------
+
+要启动某节点上的某个守护进程例程，用下列命令之一： ::
+
+        sudo start ceph-osd id={id}
+        sudo start ceph-mon id={hostname}
+        sudo start ceph-mds id={hostname}
+
+例如： ::
+
+        sudo start ceph-osd id=1
+        sudo start ceph-mon id=ceph-server
+        sudo start ceph-mds id=ceph-server
+
+
+停止单个进程
+------------
+
+要停止某节点上的某个守护进程例程，用下列命令之一： ::
+
+        sudo stop ceph-osd id={id}
+        sudo stop ceph-mon id={hostname}
+        sudo stop ceph-mds id={hostname}
+
+例如： ::
+
+        sudo stop ceph-osd id=1
+        sudo start ceph-mon id=ceph-server
+        sudo start ceph-mds id=ceph-server
 
 
 .. index:: Ceph service; sysvinit; operating a cluster
 
+.. _Running Ceph:
 
 运行 Ceph
 =========
 
-每次用命令\ **启动**\ 、\ **重启**\ 、\ **停止**\ Ceph 守护进程（或整个集群）时，\
-你必须指定至少一个选项和一个命令，还可能要指定守护进程类型或具体例程。 ::
+每次用命令\ **启动**\ 、\ **重启**\ 、\ **停止** Ceph 守护进程\
+（或整个集群）时，你必须指定至少一个选项和一个命令，还可能要指\
+定守护进程类型或具体例程。 ::
 
-	{commandline} [options] [commands] [daemons]
+        {commandline} [options] [commands] [daemons]
 
 
 ``ceph`` 命令的选项包括：
@@ -135,197 +230,12 @@ Ceph 子命令包括：
 | ``cleanalllogs`` | 清理掉日志目录内的\ **所有**\ 文件。                      |
 +------------------+-----------------------------------------------------------+
 
-至于子系统操作， ``ceph`` 服务能指定守护进程类型，在 ``[daemons]`` 处指定守护进程\
-类型就行了，守护进程类型包括：
+至于子系统操作， ``ceph`` 服务能指定守护进程类型，在
+``[daemons]`` 处指定守护进程类型就行了，守护进程类型包括：
 
 - ``mon``
 - ``osd``
 - ``mds``
-
-
-
-通过 sysvinit 机制运行 Ceph
----------------------------
-
-在 CentOS 、 Redhat 、 Fedora 和 SLES 发行版上可以通过传统的 ``sysvinit`` 运行 \
-Ceph ， Debian/Ubuntu 的较老的版本也可以用此方法。
-
-
-启动所有守护进程
-~~~~~~~~~~~~~~~~
-
-要启动 Ceph 集群，执行 ``ceph`` 时加上 ``start`` 命令，语法如下： ::
-
-	sudo /etc/init.d/ceph [options] [start|restart] [daemonType|daemonID]
-
-下面是个典型实例： ::
-
-	sudo /etc/init.d/ceph -a start
-
-加 ``-a`` （即在所有节点上执行）执行完成后 Ceph 应该开始运行了。
-
-
-停止所有守护进程
-~~~~~~~~~~~~~~~~
-
-要停止 Ceph 集群，执行 ``ceph`` 时加上 ``stop`` 命令，语法如下： ::
-
-	sudo /etc/init.d/ceph [options] stop [daemonType|daemonID]
-
-下面是个典型实例： ::
-
-	sudo /etc/init.d/ceph -a stop
-
-执行命令时一旦加了 ``-a`` （即在所有节点执行），整个 Ceph 集群都会关闭。
-
-
-启动一类守护进程
-~~~~~~~~~~~~~~~~
-
-要启动本节点上某一类的所有 Ceph 守护进程，按此语法： ::
-
-	sudo /etc/init.d/ceph start {daemon-type}
-	sudo /etc/init.d/ceph start osd
-
-要启动非本机节点上某一类的所有 Ceph 守护进程，按此语法： ::
-
-	sudo /etc/init.d/ceph -a start {daemon-type}
-	sudo /etc/init.d/ceph -a start osd
-
-
-停止一类守护进程
-~~~~~~~~~~~~~~~~
-
-要停止本节点上某一类的所有 Ceph 守护进程，按此语法：
-
-	sudo /etc/init.d/ceph stop {daemon-type}
-	sudo /etc/init.d/ceph stop osd
-
-要启动非本机节点上某一类的所有 Ceph 守护进程，按此语法： ::
-
-	sudo /etc/init.d/ceph -a stop {daemon-type}
-	sudo /etc/init.d/ceph -a stop osd
-
-
-启动单个守护进程
-~~~~~~~~~~~~~~~~
-
-要启动本节点上某个 Ceph 守护进程，按此语法： ::
-
-	sudo /etc/init.d/ceph start {daemon-type}.{instance}
-	sudo /etc/init.d/ceph start osd.0
-
-要启动另一节点上某个 Ceph 守护进程，按此语法： ::
-
-	sudo /etc/init.d/ceph -a start {daemon-type}.{instance}
-	sudo /etc/init.d/ceph -a start osd.0
-
-
-停止单个守护进程
-~~~~~~~~~~~~~~~~
-
-要停止本节点上某个 Ceph 守护进程，按此语法： ::
-
-	sudo /etc/init.d/ceph stop {daemon-type}.{instance}
-	sudo /etc/init.d/ceph stop osd.0
-
-要停止另一节点上某个 Ceph 守护进程，按此语法： ::
-
-	sudo /etc/init.d/ceph -a stop {daemon-type}.{instance}
-	sudo /etc/init.d/ceph -a stop osd.0
-
-
-把 Ceph 当服务运行
-------------------
-
-如果你是用 ``ceph-deploy`` 部署 Argonaut 或 Bobtail 的，那么 Ceph 可以作为服务运\
-行（还可以用 sysvinit ）。
-
-
-启动所有守护进程
-~~~~~~~~~~~~~~~~
-
-要启动你的 Ceph 集群，执行 ``ceph`` 时加上 ``start`` 命令，按此语法： ::
-
-	sudo service ceph [options] [start|restart] [daemonType|daemonID]
-
-下面是个典型实例： ::
-
-	sudo service ceph -a start
-
-加 ``-a`` （即在所有节点上执行）执行完成后 Ceph 应该开始运行了。
-
-
-停止所有守护进程
-~~~~~~~~~~~~~~~~
-
-要停止你的 Ceph 集群，执行 ``ceph`` 时加上 ``stop`` 命令，按此语法： ::
-
-	sudo service ceph [options] stop [daemonType|daemonID]
-
-例如： ::
-
-	sudo service ceph -a stop
-
-加 ``-a`` （即在所有节点上执行）执行完成后 Ceph 应该已停止。
-
-
-启动一类守护进程
-~~~~~~~~~~~~~~~~
-
-要启动本节点上某一类的所有 Ceph 守护进程，按此语法： ::
-
-	sudo service ceph start {daemon-type}
-	sudo service ceph start osd
-
-要启动所有节点上某一类的所有 Ceph 守护进程，按此语法： ::
-
-	sudo service ceph -a start {daemon-type}
-	sudo service ceph -a start osd
-
-
-停止一类守护进程
-~~~~~~~~~~~~~~~~
-
-要停止本节点上某一类的所有 Ceph 守护进程，按此语法： ::
-
-	sudo service ceph stop {daemon-type}
-	sudo service ceph stop osd
-
-要停止所有节点上某一类的所有 Ceph 守护进程，按此语法： ::
-
-	sudo service ceph -a stop {daemon-type}
-	sudo service ceph -a stop osd
-
-
-启动单个守护进程
-~~~~~~~~~~~~~~~~
-
-要启动本节点上某个 Ceph 守护进程，按此语法： ::
-
-	sudo service ceph start {daemon-type}.{instance}
-	sudo service ceph start osd.0
-
-要启动另一节点上某个 Ceph 守护进程，按此语法： ::
-
-	sudo service ceph -a start {daemon-type}.{instance}
-	sudo service ceph -a start osd.0
-
-
-停止单个守护进程
-~~~~~~~~~~~~~~~~
-
-要停止本节点上某个 Ceph 守护进程，按此语法： ::
-
-	sudo service ceph stop {daemon-type}.{instance}
-	sudo service ceph stop osd.0
-
-要停止另一节点上某个 Ceph 守护进程，按此语法： ::
-
-	sudo service ceph -a stop {daemon-type}.{instance}
-	sudo service ceph -a stop osd.0
-
-
 
 
 .. _Valgrind: http://www.valgrind.org/

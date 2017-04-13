@@ -78,10 +78,12 @@ OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD �
 
 若一个 OSD 状态为 ``down`` ，启动它： ::
 
-	sudo /etc/init.d/ceph -a start osd.1
+	sudo systemctl start ceph-osd@1
 
 和 OSD 没运行或不启动相关的问题请看 `OSD 没运行`_\ 。
 
+
+.. _PG Sets:
 
 归置组集
 ========

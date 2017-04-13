@@ -454,10 +454,13 @@ update the region map. ::
 使用情况
 ========
 
-The Ceph Object Gateway logs usage for each user. You can track
-user usage within date ranges too.
+Ceph 对象网关会记录每个用户的使用情况，你可以查看某段时间内用\
+户的使用情况。
 
-Options include: 
+- 需要在 ceph.conf 的 [client.rgw] 段下加
+  ``rgw enable usage log = true`` 配置，然后重启 radosgw 服务。
+
+选项有：
 
 - **Start Date:** The ``--start-date`` option allows you to filter usage
   stats from a particular start date (**format:** ``yyyy-mm-dd[HH:MM:SS]``).

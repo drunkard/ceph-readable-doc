@@ -160,6 +160,8 @@
 要取消配额，设置为 ``0`` 。
 
 
+.. _Delete a Pool:
+
 删除存储池
 ==========
 
@@ -167,9 +169,33 @@
 
 	ceph osd pool delete {pool-name} [{pool-name} --yes-i-really-really-mean-it]
 
-如果你给自建的存储池创建了定制的规则集，你不需要存储池时最好删除它。如果你曾严格地创\
-建了用户及其权限给一个存储池，但存储池已不存在，最好也删除那些用户。
+要删除存储池，监视器配置的 mon_allow_pool_delete 标志必须设置为
+true ，否则它会拒绝删除存储池。
 
+详情见\ `监视器配置`_\ 。
+
+.. _监视器配置: ../../configuration/mon-config-ref
+
+如果你给自建的存储池创建了定制的规则集和规则，那么没有存储池在\
+用它时你应该删掉它： ::
+
+	ceph osd pool get {pool-name} crush_ruleset
+
+假设规则集 id 为 123 ，你可以这样找出还在用它的其它存储池： ::
+
+	ceph osd dump | grep "^pool" | grep "crush_ruleset 123"
+
+如果没有别的存储池使用这个定制规则集，那就可以安全地从集群里删\
+掉它。
+
+如果你曾创建过一些用户及其权限、并与存储池绑死了，但如今这些存\
+储池已不存在，最好也删除那些用户： ::
+
+	ceph auth list | grep -C 5 {pool-name}
+	ceph auth del {user}
+
+
+.. _Rename a Pool:
 
 重命名存储池
 ============
@@ -178,8 +204,8 @@
 
 	ceph osd pool rename {current-pool-name} {new-pool-name}
 
-如果重命名了一个存储池，且认证用户有每存储池能力，那你必须用新存储池名字更新用户的能\
-力（即 caps ）。
+如果重命名了一个存储池，且认证用户有每存储池能力，那你必须用新\
+存储池名字更新用户的能力（即 caps ）。
 
 .. note:: 适用 ``0.48 Argonaut`` 及以上。
 

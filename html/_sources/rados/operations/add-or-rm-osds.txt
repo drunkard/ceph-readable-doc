@@ -138,17 +138,17 @@ CRUSH 图。
 启动 OSD
 --------
 
-把 OSD 加入 Ceph 后， OSD 就在配置里了。然而它还没运行，它现在的状态为 ``down`` \
-且 ``out`` 。你必须先启动 OSD 它才能收数据。可以用管理主机上的 ``service ceph`` 、\
-或从 OSD 所在主机启动。
+把 OSD 加入 Ceph 后， OSD 就在配置里了。然而它还没运行，它现在\
+的状态为 ``down`` 且 ``out`` 。你必须先启动 OSD 它才能收数据。\
+可以用管理主机上的 ``service ceph`` 、或从 OSD 所在主机启动。
 
-在 Debian/Ubuntu 上用 Upstart。 ::
+在 Ubuntu Trusty 上用 Upstart。 ::
 
 	sudo start ceph-osd id={osd-num}
 
-在 CentOS/RHEL 上用 sysvinit 。 ::
+在使用 systemd 的发行版上： ::
 
-	sudo /etc/init.d/ceph start osd.{osd-num}
+	sudo systemctl start ceph-osd@{osd-num}
 
 一旦你启动了 OSD ，其状态就变成了 ``up`` 且 ``in`` 。
 
@@ -226,11 +226,11 @@ CRUSH 图。
 停止 OSD
 --------
 
-把 OSD 踢出集群后，它可能仍在运行，就是说其状态为 ``up`` 且 ``out`` 。删除前要先停\
-止 OSD 进程。 ::
+把 OSD 踢出集群后，它可能仍在运行，就是说其状态为 ``up`` 且
+``out`` 。删除前要先停止 OSD 进程。 ::
 
 	ssh {osd-host}
-	sudo /etc/init.d/ceph stop osd.{osd-num}
+	sudo systemctl stop ceph-osd@{osd-num}
 
 停止 OSD 后，状态变为 ``down`` 。
 
