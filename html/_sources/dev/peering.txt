@@ -1,9 +1,13 @@
-======================
-Peering
-======================
+.. _Peering:
 
-Concepts
---------
+======
+ 互联
+======
+
+.. _Concepts:
+
+概念
+----
 
 *Peering*
    the process of bringing all of the OSDs that store
@@ -112,8 +116,11 @@ Concepts
    At this point, *recovery* is deemed to have been
    completed.
 
-Description of the Peering Process
-----------------------------------
+
+.. _Description of the Peering Process:
+
+互联过程描述
+------------
 
 The *Golden Rule* is that no write operation to any PG
 is acknowledged to a client until it has been persisted
@@ -145,7 +152,7 @@ history of past maps to generate a set of *past intervals* to
 determine which OSDs must be consulted before we can successfully
 *peer*.  The set of past intervals is bounded by *last epoch started*,
 the most recent *past interval* for which we know *peering* completed.
-The process by with an OSD discovers a PG exists in the first place is
+The process by which an OSD discovers a PG exists in the first place is
 by exchanging *PG info* messages, so the OSD always has some lower
 bound on *last epoch started*.
 
@@ -253,7 +260,10 @@ The high level process is for the current PG primary to:
      old object (all of whose copies disappeared before they could be
      replicated on members of the current *acting set*).
 
-State Model
------------
+
+.. _State Model:
+
+状态机模型
+----------
 
 .. graphviz:: peering_graph.generated.dot

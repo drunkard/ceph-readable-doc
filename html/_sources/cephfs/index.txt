@@ -64,7 +64,6 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
         挂载 CephFS 文件系统 <kernel>
         把 CephFS 挂载为 FUSE <fuse>
         通过 fstab 挂载 CephFS <fstab>
-        cephfs 手册页 <../../man/8/cephfs>
         ceph-fuse 手册页 <../../man/8/ceph-fuse>
         mount.ceph 手册页 <../../man/8/mount.ceph>
 
@@ -87,6 +86,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
         文件布局 <file-layouts>
         驱逐客户端 <eviction>
         文件系统占满的处理 <full>
+        健康消息 <health-messages>
         故障排除 <troubleshooting>
         灾难恢复 <disaster-recovery>
         客户端认证 <client-auth>

@@ -36,7 +36,7 @@ API 写、然后用另一个检出。
    :maxdepth: 1
 
    手动安装 <../../install/install-ceph-gateway>
-   用 FastCGI 的简单配置 <config-fcgi>
+   基于 Apache/FastCGI 的简单配置 <config-fcgi>
    联盟配置 <federated-config>
    多站配置 <multisite>
    配置参考 <config-ref>

@@ -1,0 +1,227 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>CephFS 健康消息 &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="Ceph 文件系统" href="../" />
+    <link rel="next" title="故障排除" href="../troubleshooting/" />
+    <link rel="prev" title="处理占满的 Ceph 文件系统" href="../full/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../troubleshooting/" title="故障排除"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../full/" title="处理占满的 Ceph 文件系统"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="cephfs">
+<span id="cephfs-health-messages"></span><h1>CephFS 健康消息<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="cluster-health-checks">
+<span id="id1"></span><h2>集群健康检查<a class="headerlink" href="#cluster-health-checks" title="Permalink to this headline">¶</a></h2>
+<p>在文件系统映射图结构（以及封闭式的 MDS 映射图）变为特定状态时，
+Ceph 监视器守护进程会产生健康消息。</p>
+<p>消息： mds rank(s) <em>ranks</em> have failed
+描述： 一或多个 MDS rank 没能分给守护进程，只有可用的替补守护进程启动后集群才能恢复运转。</p>
+<p>消息： mds rank(s) <em>ranks</em> are damaged
+描述： 一或多个 MDS rank 遇到了损伤严重的元数据，只有修复这些数据它才能再次启动。</p>
+<p>消息： mds cluster is degraded
+描述： 一或多个 MDS rank 现在的状态不是 up 且未在线运行，此问题解决前客户端只能暂停元数据操作。此情形涉及失效、损坏的
+rank ，另外也包括已分到 MDS 但还没进入 <em>active</em> 状态的 rank
+（如处于 <em>replay</em> 状态的 rank ）。</p>
+<p>消息： mds <em>names</em> are laggy
+描述： 这些 MDS 守护进程至少有 <tt class="docutils literal"><span class="pre">mds_beacon_grace</span></tt> 秒（默认为
+15s ）没向监视器发送信标消息（ beacon message ）了，它们本来应该每 <tt class="docutils literal"><span class="pre">mds_beacon_interval</span></tt> 秒（默认为 4s ）发送一次的，它们可能崩溃了。 Ceph 监视器会自动用灾备替换掉滞后的守护进程。</p>
+<p>消息： insufficient standby daemons available
+描述： 一或多个文件系统配置的是需要一定数量的灾备守护进程（包括灾备重放 standby-replay 守护进程），但是集群内却没有足够多的守护进程。非重放的灾备进程可算进任意文件系统（即它们可重叠）。这个警告可用 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">fs</span> <span class="pre">set</span> <span class="pre">&lt;fs&gt;</span> <span class="pre">standby_count_wanted</span> <span class="pre">&lt;count&gt;</span></tt>
+来配置， <tt class="docutils literal"><span class="pre">count</span></tt> 配置为 0 时禁用此功能。</p>
+</div>
+<div class="section" id="daemon-reported-health-checks">
+<span id="id2"></span><h2>守护进程报告的健康检查<a class="headerlink" href="#daemon-reported-health-checks" title="Permalink to this headline">¶</a></h2>
+<p>MDS 守护进程能定位各种各样不该出现的状况，并通过 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">status</span></tt>
+出示给操作员。这些状况附带了人类可读的消息，另外 JSON 格式的输出还有一个以 MDS_HEALTH 打头的唯一代码。</p>
+<p>消息： &#8220;Behind on trimming...&#8221;
+代码： MDS_HEALTH_TRIM
+描述： CephFS 维护着的元数据日志是切成<em>日志片段（ log segment ）</em>的。日志的长度（按片段数量算）是用 <tt class="docutils literal"><span class="pre">mds_log_max_segments</span></tt> 选项控制的，当片段数量超过配置时，
+MDS 就开始写回元数据，以便删除（裁剪、 trim ）最老的片段。如果回写得太慢，或者软件缺陷妨碍了裁剪，这样的健康消息就可能出现。此消息出现的阈值是片段数量达到 <tt class="docutils literal"><span class="pre">mds_log_max_segments</span></tt> 的两倍。</p>
+<p>消息： &#8220;Client <em>name</em> failing to respond to capability release&#8221;
+代码： MDS_HEALTH_CLIENT_LATE_RELEASE, MDS_HEALTH_CLIENT_LATE_RELEASE_MANY
+描述： CephFS 客户端收到了 MDS 发出的<em>能力（ capabilities ）</em> ，它就像锁。有时候，比如一个客户端需要访问权， MDS 就会让别的客户端释放它们的能力，如果有客户端没响应、或者有缺陷，它就有可能没及时释放、或者根本不释放。如果某个客户端的响应时间超过了 <tt class="docutils literal"><span class="pre">mds_revoke_cap_timeout</span></tt> （默认为
+60s ），这条消息就会出现。</p>
+<p>消息： &#8220;Client <em>name</em> failing to respond to cache pressure&#8221;
+代码： MDS_HEALTH_CLIENT_RECALL, MDS_HEALTH_CLIENT_RECALL_MANY
+描述： 客户端有各自的元数据缓存，客户端缓存中的条目（比如索引节点）也会存在于 MDS 缓存中，所以当 MDS 需要削减其缓存时（保持在 <tt class="docutils literal"><span class="pre">mds_cache_size</span></tt> 以下），它也会发消息给客户端让它们削减自己的缓存。如果有客户端没响应或者有缺陷，就会妨碍 MDS 将缓存保持在 <tt class="docutils literal"><span class="pre">mds_cache_size</span></tt> 以下， MDS 就有可能耗尽内存而后崩溃。如果某个客户端的响应时间超过了 <tt class="docutils literal"><span class="pre">mds_recall_state_timeout</span></tt> （默认为 60s ），这条消息就会出现。</p>
+<p>消息： &#8220;Client <em>name</em> failing to advance its oldest client/flush tid&#8221;
+代码： MDS_HEALTH_CLIENT_OLDEST_TID, MDS_HEALTH_CLIENT_OLDEST_TID_MANY
+描述： CephFS 的客户端-MDS 协议有一个名为 <em>oldest tid</em> 的字段，可让客户端通知 MDS 哪些请求全部完成了，这样的话它就有可能被 MDS 遗忘。如果一个有缺陷的客户端未能上报这个字段，那么与之相关的 MDS 就不能擅自清理这些请求所占用的资源。如果某个客户端的请求在 MDS 端已完成、但尚未收到客户端上报的 <em>oldest tid</em>
+值，这样的请求数量超过 <tt class="docutils literal"><span class="pre">max_completed_requests</span></tt> （默认为
+100000 ）时，此消息就会出现。</p>
+<p>消息： &#8220;Metadata damage detected&#8221;
+代码： MDS_HEALTH_DAMAGE,
+描述： 从元数据存储池读取时，遇到了元数据损坏或丢失的情况。这条消息表明损坏之处已经被妥善隔离了，以使 MDS 继续运作，如此一来，若有客户端访问损坏的子树就返回 IO 错误。关于损坏的细节信息可用 <tt class="docutils literal"><span class="pre">damage</span> <span class="pre">ls</span></tt> 管理套接字命令获取。只要一遇到受损元数据，此消息就会立即出现。</p>
+<p>消息： &#8220;MDS in read-only mode&#8221;
+代码： MDS_HEALTH_READ_ONLY,
+描述： MDS 已进入只读模式，任何尝试修改元数据的操作都会收到
+EROFS 错误代码。在 MDS 写入元数据存储池时遇到写错误、或者管理员用 <em>force_readonly</em> 管理套接字命令强行设置时， MDS 会进入只读模式。</p>
+<p>消息： <em>N</em> slow requests are blocked&#8221;
+代码： MDS_HEALTH_SLOW_REQUEST,
+描述： 一或多个客户端请求没有及时完成，说明 MDS 要么跑得太慢、要么 RADOS 集群没及时确认日志写操作、或者软件有缺陷。可用
+<tt class="docutils literal"><span class="pre">ops</span></tt> 管理套接字命令罗列未完成的元数据操作。如果有客户端请求花费的时间超过 <tt class="docutils literal"><span class="pre">mds_op_complaint_time</span></tt> （默认为 30s ），此消息就会出现。</p>
+<p>消息： &#8220;Too many inodes in cache&#8221;
+代码： MDS_HEALTH_CACHE_OVERSIZED
+描述： MDS 没能成功削减缓存，未能降到管理员设置的上限之下。如果 MDS 缓存涨得太大，守护进程可能会耗尽内存然后崩溃。如果实际的缓存尺寸（按索引节点算）比 <tt class="docutils literal"><span class="pre">mds_cache_size</span></tt> （默认为
+100000 ）大至少 50% ，这个消息就会出现。</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">增加/删除 MDS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/">术语</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/#mds">MDS 守护进程的引用</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/#managing-failover">故障切换的管理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/#configuring-standby-daemons">灾备守护进程的配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/#examples">实例</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds-config-ref/">MDS 配置选项</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../best-practices/">最佳部署实践</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../experimental-features/">实验性功能</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">健康消息</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cluster-health-checks">集群健康检查</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#daemon-reported-health-checks">守护进程报告的健康检查</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../upgrading/">旧文件系统的升级</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#for-developers">开发者文档</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../troubleshooting/" title="故障排除"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../full/" title="处理占满的 Ceph 文件系统"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>
