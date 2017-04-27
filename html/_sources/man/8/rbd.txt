@@ -273,7 +273,7 @@
   把指定映像回滚到快照。此动作会递归整个块阵列，并把数据头内容\
   更新到快照版本。
 
-:command:`snap rm` *snap-spec*
+:command:`snap rm` [--force] *snap-spec*
   删除指定快照。
 
 :command:`snap purge` *image-spec*
