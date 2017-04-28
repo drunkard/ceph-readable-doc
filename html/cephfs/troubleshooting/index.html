@@ -60,13 +60,97 @@
             
   <div class="section" id="id1">
 <h1>故障排除<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="slow-stuck-operations">
+<span id="id2"></span><h2>慢或卡住的操作<a class="headerlink" href="#slow-stuck-operations" title="Permalink to this headline">¶</a></h2>
+<p>如果遇到了明显的卡顿操作，首先要定位问题源头：是客户端、
+MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（参考下面的 <a class="reference internal" href="#slow-requests"><em>慢请求（ MDS 端）</em></a> ），进而缩小范围。</p>
+</div>
+<div class="section" id="rados">
+<h2>RADOS 健康状况<a class="headerlink" href="#rados" title="Permalink to this headline">¶</a></h2>
+<p>如果 CephFS 的元数据或者数据存储池的某一部分不可用、且 CephFS
+不响应，很有可能是 RADOS 本身有问题，应该先解决这样的问题（
+<a class="reference internal" href="../../rados/troubleshooting/"><em>故障排除</em></a> ）。</p>
+</div>
+<div class="section" id="mds">
+<h2>MDS 问题<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h2>
+<p>如果某个操作卡在了 MDS 内部，类似 &#8220;slow requests are blocked&#8221;
+的消息最终会出现在 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">health</span></tt> 里，也可能指出是客户端的问题，如 &#8220;failing to respond&#8221; 或其它形式的异常行为。如果 MDS 认定某些客户端的行为异常，你应该弄明白起因。常见起因有：</p>
+<ol class="arabic simple">
+<li>系统过载（如果你还有空闲内存，增大 <tt class="docutils literal"><span class="pre">mds</span> <span class="pre">cache</span> <span class="pre">size</span></tt> 配置试试，默认才 100000 。活跃文件比较多，超过 MDS 缓存容量是此问题的首要起因！）</li>
+<li>客户端比较老（行为异常），或者</li>
+<li>底层的 RADOS 问题。</li>
+</ol>
+<p>除此之外，你也许遇到了新的软件缺陷，应该报告给开发者！</p>
+<div class="section" id="slow-requests">
+<span id="id3"></span><h3>慢请求（ MDS 端）<a class="headerlink" href="#slow-requests" title="Permalink to this headline">¶</a></h3>
+<p>通过管理套接字，你可以罗列当前正在运行的操作：</p>
+<div class="highlight-python"><pre>ceph daemon mds.&lt;name&gt; dump_ops_in_flight</pre>
+</div>
+<p>在 MDS 主机上执行。找出卡住的命令、并调查卡住的原因。通常最后一个“事件”（ event ）尝试过收集锁、或者把这个操作发往 MDS 日志。如果它是在等待 OSD ，修正即可；如果操作都卡在了某个索引节点上，原因可能是一个客户端一直占着能力，别人就没法拿到，也可能是这个客户端想刷回脏数据，还可能是你遇到了 CephFS 分布式文件锁的代码（文件能力子系统、 capabilities 、 caps ）缺陷。</p>
+<p>如果起因是能力代码的缺陷，重启 MDS 也许能解决此问题。</p>
+<p>如果 MDS 上没发现慢请求，而且也没报告客户端行为异常，那问题就可能在客户端上、或者它的请求还没到 MDS 上。</p>
+</div>
+</div>
+<div class="section" id="ceph-fuse">
+<span id="ceph-fuse-debugging"></span><h2>ceph-fuse 的调试<a class="headerlink" href="#ceph-fuse" title="Permalink to this headline">¶</a></h2>
+<p>ceph-fuse 也支持 dump_ops_in_flight 命令，可以查看是否卡住、卡在哪里了。</p>
+<div class="section" id="id4">
+<h3>调试输出<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>要想看到 ceph-fuse 的更多调试信息，试试在前台运行，让日志输出到控制台（ <tt class="docutils literal"><span class="pre">-d</span></tt> ）、打开客户端调试（ <tt class="docutils literal"><span class="pre">--debug-client=20</span></tt> ）、打印发送过的所有消息（ <tt class="docutils literal"><span class="pre">--debug-ms=1</span></tt> ）。</p>
+<p>如果你怀疑是监视器的问题，也可以打开监视器调试开关（
+<tt class="docutils literal"><span class="pre">--debug-monc=20</span></tt> ）。</p>
+</div>
+</div>
+<div class="section" id="kernel-mount-debugging">
+<span id="id5"></span><h2>内核挂载的调试<a class="headerlink" href="#kernel-mount-debugging" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id6">
+<h3>慢请求<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>遗憾的是内核客户端不支持管理套接字，可是如果你的内核启用了（如果限制过） debugfs ，那么它就有相似的接口了。
+<tt class="docutils literal"><span class="pre">sys/kernel/debug/ceph/</span></tt> 路径下有一个文件夹（其名字形如
+<tt class="docutils literal"><span class="pre">28f7427e-5558-4ffd-ae1a-51ec3042759a.client25386880</span></tt> ），而且其内包含很多文件，用 <tt class="docutils literal"><span class="pre">cat</span></tt> 命令查看它们的内容时会看到有趣的输出。这些文件描述如下，最有助于调试慢请求问题的文件可能是
+<tt class="docutils literal"><span class="pre">mdsc</span></tt> 和 <tt class="docutils literal"><span class="pre">osdc</span></tt> 。</p>
+<ul class="simple">
+<li>bdi: 关于 Ceph 系统的 BDI 信息（脏块、已写入的等等）</li>
+<li>caps: 文件的 caps 数据结构计数，包括内存中的和用过的</li>
+<li>client_options: 倒出挂载 CephFS 时所用的选项</li>
+<li>dentry_lru: 倒出当前内存中的 CephFS dentry</li>
+<li>mdsc: 倒出当前发给 MDS 的请求</li>
+<li>mdsmap: 倒出当前的 MDSMap 时间结和所有 MDS</li>
+<li>mds_sessions: 倒出当前与 MDS 建立的会话</li>
+<li>monc: 倒出当前从监视器获取的各种映射图，以及其它“订阅”信息</li>
+<li>monmap: 倒出当前的监视器图和所有监视器</li>
+<li>osdc: 倒出当前发往 OSD 的操作（即文件数据的 IO ）</li>
+<li>osdmap: 倒出当前的 OSDMap 时间结、存储池、所有 OSD</li>
+</ul>
+<p>如果没有卡住的请求，却有毫无进展的文件 IO ，问题也许是……</p>
+</div>
+</div>
+<div class="section" id="disconnected-remounted-fs">
+<span id="id7"></span><h2>断线后又重新挂载的文件系统<a class="headerlink" href="#disconnected-remounted-fs" title="Permalink to this headline">¶</a></h2>
+<p>因为 CephFS 有个“一致性缓存”，如果你的网络连接中断时间较长，客户端就会被系统强制断开，此时，内核客户端仍然傻站着（ in a bind
+）：它不能安全地写回脏数据，另外很多应用程序在 close() 时不能正确处理 IO 错误。这个时候，内核客户端会重新挂载这个文件系统，但是先前的文件系统 IO 也许能完成、也许不能，这些情况下，你也许得重启客户端系统。</p>
+<p>如果 dmesg 或者 kern.log 里出现了类似消息，说明你遇到的就是这种情况：</p>
+<div class="highlight-python"><pre>Jul 20 08:14:38 teuthology kernel: [3677601.123718] ceph: mds0 closed our session
+Jul 20 08:14:38 teuthology kernel: [3677601.128019] ceph: mds0 reconnect start
+Jul 20 08:14:39 teuthology kernel: [3677602.093378] ceph: mds0 reconnect denied
+Jul 20 08:14:39 teuthology kernel: [3677602.098525] ceph:  dropping dirty+flushing Fw state for ffff8802dc150518 1099935956631
+Jul 20 08:14:39 teuthology kernel: [3677602.107145] ceph:  dropping dirty+flushing Fw state for ffff8801008e8518 1099935946707
+Jul 20 08:14:39 teuthology kernel: [3677602.196747] libceph: mds0 172.21.5.114:6812 socket closed (con state OPEN)
+Jul 20 08:14:40 teuthology kernel: [3677603.126214] libceph: mds0 172.21.5.114:6812 connection reset
+Jul 20 08:14:40 teuthology kernel: [3677603.132176] libceph: reset on mds0</pre>
+</div>
+<p>这是正在改善的领域，内核将很快能够可靠地向正在进行的 IO 发送错误代码，即便你的应用程序不能良好地应对这些情况。长远来看，在不违背 POSIX 语义的情况下，我们希望可以重连和回收数据（通常是其它客户端尚未访问、或修改的数据）。</p>
+</div>
+<div class="section" id="id8">
+<h2>挂载问题<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="mount-5-error">
-<h2>Mount 5 Error<a class="headerlink" href="#mount-5-error" title="Permalink to this headline">¶</a></h2>
+<h3>Mount 5 Error<a class="headerlink" href="#mount-5-error" title="Permalink to this headline">¶</a></h3>
 <p>mount 5 错误通常是 MDS 服务器滞后或崩溃导致的。要确保至少有一个 MDS 是启动且运行的，集群也要处于 <tt class="docutils literal"><span class="pre">active+healthy</span></tt> 状态。</p>
 </div>
 <div class="section" id="mount-12-error">
-<h2>Mount 12 Error<a class="headerlink" href="#mount-12-error" title="Permalink to this headline">¶</a></h2>
-<p>mount 12 错误显示 <tt class="docutils literal"><span class="pre">cannot</span> <span class="pre">allocate</span> <span class="pre">memory</span></tt> ，常见于 <a class="reference internal" href="../../glossary/#term-67"><em class="xref std std-term">Ceph 客户端</em></a>和 <a class="reference internal" href="../../glossary/#term-21"><em class="xref std std-term">Ceph 存储集群</em></a>版本不匹配。用以下命令检查版本：</p>
+<h3>Mount 12 Error<a class="headerlink" href="#mount-12-error" title="Permalink to this headline">¶</a></h3>
+<p>mount 12 错误显示 <tt class="docutils literal"><span class="pre">cannot</span> <span class="pre">allocate</span> <span class="pre">memory</span></tt> ，常见于
+<a class="reference internal" href="../../glossary/#term-67"><em class="xref std std-term">Ceph 客户端</em></a>和 <a class="reference internal" href="../../glossary/#term-21"><em class="xref std std-term">Ceph 存储集群</em></a>版本不匹配。用以下命令检查版本：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">-</span><span class="n">v</span>
 </pre></div>
 </div>
@@ -74,6 +158,7 @@
 <div class="highlight-python"><pre>sudo apt-get update &amp;&amp; sudo apt-get install ceph-common</pre>
 </div>
 <p>你也许得卸载、清理和删除 <tt class="docutils literal"><span class="pre">ceph-common</span></tt> ，然后再重新安装，以确保安装的是最新版。</p>
+</div>
 </div>
 </div>
 
@@ -122,8 +207,26 @@
 <li class="toctree-l2"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../health-messages/">健康消息</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="">故障排除</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#mount-5-error">Mount 5 Error</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#mount-12-error">Mount 12 Error</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slow-stuck-operations">慢或卡住的操作</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rados">RADOS 健康状况</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mds">MDS 问题</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#slow-requests">慢请求（ MDS 端）</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#ceph-fuse">ceph-fuse 的调试</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id4">调试输出</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#kernel-mount-debugging">内核挂载的调试</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id6">慢请求</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#disconnected-remounted-fs">断线后又重新挂载的文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">挂载问题</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mount-5-error">Mount 5 Error</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mount-12-error">Mount 12 Error</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
