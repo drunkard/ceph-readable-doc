@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>升级 Ceph &mdash; Ceph Documentation</title>
+    <title>Upgrading Ceph &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -26,9 +26,9 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
-    <link rel="up" title="安装（手动）" href="../" />
-    <link rel="next" title="Ceph 存储集群" href="../../rados/" />
-    <link rel="prev" title="手动部署" href="../manual-deployment/" />
+    <link rel="up" title="Installation (Manual)" href="../" />
+    <link rel="next" title="Ceph Storage Cluster" href="../../rados/" />
+    <link rel="prev" title="Manual Deployment" href="../manual-deployment/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,13 +43,13 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../../rados/" title="Ceph 存储集群"
+          <a href="../../rados/" title="Ceph Storage Cluster"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../manual-deployment/" title="手动部署"
+          <a href="../manual-deployment/" title="Manual Deployment"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" accesskey="U">安装（手动）</a> &raquo;</li> 
+          <li><a href="../" accesskey="U">Installation (Manual)</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -58,474 +58,645 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="ceph">
-<h1>升级 Ceph<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
-<p>Ceph 的各个版本都可能有特定的步骤，升级前请参考与此版本相关的章节和<a class="reference external" href="../../release-notes">发布说明</a>文档，以确定有哪些特定于此版本的步骤。</p>
-<div class="section" id="id1">
-<h2>概述<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>你可以在 Ceph 集群在线且提供服务时升级守护进程！某些类型的守护进程依赖其他的，如 Ceph 元数据服务器和 Ceph 对象网关依赖于 Ceph 监视器和 OSD 守护进程，所以我们建议按以下顺序升级：</p>
+  <div class="section" id="upgrading-ceph">
+<h1>Upgrading Ceph<a class="headerlink" href="#upgrading-ceph" title="Permalink to this headline">¶</a></h1>
+<p>Each release of Ceph may have additional steps. Refer to the release-specific
+sections in this document and the <a class="reference external" href="../../release-notes">release notes</a> document to identify
+release-specific procedures for your cluster before using the upgrade
+procedures.</p>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>You can upgrade daemons in your Ceph cluster while the cluster is online and in
+service! Certain types of daemons depend upon others. For example, Ceph Metadata
+Servers and Ceph Object Gateways depend upon Ceph Monitors and Ceph OSD Daemons.
+We recommend upgrading in this order:</p>
 <ol class="arabic simple">
-<li><a class="reference internal" href="#ceph-deploy">ceph-deploy 工具</a></li>
-<li>Ceph 监视器</li>
-<li>Ceph OSD 守护进程</li>
-<li>Ceph 元数据服务器</li>
-<li>Ceph 对象网关</li>
+<li><a class="reference internal" href="#ceph-deploy">Ceph Deploy</a></li>
+<li>Ceph Monitors</li>
+<li>Ceph OSD Daemons</li>
+<li>Ceph Metadata Servers</li>
+<li>Ceph Object Gateways</li>
 </ol>
-<p>作为普适规则，我们建议一次升级一类的所有守护进程（如所有 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 、所有 <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> 等），这样才能确保它们属于同一版本。</p>
-<p><a class="reference internal" href="#id15">升级过程</a>相对简单，只要参照此版本特定的章节即可。基本过程有三个：</p>
+<p>As a general rule, we recommend upgrading all the daemons of a specific type
+(e.g., all <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons, all <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons, etc.) to ensure that
+they are all on the same release. We also recommend that you upgrade all the
+daemons in your cluster before you try to exercise new functionality in a
+release.</p>
+<p>The <a class="reference internal" href="#upgrade-procedures">Upgrade Procedures</a> are relatively simple, but please look at
+distribution-specific sections before upgrading. The basic process involves
+three steps:</p>
 <ol class="arabic">
-<li><p class="first">用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 为各主机升级软件包（用 <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">install</span></tt> 命令），或者分别登录各主机<a class="reference external" href="../install-storage-cluster/">手动升级</a>。例如，<a class="reference internal" href="#id16">升级监视器</a>时， <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 语法大致如此：</p>
+<li><p class="first">Use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> on your admin node to upgrade the packages for
+multiple hosts (using the <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">install</span></tt> command), or login to each
+host and upgrade the Ceph package <a class="reference external" href="../install-storage-cluster/">manually</a>. For example, when
+<a class="reference internal" href="#upgrading-monitors">Upgrading Monitors</a>, the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> syntax might look like this:</p>
 <div class="highlight-python"><pre>ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 ceph-deploy install --release firefly mon1 mon2 mon3</pre>
 </div>
-<p><strong>注：</strong> <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">install</span></tt> 命令会把指定节点上的旧版本升级为你所指定的版本，没有 <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">upgrade</span></tt> 这样的升级命令。</p>
+<p><strong>Note:</strong> The <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">install</span></tt> command will upgrade the packages
+in the specified node(s) from the old release to the release you specify.
+There is no <tt class="docutils literal"><span class="pre">ceph-deploy</span> <span class="pre">upgrade</span></tt> command.</p>
 </li>
-<li><p class="first">登录各节点并重启各相关 Ceph 守护进程，详情参见<a class="reference external" href="../../rados/operations/operating">操纵集群</a> 。</p>
+<li><p class="first">Login in to each Ceph node and restart each Ceph daemon.
+See <a class="reference external" href="../../rados/operations/operating">Operating a Cluster</a> for details.</p>
 </li>
-<li><p class="first">确认集群健康状况，详情见<a class="reference external" href="../../rados/operations/monitoring">监控集群</a>。</p>
+<li><p class="first">Ensure your cluster is healthy. See <a class="reference external" href="../../rados/operations/monitoring">Monitoring a Cluster</a> for details.</p>
 </li>
 </ol>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">一旦升级完，就不能降级了。</p>
+<p class="last">Once you upgrade a daemon, you cannot downgrade it.</p>
 </div>
 </div>
 <div class="section" id="ceph-deploy">
-<h2>ceph-deploy 工具<a class="headerlink" href="#ceph-deploy" title="Permalink to this headline">¶</a></h2>
-<p>升级 Ceph 守护进程前，应该先升级 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 工具。</p>
+<h2>Ceph Deploy<a class="headerlink" href="#ceph-deploy" title="Permalink to this headline">¶</a></h2>
+<p>Before upgrading Ceph daemons, upgrade the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool.</p>
 <div class="highlight-python"><pre>sudo pip install -U ceph-deploy</pre>
 </div>
-<p>或者：</p>
+<p>Or:</p>
 <div class="highlight-python"><pre>sudo apt-get install ceph-deploy</pre>
 </div>
-<p>或者：</p>
+<p>Or:</p>
 <div class="highlight-python"><pre>sudo yum install ceph-deploy python-pushy</pre>
 </div>
 </div>
-<div class="section" id="argonaut-bobtail">
-<h2>Argonaut 到 Bobtail<a class="headerlink" href="#argonaut-bobtail" title="Permalink to this headline">¶</a></h2>
-<p>从 Argonaut 升级到 Bobtail 时，你得注意几件事：</p>
+<div class="section" id="argonaut-to-bobtail">
+<h2>Argonaut to Bobtail<a class="headerlink" href="#argonaut-to-bobtail" title="Permalink to this headline">¶</a></h2>
+<p>When upgrading from Argonaut to Bobtail, you need to be aware of several things:</p>
 <ol class="arabic simple">
-<li>现在认证默认是<strong>启用</strong>的，而以前是<strong>禁用</strong>的；</li>
-<li>监视器间使用新的通讯协议；</li>
-<li>通过 RBD 使用 <tt class="docutils literal"><span class="pre">format2</span></tt> 格式的映像前要完成所有 OSD 的升级。</li>
+<li>Authentication now defaults to <strong>ON</strong>, but used to default to <strong>OFF</strong>.</li>
+<li>Monitors use a new internal on-wire protocol.</li>
+<li>RBD <tt class="docutils literal"><span class="pre">format2</span></tt> images require upgrading all OSDs before using it.</li>
 </ol>
-<p>确保你先更新软件库路径，如：</p>
+<p>Ensure that you update package repository paths. For example:</p>
 <div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
 echo deb http://download.ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
 </div>
-<p>详情见如下几段。</p>
-<div class="section" id="id2">
-<h3>认证<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>Bobtail 版默认启用了认证，而且预置了粒度更细的认证配置选项。在先前的版本（即 v0.55 和更早的）中你可以简单地写：</p>
+<p>See the following sections for additional details.</p>
+<div class="section" id="authentication">
+<h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this headline">¶</a></h3>
+<p>The Ceph Bobtail release enables authentication by default. Bobtail also has
+finer-grained authentication configuration settings. In previous versions of
+Ceph (i.e., actually v 0.55 and earlier), you could simply specify:</p>
 <div class="highlight-python"><pre>auth supported = [cephx | none]</pre>
 </div>
-<p>此选项仍然能被识别，但已经过时。新版支持 <tt class="docutils literal"><span class="pre">cluster</span></tt> 、 <tt class="docutils literal"><span class="pre">service</span></tt> 、和 <tt class="docutils literal"><span class="pre">client</span></tt> 认证选项，如下：</p>
+<p>This option still works, but is deprecated.  New releases support
+<tt class="docutils literal"><span class="pre">cluster</span></tt>, <tt class="docutils literal"><span class="pre">service</span></tt> and <tt class="docutils literal"><span class="pre">client</span></tt> authentication settings as
+follows:</p>
 <div class="highlight-python"><pre>auth cluster required = [cephx | none]  # default cephx
 auth service required = [cephx | none] # default cephx
 auth client required = [cephx | none] # default cephx,none</pre>
 </div>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p>如果你现在的集群没有用 <tt class="docutils literal"><span class="pre">auth</span> <span class="pre">supported</span></tt> 这一行启用认证，那你升级到 Bobtail 时必须显式地关闭：</p>
+<p>If your cluster does not currently have an <tt class="docutils literal"><span class="pre">auth</span>
+<span class="pre">supported</span></tt> line that enables authentication, you must explicitly
+turn it off in Bobtail using the settings below.:</p>
 <div class="highlight-python"><pre>auth cluster required = none
 auth service required = none</pre>
 </div>
-<p class="last">这样集群认证将被关闭，但客户端默认行为未更改，它仍可以与启用了认证、但不强求的集群通讯。</p>
+<p class="last">This will disable authentication on the cluster, but still leave
+clients with the default configuration where they can talk to a
+cluster that does enable it, but do not require it.</p>
 </div>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">如果你的集群配置文件之前就有 <tt class="docutils literal"><span class="pre">auth</span> <span class="pre">supported</span></tt> 选项，那就没必要更改了。</p>
+<p class="last">If your cluster already has an <tt class="docutils literal"><span class="pre">auth</span> <span class="pre">supported</span></tt> option defined in
+the configuration file, no changes are necessary.</p>
 </div>
-<p>详情见 <a class="reference external" href="../../rados/operations/authentication/#backward-compatibility">Ceph 认证——向后兼容性</a>。</p>
+<p>See <a class="reference external" href="../../rados/configuration/auth-config-ref/#backward-compatibility">User Management - Backward Compatibility</a> for details.</p>
 </div>
-<div class="section" id="id3">
-<h3>监视器线上协议<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
-<p>我们建议把所有监视器都升级到 Bobtail ，混用 Bobtail 和 Argonaut 将不能使用新的线上协议，因为此协议要求所有监视器的版本都在 Bobtail 及以上。只升级大多数（如三个中的两个）监视器也会导致潜在风险，即再失效一个就会丧失可用性（因为未升级的守护进程不能参与新协议构成的通讯）。我们建议各 <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> 升级期间不要等待。</p>
+<div class="section" id="monitor-on-wire-protocol">
+<h3>Monitor On-wire Protocol<a class="headerlink" href="#monitor-on-wire-protocol" title="Permalink to this headline">¶</a></h3>
+<p>We recommend upgrading all monitors to Bobtail. A mixture of Bobtail and
+Argonaut monitors will not be able to use the new on-wire protocol, as the
+protocol requires all monitors to be Bobtail or greater. Upgrading  only a
+majority of the nodes (e.g., two out of three) may expose the cluster to a
+situation where a single additional failure may compromise availability (because
+the non-upgraded daemon cannot participate in the new protocol).  We recommend
+not waiting for an extended period of time between <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> upgrades.</p>
 </div>
-<div class="section" id="rbd">
-<h3>RBD 映像<a class="headerlink" href="#rbd" title="Permalink to this headline">¶</a></h3>
-<p>Bobtail 版现在支持 <tt class="docutils literal"><span class="pre">format</span> <span class="pre">2</span></tt> 格式的映像了！但是在所有 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 都升级完之前，不要新建或使用 <tt class="docutils literal"><span class="pre">format</span> <span class="pre">2</span></tt> 格式的RBD映像。注意， <tt class="docutils literal"><span class="pre">format</span> <span class="pre">1</span></tt> 仍然是默认值。你可以用新的 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">ls</span></tt> 和 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">tell</span> <span class="pre">osd.N</span> <span class="pre">version</span></tt> 命令再次确认软件版本， <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">ls</span></tt> 将给出集群内所有 OSD 的 ID 列表，把它们代入 shell 循环即可查询所有 OSD 的版本：</p>
+<div class="section" id="rbd-images">
+<h3>RBD Images<a class="headerlink" href="#rbd-images" title="Permalink to this headline">¶</a></h3>
+<p>The Bobtail release supports <tt class="docutils literal"><span class="pre">format</span> <span class="pre">2</span></tt> images! However, you should not create
+or use <tt class="docutils literal"><span class="pre">format</span> <span class="pre">2</span></tt> RBD images until after all <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons have been
+upgraded.  Note that <tt class="docutils literal"><span class="pre">format</span> <span class="pre">1</span></tt> is still the default. You can use the new
+<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">ls</span></tt> and <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">tell</span> <span class="pre">osd.N</span> <span class="pre">version</span></tt> commands to doublecheck your
+cluster. <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">ls</span></tt> will give a list of all OSD IDs that are part of the
+cluster, and you can use that to write a simple shell loop to display all the
+OSD version strings:</p>
 <div class="highlight-python"><pre>for i in $(ceph osd ls); do
     ceph tell osd.${i} version
 done</pre>
 </div>
 </div>
 </div>
-<div class="section" id="argonaut-cuttlefish">
-<h2>Argonaut 到 Cuttlefish<a class="headerlink" href="#argonaut-cuttlefish" title="Permalink to this headline">¶</a></h2>
-<p>要从 Argonaut 升级到 Cuttlefish ，请仔细阅读本段、以及从 Argonaut 升到 Bobtail 、还有从 Bobtail 升级到 Cuttlefish 。从 Argonaut 升级到 Cuttlefish 时，<strong>你必须先把所有监视器从 Argonaut 升级到 Bobtail v0.56.5</strong> ！！！所有其他的守护进程都可以从 Argonaut 直接升级到 Cuttlefish ，无需间接地从 Bobtail 过渡一次。</p>
+<div class="section" id="argonaut-to-cuttlefish">
+<h2>Argonaut to Cuttlefish<a class="headerlink" href="#argonaut-to-cuttlefish" title="Permalink to this headline">¶</a></h2>
+<p>To upgrade your cluster from Argonaut to Cuttlefish, please read this
+section, and the sections on upgrading from Argonaut to Bobtail and
+upgrading from Bobtail to Cuttlefish carefully. When upgrading from
+Argonaut to Cuttlefish, <strong>YOU MUST UPGRADE YOUR MONITORS FROM ARGONAUT
+TO BOBTAIL v0.56.5 FIRST!!!</strong>. All other Ceph daemons can upgrade from
+Argonaut to Cuttlefish without the intermediate upgrade to Bobtail.</p>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">确保软件仓库指定的是 Bobtail ，而不是 Cuttlefish 。</p>
+<p class="last">Ensure that the repository specified points to Bobtail, not
+Cuttlefish.</p>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
 echo deb http://download.ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
 </div>
-<p>我们建议把监视器升级到 Cuttlefish 之前，先升级到 Bobtail 。混用 Bobtail 和 Argonaut 监视器将导致旧监视器不能使用新线上协议，因为此协议在 Bobtail 及更高版本上才可用。只升级大多数（如三个中的两个）监视器也会导致潜在风险，即再失效一个就会丧失可用性（因为未升级的守护进程不能参与新协议构成的通讯）。我们建议各 <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> 升级期间不要等待。详情见<a class="reference internal" href="#id16">升级监视器</a>。</p>
+<p>We recommend upgrading all monitors to Bobtail before proceeding with the
+upgrade of the monitors to Cuttlefish. A mixture of Bobtail and Argonaut
+monitors will not be able to use the new on-wire protocol, as the protocol
+requires all monitors to be Bobtail or greater. Upgrading only a majority of the
+nodes (e.g., two out of three) may expose the cluster to a situation where a
+single additional failure may compromise availability (because the non-upgraded
+daemon cannot participate in the new protocol).  We recommend not waiting for an
+extended period of time between <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> upgrades. See <a class="reference internal" href="#upgrading-monitors">Upgrading
+Monitors</a> for details.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">关于 Bobtail 的认证及向后兼容性请参考<a class="reference internal" href="#id2">认证</a>和
-<a class="reference external" href="../../rados/operations/authentication/#backward-compatibility">Ceph 认证——向后兼容性</a>。</p>
+<p class="last">See the <a class="reference internal" href="#authentication">Authentication</a> section and the
+<a class="reference external" href="../../rados/configuration/auth-config-ref/#backward-compatibility">User Management - Backward Compatibility</a> for additional information
+on authentication backward compatibility settings for Bobtail.</p>
 </div>
-<p>把监视器从 Argonaut 升级到 Bobtail 、并重启无误（可以形成法定人数）后，还必须从 Bobtail 再升级到 Cuttlefish 。再次升级前，记得更改到 Cuttlefish 软件库的引用，例如：</p>
+<p>Once you complete the upgrade of your monitors from Argonaut to
+Bobtail, and have restarted the monitor daemons, you must upgrade the
+monitors from Bobtail to Cuttlefish. Ensure that you have a quorum
+before beginning this upgrade procedure. Before upgrading, remember to
+replace the reference to the Bobtail repository with a reference to
+the Cuttlefish repository. For example:</p>
 <div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
 echo deb http://download.ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
 </div>
-<p>详情见<a class="reference internal" href="#id16">升级监视器</a>。</p>
-<p>Argonaut 和 Cuttlefish 的监视器架构差异较大，详情见<a class="reference external" href="../../rados/configuration/mon-config-ref">监视器配置</a>和 <a class="reference external" href="http://ceph.com/dev-notes/cephs-new-monitor-changes">Joao 的博客文章</a>。完成监视器的升级后， OSD 和 MDS 守护进程可以按照常规步骤升级，详情见<a class="reference internal" href="#osd">升级单个 OSD</a> 和<a class="reference internal" href="#id17">升级单个元数据服务器</a>。</p>
+<p>See <a class="reference internal" href="#upgrading-monitors">Upgrading Monitors</a> for details.</p>
+<p>The architecture of the monitors changed significantly from Argonaut to
+Cuttlefish. See <a class="reference external" href="../../rados/configuration/mon-config-ref">Monitor Config Reference</a> and <a class="reference external" href="http://ceph.com/dev-notes/cephs-new-monitor-changes">Joao&#8217;s blog post</a> for details.
+Once you complete the monitor upgrade, you can upgrade the OSD daemons and the
+MDS daemons using the generic procedures. See <a class="reference internal" href="#upgrading-an-osd">Upgrading an OSD</a> and <a class="reference internal" href="#upgrading-a-metadata-server">Upgrading
+a Metadata Server</a> for details.</p>
 </div>
-<div class="section" id="bobtail-cuttlefish">
-<h2>Bobtail 到 Cuttlefish<a class="headerlink" href="#bobtail-cuttlefish" title="Permalink to this headline">¶</a></h2>
-<p>从 Bobtail 升级到 Cuttlefish 有几点要特别注意，首先，监视器架构大变，所以你应该把所有监视器都升级到 Cuttlefish ；其次，如果你的集群有多个元数据服务器，应该确保它们的名字都唯一。详情如下。</p>
-<p>把较老的 <tt class="docutils literal"><span class="pre">apt</span></tt> 源替换为 Cuttlefish ，如：</p>
+<div class="section" id="bobtail-to-cuttlefish">
+<h2>Bobtail to Cuttlefish<a class="headerlink" href="#bobtail-to-cuttlefish" title="Permalink to this headline">¶</a></h2>
+<p>Upgrading your cluster from Bobtail to Cuttlefish has a few important
+considerations. First, the monitor uses a new architecture, so you should
+upgrade the full set of monitors to use Cuttlefish. Second, if you run multiple
+metadata servers in a cluster, ensure the metadata servers have unique names.
+See the following sections for details.</p>
+<p>Replace any <tt class="docutils literal"><span class="pre">apt</span></tt> reference to older repositories with a reference to the
+Cuttlefish repository. For example:</p>
 <div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
 echo deb http://download.ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
 </div>
-<div class="section" id="id4">
-<h3>监视器<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
-<p>Argonaut 和 Cuttlefish 的监视器架构差异较大，详情见<a class="reference external" href="../../rados/configuration/mon-config-ref">监视器配置</a>和 <a class="reference external" href="http://ceph.com/dev-notes/cephs-new-monitor-changes">Joao 的博客文章</a>。这意味着 v0.61 与较早版本不能相互通讯。在升级各监视器时，它会把本地数据转换为新格式存储，一旦完成了大多数监视器的升级，它们就能用新协议形成法定人数，并且老版本的监视器会被排斥在外。正因如此，我们建议一次性升级完所有监视器。</p>
+<div class="section" id="monitor">
+<h3>Monitor<a class="headerlink" href="#monitor" title="Permalink to this headline">¶</a></h3>
+<p>The architecture of the monitors changed significantly from Bobtail to
+Cuttlefish. See <a class="reference external" href="../../rados/configuration/mon-config-ref">Monitor Config Reference</a> and <a class="reference external" href="http://ceph.com/dev-notes/cephs-new-monitor-changes">Joao&#8217;s blog post</a> for
+details. This means that v0.59 and pre-v0.59 monitors do not talk to each other
+(Cuttlefish is v.0.61). When you upgrade each monitor, it will convert its
+local data store to the new format. Once you upgrade a majority of monitors,
+the monitors form a quorum using the new protocol and the old monitors will be
+blocked until they get upgraded. For this reason, we recommend upgrading the
+monitors in immediate succession.</p>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">混用版本的集群不要运行太长时间。</p>
+<p class="last">Do not run a mixed-version cluster for an extended period.</p>
 </div>
 </div>
-<div class="section" id="mds">
-<h3>MDS 唯一名称<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h3>
-<p>现在的监视器要求集群内的 MDS 名字唯一。如果你的多个元数据服务器 ID 相同（比如都是 <tt class="docutils literal"><span class="pre">mds.a</span></tt> ），第二个元数据服务器将把前一个显式地标记为 <tt class="docutils literal"><span class="pre">failed</span></tt> ，多个同名 MDS 必须改得互不相同。如果你的集群只有一个元数据服务器，那你可以忽略此提醒。</p>
+<div class="section" id="mds-unique-names">
+<h3>MDS Unique Names<a class="headerlink" href="#mds-unique-names" title="Permalink to this headline">¶</a></h3>
+<p>The monitor now enforces that MDS names be unique. If you have multiple metadata
+server daemons that start with the same ID (e.g., mds.a) the second
+metadata server will implicitly mark the first metadata server as <tt class="docutils literal"><span class="pre">failed</span></tt>.
+Multi-MDS configurations with identical names must be adjusted accordingly to
+give daemons unique names. If you run your cluster with one  metadata server,
+you can disregard this notice for now.</p>
 </div>
-<div class="section" id="id5">
-<h3>ceph-deploy<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
-<p>现在， <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 是我们推荐的集群部署工具。对于已经用 <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> 创建、并想迁移到 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 的用户，这里提供了正确迁移的文档：<a class="reference internal" href="#id19">迁移到 ceph-deploy</a>。</p>
+<div class="section" id="id1">
+<h3>ceph-deploy<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool is now the preferred method of provisioning new clusters.
+For existing clusters created via the obsolete <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> tool that would like to transition to the
+new tool, there is a migration path, documented at <a class="reference internal" href="#transitioning-to-ceph-deploy">Transitioning to ceph-deploy</a>.</p>
 </div>
 </div>
-<div class="section" id="cuttlefish-dumpling">
-<h2>Cuttlefish 到 Dumpling<a class="headerlink" href="#cuttlefish-dumpling" title="Permalink to this headline">¶</a></h2>
-<p>从 Cuttlefish (v0.61-v0.61.7) 开始可以滚动升级。但还有几点要特别注意：首先，你必须升级 <tt class="docutils literal"><span class="pre">ceph</span></tt> 这个命令行工具，因为它变动很大；其次，你必须把所有监视器升级到 Dumpling ，因为协议有变动。</p>
-<p>把较老的软件库源替换为 Dumpling 源，例如用 <tt class="docutils literal"><span class="pre">apt</span></tt> 执行：</p>
+<div class="section" id="cuttlefish-to-dumpling">
+<h2>Cuttlefish to Dumpling<a class="headerlink" href="#cuttlefish-to-dumpling" title="Permalink to this headline">¶</a></h2>
+<p>When upgrading from Cuttlefish (v0.61-v0.61.7) you may perform a rolling
+upgrade. However, there are a few important considerations. First, you must
+upgrade the <tt class="docutils literal"><span class="pre">ceph</span></tt> command line utility, because it has changed significantly.
+Second, you must upgrade the full set of monitors to use Dumpling, because of a
+protocol change.</p>
+<p>Replace any reference to older repositories with a reference to the
+Dumpling repository. For example, with <tt class="docutils literal"><span class="pre">apt</span></tt> perform the following:</p>
 <div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
 echo deb http://download.ceph.com/debian-dumpling/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
 </div>
-<p>在 CentOS/Red Hat 发行版上可删除旧源。</p>
+<p>With CentOS/Red Hat distributions, remove the old repository.</p>
 <div class="highlight-python"><pre>sudo rm /etc/yum.repos.d/ceph.repo</pre>
 </div>
-<p>然后用下列内容创建个新仓库 <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> 。</p>
+<p>Then add a new <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> repository entry with the following contents.</p>
 <div class="highlight-ini"><div class="highlight"><pre><span></span><span class="k">[ceph]</span>
 <span class="na">name</span><span class="o">=</span><span class="s">Ceph Packages and Backports $basearch</span>
 <span class="na">baseurl</span><span class="o">=</span><span class="s">http://download.ceph.com/rpm/el6/$basearch</span>
 <span class="na">enabled</span><span class="o">=</span><span class="s">1</span>
 <span class="na">gpgcheck</span><span class="o">=</span><span class="s">1</span>
-<span class="na">type</span><span class="o">=</span><span class="s">rpm-md</span>
 <span class="na">gpgkey</span><span class="o">=</span><span class="s">https://download.ceph.com/keys/release.asc</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">确保使用与自己发行版相匹配的 URL ，对应发行版请检查 <a class="reference external" href="http://download.ceph.com/rpm">http://download.ceph.com/rpm</a> 。</p>
+<p class="last">Ensure you use the correct URL for your distribution. Check the
+<a class="reference external" href="http://download.ceph.com/rpm">http://download.ceph.com/rpm</a> directory for your distribution.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">如果你可以用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 升级软件，那你只需要把仓库加到运行 <tt class="docutils literal"><span class="pre">ceph</span></tt> 或 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 命令的客户端节点即可。</p>
+<p class="last">Since you can upgrade using <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> you will only need to add
+the repository on Ceph Client nodes where you use the <tt class="docutils literal"><span class="pre">ceph</span></tt> command line
+interface or the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool.</p>
 </div>
 </div>
-<div class="section" id="dumpling-emperor">
-<h2>Dumpling 到 Emperor<a class="headerlink" href="#dumpling-emperor" title="Permalink to this headline">¶</a></h2>
-<p>Dumpling (v0.64) 可滚动升级。</p>
-<p>把较老的软件库源替换为 Emperor 源，例如用 <tt class="docutils literal"><span class="pre">apt</span></tt> 执行：</p>
+<div class="section" id="dumpling-to-emperor">
+<h2>Dumpling to Emperor<a class="headerlink" href="#dumpling-to-emperor" title="Permalink to this headline">¶</a></h2>
+<p>When upgrading from Dumpling (v0.64) you may perform a rolling
+upgrade.</p>
+<p>Replace any reference to older repositories with a reference to the
+Emperor repository. For example, with <tt class="docutils literal"><span class="pre">apt</span></tt> perform the following:</p>
 <div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
 echo deb http://download.ceph.com/debian-emperor/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
 </div>
-<p>在 CentOS/Red Hat 发行版上可删除旧源。</p>
+<p>With CentOS/Red Hat distributions, remove the old repository.</p>
 <div class="highlight-python"><pre>sudo rm /etc/yum.repos.d/ceph.repo</pre>
 </div>
-<p>然后新增软件库 <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> ，其内容如下，要用自己的发行版名字（如 <tt class="docutils literal"><span class="pre">el6</span></tt> 、 <tt class="docutils literal"><span class="pre">rhel6</span></tt> 等等）替换 <tt class="docutils literal"><span class="pre">{disro}</span></tt> 。</p>
+<p>Then add a new <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> repository entry with the following contents and
+replace <tt class="docutils literal"><span class="pre">{distro}</span></tt> with your distribution (e.g., <tt class="docutils literal"><span class="pre">el6</span></tt>, <tt class="docutils literal"><span class="pre">rhel6</span></tt>, etc).</p>
 <div class="highlight-ini"><div class="highlight"><pre><span></span><span class="k">[ceph]</span>
 <span class="na">name</span><span class="o">=</span><span class="s">Ceph Packages and Backports $basearch</span>
 <span class="na">baseurl</span><span class="o">=</span><span class="s">http://download.ceph.com/rpm-emperor/{distro}/$basearch</span>
 <span class="na">enabled</span><span class="o">=</span><span class="s">1</span>
 <span class="na">gpgcheck</span><span class="o">=</span><span class="s">1</span>
-<span class="na">type</span><span class="o">=</span><span class="s">rpm-md</span>
 <span class="na">gpgkey</span><span class="o">=</span><span class="s">https://download.ceph.com/keys/release.asc</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">确保使用与自己发行版相匹配的 URL ，对应发行版请检查 <a class="reference external" href="http://download.ceph.com/rpm">http://download.ceph.com/rpm</a> 。</p>
+<p class="last">Ensure you use the correct URL for your distribution. Check the
+<a class="reference external" href="http://download.ceph.com/rpm">http://download.ceph.com/rpm</a> directory for your distribution.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">如果你可以用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 升级软件，那你只需要把仓库加到运行 <tt class="docutils literal"><span class="pre">ceph</span></tt> 或 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 命令的客户端节点即可。</p>
+<p class="last">Since you can upgrade using <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> you will only need to add
+the repository on Ceph Client nodes where you use the <tt class="docutils literal"><span class="pre">ceph</span></tt> command line
+interface or the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool.</p>
 </div>
-<div class="section" id="id6">
-<h3>命令行工具<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
-<p>在 v0.65 中， <tt class="docutils literal"><span class="pre">ceph</span></tt> 命令行接口（ CLI ）工具变动很大；老的 CLI 不能与 Dumpling 通讯，也就是说，要用 <tt class="docutils literal"><span class="pre">ceph</span></tt> 命令访问 Ceph 存储集群的所有节点其 <tt class="docutils literal"><span class="pre">ceph-common</span></tt> 库必须升级。</p>
+<div class="section" id="command-line-utility">
+<h3>Command Line Utility<a class="headerlink" href="#command-line-utility" title="Permalink to this headline">¶</a></h3>
+<p>In V0.65, the <tt class="docutils literal"><span class="pre">ceph</span></tt> commandline interface (CLI) utility changed
+significantly. You will not be able to use the old CLI with Dumpling. This means
+that you must upgrade the  <tt class="docutils literal"><span class="pre">ceph-common</span></tt> library on all nodes that access the
+Ceph Storage Cluster with the <tt class="docutils literal"><span class="pre">ceph</span></tt> CLI before upgrading Ceph daemons.</p>
 <div class="highlight-python"><pre>sudo apt-get update &amp;&amp; sudo apt-get install ceph-common</pre>
 </div>
-<p>确保你已安装最新版（ v0.67 或更新）。如果还没有，你也许得卸载、清除相关依赖，然后重新安装。</p>
-<p>关于新命令行的细节在 <a class="reference external" href="http://ceph.com/docs/master/release-notes/#v0-65">v0.65</a> 。</p>
+<p>Ensure that you have the latest version (v0.67 or later). If you do not,
+you may need to uninstall, auto remove dependencies and reinstall.</p>
+<p>See <a class="reference external" href="http://docs.ceph.com/docs/master/release-notes/#v0-65">v0.65</a> for details on the new command line interface.</p>
 </div>
-<div class="section" id="id7">
-<h3>监视器<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
-<p>Dumpling (v0.67) 版本的 <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> 守护进程与 v0.66 及更早版本相比，内部协议有所变更，也就是说它不能与 v0.66 或更老的版本通讯。大多数监视器升级完后，它们就能用新协议形成法定人数了，旧版监视器将被排斥在外，正因如此，我们建议要一次性升级所有监视器（或者较快的节奏），以最小化可能的当机时间。</p>
+<div class="section" id="id2">
+<h3>Monitor<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Dumpling (v0.67) <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons have an internal protocol change. This
+means that v0.67 daemons cannot talk to v0.66 or older daemons.  Once you
+upgrade a majority of monitors,  the monitors form a quorum using the new
+protocol and the old monitors will be blocked until they get upgraded. For this
+reason, we recommend upgrading all monitors at once (or in relatively quick
+succession) to minimize the possibility of downtime.</p>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">混用版本的集群不要运行太长时间。</p>
+<p class="last">Do not run a mixed-version cluster for an extended period.</p>
 </div>
 </div>
 </div>
-<div class="section" id="dumpling-firefly">
-<h2>Dumpling 到 Firefly<a class="headerlink" href="#dumpling-firefly" title="Permalink to this headline">¶</a></h2>
-<p>如果您的现有集群运行着低于 v0.67 Dumpling 的版本，请先升级到最新的 Dumpling 版，然后再升级到 v0.80 Firefly 版。</p>
-<div class="section" id="id8">
-<h3>监视器<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
-<p>Dumpling (v0.67) 版本的 <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> 守护进程与 v0.66 及更早版本相比，内部协议有所变更，也就是说它不能与 v0.66 或更老的版本通讯。大多数监视器升级完后，它们就能用新协议形成法定人数了，旧版监视器将被排斥在外，正因如此，我们建议要一次性升级所有监视器（或者较快的节奏），以最小化可能的当机时间。</p>
+<div class="section" id="dumpling-to-firefly">
+<h2>Dumpling to Firefly<a class="headerlink" href="#dumpling-to-firefly" title="Permalink to this headline">¶</a></h2>
+<p>If your existing cluster is running a version older than v0.67 Dumpling, please
+first upgrade to the latest Dumpling release before upgrading to v0.80 Firefly.</p>
+<div class="section" id="id3">
+<h3>Monitor<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>Dumpling (v0.67) <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons have an internal protocol change. This
+means that v0.67 daemons cannot talk to v0.66 or older daemons.  Once you
+upgrade a majority of monitors,  the monitors form a quorum using the new
+protocol and the old monitors will be blocked until they get upgraded. For this
+reason, we recommend upgrading all monitors at once (or in relatively quick
+succession) to minimize the possibility of downtime.</p>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">混用版本的集群不要运行太长时间。</p>
+<p class="last">Do not run a mixed-version cluster for an extended period.</p>
 </div>
 </div>
-<div class="section" id="id9">
-<h3>Ceph 配置文件变更<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
-<p>我们建议升级前先把下列配置加入 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 配置文件的 <tt class="docutils literal"><span class="pre">[mon]</span></tt> 段下：</p>
+<div class="section" id="ceph-config-file-changes">
+<h3>Ceph Config File Changes<a class="headerlink" href="#ceph-config-file-changes" title="Permalink to this headline">¶</a></h3>
+<p>We recommand adding the following to the <tt class="docutils literal"><span class="pre">[mon]</span></tt> section of your
+<tt class="docutils literal"><span class="pre">ceph.conf</span></tt> prior to upgrade:</p>
 <div class="highlight-python"><pre>mon warn on legacy crush tunables = false</pre>
 </div>
-<p>此配置可消除因用着老 CRUSH 归置法而引起的健康告警。虽说可以在全集群范围内重均衡已有数据，但我们不建议生产集群做，因为它涉及大量数据，而且重均衡会导致严重的性能降级。</p>
+<p>This will prevent health warnings due to the use of legacy CRUSH placement.
+Although it is possible to rebalance existing data across your cluster, we do
+not normally recommend it for production environments as a large amount of data
+will move and there is a significant performance impact from the rebalancing.</p>
 </div>
-<div class="section" id="id10">
-<h3>命令行工具<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
-<p>在 V0.65 版中， <tt class="docutils literal"><span class="pre">ceph</span></tt> 命令行界面（ CLI ）工具有重大改变，老版的 CLI 不能用于 Firefly 。也就是说，在升级 Ceph 守护进程前，要用 <tt class="docutils literal"><span class="pre">ceph</span></tt> 命令访问存储集群的节点都必须升级 <tt class="docutils literal"><span class="pre">ceph-common</span></tt> 库。</p>
-<p>在 Debian/Ubuntu 上可用此命令：</p>
+<div class="section" id="id4">
+<h3>Command Line Utility<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>In V0.65, the <tt class="docutils literal"><span class="pre">ceph</span></tt> commandline interface (CLI) utility changed
+significantly. You will not be able to use the old CLI with Firefly. This means
+that you must upgrade the  <tt class="docutils literal"><span class="pre">ceph-common</span></tt> library on all nodes that access the
+Ceph Storage Cluster with the <tt class="docutils literal"><span class="pre">ceph</span></tt> CLI before upgrading Ceph daemons.</p>
+<p>For Debian/Ubuntu, execute:</p>
 <div class="highlight-python"><pre>sudo apt-get update &amp;&amp; sudo apt-get install ceph-common</pre>
 </div>
-<p>在 CentOS/RHEL 上可用此命令：</p>
+<p>For CentOS/RHEL, execute:</p>
 <div class="highlight-python"><pre>sudo yum install ceph-common</pre>
 </div>
-<p>确保你已安装最新版。如果还没有，你也许得卸载、清除相关依赖，然后重新安装。</p>
-<p>关于新命令行界面的详细情况请参考 <a class="reference external" href="http://ceph.com/docs/master/release-notes/#v0-65">v0.65</a> 。</p>
+<p>Ensure that you have the latest version. If you do not,
+you may need to uninstall, auto remove dependencies and reinstall.</p>
+<p>See <a class="reference external" href="http://docs.ceph.com/docs/master/release-notes/#v0-65">v0.65</a> for details on the new command line interface.</p>
 </div>
-<div class="section" id="id12">
-<h3>升级顺序<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
-<p>把旧版软件库改为 Firefly 的，例如用 <tt class="docutils literal"><span class="pre">apt</span></tt> 命令执行此命令：</p>
+<div class="section" id="upgrade-sequence">
+<h3>Upgrade Sequence<a class="headerlink" href="#upgrade-sequence" title="Permalink to this headline">¶</a></h3>
+<p>Replace any reference to older repositories with a reference to the
+Firely repository. For example, with <tt class="docutils literal"><span class="pre">apt</span></tt> perform the following:</p>
 <div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
 echo deb http://download.ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
 </div>
-<p>对于 CentOS/Red Hat 发行版，先删除旧版软件库。</p>
+<p>With CentOS/Red Hat distributions, remove the old repository.</p>
 <div class="highlight-python"><pre>sudo rm /etc/yum.repos.d/ceph.repo</pre>
 </div>
-<p>然后新增一个 <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> 软件库条目，其内容如下，还有把 <tt class="docutils literal"><span class="pre">{distro}</span></tt> 替换为你的发行版名字（如 <tt class="docutils literal"><span class="pre">el6</span></tt> 、 <tt class="docutils literal"><span class="pre">rhel6</span></tt> 、 <tt class="docutils literal"><span class="pre">rhel7</span></tt> 等等）。</p>
+<p>Then add a new <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> repository entry with the following contents and
+replace <tt class="docutils literal"><span class="pre">{distro}</span></tt> with your distribution (e.g., <tt class="docutils literal"><span class="pre">el6</span></tt>, <tt class="docutils literal"><span class="pre">rhel6</span></tt>,
+<tt class="docutils literal"><span class="pre">rhel7</span></tt>, etc.).</p>
 <div class="highlight-ini"><div class="highlight"><pre><span></span><span class="k">[ceph]</span>
 <span class="na">name</span><span class="o">=</span><span class="s">Ceph Packages and Backports $basearch</span>
 <span class="na">baseurl</span><span class="o">=</span><span class="s">http://download.ceph.com/rpm-firefly/{distro}/$basearch</span>
 <span class="na">enabled</span><span class="o">=</span><span class="s">1</span>
 <span class="na">gpgcheck</span><span class="o">=</span><span class="s">1</span>
-<span class="na">type</span><span class="o">=</span><span class="s">rpm-md</span>
 <span class="na">gpgkey</span><span class="o">=</span><span class="s">https://download.ceph.com/keys/release.asc</span>
 </pre></div>
 </div>
-<p>按如下顺序升级守护进程：</p>
+<p>Upgrade daemons in the following order:</p>
 <ol class="arabic simple">
-<li><strong>监视器：</strong> 如果 <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> 守护进程晚于 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 守护进程启动，那么这些监视器就不能正确注册其能力，新功能也不可用，除非再次重启。</li>
-<li><strong>OSD</strong></li>
-<li><strong>元数据服务器：</strong> 如果 <tt class="docutils literal"><span class="pre">ceph-mds</span></tt> 守护进程先被重启了，它只能先等着，直到所有 OSD 都升级完，它才能完全启动。</li>
-<li><strong>网关：</strong> 一起升级 <tt class="docutils literal"><span class="pre">radosgw</span></tt> 守护进程。多片上传功能有微小的行为变化，它会阻止由新版 <tt class="docutils literal"><span class="pre">radosgw</span></tt> 发起、却由旧版 <tt class="docutils literal"><span class="pre">radosgw</span></tt> 完成的多片上传请求。</li>
+<li><strong>Monitors:</strong> If the <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons are not restarted prior to the
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons, the monitors will not correctly register their new
+capabilities with the cluster and new features may not be usable until
+the monitors are restarted a second time.</li>
+<li><strong>OSDs</strong></li>
+<li><strong>MDSs:</strong> If the <tt class="docutils literal"><span class="pre">ceph-mds</span></tt> daemon is restarted first, it will wait until
+all OSDs have been upgraded before finishing its startup sequence.</li>
+<li><strong>Gateways:</strong> Upgrade <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemons together. There is a subtle change
+in behavior for multipart uploads that prevents a multipart request that
+was initiated with a new <tt class="docutils literal"><span class="pre">radosgw</span></tt> from being completed by an old
+<tt class="docutils literal"><span class="pre">radosgw</span></tt>.</li>
 </ol>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">确保先升级完<strong>所有</strong> Ceph 监视器、<strong>而且</strong>重启<strong>完毕</strong>，然后再升级并重启各OSD、各元数据服务器和网关。</p>
+<p class="last">Make sure you upgrade your <strong>ALL</strong> of your Ceph monitors <strong>AND</strong>
+restart them <strong>BEFORE</strong> upgrading and restarting OSDs, MDSs, and gateways!</p>
 </div>
 </div>
 </div>
-<div class="section" id="emperor-firefly">
-<h2>Emperor 到 Firefly<a class="headerlink" href="#emperor-firefly" title="Permalink to this headline">¶</a></h2>
-<p>如果您的现有集群运行着低于 v0.67 Dumpling 的版本，请先升级到最新的 Dumpling 版，然后再升级到 v0.80 Firefly 版。详细步骤请参考 <a class="reference internal" href="#cuttlefish-dumpling">Cuttlefish 到 Dumpling</a> 和 <a class="reference external" href="../../release-notes/#v0-80-firefly">Firefly 发布说明</a>。若从 Emperor 之后的版本升级，请参考 <a class="reference external" href="../../release-notes/#v0-80-firefly">Firefly 发布说明</a>。</p>
-<div class="section" id="id13">
-<h3>Ceph 配置文件变更<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
-<p>我们建议升级前先把下列配置加入 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 配置文件的 <tt class="docutils literal"><span class="pre">[mon]</span></tt> 段下：</p>
+<div class="section" id="emperor-to-firefly">
+<h2>Emperor to Firefly<a class="headerlink" href="#emperor-to-firefly" title="Permalink to this headline">¶</a></h2>
+<p>If your existing cluster is running a version older than v0.67 Dumpling, please
+first upgrade to the latest Dumpling release before upgrading to v0.80 Firefly.
+Please refer to <a class="reference internal" href="#cuttlefish-to-dumpling">Cuttlefish to Dumpling</a> and the <a class="reference external" href="../../release-notes/#v0-80-firefly">Firefly release notes</a> for
+details. To upgrade from a post-Emperor point release, see the <a class="reference external" href="../../release-notes/#v0-80-firefly">Firefly release
+notes</a> for details.</p>
+<div class="section" id="id6">
+<h3>Ceph Config File Changes<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>We recommand adding the following to the <tt class="docutils literal"><span class="pre">[mon]</span></tt> section of your
+<tt class="docutils literal"><span class="pre">ceph.conf</span></tt> prior to upgrade:</p>
 <div class="highlight-python"><pre>mon warn on legacy crush tunables = false</pre>
 </div>
-<p>此配置可消除因用着老 CRUSH 归置法而引起的健康告警。虽说可以在全集群范围内重均衡已有数据，但我们不建议生产集群做，因为它涉及大量数据，而且重均衡会导致严重的性能降级。</p>
+<p>This will prevent health warnings due to the use of legacy CRUSH placement.
+Although it is possible to rebalance existing data across your cluster, we do
+not normally recommend it for production environments as a large amount of data
+will move and there is a significant performance impact from the rebalancing.</p>
 </div>
-<div class="section" id="id14">
-<h3>升级顺序<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
-<p>把旧版软件库改为 Firefly 的，例如用 <tt class="docutils literal"><span class="pre">apt</span></tt> 命令执行此命令：</p>
+<div class="section" id="id7">
+<h3>Upgrade Sequence<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>Replace any reference to older repositories with a reference to the
+Firefly repository. For example, with <tt class="docutils literal"><span class="pre">apt</span></tt> perform the following:</p>
 <div class="highlight-python"><pre>sudo rm /etc/apt/sources.list.d/ceph.list
 echo deb http://download.ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list</pre>
 </div>
-<p>对于 CentOS/Red Hat 发行版，先删除旧版软件库。</p>
+<p>With CentOS/Red Hat distributions, remove the old repository.</p>
 <div class="highlight-python"><pre>sudo rm /etc/yum.repos.d/ceph.repo</pre>
 </div>
-<p>然后新增一个 <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> 软件库条目，其内容如下，还有把 <tt class="docutils literal"><span class="pre">{distro}</span></tt> 替换为你的发行版名字（如 <tt class="docutils literal"><span class="pre">el6</span></tt> 、 <tt class="docutils literal"><span class="pre">rhel6</span></tt> 、 <tt class="docutils literal"><span class="pre">rhel7</span></tt> 等等）。</p>
+<p>Then add a new <tt class="docutils literal"><span class="pre">ceph.repo</span></tt> repository entry with the following contents, but
+replace <tt class="docutils literal"><span class="pre">{distro}</span></tt> with your distribution (e.g., <tt class="docutils literal"><span class="pre">el6</span></tt>, <tt class="docutils literal"><span class="pre">rhel6</span></tt>,
+<tt class="docutils literal"><span class="pre">rhel7</span></tt>, etc.).</p>
 <div class="highlight-ini"><div class="highlight"><pre><span></span><span class="k">[ceph]</span>
 <span class="na">name</span><span class="o">=</span><span class="s">Ceph Packages and Backports $basearch</span>
 <span class="na">baseurl</span><span class="o">=</span><span class="s">http://download.ceph.com/rpm/{distro}/$basearch</span>
 <span class="na">enabled</span><span class="o">=</span><span class="s">1</span>
 <span class="na">gpgcheck</span><span class="o">=</span><span class="s">1</span>
-<span class="na">type</span><span class="o">=</span><span class="s">rpm-md</span>
 <span class="na">gpgkey</span><span class="o">=</span><span class="s">https://download.ceph.com/keys/release.asc</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">确保使用与自己发行版相匹配的 URL ，对应发行版请检查 <a class="reference external" href="http://download.ceph.com/rpm">http://download.ceph.com/rpm</a> 。</p>
+<p class="last">Ensure you use the correct URL for your distribution. Check the
+<a class="reference external" href="http://download.ceph.com/rpm">http://download.ceph.com/rpm</a> directory for your distribution.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">如果你可以用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 升级软件，那你只需要把仓库加到运行 <tt class="docutils literal"><span class="pre">ceph</span></tt> 或 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 命令的客户端节点即可。</p>
+<p class="last">Since you can upgrade using <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> you will only need to add
+the repository on Ceph Client nodes where you use the <tt class="docutils literal"><span class="pre">ceph</span></tt> command line
+interface or the <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> tool.</p>
 </div>
-<p>按如下顺序升级守护进程：</p>
+<p>Upgrade daemons in the following order:</p>
 <ol class="arabic simple">
-<li><strong>监视器：</strong> 如果 <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> 守护进程晚于 <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 守护进程启动，那么这些监视器就不能正确注册其能力，新功能也不可用，除非再次重启。</li>
-<li><strong>OSD</strong></li>
-<li><strong>元数据服务器：</strong> 如果 <tt class="docutils literal"><span class="pre">ceph-mds</span></tt> 守护进程先被重启了，它只能先等着，直到所有 OSD 都升级完，它才能完全启动。</li>
-<li><strong>网关：</strong> 一起升级 <tt class="docutils literal"><span class="pre">radosgw</span></tt> 守护进程。多片上传功能有微小的行为变化，它会阻止由新版 <tt class="docutils literal"><span class="pre">radosgw</span></tt> 发起、却由旧版 <tt class="docutils literal"><span class="pre">radosgw</span></tt> 完成的多片上传请求。</li>
+<li><strong>Monitors:</strong> If the <tt class="docutils literal"><span class="pre">ceph-mon</span></tt> daemons are not restarted prior to the
+<tt class="docutils literal"><span class="pre">ceph-osd</span></tt> daemons, the monitors will not correctly register their new
+capabilities with the cluster and new features may not be usable until
+the monitors are restarted a second time.</li>
+<li><strong>OSDs</strong></li>
+<li><strong>MDSs:</strong> If the <tt class="docutils literal"><span class="pre">ceph-mds</span></tt> daemon is restarted first, it will wait until
+all OSDs have been upgraded before finishing its startup sequence.</li>
+<li><strong>Gateways:</strong> Upgrade <tt class="docutils literal"><span class="pre">radosgw</span></tt> daemons together. There is a subtle change
+in behavior for multipart uploads that prevents a multipart request that
+was initiated with a new <tt class="docutils literal"><span class="pre">radosgw</span></tt> from being completed by an old
+<tt class="docutils literal"><span class="pre">radosgw</span></tt>.</li>
 </ol>
 </div>
 </div>
-<div class="section" id="id15">
-<h2>升级过程<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
-<p>下面是具体升级进程。</p>
+<div class="section" id="upgrade-procedures">
+<h2>Upgrade Procedures<a class="headerlink" href="#upgrade-procedures" title="Permalink to this headline">¶</a></h2>
+<p>The following sections describe the upgrade process.</p>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">Ceph 的各版本可能有不同的步骤，所以<strong>升级前</strong>请参考此版本特定的升级步骤。</p>
+<p class="last">Each release of Ceph may have some additional steps. Refer to
+release-specific sections for details <strong>BEFORE</strong> you begin upgrading daemons.</p>
 </div>
-<div class="section" id="id16">
-<h3>升级监视器<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
-<p>要升级监视器，执行下列步骤：</p>
+<div class="section" id="upgrading-monitors">
+<h3>Upgrading Monitors<a class="headerlink" href="#upgrading-monitors" title="Permalink to this headline">¶</a></h3>
+<p>To upgrade monitors, perform the following steps:</p>
 <ol class="arabic">
-<li><p class="first">升级各守护进程的二进制包。</p>
-<p>你可以用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 一次升级所有监视器节点，如：</p>
+<li><p class="first">Upgrade the Ceph package for each daemon instance.</p>
+<p>You may use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> to address all monitor nodes at once.
+For example:</p>
 <div class="highlight-python"><pre>ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 ceph-deploy install --release hammer mon1 mon2 mon3</pre>
 </div>
-<p>你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上软件包的步骤如下：</p>
+<p>You may also use the package manager for your Linux distribution on
+each individual node. To upgrade packages manually on each Debian/Ubuntu
+host, perform the following steps .</p>
 <div class="highlight-python"><pre>ssh {mon-host}
 sudo apt-get update &amp;&amp; sudo apt-get install ceph</pre>
 </div>
-<p>在 CentOS/Red Hat 主机上相应的命令如下：</p>
+<p>On CentOS/Red Hat hosts, perform the following steps:</p>
 <div class="highlight-python"><pre>ssh {mon-host}
 sudo yum update &amp;&amp; sudo yum install ceph</pre>
 </div>
 </li>
-<li><p class="first">重启各监视器。 Debian/Ubuntu 发行版的命令如下：</p>
+<li><p class="first">Restart each monitor. For Ubuntu distributions, use:</p>
 <div class="highlight-python"><pre>sudo restart ceph-mon id={hostname}</pre>
 </div>
-<p>CentOS/Red Hat/Debian 发行版的命令如下：</p>
+<p>For CentOS/Red Hat/Debian distributions, use:</p>
 <div class="highlight-python"><pre>sudo /etc/init.d/ceph restart {mon-id}</pre>
 </div>
-<p>用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 部署的 CentOS/Red Hat 发行版，其监视器 ID 通常是 <tt class="docutils literal"><span class="pre">mon.{hostname}</span></tt> 。</p>
+<p>For CentOS/Red Hat distributions deployed with <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>,
+the monitor ID is usually <tt class="docutils literal"><span class="pre">mon.{hostname}</span></tt>.</p>
 </li>
-<li><p class="first">确保各监视器都重回法定人数。</p>
+<li><p class="first">Ensure each monitor has rejoined the quorum.</p>
 <div class="highlight-python"><pre>ceph mon stat</pre>
 </div>
 </li>
 </ol>
-<p>再次确认你完成了所有监视器的升级。</p>
+<p>Ensure that you have completed the upgrade cycle for all of your Ceph Monitors.</p>
 </div>
-<div class="section" id="osd">
-<h3>升级单个 OSD<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h3>
-<p>升级单个 OSD 守护进程的步骤如下：</p>
+<div class="section" id="upgrading-an-osd">
+<h3>Upgrading an OSD<a class="headerlink" href="#upgrading-an-osd" title="Permalink to this headline">¶</a></h3>
+<p>To upgrade a Ceph OSD Daemon, perform the following steps:</p>
 <ol class="arabic">
-<li><p class="first">升级 OSD 守护进程对应的软件包。</p>
-<p>你可以用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 一次升级所有 OSD 守护进程，如：</p>
+<li><p class="first">Upgrade the Ceph OSD Daemon package.</p>
+<p>You may use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> to address all Ceph OSD Daemon nodes at
+once. For example:</p>
 <div class="highlight-python"><pre>ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 ceph-deploy install --release hammer osd1 osd2 osd3</pre>
 </div>
-<p>你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上软件包的步骤如下。</p>
+<p>You may also use the package manager on each node to upgrade packages
+manually. For Debian/Ubuntu hosts, perform the following steps on each
+host.</p>
 <div class="highlight-python"><pre>ssh {osd-host}
 sudo apt-get update &amp;&amp; sudo apt-get install ceph</pre>
 </div>
-<p>在 CentOS/Red Hat 主机上相应的命令如下：</p>
+<p>For CentOS/Red Hat hosts, perform the following steps:</p>
 <div class="highlight-python"><pre>ssh {osd-host}
 sudo yum update &amp;&amp; sudo yum install ceph</pre>
 </div>
 </li>
-<li><p class="first">重启 OSD ，其中 <tt class="docutils literal"><span class="pre">N</span></tt> 是 OSD 号。对 Debian/Ubuntu ，用命令：</p>
+<li><p class="first">Restart the OSD, where <tt class="docutils literal"><span class="pre">N</span></tt> is the OSD number. For Ubuntu, use:</p>
 <div class="highlight-python"><pre>sudo restart ceph-osd id=N</pre>
 </div>
-<p>对于一主机上的多个 OSD ，你可以用 Upstart 一次性全部重启。</p>
+<p>For multiple OSDs on a host, you may restart all of them with Upstart.</p>
 <div class="highlight-python"><pre>sudo restart ceph-osd-all</pre>
 </div>
-<p>对于CentOS/Red Hat/Debian 发行版，用：</p>
+<p>For CentOS/Red Hat/Debian distributions, use:</p>
 <div class="highlight-python"><pre>sudo /etc/init.d/ceph restart N</pre>
 </div>
 </li>
-<li><p class="first">确保升级后的 OSD 重新加入了集群：</p>
+<li><p class="first">Ensure each upgraded Ceph OSD Daemon has rejoined the cluster:</p>
 <div class="highlight-python"><pre>ceph osd stat</pre>
 </div>
 </li>
 </ol>
-<p>再次确认所有 OSD 守护进程已升级完。</p>
+<p>Ensure that you have completed the upgrade cycle for all of your
+Ceph OSD Daemons.</p>
 </div>
-<div class="section" id="id17">
-<h3>升级单个元数据服务器<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
-<p>要升级单个 Ceph 元数据服务器，挨个执行下列步骤：</p>
+<div class="section" id="upgrading-a-metadata-server">
+<h3>Upgrading a Metadata Server<a class="headerlink" href="#upgrading-a-metadata-server" title="Permalink to this headline">¶</a></h3>
+<p>To upgrade a Ceph Metadata Server, perform the following steps:</p>
 <ol class="arabic">
-<li><p class="first">升级二进制包。你可以用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 一次升级所有 MDS 节点，也可以在各节点用包管理器升级，如：</p>
+<li><p class="first">Upgrade the Ceph Metadata Server package. You may use <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> to
+address all Ceph Metadata Server nodes at once, or use the package manager
+on each node. For example:</p>
 <div class="highlight-python"><pre>ceph-deploy install --release {release-name} ceph-node1
 ceph-deploy install --release hammer mds1</pre>
 </div>
-<p>在 Debian/Ubuntu 主机上可这样手动升级。</p>
+<p>To upgrade packages manually, perform the following steps on each
+Debian/Ubuntu host.</p>
 <div class="highlight-python"><pre>ssh {mon-host}
 sudo apt-get update &amp;&amp; sudo apt-get install ceph-mds</pre>
 </div>
-<p>在 CentOS/Red Hat 主机上则是：</p>
+<p>Or the following steps on CentOS/Red Hat hosts:</p>
 <div class="highlight-python"><pre>ssh {mon-host}
 sudo yum update &amp;&amp; sudo yum install ceph-mds</pre>
 </div>
 </li>
-<li><p class="first">重启元数据服务器。在 Debian/Ubuntu 上用：</p>
+<li><p class="first">Restart the metadata server. For Ubuntu, use:</p>
 <div class="highlight-python"><pre>sudo restart ceph-mds id={hostname}</pre>
 </div>
-<p>在 CentOS/Red Hat/Debian 上用：</p>
+<p>For CentOS/Red Hat/Debian distributions, use:</p>
 <div class="highlight-python"><pre>sudo /etc/init.d/ceph restart mds.{hostname}</pre>
 </div>
-<p>用 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 部署的集群其 <tt class="docutils literal"><span class="pre">{hostname}</span></tt> 通常是所在主机的主机名。</p>
+<p>For clusters deployed with <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>, the name is usually either
+the name you specified on creation or the hostname.</p>
 </li>
-<li><p class="first">确保元数据服务器已启动，且运行着：</p>
+<li><p class="first">Ensure the metadata server is up and running:</p>
 <div class="highlight-python"><pre>ceph mds stat</pre>
 </div>
 </li>
 </ol>
 </div>
-<div class="section" id="id18">
-<h3>升级客户端<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h3>
-<p>升级软件包并重启完集群之后，我们建议同时升级下客户端节点上的 <tt class="docutils literal"><span class="pre">ceph-common</span></tt> 和客户端库（ <tt class="docutils literal"><span class="pre">librbd1</span></tt> 和 <tt class="docutils literal"><span class="pre">librados2</span></tt> ）。</p>
+<div class="section" id="upgrading-a-client">
+<h3>Upgrading a Client<a class="headerlink" href="#upgrading-a-client" title="Permalink to this headline">¶</a></h3>
+<p>Once you have upgraded the packages and restarted daemons on your Ceph
+cluster, we recommend upgrading <tt class="docutils literal"><span class="pre">ceph-common</span></tt> and client libraries
+(<tt class="docutils literal"><span class="pre">librbd1</span></tt> and <tt class="docutils literal"><span class="pre">librados2</span></tt>) on your client nodes too.</p>
 <ol class="arabic">
-<li><p class="first">升级软件包：</p>
+<li><p class="first">Upgrade the package:</p>
 <div class="highlight-python"><pre>ssh {client-host}
 apt-get update &amp;&amp; sudo apt-get install ceph-common librados2 librbd1 python-rados python-rbd</pre>
 </div>
 </li>
-<li><p class="first">确认升级后的版本：</p>
+<li><p class="first">Ensure that you have the latest version:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">--</span><span class="n">version</span>
 </pre></div>
 </div>
 </li>
 </ol>
-<p>如果不是最新版，你也许得卸载、清理掉依赖、然后重新安装。</p>
+<p>If you do not have the latest version, you may need to uninstall, auto remove
+dependencies and reinstall.</p>
 </div>
 </div>
-<div class="section" id="id19">
-<h2>迁移到 ceph-deploy<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h2>
-<p>如果您的现有集群是用 <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> 部署的（通常是 Argonaut 或 Bobtail ），那么有些地方要改一下才能切换到 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 。</p>
-<div class="section" id="id20">
-<h3>监视器密钥环<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h3>
-<p>要把 <tt class="docutils literal"><span class="pre">caps</span> <span class="pre">mon</span> <span class="pre">=</span> <span class="pre">&quot;allow</span> <span class="pre">*&quot;</span></tt> 加进监视器密钥环（如果还没加的话）。默认情况下监视器密钥环位于 <tt class="docutils literal"><span class="pre">/var/lib/ceph/mon/ceph-$id/keyring</span></tt> ，增加 <tt class="docutils literal"><span class="pre">caps</span></tt> 配置后它应该类似如下：</p>
+<div class="section" id="transitioning-to-ceph-deploy">
+<h2>Transitioning to ceph-deploy<a class="headerlink" href="#transitioning-to-ceph-deploy" title="Permalink to this headline">¶</a></h2>
+<p>If you have an existing cluster that you deployed with <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> (usually
+Argonaut or Bobtail releases),  you will need to make a few changes to your
+configuration to  ensure that your cluster will work with <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt>.</p>
+<div class="section" id="monitor-keyring">
+<h3>Monitor Keyring<a class="headerlink" href="#monitor-keyring" title="Permalink to this headline">¶</a></h3>
+<p>You will need to add <tt class="docutils literal"><span class="pre">caps</span> <span class="pre">mon</span> <span class="pre">=</span> <span class="pre">&quot;allow</span> <span class="pre">*&quot;</span></tt> to your monitor keyring if it is
+not already in the keyring. By default, the monitor keyring is located under
+<tt class="docutils literal"><span class="pre">/var/lib/ceph/mon/ceph-$id/keyring</span></tt>. When you have added the <tt class="docutils literal"><span class="pre">caps</span></tt>
+setting, your monitor keyring should look something like this:</p>
 <div class="highlight-python"><pre>[mon.]
         key = AQBJIHhRuHCwDRAAZjBTSJcIBIoGpdOR9ToiyQ==
         caps mon = "allow *"</pre>
 </div>
-<p>添加 <tt class="docutils literal"><span class="pre">caps</span> <span class="pre">mon</span> <span class="pre">=</span> <span class="pre">&quot;allow</span> <span class="pre">*&quot;</span></tt> 将简化 <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> 到 <tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> 的迁移，这样 <tt class="docutils literal"><span class="pre">ceph-create-keys</span></tt> 就可以用 <tt class="docutils literal"><span class="pre">$mon_data</span></tt> 里的 <tt class="docutils literal"><span class="pre">mon.</span></tt> 密钥环获取它所需的权限了。</p>
+<p>Adding <tt class="docutils literal"><span class="pre">caps</span> <span class="pre">mon</span> <span class="pre">=</span> <span class="pre">&quot;allow</span> <span class="pre">*&quot;</span></tt> will ease the transition from <tt class="docutils literal"><span class="pre">mkcephfs</span></tt> to
+<tt class="docutils literal"><span class="pre">ceph-deploy</span></tt> by allowing <tt class="docutils literal"><span class="pre">ceph-create-keys</span></tt> to use the <tt class="docutils literal"><span class="pre">mon.</span></tt> keyring
+file in <tt class="docutils literal"><span class="pre">$mon_data</span></tt> and get the caps it needs.</p>
 </div>
-<div class="section" id="id21">
-<h3>用默认路径<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h3>
-<p><tt class="docutils literal"><span class="pre">mon</span></tt> 和 <tt class="docutils literal"><span class="pre">osd</span></tt> 目录需用 <tt class="docutils literal"><span class="pre">/var/lib/ceph</span></tt> 之下的默认子目录。</p>
+<div class="section" id="use-default-paths">
+<h3>Use Default Paths<a class="headerlink" href="#use-default-paths" title="Permalink to this headline">¶</a></h3>
+<p>Under the <tt class="docutils literal"><span class="pre">/var/lib/ceph</span></tt> directory, the <tt class="docutils literal"><span class="pre">mon</span></tt> and <tt class="docutils literal"><span class="pre">osd</span></tt> directories need
+to use the default paths.</p>
 <ul class="simple">
-<li><strong>OSDs</strong>: 路径应该是 <tt class="docutils literal"><span class="pre">/var/lib/ceph/osd/ceph-$id</span></tt></li>
-<li><strong>MON</strong>: 路径应该是 <tt class="docutils literal"><span class="pre">/var/lib/ceph/mon/ceph-$id</span></tt></li>
+<li><strong>OSDs</strong>: The path should be <tt class="docutils literal"><span class="pre">/var/lib/ceph/osd/ceph-$id</span></tt></li>
+<li><strong>MON</strong>: The path should be  <tt class="docutils literal"><span class="pre">/var/lib/ceph/mon/ceph-$id</span></tt></li>
 </ul>
-<p>在这些目录下都应该有一个名为 <tt class="docutils literal"><span class="pre">keyring</span></tt> 的密钥环文件。</p>
+<p>Under those directories, the keyring should be in a file named <tt class="docutils literal"><span class="pre">keyring</span></tt>.</p>
 </div>
 </div>
 </div>
@@ -541,75 +712,76 @@ apt-get update &amp;&amp; sudo apt-get install ceph-common librados2 librbd1 pyt
             </a></p>
 <h3><a href="../../">Table Of Contents</a></h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../">安装（手动）</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../#id2">获取软件</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../#id3">安装软件</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../#id4">手动部署集群</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="../#id5">升级软件</a><ul class="current">
-<li class="toctree-l3 current"><a class="current reference internal" href="">升级 Ceph</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id1">概述</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#ceph-deploy">ceph-deploy 工具</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#argonaut-bobtail">Argonaut 到 Bobtail</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id2">认证</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id3">监视器线上协议</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#rbd">RBD 映像</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (Quick)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Installation (Manual)</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../#get-software">Get Software</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#install-software">Install Software</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#deploy-a-cluster-manually">Deploy a Cluster Manually</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../#upgrade-software">Upgrade Software</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="">Upgrading Ceph</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#summary">Summary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ceph-deploy">Ceph Deploy</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#argonaut-to-bobtail">Argonaut to Bobtail</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#authentication">Authentication</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#monitor-on-wire-protocol">Monitor On-wire Protocol</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#rbd-images">RBD Images</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#argonaut-cuttlefish">Argonaut 到 Cuttlefish</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#bobtail-cuttlefish">Bobtail 到 Cuttlefish</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id4">监视器</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#mds">MDS 唯一名称</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id5">ceph-deploy</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#argonaut-to-cuttlefish">Argonaut to Cuttlefish</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#bobtail-to-cuttlefish">Bobtail to Cuttlefish</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#monitor">Monitor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#mds-unique-names">MDS Unique Names</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id1">ceph-deploy</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#cuttlefish-dumpling">Cuttlefish 到 Dumpling</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#dumpling-emperor">Dumpling 到 Emperor</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id6">命令行工具</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id7">监视器</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cuttlefish-to-dumpling">Cuttlefish to Dumpling</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dumpling-to-emperor">Dumpling to Emperor</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#command-line-utility">Command Line Utility</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id2">Monitor</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#dumpling-firefly">Dumpling 到 Firefly</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id8">监视器</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id9">Ceph 配置文件变更</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id10">命令行工具</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id12">升级顺序</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dumpling-to-firefly">Dumpling to Firefly</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id3">Monitor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#ceph-config-file-changes">Ceph Config File Changes</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id4">Command Line Utility</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#upgrade-sequence">Upgrade Sequence</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#emperor-firefly">Emperor 到 Firefly</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id13">Ceph 配置文件变更</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id14">升级顺序</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#emperor-to-firefly">Emperor to Firefly</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id6">Ceph Config File Changes</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id7">Upgrade Sequence</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#id15">升级过程</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id16">升级监视器</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#osd">升级单个 OSD</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id17">升级单个元数据服务器</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id18">升级客户端</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#upgrade-procedures">Upgrade Procedures</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#upgrading-monitors">Upgrading Monitors</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#upgrading-an-osd">Upgrading an OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#upgrading-a-metadata-server">Upgrading a Metadata Server</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#upgrading-a-client">Upgrading a Client</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#id19">迁移到 ceph-deploy</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id20">监视器密钥环</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id21">用默认路径</a></li>
-</ul>
-</li>
-</ul>
-</li>
+<li class="toctree-l4"><a class="reference internal" href="#transitioning-to-ceph-deploy">Transitioning to ceph-deploy</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#monitor-keyring">Monitor Keyring</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#use-default-paths">Use Default Paths</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Development</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
 </ul>
 
 
@@ -642,13 +814,13 @@ apt-get update &amp;&amp; sudo apt-get install ceph-common librados2 librbd1 pyt
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../../rados/" title="Ceph 存储集群"
+          <a href="../../rados/" title="Ceph Storage Cluster"
              >next</a> |</li>
         <li class="right" >
-          <a href="../manual-deployment/" title="手动部署"
+          <a href="../manual-deployment/" title="Manual Deployment"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" >安装（手动）</a> &raquo;</li> 
+          <li><a href="../" >Installation (Manual)</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

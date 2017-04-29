@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>RGW 多站 &mdash; Ceph Documentation</title>
+    <title>Multi-Site &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -26,9 +26,9 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
-    <link rel="up" title="Ceph 对象网关" href="../" />
-    <link rel="next" title="Ceph 对象网关配置参考" href="../config-ref/" />
-    <link rel="prev" title="联盟网关的配置" href="../federated-config/" />
+    <link rel="up" title="Ceph Object Gateway" href="../" />
+    <link rel="next" title="Ceph Object Gateway Config Reference" href="../config-ref/" />
+    <link rel="prev" title="Configuring Federated Gateways" href="../federated-config/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,13 +43,13 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../config-ref/" title="Ceph 对象网关配置参考"
+          <a href="../config-ref/" title="Ceph Object Gateway Config Reference"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../federated-config/" title="联盟网关的配置"
+          <a href="../federated-config/" title="Configuring Federated Gateways"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" accesskey="U">Ceph 对象网关</a> &raquo;</li> 
+          <li><a href="../" accesskey="U">Ceph Object Gateway</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -58,664 +58,1323 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="rgw">
-<span id="rgw-multisite"></span><h1>RGW 多站<a class="headerlink" href="#rgw" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="multi-site">
+<h1>Multi-Site<a class="headerlink" href="#multi-site" title="Permalink to this headline">¶</a></h1>
 <p class="versionadded">
 <span class="versionmodified">New in version Jewel.</span></p>
-<p>Ceph 从 Jewel 版起，你可以让各个 <a class="reference internal" href="../../glossary/#term-34"><em class="xref std std-term">Ceph 对象网关</em></a>在多活域内运行，多活域允许写入非主域。下面是会用到的基本术语：</p>
+<p>A single zone configuration typically consists of one zone group containing one
+zone and one or more <cite>ceph-radosgw</cite> instances where you may load-balance gateway
+client requests between the instances. In a single zone configuration, typically
+multiple gateway instances point to a single Ceph storage cluster. However, Kraken
+supports several multi-site configuration options for the Ceph Object Gateway:</p>
 <ul class="simple">
-<li><strong>域 (Zone)</strong>: 域是一或多个 Ceph 对象网关例程的<em>逻辑</em>分组。每个域组应该指定一个域为主域，由它负责所有桶和用户的创建。</li>
-<li><strong>域组 (Zonegroup)</strong>: 域组由多个域组成，此概念大致相当于
-Jewel 版以前联盟部署中的辖区（ region ）。应该有一个主域组，负责处理系统配置变更。</li>
-<li><strong>域组映射图 (Zonegroup map)</strong>: 域组映射图是个配置的数据结构，它保存着整个系统的映射图，也就是哪个域组是主的、各个域组间的关系、以及其它可配置信息，如存储策略。</li>
-<li><strong>组界 (Realm)</strong>: 组界是域组的容器，有了它就能跨集群划分域组。系统允许创建多个组界，这样就能轻易地在同一集群内跑多个不同的配置。</li>
-<li><strong>界期 (Period)</strong>: 界期保存着组界当前状态的配置数据结构。每个界期都包含一个唯一标识符和一个时间结（ epoch )，每个提交操作都会使界期的时间结递增。每个组界都有一个相关联的当前界期，它保存着当前配置的域组和存储策略。任何非主域的变更都会引起界期的时间结递增。把主域改为另一个域会牵涉以下变更：<ul>
-<li>根据新界期和为 1 的时间结生成新的界期；</li>
-<li>更新组界的当前界期，指向新生成的界期标识符；</li>
-<li>组界的时间结递增；</li>
+<li><strong>Multi-zone:</strong> A more advanced configuration consists of one zone group and
+multiple zones, each zone with one or more <cite>ceph-radosgw</cite> instances. Each zone
+is backed by its own Ceph Storage Cluster. Multiple zones in a zone group
+provides disaster recovery for the zone group should one of the zones experience
+a significant failure. In Kraken, each zone is active and may receive write
+operations. In addition to disaster recovery, multiple active zones may also
+serve as a foundation for content delivery networks.</li>
+<li><strong>Multi-zone-group:</strong> Formerly called &#8216;regions&#8217;, Ceph Object Gateway can also
+support multiple zone groups, each zone group with one or more zones. Objects
+stored to zones in one zone group within the same realm as another zone
+group will share a global object namespace, ensuring unique object IDs across
+zone groups and zones.</li>
+<li><strong>Multiple Realms:</strong> In Kraken, the Ceph Object Gateway supports the notion
+of realms, which can be a single zone group or multiple zone groups and
+a globally unique namespace for the realm. Multiple realms provide the ability
+to support numerous configurations and namespaces.</li>
 </ul>
-</li>
-</ul>
-<div class="section" id="about-this-guide">
-<span id="id1"></span><h2>关于此指南<a class="headerlink" href="#about-this-guide" title="Permalink to this headline">¶</a></h2>
-<p>在本指南中，我们要用到两个 Ceph 集群，只创建一个域组，以及三个域，它们之间会活跃地同步数据。为达成目标，我们会在同一集群内创建 2 个域、在另一集群内创建 1 个域。不涉及在 Ceph 对象网关例程间镜像数据变更的同步代理，这样的话配置方案和多活配置简单得多。需要注意的是，像用户创建这类元数据操作仍然需要主域处理，然而，数据操作（像桶、对象的创建）可以由任意域处理。</p>
-<div class="section" id="system-keys">
-<span id="id2"></span><h3>系统密钥<a class="headerlink" href="#system-keys" title="Permalink to this headline">¶</a></h3>
-<p>配置各个域时， Ceph 对象网关例程希望创建的域内有系统用户，此用户有 S3 风格的访问密钥和秘密密钥。这样其它 Ceph 对象网关例程用访问密钥和秘密密钥就能远程拉取它的配置。为了能更简单地实现脚本化、或者配置管理工具的使用，应该事先生成访问密钥和秘密密钥，后面就用这些。在本文档中，我们把访问密钥和秘密密钥设置在环境变量中，例如：</p>
-<div class="highlight-python"><pre>$ SYSTEM_ACCESS_KEY=1555b35654ad1656d805
-$ SYSTEM_SECRET_KEY=h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q12</pre>
+<p>Replicating object data between zones within a zone group looks something
+like this:</p>
+<img alt="../../_images/zone-sync2.png" class="align-center" src="../../_images/zone-sync2.png" />
+<p>For additional details on setting up a cluster, see <a class="reference external" href="https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/ceph_object_gateway_for_production/">Ceph Object Gateway for
+Production</a>.</p>
+<div class="section" id="functional-changes-from-infernalis">
+<h2>Functional Changes from Infernalis<a class="headerlink" href="#functional-changes-from-infernalis" title="Permalink to this headline">¶</a></h2>
+<p>In Kraken, you can configure each Ceph Object Gateway to
+work in an active-active zone configuration, allowing for writes to
+non-master zones.</p>
+<p>The multi-site configuration is stored within a container called a
+&#8220;realm.&#8221; The realm stores zone groups, zones, and a time &#8220;period&#8221; with
+multiple epochs for tracking changes to the configuration. In Kraken,
+the <tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt> daemons handle the synchronization,
+eliminating the need for a separate synchronization agent. Additionally,
+the new approach to synchronization allows the Ceph Object Gateway to
+operate with an &#8220;active-active&#8221; configuration instead of
+&#8220;active-passive&#8221;.</p>
 </div>
-<p>通常，访问密钥是 20 个字母数字组成的字符串，秘密密钥是 40 个字母数字组成的字符串（它们也可以包含 +/= ），这些密钥可以在
-shell 中生成，例如：</p>
-<div class="highlight-python"><pre>$ SYSTEM_ACCESS_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
-$ SYSTEM_SECRET_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 40 | head -n 1)</pre>
+<div class="section" id="requirements-and-assumptions">
+<h2>Requirements and Assumptions<a class="headerlink" href="#requirements-and-assumptions" title="Permalink to this headline">¶</a></h2>
+<p>A multi-site configuration requires at least two Ceph storage clusters,
+preferably given a distinct cluster name. At least two Ceph object
+gateway instances, one for each Ceph storage cluster.</p>
+<p>This guide assumes at least two Ceph storage clusters in geographically
+separate locations; however, the configuration can work on the same
+site. This guide also assumes four Ceph object gateway servers named
+<tt class="docutils literal"><span class="pre">rgw1</span></tt> and <tt class="docutils literal"><span class="pre">rgw2</span></tt>.</p>
+<p>A multi-site configuration requires a master zone group and a master
+zone. Additionally, each zone group requires a master zone. Zone groups
+may have one or more secondary or non-master zones.</p>
+<p>In this guide, the <tt class="docutils literal"><span class="pre">rgw1</span></tt> host will serve as the master zone of the
+master zone group; and, the <tt class="docutils literal"><span class="pre">rgw2</span></tt> host will serve as the secondary zone
+of the master zone group.</p>
 </div>
-<p>然后我们用下列命令创建系统用户：</p>
-<div class="highlight-python"><pre>$ radosgw-admin user create --uid=zone.user --display-name="Zone User" \
-               --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --system</pre>
-</div>
-</div>
-<div class="section" id="naming-conventions">
-<span id="id3"></span><h3>命名惯例<a class="headerlink" href="#naming-conventions" title="Permalink to this headline">¶</a></h3>
-<p>本段描述了配置一个主域的过程。在本指南中，我们假设一个名为
-<tt class="docutils literal"><span class="pre">us</span></tt> 的域组，位于美国，它是我们的主域组，包含两个域，其名字格式为 <tt class="docutils literal"><span class="pre">{zonegroup}-{zone}</span></tt> ，这仅仅是个惯例，你可以用自己喜欢的方式命名。总的来说：</p>
-<ul class="simple">
-<li>主域组：美国 <tt class="docutils literal"><span class="pre">us</span></tt></li>
-<li>主域：美国，东区 1 ： <tt class="docutils literal"><span class="pre">us-east-1</span></tt></li>
-<li>第二域：美国，东区 2 ： <tt class="docutils literal"><span class="pre">us-east-2</span></tt></li>
-<li>第二域：美国，西区： <tt class="docutils literal"><span class="pre">us-west</span></tt></li>
-</ul>
-<p>这些只是更大组界（假设为 <tt class="docutils literal"><span class="pre">gold</span></tt> ）的一部分， <tt class="docutils literal"><span class="pre">us-east-1</span></tt>
-和 <tt class="docutils literal"><span class="pre">us-east-2</span></tt> 是同一 Ceph 集群的一部分，其中，把
-<tt class="docutils literal"><span class="pre">us-east-1</span></tt> 配置为主的， <tt class="docutils literal"><span class="pre">us-west</span></tt> 将位于另一个不同的
-Ceph 集群。</p>
-</div>
-<div class="section" id="id4">
-<h3>创建存储池<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
-<p>如果权限配置得当， Ceph 对象网关例程可以自己创建各存储池，需要用到 <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> 里的 <tt class="docutils literal"><span class="pre">pg_num</span></tt> 和 <tt class="docutils literal"><span class="pre">pgp_num</span></tt> 的配置值。具体细节请参考 <a class="reference external" href="../config#create-pools">Ceph 对象网关——创建存储池</a>。某一域内的存储池按惯例以 <tt class="docutils literal"><span class="pre">{zone-name}.pool-name</span></tt> 命名，以 <tt class="docutils literal"><span class="pre">us-east-1</span></tt>
-域为例，按默认配置将创建以下存储池：</p>
-<ul class="simple">
-<li><tt class="docutils literal"><span class="pre">.rgw.root</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.control</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.data.root</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.gc</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.log</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.intent-log</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.usage</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.users.keys</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.users.email</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.users.swift</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.users.uid</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.buckets.index</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.buckets.data</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">us-east-1.rgw.meta</span></tt></li>
-</ul>
-<p>其它域内也需要创建这些存储池，但需把存储池名中的 <tt class="docutils literal"><span class="pre">us-east-1</span></tt>
-替换为规划的名字。</p>
-</div>
-</div>
-<div class="section" id="configuring-the-master-zone-in-the-primary-cluster">
-<span id="id5"></span><h2>配置主集群的主域<a class="headerlink" href="#configuring-the-master-zone-in-the-primary-cluster" title="Permalink to this headline">¶</a></h2>
-<p>首先，我们要配置主域组 <tt class="docutils literal"><span class="pre">us</span></tt> 内的主域 <tt class="docutils literal"><span class="pre">us-east-1</span></tt> ，它将作为主域负责所有的原数据操作，因此所有的用户创建之类的操作将由这个域处理。</p>
-<div class="section" id="creating-a-realm">
-<span id="id6"></span><h3>创建组界<a class="headerlink" href="#creating-a-realm" title="Permalink to this headline">¶</a></h3>
-<p>配置一个名为 <tt class="docutils literal"><span class="pre">gold</span></tt> 的组界，并使其成为默认的：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm create --rgw-realm=gold --default</span>
-<span class="p">{</span>
-  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;gold&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;current_period&quot;</span><span class="p">:</span> <span class="s2">&quot;09559832-67a4-4101-8b3f-10dfcd6b2707&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="mi">1</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>注意，每个组界都有一个 id ，这样就能为某些操作提供便利，像后面的组界重命名就会用到； <tt class="docutils literal"><span class="pre">current_period</span></tt> 会随主域的任何变动而变化； <tt class="docutils literal"><span class="pre">epoch</span></tt> 在主域配置变更时会递增，因为它导致当前界期变化了。</p>
-</div>
-<div class="section" id="deleting-the-default-zonegroup">
-<span id="id7"></span><h3>删除默认域组<a class="headerlink" href="#deleting-the-default-zonegroup" title="Permalink to this headline">¶</a></h3>
-<p>安装 Ceph 对象网关时，它会假设默认的域组名为 default ，我们不需要这个，所以先删掉默认域组：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup delete --rgw-zonegroup=default</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="creating-a-master-zonegroup">
-<span id="id8"></span><h3>创建主域组<a class="headerlink" href="#creating-a-master-zonegroup" title="Permalink to this headline">¶</a></h3>
-<p>我们将创建名为 <tt class="docutils literal"><span class="pre">us</span></tt> 的域组，作为主域组。主域组将会控制域组映射图、并负责把变更传达给系统的其余部分。我们还得把它设置为默认域组，这样后续命令就可以直接使用此域组了，无须再加
-<tt class="docutils literal"><span class="pre">--rgw-zonegroup</span></tt> 选项了。</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup create --rgw-zonegroup=us --endpoints=http://rgw1:80 --master --default</span>
-<span class="p">{</span>
- <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;d4018b8d-8c0d-4072-8919-608726fa369e&quot;</span><span class="p">,</span>
- <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
- <span class="s2">&quot;api_name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
- <span class="s2">&quot;is_master&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
- <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
-     <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
- <span class="p">],</span>
- <span class="s2">&quot;hostnames&quot;</span><span class="p">:</span> <span class="p">[],</span>
- <span class="s2">&quot;hostnames_s3website&quot;</span><span class="p">:</span> <span class="p">[],</span>
- <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
- <span class="s2">&quot;zones&quot;</span><span class="p">:</span> <span class="p">[],</span>
- <span class="s2">&quot;placement_targets&quot;</span><span class="p">:</span> <span class="p">[],</span>
- <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
- <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span>
- <span class="p">}</span>
-</pre></div>
-</div>
-<p>或者用下面的命令把此域组设置为默认域组：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup default --rgw-zonegroup=us</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="creating-a-master-zone">
-<span id="id9"></span><h3>创建主域<a class="headerlink" href="#creating-a-master-zone" title="Permalink to this headline">¶</a></h3>
-<p>下面创建一个域，并使其成为默认域。注意，进行元数据操作（如创建用户）时要用到此域。我们还要把它加进前面创建的域组里。</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-east-1 --endpoints=http://rgw1:80 --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --default --master</span>
-<span class="p">{</span>
- <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
- <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
- <span class="s2">&quot;domain_root&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.data.root&quot;</span><span class="p">,</span>
- <span class="s2">&quot;control_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.control&quot;</span><span class="p">,</span>
- <span class="s2">&quot;gc_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.gc&quot;</span><span class="p">,</span>
- <span class="s2">&quot;log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.log&quot;</span><span class="p">,</span>
- <span class="s2">&quot;intent_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.intent-log&quot;</span><span class="p">,</span>
- <span class="s2">&quot;usage_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.usage&quot;</span><span class="p">,</span>
- <span class="s2">&quot;user_keys_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.users.keys&quot;</span><span class="p">,</span>
- <span class="s2">&quot;user_email_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.users.email&quot;</span><span class="p">,</span>
- <span class="s2">&quot;user_swift_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.users.swift&quot;</span><span class="p">,</span>
- <span class="s2">&quot;user_uid_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.users.uid&quot;</span><span class="p">,</span>
- <span class="s2">&quot;system_key&quot;</span><span class="p">:</span> <span class="p">{</span>
-     <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;1555b35654ad1656d804&quot;</span><span class="p">,</span>
-     <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;h7GhxuBLTrlhVUyxSPUKUV8r\/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==&quot;</span>
- <span class="p">},</span>
- <span class="s2">&quot;placement_pools&quot;</span><span class="p">:</span> <span class="p">[</span>
-     <span class="p">{</span>
-         <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
-         <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="p">{</span>
-             <span class="s2">&quot;index_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.buckets.index&quot;</span><span class="p">,</span>
-             <span class="s2">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.buckets.data&quot;</span><span class="p">,</span>
-             <span class="s2">&quot;data_extra_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.buckets.non-ec&quot;</span><span class="p">,</span>
-             <span class="s2">&quot;index_type&quot;</span><span class="p">:</span> <span class="mi">0</span>
-         <span class="p">}</span>
-     <span class="p">}</span>
- <span class="p">],</span>
- <span class="s2">&quot;metadata_heap&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1.rgw.meta&quot;</span><span class="p">,</span>
- <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span>
- <span class="p">}</span>
-</pre></div>
-</div>
-<p>上面的命令中， <tt class="docutils literal"><span class="pre">--rgw-zonegroup</span></tt> 和 <tt class="docutils literal"><span class="pre">--default</span></tt> 选项把域加进了域组、也使其成为默认域了。下列命令也异曲同工：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone default --rgw-zone=us-east-1</span>
-<span class="c1"># radosgw-admin zonegroup add --rgw-zonegroup=us --rgw-zone=us-east-1</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="creating-system-users">
-<span id="id10"></span><h3>创建系统用户<a class="headerlink" href="#creating-system-users" title="Permalink to this headline">¶</a></h3>
-<p>接下来我们创建用于访问域存储池的系统用户，注意，这些密钥在配置第二域时还要用到：</p>
-<div class="highlight-python"><pre># radosgw-admin user create --uid=zone.user --display-name="Zone
-User" --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --system
-{
-  "user_id": "zone.user",
-  "display_name": "Zone User",
-  "email": "",
-  "suspended": 0,
-  "max_buckets": 1000,
-  "auid": 0,
-  "subusers": [],
-  "keys": [
-      {
-          "user": "zone.user",
-          "access_key": "1555b35654ad1656d804",
-          "secret_key": "h7GhxuBLTrlhVUyxSPUKUV8r\/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
-      }
-  ],
-  "swift_keys": [],
-  "caps": [],
-  "op_mask": "read, write, delete",
-  "system": "true",
-  "default_placement": "",
-  "placement_tags": [],
-  "bucket_quota": {
-      "enabled": false,
-      "max_size_kb": -1,
-      "max_objects": -1
-  },
-  "user_quota": {
-      "enabled": false,
-      "max_size_kb": -1,
-      "max_objects": -1
-  },
-  "temp_url_keys": []
-}</pre>
+<div class="section" id="pools">
+<h2>Pools<a class="headerlink" href="#pools" title="Permalink to this headline">¶</a></h2>
+<p>We recommend using the <a class="reference external" href="http://ceph.com/pgcalc/">Ceph Placement Group’s per Pool
+Calculator</a> to calculate a
+suitable number of placement groups for the pools the <tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt>
+daemon will create. Set the calculated values as defaults in your Ceph
+configuration file. For example:</p>
+<div class="highlight-python"><pre>osd pool default pg num = 50
+osd pool default pgp num = 50</pre>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">要注意的是，系统用户在整个域里都有超级用户权限，其操作的行为也和普通用户不一样，像创建桶、对象等等操作，因为它的输出包含额外的 json 字段，这些字段维护着元数据。</p>
+<p class="last">Make this change to the Ceph configuration file on your
+storage cluster; then, either make a runtime change to the
+configuration so that it will use those defaults when the gateway
+instance creates the pools.</p>
+</div>
+<p>Alternatively, create the pools manually. See
+<a class="reference external" href="http://docs.ceph.com/docs/master/rados/operations/pools/#pools">Pools</a>
+for details on creating pools.</p>
+<p>Pool names particular to a zone follow the naming convention
+<tt class="docutils literal"><span class="pre">{zone-name}.pool-name</span></tt>. For example, a zone named <tt class="docutils literal"><span class="pre">us-east</span></tt> will
+have the following pools:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">.rgw.root</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.control</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.data.root</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.gc</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.intent-log</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.usage</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.users.keys</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.users.email</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.users.swift</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.users.uid</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.buckets.index</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">us-east.rgw.buckets.data</span></tt></li>
+</ul>
+</div>
+<div class="section" id="configuring-a-master-zone">
+<h2>Configuring a Master Zone<a class="headerlink" href="#configuring-a-master-zone" title="Permalink to this headline">¶</a></h2>
+<p>All gateways in a multi-site configuration will retrieve their
+configuration from a <tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt> daemon on a host within the master
+zone group and master zone. To configure your gateways in a multi-site
+configuration, choose a <tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt> instance to configure the
+master zone group and master zone.</p>
+<div class="section" id="create-a-realm">
+<h3>Create a Realm<a class="headerlink" href="#create-a-realm" title="Permalink to this headline">¶</a></h3>
+<p>A realm contains the multi-site configuration of zone groups and zones
+and also serves to enforce a globally unique namespace within the realm.</p>
+<p>Create a new realm for the multi-site configuration by opening a command
+line interface on a host identified to serve in the master zone group
+and zone. Then, execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm create --rgw-realm={realm-name} [--default]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm create --rgw-realm=movies --default</span>
+</pre></div>
+</div>
+<p>If the cluster will have a single realm, specify the <tt class="docutils literal"><span class="pre">--default</span></tt> flag.
+If <tt class="docutils literal"><span class="pre">--default</span></tt> is specified, <tt class="docutils literal"><span class="pre">radosgw-admin</span></tt> will use this realm by
+default. If <tt class="docutils literal"><span class="pre">--default</span></tt> is not specified, adding zone-groups and zones
+requires specifying either the <tt class="docutils literal"><span class="pre">--rgw-realm</span></tt> flag or the
+<tt class="docutils literal"><span class="pre">--realm-id</span></tt> flag to identify the realm when adding zone groups and
+zones.</p>
+<p>After creating the realm, <tt class="docutils literal"><span class="pre">radosgw-admin</span></tt> will echo back the realm
+configuration. For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;0956b174-fe14-4f97-8b50-bb7ec5e1cf62&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;movies&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;current_period&quot;</span><span class="p">:</span> <span class="s2">&quot;1950b710-3e63-4c41-a19e-46a715000980&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="mi">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Ceph generates a unique ID for the realm, which allows the renaming
+of a realm if the need arises.</p>
+</div>
+</div>
+<div class="section" id="create-a-master-zone-group">
+<h3>Create a Master Zone Group<a class="headerlink" href="#create-a-master-zone-group" title="Permalink to this headline">¶</a></h3>
+<p>A realm must have at least one zone group, which will serve as the
+master zone group for the realm.</p>
+<p>Create a new master zone group for the multi-site configuration by
+opening a command line interface on a host identified to serve in the
+master zone group and zone. Then, execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup create --rgw-zonegroup={name} --endpoints={url} [--rgw-realm={realm-name}|--realm-id={realm-id}] --master --default</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup create --rgw-zonegroup=us --endpoints=http://rgw1:80 --rgw-realm=movies --master --default</span>
+</pre></div>
+</div>
+<p>If the realm will only have a single zone group, specify the
+<tt class="docutils literal"><span class="pre">--default</span></tt> flag. If <tt class="docutils literal"><span class="pre">--default</span></tt> is specified, <tt class="docutils literal"><span class="pre">radosgw-admin</span></tt>
+will use this zone group by default when adding new zones. If
+<tt class="docutils literal"><span class="pre">--default</span></tt> is not specified, adding zones will require either the
+<tt class="docutils literal"><span class="pre">--rgw-zonegroup</span></tt> flag or the <tt class="docutils literal"><span class="pre">--zonegroup-id</span></tt> flag to identify the
+zone group when adding or modifying zones.</p>
+<p>After creating the master zone group, <tt class="docutils literal"><span class="pre">radosgw-admin</span></tt> will echo back
+the zone group configuration. For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;f1a233f5-c354-4107-b36c-df66126475a6&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;api_name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_master&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;hostnames&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;hostnames_s3webzone&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;zones&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;placement_targets&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;0956b174-fe14-4f97-8b50-bb7ec5e1cf62&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-a-master-zone">
+<h3>Create a Master Zone<a class="headerlink" href="#create-a-master-zone" title="Permalink to this headline">¶</a></h3>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Zones must be created on a Ceph Object Gateway node that will be
+within the zone.</p>
+</div>
+<p>Create a new master zone for the multi-site configuration by opening a
+command line interface on a host identified to serve in the master zone
+group and zone. Then, execute the following:</p>
+<div class="highlight-python"><pre># radosgw-admin zone create --rgw-zonegroup={zone-group-name} \
+                            --rgw-zone={zone-name} \
+                            --master --default \
+                            --endpoints={http://fqdn}[,{http://fqdn}]</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre># radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-east \
+                            --master --default \
+                            --endpoints={http://fqdn}[,{http://fqdn}]</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">--access-key</span></tt> and <tt class="docutils literal"><span class="pre">--secret</span></tt> aren’t specified. These
+settings will be added to the zone once the user is created in the
+next section.</p>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">The following steps assume a multi-site configuration using newly
+installed systems that aren’t storing data yet. DO NOT DELETE the
+<tt class="docutils literal"><span class="pre">default</span></tt> zone and its pools if you are already using it to store
+data, or the data will be deleted and unrecoverable.</p>
+</div>
+</div>
+<div class="section" id="delete-default-zone-group-and-zone">
+<h3>Delete Default Zone Group and Zone<a class="headerlink" href="#delete-default-zone-group-and-zone" title="Permalink to this headline">¶</a></h3>
+<p>Delete the <tt class="docutils literal"><span class="pre">default</span></tt> zone if it exists. Make sure to remove it from
+the default zone group first.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup remove --rgw-zonegroup=default --rgw-zone=default</span>
+<span class="c1"># radosgw-admin period update --commit</span>
+<span class="c1"># radosgw-admin zone delete --rgw-zone=default</span>
+<span class="c1"># radosgw-admin period update --commit</span>
+<span class="c1"># radosgw-admin zonegroup delete --rgw-zonegroup=default</span>
+<span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+<p>Finally, delete the <tt class="docutils literal"><span class="pre">default</span></tt> pools in your Ceph storage cluster if
+they exist.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">The following step assumes a multi-site configuration using newly
+installed systems that aren’t currently storing data. DO NOT DELETE
+the <tt class="docutils literal"><span class="pre">default</span></tt> zone group if you are already using it to store
+data.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># rados rmpool default.rgw.control default.rgw.control --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool default.rgw.data.root default.rgw.data.root --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool default.rgw.gc default.rgw.gc --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool default.rgw.log default.rgw.log --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool default.rgw.users.uid default.rgw.users.uid --yes-i-really-really-mean-it</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-a-system-user">
+<h3>Create a System User<a class="headerlink" href="#create-a-system-user" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">ceph-radosgw</span></tt> daemons must authenticate before pulling realm and
+period information. In the master zone, create a system user to
+facilitate authentication between daemons.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin user create --uid=&quot;{user-name}&quot; --display-name=&quot;{Display Name}&quot; --system</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin user create --uid=&quot;synchronization-user&quot; --display-name=&quot;Synchronization User&quot; --system</span>
+</pre></div>
+</div>
+<p>Make a note of the <tt class="docutils literal"><span class="pre">access_key</span></tt> and <tt class="docutils literal"><span class="pre">secret_key</span></tt>, as the secondary
+zones will require them to authenticate with the master zone.</p>
+<p>Finally, add the system user to the master zone.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone modify --rgw-zone=us-east --access-key={access-key} --secret={secret}</span>
+<span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
 </div>
 </div>
 <div class="section" id="update-the-period">
-<span id="id11"></span><h3>更新界期<a class="headerlink" href="#update-the-period" title="Permalink to this headline">¶</a></h3>
-<p>我们更改了主域配置，因此需要提交这些变更，以反映组界的配置结构。这是初始的界期：</p>
-<div class="highlight-python"><pre># radosgw-admin period get
- {
-  "id": "09559832-67a4-4101-8b3f-10dfcd6b2707",
-  "epoch": 1,
-  "predecessor_uuid": "",
-  "sync_status": [],
-  "period_map": {
-      "id": "09559832-67a4-4101-8b3f-10dfcd6b2707",
-      "zonegroups": [],
-      "short_zone_ids": []
-  },
-  "master_zonegroup": "",
-  "master_zone": "",
-  "period_config": {
-      "bucket_quota": {
-          "enabled": false,
-          "max_size_kb": -1,
-          "max_objects": -1
-      },
-      "user_quota": {
-          "enabled": false,
-          "max_size_kb": -1,
-          "max_objects": -1
-      }
-  },
-  "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7",
-  "realm_name": "gold",
-  "realm_epoch": 1
-  }</pre>
-</div>
-<p>现在，更新界期并提交变更：</p>
-<div class="highlight-python"><pre># radosgw-admin period update --commit
-{
-  "id": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
-  "epoch": 1,
-  "predecessor_uuid": "09559832-67a4-4101-8b3f-10dfcd6b2707",
-  "sync_status": [ ""... # truncating the output here
-  ],
-  "period_map": {
-      "id": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
-      "zonegroups": [
-          {
-              "id": "d4018b8d-8c0d-4072-8919-608726fa369e",
-              "name": "us",
-              "api_name": "us",
-              "is_master": "true",
-              "endpoints": [
-                  "http:\/\/rgw1:80"
-              ],
-              "hostnames": [],
-              "hostnames_s3website": [],
-              "master_zone": "83859a9a-9901-4f00-aa6d-285c777e10f0",
-              "zones": [
-                  {
-                      "id": "83859a9a-9901-4f00-aa6d-285c777e10f0",
-                      "name": "us-east-1",
-                      "endpoints": [
-                          "http:\/\/rgw1:80"
-                      ],
-                      "log_meta": "true",
-                      "log_data": "false",
-                      "bucket_index_max_shards": 0,
-                      "read_only": "false"
-                  }
-              ],
-              "placement_targets": [
-                  {
-                      "name": "default-placement",
-                      "tags": []
-                  }
-              ],
-              "default_placement": "default-placement",
-              "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7"
-          }
-      ],
-      "short_zone_ids": [
-          {
-              "key": "83859a9a-9901-4f00-aa6d-285c777e10f0",
-              "val": 630926044
-          }
-      ]
-  },
-  "master_zonegroup": "d4018b8d-8c0d-4072-8919-608726fa369e",
-  "master_zone": "83859a9a-9901-4f00-aa6d-285c777e10f0",
-  "period_config": {
-      "bucket_quota": {
-          "enabled": false,
-          "max_size_kb": -1,
-          "max_objects": -1
-      },
-      "user_quota": {
-          "enabled": false,
-          "max_size_kb": -1,
-          "max_objects": -1
-      }
-  },
-  "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7",
-  "realm_name": "gold",
-  "realm_epoch": 2
-  }</pre>
-</div>
-</div>
-<div class="section" id="ceph">
-<span id="starting-the-ceph-object-gateway-instance"></span><h3>启动 Ceph 对象网关例程<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h3>
-<p>启动 Ceph 对象网关例程前，需在配置文件里配置好 <tt class="docutils literal"><span class="pre">rgw_zone</span></tt>
-和 <tt class="docutils literal"><span class="pre">rgw_frontends</span></tt> 选项，请参考<a class="reference external" href="../../install/install-ceph-gateway">安装 Ceph 网关</a>。
-Ceph 对象网关例程的配置段应该类似如下：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">us</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-<span class="n">rgw_frontends</span><span class="o">=</span><span class="s2">&quot;civetweb port=80&quot;</span>
-<span class="n">rgw_zone</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">1</span>
+<h3>Update the Period<a class="headerlink" href="#update-the-period" title="Permalink to this headline">¶</a></h3>
+<p>After updating the master zone configuration, update the period.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
 </pre></div>
 </div>
-<p>然后启动 Ceph 对象网关例程（有别于你的操作系统）：</p>
-<div class="highlight-python"><pre>$ sudo systemctl start ceph-radosgw@rgw.us-east-1</pre>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Updating the period changes the epoch, and ensures that other zones
+will receive the updated configuration.</p>
+</div>
+</div>
+<div class="section" id="update-the-ceph-configuration-file">
+<h3>Update the Ceph Configuration File<a class="headerlink" href="#update-the-ceph-configuration-file" title="Permalink to this headline">¶</a></h3>
+<p>Update the Ceph configuration file on master zone hosts by adding the
+<tt class="docutils literal"><span class="pre">rgw_zone</span></tt> configuration option and the name of the master zone to the
+instance entry.</p>
+<div class="highlight-python"><pre>[client.rgw.{instance-name}]
+...
+rgw_zone={zone-name}</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>[client.rgw.rgw1]
+host = rgw1
+rgw frontends = "civetweb port=80"
+rgw_zone=us-east</pre>
+</div>
+</div>
+<div class="section" id="start-the-gateway">
+<h3>Start the Gateway<a class="headerlink" href="#start-the-gateway" title="Permalink to this headline">¶</a></h3>
+<p>On the object gateway host, start and enable the Ceph Object Gateway
+service:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># systemctl start ceph-radosgw@rgw.`hostname -s`</span>
+<span class="c1"># systemctl enable ceph-radosgw@rgw.`hostname -s`</span>
+</pre></div>
 </div>
 </div>
 </div>
-<div class="section" id="configuring-the-second-zone-in-same-cluster">
-<span id="id12"></span><h2>在同一集群内配置第二域<a class="headerlink" href="#configuring-the-second-zone-in-same-cluster" title="Permalink to this headline">¶</a></h2>
-<p>接下来配置第二域 <tt class="docutils literal"><span class="pre">us-east-2</span></tt> ，还在同一集群内。在同一集群内，下面的所有命令都能在主域所在的节点上执行。</p>
-<div class="section" id="creating-the-second-zone">
-<span id="id13"></span><h3>创建第二域<a class="headerlink" href="#creating-the-second-zone" title="Permalink to this headline">¶</a></h3>
-<p>与创建主域的步骤相似，只是这里要去掉 <tt class="docutils literal"><span class="pre">--master</span></tt> 选项：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-east-2 --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --endpoints=http://rgw2:80</span>
-<span class="p">{</span>
-  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;950c1a43-6836-41a2-a161-64777e07e8b8&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;domain_root&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.data.root&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;control_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.control&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;gc_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.gc&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.log&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;intent_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.intent-log&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;usage_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.usage&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;user_keys_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.users.keys&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;user_email_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.users.email&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;user_swift_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.users.swift&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;user_uid_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.users.uid&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;system_key&quot;</span><span class="p">:</span> <span class="p">{</span>
-      <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;1555b35654ad1656d804&quot;</span><span class="p">,</span>
-      <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;h7GhxuBLTrlhVUyxSPUKUV8r\/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==&quot;</span>
-  <span class="p">},</span>
+<div class="section" id="configure-secondary-zones">
+<h2>Configure Secondary Zones<a class="headerlink" href="#configure-secondary-zones" title="Permalink to this headline">¶</a></h2>
+<p>Zones within a zone group replicate all data to ensure that each zone
+has the same data. When creating the secondary zone, execute all of the
+following operations on a host identified to serve the secondary zone.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">To add a third zone, follow the same procedures as for adding the
+secondary zone. Use different zone name.</p>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">You must execute metadata operations, such as user creation, on a
+host within the master zone. The master zone and the secondary zone
+can receive bucket operations, but the secondary zone redirects
+bucket operations to the master zone. If the master zone is down,
+bucket operations will fail.</p>
+</div>
+<div class="section" id="pull-the-realm">
+<h3>Pull the Realm<a class="headerlink" href="#pull-the-realm" title="Permalink to this headline">¶</a></h3>
+<p>Using the URL path, access key and secret of the master zone in the
+master zone group, pull the realm to the host. To pull a non-default
+realm, specify the realm using the <tt class="docutils literal"><span class="pre">--rgw-realm</span></tt> or <tt class="docutils literal"><span class="pre">--realm-id</span></tt>
+configuration options.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm pull --url={url-to-master-zone-gateway} --access-key={access-key} --secret={secret}</span>
+</pre></div>
+</div>
+<p>If this realm is the default realm or the only realm, make the realm the
+default realm.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm default --rgw-realm={realm-name}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="pull-the-period">
+<h3>Pull the Period<a class="headerlink" href="#pull-the-period" title="Permalink to this headline">¶</a></h3>
+<p>Using the URL path, access key and secret of the master zone in the
+master zone group, pull the period to the host. To pull a period from a
+non-default realm, specify the realm using the <tt class="docutils literal"><span class="pre">--rgw-realm</span></tt> or
+<tt class="docutils literal"><span class="pre">--realm-id</span></tt> configuration options.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period pull --url={url-to-master-zone-gateway} --access-key={access-key} --secret={secret}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Pulling the period retrieves the latest version of the zone group
+and zone configurations for the realm.</p>
+</div>
+</div>
+<div class="section" id="create-a-secondary-zone">
+<h3>Create a Secondary Zone<a class="headerlink" href="#create-a-secondary-zone" title="Permalink to this headline">¶</a></h3>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Zones must be created on a Ceph Object Gateway node that will be
+within the zone.</p>
+</div>
+<p>Create a secondary zone for the multi-site configuration by opening a
+command line interface on a host identified to serve the secondary zone.
+Specify the zone group ID, the new zone name and an endpoint for the
+zone. <strong>DO NOT</strong> use the <tt class="docutils literal"><span class="pre">--master</span></tt> or <tt class="docutils literal"><span class="pre">--default</span></tt> flags. In Kraken,
+all zones run in an active-active configuration by
+default; that is, a gateway client may write data to any zone and the
+zone will replicate the data to all other zones within the zone group.
+If the secondary zone should not accept write operations, specify the
+<tt class="docutils literal"><span class="pre">--read-only</span></tt> flag to create an active-passive configuration between
+the master zone and the secondary zone. Additionally, provide the
+<tt class="docutils literal"><span class="pre">access_key</span></tt> and <tt class="docutils literal"><span class="pre">secret_key</span></tt> of the generated system user stored in
+the master zone of the master zone group. Execute the following:</p>
+<div class="highlight-python"><pre># radosgw-admin zone create --rgw-zonegroup={zone-group-name}\
+                            --rgw-zone={zone-name} --endpoints={url} \
+                            --access-key={system-key} --secret={secret}\
+                            --endpoints=http://{fqdn}:80 \
+                            [--read-only]</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre># radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-west \
+                            --access-key={system-key} --secret={secret} \
+                            --endpoints=http://rgw2:80</pre>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">The following steps assume a multi-site configuration using newly
+installed systems that aren’t storing data. <strong>DO NOT DELETE</strong> the
+<tt class="docutils literal"><span class="pre">default</span></tt> zone and its pools if you are already using it to store
+data, or the data will be lost and unrecoverable.</p>
+</div>
+<p>Delete the default zone if needed.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone delete --rgw-zone=default</span>
+</pre></div>
+</div>
+<p>Finally, delete the default pools in your Ceph storage cluster if
+needed.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># rados rmpool default.rgw.control default.rgw.control --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool default.rgw.data.root default.rgw.data.root --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool default.rgw.gc default.rgw.gc --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool default.rgw.log default.rgw.log --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool default.rgw.users.uid default.rgw.users.uid --yes-i-really-really-mean-it</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h3>Update the Ceph Configuration File<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Update the Ceph configuration file on the secondary zone hosts by adding
+the <tt class="docutils literal"><span class="pre">rgw_zone</span></tt> configuration option and the name of the secondary zone
+to the instance entry.</p>
+<div class="highlight-python"><pre>[client.rgw.{instance-name}]
+...
+rgw_zone={zone-name}</pre>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><pre>[client.rgw.rgw2]
+host = rgw2
+rgw frontends = "civetweb port=80"
+rgw_zone=us-west</pre>
+</div>
+</div>
+<div class="section" id="id2">
+<h3>Update the Period<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>After updating the master zone configuration, update the period.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Updating the period changes the epoch, and ensures that other zones
+will receive the updated configuration.</p>
+</div>
+</div>
+<div class="section" id="id3">
+<h3>Start the Gateway<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>On the object gateway host, start and enable the Ceph Object Gateway
+service:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># systemctl start ceph-radosgw@rgw.`hostname -s`</span>
+<span class="c1"># systemctl enable ceph-radosgw@rgw.`hostname -s`</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="check-synchronization-status">
+<h3>Check Synchronization Status<a class="headerlink" href="#check-synchronization-status" title="Permalink to this headline">¶</a></h3>
+<p>Once the secondary zone is up and running, check the synchronization
+status. Synchronization copies users and buckets created in the master
+zone to the secondary zone.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync status</span>
+</pre></div>
+</div>
+<p>The output will provide the status of synchronization operations. For
+example:</p>
+<div class="highlight-python"><pre>realm f3239bc5-e1a8-4206-a81d-e1576480804d (earth)
+    zonegroup c50dbb7e-d9ce-47cc-a8bb-97d9b399d388 (us)
+         zone 4c453b70-4a16-4ce8-8185-1893b05d346e (us-west)
+metadata sync syncing
+              full sync: 0/64 shards
+              metadata is caught up with master
+              incremental sync: 64/64 shards
+    data sync source: 1ee9da3e-114d-4ae3-a8a4-056e8a17f532 (us-east)
+                      syncing
+                      full sync: 0/128 shards
+                      incremental sync: 128/128 shards
+                      data is caught up with source</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Secondary zones accept bucket operations; however, secondary zones
+redirect bucket operations to the master zone and then synchronize
+with the master zone to receive the result of the bucket operations.
+If the master zone is down, bucket operations executed on the
+secondary zone will fail, but object operations should succeed.</p>
+</div>
+</div>
+</div>
+<div class="section" id="maintenance">
+<h2>Maintenance<a class="headerlink" href="#maintenance" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="checking-the-sync-status">
+<h3>Checking the Sync Status<a class="headerlink" href="#checking-the-sync-status" title="Permalink to this headline">¶</a></h3>
+<p>Information about the replication status of a zone can be queried with:</p>
+<div class="highlight-python"><pre>$ radosgw-admin sync status
+        realm b3bc1c37-9c44-4b89-a03b-04c269bea5da (earth)
+    zonegroup f54f9b22-b4b6-4a0e-9211-fa6ac1693f49 (us)
+         zone adce11c9-b8ed-4a90-8bc5-3fc029ff0816 (us-2)
+        metadata sync syncing
+              full sync: 0/64 shards
+              incremental sync: 64/64 shards
+              metadata is behind on 1 shards
+              oldest incremental change not applied: 2017-03-22 10:20:00.0.881361s
+    data sync source: 341c2d81-4574-4d08-ab0f-5a2a7b168028 (us-1)
+                      syncing
+                      full sync: 0/128 shards
+                      incremental sync: 128/128 shards
+                      data is caught up with source
+              source: 3b5d1a3f-3f27-4e4a-8f34-6072d4bb1275 (us-3)
+                      syncing
+                      full sync: 0/128 shards
+                      incremental sync: 128/128 shards
+                      data is caught up with source</pre>
+</div>
+</div>
+<div class="section" id="changing-the-metadata-master-zone">
+<h3>Changing the Metadata Master Zone<a class="headerlink" href="#changing-the-metadata-master-zone" title="Permalink to this headline">¶</a></h3>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p>Care must be taken when changing which zone is the metadata
+master. If a zone has not finished syncing metadata from the current master
+zone, it will be unable to serve any remaining entries when promoted to
+master and those changes will be lost. For this reason, waiting for a
+zone&#8217;s <tt class="docutils literal"><span class="pre">radosgw-admin</span> <span class="pre">sync</span> <span class="pre">status</span></tt> to catch up on metadata sync before
+promoting it to master is recommended.</p>
+<p class="last">Similarly, if changes to metadata are being processed by the current master
+zone while another zone is being promoted to master, those changes are
+likely to be lost. To avoid this, shutting down any <tt class="docutils literal"><span class="pre">radosgw</span></tt> instances
+on the previous master zone is recommended. After promoting another zone,
+its new period can be fetched with <tt class="docutils literal"><span class="pre">radosgw-admin</span> <span class="pre">period</span> <span class="pre">pull</span></tt> and the
+gateway(s) can be restarted.</p>
+</div>
+<p>To promote a zone (for example, zone <tt class="docutils literal"><span class="pre">us-2</span></tt> in zonegroup <tt class="docutils literal"><span class="pre">us</span></tt>) to metadata
+master, run the following commands on that zone:</p>
+<div class="highlight-python"><pre>$ radosgw-admin zone modify --rgw-zone=us-2 --master
+$ radosgw-admin zonegroup modify --rgw-zonegroup=us --master
+$ radosgw-admin period update --commit</pre>
+</div>
+<p>This will generate a new period, and the radosgw instance(s) in zone <tt class="docutils literal"><span class="pre">us-2</span></tt>
+will send this period to other zones.</p>
+</div>
+</div>
+<div class="section" id="failover-and-disaster-recovery">
+<h2>Failover and Disaster Recovery<a class="headerlink" href="#failover-and-disaster-recovery" title="Permalink to this headline">¶</a></h2>
+<p>If the master zone should fail, failover to the secondary zone for
+disaster recovery.</p>
+<ol class="arabic">
+<li><p class="first">Make the secondary zone the master and default zone. For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone modify --rgw-zone={zone-name} --master --default</span>
+</pre></div>
+</div>
+<p>By default, Ceph Object Gateway will run in an active-active
+configuration. If the cluster was configured to run in an
+active-passive configuration, the secondary zone is a read-only zone.
+Remove the <tt class="docutils literal"><span class="pre">--read-only</span></tt> status to allow the zone to receive write
+operations. For example:</p>
+<div class="highlight-python"><pre># radosgw-admin zone modify --rgw-zone={zone-name} --master --default \
+                            --read-only=False</pre>
+</div>
+</li>
+<li><p class="first">Update the period to make the changes take effect.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Finally, restart the Ceph Object Gateway.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># systemctl restart ceph-radosgw@rgw.`hostname -s`</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>If the former master zone recovers, revert the operation.</p>
+<ol class="arabic">
+<li><p class="first">From the recovered zone, pull the period from the current master
+zone.</p>
+<div class="highlight-python"><pre># radosgw-admin period pull --url={url-to-master-zone-gateway} \
+                            --access-key={access-key} --secret={secret}</pre>
+</div>
+</li>
+<li><p class="first">Make the recovered zone the master and default zone.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone modify --rgw-zone={zone-name} --master --default</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Update the period to make the changes take effect.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Then, restart the Ceph Object Gateway in the recovered zone.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># systemctl restart ceph-radosgw@rgw.`hostname -s`</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">If the secondary zone needs to be a read-only configuration, update
+the secondary zone.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone modify --rgw-zone={zone-name} --read-only</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Update the period to make the changes take effect.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Finally, restart the Ceph Object Gateway in the secondary zone.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># systemctl restart ceph-radosgw@rgw.`hostname -s`</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="migrating-a-single-site-system-to-multi-site">
+<h2>Migrating a Single Site System to Multi-Site<a class="headerlink" href="#migrating-a-single-site-system-to-multi-site" title="Permalink to this headline">¶</a></h2>
+<p>To migrate from a single site system with a <tt class="docutils literal"><span class="pre">default</span></tt> zone group and
+zone to a multi site system, use the following steps:</p>
+<ol class="arabic">
+<li><p class="first">Create a realm. Replace <tt class="docutils literal"><span class="pre">&lt;name&gt;</span></tt> with the realm name.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm create --rgw-realm=&lt;name&gt; --default</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Rename the default zone and zonegroup. Replace <tt class="docutils literal"><span class="pre">&lt;name&gt;</span></tt> with the
+zonegroup or zone name.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup rename --rgw-zonegroup default --zonegroup-new-name=&lt;name&gt;</span>
+<span class="c1"># radosgw-admin zone rename --rgw-zone default --zone-new-name us-east-1 --rgw-zonegroup=&lt;name&gt;</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Configure the master zonegroup. Replace <tt class="docutils literal"><span class="pre">&lt;name&gt;</span></tt> with the realm or
+zonegroup name. Replace <tt class="docutils literal"><span class="pre">&lt;fqdn&gt;</span></tt> with the fully qualified domain
+name(s) in the zonegroup.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup modify --rgw-realm=&lt;name&gt; --rgw-zonegroup=&lt;name&gt; --endpoints http://&lt;fqdn&gt;:80 --master --default</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Configure the master zone. Replace <tt class="docutils literal"><span class="pre">&lt;name&gt;</span></tt> with the realm,
+zonegroup or zone name. Replace <tt class="docutils literal"><span class="pre">&lt;fqdn&gt;</span></tt> with the fully qualified
+domain name(s) in the zonegroup.</p>
+<div class="highlight-python"><pre># radosgw-admin zone modify --rgw-realm=&lt;name&gt; --rgw-zonegroup=&lt;name&gt; \
+                            --rgw-zone=&lt;name&gt; --endpoints http://&lt;fqdn&gt;:80 \
+                            --access-key=&lt;access-key&gt; --secret=&lt;secret-key&gt; \
+                            --master --default</pre>
+</div>
+</li>
+<li><p class="first">Create a system user. Replace <tt class="docutils literal"><span class="pre">&lt;user-id&gt;</span></tt> with the username.
+Replace <tt class="docutils literal"><span class="pre">&lt;display-name&gt;</span></tt> with a display name. It may contain
+spaces.</p>
+<div class="highlight-python"><pre># radosgw-admin user create --uid=&lt;user-id&gt; --display-name="&lt;display-name&gt;"\
+                            --access-key=&lt;access-key&gt; --secret=&lt;secret-key&gt; --system</pre>
+</div>
+</li>
+<li><p class="first">Commit the updated configuration.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Finally, restart the Ceph Object Gateway.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># systemctl restart ceph-radosgw@rgw.`hostname -s`</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>After completing this procedure, proceed to <a class="reference external" href="#configure-secondary-zones">Configure a Secondary
+Zone</a> to create a secondary zone
+in the master zone group.</p>
+</div>
+<div class="section" id="multi-site-configuration-reference">
+<h2>Multi-Site Configuration Reference<a class="headerlink" href="#multi-site-configuration-reference" title="Permalink to this headline">¶</a></h2>
+<p>The following sections provide additional details and command-line
+usage for realms, periods, zone groups and zones.</p>
+<div class="section" id="realms">
+<h3>Realms<a class="headerlink" href="#realms" title="Permalink to this headline">¶</a></h3>
+<p>A realm represents a globally unique namespace consisting of one or more
+zonegroups containing one or more zones, and zones containing buckets,
+which in turn contain objects. A realm enables the Ceph Object Gateway
+to support multiple namespaces and their configuration on the same
+hardware.</p>
+<p>A realm contains the notion of periods. Each period represents the state
+of the zone group and zone configuration in time. Each time you make a
+change to a zonegroup or zone, update the period and commit it.</p>
+<p>By default, the Ceph Object Gateway does not create a realm
+for backward compatibility with Infernalis and earlier releases.
+However, as a best practice, we recommend creating realms for new
+clusters.</p>
+<div class="section" id="id4">
+<h4>Create a Realm<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h4>
+<p>To create a realm, execute <tt class="docutils literal"><span class="pre">realm</span> <span class="pre">create</span></tt> and specify the realm name.
+If the realm is the default, specify <tt class="docutils literal"><span class="pre">--default</span></tt>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm create --rgw-realm={realm-name} [--default]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm create --rgw-realm=movies --default</span>
+</pre></div>
+</div>
+<p>By specifying <tt class="docutils literal"><span class="pre">--default</span></tt>, the realm will be called implicitly with
+each <tt class="docutils literal"><span class="pre">radosgw-admin</span></tt> call unless <tt class="docutils literal"><span class="pre">--rgw-realm</span></tt> and the realm name
+are explicitly provided.</p>
+</div>
+<div class="section" id="make-a-realm-the-default">
+<h4>Make a Realm the Default<a class="headerlink" href="#make-a-realm-the-default" title="Permalink to this headline">¶</a></h4>
+<p>One realm in the list of realms should be the default realm. There may
+be only one default realm. If there is only one realm and it wasn’t
+specified as the default realm when it was created, make it the default
+realm. Alternatively, to change which realm is the default, execute:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm default --rgw-realm=movies</span>
+</pre></div>
+</div>
+<dl class="docutils">
+<dt>..note:: When the realm is default, the command line assumes</dt>
+<dd><tt class="docutils literal"><span class="pre">--rgw-realm=&lt;realm-name&gt;</span></tt> as an argument.</dd>
+</dl>
+</div>
+<div class="section" id="delete-a-realm">
+<h4>Delete a Realm<a class="headerlink" href="#delete-a-realm" title="Permalink to this headline">¶</a></h4>
+<p>To delete a realm, execute <tt class="docutils literal"><span class="pre">realm</span> <span class="pre">delete</span></tt> and specify the realm name.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm delete --rgw-realm={realm-name}</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm delete --rgw-realm=movies</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="get-a-realm">
+<h4>Get a Realm<a class="headerlink" href="#get-a-realm" title="Permalink to this headline">¶</a></h4>
+<p>To get a realm, execute <tt class="docutils literal"><span class="pre">realm</span> <span class="pre">get</span></tt> and specify the realm name.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1">#radosgw-admin realm get --rgw-realm=&lt;name&gt;</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm get --rgw-realm=movies [&gt; filename.json]</span>
+</pre></div>
+</div>
+<p>The CLI will echo a JSON object with the realm properties.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;0a68d52e-a19c-4e8e-b012-a8f831cb3ebc&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;movies&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;current_period&quot;</span><span class="p">:</span> <span class="s2">&quot;b0c5bbef-4337-4edd-8184-5aeab2ec413b&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="mi">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Use <tt class="docutils literal"><span class="pre">&gt;</span></tt> and an output file name to output the JSON object to a file.</p>
+</div>
+<div class="section" id="set-a-realm">
+<h4>Set a Realm<a class="headerlink" href="#set-a-realm" title="Permalink to this headline">¶</a></h4>
+<p>To set a realm, execute <tt class="docutils literal"><span class="pre">realm</span> <span class="pre">set</span></tt>, specify the realm name, and
+<tt class="docutils literal"><span class="pre">--infile=</span></tt> with an input file name.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1">#radosgw-admin realm set --rgw-realm=&lt;name&gt; --infile=&lt;infilename&gt;</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm set --rgw-realm=movies --infile=filename.json</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="list-realms">
+<h4>List Realms<a class="headerlink" href="#list-realms" title="Permalink to this headline">¶</a></h4>
+<p>To list realms, execute <tt class="docutils literal"><span class="pre">realm</span> <span class="pre">list</span></tt>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm list</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="list-realm-periods">
+<h4>List Realm Periods<a class="headerlink" href="#list-realm-periods" title="Permalink to this headline">¶</a></h4>
+<p>To list realm periods, execute <tt class="docutils literal"><span class="pre">realm</span> <span class="pre">list-periods</span></tt>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm list-periods</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="pull-a-realm">
+<h4>Pull a Realm<a class="headerlink" href="#pull-a-realm" title="Permalink to this headline">¶</a></h4>
+<p>To pull a realm from the node containing the master zone group and
+master zone to a node containing a secondary zone group or zone, execute
+<tt class="docutils literal"><span class="pre">realm</span> <span class="pre">pull</span></tt> on the node that will receive the realm configuration.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm pull --url={url-to-master-zone-gateway} --access-key={access-key} --secret={secret}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="rename-a-realm">
+<h4>Rename a Realm<a class="headerlink" href="#rename-a-realm" title="Permalink to this headline">¶</a></h4>
+<p>A realm is not part of the period. Consequently, renaming the realm is
+only applied locally, and will not get pulled with <tt class="docutils literal"><span class="pre">realm</span> <span class="pre">pull</span></tt>. When
+renaming a realm with multiple zones, run the command on each zone. To
+rename a realm, execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin realm rename --rgw-realm=&lt;current-name&gt; --realm-new-name=&lt;new-realm-name&gt;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">DO NOT use <tt class="docutils literal"><span class="pre">realm</span> <span class="pre">set</span></tt> to change the <tt class="docutils literal"><span class="pre">name</span></tt> parameter. That
+changes the internal name only. Specifying <tt class="docutils literal"><span class="pre">--rgw-realm</span></tt> would
+still use the old realm name.</p>
+</div>
+</div>
+</div>
+<div class="section" id="zone-groups">
+<h3>Zone Groups<a class="headerlink" href="#zone-groups" title="Permalink to this headline">¶</a></h3>
+<p>The Ceph Object Gateway supports multi-site deployments and a global
+namespace by using the notion of zone groups. Formerly called a region
+in Infernalis, a zone group defines the geographic location of one or more Ceph
+Object Gateway instances within one or more zones.</p>
+<p>Configuring zone groups differs from typical configuration procedures,
+because not all of the settings end up in a Ceph configuration file. You
+can list zone groups, get a zone group configuration, and set a zone
+group configuration.</p>
+<div class="section" id="create-a-zone-group">
+<h4>Create a Zone Group<a class="headerlink" href="#create-a-zone-group" title="Permalink to this headline">¶</a></h4>
+<p>Creating a zone group consists of specifying the zone group name.
+Creating a zone assumes it will live in the default realm unless
+<tt class="docutils literal"><span class="pre">--rgw-realm=&lt;realm-name&gt;</span></tt> is specified. If the zonegroup is the
+default zonegroup, specify the <tt class="docutils literal"><span class="pre">--default</span></tt> flag. If the zonegroup is
+the master zonegroup, specify the <tt class="docutils literal"><span class="pre">--master</span></tt> flag. For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup create --rgw-zonegroup=&lt;name&gt; [--rgw-realm=&lt;name&gt;][--master] [--default]</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Use <tt class="docutils literal"><span class="pre">zonegroup</span> <span class="pre">modify</span> <span class="pre">--rgw-zonegroup=&lt;zonegroup-name&gt;</span></tt> to modify
+an existing zone group’s settings.</p>
+</div>
+</div>
+<div class="section" id="make-a-zone-group-the-default">
+<h4>Make a Zone Group the Default<a class="headerlink" href="#make-a-zone-group-the-default" title="Permalink to this headline">¶</a></h4>
+<p>One zonegroup in the list of zonegroups should be the default zonegroup.
+There may be only one default zonegroup. If there is only one zonegroup
+and it wasn’t specified as the default zonegroup when it was created,
+make it the default zonegroup. Alternatively, to change which zonegroup
+is the default, execute:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup default --rgw-zonegroup=comedy</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When the zonegroup is default, the command line assumes
+<tt class="docutils literal"><span class="pre">--rgw-zonegroup=&lt;zonegroup-name&gt;</span></tt> as an argument.</p>
+</div>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="add-a-zone-to-a-zone-group">
+<h4>Add a Zone to a Zone Group<a class="headerlink" href="#add-a-zone-to-a-zone-group" title="Permalink to this headline">¶</a></h4>
+<p>To add a zone to a zonegroup, execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup add --rgw-zonegroup=&lt;name&gt; --rgw-zone=&lt;name&gt;</span>
+</pre></div>
+</div>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="remove-a-zone-from-a-zone-group">
+<h4>Remove a Zone from a Zone Group<a class="headerlink" href="#remove-a-zone-from-a-zone-group" title="Permalink to this headline">¶</a></h4>
+<p>To remove a zone from a zonegroup, execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup remove --rgw-zonegroup=&lt;name&gt; --rgw-zone=&lt;name&gt;</span>
+</pre></div>
+</div>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="rename-a-zone-group">
+<h4>Rename a Zone Group<a class="headerlink" href="#rename-a-zone-group" title="Permalink to this headline">¶</a></h4>
+<p>To rename a zonegroup, execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup rename --rgw-zonegroup=&lt;name&gt; --zonegroup-new-name=&lt;name&gt;</span>
+</pre></div>
+</div>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="delete-a-zone-group">
+<h4>Delete a Zone Group<a class="headerlink" href="#delete-a-zone-group" title="Permalink to this headline">¶</a></h4>
+<p>To delete a zonegroup, execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup delete --rgw-zonegroup=&lt;name&gt;</span>
+</pre></div>
+</div>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="list-zone-groups">
+<h4>List Zone Groups<a class="headerlink" href="#list-zone-groups" title="Permalink to this headline">¶</a></h4>
+<p>A Ceph cluster contains a list of zone groups. To list the zone groups,
+execute:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup list</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">radosgw-admin</span></tt> returns a JSON formatted list of zone groups.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;default_info&quot;</span><span class="p">:</span> <span class="s2">&quot;90b28698-e7c3-462c-a42d-4aa780d24eda&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;zonegroups&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;us&quot;</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="get-a-zone-group-map">
+<h4>Get a Zone Group Map<a class="headerlink" href="#get-a-zone-group-map" title="Permalink to this headline">¶</a></h4>
+<p>To list the details of each zone group, execute:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup-map get</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you receive a <tt class="docutils literal"><span class="pre">failed</span> <span class="pre">to</span> <span class="pre">read</span> <span class="pre">zonegroup</span> <span class="pre">map</span></tt> error, run
+<tt class="docutils literal"><span class="pre">radosgw-admin</span> <span class="pre">zonegroup-map</span> <span class="pre">update</span></tt> as <tt class="docutils literal"><span class="pre">root</span></tt> first.</p>
+</div>
+</div>
+<div class="section" id="get-a-zone-group">
+<h4>Get a Zone Group<a class="headerlink" href="#get-a-zone-group" title="Permalink to this headline">¶</a></h4>
+<p>To view the configuration of a zone group, execute:</p>
+<div class="highlight-python"><pre>radosgw-admin zonegroup get [--rgw-zonegroup=&lt;zonegroup&gt;]</pre>
+</div>
+<p>The zone group configuration looks like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;90b28698-e7c3-462c-a42d-4aa780d24eda&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;api_name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_master&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;hostnames&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;hostnames_s3website&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;9248cab2-afe7-43d8-a661-a40bf316665e&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;zones&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;9248cab2-afe7-43d8-a661-a40bf316665e&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;http:\/\/rgw1&quot;</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;d1024e59-7d28-49d1-8222-af101965a939&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-west&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;http:\/\/rgw2:80&quot;</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
+        <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;placement_targets&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[]</span>
+        <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;ae031368-8715-4e27-9a99-0c9468852cfe&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="set-a-zone-group">
+<h4>Set a Zone Group<a class="headerlink" href="#set-a-zone-group" title="Permalink to this headline">¶</a></h4>
+<p>Defining a zone group consists of creating a JSON object, specifying at
+least the required settings:</p>
+<ol class="arabic simple">
+<li><tt class="docutils literal"><span class="pre">name</span></tt>: The name of the zone group. Required.</li>
+<li><tt class="docutils literal"><span class="pre">api_name</span></tt>: The API name for the zone group. Optional.</li>
+<li><tt class="docutils literal"><span class="pre">is_master</span></tt>: Determines if the zone group is the master zone group.
+Required. <strong>note:</strong> You can only have one master zone group.</li>
+<li><tt class="docutils literal"><span class="pre">endpoints</span></tt>: A list of all the endpoints in the zone group. For
+example, you may use multiple domain names to refer to the same zone
+group. Remember to escape the forward slashes (<tt class="docutils literal"><span class="pre">\/</span></tt>). You may also
+specify a port (<tt class="docutils literal"><span class="pre">fqdn:port</span></tt>) for each endpoint. Optional.</li>
+<li><tt class="docutils literal"><span class="pre">hostnames</span></tt>: A list of all the hostnames in the zone group. For
+example, you may use multiple domain names to refer to the same zone
+group. Optional. The <tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">dns</span> <span class="pre">name</span></tt> setting will automatically be
+included in this list. You should restart the gateway daemon(s) after
+changing this setting.</li>
+<li><tt class="docutils literal"><span class="pre">master_zone</span></tt>: The master zone for the zone group. Optional. Uses
+the default zone if not specified. <strong>note:</strong> You can only have one
+master zone per zone group.</li>
+<li><tt class="docutils literal"><span class="pre">zones</span></tt>: A list of all zones within the zone group. Each zone has a
+name (required), a list of endpoints (optional), and whether or not
+the gateway will log metadata and data operations (false by default).</li>
+<li><tt class="docutils literal"><span class="pre">placement_targets</span></tt>: A list of placement targets (optional). Each
+placement target contains a name (required) for the placement target
+and a list of tags (optional) so that only users with the tag can use
+the placement target (i.e., the user’s <tt class="docutils literal"><span class="pre">placement_tags</span></tt> field in
+the user info).</li>
+<li><tt class="docutils literal"><span class="pre">default_placement</span></tt>: The default placement target for the object
+index and object data. Set to <tt class="docutils literal"><span class="pre">default-placement</span></tt> by default. You
+may also set a per-user default placement in the user info for each
+user.</li>
+</ol>
+<p>To set a zone group, create a JSON object consisting of the required
+fields, save the object to a file (e.g., <tt class="docutils literal"><span class="pre">zonegroup.json</span></tt>); then,
+execute the following command:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup set --infile zonegroup.json</span>
+</pre></div>
+</div>
+<p>Where <tt class="docutils literal"><span class="pre">zonegroup.json</span></tt> is the JSON file you created.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">default</span></tt> zone group <tt class="docutils literal"><span class="pre">is_master</span></tt> setting is <tt class="docutils literal"><span class="pre">true</span></tt> by
+default. If you create a new zone group and want to make it the
+master zone group, you must either set the <tt class="docutils literal"><span class="pre">default</span></tt> zone group
+<tt class="docutils literal"><span class="pre">is_master</span></tt> setting to <tt class="docutils literal"><span class="pre">false</span></tt>, or delete the <tt class="docutils literal"><span class="pre">default</span></tt> zone
+group.</p>
+</div>
+<p>Finally, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="set-a-zone-group-map">
+<h4>Set a Zone Group Map<a class="headerlink" href="#set-a-zone-group-map" title="Permalink to this headline">¶</a></h4>
+<p>Setting a zone group map consists of creating a JSON object consisting
+of one or more zone groups, and setting the <tt class="docutils literal"><span class="pre">master_zonegroup</span></tt> for the
+cluster. Each zone group in the zone group map consists of a key/value
+pair, where the <tt class="docutils literal"><span class="pre">key</span></tt> setting is equivalent to the <tt class="docutils literal"><span class="pre">name</span></tt> setting
+for an individual zone group configuration, and the <tt class="docutils literal"><span class="pre">val</span></tt> is a JSON
+object consisting of an individual zone group configuration.</p>
+<p>You may only have one zone group with <tt class="docutils literal"><span class="pre">is_master</span></tt> equal to <tt class="docutils literal"><span class="pre">true</span></tt>,
+and it must be specified as the <tt class="docutils literal"><span class="pre">master_zonegroup</span></tt> at the end of the
+zone group map. The following JSON object is an example of a default
+zone group map.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;zonegroups&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;90b28698-e7c3-462c-a42d-4aa780d24eda&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;90b28698-e7c3-462c-a42d-4aa780d24eda&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;api_name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;is_master&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
+                <span class="p">],</span>
+                <span class="s2">&quot;hostnames&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;hostnames_s3website&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;9248cab2-afe7-43d8-a661-a40bf316665e&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;zones&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;9248cab2-afe7-43d8-a661-a40bf316665e&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="s2">&quot;http:\/\/rgw1&quot;</span>
+                        <span class="p">],</span>
+                        <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
+                    <span class="p">},</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;d1024e59-7d28-49d1-8222-af101965a939&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-west&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="s2">&quot;http:\/\/rgw2:80&quot;</span>
+                        <span class="p">],</span>
+                        <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
+                    <span class="p">}</span>
+                <span class="p">],</span>
+                <span class="s2">&quot;placement_targets&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[]</span>
+                    <span class="p">}</span>
+                <span class="p">],</span>
+                <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;ae031368-8715-4e27-9a99-0c9468852cfe&quot;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;master_zonegroup&quot;</span><span class="p">:</span> <span class="s2">&quot;90b28698-e7c3-462c-a42d-4aa780d24eda&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>To set a zone group map, execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup-map set --infile zonegroupmap.json</span>
+</pre></div>
+</div>
+<p>Where <tt class="docutils literal"><span class="pre">zonegroupmap.json</span></tt> is the JSON file you created. Ensure that
+you have zones created for the ones specified in the zone group map.
+Finally, update the period.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="zones">
+<h3>Zones<a class="headerlink" href="#zones" title="Permalink to this headline">¶</a></h3>
+<p>Ceph Object Gateway supports the notion of zones. A zone defines a
+logical group consisting of one or more Ceph Object Gateway instances.</p>
+<p>Configuring zones differs from typical configuration procedures, because
+not all of the settings end up in a Ceph configuration file. You can
+list zones, get a zone configuration and set a zone configuration.</p>
+<div class="section" id="create-a-zone">
+<h4>Create a Zone<a class="headerlink" href="#create-a-zone" title="Permalink to this headline">¶</a></h4>
+<p>To create a zone, specify a zone name. If it is a master zone, specify
+the <tt class="docutils literal"><span class="pre">--master</span></tt> option. Only one zone in a zone group may be a master
+zone. To add the zone to a zonegroup, specify the <tt class="docutils literal"><span class="pre">--rgw-zonegroup</span></tt>
+option with the zonegroup name.</p>
+<div class="highlight-python"><pre># radosgw-admin zone create --rgw-zone=&lt;name&gt; \
+                [--zonegroup=&lt;zonegroup-name]\
+                [--endpoints=&lt;endpoint&gt;[,&lt;endpoint&gt;] \
+                [--master] [--default] \
+                --access-key $SYSTEM_ACCESS_KEY --secret $SYSTEM_SECRET_KEY</pre>
+</div>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="delete-a-zone">
+<h4>Delete a Zone<a class="headerlink" href="#delete-a-zone" title="Permalink to this headline">¶</a></h4>
+<p>To delete zone, first remove it from the zonegroup.</p>
+<div class="highlight-python"><pre># radosgw-admin zonegroup remove --zonegroup=&lt;name&gt;\
+                                 --zone=&lt;name&gt;</pre>
+</div>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+<p>Next, delete the zone. Execute the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone delete --rgw-zone&lt;name&gt;</span>
+</pre></div>
+</div>
+<p>Finally, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Do not delete a zone without removing it from a zone group first.
+Otherwise, updating the period will fail.</p>
+</div>
+<p>If the pools for the deleted zone will not be used anywhere else,
+consider deleting the pools. Replace <tt class="docutils literal"><span class="pre">&lt;del-zone&gt;</span></tt> in the example below
+with the deleted zone’s name.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Only delete the pools with prepended zone names. Deleting the root
+pool, such as, <tt class="docutils literal"><span class="pre">.rgw.root</span></tt> will remove all of the system’s
+configuration.</p>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">Once the pools are deleted, all of the data within them are deleted
+in an unrecoverable manner. Only delete the pools if the pool
+contents are no longer needed.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># rados rmpool &lt;del-zone&gt;.rgw.control &lt;del-zone&gt;.rgw.control --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool &lt;del-zone&gt;.rgw.data.root &lt;del-zone&gt;.rgw.data.root --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool &lt;del-zone&gt;.rgw.gc &lt;del-zone&gt;.rgw.gc --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool &lt;del-zone&gt;.rgw.log &lt;del-zone&gt;.rgw.log --yes-i-really-really-mean-it</span>
+<span class="c1"># rados rmpool &lt;del-zone&gt;.rgw.users.uid &lt;del-zone&gt;.rgw.users.uid --yes-i-really-really-mean-it</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="modify-a-zone">
+<h4>Modify a Zone<a class="headerlink" href="#modify-a-zone" title="Permalink to this headline">¶</a></h4>
+<p>To modify a zone, specify the zone name and the parameters you wish to
+modify.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone modify [options]</span>
+</pre></div>
+</div>
+<p>Where <tt class="docutils literal"><span class="pre">[options]</span></tt>:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">--access-key=&lt;key&gt;</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">--secret/--secret-key=&lt;key&gt;</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">--master</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">--default</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">--endpoints=&lt;list&gt;</span></tt></li>
+</ul>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="list-zones">
+<h4>List Zones<a class="headerlink" href="#list-zones" title="Permalink to this headline">¶</a></h4>
+<p>As <tt class="docutils literal"><span class="pre">root</span></tt>, to list the zones in a cluster, execute:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone list</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="get-a-zone">
+<h4>Get a Zone<a class="headerlink" href="#get-a-zone" title="Permalink to this headline">¶</a></h4>
+<p>As <tt class="docutils literal"><span class="pre">root</span></tt>, to get the configuration of a zone, execute:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone get [--rgw-zone=&lt;zone&gt;]</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">default</span></tt> zone looks like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span> <span class="s2">&quot;domain_root&quot;</span><span class="p">:</span> <span class="s2">&quot;.rgw&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;control_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.rgw.control&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;gc_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.rgw.gc&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.log&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;intent_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.intent-log&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;usage_log_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.usage&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;user_keys_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.users&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;user_email_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.users.email&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;user_swift_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.users.swift&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;user_uid_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.users.uid&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;system_key&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">},</span>
   <span class="s2">&quot;placement_pools&quot;</span><span class="p">:</span> <span class="p">[</span>
-      <span class="p">{</span>
-          <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
-          <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="p">{</span>
-              <span class="s2">&quot;index_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.buckets.index&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.buckets.data&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;data_extra_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.buckets.non-ec&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;index_type&quot;</span><span class="p">:</span> <span class="mi">0</span>
-          <span class="p">}</span>
+      <span class="p">{</span>  <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
+         <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;index_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.rgw.buckets.index&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;.rgw.buckets&quot;</span><span class="p">}</span>
       <span class="p">}</span>
-  <span class="p">],</span>
-  <span class="s2">&quot;metadata_heap&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2.rgw.meta&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;815d74c2-80d6-4e63-8cfc-232037f7ff5c&quot;</span>
+    <span class="p">]</span>
   <span class="p">}</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="updating-the-period">
-<span id="id14"></span><h3>更新界期<a class="headerlink" href="#updating-the-period" title="Permalink to this headline">¶</a></h3>
-<p>接下来，我们把系统映射的变更通知到所有 Ceph 对象网关例程，需更新界期、并提交变更：</p>
-<div class="highlight-python"><pre># radosgw-admin period update --commit
-{
-  "id": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
-  "epoch": 2,
-  "predecessor_uuid": "09559832-67a4-4101-8b3f-10dfcd6b2707",
-  "sync_status": [ ""... # truncating the output here
-  ],
-  "period_map": {
-      "id": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
-      "zonegroups": [
-          {
-              "id": "d4018b8d-8c0d-4072-8919-608726fa369e",
-              "name": "us",
-              "api_name": "us",
-              "is_master": "true",
-              "endpoints": [
-                  "http:\/\/rgw1:80"
-              ],
-              "hostnames": [],
-              "hostnames_s3website": [],
-              "master_zone": "83859a9a-9901-4f00-aa6d-285c777e10f0",
-              "zones": [
-                  {
-                      "id": "83859a9a-9901-4f00-aa6d-285c777e10f0",
-                      "name": "us-east-1",
-                      "endpoints": [
-                          "http:\/\/rgw1:80"
-                      ],
-                      "log_meta": "true",
-                      "log_data": "false",
-                      "bucket_index_max_shards": 0,
-                      "read_only": "false"
-                  },
-                  {
-                      "id": "950c1a43-6836-41a2-a161-64777e07e8b8",
-                      "name": "us-east-2",
-                      "endpoints": [
-                          "http:\/\/rgw2:80"
-                      ],
-                      "log_meta": "false",
-                      "log_data": "true",
-                      "bucket_index_max_shards": 0,
-                      "read_only": "false"
-                  }
-
-              ],
-              "placement_targets": [
-                  {
-                      "name": "default-placement",
-                      "tags": []
-                  }
-              ],
-              "default_placement": "default-placement",
-              "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7"
-          }
-      ],
-      "short_zone_ids": [
-          {
-              "key": "83859a9a-9901-4f00-aa6d-285c777e10f0",
-              "val": 630926044
-          },
-          {
-              "key": "950c1a43-6836-41a2-a161-64777e07e8b8",
-              "val": 4276257543
-          }
-
-      ]
-  },
-  "master_zonegroup": "d4018b8d-8c0d-4072-8919-608726fa369e",
-  "master_zone": "83859a9a-9901-4f00-aa6d-285c777e10f0",
-  "period_config": {
-      "bucket_quota": {
-          "enabled": false,
-          "max_size_kb": -1,
-          "max_objects": -1
-      },
-      "user_quota": {
-          "enabled": false,
-          "max_size_kb": -1,
-          "max_objects": -1
-      }
-  },
-  "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7",
-  "realm_name": "gold",
-  "realm_epoch": 2
-  }</pre>
-</div>
-</div>
-<div class="section" id="id15">
-<h3>启动 Ceph 对象网关<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
-<p>现在，在对应节点上启动属于第二域的 Ceph 对象网关例程，与
-<tt class="docutils literal"><span class="pre">client.rgw.us-east-1</span></tt> 这个 Ceph 对象网关例程的类似，这里只需把配置文件里的 <tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">zone=us-east-2</span></tt> 改掉即可，例如：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">us</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-<span class="n">rgw_frontends</span><span class="o">=</span><span class="s2">&quot;civetweb port=80&quot;</span>
-<span class="n">rgw_zone</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">2</span>
+<div class="section" id="set-a-zone">
+<h4>Set a Zone<a class="headerlink" href="#set-a-zone" title="Permalink to this headline">¶</a></h4>
+<p>Configuring a zone involves specifying a series of Ceph Object Gateway
+pools. For consistency, we recommend using a pool prefix that is the
+same as the zone name. See
+<a class="reference external" href="http://docs.ceph.com/docs/master/rados/operations/pools/#pools">Pools</a>
+for details of configuring pools.</p>
+<p>To set a zone, create a JSON object consisting of the pools, save the
+object to a file (e.g., <tt class="docutils literal"><span class="pre">zone.json</span></tt>); then, execute the following
+command, replacing <tt class="docutils literal"><span class="pre">{zone-name}</span></tt> with the name of the zone:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone set --rgw-zone={zone-name} --infile zone.json</span>
 </pre></div>
 </div>
-<p>然后启动这个 Ceph 对象网关例程（有别于你的操作系统）：</p>
-<div class="highlight-python"><pre>$ sudo systemctl start ceph-radosgw@rgw.us-east-2</pre>
-</div>
-</div>
-</div>
-<div class="section" id="configuring-the-ceph-object-gateway-in-the-second-ceph-cluster">
-<span id="id16"></span><h2>在第二集群配置 Ceph 对象网关<a class="headerlink" href="#configuring-the-ceph-object-gateway-in-the-second-ceph-cluster" title="Permalink to this headline">¶</a></h2>
-<p>下面继续配置第二个集群里的 Ceph 对象网关，它可以是地理上分开的，但划分进了相同的域组。</p>
-<p>因为我们已经在第一个集群里配置了组界，这里把配置拉取过来、并使其成为默认组界即可。还需要从主域拉取配置，拉取界期即可：</p>
-<div class="highlight-python"><pre># radosgw-admin realm pull --url=http://rgw1:80
---access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY
-{
-  "id": "4a367026-bd8f-40ee-b486-8212482ddcd7",
-  "name": "gold",
-  "current_period": "b5e4d3ec-2a62-4746-b479-4b2bc14b27d1",
-  "epoch": 2
-}
-
-# radosgw-admin period pull --url=http://rgw1:80 --access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY
-# radosgw-admin realm default --rgw-realm=gold</pre>
-</div>
-<p>也把它的默认域组设置为前面创建的 <tt class="docutils literal"><span class="pre">us</span></tt> 域组：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zonegroup default --rgw-zonegroup=us</span>
+<p>Where <tt class="docutils literal"><span class="pre">zone.json</span></tt> is the JSON file you created.</p>
+<p>Then, as <tt class="docutils literal"><span class="pre">root</span></tt>, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
 </pre></div>
 </div>
-<div class="section" id="id17">
-<h3>配置第二域<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
-<p>用相同的系统密钥创建个新的域 <tt class="docutils literal"><span class="pre">us-west</span></tt> ：</p>
-<div class="highlight-python"><pre># radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-west
---access-key=$SYSTEM_ACCESS_KEY --secret=$SYSTEM_SECRET_KEY --endpoints=http://rgw3:80 --default
-{
-  "id": "d9522067-cb7b-4129-8751-591e45815b16",
-  "name": "us-west",
-  "domain_root": "us-west.rgw.data.root",
-  "control_pool": "us-west.rgw.control",
-  "gc_pool": "us-west.rgw.gc",
-  "log_pool": "us-west.rgw.log",
-  "intent_log_pool": "us-west.rgw.intent-log",
-  "usage_log_pool": "us-west.rgw.usage",
-  "user_keys_pool": "us-west.rgw.users.keys",
-  "user_email_pool": "us-west.rgw.users.email",
-  "user_swift_pool": "us-west.rgw.users.swift",
-  "user_uid_pool": "us-west.rgw.users.uid",
-  "system_key": {
-      "access_key": "1555b35654ad1656d804",
-      "secret_key": "h7GhxuBLTrlhVUyxSPUKUV8r\/2EI4ngqJxD7iBdBYLhwluN30JaT3Q=="
-  },
-  "placement_pools": [
-      {
-          "key": "default-placement",
-          "val": {
-              "index_pool": "us-west.rgw.buckets.index",
-              "data_pool": "us-west.rgw.buckets.data",
-              "data_extra_pool": "us-west.rgw.buckets.non-ec",
-              "index_type": 0
-          }
-      }
-  ],
-  "metadata_heap": "us-west.rgw.meta",
-  "realm_id": "4a367026-bd8f-40ee-b486-8212482ddcd7"
-  }</pre>
 </div>
-</div>
-<div class="section" id="id18">
-<h3>更新界期<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h3>
-<p>要让域组映射图的变更传播出去，我们得更新并提交界期：:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit --rgw-zone=us-west</span>
-<span class="p">{</span>
-  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;b5e4d3ec-2a62-4746-b479-4b2bc14b27d1&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-  <span class="s2">&quot;predecessor_uuid&quot;</span><span class="p">:</span> <span class="s2">&quot;09559832-67a4-4101-8b3f-10dfcd6b2707&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;sync_status&quot;</span><span class="p">:</span> <span class="p">[</span>
-      <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="c1"># truncated</span>
-  <span class="p">],</span>
-  <span class="s2">&quot;period_map&quot;</span><span class="p">:</span> <span class="p">{</span>
-      <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;b5e4d3ec-2a62-4746-b479-4b2bc14b27d1&quot;</span><span class="p">,</span>
-      <span class="s2">&quot;zonegroups&quot;</span><span class="p">:</span> <span class="p">[</span>
-          <span class="p">{</span>
-              <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;d4018b8d-8c0d-4072-8919-608726fa369e&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;api_name&quot;</span><span class="p">:</span> <span class="s2">&quot;us&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;is_master&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
-                  <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
-              <span class="p">],</span>
-              <span class="s2">&quot;hostnames&quot;</span><span class="p">:</span> <span class="p">[],</span>
-              <span class="s2">&quot;hostnames_s3website&quot;</span><span class="p">:</span> <span class="p">[],</span>
-              <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;zones&quot;</span><span class="p">:</span> <span class="p">[</span>
-                  <span class="p">{</span>
-                      <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
-                          <span class="s2">&quot;http:\/\/rgw1:80&quot;</span>
-                      <span class="p">],</span>
-                      <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                      <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
-                  <span class="p">},</span>
-                                  <span class="p">{</span>
-                      <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;950c1a43-6836-41a2-a161-64777e07e8b8&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-east-2&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
-                          <span class="s2">&quot;http:\/\/rgw2:80&quot;</span>
-                      <span class="p">],</span>
-                      <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                      <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
-                  <span class="p">},</span>
-                  <span class="p">{</span>
-                      <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;d9522067-cb7b-4129-8751-591e45815b16&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;us-west&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;endpoints&quot;</span><span class="p">:</span> <span class="p">[</span>
-                          <span class="s2">&quot;http:\/\/rgw3:80&quot;</span>
-                      <span class="p">],</span>
-                      <span class="s2">&quot;log_meta&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;log_data&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;bucket_index_max_shards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                      <span class="s2">&quot;read_only&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>
-                  <span class="p">}</span>
-              <span class="p">],</span>
-              <span class="s2">&quot;placement_targets&quot;</span><span class="p">:</span> <span class="p">[</span>
-                  <span class="p">{</span>
-                      <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
-                      <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[]</span>
-                  <span class="p">}</span>
-              <span class="p">],</span>
-              <span class="s2">&quot;default_placement&quot;</span><span class="p">:</span> <span class="s2">&quot;default-placement&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span>
-          <span class="p">}</span>
-      <span class="p">],</span>
-      <span class="s2">&quot;short_zone_ids&quot;</span><span class="p">:</span> <span class="p">[</span>
-          <span class="p">{</span>
-              <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="mi">630926044</span>
-          <span class="p">},</span>
-          <span class="p">{</span>
-              <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;950c1a43-6836-41a2-a161-64777e07e8b8&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="mi">4276257543</span>
-          <span class="p">},</span>
-          <span class="p">{</span>
-              <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;d9522067-cb7b-4129-8751-591e45815b16&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="mi">329470157</span>
-          <span class="p">}</span>
-      <span class="p">]</span>
-  <span class="p">},</span>
-  <span class="s2">&quot;master_zonegroup&quot;</span><span class="p">:</span> <span class="s2">&quot;d4018b8d-8c0d-4072-8919-608726fa369e&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;master_zone&quot;</span><span class="p">:</span> <span class="s2">&quot;83859a9a-9901-4f00-aa6d-285c777e10f0&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;period_config&quot;</span><span class="p">:</span> <span class="p">{</span>
-      <span class="s2">&quot;bucket_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
-          <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
-          <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
-          <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
-      <span class="p">},</span>
-      <span class="s2">&quot;user_quota&quot;</span><span class="p">:</span> <span class="p">{</span>
-          <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
-          <span class="s2">&quot;max_size_kb&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
-          <span class="s2">&quot;max_objects&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
-      <span class="p">}</span>
-  <span class="p">},</span>
-  <span class="s2">&quot;realm_id&quot;</span><span class="p">:</span> <span class="s2">&quot;4a367026-bd8f-40ee-b486-8212482ddcd7&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;realm_name&quot;</span><span class="p">:</span> <span class="s2">&quot;gold&quot;</span><span class="p">,</span>
-  <span class="s2">&quot;realm_epoch&quot;</span><span class="p">:</span> <span class="mi">2</span>
-  <span class="p">}</span>
+<div class="section" id="rename-a-zone">
+<h4>Rename a Zone<a class="headerlink" href="#rename-a-zone" title="Permalink to this headline">¶</a></h4>
+<p>To rename a zone, specify the zone name and the new zone name.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin zone rename --rgw-zone=&lt;name&gt; --zone-new-name=&lt;name&gt;</span>
 </pre></div>
 </div>
-<p>可以看到，界期的时间结（ epoch ）数字递增了，说明配置有变化。</p>
-</div>
-<div class="section" id="id19">
-<h3>启动 Ceph 对象网关例程<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h3>
-<p>Ceph 对象网关例程的启动与在第一个域时相似，唯一不同的就是
-<tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">zone</span></tt> 选项，这里应该设置为 <tt class="docutils literal"><span class="pre">us-west</span></tt> ：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">us</span><span class="o">-</span><span class="n">west</span><span class="p">]</span>
-<span class="n">rgw_frontends</span><span class="o">=</span><span class="s2">&quot;civetweb port=80&quot;</span>
-<span class="n">rgw_zone</span><span class="o">=</span><span class="n">us</span><span class="o">-</span><span class="n">west</span>
+<p>Then, update the period:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin period update --commit</span>
 </pre></div>
 </div>
-<p>然后启动 Ceph 对象网关例程（有别于你的操作系统）：</p>
-<div class="highlight-python"><pre>$ sudo systemctl start ceph-radosgw@rgw.us-west</pre>
 </div>
+</div>
+<div class="section" id="zone-group-and-zone-settings">
+<h3>Zone Group and Zone Settings<a class="headerlink" href="#zone-group-and-zone-settings" title="Permalink to this headline">¶</a></h3>
+<p>When configuring a default zone group and zone, the pool name includes
+the zone name. For example:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">default.rgw.control</span></tt></li>
+</ul>
+<p>To change the defaults, include the following settings in your Ceph
+configuration file under each <tt class="docutils literal"><span class="pre">[client.radosgw.{instance-name}]</span></tt>
+instance.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="36%" />
+<col width="34%" />
+<col width="9%" />
+<col width="22%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Description</th>
+<th class="head">Type</th>
+<th class="head">Default</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rgw_zone</span></tt></td>
+<td>The name of the zone for the
+gateway instance.</td>
+<td>String</td>
+<td>None</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">rgw_zonegroup</span></tt></td>
+<td>The name of the zone group for
+the gateway instance.</td>
+<td>String</td>
+<td>None</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rgw_zonegroup_root_pool</span></tt></td>
+<td>The root pool for the zone group.</td>
+<td>String</td>
+<td><tt class="docutils literal"><span class="pre">.rgw.root</span></tt></td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">rgw_zone_root_pool</span></tt></td>
+<td>The root pool for the zone.</td>
+<td>String</td>
+<td><tt class="docutils literal"><span class="pre">.rgw.root</span></tt></td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rgw_default_zone_group_info_oid</span></tt></td>
+<td>The OID for storing the default
+zone group. We do not recommend
+changing this setting.</td>
+<td>String</td>
+<td><tt class="docutils literal"><span class="pre">default.zonegroup</span></tt></td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">rgw_num_zone_opstate_shards</span></tt></td>
+<td>The maximum number of shards for
+keeping inter-zone group
+synchronization progress.</td>
+<td>Integer</td>
+<td><tt class="docutils literal"><span class="pre">128</span></tt></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -731,66 +1390,115 @@ Ceph 对象网关例程的配置段应该类似如下：</p>
             </a></p>
 <h3><a href="../../">Table Of Contents</a></h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 对象网关</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">手动安装</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../config-fcgi/">基于 Apache/FastCGI 的简单配置</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../federated-config/">联盟配置</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="">多站配置</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#about-this-guide">关于此指南</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#system-keys">系统密钥</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#naming-conventions">命名惯例</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id4">创建存储池</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (Quick)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Object Gateway</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">Manual Install w/Civetweb</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-fcgi/">Simple Configuration w/Apache/FastCGI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../federated-config/">Federated Configuration (Deprecated)</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">Multisite Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#functional-changes-from-infernalis">Functional Changes from Infernalis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#requirements-and-assumptions">Requirements and Assumptions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pools">Pools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-a-master-zone">Configuring a Master Zone</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#create-a-realm">Create a Realm</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#create-a-master-zone-group">Create a Master Zone Group</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#create-a-master-zone">Create a Master Zone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#delete-default-zone-group-and-zone">Delete Default Zone Group and Zone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#create-a-system-user">Create a System User</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#update-the-period">Update the Period</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#update-the-ceph-configuration-file">Update the Ceph Configuration File</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#start-the-gateway">Start the Gateway</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#configuring-the-master-zone-in-the-primary-cluster">配置主集群的主域</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#creating-a-realm">创建组界</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#deleting-the-default-zonegroup">删除默认域组</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#creating-a-master-zonegroup">创建主域组</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#creating-a-master-zone">创建主域</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#creating-system-users">创建系统用户</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#update-the-period">更新界期</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#ceph">启动 Ceph 对象网关例程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configure-secondary-zones">Configure Secondary Zones</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pull-the-realm">Pull the Realm</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pull-the-period">Pull the Period</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#create-a-secondary-zone">Create a Secondary Zone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1">Update the Ceph Configuration File</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">Update the Period</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">Start the Gateway</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#check-synchronization-status">Check Synchronization Status</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#configuring-the-second-zone-in-same-cluster">在同一集群内配置第二域</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#creating-the-second-zone">创建第二域</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#updating-the-period">更新界期</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id15">启动 Ceph 对象网关</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#maintenance">Maintenance</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#checking-the-sync-status">Checking the Sync Status</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#changing-the-metadata-master-zone">Changing the Metadata Master Zone</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#configuring-the-ceph-object-gateway-in-the-second-ceph-cluster">在第二集群配置 Ceph 对象网关</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id17">配置第二域</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id18">更新界期</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id19">启动 Ceph 对象网关例程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#failover-and-disaster-recovery">Failover and Disaster Recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#migrating-a-single-site-system-to-multi-site">Migrating a Single Site System to Multi-Site</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multi-site-configuration-reference">Multi-Site Configuration Reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#realms">Realms</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id4">Create a Realm</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#make-a-realm-the-default">Make a Realm the Default</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#delete-a-realm">Delete a Realm</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#get-a-realm">Get a Realm</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#set-a-realm">Set a Realm</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#list-realms">List Realms</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#list-realm-periods">List Realm Periods</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#pull-a-realm">Pull a Realm</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#rename-a-realm">Rename a Realm</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#zone-groups">Zone Groups</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#create-a-zone-group">Create a Zone Group</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#make-a-zone-group-the-default">Make a Zone Group the Default</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#add-a-zone-to-a-zone-group">Add a Zone to a Zone Group</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#remove-a-zone-from-a-zone-group">Remove a Zone from a Zone Group</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#rename-a-zone-group">Rename a Zone Group</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#delete-a-zone-group">Delete a Zone Group</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#list-zone-groups">List Zone Groups</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#get-a-zone-group-map">Get a Zone Group Map</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#get-a-zone-group">Get a Zone Group</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#set-a-zone-group">Set a Zone Group</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#set-a-zone-group-map">Set a Zone Group Map</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#zones">Zones</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#create-a-zone">Create a Zone</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#delete-a-zone">Delete a Zone</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#modify-a-zone">Modify a Zone</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#list-zones">List Zones</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#get-a-zone">Get a Zone</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#set-a-zone">Set a Zone</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#rename-a-zone">Rename a Zone</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#zone-group-and-zone-settings">Zone Group and Zone Settings</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../config-ref/">配置参考</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">Config Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">Admin Guide</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../adminops/">管理操作 API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 对接</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../multitenancy/">多租户</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../layout/">RADOS 中的数据布局</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">Admin Ops API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">Python binding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">OpenStack Keystone Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../barbican/">OpenStack Barbican Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multitenancy/">Multi-tenancy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../compression/">Compression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encryption/">Server-Side Encryption</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../layout/">Data Layout in RADOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../upgrade_to_jewel/">Upgrade to Older Versions of Jewel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">Manpage radosgw</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">Manpage radosgw-admin</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Development</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
 </ul>
 
 
@@ -823,13 +1531,13 @@ Ceph 对象网关例程的配置段应该类似如下：</p>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../config-ref/" title="Ceph 对象网关配置参考"
+          <a href="../config-ref/" title="Ceph Object Gateway Config Reference"
              >next</a> |</li>
         <li class="right" >
-          <a href="../federated-config/" title="联盟网关的配置"
+          <a href="../federated-config/" title="Configuring Federated Gateways"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" >Ceph 对象网关</a> &raquo;</li> 
+          <li><a href="../" >Ceph Object Gateway</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

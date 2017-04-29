@@ -1,42 +1,43 @@
-========
- 归置组
-========
-
+==================
+ Placement Groups
+==================
 
 .. _preselection:
 
-预定义 pg_num
-=============
+A preselection of pg_num
+========================
 
-用此命令创建存储池时： ::
+When creating a new pool with::
 
-	ceph osd pool create {pool-name} pg_num
+        ceph osd pool create {pool-name} pg_num
 
-确定 ``pg_num`` 取值是强制性的，因为不能自动计算。下面是几个常用\
-的值：
+it is mandatory to choose the value of ``pg_num`` because it cannot be
+calculated automatically. Here are a few values commonly used:
 
-- 少于 5 个 OSD 时可把 ``pg_num`` 设置为 128
+- Less than 5 OSDs set ``pg_num`` to 128
 
-- OSD 数量在 5 到 10 个时，可把 ``pg_num`` 设置为 512
+- Between 5 and 10 OSDs set ``pg_num`` to 512
 
-- OSD 数量在 10 到 50 个时，可把 ``pg_num`` 设置为 4096
+- Between 10 and 50 OSDs set ``pg_num`` to 1024
 
-- OSD 数量大于 50 时，你得理解权衡方法、以及如何自己计算 \
-  ``pg_num`` 取值
+- If you have more than 50 OSDs, you need to understand the tradeoffs
+  and how to calculate the ``pg_num`` value by yourself
 
-- 自己计算 ``pg_num`` 取值时可借助 `pgcalc`_ 工具
+- For calculating ``pg_num`` value by yourself please take help of `pgcalc`_ tool 
 
-随着 OSD 数量的增加，正确的 pg_num 取值变得更加重要，因为它显著地\
-影响着集群的行为、以及出错时的数据持久性（即灾难性事件导致数据丢\
-失的概率）。
+As the number of OSDs increases, chosing the right value for pg_num
+becomes more important because it has a significant influence on the
+behavior of the cluster as well as the durability of the data when
+something goes wrong (i.e. the probability that a catastrophic event
+leads to data loss).
 
+How are Placement Groups used ?
+===============================
 
-归置组是如何使用的？
-====================
-
-存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的位置\
-及其元数据需要大量计算——即一个拥有数百万对象的系统，不可能在对象这\
-一级追踪位置。
+A placement group (PG) aggregates objects within a pool because
+tracking object placement and object metadata on a per-object basis is
+computationally expensive--i.e., a system with millions of objects
+cannot realistically track placement on a per-object basis.
 
 .. ditaa::
            /-----\  /-----\  /-----\  /-----\  /-----\
@@ -59,9 +60,10 @@
                   |                       |
                   +-----------------------+
 
-Ceph 客户端会计算某一对象应该位于哪个归置组里，它是这样实现的，先给\
-对象 ID 做哈希操作，然后再根据指定存储池里的 PG 数量、存储池 ID 做\
-一个运算。详情见 `PG 映射到 OSD`_ 。
+The Ceph client will calculate which placement group an object should
+be in. It does this by hashing the object ID and applying an operation
+based on the number of PGs in the defined pool and the ID of the pool.
+See `Mapping PGs to OSDs`_ for details.
 
 The object's contents within a placement group are stored in a set of
 OSDs. For instance, in a replicated pool of size two, each placement
@@ -98,14 +100,12 @@ groups will be assigned OSDs. The result of the CRUSH function will
 also change and some objects from the former placement groups will be
 copied over to the new Placement Groups and removed from the old ones.
 
-
 Placement Groups Tradeoffs
 ==========================
 
 Data durability and even distribution among all OSDs call for more
 placement groups but their number should be reduced to the minimum to
 save CPU and memory.
-
 
 .. _data durability:
 
@@ -177,18 +177,22 @@ in these placement groups: recovery will take longer than when there
 were 40 OSDs, meaning the number of placement groups should be
 increased.
 
-不论恢复时间有多短，在此期间都可能有第二个 OSD 失败。在前述的有 10 个 OSD \
-的集群中，不管哪个失败了，都有大约 17 个归置组（即需恢复的大约 150 / 9 个归\
-置组）将只有一份可用副本；并且假设剩余的 8 个 OSD 中任意一个失败，两个归置\
-组中最后的对象都有可能丢失（即正在恢复的、大约 17 / 8 个仅剩一个副本的归置\
-组）。
+No matter how short the recovery time is, there is a chance for a
+second OSD to fail while it is in progress. In the 10 OSDs cluster
+described above, if any of them fail, then ~17 placement groups
+(i.e. ~150 / 9 placement groups being recovered) will only have one
+surviving copy. And if any of the 8 remaining OSD fail, the last
+objects of two placement groups are likely to be lost (i.e. ~17 / 8
+placement groups with only one remaining copy being recovered).
 
-当集群大小变为 20 个 OSD 时， 3 个 OSD 丢失导致的归置组损坏会降低。第二个 \
-OSD 丢失会降级大约 4 个（即需恢复的归置组约为 75 / 19 ）而不是约 17 个归置\
-组，并且只有当第三个 OSD 恰好是包含可用副本的四分之一个 OSD 时、才会丢失数\
-据。换句话说，假设在恢复期间丢失一个 OSD 的概率是 0.0001% ，那么，在包含 10 \
-个 OSD 的集群中丢失 OSD 的概率是 17 * 10 * 0.0001% ，而在 20 个 OSD 的集群\
-中将是 4 * 20 * 0.0001% 。
+When the size of the cluster grows to 20 OSDs, the number of Placement
+Groups damaged by the loss of three OSDs drops. The second OSD lost
+will degrade ~4 (i.e. ~75 / 19 placement groups being recovered)
+instead of ~17 and the third OSD lost will only lose data if it is one
+of the four OSDs containing the surviving copy. In other words, if the
+probability of losing one OSD is 0.0001% during the recovery time
+frame, it goes from 17 * 10 * 0.0001% in the cluster with 10 OSDs to 4 * 20 * 
+0.0001% in the cluster with 20 OSDs.
 
 In a nutshell, more OSDs mean faster recovery and a lower risk of
 cascading failures leading to the permanent loss of a Placement
@@ -199,7 +203,6 @@ Note: It may take a long time for a new OSD added to the cluster to be
 populated with placement groups that were assigned to it. However
 there is no degradation of any object and it has no impact on the
 durability of the data contained in the Cluster.
-
 
 .. _object distribution:
 
@@ -236,17 +239,19 @@ others will remain occupied with only 400MB.
 
 .. _resource usage:
 
-内存、处理器和网络使用情况
---------------------------
+Memory, CPU and network usage
+-----------------------------
 
-各个归置组、 OSD 和监视器都一直需要内存、网络、处理器，在恢复期间需求更大。为消除\
-过载而把对象聚集成簇是归置组存在的主要原因。
+For each placement group, OSDs and MONs need memory, network and CPU
+at all times and even more during recovery. Sharing this overhead by
+clustering objects within a placement group is one of the main reasons
+they exist.
 
-最小化归置组数量可节省不少资源。
+Minimizing the number of placement groups saves significant amounts of
+resources.
 
-
-确定归置组数量
-==============
+Choosing the number of Placement Groups
+=======================================
 
 If you have more than 50 OSDs, we recommend approximately 50-100
 placement groups per OSD to balance out resource usage, data
@@ -266,18 +271,23 @@ You should then check if the result makes sense with the way you
 designed your Ceph cluster to maximize `data durability`_,
 `object distribution`_ and minimize `resource usage`_.
 
-其结果\ **汇总后应该接近 2 的幂**\ 。汇总并非强制的，如果你想确保所有归置组内的对象\
-数大致相等，最好检查下。
+The result should be **rounded up to the nearest power of two.**
+Rounding up is optional, but recommended for CRUSH to evenly balance
+the number of objects among placement groups.
 
-比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样估算归置组数量： ::
+As an example, for a cluster with 200 OSDs and a pool size of 3
+replicas, you would estimate your number of PGs as follows::
 
    (200 * 100)
    ----------- = 6667. Nearest power of 2: 8192
         3
 
-当用了多个数据存储池来存储数据时，你得确保均衡每个存储池的归置组数量、且归置组数量分\
-摊到每个 OSD ，这样才能达到较合理的归置组总量，并因此使得每个 OSD 无需耗费过多系统\
-资源或拖慢连接进程就能实现较小变迁。
+When using multiple data pools for storing objects, you need to ensure
+that you balance the number of placement groups per pool with the
+number of placement groups per OSD so that you arrive at a reasonable
+total number of placement groups that provides reasonably low variance
+per OSD without taxing system resources or making the peering process
+too slow.
 
 For instance a cluster of 10 pools each with 512 placement groups on
 ten OSDs is a total of 5,120 placement groups spread over ten OSDs,
@@ -286,113 +296,132 @@ resources. However, if 1,000 pools were created with 512 placement
 groups each, the OSDs will handle ~50,000 placement groups each and it
 would require significantly more resources and time for peering.
 
-
 .. _setting the number of placement groups:
 
-设置归置组数量
-==============
+Set the Number of Placement Groups
+==================================
 
-要设置某存储池的归置组数量，你必须在创建它时就指定好，详情见\ `创建存储池`_\ 。一存\
-储池的归置组数量设置好之后，还可以增加（但不可以减少），下列命令可增加归置组数量： ::
+To set the number of placement groups in a pool, you must specify the
+number of placement groups at the time you create the pool.
+See `Create a Pool`_ for details. Once you've set placement groups for a
+pool, you may increase the number of placement groups (but you cannot
+decrease the number of placement groups). To increase the number of
+placement groups, execute the following::
 
-	ceph osd pool set {pool-name} pg_num {pg_num}
+        ceph osd pool set {pool-name} pg_num {pg_num}
 
-你增加归置组数量后、还必须增加用于归置的归置组（ ``pgp_num`` ）数量，这样\
-才会开始重均衡。 ``pgp_num`` 数值才是 CRUSH 算法采用的用于归置的归置组数量。\
-虽然 ``pg_num`` 的增加引起了归置组的分割，但是只有当用于归置的归置组（即 \
-``pgp_num`` ）增加以后，数据才会被迁移到新归置组里。 ``pgp_num`` 的数值应\
-等于 ``pg_num`` 。可用下列命令增加用于归置的归置组数量： ::
+Once you increase the number of placement groups, you must also
+increase the number of placement groups for placement (``pgp_num``)
+before your cluster will rebalance. The ``pgp_num`` will be the number of
+placement groups that will be considered for placement by the CRUSH
+algorithm. Increasing ``pg_num`` splits the placement groups but data
+will not be migrated to the newer placement groups until placement
+groups for placement, ie. ``pgp_num`` is increased. The ``pgp_num``
+should be equal to the ``pg_num``.  To increase the number of
+placement groups for placement, execute the following::
 
-	ceph osd pool set {pool-name} pgp_num {pgp_num}
+        ceph osd pool set {pool-name} pgp_num {pgp_num}
 
 
-获取归置组数量
-==============
+Get the Number of Placement Groups
+==================================
 
-要获取一个存储池的归置组数量，执行命令： ::
+To get the number of placement groups in a pool, execute the following::
 
         ceph osd pool get {pool-name} pg_num
 
 
-获取归置组统计信息
-==================
+Get a Cluster's PG Statistics
+=============================
 
-要获取集群里归置组的统计信息，执行命令： ::
+To get the statistics for the placement groups in your cluster, execute the following::
 
         ceph pg dump [--format {format}]
 
-可用格式有纯文本 ``plain`` （默认）和 ``json`` 。
+Valid formats are ``plain`` (default) and ``json``.
 
 
-获取卡住的归置组统计信息
-========================
+Get Statistics for Stuck PGs
+============================
 
-要获取所有卡在某状态的归置组统计信息，执行命令： ::
+To get the statistics for all placement groups stuck in a specified state,
+execute the following::
 
         ceph pg dump_stuck inactive|unclean|stale|undersized|degraded [--format <format>] [-t|--threshold <seconds>]
 
-**Inactive** （不活跃）归置组不能处理读写，因为它们在等待一个有最新数据的 OSD 复活\
-且进入集群。
+**Inactive** Placement groups cannot process reads or writes because they are waiting for an OSD
+with the most up-to-date data to come up and in.
 
-**Unclean** （不干净）归置组含有复制数未达到期望数量的对象，它们应该在恢复中。
+**Unclean** Placement groups contain objects that are not replicated the desired number
+of times. They should be recovering.
 
-**Stale** （不新鲜）归置组处于未知状态：存储它们的 OSD 有段时间没向监视器报告了\
-（由  ``mon_osd_report_timeout`` 配置）。
+**Stale** Placement groups are in an unknown state - the OSDs that host them have not
+reported to the monitor cluster in a while (configured by ``mon_osd_report_timeout``).
 
-可用格式有 ``plain`` （默认）和 ``json`` 。阀值定义的是，归置组被认为卡住前等待的\
-最小时间（默认 300 秒）。
+Valid formats are ``plain`` (default) and ``json``. The threshold defines the minimum number
+of seconds the placement group is stuck before including it in the returned statistics
+(default 300 seconds).
 
 
-获取一归置组运行图
-==================
+Get a PG Map
+============
 
-要获取一个具体归置组的归置组图，执行命令： ::
+To get the placement group map for a particular placement group, execute the following::
 
         ceph pg map {pg-id}
 
-例如： ::
+For example::
 
         ceph pg map 1.6c
 
-Ceph 将返回归置组图、归置组、和 OSD 状态： ::
+Ceph will return the placement group map, the placement group, and the OSD status::
 
         osdmap e13 pg 1.6c (1.6c) -> up [1,0] acting [1,0]
 
 
-获取一 PG 的统计信息
+Get a PGs Statistics
 ====================
 
-要查看一个具体归置组的统计信息，执行命令： ::
+To retrieve statistics for a particular placement group, execute the following::
 
         ceph pg {pg-id} query
 
 
-洗刷归置组
-==========
+Scrub a Placement Group
+=======================
 
-要洗刷一个归置组，执行命令： ::
+To scrub a placement group, execute the following::
 
         ceph pg scrub {pg-id}
 
-Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目录，然后再对比，确保没有对象\
-丢失或不匹配，并且它们的内容一致。
+Ceph checks the primary and any replica nodes, generates a catalog of all objects
+in the placement group and compares them to ensure that no objects are missing
+or mismatched, and their contents are consistent.  Assuming the replicas all
+match, a final semantic sweep ensures that all of the snapshot-related object
+metadata is consistent. Errors are reported via logs.
 
 
-恢复丢失的
-==========
+Revert Lost
+===========
 
-如果集群丢了一或多个对象，而且必须放弃搜索这些数据，你就要把未找到的对象标记为丢失\
-（ ``lost`` ）。
+If the cluster has lost one or more objects, and you have decided to
+abandon the search for the lost data, you must mark the unfound objects
+as ``lost``.
 
-如果所有可能的位置都查询过了，而仍找不到这些对象，你也许得放弃它们了。这可能是罕见的\
-失败组合导致的，集群在写入完成前，未能得知写入是否已执行。
+If all possible locations have been queried and objects are still
+lost, you may have to give up on the lost objects. This is
+possible given unusual combinations of failures that allow the cluster
+to learn about writes that were performed before the writes themselves
+are recovered.
 
-当前只支持 revert 选项，它使得回滚到对象的前一个版本（如果它是新对象）或完全忽略\
-它。要把 unfound 对象标记为 lost ，执行命令： ::
+Currently the only supported option is "revert", which will either roll back to
+a previous version of the object or (if it was a new object) forget about it
+entirely. To mark the "unfound" objects as "lost", execute the following::
 
         ceph pg {pg-id} mark_unfound_lost revert|delete
 
-.. important:: 要谨慎使用，它可能迷惑那些期望对象存在的应用程序。
+.. important:: Use this feature with caution, because it may confuse
+   applications that expect the object(s) to exist.
 
 
 .. toctree::
@@ -402,6 +431,6 @@ Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目
         pg-concepts
 
 
-.. _创建存储池: ../pools#createpool
-.. _PG 映射到 OSD: ../../../architecture#mapping-pgs-to-osds
+.. _Create a Pool: ../pools#createpool
+.. _Mapping PGs to OSDs: ../../../architecture#mapping-pgs-to-osds
 .. _pgcalc: http://ceph.com/pgcalc/

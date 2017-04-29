@@ -1,50 +1,60 @@
-处理占满的 Ceph 文件系统
-========================
 
-当 RADOS 集群使用率达到总容量的 ``mon_osd_full_ratio`` （默认 95% ）时，它\
-会被打上 OSD full 标记。在问题解决前（如扩容集群），此标记会使大多数常规 \
-RADOS 客户端暂停所有操作。
+Handling a full Ceph filesystem
+===============================
 
-文件系统对 full 标记还有些特殊处理，下文详述。
+When a RADOS cluster reaches its ``mon_osd_full_ratio`` (default
+95%) capacity, it is marked with the OSD full flag.  This flag causes
+most normal RADOS clients to pause all operations until it is resolved
+(for example by adding more capacity to the cluster).
 
+The filesystem has some special handling of the full flag, explained below.
 
-Hammer 及更高版
----------------
+Hammer and later
+----------------
 
-从 hammer 发布开始，以下行为会导致占满的文件系统返回 ENOSPC 错误：
+Since the hammer release, a full filesystem will lead to ENOSPC
+results from:
 
- * 客户端写入数据
- * 删除和裁剪以外的其它元数据操作
+ * Data writes on the client
+ * Metadata operations other than deletes and truncates
 
-因为只有在数据刷回到硬盘（有时是 ``write`` 返回 0 之后）才可能遇到占满的情\
-况，所以应用程序调用 ``fsync`` 或 ``fclose`` （或等价操作）进行文件处理时才\
-可能遇到 ENOSPC 错误。
+Because the full condition may not be encountered until
+data is flushed to disk (sometime after a ``write`` call has already
+returned 0), the ENOSPC error may not be seen until the application
+calls ``fsync`` or ``fclose`` (or equivalent) on the file handle.
 
-调用 ``fsync`` 能可靠地反映数据是否写入了硬盘，并且在没写入时返回错误。 \
-``fclose`` 只有在缓冲的数据从上次写入以来被偶尔刷回过才会返回错误［译者：原\
-文可能有误］—— ``fclose`` 成功并不能保证数据写入了硬盘，而且在空间占满时， \
-``fclose`` 之后如果没地方存储缓冲的数据，它们就可能被丢弃。
+Calling ``fsync`` is guaranteed to reliably indicate whether the data
+made it to disk, and will return an error if it doesn't.  ``fclose`` will
+only return an error if buffered data happened to be flushed since
+the last write -- a successful ``fclose`` does not guarantee that the
+data made it to disk, and in a full-space situation, buffered data
+may be discarded after an ``fclose`` if no space is available to persist it.
 
 .. warning::
-    如果某一应用程序在占满的文件系统上行为异常，有必要检查下它调用了 \
-    ``fsync()`` 来确保数据已写入硬盘，然后再继续。
+    If an application appears to be misbehaving on a full filesystem,
+    check that it is performing ``fsync()`` calls as necessary to ensure
+    data is on disk before proceeding.
 
-如果客户端运行时已经看到了 OSD full 标记，写数据操作可能被取消。各个客户端取\
-消操作并释放文件能力时会更新 ``osd_epoch_barrier`` ，以确保这些取消的操作不\
-会妨碍 MDS 或其它客户端对这些数据对象的访问。要了解元图屏蔽机制，请参考 \
-:doc:`eviction` 。
+Data writes may be cancelled by the client if they are in flight at the
+time the OSD full flag is sent.  Clients update the ``osd_epoch_barrier``
+when releasing capabilities on files affected by cancelled operations, in
+order to ensure that these cancelled operations do not interfere with
+subsequent access to the data objects by the MDS or other clients.  For
+more on the epoch barrier mechanism, see :doc:`eviction`.
 
-
-老版本（ hammer 之前）的行为
+Legacy (pre-hammer) behavior
 ----------------------------
 
-在 hammer 之前的 Ceph 版本中， MDS 会忽略 RADOS 集群的占满状态，而且客户端的\
-任意数据写入都会卡死，直到集群脱离占满状态。
+In versions of Ceph earlier than hammer, the MDS would ignore
+the full status of the RADOS cluster, and any data writes from
+clients would stall until the cluster ceased to be full.
 
-出现这种行为时有两种危险情形要注意：
+There are two dangerous conditions to watch for with this behaviour:
 
-* 如果一客户端到一个文件的写入未完成，那么它不可能把文件释放给 MDS 让它删\
-  除，这样就很难清理占满的文件系统。
-* 如果客户端持续地创建大量空文件，来自 MDS 的元数据写入操作终将会耗尽 OSD \
-  空间，这样就再也不能执行删除动作了。
+* If a client had pending writes to a file, then it was not possible
+  for the client to release the file to the MDS for deletion: this could
+  lead to difficulty clearing space on a full filesystem
+* If clients continued to create a large number of empty files, the
+  resulting metadata writes from the MDS could lead to total exhaustion
+  of space on the OSDs such that no further deletions could be performed.
 

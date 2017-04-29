@@ -1,18 +1,24 @@
-==============
- 网络配置参考
-==============
+=================================
+ Network Configuration Reference
+=================================
 
-网络配置对构建高性能 :term:`Ceph 存储集群`\ 来说相当重要。 Ceph 存储集群不会代表 \
-:term:`Ceph 客户端`\ 执行请求路由或调度，相反， Ceph 客户端（如块设备、 CephFS 、 \
-REST 网关）直接向 OSD 请求，然后OSD为客户端执行数据复制，也就是说复制和其它因素会额\
-外增加集群网的负载。
+Network configuration is critical for building a high performance  :term:`Ceph
+Storage Cluster`. The Ceph Storage Cluster does not perform  request routing or
+dispatching on behalf of the :term:`Ceph Client`. Instead, Ceph Clients make
+requests directly to Ceph OSD Daemons. Ceph OSD Daemons perform data replication
+on behalf of Ceph Clients, which means replication and other factors impose
+additional loads on Ceph Storage Cluster networks.
 
-我们的快速入门配置提供了一个简陋的 `Ceph 配置文件`_\ ，其中只设置了监视器 IP 地址和\
-守护进程所在的主机名。如果没有配置集群网，那么 Ceph 假设你只有一个“公共网”。只用一\
-个网可以运行 Ceph ，但是在大型集群里用单独的“集群”网可显著地提升性能。
+Our Quick Start configurations provide a trivial `Ceph configuration file`_ that
+sets monitor IP addresses and daemon host names only. Unless you specify a
+cluster network, Ceph assumes a single "public" network. Ceph functions just
+fine with a public network only, but you may see significant performance
+improvement with a second "cluster" network in a large cluster.
 
-我们建议用两个网络运营 Ceph 存储集群：一个公共网（前端）和一个集群网（后端）。为\
-此，各\ :term:`节点`\ 得配备多个网卡，见\ `硬件推荐——网络`\ 。
+We recommend running a Ceph Storage Cluster with two networks: a public
+(front-side) network and a cluster (back-side) network. To support two networks,
+each :term:`Ceph Node` will need to have more than one NIC. See `Hardware
+Recommendations -  Networks`_ for additional details.
 
 .. ditaa::
                                +-------------+
@@ -40,72 +46,91 @@ REST 网关）直接向 OSD 请求，然后OSD为客户端执行数据复制，�
  \---------------------------------------------------------------------------/
 
 
-运营两个独立网络的考量主要有：
+There are several reasons to consider operating two separate networks:
 
-#. **性能：** OSD 为客户端处理数据复制，复制多份时 OSD 间的网络负载势必会影响到客户\
-   端和 Ceph 集群的通讯，包括延时增加、产生性能问题；恢复和重均衡也会显著增加公共网\
-   延时。关于 Ceph 如何复制参见\ `伸缩性和高可用性`_\ ；关于心跳流量参见\ \
-   `监视器与 OSD 的交互`_\ 。
+#. **Performance:** Ceph OSD Daemons handle data replication for the Ceph 
+   Clients. When Ceph OSD Daemons replicate data more than once, the network 
+   load between Ceph OSD Daemons easily dwarfs the network load between Ceph 
+   Clients and the Ceph Storage Cluster. This can introduce latency and 
+   create a performance problem. Recovery and rebalancing can 
+   also introduce significant latency on the public network. See 
+   `Scalability and High Availability`_ for additional details on how Ceph 
+   replicates data. See `Monitor / OSD Interaction`_  for details on heartbeat 
+   traffic.
 
-#. **安全：** 大多数人都是良民，很少的一撮人喜欢折腾拒绝服务攻击（ DoS ）。当 OSD \
-   间的流量失控时，归置组再也不能达到 ``active + clean`` 状态，这样用户就不能读写数\
-   据了。挫败此类攻击的一种好方法是维护一个完全独立的集群网，使之不能直连互联网；另\
-   外，请考虑用\ `消息签名`_\ 防止欺骗攻击。
+#. **Security**: While most people are generally civil, a very tiny segment of 
+   the population likes to engage in what's known as a Denial of Service (DoS) 
+   attack. When traffic between Ceph OSD Daemons gets disrupted, placement 
+   groups may no longer reflect an ``active + clean`` state, which may prevent 
+   users from reading and writing data. A great way to defeat this type of 
+   attack is to maintain a completely separate cluster network that doesn't 
+   connect directly to the internet. Also, consider using `Message Signatures`_ 
+   to defeat spoofing attacks.
 
 
-防火墙
-======
+IP Tables
+=========
 
-守护进程默认会\ `绑定`_\ 到 ``6800:7300`` 间的端口，你可以更改此范围。更改防火墙配\
-置前先检查下 ``iptables`` 配置。 ::
+By default, daemons `bind`_ to ports within the ``6800:7300`` range. You may
+configure this range at your discretion. Before configuring your IP tables,
+check the default ``iptables`` configuration.
 
 	sudo iptables -L
 
-一些 Linux 发行版的规则拒绝除 SSH 之外的所有网卡的所有入栈连接，例如： ::
+Some Linux distributions include rules that reject all inbound requests
+except SSH from all network interfaces. For example:: 
 
 	REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
 
-你得先删掉公共网和集群网对应的这些规则，然后再增加安全保护规则。
+You will need to delete these rules on both your public and cluster networks
+initially, and replace them with appropriate rules when you are ready to 
+harden the ports on your Ceph Nodes.
 
 
-监视器防火墙
-------------
+Monitor IP Tables
+-----------------
 
-监视器默认监听 ``6789`` 端口，而且监视器总是运行在公共网。按下例增加规则时，要把 \
-``{iface}`` 替换为公共网接口（如 ``eth0`` 、 ``eth1`` 等等）、 ``{ip-address}`` \
-替换为公共网 IP 、 ``{netmask}`` 替换为公共网掩码。 ::
+Ceph Monitors listen on port ``6789`` by default. Additionally, Ceph Monitors
+always operate on the public network. When you add the rule using the example
+below, make sure you replace ``{iface}`` with the public network interface
+(e.g., ``eth0``, ``eth1``, etc.), ``{ip-address}`` with  the IP address of the
+public network and ``{netmask}`` with the netmask for the public network. ::
 
    sudo iptables -A INPUT -i {iface} -p tcp -s {ip-address}/{netmask} --dport 6789 -j ACCEPT
 
 
-MDS 防火墙
-----------
+MDS IP Tables
+-------------
 
-:term:`元数据服务器`\ 会监听公共网 6800 以上的第一个可用端口。需要注意的\
-是，这种行为是不确定的，所以如果你在同一主机上运行多个 OSD 或 MDS 、或者\
-在很短的时间内重启了多个守护进程，它们会绑定更高的端口号；所以说你应该预\
-先打开整个 6800-7300 端口区间。按下例增加规则时，要把 ``{iface}`` 替换为\
-公共网接口（如 ``eth0`` 、 ``eth1`` 等等）、 ``{ip-address}`` 替换为公共\
-网 IP 、 ``{netmask}`` 替换为公共网掩码。
+A :term:`Ceph Metadata Server` listens on the first available port on the public
+network beginning at port 6800. Note that this behavior is not deterministic, so
+if you are running more than one OSD or MDS on the same host, or if you restart
+the daemons within a short window of time, the daemons will bind to higher
+ports. You should open the entire 6800-7300 range by default.  When you add the
+rule using the example below, make sure you replace ``{iface}`` with the public
+network interface (e.g., ``eth0``, ``eth1``, etc.), ``{ip-address}`` with the IP
+address of the public network and ``{netmask}`` with the netmask of the public
+network.
 
-例如： ::
+For example:: 
 
 	sudo iptables -A INPUT -i {iface} -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:7300 -j ACCEPT
 
 
-OSD 防火墙
-----------
+OSD IP Tables
+-------------
 
-OSD 守护进程默认\ `绑定`_ 从 6800 起的第一个可用端口，需要注意的\
-是，这种行为是不确定的，所以如果你在同一主机上运行多个 OSD 或 MDS \
-、或者在很短的时间内重启了多个守护进程，它们会绑定更高的端口号。\
-一主机上的各个 OSD 最多会用到 4 个端口：
+By default, Ceph OSD Daemons `bind`_ to the first available ports on a Ceph Node
+beginning at port 6800.  Note that this behavior is not deterministic, so if you
+are running more than one OSD or MDS on the same host, or if you restart the
+daemons within a short window of time, the daemons will bind to higher ports.
+Each Ceph OSD Daemon on a Ceph Node may use up to four ports:
 
-#. 一个用于和客户端、监视器通讯；
-#. 一个用于发送数据到其他 OSD ；
-#. 两个用于各个网卡上的心跳；
+#. One for talking to clients and monitors.
+#. One for sending data to other OSDs.
+#. Two for heartbeating on each interface.
 
-.. ditaa::
+.. ditaa:: 
               /---------------\
               |      OSD      |
               |           +---+----------------+-----------+
@@ -118,43 +143,57 @@ OSD 守护进程默认\ `绑定`_ 从 6800 起的第一个可用端口，需要�
               | cCCC          |
               \---------------/
 
-当某个守护进程失败并重启时没释放端口，重启后的进程就会监听新端口。\
-你应该打开整个 6800-7300 端口区间，以应对这种可能性。
+When a daemon fails and restarts without letting go of the port, the restarted
+daemon will bind to a new port. You should open the entire 6800-7300 port range
+to handle this possibility.
 
-如果你分开了公共网和集群网，必须分别为之设置防火墙，因为客户端会\
-通过公共网连接、而其他 OSD 会通过集群网连接。按下例增加规则时，\
-要把 ``{iface}`` 替换为网口（如 ``eth0`` 、 ``eth1`` 等等）、 \
-``{ip-address}`` 替换为公共网或集群网 IP 、 ``{netmask}`` 替换为\
-公共网或集群网掩码。例如： ::
+If you set up separate public and cluster networks, you must add rules for both
+the public network and the cluster network, because clients will connect using
+the public network and other Ceph OSD Daemons will connect using the cluster
+network. When you add the rule using the example below, make sure you replace
+``{iface}`` with the network interface (e.g., ``eth0``, ``eth1``, etc.),
+``{ip-address}`` with the IP address and ``{netmask}`` with the netmask of the
+public or cluster network. For example:: 
 
 	sudo iptables -A INPUT -i {iface}  -m multiport -p tcp -s {ip-address}/{netmask} --dports 6800:7300 -j ACCEPT
 
-.. tip:: 如果你的元数据服务器和 OSD 在同一节点上，可以合并公共网\
-   配置。
+.. tip:: If you run Ceph Metadata Servers on the same Ceph Node as the 
+   Ceph OSD Daemons, you can consolidate the public network configuration step. 
 
 
-Ceph 网络
-=========
+Ceph Networks
+=============
 
-Ceph 的网络配置要放到 ``[global]`` 段下。前述的 5 分钟快速入门提供了一个简陋的 \
-`Ceph 配置文件`_\ ，它假设服务器和客户端都位于同一网段， Ceph 可以很好地适应这种情\
-形。然而 Ceph 允许配置更精细的公共网，包括多 IP 和多掩码；也能用单独的集群网处理 \
-OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址和客户端用来访问存储服务的\
-公共网地址。典型的内网常常是 ``192.168.0.0`` 或 ``10.0.0.0`` 。
+To configure Ceph networks, you must add a network configuration to the
+``[global]`` section of the configuration file. Our 5-minute Quick Start
+provides a trivial `Ceph configuration file`_ that assumes one public network
+with client and server on the same network and subnet. Ceph functions just fine
+with a public network only. However, Ceph allows you to establish much more
+specific criteria, including multiple IP network and subnet masks for your
+public network. You can also establish a separate cluster network to handle OSD
+heartbeat, object replication and recovery traffic. Don't confuse the IP
+addresses you set in your configuration with the public-facing IP addresses
+network clients may use to access your service. Typical internal IP networks are
+often ``192.168.0.0`` or ``10.0.0.0``.
 
-.. tip:: 如果你给公共网或集群网配置了多个 IP 地址及子网掩码，这些子网必须能互通。另\
-   外要确保在防火墙上为各 IP 和子网开放了必要的端口。
+.. tip:: If you specify more than one IP address and subnet mask for
+   either the public or the cluster network, the subnets within the network
+   must be capable of routing to each other. Additionally, make sure you
+   include each IP address/subnet in your IP tables and open ports for them
+   as necessary.
 
-.. note:: Ceph 用 CIDR 法表示子网，如 ``10.0.0.0/24`` 。
+.. note:: Ceph uses `CIDR`_ notation for subnets (e.g., ``10.0.0.0/24``).
 
-配置完几个网络后，可以重启集群或挨个重启守护进程。 Ceph 守护进程动态地绑定端口，所\
-以更改网络配置后无需重启整个集群。
+When you've configured your networks, you may restart your cluster or restart
+each daemon. Ceph daemons bind dynamically, so you do not have to restart the
+entire cluster at once if you change your network configuration.
 
 
-公共网
-------
+Public Network
+--------------
 
-要配置一个公共网，把下列选项加到配置文件的 ``[global]`` 段下。
+To configure a public network, add the following option to the ``[global]``
+section of your Ceph configuration file. 
 
 .. code-block:: ini
 
@@ -163,11 +202,13 @@ OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址
 		public network = {public-network/netmask}
 
 
-集群网
-------
+Cluster Network
+---------------
 
-如果你声明了集群网， OSD 将把心跳、对象复制和恢复流量路由到集群网，与单个网络相比这\
-会提升性能。要配置集群网，把下列选项加进配置文件的 ``[global]`` 段。
+If you declare a cluster network, OSDs will route heartbeat, object replication
+and recovery traffic over the cluster network. This may improve performance
+compared to using a single network. To configure a cluster network, add the
+following option to the ``[global]`` section of your Ceph configuration file. 
 
 .. code-block:: ini
 
@@ -175,26 +216,31 @@ OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址
 		...
 		cluster network = {cluster-network/netmask}
 
-为安全起见，从公共网或互联网到集群网应该是\ **不可达**\ 的。
+We prefer that the cluster network is **NOT** reachable from the public network
+or the Internet for added security.
 
 
-Ceph 守护进程
-=============
+Ceph Daemons
+============
 
-有一个网络配置是所有守护进程都要配的：各个守护进程都\ **必须**\ 指定 ``host`` ， \
-Ceph 也要求指定监视器 IP 地址及端口。
+Ceph has one network configuration requirement that applies to all daemons: the
+Ceph configuration file **MUST** specify the ``host`` for each daemon. Ceph also
+requires that a Ceph configuration file specify the monitor IP address and its
+port.
 
-.. important:: 一些部署工具（如 ``ceph-deploy`` 、 Chef ）会给你创建配置文件，如\
-   果它能胜任那就\ **别设置**\ 这些值。
+.. important:: Some deployment tools (e.g., ``ceph-deploy``, Chef) may create a
+   configuration file for you. **DO NOT** set these values if the deployment 
+   tool does it for you.
 
-.. tip:: ``host`` 选项是主机的短名，不是全资域名 FQDN ，也\ **不是** IP 地址。在\
-   命令行下输入 ``hostname -s`` 获取主机名。
+.. tip:: The ``host`` setting is the short name of the host (i.e., not 
+   an fqdn). It is **NOT** an IP address either.  Enter ``hostname -s`` on 
+   the command line to retrieve the name of the host.
 
 
 .. code-block:: ini
 
 	[mon.a]
-
+	
 		host = {hostname}
 		mon addr = {ip-address}:6789
 
@@ -202,9 +248,11 @@ Ceph 也要求指定监视器 IP 地址及端口。
 		host = {hostname}
 
 
-并非一定要给守护进程设置 IP 地址。如果你有一个静态配置，且分离了公共网和集群网， \
-Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程设置静态 IP ，可把下列选项加\
-到 ``ceph.conf`` 。
+You do not have to set the host IP address for a daemon. If you have a static IP
+configuration and both public and cluster networks running, the Ceph
+configuration file may specify the IP address of the host for each daemon. To
+set a static IP address for a daemon, the following option(s) should appear in
+the daemon instance sections of your ``ceph.conf`` file.
 
 .. code-block:: ini
 
@@ -213,177 +261,209 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
 		cluster addr = {host-cluster-ip-address}
 
 
-.. topic:: 单网卡OSD、双网络集群
+.. topic:: One NIC OSD in a Two Network Cluster
 
-   一般来说，我们不建议用单网卡 OSD 主机部署两个网络。然而这事可以实现，把 \
-   ``public addr`` 选项配在 ``[osd.n]`` 段下即可强制 OSD 主机运行在公共网，其中 \
-   ``n`` 是其 OSD 号。另外，公共网和集群网必须互通，考虑到安全因素我们不建议这样做。
-
-
-网络配置选项
-============
-
-网络配置选项不是必需的， Ceph 假设所有主机都运行于公共网，除非你特意配置了一个集群\
-网。
+   Generally, we do not recommend deploying an OSD host with a single NIC in a 
+   cluster with two networks. However, you may accomplish this by forcing the 
+   OSD host to operate on the public network by adding a ``public addr`` entry
+   to the ``[osd.n]`` section of the Ceph configuration file, where ``n`` 
+   refers to the number of the OSD with one NIC. Additionally, the public
+   network and cluster network must be able to route traffic to each other, 
+   which we don't recommend for security reasons.
 
 
-公共网
-------
+Network Config Settings
+=======================
 
-公共网配置用于明确地为公共网定义 IP 地址和子网。你可以分配静态 IP 或用 \
-``public addr`` 覆盖 ``public network`` 选项。
+Network configuration settings are not required. Ceph assumes a public network
+with all hosts operating on it unless you specifically configure a cluster 
+network.
 
+
+Public Network
+--------------
+
+The public network configuration allows you specifically define IP addresses
+and subnets for the public network. You may specifically assign static IP 
+addresses or override ``public network`` settings using the ``public addr``
+setting for a specific daemon.
 
 ``public network``
 
-:描述: 公共网（前端）的 IP 地址和掩码（如 ``192.168.0.0/24`` ），置于 \
-       ``[global]`` 下。多个子网用逗号分隔。
+:Description: The IP address and netmask of the public (front-side) network 
+              (e.g., ``192.168.0.0/24``). Set in ``[global]``. You may specify
+              comma-delimited subnets.
 
-:类型: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
-:是否必需: No
-:默认值: N/A
+:Type: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
+:Required: No
+:Default: N/A
 
 
 ``public addr``
 
-:描述: 用于公共网（前端）的 IP 地址。适用于各守护进程。
-:类型: IP 地址
-:是否必需: No
-:默认值: N/A
+:Description: The IP address for the public (front-side) network. 
+              Set for each daemon.
+
+:Type: IP Address
+:Required: No
+:Default: N/A
 
 
 
-集群网
-------
+Cluster Network
+---------------
 
-集群网配置用来声明一个集群网，并明确地定义其 IP 地址和子网。你可以配置静态 IP 或为\
-某 OSD 守护进程配置 ``cluster addr`` 以覆盖 ``cluster network`` 选项。
+The cluster network configuration allows you to declare a cluster network, and
+specifically define IP addresses and subnets for the cluster network. You may
+specifically assign static IP  addresses or override ``cluster network``
+settings using the ``cluster addr`` setting for specific OSD daemons.
 
 
 ``cluster network``
 
-:描述: 集群网（后端）的 IP 地址及掩码（如 ``10.0.0.0/24`` ），置于 \
-       ``[global]`` 下。多个子网用逗号分隔。
+:Description: The IP address and netmask of the cluster (back-side) network 
+              (e.g., ``10.0.0.0/24``).  Set in ``[global]``. You may specify
+              comma-delimited subnets.
 
-:类型: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
-:是否必需: No
-:默认值: N/A
+:Type: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
+:Required: No
+:Default: N/A
 
 
 ``cluster addr``
 
-:描述: 集群网（后端） IP 地址。置于各守护进程下。
-:类型: Address
-:是否必需: No
-:默认值: N/A
+:Description: The IP address for the cluster (back-side) network. 
+              Set for each daemon.
+
+:Type: Address
+:Required: No
+:Default: N/A
 
 
-绑定
+Bind
 ----
 
-绑定选项用于设置 OSD 和 MDS 默认使用的端口范围，默认范围是 ``6800:7300`` 。确保\ \
-`防火墙`_\ 开放了对应端口范围。
+Bind settings set the default port ranges Ceph OSD and MDS daemons use. The
+default range is ``6800:7300``. Ensure that your `IP Tables`_ configuration
+allows you to use the configured port range.
 
-你也可以让 Ceph 守护进程绑定到 IPv6 地址。
+You may also enable Ceph daemons to bind to IPv6 addresses instead of IPv4
+addresses.
 
 
 ``ms bind port min``
 
-:描述: OSD 或 MDS 可绑定的最小端口号。
-:类型: 32-bit Integer
-:默认值: ``6800``
-:是否必需: No
+:Description: The minimum port number to which an OSD or MDS daemon will bind.
+:Type: 32-bit Integer
+:Default: ``6800``
+:Required: No
 
 
 ``ms bind port max``
 
-:描述: OSD 或 MDS 可绑定的最大端口号。
-:类型: 32-bit Integer
-:默认值: ``7300``
-:是否必需: No.
+:Description: The maximum port number to which an OSD or MDS daemon will bind.
+:Type: 32-bit Integer
+:Default: ``7300``
+:Required: No. 
 
 
 ``ms bind ipv6``
 
-:描述: 允许 Ceph 守护进程绑定 IPv6 地址。
-:类型: Boolean
-:默认值: ``false``
-:是否必需: No
+:Description: Enables Ceph daemons to bind to IPv6 addresses. Currently the
+              messenger *either* uses IPv4 or IPv6, but it can't do both.
+:Type: Boolean
+:Default: ``false``
+:Required: No
 
 
 
-主机
-----
+Hosts
+-----
 
-Ceph 配置文件里至少要写一个监视器、且每个监视器下都要配置 ``mon addr`` 选项；\
-每个监视器、元数据服务器和 OSD 下都要配 ``host`` 选项。
+Ceph expects at least one monitor declared in the Ceph configuration file, with
+a ``mon addr`` setting under each declared monitor. Ceph expects a ``host``
+setting under each declared monitor, metadata server and OSD in the Ceph
+configuration file.
+
 
 ``mon addr``
 
-:描述: ``{hostname}:{port}`` 条目列表，用以让客户端连接 Ceph 监视器。如果未设\
-       置， Ceph 查找 ``[mon.*]`` 段。
+:Description: A list of ``{hostname}:{port}`` entries that clients can use to 
+              connect to a Ceph monitor. If not set, Ceph searches ``[mon.*]`` 
+              sections. 
 
-:类型: String
-:是否必需: No
-:默认值: N/A
+:Type: String
+:Required: No
+:Default: N/A
 
 
 ``host``
 
-:描述: 主机名。此选项用于特定守护进程，如 ``[osd.0]`` 。
-:类型: String
-:是否必需: Yes, for daemon instances.
-:默认值: ``localhost``
+:Description: The hostname. Use this setting for specific daemon instances 
+              (e.g., ``[osd.0]``).
 
-.. tip:: 不要用 ``localhost`` 。在命令行下执行 ``hostname -s`` 获取主机名（到第一\
-   个点，不是全资域名），并用于配置文件。
+:Type: String
+:Required: Yes, for daemon instances.
+:Default: ``localhost``
 
-.. important:: 用第三方部署工具时不要指定 ``host`` 选项，它会自行获取。
+.. tip:: Do not use ``localhost``. To get your host name, execute 
+         ``hostname -s`` on your command line and use the name of your host 
+         (to the first period, not the fully-qualified domain name).
+
+.. important:: You should not specify any value for ``host`` when using a third
+               party deployment system that retrieves the host name for you.
 
 
 
 TCP
 ---
 
-Ceph 默认禁用 TCP 缓冲。
+Ceph disables TCP buffering by default.
 
 
 ``ms tcp nodelay``
 
-:描述: Ceph 用 ``ms tcp nodelay`` 使系统尽快（不缓冲）发送每个\
-       请求。禁用 `Nagle 算法`_\ 可增加吞吐量，但会引进延时。\
-       如果你遇到大量小包，可以禁用 ``ms tcp nodelay`` 试试。
+:Description: Ceph enables ``ms tcp nodelay`` so that each request is sent 
+              immediately (no buffering). Disabling `Nagle's algorithm`_
+              increases network traffic, which can introduce latency. If you 
+              experience large numbers of small packets, you may try 
+              disabling ``ms tcp nodelay``. 
 
-:类型: Boolean
-:是否必需: No
-:默认值: ``true``
+:Type: Boolean
+:Required: No
+:Default: ``true``
+
 
 
 ``ms tcp rcvbuf``
 
-:描述: 网络套接字接收缓冲尺寸，默认禁用。
-:类型: 32-bit Integer
-:是否必需: No
-:默认值: ``0``
+:Description: The size of the socket buffer on the receiving end of a network
+              connection. Disable by default.
+
+:Type: 32-bit Integer
+:Required: No
+:Default: ``0``
+
 
 
 ``ms tcp read timeout``
 
-:描述: 如果一客户端或守护进程发送请求到另一个 Ceph 守护进程，且\
-       没有断开不再使用的连接，在 ``ms tcp read timeout`` 指定的\
-       秒数之后它将被标记为空闲。
+:Description: If a client or daemon makes a request to another Ceph daemon and
+              does not drop an unused connection, the ``ms tcp read timeout`` 
+              defines the connection as idle after the specified number 
+              of seconds.
 
-:类型: Unsigned 64-bit Integer
-:是否必需: No
-:默认值: ``900`` 15 minutes.
+:Type: Unsigned 64-bit Integer
+:Required: No
+:Default: ``900`` 15 minutes.
 
 
 
-.. _伸缩性和高可用性: ../../../architecture#scalability-and-high-availability
-.. _硬件推荐——网络: ../../../start/hardware-recommendations#networks
-.. _Ceph 配置文件: ../../../start/quick-ceph-deploy/#create-a-cluster
-.. _硬件推荐: ../../../start/hardware-recommendations
-.. _监视器与 OSD 的交互: ../mon-osd-interaction
-.. _消息签名: ../auth-config-ref#signatures
+.. _Scalability and High Availability: ../../../architecture#scalability-and-high-availability
+.. _Hardware Recommendations - Networks: ../../../start/hardware-recommendations#networks
+.. _Ceph configuration file: ../../../start/quick-ceph-deploy/#create-a-cluster
+.. _hardware recommendations: ../../../start/hardware-recommendations
+.. _Monitor / OSD Interaction: ../mon-osd-interaction
+.. _Message Signatures: ../auth-config-ref#signatures
 .. _CIDR: http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing
-.. _Nagle 算法: http://en.wikipedia.org/wiki/Nagle's_algorithm
+.. _Nagle's Algorithm: http://en.wikipedia.org/wiki/Nagle's_algorithm

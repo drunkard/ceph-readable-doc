@@ -1,0 +1,258 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuring Directory fragmentation &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    <link rel="up" title="Ceph Filesystem" href="../" />
+    <link rel="next" title="Configuring multiple active MDS daemons" href="../multimds/" />
+    <link rel="prev" title="Upgrading pre-Firefly filesystems past Jewel" href="../upgrading/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../multimds/" title="Configuring multiple active MDS daemons"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../upgrading/" title="Upgrading pre-Firefly filesystems past Jewel"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" accesskey="U">Ceph Filesystem</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="configuring-directory-fragmentation">
+<h1>Configuring Directory fragmentation<a class="headerlink" href="#configuring-directory-fragmentation" title="Permalink to this headline">¶</a></h1>
+<p>In CephFS, directories are <em>fragmented</em> when they become very large
+or very busy.  This splits up the metadata so that it can be shared
+between multiple MDS daemons, and between multiple objects in the
+metadata pool.</p>
+<p>In normal operation, directory fragmentation is invisbible to
+users and administrators, and all the configuration settings mentioned
+here should be left at their default values.</p>
+<p>While directory fragmentation enables CephFS to handle very large
+numbers of entries in a single directory, application programmers should
+remain conservative about creating very large directories, as they still
+have a resource cost in situations such as a CephFS client listing
+the directory, where all the fragments must be loaded at once.</p>
+<p>All directories are initially created as a single fragment.  This fragment
+may be <em>split</em> to divide up the directory into more fragments, and these
+fragments may be <em>merged</em> to reduce the number of fragments in the directory.</p>
+<div class="section" id="splitting-and-merging">
+<h2>Splitting and merging<a class="headerlink" href="#splitting-and-merging" title="Permalink to this headline">¶</a></h2>
+<p>An MDS will only consider doing splits and merges if the <tt class="docutils literal"><span class="pre">mds_bal_frag</span></tt>
+setting is true in the MDS&#8217;s configuration file, and the allow_dirfrags
+setting is true in the filesystem map (set on the mons).  These settings
+are both true by default since the <em>Luminous</em> (12.2.x) release of Ceph.</p>
+<p>When an MDS identifies a directory fragment to be split, it does not
+do the split immediately.  Because splitting interrupts metadata IO,
+a short delay is used to allow short bursts of client IO to complete
+before the split begins.  This delay is configured with
+<tt class="docutils literal"><span class="pre">mds_bal_fragment_interval</span></tt>, which defaults to 5 seconds.</p>
+<p>When the split is done, the directory fragment is broken up into
+a power of two number of new fragments.  The number of new
+fragments is given by two to the power <tt class="docutils literal"><span class="pre">mds_bal_split_bits</span></tt>, i.e.
+if <tt class="docutils literal"><span class="pre">mds_bal_split_bits</span></tt> is 2, then four new fragments will be
+created.  The default setting is 3, i.e. splits create 8 new fragments.</p>
+<p>The criteria for initiating a split or a merge are described in the
+following sections.</p>
+</div>
+<div class="section" id="size-thresholds">
+<h2>Size thresholds<a class="headerlink" href="#size-thresholds" title="Permalink to this headline">¶</a></h2>
+<p>A directory fragment is elegible for splitting when its size exceeds
+<tt class="docutils literal"><span class="pre">mds_bal_split_size</span></tt> (default 10000).  Ordinarily this split is
+delayed by <tt class="docutils literal"><span class="pre">mds_bal_fragment_interval</span></tt>, but if the fragment size
+exceeds a factor of <tt class="docutils literal"><span class="pre">mds_bal_fragment_fast_factor</span></tt> the split size,
+the split will happen immediately (holding up any client metadata
+IO on the directory).</p>
+<p><tt class="docutils literal"><span class="pre">mds_bal_fragment_size_max</span></tt> is the hard limit on the size of
+directory fragments.  If it is reached, clients will receive
+ENOSPC errors if they try to create files in the fragment.  On
+a properly configured system, this limit should never be reached on
+ordinary directories, as they will have split long before.  By default,
+this is set to 10 times the split size, giving a dirfrag size limit of
+100000.  Increasing this limit may lead to oversized directory fragment
+objects in the metadata pool, which the OSDs may not be able to handle.</p>
+<p>A directory fragment is elegible for merging when its size is less
+than <tt class="docutils literal"><span class="pre">mds_bal_merge_size</span></tt>.  There is no merge equivalent of the
+&#8220;fast splitting&#8221; explained above: fast splitting exists to avoid
+creating oversized directory fragments, there is no equivalent issue
+to avoid when merging.  The default merge size is 50.</p>
+</div>
+<div class="section" id="activity-thresholds">
+<h2>Activity thresholds<a class="headerlink" href="#activity-thresholds" title="Permalink to this headline">¶</a></h2>
+<p>In addition to splitting fragments based
+on their size, the MDS may split directory fragments if their
+activity exceeds a threshold.</p>
+<p>The MDS maintains separate time-decaying load counters for read and write
+operations on directory fragments.  The decaying load counters have an
+exponential decay based on the <tt class="docutils literal"><span class="pre">mds_decay_halflife</span></tt> setting.</p>
+<p>On writes, the write counter is
+incremented, and compared with <tt class="docutils literal"><span class="pre">mds_bal_split_wr</span></tt>, triggering a
+split if the threshold is exceeded.  Write operations include metadata IO
+such as renames, unlinks and creations.</p>
+<p>The <tt class="docutils literal"><span class="pre">mds_bal_split_rd</span></tt> threshold is applied based on the read operation
+load counter, which tracks readdir operations.</p>
+<p>By the default, the read threshold is 25000 and the write threshold is
+10000, i.e. 2.5x as many reads as writes would be required to trigger
+a split.</p>
+<p>After fragments are split due to the activity thresholds, they are only
+merged based on the size threshold (<tt class="docutils literal"><span class="pre">mds_bal_merge_size</span></tt>), so
+a spike in activity may cause a directory to stay fragmented
+forever unless some entries are unlinked.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (Quick)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Filesystem</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../#using-cephfs">Using CephFS</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">Add/Remove MDS(s)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/">Terminology</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#referring-to-mds-daemons">Referring to MDS daemons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#managing-failover">Managing failover</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#configuring-standby-daemons">Configuring standby daemons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#examples">Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS Configuration Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">Client Configuration Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">Manpage ceph-mds</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../createfs/">Create CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel/">Mount CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fuse/">Mount CephFS as FUSE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fstab/">Mount CephFS in fstab</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/">Manpage ceph-fuse</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/">Manpage mount.ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../best-practices/">Deployment best practices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../administration/">Administrative commands</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX compatibility</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/">Experimental Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/#previously-experimental-features">Previously experimental features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS Quotas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hadoop/">Using Ceph with Hadoop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../file-layouts/">File layouts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../eviction/">Client eviction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../full/">Handling full filesystems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../health-messages/">Health messages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">Disaster recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-auth/">Client authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/">Upgrading old filesystems</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">Configuring directory fragmentation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#splitting-and-merging">Splitting and merging</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#size-thresholds">Size thresholds</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#activity-thresholds">Activity thresholds</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../multimds/">Configuring multiple active MDS daemons</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../#for-developers">For developers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../multimds/" title="Configuring multiple active MDS daemons"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../upgrading/" title="Upgrading pre-Firefly filesystems past Jewel"
+             >previous</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
+          <li><a href="../" >Ceph Filesystem</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

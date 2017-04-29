@@ -1,0 +1,174 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Subtree exports &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="subtree-exports">
+<h1>Subtree exports<a class="headerlink" href="#subtree-exports" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="normal-migration">
+<h2>Normal Migration<a class="headerlink" href="#normal-migration" title="Permalink to this headline">¶</a></h2>
+<p>The exporter begins by doing some checks in export_dir() to verify
+that it is permissible to export the subtree at this time.  In
+particular, the cluster must not be degraded, the subtree root may not
+be freezing or frozen (ie already exporting, or nested beneath
+something that is exporting), and the path must be pinned (ie not
+conflicted with a rename).  If these conditions are met, the subtree
+freeze is initiated, and the exporter is committed to the subtree
+migration, barring an intervening failure of the importer or itself.</p>
+<p>The MExportDirDiscover serves simply to ensure that the base directory
+being exported is open on the destination node.  It is pinned by the
+importer to prevent it from being trimmed.  This occurs before the
+exporter completes the freeze of the subtree to ensure that the
+importer is able to replicate the necessary metadata.  When the
+exporter receives the MExportDirDiscoverAck, it allows the freeze to proceed.</p>
+<p>The MExportDirPrep message then follows to populate a spanning tree that
+includes all dirs, inodes, and dentries necessary to reach any nested
+exports within the exported region.  This replicates metadata as well,
+but it is pushed out by the exporter, avoiding deadlock with the
+regular discover and replication process.  The importer is responsible
+for opening the bounding directories from any third parties before
+acknowledging.  This ensures that the importer has correct dir_auth
+information about where authority is delegated for all points nested
+within the subtree being migrated.  While processing the MExportDirPrep,
+the importer freezes the entire subtree region to prevent any new
+replication or cache expiration.</p>
+<p>The warning stage occurs only if the base subtree directory is open by
+nodes other than the importer and exporter.  If so, then a
+MExportDirNotify message informs any bystanders that the authority for
+the region is temporarily ambiguous.  In particular, bystanders who
+are trimming items from their cache must send MCacheExpire messages to
+both the old and new authorities.  This is necessary to ensure that
+the surviving authority reliably receives all expirations even if the
+importer or exporter fails.  While the subtree is frozen (on both the
+importer and exporter), expirations will not be immediately processed;
+instead, they will be queued until the region is unfrozen and it can
+be determined that the node is or is not authoritative for the region.</p>
+<p>The MExportDir message sends the actual subtree metadata to the importer.
+Upon receipt, the importer inserts the data into its cache, logs a
+copy in the EImportStart, and replies with an MExportDirAck.  The exporter
+can now log an EExport, which ultimately specifies that
+the export was a success.  In the presence of failures, it is the
+existence  of the EExport that disambiguates authority during recovery.</p>
+<p>Once logged, the exporter will send an MExportDirNotify to any
+bystanders, informing them that the authority is no longer ambiguous
+and cache expirations should be sent only to the new authority (the
+importer).  Once these are acknowledged, implicitly flushing the
+bystander to exporter message streams of any stray expiration notices,
+the exporter unfreezes the subtree, cleans up its state, and sends a
+final MExportDirFinish to the importer.  Upon receipt, the importer logs
+an EImportFinish(true), unfreezes its subtree, and cleans up its
+state.</p>
+<p>PARTIAL FAILURE RECOVERY</p>
+<p>RECOVERY FROM JOURNAL</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">Installation (Quick)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

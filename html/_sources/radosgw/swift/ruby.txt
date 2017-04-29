@@ -105,7 +105,7 @@ This deletes the object ``goodbye.txt``:
 .. code-block:: ruby
 
 	container.delete_object('goodbye.txt')
-
+	
 
 Delete a Container
 ==================

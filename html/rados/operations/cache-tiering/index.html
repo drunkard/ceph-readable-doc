@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>分级缓存 &mdash; Ceph Documentation</title>
+    <title>Cache Tiering &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -26,9 +26,9 @@
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../../" />
-    <link rel="up" title="集群运维" href="../" />
-    <link rel="next" title="归置组" href="../placement-groups/" />
-    <link rel="prev" title="SHEC 纠删码插件" href="../erasure-code-shec/" />
+    <link rel="up" title="Cluster Operations" href="../" />
+    <link rel="next" title="Placement Groups" href="../placement-groups/" />
+    <link rel="prev" title="SHEC erasure code plugin" href="../erasure-code-shec/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,14 +43,14 @@
           <a href="../../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../placement-groups/" title="归置组"
+          <a href="../placement-groups/" title="Placement Groups"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../erasure-code-shec/" title="SHEC 纠删码插件"
+          <a href="../erasure-code-shec/" title="SHEC erasure code plugin"
              accesskey="P">previous</a> |</li>
         <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
-          <li><a href="../" accesskey="U">集群运维</a> &raquo;</li> 
+          <li><a href="../../" >Ceph Storage Cluster</a> &raquo;</li>
+          <li><a href="../" accesskey="U">Cluster Operations</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -60,253 +60,367 @@
           <div class="body">
             
   <div class="section" id="cache-tiering">
-<span id="id1"></span><h1>分级缓存<a class="headerlink" href="#cache-tiering" title="Permalink to this headline">¶</a></h1>
-<p>分级缓存可提升后端存储内某些（热点）数据的 I/O 性能。分级缓存需创建一个由高速而昂贵存储设备（如 SSD ）组成的存储池、作为缓存层，以及一个相对低速/廉价设备组成的后端存储池（或纠删码编码的）、作为经济存储层。 Ceph 的对象处理器决定往哪里存储对象，分级代理决定何时把缓存内的对象刷回后端存储层；所以缓存层和后端存储层对 Ceph 客户端来说是完全透明的。</p>
+<h1>Cache Tiering<a class="headerlink" href="#cache-tiering" title="Permalink to this headline">¶</a></h1>
+<p>A cache tier provides Ceph Clients with better I/O performance for a subset of
+the data stored in a backing storage tier. Cache tiering involves creating a
+pool of relatively fast/expensive storage devices (e.g., solid state drives)
+configured to act as a cache tier, and a backing pool of either erasure-coded
+or relatively slower/cheaper devices configured to act as an economical storage
+tier. The Ceph objecter handles where to place the objects and the tiering
+agent determines when to flush objects from the cache to the backing storage
+tier. So the cache tier and the backing storage tier are completely transparent
+to Ceph clients.</p>
 <p class="ditaa">
 <img src="../../../_images/ditaa-2982c5ed3031cac4f9e40545139e51fdb0b33897.png"/>
 </p>
-<p>缓存层代理负责自动处理缓存层和后端存储之间的数据迁移。然而，管理员仍可干预此迁移规则，主要有两种场景：</p>
+<p>The cache tiering agent handles the migration of data between the cache tier
+and the backing storage tier automatically. However, admins have the ability to
+configure how this migration takes place. There are two main scenarios:</p>
 <ul class="simple">
-<li><strong>回写模式：</strong> 管理员把缓存层配置为 <tt class="docutils literal"><span class="pre">writeback</span></tt> 模式时，
-Ceph 客户端们会把数据写入缓存层、并收到缓存层发来的 ACK ；随后，写入缓存层的数据会被迁移到存储层、然后从缓存层刷掉。直观地看，缓存层位于后端存储层的“前面”，当 Ceph 客户端要读取的数据位于存储层时，缓存层代理会把这些数据迁移到缓存层，然后再发往 Ceph 客户端。从此， Ceph 客户端将与缓存层进行
-I/O 操作，直到数据不再被读写。此模式对于易变数据来说较理想（如照片/视频编辑、事务数据等）。</li>
-<li><strong>读代理模式：</strong> 在这个模式下，会直接用缓存层已有的对象，可某一对象没在缓存中时，这个请求会被代理到底下一层。这对于
-<tt class="docutils literal"><span class="pre">writeback</span></tt> 模式的关闭很有用，因为它能保证在抽掉缓存层的同时还确保业务可以正常运转，而且不会新增对象到缓存层。</li>
+<li><strong>Writeback Mode:</strong> When admins configure tiers with <tt class="docutils literal"><span class="pre">writeback</span></tt> mode, Ceph
+clients write data to the cache tier and receive an ACK from the cache tier.
+In time, the data written to the cache tier migrates to the storage tier
+and gets flushed from the cache tier. Conceptually, the cache tier is
+overlaid &#8220;in front&#8221; of the backing storage tier. When a Ceph client needs
+data that resides in the storage tier, the cache tiering agent migrates the
+data to the cache tier on read, then it is sent to the Ceph client.
+Thereafter, the Ceph client can perform I/O using the cache tier, until the
+data becomes inactive. This is ideal for mutable data (e.g., photo/video
+editing, transactional data, etc.).</li>
+<li><strong>Read-proxy Mode:</strong> This mode will use any objects that already
+exist in the cache tier, but if an object is not present in the
+cache the request will be proxied to the base tier.  This is useful
+for transitioning from <tt class="docutils literal"><span class="pre">writeback</span></tt> mode to a disabled cache as it
+allows the workload to function properly while the cache is drained,
+without adding any new objects to the cache.</li>
 </ul>
 <div class="section" id="a-word-of-caution">
-<span id="id2"></span><h2>一些忠告<a class="headerlink" href="#a-word-of-caution" title="Permalink to this headline">¶</a></h2>
-<p>分级缓存会使大多数工作载荷的<em>性能下降</em>。用户使用此功能时应该格外小心。</p>
+<h2>A word of caution<a class="headerlink" href="#a-word-of-caution" title="Permalink to this headline">¶</a></h2>
+<p>Cache tiering will <em>degrade</em> performance for most workloads.  Users should use
+extreme caution before using this feature.</p>
 <ul class="simple">
-<li><em>与业务载荷相关</em>：缓存是否能提升性能与业务载荷息息相关。因为把对象迁入或迁出缓存是有代价的，所以，当数据集的访问模式有<em>明显倾斜</em>时缓存才能高效地运行，比如大多数请求只接触少数对象时。缓存存储池应该足够大，可以容纳业务载荷的常用部分，以避免抖动。</li>
-<li><em>难以评估</em>：用户做过的大多数性能评估都表明，使用分级缓存时性能非常差，部分原因是很少有用户会让请求偏向于一小部分对象，所以缓存需要很长时间来“预热”，而预热的代价又很高。</li>
-<li><em>通常更慢</em>：对于不适合用分级缓存的业务载荷，启用分级缓存后性能反而比没缓存的常规 RADOS 存储池更慢。</li>
-<li><em>librados 对象枚举</em>： librados 级的对象枚举 API 不是为这种场景设计的。如果你的应用程序直接使用 librados 、并需要枚举对象，分级缓存可能不会按预期方式运行。（ RGW 、 RBD 、 CephFS
-没有这样的问题。）</li>
-<li><em>复杂性</em>：启用分级缓存意味着 RADOS 集群要引入很多额外机制和复杂性。这样就增加了遇到系统缺陷的可能性，而其他用户未必会遇到这个缺陷，如此一来你的系统风险更高。</li>
+<li><em>Workload dependent</em>: Whether a cache will improve performance is
+highly dependent on the workload.  Because there is a cost
+associated with moving objects into or out of the cache, it can only
+be effective when there is a <em>large skew</em> in the access pattern in
+the data set, such that most of the requests touch a small number of
+objects.  The cache pool should be large enough to capture the
+working set for your workload to avoid thrashing.</li>
+<li><em>Difficult to benchmark</em>: Most benchmarks that users run to measure
+performance will show terrible performance with cache tiering, in
+part because very few of them skew requests toward a small set of
+objects, it can take a long time for the cache to &#8220;warm up,&#8221; and
+because the warm-up cost can be high.</li>
+<li><em>Usually slower</em>: For workloads that are not cache tiering-friendly,
+performance is often slower than a normal RADOS pool without cache
+tiering enabled.</li>
+<li><em>librados object enumeration</em>: The librados-level object enumeration
+API is not meant to be coherent in the presence of the case.  If
+your applicatoin is using librados directly and relies on object
+enumeration, cache tiering will probably not work as expected.
+(This is not a problem for RGW, RBD, or CephFS.)</li>
+<li><em>Complexity</em>: Enabling cache tiering means that a lot of additional
+machinery and complexity within the RADOS cluster is being used.
+This increases the probability that you will encounter a bug in the system
+that other users have not yet encountered and will put your deployment at a
+higher level of risk.</li>
 </ul>
 <div class="section" id="known-good-workloads">
-<span id="id3"></span><h3>已知适用的场景<a class="headerlink" href="#known-good-workloads" title="Permalink to this headline">¶</a></h3>
+<h3>Known Good Workloads<a class="headerlink" href="#known-good-workloads" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><em>RGW 时域分布（ time-skewed ）</em>：如果 RGW 业务载荷契合这样的场景就能良好地运行：所有读操作都指向近期写入的对象们，配置的分级缓存按配置的时间间隔、定期地把近期写入的对象从缓存迁入底层。</li>
+<li><em>RGW time-skewed</em>: If the RGW workload is such that almost all read
+operations are directed at recently written objects, a simple cache
+tiering configuration that destages recently written objects from
+the cache to the base tier after a configurable period can work
+well.</li>
 </ul>
 </div>
 <div class="section" id="known-bad-workloads">
-<span id="id4"></span><h3>已知不适用的场景<a class="headerlink" href="#known-bad-workloads" title="Permalink to this headline">¶</a></h3>
-<p>下面是<em>已知的与分级缓存不和睦</em>的配置。</p>
+<h3>Known Bad Workloads<a class="headerlink" href="#known-bad-workloads" title="Permalink to this headline">¶</a></h3>
+<p>The following configurations are <em>known to work poorly</em> with cache
+tiering.</p>
 <ul class="simple">
-<li><em>底层为纠删码、缓存为多副本存储池的 RBD 业务</em>：这是常见需求，但是一般不能很好地运行。即使是分布良好的业务载荷，仍然会向冷对象发送很小的写请求，然而纠删码存储池还不支持小的写入，就算是一个很小的写入（通常是 4 KB ）也得把整个对象（通常为 4
-MB 大）迁入缓存。只有少数用户成功实施了这样的配置，也只有他们能用，因为他们的数据极其冷门（备份）、而且不可能对性能敏感。</li>
-<li><em>底层和缓存均为多副本存储池的 RBD 业务</em>： RBD 的底层为多副本存储池时比纠删码好一些，但是仍然高度依赖于业务载荷中的数量分布，且难于验证。用户需要精通自己的业务载荷，还得谨慎地调整分级缓存配置参数。</li>
+<li><em>RBD with replicated cache and erasure-coded base</em>: This is a common
+request, but usually does not perform well.  Even reasonably skewed
+workloads still send some small writes to cold objects, and because
+small writes are not yet supported by the erasure-coded pool, entire
+(usually 4 MB) objects must be migrated into the cache in order to
+satisfy a small (often 4 KB) write.  Only a handful of users have
+successfully deployed this configuration, and it only works for them
+because their data is extremely cold (backups) and they are not in
+any way sensitive to performance.</li>
+<li><em>RBD with replicated cache and base</em>: RBD with a replicated base
+tier does better than when the base is erasure coded, but it is
+still highly dependent on the amount of skew in the workload, and
+very difficult to validate.  The user will need to have a good
+understanding of their workload and will need to tune the cache
+tiering parameters carefully.</li>
 </ul>
 </div>
 </div>
 <div class="section" id="setting-up-pools">
-<span id="id5"></span><h2>配置存储池<a class="headerlink" href="#setting-up-pools" title="Permalink to this headline">¶</a></h2>
-<p>要设置缓存层，你必须有两个存储池。一个作为后端存储、另一个作为缓存。</p>
+<h2>Setting Up Pools<a class="headerlink" href="#setting-up-pools" title="Permalink to this headline">¶</a></h2>
+<p>To set up cache tiering, you must have two pools. One will act as the
+backing storage and the other will act as the cache.</p>
 <div class="section" id="setting-up-a-backing-storage-pool">
-<span id="id6"></span><h3>配置后端存储池<a class="headerlink" href="#setting-up-a-backing-storage-pool" title="Permalink to this headline">¶</a></h3>
-<p>设置后端存储池通常会遇到两种场景：</p>
+<h3>Setting Up a Backing Storage Pool<a class="headerlink" href="#setting-up-a-backing-storage-pool" title="Permalink to this headline">¶</a></h3>
+<p>Setting up a backing storage pool typically involves one of two scenarios:</p>
 <ul class="simple">
-<li><strong>标准存储：</strong> 此时，Ceph存储集群内的存储池保存了一对象的多个副本；</li>
-<li><strong>纠删存储池：</strong> 此时，存储池用纠删码高效地存储数据，性能稍有损失。</li>
+<li><strong>Standard Storage</strong>: In this scenario, the pool stores multiple copies
+of an object in the Ceph Storage Cluster.</li>
+<li><strong>Erasure Coding:</strong> In this scenario, the pool uses erasure coding to
+store data much more efficiently with a small performance tradeoff.</li>
 </ul>
-<p>在标准存储场景中，你可以用 CRUSH 规则集来标识失败域（如 osd 、主机、机箱、机架、排等）。当规则集所涉及的所有驱动器规格、速度（转速和吞吐量）和类型相同时， OSD 守护进程运行得最优。创建规则集的详情见 <a class="reference external" href="../crush-map">CRUSH 图</a>。创建好规则集后，再创建后端存储池。</p>
-<p>在纠删码编码情景中，创建存储池时指定好参数就会自动生成合适的规则集，详情见<a class="reference external" href="../pools#create-a-pool">创建存储池</a>。</p>
-<p>在后续例子中，我们把 <tt class="docutils literal"><span class="pre">cold-storage</span></tt> 当作后端存储池。</p>
+<p>In the standard storage scenario, you can setup a CRUSH ruleset to establish
+the failure domain (e.g., osd, host, chassis, rack, row, etc.). Ceph OSD
+Daemons perform optimally when all storage drives in the ruleset are of the
+same size, speed (both RPMs and throughput) and type. See <a class="reference external" href="../crush-map">CRUSH Maps</a>
+for details on creating a ruleset. Once you have created a ruleset, create
+a backing storage pool.</p>
+<p>In the erasure coding scenario, the pool creation arguments will generate the
+appropriate ruleset automatically. See <a class="reference external" href="../pools#create-a-pool">Create a Pool</a> for details.</p>
+<p>In subsequent examples, we will refer to the backing storage pool
+as <tt class="docutils literal"><span class="pre">cold-storage</span></tt>.</p>
 </div>
 <div class="section" id="setting-up-a-cache-pool">
-<span id="id7"></span><h3>配置缓存池<a class="headerlink" href="#setting-up-a-cache-pool" title="Permalink to this headline">¶</a></h3>
-<p>缓存存储池的设置步骤大致与标准存储情景相同，但仍有不同：缓存层所用的驱动器通常都是高性能的、且安装在专用服务器上、有自己的规则集。制定规则集时，要考虑到装有高性能驱动器的主机、并忽略没有的主机。详情见<a class="reference external" href="../crush-map/#placing-different-pools-on-different-osds">给存储池指定 OSD</a> 。</p>
-<p>在后续例子中， <tt class="docutils literal"><span class="pre">hot-storage</span></tt> 作为缓存存储池、 <tt class="docutils literal"><span class="pre">cold-storage</span></tt>
-作为后端存储池。</p>
-<p>关于缓存层的配置及其默认值的详细解释请参考<a class="reference external" href="../pools#set-pool-values">存储池——调整存储池</a>。</p>
+<h3>Setting Up a Cache Pool<a class="headerlink" href="#setting-up-a-cache-pool" title="Permalink to this headline">¶</a></h3>
+<p>Setting up a cache pool follows the same procedure as the standard storage
+scenario, but with this difference: the drives for the cache tier are typically
+high performance drives that reside in their own servers and have their own
+ruleset.  When setting up a ruleset, it should take account of the hosts that
+have the high performance drives while omitting the hosts that don&#8217;t. See
+<a class="reference external" href="../crush-map/#placing-different-pools-on-different-osds">Placing Different Pools on Different OSDs</a> for details.</p>
+<p>In subsequent examples, we will refer to the cache pool as <tt class="docutils literal"><span class="pre">hot-storage</span></tt> and
+the backing pool as <tt class="docutils literal"><span class="pre">cold-storage</span></tt>.</p>
+<p>For cache tier configuration and default values, see
+<a class="reference external" href="../pools#set-pool-values">Pools - Set Pool Values</a>.</p>
 </div>
 </div>
 <div class="section" id="creating-a-cache-tier">
-<span id="id8"></span><h2>创建缓存层<a class="headerlink" href="#creating-a-cache-tier" title="Permalink to this headline">¶</a></h2>
-<p>设置一缓存层需把缓存存储池挂接到后端存储池上：</p>
+<h2>Creating a Cache Tier<a class="headerlink" href="#creating-a-cache-tier" title="Permalink to this headline">¶</a></h2>
+<p>Setting up a cache tier involves associating a backing storage pool with
+a cache pool</p>
 <div class="highlight-python"><pre>ceph osd tier add {storagepool} {cachepool}</pre>
 </div>
-<p>例如：</p>
+<p>For example</p>
 <div class="highlight-python"><pre>ceph osd tier add cold-storage hot-storage</pre>
 </div>
-<p>用下列命令设置缓存模式：</p>
+<p>To set the cache mode, execute the following:</p>
 <div class="highlight-python"><pre>ceph osd tier cache-mode {cachepool} {cache-mode}</pre>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>ceph osd tier cache-mode hot-storage writeback</pre>
 </div>
-<p>缓存层盖在后端存储层之上，所以要多一步：必须把所有客户端流量从存储池迁移到缓存存储池。用此命令把客户端流量指向缓存存储池：</p>
+<p>The cache tiers overlay the backing storage tier, so they require one
+additional step: you must direct all client traffic from the storage pool to
+the cache pool. To direct client traffic directly to the cache pool, execute
+the following:</p>
 <div class="highlight-python"><pre>ceph osd tier set-overlay {storagepool} {cachepool}</pre>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>ceph osd tier set-overlay cold-storage hot-storage</pre>
 </div>
 </div>
 <div class="section" id="configuring-a-cache-tier">
-<span id="id9"></span><h2>配置缓存层<a class="headerlink" href="#configuring-a-cache-tier" title="Permalink to this headline">¶</a></h2>
-<p>缓存层支持几个配置选项，可按下列语法配置：</p>
+<h2>Configuring a Cache Tier<a class="headerlink" href="#configuring-a-cache-tier" title="Permalink to this headline">¶</a></h2>
+<p>Cache tiers have several configuration options. You may set
+cache tier configuration options with the following usage:</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} {key} {value}</pre>
 </div>
-<p>详情见<a class="reference external" href="../pools#set-pool-values">存储池——调整存储池</a>。</p>
+<p>See <a class="reference external" href="../pools#set-pool-values">Pools - Set Pool Values</a> for details.</p>
 <div class="section" id="target-size-and-type">
-<span id="id10"></span><h3>目标尺寸和类型<a class="headerlink" href="#target-size-and-type" title="Permalink to this headline">¶</a></h3>
-<p>生产环境下，缓存层的 <tt class="docutils literal"><span class="pre">hit_set_type</span></tt> 还只能用 Bloom 过滤器：</p>
+<h3>Target Size and Type<a class="headerlink" href="#target-size-and-type" title="Permalink to this headline">¶</a></h3>
+<p>Ceph&#8217;s production cache tiers use a <a class="reference external" href="http://en.wikipedia.org/wiki/Bloom_filter">Bloom Filter</a> for the <tt class="docutils literal"><span class="pre">hit_set_type</span></tt>:</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} hit_set_type bloom</pre>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>ceph osd pool set hot-storage hit_set_type bloom</pre>
 </div>
-<p><tt class="docutils literal"><span class="pre">hit_set_count</span></tt> 和 <tt class="docutils literal"><span class="pre">hit_set_period</span></tt> 选项分别定义了 HitSet
-覆盖的时间区间、以及保留多少个这样的 HitSet 。</p>
+<p>The <tt class="docutils literal"><span class="pre">hit_set_count</span></tt> and <tt class="docutils literal"><span class="pre">hit_set_period</span></tt> define how much time each HitSet
+should cover, and how many such HitSets to store.</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} hit_set_count 12
 ceph osd pool set {cachepool} hit_set_period 14400
 ceph osd pool set {cachepool} target_max_bytes 1000000000000</pre>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last"><tt class="docutils literal"><span class="pre">hit_set_count</span></tt> 设置得越大， <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> 消耗的
-RAM 越多。</p>
+<p class="last">A larger <tt class="docutils literal"><span class="pre">hit_set_count</span></tt> results in more RAM consumed by
+the <tt class="docutils literal"><span class="pre">ceph-osd</span></tt> process.</p>
 </div>
-<p>保留一段时间以来的访问记录，这样 Ceph 就能判断一客户端在一段时间内访问了某对象一次、还是多次（存活期与热度）。</p>
-<p><tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt> 定义了在处理一个对象的读操作时检查多少个 HitSet ，检查结果将用于决定是否异步地提升对象。它的取值应该在 0 和 <tt class="docutils literal"><span class="pre">hit_set_count</span></tt> 之间，如果设置为 0 ，对象会一直被提升；如果设置为 1 ，就只检查当前 HitSet ，如果此对象在当前 HitSet 里就提升它，否则就不提升；设置为其它值时，就要挨个检查此数量的历史 HitSet ，如果此对象出现在
-<tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt> 个 HitSet 里的任意一个，那就提升它。</p>
-<p>还有一个相似的参数用于配置写操作，它是 <tt class="docutils literal"><span class="pre">min_write_recency_for_promote</span></tt> 。</p>
+<p>Binning accesses over time allows Ceph to determine whether a Ceph client
+accessed an object at least once, or more than once over a time period
+(&#8220;age&#8221; vs &#8220;temperature&#8221;).</p>
+<p>The <tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt> defines how many HitSets to check for the
+existence of an object when handling a read operation. The checking result is
+used to decide whether to promote the object asynchronously. Its value should be
+between 0 and <tt class="docutils literal"><span class="pre">hit_set_count</span></tt>. If it&#8217;s set to 0, the object is always promoted.
+If it&#8217;s set to 1, the current HitSet is checked. And if this object is in the
+current HitSet, it&#8217;s promoted. Otherwise not. For the other values, the exact
+number of archive HitSets are checked. The object is promoted if the object is
+found in any of the most recent <tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt> HitSets.</p>
+<p>A similar parameter can be set for the write operation, which is
+<tt class="docutils literal"><span class="pre">min_write_recency_for_promote</span></tt>.</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} min_read_recency_for_promote 2
 ceph osd pool set {cachepool} min_write_recency_for_promote 2</pre>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">统计时间越长， <tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt> 和
-<tt class="docutils literal"><span class="pre">min_write_recency_for_promote</span></tt> 的值越高， <tt class="docutils literal"><span class="pre">ceph-osd</span></tt>
-进程消耗的内存就越多，特别是代理正忙着刷回或赶出对象时，此时所有 <tt class="docutils literal"><span class="pre">hit_set_count</span></tt> 个 HitSet 都载入了内存。</p>
+<p class="last">The longer the period and the higher the
+<tt class="docutils literal"><span class="pre">min_read_recency_for_promote</span></tt> and
+<tt class="docutils literal"><span class="pre">min_write_recency_for_promote``values,</span> <span class="pre">the</span> <span class="pre">more</span> <span class="pre">RAM</span> <span class="pre">the</span> <span class="pre">``ceph-osd</span></tt>
+daemon consumes. In particular, when the agent is active to flush
+or evict cache objects, all <tt class="docutils literal"><span class="pre">hit_set_count</span></tt> HitSets are loaded
+into RAM.</p>
 </div>
 </div>
 <div class="section" id="cache-sizing">
-<span id="id11"></span><h3>缓存空间消长<a class="headerlink" href="#cache-sizing" title="Permalink to this headline">¶</a></h3>
-<p>缓存分层代理有两个主要功能：</p>
+<h3>Cache Sizing<a class="headerlink" href="#cache-sizing" title="Permalink to this headline">¶</a></h3>
+<p>The cache tiering agent performs two main functions:</p>
 <ul class="simple">
-<li><strong>刷回：</strong> 代理找出修改过（或脏）的对象、并把它们转发给存储池做长期存储。</li>
-<li><strong>赶出：</strong> 代理找出未修改（或干净）的对象、并把最近未用过的赶出缓存。</li>
+<li><strong>Flushing:</strong> The agent identifies modified (or dirty) objects and forwards
+them to the storage pool for long-term storage.</li>
+<li><strong>Evicting:</strong> The agent identifies objects that haven&#8217;t been modified
+(or clean) and evicts the least recently used among them from the cache.</li>
 </ul>
 <div class="section" id="absolute-sizing">
-<span id="id12"></span><h4>绝对空间消长<a class="headerlink" href="#absolute-sizing" title="Permalink to this headline">¶</a></h4>
-<p>缓存分层代理可根据总字节数或对象数量来刷回或赶出对象，用下列命令可指定最大字节数：</p>
+<h4>Absolute Sizing<a class="headerlink" href="#absolute-sizing" title="Permalink to this headline">¶</a></h4>
+<p>The cache tiering agent can flush or evict objects based upon the total number
+of bytes or the total number of objects. To specify a maximum number of bytes,
+execute the following:</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} target_max_bytes {#bytes}</pre>
 </div>
-<p>例如，用下列命令配置在达到 1TB 时刷回或赶出：</p>
-<div class="highlight-python"><pre>ceph osd pool set hot-storage target_max_bytes 1000000000000</pre>
+<p>For example, to flush or evict at 1 TB, execute the following:</p>
+<div class="highlight-python"><pre>ceph osd pool set hot-storage target_max_bytes 1099511627776</pre>
 </div>
-<p>用下列命令指定缓存对象的最大数量：</p>
+<p>To specify the maximum number of objects, execute the following:</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} target_max_objects {#objects}</pre>
 </div>
-<p>例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出：</p>
+<p>For example, to flush or evict at 1M objects, execute the following:</p>
 <div class="highlight-python"><pre>ceph osd pool set hot-storage target_max_objects 1000000</pre>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Ceph 不能自动确定缓存池的大小，所以这里必须配置绝对尺寸，否则刷回、或赶出就不会生效。如果两个都配置了，缓存分层代理会按先达到的阀值执行刷回或赶出。</p>
+<p class="last">Ceph is not able to determine the size of a cache pool automatically, so
+the configuration on the absolute size is required here, otherwise the
+flush/evict will not work. If you specify both limits, the cache tiering
+agent will begin flushing or evicting when either threshold is triggered.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">只有在达到 <tt class="docutils literal"><span class="pre">target_max_bytes</span></tt> 或
-<tt class="docutils literal"><span class="pre">target_max_objects</span></tt> 阀值时，所有客户端的请求才会被阻塞。</p>
+<p class="last">All client requests will be blocked only when  <tt class="docutils literal"><span class="pre">target_max_bytes</span></tt> or
+<tt class="docutils literal"><span class="pre">target_max_objects</span></tt> reached</p>
 </div>
 </div>
 <div class="section" id="relative-sizing">
-<span id="id13"></span><h4>相对空间消长<a class="headerlink" href="#relative-sizing" title="Permalink to this headline">¶</a></h4>
-<p>缓存分层代理可根据缓存存储池相对大小（<a class="reference internal" href="#id12">绝对空间消长</a>里由
-<tt class="docutils literal"><span class="pre">target_max_bytes</span></tt> 和 <tt class="docutils literal"><span class="pre">target_max_objects</span></tt> 确定的）刷回或赶出对象。当缓存池包含的已修改（或脏）对象达到一定比例时，缓存分层代理就把它们刷回到存储池。用下列命令设置
-<tt class="docutils literal"><span class="pre">cache_target_dirty_ratio</span></tt> ：</p>
+<h4>Relative Sizing<a class="headerlink" href="#relative-sizing" title="Permalink to this headline">¶</a></h4>
+<p>The cache tiering agent can flush or evict objects relative to the size of the
+cache pool(specified by <tt class="docutils literal"><span class="pre">target_max_bytes</span></tt> / <tt class="docutils literal"><span class="pre">target_max_objects</span></tt> in
+<a class="reference external" href="#absolute-sizing">Absolute sizing</a>).  When the cache pool consists of a certain percentage of
+modified (or dirty) objects, the cache tiering agent will flush them to the
+storage pool. To set the <tt class="docutils literal"><span class="pre">cache_target_dirty_ratio</span></tt>, execute the following:</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} cache_target_dirty_ratio {0.0..1.0}</pre>
 </div>
-<p>例如，设置为 <tt class="docutils literal"><span class="pre">0.4</span></tt> 时，脏对象达到缓存池容量的 40% 就开始刷回：</p>
+<p>For example, setting the value to <tt class="docutils literal"><span class="pre">0.4</span></tt> will begin flushing modified
+(dirty) objects when they reach 40% of the cache pool&#8217;s capacity:</p>
 <div class="highlight-python"><pre>ceph osd pool set hot-storage cache_target_dirty_ratio 0.4</pre>
 </div>
-<p>当脏对象达到其容量的一定比例时，要更快地刷回脏对象。用下列命令设置 <tt class="docutils literal"><span class="pre">cache_target_dirty_high_ratio</span></tt>:</p>
+<p>When the dirty objects reaches a certain percentage of its capacity, flush dirty
+objects with a higher speed. To set the <tt class="docutils literal"><span class="pre">cache_target_dirty_high_ratio</span></tt>:</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} cache_target_dirty_high_ratio {0.0..1.0}</pre>
 </div>
-<p>例如，设置为 <tt class="docutils literal"><span class="pre">0.6</span></tt> 表示：脏对象达到缓存存储池容量的 60%
-时，将开始更激进地刷回脏对象。显然，其值最好在 dirty_ratio
-和 full_ratio 之间：</p>
+<p>For example, setting the value to <tt class="docutils literal"><span class="pre">0.6</span></tt> will begin aggressively flush dirty objects
+when they reach 60% of the cache pool&#8217;s capacity. obviously, we&#8217;d better set the value
+between dirty_ratio and full_ratio:</p>
 <div class="highlight-python"><pre>ceph osd pool set hot-storage cache_target_dirty_high_ratio 0.6</pre>
 </div>
-<p>当缓存池利用率达到总容量的一定比例时，缓存分层代理会赶出部分对象以维持空闲空间。执行此命令设置 <tt class="docutils literal"><span class="pre">cache_target_full_ratio</span></tt> ：</p>
+<p>When the cache pool reaches a certain percentage of its capacity, the cache
+tiering agent will evict objects to maintain free capacity. To set the
+<tt class="docutils literal"><span class="pre">cache_target_full_ratio</span></tt>, execute the following:</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} cache_target_full_ratio {0.0..1.0}</pre>
 </div>
-<p>例如，设置为 <tt class="docutils literal"><span class="pre">0.8</span></tt> 时，干净对象占到总容量的 80% 就开始赶出缓存池：</p>
+<p>For example, setting the value to <tt class="docutils literal"><span class="pre">0.8</span></tt> will begin flushing unmodified
+(clean) objects when they reach 80% of the cache pool&#8217;s capacity:</p>
 <div class="highlight-python"><pre>ceph osd pool set hot-storage cache_target_full_ratio 0.8</pre>
 </div>
 </div>
 </div>
 <div class="section" id="cache-age">
-<span id="id14"></span><h3>缓存时长<a class="headerlink" href="#cache-age" title="Permalink to this headline">¶</a></h3>
-<p>你可以规定缓存层代理必须延迟多久才能把某个已修改（脏）对象刷回后端存储池：</p>
+<h3>Cache Age<a class="headerlink" href="#cache-age" title="Permalink to this headline">¶</a></h3>
+<p>You can specify the minimum age of an object before the cache tiering agent
+flushes a recently modified (or dirty) object to the backing storage pool:</p>
 <div class="highlight-python"><pre>ceph osd pool set {cachepool} cache_min_flush_age {#seconds}</pre>
 </div>
-<p>例如，让已修改（或脏）对象需至少延迟 10 分钟才能刷回，执行此命令：</p>
+<p>For example, to flush modified (or dirty) objects after 10 minutes, execute
+the following:</p>
 <div class="highlight-python"><pre>ceph osd pool set hot-storage cache_min_flush_age 600</pre>
 </div>
-<p>你可以指定某对象在缓存层至少放置多长时间才能被赶出：</p>
+<p>You can specify the minimum age of an object before it will be evicted from
+the cache tier:</p>
 <div class="highlight-python"><pre>ceph osd pool {cache-tier} cache_min_evict_age {#seconds}</pre>
 </div>
-<p>例如，要规定 30 分钟后才赶出对象，执行此命令：</p>
+<p>For example, to evict objects after 30 minutes, execute the following:</p>
 <div class="highlight-python"><pre>ceph osd pool set hot-storage cache_min_evict_age 1800</pre>
 </div>
 </div>
 </div>
 <div class="section" id="removing-a-cache-tier">
-<span id="id15"></span><h2>拆除缓存层<a class="headerlink" href="#removing-a-cache-tier" title="Permalink to this headline">¶</a></h2>
-<p>回写缓存和只读缓存的去除过程不太一样。</p>
+<h2>Removing a Cache Tier<a class="headerlink" href="#removing-a-cache-tier" title="Permalink to this headline">¶</a></h2>
+<p>Removing a cache tier differs depending on whether it is a writeback
+cache or a read-only cache.</p>
 <div class="section" id="removing-a-read-only-cache">
-<span id="id16"></span><h3>拆除只读缓存<a class="headerlink" href="#removing-a-read-only-cache" title="Permalink to this headline">¶</a></h3>
-<p>只读缓存不含变更数据，所以禁用它不会导致任何近期更改的数据丢失。</p>
+<h3>Removing a Read-Only Cache<a class="headerlink" href="#removing-a-read-only-cache" title="Permalink to this headline">¶</a></h3>
+<p>Since a read-only cache does not have modified data, you can disable
+and remove it without losing any recent changes to objects in the cache.</p>
 <ol class="arabic">
-<li><p class="first">把缓存模式改为 <tt class="docutils literal"><span class="pre">none</span></tt> 即可禁用。</p>
+<li><p class="first">Change the cache-mode to <tt class="docutils literal"><span class="pre">none</span></tt> to disable it.</p>
 <div class="highlight-python"><pre>ceph osd tier cache-mode {cachepool} none</pre>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>ceph osd tier cache-mode hot-storage none</pre>
 </div>
 </li>
-<li><p class="first">去除后端存储池的缓存池。</p>
+<li><p class="first">Remove the cache pool from the backing pool.</p>
 <div class="highlight-python"><pre>ceph osd tier remove {storagepool} {cachepool}</pre>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>ceph osd tier remove cold-storage hot-storage</pre>
 </div>
 </li>
 </ol>
 </div>
 <div class="section" id="removing-a-writeback-cache">
-<span id="id17"></span><h3>拆除回写缓存<a class="headerlink" href="#removing-a-writeback-cache" title="Permalink to this headline">¶</a></h3>
-<p>回写缓存可能含有更改过的数据，所以在禁用并去除前，必须采取些手段以免丢失缓存内近期更改的对象。</p>
+<h3>Removing a Writeback Cache<a class="headerlink" href="#removing-a-writeback-cache" title="Permalink to this headline">¶</a></h3>
+<p>Since a writeback cache may have modified data, you must take steps to ensure
+that you do not lose any recent changes to objects in the cache before you
+disable and remove it.</p>
 <ol class="arabic">
-<li><p class="first">把缓存模式改为 <tt class="docutils literal"><span class="pre">forward</span></tt> ，这样新的和更改过的对象将直接刷回到后端存储池。</p>
+<li><p class="first">Change the cache mode to <tt class="docutils literal"><span class="pre">forward</span></tt> so that new and modified objects will
+flush to the backing storage pool.</p>
 <div class="highlight-python"><pre>ceph osd tier cache-mode {cachepool} forward</pre>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>ceph osd tier cache-mode hot-storage forward</pre>
 </div>
 </li>
-<li><p class="first">确保缓存池已刷回，可能要等数分钟：</p>
+<li><p class="first">Ensure that the cache pool has been flushed. This may take a few minutes:</p>
 <div class="highlight-python"><pre>rados -p {cachepool} ls</pre>
 </div>
-<p>如果缓存池还有对象，你可以手动刷回，例如：</p>
+<p>If the cache pool still has objects, you can flush them manually.
+For example:</p>
 <div class="highlight-python"><pre>rados -p {cachepool} cache-flush-evict-all</pre>
 </div>
 </li>
-<li><p class="first">去除此盖子，这样客户端就不会被指到缓存了。</p>
+<li><p class="first">Remove the overlay so that clients will not direct traffic to the cache.</p>
 <div class="highlight-python"><pre>ceph osd tier remove-overlay {storagetier}</pre>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>ceph osd tier remove-overlay cold-storage</pre>
 </div>
 </li>
-<li><p class="first">最后，从后端存储池剥离缓存层存储池。</p>
+<li><p class="first">Finally, remove the cache tier pool from the backing storage pool.</p>
 <div class="highlight-python"><pre>ceph osd tier remove {storagepool} {cachepool}</pre>
 </div>
-<p>例如：</p>
+<p>For example:</p>
 <div class="highlight-python"><pre>ceph osd tier remove cold-storage hot-storage</pre>
 </div>
 </li>
@@ -326,77 +440,78 @@ ceph osd pool set {cachepool} min_write_recency_for_promote 2</pre>
             </a></p>
 <h3><a href="../../../">Table Of Contents</a></h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../../configuration/">配置</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="../">运维</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="../operating/">操纵集群</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../monitoring/">监控集群</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../monitoring-osd-pg/">监控 OSD 和归置组</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../user-management/">用户管理</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../data-placement/">数据归置概览</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../pools/">存储池</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../erasure-code/">纠删码</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="">分级缓存</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#a-word-of-caution">一些忠告</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#known-good-workloads">已知适用的场景</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#known-bad-workloads">已知不适用的场景</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">Installation (Quick)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph Storage Cluster</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../configuration/">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">Deployment</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">Operations</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../operating/">Operating a Cluster</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring/">Monitoring a Cluster</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring-osd-pg/">Monitoring OSDs and PGs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-management/">User Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-placement/">Data Placement Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pools/">Pools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../erasure-code/">Erasure code</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="">Cache Tiering</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#a-word-of-caution">A word of caution</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#known-good-workloads">Known Good Workloads</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#known-bad-workloads">Known Bad Workloads</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#setting-up-pools">配置存储池</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#setting-up-a-backing-storage-pool">配置后端存储池</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#setting-up-a-cache-pool">配置缓存池</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#setting-up-pools">Setting Up Pools</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#setting-up-a-backing-storage-pool">Setting Up a Backing Storage Pool</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#setting-up-a-cache-pool">Setting Up a Cache Pool</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#creating-a-cache-tier">创建缓存层</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#configuring-a-cache-tier">配置缓存层</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#target-size-and-type">目标尺寸和类型</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#cache-sizing">缓存空间消长</a><ul>
-<li class="toctree-l6"><a class="reference internal" href="#absolute-sizing">绝对空间消长</a></li>
-<li class="toctree-l6"><a class="reference internal" href="#relative-sizing">相对空间消长</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#creating-a-cache-tier">Creating a Cache Tier</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configuring-a-cache-tier">Configuring a Cache Tier</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#target-size-and-type">Target Size and Type</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#cache-sizing">Cache Sizing</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="#absolute-sizing">Absolute Sizing</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#relative-sizing">Relative Sizing</a></li>
 </ul>
 </li>
-<li class="toctree-l5"><a class="reference internal" href="#cache-age">缓存时长</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#cache-age">Cache Age</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#removing-a-cache-tier">拆除缓存层</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#removing-a-read-only-cache">拆除只读缓存</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#removing-a-writeback-cache">拆除回写缓存</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#removing-a-cache-tier">Removing a Cache Tier</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#removing-a-read-only-cache">Removing a Read-Only Cache</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#removing-a-writeback-cache">Removing a Writeback Cache</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-osds/">增加/删除 OSD</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../control/">命令参考</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/community/">Ceph 社区</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-mon/">监视器故障排除</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-osd/">OSD 故障排除</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-pg/">归置组排障</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/log-and-debug/">日志记录和调试</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/cpu-profiling/">CPU 剖析</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/memory-profiling/">内存剖析</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../placement-groups/">Placement Groups</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH Maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-osds/">Adding/Removing OSDs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">Adding/Removing Monitors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../control/">Command Reference</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/community/">The Ceph Community</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-mon/">Troubleshooting Monitors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-osd/">Troubleshooting OSDs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-pg/">Troubleshooting PGs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/log-and-debug/">Logging and Debugging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/cpu-profiling/">CPU Profiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/memory-profiling/">Memory Profiling</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">Man Pages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">Development</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Glossary</a></li>
 </ul>
 
 
@@ -429,14 +544,14 @@ ceph osd pool set {cachepool} min_write_recency_for_promote 2</pre>
           <a href="../../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../placement-groups/" title="归置组"
+          <a href="../placement-groups/" title="Placement Groups"
              >next</a> |</li>
         <li class="right" >
-          <a href="../erasure-code-shec/" title="SHEC 纠删码插件"
+          <a href="../erasure-code-shec/" title="SHEC erasure code plugin"
              >previous</a> |</li>
         <li><a href="../../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../../" >Ceph 存储集群</a> &raquo;</li>
-          <li><a href="../" >集群运维</a> &raquo;</li> 
+          <li><a href="../../" >Ceph Storage Cluster</a> &raquo;</li>
+          <li><a href="../" >Cluster Operations</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

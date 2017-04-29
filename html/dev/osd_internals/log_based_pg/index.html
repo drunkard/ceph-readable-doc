@@ -1,0 +1,308 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Log Based PG &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="log-based-pg">
+<h1>Log Based PG<a class="headerlink" href="#log-based-pg" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="background">
+<h2>Background<a class="headerlink" href="#background" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="why-primarylogpg">
+<h3>Why PrimaryLogPG?<a class="headerlink" href="#why-primarylogpg" title="Permalink to this headline">¶</a></h3>
+<p>Currently, consistency for all ceph pool types is ensured by primary
+log-based replication. This goes for both erasure-coded and
+replicated pools.</p>
+</div>
+<div class="section" id="primary-log-based-replication">
+<h3>Primary log-based replication<a class="headerlink" href="#primary-log-based-replication" title="Permalink to this headline">¶</a></h3>
+<p>Reads must return data written by any write which completed (where the
+client could possibly have received a commit message).  There are lots
+of ways to handle this, but ceph&#8217;s architecture makes it easy for
+everyone at any map epoch to know who the primary is.  Thus, the easy
+answer is to route all writes for a particular pg through a single
+ordering primary and then out to the replicas.  Though we only
+actually need to serialize writes on a single object (and even then,
+the partial ordering only really needs to provide an ordering between
+writes on overlapping regions), we might as well serialize writes on
+the whole PG since it lets us represent the current state of the PG
+using two numbers: the epoch of the map on the primary in which the
+most recent write started (this is a bit stranger than it might seem
+since map distribution itself is asyncronous &#8211; see Peering and the
+concept of interval changes) and an increasing per-pg version number
+&#8211; this is referred to in the code with type eversion_t and stored as
+pg_info_t::last_update.  Furthermore, we maintain a log of &#8220;recent&#8221;
+operations extending back at least far enough to include any
+<em>unstable</em> writes (writes which have been started but not committed)
+and objects which aren&#8217;t uptodate locally (see recovery and
+backfill).  In practice, the log will extend much further
+(osd_pg_min_log_entries when clean, osd_pg_max_log_entries when not
+clean) because it&#8217;s handy for quickly performing recovery.</p>
+<p>Using this log, as long as we talk to a non-empty subset of the OSDs
+which must have accepted any completed writes from the most recent
+interval in which we accepted writes, we can determine a conservative
+log which must contain any write which has been reported to a client
+as committed.  There is some freedom here, we can choose any log entry
+between the oldest head remembered by an element of that set (any
+newer cannot have completed without that log containing it) and the
+newest head remembered (clearly, all writes in the log were started,
+so it&#8217;s fine for us to remember them) as the new head.  This is the
+main point of divergence between replicated pools and ec pools in
+PG/PrimaryLogPG: replicated pools try to choose the newest valid
+option to avoid the client needing to replay those operations and
+instead recover the other copies.  EC pools instead try to choose
+the <em>oldest</em> option available to them.</p>
+<p>The reason for this gets to the heart of the rest of the differences
+in implementation: one copy will not generally be enough to
+reconstruct an ec object.  Indeed, there are encodings where some log
+combinations would leave unrecoverable objects (as with a 4+2 encoding
+where 3 of the replicas remember a write, but the other 3 do not &#8211; we
+don&#8217;t have 3 copies of either version).  For this reason, log entries
+representing <em>unstable</em> writes (writes not yet committed to the
+client) must be rollbackable using only local information on ec pools.
+Log entries in general may therefore be rollbackable (and in that case,
+via a delayed application or via a set of instructions for rolling
+back an inplace update) or not.  Replicated pool log entries are
+never able to be rolled back.</p>
+<p>For more details, see PGLog.h/cc, osd_types.h:pg_log_t,
+osd_types.h:pg_log_entry_t, and peering in general.</p>
+</div>
+</div>
+<div class="section" id="replicatedbackend-ecbackend-unification-strategy">
+<h2>ReplicatedBackend/ECBackend unification strategy<a class="headerlink" href="#replicatedbackend-ecbackend-unification-strategy" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="pgbackend">
+<h3>PGBackend<a class="headerlink" href="#pgbackend" title="Permalink to this headline">¶</a></h3>
+<p>So, the fundamental difference between replication and erasure coding
+is that replication can do destructive updates while erasure coding
+cannot.  It would be really annoying if we needed to have two entire
+implementations of PrimaryLogPG, one for each of the two, if there
+are really only a few fundamental differences:</p>
+<ol class="arabic simple">
+<li>How reads work &#8211; async only, requires remote reads for ec</li>
+<li>How writes work &#8211; either restricted to append, or must write aside and do a
+tpc</li>
+<li>Whether we choose the oldest or newest possible head entry during peering</li>
+<li>A bit of extra information in the log entry to enable rollback</li>
+</ol>
+<p>and so many similarities</p>
+<ol class="arabic simple">
+<li>All of the stats and metadata for objects</li>
+<li>The high level locking rules for mixing client IO with recovery and scrub</li>
+<li>The high level locking rules for mixing reads and writes without exposing
+uncommitted state (which might be rolled back or forgotten later)</li>
+<li>The process, metadata, and protocol needed to determine the set of osds
+which partcipated in the most recent interval in which we accepted writes</li>
+<li>etc.</li>
+</ol>
+<p>Instead, we choose a few abstractions (and a few kludges) to paper over the differences:</p>
+<ol class="arabic simple">
+<li>PGBackend</li>
+<li>PGTransaction</li>
+<li>PG::choose_acting chooses between calc_replicated_acting and calc_ec_acting</li>
+<li>Various bits of the write pipeline disallow some operations based on pool
+type &#8211; like omap operations, class operation reads, and writes which are
+not aligned appends (officially, so far) for ec</li>
+<li>Misc other kludges here and there</li>
+</ol>
+<p>PGBackend and PGTransaction enable abstraction of differences 1, 2,
+and the addition of 4 as needed to the log entries.</p>
+<p>The replicated implementation is in ReplicatedBackend.h/cc and doesn&#8217;t
+require much explanation, I think.  More detail on the ECBackend can be
+found in doc/dev/osd_internals/erasure_coding/ecbackend.rst.</p>
+</div>
+</div>
+<div class="section" id="pgbackend-interface-explanation">
+<h2>PGBackend Interface Explanation<a class="headerlink" href="#pgbackend-interface-explanation" title="Permalink to this headline">¶</a></h2>
+<p>Note: this is from a design document from before the original firefly
+and is probably out of date w.r.t. some of the method names.</p>
+<div class="section" id="readable-vs-degraded">
+<h3>Readable vs Degraded<a class="headerlink" href="#readable-vs-degraded" title="Permalink to this headline">¶</a></h3>
+<p>For a replicated pool, an object is readable iff it is present on
+the primary (at the right version).  For an ec pool, we need at least
+M shards present to do a read, and we need it on the primary.  For
+this reason, PGBackend needs to include some interfaces for determing
+when recovery is required to serve a read vs a write.  This also
+changes the rules for when peering has enough logs to prove that it</p>
+<p>Core Changes:</p>
+<ul>
+<li><div class="first line-block">
+<div class="line">PGBackend needs to be able to return IsPG(Recoverable|Readable)Predicate</div>
+<div class="line">objects to allow the user to make these determinations.</div>
+</div>
+</li>
+</ul>
+</div>
+<div class="section" id="client-reads">
+<h3>Client Reads<a class="headerlink" href="#client-reads" title="Permalink to this headline">¶</a></h3>
+<p>Reads with the replicated strategy can always be satisfied
+synchronously out of the primary OSD.  With an erasure coded strategy,
+the primary will need to request data from some number of replicas in
+order to satisfy a read.  PGBackend will therefore need to provide
+seperate objects_read_sync and objects_read_async interfaces where
+the former won&#8217;t be implemented by the ECBackend.</p>
+<p>PGBackend interfaces:</p>
+<ul class="simple">
+<li>objects_read_sync</li>
+<li>objects_read_async</li>
+</ul>
+</div>
+<div class="section" id="scrub">
+<h3>Scrub<a class="headerlink" href="#scrub" title="Permalink to this headline">¶</a></h3>
+<p>We currently have two scrub modes with different default frequencies:</p>
+<ol class="arabic simple">
+<li>[shallow] scrub: compares the set of objects and metadata, but not
+the contents</li>
+<li>deep scrub: compares the set of objects, metadata, and a crc32 of
+the object contents (including omap)</li>
+</ol>
+<p>The primary requests a scrubmap from each replica for a particular
+range of objects.  The replica fills out this scrubmap for the range
+of objects including, if the scrub is deep, a crc32 of the contents of
+each object.  The primary gathers these scrubmaps from each replica
+and performs a comparison identifying inconsistent objects.</p>
+<p>Most of this can work essentially unchanged with erasure coded PG with
+the caveat that the PGBackend implementation must be in charge of
+actually doing the scan.</p>
+<p>PGBackend interfaces:</p>
+<ul class="simple">
+<li>be_*</li>
+</ul>
+</div>
+<div class="section" id="recovery">
+<h3>Recovery<a class="headerlink" href="#recovery" title="Permalink to this headline">¶</a></h3>
+<p>The logic for recovering an object depends on the backend.  With
+the current replicated strategy, we first pull the object replica
+to the primary and then concurrently push it out to the replicas.
+With the erasure coded strategy, we probably want to read the
+minimum number of replica chunks required to reconstruct the object
+and push out the replacement chunks concurrently.</p>
+<p>Another difference is that objects in erasure coded pg may be
+unrecoverable without being unfound.  The &#8220;unfound&#8221; concept
+should probably then be renamed to unrecoverable.  Also, the
+PGBackend implementation will have to be able to direct the search
+for pg replicas with unrecoverable object chunks and to be able
+to determine whether a particular object is recoverable.</p>
+<p>Core changes:</p>
+<ul class="simple">
+<li>s/unfound/unrecoverable</li>
+</ul>
+<p>PGBackend interfaces:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L60">on_local_recover_start</a></li>
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L66">on_local_recover</a></li>
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L78">on_global_recover</a></li>
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L83">on_peer_recover</a></li>
+<li><a class="reference external" href="https://github.com/ceph/ceph/blob/firefly/src/osd/PGBackend.h#L90">begin_peer_recover</a></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">Installation (Quick)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

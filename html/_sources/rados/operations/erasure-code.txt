@@ -1,6 +1,6 @@
-========
- 纠删码
-========
+=============
+ Erasure code
+=============
 
 A Ceph pool is associated to a type to sustain the loss of an OSD
 (i.e. a disk since most of the time there is one OSD per disk). The
@@ -9,9 +9,8 @@ meaning every object is copied on multiple disks. The `Erasure Code
 <https://en.wikipedia.org/wiki/Erasure_code>`_ pool type can be used
 instead to save space.
 
-
-创建样板纠删码存储池
---------------------
+Creating a sample erasure coded pool
+------------------------------------
 
 The simplest erasure coded pool is equivalent to `RAID5
 <https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_5>`_ and
@@ -26,9 +25,8 @@ requires at least three hosts::
 .. note:: the 12 in *pool create* stands for 
           `the number of placement groups <../pools>`_.
 
-
-纠删码配置
-----------
+Erasure code profiles
+---------------------
 
 The default erasure code profile sustains the loss of a single OSD. It
 is equivalent to a replicated pool of size two but requires 1.5TB
@@ -36,7 +34,6 @@ instead of 2TB to store 1TB of data. The default profile can be
 displayed with::
 
     $ ceph osd erasure-code-profile get default
-    directory=.libs
     k=2
     m=1
     plugin=jerasure
@@ -117,12 +114,40 @@ More information can be found in the `erasure code profiles
 <../erasure-code-profile>`_ documentation.
 
 
-纠删码存储池与缓存分级
-----------------------
+Erasure Coding with Overwrites
+------------------------------
+
+By default, erasure coded pools only work with uses like RGW that
+perform full object writes and appends.
+
+Since Luminous, partial writes for an erasure coded pool may be
+enabled with a per-pool setting. This lets RBD and Cephfs store their
+data in an erasure coded pool::
+
+    ceph osd pool set ec_pool allow_ec_overwrites true
+
+This can only be enabled on a pool residing on bluestore OSDs, since
+bluestore's checksumming is used to detect bitrot or other corruption
+during deep-scrub. In addition to being unsafe, using filestore with
+ec overwrites yields low performance compared to bluestore.
+
+Erasure coded pools do not support omap, so to use them with RBD and
+Cephfs you must instruct them to store their data in an ec pool, and
+their metadata in a replicated pool. For RBD, this means using the
+erasure coded pool as the ``--data-pool`` during image creation::
+
+    rbd create --size 1G --data-pool ec_pool replicated_pool/image_name
+
+For Cephfs, using an erasure coded pool means setting that pool in
+a `file layout<../../cephfs/file-layouts>`_.
+
+
+Erasure coded pool and cache tiering
+------------------------------------
 
 Erasure coded pools require more resources than replicated pools and
-lack some functionalities such as partial writes. To overcome these
-limitations, it is recommended to set a `cache tier <../cache-tiering>`_
+lack some functionalities such as omap. To overcome these
+limitations, one can set up a `cache tier <../cache-tiering>`_
 before the erasure coded pool.
 
 For instance, if the pool *hot-storage* is made of fast storage::
@@ -135,18 +160,11 @@ will place the *hot-storage* pool as tier of *ecpool* in *writeback*
 mode so that every write and read to the *ecpool* are actually using
 the *hot-storage* and benefit from its flexibility and speed.
 
-It is not possible to create an RBD image on an erasure coded pool
-because it requires partial writes. It is however possible to create
-an RBD image on an erasure coded pools when a replicated pool tier set
-a cache tier::
+More information can be found in the `cache tiering
+<../cache-tiering>`_ documentation.
 
-	$ rbd create --size 10G ecpool/myvolume
-
-更详细的文档请参阅\ `分级缓存 <../cache-tiering>`_\ 。
-
-
-术语
-----
+Glossary
+--------
 
 *chunk*
    when the encoding function is called, it returns chunks of the same
@@ -164,8 +182,8 @@ a cache tier::
    it means 2 OSDs can be out without losing data.
 
 
-内容列表
---------
+Table of content
+----------------
 
 .. toctree::
 	:maxdepth: 1
