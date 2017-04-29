@@ -1,13 +1,13 @@
-Object Operations
-=================
+对象操作
+========
 
 Put Object
 ----------
 Adds an object to a bucket. You must have write permissions on the bucket to perform this operation.
 
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -33,8 +33,8 @@ Copy Object
 -----------
 To copy an object, use ``PUT`` and specify a destination bucket and the object name.
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -81,8 +81,8 @@ Remove Object
 
 Removes an object. Requires WRITE permission set on the containing bucket.
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -94,8 +94,8 @@ Get Object
 ----------
 Retrieves an object from a bucket within RADOS. 
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -134,8 +134,8 @@ Returns information about object. This request will return the same
 header information as with the Get Object request, but will include
 the metadata only, not the object data payload.
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -161,8 +161,8 @@ Request Headers
 Get Object ACL
 --------------
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -196,8 +196,8 @@ Response Entities
 Set Object ACL
 --------------
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -233,8 +233,8 @@ Initiate Multi-part Upload
 
 Initiate a multi-part upload process.
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -275,8 +275,8 @@ Response Entities
 Multipart Upload Part
 ---------------------
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -296,8 +296,8 @@ The following HTTP response may be returned:
 List Multipart Upload Parts
 ---------------------------
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -335,7 +335,9 @@ Response Entities
 +-----------------------------------------+-------------+----------------------------------------------------------------------------------------------------------+
 | ``IsTruncated``                         | Boolean     | If ``true``, only a subset of the object's upload contents were returned.                                |
 +-----------------------------------------+-------------+----------------------------------------------------------------------------------------------------------+
-| ``Part``                                | Container   | A container for ``Key``, ``Part``, ``InitiatorOwner``, ``StorageClass``, and ``Initiated`` elements.     |
+| ``Part``                                | Container   | A container for ``LastModified``, ``PartNumber``, ``ETag`` and ``Size`` elements.                        |
++-----------------------------------------+-------------+----------------------------------------------------------------------------------------------------------+
+| ``LastModified``                        | Date        | Date and time at which the part was uploaded.                                                            |
 +-----------------------------------------+-------------+----------------------------------------------------------------------------------------------------------+
 | ``PartNumber``                          | Integer     | The identification number of the part.                                                                   |
 +-----------------------------------------+-------------+----------------------------------------------------------------------------------------------------------+
@@ -350,8 +352,8 @@ Complete Multipart Upload
 -------------------------
 Assembles uploaded parts and creates a new object, thereby completing a multipart upload.
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 
@@ -393,8 +395,8 @@ Response Entities
 Abort Multipart Upload
 ----------------------
 
-Syntax
-~~~~~~
+语法
+~~~~
 
 ::
 

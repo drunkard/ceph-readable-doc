@@ -3,11 +3,11 @@
 CephFS 快照
 ===========
 
-CephFS supports snapshots, generally created by invoking mkdir against the
-(hidden, special) .snap directory.
+CephFS 支持快照，通常是在（隐藏的、特殊目录） .snap 目录下调用 mkdir 。
 
-Overview
------------
+
+概览
+----
 
 Generally, snapshots do what they sound like: they create an immutable view
 of the filesystem at the point in time they're taken. There are some headline
@@ -19,8 +19,12 @@ features that make CephFS snapshots different from what you might expect:
   including from other clients. As a result, "creating" the snapshot is
   very fast.
 
-Important Data Structures
--------------------------
+
+.. _Important Data Structures:
+
+重要的数据结构
+--------------
+
 * SnapRealm: A `SnapRealm` is created whenever you create a snapshot at a new
   point in the hierarchy (or, when a snapshotted inode is moved outside of its
   parent snapshot). SnapRealms contain an `sr_t srnode`, links to `past_parents`
@@ -33,8 +37,12 @@ Important Data Structures
 * snaplink_t: `past_parents` et al are stored on-disk as a `snaplink_t`, holding
   the inode number and first `snapid` of the inode/snapshot referenced.
 
-Creating a snapshot
--------------------
+
+.. _Creating a snapshot:
+
+创建快照
+--------
+
 To make a snapshot on directory "/1/2/3/foo", the client invokes "mkdir" on
 "/1/2/3/foo/.snaps" directory. This is transmitted to the MDS Server as a
 CEPH_MDS_OP_MKSNAP-tagged `MClientRequest`, and initially handled in
@@ -51,33 +59,43 @@ creation. After committing to the MDLog, all clients with caps on files in
 update the `SnapContext` they are using with that data. Note that this
 *is not* a synchronous part of the snapshot creation!
 
-Updating a snapshot
--------------------
+.. _Updating a snapshot:
+
+更新快照
+--------
 If you delete a snapshot, or move data out of the parent snapshot's hierarchy,
 a similar process is followed. Extra code paths check to see if we can break
 the `past_parent` links between SnapRealms, or eliminate them entirely.
 
-Generating a SnapContext
-------------------------
+.. _Generating a SnapContext:
+
+生成 SnapContext
+----------------
 A RADOS `SnapContext` consists of a snapshot sequence ID (`snapid`) and all
 the snapshot IDs that an object is already part of. To generate that list, we
 generate a list of all `snapids` associated with the SnapRealm and all its
 `past_parents`.
 
-Storing snapshot data
----------------------
+.. _Storing snapshot data:
+
+存入快照数据
+------------
 File data is stored in RADOS "self-managed" snapshots. Clients are careful to
 use the correct `SnapContext` when writing file data to the OSDs.
 
-Storing snapshot metadata
--------------------------
+.. _Storing snapshot metadata:
+
+存入快照元数据
+--------------
 Snapshotted dentries (and their inodes) are stored in-line as part of the
 directory they were in at the time of the snapshot. *All dentries* include a
 `first` and `last` snapid for which they are valid. (Non-snapshotted dentries
 will have their `last` set to CEPH_NOSNAP).
 
-Snapshot writeback
-------------------
+.. _Snapshot writeback:
+
+快照回写
+--------
 There is a great deal of code to handle writeback efficiently. When a Client
 receives an `MClientSnap` message, it updates the local `SnapRealm`
 representation and its links to specific `Inodes`, and generates a `CapSnap`
@@ -89,8 +107,10 @@ In the MDS, we generate snapshot-representing dentries as part of the regular
 process for flushing them. Dentries with outstanding `CapSnap` data is kept
 pinned and in the journal.
 
-Deleting snapshots
-------------------
+.. _Deleting snapshots:
+
+删除快照
+--------
 Snapshots are deleted by invoking "rmdir" on the ".snaps" directory they are
 rooted in. (Attempts to delete a directory which roots snapshots *will fail*;
 you must delete the snapshots first.) Once deleted, they are entered into the
@@ -98,16 +118,16 @@ you must delete the snapshots first.) Once deleted, they are entered into the
 Metadata is cleaned up as the directory objects are read in and written back
 out again.
 
-Hard links
-----------
+硬链接
+------
 Hard links do not interact well with snapshots. A file is snapshotted when its
 primary link is part of a SnapRealm; other links *will not* preserve data.
 Generally the location where a file was first created will be its primary link,
 but if the original link has been deleted it is not easy (nor always
 determnistic) to find which link is now the primary.
 
-Multi-FS
----------
+多文件系统情况
+--------------
 Snapshots and multiiple filesystems don't interact well. Specifically, each
 MDS cluster allocates `snapids` independently; if you have multiple filesystems
 sharing a single pool (via namespaces), their snapshots *will* collide and

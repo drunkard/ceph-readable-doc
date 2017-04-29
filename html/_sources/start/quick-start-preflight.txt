@@ -22,8 +22,8 @@ Ceph 部署工具的安装
 
 把 Ceph 仓库添加到 ``ceph-deploy`` 管理节点，然后安装 ``ceph-deploy`` 。
 
-高级包管理工具（APT）
----------------------
+Debian/Ubuntu
+-------------
 
 在 Debian 和 Ubuntu 发行版上，可以执行下列步骤：
 
@@ -89,6 +89,27 @@ RHEL/CentOS
 
 .. note:: 你也可以从欧洲镜像 eu.ceph.com 下载软件包，只需把 \
    ``http://ceph.com/`` 替换成 ``http://eu.ceph.com/`` 即可。
+
+
+openSUSE
+--------
+
+Ceph 项目现在不给 openSUSE 发布 RPM 了，但是默认的更新库里自带
+Ceph 稳定版，所以安装很简单： ::
+
+	sudo zypper install ceph
+	sudo zypper install ceph-deploy
+
+如果你的发行版过时了，可以向 https://bugzilla.opensuse.org/index.cgi
+反映，另外也可以试试下面的库：
+
+#. Hammer::
+
+        https://software.opensuse.org/download.html?project=filesystems%3Aceph%3Ahammer&package=ceph
+
+#. Jewel::
+
+        https://software.opensuse.org/download.html?project=filesystems%3Aceph%3Ajewel&package=ceph
 
 
 Ceph 节点安装

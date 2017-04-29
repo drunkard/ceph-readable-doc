@@ -92,6 +92,18 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
    **注：**\ 你也可以用 `rbd create`_ 创建映像，但我们建议顺\
    便确认下 QEMU 可正常运行。
 
+.. tip:: 另外，如果你想给这个客户端打开调试日志和管理套接字，\
+   你可以在 ``/etc/ceph/ceph.conf`` 里的相应段落加上： ::
+
+	[client.libvirt]
+	log file = /var/log/ceph/qemu-guest-$pid.log
+	admin socket = /var/run/ceph/$cluster-$type.$id.$pid.$cctid.asok
+
+   ``client.libvirt`` 段名应该与上面创建的 cephx 用户一致。另\
+   外，如果在用 SELinux 或 AppArmor ，它们可能会阻止客户端进程\
+   （ qemu 调用 libvirt ）的日志或管理套接字的写入操作（
+   ``/var/log/ceph`` 或 ``/var/run/ceph`` ）。
+
 
 .. _Preparing the VM Manager:
 

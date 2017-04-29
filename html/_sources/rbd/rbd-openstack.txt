@@ -185,7 +185,8 @@ Glance 可使用多种后端存储映像，要让它默认使用 Ceph 块设备�
 低于 Juno 的版本
 ~~~~~~~~~~~~~~~~
 
-编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到 ``[DEFAULT]`` 段下： ::
+编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到
+``[DEFAULT]`` 段下： ::
 
 	default_store = rbd
 	rbd_store_user = glance
@@ -196,7 +197,8 @@ Glance 可使用多种后端存储映像，要让它默认使用 Ceph 块设备�
 Juno 版
 ~~~~~~~
 
-编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到 ``[glance_store]`` 段下： ::
+编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到
+``[glance_store]`` 段下： ::
 
 	[DEFAULT]
 	...
@@ -209,10 +211,26 @@ Juno 版
 	rbd_store_ceph_conf = /etc/ceph/ceph.conf
 	rbd_store_chunk_size = 8
 
-关于 Glance 里可用的其它配置选项见 http://docs.openstack.org/trunk/config-reference/content/section_glance-api.conf.html.
+.. important:: Glance 还没完全迁移到 'store' ，所以我们还得在
+   DEFAULT 段下配置 store 。
 
-.. important:: Glance 还没完全迁移到 'store' ，所以我们还得在 DEFAULT 段下配\
-   置 store 。
+
+Kilo 及更高版
+~~~~~~~~~~~~~
+
+编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到
+``[glance_store]`` 段下： ::
+
+    [glance_store]
+    stores = rbd
+    default_store = rbd
+    rbd_store_pool = images
+    rbd_store_user = glance
+    rbd_store_ceph_conf = /etc/ceph/ceph.conf
+    rbd_store_chunk_size = 8
+
+关于 Glance 的其它可用选项见 OpenStack Configuration Reference:
+http://docs.openstack.org/ 。
 
 
 任意版 OpenStack
