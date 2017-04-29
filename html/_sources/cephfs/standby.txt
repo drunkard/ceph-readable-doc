@@ -1,52 +1,49 @@
+.. _Terminology:
 
-Terminology
------------
+术语
+----
 
-A Ceph cluster may have zero or more CephFS *filesystems*.  CephFS
-filesystems have a human readable name (set in ``fs new``)
-and an integer ID.  The ID is called the filesystem cluster ID,
-or *FSCID*.
+一个 Ceph 集群内可以没有、或者有多个 CephFS *文件系统*\ 。
+CephFS 文件系统有一个人类可读的名字（用 ``fs new`` 设置）、和\
+一个整数 ID ，这个 ID 称为文件系统集群 ID 或 *FSCID* 。
 
-Each CephFS filesystem has a number of *ranks*, one by default,
-which start at zero.  A rank may be thought of as a metadata shard.
-Controlling the number of ranks in a filesystem is described
-in :doc:`/cephfs/multimds`
+每个 CephFS 都有几个 *rank* ，默认是一个，从 0 起。一个 rank
+可看作是一个元数据分片。文件系统 rank 数量的控制在
+:doc:`/cephfs/multimds` 里详述。
 
-Each CephFS ceph-mds process (a *daemon*) initially starts up
-without a rank.  It may be assigned one by the monitor cluster.
-A daemon may only hold one rank at a time.  Daemons only give up
-a rank when the ceph-mds process stops.
+CephFS 的每个 ceph-mds 进程（一个\ *守护进程*\ ）刚启动时都没\
+有 rank ，它由监视器集群分配。一个守护进程一次只能占据一个
+rank ，只有在 ceph-mds 守护进程停止的时候才会释放 rank 。
 
-If a rank is not associated with a daemon, the rank is
-considered *failed*.  Once a rank is assigned to a daemon,
-the rank is considered *up*.
+如果某个 rank 没有依附一个守护进程，那这个 rank 就\
+*失效了（ failed ）*\ 。分配给守护进程的 rank 才被当作\
+*正常的（ up ）*\ 。
 
-A daemon has a *name* that is set statically by the administrator
-when the daemon is first configured.  Typical configurations
-use the hostname where the daemon runs as the daemon name.
+首次配置守护进程时，管理员需分配静态的\ *名字*\ ，一般配置都\
+会用守护进程所在的主机名作为其守护进程名字。
 
-Each time a daemon starts up, it is also assigned a *GID*, which
-is unique to this particular process lifetime of the daemon.  The
-GID is an integer.
+守护进程每次启动时，还会被分配一个 *GID* ，对于这个守护进程的\
+特定进程的生命周期来说它是唯一的。 GID 是整数。
 
-Referring to MDS daemons
-------------------------
+.. todo:: 译者注： rank 翻译为“席位”、“座席”？它们共同处理元数\
+   据，且动态分配，类似客服中心的座席。
 
-Most of the administrative commands that refer to an MDS daemon
-accept a flexible argument format that may contain a rank, a GID
-or a name.
 
-Where a rank is used, this may optionally be qualified with
-a leading filesystem name or ID.  If a daemon is a standby (i.e.
-it is not currently assigned a rank), then it may only be
-referred to by GID or name.
+.. _Referring to MDS daemons:
 
-For example, if we had an MDS daemon which was called 'myhost',
-had GID 5446, and was assigned rank 0 in the filesystem 'myfs'
-which had FSCID 3, then any of the following would be suitable
-forms of the 'fail' command:
+MDS 守护进程的引用
+------------------
 
-::
+针对 MDS 守护进程的大多数管理命令都接受一个灵活的参数格式，它\
+可以包含 rank 、 GID 或名字。
+
+使用 rank 时，它前面可以加文件系统的名字或 ID ，也可以不加。如\
+果某个守护进程是灾备的（即当前还没给它分配 rank ），那就只能通\
+过 GID 或名字引用。
+
+例如，假设我们有一个 MDS 守护进程，名为 myhost ，其 GID 为
+5446 ，分配的 rank 是 0 ，它位于名为 myfs 的文件系统内，文件系\
+统的 FSCID 是 3 ，那么，下面的几种形式都适用于 fail 命令： ::
 
     ceph mds fail 5446     # GID
     ceph mds fail myhost   # Daemon name
@@ -54,128 +51,111 @@ forms of the 'fail' command:
     ceph mds fail 3:0      # FSCID and rank
     ceph mds fail myfs:0   # Filesystem name and rank
 
-Managing failover
------------------
 
-If an MDS daemon stops communicating with the monitor, the monitor will
-wait ``mds_beacon_grace`` seconds (default 15 seconds) before marking
-the daemon as *laggy*.
+.. _Managing failover:
 
-Each file system may specify a number of standby daemons to be considered
-healthy. This number includes daemons in standby-replay waiting for a rank to
-fail (remember that a standby-replay daemon will not be assigned to take over a
-failure for another rank or a failure in a another CephFS file system). The
-pool of standby daemons not in replay count towards any file system count.
-Each file system may set the number of standby daemons wanted using:
+故障切换的管理
+--------------
 
-::
-
-    ceph fs set <fs name> standby_count_wanted <count>
-
-Setting ``count`` to 0 will disable the health check.
+如果一个 MDS 守护进程不再与监视器通讯，监视器把它标记为 *laggy*
+（滞后）状态前会等待 ``mds_beacon_grace`` 秒（默认是 15 秒）。
 
 
-Configuring standby daemons
----------------------------
+.. _Configuring standby daemons:
 
-There are four configuration settings that control how a daemon
-will behave while in standby:
+灾备守护进程的配置
+------------------
 
-::
+共有四个选项，用于控制守护进程处于灾备状态时如何工作： ::
 
     mds_standby_for_name
     mds_standby_for_rank
     mds_standby_for_fscid
     mds_standby_replay
 
-These may be set in the ceph.conf on the host where the MDS daemon
-runs (as opposed to on the monitor).  The daemon loads these settings
-when it starts, and sends them to the monitor.
+这些配置可写入 MDS 守护进程所在主机（而非监视器上）的 ceph.conf
+配置文件。守护进程会在启动时加载这些配置，并发送给监视器。
 
-By default, if none of these settings are used, all MDS daemons
-which do not hold a rank will be used as standbys for any rank.
+默认情况下，如果这些选项一个也没配置，那么没领到 rank 的所有
+MDS 守护进程都会作为任意 rank 的灾备。
 
-The settings which associate a standby daemon with a particular
-name or rank do not guarantee that the daemon will *only* be used
-for that rank.  They mean that when several standbys are available,
-the associated standby daemon will be used.  If a rank is failed,
-and a standby is available, it will be used even if it is associated
-with a different rank or named daemon.
+这些配置虽说可以把灾备守护进程关联到特定的名字或 rank ，然而并\
+不能保证这个守护进程只用于那个 rank 。也就是说，有好几个灾备可\
+用时，会用关联的守护进程。假如一个 rank 失效了，而且有一个可用\
+的灾备，那么即使此灾备已关联了另外的 rank 或守护进程名，它仍然\
+会被用掉。
 
 mds_standby_replay
 ~~~~~~~~~~~~~~~~~~
 
-If this is set to true, then the standby daemon will continuously read
-the metadata journal of an up rank.  This will give it
-a warm metadata cache, and speed up the process of failing over
-if the daemon serving the rank fails.
+如果此选项设置为 true ，灾备守护进程就会持续读取某个处于 up 状\
+态的 rank 的元数据日志。这样它就有元数据的热缓存，在负责这个
+rank 的守护进程失效时，可加速故障切换。
 
-An up rank may only have one standby replay daemon assigned to it,
-if two daemons are both set to be standby replay then one of them
-will arbitrarily win, and the other will become a normal non-replay
-standby.
+一个正常运行的 rank 只能有一个灾备重放守护进程（ standby replay
+daemon ），如果两个守护进程都设置成了灾备重放状态，那么其中任\
+意一个会取胜，另一个会变为普通的、非重放灾备状态。
 
-Once a daemon has entered the standby replay state, it will only be
-used as a standby for the rank that it is following.  If another rank
-fails, this standby replay daemon will not be used as a replacement,
-even if no other standbys are available.
+一旦某个守护进程进入灾备重放状态，它就只能为它那个 rank 提供灾\
+备。如果有另外一个 rank 失效了，即使没有灾备可用，这个灾备重放\
+守护进程也不会去顶替那个失效的。
 
-*Historical note:* In Ceph prior to v10.2.1, this setting (when ``false``) is
-always true when ``mds_standby_for_*`` is also set.
+*历史问题：*\ 在 v10.2.1 版之前的 Ceph 中，只要设置了
+``mds_standby_for_*`` ，这个选项（设置为 ``false`` 时）就始终为
+true 。
 
 mds_standby_for_name
 ~~~~~~~~~~~~~~~~~~~~
 
-Set this to make the standby daemon only take over a failed rank
-if the last daemon to hold it matches this name.
+设置此选项可使灾备守护进程只接替与此名字相同的 rank 。
 
 mds_standby_for_rank
 ~~~~~~~~~~~~~~~~~~~~
 
-Set this to make the standby daemon only take over the specified
-rank.  If another rank fails, this daemon will not be used to
-replace it.
+设置此选项可使灾备守护进程只接替指定的 rank ，如果有其它 rank
+失效了，此守护进程不会去顶替它。
 
-Use in conjunction with ``mds_standby_for_fscid`` to be specific
-about which filesystem's rank you are targeting, if you have
-multiple filesystems.
+你有多个文件系统时，可联合使用 ``mds_standby_for_fscid`` 选项\
+来指定想为哪个文件系统的 rank 提供灾备。
 
 mds_standby_for_fscid
 ~~~~~~~~~~~~~~~~~~~~~
 
-If ``mds_standby_for_rank`` is set, this is simply a qualifier to
-say which filesystem's rank is referred to.
+如果设置了 ``mds_standby_for_rank`` ，那么这里可把它限定为是哪\
+个文件系统的 rank 。
 
-If ``mds_standby_for_rank`` is not set, then setting FSCID will
-cause this daemon to target any rank in the specified FSCID.  Use
-this if you have a daemon that you want to use for any rank, but
-only within a particular filesystem.
+如果没设置 ``mds_standby_for_rank`` ，那么设置 FSCID 后，这个\
+守护进程可用于此 FSCID 所相关的任意 rank 。当你想让某一守护进\
+程可作任意 rank 的灾备、但仅限于某个特定文件系统时，可用此选项\
+实现。
 
 mon_force_standby_active
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-This setting is used on monitor hosts.  It defaults to true.
+这些选项用于监视器主机，默认值为 true 。
 
-If it is false, then daemons configured with standby_replay=true
-will **only** become active if the rank/name that they have
-been configured to follow fails.  On the other hand, if this
-setting is true, then a daemon configured with standby_replay=true
-may be assigned some other rank.
+如果设置为 false ，那么配置为 standby_replay=true 的灾备守护进\
+程\ *只会*\ 顶替它们负责的 rank 或指定名字。反之，如果这里设置\
+为 true ，那么配置为 standby_replay=true 的灾备守护进程有可能\
+被分配其它 rank 。
 
-Examples
---------
 
-These are example ceph.conf snippets.  In practice you can either
-copy a ceph.conf with all daemons' configuration to all your servers,
-or you can have a different file on each server that contains just
-that server's daemons' configuration.
+.. _Examples:
 
-Simple pair
-~~~~~~~~~~~
+实例
+----
 
-Two MDS daemons 'a' and 'b' acting as a pair, where whichever one is not
-currently assigned a rank will be the standby replay follower
-of the other.
+这些是 ceph.conf 配置实例。实践中，你可以让所有服务器上的所有\
+守护进程都使用相同的配置文件，也可以让各服务器上的配置文件各不\
+相同，其中只包含它的其守护进程相关的配置。
+
+.. _Simple pair:
+
+简单的一对
+~~~~~~~~~~
+
+两个 MDS 守护进程 a 和 b 作为一对，其中任意一个没分到 rank 的\
+将作为另一个的灾备重放追随者。
 
 ::
 
@@ -187,24 +167,24 @@ of the other.
     mds standby replay = true
     mds standby for rank = 0
 
-Floating standby
-~~~~~~~~~~~~~~~~
+.. _Floating standby:
 
-Three MDS daemons 'a', 'b' and 'c', in a filesystem that has
-``max_mds`` set to 2.
+浮动灾备
+~~~~~~~~
 
-::
-    
-    # No explicit configuration required: whichever daemon is
-    # not assigned a rank will go into 'standby' and take over
-    # for whichever other daemon fails.
+某一文件系统有三个 MDS 守护进程： a 、 b 、 c ，其 ``max_mds``
+为 2 。 ::
 
-Two MDS clusters
-~~~~~~~~~~~~~~~~
+    # 无须过多配置，没有分到 rank 的守护进程会成为灾备，它会顶
+    # 替任何一个失效的守护进程。
 
-With two filesystems, I have four MDS daemons, and I want two
-to act as a pair for one filesystem and two to act as a pair
-for the other filesystem.
+.. _Two MDS clusters:
+
+两个 MDS 集群
+~~~~~~~~~~~~~
+
+有两个文件系统、四个 MDS 守护进程，我想让其中两个作为一对服务\
+于一个文件系统，另外两个作为一对服务于另一个文件系统。
 
 ::
 

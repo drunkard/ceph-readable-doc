@@ -21,24 +21,20 @@ Command line interface
 ----------------------
 
 Before cloning a snapshot, you must mark it as protected, to prevent
-it from being deleted while child images refer to it:
-::
+it from being deleted while child images refer to it: ::
 
     $ rbd snap protect pool/image@snap
 
-Then you can perform the clone:
-::
+Then you can perform the clone: ::
 
     $ rbd clone [--parent] pool/parent@snap [--image] pool2/child1
 
-You can create a clone with different object sizes from the parent:
-::
+You can create a clone with different object sizes from the parent: ::
 
     $ rbd clone --order 25 pool/parent@snap pool2/child2
 
 To delete the parent, you must first mark it unprotected, which checks
-that there are no children left:
-::
+that there are no children left: ::
 
     $ rbd snap unprotect pool/image@snap
     Cannot unprotect: Still in use by pool2/image2
@@ -51,8 +47,7 @@ that there are no children left:
     Cannot remove a protected snapshot: pool/image@snap
     $ rbd snap unprotect pool/image@snap
 
-Then the snapshot can be deleted like normal:
-::
+Then the snapshot can be deleted like normal: ::
 
     $ rbd snap rm pool/image@snap
 
@@ -195,8 +190,7 @@ has a parent.
 cls_rbd
 ^^^^^^^
 
-Some new methods are needed:
-::
+Some new methods are needed: ::
 
     /***************** methods on the rbd header *********************/
     /**
@@ -251,8 +245,7 @@ Some new methods are needed:
     dir_rename_image(string src, string dest, string id);
 
 Two existing methods will change if the image supports
-layering:
-::
+layering: ::
 
     snapshot_add - stores current overlap and has_parent with
                    other snapshot metadata (images that don't have

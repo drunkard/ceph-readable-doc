@@ -1,271 +1,229 @@
-================
- Upgrading Ceph
-================
+===========
+ 升级 Ceph
+===========
 
-Each release of Ceph may have additional steps. Refer to the release-specific
-sections in this document and the `release notes`_ document to identify
-release-specific procedures for your cluster before using the upgrade
-procedures.
+Ceph 的各个版本都可能有特定的步骤，升级前请参考与此版本相关的章节和\ `发布说明`_\ \
+文档，以确定有哪些特定于此版本的步骤。
 
 
-Summary
-=======
+概述
+====
 
-You can upgrade daemons in your Ceph cluster while the cluster is online and in
-service! Certain types of daemons depend upon others. For example, Ceph Metadata
-Servers and Ceph Object Gateways depend upon Ceph Monitors and Ceph OSD Daemons.
-We recommend upgrading in this order:
+你可以在 Ceph 集群在线且提供服务时升级守护进程！某些类型的守护进程依赖其他的，如 \
+Ceph 元数据服务器和 Ceph 对象网关依赖于 Ceph 监视器和 OSD 守护进程，所以我们建议按\
+以下顺序升级：
 
-#. `Ceph Deploy`_
-#. Ceph Monitors
-#. Ceph OSD Daemons
-#. Ceph Metadata Servers
-#. Ceph Object Gateways
+#. `ceph-deploy 工具`_
+#. Ceph 监视器
+#. Ceph OSD 守护进程
+#. Ceph 元数据服务器
+#. Ceph 对象网关
 
-As a general rule, we recommend upgrading all the daemons of a specific type
-(e.g., all ``ceph-mon`` daemons, all ``ceph-osd`` daemons, etc.) to ensure that
-they are all on the same release. We also recommend that you upgrade all the
-daemons in your cluster before you try to exercise new functionality in a
-release.
+作为普适规则，我们建议一次升级一类的所有守护进程（如所有 ``ceph-osd`` 、所有 \
+``ceph-mon`` 等），这样才能确保它们属于同一版本。
 
-The `Upgrade Procedures`_ are relatively simple, but please look at 
-distribution-specific sections before upgrading. The basic process involves 
-three steps: 
+`升级过程`_\ 相对简单，只要参照此版本特定的章节即可。基本过程有三个：
 
-#. Use ``ceph-deploy`` on your admin node to upgrade the packages for 
-   multiple hosts (using the ``ceph-deploy install`` command), or login to each 
-   host and upgrade the Ceph package `manually`_. For example, when 
-   `Upgrading Monitors`_, the ``ceph-deploy`` syntax might look like this::
-   
+#. 用 ``ceph-deploy`` 为各主机升级软件包（用 ``ceph-deploy install`` 命令），\
+   或者分别登录各主机\ `手动升级`_\ 。例如，\ `升级监视器`_\ 时， ``ceph-deploy`` \
+   语法大致如此： ::
+
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 	ceph-deploy install --release firefly mon1 mon2 mon3
 
-   **Note:** The ``ceph-deploy install`` command will upgrade the packages 
-   in the specified node(s) from the old release to the release you specify. 
-   There is no ``ceph-deploy upgrade`` command.
+   **注：** ``ceph-deploy install`` 命令会把指定节点上的旧版本升级为你所指定的版\
+   本，没有 ``ceph-deploy upgrade`` 这样的升级命令。
 
-#. Login in to each Ceph node and restart each Ceph daemon.
-   See `Operating a Cluster`_ for details.
+#. 登录各节点并重启各相关 Ceph 守护进程，详情参见\ `操纵集群`_ 。
 
-#. Ensure your cluster is healthy. See `Monitoring a Cluster`_ for details.
+#. 确认集群健康状况，详情见\ `监控集群`_\ 。
 
-.. important:: Once you upgrade a daemon, you cannot downgrade it.
+.. important:: 一旦升级完，就不能降级了。
 
 
-Ceph Deploy
-===========
+ceph-deploy 工具
+================
 
-Before upgrading Ceph daemons, upgrade the ``ceph-deploy`` tool. ::
+升级 Ceph 守护进程前，应该先升级 ``ceph-deploy`` 工具。 ::
 
 	sudo pip install -U ceph-deploy
 
-Or::
+或者： ::
 
 	sudo apt-get install ceph-deploy
-	
-Or::
+
+或者： ::
 
 	sudo yum install ceph-deploy python-pushy
 
 
-Argonaut to Bobtail
+Argonaut 到 Bobtail
 ===================
 
-When upgrading from Argonaut to Bobtail, you need to be aware of several things:
+从 Argonaut 升级到 Bobtail 时，你得注意几件事：
 
-#. Authentication now defaults to **ON**, but used to default to **OFF**.
-#. Monitors use a new internal on-wire protocol.
-#. RBD ``format2`` images require upgrading all OSDs before using it.
+#. 现在认证默认是\ **启用**\ 的，而以前是\ **禁用**\ 的；
+#. 监视器间使用新的通讯协议；
+#. 通过 RBD 使用 ``format2`` 格式的映像前要完成所有 OSD 的升级。
 
-Ensure that you update package repository paths. For example:: 
+确保你先更新软件库路径，如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://download.ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-See the following sections for additional details.
+详情见如下几段。
 
-Authentication
---------------
 
-The Ceph Bobtail release enables authentication by default. Bobtail also has
-finer-grained authentication configuration settings. In previous versions of
-Ceph (i.e., actually v 0.55 and earlier), you could simply specify:: 
+认证
+----
+
+Bobtail 版默认启用了认证，而且预置了粒度更细的认证配置选项。在先前的版本（即 v0.55 \
+和更早的）中你可以简单地写： ::
 
 	auth supported = [cephx | none]
 
-This option still works, but is deprecated.  New releases support
-``cluster``, ``service`` and ``client`` authentication settings as
-follows::
+此选项仍然能被识别，但已经过时。新版支持 ``cluster`` 、 ``service`` 、和 \
+``client`` 认证选项，如下： ::
 
 	auth cluster required = [cephx | none]  # default cephx
 	auth service required = [cephx | none] # default cephx
 	auth client required = [cephx | none] # default cephx,none
 
-.. important:: If your cluster does not currently have an ``auth
-   supported`` line that enables authentication, you must explicitly
-   turn it off in Bobtail using the settings below.::
+.. important:: 如果你现在的集群没有用 ``auth supported`` 这一行启用认证，那你升级\
+   到 Bobtail 时必须显式地关闭： ::
 
 	auth cluster required = none
 	auth service required = none
 
-   This will disable authentication on the cluster, but still leave
-   clients with the default configuration where they can talk to a
-   cluster that does enable it, but do not require it.
+   这样集群认证将被关闭，但客户端默认行为未更改，它仍可以与启用了认证、但不强求的集\
+   群通讯。
 
-.. important:: If your cluster already has an ``auth supported`` option defined in
-   the configuration file, no changes are necessary.
+.. important:: 如果你的集群配置文件之前就有 ``auth supported`` 选项，那就没必要更\
+   改了。
 
-See `User Management - Backward Compatibility`_ for details.
-
-
-Monitor On-wire Protocol
-------------------------
-
-We recommend upgrading all monitors to Bobtail. A mixture of Bobtail and
-Argonaut monitors will not be able to use the new on-wire protocol, as the
-protocol requires all monitors to be Bobtail or greater. Upgrading  only a
-majority of the nodes (e.g., two out of three) may expose the cluster to a
-situation where a single additional failure may compromise availability (because
-the non-upgraded daemon cannot participate in the new protocol).  We recommend
-not waiting for an extended period of time between ``ceph-mon`` upgrades.
+详情见 `Ceph 认证——向后兼容性`_\ 。
 
 
-RBD Images
-----------
+监视器线上协议
+--------------
 
-The Bobtail release supports ``format 2`` images! However, you should not create
-or use ``format 2`` RBD images until after all ``ceph-osd`` daemons have been
-upgraded.  Note that ``format 1`` is still the default. You can use the new
-``ceph osd ls`` and ``ceph tell osd.N version`` commands to doublecheck your
-cluster. ``ceph osd ls`` will give a list of all OSD IDs that are part of the
-cluster, and you can use that to write a simple shell loop to display all the
-OSD version strings: ::
+我们建议把所有监视器都升级到 Bobtail ，混用 Bobtail 和 Argonaut 将不能使用新的线上\
+协议，因为此协议要求所有监视器的版本都在 Bobtail 及以上。只升级大多数（如三个中的两\
+个）监视器也会导致潜在风险，即再失效一个就会丧失可用性（因为未升级的守护进程不能参与\
+新协议构成的通讯）。我们建议各 ``ceph-mon`` 升级期间不要等待。
+
+
+RBD 映像
+--------
+
+Bobtail 版现在支持 ``format 2`` 格式的映像了！但是在所有 ``ceph-osd`` 都升级完之\
+前，不要新建或使用 ``format 2`` 格式的RBD映像。注意， ``format 1`` 仍然是默认值。\
+你可以用新的 ``ceph osd ls`` 和 ``ceph tell osd.N version`` 命令再次确认软件版\
+本， ``ceph osd ls`` 将给出集群内所有 OSD 的 ID 列表，把它们代入 shell 循环即可查\
+询所有 OSD 的版本： ::
 
       for i in $(ceph osd ls); do
           ceph tell osd.${i} version
       done
 
 
-Argonaut to Cuttlefish
+Argonaut 到 Cuttlefish
 ======================
 
-To upgrade your cluster from Argonaut to Cuttlefish, please read this
-section, and the sections on upgrading from Argonaut to Bobtail and
-upgrading from Bobtail to Cuttlefish carefully. When upgrading from
-Argonaut to Cuttlefish, **YOU MUST UPGRADE YOUR MONITORS FROM ARGONAUT
-TO BOBTAIL v0.56.5 FIRST!!!**. All other Ceph daemons can upgrade from
-Argonaut to Cuttlefish without the intermediate upgrade to Bobtail.
+要从 Argonaut 升级到 Cuttlefish ，请仔细阅读本段、以及从 Argonaut \
+升到 Bobtail 、还有从 Bobtail 升级到 Cuttlefish 。从 Argonaut 升\
+级到 Cuttlefish 时，\ **你必须先把所有监视器从 Argonaut 升级到 \
+Bobtail v0.56.5** ！！！所有其他的守护进程都可以从 Argonaut 直接\
+升级到 Cuttlefish ，无需间接地从 Bobtail 过渡一次。
 
-.. important:: Ensure that the repository specified points to Bobtail, not
-   Cuttlefish.
+.. important:: 确保软件仓库指定的是 Bobtail ，而不是 Cuttlefish 。
 
-For example:: 
+例如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://download.ceph.com/debian-bobtail/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-We recommend upgrading all monitors to Bobtail before proceeding with the
-upgrade of the monitors to Cuttlefish. A mixture of Bobtail and Argonaut
-monitors will not be able to use the new on-wire protocol, as the protocol
-requires all monitors to be Bobtail or greater. Upgrading only a majority of the
-nodes (e.g., two out of three) may expose the cluster to a situation where a
-single additional failure may compromise availability (because the non-upgraded
-daemon cannot participate in the new protocol).  We recommend not waiting for an
-extended period of time between ``ceph-mon`` upgrades. See `Upgrading 
-Monitors`_ for details.
+我们建议把监视器升级到 Cuttlefish 之前，先升级到 Bobtail 。混用 \
+Bobtail 和 Argonaut 监视器将导致旧监视器不能使用新线上协议，因为\
+此协议在 Bobtail 及更高版本上才可用。只升级大多数（如三个中的两\
+个）监视器也会导致潜在风险，即再失效一个就会丧失可用性（因为未升\
+级的守护进程不能参与新协议构成的通讯）。我们建议各 ``ceph-mon`` \
+升级期间不要等待。详情见\ `升级监视器`_\ 。
 
-.. note:: See the `Authentication`_ section and the 
-   `User Management - Backward Compatibility`_ for additional information
-   on authentication backward compatibility settings for Bobtail.
+.. note:: 关于 Bobtail 的认证及向后兼容性请参考\ `认证`_\ 和
+   `Ceph 认证——向后兼容性`_\ 。
 
-Once you complete the upgrade of your monitors from Argonaut to
-Bobtail, and have restarted the monitor daemons, you must upgrade the
-monitors from Bobtail to Cuttlefish. Ensure that you have a quorum
-before beginning this upgrade procedure. Before upgrading, remember to
-replace the reference to the Bobtail repository with a reference to
-the Cuttlefish repository. For example::
+把监视器从 Argonaut 升级到 Bobtail 、并重启无误（可以形成法定人\
+数）后，还必须从 Bobtail 再升级到 Cuttlefish 。再次升级前，记得\
+更改到 Cuttlefish 软件库的引用，例如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://download.ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-See `Upgrading Monitors`_ for details.
+详情见\ `升级监视器`_\ 。
 
-The architecture of the monitors changed significantly from Argonaut to
-Cuttlefish. See `Monitor Config Reference`_ and `Joao's blog post`_ for details.
-Once you complete the monitor upgrade, you can upgrade the OSD daemons and the
-MDS daemons using the generic procedures. See `Upgrading an OSD`_ and `Upgrading
-a Metadata Server`_ for details.
+Argonaut 和 Cuttlefish 的监视器架构差异较大，详情见\ \
+`监视器配置`_\ 和 `Joao 的博客文章`_\ 。完成监视器的升级后， \
+OSD 和 MDS 守护进程可以按照常规步骤升级，详情见\ \
+`升级单个 OSD`_ 和\ `升级单个元数据服务器`_\ 。
 
 
-Bobtail to Cuttlefish
+Bobtail 到 Cuttlefish
 =====================
 
-Upgrading your cluster from Bobtail to Cuttlefish has a few important
-considerations. First, the monitor uses a new architecture, so you should
-upgrade the full set of monitors to use Cuttlefish. Second, if you run multiple
-metadata servers in a cluster, ensure the metadata servers have unique names.
-See the following sections for details.
+从 Bobtail 升级到 Cuttlefish 有几点要特别注意，首先，监视器架构\
+大变，所以你应该把所有监视器都升级到 Cuttlefish ；其次，如果你的\
+集群有多个元数据服务器，应该确保它们的名字都唯一。详情如下。
 
-Replace any ``apt`` reference to older repositories with a reference to the
-Cuttlefish repository. For example:: 
+把较老的 ``apt`` 源替换为 Cuttlefish ，如： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://download.ceph.com/debian-cuttlefish/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 
-Monitor
--------
+监视器
+------
 
-The architecture of the monitors changed significantly from Bobtail to
-Cuttlefish. See `Monitor Config Reference`_ and `Joao's blog post`_ for 
-details. This means that v0.59 and pre-v0.59 monitors do not talk to each other
-(Cuttlefish is v.0.61). When you upgrade each monitor, it will convert its 
-local data store to the new format. Once you upgrade a majority of monitors, 
-the monitors form a quorum using the new protocol and the old monitors will be
-blocked until they get upgraded. For this reason, we recommend upgrading the
-monitors in immediate succession. 
+Argonaut 和 Cuttlefish 的监视器架构差异较大，详情见\ `监视器配置`_\ 和 \
+`Joao 的博客文章`_\ 。这意味着 v0.61 与较早版本不能相互通讯。在升级各监视器时，它\
+会把本地数据转换为新格式存储，一旦完成了大多数监视器的升级，它们就能用新协议形成法\
+定人数，并且老版本的监视器会被排斥在外。正因如此，我们建议一次性升级完所有监视器。
 
-.. important:: Do not run a mixed-version cluster for an extended period.
+.. important:: 混用版本的集群不要运行太长时间。
 
 
-MDS Unique Names
-----------------
+MDS 唯一名称
+------------
 
-The monitor now enforces that MDS names be unique. If you have multiple metadata
-server daemons that start with the same ID (e.g., mds.a) the second
-metadata server will implicitly mark the first metadata server as ``failed``.
-Multi-MDS configurations with identical names must be adjusted accordingly to
-give daemons unique names. If you run your cluster with one  metadata server,
-you can disregard this notice for now.
+现在的监视器要求集群内的 MDS 名字唯一。如果你的多个元数据服务器 ID 相同（比如都是 \
+``mds.a`` ），第二个元数据服务器将把前一个显式地标记为 ``failed`` ，多个同名 MDS \
+必须改得互不相同。如果你的集群只有一个元数据服务器，那你可以忽略此提醒。
 
 
 ceph-deploy
 -----------
 
-The ``ceph-deploy`` tool is now the preferred method of provisioning new clusters.
-For existing clusters created via the obsolete ``mkcephfs`` tool that would like to transition to the
-new tool, there is a migration path, documented at `Transitioning to ceph-deploy`_.
+现在， ``ceph-deploy`` 是我们推荐的集群部署工具。对于已经用 ``mkcephfs`` 创建、并\
+想迁移到 ``ceph-deploy`` 的用户，这里提供了正确迁移的文档：\ `迁移到 ceph-deploy`_\ 。
 
-Cuttlefish to Dumpling
+
+Cuttlefish 到 Dumpling
 ======================
 
-When upgrading from Cuttlefish (v0.61-v0.61.7) you may perform a rolling
-upgrade. However, there are a few important considerations. First, you must
-upgrade the ``ceph`` command line utility, because it has changed significantly.
-Second, you must upgrade the full set of monitors to use Dumpling, because of a
-protocol change.
+从 Cuttlefish (v0.61-v0.61.7) 开始可以滚动升级。但还有几点要特别注意：首先，你必须\
+升级 ``ceph`` 这个命令行工具，因为它变动很大；其次，你必须把所有监视器升级到 \
+Dumpling ，因为协议有变动。
 
-Replace any reference to older repositories with a reference to the
-Dumpling repository. For example, with ``apt`` perform the following:: 
+把较老的软件库源替换为 Dumpling 源，例如用 ``apt`` 执行： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://download.ceph.com/debian-dumpling/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-With CentOS/Red Hat distributions, remove the old repository. :: 
+在 CentOS/Red Hat 发行版上可删除旧源。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
-Then add a new ``ceph.repo`` repository entry with the following contents. 
+然后用下列内容创建个新仓库 ``ceph.repo`` 。
 
 .. code-block:: ini
 
@@ -274,35 +232,33 @@ Then add a new ``ceph.repo`` repository entry with the following contents.
 	baseurl=http://download.ceph.com/rpm/el6/$basearch
 	enabled=1
 	gpgcheck=1
+	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
-.. note:: Ensure you use the correct URL for your distribution. Check the
-   http://download.ceph.com/rpm directory for your distribution. 
+.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 \
+   http://download.ceph.com/rpm 。
 
-.. note:: Since you can upgrade using ``ceph-deploy`` you will only need to add
-   the repository on Ceph Client nodes where you use the ``ceph`` command line 
-   interface or the ``ceph-deploy`` tool.
+.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓\
+   库加到运行 ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
 
 
-Dumpling to Emperor
+Dumpling 到 Emperor
 ===================
 
-When upgrading from Dumpling (v0.64) you may perform a rolling
-upgrade.
+Dumpling (v0.64) 可滚动升级。
 
-Replace any reference to older repositories with a reference to the
-Emperor repository. For example, with ``apt`` perform the following:: 
+把较老的软件库源替换为 Emperor 源，例如用 ``apt`` 执行： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://download.ceph.com/debian-emperor/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-With CentOS/Red Hat distributions, remove the old repository. :: 
+在 CentOS/Red Hat 发行版上可删除旧源。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
-Then add a new ``ceph.repo`` repository entry with the following contents and
-replace ``{distro}`` with your distribution (e.g., ``el6``, ``rhel6``, etc). 
+然后新增软件库 ``ceph.repo`` ，其内容如下，要用自己的发行版名字\
+（如 ``el6`` 、 ``rhel6`` 等等）替换 ``{disro}`` 。
 
 .. code-block:: ini
 
@@ -311,123 +267,112 @@ replace ``{distro}`` with your distribution (e.g., ``el6``, ``rhel6``, etc).
 	baseurl=http://download.ceph.com/rpm-emperor/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
+	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
-.. note:: Ensure you use the correct URL for your distribution. Check the
-   http://download.ceph.com/rpm directory for your distribution. 
+.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 \
+   http://download.ceph.com/rpm 。
 
-.. note:: Since you can upgrade using ``ceph-deploy`` you will only need to add
-   the repository on Ceph Client nodes where you use the ``ceph`` command line 
-   interface or the ``ceph-deploy`` tool.
+.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓\
+   库加到运行 ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
 
 
-Command Line Utility
---------------------
+命令行工具
+----------
 
-In V0.65, the ``ceph`` commandline interface (CLI) utility changed
-significantly. You will not be able to use the old CLI with Dumpling. This means
-that you must upgrade the  ``ceph-common`` library on all nodes that access the
-Ceph Storage Cluster with the ``ceph`` CLI before upgrading Ceph daemons. ::
+在 v0.65 中， ``ceph`` 命令行接口（ CLI ）工具变动很大；老的 CLI \
+不能与 Dumpling 通讯，也就是说，要用 ``ceph`` 命令访问 Ceph 存储\
+集群的所有节点其 ``ceph-common`` 库必须升级。 ::
 
 	sudo apt-get update && sudo apt-get install ceph-common
-	
-Ensure that you have the latest version (v0.67 or later). If you do not, 
-you may need to uninstall, auto remove dependencies and reinstall.
 
-See `v0.65`_ for details on the new command line interface.
+确保你已安装最新版（ v0.67 或更新）。如果还没有，你也许得卸载、\
+清除相关依赖，然后重新安装。
 
-.. _v0.65: http://docs.ceph.com/docs/master/release-notes/#v0-65
+关于新命令行的细节在 `v0.65`_ 。
 
-
-Monitor
--------
-
-Dumpling (v0.67) ``ceph-mon`` daemons have an internal protocol change. This
-means that v0.67 daemons cannot talk to v0.66 or older daemons.  Once you
-upgrade a majority of monitors,  the monitors form a quorum using the new
-protocol and the old monitors will be blocked until they get upgraded. For this
-reason, we recommend upgrading all monitors at once (or in relatively quick
-succession) to minimize the possibility of downtime.
-
-.. important:: Do not run a mixed-version cluster for an extended period.
+.. _v0.65: http://ceph.com/docs/master/release-notes/#v0-65
 
 
+监视器
+------
 
-Dumpling to Firefly
+Dumpling (v0.67) 版本的 ``ceph-mon`` 守护进程与 v0.66 及更早版本相比，内部协议有\
+所变更，也就是说它不能与 v0.66 或更老的版本通讯。大多数监视器升级完后，它们就能用新\
+协议形成法定人数了，旧版监视器将被排斥在外，正因如此，我们建议要一次性升级所有监视\
+器（或者较快的节奏），以最小化可能的当机时间。
+
+.. important:: 混用版本的集群不要运行太长时间。
+
+
+Dumpling 到 Firefly
 ===================
 
-If your existing cluster is running a version older than v0.67 Dumpling, please
-first upgrade to the latest Dumpling release before upgrading to v0.80 Firefly.
+如果您的现有集群运行着低于 v0.67 Dumpling 的版本，请先升级到最新的 Dumpling 版，\
+然后再升级到 v0.80 Firefly 版。
 
 
-Monitor
--------
+监视器
+------
 
-Dumpling (v0.67) ``ceph-mon`` daemons have an internal protocol change. This
-means that v0.67 daemons cannot talk to v0.66 or older daemons.  Once you
-upgrade a majority of monitors,  the monitors form a quorum using the new
-protocol and the old monitors will be blocked until they get upgraded. For this
-reason, we recommend upgrading all monitors at once (or in relatively quick
-succession) to minimize the possibility of downtime.
+Dumpling (v0.67) 版本的 ``ceph-mon`` 守护进程与 v0.66 及更早版本相比，内部协议有\
+所变更，也就是说它不能与 v0.66 或更老的版本通讯。大多数监视器升级完后，它们就能用新\
+协议形成法定人数了，旧版监视器将被排斥在外，正因如此，我们建议要一次性升级所有监视\
+器（或者较快的节奏），以最小化可能的当机时间。
 
-.. important:: Do not run a mixed-version cluster for an extended period.
+.. important:: 混用版本的集群不要运行太长时间。
 
 
-Ceph Config File Changes
-------------------------
+Ceph 配置文件变更
+-----------------
 
-We recommand adding the following to the ``[mon]`` section of your 
-``ceph.conf`` prior to upgrade::
+我们建议升级前先把下列配置加入 ``ceph.conf`` 配置文件的 ``[mon]`` 段下： ::
 
     mon warn on legacy crush tunables = false
 
-This will prevent health warnings due to the use of legacy CRUSH placement.
-Although it is possible to rebalance existing data across your cluster, we do
-not normally recommend it for production environments as a large amount of data
-will move and there is a significant performance impact from the rebalancing.
+此配置可消除因用着老 CRUSH 归置法而引起的健康告警。虽说可以在全集群范围内重均衡已有\
+数据，但我们不建议生产集群做，因为它涉及大量数据，而且重均衡会导致严重的性能降级。
 
 
-Command Line Utility
---------------------
+命令行工具
+----------
 
-In V0.65, the ``ceph`` commandline interface (CLI) utility changed
-significantly. You will not be able to use the old CLI with Firefly. This means
-that you must upgrade the  ``ceph-common`` library on all nodes that access the
-Ceph Storage Cluster with the ``ceph`` CLI before upgrading Ceph daemons. 
+在 V0.65 版中， ``ceph`` 命令行界面（ CLI ）工具有重大改变，老版的 CLI 不能用于 \
+Firefly 。也就是说，在升级 Ceph 守护进程前，要用 ``ceph`` 命令访问存储集群的节点都\
+必须升级 ``ceph-common`` 库。
 
-For Debian/Ubuntu, execute::
+在 Debian/Ubuntu 上可用此命令： ::
 
 	sudo apt-get update && sudo apt-get install ceph-common
 
-For CentOS/RHEL, execute:: 
-	
-	sudo yum install ceph-common	
-	
-Ensure that you have the latest version. If you do not, 
-you may need to uninstall, auto remove dependencies and reinstall.
+在 CentOS/RHEL 上可用此命令： ::
 
-See `v0.65`_ for details on the new command line interface.
+	sudo yum install ceph-common
 
-.. _v0.65: http://docs.ceph.com/docs/master/release-notes/#v0-65
+确保你已安装最新版。如果还没有，你也许得卸载、清除相关依赖，然\
+后重新安装。
+
+关于新命令行界面的详细情况请参考 `v0.65`_ 。
+
+.. _v0.65: http://ceph.com/docs/master/release-notes/#v0-65
 
 
-Upgrade Sequence
-----------------
+升级顺序
+--------
 
-Replace any reference to older repositories with a reference to the
-Firely repository. For example, with ``apt`` perform the following:: 
+把旧版软件库改为 Firefly 的，例如用 ``apt`` 命令执行此命令： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://download.ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-With CentOS/Red Hat distributions, remove the old repository. :: 
+对于 CentOS/Red Hat 发行版，先删除旧版软件库。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
-Then add a new ``ceph.repo`` repository entry with the following contents and
-replace ``{distro}`` with your distribution (e.g., ``el6``, ``rhel6``, 
-``rhel7``, etc.). 
+然后新增一个 ``ceph.repo`` 软件库条目，其内容如下，还有把 \
+``{distro}`` 替换为你的发行版名字（如 ``el6`` 、 ``rhel6`` 、 \
+``rhel7`` 等等）。
 
 .. code-block:: ini
 
@@ -436,70 +381,63 @@ replace ``{distro}`` with your distribution (e.g., ``el6``, ``rhel6``,
 	baseurl=http://download.ceph.com/rpm-firefly/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
+	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
-Upgrade daemons in the following order:
+按如下顺序升级守护进程：
 
-#. **Monitors:** If the ``ceph-mon`` daemons are not restarted prior to the 
-   ``ceph-osd`` daemons, the monitors will not correctly register their new 
-   capabilities with the cluster and new features may not be usable until 
-   the monitors are restarted a second time.
+#. **监视器：** 如果 ``ceph-mon`` 守护进程晚于 ``ceph-osd`` 守护进程启动，那么这\
+   些监视器就不能正确注册其能力，新功能也不可用，除非再次重启。
 
-#. **OSDs**
+#. **OSD**
 
-#. **MDSs:** If the ``ceph-mds`` daemon is restarted first, it will wait until 
-   all OSDs have been upgraded before finishing its startup sequence.  
+#. **元数据服务器：** 如果 ``ceph-mds`` 守护进程先被重启了，它只能先等着，直到所\
+   有 OSD 都升级完，它才能完全启动。
 
-#. **Gateways:** Upgrade ``radosgw`` daemons together. There is a subtle change 
-   in behavior for multipart uploads that prevents a multipart request that 
-   was initiated with a new ``radosgw`` from being completed by an old 
-   ``radosgw``.
-   
-.. note:: Make sure you upgrade your **ALL** of your Ceph monitors **AND** 
-   restart them **BEFORE** upgrading and restarting OSDs, MDSs, and gateways!
-   
+#. **网关：** 一起升级 ``radosgw`` 守护进程。多片上传功能有微小的行为变化，它会阻\
+   止由新版 ``radosgw`` 发起、却由旧版 ``radosgw`` 完成的多片上传请求。
 
-Emperor to Firefly
+.. note:: 确保先升级完\ **所有** Ceph 监视器、\ **而且**\ 重启\ **完毕**\ ，然后\
+   再升级并重启各OSD、各元数据服务器和网关。
+
+
+Emperor 到 Firefly
 ==================
 
-If your existing cluster is running a version older than v0.67 Dumpling, please
-first upgrade to the latest Dumpling release before upgrading to v0.80 Firefly.
-Please refer to `Cuttlefish to Dumpling`_ and the `Firefly release notes`_ for
-details. To upgrade from a post-Emperor point release, see the `Firefly release 
-notes`_ for details.
+如果您的现有集群运行着低于 v0.67 Dumpling 的版本，请先升级到最新的 Dumpling 版，\
+然后再升级到 v0.80 Firefly 版。详细步骤请参考 `Cuttlefish 到 Dumpling`_ 和 \
+`Firefly 发布说明`_\ 。若从 Emperor 之后的版本升级，请参考 `Firefly 发布说明`_\ 。
 
 
-Ceph Config File Changes
-------------------------
+Ceph 配置文件变更
+-----------------
 
-We recommand adding the following to the ``[mon]`` section of your 
-``ceph.conf`` prior to upgrade::
+我们建议升级前先把下列配置加入 ``ceph.conf`` 配置文件的 ``[mon]`` \
+段下： ::
 
     mon warn on legacy crush tunables = false
 
-This will prevent health warnings due to the use of legacy CRUSH placement.
-Although it is possible to rebalance existing data across your cluster, we do
-not normally recommend it for production environments as a large amount of data
-will move and there is a significant performance impact from the rebalancing.
+此配置可消除因用着老 CRUSH 归置法而引起的健康告警。虽说可以在全\
+集群范围内重均衡已有数据，但我们不建议生产集群做，因为它涉及大量\
+数据，而且重均衡会导致严重的性能降级。
 
 
-Upgrade Sequence
-----------------
+升级顺序
+--------
 
-Replace any reference to older repositories with a reference to the
-Firefly repository. For example, with ``apt`` perform the following:: 
+把旧版软件库改为 Firefly 的，例如用 ``apt`` 命令执行此命令： ::
 
 	sudo rm /etc/apt/sources.list.d/ceph.list
 	echo deb http://download.ceph.com/debian-firefly/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-With CentOS/Red Hat distributions, remove the old repository. :: 
+对于 CentOS/Red Hat 发行版，先删除旧版软件库。 ::
 
 	sudo rm /etc/yum.repos.d/ceph.repo
 
-Then add a new ``ceph.repo`` repository entry with the following contents, but
-replace ``{distro}`` with your distribution (e.g., ``el6``, ``rhel6``,
-``rhel7``, etc.). 
+然后新增一个 ``ceph.repo`` 软件库条目，其内容如下，还有把 \
+``{distro}`` 替换为你的发行版名字（如 ``el6`` 、 ``rhel6`` 、 \
+``rhel7`` 等等）。
 
 .. code-block:: ini
 
@@ -508,239 +446,219 @@ replace ``{distro}`` with your distribution (e.g., ``el6``, ``rhel6``,
 	baseurl=http://download.ceph.com/rpm/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
+	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
-.. note:: Ensure you use the correct URL for your distribution. Check the
-   http://download.ceph.com/rpm directory for your distribution. 
+.. note:: 确保使用与自己发行版相匹配的 URL ，对应发行版请检查 \
+   http://download.ceph.com/rpm 。
 
-.. note:: Since you can upgrade using ``ceph-deploy`` you will only need to add
-   the repository on Ceph Client nodes where you use the ``ceph`` command line 
-   interface or the ``ceph-deploy`` tool.
-
-
-Upgrade daemons in the following order:
-
-#. **Monitors:** If the ``ceph-mon`` daemons are not restarted prior to the 
-   ``ceph-osd`` daemons, the monitors will not correctly register their new 
-   capabilities with the cluster and new features may not be usable until 
-   the monitors are restarted a second time.
-
-#. **OSDs**
-
-#. **MDSs:** If the ``ceph-mds`` daemon is restarted first, it will wait until 
-   all OSDs have been upgraded before finishing its startup sequence.  
-
-#. **Gateways:** Upgrade ``radosgw`` daemons together. There is a subtle change 
-   in behavior for multipart uploads that prevents a multipart request that 
-   was initiated with a new ``radosgw`` from being completed by an old 
-   ``radosgw``.
+.. note:: 如果你可以用 ``ceph-deploy`` 升级软件，那你只需要把仓\
+   库加到运行 ``ceph`` 或 ``ceph-deploy`` 命令的客户端节点即可。
 
 
-Upgrade Procedures
-==================
+按如下顺序升级守护进程：
 
-The following sections describe the upgrade process. 
+#. **监视器：** 如果 ``ceph-mon`` 守护进程晚于 ``ceph-osd`` 守\
+   护进程启动，那么这些监视器就不能正确注册其能力，新功能也不可\
+   用，除非再次重启。
 
-.. important:: Each release of Ceph may have some additional steps. Refer to
-   release-specific sections for details **BEFORE** you begin upgrading daemons.
+#. **OSD**
+
+#. **元数据服务器：** 如果 ``ceph-mds`` 守护进程先被重启了，它\
+   只能先等着，直到所有 OSD 都升级完，它才能完全启动。
+
+#. **网关：** 一起升级 ``radosgw`` 守护进程。多片上传功能有微小\
+   的行为变化，它会阻止由新版 ``radosgw`` 发起、却由旧版 \
+   ``radosgw`` 完成的多片上传请求。
 
 
-Upgrading Monitors
-------------------
+升级过程
+========
 
-To upgrade monitors, perform the following steps:
+下面是具体升级进程。
 
-#. Upgrade the Ceph package for each daemon instance. 
+.. important:: Ceph 的各版本可能有不同的步骤，所以\ **升级前**\
+   请参考此版本特定的升级步骤。
 
-   You may use ``ceph-deploy`` to address all monitor nodes at once. 
-   For example::
+
+升级监视器
+----------
+
+要升级监视器，执行下列步骤：
+
+#. 升级各守护进程的二进制包。
+
+   你可以用 ``ceph-deploy`` 一次升级所有监视器节点，如： ::
 
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 	ceph-deploy install --release hammer mon1 mon2 mon3
 
-   You may also use the package manager for your Linux distribution on 
-   each individual node. To upgrade packages manually on each Debian/Ubuntu 
-   host, perform the following steps . :: 
+   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上\
+   软件包的步骤如下： ::
 
 	ssh {mon-host}
 	sudo apt-get update && sudo apt-get install ceph
 
-   On CentOS/Red Hat hosts, perform the following steps::
+   在 CentOS/Red Hat 主机上相应的命令如下： ::
 
 	ssh {mon-host}
 	sudo yum update && sudo yum install ceph
-	
- 
-#. Restart each monitor. For Ubuntu distributions, use:: 
+
+#. 重启各监视器。 Debian/Ubuntu 发行版的命令如下： ::
 
 	sudo restart ceph-mon id={hostname}
 
-   For CentOS/Red Hat/Debian distributions, use::
+   CentOS/Red Hat/Debian 发行版的命令如下： ::
 
 	sudo /etc/init.d/ceph restart {mon-id}
 
-   For CentOS/Red Hat distributions deployed with ``ceph-deploy``, 
-   the monitor ID is usually ``mon.{hostname}``.
-   
-#. Ensure each monitor has rejoined the quorum. ::
+   用 ``ceph-deploy`` 部署的 CentOS/Red Hat 发行版，其监视器 ID \
+   通常是 ``mon.{hostname}`` 。
+
+#. 确保各监视器都重回法定人数。 ::
 
 	ceph mon stat
 
-Ensure that you have completed the upgrade cycle for all of your Ceph Monitors.
+再次确认你完成了所有监视器的升级。
 
 
-Upgrading an OSD
-----------------
+升级单个 OSD
+------------
 
-To upgrade a Ceph OSD Daemon, perform the following steps:
+升级单个 OSD 守护进程的步骤如下：
 
-#. Upgrade the Ceph OSD Daemon package. 
+#. 升级 OSD 守护进程对应的软件包。
 
-   You may use ``ceph-deploy`` to address all Ceph OSD Daemon nodes at 
-   once. For example::
+   你可以用 ``ceph-deploy`` 一次升级所有 OSD 守护进程，如： ::
 
 	ceph-deploy install --release {release-name} ceph-node1[ ceph-node2]
 	ceph-deploy install --release hammer osd1 osd2 osd3
 
-   You may also use the package manager on each node to upgrade packages 
-   manually. For Debian/Ubuntu hosts, perform the following steps on each
-   host. :: 
+   你也可以用包管理器挨个升级各节点。手动升级 Debian/Ubuntu 主机上\
+   软件包的步骤如下。 ::
 
 	ssh {osd-host}
 	sudo apt-get update && sudo apt-get install ceph
 
-   For CentOS/Red Hat hosts, perform the following steps::
+   在 CentOS/Red Hat 主机上相应的命令如下： ::
 
 	ssh {osd-host}
 	sudo yum update && sudo yum install ceph
 
-
-#. Restart the OSD, where ``N`` is the OSD number. For Ubuntu, use:: 
+#. 重启 OSD ，其中 ``N`` 是 OSD 号。对 Debian/Ubuntu ，用命令： ::
 
 	sudo restart ceph-osd id=N
 
-   For multiple OSDs on a host, you may restart all of them with Upstart. ::
+   对于一主机上的多个 OSD ，你可以用 Upstart 一次性全部重启。 ::
 
 	sudo restart ceph-osd-all
-	
-   For CentOS/Red Hat/Debian distributions, use::
 
-	sudo /etc/init.d/ceph restart N	
+   对于CentOS/Red Hat/Debian 发行版，用： ::
 
+	sudo /etc/init.d/ceph restart N
 
-#. Ensure each upgraded Ceph OSD Daemon has rejoined the cluster::
+#. 确保升级后的 OSD 重新加入了集群： ::
 
 	ceph osd stat
 
-Ensure that you have completed the upgrade cycle for all of your 
-Ceph OSD Daemons.
+再次确认所有 OSD 守护进程已升级完。
 
 
-Upgrading a Metadata Server
----------------------------
+升级单个元数据服务器
+--------------------
 
-To upgrade a Ceph Metadata Server, perform the following steps:
+要升级单个 Ceph 元数据服务器，挨个执行下列步骤：
 
-#. Upgrade the Ceph Metadata Server package. You may use ``ceph-deploy`` to 
-   address all Ceph Metadata Server nodes at once, or use the package manager 
-   on each node. For example::
+#. 升级二进制包。你可以用 ``ceph-deploy`` 一次升级所有 MDS 节点，\
+   也可以在各节点用包管理器升级，如： ::
 
 	ceph-deploy install --release {release-name} ceph-node1
 	ceph-deploy install --release hammer mds1
 
-   To upgrade packages manually, perform the following steps on each
-   Debian/Ubuntu host. :: 
+   在 Debian/Ubuntu 主机上可这样手动升级。 ::
 
 	ssh {mon-host}
 	sudo apt-get update && sudo apt-get install ceph-mds
 
-   Or the following steps on CentOS/Red Hat hosts::
+   在 CentOS/Red Hat 主机上则是： ::
 
 	ssh {mon-host}
 	sudo yum update && sudo yum install ceph-mds
 
- 
-#. Restart the metadata server. For Ubuntu, use:: 
+#. 重启元数据服务器。在 Debian/Ubuntu 上用： ::
 
 	sudo restart ceph-mds id={hostname}
-	
-   For CentOS/Red Hat/Debian distributions, use::
+
+   在 CentOS/Red Hat/Debian 上用： ::
 
 	sudo /etc/init.d/ceph restart mds.{hostname}
 
-   For clusters deployed with ``ceph-deploy``, the name is usually either
-   the name you specified on creation or the hostname.
+   用 ``ceph-deploy`` 部署的集群其 ``{hostname}`` 通常是所在主机的主机名。
 
-#. Ensure the metadata server is up and running::
+#. 确保元数据服务器已启动，且运行着： ::
 
 	ceph mds stat
 
 
-Upgrading a Client
-------------------
+升级客户端
+----------
 
-Once you have upgraded the packages and restarted daemons on your Ceph
-cluster, we recommend upgrading ``ceph-common`` and client libraries
-(``librbd1`` and ``librados2``) on your client nodes too.
+升级软件包并重启完集群之后，我们建议同时升级下客户端节点上的 ``ceph-common`` 和客户\
+端库（ ``librbd1`` 和 ``librados2`` ）。
 
-#. Upgrade the package:: 
+#. 升级软件包： ::
 
 	ssh {client-host}
 	apt-get update && sudo apt-get install ceph-common librados2 librbd1 python-rados python-rbd
 
-#. Ensure that you have the latest version::
+#. 确认升级后的版本： ::
 
 	ceph --version
 
-If you do not have the latest version, you may need to uninstall, auto remove
-dependencies and reinstall.
+如果不是最新版，你也许得卸载、清理掉依赖、然后重新安装。
 
 
-Transitioning to ceph-deploy
-============================
+迁移到 ceph-deploy
+==================
 
-If you have an existing cluster that you deployed with ``mkcephfs`` (usually
-Argonaut or Bobtail releases),  you will need to make a few changes to your
-configuration to  ensure that your cluster will work with ``ceph-deploy``.
+如果您的现有集群是用 ``mkcephfs`` 部署的（通常是 Argonaut 或 Bobtail ），那么有些\
+地方要改一下才能切换到 ``ceph-deploy`` 。
 
 
-Monitor Keyring
----------------
+监视器密钥环
+------------
 
-You will need to add ``caps mon = "allow *"`` to your monitor keyring if it is
-not already in the keyring. By default, the monitor keyring is located under
-``/var/lib/ceph/mon/ceph-$id/keyring``. When you have added the ``caps``
-setting, your monitor keyring should look something like this::
+要把 ``caps mon = "allow *"`` 加进监视器密钥环（如果还没加的话）。默认情况下监视器\
+密钥环位于 ``/var/lib/ceph/mon/ceph-$id/keyring`` ，增加 ``caps`` 配置后它应该类\
+似如下： ::
 
 	[mon.]
 		key = AQBJIHhRuHCwDRAAZjBTSJcIBIoGpdOR9ToiyQ==
-		caps mon = "allow *" 
-		
-Adding ``caps mon = "allow *"`` will ease the transition from ``mkcephfs`` to
-``ceph-deploy`` by allowing ``ceph-create-keys`` to use the ``mon.`` keyring
-file in ``$mon_data`` and get the caps it needs.
+		caps mon = "allow *"
+
+添加 ``caps mon = "allow *"`` 将简化 ``mkcephfs`` 到 ``ceph-deploy`` 的迁移，这\
+样 ``ceph-create-keys`` 就可以用 ``$mon_data`` 里的 ``mon.`` 密钥环获取它所需的权\
+限了。
 
 
-Use Default Paths
------------------
+用默认路径
+----------
 
-Under the ``/var/lib/ceph`` directory, the ``mon`` and ``osd`` directories need
-to use the default paths.
+``mon`` 和 ``osd`` 目录需用 ``/var/lib/ceph`` 之下的默认子目录。
 
-- **OSDs**: The path should be ``/var/lib/ceph/osd/ceph-$id``
-- **MON**: The path should be  ``/var/lib/ceph/mon/ceph-$id``
+- **OSDs**: 路径应该是 ``/var/lib/ceph/osd/ceph-$id``
+- **MON**: 路径应该是 ``/var/lib/ceph/mon/ceph-$id``
 
-Under those directories, the keyring should be in a file named ``keyring``.
-
+在这些目录下都应该有一个名为 ``keyring`` 的密钥环文件。
 
 
-
-.. _Monitor Config Reference: ../../rados/configuration/mon-config-ref
-.. _Joao's blog post: http://ceph.com/dev-notes/cephs-new-monitor-changes 
-.. _User Management - Backward Compatibility: ../../rados/configuration/auth-config-ref/#backward-compatibility
-.. _manually: ../install-storage-cluster/
-.. _Operating a Cluster: ../../rados/operations/operating
-.. _Monitoring a Cluster: ../../rados/operations/monitoring
-.. _Firefly release notes: ../../release-notes/#v0-80-firefly
-.. _release notes: ../../release-notes
+.. _监视器配置: ../../rados/configuration/mon-config-ref
+.. _Joao 的博客文章: http://ceph.com/dev-notes/cephs-new-monitor-changes
+.. _Ceph 认证: ../../rados/operations/authentication/
+.. _Ceph 认证——向后兼容性: ../../rados/operations/authentication/#backward-compatibility
+.. _手动升级: ../install-storage-cluster/
+.. _操纵集群: ../../rados/operations/operating
+.. _监控集群: ../../rados/operations/monitoring
+.. _Firefly 发布说明: ../../release-notes/#v0-80-firefly
+.. _发布说明: ../../release-notes

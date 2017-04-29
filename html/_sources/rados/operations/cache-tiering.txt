@@ -1,31 +1,30 @@
-===============
- Cache Tiering
-===============
+.. _Cache Tiering:
 
-A cache tier provides Ceph Clients with better I/O performance for a subset of
-the data stored in a backing storage tier. Cache tiering involves creating a
-pool of relatively fast/expensive storage devices (e.g., solid state drives)
-configured to act as a cache tier, and a backing pool of either erasure-coded
-or relatively slower/cheaper devices configured to act as an economical storage
-tier. The Ceph objecter handles where to place the objects and the tiering
-agent determines when to flush objects from the cache to the backing storage
-tier. So the cache tier and the backing storage tier are completely transparent 
-to Ceph clients.
+==========
+ 分级缓存
+==========
+
+分级缓存可提升后端存储内某些（热点）数据的 I/O 性能。分级缓存\
+需创建一个由高速而昂贵存储设备（如 SSD ）组成的存储池、作为缓\
+存层，以及一个相对低速/廉价设备组成的后端存储池（或纠删码编码\
+的）、作为经济存储层。 Ceph 的对象处理器决定往哪里存储对象，分\
+级代理决定何时把缓存内的对象刷回后端存储层；所以缓存层和后端存\
+储层对 Ceph 客户端来说是完全透明的。
 
 
-.. ditaa:: 
+.. ditaa::
            +-------------+
            | Ceph Client |
            +------+------+
                   ^
-     Tiering is   |  
+     Tiering is   |
     Transparent   |              Faster I/O
         to Ceph   |           +---------------+
-     Client Ops   |           |               |   
+     Client Ops   |           |               |
                   |    +----->+   Cache Tier  |
                   |    |      |               |
                   |    |      +-----+---+-----+
-                  |    |            |   ^ 
+                  |    |            |   ^
                   v    v            |   |   Active Data in Cache Tier
            +------+----+--+         |   |
            |   Objecter   |         |   |
@@ -40,422 +39,414 @@ to Ceph clients.
                                  Slower I/O
 
 
-The cache tiering agent handles the migration of data between the cache tier 
-and the backing storage tier automatically. However, admins have the ability to
-configure how this migration takes place. There are two main scenarios: 
+缓存层代理负责自动处理缓存层和后端存储之间的数据迁移。然而，\
+管理员仍可干预此迁移规则，主要有两种场景：
 
-- **Writeback Mode:** When admins configure tiers with ``writeback`` mode, Ceph
-  clients write data to the cache tier and receive an ACK from the cache tier.
-  In time, the data written to the cache tier migrates to the storage tier
-  and gets flushed from the cache tier. Conceptually, the cache tier is 
-  overlaid "in front" of the backing storage tier. When a Ceph client needs 
-  data that resides in the storage tier, the cache tiering agent migrates the
-  data to the cache tier on read, then it is sent to the Ceph client. 
-  Thereafter, the Ceph client can perform I/O using the cache tier, until the 
-  data becomes inactive. This is ideal for mutable data (e.g., photo/video 
-  editing, transactional data, etc.).
+- **回写模式：** 管理员把缓存层配置为 ``writeback`` 模式时，
+  Ceph 客户端们会把数据写入缓存层、并收到缓存层发来的 ACK ；\
+  随后，写入缓存层的数据会被迁移到存储层、然后从缓存层刷掉。\
+  直观地看，缓存层位于后端存储层的“前面”，当 Ceph 客户端要读\
+  取的数据位于存储层时，缓存层代理会把这些数据迁移到缓存层，\
+  然后再发往 Ceph 客户端。从此， Ceph 客户端将与缓存层进行
+  I/O 操作，直到数据不再被读写。此模式对于易变数据来说较理想\
+  （如照片/视频编辑、事务数据等）。
 
-- **Read-proxy Mode:** This mode will use any objects that already
-  exist in the cache tier, but if an object is not present in the
-  cache the request will be proxied to the base tier.  This is useful
-  for transitioning from ``writeback`` mode to a disabled cache as it
-  allows the workload to function properly while the cache is drained,
-  without adding any new objects to the cache.
-
-A word of caution
-=================
-
-Cache tiering will *degrade* performance for most workloads.  Users should use
-extreme caution before using this feature.
-
-* *Workload dependent*: Whether a cache will improve performance is
-  highly dependent on the workload.  Because there is a cost
-  associated with moving objects into or out of the cache, it can only
-  be effective when there is a *large skew* in the access pattern in
-  the data set, such that most of the requests touch a small number of
-  objects.  The cache pool should be large enough to capture the
-  working set for your workload to avoid thrashing.
-
-* *Difficult to benchmark*: Most benchmarks that users run to measure
-  performance will show terrible performance with cache tiering, in
-  part because very few of them skew requests toward a small set of
-  objects, it can take a long time for the cache to "warm up," and
-  because the warm-up cost can be high.
-
-* *Usually slower*: For workloads that are not cache tiering-friendly,
-  performance is often slower than a normal RADOS pool without cache
-  tiering enabled.
-
-* *librados object enumeration*: The librados-level object enumeration
-  API is not meant to be coherent in the presence of the case.  If
-  your applicatoin is using librados directly and relies on object
-  enumeration, cache tiering will probably not work as expected.
-  (This is not a problem for RGW, RBD, or CephFS.)
-
-* *Complexity*: Enabling cache tiering means that a lot of additional
-  machinery and complexity within the RADOS cluster is being used.
-  This increases the probability that you will encounter a bug in the system
-  that other users have not yet encountered and will put your deployment at a
-  higher level of risk.
-
-Known Good Workloads
---------------------
-
-* *RGW time-skewed*: If the RGW workload is such that almost all read
-  operations are directed at recently written objects, a simple cache
-  tiering configuration that destages recently written objects from
-  the cache to the base tier after a configurable period can work
-  well.
-
-Known Bad Workloads
--------------------
-
-The following configurations are *known to work poorly* with cache
-tiering.
-
-* *RBD with replicated cache and erasure-coded base*: This is a common
-  request, but usually does not perform well.  Even reasonably skewed
-  workloads still send some small writes to cold objects, and because
-  small writes are not yet supported by the erasure-coded pool, entire
-  (usually 4 MB) objects must be migrated into the cache in order to
-  satisfy a small (often 4 KB) write.  Only a handful of users have
-  successfully deployed this configuration, and it only works for them
-  because their data is extremely cold (backups) and they are not in
-  any way sensitive to performance.
-
-* *RBD with replicated cache and base*: RBD with a replicated base
-  tier does better than when the base is erasure coded, but it is
-  still highly dependent on the amount of skew in the workload, and
-  very difficult to validate.  The user will need to have a good
-  understanding of their workload and will need to tune the cache
-  tiering parameters carefully.
+- **读代理模式：** 在这个模式下，会直接用缓存层已有的对象，\
+  可某一对象没在缓存中时，这个请求会被代理到底下一层。这对于
+  ``writeback`` 模式的关闭很有用，因为它能保证在抽掉缓存层的\
+  同时还确保业务可以正常运转，而且不会新增对象到缓存层。
 
 
-Setting Up Pools
-================
+.. _A word of caution:
 
-To set up cache tiering, you must have two pools. One will act as the 
-backing storage and the other will act as the cache.
+一些忠告
+========
 
+分级缓存会使大多数工作载荷的\ *性能下降*\ 。用户使用此功能时应\
+该格外小心。
 
-Setting Up a Backing Storage Pool
----------------------------------
+* *与业务载荷相关*\ ：缓存是否能提升性能与业务载荷息息相关。因\
+  为把对象迁入或迁出缓存是有代价的，所以，当数据集的访问模式有\
+  *明显倾斜*\ 时缓存才能高效地运行，比如大多数请求只接触少数对\
+  象时。缓存存储池应该足够大，可以容纳业务载荷的常用部分，以避\
+  免抖动。
 
-Setting up a backing storage pool typically involves one of two scenarios: 
+* *难以评估*\ ：用户做过的大多数性能评估都表明，使用分级缓存时\
+  性能非常差，部分原因是很少有用户会让请求偏向于一小部分对象，\
+  所以缓存需要很长时间来“预热”，而预热的代价又很高。
 
-- **Standard Storage**: In this scenario, the pool stores multiple copies
-  of an object in the Ceph Storage Cluster.
+* *通常更慢*\ ：对于不适合用分级缓存的业务载荷，启用分级缓存后\
+  性能反而比没缓存的常规 RADOS 存储池更慢。
 
-- **Erasure Coding:** In this scenario, the pool uses erasure coding to 
-  store data much more efficiently with a small performance tradeoff.
+* *librados 对象枚举*\ ： librados 级的对象枚举 API 不是为这种\
+  场景设计的。如果你的应用程序直接使用 librados 、并需要枚举对\
+  象，分级缓存可能不会按预期方式运行。（ RGW 、 RBD 、 CephFS
+  没有这样的问题。）
 
-In the standard storage scenario, you can setup a CRUSH ruleset to establish 
-the failure domain (e.g., osd, host, chassis, rack, row, etc.). Ceph OSD 
-Daemons perform optimally when all storage drives in the ruleset are of the 
-same size, speed (both RPMs and throughput) and type. See `CRUSH Maps`_ 
-for details on creating a ruleset. Once you have created a ruleset, create 
-a backing storage pool. 
-
-In the erasure coding scenario, the pool creation arguments will generate the
-appropriate ruleset automatically. See `Create a Pool`_ for details.
-
-In subsequent examples, we will refer to the backing storage pool 
-as ``cold-storage``.
-
-
-Setting Up a Cache Pool
------------------------
-
-Setting up a cache pool follows the same procedure as the standard storage
-scenario, but with this difference: the drives for the cache tier are typically
-high performance drives that reside in their own servers and have their own
-ruleset.  When setting up a ruleset, it should take account of the hosts that
-have the high performance drives while omitting the hosts that don't. See
-`Placing Different Pools on Different OSDs`_ for details.
+* *复杂性*\ ：启用分级缓存意味着 RADOS 集群要引入很多额外机制\
+  和复杂性。这样就增加了遇到系统缺陷的可能性，而其他用户未必会\
+  遇到这个缺陷，如此一来你的系统风险更高。
 
 
-In subsequent examples, we will refer to the cache pool as ``hot-storage`` and
-the backing pool as ``cold-storage``.
+.. _Known Good Workloads:
 
-For cache tier configuration and default values, see 
-`Pools - Set Pool Values`_.
+已知适用的场景
+--------------
+
+* *RGW 时域分布（ time-skewed ）*\ ：如果 RGW 业务载荷契合这样\
+  的场景就能良好地运行：所有读操作都指向近期写入的对象们，配置\
+  的分级缓存按配置的时间间隔、定期地把近期写入的对象从缓存迁入\
+  底层。
 
 
-Creating a Cache Tier
-=====================
+.. _Known Bad Workloads:
 
-Setting up a cache tier involves associating a backing storage pool with
-a cache pool ::
+已知不适用的场景
+----------------
+
+下面是\ *已知的与分级缓存不和睦*\ 的配置。
+
+* *底层为纠删码、缓存为多副本存储池的 RBD 业务*\ ：这是常见需\
+  求，但是一般不能很好地运行。即使是分布良好的业务载荷，仍然会\
+  向冷对象发送很小的写请求，然而纠删码存储池还不支持小的写入，\
+  就算是一个很小的写入（通常是 4 KB ）也得把整个对象（通常为 4
+  MB 大）迁入缓存。只有少数用户成功实施了这样的配置，也只有他\
+  们能用，因为他们的数据极其冷门（备份）、而且不可能对性能敏感。
+
+* *底层和缓存均为多副本存储池的 RBD 业务*\ ： RBD 的底层为多副\
+  本存储池时比纠删码好一些，但是仍然高度依赖于业务载荷中的数量\
+  分布，且难于验证。用户需要精通自己的业务载荷，还得谨慎地调整\
+  分级缓存配置参数。
+
+
+.. _Setting Up Pools:
+
+配置存储池
+==========
+
+要设置缓存层，你必须有两个存储池。一个作为后端存储、另一个作为\
+缓存。
+
+
+.. _Setting Up a Backing Storage Pool:
+
+配置后端存储池
+--------------
+
+设置后端存储池通常会遇到两种场景：
+
+- **标准存储：** 此时，Ceph存储集群内的存储池保存了一对象的多\
+  个副本；
+
+- **纠删存储池：** 此时，存储池用纠删码高效地存储数据，性能稍\
+  有损失。
+
+在标准存储场景中，你可以用 CRUSH 规则集来标识失败域（如 osd 、\
+主机、机箱、机架、排等）。当规则集所涉及的所有驱动器规格、速度\
+（转速和吞吐量）和类型相同时， OSD 守护进程运行得最优。创建规\
+则集的详情见 `CRUSH 图`_\ 。创建好规则集后，再创建后端存储池。
+
+在纠删码编码情景中，创建存储池时指定好参数就会自动生成合适的规\
+则集，详情见\ `创建存储池`_\ 。
+
+在后续例子中，我们把 ``cold-storage`` 当作后端存储池。
+
+
+.. _Setting Up a Cache Pool:
+
+配置缓存池
+----------
+
+缓存存储池的设置步骤大致与标准存储情景相同，但仍有不同：缓存层\
+所用的驱动器通常都是高性能的、且安装在专用服务器上、有自己的规\
+则集。制定规则集时，要考虑到装有高性能驱动器的主机、并忽略没有\
+的主机。详情见\ `给存储池指定 OSD`_ 。
+
+在后续例子中， ``hot-storage`` 作为缓存存储池、 ``cold-storage``
+作为后端存储池。
+
+关于缓存层的配置及其默认值的详细解释请参考\
+`存储池——调整存储池`_\ 。
+
+
+.. _Creating a Cache Tier:
+
+创建缓存层
+==========
+
+设置一缓存层需把缓存存储池挂接到后端存储池上： ::
 
 	ceph osd tier add {storagepool} {cachepool}
 
-For example ::
+例如： ::
 
 	ceph osd tier add cold-storage hot-storage
 
-To set the cache mode, execute the following::
+用下列命令设置缓存模式： ::
 
 	ceph osd tier cache-mode {cachepool} {cache-mode}
 
-For example:: 
+例如： ::
 
 	ceph osd tier cache-mode hot-storage writeback
 
-The cache tiers overlay the backing storage tier, so they require one
-additional step: you must direct all client traffic from the storage pool to 
-the cache pool. To direct client traffic directly to the cache pool, execute 
-the following:: 
+缓存层盖在后端存储层之上，所以要多一步：必须把所有客户端流量从\
+存储池迁移到缓存存储池。用此命令把客户端流量指向缓存存储池： ::
 
 	ceph osd tier set-overlay {storagepool} {cachepool}
 
-For example:: 
+例如： ::
 
 	ceph osd tier set-overlay cold-storage hot-storage
 
 
-Configuring a Cache Tier
-========================
+.. _Configuring a Cache Tier:
 
-Cache tiers have several configuration options. You may set
-cache tier configuration options with the following usage:: 
+配置缓存层
+==========
+
+缓存层支持几个配置选项，可按下列语法配置： ::
 
 	ceph osd pool set {cachepool} {key} {value}
 
-See `Pools - Set Pool Values`_ for details.
+详情见\ `存储池——调整存储池`_\ 。
 
 
-Target Size and Type
---------------------
+.. _Target Size and Type:
 
-Ceph's production cache tiers use a `Bloom Filter`_ for the ``hit_set_type``::
+目标尺寸和类型
+--------------
+
+生产环境下，缓存层的 ``hit_set_type`` 还只能用 Bloom 过滤器： ::
 
 	ceph osd pool set {cachepool} hit_set_type bloom
 
-For example::
+例如： ::
 
 	ceph osd pool set hot-storage hit_set_type bloom
 
-The ``hit_set_count`` and ``hit_set_period`` define how much time each HitSet
-should cover, and how many such HitSets to store. ::
+``hit_set_count`` 和 ``hit_set_period`` 选项分别定义了 HitSet
+覆盖的时间区间、以及保留多少个这样的 HitSet 。 ::
 
 	ceph osd pool set {cachepool} hit_set_count 12
 	ceph osd pool set {cachepool} hit_set_period 14400
 	ceph osd pool set {cachepool} target_max_bytes 1000000000000
 
-.. note:: A larger ``hit_set_count`` results in more RAM consumed by
-          the ``ceph-osd`` process.
+.. note:: ``hit_set_count`` 设置得越大， ``ceph-osd`` 消耗的
+   RAM 越多。
 
-Binning accesses over time allows Ceph to determine whether a Ceph client
-accessed an object at least once, or more than once over a time period 
-("age" vs "temperature").
+保留一段时间以来的访问记录，这样 Ceph 就能判断一客户端在一段时\
+间内访问了某对象一次、还是多次（存活期与热度）。
 
-The ``min_read_recency_for_promote`` defines how many HitSets to check for the
-existence of an object when handling a read operation. The checking result is
-used to decide whether to promote the object asynchronously. Its value should be
-between 0 and ``hit_set_count``. If it's set to 0, the object is always promoted.
-If it's set to 1, the current HitSet is checked. And if this object is in the
-current HitSet, it's promoted. Otherwise not. For the other values, the exact
-number of archive HitSets are checked. The object is promoted if the object is
-found in any of the most recent ``min_read_recency_for_promote`` HitSets.
+``min_read_recency_for_promote`` 定义了在处理一个对象的读操作\
+时检查多少个 HitSet ，检查结果将用于决定是否异步地提升对象。它\
+的取值应该在 0 和 ``hit_set_count`` 之间，如果设置为 0 ，对象\
+会一直被提升；如果设置为 1 ，就只检查当前 HitSet ，如果此对象\
+在当前 HitSet 里就提升它，否则就不提升；设置为其它值时，就要挨\
+个检查此数量的历史 HitSet ，如果此对象出现在
+``min_read_recency_for_promote`` 个 HitSet 里的任意一个，那就\
+提升它。
 
-A similar parameter can be set for the write operation, which is
-``min_write_recency_for_promote``. ::
+还有一个相似的参数用于配置写操作，它是 \
+``min_write_recency_for_promote`` 。 ::
 
 	ceph osd pool set {cachepool} min_read_recency_for_promote 2
 	ceph osd pool set {cachepool} min_write_recency_for_promote 2
 
-.. note:: The longer the period and the higher the
-   ``min_read_recency_for_promote`` and
-   ``min_write_recency_for_promote``values, the more RAM the ``ceph-osd``
-   daemon consumes. In particular, when the agent is active to flush
-   or evict cache objects, all ``hit_set_count`` HitSets are loaded
-   into RAM.
+.. note:: 统计时间越长， ``min_read_recency_for_promote`` 和
+   ``min_write_recency_for_promote`` 的值越高， ``ceph-osd``
+   进程消耗的内存就越多，特别是代理正忙着刷回或赶出对象时，此\
+   时所有 ``hit_set_count`` 个 HitSet 都载入了内存。
 
 
-Cache Sizing
+.. _Cache Sizing:
+
+缓存空间消长
 ------------
 
-The cache tiering agent performs two main functions: 
+缓存分层代理有两个主要功能：
 
-- **Flushing:** The agent identifies modified (or dirty) objects and forwards
-  them to the storage pool for long-term storage.
-  
-- **Evicting:** The agent identifies objects that haven't been modified 
-  (or clean) and evicts the least recently used among them from the cache.
+- **刷回：** 代理找出修改过（或脏）的对象、并把它们转发给存储\
+  池做长期存储。
+
+- **赶出：** 代理找出未修改（或干净）的对象、并把最近未用过的\
+  赶出缓存。
 
 
-Absolute Sizing
-~~~~~~~~~~~~~~~
+.. _absolute-sizing:
 
-The cache tiering agent can flush or evict objects based upon the total number
-of bytes or the total number of objects. To specify a maximum number of bytes,
-execute the following::
+绝对空间消长
+~~~~~~~~~~~~
+
+缓存分层代理可根据总字节数或对象数量来刷回或赶出对象，用下列\
+命令可指定最大字节数： ::
 
 	ceph osd pool set {cachepool} target_max_bytes {#bytes}
 
-For example, to flush or evict at 1 TB, execute the following::
+例如，用下列命令配置在达到 1TB 时刷回或赶出： ::
 
-	ceph osd pool set hot-storage target_max_bytes 1099511627776
+	ceph osd pool set hot-storage target_max_bytes 1000000000000
 
 
-To specify the maximum number of objects, execute the following::
+用下列命令指定缓存对象的最大数量： ::
 
 	ceph osd pool set {cachepool} target_max_objects {#objects}
 
-For example, to flush or evict at 1M objects, execute the following::
+例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出： ::
 
 	ceph osd pool set hot-storage target_max_objects 1000000
 
-.. note:: Ceph is not able to determine the size of a cache pool automatically, so
-   the configuration on the absolute size is required here, otherwise the
-   flush/evict will not work. If you specify both limits, the cache tiering
-   agent will begin flushing or evicting when either threshold is triggered.
+.. note:: Ceph 不能自动确定缓存池的大小，所以这里必须配置绝\
+   对尺寸，否则刷回、或赶出就不会生效。如果两个都配置了，缓\
+   存分层代理会按先达到的阀值执行刷回或赶出。
 
-.. note:: All client requests will be blocked only when  ``target_max_bytes`` or
-   ``target_max_objects`` reached
+.. note:: 只有在达到 ``target_max_bytes`` 或
+   ``target_max_objects`` 阀值时，所有客户端的请求才会被阻塞。
 
-Relative Sizing
-~~~~~~~~~~~~~~~
 
-The cache tiering agent can flush or evict objects relative to the size of the
-cache pool(specified by ``target_max_bytes`` / ``target_max_objects`` in
-`Absolute sizing`_).  When the cache pool consists of a certain percentage of
-modified (or dirty) objects, the cache tiering agent will flush them to the
-storage pool. To set the ``cache_target_dirty_ratio``, execute the following::
+.. _Relative Sizing:
+
+相对空间消长
+~~~~~~~~~~~~
+
+缓存分层代理可根据缓存存储池相对大小（\ `绝对空间消长`_\ 里由
+``target_max_bytes`` 和 ``target_max_objects`` 确定的）刷回或\
+赶出对象。当缓存池包含的已修改（或脏）对象达到一定比例时，缓\
+存分层代理就把它们刷回到存储池。用下列命令设置
+``cache_target_dirty_ratio`` ： ::
 
 	ceph osd pool set {cachepool} cache_target_dirty_ratio {0.0..1.0}
 
-For example, setting the value to ``0.4`` will begin flushing modified
-(dirty) objects when they reach 40% of the cache pool's capacity:: 
+例如，设置为 ``0.4`` 时，脏对象达到缓存池容量的 40% 就开始刷回： ::
 
 	ceph osd pool set hot-storage cache_target_dirty_ratio 0.4
 
-When the dirty objects reaches a certain percentage of its capacity, flush dirty
-objects with a higher speed. To set the ``cache_target_dirty_high_ratio``::
+当脏对象达到其容量的一定比例时，要更快地刷回脏对象。用下列命令\
+设置 ``cache_target_dirty_high_ratio``::
 
 	ceph osd pool set {cachepool} cache_target_dirty_high_ratio {0.0..1.0}
 
-For example, setting the value to ``0.6`` will begin aggressively flush dirty objects
-when they reach 60% of the cache pool's capacity. obviously, we'd better set the value
-between dirty_ratio and full_ratio::
+例如，设置为 ``0.6`` 表示：脏对象达到缓存存储池容量的 60%
+时，将开始更激进地刷回脏对象。显然，其值最好在 dirty_ratio
+和 full_ratio 之间： ::
 
 	ceph osd pool set hot-storage cache_target_dirty_high_ratio 0.6
 
-When the cache pool reaches a certain percentage of its capacity, the cache
-tiering agent will evict objects to maintain free capacity. To set the 
-``cache_target_full_ratio``, execute the following:: 
+当缓存池利用率达到总容量的一定比例时，缓存分层代理会赶出部分对\
+象以维持空闲空间。执行此命令设置 ``cache_target_full_ratio`` ： ::
 
 	ceph osd pool set {cachepool} cache_target_full_ratio {0.0..1.0}
 
-For example, setting the value to ``0.8`` will begin flushing unmodified
-(clean) objects when they reach 80% of the cache pool's capacity:: 
+例如，设置为 ``0.8`` 时，干净对象占到总容量的 80% 就开始赶出缓\
+存池： ::
 
 	ceph osd pool set hot-storage cache_target_full_ratio 0.8
 
 
-Cache Age
----------
+.. _Cache Age:
 
-You can specify the minimum age of an object before the cache tiering agent 
-flushes a recently modified (or dirty) object to the backing storage pool::
+缓存时长
+--------
+
+你可以规定缓存层代理必须延迟多久才能把某个已修改（脏）对象刷回\
+后端存储池： ::
 
 	ceph osd pool set {cachepool} cache_min_flush_age {#seconds}
 
-For example, to flush modified (or dirty) objects after 10 minutes, execute 
-the following:: 
+例如，让已修改（或脏）对象需至少延迟 10 分钟才能刷回，执行此命\
+令： ::
 
 	ceph osd pool set hot-storage cache_min_flush_age 600
 
-You can specify the minimum age of an object before it will be evicted from
-the cache tier::
+你可以指定某对象在缓存层至少放置多长时间才能被赶出： ::
 
 	ceph osd pool {cache-tier} cache_min_evict_age {#seconds}
 
-For example, to evict objects after 30 minutes, execute the following:: 
+例如，要规定 30 分钟后才赶出对象，执行此命令： ::
 
 	ceph osd pool set hot-storage cache_min_evict_age 1800
 
 
-Removing a Cache Tier
-=====================
+.. _Removing a Cache Tier:
 
-Removing a cache tier differs depending on whether it is a writeback 
-cache or a read-only cache.
+拆除缓存层
+==========
+
+回写缓存和只读缓存的去除过程不太一样。
 
 
-Removing a Read-Only Cache
---------------------------
+.. _Removing a Read-Only Cache:
 
-Since a read-only cache does not have modified data, you can disable
-and remove it without losing any recent changes to objects in the cache. 
+拆除只读缓存
+------------
 
-#. Change the cache-mode to ``none`` to disable it. :: 
+只读缓存不含变更数据，所以禁用它不会导致任何近期更改的数据丢失。
+
+#. 把缓存模式改为 ``none`` 即可禁用。 ::
 
 	ceph osd tier cache-mode {cachepool} none
 
-   For example:: 
+   例如： ::
 
 	ceph osd tier cache-mode hot-storage none
 
-#. Remove the cache pool from the backing pool. ::
+#. 去除后端存储池的缓存池。 ::
 
 	ceph osd tier remove {storagepool} {cachepool}
 
-   For example::
+   例如： ::
 
 	ceph osd tier remove cold-storage hot-storage
 
 
+.. _Removing a Writeback Cache:
 
-Removing a Writeback Cache
---------------------------
+拆除回写缓存
+------------
 
-Since a writeback cache may have modified data, you must take steps to ensure 
-that you do not lose any recent changes to objects in the cache before you 
-disable and remove it.
+回写缓存可能含有更改过的数据，所以在禁用并去除前，必须采取些手\
+段以免丢失缓存内近期更改的对象。
 
 
-#. Change the cache mode to ``forward`` so that new and modified objects will 
-   flush to the backing storage pool. ::
+#. 把缓存模式改为 ``forward`` ，这样新的和更改过的对象将直接刷\
+   回到后端存储池。 ::
 
 	ceph osd tier cache-mode {cachepool} forward
 
-   For example:: 
+   例如： ::
 
 	ceph osd tier cache-mode hot-storage forward
 
 
-#. Ensure that the cache pool has been flushed. This may take a few minutes::
+#. 确保缓存池已刷回，可能要等数分钟： ::
 
 	rados -p {cachepool} ls
 
-   If the cache pool still has objects, you can flush them manually. 
-   For example::
+   如果缓存池还有对象，你可以手动刷回，例如： ::
 
 	rados -p {cachepool} cache-flush-evict-all
 
 
-#. Remove the overlay so that clients will not direct traffic to the cache. ::
+#. 去除此盖子，这样客户端就不会被指到缓存了。 ::
 
 	ceph osd tier remove-overlay {storagetier}
 
-   For example::
+   例如： ::
 
 	ceph osd tier remove-overlay cold-storage
 
 
-#. Finally, remove the cache tier pool from the backing storage pool. ::
+#. 最后，从后端存储池剥离缓存层存储池。 ::
 
-	ceph osd tier remove {storagepool} {cachepool} 
+	ceph osd tier remove {storagepool} {cachepool}
 
-   For example::
+   例如： ::
 
 	ceph osd tier remove cold-storage hot-storage
 
 
-.. _Create a Pool: ../pools#create-a-pool
-.. _Pools - Set Pool Values: ../pools#set-pool-values
-.. _Placing Different Pools on Different OSDs: ../crush-map/#placing-different-pools-on-different-osds
-.. _Bloom Filter: http://en.wikipedia.org/wiki/Bloom_filter
-.. _CRUSH Maps: ../crush-map
-.. _Absolute Sizing: #absolute-sizing
+.. _创建存储池: ../pools#create-a-pool
+.. _存储池——调整存储池: ../pools#set-pool-values
+.. _给存储池指定 OSD: ../crush-map/#placing-different-pools-on-different-osds
+.. _Bloom 过滤器: http://en.wikipedia.org/wiki/Bloom_filter
+.. _CRUSH 图: ../crush-map

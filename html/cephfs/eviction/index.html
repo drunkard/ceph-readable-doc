@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Ceph filesystem client eviction &mdash; Ceph Documentation</title>
+    <title>Ceph 文件系统客户端的驱逐 &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -26,9 +26,9 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
-    <link rel="up" title="Ceph Filesystem" href="../" />
-    <link rel="next" title="Handling a full Ceph filesystem" href="../full/" />
-    <link rel="prev" title="File layouts" href="../file-layouts/" />
+    <link rel="up" title="Ceph 文件系统" href="../" />
+    <link rel="next" title="处理占满的 Ceph 文件系统" href="../full/" />
+    <link rel="prev" title="文件布局" href="../file-layouts/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head>
@@ -43,13 +43,13 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../full/" title="Handling a full Ceph filesystem"
+          <a href="../full/" title="处理占满的 Ceph 文件系统"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../file-layouts/" title="File layouts"
+          <a href="../file-layouts/" title="文件布局"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" accesskey="U">Ceph Filesystem</a> &raquo;</li> 
+          <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -58,19 +58,14 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="ceph-filesystem-client-eviction">
-<h1>Ceph filesystem client eviction<a class="headerlink" href="#ceph-filesystem-client-eviction" title="Permalink to this headline">¶</a></h1>
-<p>When a filesystem client is unresponsive or otherwise misbehaving, it
-may be necessary to forcibly terminate its access to the filesystem.  This
-process is called <em>eviction</em>.</p>
-<p>This process is somewhat thorough in order to protect against data inconsistency
-resulting from misbehaving clients.</p>
-<div class="section" id="osd-blacklisting">
-<h2>OSD blacklisting<a class="headerlink" href="#osd-blacklisting" title="Permalink to this headline">¶</a></h2>
-<p>First, prevent the client from performing any more data operations by <em>blacklisting</em>
-it at the RADOS level.  You may be familiar with this concept as <em>fencing</em> in other
-storage systems.</p>
-<p>Identify the client to evict from the MDS session list:</p>
+  <div class="section" id="ceph">
+<h1>Ceph 文件系统客户端的驱逐<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
+<p>当某个文件系统客户端不响应或者有其它异常行为时，有必要强制切断它到文件系统的访问，这个过程就叫做<em>驱逐</em>。</p>
+<p>这个过程有点过头，它是为了防止异常客户端导致数据不一致。</p>
+<div class="section" id="osd">
+<h2>OSD 黑名单机制<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h2>
+<p>首先，把此客户端加入<em>黑名单</em>以防止此它在 RADOS 级再操作任何数据。你可能熟悉这个概念，它在其它存储系统里叫做<em>隔离栏（ fencing ）</em>。</p>
+<p>找出要从 MDS 会话列表中驱逐的客户端：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ceph daemon mds.a session ls</span>
 <span class="p">[</span>
     <span class="p">{</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">4117</span><span class="p">,</span>
@@ -85,19 +80,15 @@ storage systems.</p>
           <span class="s2">&quot;mount_point&quot;</span><span class="p">:</span> <span class="s2">&quot;\/home\/user\/mnt&quot;</span><span class="p">}}]</span>
 </pre></div>
 </div>
-<p>In this case the &#8216;fedoravm&#8217; client has address <tt class="docutils literal"><span class="pre">172.16.79.251:0/3271</span></tt>, so we blacklist
-it as follows:</p>
+<p>本例中， &#8216;fedoravm&#8217; 客户端的地址是 <tt class="docutils literal"><span class="pre">172.16.79.251:0/3271</span></tt> ，所以这样加黑名单：</p>
 <div class="highlight-python"><pre># ceph osd blacklist add 172.16.79.251:0/3271
 blacklisting 172.16.79.251:0/3271 until 2014-12-09 13:09:56.569368 (3600 sec)</pre>
 </div>
 </div>
-<div class="section" id="osd-epoch-barrier">
-<h2>OSD epoch barrier<a class="headerlink" href="#osd-epoch-barrier" title="Permalink to this headline">¶</a></h2>
-<p>While the evicted client is now marked as blacklisted in the central (mon) copy of the OSD
-map, it is now necessary to ensure that this OSD map update has propagated to all daemons
-involved in subsequent filesystem I/O.  To do this, use the <tt class="docutils literal"><span class="pre">osdmap</span> <span class="pre">barrier</span></tt> MDS admin
-socket command.</p>
-<p>First read the latest OSD epoch:</p>
+<div class="section" id="id1">
+<h2>OSD 元图屏蔽<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>被驱逐的客户端已在 OSD 图的中央（ mon ）副本中标记为进黑名单了，现在有必要确认一下本次 OSD 图更新已经传递给了后续文件系统 I/O 会涉及的所有守护进程。可以用 <tt class="docutils literal"><span class="pre">osdmap</span> <span class="pre">barrier</span></tt> 这个 MDS 管理套接字命令。</p>
+<p>首先读出最新的 OSD 元图：</p>
 <div class="highlight-python"><pre># ceph osd dump
 epoch 12
 fsid fd61ca96-53ff-4311-826c-f36b176d69ea
@@ -105,60 +96,40 @@ created 2014-12-09 12:03:38.595844
 modified 2014-12-09 12:09:56.619957
 ...</pre>
 </div>
-<p>In this case it is 12.  Now request the MDS to barrier on this epoch:</p>
+<p>本例中它是 12 ，让 MDS 屏蔽此元图：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ceph daemon mds.a osdmap barrier 12</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="mds-session-eviction">
-<h2>MDS session eviction<a class="headerlink" href="#mds-session-eviction" title="Permalink to this headline">¶</a></h2>
-<p>Finally, it is safe to evict the client&#8217;s MDS session, such that any capabilities it held
-may be issued to other clients.  The ID here is the <tt class="docutils literal"><span class="pre">id</span></tt> attribute from the <tt class="docutils literal"><span class="pre">session</span> <span class="pre">ls</span></tt>
-output:</p>
+<div class="section" id="mds">
+<h2>MDS 会话驱逐<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h2>
+<p>最后就可以安全地驱逐此客户端的 MDS 会话了，这样它持有的所有能力就可以发行给其它客户端了。这里的 ID 是 <tt class="docutils literal"><span class="pre">session</span> <span class="pre">ls</span></tt> 输出里的 <tt class="docutils literal"><span class="pre">id</span></tt> 属性：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ceph daemon mds.a session evict 4117</span>
 </pre></div>
 </div>
-<p>That&#8217;s it!  The client has now been evicted, and any resources it had locked will
-now be available for other clients.</p>
+<p>好了！这个客户端现在已经被驱逐了，而且它持有的资源也可以重分配给其它客户端了。</p>
 </div>
-<div class="section" id="background-osd-epoch-barrier">
-<h2>Background: OSD epoch barrier<a class="headerlink" href="#background-osd-epoch-barrier" title="Permalink to this headline">¶</a></h2>
-<p>The purpose of the barrier is to ensure that when we hand out any
-capabilities which might allow touching the same RADOS objects, the
-clients we hand out the capabilities to must have a sufficiently recent
-OSD map to not race with cancelled operations (from ENOSPC) or
-blacklisted clients (from evictions)</p>
-<p>More specifically, the cases where we set an epoch barrier are:</p>
+<div class="section" id="id2">
+<h2>背景： OSD 元图屏蔽<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>此屏蔽的目的是为了确保当我们分配出这些能力后，别的客户端就有可能触碰同样的 RADOS 对象，接受分配能力的客户端们必须有足够新的 OSD 图，这样它们才不会与取消的操作（来自 ENOSPC ）或进了黑名单的客户端（来自驱逐过程）竞争。</p>
+<p>更具体些，我们设置元图屏蔽的情形有：</p>
 <blockquote>
 <div><ul class="simple">
-<li>Client eviction (where the client is blacklisted and other clients
-must wait for a post-blacklist epoch to touch the same objects)</li>
-<li>OSD map full flag handling in the client (where the client may
-cancel some OSD ops from a pre-full epoch, so other clients must
-wait until the full epoch or later before touching the same objects).</li>
-<li>MDS startup, because we don&#8217;t persist the barrier epoch, so must
-assume that latest OSD map is always required after a restart.</li>
+<li>客户端驱逐（此客户端被加入黑名单了、且其它客户端必须等到有加黑之后的元图出现才能触碰同一批对象）；</li>
+<li>客户端正在处理 OSD 图的完整标识（此客户端可能会在快完整的元图中取消一些 OSD 操作，这样其它客户端都必须等着，直到元图完整或周期达到才能触碰同样的对象）；</li>
+<li>MDS 启动，因为我们不会永久存储屏蔽图元，所以必须假设重启后总是需要最新的 OSD 图。</li>
 </ul>
 </div></blockquote>
-<p>Note that this is a global value for simplicity: we could maintain this on
-a per-inode basis.  We don&#8217;t, because:</p>
+<p>注意，为保持简洁性这是个全局值，其实我们可以做到按每索引节点维护此值，但我们没有这么做，因为：</p>
 <blockquote>
 <div><ul class="simple">
-<li>It would be more complicated</li>
-<li>It would use an extra 4 bytes of memory for every inode</li>
-<li>It would not be much more efficient as almost always everyone has the latest
-OSD map anyway, in most cases everyone will breeze through this barrier
-rather than waiting.</li>
-<li>We only do this barrier in very rare cases, so any benefit from per-inode
-granularity would only very rarely be seen.</li>
+<li>它会复杂得多；</li>
+<li>每索引节点需额外多占 4 字节的内存；</li>
+<li>无论如何它都不会比大家一直都拥有最新的 OSD 图更有效，多数情况下，大家都能轻松地越过这个屏障而不是等着它。</li>
+<li>我们仅在极少数情形下使用这种屏蔽，所以每索引节点这样细粒度的实现带来的好处也很少见。</li>
 </ul>
 </div></blockquote>
-<p>The epoch barrier is transmitted along with all capability messages, and
-instructs the receiver of the message to avoid sending any more RADOS
-operations to OSDs until it has seen this OSD epoch.  This mainly applies
-to clients (doing their data writes directly to files), but also applies
-to the MDS because things like file size probing and file deletion are
-done directly from the MDS.</p>
+<p>元图屏蔽随其它能力消息一起传递，并且可指示消息接收器在看到这个 OSD 元图前、别再向那些 OSD 发送 RADOS 操作。主要是面向客户端（它们直接向文件写入数据）的，也适用于 MDS ，因为像文件尺寸探测和文件删除这样的操作都是直接在 MDS 上进行的。</p>
 </div>
 </div>
 
@@ -173,66 +144,60 @@ done directly from the MDS.</p>
             </a></p>
 <h3><a href="../../">Table Of Contents</a></h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (Quick)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Filesystem</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="../#using-cephfs">Using CephFS</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">Add/Remove MDS(s)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/">Terminology</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#referring-to-mds-daemons">Referring to MDS daemons</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#managing-failover">Managing failover</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#configuring-standby-daemons">Configuring standby daemons</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#examples">Examples</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS Configuration Settings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">Client Configuration Settings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler Configuration</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">Manpage ceph-mds</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../createfs/">Create CephFS</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../kernel/">Mount CephFS</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../fuse/">Mount CephFS as FUSE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../fstab/">Mount CephFS in fstab</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/">Manpage ceph-fuse</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/">Manpage mount.ceph</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../best-practices/">Deployment best practices</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../administration/">Administrative commands</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX compatibility</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../experimental-features/">Experimental Features</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../experimental-features/#previously-experimental-features">Previously experimental features</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS Quotas</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../hadoop/">Using Ceph with Hadoop</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../file-layouts/">File layouts</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="">Client eviction</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#osd-blacklisting">OSD blacklisting</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#osd-epoch-barrier">OSD epoch barrier</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mds-session-eviction">MDS session eviction</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#background-osd-epoch-barrier">Background: OSD epoch barrier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">增加/删除 MDS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/">术语</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/#mds">MDS 守护进程的引用</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/#managing-failover">故障切换的管理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/#configuring-standby-daemons">灾备守护进程的配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../standby/#examples">实例</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds-config-ref/">MDS 配置选项</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../best-practices/">最佳部署实践</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../experimental-features/">实验性功能</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/libcephfs-java/">libcephfs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">驱逐客户端</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#osd">OSD 黑名单机制</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">OSD 元图屏蔽</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mds">MDS 会话驱逐</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">背景： OSD 元图屏蔽</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../full/">Handling full filesystems</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../health-messages/">Health messages</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">Disaster recovery</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../client-auth/">Client authentication</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../upgrading/">Upgrading old filesystems</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../dirfrags/">Configuring directory fragmentation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../multimds/">Configuring multiple active MDS daemons</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../health-messages/">健康消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../upgrading/">旧文件系统的升级</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#for-developers">开发者文档</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../#for-developers">For developers</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph Block Device</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../dev/">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
 </ul>
 
 
@@ -265,13 +230,13 @@ done directly from the MDS.</p>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../full/" title="Handling a full Ceph filesystem"
+          <a href="../full/" title="处理占满的 Ceph 文件系统"
              >next</a> |</li>
         <li class="right" >
-          <a href="../file-layouts/" title="File layouts"
+          <a href="../file-layouts/" title="文件布局"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" >Ceph Filesystem</a> &raquo;</li> 
+          <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

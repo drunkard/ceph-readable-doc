@@ -1,40 +1,30 @@
-==========================
- Monitor Config Reference
-==========================
+================
+ 监视器配置参考
+================
 
-Understanding how to configure a :term:`Ceph Monitor` is an important part of
-building a reliable :term:`Ceph Storage Cluster`. **All Ceph Storage Clusters
-have at least one monitor**. A monitor configuration usually remains fairly
-consistent, but you can add, remove or replace a monitor in a cluster. See
-`Adding/Removing a Monitor`_ and `Add/Remove a Monitor (ceph-deploy)`_ for
-details.
+理解如何配置 :term:`Ceph 监视器`\ 是构建可靠的 :term:`Ceph 存储集群`\ 的重要方面，\
+\ **任何 Ceph 集群都需要至少一个监视器**\ 。一个监视器通常相当一致，但是你可以增\
+加、删除、或替换集群中的监视器，详情见\ `增加/删除监视器`_\ 和\ `增加/删除监视器\
+（ ceph-deploy ）`_ 。
 
 
 .. index:: Ceph Monitor; Paxos
 
-Background
-==========
+背景
+====
 
-Ceph Monitors maintain a "master copy" of the :term:`cluster map`, which means a
-:term:`Ceph Client` can determine the location of all Ceph Monitors, Ceph OSD
-Daemons, and Ceph Metadata Servers just by connecting to one Ceph Monitor and
-retrieving a current cluster map. Before Ceph Clients can read from or write to
-Ceph OSD Daemons or Ceph Metadata Servers, they must connect to a Ceph Monitor
-first. With a current copy of the cluster map and the CRUSH algorithm, a Ceph
-Client can compute the location for any object. The ability to compute object
-locations allows a Ceph Client to talk directly to Ceph OSD Daemons, which is a
-very important aspect of Ceph's high scalability and performance. See 
-`Scalability and High Availability`_ for additional details.
+监视器们维护着集群运行图的“主副本”，就是说客户端连到一个监视器并获取当前运行图就能\
+确定所有监视器、 OSD 和元数据服务器的位置。 Ceph 客户端读写 OSD 或元数据服务器前，\
+必须先连到一个监视器，靠当前集群运行图的副本和 CRUSH 算法，客户端能计算出任何对象的\
+位置，故此客户端有能力直接连到 OSD ，这对 Ceph 的高伸缩性、高性能来说非常重要。更多\
+信息见\ `伸缩性和高可用性`_\ 。
 
-The primary role of the Ceph Monitor is to maintain a master copy of the cluster
-map. Ceph Monitors also provide authentication and logging services. Ceph
-Monitors write all changes in the monitor services to a single Paxos instance,
-and Paxos writes the changes to a key/value store for strong consistency. Ceph
-Monitors can query the most recent version of the cluster map during sync
-operations. Ceph Monitors leverage the key/value store's snapshots and iterators
-(using leveldb) to perform store-wide synchronization.
+监视器的主要角色是维护集群运行图的主副本，它也提供认证和日志记录服务。 Ceph 监视器\
+们把监视器服务的所有更改写入一个单独的 Paxos 例程，然后 Paxos 以键/值方式存储所有变\
+更以实现高度一致性。同步期间， Ceph 监视器能查询集群运行图的近期版本，它们通过操作\
+键/值存储快照和迭代器（用 leveldb ）来进行存储级同步。
 
-.. ditaa:: 
+.. ditaa::
 
  /-------------\               /-------------\
  |   Monitor   | Write Changes |    Paxos    |
@@ -57,153 +47,122 @@ operations. Ceph Monitors leverage the key/value store's snapshots and iterators
  \-------------/
 
 
-.. deprecated:: version 0.58
+.. deprecated:: 0.58 版
 
-In Ceph versions 0.58 and earlier, Ceph Monitors use a Paxos instance for
-each service and store the map as a file. 
+在 0.58 及更早版本中， Ceph 监视器每个服务用一个 Paxos 例程，并把运行图存储为文件。
 
 .. index:: Ceph Monitor; cluster map
 
-Cluster Maps
-------------
+集群运行图
+----------
 
-The cluster map is a composite of maps, including the monitor map, the OSD map,
-the placement group map and the metadata server map. The cluster map tracks a
-number of important things: which processes are ``in`` the Ceph Storage Cluster;
-which processes that are ``in`` the Ceph Storage Cluster are ``up`` and running
-or ``down``; whether, the placement groups are ``active`` or ``inactive``, and
-``clean`` or in some other state; and, other details that reflect the current
-state of the cluster such as the total amount of storage space, and the amount
-of storage used.
+集群运行图是多个图的组合，包括监视器图、 OSD 图、归置组图和元数据服务器图。集群运\
+行图追踪几个重要事件：哪些进程在集群里（ ``in`` ）；哪些进程在集群里（ ``in`` ）是 \
+``up`` 且在运行、或 ``down`` ；归置组状态是 ``active`` 或 ``inactive`` 、 \
+``clean`` 或其他状态；和其他反映当前集群状态的信息，像总存储容量、和使用量。
 
-When there is a significant change in the state of the cluster--e.g., a Ceph OSD
-Daemon goes down, a placement group falls into a degraded state, etc.--the
-cluster map gets updated to reflect the current state of the cluster.
-Additionally, the Ceph Monitor also maintains a history of the prior states of
-the cluster. The monitor map, OSD map, placement group map and metadata server
-map each maintain a history of their map versions. We call each version an
-"epoch."
+当集群状态有明显变更时，如一 OSD 挂了、一归置组降级了等等，集群运行图会被更新以反映\
+集群当前状态。另外，监视器也维护着集群的主要状态历史。监视器图、 OSD 图、归置组图和\
+元数据服务器图各自维护着它们的运行图版本。我们把各图的版本称为一个 epoch 。
 
-When operating your Ceph Storage Cluster, keeping track of these states is an
-important part of your system administration duties. See `Monitoring a Cluster`_
-and `Monitoring OSDs and PGs`_ for additional details.
+运营集群时，跟踪这些状态是系统管理任务的重要部分。详情见\ `监控集群`_\ 和\ \
+`监控 OSD 和归置组`_\ 。
+
 
 .. index:: high availability; quorum
 
-Monitor Quorum
+.. _Monitor Quorum:
+
+监视器法定人数
 --------------
 
-Our Configuring ceph section provides a trivial `Ceph configuration file`_ that
-provides for one monitor in the test cluster. A cluster will run fine with a
-single monitor; however, **a single monitor is a single-point-of-failure**. To
-ensure high availability in a production Ceph Storage Cluster, you should run
-Ceph with multiple monitors so that the failure of a single monitor **WILL NOT**
-bring down your entire cluster.
+本文配置部分提供了一个简陋的 `Ceph 配置文件`_\ ，它提供了一个\
+监视器用于测试。只用一个监视器集群可以良好地运行，然而\
+**单监视器是一个单故障点**\ ，生产集群要实现高可用性的话得配\
+置多个监视器，这样单个监视器的失效才\ **不会**\ 影响整个集群。
 
-When a Ceph Storage Cluster runs multiple Ceph Monitors for high availability,
-Ceph Monitors use `Paxos`_ to establish consensus about the master cluster map.
-A consensus requires a majority of monitors running to establish a quorum for
-consensus about the cluster map (e.g., 1; 2 out of 3; 3 out of 5; 4 out of 6;
-etc.).
+集群用多个监视器实现高可用性时，多个监视器用 `Paxos`_ 算法对\
+主集群运行图达成一致，这里的一致要求大多数监视器都在运行且够\
+成法定人数（如 1 个、 3 之 2 在运行、 5 之 3 、 6 之 4 等等）。
 
 
 .. index:: Ceph Monitor; consistency
 
-Consistency
------------
+.. _Consistency:
 
-When you add monitor settings to your Ceph configuration file, you need to be
-aware of some of the architectural aspects of Ceph Monitors. **Ceph imposes
-strict consistency requirements** for a Ceph monitor when discovering another
-Ceph Monitor within the cluster. Whereas, Ceph Clients and other Ceph daemons
-use the Ceph configuration file to discover monitors, monitors discover each
-other using the monitor map (monmap), not the Ceph configuration file.
+一致性
+------
 
-A Ceph Monitor always refers to the local copy of the monmap when discovering
-other Ceph Monitors in the Ceph Storage Cluster. Using the monmap instead of the
-Ceph configuration file avoids errors that could break the cluster (e.g., typos
-in ``ceph.conf`` when specifying a monitor address or port). Since monitors use
-monmaps for discovery and they share monmaps with clients and other Ceph
-daemons, **the monmap provides monitors with a strict guarantee that their
-consensus is valid.**
+你把监视器加进 Ceph 配置文件时，得注意一些架构问题， Ceph 发现集群内的其他监视器时\
+对其有着\ **严格的一致性要求**\ 。尽管如此， Ceph 客户端和其他 Ceph 守护进程用配置\
+文件发现监视器，监视器却用监视器图（ monmap ）相互发现而非配置文件。
 
-Strict consistency also applies to updates to the monmap. As with any other
-updates on the Ceph Monitor, changes to the monmap always run through a
-distributed consensus algorithm called `Paxos`_. The Ceph Monitors must agree on
-each update to the monmap, such as adding or removing a Ceph Monitor, to ensure
-that each monitor in the quorum has the same version of the monmap. Updates to
-the monmap are incremental so that Ceph Monitors have the latest agreed upon
-version, and a set of previous versions. Maintaining a history enables a Ceph
-Monitor that has an older version of the monmap to catch up with the current
-state of the Ceph Storage Cluster.
+一个监视器发现集群内的其他监视器时总是参考 monmap 的本地副本，用 monmap 而非 Ceph \
+配置文件避免了可能损坏集群的错误（如 ``ceph.conf`` 中指定地址或端口的拼写错误）。正\
+因为监视器把 monmap 用于发现、并共享于客户端和其他 Ceph 守护进程间， **monmap可严\
+格地保证监视器的一致性是可靠的**\ 。
 
-If Ceph Monitors discovered each other through the Ceph configuration file
-instead of through the monmap, it would introduce additional risks because the
-Ceph configuration files aren't updated and distributed automatically. Ceph
-Monitors might inadvertently use an older Ceph configuration file, fail to
-recognize a Ceph Monitor, fall out of a quorum, or develop a situation where
-`Paxos`_ isn't able to determine the current state of the system accurately.
+严格的一致性也适用于 monmap 的更新，因为关于监视器的任何更新、关于 monmap 的变更都\
+是通过称为 `Paxos`_ 的分布式一致性算法传递的。监视器们必须就 monmap 的每次更新达成\
+一致，以确保法定人数里的每个监视器 monmap 版本相同，如增加、删除一个监视器。 \
+monmap 的更新是增量的，所以监视器们都有最新的一致版本，以及一系列之前版本。历史版本\
+的存在允许一个落后的监视器跟上集群当前状态。
+
+如果监视器通过配置文件而非 monmap 相互发现，这会引进其他风险，因为 Ceph 配置文件不\
+是自动更新并分发的，监视器有可能不小心用了较老的配置文件，以致于不认识某监视器、放弃\
+法定人数、或者产生一种 `Paxos`_ 不能确定当前系统状态的情形。
 
 
 .. index:: Ceph Monitor; bootstrapping monitors
 
-Bootstrapping Monitors
-----------------------
+初始化监视器
+------------
 
-In most configuration and deployment cases, tools that deploy Ceph may help
-bootstrap the Ceph Monitors by generating a monitor map for you (e.g.,
-``ceph-deploy``, etc). A Ceph Monitor requires a few explicit
-settings:
+在大多数配置和部署案例中，部署 Ceph 的工具可以帮你生成一个监视器图来初始化监视器\
+（如 ``ceph-deploy`` 等），一个监视器需要 4 个选项：
 
-- **Filesystem ID**: The ``fsid`` is the unique identifier for your
-  object store. Since you can run multiple clusters on the same
-  hardware, you must specify the unique ID of the object store when
-  bootstrapping a monitor.  Deployment tools usually do this for you
-  (e.g., ``ceph-deploy`` can call a tool like ``uuidgen``), but you
-  may specify the ``fsid`` manually too.
-  
-- **Monitor ID**: A monitor ID is a unique ID assigned to each monitor within 
-  the cluster. It is an alphanumeric value, and by convention the identifier 
-  usually follows an alphabetical increment (e.g., ``a``, ``b``, etc.). This 
-  can be set in a Ceph configuration file (e.g., ``[mon.a]``, ``[mon.b]``, etc.), 
-  by a deployment tool, or using the ``ceph`` commandline.
+- **文件系统标识符：** ``fsid`` 是对象存储的唯一标识符。因为你可以在一套硬件上运行\
+  多个集群，所以在初始化监视器时必须指定对象存储的唯一标识符。部署工具通常可替你完\
+  成（如 ``ceph-deploy`` 会调用类似 ``uuidgen`` 的程序），但是你也可以手动指定 \
+  ``fsid`` 。
 
-- **Keys**: The monitor must have secret keys. A deployment tool such as 
-  ``ceph-deploy`` usually does this for you, but you may
-  perform this step manually too. See `Monitor Keyrings`_ for details.
+- **监视器标识符：** 监视器标识符是分配给集群内各监视器的唯一 ID ，它是一个字母数字\
+  组合，为方便起见，标识符通常以字母顺序结尾（如 ``a`` 、 ``b`` 等等），可以设置于 \
+  Ceph 配置文件（如 ``[mon.a]`` 、 ``[mon.b]`` 等等）、部署工具、或 ``ceph`` 命令\
+  行工具。
 
-For additional details on bootstrapping, see `Bootstrapping a Monitor`_.
+- **密钥：** 监视器必须有密钥。像 ``ceph-deploy`` 这样的部署工具通常会自动生成，也\
+  可以手动完成。见\ `监视器密钥环`_\ 。
+
+关于初始化的具体信息见\ `初始化监视器`_\ 。
 
 .. index:: Ceph Monitor; configuring monitors
 
-Configuring Monitors
-====================
+监视器的配置
+============
 
-To apply configuration settings to the entire cluster, enter the configuration
-settings under ``[global]``. To apply configuration settings to all monitors in
-your cluster, enter the configuration settings under ``[mon]``. To apply
-configuration settings to specific monitors, specify the monitor instance 
-(e.g., ``[mon.a]``). By convention, monitor instance names use alpha notation.
+要把配置应用到整个集群，把它们放到 ``[global]`` 下；要用于所有监视器，置于 \
+``[mon]`` 下；要用于某监视器，指定监视器例程，如 ``[mon.a]`` ）。按惯例，监视器例\
+程用字母命名。
 
 .. code-block:: ini
 
 	[global]
 
-	[mon]		
-		
+	[mon]
+
 	[mon.a]
-		
+
 	[mon.b]
-		
+
 	[mon.c]
 
 
-Minimum Configuration
----------------------
+最小配置
+--------
 
-The bare minimum monitor settings for a Ceph monitor via the Ceph configuration
-file include a hostname and a monitor address for each monitor. You can configure
-these under ``[mon]`` or under the entry for a specific monitor.
+Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这些配置可置于 ``[mon]`` 下或\
+某个监视器下。
 
 .. code-block:: ini
 
@@ -218,138 +177,115 @@ these under ``[mon]`` or under the entry for a specific monitor.
 		host = hostname1
 		mon addr = 10.0.0.10:6789
 
-See the `Network Configuration Reference`_ for details.
+详情见\ `网络配置参考`_\ 。
 
-.. note:: This minimum configuration for monitors assumes that a deployment 
-   tool generates the ``fsid`` and the ``mon.`` key for you.
+.. note:: 这里的监视器最简配置假设部署工具会自动给你生成 ``fsid`` 和 ``mon.`` 密钥。
 
-Once you deploy a Ceph cluster, you **SHOULD NOT** change the IP address of
-the monitors. However, if you decide to change the monitor's IP address, you
-must follow a specific procedure. See `Changing a Monitor's IP Address`_ for
-details.
+一旦部署了 Ceph 集群，监视器 IP 地址\ **不应该**\ 更改。然而，如果你决意要改，必须\
+严格按照\ `更改监视器 IP 地址`_\ 来改。
 
-Monitors can also be found by clients using DNS SRV records. See `Monitor lookup through DNS`_ for details.
 
-Cluster ID
-----------
+集群 ID
+-------
 
-Each Ceph Storage Cluster has a unique identifier (``fsid``). If specified, it
-usually appears under the ``[global]`` section of the configuration file.
-Deployment tools usually generate the ``fsid`` and store it in the monitor map,
-so the value may not appear in a configuration file. The ``fsid`` makes it
-possible to run daemons for multiple clusters on the same hardware.
+每个 Ceph 存储集群都有一个唯一标识符（ ``fsid`` ）。如果指定了，它应该出现在配置文\
+件的 ``[global]`` 段下。部署工具通常会生成 ``fsid`` 并存于监视器图，所以不一定会写\
+入配置文件， ``fsid`` 使得在一套硬件上运行多个集群成为可能。
+
 
 ``fsid``
 
-:Description: The cluster ID. One per cluster.
-:Type: UUID
-:Required: Yes.
-:Default: N/A. May be generated by a deployment tool if not specified.
+:描述: 集群 ID ，一集群一个。
+:类型: UUID
+:是否必需: Yes.
+:默认值: 无。若未指定，部署工具会生成。
 
-.. note:: Do not set this value if you use a deployment tool that does
-   it for you.
+.. note:: 如果你用部署工具就不能设置。
 
 
 .. index:: Ceph Monitor; initial members
 
-Initial Members
----------------
+初始成员
+--------
 
-We recommend running a production Ceph Storage Cluster with at least three Ceph
-Monitors to ensure high availability. When you run multiple monitors, you may
-specify the initial monitors that must be members of the cluster in order to
-establish a quorum. This may reduce the time it takes for your cluster to come
-online.
+我们建议在生产环境下最少部署 3 个监视器，以确保高可用性。运行多个监视器时，你可以指\
+定为形成法定人数成员所需的初始监视器，这能减小集群上线时间。
 
 .. code-block:: ini
 
-	[mon]		
+	[mon]
 		mon initial members = a,b,c
 
 
 ``mon initial members``
 
-:Description: The IDs of initial monitors in a cluster during startup. If 
-              specified, Ceph requires an odd number of monitors to form an 
-              initial quorum (e.g., 3). 
+:描述: 集群启动时初始监视器的 ID ，若指定， Ceph 需要奇数个\
+       监视器来确定最初法定人数（如 3 ）。
 
-:Type: String
-:Default: None
+:类型: String
+:默认值: None
 
-.. note:: A *majority* of monitors in your cluster must be able to reach 
-   each other in order to establish a quorum. You can decrease the initial 
-   number of monitors to establish a quorum with this setting.
+.. note:: 集群内的\ *大多数*\ 监视器必须能互通以建立法定人数，\
+   你可以用此选项减小初始监视器数量来形成。
+
 
 .. index:: Ceph Monitor; data path
 
-Data
+.. _Data:
+
+数据
 ----
 
-Ceph provides a default path where Ceph Monitors store data. For optimal
-performance in a production Ceph Storage Cluster, we recommend running Ceph
-Monitors on separate hosts and drives from Ceph OSD Daemons. As leveldb is using
-``mmap()`` for writing the data, Ceph Monitors flush their data from memory to disk
-very often, which can interfere with Ceph OSD Daemon workloads if the data
-store is co-located with the OSD Daemons.
+Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群上，\
+我们建议在独立主机上运行 Ceph 监视器，不要与运行 Ceph OSD 守\
+护进程的主机混用。因为 leveldb 靠 ``mmap()`` 写数据， Ceph
+监视器会频繁地把数据从内存刷回磁盘，如果其数据与 OSD 守护进\
+程共用存储器，就会与 Ceph OSD 守护进程的载荷冲突。
 
-In Ceph versions 0.58 and earlier, Ceph Monitors store their data in files. This 
-approach allows users to inspect monitor data with common tools like ``ls``
-and ``cat``. However, it doesn't provide strong consistency.
+在 Ceph 0.58 及更早版本中，监视器数据以文件保存，这样人们可以\
+用 ``ls`` 和 ``cat`` 这些普通工具检查监视器数据，然而它不能提\
+供健壮的一致性。
 
-In Ceph versions 0.59 and later, Ceph Monitors store their data as key/value
-pairs. Ceph Monitors require `ACID`_ transactions. Using a data store prevents
-recovering Ceph Monitors from running corrupted versions through Paxos, and it
-enables multiple modification operations in one single atomic batch, among other
-advantages.
+在 Ceph 0.59 及后续版本中，监视器以键/值对存储数据。监视器需要
+`ACID`_ 事务，数据存储的使用可防止监视器用损坏的版本进行恢复，\
+除此之外，它允许在一个原子批量操作中进行多个修改操作。
 
-Generally, we do not recommend changing the default data location. If you modify
-the default location, we recommend that you make it uniform across Ceph Monitors
-by setting it in the ``[mon]`` section of the configuration file.
+一般来说我们不建议更改默认数据位置，如果要改，我们建议所有监\
+视器统一配置，加到配置文件的 ``[mon]`` 下。
 
 
-``mon data`` 
+``mon data``
 
-:Description: The monitor's data location.
-:Type: String
-:Default: ``/var/lib/ceph/mon/$cluster-$id``
+:描述: 监视器的数据位置。
+:类型: String
+:默认值: ``/var/lib/ceph/mon/$cluster-$id``
 
 
 .. index:: Ceph Storage Cluster; capacity planning, Ceph Monitor; capacity planning
 
-Storage Capacity
-----------------
+.. _Storage Capacity:
 
-When a Ceph Storage Cluster gets close to its maximum capacity (i.e., ``mon osd
-full ratio``),  Ceph prevents you from writing to or reading from Ceph OSD
-Daemons as a safety measure to prevent data loss. Therefore, letting a
-production Ceph Storage Cluster approach its full ratio is not a good practice,
-because it sacrifices high availability. The default full ratio is ``.95``, or
-95% of capacity. This a very aggressive setting for a test cluster with a small
-number of OSDs.
+存储容量
+--------
 
-.. tip:: When monitoring your cluster, be alert to warnings related to the 
-   ``nearfull`` ratio. This means that a failure of some OSDs could result
-   in a temporary service disruption if one or more OSDs fails. Consider adding
-   more OSDs to increase storage capacity.
+Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ），作为防止数据丢失\
+的安全措施，它会阻止你读写 OSD 。因此，让生产集群用满可不是好事，因为牺牲了高可用\
+性。 full ratio 默认值是 ``.95`` 或容量的 95% 。对小型测试集群来说这是非常激进的设\
+置。
 
-A common scenario for test clusters involves a system administrator removing a
-Ceph OSD Daemon from the Ceph Storage Cluster to watch the cluster rebalance;
-then, removing another Ceph OSD Daemon, and so on until the Ceph Storage Cluster
-eventually reaches the full ratio and locks up. We recommend a bit of capacity
-planning even with a test cluster. Planning enables you to gauge how much spare
-capacity you will need in order to maintain high availability. Ideally, you want
-to plan for a series of Ceph OSD Daemon failures where the cluster can recover
-to an ``active + clean`` state without replacing those Ceph OSD Daemons
-immediately. You can run a cluster in an ``active + degraded`` state, but this
-is not ideal for normal operating conditions.
+.. tip:: 监控集群时，要警惕和 ``nearfull`` 相关的警告。这意味着一些 OSD 的失败会\
+   导致临时服务中断，应该增加一些 OSD 来扩展存储容量。
 
-The following diagram depicts a simplistic Ceph Storage Cluster containing 33
-Ceph Nodes with one Ceph OSD Daemon per host, each Ceph OSD Daemon reading from
-and writing to a 3TB drive. So this exemplary Ceph Storage Cluster has a maximum
-actual capacity of 99TB. With a ``mon osd full ratio`` of ``0.95``, if the Ceph
-Storage Cluster falls to 5TB of remaining capacity, the cluster will not allow
-Ceph Clients to read and write data. So the Ceph Storage Cluster's operating
-capacity is 95TB, not 99TB.
+在测试集群时，一个常见场景是：系统管理员从集群删除一个 OSD 、接着观察重均衡；然后继\
+续删除其他 OSD ，直到集群达到占满率并锁死。我们建议，即使在测试集群里也要规划一点空\
+闲容量用于保证高可用性。理想情况下，要做好这样的预案：一系列 OSD 失败后，短时间内不\
+更换它们仍能恢复到 ``active + clean`` 状态。你也可以在 ``active + degraded`` 状态\
+运行集群，但对正常使用来说并不好。
+
+下图描述了一个简化的 Ceph 集群，它包含 33 个节点、每主机一个 OSD 、每 OSD 3TB 容\
+量，所以这个小白鼠集群有 99TB 的实际容量，其 ``mon osd full ratio`` 为 ``.95`` 。\
+如果它只剩余 5TB 容量，集群就不允许客户端再读写数据，所以它的运行容量是 95TB ，而\
+非 99TB 。
 
 .. ditaa::
 
@@ -363,117 +299,83 @@ capacity is 95TB, not 99TB.
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
  | OSD 3  |  | OSD 9  |  | OSD 15 |  | OSD 21 |  | OSD 27 |  | OSD 33 |
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
- | OSD 4  |  | OSD 10 |  | OSD 16 |  | OSD 22 |  | OSD 28 |  | Spare  | 
+ | OSD 4  |  | OSD 10 |  | OSD 16 |  | OSD 22 |  | OSD 28 |  | Spare  |
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
  | OSD 5  |  | OSD 11 |  | OSD 17 |  | OSD 23 |  | OSD 29 |  | Spare  |
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
  | OSD 6  |  | OSD 12 |  | OSD 18 |  | OSD 24 |  | OSD 30 |  | Spare  |
  +--------+  +--------+  +--------+  +--------+  +--------+  +--------+
 
-It is normal in such a cluster for one or two OSDs to fail. A less frequent but
-reasonable scenario involves a rack's router or power supply failing, which
-brings down multiple OSDs simultaneously (e.g., OSDs 7-12). In such a scenario,
-you should still strive for a cluster that can remain operational and achieve an
-``active + clean`` state--even if that means adding a few hosts with additional
-OSDs in short order. If your capacity utilization is too high, you may not lose
-data, but you could still sacrifice data availability while resolving an outage
-within a failure domain if capacity utilization of the cluster exceeds the full
-ratio. For this reason, we recommend at least some rough capacity planning.
+在这样的集群里，坏一或两个 OSD 很平常；一种罕见但可能发生的情形是一个机架的路由器或\
+电源挂了，这会导致多个 OSD 同时离线（如 OSD 7-12 ），在这种情况下，你仍要力争保持集\
+群可运行并达到 ``active + clean`` 状态，即使这意味着你得在短期内额外增加一些 OSD \
+及主机。如果集群利用率太高，在解决故障域期间也许不会丢数据，但很可能牺牲数据可用性，\
+因为利用率超过了 full ratio 。故此，我们建议至少要粗略地规划下容量。
 
-Identify two numbers for your cluster:
+找出你集群的两个数字：
 
-#. The number of OSDs. 
-#. The total capacity of the cluster 
+#. OSD 数量。
+#. 集群总容量。
 
-If you divide the total capacity of your cluster by the number of OSDs in your
-cluster, you will find the mean average capacity of an OSD within your cluster.
-Consider multiplying that number by the number of OSDs you expect will fail
-simultaneously during normal operations (a relatively small number). Finally
-multiply the capacity of the cluster by the full ratio to arrive at a maximum
-operating capacity; then, subtract the number of amount of data from the OSDs
-you expect to fail to arrive at a reasonable full ratio. Repeat the foregoing
-process with a higher number of OSD failures (e.g., a rack of OSDs) to arrive at
-a reasonable number for a near full ratio.
+用集群里 OSD 总数除以集群总容量，就能得到 OSD 平均容量；如果按预计的 OSD 数乘以这个\
+值所得的结果计算（偏小），实际应用时将出错；最后再用集群容量乘以占满率能得到最大运行\
+容量，然后扣除预估的 OSD 失败率；用较高的失败率（如整机架的 OSD ）重复前述过程看是\
+否接近占满率。
 
 .. code-block:: ini
 
 	[global]
-		
+
 		mon osd full ratio = .80
-		mon osd backfillfull ratio = .75
 		mon osd nearfull ratio = .70
 
 
-``mon osd full ratio`` 
+``mon osd full ratio``
 
-:Description: The percentage of disk space used before an OSD is 
-              considered ``full``.
-
-:Type: Float
-:Default: ``.95``
+:描述: OSD 硬盘使用率达到多少就认为它 ``full`` 。
+:类型: Float
+:默认值: ``.95``
 
 
-``mon osd backfillfull ratio``
+``mon osd nearfull ratio``
 
-:Description: The percentage of disk space used before an OSD is
-              considered too ``full`` to backfill.
-
-:Type: Float
-:Default: ``.90``
+:描述: OSD 硬盘使用率达到多少就认为它 ``nearfull`` 。
+:类型: Float
+:默认值: ``.85``
 
 
-``mon osd nearfull ratio`` 
-
-:Description: The percentage of disk space used before an OSD is 
-              considered ``nearfull``.
-
-:Type: Float
-:Default: ``.85``
-
-
-.. tip:: If some OSDs are nearfull, but others have plenty of capacity, you 
-         may have a problem with the CRUSH weight for the nearfull OSDs.
+.. tip:: 如果一些 OSD 快满了，但其他的仍有足够空间，你可能配错 CRUSH 权重了。
 
 .. index:: heartbeat
 
-Heartbeat
----------
+心跳
+----
 
-Ceph monitors know about the cluster by requiring reports from each OSD, and by
-receiving reports from OSDs about the status of their neighboring OSDs. Ceph
-provides reasonable default settings for monitor/OSD interaction; however,  you
-may modify them as needed. See `Monitor/OSD Interaction`_ for details.
+Ceph 监视器要求各 OSD 向它报告、并接收 OSD 们的邻居状态报告，以此来掌握集群。 \
+Ceph 提供了监视器与 OSD 交互的合理默认值，然而你可以按需修改，详情见\ `监视器与 \
+OSD 的交互`_\ 。
 
 
 .. index:: Ceph Monitor; leader, Ceph Monitor; provider, Ceph Monitor; requester, Ceph Monitor; synchronization
 
-Monitor Store Synchronization
------------------------------
+监视器存储同步
+--------------
 
-When you run a production cluster with multiple monitors (recommended), each
-monitor checks to see if a neighboring monitor has a more recent version of the
-cluster map (e.g., a map in a neighboring monitor with one or more epoch numbers
-higher than the most current epoch in the map of the instant monitor).
-Periodically, one monitor in the cluster may fall behind the other monitors to
-the point where it must leave the quorum, synchronize to retrieve the most
-current information about the cluster, and then rejoin the quorum. For the
-purposes of synchronization, monitors may assume one of three roles: 
+当你用多个监视器支撑一个生产集群时，各监视器都要检查邻居是否有集群运行图的最新版本\
+（如，邻居监视器的图有一或多个 epoch 版本高于当前监视器的最高版 epoch ），过一段时\
+间，集群里的某个监视器可能落后于其它监视器太多而不得不离开法定人数，然后同步到集群当\
+前状态，并重回法定人数。为了同步，监视器可能承担三种中的一种角色：
 
-#. **Leader**: The `Leader` is the first monitor to achieve the most recent
-   Paxos version of the cluster map.
+#. **Leader**: `Leader` 是实现最新 Paxos 版本的第一个监视器。
 
-#. **Provider**: The `Provider` is a monitor that has the most recent version
-   of the cluster map, but wasn't the first to achieve the most recent version.
+#. **Provider**: `Provider` 有最新集群运行图的监视器，但不是第一个实现最新版。
 
-#. **Requester:** A `Requester` is a monitor that has fallen behind the leader
-   and must synchronize in order to retrieve the most recent information about
-   the cluster before it can rejoin the quorum.
+#. **Requester:** `Requester` 落后于 leader ，重回法定人数前，必须同步以获取关于\
+   集群的最新信息。
 
-These roles enable a leader to delegate synchronization duties to a provider,
-which prevents synchronization requests from overloading the leader--improving
-performance. In the following diagram, the requester has learned that it has
-fallen behind the other monitors. The requester asks the leader to synchronize,
-and the leader tells the requester to synchronize with a provider.
+有了这些角色区分， leader就 可以给 provider 委派同步任务，这会避免同步请求压垮 \
+leader 、影响性能。在下面的图示中， requester 已经知道它落后于其它监视器，然后向 \
+leader 请求同步， leader 让它去和 provider 同步。
 
 
 .. ditaa:: +-----------+          +---------+          +----------+
@@ -506,410 +408,352 @@ and the leader tells the requester to synchronize with a provider.
                   |                    |
 
 
-Synchronization always occurs when a new monitor joins the cluster. During
-runtime operations, monitors may receive updates to the cluster map at different
-times. This means the leader and provider roles may migrate from one monitor to
-another. If this happens while synchronizing (e.g., a provider falls behind the
-leader), the provider can terminate synchronization with a requester.
+新监视器加入集群时有必要进行同步。在运行中，监视器会不定时收到集群运行图的更新，这\
+就意味着 leader 和 provider 角色可能在监视器间变幻。如果这事发生在同步期间（如 \
+provider 落后于 leader ）， provider 能终结和 requester 间的同步。
 
-Once synchronization is complete, Ceph requires trimming across the cluster. 
-Trimming requires that the placement groups are ``active + clean``.
+一旦同步完成， Ceph 需要修复整个集群，使归置组回到 ``active + clean`` 状态。
 
 
 ``mon sync trim timeout``
 
-:Description: 
-:Type: Double
-:Default: ``30.0``
+:描述:
+:类型: Double
+:默认值: ``30.0``
 
 
 ``mon sync heartbeat timeout``
 
-:Description: 
-:Type: Double
-:Default: ``30.0``
+:描述:
+:类型: Double
+:默认值: ``30.0``
 
 
 ``mon sync heartbeat interval``
 
-:Description: 
-:Type: Double
-:Default: ``5.0``
+:描述:
+:类型: Double
+:默认值: ``5.0``
 
 
 ``mon sync backoff timeout``
 
-:Description: 
-:Type: Double
-:Default: ``30.0``
+:描述:
+:类型: Double
+:默认值: ``30.0``
 
 
 ``mon sync timeout``
 
-:Description: 
-:Type: Double
-:Default: ``30.0``
+:描述:
+:类型: Double
+:默认值: ``30.0``
 
 
 ``mon sync max retries``
 
-:Description: 
-:Type: Integer
-:Default: ``5``
+:描述:
+:类型: Integer
+:默认值: ``5``
 
 
 ``mon sync max payload size``
 
-:Description: The maximum size for a sync payload.
-:Type: 32-bit Integer
-:Default: ``1045676``
+:描述: 同步载荷的最大尺寸。
+:类型: 32-bit Integer
+:默认值: ``1045676``
 
 
-``mon accept timeout`` 
+``mon accept timeout``
 
-:Description: Number of seconds the Leader will wait for the Requester(s) to 
-              accept a Paxos update. It is also used during the Paxos recovery 
-              phase for similar purposes.
+:描述: leader 等待  requester(s) 接受 PAXOS 更新的时间，出于同样的目的此值\
+       也用于 PAXOS 恢复阶段。
 
-:Type: Float
-:Default: ``10.0`` 
+:类型: Float
+:默认值: ``10.0``
 
 
 ``paxos propose interval``
 
-:Description: Gather updates for this time interval before proposing 
-              a map update. 
-
-:Type: Double
-:Default: ``1.0``
+:描述: 提议更新之前收集本时间段的更新。
+:类型: Double
+:默认值: ``1.0``
 
 
 ``paxos min wait``
 
-:Description: The minimum amount of time to gather updates after a period of 
-              inactivity.
-
-:Type: Double
-:Default: ``0.05``
+:描述: 经过一段不活跃时间后，收集更新的最小等待时间。
+:类型: Double
+:默认值: ``0.05``
 
 
-``mon lease`` 
+``mon lease``
 
-:Description: The length (in seconds) of the lease on the monitor's versions.
-:Type: Float
-:Default: ``5``
-
-
-``mon lease renew interval`` 
-
-:Description: The interval (in seconds) for the Leader to renew the other 
-              monitor's leases.
-              
-:Type: Float
-:Default: ``3``
+:描述: 监视器版本租期（秒）。
+:类型: Float
+:默认值: ``5``
 
 
-``mon lease ack timeout`` 
+``mon lease renew interval``
 
-:Description: The number of seconds the Leader will wait for the Providers to 
-              acknowledge the lease extension.
-              
-:Type: Float
-:Default: ``10.0``
+:描述: 监视器 leader （头领）刷新其他监视器租期的间隔。
+:类型: Float
+:默认值: ``3``
 
 
-``mon min osdmap epochs`` 
+``mon lease ack timeout``
 
-:Description: Minimum number of OSD map epochs to keep at all times.
-:Type: 32-bit Integer
-:Default: ``500``
-
-
-``mon max pgmap epochs`` 
-
-:Description: Maximum number of PG map epochs the monitor should keep.
-:Type: 32-bit Integer
-:Default: ``500``
+:描述: leader 在等到 providers （随从）确认延长租期前等待的时间。
+:类型: Float
+:默认值: ``10.0``
 
 
-``mon max log epochs`` 
+``mon min osdmap epochs``
 
-:Description: Maximum number of Log epochs the monitor should keep.
-:Type: 32-bit Integer
-:Default: ``500``
+:描述: 一直保存的 OSD 图元素最小数量。
+:类型: 32-bit Integer
+:默认值: ``500``
 
 
+``mon max pgmap epochs``
+
+:描述: 监视器应该一直保存的 PG 图元素最大数量。
+:类型: 32-bit Integer
+:默认值: ``500``
+
+
+``mon max log epochs``
+
+:描述: 监视器应该保留的最大日志数量。
+:类型: 32-bit Integer
+:默认值: ``500``
 
 
 Slurp
 -----
 
-In Ceph version 0.58 and earlier, when a Paxos service drifts beyond a given
-number of versions, Ceph triggers the `slurp` mechanism, which establishes a
-connection with the quorum Leader and obtains every single version the Leader
-has for every service that has drifted. In Ceph versions 0.59 and later, slurp
-will not work, because there is a single Paxos instance for all services.
+在 Ceph 0.58 及之前版本中，当 Paxos 服务偏差的版本数大于某值时，就会触发 `slurp` \
+机制，它会和法定人数 leader 建立一个连接并获取 leader 拥有的每个版本，以同步每个有\
+偏差的服务。 Ceph 0.59 及后续版本的 slurp 机制取消了，因为所有服务共享一个 Paxos \
+例程。
+
 
 .. deprecated:: 0.58
 
 ``paxos max join drift``
 
-:Description: The maximum Paxos iterations before we must first sync the
-              monitor data stores.
-:Type: Integer
-:Default: ``10`` 
+:描述: 在我们首次同步监视器数据存储前， Paxos 迭代的最大数量。
+:类型: Integer
+:默认值: ``10``
 
 
-``mon slurp timeout`` 
+``mon slurp timeout``
 
-:Description: The number of seconds the monitor has to recover using slurp 
-              before the process is aborted and the monitor bootstraps.
-
-:Type: Double
-:Default: ``10.0``
+:描述: 监视器进程终止后、自举前，要等待多长时间才开始发出显式修复通告。
+:类型: Double
+:默认值: ``10.0``
 
 
 ``mon slurp bytes``
 
-:Description: Limits the slurp messages to the specified number of bytes.
-:Type: 32-bit Integer
-:Default: ``256 * 1024``
+:描述: 显式修复消息尺寸限制。
+:类型: 32-bit Integer
+:默认值: ``256 * 1024``
 
 
 .. index:: Ceph Monitor; clock
 
-Clock
------
+时钟
+----
 
-Ceph daemons pass critical messages to each other, which must be processed
-before daemons reach a timeout threshold. If the clocks in Ceph monitors
-are not synchronized, it can lead to a number of anomalies. For example:
+Ceph 的守护进程会相互传递关键消息，这些消息必须在达到超时阀值前处理掉。如果 \
+Ceph 监视器时钟不同步，就可能出现多种异常情况。例如：
 
-- Daemons ignoring received messages (e.g., timestamps outdated)
-- Timeouts triggered too soon/late when a message wasn't received in time.
+- 守护进程忽略了收到的消息（如时间戳过时了）
+- 消息未及时收到时，超时触发得太快或太晚。
 
-See `Monitor Store Synchronization`_ and `Slurp`_ for details.
+详情见\ `监视器存储同步`_\ 和 `Slurp`_ 。
 
 
-.. tip:: You SHOULD install NTP on your Ceph monitor hosts to 
-         ensure that the monitor cluster operates with synchronized clocks.
+.. tip:: 你\ **应该**\ 在所有监视器主机上安装 NTP 以确保监视器集群的时钟同步。
 
-Clock drift may still be noticeable with NTP even though the discrepancy isn't
-yet harmful. Ceph's clock drift / clock skew warnings may get triggered even 
-though NTP maintains a reasonable level of synchronization. Increasing your 
-clock drift may be tolerable under such circumstances; however, a number of 
-factors such as workload, network latency, configuring overrides to default 
-timeouts and the `Monitor Store Synchronization`_ settings may influence 
-the level of acceptable clock drift without compromising Paxos guarantees.
+时钟漂移即使尚未造成损坏也能被 NTP 感知， Ceph 的时钟漂移或时钟偏差警告即使\
+在 NTP 同步水平合理时也会被触发。提高时钟漂移值有时候尚可容忍，然而很多因素\
+（像载荷、网络延时、覆盖默认超时值和\ `监视器存储同步`_\ 选项）都能在不降低 \
+Paxos 保证级别的情况下影响可接受的时钟漂移水平。
 
-Ceph provides the following tunable options to allow you to find 
-acceptable values.
+Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 
 ``clock offset``
 
-:Description: How much to offset the system clock. See ``Clock.cc`` for details.
-:Type: Double
-:Default: ``0``
+:描述: 时钟可以漂移多少，详情见 ``Clock.cc`` 。
+:类型: Double
+:默认值: ``0``
 
 
 .. deprecated:: 0.58
 
-``mon tick interval`` 
+``mon tick interval``
 
-:Description: A monitor's tick interval in seconds. 
-:Type: 32-bit Integer
-:Default: ``5`` 
-
-
-``mon clock drift allowed`` 
-
-:Description: The clock drift in seconds allowed between monitors.
-:Type: Float
-:Default: ``.050``
+:描述: 监视器的心跳间隔，单位为秒。
+:类型: 32-bit Integer
+:默认值: ``5``
 
 
-``mon clock drift warn backoff`` 
+``mon clock drift allowed``
 
-:Description: Exponential backoff for clock drift warnings
-:Type: Float
-:Default: ``5``
+:描述: 监视器间允许的时钟漂移量
+:类型: Float
+:默认值: ``.050``
+
+
+``mon clock drift warn backoff``
+
+:描述: 时钟偏移警告的退避指数。
+:类型: Float
+:默认值: ``5``
 
 
 ``mon timecheck interval``
 
-:Description: The time check interval (clock drift check) in seconds 
-              for the leader.
-
-:Type: Float
-:Default: ``300.0``
+:描述: 和 leader 的时间偏移检查（时钟漂移检查）。单位为秒。
+:类型: Float
+:默认值: ``300.0``
 
 
 
-Client
+客户端
 ------
+
 
 ``mon client hunt interval``
 
-:Description: The client will try a new monitor every ``N`` seconds until it
-              establishes a connection.
-              
-:Type: Double
-:Default: ``3.0``
+:描述: 客户端每 ``N`` 秒尝试一个新监视器，直到它建立连接。
+:类型: Double
+:默认值: ``3.0``
 
 
 ``mon client ping interval``
 
-:Description: The client will ping the monitor every ``N`` seconds.
-:Type: Double
-:Default: ``10.0``
+:描述: 客户端每 ``N`` 秒 ping 一次监视器。
+:类型: Double
+:默认值: ``10.0``
 
 
 ``mon client max log entries per message``
 
-:Description: The maximum number of log entries a monitor will generate 
-              per client message.
-
-:Type: Integer
-:Default: ``1000``
+:描述: 某监视器为每客户端生成的最大日志条数。
+:类型: Integer
+:默认值: ``1000``
 
 
 ``mon client bytes``
 
-:Description: The amount of client message data allowed in memory (in bytes).
-:Type: 64-bit Integer Unsigned
-:Default: ``100ul << 20``
+:描述: 内存中允许存留的客户端消息数量（字节数）。
+:类型: 64-bit Integer Unsigned
+:默认值: ``100ul << 20``
 
 
-Pool settings
-=============
-Since version v0.94 there is support for pool flags which allow or disallow changes to be made to pools.
 
-Monitors can also disallow removal of pools if configured that way.
-
-``mon allow pool delete``
-
-:Description: If the monitors should allow pools to be removed. Regardless of what the pool flags say.
-:Type: Boolean
-:Default: ``false``
-
-``osd pool default flag hashpspool``
-
-:Description: Set the hashpspool flag on new pools
-:Type: Boolean
-:Default: ``true``
-
-``osd pool default flag nodelete``
-
-:Description: Set the nodelete flag on new pools. Prevents allow pool removal with this flag in any way.
-:Type: Boolean
-:Default: ``false``
-
-``osd pool default flag nopgchange``
-
-:Description: Set the nopgchange flag on new pools. Does not allow the number of PGs to be changed for a pool.
-:Type: Boolean
-:Default: ``false``
-
-``osd pool default flag nosizechange``
-
-:Description: Set the nosizechange flag on new pools. Does not allow the size to be changed of pool.
-:Type: Boolean
-:Default: ``false``
-
-For more information about the pool flags see `Pool values`_.
-
-Miscellaneous
-=============
+杂项
+====
 
 
 ``mon max osd``
 
-:Description: The maximum number of OSDs allowed in the cluster.
-:Type: 32-bit Integer
-:Default: ``10000``
+:描述: 集群允许的最大 OSD 数量。
+:类型: 32-bit Integer
+:默认值: ``10000``
 
-``mon globalid prealloc`` 
 
-:Description: The number of global IDs to pre-allocate for clients and daemons in the cluster.
-:Type: 32-bit Integer
-:Default: ``100``
+``mon globalid prealloc``
 
-``mon sync fs threshold`` 
+:描述: 为集群预分配的全局 ID 数量。
+:类型: 32-bit Integer
+:默认值: ``100``
 
-:Description: Synchronize with the filesystem when writing the specified number of objects. Set it to ``0`` to disable it.
-:Type: 32-bit Integer
-:Default: ``5`` 
 
-``mon subscribe interval`` 
+``mon sync fs threshold``
 
-:Description: The refresh interval (in seconds) for subscriptions. The 
-              subscription mechanism enables obtaining the cluster maps 
-              and log information.
+:描述: 数量达到设定值时和文件系统同步， 0 为禁用。
+:类型: 32-bit Integer
+:默认值: ``5``
 
-:Type: Double
-:Default: ``300`` 
+
+``mon subscribe interval``
+
+:描述: 同步的刷新间隔（秒），同步机制允许获取集群运行图和日志信息。
+:类型: Double
+:默认值: ``300``
 
 
 ``mon stat smooth intervals``
 
-:Description: Ceph will smooth statistics over the last ``N`` PG maps.
-:Type: Integer
-:Default: ``2``
+:描述: Ceph 将平滑最后 ``N`` 个归置组图的统计信息。
+:类型: Integer
+:默认值: ``2``
 
 
-``mon probe timeout`` 
+``mon probe timeout``
 
-:Description: Number of seconds the monitor will wait to find peers before bootstrapping.
-:Type: Double
-:Default: ``2.0``
+:描述: 监视器自举无效，搜寻节点前等待的时间。
+:类型: Double
+:默认值: ``2.0``
 
 
 ``mon daemon bytes``
 
-:Description: The message memory cap for metadata server and OSD messages (in bytes).
-:Type: 64-bit Integer Unsigned
-:Default: ``400ul << 20``
+:描述: 给元数据服务器和 OSD 的消息使用的内存空间（字节）。
+:类型: 64-bit Integer Unsigned
+:默认值: ``400ul << 20``
 
 
 ``mon max log entries per event``
 
-:Description: The maximum number of log entries per event. 
-:Type: Integer
-:Default: ``4096``
+:描述: 每个事件允许的最大日志条数。
+:类型: Integer
+:默认值: ``4096``
 
 
 ``mon osd prime pg temp``
 
-:Description: Enables or disable priming the PGMap with the previous OSDs when an out
-              OSD comes back into the cluster. With the ``true`` setting the clients
-              will continue to use the previous OSDs until the newly in OSDs as that
-              PG peered.
-:Type: Boolean
-:Default: ``true``
+:描述: 当一个先前处于 out 状态的 OSD 回到集群时，捡回（
+       prime ）还是不捡回包含先前各 OSD 的 PGMap 。设置为
+       ``true`` 时，客户端们会继续使用先前的 OSD 们，直到\
+       新增了 OSD ，因为原来的 PG 照旧互联。
+
+       .. note::
+       
+          译者注：原文的 priming 翻译为“捡回”。因为此字意为：\
+          底漆、启动、起爆剂、点火装置等，我的理解是，旧版的
+          PGMap 已经一层层盖着压箱底了，新的本应从当前运行的\
+          集群里汇总，可这里启用了旧的，相当于扒了一层底漆、\
+          或者点燃了装填好的弹药，故译为捡回。
+
+:类型: Boolean
+:默认: ``true``
 
 
 ``mon osd prime pg temp max time``
 
-:Description: How much time in seconds the monitor should spend trying to prime the
-              PGMap when an out OSD comes back into the cluster.
-:Type: Float
-:Default: ``0.5``
+:描述: 当某一先前状态为 out 的 OSD 回到集群、监视器在捡回
+       PGMap 时尝试的最大时间，单位为秒。
 
+:类型: Float
+:默认: ``0.5``
 
 
 .. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)
-.. _Monitor Keyrings: ../../../dev/mon-bootstrap#secret-keys
-.. _Ceph configuration file: ../ceph-conf/#monitors
-.. _Network Configuration Reference: ../network-config-ref
-.. _Monitor lookup through DNS: ../mon-lookup-dns
+.. _监视器密钥环: ../../../dev/mon-bootstrap#secret-keys
+.. _Ceph 配置文件: ../ceph-conf/#monitors
+.. _网络配置参考: ../network-config-ref
 .. _ACID: http://en.wikipedia.org/wiki/ACID
-.. _Adding/Removing a Monitor: ../../operations/add-or-rm-mons
-.. _Add/Remove a Monitor (ceph-deploy): ../../deployment/ceph-deploy-mon
-.. _Monitoring a Cluster: ../../operations/monitoring
-.. _Monitoring OSDs and PGs: ../../operations/monitoring-osd-pg
-.. _Bootstrapping a Monitor: ../../../dev/mon-bootstrap
-.. _Changing a Monitor's IP Address: ../../operations/add-or-rm-mons#changing-a-monitor-s-ip-address
-.. _Monitor/OSD Interaction: ../mon-osd-interaction
-.. _Scalability and High Availability: ../../../architecture#scalability-and-high-availability
-.. _Pool values: ../../operations/pools/#set-pool-values
+.. _增加/删除监视器: ../../operations/add-or-rm-mons
+.. _增加/删除监视器（ ceph-deploy ）: ../../deployment/ceph-deploy-mon
+.. _监控集群: ../../operations/monitoring
+.. _监控 OSD 和归置组: ../../operations/monitoring-osd-pg
+.. _初始化监视器: ../../../dev/mon-bootstrap
+.. _更改监视器 IP 地址: ../../operations/add-or-rm-mons#changing-a-monitor-s-ip-address
+.. _监视器与 OSD 的交互: ../mon-osd-interaction
+.. _伸缩性和高可用性: ../../../architecture#scalability-and-high-availability

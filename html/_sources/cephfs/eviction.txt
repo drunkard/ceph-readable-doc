@@ -1,24 +1,19 @@
+Ceph 文件系统客户端的驱逐
+=========================
 
-Ceph filesystem client eviction
-===============================
+当某个文件系统客户端不响应或者有其它异常行为时，有必要强制切断它到文件系统的\
+访问，这个过程就叫做\ *驱逐*\ 。
 
-When a filesystem client is unresponsive or otherwise misbehaving, it
-may be necessary to forcibly terminate its access to the filesystem.  This
-process is called *eviction*.
+这个过程有点过头，它是为了防止异常客户端导致数据不一致。
 
-This process is somewhat thorough in order to protect against data inconsistency
-resulting from misbehaving clients.
 
-OSD blacklisting
-----------------
+OSD 黑名单机制
+--------------
 
-First, prevent the client from performing any more data operations by *blacklisting*
-it at the RADOS level.  You may be familiar with this concept as *fencing* in other
-storage systems.
+首先，把此客户端加入\ *黑名单*\ 以防止此它在 RADOS 级再操作任何数据。你可能\
+熟悉这个概念，它在其它存储系统里叫做\ *隔离栏（ fencing ）*\ 。
 
-Identify the client to evict from the MDS session list:
-
-::
+找出要从 MDS 会话列表中驱逐的客户端： ::
 
     # ceph daemon mds.a session ls
     [
@@ -33,25 +28,21 @@ Identify the client to evict from the MDS session list:
               "hostname": "fedoravm.localdomain",
               "mount_point": "\/home\/user\/mnt"}}]
 
-In this case the 'fedoravm' client has address ``172.16.79.251:0/3271``, so we blacklist
-it as follows:
-
-::
+本例中， 'fedoravm' 客户端的地址是 ``172.16.79.251:0/3271`` ，所以这样加黑名\
+单： ::
 
     # ceph osd blacklist add 172.16.79.251:0/3271
     blacklisting 172.16.79.251:0/3271 until 2014-12-09 13:09:56.569368 (3600 sec)
 
-OSD epoch barrier
------------------
 
-While the evicted client is now marked as blacklisted in the central (mon) copy of the OSD
-map, it is now necessary to ensure that this OSD map update has propagated to all daemons
-involved in subsequent filesystem I/O.  To do this, use the ``osdmap barrier`` MDS admin
-socket command.
+OSD 元图屏蔽
+------------
 
-First read the latest OSD epoch:
+被驱逐的客户端已在 OSD 图的中央（ mon ）副本中标记为进黑名单了，现在有必要确\
+认一下本次 OSD 图更新已经传递给了后续文件系统 I/O 会涉及的所有守护进程。可以\
+用 ``osdmap barrier`` 这个 MDS 管理套接字命令。
 
-::
+首先读出最新的 OSD 元图： ::
 
     # ceph osd dump
     epoch 12
@@ -60,60 +51,50 @@ First read the latest OSD epoch:
     modified 2014-12-09 12:09:56.619957
     ...
 
-In this case it is 12.  Now request the MDS to barrier on this epoch:
-
-::
+本例中它是 12 ，让 MDS 屏蔽此元图： ::
 
     # ceph daemon mds.a osdmap barrier 12
 
-MDS session eviction
---------------------
 
-Finally, it is safe to evict the client's MDS session, such that any capabilities it held
-may be issued to other clients.  The ID here is the ``id`` attribute from the ``session ls``
-output:
+MDS 会话驱逐
+------------
 
-::
+最后就可以安全地驱逐此客户端的 MDS 会话了，这样它持有的所有能力就可以发行给\
+其它客户端了。这里的 ID 是 ``session ls`` 输出里的 ``id`` 属性： ::
 
     # ceph daemon mds.a session evict 4117
 
-That's it!  The client has now been evicted, and any resources it had locked will
-now be available for other clients.
+好了！这个客户端现在已经被驱逐了，而且它持有的资源也可以重分配给其它客户端了。
 
-Background: OSD epoch barrier
------------------------------
 
-The purpose of the barrier is to ensure that when we hand out any
-capabilities which might allow touching the same RADOS objects, the
-clients we hand out the capabilities to must have a sufficiently recent
-OSD map to not race with cancelled operations (from ENOSPC) or
-blacklisted clients (from evictions)
+背景： OSD 元图屏蔽
+-------------------
 
-More specifically, the cases where we set an epoch barrier are:
+此屏蔽的目的是为了确保当我们分配出这些能力后，别的客户端就有可能触碰同样的 \
+RADOS 对象，接受分配能力的客户端们必须有足够新的 OSD 图，这样它们才不会与取\
+消的操作（来自 ENOSPC ）或进了黑名单的客户端（来自驱逐过程）竞争。
 
- * Client eviction (where the client is blacklisted and other clients
-   must wait for a post-blacklist epoch to touch the same objects)
- * OSD map full flag handling in the client (where the client may
-   cancel some OSD ops from a pre-full epoch, so other clients must
-   wait until the full epoch or later before touching the same objects).
- * MDS startup, because we don't persist the barrier epoch, so must
-   assume that latest OSD map is always required after a restart.
+更具体些，我们设置元图屏蔽的情形有：
 
-Note that this is a global value for simplicity: we could maintain this on
-a per-inode basis.  We don't, because:
+ * 客户端驱逐（此客户端被加入黑名单了、且其它客户端必须等到有加黑之后的元图\
+   出现才能触碰同一批对象）；
+ * 客户端正在处理 OSD 图的完整标识（此客户端可能会在快完整的元图中取消一些 \
+   OSD 操作，这样其它客户端都必须等着，直到元图完整或周期达到才能触碰同样的\
+   对象）；
+ * MDS 启动，因为我们不会永久存储屏蔽图元，所以必须假设重启后总是需要最新的 \
+   OSD 图。
 
- * It would be more complicated
- * It would use an extra 4 bytes of memory for every inode
- * It would not be much more efficient as almost always everyone has the latest
-   OSD map anyway, in most cases everyone will breeze through this barrier
-   rather than waiting.
- * We only do this barrier in very rare cases, so any benefit from per-inode
-   granularity would only very rarely be seen.
+注意，为保持简洁性这是个全局值，其实我们可以做到按每索引节点维护此值，但我\
+们没有这么做，因为：
 
-The epoch barrier is transmitted along with all capability messages, and
-instructs the receiver of the message to avoid sending any more RADOS
-operations to OSDs until it has seen this OSD epoch.  This mainly applies
-to clients (doing their data writes directly to files), but also applies
-to the MDS because things like file size probing and file deletion are
-done directly from the MDS.
+ * 它会复杂得多；
+ * 每索引节点需额外多占 4 字节的内存；
+ * 无论如何它都不会比大家一直都拥有最新的 OSD 图更有效，多数情况下，大家都能\
+   轻松地越过这个屏障而不是等着它。
+ * 我们仅在极少数情形下使用这种屏蔽，所以每索引节点这样细粒度的实现带来的好\
+   处也很少见。
 
+元图屏蔽随其它能力消息一起传递，并且可指示消息接收器在看到这个 OSD 元图前、\
+别再向那些 OSD 发送 RADOS 操作。主要是面向客户端（它们直接向文件写入数据）\
+的，也适用于 MDS ，因为像文件尺寸探测和文件删除这样的操作都是直接在 MDS 上进\
+行的。

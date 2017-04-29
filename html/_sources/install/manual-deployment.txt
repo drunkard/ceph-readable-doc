@@ -1,19 +1,16 @@
-===================
- Manual Deployment
-===================
+.. _Manual Deployment:
 
-All Ceph clusters require at least one monitor, and at least as many OSDs as
-copies of an object stored on the cluster.  Bootstrapping the initial monitor(s)
-is the first step in deploying a Ceph Storage Cluster. Monitor deployment also
-sets important criteria for the entire cluster, such as the number of replicas
-for pools, the number of placement groups per OSD, the heartbeat intervals,
-whether authentication is required, etc. Most of these values are set by
-default, so it's useful to know about them when setting up your cluster for
-production.
+==========
+ 手动部署
+==========
 
-Following the same configuration as `Installation (Quick)`_, we will set up a
-cluster with ``node1`` as  the monitor node, and ``node2`` and ``node3`` for 
-OSD nodes.
+所有 Ceph 集群都需要至少一个监视器、且 OSD 数量不小于副本数。自举引导初始监视器是\
+部署 Ceph 存储集群的第一步，监视器的部署也为整个集群奠定了重要框架，如存储池副本数、\
+每个 OSD 拥有的归置组数量、心跳周期、是否需认证等，其中大多数选项都有默认值，但是建\
+设生产集群时仍需要您熟知它们。
+
+按照\ `安装（快速）`_\ 里的相同配置，我们能配置起监视器为 ``node1`` ， OSD 节点为 \
+``node2`` 、 ``node3`` 的集群。
 
 
 
@@ -37,170 +34,135 @@ OSD nodes.
                                         \----------------/
 
 
-Monitor Bootstrapping
-=====================
+监视器的自举引导
+================
 
-Bootstrapping a monitor (a Ceph Storage Cluster, in theory) requires
-a number of things:
+自举引导监视器（理论上是 Ceph 存储集群）需要以下几个条件：
 
-- **Unique Identifier:** The ``fsid`` is a unique identifier for the cluster, 
-  and stands for File System ID from the days when the Ceph Storage Cluster was 
-  principally for the Ceph Filesystem. Ceph now supports native interfaces, 
-  block devices, and object storage gateway interfaces too, so ``fsid`` is a 
-  bit of a misnomer.
+- **惟一标识符：** ``fsid`` 是集群的惟一标识，它是 Ceph 作为文件系统时的文件系统标\
+  识符。现在， Ceph 还支持原生接口、块设备、和对象存储网关接口，所以 ``fsid`` 有点\
+  名不符实了。
 
-- **Cluster Name:** Ceph clusters have a cluster name, which is a simple string
-  without spaces. The default cluster name is ``ceph``, but you may specify
-  a different cluster name. Overriding the default cluster name is 
-  especially useful when you are working with multiple clusters and you need to 
-  clearly understand which cluster your are working with. 
+- **集群名称：** 每个 Ceph 集群都有自己的名字，它是个不含空格的字符串。默认名字是 \
+  ``ceph`` 、但你可以更改；尤其是运营着多个集群时，需要用名字来区分要操作哪一个。
   
-  For example, when you run multiple clusters in a `federated architecture`_, 
-  the cluster name (e.g., ``us-west``, ``us-east``) identifies the cluster for
-  the current CLI session. **Note:** To identify the cluster name on the 
-  command line interface, specify the a Ceph configuration file with the 
-  cluster name (e.g., ``ceph.conf``, ``us-west.conf``, ``us-east.conf``, etc.).
-  Also see CLI usage (``ceph --cluster {cluster-name}``).
+  比如，当你以\ `联盟架构`_\ 运营多个集群时，集群名字（如 ``us-west`` 、 \
+  ``us-east`` ）将作为标识符出现在 CLI 界面上。\ **注意：**\ 要在命令行下指定某个\
+  集群，可以指定以集群名为前缀的配置文件（如 ``ceph.conf`` 、  ``us-west.conf`` 、
+  ``us-east.conf`` 等）；也可以参考 CLI 用法（ ``ceph --cluster {cluster-name}`` ）。
   
-- **Monitor Name:** Each monitor instance within a cluster has a unique name. 
-  In common practice, the Ceph Monitor name is the host name (we recommend one
-  Ceph Monitor per host, and no commingling of Ceph OSD Daemons with 
-  Ceph Monitors). You may retrieve the short hostname with ``hostname -s``.
+- **监视器名字：** 同一集群内的各监视器例程都有惟一的名字，通常都用主机名作为监视器\
+  名字（我们建议每台主机只运行一个监视器、并且不要与 OSD 主机复用。短主机名可以用 \
+  ``hostname -s`` 获取。
 
-- **Monitor Map:** Bootstrapping the initial monitor(s) requires you to 
-  generate a monitor map. The monitor map requires the ``fsid``, the cluster 
-  name (or uses the default), and at least one host name and its IP address.
+- **监视器图：** 自举引导初始监视器需要生成监视器图，为此，需要有 ``fsid`` 、集群\
+  名（或用默认）、至少一个主机名及其 IP 。
 
-- **Monitor Keyring**: Monitors communicate with each other via a 
-  secret key. You must generate a keyring with a monitor secret and provide 
-  it when bootstrapping the initial monitor(s).
+- **监视器密钥环：** 监视器之间通过密钥通讯，所以你必须把监视器密钥加入密钥环，并在\
+  自举引导时提供。
   
-- **Administrator Keyring**: To use the ``ceph`` CLI tools, you must have
-  a ``client.admin`` user. So you must generate the admin user and keyring,
-  and you must also add the ``client.admin`` user to the monitor keyring.
+- **管理密钥环：** 要使用 ``ceph`` 这个命令行工具，你必须有 ``client.admin`` 用\
+  户，所以你要创建此用户及其密钥，并把他们加入密钥环。
 
-The foregoing requirements do not imply the creation of a Ceph Configuration 
-file. However, as a best practice, we recommend creating a Ceph configuration 
-file and populating it with the ``fsid``, the ``mon initial members`` and the
-``mon host`` settings.
+前述必要条件并未提及 Ceph 配置文件的创建，然而，实践中最好创建个配置文件，并写好 \
+``fsid`` 、 ``mon initial members`` 和 ``mon host`` 配置。
 
-You can get and set all of the monitor settings at runtime as well. However,
-a Ceph Configuration file may contain only those settings that override the 
-default values. When you add settings to a Ceph configuration file, these
-settings override the default settings. Maintaining those settings in a 
-Ceph configuration file makes it easier to maintain your cluster.
+你也可以查看或设置运行时配置。 Ceph 配置文件可以只包含非默认配置， Ceph 配置文件的\
+配置将覆盖默认值，把这些配置保存在配置文件里可简化维护。
 
-The procedure is as follows:
+具体过程如下：
 
-
-#. Log in to the initial monitor node(s)::
+#. 登录到初始监视器节点： ::
 
 	ssh {hostname}
 
-   For example:: 
+   如： ::
 
 	ssh node1
 
-
-#. Ensure you have a directory for the Ceph configuration file. By default, 
-   Ceph uses ``/etc/ceph``. When you install ``ceph``, the installer will 
-   create the ``/etc/ceph`` directory automatically. ::
+#. 确保保存 Ceph 配置文件的目录存在， Ceph 默认使用 ``/etc/ceph`` 。安装 \
+   ``ceph`` 软件时，安装器也会自动创建 ``/etc/ceph/`` 目录。 ::
 
 	ls /etc/ceph   
 
-   **Note:** Deployment tools may remove this directory when purging a
-   cluster (e.g., ``ceph-deploy purgedata {node-name}``, ``ceph-deploy purge
-   {node-name}``).
+   **注意：**\ 部署工具在清除集群时可能删除此目录（如 ``ceph-deploy purgedata
+   {node-name}`` 、 ``ceph-deploy purge {node-name}`` ）。
 
-#. Create a Ceph configuration file. By default, Ceph uses 
-   ``ceph.conf``, where ``ceph`` reflects the cluster name. ::
+#. 创建 Ceph 配置文件， Ceph 默认使用 ``ceph.conf`` ，其中的 ``ceph`` 是集群名字。 ::
 
 	sudo vim /etc/ceph/ceph.conf
 
-
-#. Generate a unique ID (i.e., ``fsid``) for your cluster. :: 
+#. 给集群分配惟一 ID （即 ``fsid`` ）。 ::
 
 	uuidgen
-	
 
-#. Add the unique ID to your Ceph configuration file. :: 
+#. 把此 ID 写入 Ceph 配置文件。 ::
 
 	fsid = {UUID}
 
-   For example:: 
+   例如： ::
 
 	fsid = a7f64266-0894-4f1e-a635-d0aeaca0e993
 
-
-#. Add the initial monitor(s) to your Ceph configuration file. :: 
+#. 把初始监视器写入 Ceph 配置文件。 ::
 
 	mon initial members = {hostname}[,{hostname}]
 
-   For example:: 
+   例如： ::
 
 	mon initial members = node1
 
-
-#. Add the IP address(es) of the initial monitor(s) to your Ceph configuration 
-   file and save the file. :: 
+#. 把初始监视器的 IP 地址写入 Ceph 配置文件、并保存。 ::
 
 	mon host = {ip-address}[,{ip-address}]
 
-   For example::
+   例如： ::
 
 	mon host = 192.168.0.1
 
-   **Note:** You may use IPv6 addresses instead of IPv4 addresses, but
-   you must set ``ms bind ipv6`` to ``true``. See `Network Configuration
-   Reference`_ for details about network configuration.
+   **注意：** 你也可以写 IPv6 地址，但是必须设置 ``ms bind ipv6 = true`` 。详情\
+   见\ `网络配置参考`_\ 。
 
-#. Create a keyring for your cluster and generate a monitor secret key. ::
+#. 为此集群创建密钥环、并生成监视器密钥。 ::
 
 	ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
-
-#. Generate an administrator keyring, generate a ``client.admin`` user and add
-   the user to the keyring. :: 
+#. 生成管理员密钥环，生成 ``client.admin`` 用户并加入密钥环。 ::
 
 	sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
 
-
-#. Add the ``client.admin`` key to the ``ceph.mon.keyring``. :: 
+#. 把 ``client.admin`` 密钥加入 ``ceph.mon.keyring`` 。 ::
 
 	ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 
-
-#. Generate a monitor map using the hostname(s), host IP address(es) and the FSID. 
-   Save it as ``/tmp/monmap``:: 
+#. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，\
+   并保存为 ``/tmp/monmap`` 。 ::
 
 	monmaptool --create --add {hostname} {ip-address} --fsid {uuid} /tmp/monmap
 
-   For example::
+   例如： ::
 
 	monmaptool --create --add node1 192.168.0.1 --fsid a7f64266-0894-4f1e-a635-d0aeaca0e993 /tmp/monmap
 
-
-#. Create a default data directory (or directories) on the monitor host(s). ::
+#. 在监视器主机上分别创建数据目录。 ::
 
 	sudo mkdir /var/lib/ceph/mon/{cluster-name}-{hostname}
 
-   For example::
+   例如： ::
 
 	sudo mkdir /var/lib/ceph/mon/ceph-node1
 
-   See `Monitor Config Reference - Data`_ for details.
+   详情见\ `监视器配置参考——数据`_\ 。
 
-#. Populate the monitor daemon(s) with the monitor map and keyring. ::
+#. 用监视器图和密钥环组装守护进程所需的初始数据。 ::
 
 	sudo -u ceph ceph-mon [--cluster {cluster-name}] --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
 
-   For example::
+   例如： ::
 
 	sudo -u ceph ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
 
-
-#. Consider settings for a Ceph configuration file. Common settings include 
-   the following::
+#. 仔细斟酌 Ceph 配置文件，公共的全局配置包括这些： ::
 
 	[global]
 	fsid = {cluster-id}
@@ -215,11 +177,10 @@ The procedure is as follows:
 	osd pool default size = {n}  # Write an object n times.
 	osd pool default min size = {n} # Allow writing n copy in a degraded state.
 	osd pool default pg num = {n}
-	osd pool default pgp num = {n}	
+	osd pool default pgp num = {n}
 	osd crush chooseleaf type = {n}
 
-   In the foregoing example, the ``[global]`` section of the configuration might
-   look like this::
+   按前述实例， ``[global]`` 段的配置大致如下： ::
 
 	[global]
 	fsid = a7f64266-0894-4f1e-a635-d0aeaca0e993
@@ -233,51 +194,45 @@ The procedure is as follows:
 	osd pool default size = 2
 	osd pool default min size = 1
 	osd pool default pg num = 333
-	osd pool default pgp num = 333	
+	osd pool default pgp num = 333
 	osd crush chooseleaf type = 1
 
-#. Touch the ``done`` file.
-
-   Mark that the monitor is created and ready to be started::
+#. 建一个空文件 ``done`` ，表示监视器已创建、可以启动了： ::
 
 	sudo touch /var/lib/ceph/mon/ceph-node1/done
 
-#. Start the monitor(s).
+#. 启动监视器。
 
-   For Ubuntu, use Upstart::
+   在 Ubuntu 上用 Upstart ： ::
 
 	sudo start ceph-mon id=node1 [cluster={cluster-name}]
 
-   In this case, to allow the start of the daemon at each reboot you
-   must create two empty files like this::
+   要使此守护进程开机自启，需要创建两个空文件，像这样： ::
 
 	sudo touch /var/lib/ceph/mon/{cluster-name}-{hostname}/upstart
 
-   For example::
+   例如： ::
 
 	sudo touch /var/lib/ceph/mon/ceph-node1/upstart
 
-   For Debian/CentOS/RHEL, use sysvinit::
+   在 Debian/CentOS/RHEL 上用 sysvinit ： ::
 
 	sudo /etc/init.d/ceph start mon.node1
 
-
-#. Verify that Ceph created the default pools. ::
+#. 验证下 Ceph 已经创建了默认存储池。 ::
 
 	ceph osd lspools
 
-   You should see output like this::
+   你应该会看到这样的输出： ::
 
 	0 data,1 metadata,2 rbd,
 
-
-#. Verify that the monitor is running. :: 
+#. 确认下集群在运行。 ::
 
 	ceph -s
 
-   You should see output that the monitor you started is up and running, and
-   you should see a health error indicating that placement groups are stuck
-   inactive. It should look something like this:: 
+   你应该从输出里看到刚刚启动的监视器在正常运行，并且应该会看到一个健康错误：它表明\
+   归置组卡在了 ``stuck inactive`` 状态。输出大致如此： ::
 
 	cluster a7f64266-0894-4f1e-a635-d0aeaca0e993
 	  health HEALTH_ERR 192 pgs stuck inactive; 192 pgs stuck unclean; no osds
@@ -287,241 +242,181 @@ The procedure is as follows:
 	     0 kB used, 0 kB / 0 kB avail
 	     192 creating
 
-   **Note:** Once you add OSDs and start them, the placement group health errors
-   should disappear. See the next section for details.
+   **注意：** 一旦你添加了 OSD 并启动，归置组健康错误应该消失，详情见下一节。
 
 
-Adding OSDs
-===========
+.. _Adding OSDs:
 
-Once you have your initial monitor(s) running, you should add OSDs. Your cluster
-cannot reach an ``active + clean`` state until you have enough OSDs to handle the
-number of copies of an object (e.g., ``osd pool default size = 2`` requires at
-least two OSDs). After bootstrapping your monitor, your cluster has a default
-CRUSH map; however, the CRUSH map doesn't have any Ceph OSD Daemons mapped to 
-a Ceph Node.
+添加 OSD
+========
 
-
-Short Form
-----------
-
-Ceph provides the ``ceph-disk`` utility, which can prepare a disk, partition or
-directory for use with Ceph. The ``ceph-disk`` utility creates the OSD ID by
-incrementing the index. Additionally, ``ceph-disk`` will add the new OSD to the
-CRUSH map under the host for you. Execute ``ceph-disk -h`` for CLI details. 
-The ``ceph-disk`` utility automates the steps of the `Long Form`_ below. To
-create the first two OSDs with the short form procedure, execute the following
-on  ``node2`` and ``node3``:
+你的初始监视器可以正常运行后就可以添加 OSD 了。要想让集群达到 ``active + clean`` \
+状态，必须安装足够多的 OSD 来处理对象副本（如 ``osd pool default size = 2`` 需要\
+至少 2 个 OSD ）。在完成监视器自举引导后，集群就有了默认的 CRUSH 图，但现在此图还是\
+空的，里面没有任何 OSD 映射到 Ceph 节点。
 
 
-#. Prepare the OSD. ::
+.. _Short Form:
+
+精简型
+------
+
+Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分区或用于 Ceph 的目\
+录。 ``ceph-disk`` 可通过递增索引来创建 OSD ID ；还能把 OSD 加入 CRUSH 图。 \
+``ceph-disk`` 的详细用法可参考 ``ceph-disk -h`` ，此工具把后面将提到的\ \
+`精简型`_\ 里面的步骤都自动化了。为按照精简型创建前两个 OSD ，在 ``node2`` 和 \
+``node3`` 上执行下列命令：
+
+#. 准备OSD。 ::
 
 	ssh {node-name}
 	sudo ceph-disk prepare --cluster {cluster-name} --cluster-uuid {uuid} --fs-type {ext4|xfs|btrfs} {data-path} [{journal-path}]
 
-   For example::
+   例如： ::
 
 	ssh node1
 	sudo ceph-disk prepare --cluster ceph --cluster-uuid a7f64266-0894-4f1e-a635-d0aeaca0e993 --fs-type ext4 /dev/hdd1
 
-
-#. Activate the OSD::
+#. 激活 OSD： ::
 
 	sudo ceph-disk activate {data-path} [--activate-key {path}]
 
-   For example:: 
+   例如： ::
 
 	sudo ceph-disk activate /dev/hdd1
 
-   **Note:** Use the ``--activate-key`` argument if you do not have a copy
-   of ``/var/lib/ceph/bootstrap-osd/{cluster}.keyring`` on the Ceph Node.
+   **注：** 如果你的 Ceph 节点上没有 ``/var/lib/ceph/bootstrap-osd/{cluster}.keyring`` ，\
+   那么应该外加 ``--activate-key`` 参数。
 
 
-Long Form
----------
+.. _Long Form:
 
-Without the benefit of any helper utilities, create an OSD and add it to the
-cluster and CRUSH map with the following procedure. To create the first two
-OSDs with the long form procedure, execute the following on ``node2`` and
-``node3``:
+细致型
+------
 
-#. Connect to the OSD host. :: 
+要是不想借助任何辅助工具，可按下列步骤创建 OSD 、将之加入集群和
+CRUSH 图。按下列详细步骤可在 ``node2`` 和 ``node3`` 上增加前 2
+个 OSD ：
+
+#. 登录到OSD主机。 ::
 
 	ssh {node-name}
 
-#. Generate a UUID for the OSD. ::
+#. 给 OSD 分配 UUID 。 ::
 
 	uuidgen
 
+#. 创建 OSD 。如果没有指定 UUID ，将会在 OSD 首次启动时分配一个。下列命令执行完成后\
+   将输出 OSD 号，在后续步骤里还会用到这个号。 ::
 
-#. Create the OSD. If no UUID is given, it will be set automatically when the 
-   OSD starts up. The following command will output the OSD number, which you 
-   will need for subsequent steps. ::
-	
 	ceph osd create [{uuid} [{id}]]
 
-
-#. Create the default directory on your new OSD. :: 
+#. 在新 OSD 主机上创建默认目录。 ::
 
 	ssh {new-osd-host}
 	sudo mkdir /var/lib/ceph/osd/{cluster-name}-{osd-number}
-	
 
-#. If the OSD is for a drive other than the OS drive, prepare it 
-   for use with Ceph, and mount it to the directory you just created:: 
+#. 如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后挂载到刚创建的目录下： ::
 
 	ssh {new-osd-host}
 	sudo mkfs -t {fstype} /dev/{hdd}
 	sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/{cluster-name}-{osd-number}
 
-	
-#. Initialize the OSD data directory. :: 
+#. 初始化 OSD 数据目录： ::
 
 	ssh {new-osd-host}
 	sudo ceph-osd -i {osd-num} --mkfs --mkkey --osd-uuid [{uuid}]
-	
-   The directory must be empty before you can run ``ceph-osd`` with the 
-   ``--mkkey`` option. In addition, the ceph-osd tool requires specification
-   of custom cluster names with the ``--cluster`` option.
 
+   加 ``--mkkey`` 选项运行 ``ceph-osd`` 之前，此目录必须是空的；另外，如果集群名字\
+   不是默认值，还要给 ``ceph-osd`` 指定 ``--cluster`` 选项。
 
-#. Register the OSD authentication key. The value of ``ceph`` for 
-   ``ceph-{osd-num}`` in the path is the ``$cluster-$id``.  If your 
-   cluster name differs from ``ceph``, use your cluster name instead.::
+#. 注册此 OSD 的密钥。路径内 ``ceph-{osd-num}`` 里的 ``ceph`` 其含义为 \
+   ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，请指定自己的集群名： ::
 
 	sudo ceph auth add osd.{osd-num} osd 'allow *' mon 'allow profile osd' -i /var/lib/ceph/osd/{cluster-name}-{osd-num}/keyring
 
-
-#. Add your Ceph Node to the CRUSH map. ::
+#. 把此节点加入 CRUSH 图。 ::
 
 	ceph [--cluster {cluster-name}] osd crush add-bucket {hostname} host
 
-   For example::
+   例如： ::
 
 	ceph osd crush add-bucket node1 host
 
-
-#. Place the Ceph Node under the root ``default``. ::
+#. 把此 Ceph 节点放入 ``default`` 根下。 ::
 
 	ceph osd crush move node1 root=default
 
-
-#. Add the OSD to the CRUSH map so that it can begin receiving data. You may
-   also decompile the CRUSH map, add the OSD to the device list, add the host as a
-   bucket (if it's not already in the CRUSH map), add the device as an item in the
-   host, assign it a weight, recompile it and set it. ::
+#. 把此 OSD 加入 CRUSH 图之后，它就能接收数据了。你也可以反编译 CRUSH 图、把此 \
+   OSD 加入设备列表、对应主机作为桶加入（如果它还不在 CRUSH 图里）、然后此设备作为\
+   主机的一个条目、分配权重、重新编译、注入集群。 ::
 
 	ceph [--cluster {cluster-name}] osd crush add {id-or-name} {weight} [{bucket-type}={bucket-name} ...]
 
-   For example::
+   例如： ::
 
 	ceph osd crush add osd.0 1.0 host=node1
 
+#. 把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始运行，这时处于 ``down`` \
+   且 ``in`` 状态，要启动进程才能收数据。
 
-#. After you add an OSD to Ceph, the OSD is in your configuration. However, 
-   it is not yet running. The OSD is ``down`` and ``in``. You must start 
-   your new OSD before it can begin receiving data.
-
-   For Ubuntu, use Upstart::
+   在 Ubuntu 系统上用 Upstart 启动： ::
 
 	sudo start ceph-osd id={osd-num} [cluster={cluster-name}]
 
-   For example::
+   例如： ::
 
 	sudo start ceph-osd id=0
 	sudo start ceph-osd id=1
 
-   For Debian/CentOS/RHEL, use sysvinit::
+   在 Debian/CentOS/RHEL 上用 sysvinit 启动： ::
 
 	sudo /etc/init.d/ceph start osd.{osd-num} [--cluster {cluster-name}]
 
-   For example::
+   例如： ::
 
 	sudo /etc/init.d/ceph start osd.0
 	sudo /etc/init.d/ceph start osd.1
 
-   In this case, to allow the start of the daemon at each reboot you
-   must create an empty file like this::
+   要让守护进程开机自启，必须创建一个空文件： ::
 
 	sudo touch /var/lib/ceph/osd/{cluster-name}-{osd-num}/sysvinit
 
-   For example::
+   例如： ::
 
 	sudo touch /var/lib/ceph/osd/ceph-0/sysvinit
 	sudo touch /var/lib/ceph/osd/ceph-1/sysvinit
 
-   Once you start your OSD, it is ``up`` and ``in``.
+   OSD 启动后，它应该处于 ``up`` 且 ``in`` 状态。
 
 
+总结
+====
 
-Adding MDS
-==========
-
-In the below instructions, ``{id}`` is an arbitrary name, such as the hostname of the machine.
-
-#. Create the mds data directory.::
-
-	mkdir -p /var/lib/ceph/mds/{cluster-name}-{id}
-
-#. Create a keyring.::
-
-	ceph-authtool --create-keyring /var/lib/ceph/mds/{cluster-name}-{id}/keyring --gen-key -n mds.{id}
-    
-#. Import the keyring and set caps.::
-
-	ceph auth add mds.{id} osd "allow rwx" mds "allow" mon "allow profile mds" -i /var/lib/ceph/mds/{cluster}-{id}/keyring
-   
-#. Add to ceph.conf.::
-
-	[mds.{id}]
-	host = {id}
-
-#. Start the daemon the manual way.::
-
-	ceph-mds --cluster {cluster-name} -i {id} -m {mon-hostname}:{mon-port} [-f]
-
-#. Start the daemon the right way (using ceph.conf entry).::
-
-	service ceph start
-
-#. If starting the daemon fails with this error::
-
-	mds.-1.0 ERROR: failed to authenticate: (22) Invalid argument
-
-   Then make sure you do not have a keyring set in ceph.conf in the global section; move it to the client section; or add a keyring setting specific to this mds daemon. And verify that you see the same key in the mds data directory and ``ceph auth get mds.{id}`` output.
-
-#. Now you are ready to `create a Ceph filesystem`_.
-
-
-Summary
-=======
-
-Once you have your monitor and two OSDs up and running, you can watch the
-placement groups peer by executing the following:: 
+监视器和两个 OSD 开始正常运行后，你就可以通过下列命令观察归置组互联过程了： ::
 
 	ceph -w
 
-To view the tree, execute the following:: 
+执行下列命令查看 OSD树： ::
 
 	ceph osd tree
-	
-You should see output that looks something like this:: 
+
+你应该会看到类似如下的输出： ::
 
 	# id	weight	type name	up/down	reweight
 	-1	2	root default
 	-2	2		host node1
 	0	1			osd.0	up	1
 	-3	1		host node2
-	1	1			osd.1	up	1	
+	1	1			osd.1	up	1
 
-To add (or remove) additional monitors, see `Add/Remove Monitors`_. 
-To add (or remove) additional Ceph OSD Daemons, see `Add/Remove OSDs`_.
+要增加（或删除）额外监视器，参见\ `增加/删除监视器`_\ 。要增加（或删除）额外 OSD ，\
+参见\ `增加/删除 OSD`_ 。
 
 
-.. _federated architecture: ../../radosgw/federated-config
-.. _Installation (Quick): ../../start
-.. _Add/Remove Monitors: ../../rados/operations/add-or-rm-mons
-.. _Add/Remove OSDs: ../../rados/operations/add-or-rm-osds
-.. _Network Configuration Reference: ../../rados/configuration/network-config-ref
-.. _Monitor Config Reference - Data: ../../rados/configuration/mon-config-ref#data
-.. _create a Ceph filesystem: ../../cephfs/createfs
+.. _联盟架构: ../../radosgw/federated-config
+.. _安装（快速）: ../../start
+.. _增加/删除监视器: ../../rados/operations/add-or-rm-mons
+.. _增加/删除 OSD: ../../rados/operations/add-or-rm-osds
+.. _网络配置参考: ../../rados/configuration/network-config-ref
+.. _监视器配置参考——数据: ../../rados/configuration/mon-config-ref#data
