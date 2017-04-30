@@ -224,7 +224,7 @@ match reality. If they don&#8217;t, jump to
 to severe clock skews amongst the monitor nodes and you should refer to
 <a class="reference internal" href="#id5">时钟偏移</a> first, but if that doesn&#8217;t solve your problem then it is
 the time to prepare some logs and reach out to the community (please refer
-to <a class="reference internal" href="#id9">收集所需日志</a> on how to best prepare your logs).</p>
+to <a class="reference internal" href="#id13">收集所需日志</a> on how to best prepare your logs).</p>
 </div></blockquote>
 <p>What if state is <tt class="docutils literal"><span class="pre">electing</span></tt>?</p>
 <blockquote>
@@ -249,14 +249,14 @@ too fast for the synchronization process to keep up. This used to be a
 thing in early Cuttlefish, but since then the synchronization process was
 quite refactored and enhanced to avoid just this sort of behavior. If this
 happens in later versions let us know. And bring some logs
-(see <a class="reference internal" href="#id9">收集所需日志</a>).</p>
+(see <a class="reference internal" href="#id13">收集所需日志</a>).</p>
 </div></blockquote>
 <p>What if state is <tt class="docutils literal"><span class="pre">leader</span></tt> or <tt class="docutils literal"><span class="pre">peon</span></tt>?</p>
 <blockquote>
 <div>This should not happen. There is a chance this might happen however, and
 it has a lot to do with clock skews &#8211; see <a class="reference internal" href="#id5">时钟偏移</a>. If you&#8217;re not
 suffering from clock skews, then please prepare your logs (see
-<a class="reference internal" href="#id9">收集所需日志</a>) and reach out to us.</div></blockquote>
+<a class="reference internal" href="#id13">收集所需日志</a>) and reach out to us.</div></blockquote>
 </div>
 <div class="section" id="recovering-a-monitor-s-broken-monmap">
 <h3>Recovering a Monitor&#8217;s Broken monmap<a class="headerlink" href="#recovering-a-monitor-s-broken-monmap" title="Permalink to this headline">¶</a></h3>
@@ -364,18 +364,84 @@ monitor clock skews.</div></blockquote>
 </div>
 </div>
 </div>
-<div class="section" id="id7">
-<h2>所有尝试都失败了，怎么办？<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id8">
-<h3>到外面寻求帮助<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="monitor-store-failures">
+<span id="id7"></span><h2>监视器存储故障<a class="headerlink" href="#monitor-store-failures" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="symptoms-of-store-corruption">
+<span id="id8"></span><h3>存储损坏的症状<a class="headerlink" href="#symptoms-of-store-corruption" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 监视器把<a class="reference external" href="../../architecture#cluster-map">集群运行图</a>存储在键值数据库里，像 LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日志里可能出现如下错误消息：</p>
+<div class="highlight-python"><pre>Corruption: error in middle of record</pre>
+</div>
+<p>或者：</p>
+<div class="highlight-python"><pre>Corruption: 1 missing files; e.g.: /var/lib/ceph/mon/mon.0/store.db/1234567.ldb</pre>
+</div>
+</div>
+<div class="section" id="recovery-using-healthy-monitor-s">
+<span id="id9"></span><h3>用健康的监视器恢复<a class="headerlink" href="#recovery-using-healthy-monitor-s" title="Permalink to this headline">¶</a></h3>
+<p>只要有幸存的，我们就可以用新的<a class="reference external" href="../operation/add-or-rm-mons">替换掉</a>损坏的；而且新加入的监视器启动后会与健康节点同步，完全同步后就可以服务于客户端了。</p>
+</div>
+<div class="section" id="osd">
+<span id="recovery-using-osds"></span><h3>用 OSD 恢复<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h3>
+<p>但是，所有监视器同时失效怎么办呢？我们建议用户在一个 Ceph 集群内至少部署三个监视器，所以同时失效的可能性非常低。但是，计划外的数据中心掉电、加上配置不当的磁盘和文件系统可能致使底层文件系统损坏，并因此损坏所有监视器。在这种情况下，我们可以用存储在
+OSD 上的信息恢复监视器存储。</p>
+<div class="highlight-python"><pre>ms=/tmp/mon-store
+mkdir $ms
+# 从 OSD 收集集群运行图
+for host in $hosts; do
+    rsync -avz $ms user@host:$ms
+    rm -rf $ms
+    ssh user@host &lt;&lt;EOF
+        for osd in /var/lib/osd/osd-*; do
+            ceph-objectstore-tool --data-path \$osd --op update-mon-db --mon-store-path $ms
+        done
+    EOF
+    rsync -avz user@host:$ms $ms
+done
+# 用收集来的运行图重建监视器存储，如果集群没用 cephx 认证，\
+# 我们可以跳过更新密钥环的步骤，也不用加 --keyring 选项了，\
+# 就是说可以直接运行 ``ceph-monstore-tool /tmp/mon-store rebuild``
+ceph-authtool /path/to/admin.keyring -n mon. \
+    --cap mon allow 'allow *'
+ceph-authtool /path/to/admin.keyring -n client.admin \
+    --cap mon allow 'allow *' --cap osd 'allow *' --cap mds 'allow *'
+ceph-monstore-tool /tmp/mon-store rebuild -- --keyring /path/to/admin.keyring
+# 备份损坏的 store.db 以防万一
+mv /var/lib/ceph/mon/mon.0/store.db /var/lib/ceph/mon/mon.0/store.db.corrupted
+mv /tmp/mon-store/store.db /var/lib/ceph/mon/mon.0/store.db
+chown -R ceph:ceph /var/lib/ceph/mon/mon.0/store.db</pre>
+</div>
+<p>上面的步骤</p>
+<ol class="arabic simple">
+<li>从所有 OSD 收集映射图</li>
+<li>然后重建监视器存储</li>
+<li>把各项目加进密钥环文件，并分配相应的能力</li>
+<li>用恢复好的副本替换 <tt class="docutils literal"><span class="pre">mon.0</span></tt> 上损坏的存储。</li>
+</ol>
+<div class="section" id="id10">
+<h4>已知的局限性<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h4>
+<p>通过上面的步骤无法恢复以下信息：</p>
+<ul class="simple">
+<li><strong>一些密钥环</strong>：所有用 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">auth</span> <span class="pre">add</span></tt> 命令加上的 OSD 密钥环都从 OSD 副本中恢复了； <tt class="docutils literal"><span class="pre">client.admin</span></tt> 密钥环也用
+<tt class="docutils literal"><span class="pre">ceph-monstore-tool</span></tt> 导入了。但是 MDS 密钥环和其它密钥环却丢失了，你也许得手动重加。</li>
+<li><strong>归置组设置</strong>：用 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">pg</span> <span class="pre">set_full_ratio</span></tt> 和
+<tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">pg</span> <span class="pre">set_nearfull_ratio</span></tt> 命令配置的 <tt class="docutils literal"><span class="pre">full</span> <span class="pre">ratio</span></tt> 和
+<tt class="docutils literal"><span class="pre">nearfull</span> <span class="pre">ratio</span></tt> 会丢失。</li>
+<li><strong>MDS 映射图</strong>： MDS 的各种映射图会丢失。</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="id11">
+<h2>所有尝试都失败了，怎么办？<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id12">
+<h3>到外面寻求帮助<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
 <p>You can find us on IRC at #ceph and #ceph-devel at OFTC (server irc.oftc.net)
 and on <tt class="docutils literal"><span class="pre">ceph-devel&#64;vger.kernel.org</span></tt> and <tt class="docutils literal"><span class="pre">ceph-users&#64;lists.ceph.com</span></tt>. Make
 sure you have grabbed your logs and have them ready if someone asks: the faster
 the interaction and lower the latency in response, the better chances everyone&#8217;s
 time is optimized.</p>
 </div>
-<div class="section" id="id9">
-<h3>收集所需日志<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id13">
+<h3>收集所需日志<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
 <p>Monitor logs are, by default, kept in <tt class="docutils literal"><span class="pre">/var/log/ceph/ceph-mon.FOO.log*</span></tt>. We
 may want them. However, your logs may not have the necessary information. If
 you don&#8217;t find your monitor logs at their default location, you can check
@@ -403,8 +469,8 @@ ask you to raise them or even define other debug subsystems to obtain infos
 from &#8211; but at least we started off with some useful information, instead
 of a massively empty log without much to go on with.</p>
 </div>
-<div class="section" id="id10">
-<h3>我需要重启监视器来更改调试级别吗？<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id14">
+<h3>我需要重启监视器来更改调试级别吗？<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
 <p>No. You may do it in one of two ways:</p>
 <p>You have quorum</p>
 <blockquote>
@@ -431,8 +497,8 @@ values using the admin socket and the following commands:</p>
 <div class="highlight-python"><pre>ceph daemon mon.FOO config get 'OPTION_NAME'</pre>
 </div>
 </div>
-<div class="section" id="id11">
-<h3>在某个调试级别下重现了问题，然后呢？<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id15">
+<h3>在某个调试级别下重现了问题，然后呢？<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
 <p>Ideally you would send us only the relevant portions of your logs.
 We realise that figuring out the corresponding portion may not be the
 easiest of tasks. Therefore, we won&#8217;t hold it to you if you provide the
@@ -491,11 +557,20 @@ a new issue on the <a class="reference external" href="http://tracker.ceph.com/p
 <li class="toctree-l5"><a class="reference internal" href="#id6">客户端不能连接或挂载</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">所有尝试都失败了，怎么办？</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id8">到外面寻求帮助</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id9">收集所需日志</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id10">我需要重启监视器来更改调试级别吗？</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id11">在某个调试级别下重现了问题，然后呢？</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#monitor-store-failures">监视器存储故障</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#symptoms-of-store-corruption">存储损坏的症状</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#recovery-using-healthy-monitor-s">用健康的监视器恢复</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#osd">用 OSD 恢复</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="#id10">已知的局限性</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id11">所有尝试都失败了，怎么办？</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id12">到外面寻求帮助</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id13">收集所需日志</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id14">我需要重启监视器来更改调试级别吗？</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id15">在某个调试级别下重现了问题，然后呢？</a></li>
 </ul>
 </li>
 </ul>
@@ -522,11 +597,20 @@ a new issue on the <a class="reference external" href="http://tracker.ceph.com/p
 <li class="toctree-l5"><a class="reference internal" href="#id6">客户端不能连接或挂载</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">所有尝试都失败了，怎么办？</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id8">到外面寻求帮助</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id9">收集所需日志</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id10">我需要重启监视器来更改调试级别吗？</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id11">在某个调试级别下重现了问题，然后呢？</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#monitor-store-failures">监视器存储故障</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#symptoms-of-store-corruption">存储损坏的症状</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#recovery-using-healthy-monitor-s">用健康的监视器恢复</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#osd">用 OSD 恢复</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="#id10">已知的局限性</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id11">所有尝试都失败了，怎么办？</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id12">到外面寻求帮助</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id13">收集所需日志</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id14">我需要重启监视器来更改调试级别吗？</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id15">在某个调试级别下重现了问题，然后呢？</a></li>
 </ul>
 </li>
 </ul>

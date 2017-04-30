@@ -376,6 +376,95 @@ What should I do if there's a clock skew?
 	iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:7300 -j ACCEPT
 
 
+.. _Monitor Store Failures:
+
+监视器存储故障
+==============
+
+.. _Symptoms of store corruption:
+
+存储损坏的症状
+--------------
+
+Ceph 监视器把\ `集群运行图`_\ 存储在键值数据库里，像 LevelDB 。\
+如果某个监视器由于键值存储损坏而失败，监视器日志里可能出现如下\
+错误消息： ::
+
+        Corruption: error in middle of record
+
+或者： ::
+
+        Corruption: 1 missing files; e.g.: /var/lib/ceph/mon/mon.0/store.db/1234567.ldb
+
+.. _Recovery using healthy monitor(s):
+
+用健康的监视器恢复
+------------------
+
+只要有幸存的，我们就可以用新的\ `替换掉`_\ 损坏的；而且新加入\
+的监视器启动后会与健康节点同步，完全同步后就可以服务于客户端了。
+
+.. _Recovery using OSDs:
+
+用 OSD 恢复
+-----------
+
+但是，所有监视器同时失效怎么办呢？我们建议用户在一个 Ceph 集群\
+内至少部署三个监视器，所以同时失效的可能性非常低。但是，计划外\
+的数据中心掉电、加上配置不当的磁盘和文件系统可能致使底层文件系\
+统损坏，并因此损坏所有监视器。在这种情况下，我们可以用存储在
+OSD 上的信息恢复监视器存储。 ::
+
+    ms=/tmp/mon-store
+    mkdir $ms
+    # 从 OSD 收集集群运行图
+    for host in $hosts; do
+        rsync -avz $ms user@host:$ms
+        rm -rf $ms
+        ssh user@host <<EOF
+            for osd in /var/lib/osd/osd-*; do
+                ceph-objectstore-tool --data-path \$osd --op update-mon-db --mon-store-path $ms
+            done
+        EOF
+        rsync -avz user@host:$ms $ms
+    done
+    # 用收集来的运行图重建监视器存储，如果集群没用 cephx 认证，\
+    # 我们可以跳过更新密钥环的步骤，也不用加 --keyring 选项了，\
+    # 就是说可以直接运行 ``ceph-monstore-tool /tmp/mon-store rebuild``
+    ceph-authtool /path/to/admin.keyring -n mon. \
+        --cap mon allow 'allow *'
+    ceph-authtool /path/to/admin.keyring -n client.admin \
+        --cap mon allow 'allow *' --cap osd 'allow *' --cap mds 'allow *'
+    ceph-monstore-tool /tmp/mon-store rebuild -- --keyring /path/to/admin.keyring
+    # 备份损坏的 store.db 以防万一
+    mv /var/lib/ceph/mon/mon.0/store.db /var/lib/ceph/mon/mon.0/store.db.corrupted
+    mv /tmp/mon-store/store.db /var/lib/ceph/mon/mon.0/store.db
+    chown -R ceph:ceph /var/lib/ceph/mon/mon.0/store.db
+
+上面的步骤
+
+#. 从所有 OSD 收集映射图
+#. 然后重建监视器存储
+#. 把各项目加进密钥环文件，并分配相应的能力
+#. 用恢复好的副本替换 ``mon.0`` 上损坏的存储。
+
+已知的局限性
+~~~~~~~~~~~~
+
+通过上面的步骤无法恢复以下信息：
+
+- **一些密钥环**\ ：所有用 ``ceph auth add`` 命令加上的 OSD 密\
+  钥环都从 OSD 副本中恢复了； ``client.admin`` 密钥环也用
+  ``ceph-monstore-tool`` 导入了。但是 MDS 密钥环和其它密钥环却\
+  丢失了，你也许得手动重加。
+
+- **归置组设置**\ ：用 ``ceph pg set_full_ratio`` 和
+  ``ceph pg set_nearfull_ratio`` 命令配置的 ``full ratio`` 和
+  ``nearfull ratio`` 会丢失。
+
+- **MDS 映射图**\ ： MDS 的各种映射图会丢失。
+
+
 所有尝试都失败了，怎么办？
 ==========================
 
@@ -473,4 +562,6 @@ based on that.
 Finally, you should reach out to us on the mailing lists, on IRC or file
 a new issue on the `tracker`_.
 
+.. _集群运行图: ../../architecture#cluster-map
+.. _替换掉: ../operation/add-or-rm-mons
 .. _tracker: http://tracker.ceph.com/projects/ceph/issues/new
