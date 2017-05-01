@@ -17,8 +17,8 @@
 描述
 ====
 
-**rados** is a utility for interacting with a Ceph object storage
-cluster (RADOS), part of the Ceph distributed storage system.
+**rados** 工具可操作 Ceph 对象存储集群（ RADOS ），是 Ceph 分\
+布式存储系统的一部分。
 
 
 选项
@@ -26,28 +26,26 @@ cluster (RADOS), part of the Ceph distributed storage system.
 
 .. option:: -p pool, --pool pool
 
-   Interact with the given pool. Required by most commands.
+   操作指定的存储池。大多数命令都得指定此参数。
 
 .. option:: -s snap, --snap snap
 
-   Read from the given pool snapshot. Valid for all pool-specific read operations.
+   从指定的存储池快照读出。适用于所有与存储池相关的读操作。
 
 .. option:: -i infile
 
-   will specify an input file to be passed along as a payload with the
-   command to the monitor cluster. This is only used for specific
-   monitor commands.
+   指定输入文件，其内容将作为此命令的载荷发送给监视器集群。仅\
+   适用于部分监视器命令。
 
 .. option:: -o outfile
 
-   will write any payload returned by the monitor cluster with its
-   reply to outfile. Only specific monitor commands (e.g. osd getmap)
-   return a payload.
+   把监视器集群返回的载荷写入 outfile 。仅适用于某些会返回载荷\
+   的监视器命令（如 osd getmap ）。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   Use ceph.conf configuration file instead of the default
-   /etc/ceph/ceph.conf to determine monitor addresses during startup.
+   用指定的 ceph.conf 配置文件而非默认的 /etc/ceph/ceph.conf
+   来确定监视器的初始地址。
 
 .. option:: -m monaddress[:port]
 
@@ -55,12 +53,13 @@ cluster (RADOS), part of the Ceph distributed storage system.
 
 .. option:: -b block_size
 
-   设置块尺寸，适用于 put/get 操作、及写入压力测试。
+   设置块尺寸，适用于 put/get/append 操作、及写入压力测试。
 
 .. option:: --striper
 
-   使用 rados 的条带化 API 而非默认的，支持的操作有 stat 、 get 、 \
-   put 、 truncate 、 rm 、 ls 以及所有与 xattr 相关的操作。
+   使用 rados 的条带化 API 而非默认的，支持的操作有 stat 、
+   get 、 put 、 append 、 truncate 、 rm 、 ls 以及所有与
+   xattr 相关的操作。
 
 
 全局命令
@@ -84,13 +83,16 @@ cluster (RADOS), part of the Ceph distributed storage system.
 ==================
 
 :command:`get` *name* *outfile*
-  Read object name from the cluster and write it to outfile.
+  从集群读出名为 name 的对象、并把它写入 outfile 。
 
 :command:`put` *name* *infile*
-  Write object name to the cluster with contents from infile.
+  把 infile 的内容写入成集群内名为 name 的对象。
+
+:command:`append` *name* *infile*
+  把 infile 的内容追加给集群内名为 name 的对象。
 
 :command:`rm` *name*
-  Remove object name.
+  删除名为 name 的对象。
 
 :command:`listwatchers` *name*
   罗列此对象名的关注者。

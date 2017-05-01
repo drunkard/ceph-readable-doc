@@ -95,6 +95,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\ **对象、块�
    cephfs/index
    rbd/rbd
    radosgw/index
+   mgr/index
    api/index
    architecture
    开发文档 <dev/index>

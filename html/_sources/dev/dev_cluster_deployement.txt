@@ -50,7 +50,7 @@ osd 、和/或 mds ，不指定的话会启动所有类型。
 
 .. option:: -r
 
-    Start radosgw (ceph needs to be compiled with --radosgw), create an apache2 configuration file, and start apache2 with it (needs apache2 with mod_fastcgi) on port starting from 8000.
+    启动 radosgw ，端口从 8000 起递增。
 
 .. option:: --nodaemon
 

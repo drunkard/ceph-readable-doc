@@ -103,7 +103,7 @@ Ceph 二进制包，必须先配置库。
 
 	https://download.ceph.com/rpm-{release-name}
 
-Ceph 的主要发布汇总到了 :doc:`releases`
+Ceph 的主要发布汇总到了 :doc:`/releases`
 
 每两个主要发布会有一个长期稳定版（ LTS ），严重的缺陷修正会移\
 植到 LTS 版，直到它退役。退役版本不再维护，所以我们建议用户们\

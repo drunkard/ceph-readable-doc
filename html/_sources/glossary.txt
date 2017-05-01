@@ -119,6 +119,13 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
         监视器
 		The Ceph monitor software.
 
+	Ceph Manager
+	MGR
+        Ceph 管理器
+        管理器
+                Ceph 管理器软件，它会把整个集群的所有状态信息\
+                收集到一起。
+
 	Ceph Metadata Server
 	MDS
         Ceph 元数据服务器
