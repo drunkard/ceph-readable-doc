@@ -62,9 +62,10 @@
      内核模块才支持（除非是分拆的模块）。此格式增加了克隆支\
      持，使得扩展更容易，还允许以后增加新功能。
 
-.. option:: --size size-in-M/G/T
+.. option:: -s size-in-M/G/T, --size size-in-M/G/T
 
-   指定新 rbd 映像的尺寸，单位可以是 M/G/T 。
+   指定新 rbd 映像、或是已有 rbd 映像的新尺寸，单位可以是
+   M/G/T ，没加后缀的话默认为 M 。
 
 .. option:: --object-size size-in-B/K/M
 
@@ -74,7 +75,8 @@
 
 .. option:: --stripe-unit size-in-B/K/M
 
-   指定条带单元尺寸，单位可以是 B/K/M 。详情见下面的条带化一段。
+   指定条带单元尺寸，单位可以是 B/K/M ，没加的话默认为 B 。详\
+   情见下面的条带化一段。
 
 .. option:: --stripe-count num
 
@@ -113,10 +115,11 @@
 
    使 json 或 xml 格式的输出更易读。
 
-.. option:: -o map-options, --options map-options
+.. option:: -o krbd-options, --options krbd-options
 
-   映射到映像时所用的选项。格式为逗号分隔的字符串选项（类似于
-   mount(8) 的挂载选项）。详情见下一段的 map 选项。
+   通过 rbd 内核驱动映射或取消映射某一映像时指定的选项。
+   krbd-options 是逗号分隔的一系列选项（类似于 mount(8) 的挂载\
+   选项）。详情见下面的内核 rbd (krbd) 选项一段。
 
 .. option:: --read-only
 
@@ -207,7 +210,7 @@
 :command:`export` (*image-spec* | *snap-spec*) [*dest-path*]
   把映像导出到目的路径，用 - （短线）输出到标准输出。
 
-:command:`import` [--image-format *format-id*] [--object-size *B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*]... [--image-shared] *src-path* [*image-spec*]
+:command:`import` [--export-format *format (1 or 2)*] [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*]... [--image-shared] *src-path* [*image-spec*]
   创建一映像，并从目的路径导入数据，用 - （短线）从标准输入导\
   入。如果可能的话，导入操作会试着创建稀疏映像。如果从标准输入\
   导入，稀疏化单位将是目标映像的数据块尺寸（即对象尺寸）。
@@ -299,10 +302,10 @@
 :command:`snap limit clear` *image-spec*
   清除先前设置的映像所允许的快照数量上限。
 
-:command:`map` [-o | --options *map-options* ] [--read-only] *image-spec* | *snap-spec*
+:command:`map` [-o | --options *krbd-options* ] [--read-only] *image-spec* | *snap-spec*
   通过内核 rbd 模块把指定映像映射到某一块设备。
 
-:command:`unmap` *image-spec* | *snap-spec* | *device-path*
+:command:`unmap` [-o | --options *krbd-options* ] *image-spec* | *snap-spec* | *device-path*
   取消通过内核 rbd 模块的映射。
 
 :command:`showmapped`
@@ -389,13 +392,13 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
 功能（ Ceph 0.53 起加入）并使用 format 2 格式的映像。
 
 
-Map 选项
-========
+内核 rbd (krbd) 选项
+====================
 
 这里的大多数选项主要适用于调试和压力测试。默认值设置于内核中，\
 因此还与所用内核的版本有关。
 
-libceph （每个客户端例程）选项：
+每个客户端例程的 `rbd map` 选项：
 
 * fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee - 应该由客户端提供\
   的 FSID 。
@@ -432,13 +435,22 @@ libceph （每个客户端例程）选项：
 
 * osd_idle_ttl=x - OSD 闲置 TTL （默认为 60 秒）。
 
-映射（每个块设备例程）选项：
+每个映射（块设备）的 `rbd map` 选项：
 
 * rw - 以读写方式映射映像（默认）。
 
 * ro - 以只读方式映射映像，等价于 --read-only 。
 
 * queue_depth=x - 队列深度（从 4.2 起默认为 128 个请求）。
+
+* lock_on_read - 除写入和 discard 操作外，读取时也要获取独占锁\
+  （从 4.9 起）。
+
+`rbd unmap` 选项：
+
+* force - 让某一已打开的块设备强制取消映射（从 4.9 起支持）。\
+  其驱动会等待当前的请求完成之后再 unmap ；在 unmap 初始化之后\
+  再发给驱动的请求会失败。
 
 
 实例

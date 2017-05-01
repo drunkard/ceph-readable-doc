@@ -12,6 +12,7 @@ Ceph 对象网关可以与 Keystone 对接，它是 OpenStack 的鉴权服务。
 与 Keystone 对接相关的网关配置选项有： ::
 
 	[client.radosgw.gateway]
+	rgw keystone api version = {keystone api version}
 	rgw keystone url = {keystone server url:keystone server admin port}
 	rgw keystone admin token = {keystone admin token}
 	rgw keystone accepted roles = {accepted user roles}

@@ -465,8 +465,7 @@ Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守
 	ceph -c openstack.conf health
 
 
-.. _硬件推荐: ../../../install/hardware-recommendations
-.. _硬件推荐: ../../../install/hardware-recommendations
+.. _硬件推荐: ../../../start/hardware-recommendations
 .. _网络配置参考: ../network-config-ref
 .. _OSD 配置参考: ../osd-config-ref
 .. _监视器与 OSD 交互的配置: ../mon-osd-interaction

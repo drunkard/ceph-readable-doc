@@ -1377,7 +1377,7 @@ Ceph FS 从数据中分离出了元数据、并存储于 MDS ，文件数据存�
 .. _报告互联失败: ../rados/configuration/mon-osd-interaction#osds-report-peering-failure
 .. _互联失败排障: ../rados/troubleshooting/troubleshooting-pg#placement-group-down-peering-failure
 .. _Ceph 认证和授权: ../rados/operations/auth-intro/
-.. _硬件推荐: ../install/hardware-recommendations
+.. _硬件推荐: ../start/hardware-recommendations
 .. _网络配置参考: ../rados/configuration/network-config-ref
 .. _条带化: http://en.wikipedia.org/wiki/Data_striping
 .. _RAID: http://en.wikipedia.org/wiki/RAID

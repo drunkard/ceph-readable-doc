@@ -76,21 +76,23 @@
 	rados_shutdown(cluster);
 
 
+.. _Asychronous IO:
+
 异步 IO
 =======
 
-处理大量 IO 时，通常不必等一个完成再开始下一个。 `Librados` 提供\
-了几种操作的异步版本：
+处理大量 IO 时，通常不必等一个完成再开始下一个。 `Librados` 提\
+供了几种操作的异步版本：
 
 * :c:func:`rados_aio_write`
 * :c:func:`rados_aio_append`
 * :c:func:`rados_aio_write_full`
 * :c:func:`rados_aio_read`
 
-对每种操作，都必须先创建一个 :c:type:`rados_completion_t` 数据结\
-构来表达做什么、何时安全或显式地调用 \
-:c:func:`rados_aio_create_completion()` 来结束，如果没什么特殊需\
-求，可以仅传递 NULL ： ::
+对每种操作，都必须先创建一个 :c:type:`rados_completion_t` 数据\
+结构来表达做什么、何时安全或显式地调用 \
+:c:func:`rados_aio_create_completion()` 来结束，如果没什么特殊\
+需求，可以仅传递 NULL ： ::
 
 	rados_completion_t comp;
 	err = rados_aio_create_completion(NULL, NULL, NULL, &comp);
@@ -101,8 +103,8 @@
 		exit(1);
 	}
 
-现在你可以调用任意一种异步 IO 操作了，然后等它出现在内存、所有复\
-制所在的硬盘里： ::
+现在你可以调用任意一种异步 IO 操作了，然后等它出现在内存、所有\
+复制所在的硬盘里： ::
 
 	err = rados_aio_write(io, "foo", comp, "bar", 3, 0);
 	if (err < 0) {
@@ -112,16 +114,16 @@
 		rados_shutdown(cluster);
 		exit(1);
 	}
-	rados_wait_for_complete(comp); // in memory
-	rados_wait_for_safe(comp); // on disk
+	rados_aio_wait_for_complete(comp); // in memory
+	rados_aio_wait_for_safe(comp); // on disk
 
 最后，用 :c:func:`rados_aio_release()` 释放内存： ::
 
 	rados_aio_release(comp);
 
-你可以用各种回叫函数告知应用程序何时可以持续写入、或何时读缓冲是\
-满的。例如，如果你追加几个对象时想衡量每个操作的延时，可以调度几\
-个写操作、并把确认和提交时间保存到相应回叫函数，然后用 \
+你可以用各种回叫函数告知应用程序何时可以持续写入、或何时读缓冲\
+是满的。例如，如果你追加几个对象时想衡量每个操作的延时，可以调\
+度几个写操作、并把确认和提交时间保存到相应回叫函数，然后用 \
 :c:func:`rados_aio_flush()` 等它们完成，然后就可以分析延时了： ::
 
 	typedef struct {

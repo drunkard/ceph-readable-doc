@@ -1,30 +1,37 @@
-=================
- Common Entities
-=================
+==========
+ 常见问题
+==========
 
 .. toctree::
    :maxdepth: -1
 
-Bucket and Host Name
---------------------
-There are two different modes of accessing the buckets. The first (preferred) method
-identifies the bucket as the top-level directory in the URI. ::
+桶和主机名
+----------
+
+访问桶有两种不同的方法。第一种（首选的）方法把桶当作 URI 中的\
+顶极目录。 ::
 
 	GET /mybucket HTTP/1.1
 	Host: cname.domain.com
 
-The second method identifies the bucket via a virtual bucket host name. For example::
+第二种方法把桶当作虚拟主机名，例如： ::
 
 	GET / HTTP/1.1
 	Host: mybucket.cname.domain.com
 
-.. tip:: We prefer the first method, because the second method requires expensive domain certification and DNS wild cards.
+要配置支持虚拟主机的桶，你可以在 ceph.conf 里设置
+``rgw_dns_name = cname.domain.com`` ，或者把 ``cname.domain.com``
+加进域组配置的 ``hostnames`` 里面。域组的配置请参考
+`Ceph 对象网关——多站配置`_\ 。
 
-Common Request Headers
-----------------------
+.. tip:: 我们倾向于第一个方法，因为第二个涉及到繁重的域认证和
+   DNS 通配符。
+
+常见请求头
+----------
 
 +--------------------+------------------------------------------+
-| Request Header     | Description                              |
+| 请求头             | 描述                                     |
 +====================+==========================================+
 | ``CONTENT_LENGTH`` | Length of the request body.              |
 +--------------------+------------------------------------------+
@@ -35,11 +42,11 @@ Common Request Headers
 | ``AUTHORIZATION``  | Authorization token.                     |
 +--------------------+------------------------------------------+
 
-Common Response Status
-----------------------
+常见响应状态
+------------
 
 +---------------+-----------------------------------+
-| HTTP Status   | Response Code                     |
+| HTTP 状态     | 响应代码                          |
 +===============+===================================+
 | ``100``       | Continue                          |
 +---------------+-----------------------------------+
@@ -105,3 +112,6 @@ Common Response Status
 +---------------+-----------------------------------+
 | ``500``       | InternalError                     |
 +---------------+-----------------------------------+
+
+
+.. _`Ceph 对象网关——多站配置`: ../../multisite
