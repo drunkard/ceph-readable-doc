@@ -2,8 +2,8 @@
  构建 Ceph
 ===========
 
-你可以下载 Ceph 源码并自行构建。首先，你得准备开发环境、编译 Ceph 、然后安装到用户\
-区或者构建二进制包并安装。
+你可以下载 Ceph 源码并自行构建。首先，你得准备开发环境、编译
+Ceph 、然后安装到用户区或者构建二进制包并安装。
 
 
 构建依赖
@@ -15,25 +15,26 @@
 
         ./install-deps.sh
 
-.. note:: 在某些支持 Google 内存剖析工具的发行版上，名字未必如此（如 \
-   ``libgoogle-perftools4`` ）。
+.. note:: 在某些支持 Google 内存剖析工具的发行版上，名字未必如\
+   此（如 ``libgoogle-perftools4`` ）。
 
 
 构建 Ceph
 =========
 
-Ceph 用 ``automake`` 和 ``configure`` 脚本简化构建过程。先进入刚克隆的 Ceph 源码\
-库，执行下列命令开始构建： ::
+Ceph 是用 cmake 构建的，构建时，先进入刚克隆的 Ceph 源码库，然\
+后执行下面的： ::
 
-	cd ceph
-	./autogen.sh
-	./configure
-	make
+        cd ceph
+        mkdir build
+        cd build
+        cmake ..
+        make
 
 .. topic:: 超线程
 
-	你可以根据自己的硬件配置情况用 ``make -j`` 并行编译，比如在双核处理器上用 \
-	``make -j4`` 可能会编译得快些。
+	你可以根据自己的硬件配置情况用 ``make -j`` 并行编译，\
+        比如在双核处理器上用 ``make -j4`` 可能会编译得快些。
 
 参考\ `安装自构建软件`_\ 把构建好的软件安装到用户区。
 

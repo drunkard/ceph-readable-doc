@@ -30,13 +30,11 @@ requires at least three hosts::
 纠删码配置
 ----------
 
-The default erasure code profile sustains the loss of a single OSD. It
-is equivalent to a replicated pool of size two but requires 1.5TB
-instead of 2TB to store 1TB of data. The default profile can be
-displayed with::
+默认的纠删码配置可容忍单个 OSD 的损失，相当于副本数为二的副本\
+存储池，但只需 1.5TB 的空间即可存储 1TB 数据，而无需 2TB 。默\
+认配置可这样查看： ::
 
     $ ceph osd erasure-code-profile get default
-    directory=.libs
     k=2
     m=1
     plugin=jerasure

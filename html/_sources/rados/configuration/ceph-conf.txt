@@ -181,15 +181,17 @@ Ceph 支持下列元变量：
 
 ``$type``
 
-:描述: 可展开为 ``mds`` 、 ``osd`` 、 ``mon`` 中的一个，有赖于当前守护进程\
-       的类型。
+:描述: 可展开为 ``mds`` 、 ``osd`` 、 ``mon`` 中的一个，有赖于\
+       当前守护进程的类型。
 
 :实例: ``/var/lib/ceph/$type``
 
 
 ``$id``
 
-:描述: 展开为守护进程标识符； ``osd.0`` 应为 ``0`` ， ``mds.a`` 是 ``a`` 。
+:描述: 展开为守护进程标识符； ``osd.0`` 应为 ``0`` ， ``mds.a``
+       是 ``a`` 。
+
 :实例: ``/var/lib/ceph/$type/$cluster-$id``
 
 
@@ -202,6 +204,12 @@ Ceph 支持下列元变量：
 
 :描述: 展开为 ``$type.$id`` 。
 :实例: ``/var/run/ceph/$cluster-$name.asok``
+
+
+``$pid``
+
+:描述: 展开为守护进程的 pid 。
+:实例: ``/var/run/ceph/$cluster-$name-$pid.asok``
 
 
 .. _ceph-conf-common-settings:

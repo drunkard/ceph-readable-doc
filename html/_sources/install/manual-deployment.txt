@@ -390,10 +390,55 @@ CRUSH 图。按下列详细步骤可在 ``node2`` 和 ``node3`` 上增加前 2
    OSD 启动后，它应该处于 ``up`` 且 ``in`` 状态。
 
 
+.. _Adding MDS:
+
+添加 MDS
+========
+
+在下面的命令中， ``{id}`` 可以是任意名字，如此机器的主机名。
+
+#. 创建 MDS 数据目录： ::
+
+	mkdir -p /var/lib/ceph/mds/{cluster-name}-{id}
+
+#. 创建密钥环： ::
+
+	ceph-authtool --create-keyring /var/lib/ceph/mds/{cluster-name}-{id}/keyring --gen-key -n mds.{id}
+
+#. 导入密钥环并设置能力： ::
+
+	ceph auth add mds.{id} osd "allow rwx" mds "allow" mon "allow profile mds" -i /var/lib/ceph/mds/{cluster}-{id}/keyring
+
+#. 写进 ceph.conf ： ::
+
+	[mds.{id}]
+	host = {id}
+
+#. 手动启动守护进程： ::
+
+	ceph-mds --cluster {cluster-name} -i {id} -m {mon-hostname}:{mon-port} [-f]
+
+#. 常规方式启动守护进程（通过 ceph.conf 的配置）。 ::
+
+	service ceph start
+
+#. 如果启动失败，报错如下： ::
+
+	mds.-1.0 ERROR: failed to authenticate: (22) Invalid argument
+
+   那么，你得确认： ceph.conf 的 global 段下没有密钥环配置；把\
+   此配置挪到客户端配置段下，或者给这个 MDS 守护进程配置单独的\
+   密钥环。还得确保 MDS 数据目录内的密钥与
+   ``ceph auth get mds.{id}`` 输出的相同。
+
+#. 现在准备好了，你可以\ `创建 Ceph 文件系统`_\ 了。
+
+
 总结
 ====
 
-监视器和两个 OSD 开始正常运行后，你就可以通过下列命令观察归置组互联过程了： ::
+监视器和两个 OSD 开始正常运行后，你就可以通过下列命令观察归置\
+组互联过程了： ::
 
 	ceph -w
 
@@ -410,8 +455,8 @@ CRUSH 图。按下列详细步骤可在 ``node2`` 和 ``node3`` 上增加前 2
 	-3	1		host node2
 	1	1			osd.1	up	1
 
-要增加（或删除）额外监视器，参见\ `增加/删除监视器`_\ 。要增加（或删除）额外 OSD ，\
-参见\ `增加/删除 OSD`_ 。
+要增加（或删除）额外监视器，参见\ `增加/删除监视器`_\ 。要增加\
+（或删除）额外 OSD ，参见\ `增加/删除 OSD`_ 。
 
 
 .. _联盟架构: ../../radosgw/federated-config
@@ -420,3 +465,4 @@ CRUSH 图。按下列详细步骤可在 ``node2`` 和 ``node3`` 上增加前 2
 .. _增加/删除 OSD: ../../rados/operations/add-or-rm-osds
 .. _网络配置参考: ../../rados/configuration/network-config-ref
 .. _监视器配置参考——数据: ../../rados/configuration/mon-config-ref#data
+.. _创建 Ceph 文件系统: ../../cephfs/createfs
