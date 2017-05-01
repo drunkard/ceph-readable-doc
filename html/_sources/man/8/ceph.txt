@@ -33,7 +33,7 @@
 
 | **ceph** **log** *<logtext>* [ *<logtext>*... ]
 
-| **ceph** **mds** [ *add_data_pool* \| *cluster_down* \| *cluster_up* \| *compat* \| *deactivate* \| *dump* \| *fail* \| *getmap* \| *newfs* \| *remove_data_pool* \| *rm* \| *rmfailed* \| *set* \| *set_max_mds* \| *set_state* \| *stat* \| *stop* \| *tell* ] ...
+| **ceph** **mds** [ *compat* \| *deactivate* \| *fail* \| *rm* \| *rmfailed* \| *set_state* \| *stat* \| *tell* ] ...
 
 | **ceph** **mon** [ *add* \| *dump* \| *getmap* \| *remove* \| *stat* ] ...
 
@@ -299,24 +299,6 @@ mds
 
 用于元数据服务器的配置和管理，需额外指定子命令。
 
-子命令 ``add_data_pool`` 用于增加数据存储池。
-
-用法： ::
-
-	ceph mds add_data_pool <pool>
-
-子命令 ``cluster_down`` 关闭 mds 集群。
-
-用法： ::
-
-	ceph mds cluster_down
-
-子命令 ``cluster_up`` 启动 mds 集群。
-
-用法： ::
-
-	ceph mds cluster_up
-
 子命令 ``compat`` 管理兼容功能，需额外指定子命令。
 
 子命令 ``rm_compat`` 可删除兼容功能。
@@ -343,35 +325,11 @@ mds
 
 	ceph mds deactivate <who>
 
-子命令 ``dump`` 用于转储信息， epoch 号为可选。
-
-用法： ::
-
-	ceph mds dump {<int[0-]>}
-
 子命令 ``fail`` 强制把 mds 状态设置为失效。
 
 用法： ::
 
 	ceph mds fail <who>
-
-子命令 ``getmap`` 获取 MDS 图， epoch 号可选。
-
-用法： ::
-
-	ceph mds getmap {<int[0-]>}
-
-子命令 ``newfs`` 可用 <metadata> 和 <data> 存储池新建文件系统。
-
-用法： ::
-
-	ceph mds newfs <int[0-]> <int[0-]> {--yes-i-really-mean-it}
-
-子命令 ``remove_data_pool`` 用于删除数据存储池。
-
-用法： ::
-
-	ceph mds remove_data_pool <pool>
 
 子命令 ``rm`` 用于删除不活跃的 mds 。
 
@@ -385,18 +343,6 @@ mds
 
 	ceph mds rmfailed <int[0-]>
 
-子命令 ``set`` 用于设置参数，把 <var> 的值设置为 <val> 。
-
-用法： ::
-
-	ceph mds set max_mds|max_file_size|allow_new_snaps|inline_data <va> {<confirm>}
-
-子命令 ``set_max_mds`` 用于设置 MDS 的最大索引号。
-
-用法： ::
-
-	ceph mds set_max_mds <int[0-]>
-
 子命令 ``set_state`` 把 mds 状态从 <gid> 改为 <numeric-state> 。
 
 用法： ::
@@ -408,12 +354,6 @@ mds
 用法： ::
 
 	ceph mds stat
-
-子命令 ``stop`` 停止指定 mds 。
-
-用法： ::
-
-	ceph mds stop <who>
 
 子命令 ``tell`` 用于向某个 mds 发送命令。
 

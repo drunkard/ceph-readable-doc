@@ -179,11 +179,17 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 
 详情见\ `网络配置参考`_\ 。
 
-.. note:: 这里的监视器最简配置假设部署工具会自动给你生成 ``fsid`` 和 ``mon.`` 密钥。
+.. note:: 这里的监视器最简配置假设部署工具会自动给你生成
+   ``fsid`` 和 ``mon.`` 密钥。
 
-一旦部署了 Ceph 集群，监视器 IP 地址\ **不应该**\ 更改。然而，如果你决意要改，必须\
-严格按照\ `更改监视器 IP 地址`_\ 来改。
+一旦部署完 Ceph 集群，监视器 IP 地址就\ **不应该**\ 更改了。然\
+而，如果你决意要改，必须严格按照\ `更改监视器 IP 地址`_\ 来改。
 
+也可以让客户端通过 DNS 的 SRV 记录发现监视器，详情见\
+`通过 DNS 查询监视器`_\ 。
+
+
+.. _Cluster ID:
 
 集群 ID
 -------
@@ -748,6 +754,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 .. _监视器密钥环: ../../../dev/mon-bootstrap#secret-keys
 .. _Ceph 配置文件: ../ceph-conf/#monitors
 .. _网络配置参考: ../network-config-ref
+.. _通过 DNS 查询监视器: ../mon-lookup-dns
 .. _ACID: http://en.wikipedia.org/wiki/ACID
 .. _增加/删除监视器: ../../operations/add-or-rm-mons
 .. _增加/删除监视器（ ceph-deploy ）: ../../deployment/ceph-deploy-mon

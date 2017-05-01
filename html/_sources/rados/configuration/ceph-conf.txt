@@ -288,18 +288,18 @@ Ceph 监视器默认监听 ``6789`` 端口，例如：
 
 .. versionadded:: Bobtail 0.56
 
-对于 v0.56 及后来版本，要在配置文件的 ``[global]`` 中明确启用或禁用认证。 ::
+对于 v0.56 及后来版本，要在配置文件的 ``[global]`` 中明确启用\
+或禁用认证。 ::
 
 	auth cluster required = cephx
 	auth service required = cephx
 	auth client required = cephx
 
-另外，你应该启用消息签名，详情见 `Cephx 配置参考`_\ 和 `Cephx 认证`_\ 。
+另外，你应该启用消息签名，详情见 `Cephx 配置参考`_\ 。
 
-.. important:: 我们建议，升级时先明确地关闭认证，再进行升级。等升级完成后再重新启用\
-   认证。
+.. important:: 我们建议，升级时先明确地关闭认证，再进行升级。\
+   等升级完成后再重新启用认证。
 
-.. _Cephx 认证: ../../operations/authentication
 .. _Cephx 配置参考: ../auth-config-ref
 
 

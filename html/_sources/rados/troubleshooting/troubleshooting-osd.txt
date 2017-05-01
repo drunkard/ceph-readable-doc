@@ -424,5 +424,5 @@ old requests 或  slow requests
 .. _退订 ceph-devel 邮件列表: mailto:majordomo@vger.kernel.org?body=unsubscribe+ceph-devel
 .. _订阅 ceph-users 邮件列表: mailto:ceph-users-join@lists.ceph.com
 .. _退订 ceph-users 邮件列表: mailto:ceph-users-leave@lists.ceph.com
-.. _操作系统推荐: ../../../install/os-recommendations
+.. _操作系统推荐: ../../../start/os-recommendations
 .. _ceph-devel: ceph-devel@vger.kernel.org
