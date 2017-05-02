@@ -243,6 +243,8 @@ true ，否则它会拒绝删除存储池。
 
 .. _setpoolvalues:
 
+.. _Set Pool Values:
+
 调整存储池选项值
 ================
 

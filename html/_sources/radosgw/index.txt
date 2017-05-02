@@ -44,9 +44,11 @@ API 写、然后用另一个检出。
    S3 API <s3>
    Swift API <swift>
    管理操作 API <adminops>
+   Python 接口 <api>
    与 OpenStack Keystone 对接 <keystone>
    多租户 <multitenancy>
    RADOS 中的数据布局 <layout>
+   升级到 Jewel 的早期版本 <upgrade_to_jewel>
    troubleshooting
    radosgw 手册页 <../../man/8/radosgw>
    radosgw-admin 手册页 <../../man/8/radosgw-admin>

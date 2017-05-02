@@ -570,13 +570,16 @@ CRUSH 规则的详细研究见
 权重小于 ``1`` 时， CRUSH 选择主 OSD 时选中它的可能性低。
 
 
+.. _Placing Different Pools on Different OSDS:
+
 给存储池指定 OSD
 ================
 
-假设你想让大多数存储池坐落到使用大硬盘的 OSD 上，但是其中一些存储池映射到使用\
-高速 SSD 的 OSD 上。在同一个 CRUSH 图内有多个独立的 CRUSH 树是可能的，定义两\
-棵树、分别有自己的根节点——一个用于硬盘（如 root platter ）、一个用于 SSD \
-（如 root ssd ），如： ::
+假设你想让大多数存储池坐落到使用大硬盘的 OSD 上，但是其中一些\
+存储池映射到使用高速 SSD 的 OSD 上。在同一个 CRUSH 图内有多个\
+独立的 CRUSH 树是可能的，定义两棵树、分别有自己的根节点——一个\
+用于硬盘（如 root platter ）、一个用于 SSD （如 root ssd ），\
+如： ::
 
   device 0 osd.0
   device 1 osd.1

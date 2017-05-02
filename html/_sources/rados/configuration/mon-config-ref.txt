@@ -661,6 +661,55 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :默认值: ``100ul << 20``
 
 
+.. _Pool settings:
+
+存储池选项
+==========
+
+从 v0.94 版起，存储池可通过标记来表明这个存储池允许或禁止更改。
+
+如果配置过了，监视器也可以阻止存储池的删除。
+
+
+``mon allow pool delete``
+
+:描述: 监视器是否允许删除存储池。此选项可覆盖存储池标记值。
+:类型: Boolean
+:默认值: ``false``
+
+
+``osd pool default flag hashpspool``
+
+:描述: 设置新存储池的 hashpspool 标记。
+:类型: Boolean
+:默认值: ``true``
+
+
+``osd pool default flag nodelete``
+
+:描述: 设置新存储池的 nodelete 标记。此标记可防止存储池以任何\
+       方式被删除。
+:类型: Boolean
+:默认值: ``false``
+
+
+``osd pool default flag nopgchange``
+
+:描述: 设置新存储池的 nopgchange 标记。不允许更改此存储池的 PG
+       数量。
+:类型: Boolean
+:默认值: ``false``
+
+
+``osd pool default flag nosizechange``
+
+:描述: 设置新存储池的 nosizechange 标记。不允许更改此存储池的\
+       副本数。
+:类型: Boolean
+:默认值: ``false``
+
+关于存储池标记详情请看\ `存储池标记值`_\ 。
+
 
 杂项
 ====
@@ -764,3 +813,4 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 .. _更改监视器 IP 地址: ../../operations/add-or-rm-mons#changing-a-monitor-s-ip-address
 .. _监视器与 OSD 的交互: ../mon-osd-interaction
 .. _伸缩性和高可用性: ../../../architecture#scalability-and-high-availability
+.. _存储池标记值: ../../operations/pools/#set-pool-values

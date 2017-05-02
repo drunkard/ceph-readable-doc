@@ -1,3 +1,4 @@
+.. _CephFS Administrative commands:
 
 CephFS 管理命令
 ===============
@@ -53,9 +54,9 @@ CephFS 管理命令
 
     mds fail <gid/name/role
 
-下面的命令用于停用一个 MDS ，让它把所有日志刷回后端的
-RADOS 对象、并关闭所有打开的客户端会话。 MDS 的停用功\
-能主要是用于减少活跃 MDS （ max_mds ）后、拆除 rank 。
+下面的命令用于停用一个 MDS ，让它把所有日志刷回后端的 RADOS 对\
+象、并关闭所有打开的客户端会话。 MDS 的停用功能主要是用于减少\
+活跃 MDS （ max_mds ）后、拆除 rank 。
 
 ::
 

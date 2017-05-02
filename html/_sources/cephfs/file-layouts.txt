@@ -18,12 +18,18 @@
 --------
 
 pool
-    字符串，可指定 ID 或名字。它是文件的数据对象所在的 RADOS 存储池。
+    字符串，可指定 ID 或名字。它是文件的数据对象所在的 RADOS \
+    存储池。
+
+pool_namespace
+    字符串。在数据存储池内，对象应该写入哪个 RADOS 命名空间，\
+    默认为空（即默认命名空间）。
 
 stripe_unit
-    字节数、整数。一个文件的数据块按照此尺寸（字节）像 RAID 0 一样分布。一文\
-    件所有条带单元的尺寸一样，最后一个条带单元通常不完整——即它包含文件末尾的\
-    数据、还有数据末端到固定条带单元尺寸之间的未使用“空间”。
+    字节数、整数。一个文件的数据块按照此尺寸（字节）像 RAID 0
+    一样分布。一文件所有条带单元的尺寸一样，最后一个条带单元通\
+    常不完整——即它包含文件末尾的数据、还有数据末端到固定条带单\
+    元尺寸之间的未使用“空间”。
 
 stripe_count
     整数。组成 RAID 0 “条带”数据的连续条带单元数量。
@@ -112,6 +118,36 @@ object_size
     $ setfattr -n ceph.file.layout.stripe_count -v 4 file1
     setfattr: file1: Directory not empty
 
+
+.. _Clearing layouts:
+
+清除布局
+--------
+
+如果你想删除某一目录的布局，还继承上级的布局，可以这样：
+
+.. code-block:: bash
+
+    setfattr -x ceph.dir.layout mydir
+
+类似地，如果你已经设置了 ``pool_namespace`` 属性，又想让布局改\
+回默认命名空间：
+
+.. code-block:: bash
+
+    # 创建个目录，并给它设置命名空间
+    mkdir mydir
+    setfattr -n ceph.dir.layout.pool_namespace -v foons mydir
+    getfattr -n ceph.dir.layout mydir
+    ceph.dir.layout="stripe_unit=4194304 stripe_count=1 object_size=4194304 pool=cephfs_data_a pool_namespace=foons"
+
+    # 清除目录布局的命名空间
+    setfattr -x ceph.dir.layout.pool_namespace mydir
+    getfattr -n ceph.dir.layout mydir
+    ceph.dir.layout="stripe_unit=4194304 stripe_count=1 object_size=4194304 pool=cephfs_data_a"
+
+
+.. _Inheritance of layouts:
 
 布局的继承
 ----------

@@ -27,7 +27,7 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
     <link rel="up" title="Ceph 对象网关" href="../" />
-    <link rel="next" title="故障排除" href="../troubleshooting/" />
+    <link rel="next" title="把 RGW 升级到 Jewel 版本 10.2.0 、 10.2.1 、 10.2.2 和 10.2.3" href="../upgrade_to_jewel/" />
     <link rel="prev" title="RGW 多租户" href="../multitenancy/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
@@ -43,7 +43,7 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../troubleshooting/" title="故障排除"
+          <a href="../upgrade_to_jewel/" title="把 RGW 升级到 Jewel 版本 10.2.0 、 10.2.1 、 10.2.2 和 10.2.3"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="../multitenancy/" title="RGW 多租户"
@@ -69,12 +69,10 @@
 <div class="section" id="id2">
 <h2>概念预览<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <p>虽然 RADOS 只知道 pool 、对象（及其 xattr ）和 omap[1] ，但是从概念上 RGW 把它的数据组织成了三种不同的类型：元数据、桶索引和数据。</p>
-<ul class="simple">
-<li>元数据</li>
-</ul>
+<div class="section" id="id3">
+<h3>元数据<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
 <p>我们有三“部分”元数据： user 、 bucket 、和 bucket.instance 。你可以用下面的命令调查这几种元数据：</p>
 <div class="highlight-python"><pre>$ radosgw-admin metadata list
-
 $ radosgw-admin metadata list bucket
 $ radosgw-admin metadata list bucket.instance
 $ radosgw-admin metadata list user
@@ -83,24 +81,29 @@ $ radosgw-admin metadata get bucket:&lt;bucket&gt;
 $ radosgw-admin metadata get bucket.instance:&lt;bucket&gt;:&lt;bucket_id&gt;
 $ radosgw-admin metadata get user:&lt;user&gt;   # get or set</pre>
 </div>
-<p>user: 保存着用户信息
-bucket: 保存着桶名与其例程 ID 的映射关系
-bucket.instance: 保存着桶例程信息 [2]</p>
+<p>前述命令中的变量含义如下：</p>
+<ul class="simple">
+<li>user: 保存着用户信息</li>
+<li>bucket: 保存着桶名与其例程 ID 的映射关系</li>
+<li>bucket.instance: 保存着桶例程信息 [2]</li>
+</ul>
 <p>每个元数据条目都存储于独立的 rados 对象。
 实现细节见下文。</p>
 <p>要注意，元数据没被索引过。所以，罗列元数据部分的时候，其实是在包含它们的存储池里做 rados pgls 操作。</p>
-<ul class="simple">
-<li>桶索引</li>
-</ul>
-<p>它是另一种元数据，也是独立保存的。桶索引是在 rados 对象里保存的键值映射，默认情况下，每个桶占用一个 rados 对象，但是从 Hammer 起，这些映射可以分片存入多个 rados 对象。这个映射本身是保存在 omap 里的，并与各 rados 对象关联。各 omap 的键名是对象名、值是此对象的基本元数据——罗列此桶时显示的就是元数据。另外，各 omap 都有一个头，保存着桶的一些统计元数据（如对象数量、总尺寸等等）。</p>
+</div>
+<div class="section" id="id4">
+<h3>桶索引<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>它是另一种元数据，也是独立保存的。桶索引是在 rados 对象里保存的键值映射，默认情况下，每个桶占用一个 rados 对象，但是从
+Hammer 起，这些映射可以分片存入多个 rados 对象。这个映射本身是保存在 omap 里的，并与各 rados 对象关联。各 omap 的键名是对象名、值是此对象的基本元数据——罗列此桶时显示的就是元数据。另外，各 omap 都有一个头，保存着桶的一些统计元数据（如对象数量、总尺寸等等）。</p>
 <p>另外，桶索引里还有其它信息，是保存在其它键名空间里的。比如，我们可以在这里存桶索引日志、而且对于版本化的对象，有更多信息要保存。</p>
-<ul class="simple">
-<li>数据</li>
-</ul>
+</div>
+<div class="section" id="id5">
+<h3>数据<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
 <p>各个 rgw 对象的数据保存在一或多个 rados 对象里。</p>
 </div>
-<div class="section" id="id3">
-<h2>对象定位路径<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="id6">
+<h2>对象定位路径<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
 <p>访问对象时， ReST 风格的 API 要提供给 RGW 三个参数：帐户信息（ S3 的访问密钥或者 Swift 的帐户名）、桶或容器名、和对象名（或键名）。当前， RGW 只用帐户信息查找用户 ID 并用于访问控制，只用桶名和对象键名就能定位存储池内的对象。</p>
 <p>在 RGW 里，用户 ID 是个字符串，通常是用户凭据里的真实用户名，而不是其哈希值或者映射过的标识符。</p>
 <p>访问用户的数据时，用户记录要从 .users.uid 存储池里的 &lt;user_id&gt; 对象载入。</p>
@@ -109,21 +112,21 @@ bucket.instance: 保存着桶例程信息 [2]</p>
 <p>也可以创建并使用多个数据存储池，这样不同的用户、桶就可以默认放到不同的 rados 存储池里了，以此提供了必要的伸缩性。这样的布局和这些存储池的命名是由 policy 选项 [3] 配置的。</p>
 <p>一个 RGW 对象可由多个 RADOS 对象组成，其中的第一个对象是头儿，它包含着元数据，像载荷清单、 ACL 、内容类型、 ETag 、和用户自定义的元数据，这些元数据是存储在 xattr 里的。为保证高效性、原子性，这个头还可以存储最多 512 KB 的对象数据。载荷清单描述了各对象是如何存储在 RADOS 对象里的。</p>
 </div>
-<div class="section" id="id4">
-<h2>桶和对象列表<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<h2>桶和对象列表<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
 <p>某一用户的桶存在 .users.uid 存储池里、名为 &lt;user_id&gt;.buckets 的对象（如 foo.buckets ）的 omap 里。在罗列桶、更新桶内容、以及更新和检索桶的统计信息（例如配额信息）时要访问这些对象。</p>
 <p>这些 omap 条目的值位于用户可见、编码过的 cls_user_bucket_entry 类和它的嵌套类 cls_user_bucket 里面。</p>
 <p>这些列表以桶名持久化、存储在 .rgw 存储池里面。</p>
 <p>某一桶内所包含的对象罗列在桶索引里，这已经在前面的“桶索引”小段里说过了。在 .rgw.buckets.index 存储池里、索引对象的默认命名规则是 .dir.&lt;marker&gt; 。</p>
 </div>
-<div class="section" id="id5">
-<h2>附注<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id8">
+<h2>附注<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
 <p>[1] Omap 是个与对象相关联的键值存储，类似扩展属性与 POSIX 文件的关联一样。对象的 omap 与对象数据在物理上是分离的，但是对 RADOS 网关来说是不可见、无形的。在 Hammer 版里，每个 OSD 都有一个用于存储 omap 的 LevelDB 数据库。</p>
 <p>[2] 在 Dumpling 版之前还没有 bucket.instance 元数据，这些信息存储在bucket 元数据里。所以，在较老的集群里有可能碰到这样的桶。</p>
 <p>[3] 在 Infernalis 版有个尚未被主线合并的提交，它实现了这样的功能，不必再以句点作为 rgw 系统存储池的前缀，并且重命名了所有默认存储池。详情见 Github 里的拉取请求 #4944 &#8220;rgw noperiod&#8221; 。</p>
 </div>
-<div class="section" id="id6">
-<h2>附录：简介<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id9">
+<h2>附录：简介<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
 <p>已知存储池：</p>
 <dl class="docutils">
 <dt>.rgw.root</dt>
@@ -195,17 +198,24 @@ test2</p>
 <li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../adminops/">管理操作 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">Python 接口</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 对接</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../multitenancy/">多租户</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="">RADOS 中的数据布局</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#id1">简介</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id2">概念预览</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id3">对象定位路径</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id4">桶和对象列表</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id5">附注</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id6">附录：简介</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">概念预览</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id3">元数据</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">桶索引</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">数据</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">对象定位路径</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">桶和对象列表</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">附注</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">附录：简介</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../upgrade_to_jewel/">升级到 Jewel 的早期版本</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
@@ -250,7 +260,7 @@ test2</p>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../troubleshooting/" title="故障排除"
+          <a href="../upgrade_to_jewel/" title="把 RGW 升级到 Jewel 版本 10.2.0 、 10.2.1 、 10.2.2 和 10.2.3"
              >next</a> |</li>
         <li class="right" >
           <a href="../multitenancy/" title="RGW 多租户"

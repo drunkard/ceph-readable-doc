@@ -38,18 +38,19 @@ Ceph 启动时要激活三类守护进程：
 参考下列文档优化集群性能：
 
 .. toctree::
-	:maxdepth: 1
+   :maxdepth: 1
 
-	网络选项 <network-config-ref>
-	认证选项 <auth-config-ref>
-	监视器选项 <mon-config-ref>
-	心跳选项 <mon-osd-interaction>
-	OSD 选项 <osd-config-ref>
-	filestore 选项 <filestore-config-ref>
-	日志选项 <journal-ref>
-	存储池、归置组和 CRUSH 选项 <pool-pg-config-ref.rst>
-	消息传递选项 <ms-ref>
-	常规选项 <general-config-ref>
+   网络选项 <network-config-ref>
+   认证选项 <auth-config-ref>
+   监视器选项 <mon-config-ref>
+   mon-lookup-dns
+   心跳选项 <mon-osd-interaction>
+   OSD 选项 <osd-config-ref>
+   filestore 选项 <filestore-config-ref>
+   日志选项 <journal-ref>
+   存储池、归置组和 CRUSH 选项 <pool-pg-config-ref.rst>
+   消息传递选项 <ms-ref>
+   常规选项 <general-config-ref>
 
    
 .. raw:: html

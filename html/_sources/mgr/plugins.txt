@@ -6,17 +6,15 @@ ceph-mgr 插件编程指南
 创建插件
 --------
 
-In pybind/mgr/, create a python module.  Within your module, create a class
-named ``Module`` that inherits from ``MgrModule``.
+在 pybind/mgr/ 目录下，创建一个 python 模块，在此模块内创建一\
+个名为 ``Module`` 的类，这个类需继承 ``MgrModule`` 。
 
-The most important methods to override are:
+需要覆盖的、最重要的方法有：
 
-* a ``serve`` member function for server-type modules.  This
-  function should block forever.
-* a ``notify`` member function if your module needs to
-  take action when new cluster data is available.
-* a ``handle_command`` member function if your module
-  exposes CLI commands.
+* ``serve`` 成员函数，服务器类型的模块必须覆盖。此函数应该永远\
+  阻塞。
+* ``notify`` 成员函数，如果你的模块想对新的集群数据有所动作。
+* ``handle_command`` 成员函数，如果你的模块要暴露 CLI 命令。
 
 安装插件
 --------

@@ -1,9 +1,11 @@
-==============================
-Erasure Coded Placement Groups
-==============================
+.. _Erasure Coded Placement Groups:
 
-Glossary
---------
+====================
+ 纠删码编码的归置组
+====================
+
+术语
+----
 
 *chunk* 
    when the encoding function is called, it returns chunks of the same
@@ -71,12 +73,12 @@ The definitions are illustrated as follows (PG stands for placement group):
        |         ...             | |         ...             |
        +-------------------------+ +-------------------------+
 
-Table of content
-----------------
+内容列表
+--------
 
 .. toctree::
    :maxdepth: 1
 
-   Developer notes <erasure_coding/developer_notes>
-   Jerasure plugin <erasure_coding/jerasure>
-   High level design document <erasure_coding/pgbackend>
+   开发者注意事项 <erasure_coding/developer_notes>
+   Jerasure 插件 <erasure_coding/jerasure>
+   高级设计文档 <erasure_coding/ecbackend>

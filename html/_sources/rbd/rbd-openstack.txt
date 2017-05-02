@@ -238,17 +238,37 @@ Kilo 及更高版
 关于 Glance 的其它可用选项见 OpenStack Configuration Reference:
 http://docs.openstack.org/ 。
 
+.. _Enable copy-on-write cloning of images:
 
-任意版 OpenStack
-~~~~~~~~~~~~~~~~
+让映像支持写时复制克隆功能
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-如果你想允许使用映像的写时复制克隆品，还得把下列内容加到 ``[DEFAULT]`` \
-段下： ::
+注意，这里通过 Glance 的 API 展示了后端位置，所以此选项启用时\
+的入口不能公开访问。
+
+.. _Any OpenStack version except Mitaka:
+
+除 Mitaka 以外的其它 OpenStack 版本
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+如果你想让映像支持写时复制克隆功能，还得把下列内容加到
+``[DEFAULT]`` 段下： ::
 
 	show_image_direct_url = True
 
-注意，这里通过 Glance 的 API 展示了后端位置，所以此选项启用时的入口不能公\
-开访问。
+仅适用于 Mitaka
+^^^^^^^^^^^^^^^
+
+要启用映像的多位置、并利用写时复制克隆功能，把下列配置加入
+``[DEFAULT]`` 段： ::
+
+    show_multiple_locations = True
+    show_image_direct_url = True
+
+.. _Disable cache management (any OpenStack version):
+
+禁用缓存管理（任意 OpenStack 版本）：
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 禁用 Glance 缓存管理，以免映像被缓存到 ``/var/lib/glance/image-cache/`` \
 下；假设你的配置文件里有 ``flavor = keystone+cachemanagement`` ::

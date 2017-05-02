@@ -9,23 +9,26 @@
 提纲
 ====
 
-| **ceph-mds** -i *name* [[ --hot-standby [*rank*] ]|[--journal_check *rank*]]
+| **ceph-mds** -i *name* [ --hot-standby [*rank*] ]
 
 
 描述
 ====
 
-**ceph-mds** 是 Ceph 分布式文件系统的元数据服务器守护进程。一或多个 ceph-mds \
-例程协作着管理文件系统的命名空间、协调到共享 OSD 集群的访问。
+**ceph-mds** 是 Ceph 分布式文件系统的元数据服务器守护进程。一\
+或多个 ceph-mds 例程协作着管理文件系统的命名空间、协调到共享
+OSD 集群的访问。
 
-各 ceph-mds 守护进程例程都应该有惟一的名字，此名用于在 ceph.conf 里标识例程。
+各 ceph-mds 守护进程例程都应该有惟一的名字，此名用于在
+ceph.conf 里标识例程。
 
-一旦守护进程启动，监视器集群会给它分配一个逻辑机架，或把它放如一个候补存储池\
-用于接替其它崩溃的进程。一些特定选项会导致其它行为。
+一旦守护进程启动，监视器集群会给它分配一个逻辑机架，或把它放如\
+一个候补存储池用于接替其它崩溃的进程。一些特定选项会导致其它行\
+为。
 
-如果你指定了热备或日志检查选项，还必须在命令行加上机架参数、或在配置文件里指\
-定 mds_standby_for_[rank|name] 之一。命令行中指定的会覆盖配置文件，指定机架\
-会覆盖指定的名字。
+如果你指定了热备，还必须在命令行加上 rank 、或在配置文件里指定
+mds_standby_for_[rank|name] 之一。命令行中指定的会覆盖配置文\
+件，指定 rank 会覆盖指定的名字。
 
 
 选项
@@ -33,8 +36,8 @@
 
 .. option:: -f, --foreground
 
-   前台：启动后不要进入后台（在前台运行），不生成 pid 文件。通过 \
-   :doc:`ceph-run <ceph-run>`\(8) 调用时有用。
+   前台：启动后不要进入后台（在前台运行），不生成 pid 文件。通\
+   过 :doc:`ceph-run <ceph-run>`\(8) 调用时有用。
 
 .. option:: -d
 
@@ -57,10 +60,6 @@
 .. option:: -m monaddress[:port]
 
    连接到指定监视器（而非通过 ``ceph.conf`` 查找）。
-
-.. option:: --journal-check <rank>
-
-   尝试重放 MDS <rank> 的日志，然后退出。
 
 .. option:: --hot-standby <rank>
 

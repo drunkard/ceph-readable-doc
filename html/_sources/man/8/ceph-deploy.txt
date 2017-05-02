@@ -426,90 +426,29 @@ calamari 的初始配置、安装 salt-minion 软件包。如果是 Redhat/CentO
 选项
 ====
 
-.. option:: --version
+.. option:: --address
 
-   当前所安装的 :program:`ceph-deploy` 版本。
-
-.. option:: --username
-
-   连接远程主机所有的用户名。
-
-.. option:: --overwrite-conf
-
-   覆盖远程主机上的已有配置文件（若存在）。
-
-.. option:: --cluster
-
-   集群名字。
-
-.. option:: --ceph-conf
-
-   采用（或重用）指定的 ``ceph.conf`` 文件。
-
-.. option:: --no-ssh-copykey
-
-   不要复制 ssh 密钥。
-
-.. option:: --fsid
-
-   生成 ``ceph.conf`` 时另外指定 FSID 。
-
-.. option:: --cluster-network
-
-   指定（内部的）集群网。
-
-.. option:: --public-network
-
-   指定集群的公共网。
-
-.. option:: --testing
-
-   安装最新开发版。
-
-.. option:: --dev
-
-   安装最前沿版本，从 Git 分支或某标签（默认为 master ）编译而来。
+   将被加入集群的主机节点的 IP 地址。
 
 .. option:: --adjust-repos
 
    安装会修改源软件库的软件包。
 
-.. option:: --no-adjust-repos
+.. option:: --ceph-conf
 
-   安装不会修改源软件库的软件包。
+   采用（或重用）指定的 ``ceph.conf`` 文件。
 
-.. option:: --repo
+.. option:: --cluster
 
-   只安装软件库文件（跳过软件包安装）。
+   集群名字。
 
-.. option:: --local-mirror
+.. option:: --dev
 
-   抓取软件包并推送到某些主机上作为本地软件库镜像。
+   安装最前沿版本，从 Git 分支或某标签（默认为 master ）编译而来。
 
-.. option:: --repo-url
+.. option:: --cluster-network
 
-   指定一个镜像或包含 Ceph 软件包的软件库 url 。
-
-.. option:: --gpg-url
-
-   指定用于定制软件库的 GPG 密钥 URL （默认为 ceph.com ）。
-
-.. option:: --address
-
-   将被加入集群的主机节点的 IP 地址。
-
-.. option:: --keyrings
-
-   串连要放置到新监视器的多个密钥环。
-
-.. option:: --zap-disk
-
-   销毁分区表和硬盘内容。
-
-.. option:: --fs-type
-
-   格式化磁盘时指定的文件系统（如 ``xfs`` 、 ``btrfs`` 或
-   ``ext4`` ）。
+   指定（内部的）集群网。
 
 .. option:: --dmcrypt
 
@@ -523,20 +462,85 @@ calamari 的初始配置、安装 salt-minion 软件包。如果是 Redhat/CentO
 
    要安装到远程主机的软件包，以逗号分隔。
 
-.. option:: --remove
+.. option:: --fs-type
 
-   要从远程主机删除的软件包，以逗号分隔。
+   格式化磁盘时指定的文件系统（如 ``xfs`` 、 ``btrfs`` 或
+   ``ext4`` ）。
+
+.. option:: --fsid
+
+   生成 ``ceph.conf`` 时另外指定 FSID 。
+
+.. option:: --gpg-url
+
+   指定用于定制软件库的 GPG 密钥 URL （默认为 ceph.com ）。
+
+.. option:: --keyrings
+
+   串连要放置到新监视器的多个密钥环。
+
+.. option:: --local-mirror
+
+   抓取软件包并推送到某些主机上作为本地软件库镜像。
 
 .. option:: --master
 
    Calamari 主服务器的域。
 
+.. option:: --mkfs
+
+   把密钥注入远程节点的监视器上。
+
+.. option:: --no-adjust-repos
+
+   安装不会修改源软件库的软件包。
+
+.. option:: --no-ssh-copykey
+
+   不要复制 ssh 密钥。
+
+.. option:: --overwrite-conf
+
+   覆盖远程主机上的已有配置文件（若存在）。
+
+.. option:: --public-network
+
+   指定集群的公共网。
+
+.. option:: --remove
+
+   要从远程主机删除的软件包，以逗号分隔。
+
+.. option:: --repo
+
+   只安装软件库文件（跳过软件包安装）。
+
+.. option:: --repo-url
+
+   指定一个镜像或包含 Ceph 软件包的软件库 url 。
+
+.. option:: --testing
+
+   安装最新开发版。
+
+.. option:: --username
+
+   连接远程主机所有的用户名。
+
+.. option:: --version
+
+   当前所安装的 :program:`ceph-deploy` 版本。
+
+.. option:: --zap-disk
+
+   销毁分区表和硬盘内容。
+
 
 使用范围
 ========
 
-:program:`ceph-deploy` 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储\
-系统，更多信息参见 http://ceph.com/docs 。
+:program:`ceph-deploy` 是 Ceph 的一部分，这是个伸缩力强、开源、\
+分布式的存储系统，更多信息参见 http://ceph.com/docs 。
 
 
 参考

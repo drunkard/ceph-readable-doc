@@ -28,6 +28,9 @@
             +---------------+ +---------------+ +---------------+
 
 
+CephFS 使用文档
+===============
+
 Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数据服务器`\ 。
 
 
@@ -36,8 +39,8 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
         <style type="text/css">div.body h3{margin:5px 0px 0px 0px;}</style>
         <table cellpadding="10"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><tbody valign="top"><tr><td><h3>步骤一：元数据服务器</h3>
 
-要运行 Ceph 文件系统，你必须先装起至少带一个 :term:`Ceph 元数据服务器`\ 的 Ceph \
-存储集群。
+要运行 Ceph 文件系统，你必须先装起至少带一个 :term:`Ceph 元数据服务器`\
+的 Ceph 存储集群。
 
 
 .. toctree::
@@ -54,9 +57,9 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 
         </td><td><h3>步骤二：挂载 CephFS</h3>
 
-一旦有了健康的 Ceph 存储集群，及其配套的元数据服务器，你就可以创建\
-并挂载自己的 Ceph 文件系统了。首先确认下你的客户端的网络连通性和认\
-证密钥。
+一旦有了健康的 Ceph 存储集群，及其配套的元数据服务器，你就可以\
+创建并挂载自己的 Ceph 文件系统了。首先确认下你的客户端的网络连\
+通性和认证密钥。
 
 .. toctree::
         :maxdepth: 1
@@ -82,7 +85,6 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
         实验性功能 <experimental-features>
         CephFS 配额管理 <quota>
         在 Ceph 上使用 Hadoop <hadoop>
-        libcephfs <../../api/libcephfs-java/>
         cephfs-journal-tool <cephfs-journal-tool>
         文件布局 <file-layouts>
         驱逐客户端 <eviction>

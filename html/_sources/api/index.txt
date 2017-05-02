@@ -27,6 +27,14 @@ Ceph 块设备 API
 .. _librbdpy: ../rbd/librbdpy
 
 
+Ceph RADOS 网关 APIs
+====================
+
+见 `librgw-py`_ 。
+
+.. _librgw-py: ../radosgw/api
+
+
 Calamari APIs
 =============
 

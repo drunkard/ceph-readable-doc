@@ -11,54 +11,61 @@
 Swift 提供了名为容器（ container ）的东西，在这里它等价于桶\
 （ bucket ）概念。也可以说 RGW 用桶实现了 Swift 的容器功能。
 
-本文档没有考虑 RGW 如何操作这些数据结构，比如说，为了序列化怎样使用 \
-encode() 和 decode() 方法、等等。
+本文档没有考虑 RGW 如何操作这些数据结构，比如说，为了序列化怎\
+样使用 encode() 和 decode() 方法、等等。
 
 
 概念预览
 --------
 
-虽然 RADOS 只知道 pool 、对象（及其 xattr ）和 omap[1] ，但是从概念\
-上 RGW 把它的数据组织成了三种不同的类型：元数据、桶索引和数据。
+虽然 RADOS 只知道 pool 、对象（及其 xattr ）和 omap[1] ，但是\
+从概念上 RGW 把它的数据组织成了三种不同的类型：元数据、桶索引\
+和数据。
 
-* 元数据
+元数据
+^^^^^^
 
-我们有三“部分”元数据： user 、 bucket 、和 bucket.instance 。你可以\
-用下面的命令调查这几种元数据： ::
+我们有三“部分”元数据： user 、 bucket 、和 bucket.instance 。\
+你可以用下面的命令调查这几种元数据： ::
 
-        $ radosgw-admin metadata list
+    $ radosgw-admin metadata list
+    $ radosgw-admin metadata list bucket
+    $ radosgw-admin metadata list bucket.instance
+    $ radosgw-admin metadata list user
 
-        $ radosgw-admin metadata list bucket
-        $ radosgw-admin metadata list bucket.instance
-        $ radosgw-admin metadata list user
+    $ radosgw-admin metadata get bucket:<bucket>
+    $ radosgw-admin metadata get bucket.instance:<bucket>:<bucket_id>
+    $ radosgw-admin metadata get user:<user>   # get or set
 
-        $ radosgw-admin metadata get bucket:<bucket>
-        $ radosgw-admin metadata get bucket.instance:<bucket>:<bucket_id>
-        $ radosgw-admin metadata get user:<user>   # get or set
+前述命令中的变量含义如下：
 
-user: 保存着用户信息
-bucket: 保存着桶名与其例程 ID 的映射关系
-bucket.instance: 保存着桶例程信息 [2]
+- user: 保存着用户信息
+- bucket: 保存着桶名与其例程 ID 的映射关系
+- bucket.instance: 保存着桶例程信息 [2]
 
 每个元数据条目都存储于独立的 rados 对象。
 实现细节见下文。
 
-要注意，元数据没被索引过。所以，罗列元数据部分的时候，其实是在包含它\
-们的存储池里做 rados pgls 操作。
+要注意，元数据没被索引过。所以，罗列元数据部分的时候，其实是在\
+包含它们的存储池里做 rados pgls 操作。
 
-* 桶索引
+桶索引
+^^^^^^
 
-它是另一种元数据，也是独立保存的。桶索引是在 rados 对象里保存的键值\
-映射，默认情况下，每个桶占用一个 rados 对象，但是从 Hammer 起，这些\
-映射可以分片存入多个 rados 对象。这个映射本身是保存在 omap 里的，并\
-与各 rados 对象关联。各 omap 的键名是对象名、值是此对象的基本元数据\
-——罗列此桶时显示的就是元数据。另外，各 omap 都有一个头，保存着桶的\
-一些统计元数据（如对象数量、总尺寸等等）。
+它是另一种元数据，也是独立保存的。桶索引是在 rados 对象里保存\
+的键值映射，默认情况下，每个桶占用一个 rados 对象，但是从
+Hammer 起，这些映射可以分片存入多个 rados 对象。这个映射本身是\
+保存在 omap 里的，并与各 rados 对象关联。各 omap 的键名是对象\
+名、值是此对象的基本元数据——罗列此桶时显示的就是元数据。另外，\
+各 omap 都有一个头，保存着桶的一些统计元数据（如对象数量、总尺\
+寸等等）。
 
-另外，桶索引里还有其它信息，是保存在其它键名空间里的。比如，我们可\
-以在这里存桶索引日志、而且对于版本化的对象，有更多信息要保存。
+另外，桶索引里还有其它信息，是保存在其它键名空间里的。比如，我\
+们可以在这里存桶索引日志、而且对于版本化的对象，有更多信息要保\
+存。
 
-* 数据
+数据
+^^^^
 
 各个 rgw 对象的数据保存在一或多个 rados 对象里。
 

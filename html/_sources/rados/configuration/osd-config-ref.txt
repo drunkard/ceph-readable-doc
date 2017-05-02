@@ -635,6 +635,15 @@ OSD 运行图反映集群中运行的 OSD 守护进程，斗转星移，图元�
 :默认值: ``false``
 
 
+``osd fast fail on connection refused``
+
+:描述: 如果启用此选项，崩溃的 OSD 会即刻被已互联的 OSD 和监视\
+       器们标记为 down （假设已崩溃 OSD 所在主机还活着）。禁用\
+       此选项即可恢复原来的行为，代价是 I/O 操作中途若有 OSD \
+       崩溃可能会导致较长时间的 I/O 停顿。
+:类型: Boolean
+:默认值: ``true``
+
 
 .. _pool: ../../operations/pools
 .. _监视器与 OSD 交互的配置: ../mon-osd-interaction
