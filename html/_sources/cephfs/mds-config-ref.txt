@@ -250,20 +250,6 @@
 :默认值: ``50``
 
 
-``mds bal merge rd``
-
-:描述: 读热度低于此值时 Ceph 将合并邻近目录片段。
-:类型:  Float
-:默认值: ``1000``
-
-
-``mds bal merge wr``
-
-:描述: 写热度低于此值时 Ceph 就合并邻近目录片段。
-:类型:  Float
-:默认值: ``1000``
-
-
 ``mds bal interval``
 
 :描述: MDS 服务器负荷交换频率，秒。
@@ -273,9 +259,25 @@
 
 ``mds bal fragment interval``
 
-:描述: 邻近目录分片频率，秒。
+:描述: 一个片段可以被拆分或合并，在执行分片变更前延迟的时间，\
+       单位为秒。
 :类型:  32-bit Integer
 :默认值: ``5``
+
+
+``mds bal fragment fast factor``
+
+:描述: 分片的尺寸超过拆分尺寸阈值达到多少比例就立即执行拆分（\
+       跳过 fragment interval 配置的延时）。
+:类型:  Float
+:默认值: ``1.5``
+
+
+``mds bal fragment size max``
+
+:描述: 片段的最大尺寸，要加入新条目时会收到 ENOSPC 拒绝代码。
+:类型:  32-bit Integer
+:默认值: ``100000``
 
 
 ``mds bal idle threshold``
