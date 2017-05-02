@@ -26,19 +26,17 @@ ceph-mgr 管理员指南
 高可用性
 --------
 
-In general, you should set up a ceph-mgr on each of the hosts
-running a ceph-mon daemon to achieve the same level of availability. 
+通常来说，你应该在每台运行 ceph-mon 守护进程的主机上都配置一个
+ceph-mgr ，以实现相同级别的可用性。
 
-By default, whichever ceph-mgr instance comes up first will be made
-active by the monitors, and the others will be standbys.  There is
-no requirement for quorum among the ceph-mgr daemons.
+默认情况下，监视器会把任意一个最先启动的 ceph-mgr 例程当作活跃\
+的，其它的作为备用。 ceph-mgr 守护进程无需形成法定人数。
 
-If the active daemon fails to send a beacon to the monitors for
-more than ``mon mgr beacon grace`` (default 30s), then it will be replaced
-by a standby.
+如果活跃的守护进程在 ``mon mgr beacon grace`` （默认 30s ）这\
+么长的时间内都没向监视器们发送信标，那它就会被备用顶替。
 
-If you want to pre-empt failover, you can explicitly mark a ceph-mgr
-daemon as failed using ``ceph mgr fail <mgr name>``.
+如果你想提前做故障切换，可以用 ``ceph mgr fail <mgr name>`` 把
+ceph-mgr 明确地标记为已失效。
 
 
 .. _Calling module commands:

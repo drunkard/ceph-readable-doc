@@ -7,24 +7,26 @@
     可能改善你的处境，也可能更糟糕。如果你不太确定，最好别下手。
 
 
+.. _Journal export:
+
 导出日志
 --------
 
-尝试危险的操作前，先备份个日志副本，像这样：
-
-::
+尝试危险的操作前，先备份个日志副本，像这样： ::
 
 	cephfs-journal-tool journal export backup.bin
 
-需要注意的是，此命令在日志损坏严重时也许会失效，在这种情况下，应该\
-进行 RADOS 级的复制（ http://tracker.ceph.com/issues/9902 ）。
+需要注意的是，此命令在日志损坏严重时也许会失效，在这种情况下，\
+应该进行 RADOS 级的复制（ http://tracker.ceph.com/issues/9902 ）。
 
+
+.. _Dentry recovery from journal:
 
 从日志恢复 dentry
 -----------------
 
-如果日志损坏、或因其它原因导致 MDS 不能重放它，可以这样尝试恢复文\
-件元数据： ::
+如果日志损坏、或因其它原因导致 MDS 不能重放它，可以这样尝试恢\
+复文件元数据： ::
 
 	cephfs-journal-tool event recover_dentries summary
 
@@ -44,6 +46,8 @@
     执行 MDS 在线洗刷。此命令不会更改日志内容，所以把能恢复的给恢\
     复之后，应该分别裁截日志。
 
+
+.. _Journal truncation:
 
 日志裁截
 --------
@@ -81,6 +85,8 @@
 那就把 session 换成 snap 或者 inode 。
 
 
+.. _MDS table wipes:
+
 MDS 图重置
 ----------
 
@@ -101,6 +107,8 @@ MDS 图重置
 于 active 状态，这样下一个要认领此 rank 的 MDS 守护进程会继续、并使\
 用已存在于 RADOS 中的数据。
 
+
+.. _Recovery from missing metadata objects:
 
 元数据对象丢失的恢复
 --------------------
@@ -144,3 +152,35 @@ mtime 元数据；其次，从每个文件的第一个对象扫描出元数据�
 
 切记！！！所有运行 scan_extents 阶段的例程都结束后才能开始 \
 scan_inodes 。
+
+
+.. _Finding files affected by lost data PGs:
+
+找出受数据 PG 丢失影响的文件
+----------------------------
+
+丢失一个数据 PG 会影响很多文件。文件被拆分成了很多对象，所以要\
+找出哪些文件受这些 PG 丢失的影响，需要扫描所有的对象 ID 以确认\
+文件的副本数合格。这种扫描有助于找出哪些文件需要从备份恢复。
+
+.. danger::
+
+   这个命令不会修复任何元数据，所以在恢复文件时，你必须\ *删除*\
+   损坏的文件，然后再替换它，这样才会获得完好的 inode 。不要原\
+   地替换损坏的文件。
+
+如果你已经知道了哪些 PG 丢失了对象，可以用 ``pg_files`` 子命令\
+扫描可能损坏的文件，命令为： ::
+
+    cephfs-data-scan pg_files <path> <pg id> [<pg id>...]
+
+例如，假设你已经知道 PG 1.4 和 4.5 有数据丢失，然后你想知道
+/home/bob 下面的哪些文件可能损坏了： ::
+
+    cephfs-data-scan pg_files /home/bob 1.4 4.5
+
+输出是可能损坏的文件路径列表，每行一个。
+
+请注意，此命令是作为一个普通的 CephFS 客户端来搜寻文件系统内的\
+所有文件、并读取它们的布局的，所以 MDS 必须是正常运行的。
+
