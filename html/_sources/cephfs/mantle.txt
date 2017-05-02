@@ -191,8 +191,11 @@ The metrics exposed to the Lua policy are the same ones that are already stored
 in mds_load_t: auth.meta_load(), all.meta_load(), req_rate, queue_length,
 cpu_load_avg.
 
-Compile/Execute the Balancer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. _Compile/Execute the Balancer:
+
+编译、执行均衡器
+~~~~~~~~~~~~~~~~
 
 Here we use `lua_pcall` instead of `lua_call` because we want to handle errors
 in the MDBalancer. We do not want the error propagating up the call chain. The
@@ -202,6 +205,7 @@ we'll fall back to the original balancer.
 
 The performance improvement of using `lua_call` over `lua_pcall` would not be
 leveraged here because the balancer is invoked every 10 seconds by default. 
+
 
 Returning Policy Decision to C++
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -216,6 +220,7 @@ Iterating through tables returned by Lua is done through the stack. In Lua
 jargon: a dummy value is pushed onto the stack and the next iterator replaces
 the top of the stack with a (k, v) pair. After reading each value, pop that
 value but keep the key for the next call to `lua_next`. 
+
 
 Reading from RADOS
 ~~~~~~~~~~~~~~~~~~
@@ -238,8 +243,9 @@ and fill in the Lua code in the background. We cannot do this because the MDS
 does not support daemon-local fallbacks and the balancer assumes that all MDSs
 come to the same decision at the same time (e.g., importers, exporters, etc.).
 
-Debugging
-~~~~~~~~~
+
+调试
+~~~~
 
 Logging in a Lua policy will appear in the MDS log. The syntax is the same as
 the cls logging interface:
@@ -257,8 +263,9 @@ Warning and Info messages are centralized using the clog/Beacon. Successful
 messages are only sent on version changes by the first MDS to avoid spamming
 the `ceph -w` utility. These messages are used for the integration tests.
 
-Testing
-~~~~~~~
+
+测试
+~~~~
 
 Testing is done with the ceph-qa-suite (tasks.cephfs.test_mantle). We do not
 test invalid balancer logging and loading the actual Lua VM.

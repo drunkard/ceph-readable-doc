@@ -74,20 +74,23 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
 Create a Pool
 =============
 
-默认情况下， Ceph 块设备使用 ``rbd`` 存储池，你可以用任何可用存储池。但我们建议分别\
-为 Cinder 和 Glance 创建存储池。确保 Ceph 集群在运行，然后创建存储池。 ::
+默认情况下， Ceph 块设备使用 ``rbd`` 存储池，你可以用任何可用\
+存储池。但我们建议分别为 Cinder 和 Glance 创建存储池。确保 Ceph
+集群在运行，然后创建存储池。 ::
 
 	ceph osd pool create volumes 128
 	ceph osd pool create images 128
 	ceph osd pool create backups 128
 	ceph osd pool create vms 128
 
-参考\ `创建存储池`_\ 为存储池指定归置组数量，参考\ `归置组`_\ 确定应该为存储池分配\
-多少归置组。
+参考\ `创建存储池`_\ 为存储池指定归置组数量，参考\ `归置组`_\
+确定应该为存储池分配多少归置组。
 
 .. _创建存储池: ../../rados/operations/pools#createpool
 .. _归置组: ../../rados/operations/placement-groups
 
+
+.. _Configure OpenStack Ceph Clients:
 
 配置 OpenStack 的 Ceph 客户端
 =============================
@@ -102,7 +105,8 @@ Create a Pool
 安装 Ceph 客户端软件包
 ----------------------
 
-在运行 ``glance-api`` 的节点上你得安装 ``librbd`` 的 Python 绑定： ::
+在运行 ``glance-api`` 的节点上你得安装 ``librbd`` 的 Python 绑\
+定： ::
 
 	sudo apt-get install python-rbd
 	sudo yum install python-rbd
@@ -141,8 +145,8 @@ Create a Pool
 
 	ceph auth get-or-create client.cinder | ssh {your-nova-compute-server} sudo tee /etc/ceph/ceph.client.cinder.keyring
 
-还得把 ``client.cinder`` 用户的密钥存进 ``libvirt`` ， libvirt 进程从 \
-Cinder 挂载块设备时要用它访问集群。
+还得把 ``client.cinder`` 用户的密钥存进 ``libvirt`` ， libvirt
+进程从 Cinder 挂载块设备时要用它访问集群。
 
 在运行 ``nova-compute`` 的节点上创建一个密钥的临时副本： ::
 
@@ -171,8 +175,10 @@ Cinder 挂载块设备时要用它访问集群。
    However from a platform consistency perspective, it's better to keep the
    same UUID.
 
-.. _cephx 认证: ../../rados/operations/authentication
+.. _cephx 认证: ../../rados/configuration/auth-config-ref/#enabling-disabling-cephx
 
+
+.. _Configure OpenStack to use Ceph:
 
 让 OpenStack 使用 Ceph
 =======================

@@ -43,7 +43,6 @@
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-noarch]
@@ -52,7 +51,6 @@
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-source]
@@ -61,7 +59,6 @@
 	enabled=0
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 #. 安装依赖的的软件包： ::

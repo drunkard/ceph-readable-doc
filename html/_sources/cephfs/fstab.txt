@@ -22,7 +22,7 @@
 
 .. important:: 启用了认证时， ``name`` 及 ``secret`` 或 ``secretfile`` 选项必须加。
 
-详情见\ `认证`_\ 。
+详情见\ `用户管理`_\ 。
 
 
 FUSE
@@ -42,7 +42,7 @@ FUSE
 ``admin`` ，不是 ``client.admin`` ）。你可以用此方法把任何
 ``ceph-fuse`` 接受的选项加上。
 
-详情见\ `认证`_\ 。
+详情见\ `用户管理`_\ 。
 
 
-.. _认证: ../../rados/operations/authentication/
+.. _用户管理: ../../rados/operations/user-management/

@@ -424,7 +424,7 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 
 :描述: 单个 OSD 允许的最大回填操作数。
 :类型: 64-bit Unsigned Integer
-:默认值: ``10``
+:默认值: ``1``
 
 
 ``osd backfill scan min``

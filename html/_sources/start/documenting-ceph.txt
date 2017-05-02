@@ -252,7 +252,8 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构
 	</td></tr></tbody></table>
 
 
-缺少的依赖都要安装，基于 Debian/Ubuntu 发行版的系统可以用此命令安装： ::
+缺少的依赖都要安装，基于 Debian/Ubuntu 发行版的系统可以用此命\
+令安装： ::
 
 	sudo apt-get install gcc python-dev python-pip python-virtualenv libxml2-dev libxslt-dev doxygen graphviz ant ditaa
 	sudo apt-get install python-sphinx
@@ -264,21 +265,20 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构
    sudo yum install python-jinja2 python-pygments python-docutils python-sphinx
    sudo yum install jericho-html ditaa
 
-在 CentOS/RHEL 发行版上，最好安装 ``epel`` (Extra Packages for Enterprise \
-Linux) 软件库，因为它提供了很多默认软件库所没有的软件包。可执行此命令安装 \
-``epel`` ： ::
+在 CentOS/RHEL 发行版上，最好安装 ``epel`` (Extra Packages for
+Enterprise Linux) 软件库，因为它提供了很多默认软件库所没有的软\
+件包。可执行此命令安装 ``epel`` ： ::
 
-
-	wget http://ftp.riken.jp/Linux/fedora/epel/7/x86_64/e/epel-release-7-2.noarch.rpm
-	sudo yum install epel-release-7-2.noarch.rpm
+        sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
 在 CentOS/RHEL 发行版上可以执行： ::
 
 	sudo yum install gcc python-devel python-pip python-virtualenv libxml2-devel libxslt-devel doxygen graphviz ant
 	sudo pip install html2text
 
-对于 CentOS/RHEL 发行版，其余软件包不包含在默认及 ``epel`` 软件库内，所以得到 \
-http://rpmfind.net/ 找，然后到合适的镜像下载并安装它们，比如： ::
+对于 CentOS/RHEL 发行版，其余软件包不包含在默认及 ``epel`` 软\
+件库内，所以得到 http://rpmfind.net/ 找，然后到合适的镜像下载\
+并安装它们，比如： ::
 
 	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/python-jinja2-2.7.2-2.el7.noarch.rpm
 	sudo yum install python-jinja2-2.7.2-2.el7.noarch.rpm

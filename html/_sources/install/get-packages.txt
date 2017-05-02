@@ -170,7 +170,6 @@ https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-noarch]
@@ -179,7 +178,6 @@ https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-source]
@@ -188,7 +186,6 @@ https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
 	enabled=0
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
@@ -200,7 +197,6 @@ https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-noarch]
@@ -209,7 +205,6 @@ https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 	[ceph-source]
@@ -218,7 +213,6 @@ https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
 	enabled=0
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
@@ -275,7 +269,6 @@ RPM 二进制包
 	baseurl=http://gitbuilder.ceph.com/ceph-rpm-{distro}-x86_64-basic/ref/{branch}/SRPMS
 	enabled=0
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 
@@ -314,7 +307,6 @@ RPM 二进制包
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 	[apache2-ceph-source]
@@ -323,7 +315,6 @@ RPM 二进制包
 	enabled=0
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 
@@ -335,7 +326,6 @@ RPM 二进制包
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 	[fastcgi-ceph-noarch]
@@ -344,7 +334,6 @@ RPM 二进制包
 	enabled=1
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 	[fastcgi-ceph-source]
@@ -353,7 +342,6 @@ RPM 二进制包
 	enabled=0
 	priority=2
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/autobuild.asc
 
 
@@ -393,9 +381,9 @@ RPM 二进制包
 
 Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库： ::
 
-	su -c 'rpm -Uvh https://download.ceph.com/rpm-firefly/{distro}/noarch/ceph-{version}.{distro}.noarch.rpm'
+        sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
-Ceph依赖下列包：
+Ceph 依赖下列包：
 
 - snappy
 - leveldb

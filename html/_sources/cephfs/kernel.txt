@@ -16,7 +16,7 @@
 
 	sudo mount -t ceph 192.168.0.1:6789:/ /mnt/mycephfs -o name=admin,secretfile=/etc/ceph/admin.secret
 
-关于 cephx 参见\ `认证`_\ 。
+关于 cephx 参见\ `用户管理`_\ 。
 
 要卸载 Ceph 文件系统，可以用 ``unmount`` 命令，例如： ::
 
@@ -28,4 +28,4 @@
 
 
 .. _mount.ceph: ../../man/8/mount.ceph/
-.. _认证: ../../rados/operations/authentication/
+.. _用户管理: ../../rados/operations/user-management/

@@ -101,7 +101,7 @@ Bobtail 版默认启用了认证，而且预置了粒度更细的认证配置选
 .. important:: 如果你的集群配置文件之前就有 ``auth supported`` 选项，那就没必要更\
    改了。
 
-详情见 `Ceph 认证——向后兼容性`_\ 。
+详情见 `用户管理——向后兼容性`_\ 。
 
 
 监视器线上协议
@@ -151,7 +151,7 @@ Bobtail 和 Argonaut 监视器将导致旧监视器不能使用新线上协议�
 升级期间不要等待。详情见\ `升级监视器`_\ 。
 
 .. note:: 关于 Bobtail 的认证及向后兼容性请参考\ `认证`_\ 和
-   `Ceph 认证——向后兼容性`_\ 。
+   `用户管理——向后兼容性`_\ 。
 
 把监视器从 Argonaut 升级到 Bobtail 、并重启无误（可以形成法定人\
 数）后，还必须从 Bobtail 再升级到 Cuttlefish 。再次升级前，记得\
@@ -232,7 +232,6 @@ Dumpling ，因为协议有变动。
 	baseurl=http://download.ceph.com/rpm/el6/$basearch
 	enabled=1
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
@@ -267,7 +266,6 @@ Dumpling (v0.64) 可滚动升级。
 	baseurl=http://download.ceph.com/rpm-emperor/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
@@ -381,7 +379,6 @@ Firefly 。也就是说，在升级 Ceph 守护进程前，要用 ``ceph`` 命�
 	baseurl=http://download.ceph.com/rpm-firefly/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
@@ -446,7 +443,6 @@ Ceph 配置文件变更
 	baseurl=http://download.ceph.com/rpm/{distro}/$basearch
 	enabled=1
 	gpgcheck=1
-	type=rpm-md
 	gpgkey=https://download.ceph.com/keys/release.asc
 
 
@@ -655,8 +651,7 @@ Ceph 配置文件变更
 
 .. _监视器配置: ../../rados/configuration/mon-config-ref
 .. _Joao 的博客文章: http://ceph.com/dev-notes/cephs-new-monitor-changes
-.. _Ceph 认证: ../../rados/operations/authentication/
-.. _Ceph 认证——向后兼容性: ../../rados/operations/authentication/#backward-compatibility
+.. _用户管理——向后兼容性: ../../rados/configuration/auth-config-ref/#backward-compatibility
 .. _手动升级: ../install-storage-cluster/
 .. _操纵集群: ../../rados/operations/operating
 .. _监控集群: ../../rados/operations/monitoring

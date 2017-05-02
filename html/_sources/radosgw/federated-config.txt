@@ -730,7 +730,6 @@ region 的主域作为二级域。启动 ``radosgw-agent`` 时加上 ``--metadat
 
 .. _CRUSH 图: ../../rados/operations/crush-map
 .. _安装 Ceph 对象网关: ../../install/install-ceph-gateway
-.. _Cephx 管理: ../../rados/operations/authentication/#cephx-administration
 .. _Ceph 配置文件: ../../rados/configuration/ceph-conf
 .. _配置参考——存储池: ../config-ref#pools
 .. _配置参考——region: ../config-ref#regions

@@ -56,4 +56,4 @@
 	sudo rbd unmap /dev/rbd/rbd/foo
 
 
-.. _cephx: ../../rados/operations/authentication/
+.. _cephx: ../../rados/operations/user-management/
