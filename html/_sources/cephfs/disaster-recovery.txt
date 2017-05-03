@@ -141,17 +141,29 @@ mtime 元数据；其次，从每个文件的第一个对象扫描出元数据�
 这样： ::
 
     # Worker 0
-    cephfs-data-scan scan_extents <data pool> 0 1
+    cephfs-data-scan scan_extents --worker_n 0 --worker_m 4 <data pool>
     # Worker 1
-    cephfs-data-scan scan_extents <data pool> 1 1
+    cephfs-data-scan scan_extents --worker_n 1 --worker_m 4 <data pool>
+    # Worker 2
+    cephfs-data-scan scan_extents --worker_n 2 --worker_m 4 <data pool>
+    # Worker 3
+    cephfs-data-scan scan_extents --worker_n 3 --worker_m 4 <data pool>
 
     # Worker 0
-    cephfs-data-scan scan_inodes <data pool> 0 1
+    cephfs-data-scan scan_inodes --worker_n 0 --worker_m 4 <data pool>
     # Worker 1
-    cephfs-data-scan scan_inodes <data pool> 1 1
+    cephfs-data-scan scan_inodes --worker_n 1 --worker_m 4 <data pool>
+    # Worker 2
+    cephfs-data-scan scan_inodes --worker_n 2 --worker_m 4 <data pool>
+    # Worker 3
+    cephfs-data-scan scan_inodes --worker_n 3 --worker_m 4 <data pool>
 
 切记！！！所有运行 scan_extents 阶段的例程都结束后才能开始 \
 scan_inodes 。
+
+元数据恢复完后，你可以清理掉恢复期间产生的辅助数据。 ::
+
+    cephfs-data-scan cleanup <data pool>
 
 
 .. _Finding files affected by lost data PGs:

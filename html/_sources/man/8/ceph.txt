@@ -921,12 +921,6 @@ osd
 
 	ceph osd stat
 
-子命令 ``thrash`` 把 OSD 元版本回滚到 <num_epochs> 。
-
-用法： ::
-
-	ceph osd thrash <int[0-]>
-
 子命令 ``tier`` 用于管理（存储池）分级，需额外加子命令。
 
 子命令 ``add`` 把 <tierpool> （第二个）加到基础存储池 <pool> （第一个）之前。

@@ -17,8 +17,9 @@ To view by callee (where you can see who calls each top function)::
 
   sudo perf report --call-graph callee
 
-:note: If the caller/callee views look the same you may be
-       suffering from a kernel bug; upgrade to 4.8 or later.
+.. note:: If the caller/callee views look the same you may be
+   suffering from a kernel bug; upgrade to 4.8 or later.
+
 
 Flamegraphs
 -----------

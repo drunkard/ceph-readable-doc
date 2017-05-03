@@ -252,7 +252,7 @@ OSD 报告自己的状态
 
 :描述: 在 OSD 停止响应多少秒后把它标记为 ``down`` 且 ``out`` 。
 :类型: 32-bit Integer
-:默认值: ``300``
+:默认值: ``600``
 
 
 ``mon osd down out subtree limit``

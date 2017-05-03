@@ -47,6 +47,7 @@ API 写、然后用另一个检出。
    Python 接口 <api>
    与 OpenStack Keystone 对接 <keystone>
    多租户 <multitenancy>
+   压缩 <compression>
    RADOS 中的数据布局 <layout>
    升级到 Jewel 的早期版本 <upgrade_to_jewel>
    troubleshooting

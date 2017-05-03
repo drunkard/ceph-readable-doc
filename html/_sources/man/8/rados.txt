@@ -127,26 +127,28 @@
 :command:`cleanup`
 
 :command:`listomapkeys` *name*
-  List all the keys stored in the object map of object name.
+  罗列 name 对象的对象映射图内存储的所有键。
 
 :command:`listomapvals` *name*
-  List all key/value pairs stored in the object map of object name.
-  The values are dumped in hexadecimal.
+  罗列 name 对象的对象映射图内存储的所有键值对。值会被转储为十\
+  六进制。
 
-:command:`getomapval` *name* *key*
-  Dump the hexadecimal value of key in the object map of object name.
+:command:`getomapval` [ --omap-key-file *file* ] *name* *key* [ *out-file* ]
+  把 name 对象的对象映射图内 key 的值转储为十六进制。如果没有\
+  提供可选参数 *out-file* ，这个值就会写到标准输出。
 
-:command:`setomapval` *name* *key* *value*
-  Set the value of key in the object map of object name.
+:command:`setomapval` [ --omap-key-file *file* ] *name* *key* [ *value* ]
+  设置 name 对象的对象映射图内 key 的值。如果没加可选的 *value*
+  参数，就从标准输入读取。
 
-:command:`rmomapkey` *name* *key*
-  Remove key from the object map of object name.
+:command:`rmomapkey` [ --omap-key-file *file* ] *name* *key*
+  从 name 对象的对象映射图内删除 key 。
 
 :command:`getomapheader` *name*
-  Dump the hexadecimal value of the object map header of object name.
+  把 name 对象的对象映射图头部转储为十六进制。
 
 :command:`setomapheader` *name* *value*
-  Set the value of the object map header of object name.
+  设置 name 对象的对象映射图头部的值。
 
 
 实例

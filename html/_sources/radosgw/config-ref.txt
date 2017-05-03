@@ -47,6 +47,13 @@
 :默认值: N/A
 
 
+``rgw fcgi socket backlog``
+
+:描述: fcgi 的套接字积压容量。
+:类型: Integer
+:默认值: ``1024``
+
+
 ``rgw host``
 
 :描述: Ceph 对象网关例程所在主机，可以是 IP 地址或者主机名。
@@ -876,6 +883,15 @@ Swift 选项
 :描述: 每 ``n`` 秒执行一次使用率日志刷回。
 :类型: Integer
 :默认值: ``30``
+
+
+``rgw log http headers``
+
+:描述: 操作日志里要记录的 HTTP 头，挨个罗列，以逗号分隔。头名\
+       字必须是全名，对大小写不敏感，单词用下划线分隔。
+:类型: String
+:默认值: None
+:示例: "http_x_forwarded_for, http_x_special_k"
 
 
 ``rgw intent log object name``

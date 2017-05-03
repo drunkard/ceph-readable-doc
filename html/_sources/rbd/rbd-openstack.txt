@@ -126,9 +126,19 @@ Create a Pool
 如果你启用了 `cephx 认证`_\ ，需要分别为 Nova/Cinder 和 Glance
 创建新用户。命令如下： ::
 
-	ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'
-	ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'
-	ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'
+        ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'
+        ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'
+
+如果你的 OpenStack 版本低于 Mitaka ，还需给 ``client.cinder`` \
+创建密钥： ::
+
+        ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'
+
+Mitaka 开始支持一个新功能， Nova 例程的快照可以用 RBD 快照功能\
+实现，所以得允许 ``client.cinder`` 密钥写入 ``images`` 存储池；\
+故此创建密钥： ::
+
+    ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rwx pool=images'
 
 把这些用户 ``client.cinder`` 、 ``client.glance`` 和
 ``client.cinder-backup`` 的密钥环复制到各自所在节点，并修正\
@@ -339,18 +349,21 @@ On your Cinder Backup node, edit ``/etc/cinder/cinder.conf`` and add::
 	restore_discard_excess_bytes = true
 
 
-Configuring Nova to attach Ceph RBD block device
-------------------------------------------------
+.. _Configuring Nova to attach Ceph RBD block device:
 
-In order to attach Cinder devices (either normal block or by issuing a boot
-from volume), you must tell Nova (and libvirt) which user and UUID to refer to
-when attaching the device. libvirt will refer to this user when connecting and
-authenticating with the Ceph cluster. ::
+让 Nova 对接 Ceph RBD 块设备
+----------------------------
 
-	rbd_user = cinder
-	rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+要连接 Cinder 设备（普通块设备或从卷宗引导），必须告诉 Nova （\
+和 libvirt ）连接时用哪个用户和 UUID ， libvirt 连接 Ceph 集群\
+或与之认证时也会用这个用户： ::
 
-These two flags are also used by the Nova ephemeral backend.
+        [libvirt]
+        ...
+        rbd_user = cinder
+        rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+
+Nova 的 ephemeral 后端也会用这两条配置。
 
 
 Nova 的配置

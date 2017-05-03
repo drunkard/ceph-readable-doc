@@ -27,6 +27,19 @@ Ceph v0.55 及后续版本默认开启了 ``cephx`` 认证。从用户空间（ 
 
 详情见 `ceph-fuse`_ 。
 
+要自动挂载 ceph-fuse ，你可以把它写入系统的 fstab_ 文件。另外，\
+还得有 systemd 的单元文件 ``ceph-fuse@.service`` 和
+``ceph-fuse.target`` ，这些单元文件声明了 ``ceph-fuse`` 所需的\
+默认依赖和推荐的执行上下文。用 ceph-fuse 挂载到 ``/mnt`` 的实\
+例如下： ::
+
+	sudo systemctl start ceph-fuse@/mnt.service
+
+永久挂载点可以这样配置： ::
+
+	sudo systemctl enable ceph-fuse@/mnt.service
+
 
 .. _ceph-fuse: ../../man/8/ceph-fuse/
+.. _fstab: ./fstab
 .. _CEPHX 配置参考: ../../rados/configuration/auth-config-ref

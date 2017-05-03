@@ -76,20 +76,22 @@ Ceph 对象网关节点兼具管理节点的功能，可以在管理节点的工
 如果你执行的是 ``purge`` ，那你得重新安装 Ceph 软件包。
 
 
+.. _Change the Default Port:
+
 更改默认端口
 ------------
 
-Civetweb 默认使用 ``7480`` 端口。要改变默认端口（如改成
-``80`` 端口），可以在管理服务器的工作目录下修改配置文件，\
-新增名为 ``[client.rgw.<gateway-node>]`` 的段，其中，要把
-``<gateway-node>`` 替换为你 Ceph 对象网关节点的短主机名\
-（即 ``hostname -s`` ）。
+Civetweb 默认使用 ``7480`` 端口。要改变默认端口（如改成 ``80``
+端口），可以在管理服务器的工作目录下修改配置文件，新增名为
+``[client.rgw.<gateway-node>]`` 的段，其中，要把
+``<gateway-node>`` 替换为你 Ceph 对象网关节点的短主机名（即
+``hostname -s`` ）。
 
 .. note:: 从 11.0.1 版起， Ceph 对象网关\ **才支持** SSL 。\
    如何配置请参考\ `在 Civetweb 上使用 SSL`_ 。
 
-例如，假设你的节点名为 ``gateway-node1`` ，可以在
-``[global]`` 段之后加这样一段： ::
+例如，假设你的节点名为 ``gateway-node1`` ，可以在 ``[global]``
+段之后加这样一段： ::
 
         [client.rgw.gateway-node1]
         rgw_frontends = "civetweb port=80"

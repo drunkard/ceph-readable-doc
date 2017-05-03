@@ -95,7 +95,7 @@ Python Swift 实例
 删除对象
 ========
 
-删除对象 ``goodbye.txt`` ：
+删除对象 ``hello.txt`` ：
 
 .. code-block:: python
 
