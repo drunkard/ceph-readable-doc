@@ -371,6 +371,23 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 :有效范围: 1-63
 
 
+``osd scrub priority``
+
+:描述: 设置洗刷操作的优先级。与 ``osd client op priority`` 有关。
+:类型: 32-bit Integer
+:默认值: ``5``
+:有效范围: 1-63
+
+
+``osd snap trim priority``
+
+:描述: 设置快照修建操作的优先级。与 ``osd client op priority``
+       有关。
+:类型: 32-bit Integer
+:默认值: ``5``
+:有效范围: 1-63
+
+
 ``osd op thread timeout``
 
 :描述: OSD 线程超时秒数。
@@ -387,7 +404,8 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 
 ``osd disk threads``
 
-:描述: 硬盘线程数，用于在后台执行磁盘密集型操作，像数据洗刷和快照修复。
+:描述: 硬盘线程数，用于在后台执行磁盘密集型操作，像数据洗刷和\
+       快照修复。
 :类型: 32-bit Integer
 :默认值: ``1``
 
@@ -395,14 +413,16 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 ``osd disk thread ioprio class``
 
 :描述: 警告：只有 ``osd disk thread ioprio class`` 和 \
-       ``osd disk thread ioprio priority`` 同时改为非默认值时此配置才生效。 \
-       OSD 用 ioprio_set(2) 为磁盘线程设置 I/O 调度分类（ ``class`` ），当前\
-       支持 ``idle`` 、 ``be`` 或 ``rt`` 。 ``idle`` 类意味着磁盘线程的优先级\
-       在 OSD 中是最低的，适合需延缓洗刷操作的情形，如 OSD 正忙于处理客户端操\
-       作。 ``be`` 是默认值，将设置与其它 OSD 线程相同的优先级。 ``rt`` 意为\
-       磁盘线程的优先级将高于其它任何 OSD 线程；适用于急需洗刷、并且即使牺牲\
-       客户端操作也要进行时。注：只能与 Linux 内核的 CFQ 调度器配合使用。
-
+       ``osd disk thread ioprio priority`` 同时改为非默认值时\
+       此配置才生效。 OSD 用 ioprio_set(2) 为磁盘线程设置 I/O
+       调度分类（ ``class`` ），当前支持 ``idle`` 、 ``be`` 或
+       ``rt`` 。其中， ``idle`` 类意味着磁盘线程的优先级低于其\
+       它的 OSD 线程，适合需延缓洗刷操作的情形，如 OSD 正忙于\
+       处理客户端操作。 ``be`` 是默认值，将设置与其它 OSD 线程\
+       相同的优先级。 ``rt`` 意为磁盘线程的优先级将高于其它任何
+       OSD 线程。注：只能与 Linux 内核的 CFQ 调度器配合使用。从
+       Jewel 版起，洗刷操作已经不再由磁盘的 iothread 发起了，\
+       请参考 OSD 优先级选项。
 :类型: String
 :默认值: 空字符串
 
@@ -410,13 +430,13 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 ``osd disk thread ioprio priority``
 
 :描述: 警告：只有 ``osd disk thread ioprio class`` 和 \
-       ``osd disk thread ioprio priority`` 同时改为非默认值时此配置才生效。\
-       它通过 ioprio_set(2) 设置磁盘线程的 I/O 调度优先级（ ``priority`` ），\
-       优先级从最高的 0 到最低的 7 。如果某主机上的所有 OSD 都在 ``idle`` 类\
-       中竞争 I/O 资源（即控制器拥塞了），那么你就可以用此选项把某 OSD 的磁\
-       盘线程优先级调低为 7 ，其它优先级为 0 的 OSD 就有可能洗刷得快一点。\
-       注：只能与 Linux 内核的 CFQ 调度器配合使用。
-
+       ``osd disk thread ioprio priority`` 同时改为非默认值时\
+       此配置才生效。它通过 ioprio_set(2) 设置磁盘线程的 I/O \
+       调度优先级（ ``priority`` ），优先级从最高的 0 到最低的
+       7 。如果某主机上的所有 OSD 都在 ``idle`` 类中竞争 I/O \
+       资源（即控制器拥塞了），那么你就可以用此选项把某 OSD 的\
+       磁盘线程优先级调低为 7 ，其它优先级为 0 的 OSD 就获得优\
+       先权了。注：只能与 Linux 内核的 CFQ 调度器配合使用。
 :类型: 0 到 7 间的整数， -1 禁用此功能。
 :默认值: ``-1``
 
@@ -440,6 +460,7 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 :描述: 一次显示多少操作日志。
 :类型: 32-bit Integer
 :默认值: ``5``
+
 
 .. index:: OSD; backfilling
 

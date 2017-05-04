@@ -20,9 +20,6 @@
 *Replay*
   某 OSD 崩溃后，归置组在等待客户端重放操作。
 
-*Splitting*
-  Ceph 正在把一归置组分割为多个。（实现了？）
-
 *Scrubbing*
   Ceph 正在检查归置组的一致性。
 

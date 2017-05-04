@@ -1135,11 +1135,16 @@ pg
 quorum
 ------
 
-进入或退出法定人数。
+让监视器加入或退出法定人数。
 
 用法： ::
 
 	ceph quorum enter|exit
+
+注：此命令只对 ``ceph`` 命令能连接上的监视器管用。如果你想让某\
+个具体的监视器加入或退出法定人数，可以用下面这个命令： ::
+
+	ceph tell mon.<id> quorum enter|exit
 
 
 quorum_status

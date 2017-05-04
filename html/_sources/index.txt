@@ -102,3 +102,4 @@ Ceph 独一无二地在一个统一的系统中同时提供了\ **对象、块�
    release-notes
    releases
    Ceph 术语 <glossary>
+   中文版翻译说明 <README>

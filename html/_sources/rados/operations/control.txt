@@ -246,8 +246,6 @@ OSD 大致会收到相同的 I/O 请求、并存储相同数量的数据。
 可用的 field 值有：
 
 	* ``size``: 设置存储池内数据的副本数；
-	* ``crash_replay_interval``: 允许客户端重放确认而未提\
-	  交的请求前等待的时间，秒；
 	* ``pg_num``: 归置组数量；
 	* ``pgp_num``: 计算归置组存放的有效数量；
 	* ``crush_ruleset``: 用于归置映射的规则号。
@@ -316,8 +314,7 @@ MDS 子系统
 
 	ceph mon stat
 
-	2011-12-14 10:40:59.044395 mon {- [mon,stat]
-	2011-12-14 10:40:59.057111 mon.1 -} 'e3: 5 mons at {a=10.1.2.3:6789/0,b=10.1.2.4:6789/0,c=10.1.2.5:6789/0,d=10.1.2.6:6789/0,e=10.1.2.7:6789/0}, election epoch 16, quorum 0,1,2,3' (0)
+	e2: 3 mons at {a=127.0.0.1:40000/0,b=127.0.0.1:40001/0,c=127.0.0.1:40002/0}, election epoch 6, quorum 0,1,2 a,b,c
 
 末尾的 ``quorum`` 列表列出了当前法定人数里的监视器节点。
 
@@ -325,78 +322,131 @@ MDS 子系统
 
 	ceph quorum_status
 
-	2011-12-14 10:44:20.417705 mon {- [quorum_status]
-	2011-12-14 10:44:20.431890 mon.0 -} 
-
 .. code-block:: javascript
 
-	'{ "election_epoch": 10,
-	  "quorum": [
-	        0,
-	        1,
-	        2],
-	  "monmap": { "epoch": 1,
-	      "fsid": "444b489c-4f16-4b75-83f0-cb8097468898",
-	      "modified": "2011-12-12 13:28:27.505520",
-	      "created": "2011-12-12 13:28:27.505520",
-	      "mons": [
-	            { "rank": 0,
-	              "name": "a",
-	              "addr": "127.0.0.1:6789\/0"},
-	            { "rank": 1,
-	              "name": "b",
-	              "addr": "127.0.0.1:6790\/0"},
-	            { "rank": 2,
-	              "name": "c",
-	              "addr": "127.0.0.1:6791\/0"}]}}' (0)
+	{
+	    "election_epoch": 6,
+	    "quorum": [
+		0,
+		1,
+		2
+	    ],
+	    "quorum_names": [
+		"a",
+		"b",
+		"c"
+	    ],
+	    "quorum_leader_name": "a",
+	    "monmap": {
+		"epoch": 2,
+		"fsid": "ba807e74-b64f-4b72-b43f-597dfe60ddbc",
+		"modified": "2016-12-26 14:42:09.288066",
+		"created": "2016-12-26 14:42:03.573585",
+		"features": {
+		    "persistent": [
+			"kraken"
+		    ],
+		    "optional": []
+		},
+		"mons": [
+		    {
+			"rank": 0,
+			"name": "a",
+			"addr": "127.0.0.1:40000\/0",
+			"public_addr": "127.0.0.1:40000\/0"
+		    },
+		    {
+			"rank": 1,
+			"name": "b",
+			"addr": "127.0.0.1:40001\/0",
+			"public_addr": "127.0.0.1:40001\/0"
+		    },
+		    {
+			"rank": 2,
+			"name": "c",
+			"addr": "127.0.0.1:40002\/0",
+			"public_addr": "127.0.0.1:40002\/0"
+		    }
+		]
+	    }
+	}
+
 
 如果法定人数未形成，上述命令会一直等待。
 
 你刚刚连接的监视器的状态（用 ``-m HOST:PORT`` 另外指定）： ::
 
-	ceph mon_status
-
-
-	2011-12-14 10:45:30.644414 mon {- [mon_status]
-	2011-12-14 10:45:30.644632 mon.0 -} 
+	ceph mon_status -f json-pretty
 
 .. code-block:: javascript
 
-	'{ "name": "a",
-	  "rank": 0,
-	  "state": "leader",
-	  "election_epoch": 10,
-	  "quorum": [
-	        0,
-	        1,
-	        2],
-	  "outside_quorum": [],
-	  "monmap": { "epoch": 1,
-	      "fsid": "444b489c-4f16-4b75-83f0-cb8097468898",
-	      "modified": "2011-12-12 13:28:27.505520",
-	      "created": "2011-12-12 13:28:27.505520",
-	      "mons": [
-	            { "rank": 0,
-	              "name": "a",
-	              "addr": "127.0.0.1:6789\/0"},
-	            { "rank": 1,
-	              "name": "b",
-	              "addr": "127.0.0.1:6790\/0"},
-	            { "rank": 2,
-	              "name": "c",
-	              "addr": "127.0.0.1:6791\/0"}]}}' (0)
+	{
+	    "name": "b",
+	    "rank": 1,
+	    "state": "peon",
+	    "election_epoch": 6,
+	    "quorum": [
+		0,
+		1,
+		2
+	    ],
+	    "features": {
+		"required_con": "9025616074522624",
+		"required_mon": [
+		    "kraken"
+		],
+		"quorum_con": "1152921504336314367",
+		"quorum_mon": [
+		    "kraken"
+		]
+	    },
+	    "outside_quorum": [],
+	    "extra_probe_peers": [],
+	    "sync_provider": [],
+	    "monmap": {
+		"epoch": 2,
+		"fsid": "ba807e74-b64f-4b72-b43f-597dfe60ddbc",
+		"modified": "2016-12-26 14:42:09.288066",
+		"created": "2016-12-26 14:42:03.573585",
+		"features": {
+		    "persistent": [
+			"kraken"
+		    ],
+		    "optional": []
+		},
+		"mons": [
+		    {
+			"rank": 0,
+			"name": "a",
+			"addr": "127.0.0.1:40000\/0",
+			"public_addr": "127.0.0.1:40000\/0"
+		    },
+		    {
+			"rank": 1,
+			"name": "b",
+			"addr": "127.0.0.1:40001\/0",
+			"public_addr": "127.0.0.1:40001\/0"
+		    },
+		    {
+			"rank": 2,
+			"name": "c",
+			"addr": "127.0.0.1:40002\/0",
+			"public_addr": "127.0.0.1:40002\/0"
+		    }
+		]
+	    }
+	}
 
 监视器状态转储： ::
 
 	ceph mon dump
 
-	2011-12-14 10:43:08.015333 mon {- [mon,dump]
-	2011-12-14 10:43:08.015567 mon.0 -} 'dumped monmap epoch 1' (0)
-	epoch 1
-	fsid 444b489c-4f16-4b75-83f0-cb8097468898
-	last_changed 2011-12-12 13:28:27.505520
-	created 2011-12-12 13:28:27.505520
-	0: 127.0.0.1:6789/0 mon.a
-	1: 127.0.0.1:6790/0 mon.b
-	2: 127.0.0.1:6791/0 mon.c
+	dumped monmap epoch 2
+	epoch 2
+	fsid ba807e74-b64f-4b72-b43f-597dfe60ddbc
+	last_changed 2016-12-26 14:42:09.288066
+	created 2016-12-26 14:42:03.573585
+	0: 127.0.0.1:40000/0 mon.a
+	1: 127.0.0.1:40001/0 mon.b
+	2: 127.0.0.1:40002/0 mon.c
 

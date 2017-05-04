@@ -276,14 +276,6 @@ true ，否则它会拒绝删除存储池。
 :适用版本: ``0.54`` 及以上。
 
 
-.. _crash_replay_interval:
-
-``crash_replay_interval``
-
-:描述: 允许客户端重放确认而未提交请求的秒数。
-:类型: 整数
-
-
 .. _pg_num:
 
 ``pg_num``
@@ -574,13 +566,6 @@ true ，否则它会拒绝删除存储池。
 
 :类型: 整数
 :适用版本: ``0.54`` 及以上
-
-
-``crash_replay_interval``
-
-:描述: 见 crash_replay_interval_
-
-:类型: 整数
 
 
 ``pg_num``

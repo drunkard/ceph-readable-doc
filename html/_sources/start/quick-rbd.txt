@@ -74,6 +74,9 @@
 	sudo mount /dev/rbd/rbd/foo /mnt/ceph-block-device
 	cd /mnt/ceph-block-device
 
+#. 如果你想让块设备在启动时自动映射并挂载（而且在关机时卸载并\
+   取消映射），请参考 `rbdmap 手册页`_\ 。
+
 详情见\ `块设备`_ 。
 
 
@@ -81,3 +84,4 @@
 .. _块设备: ../../rbd/rbd
 .. _FAQ: http://wiki.ceph.com/How_Can_I_Give_Ceph_a_Try
 .. _操作系统推荐: ../os-recommendations
+.. _rbdmap 手册页: ../../man/8/rbdmap
