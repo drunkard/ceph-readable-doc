@@ -69,14 +69,23 @@
   罗列对象存储池
 
 :command:`df`
-  Show utilization statistics, including disk usage (bytes) and object
-  counts, over the entire system and broken down by pool.
+  显示利用率统计信息，显示整个系统以及各存储池的磁盘空间（字节\
+  数）、对象数量。
 
 :command:`mkpool` *foo*
-  Create a pool with name foo.
+  创建名为 foo 的存储池。
 
 :command:`rmpool` *foo* [ *foo* --yes-i-really-really-mean-it ]
-  Delete the pool foo (and all its data)
+  删除存储池 foo （以及其内的所有数据）
+
+:command:`list-inconsistent-pg` *pool*
+  罗列指定存储池内不一致的归置组。
+
+:command:`list-inconsistent-obj` *pgid*
+  罗列指定 PG 内不一致的对象。
+
+:command:`list-inconsistent-snapset` *pgid*
+  罗列指定 PG 内不一致的 snapset 。
 
 
 特定于存储池的命令
@@ -154,29 +163,33 @@
 实例
 ====
 
-To view cluster utilization::
+查看集群使用情况： ::
 
        rados df
 
-To get a list object in pool foo sent to stdout::
+获取存储池 foo 内的对象列表，并显示在标准输出： ::
 
        rados -p foo ls -
 
-To write an object::
+写入一个对象： ::
 
        rados -p foo put myobject blah.txt
 
-To create a snapshot::
+创建一个快照： ::
 
        rados -p foo mksnap mysnap
 
-To delete the object::
+删除对象： ::
 
        rados -p foo rm myobject
 
-To read a previously snapshotted version of an object::
+读取对象的快照内容： ::
 
        rados -p foo -s mysnap get myobject blah.txt.old
+
+罗列 PG 0.6 内不一致的对象： ::
+
+       rados list-inconsistent-obj 0.6 --format=json-pretty
 
 
 使用范围

@@ -1065,7 +1065,7 @@ pg
 	deep_scrub|backfill|backfill_toofull|recovery_wait|
 	undersized...]}
 
-子命令 ``ls-by-pool`` 用于罗列存储池 [poolname | poolid] 内的归置组。
+子命令 ``ls-by-pool`` 用于罗列存储池 [poolname] 内的归置组。
 
 用法： ::
 

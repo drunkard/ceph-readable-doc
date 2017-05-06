@@ -305,22 +305,125 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 ``osd pool default min size`` 。
 
 
+.. _PGs Inconsistent:
+
 归置组不一致
 ============
 
-If you receive an ``active + clean + inconsistent`` state, this may happen
-due to an error during scrubbing. If the inconsistency is due to disk errors,
-check your disks.
+如果你看到状态变成了 ``active + clean + inconsistent`` ，可能\
+是洗刷时遇到了错误。与往常一样，我们可以这样找出不一致的归置组： ::
 
-You can repair the inconsistent placement group by executing:: 
+    $ ceph health detail
+    HEALTH_ERR 1 pgs inconsistent; 2 scrub errors
+    pg 0.6 is active+clean+inconsistent, acting [0,1,2]
+    2 scrub errors
+
+或者这样，如果你喜欢程序化的输出： ::
+
+    $ rados list-inconsistent-pg rbd
+    ["0.6"]
+
+一致的状态只有一种，然而在最坏的情况下，我们可能会遇到多个对象\
+产生了各种各样的不一致。假设在 PG ``0.6`` 里的一个名为 ``foo``
+的对象被截断了，我们可以这样查看： ::
+
+    $ rados list-inconsistent-obj 0.6 --format=json-pretty
+
+.. code-block:: javascript
+
+    {
+        "epoch": 14,
+        "inconsistents": [
+            {
+                "object": {
+                    "name": "foo",
+                    "nspace": "",
+                    "locator": "",
+                    "snap": "head",
+                    "version": 1
+                },
+                "errors": [
+                    "data_digest_mismatch",
+                    "size_mismatch"
+                ],
+                "union_shard_errors": [
+                    "data_digest_mismatch_oi",
+                    "size_mismatch_oi"
+                ],
+                "selected_object_info": "0:602f83fe:::foo:head(16'1 client.4110.0:1 dirty|data_digest|omap_digest s 968 uv 1 dd e978e67f od ffffffff alloc_hint [0 0 0])",
+                "shards": [
+                    {
+                        "osd": 0,
+                        "errors": [],
+                        "size": 968,
+                        "omap_digest": "0xffffffff",
+                        "data_digest": "0xe978e67f"
+                    },
+                    {
+                        "osd": 1,
+                        "errors": [],
+                        "size": 968,
+                        "omap_digest": "0xffffffff",
+                        "data_digest": "0xe978e67f"
+                    },
+                    {
+                        "osd": 2,
+                        "errors": [
+                            "data_digest_mismatch_oi",
+                            "size_mismatch_oi"
+                        ],
+                        "size": 0,
+                        "omap_digest": "0xffffffff",
+                        "data_digest": "0xffffffff"
+                    }
+                
+            }
+        ]
+    }
+
+此时，我们可以从输出里看到：
+
+* 唯一不一致的对象名为 ``foo`` ，并且它的 head 不一致。
+* 不一致分为两类：
+
+  * ``errors``: 这些错误表明不一致性出现在分片之间，但是没说明\
+    哪个（或哪些）分片有问题。如果 `shards` 阵列中有 ``errors``
+    字段，且不为空，它会指出问题所在。
+
+    * ``data_digest_mismatch``: OSD.2 内读取到的副本的数字摘要\
+      与 OSD.0 和 OSD.1 的不一样。
+    * ``size_mismatch``: OSD.2 内读取到的副本的尺寸是 0 ，而
+      OSD.0 和 OSD.1 说是 968 。
+  * ``union_shard_errors``: ``shards`` 阵列中、所有与分片相关\
+    的错误 ``errors`` 的并集。 ``errors`` 是个错误原因集合，汇\
+    集了相关分片的这类问题，如 ``read_error`` 。以 ``oi`` 结尾\
+    的 ``errors`` 表明它是与 ``selected_object_info`` 的对照结\
+    果。从 ``shards`` 阵列里可以查到哪个分片有什么样的错误。
+
+    * ``data_digest_mismatch_oi``: 存储在 object-info （对象信\
+      息）里的数字签名不是 ``0xffffffff`` （这个是根据 OSD.2 \
+      上的分片计算出来的）。
+    * ``size_mismatch_oi``: object-info 内存储的尺寸与 OSD.2 \
+      上的对象尺寸 0 不同。
+
+你可以用下列命令修复不一致的归置组： ::
 
 	ceph pg repair {placement-group-ID}
 
-If you receive ``active + clean + inconsistent`` states periodically due to 
-clock skew, you may consider configuring your `NTP`_ daemons on your 
-monitor hosts to act as peers. See `网络时间协议`_ and Ceph 
-`时钟选项`_ for additional details.
+此命令会用\ `权威的`\ 副本覆盖\ `有问题的`\ 。根据既定规则，多\
+数情况下 Ceph 都能从若干副本中选择正确的，但是也会有例外。比\
+如，存储的数字签名可能正好丢了，选择权威副本时又忽略了计算出的\
+数字签名，总之，用此命令时小心为好。
 
+如果一个分片的 ``errors`` 里出现了 ``read_error`` ，很可能是磁\
+盘错误引起的不一致，你最好先查验那个 OSD 所用的磁盘。
+
+如果你时不时遇到时钟偏移引起的 ``active + clean + inconsistent``
+状态，最好在监视器主机上配置 peer 角色的 `NTP`_ 服务。配置细节\
+可参考\ `网络时间协议`_\ 和 Ceph `时钟选项`_\ 。
+
+
+.. _Erasure Coded PGs are not active+clean:
 
 纠删编码的归置组不是 active+clean
 =================================

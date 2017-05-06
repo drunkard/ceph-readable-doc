@@ -289,21 +289,102 @@ osd.12 is down since epoch 24, last address 192.168.106.220:6806/11861</pre>
 <h2>不能写入数据<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
 <p>如果你的集群已启动，但一些 OSD 没起来，导致不能写入数据，确认下运行的 OSD 数量满足归置组要求的最低 OSD 数。如果不能满足， Ceph 就不会允许你写入数据，因为 Ceph 不能保证复制能如愿进行。详情参见<a class="reference external" href="../../configuration/pool-pg-config-ref">存储池、归置组和 CRUSH 配置参考</a>里的 <tt class="docutils literal"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">min</span> <span class="pre">size</span></tt> 。</p>
 </div>
-<div class="section" id="id8">
-<h2>归置组不一致<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
-<p>If you receive an <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span> <span class="pre">+</span> <span class="pre">inconsistent</span></tt> state, this may happen
-due to an error during scrubbing. If the inconsistency is due to disk errors,
-check your disks.</p>
-<p>You can repair the inconsistent placement group by executing:</p>
+<div class="section" id="pgs-inconsistent">
+<span id="id8"></span><h2>归置组不一致<a class="headerlink" href="#pgs-inconsistent" title="Permalink to this headline">¶</a></h2>
+<p>如果你看到状态变成了 <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span> <span class="pre">+</span> <span class="pre">inconsistent</span></tt> ，可能是洗刷时遇到了错误。与往常一样，我们可以这样找出不一致的归置组：</p>
+<div class="highlight-python"><pre>$ ceph health detail
+HEALTH_ERR 1 pgs inconsistent; 2 scrub errors
+pg 0.6 is active+clean+inconsistent, acting [0,1,2]
+2 scrub errors</pre>
+</div>
+<p>或者这样，如果你喜欢程序化的输出：</p>
+<div class="highlight-python"><pre>$ rados list-inconsistent-pg rbd
+["0.6"]</pre>
+</div>
+<p>一致的状态只有一种，然而在最坏的情况下，我们可能会遇到多个对象产生了各种各样的不一致。假设在 PG <tt class="docutils literal"><span class="pre">0.6</span></tt> 里的一个名为 <tt class="docutils literal"><span class="pre">foo</span></tt>
+的对象被截断了，我们可以这样查看：</p>
+<div class="highlight-python"><pre>$ rados list-inconsistent-obj 0.6 --format=json-pretty</pre>
+</div>
+<div class="highlight-javascript"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;epoch&quot;</span><span class="o">:</span> <span class="mi">14</span><span class="p">,</span>
+    <span class="s2">&quot;inconsistents&quot;</span><span class="o">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;object&quot;</span><span class="o">:</span> <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="o">:</span> <span class="s2">&quot;foo&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;nspace&quot;</span><span class="o">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;locator&quot;</span><span class="o">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;snap&quot;</span><span class="o">:</span> <span class="s2">&quot;head&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;version&quot;</span><span class="o">:</span> <span class="mi">1</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;errors&quot;</span><span class="o">:</span> <span class="p">[</span>
+                <span class="s2">&quot;data_digest_mismatch&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;size_mismatch&quot;</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;union_shard_errors&quot;</span><span class="o">:</span> <span class="p">[</span>
+                <span class="s2">&quot;data_digest_mismatch_oi&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;size_mismatch_oi&quot;</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;selected_object_info&quot;</span><span class="o">:</span> <span class="s2">&quot;0:602f83fe:::foo:head(16&#39;1 client.4110.0:1 dirty|data_digest|omap_digest s 968 uv 1 dd e978e67f od ffffffff alloc_hint [0 0 0])&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;shards&quot;</span><span class="o">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;osd&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;errors&quot;</span><span class="o">:</span> <span class="p">[],</span>
+                    <span class="s2">&quot;size&quot;</span><span class="o">:</span> <span class="mi">968</span><span class="p">,</span>
+                    <span class="s2">&quot;omap_digest&quot;</span><span class="o">:</span> <span class="s2">&quot;0xffffffff&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;data_digest&quot;</span><span class="o">:</span> <span class="s2">&quot;0xe978e67f&quot;</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;osd&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="s2">&quot;errors&quot;</span><span class="o">:</span> <span class="p">[],</span>
+                    <span class="s2">&quot;size&quot;</span><span class="o">:</span> <span class="mi">968</span><span class="p">,</span>
+                    <span class="s2">&quot;omap_digest&quot;</span><span class="o">:</span> <span class="s2">&quot;0xffffffff&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;data_digest&quot;</span><span class="o">:</span> <span class="s2">&quot;0xe978e67f&quot;</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;osd&quot;</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span>
+                    <span class="s2">&quot;errors&quot;</span><span class="o">:</span> <span class="p">[</span>
+                        <span class="s2">&quot;data_digest_mismatch_oi&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;size_mismatch_oi&quot;</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;size&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;omap_digest&quot;</span><span class="o">:</span> <span class="s2">&quot;0xffffffff&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;data_digest&quot;</span><span class="o">:</span> <span class="s2">&quot;0xffffffff&quot;</span>
+                <span class="p">}</span>
+
+        <span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>此时，我们可以从输出里看到：</p>
+<ul class="simple">
+<li>唯一不一致的对象名为 <tt class="docutils literal"><span class="pre">foo</span></tt> ，并且它的 head 不一致。</li>
+<li>不一致分为两类：<ul>
+<li><tt class="docutils literal"><span class="pre">errors</span></tt>: 这些错误表明不一致性出现在分片之间，但是没说明哪个（或哪些）分片有问题。如果 <cite>shards</cite> 阵列中有 <tt class="docutils literal"><span class="pre">errors</span></tt>
+字段，且不为空，它会指出问题所在。<ul>
+<li><tt class="docutils literal"><span class="pre">data_digest_mismatch</span></tt>: OSD.2 内读取到的副本的数字摘要与 OSD.0 和 OSD.1 的不一样。</li>
+<li><tt class="docutils literal"><span class="pre">size_mismatch</span></tt>: OSD.2 内读取到的副本的尺寸是 0 ，而
+OSD.0 和 OSD.1 说是 968 。</li>
+</ul>
+</li>
+<li><tt class="docutils literal"><span class="pre">union_shard_errors</span></tt>: <tt class="docutils literal"><span class="pre">shards</span></tt> 阵列中、所有与分片相关的错误 <tt class="docutils literal"><span class="pre">errors</span></tt> 的并集。 <tt class="docutils literal"><span class="pre">errors</span></tt> 是个错误原因集合，汇集了相关分片的这类问题，如 <tt class="docutils literal"><span class="pre">read_error</span></tt> 。以 <tt class="docutils literal"><span class="pre">oi</span></tt> 结尾的 <tt class="docutils literal"><span class="pre">errors</span></tt> 表明它是与 <tt class="docutils literal"><span class="pre">selected_object_info</span></tt> 的对照结果。从 <tt class="docutils literal"><span class="pre">shards</span></tt> 阵列里可以查到哪个分片有什么样的错误。<ul>
+<li><tt class="docutils literal"><span class="pre">data_digest_mismatch_oi</span></tt>: 存储在 object-info （对象信息）里的数字签名不是 <tt class="docutils literal"><span class="pre">0xffffffff</span></tt> （这个是根据 OSD.2 上的分片计算出来的）。</li>
+<li><tt class="docutils literal"><span class="pre">size_mismatch_oi</span></tt>: object-info 内存储的尺寸与 OSD.2 上的对象尺寸 0 不同。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>你可以用下列命令修复不一致的归置组：</p>
 <div class="highlight-python"><pre>ceph pg repair {placement-group-ID}</pre>
 </div>
-<p>If you receive <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span> <span class="pre">+</span> <span class="pre">inconsistent</span></tt> states periodically due to
-clock skew, you may consider configuring your <a class="reference external" href="http://en.wikipedia.org/wiki/Network_Time_Protocol">NTP</a> daemons on your
-monitor hosts to act as peers. See <a class="reference external" href="http://www.ntp.org/">网络时间协议</a> and Ceph
-<a class="reference external" href="../../configuration/mon-config-ref/#clock">时钟选项</a> for additional details.</p>
+<p>此命令会用<cite>权威的</cite>副本覆盖<cite>有问题的</cite>。根据既定规则，多数情况下 Ceph 都能从若干副本中选择正确的，但是也会有例外。比如，存储的数字签名可能正好丢了，选择权威副本时又忽略了计算出的数字签名，总之，用此命令时小心为好。</p>
+<p>如果一个分片的 <tt class="docutils literal"><span class="pre">errors</span></tt> 里出现了 <tt class="docutils literal"><span class="pre">read_error</span></tt> ，很可能是磁盘错误引起的不一致，你最好先查验那个 OSD 所用的磁盘。</p>
+<p>如果你时不时遇到时钟偏移引起的 <tt class="docutils literal"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span> <span class="pre">+</span> <span class="pre">inconsistent</span></tt>
+状态，最好在监视器主机上配置 peer 角色的 <a class="reference external" href="http://en.wikipedia.org/wiki/Network_Time_Protocol">NTP</a> 服务。配置细节可参考<a class="reference external" href="http://www.ntp.org/">网络时间协议</a>和 Ceph <a class="reference external" href="../../configuration/mon-config-ref/#clock">时钟选项</a>。</p>
 </div>
 <div class="section" id="active-clean">
-<h2>纠删编码的归置组不是 active+clean<a class="headerlink" href="#active-clean" title="Permalink to this headline">¶</a></h2>
+<span id="erasure-coded-pgs-are-not-active-clean"></span><h2>纠删编码的归置组不是 active+clean<a class="headerlink" href="#active-clean" title="Permalink to this headline">¶</a></h2>
 <p>CRUSH 找不到足够多的 OSD 映射到某个 PG 时，它会显示为 <tt class="docutils literal"><span class="pre">2147483647</span></tt> ，意思是 ITEM_NONE 或 <tt class="docutils literal"><span class="pre">no</span> <span class="pre">OSD</span> <span class="pre">found</span></tt> ，例如：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">2147483647</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
 </pre></div>
@@ -504,7 +585,7 @@ bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]</pre>
 <li class="toctree-l4"><a class="reference internal" href="#id6">无根归置组</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#osd">只有几个 OSD 接收数据</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id7">不能写入数据</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id8">归置组不一致</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pgs-inconsistent">归置组不一致</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#active-clean">纠删编码的归置组不是 active+clean</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#id9">OSD 不够多</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id10">CRUSH 条件不能满足</a></li>
@@ -538,7 +619,7 @@ bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]</pre>
 <li class="toctree-l4"><a class="reference internal" href="#id6">无根归置组</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#osd">只有几个 OSD 接收数据</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id7">不能写入数据</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id8">归置组不一致</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pgs-inconsistent">归置组不一致</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#active-clean">纠删编码的归置组不是 active+clean</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#id9">OSD 不够多</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id10">CRUSH 条件不能满足</a></li>
@@ -565,6 +646,7 @@ bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]</pre>
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../README/">中文版翻译说明</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../translation-convention/">中文版词语翻译惯例</a></li>
 </ul>
 
 

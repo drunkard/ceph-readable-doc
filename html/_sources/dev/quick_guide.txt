@@ -120,9 +120,9 @@ vstart 脚本会创建 out/ 和 dev/ 目录，集群的状态就保存在里面�
 
 .. code::
 
-    $ swift -A http://localhost:8000/auth -U tester:testing -K asdf list
-    $ swift -A http://localhost:8000/auth -U tester:testing -K asdf upload mycontainer ceph
-    $ swift -A http://localhost:8000/auth -U tester:testing -K asdf list
+    $ swift -A http://localhost:8000/auth -U test:tester -K testing list
+    $ swift -A http://localhost:8000/auth -U test:tester -K testing upload mycontainer ceph
+    $ swift -A http://localhost:8000/auth -U test:tester -K testing list
 
 
 运行单元测试
