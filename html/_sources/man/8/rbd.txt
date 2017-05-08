@@ -207,8 +207,11 @@
 :command:`rm` *image-spec*
   删除一 rbd 映像，包括所有数据块。如果映像有快照，此命令会失效。
 
-:command:`export` (*image-spec* | *snap-spec*) [*dest-path*]
+:command:`export` [--export-format *format (1 or 2)*] (*image-spec* | *snap-spec*) [*dest-path*]
   把映像导出到目的路径，用 - （短线）输出到标准输出。
+  --export-format 现在只认 '1' 或 '2' 。格式 2 不仅允许我们导\
+  出映像内容，还可以导出快照和其它属性，如 image_order 、功能\
+  标志。
 
 :command:`import` [--export-format *format (1 or 2)*] [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*]... [--image-shared] *src-path* [*image-spec*]
   创建一映像，并从目的路径导入数据，用 - （短线）从标准输入导\
@@ -216,6 +219,10 @@
   导入，稀疏化单位将是目标映像的数据块尺寸（即对象尺寸）。
 
   参数 --stripe-unit 和 --stripe-count 是可选的，但必须同时使用。
+
+  --export-format 现在只认 '1' 或 '2' 。格式 2 不仅允许我们导\
+  出映像内容，还可以导出快照和其它属性，如 image_order 、功能\
+  标志。
 
 :command:`export-diff` [--from-snap *snap-name*] [--whole-object] (*image-spec* | *snap-spec*) *dest-path*
   导出一映像的增量差异，用-导出到标准输出。若给了起始快照，就\

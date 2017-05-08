@@ -67,13 +67,12 @@ OSD 的状态标记为 ``down`` 、并上报给监视器，它会更新 Ceph 集
 OSD 报告死亡 OSD
 ================
 
-默认情况下，一个 OSD 必须向监视器报告三次另一个 OSD ``down`` 的消息，监视器才\
-会认为那个被报告的 OSD ``down`` 了；配置文件里 ``[mon]`` 段下的 \
-``mon osd min down reports`` 选项（ v0.62 之前是 ``osd min down reports`` ）\
-可更改这个最少 ``osd down`` 消息次数，或者运行时设置。默认情况下，只要有一个 \
-OSD 报告另一个 OSD 挂的消息即可，配置文件里 ``[mon]`` 段下的 \
-``mon osd min down reporters`` 可用来更改必需 OSD 数（ v0.62 之前的 \
-``osd min down reporters`` ），或者运行时更改。
+默认情况下，一个 OSD 必须向监视器报告三次另一个 OSD ``down`` \
+的消息，监视器才会认为那个被报告的 OSD ``down`` 了；默认情况\
+下，只要有一个 OSD 报告另一个 OSD 挂的消息即可， Ceph 配置文件\
+里 ``[mon]`` 段下的 ``mon osd min down reporters`` 可用来更改\
+必需的 OSD 数量（ v0.62 之前的 ``osd min down reporters`` ），\
+或者运行时更改。
 
 
 .. ditaa:: +---------+     +---------+
@@ -183,6 +182,7 @@ OSD 报告自己的状态
 
 心跳选项应该置于配置文件的 ``[global]`` 段下。
 
+
 .. index:: monitor heartbeat
 
 监视器选项
@@ -190,16 +190,18 @@ OSD 报告自己的状态
 
 ``mon osd min up ratio``
 
-:描述: 在把 OSD 标记为 ``down`` 前，保持处于 ``up`` 状态的 OSD 最小比例。
+:描述: 在把 OSD 标记为 ``down`` 前，保持处于 ``up`` 状态的 OSD
+       最小比例。
 :类型: Double
 :默认值: ``.3``
 
 
 ``mon osd min in ratio``
 
-:描述: 在把 OSD 标记为 ``out`` 前，保持处于 ``in`` 状态的 OSD 最小比例。
+:描述: 在把 OSD 标记为 ``out`` 前，保持处于 ``in`` 状态的 OSD \
+       最小比例。
 :类型: Double
-:默认值: ``.3``
+:默认值: ``.75``
 
 
 ``mon osd laggy halflife``
@@ -239,7 +241,8 @@ OSD 报告自己的状态
 
 ``mon osd auto mark auto out in``
 
-:描述: 把正在启动、且被自动标记为 ``out`` 状态的 OSD 标记为 ``in`` 。
+:描述: 把正在启动、且被自动标记为 ``out`` 状态的 OSD 标记为
+       ``in`` 。
 :类型: Boolean
 :默认值: ``true``
 
@@ -281,13 +284,6 @@ OSD 报告自己的状态
 :描述: 确定一 OSD 状态为 ``down`` 的最少报告来源 OSD 数。
 :类型: 32-bit Integer
 :默认值: ``1``
-
-
-``mon osd min down reports``
-
-:描述: 一 OSD 必须重复报告另一个 ``down`` 的次数。
-:类型: 32-bit Integer
-:默认值: ``3``
 
 
 .. index:: OSD hearbeat

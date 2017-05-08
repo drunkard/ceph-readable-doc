@@ -613,6 +613,28 @@ OSD 运行图反映集群中运行的 OSD 守护进程，斗转星移，图元�
 :默认值: ``true``
 
 
+分级缓存选项
+============
+
+
+``osd agent max ops``
+
+:描述: 在高速模式下，每个分级缓存代理同时执行刷回操作的最大数\
+       量。
+:类型: 32-bit Integer
+:默认值: ``4``
+
+
+``osd agent max low ops``
+
+:描述: 在低速模式下，每个分级缓存代理同时执行刷回操作的最大数\
+       量。
+:类型: 32-bit Integer
+:默认值: ``2``
+
+关于在高速模式下，分级缓存代理何时刷回脏对象，见
+`cache target dirty high ratio`_ 选项。
+
 
 杂项
 ====
@@ -703,3 +725,4 @@ OSD 运行图反映集群中运行的 OSD 守护进程，斗转星移，图元�
 .. _监控 OSD 和归置组: ../../operations/monitoring-osd-pg#peering
 .. _存储池和归置组配置参考: ../pool-pg-config-ref
 .. _日志配置参考: ../journal-ref
+.. _cache target dirty high ratio: ../../operations/pools#cache-target-dirty-high-ratio
