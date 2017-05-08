@@ -135,10 +135,15 @@ mtime 元数据；其次，从每个文件的第一个对象扫描出元数据�
 	cephfs-data-scan scan_extents <data pool>
 	cephfs-data-scan scan_inodes <data pool>
 
-如果数据存储池内的文件很多、或者有很大的文件，这个命令就要花费很\
-长时间。要加快处理，可以让这个工具多跑几个例程。先确定例程数量、\
-再传递给每个例程一个数字 N ，此数字应大于 0 且小于 (N - 1) ，像\
-这样： ::
+如果数据存储池内的文件很多、或者有很大的文件，这个命令就要花费\
+*很长时间*\ 。
+
+要加快处理，可以让这个工具多跑几个例程。
+
+先确定例程数量、再传递给每个例程一个数字 N ，此数字应大于 0 且\
+小于 (worker_m - 1) 。
+
+下面的实例演示了如何同时运行 4 个例程： ::
 
     # Worker 0
     cephfs-data-scan scan_extents --worker_n 0 --worker_m 4 <data pool>
@@ -158,8 +163,8 @@ mtime 元数据；其次，从每个文件的第一个对象扫描出元数据�
     # Worker 3
     cephfs-data-scan scan_inodes --worker_n 3 --worker_m 4 <data pool>
 
-切记！！！所有运行 scan_extents 阶段的例程都结束后才能开始 \
-scan_inodes 。
+**切记！！！**\ 所有运行 scan_extents 阶段的例程都结束后才能开\
+始 scan_inodes 。
 
 元数据恢复完后，你可以清理掉恢复期间产生的辅助数据。 ::
 

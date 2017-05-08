@@ -30,17 +30,16 @@ FUSE
 
 要在用户空间挂载 Ceph 文件系统，按如下加入 ``/etc/fstab`` ： ::
 
-	#DEVICE                                  PATH         TYPE      OPTIONS
-	id={user-ID}[,conf={path/to/conf.conf}] /mount/path  fuse.ceph defaults,_netdev 0 0
+        #DEVICE PATH       TYPE      OPTIONS
+        none    /mnt/ceph  fuse.ceph ceph.id={user-ID}[,ceph.conf={path/to/conf.conf}],_netdev,defaults  0 0
 
 例如： ::
 
-	id=admin  /mnt/ceph  fuse.ceph defaults 0 0
-	id=myuser,conf=/etc/ceph/cluster.conf  /mnt/ceph2  fuse.ceph defaults 0 0
+        none    /mnt/ceph  fuse.ceph ceph.id=myuser,_netdev,defaults  0 0
+        none    /mnt/ceph  fuse.ceph ceph.id=myuser,ceph.conf=/etc/ceph/foo.conf,_netdev,defaults  0 0
 
-``DEVICE`` 字段是逗号分隔的一系列选项，确保填上了 ID （如
-``admin`` ，不是 ``client.admin`` ）。你可以用此方法把任何
-``ceph-fuse`` 接受的选项加上。
+确保填上了 ID （如 ``admin`` ，不是 ``client.admin`` ）。你可\
+以用此方法加上 ``ceph-fuse`` 的其它可用选项。
 
 详情见\ `用户管理`_\ 。
 

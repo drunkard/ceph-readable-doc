@@ -21,10 +21,13 @@
 OSD 验证心跳
 ============
 
-各 OSD 每 6 秒会与其他 OSD 进行心跳检查，用 ``[osd]`` 下的 \
-``osd heartbeat interval`` 可更改此间隔、或运行时更改。如果一个 OSD 20 秒都没\
-有心跳，集群就认为它 ``down`` 了，用 ``[osd]`` 下的 ``osd heartbeat grace`` \
-可更改宽限期、或者运行时更改。
+各 OSD 每 6 秒会与其他 OSD 守护进程进行心跳检查，用 ``[osd]``
+段下的 ``osd heartbeat interval`` 可更改此间隔、或运行时更改。\
+如果一个邻近的 OSD 在 20 秒的宽限期内都没有心跳，就把这个邻近
+OSD 的状态标记为 ``down`` 、并上报给监视器，它会更新 Ceph 集群\
+运行图。这个宽限期可以用 Ceph 配置文件的 ``[mon]`` 和 ``[osd]``
+段（同时配置）、或 ``[global]`` 段下的 ``osd heartbeat grace``
+选项更改、或者在运行时更改。
 
 
 .. ditaa:: +---------+          +---------+
@@ -308,7 +311,9 @@ OSD 选项
 
 ``osd heartbeat grace``
 
-:描述: OSD 多久没心跳就会被集群认为它挂（ ``down`` ）了。
+:描述: OSD 多久没心跳就会被集群认为它挂（ ``down`` ）了。此选\
+       项必须在 [mon] 和 [osd] 段下同时设置、或者在 [global] \
+       段下设置，因为 MON 和 OSD 都得配置才能生效。
 :类型: 32-bit Integer
 :默认值: ``20``
 
@@ -322,14 +327,16 @@ OSD 选项
 
 ``osd mon report interval max``
 
-:描述: 监视器允许 OSD 报告的最大间隔，超时将认为 OSD 挂了（ ``down`` ）。
+:描述: 监视器允许 OSD 报告的最大间隔，超时将认为 OSD 挂了（
+       ``down`` ）。
 :类型: 32-bit Integer
 :默认值: ``120``
 
 
 ``osd mon report interval min``
 
-:描述: 从一 OSD 启动或其它可报告事件发生以来，多长时间内必须向监视器报告一次。
+:描述: 从一 OSD 启动或其它可报告事件发生以来，多长时间内必须向\
+       监视器报告一次。
 :类型: 32-bit Integer
 :默认值: ``5``
 :有效范围: 要小于 ``osd mon report interval max`` 。
