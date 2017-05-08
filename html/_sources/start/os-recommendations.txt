@@ -14,19 +14,24 @@ Linux 内核
 
 - **Ceph 内核态客户端**
 
-  当前我们推荐：
+  如果你在用内核客户端，那么一般来说，内核客户端机器应该\
+  *紧跟*\ 由 http://kernel.org 或者发行版提供的“稳定”或者是“长\
+  期维护的”内核系列。
 
-  - 4.1.4 or later
-  - 3.16.3 or later (rbd deadlock regression in 3.16.[0-2])
-  - *NOT* v3.15.* (rbd deadlock regression)
-  - 3.14.*
+  对于 RBD ，如果你想\ *紧跟*\ 长期内核，当前，我们建议用基于
+  4.x 的“长期维护”内核系列：
+
+  - 4.9.z
+  - 4.4.z
 
   如果您坚持用很旧的，可以考虑这些：
 
-  - 3.10.*
+  - 3.16.z
+  - 3.10.z
 
-  firefly (CRUSH_TUNABLES3) 这个版本的可调选项到 3.15 版才开始\
-  支持。详情见 `CRUSH 可调值`_ 。
+  对于 CephFS ，选择内核版本时可参考\ `CephFS 最佳实践`_\ 。
+
+  较老的内核客户端可能不支持你的 `CRUSH 可调值`_\ 配置。
 
 - **B-tree 文件系统（Btrfs）**
 
@@ -130,3 +135,4 @@ Firefly (0.80)
 
 
 .. _CRUSH 可调值: ../../rados/operations/crush-map#tunables
+.. _CephFS 最佳实践: ../../cephfs/best-practices

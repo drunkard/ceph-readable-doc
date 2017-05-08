@@ -132,7 +132,7 @@
 
 ``rgw num rados handles``
 
-:描述: Ceph 对象网关的 `RADOS 集群处理器`_\ 数量。通过配置
+:描述: Ceph 对象网关的 `RADOS 集群句柄`_\ 数量。通过配置
        RADOS 处理器数量可以使得各种类型的载荷都明显地提升性\
        能，因为各个 RGW 工作线程在其短暂的活跃期内都可以分别\
        挂靠一个 RADOS 处理器。
@@ -1057,4 +1057,4 @@ Keystone 选项
 .. _体系结构: ../../architecture#data-striping
 .. _存储池配置: ../../rados/configuration/pool-pg-config-ref/
 .. _集群存储池: ../../rados/operations/pools
-.. _RADOS 集群处理器: ../../rados/api/librados-intro/#step-2-configuring-a-cluster-handle
+.. _RADOS 集群句柄: ../../rados/api/librados-intro/#step-2-configuring-a-cluster-handle

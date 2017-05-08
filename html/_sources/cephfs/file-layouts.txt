@@ -203,7 +203,7 @@ object_size
 
 .. code-block:: bash
 
-    $ ceph mds add_data_pool cephfs_data_ssd
+    $ ceph fs add_data_pool cephfs cephfs_data_ssd
     # 现在应该能看到存储池了
     $ ceph fs ls
     .... data pools: [cephfs_data cephfs_data_ssd ]

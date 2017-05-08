@@ -78,10 +78,10 @@ Create a Pool
 存储池。但我们建议分别为 Cinder 和 Glance 创建存储池。确保 Ceph
 集群在运行，然后创建存储池。 ::
 
-	ceph osd pool create volumes 128
-	ceph osd pool create images 128
-	ceph osd pool create backups 128
-	ceph osd pool create vms 128
+    ceph osd pool create volumes 128
+    ceph osd pool create images 128
+    ceph osd pool create backups 128
+    ceph osd pool create vms 128
 
 参考\ `创建存储池`_\ 为存储池指定归置组数量，参考\ `归置组`_\
 确定应该为存储池分配多少归置组。
@@ -99,7 +99,7 @@ Create a Pool
 或 ``cinder-backup`` 的主机被当作 Ceph 客户端，它们都需要
 ``ceph.conf`` 文件。 ::
 
-	ssh {your-openstack-server} sudo tee /etc/ceph/ceph.conf </etc/ceph/ceph.conf
+    ssh {your-openstack-server} sudo tee /etc/ceph/ceph.conf </etc/ceph/ceph.conf
 
 
 安装 Ceph 客户端软件包
@@ -108,14 +108,14 @@ Create a Pool
 在运行 ``glance-api`` 的节点上你得安装 ``librbd`` 的 Python 绑\
 定： ::
 
-	sudo apt-get install python-rbd
-	sudo yum install python-rbd
+    sudo apt-get install python-rbd
+    sudo yum install python-rbd
 
 在 ``nova-compute`` 、 ``cinder-backup`` 和 ``cinder-volume``
 节点上，要安装 Python 绑定和客户端命令行工具： ::
 
-	sudo apt-get install ceph-common
-	sudo yum install ceph-common
+    sudo apt-get install ceph-common
+    sudo yum install ceph-common
 
 
 .. _Setup Ceph Client Authentication:
@@ -126,13 +126,13 @@ Create a Pool
 如果你启用了 `cephx 认证`_\ ，需要分别为 Nova/Cinder 和 Glance
 创建新用户。命令如下： ::
 
-        ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'
-        ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'
+    ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'
+    ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'
 
 如果你的 OpenStack 版本低于 Mitaka ，还需给 ``client.cinder`` \
 创建密钥： ::
 
-        ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'
+    ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'
 
 Mitaka 开始支持一个新功能， Nova 例程的快照可以用 RBD 快照功能\
 实现，所以得允许 ``client.cinder`` 密钥写入 ``images`` 存储池；\
@@ -144,40 +144,40 @@ Mitaka 开始支持一个新功能， Nova 例程的快照可以用 RBD 快照�
 ``client.cinder-backup`` 的密钥环复制到各自所在节点，并修正\
 所有权： ::
 
-	ceph auth get-or-create client.glance | ssh {your-glance-api-server} sudo tee /etc/ceph/ceph.client.glance.keyring
-	ssh {your-glance-api-server} sudo chown glance:glance /etc/ceph/ceph.client.glance.keyring
-	ceph auth get-or-create client.cinder | ssh {your-volume-server} sudo tee /etc/ceph/ceph.client.cinder.keyring
-	ssh {your-cinder-volume-server} sudo chown cinder:cinder /etc/ceph/ceph.client.cinder.keyring
-	ceph auth get-or-create client.cinder-backup | ssh {your-cinder-backup-server} sudo tee /etc/ceph/ceph.client.cinder-backup.keyring
-	ssh {your-cinder-backup-server} sudo chown cinder:cinder /etc/ceph/ceph.client.cinder-backup.keyring
+    ceph auth get-or-create client.glance | ssh {your-glance-api-server} sudo tee /etc/ceph/ceph.client.glance.keyring
+    ssh {your-glance-api-server} sudo chown glance:glance /etc/ceph/ceph.client.glance.keyring
+    ceph auth get-or-create client.cinder | ssh {your-volume-server} sudo tee /etc/ceph/ceph.client.cinder.keyring
+    ssh {your-cinder-volume-server} sudo chown cinder:cinder /etc/ceph/ceph.client.cinder.keyring
+    ceph auth get-or-create client.cinder-backup | ssh {your-cinder-backup-server} sudo tee /etc/ceph/ceph.client.cinder-backup.keyring
+    ssh {your-cinder-backup-server} sudo chown cinder:cinder /etc/ceph/ceph.client.cinder-backup.keyring
 
 运行 ``nova-compute`` 的节点，其进程需要密钥环文件： ::
 
-	ceph auth get-or-create client.cinder | ssh {your-nova-compute-server} sudo tee /etc/ceph/ceph.client.cinder.keyring
+    ceph auth get-or-create client.cinder | ssh {your-nova-compute-server} sudo tee /etc/ceph/ceph.client.cinder.keyring
 
 还得把 ``client.cinder`` 用户的密钥存进 ``libvirt`` ， libvirt
 进程从 Cinder 挂载块设备时要用它访问集群。
 
 在运行 ``nova-compute`` 的节点上创建一个密钥的临时副本： ::
 
-	ceph auth get-key client.cinder | ssh {your-compute-node} tee client.cinder.key
+    ceph auth get-key client.cinder | ssh {your-compute-node} tee client.cinder.key
 
 然后，在计算节点上把密钥加进 ``libvirt`` 、然后删除临时副本： ::
 
-	uuidgen
-	457eb676-33da-42ec-9a8c-9293d545c337
+    uuidgen
+    457eb676-33da-42ec-9a8c-9293d545c337
 
-	cat > secret.xml <<EOF
-	<secret ephemeral='no' private='no'>
-		<uuid>457eb676-33da-42ec-9a8c-9293d545c337</uuid>
-		<usage type='ceph'>
-			<name>client.cinder secret</name>
-		</usage>
-	</secret>
-	EOF
-	sudo virsh secret-define --file secret.xml
-	Secret 457eb676-33da-42ec-9a8c-9293d545c337 created
-	sudo virsh secret-set-value --secret 457eb676-33da-42ec-9a8c-9293d545c337 --base64 $(cat client.cinder.key) && rm client.cinder.key secret.xml
+    cat > secret.xml <<EOF
+    <secret ephemeral='no' private='no'>
+        <uuid>457eb676-33da-42ec-9a8c-9293d545c337</uuid>
+        <usage type='ceph'>
+            <name>client.cinder secret</name>
+        </usage>
+    </secret>
+    EOF
+    sudo virsh secret-define --file secret.xml
+    Secret 457eb676-33da-42ec-9a8c-9293d545c337 created
+    sudo virsh secret-set-value --secret 457eb676-33da-42ec-9a8c-9293d545c337 --base64 $(cat client.cinder.key) && rm client.cinder.key secret.xml
 
 保留密钥的 uuid ，稍后配置 ``nova-compute`` 要用。
 
@@ -204,10 +204,10 @@ Glance 可使用多种后端存储映像，要让它默认使用 Ceph 块设备�
 编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到
 ``[DEFAULT]`` 段下： ::
 
-	default_store = rbd
-	rbd_store_user = glance
-	rbd_store_pool = images
-	rbd_store_chunk_size = 8
+    default_store = rbd
+    rbd_store_user = glance
+    rbd_store_pool = images
+    rbd_store_chunk_size = 8
 
 
 Juno 版
@@ -216,16 +216,16 @@ Juno 版
 编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到
 ``[glance_store]`` 段下： ::
 
-	[DEFAULT]
-	...
-	default_store = rbd
-	...
-	[glance_store]
-	stores = rbd
-	rbd_store_pool = images
-	rbd_store_user = glance
-	rbd_store_ceph_conf = /etc/ceph/ceph.conf
-	rbd_store_chunk_size = 8
+    [DEFAULT]
+    ...
+    default_store = rbd
+    ...
+    [glance_store]
+    stores = rbd
+    rbd_store_pool = images
+    rbd_store_user = glance
+    rbd_store_ceph_conf = /etc/ceph/ceph.conf
+    rbd_store_chunk_size = 8
 
 .. important:: Glance 还没完全迁移到 'store' ，所以我们还得在
    DEFAULT 段下配置 store 。
@@ -264,7 +264,7 @@ http://docs.openstack.org/ 。
 如果你想让映像支持写时复制克隆功能，还得把下列内容加到
 ``[DEFAULT]`` 段下： ::
 
-	show_image_direct_url = True
+    show_image_direct_url = True
 
 仅适用于 Mitaka
 ^^^^^^^^^^^^^^^
@@ -283,8 +283,8 @@ http://docs.openstack.org/ 。
 禁用 Glance 缓存管理，以免映像被缓存到 ``/var/lib/glance/image-cache/`` \
 下；假设你的配置文件里有 ``flavor = keystone+cachemanagement`` ::
 
-	[paste_deploy]
-	flavor = keystone
+    [paste_deploy]
+    flavor = keystone
 
 
 映像属性
@@ -307,27 +307,28 @@ OpenStack 需要一个驱动和 Ceph 块设备交互，还得指定块设备所\
 在的存储池名字。编辑 OpenStack 节点上的
 ``/etc/cinder/cinder.conf`` ，添加： ::
 
-	[DEFAULT]
-	...
-	enabled_backends = ceph
-	...
-	[ceph]
-	volume_driver = cinder.volume.drivers.rbd.RBDDriver
-	rbd_pool = volumes
-	rbd_ceph_conf = /etc/ceph/ceph.conf
-	rbd_flatten_volume_from_snapshot = false
-	rbd_max_clone_depth = 5
-	rbd_store_chunk_size = 4
-	rados_connect_timeout = -1
-	glance_api_version = 2
+    [DEFAULT]
+    ...
+    enabled_backends = ceph
+    ...
+    [ceph]
+    volume_driver = cinder.volume.drivers.rbd.RBDDriver
+    volume_backend_name = ceph
+    rbd_pool = volumes
+    rbd_ceph_conf = /etc/ceph/ceph.conf
+    rbd_flatten_volume_from_snapshot = false
+    rbd_max_clone_depth = 5
+    rbd_store_chunk_size = 4
+    rados_connect_timeout = -1
+    glance_api_version = 2
 
 如果你在用 `cephx 认证`_\ ，还需要配置用户及其密钥（前述文\
 档中存进了 ``libvirt`` ）的 uuid ： ::
 
-	[ceph]
-	...
-	rbd_user = cinder
-	rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+    [ceph]
+    ...
+    rbd_user = cinder
+    rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
 
 Note that if you are configuring multiple cinder back ends,
 ``glance_api_version = 2`` must be in the ``[DEFAULT]`` section.
@@ -339,14 +340,14 @@ Configuring Cinder Backup
 OpenStack Cinder Backup requires a specific daemon so don't forget to install it.
 On your Cinder Backup node, edit ``/etc/cinder/cinder.conf`` and add::
 
-	backup_driver = cinder.backup.drivers.ceph
-	backup_ceph_conf = /etc/ceph/ceph.conf
-	backup_ceph_user = cinder-backup
-	backup_ceph_chunk_size = 134217728
-	backup_ceph_pool = backups
-	backup_ceph_stripe_unit = 0
-	backup_ceph_stripe_count = 0
-	restore_discard_excess_bytes = true
+    backup_driver = cinder.backup.drivers.ceph
+    backup_ceph_conf = /etc/ceph/ceph.conf
+    backup_ceph_user = cinder-backup
+    backup_ceph_chunk_size = 134217728
+    backup_ceph_pool = backups
+    backup_ceph_stripe_unit = 0
+    backup_ceph_stripe_count = 0
+    restore_discard_excess_bytes = true
 
 
 .. _Configuring Nova to attach Ceph RBD block device:
@@ -358,10 +359,10 @@ On your Cinder Backup node, edit ``/etc/cinder/cinder.conf`` and add::
 和 libvirt ）连接时用哪个用户和 UUID ， libvirt 连接 Ceph 集群\
 或与之认证时也会用这个用户： ::
 
-        [libvirt]
-        ...
-        rbd_user = cinder
-        rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+    [libvirt]
+    ...
+    rbd_user = cinder
+    rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
 
 Nova 的 ephemeral 后端也会用这两条配置。
 
@@ -377,21 +378,21 @@ Nova 的配置
 
 可以这样访问套接字： ::
 
-	ceph daemon /var/run/ceph/ceph-client.cinder.19195.32310016.asok help
+    ceph daemon /var/run/ceph/ceph-client.cinder.19195.32310016.asok help
 
 编辑所有计算节点上的 Ceph 配置文件： ::
 
-	[client]
-		rbd cache = true
-		rbd cache writethrough until flush = true
-		admin socket = /var/run/ceph/guests/$cluster-$type.$id.$pid.$cctid.asok
-		log file = /var/log/qemu/qemu-guest-$pid.log
-		rbd concurrent management ops = 20
+    [client]
+        rbd cache = true
+        rbd cache writethrough until flush = true
+        admin socket = /var/run/ceph/guests/$cluster-$type.$id.$pid.$cctid.asok
+        log file = /var/log/qemu/qemu-guest-$pid.log
+        rbd concurrent management ops = 20
 
 调整这些路径的权限： ::
 
-	mkdir -p /var/run/ceph/guests/ /var/log/qemu/
-	chown qemu:libvirtd /var/run/ceph/guests /var/log/qemu/
+    mkdir -p /var/run/ceph/guests/ /var/log/qemu/
+    chown qemu:libvirtd /var/run/ceph/guests /var/log/qemu/
 
 要注意， ``qemu`` 用户和 ``libvirtd`` 组可能因系统不同而不同，前面的实例\
 基于 RedHat 风格的系统。
@@ -410,12 +411,12 @@ order to take advantage of the copy-on-write clone functionality.
 
 On every Compute node, edit ``/etc/nova/nova.conf`` and add::
 
-	libvirt_images_type = rbd
-	libvirt_images_rbd_pool = vms
-	libvirt_images_rbd_ceph_conf = /etc/ceph/ceph.conf
-	libvirt_disk_cachemodes="network=writeback"
-	rbd_user = cinder
-	rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+    libvirt_images_type = rbd
+    libvirt_images_rbd_pool = vms
+    libvirt_images_rbd_ceph_conf = /etc/ceph/ceph.conf
+    disk_cachemodes="network=writeback"
+    rbd_user = cinder
+    rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
 
 It is also a good practice to disable file injection. While booting an
 instance, Nova usually attempts to open the rootfs of the virtual machine.
@@ -425,13 +426,13 @@ filesystem. However, it is better to rely on the metadata service and
 
 On every Compute node, edit ``/etc/nova/nova.conf`` and add::
 
-	libvirt_inject_password = false
-	libvirt_inject_key = false
-	libvirt_inject_partition = -2
+    libvirt_inject_password = false
+    libvirt_inject_key = false
+    libvirt_inject_partition = -2
 
 为确保在线迁移能顺利进行，要使用如下标志： ::
 
-	libvirt_live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"
+    libvirt_live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"
 
 
 Juno
@@ -441,13 +442,13 @@ In Juno, Ceph block device was moved under the ``[libvirt]`` section.
 On every Compute node, edit ``/etc/nova/nova.conf`` under the ``[libvirt]``
 section and add::
 
-	[libvirt]
-	images_type = rbd
-	images_rbd_pool = vms
-	images_rbd_ceph_conf = /etc/ceph/ceph.conf
-	rbd_user = cinder
-	rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
-	disk_cachemodes="network=writeback"
+    [libvirt]
+    images_type = rbd
+    images_rbd_pool = vms
+    images_rbd_ceph_conf = /etc/ceph/ceph.conf
+    rbd_user = cinder
+    rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
+    disk_cachemodes="network=writeback"
 
 
 It is also a good practice to disable file injection. While booting an
@@ -459,13 +460,13 @@ filesystem. However, it is better to rely on the metadata service and
 On every Compute node, edit ``/etc/nova/nova.conf`` and add the following
 under the ``[libvirt]`` section::
 
-	inject_password = false
-	inject_key = false
-	inject_partition = -2
+    inject_password = false
+    inject_key = false
+    inject_partition = -2
 
 为确保在线迁移能顺利进行，要使用如下标志（写到 ``[libvirt]`` 段下）： ::
 
-	live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"
+    live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"
 
 
 Kilo
@@ -473,10 +474,10 @@ Kilo
 
 为虚拟机的 ephemeral 根磁盘启用 discard 功能： ::
 
-	[libvirt]
-	...
-	...
-	hw_disk_discard = unmap # 启用 discard 功能（注意性能）
+    [libvirt]
+    ...
+    ...
+    hw_disk_discard = unmap # 启用 discard 功能（注意性能）
 
 
 重启 OpenStack
@@ -485,17 +486,17 @@ Kilo
 要激活 Ceph 块设备驱动、并把块设备存储池名载入配置，必须重启 \
 OpenStack 。在基于 Debian 的系统上需在对应节点上执行这些命令： ::
 
-	sudo glance-control api restart
-	sudo service nova-compute restart
-	sudo service cinder-volume restart
-	sudo service cinder-backup restart
+    sudo glance-control api restart
+    sudo service nova-compute restart
+    sudo service cinder-volume restart
+    sudo service cinder-backup restart
 
 在基于 Red Hat 的系统上执行： ::
 
-	sudo service openstack-glance-api restart
-	sudo service openstack-nova-compute restart
-	sudo service openstack-cinder-volume restart
-	sudo service openstack-cinder-backup restart
+    sudo service openstack-glance-api restart
+    sudo service openstack-nova-compute restart
+    sudo service openstack-cinder-volume restart
+    sudo service openstack-cinder-backup restart
 
 一旦 OpenStack 启动并运行正常，应该就可以创建卷宗并用它引导了。
 
@@ -505,12 +506,12 @@ OpenStack 。在基于 Debian 的系统上需在对应节点上执行这些命�
 
 你可以用 Cinder 命令行工具从一映像创建卷宗： ::
 
-	cinder create --image-id {id of image} --display-name {name of volume} {size of volume}
+    cinder create --image-id {id of image} --display-name {name of volume} {size of volume}
 
 注意映像必须是 RAW 格式，你可以用 `qemu-img`_ 转换格式，如： ::
 
-	qemu-img convert -f {source-format} -O {output-format} {source-filename} {output-filename}
-	qemu-img convert -f qcow2 -O raw precise-cloudimg.img precise-cloudimg.raw
+    qemu-img convert -f {source-format} -O {output-format} {source-filename} {output-filename}
+    qemu-img convert -f qcow2 -O raw precise-cloudimg.img precise-cloudimg.raw
 
 Glance 和 Cinder 都使用 Ceph 块设备时，此镜像又是个写时复制克隆，就能非常\
 快地创建新卷宗。在 OpenStack 操作板里就能从那个卷宗引导，步骤如下：

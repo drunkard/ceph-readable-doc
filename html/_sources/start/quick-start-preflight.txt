@@ -267,11 +267,22 @@ Ceph OSD 能利用多个网络连接与客户端、监视器、其他副本 OSD 
 某些发行版（如 RHEL ）的默认防火墙配置非常严格，你得调整防火墙，\
 允许相应的入栈请求，这样客户端才能与 Ceph 节点通信。
 
-对于 RHEL 7 上的 ``firewalld`` ，要对公共域放通 Ceph 监视器所使\
-用的 ``6789`` 端口、以及 OSD 所使用的 ``6800:7300`` ，并且要配置\
-为永久规则，这样重启后规则仍有效。例如： ::
+对于 RHEL 7 上的 ``firewalld`` ，可把服务加入公共域，监视器节\
+点上应该加 ``ceph-mon`` 服务、 OSD 和 MDS 上加 ``ceph`` 服务，\
+并且要配置为永久规则，这样重启后规则仍有效。
 
-	sudo firewall-cmd --zone=public --add-port=6789/tcp --permanent
+例如，在监视器上： ::
+
+	sudo firewall-cmd --zone=public --add-service=ceph-mon --permanent
+
+在 OSD 和 MDS 主机上： ::
+
+	sudo firewall-cmd --zone=public --add-service=ceph --permanent
+
+加 ``--permanent`` 选项配置完 firewalld 后，无需重启就可以让它\
+立即生效： ::
+
+	sudo firewall-cmd --reload
 
 若用 ``iptables`` 命令，要放通 Ceph 监视器所用的 ``6789`` 端口和 \
 OSD 所用的 ``6800:7300`` 端口范围，命令如下： ::

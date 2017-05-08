@@ -120,22 +120,25 @@ Hadoop 文件系统接口允许用户在创建文件时定制复制因子（例�
 	  <value>pool1,pool2,pool5</value>
 	</property>
 
-Hadoop 不会自动创建存储池。要创建一个指定复制因子的存储池，可用 \
-``ceph osd pool create`` 命令、然后用 ``ceph osd pool set`` 设置存储池的 \
-``size`` 属性。更多的创建、配置手册见 `RADOS 存储池文档`_\ 。
+Hadoop 不会自动创建存储池。要创建一个指定复制因子的存储池，可用
+``ceph osd pool create`` 命令、然后用 ``ceph osd pool set`` 设\
+置存储池的 ``size`` 属性。更多的创建、配置手册见
+`RADOS 存储池文档`_\ 。
 
 .. _RADOS 存储池文档: ../../rados/operations/pools
 
-存储池创建、配置完毕后，必须把新存储池可用于数据存储的消息告知元数据服务，用 \
-``ceph mds add_data_pool`` 命令告知，这样存储池就可存储文件系统数据了。
+存储池创建、配置完毕后，必须把新存储池可用于数据存储的消息告知\
+元数据服务，用 ``ceph fs add_data_pool`` 命令告知，这样存储池\
+就可存储文件系统数据了。
 
-首先创建存储池。本例中，我们创建 ``hadoop1`` 存储池，其复制因子为 1 。 ::
+首先创建存储池。本例中，我们创建 ``hadoop1`` 存储池，其复制因\
+子为 1 。 ::
 
 	ceph osd pool create hadoop1 100
 	ceph osd pool set hadoop1 size 1
 
-下一步，找出存储池 ID ，命令为 ``ceph osd dump`` 。例如，找出刚创建的 \
-``hadoop1`` 存储池： ::
+下一步，找出存储池 ID ，命令为 ``ceph osd dump`` 。例如，找出\
+刚创建的 ``hadoop1`` 存储池： ::
 
 	ceph osd dump | grep hadoop1
 
@@ -143,10 +146,10 @@ Hadoop 不会自动创建存储池。要创建一个指定复制因子的存储�
 
 	pool 3 'hadoop1' rep size 1 min_size 1 crush_ruleset 0...
 
-其中， ``3`` 是存储池 id 。下面我们用前述 ID 把存储池注册为数据存储池，用于存储文件\
-系统数据。 ::
+其中， ``3`` 是存储池 id 。下面我们用前述 ID 把存储池注册为数\
+据存储池，用于存储文件系统数据。 ::
 
-	ceph mds add_data_pool 3
+	ceph fs add_data_pool cephfs 3
 
 最后配置 Hadoop ，让它在为新文件选择目标存储池时考虑此存储池。 ::
 
