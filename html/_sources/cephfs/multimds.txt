@@ -1,5 +1,3 @@
-:orphan:
-
 .. _Configuring multiple active MDS daemons:
 
 多活 MDS 守护进程的配置

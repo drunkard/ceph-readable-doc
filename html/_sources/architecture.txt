@@ -1373,7 +1373,7 @@ Ceph FS 从数据中分离出了元数据、并存储于 MDS ，文件数据存�
 状态的 ``ceph-mds`` 例程以实现扩展、和 1 个 `standby` 例程以实现高可用性。
 
 
-.. _RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters: http://ceph.com/papers/weil-rados-pdsw07.pdf
+.. _RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters: https://ceph.com/wp-content/uploads/2016/08/weil-rados-pdsw07.pdf
 .. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)
 .. _监视器配置参考: ../rados/configuration/mon-config-ref
 .. _监控 OSD 和归置组: ../rados/operations/monitoring-osd-pg

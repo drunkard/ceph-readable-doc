@@ -211,7 +211,7 @@ RBD 镜像用 journaling 功能来保证复制的映像始终保持崩溃一致\
         rbd --cluster local mirror image demote image-pool/image-1
 
 要用 ``rbd`` 命令把存储池内的所有映像降级为非主的，可用
-``mirror pool demote`` 命令加存储池名： ::
+``mirror pool demote`` 命令，加上存储池名： ::
 
         rbd mirror pool demote {pool-name}
 

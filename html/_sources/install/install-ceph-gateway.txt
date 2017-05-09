@@ -326,8 +326,8 @@ DNS 的地址也必须写入 Ceph 配置文件，选项为
         @       IN      A       192.168.122.113
         *       IN      CNAME   @
 
-重启 DNS 服务器、然后用一个子域名 ping 网关服务器，以确保
-DNS 解析配置无误： ::
+重启 DNS 服务器、然后用一个子域名 ping 网关服务器，以确保 DNS \
+解析配置无误： ::
 
         ping mybucket.{hostname}
 
@@ -520,11 +520,11 @@ DNS 解析配置无误： ::
 测试 S3 访问
 """"""""""""
 
-你得写个 Python 测试脚本并运行它来验证 S3 访问。这个 S3 访\
-问测试脚本会连接到 ``radosgw`` 、创建新桶、并罗列所有桶。其\
-中， ``aws_access_key_id`` 和 ``aws_secret_access_key`` 的\
-值取自 ``radosgw_admin`` 命令返回的 ``access_key`` 和
-``secret_key`` 的值。
+你得写个 Python 测试脚本并运行它来验证 S3 访问。这个 S3 访问测\
+试脚本会连接到 ``radosgw`` 、创建新桶、并罗列所有桶。其中，
+``aws_access_key_id`` 和 ``aws_secret_access_key`` 的值取自
+``radosgw-admin`` 命令返回的 ``access_key`` 和 ``secret_key`` \
+的值。
 
 执行下列步骤：
 

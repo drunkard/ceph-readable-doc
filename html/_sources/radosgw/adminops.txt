@@ -1463,11 +1463,13 @@ None.
 :描述: Unable to unlink bucket from specified user.
 :状态码: 409 Conflict
 
-Link Bucket
-===========
 
-Link a bucket to a specified user, unlinking the bucket from
-any previous user.
+.. _Link Bucket:
+
+链接桶
+======
+
+把桶链接到指定用户，同时断开与之前用户的链接。
 
 :caps: buckets=write
 
@@ -1480,19 +1482,28 @@ any previous user.
 	Host {fqdn}
 
 
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+请求参数
+~~~~~~~~
 
 ``bucket``
 
-:描述: The bucket to unlink.
+:描述: 要切断链接的桶。
 :类型: String
 :实例: ``foo_bucket``
 :是否必需: Yes
 
+
+``bucket-id``
+
+:描述: 要切断链接的桶 id 。
+:类型: String
+:示例: ``dev.6607669.420``
+:是否必需: Yes
+
+
 ``uid``
 
-:描述: The user ID to link the bucket to.
+:描述: 用户的 ID ，桶会被链接到此用户。
 :类型: String
 :实例: ``foo_user``
 :是否必需: Yes

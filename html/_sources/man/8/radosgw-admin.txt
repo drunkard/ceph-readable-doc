@@ -265,7 +265,7 @@
 
 .. option:: --key-type=<type>
 
-   密钥类型，可用的有： swift 、 S3 。
+   密钥类型，可用的有： swift 、 s3 。
 
 .. option:: --temp-url-key[-2]=<key>
 

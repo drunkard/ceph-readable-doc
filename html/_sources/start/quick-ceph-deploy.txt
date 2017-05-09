@@ -59,7 +59,7 @@ OSD 守护进程。一旦集群达到 ``active + clean`` 状态，再扩展它�
 
 	ceph-deploy new {initial-monitor-node(s)}
 
-   例如： ::
+   用主机名、 FQDN 或 hostname:fqdn 做节点名，例如： ::
 
 	ceph-deploy new node1
 

@@ -215,16 +215,17 @@ CRUSH 图之设备
 定义的 OSD 守护进程名称），所以它们首先出现在 CRUSH 图里。\
 要在 CRUSH 图里声明一个设备，在设备列表后面新建一行，输入
 ``device`` 、之后是唯一的数字 ID 、之后是相应的 ``ceph-osd``
-守护进程例程名字。 ::
+守护进程例程名字。 device 类支持可选参数 class ，用以对设备分\
+组，这样就可以让 crush 规则方便地引用。 ::
 
 	#devices
-	device {num} {osd.name}
+	device {num} {osd.name} [class {class}]
 
 例如： ::
 
 	#devices
-	device 0 osd.0
-	device 1 osd.1
+	device 0 osd.0 class ssd
+	device 1 osd.1 class hdd
 	device 2 osd.2
 	device 3 osd.3
 
@@ -455,7 +456,7 @@ CRUSH 规则的详细研究见
 		type [ replicated | erasure ]
 		min_size <min-size>
 		max_size <max-size>
-		step take <bucket-name>
+		step take <bucket-name> [class <device-class>]
 		step [choose|chooseleaf] [firstn|indep] <N> <bucket-type>
 		step emit
 	}
@@ -502,9 +503,11 @@ CRUSH 规则的详细研究见
 :默认值: 10
 
 
-``step take <bucket-name>``
+``step take <bucket-name> [class <device-class>]``
 
-:描述: 选取桶名并迭代到树底。
+:描述: 选取一个桶名，并沿树往下迭代。如果指定了
+       ``device-class`` ，它必须与前面定义设备时的分类名一致，\
+       不属于此类的设备都会被排除在外。
 :目的: 规则掩码的一个组件。
 :是否必需: Yes
 :实例: ``step take data``
