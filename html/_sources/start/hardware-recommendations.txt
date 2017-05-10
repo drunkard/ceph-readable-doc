@@ -292,5 +292,5 @@ Dell 实例
 .. _Ceph Write Throughput 2: http://ceph.com/community/ceph-performance-part-2-write-throughput-without-ssd-journals/
 .. _Argonaut v. Bobtail Performance Preview: http://ceph.com/uncategorized/argonaut-vs-bobtail-performance-preview/
 .. _Bobtail Performance - I/O Scheduler Comparison: http://ceph.com/community/ceph-bobtail-performance-io-scheduler-comparison/
-.. _给存储池指定 OSD: http://ceph.com/docs/master/rados/operations/crush-map/#placing-different-pools-on-different-osds
+.. _给存储池指定 OSD: ../../rados/operations/crush-map#placing-different-pools-on-different-osds
 .. _操作系统推荐: ../os-recommendations

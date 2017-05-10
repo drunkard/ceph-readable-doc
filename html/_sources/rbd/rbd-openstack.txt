@@ -523,6 +523,6 @@ Glance 和 Cinder 都使用 Ceph 块设备时，此镜像又是个写时复制�
 
 
 .. _qemu-img: ../qemu-rbd/#running-qemu-with-rbd
-.. _块设备与 OpenStack (Dumpling): http://ceph.com/docs/dumpling/rbd/rbd-openstack
+.. _块设备与 OpenStack (Dumpling): http://docs.ceph.com/docs/dumpling/rbd/rbd-openstack
 .. _stable/havana: https://github.com/jdurgin/nova/tree/havana-ephemeral-rbd
 .. _stable/icehouse: https://github.com/angdraug/nova/tree/rbd-ephemeral-clone-stable-icehouse

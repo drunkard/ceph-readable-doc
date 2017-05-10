@@ -105,6 +105,7 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
 		proper term is "Ceph OSD".
 
 	Ceph OSD Daemon
+	Ceph OSD Daemons
 	Ceph OSD
         Ceph 对象存储守护进程
         Ceph OSD 守护进程

@@ -36,7 +36,8 @@
 ``git@github.com:ceph/ceph.git`` ），你必须生成一个 SSH 密钥对。
 
 .. tip:: 如果你只是想克隆，不需要 SSH 密钥也可用 \
-   ``git clone --recursive https://github.com/ceph/ceph.git`` 克隆。
+   ``git clone --recursive https://github.com/ceph/ceph.git``
+   克隆。
 
 执行如下命令生成 SSH 密钥对用于 ``github`` ： ::
 
@@ -48,11 +49,11 @@
 
 复制公钥。
 
-进入 ``github`` 帐户，点击 “Account Settings” （即 ``tools`` 图标），然后点击导\
-航条左边的 “SSH Keys” 。
+进入 ``github`` 帐户，点击 “Account Settings” （即 ``tools``
+图标），然后点击导航条左边的 “SSH Keys” 。
 
-点击 “SSH Keys” 列表里的 “Add SSH key” ，给密钥起个名字，把复制的公钥粘帖进去，最\
-后点击 “Add key” 按钮。
+点击 “SSH Keys” 列表里的 “Add SSH key” ，给密钥起个名字，把复\
+制的公钥粘帖进去，最后点击 “Add key” 按钮。
 
 
 克隆源码

@@ -366,7 +366,7 @@ Argonaut 的守护进程将对正在进行的消息不知所措，因为 Bobtail
 .. _监视器的自举引导: ../../../install/manual-deployment#monitor-bootstrapping
 .. _操纵集群: ../../operations/operating
 .. _手动部署: ../../../install/manual-deployment
-.. _Cephx: http://ceph.com/docs/cuttlefish/rados/configuration/auth-config-ref/
+.. _Cephx: http://docs.ceph.com/docs/cuttlefish/rados/configuration/auth-config-ref/
 .. _Ceph 配置: ../ceph-conf
 .. _部署管理主机: ../../deployment/ceph-deploy-admin
 .. _体系结构——高可用性认证: ../../../architecture#high-availability-authentication

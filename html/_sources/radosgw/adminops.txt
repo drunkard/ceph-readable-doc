@@ -1675,10 +1675,13 @@ If successful, returns the object or bucket policy
               and object were not specified for an object policy request.
 :状态码: 400 Bad Request
 
-Add A User Capability
-=====================
 
-Add an administrative capability to a specified user.
+.. _Add A User Capability:
+
+增加用户能力
+============
+
+给指定用户增加管理能力。
 
 :caps: users=write
 
@@ -1690,21 +1693,21 @@ Add an administrative capability to a specified user.
 	PUT /{admin}/user?caps&format=json HTTP/1.1
 	Host {fqdn}
 
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+请求参数
+~~~~~~~~
 
 ``uid``
 
-:描述: The user ID to add an administrative capability to.
+:描述: 要给增加管理能力的用户 ID 。
 :类型: String
 :实例: ``foo_user``
 :是否必需: Yes
 
 ``user-caps``
 
-:描述: The administrative capability to add to the user.
+:描述: 给用户增加的管理能力。
 :类型: String
-:实例: ``usage=read, write``
+:实例: ``usage=read,write;user=write``
 :是否必需: Yes
 
 Response Entities
@@ -1744,18 +1747,18 @@ If successful, the response contains the user's capabilities.
 
 ::
 
-	PUT /{admin}/user?caps&format=json HTTP/1.1
+	PUT /{admin}/user?caps&user-caps=usage=read,write;user=write&format=json HTTP/1.1
 	Host: {fqdn}
 	Content-类型: text/plain
 	Authorization: {your-authorization-token}
 
-	usage=read
 
+.. _Remove A User Capability:
 
-Remove A User Capability
-========================
+删除用户能力
+============
 
-Remove an administrative capability from a specified user.
+删除指定用户的管理能力。
 
 :caps: users=write
 
@@ -1767,8 +1770,8 @@ Remove an administrative capability from a specified user.
 	DELETE /{admin}/user?caps&format=json HTTP/1.1
 	Host {fqdn}
 
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+请求参数
+~~~~~~~~
 
 ``uid``
 

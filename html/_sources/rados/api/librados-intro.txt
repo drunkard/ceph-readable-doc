@@ -264,10 +264,11 @@ it and connecting to the cluster might look something like this:
 .. code-block:: c
 
 	#include <stdio.h>
+	#include <stdlib.h>
 	#include <string.h>
 	#include <rados/librados.h>
 
-	int main (int argc, char argv**) 
+	int main (int argc, const char **argv) 
 	{
 
 		/* Declare the cluster handle and required arguments. */
@@ -344,7 +345,7 @@ you to initialize a ``librados::Rados`` cluster handle object:
 		librados::Rados cluster;
 		char cluster_name[] = "ceph";
 		char user_name[] = "client.admin";
-		uint64_t flags; 
+		uint64_t flags = 0; 
 
 		/* Initialize the cluster handle with the "ceph" cluster name and "client.admin" user */ 
 		{

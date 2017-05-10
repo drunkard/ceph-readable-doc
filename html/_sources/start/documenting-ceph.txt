@@ -147,6 +147,8 @@ http://tracker.ceph.com/issues/4000 。
 还必须从其他文档删除与之相关的引用。
 
 
+.. _Build the Source:
+
 构建文档源码
 ------------
 
@@ -154,33 +156,32 @@ http://tracker.ceph.com/issues/4000 。
 
 	cd ceph
 
-在 Debian/Ubuntu 上执行此命令构建文档： ::
+在 Debian/Ubuntu 、 Fedora 或 CentOS/RHEL 上执行此命令构建文档： ::
 
 	admin/build-doc
 
-在 Fedora 上执行此命令构建文档： ::
+要扫描外部链接是否都可达，执行： ::
 
-	admin/build-doc
+	admin/build-doc linkcheck
 
-在 CentOS/RHEL 上执行此命令构建文档： ::
-
-	admin/build-doc
-
-执行 ``admin/build-doc`` 之后，它会在 ``ceph`` 下创建一个 ``build-doc`` 目录。\
-你也许还得在 ``ceph/build-doc`` 下创建个目录用于 Javadoc 的输出。 ::
+执行 ``admin/build-doc`` 之后，它会在 ``ceph`` 下创建一个
+``build-doc`` 目录。你也许还得在 ``ceph/build-doc`` 下创建个目\
+录用于 Javadoc 的输出。 ::
 
 	mkdir -p output/html/api/libcephfs-java/javadoc
 
-``build-doc`` 构建脚本可能会产生警告和报错，有关语法的错误\ **必须**\ 修复才能\
-提交，警告\ **应该**\ 尽量消除。
+``build-doc`` 构建脚本可能会产生警告和报错，有关语法的错误\
+**必须**\ 修复才能提交，警告\ **应该**\ 尽量消除。
 
-.. important:: 你必须核实\ **所有超链接**\ ，损坏的超链接会中止构建过程。
+.. important:: 你必须核实\ **所有超链接**\ ，损坏的超链接会中\
+   止构建过程。
 
 文档构建完成后你就可以到源码目录下查看了： ::
 
 	cd build-doc/output
 
-那里应该有 ``html`` 目录和 ``man`` 目录分别存放着 HTML 和手册页格式的文档。
+那里应该有 ``html`` 目录和 ``man`` 目录分别存放着 HTML 和手册\
+页格式的文档。
 
 
 构建源码（首次）

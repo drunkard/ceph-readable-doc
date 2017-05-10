@@ -282,24 +282,23 @@ To remove an access key, specify the user. ::
 增加、删除管理能力
 ------------------
 
-The Ceph Storage Cluster provides an administrative API that enables  users to
-execute administrative functions via the REST API. By default, users do NOT have
-access to this API. To enable a user to exercise  administrative functionality,
-provide the user with administrative capabilities.
+Ceph 存储集群提供了一个管理 API ，用户可以通过 REST API 使用管\
+理功能。默认情况下，用户\ **无权**\ 访问这个 API ，给用户分配\
+管理能力后，他才能使用管理功能。
 
-To add administrative capabilities to a user, execute the following:: 
+要给用户分配管理能力，执行下面的： ::
 
 	radosgw-admin caps add --uid={uid} --caps={caps}
 
 
-You can add read, write or all capabilities to users, buckets, metadata and 
-usage (utilization). For example::
+你可以给 users 、 buckets 、 metadata 和 usage （利用率）分配
+read 、 write 或 all 能力，例如： ::
 
 	--caps="[users|buckets|metadata|usage|zone]=[*|read|write|read, write]"
 
 例如： ::
 
-	radosgw-admin caps add --uid=johndoe --caps="users=*"
+	radosgw-admin caps add --uid=johndoe --caps="users=*;buckets=*"
 
 
 要删除某用户的管理能力，可用下面的命令： ::

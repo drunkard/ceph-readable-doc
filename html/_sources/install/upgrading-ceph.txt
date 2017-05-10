@@ -290,7 +290,7 @@ Dumpling (v0.64) 可滚动升级。
 
 关于新命令行的细节在 `v0.65`_ 。
 
-.. _v0.65: http://ceph.com/docs/master/release-notes/#v0-65
+.. _v0.65: http://docs.ceph.com/docs/master/release-notes/#v0-65
 
 
 监视器
@@ -353,7 +353,7 @@ Firefly 。也就是说，在升级 Ceph 守护进程前，要用 ``ceph`` 命�
 
 关于新命令行界面的详细情况请参考 `v0.65`_ 。
 
-.. _v0.65: http://ceph.com/docs/master/release-notes/#v0-65
+.. _v0.65: http://docs.ceph.com/docs/master/release-notes/#v0-65
 
 
 升级顺序

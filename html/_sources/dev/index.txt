@@ -809,7 +809,7 @@ if you decide to go this route.
 
 If you have access to an OpenStack tenant, you have another option: the
 `teuthology framework`_ has an OpenStack backend, which is documented `here
-<https://github.com/dachary/teuthology/tree/openstack#openstack-backend>`_.
+<https://github.com/dachary/teuthology/tree/openstack#openstack-backend>`__.
 This OpenStack backend can build packages from a given git commit or
 branch, provision VMs, install the packages and run integration tests
 on those VMs. This process is controlled using a tool called
@@ -829,6 +829,11 @@ available by running the following command on the teuthology machine::
 
    $ teuthology-suite --help
 
+.. _teuthology-suite: http://docs.ceph.com/teuthology/docs/teuthology.suite.html
+
+
+.. _How integration tests are defined:
+
 如何定义集成测试
 ----------------
 
@@ -842,7 +847,7 @@ larger yaml file.
 Reading a standalone test
 -------------------------
 
-Let us first examine a standalone test, or "singleton". 
+Let us first examine a standalone test, or "singleton".
 
 Here is a commented example using the integration test
 `rados/singleton/all/admin-socket.yaml

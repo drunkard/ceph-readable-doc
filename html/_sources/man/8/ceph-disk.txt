@@ -10,35 +10,54 @@
 ====
 
 | **ceph-disk** [-h] [-v] [--log-stdout] [--prepend-to-path PATH]
-                [--statedir PATH] [--sysconfdir PATH]
-                [--setuser USER] [--setgroup GROUP]
-                ...
+|               [--statedir PATH] [--sysconfdir PATH]
+|               [--setuser USER] [--setgroup GROUP]
+|               ...
 
-| 可选参数:
-|   -h, --help          显示本帮助消息后退出
-|   -v, --verbose       输出得更详细些
-|   --log-stdout        日志输出到 stdout
-|   --prepend-to-path PATH
-                        把 PATH 安插到 $PATH 前面，为保持向后兼容性（默认为 /usr/bin ）
-|   --statedir PATH     用于存放 Ceph 状态的目录（默认为 /var/lib/ceph ）
-|   --sysconfdir PATH   用于存放 Ceph 配置文件的目录（默认为 /etc/ceph ）
-|   --setuser USER      指定子进程的所属用户，取代默认的 ceph 或 root
-|   --setgroup GROUP    指定子进程的所属用户组，取代默认的 ceph 或 root
+可选参数
+--------
 
-| 子命令:
-|   prepare             为 Ceph OSD 准备一个目录或磁盘
-|   activate            激活一个 Ceph OSD
-|   activate-lockbox    激活一个 Ceph lockbox
-|   activate-block      通过其块设备激活一个 OSD
-|   activate-journal    通过其日志设备激活一个 OSD
-|   activate-all        激活所有标记过的 OSD 分区
-|   list                罗列磁盘、分区、和 Ceph OSD
-|   suppress-activate   抑制设备，防止被激活（前缀）
-|   unsuppress-activate 取消对设备的抑制（前缀）
-|   deactivate          弄死一个 Ceph OSD
-|   destroy             拆除一个 Ceph OSD
-|   zap                 干掉、擦除、破坏某一设备的分区表（及其内容）
-|   trigger             触发一个事件（底层为 udev ）
+-h, --help          显示本帮助消息后退出
+-v, --verbose       输出得更详细些
+--log-stdout        日志输出到 stdout
+--prepend-to-path PATH
+                    把 PATH 安插到 $PATH 前面，为保持向后兼容性（默认为 /usr/bin ）
+--statedir PATH     用于存放 Ceph 状态的目录（默认为 /var/lib/ceph ）
+--sysconfdir PATH   用于存放 Ceph 配置文件的目录（默认为 /etc/ceph ）
+--setuser USER      指定子进程的所属用户，取代默认的 ceph 或 root
+--setgroup GROUP    指定子进程的所属用户组，取代默认的 ceph 或 root
+
+子命令
+------
+
+prepare
+    为 Ceph OSD 准备一个目录或磁盘
+activate
+    激活一个 Ceph OSD
+activate-lockbox
+    激活一个 Ceph lockbox
+activate-block
+    通过其块设备激活一个 OSD
+activate-journal
+    通过其日志设备激活一个 OSD
+activate-all
+    激活所有标记过的 OSD 分区
+list
+    罗列磁盘、分区、和 Ceph OSD
+suppress-activate
+    抑制设备，防止被激活（前缀）
+unsuppress-activate
+    取消对设备的抑制（前缀）
+deactivate
+    弄死一个 Ceph OSD
+destroy
+    拆除一个 Ceph OSD
+zap
+    干掉、擦除、破坏某一设备的分区表（及其内容）
+trigger
+    触发一个事件（底层为 udev ）
+fix
+    修正 SELinux 标签和、或文件权限位。
 
 
 描述
