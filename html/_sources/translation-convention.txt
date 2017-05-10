@@ -9,6 +9,9 @@
     backfill
         回填
 
+    bucket
+        桶
+
     demote (a image to non-primary)
         降级
 

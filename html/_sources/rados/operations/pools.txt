@@ -466,7 +466,7 @@ true ，否则它会拒绝删除存储池。
 :默认值: ``20``
 
 
-``hit_set_grade_search_last_n``
+``hit_set_search_last_n``
 
 :描述: 计算热度时，在 hit_sets 里最多计数 N 次。
 :类型: Integer

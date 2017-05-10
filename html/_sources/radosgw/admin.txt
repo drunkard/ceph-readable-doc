@@ -1,5 +1,5 @@
 ==========
- 管理手册
+ 管理指南
 ==========
 
 Once you have your Ceph Object Storage service up and running, you may

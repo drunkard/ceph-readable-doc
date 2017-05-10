@@ -14,21 +14,6 @@ in the monitor as having once enabled this flag to improve debugging and
 support processes.
 
 
-.. _Directory Fragmentation:
-
-目录分片
---------
-
-CephFS directories are generally stored within a single RADOS object. But this has
-certain negative results once they become large enough. The filesystem is capable
-of "fragmenting" these directories into multiple objects. There are no known bugs
-with doing so but it is not sufficiently tested to support at this time.
-
-Directory fragmentation has always been off by default and required setting
-```mds bal frag = true`` in the MDS' config file. It has been further protected
-by requiring the user to set the "allow_dirfrags" flag for Jewel.
-
-
 .. _Inline data:
 
 内联数据
@@ -115,3 +100,21 @@ and may not work together; see above.
 
 Multiple filesystems were available starting in the Jewel release candidates
 but were protected behind the "enable_multiple" flag before the final release.
+
+
+.. _Previously experimental features:
+
+曾经是实验性的功能
+==================
+
+.. _Directory Fragmentation:
+
+目录分片
+--------
+
+在 *Luminous* (12.2.x) 版以前，目录分片功能是实验性的，现在会\
+给新文件系统默认启用。旧版 Ceph 上的文件系统若要启用目录分片功\
+能，可给此文件系统设置 ``allow_dirfrags`` 标记。 ::
+
+    ceph fs set <filesystem name> allow_dirfrags
+

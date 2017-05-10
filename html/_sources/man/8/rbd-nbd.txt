@@ -9,7 +9,7 @@
 提纲
 ====
 
-| **rbd-nbd** [-c conf] [--nbds_max *limit*] [--read-only] [--device *nbd device*] map *image-spec* | *snap-spec*
+| **rbd-nbd** [-c conf] [--read-only] [--device *nbd device*] [--nbds_max *limit*] [--max_part *limit*] [--exclusive] map *image-spec* | *snap-spec*
 | **rbd-nbd** unmap *nbd device*
 | **rbd-nbd** list-mapped
 
@@ -27,12 +27,24 @@
 
 .. option:: -c ceph.conf
 
-   指定 ceph.conf 配置文件，而不是用默认的 /etc/ceph/ceph.conf 来确\
-   定启动时需要的监视器。
+   指定 ceph.conf 配置文件，而不是用默认的 /etc/ceph/ceph.conf
+   来确定启动时需要的监视器。
+
+.. option:: --read-only
+
+   以只读方式映射。
 
 .. option:: --nbds_max *limit*
 
    载入 NBD 内核模块时覆盖其参数，用于限制 nbd 设备数量。
+
+.. option:: --max_part *limit*
+
+   覆盖（内核的）模块参数 nbds_max 。
+
+.. option:: --exclusive
+
+   禁止其它客户端写入。
 
 
 映像名和快照名规则

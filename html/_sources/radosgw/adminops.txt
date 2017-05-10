@@ -1835,27 +1835,28 @@ None.
 配额
 ====
 
-The Admin Operations API enables you to set quotas on users and on bucket owned
-by users. See `Quota Management`_ for additional details. Quotas include the
-maximum number of objects in a bucket and the maximum storage size in megabytes.
+你可以用管理操作 API 给用户和用户拥有的桶设置配额，设置细节见\
+`配额管理`_\ 。可设置的配额包括桶内对象的最大数量、和最大尺寸\
+（单位为 MB ）。
 
-To view quotas, the user must have a ``users=read`` capability. To set,
-modify or disable a quota, the user must have ``users=write`` capability.
-See the `Admin Guide`_ for details.
+要查看配额信息，用户必须有 ``users=read`` 能力；要设置、修改或\
+禁用配额，用户必须有 ``users=write`` 能力。详情见\ `管理指南`_\ 。
 
-Valid parameters for quotas include:
+管理配额的可用参数有：
 
-- **Bucket:** The ``bucket`` option allows you to specify a quota for
-  buckets owned by a user.
+- **桶：** ``bucket`` 选项指定了配额针对的是用户拥有的桶。
 
-- **Maximum Objects:** The ``max-objects`` setting allows you to specify
-  the maximum number of objects. A negative value disables this setting.
-  
-- **Maximum Size:** The ``max-size`` option allows you to specify a quota
-  for the maximum number of bytes. A negative value disables this setting.
-  
-- **Quota Scope:** The ``quota-scope`` option sets the scope for the quota.
-  The options are ``bucket`` and ``user``.
+- **最大对象数：** ``max-objects`` 选项用于指定最大对象数，负\
+  数表示禁用此选项。
+
+- **最大尺寸** ``max-size`` 选项用于指定最大字节数，负数表示禁\
+  用此选项。
+
+- **配额类型：** ``quota-type`` 选项用于指定配额的适用范围，可\
+  以是 ``bucket`` 和 ``user`` 。
+
+- **配额开关：** ``enabled`` 选项用于配置是否开启配额，取值可\
+  以是 'True' 或 'False' 。
 
 
 .. _Get User Quota:
@@ -1937,5 +1938,5 @@ as encoded in the corresponding read operation.
 :状态码: 404 Not Found
 
 
-.. _Admin Guide: ../admin
-.. _Quota Management: ../admin#quota-management
+.. _管理指南: ../admin
+.. _配额管理: ../admin#quota-management

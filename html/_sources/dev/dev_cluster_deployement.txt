@@ -14,7 +14,7 @@ osd 、和/或 mds ，不指定的话会启动所有类型。
 
 要启动开发集群，执行此命令： ::
 
-	vstart.sh [OPTIONS]... [mon] [osd] [mds]
+	vstart.sh [OPTIONS]...
 
 要停止集群，可以执行： ::
 
