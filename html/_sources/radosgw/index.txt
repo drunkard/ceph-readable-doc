@@ -35,9 +35,9 @@ API 写、然后用另一个检出。
 .. toctree::
    :maxdepth: 1
 
-   手动安装 <../../install/install-ceph-gateway>
+   基于 Civetweb 手动安装 <../../install/install-ceph-gateway>
    基于 Apache/FastCGI 的简单配置 <config-fcgi>
-   联盟配置 <federated-config>
+   联盟配置（已废弃） <federated-config>
    多站配置 <multisite>
    配置参考 <config-ref>
    管理指南 <admin>
