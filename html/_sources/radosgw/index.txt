@@ -46,8 +46,10 @@ API 写、然后用另一个检出。
    管理操作 API <adminops>
    Python 接口 <api>
    与 OpenStack Keystone 对接 <keystone>
+   与 OpenStack Barbican 对接 <barbican>
    多租户 <multitenancy>
    压缩 <compression>
+   服务器端加密 <encryption>
    RADOS 中的数据布局 <layout>
    升级到 Jewel 的早期版本 <upgrade_to_jewel>
    troubleshooting

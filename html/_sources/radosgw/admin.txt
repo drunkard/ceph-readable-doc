@@ -387,8 +387,10 @@ specific quota attribute check is disabled.
 	radosgw-admin quota disable --quota-scope=bucket --uid=<uid>
 
 
-Get Quota Settings
-------------------
+.. _Get Quota Settings:
+
+查看配额配置信息
+----------------
 
 You may access each user's quota settings via the user information
 API. To read user quota setting information with the CLI interface, 
@@ -397,8 +399,10 @@ execute the following::
 	radosgw-admin user info --uid=<uid>
 
 
-Update Quota Stats
-------------------
+.. _Update Quota Stats:
+
+更新配额统计信息
+----------------
 
 Quota stats get updated asynchronously. You can update quota
 statistics for all users and all buckets manually to retrieve
@@ -407,15 +411,17 @@ the latest quota stats. ::
 	radosgw-admin user stats --uid=<uid> --sync-stats
 
 
-Get User Usage Stats
---------------------
+.. _Get User Usage Stats:
 
-To see how much of the quota a user has consumed, execute the following::
+查看用户使用情况的统计信息
+--------------------------
+
+查看用户已经消耗了多少配额可以用下列命令： ::
 
 	radosgw-admin user stats --uid=<uid>
 
-.. note:: You should execute ``radosgw-admin user stats`` with the 
-   ``--sync-stats`` option to receive the latest data.
+.. note:: 你可以用 ``radosgw-admin user stats`` 命令，加上
+   ``--sync-stats`` 选项来获取最新数据。
 
 
 .. _Default Quotas:
@@ -436,19 +442,23 @@ To see how much of the quota a user has consumed, execute the following::
 读取、写入全局配额
 ------------------
 
-You can read and write quota settings in a region map. To get a
-region map, execute the following. :: 
+你可以在 period 配置中读取或写入全局配额设置，查看全局配额配置\
+可以用： ::
 
-	radosgw-admin regionmap get > regionmap.json
+	radosgw-admin global quota get
 
-To set quota settings for the entire region, simply modify the 
-quota settings in the region map. Then, use ``region set`` to 
-update the region map. ::
+全局配额选项可以用 ``global quota`` 系列命令修改，如
+``quota set`` 、 ``quota enable`` 和 ``quota disable`` 命令。 ::
 
-	radosgw-admin region set < regionmap.json
+	radosgw-admin global quota set --quota-scope bucket --max-objects 1024
+	radosgw-admin global quota enable --quota-scope bucket
 
-.. note:: After updating the region map, you must restart the gateway.
+.. note:: 多站配置方案中有 realm 和 period ，改变全局配额后，\
+   必须用 ``period update --commit`` 提交变更。如果压根没有
+   period ，必须重启网关，以使变更生效。
 
+
+.. Usage
 
 使用情况
 ========

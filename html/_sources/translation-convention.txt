@@ -116,6 +116,12 @@
     standby-replay daemon
         灾备重放、灾备重放守护进程； => 热备？
 
+    tenant
+        (OpenStack) 租户
+
+    token
+        (OpenStack) 令牌
+
     unlink (bucket)
         断开、切断
 

@@ -1054,7 +1054,61 @@ Keystone 选项
 :默认值: ``true``
 
 
+.. _Barbican Settings:
+
+Barbican 选项
+=============
+
+
+``rgw barbican url``
+
+:描述: 访问 Barbican 服务器的 URL 。
+:类型: String
+:默认值: None
+
+
+``rgw keystone barbican user``
+
+:描述: 有权访问 `Barbican`_ 内\ `加密`_\ 密钥的 OpenStack 用户\
+       名。
+:类型: String
+:默认值: None
+
+
+``rgw keystone barbican password``
+
+:描述: `Barbican`_ 用户的密码。
+:类型: String
+:默认值: None
+
+
+``rgw keystone barbican tenant``
+
+:描述: 使用 OpenStack Identity API v2 时，在这里配置与
+       `Barbican`_ 用户相关联的 OpenStack 租户名字。
+:类型: String
+:默认值: None
+
+
+``rgw keystone barbican project``
+
+:描述: 使用 OpenStack Identity API v3 时，在这里配置与
+       `Barbican`_ 用户相关联的 OpenStack 项目名字。
+:类型: String
+:默认值: None
+
+
+``rgw keystone barbican domain``
+
+:描述: 使用 OpenStack Identity API v3 时，在这里配置与
+       `Barbican`_ 用户相关联的 OpenStack 域名。
+:类型: String
+:默认值: None
+
+
 .. _体系结构: ../../architecture#data-striping
 .. _存储池配置: ../../rados/configuration/pool-pg-config-ref/
 .. _集群存储池: ../../rados/operations/pools
 .. _RADOS 集群句柄: ../../rados/api/librados-intro/#step-2-configuring-a-cluster-handle
+.. _Barbican: ../barbican
+.. _加密: ../encryption
