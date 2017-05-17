@@ -11,8 +11,8 @@ request and defaults to JSON if not specified.
 
 .. _Get Usage:
 
-GET 用法
-========
+查看使用率
+==========
 
 请求带宽利用率信息。
 
@@ -54,17 +54,17 @@ GET 用法
 
 ``show-entries``
 
-:描述: Specifies whether data entries should be returned.
+:描述: 指示是否返回数据条目。
 :类型: Boolean
-:实例: True [False]
+:实例: True [True]
 :是否必需: No
 
 
 ``show-summary``
 
-:描述: Specifies whether data summary should be returned.
+:描述: 指示是否返回数据汇总信息。
 :类型: Boolean
-:实例: True [False]
+:实例: True [True]
 :是否必需: No
 
 
@@ -160,8 +160,10 @@ GET 用法
 TBD.
 
 
-裁剪用法
-========
+.. Trim Usage
+
+裁剪使用率日志
+==============
 
 Remove usage information. With no dates specified, removes all usage
 information.
@@ -215,8 +217,10 @@ information.
 TBD.
 
 
-Get User Info
-=============
+.. Get User Info
+
+查看用户信息
+============
 
 Get user information. If no user is specified returns the list of all users along with suspension
 information.
@@ -307,8 +311,11 @@ Request Parameters
 
 None.
 
-Create User
-===========
+
+.. _Create User:
+
+创建用户
+========
 
 Create a new user. By Default, a S3 key pair will be created automatically
 and returned in the response. If only one of ``access-key`` or ``secret-key``
@@ -326,8 +333,6 @@ then it will be modified.
 
 	PUT /{admin}/user?format=json HTTP/1.1
 	Host: {fqdn}
-
-
 
 Request Parameters
 ~~~~~~~~~~~~~~~~~~
@@ -361,6 +366,7 @@ Request Parameters
 :实例: ``s3`` [``s3``]
 :是否必需: No
 
+
 ``access-key``
 
 :描述: Specify access key.
@@ -375,6 +381,7 @@ Request Parameters
 :类型: String
 :实例: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
 :是否必需: No
+
 
 ``user-caps``
 
@@ -506,8 +513,10 @@ If successful, the response contains the user information.
 :状态码: 400 Bad Request
 
 
-Modify User
-===========
+.. _Modify User:
+
+修改用户信息
+============
 
 Modify a user.
 
@@ -693,8 +702,11 @@ If successful, the response contains the user information.
 :描述: Attempt to grant invalid admin capability.
 :状态码: 400 Bad Request
 
-Remove User
-===========
+
+.. _Remove User:
+
+删除用户
+========
 
 Remove an existing user.
 
@@ -737,15 +749,15 @@ None
 
 None.
 
-Create Subuser
-==============
 
-Create a new subuser (primarily useful for clients using the Swift API).
-Note that either ``gen-subuser`` or ``subuser`` is required for a valid
-request. Note that in general for a subuser to be useful, it must be
-granted permissions by specifying ``access``. As with user creation if
-``subuser`` is specified without ``secret``, then a secret key will
-be automatically generated.
+.. _Create Subuser:
+
+创建子用户
+==========
+
+新建一个子用户（使用 Swift API 的客户端需要）。提醒一下，要创\
+建可正常使用的子用户，必须用 ``access`` 授予权限；创建子用户\
+时，如果没给 ``subuser`` 指定密钥 ``secret`` ，会自动生成一个。
 
 :caps: users=write
 
@@ -771,17 +783,19 @@ Request Parameters
 
 ``subuser``
 
-:描述: Specify the subuser ID to be created.
+:描述: 指定要创建的子用户 ID 。
 :类型: String
 :实例: ``sub_foo``
-:是否必需: No
+:是否必需: Yes
+
 
 ``secret-key``
 
-:描述: Specify secret key.
+:描述: 指定密钥。
 :类型: String
 :实例: ``0AbCDEFg1h2i34JklM5nop6QrSTUV+WxyzaBC7D8``
 :是否必需: No
+
 
 ``key-type``
 
@@ -851,7 +865,10 @@ If successful, the response contains the subuser information.
 :描述: Invalid subuser access specified.
 :状态码: 400 Bad Request
 
-Modify Subuser
+
+.. _Modify Subuser:
+
+修改子用户信息
 ==============
 
 Modify an existing subuser
@@ -956,8 +973,11 @@ If successful, the response contains the subuser information.
 :描述: Invalid subuser access specified.
 :状态码: 400 Bad Request
 
-Remove Subuser
-==============
+
+.. _Remove Subuser:
+
+删除子用户
+==========
 
 Remove an existing subuser
 
@@ -1007,8 +1027,11 @@ None.
 
 None.
 
-Create Key
-==========
+
+.. _Create Key:
+
+创建密钥
+========
 
 Create a new key. If a ``subuser`` is specified then by default created keys
 will be swift type. If only one of ``access-key`` or ``secret-key`` is provided the
@@ -1022,7 +1045,6 @@ type as the key created. Note that when creating a swift key, specifying the opt
 each user or subuser.
 
 :caps: users=write
-
 
 语法
 ~~~~
@@ -1134,8 +1156,11 @@ Response Entities
 :描述: Provided access key exists and belongs to another user.
 :状态码: 409 Conflict
 
-Remove Key
-==========
+
+.. _Remove Key:
+
+删除密钥
+========
 
 Remove an existing key.
 
@@ -1192,8 +1217,11 @@ Response Entities
 
 None.
 
-Get Bucket Info
-===============
+
+.. _Get Bucket Info:
+
+查看桶信息
+==========
 
 Get information about a subset of the existing buckets. If ``uid`` is specified
 without ``bucket`` then all buckets beloning to the user will be returned. If
@@ -1307,8 +1335,11 @@ the desired bucket information.
 :描述: Bucket index repair failed.
 :状态码: 409 Conflict
 
-Check Bucket Index
-==================
+
+.. _Check Bucket Index:
+
+检查桶索引
+==========
 
 Check the index of an existing bucket. NOTE: to check multipart object
 accounting with ``check-objects``, ``fix`` must be set to True.
@@ -1364,8 +1395,11 @@ Response Entities
 :描述: Bucket index repair failed.
 :状态码: 409 Conflict
 
-Remove Bucket
-=============
+
+.. _Remove Bucket:
+
+删除桶
+======
 
 Delete an existing bucket.
 
@@ -1378,7 +1412,6 @@ Delete an existing bucket.
 
 	DELETE /{admin}/bucket?format=json HTTP/1.1
 	Host {fqdn}
-
 
 
 Request Parameters
@@ -1416,11 +1449,13 @@ None.
 :描述: Unable to remove objects.
 :状态码: 409 Conflict
 
-Unlink Bucket
-=============
 
-Unlink a bucket from a specified user. Primarily useful for changing
-bucket ownership.
+.. _Unlink Bucket:
+
+解绑桶
+======
+
+解绑桶和用户，主要用于更改桶的所有者。
 
 :caps: buckets=write
 
@@ -1571,8 +1606,11 @@ Response Entities
 :描述: Unable to link bucket to specified user.
 :状态码: 409 Conflict
 
-Remove Object
-=============
+
+.. _Remove Object:
+
+删除对象
+========
 
 Remove an existing object. NOTE: Does not require owner to be non-suspended.
 
@@ -1622,9 +1660,10 @@ None.
 :状态码: 409 Conflict
 
 
+.. _Get Bucket or Object Policy:
 
-Get Bucket or Object Policy
-===========================
+查看桶或对象的策略
+==================
 
 Read the policy of an object or bucket.
 
@@ -1832,8 +1871,8 @@ None.
 
 .. _Quotas:
 
-配额
-====
+配额管理
+========
 
 你可以用管理操作 API 给用户和用户拥有的桶设置配额，设置细节见\
 `配额管理`_\ 。可设置的配额包括桶内对象的最大数量、和最大尺寸\
@@ -1861,7 +1900,7 @@ None.
 
 .. _Get User Quota:
 
-读取用户配额
+查看用户配额
 ~~~~~~~~~~~~
 
 To get a quota, the user must have ``users`` capability set with ``read`` 
@@ -1869,6 +1908,8 @@ permission. ::
 
 	GET /admin/user?quota&uid=<uid>&quota-type=user
 
+
+.. Set User Quota
 
 设置用户配额
 ~~~~~~~~~~~~
@@ -1884,7 +1925,7 @@ as encoded in the corresponding read operation.
 
 .. _Get Bucket Quota:
 
-读取桶配额
+查看桶配额
 ~~~~~~~~~~
 
 To get a quota, the user must have ``users`` capability set with ``read`` 
@@ -1892,6 +1933,8 @@ permission. ::
 
 	GET /admin/user?quota&uid=<uid>&quota-type=bucket
 
+
+.. Set Bucket Quota
 
 设置桶配额
 ~~~~~~~~~~
@@ -1903,8 +1946,6 @@ permission. ::
 
 The content must include a JSON representation of the quota settings
 as encoded in the corresponding read operation.
-
-
 
 
 .. _Standard Error Responses:

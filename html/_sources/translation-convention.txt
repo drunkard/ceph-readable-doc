@@ -38,6 +38,9 @@
     epoch
         时间结 => <不翻译> ?
 
+    get ... (eg: get user quota)
+        查看... (如：查看用户配额)
+
     layout
         （ CephFS 的）布局
 
@@ -82,6 +85,9 @@
     promote (zone)
         晋级...
 
+    quota scope
+        配额作用域
+
     realm
         当前未翻译。
 
@@ -116,14 +122,17 @@
     standby-replay daemon
         灾备重放、灾备重放守护进程； => 热备？
 
+    subuser
+        (Swift API) 子用户
+
     tenant
         (OpenStack) 租户
 
     token
         (OpenStack) 令牌
 
-    unlink (bucket)
-        断开、切断
+    unlink bucket
+        断开、切断桶链接 => 解绑桶
 
     zone
         域，是一或多个 Ceph 对象网关例程的逻辑分组。每个域组应该指定一个域为主域，由它负责所有桶和用户的创建。

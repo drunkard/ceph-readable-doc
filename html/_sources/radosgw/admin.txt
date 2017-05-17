@@ -311,22 +311,20 @@ read 、 write 或 all 能力，例如： ::
 配额管理
 ========
 
-The Ceph Object Gateway enables you to set quotas on users and buckets owned by
-users. Quotas include the maximum number of objects in a bucket and the maximum
-storage size in megabytes.
+Ceph 对象网关允许你给用户及其拥有的桶设置配额，可设置的配额有\
+桶内的最大对象数、和桶可以存储的最大数据尺寸。
 
-- **Bucket:** The ``--bucket`` option allows you to specify a quota for
-  buckets the user owns.
+- **桶：** 加 ``--bucket`` 选项说明配额操作作用于用户拥有的桶。
 
-- **Maximum Objects:** The ``--max-objects`` setting allows you to specify
-  the maximum number of objects. A negative value disables this setting.
-  
-- **Maximum Size:** The ``--max-size`` option allows you to specify a quota
-  size in B/K/M/G/T. A negative value disables this setting.
-  
-- **Quota Scope:** The ``--quota-scope`` option sets the scope for the quota.
-  The options are ``bucket`` and ``user``. Bucket quotas apply to buckets a 
-  user owns. User quotas apply to a user.
+- **最大对象数：** ``--max-objects`` 选项用于指定最大对象数，\
+  负值表示禁用此配置。
+
+- **最大尺寸：** ``--max-size`` 选项用于指定配额尺寸，单位是 \
+  B/K/M/G/T ，默认值为 B 。负值表示禁用此配置。
+
+- **配额作用域：** ``--quota-scope`` 参数可指定配额的作用域，\
+  可选的有 ``bucket`` 和 ``user`` 。桶配额作用于用户拥有的桶；\
+  用户配额作用于用户。
 
 
 .. _Set User Quota:

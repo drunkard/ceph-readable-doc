@@ -45,6 +45,7 @@ API 写、然后用另一个检出。
    Swift API <swift>
    管理操作 API <adminops>
    Python 接口 <api>
+   与 LDAP 认证服务对接 <ldap-auth>
    与 OpenStack Keystone 对接 <keystone>
    与 OpenStack Barbican 对接 <barbican>
    多租户 <multitenancy>

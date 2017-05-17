@@ -58,8 +58,8 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="id1">
-<h1>灾难恢复<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="disaster-recovery">
+<span id="id1"></span><h1>灾难恢复<a class="headerlink" href="#disaster-recovery" title="Permalink to this headline">¶</a></h1>
 <div class="admonition danger">
 <p class="first admonition-title">Danger</p>
 <p class="last">本章节是为专家准备的，尽可能地恢复损坏的文件系统。这些操作有可能改善你的处境，也可能更糟糕。如果你不太确定，最好别下手。</p>
@@ -173,6 +173,41 @@ cephfs-data-scan scan_inodes --worker_n 3 --worker_m 4 &lt;data pool&gt;</pre>
 <p>输出是可能损坏的文件路径列表，每行一个。</p>
 <p>请注意，此命令是作为一个普通的 CephFS 客户端来搜寻文件系统内的所有文件、并读取它们的布局的，所以 MDS 必须是正常运行的。</p>
 </div>
+<div class="section" id="using-an-alternate-metadata-pool-for-recovery">
+<span id="id6"></span><h2>用另一个元数据存储池进行恢复<a class="headerlink" href="#using-an-alternate-metadata-pool-for-recovery" title="Permalink to this headline">¶</a></h2>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">这个方法尚未全面地测试过，下手时要格外小心。</p>
+</div>
+<p>如果一个在用的文件系统损坏了、且无法使用，可以试着创建一个新的元数据存储池、并尝试把文件系统元数据重构进这个新存储池，旧的元数据仍原地保留。这是一种比较安全的恢复方法，因为不会覆盖已有的元数据存储池。</p>
+<div class="admonition caution">
+<p class="first admonition-title">Caution</p>
+<p class="last">在此过程中，多个元数据存储池包含着指向同一数据存储池的元数据。在这种情况下，必须格外小心，以免更改数据存储池内容。一旦恢复结束，就应该删除损坏的元数据存储池。</p>
+</div>
+<p>开始前，先创建好新的元数据存储池，并用空文件系统数据结构初始化它。</p>
+<div class="highlight-python"><pre>ceph fs flag set enable_multiple true --yes-i-really-mean-it
+ceph osd pool create recovery &lt;pg-num&gt; replicated &lt;crush-ruleset-name&gt;
+ceph fs new recovery-fs recovery &lt;data pool&gt; --allow-dangerous-metadata-overlay
+cephfs-data-scan init --force-init --filesystem recovery-fs --alternate-pool recovery
+ceph fs reset recovery-fs --yes-i-realy-mean-it
+cephfs-table-tool recovery-fs:all reset session
+cephfs-table-tool recovery-fs:all reset snap
+cephfs-table-tool recovery-fs:all reset inode</pre>
+</div>
+<p>接下来，运行恢复工具集，加上 <tt class="docutils literal"><span class="pre">--alternate-pool</span></tt> 参数即可把结果输出到别的存储池：</p>
+<div class="highlight-python"><pre>cephfs-data-scan scan_extents --alternate-pool recovery --filesystem &lt;original filesystem name&gt;
+cephfs-data-scan scan_inodes --alternate-pool recovery --filesystem &lt;original filesystem name&gt; --force-corrupt --force-init &lt;original data pool name&gt;</pre>
+</div>
+<p>如果损坏的文件系统包含脏日志数据，随后可以用如下命令恢复：</p>
+<div class="highlight-python"><pre>cephfs-journal-tool --rank=&lt;original filesystem name&gt;:0 event recover_dentries list --alternate-pool recovery
+cephfs-journal-tool --rank recovery-fs:0 journal reset --force</pre>
+</div>
+<p>恢复完之后，有些恢复过来的目录其链接计数不对。首先确保
+<tt class="docutils literal"><span class="pre">mds_debug_scatterstat</span></tt> 参数为 <tt class="docutils literal"><span class="pre">false</span></tt> （默认值），以防 MDS
+检查链接计数，再运行正向洗刷以修复它们。确保有一个 MDS 在运行，然后执行命令：</p>
+<div class="highlight-python"><pre>ceph daemon mds.a scrub_path / recursive repair</pre>
+</div>
+</div>
 </div>
 
 
@@ -229,6 +264,7 @@ cephfs-data-scan scan_inodes --worker_n 3 --worker_m 4 &lt;data pool&gt;</pre>
 <li class="toctree-l4"><a class="reference internal" href="#mds-table-wipes">MDS 图重置</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#recovery-from-missing-metadata-objects">元数据对象丢失的恢复</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pg">找出受数据 PG 丢失影响的文件</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#using-an-alternate-metadata-pool-for-recovery">用另一个元数据存储池进行恢复</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../client-auth/">客户端认证</a></li>

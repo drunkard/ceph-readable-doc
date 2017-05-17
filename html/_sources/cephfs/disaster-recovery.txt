@@ -1,10 +1,12 @@
+.. _Disaster recovery:
+
 灾难恢复
 ========
 
 .. danger::
 
-    本章节是为专家准备的，尽可能地恢复损坏的文件系统。这些操作有\
-    可能改善你的处境，也可能更糟糕。如果你不太确定，最好别下手。
+   本章节是为专家准备的，尽可能地恢复损坏的文件系统。这些操作有\
+   可能改善你的处境，也可能更糟糕。如果你不太确定，最好别下手。
 
 
 .. _Journal export:
@@ -42,9 +44,9 @@
 
 .. warning::
 
-    此操作不能保证后端存储的状态达到自我一致，而且在此之后有必要\
-    执行 MDS 在线洗刷。此命令不会更改日志内容，所以把能恢复的给恢\
-    复之后，应该分别裁截日志。
+   此操作不能保证后端存储的状态达到自我一致，而且在此之后有必\
+   要执行 MDS 在线洗刷。此命令不会更改日志内容，所以把能恢复的\
+   给恢复之后，应该分别裁截日志。
 
 
 .. _Journal truncation:
@@ -201,3 +203,53 @@ mtime 元数据；其次，从每个文件的第一个对象扫描出元数据�
 请注意，此命令是作为一个普通的 CephFS 客户端来搜寻文件系统内的\
 所有文件、并读取它们的布局的，所以 MDS 必须是正常运行的。
 
+
+.. _Using an alternate metadata pool for recovery:
+
+用另一个元数据存储池进行恢复
+----------------------------
+
+.. warning::
+
+   这个方法尚未全面地测试过，下手时要格外小心。
+
+如果一个在用的文件系统损坏了、且无法使用，可以试着创建一个新的\
+元数据存储池、并尝试把文件系统元数据重构进这个新存储池，旧的元\
+数据仍原地保留。这是一种比较安全的恢复方法，因为不会覆盖已有的\
+元数据存储池。
+
+.. caution::
+
+   在此过程中，多个元数据存储池包含着指向同一数据存储池的元数\
+   据。在这种情况下，必须格外小心，以免更改数据存储池内容。一\
+   旦恢复结束，就应该删除损坏的元数据存储池。
+
+开始前，先创建好新的元数据存储池，并用空文件系统数据结构初始化\
+它。 ::
+
+    ceph fs flag set enable_multiple true --yes-i-really-mean-it
+    ceph osd pool create recovery <pg-num> replicated <crush-ruleset-name>
+    ceph fs new recovery-fs recovery <data pool> --allow-dangerous-metadata-overlay
+    cephfs-data-scan init --force-init --filesystem recovery-fs --alternate-pool recovery
+    ceph fs reset recovery-fs --yes-i-realy-mean-it
+    cephfs-table-tool recovery-fs:all reset session
+    cephfs-table-tool recovery-fs:all reset snap
+    cephfs-table-tool recovery-fs:all reset inode
+
+接下来，运行恢复工具集，加上 ``--alternate-pool`` 参数即可把结\
+果输出到别的存储池： ::
+
+    cephfs-data-scan scan_extents --alternate-pool recovery --filesystem <original filesystem name>
+    cephfs-data-scan scan_inodes --alternate-pool recovery --filesystem <original filesystem name> --force-corrupt --force-init <original data pool name>
+
+如果损坏的文件系统包含脏日志数据，随后可以用如下命令恢复： ::
+
+    cephfs-journal-tool --rank=<original filesystem name>:0 event recover_dentries list --alternate-pool recovery
+    cephfs-journal-tool --rank recovery-fs:0 journal reset --force
+
+恢复完之后，有些恢复过来的目录其链接计数不对。首先确保
+``mds_debug_scatterstat`` 参数为 ``false`` （默认值），以防 MDS
+检查链接计数，再运行正向洗刷以修复它们。确保有一个 MDS 在运行，\
+然后执行命令： ::
+
+    ceph daemon mds.a scrub_path / recursive repair
