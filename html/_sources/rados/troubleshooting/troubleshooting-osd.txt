@@ -1,3 +1,5 @@
+.. _Troubleshooting OSDs:
+
 ==============
  OSD 故障排除
 ==============
@@ -11,12 +13,16 @@
 .. _解决监视器问题: ../troubleshooting-mon
 
 
+.. Obtaining Data About OSDs
+
 收集 OSD 数据
 =============
 
 开始 OSD 排障的第一步最好先收集信息，另外还有\ `监控 OSD`_ 时\
 收集的，如 ``ceph osd tree`` 。
 
+
+.. Ceph Logs
 
 Ceph 日志
 ---------
@@ -28,6 +34,8 @@ Ceph 日志
 如果看到的日志还不够详细，可以增大日志级别。请参考\
 `日志记录和调试`_\ ，看看如何保证看到大量日志时又不影响集群运行。
 
+
+.. Admin Socket
 
 管理套接字
 ----------
@@ -55,6 +63,8 @@ Ceph 日志
 - 列出性能计数器
 
 
+.. Display Freespace
+
 显示剩余空间
 ------------
 
@@ -65,6 +75,8 @@ Ceph 日志
 其它用法见 ``df --help`` 。
 
 
+.. I/O Statistics
+
 I/O 统计信息
 ------------
 
@@ -72,6 +84,8 @@ I/O 统计信息
 
 	iostat -x
 
+
+.. Diagnostic Messages
 
 诊断消息
 --------
@@ -81,6 +95,8 @@ I/O 统计信息
 
 	dmesg | grep scsi
 
+
+.. Stopping w/out Rebalancing
 
 停止自动重均衡
 ==============
@@ -114,6 +130,8 @@ OSD 没运行
 
 通常情况下，简单地重启 ``ceph-osd`` 进程就可以重回集群并恢复。
 
+
+.. An OSD Won't Start
 
 OSD 起不来
 ----------
@@ -151,6 +169,8 @@ OSD 起不来
   器输出和日志文件内容。
 
 
+.. An OSD Failed
+
 OSD 失败
 --------
 
@@ -177,52 +197,66 @@ OSD 失败
 `ceph-devel`_ 邮件列表。
 
 
+.. No Free Drive Space
+
 硬盘没剩余空间
 --------------
 
-Ceph 不允许你向满的 OSD 写入数据，以免丢失数据。在运营着的集群中，你应该能收到集群\
-空间将满的警告。 ``mon osd full ratio`` 默认为 ``0.95`` 、或达到 95% 时它将阻止客\
-户端写入数据。 ``mon osd nearfull ratio`` 默认为 ``0.85`` 、也就是说达到容量的 \
-85% 时它会产生健康警告。
+Ceph 不允许你向满的 OSD 写入数据，以免丢失数据。在运营着的集群\
+中，你应该能收到集群空间将满的警告。 ``mon osd full ratio`` 默\
+认为 ``0.95`` 、或达到 95% 时它将阻止客户端写入数据；
+``mon osd backfillfull ratio`` 默认为 ``0.90`` 、或达到容量的
+90% 时它会阻塞，防止回填启动； ``mon osd nearfull ratio`` 默认\
+为 ``0.85`` 、也就是说达到容量的 85% 时它会产生健康警告。
 
-满载集群问题一般产生于测试 Ceph 在小型集群上如何处理 OSD 失败时。当某一节点利用率较\
-高时，集群能够很快掩盖将满和占满率。如果你在测试小型集群上的 Ceph 如何应对 OSD 失\
-败，应该保留足够的空间，然后试着临时降低 ``mon osd full ratio`` 和 \
-``mon osd nearfull ratio`` 值。
+集群用满的问题一般出现在测试过程中，为了检验 Ceph 在小型集群上\
+如何处理 OSD 失败。当某一节点存储的集群数据比例较高时，集群能\
+够很快掩盖将满和占满率。如果你在小型集群上测试 Ceph 如何应对
+OSD 失败，应该保留足够的空闲空间，然后临时降低
+``mon osd full ratio`` 、 ``mon osd backfillfull ratio`` 和 \
+``mon osd nearfull ratio`` 值试一下。
 
 ``ceph health`` 会显示将满的 ``ceph-osds`` ： ::
 
 	ceph health
-	HEALTH_WARN 1 nearfull osds
-	osd.2 is near full at 85%
+	HEALTH_WARN 1 nearfull osd(s)
 
 或者： ::
 
-	ceph health
-	HEALTH_ERR 1 nearfull osds, 1 full osds
-	osd.2 is near full at 85%
+	ceph health detail
+	HEALTH_ERR 1 full osd(s); 1 backfillfull osd(s); 1 nearfull osd(s)
 	osd.3 is full at 97%
+	osd.4 is backfill full at 91%
+	osd.2 is near full at 87%
 
-处理这种情况的最好方法就是增加新的 ``ceph-osd`` ，这允许集群把数据重分布到新 OSD 里。
+处理这种情况的最好方法就是增加新的 ``ceph-osd`` ，这允许集群把\
+数据重分布到新 OSD 里。
 
-如果因满载而导致 OSD 不能启动，你可以试着删除那个 OSD 上的一些归置组数据目录。
+如果因满载而导致 OSD 不能启动，你可以试着删除那个 OSD 上的一些\
+归置组数据目录。
 
-.. important:: 如果你准备从填满的 OSD 中删除某个归置组，注意\ **不要**\ 删除另一个\
-   OSD 上的同名归置组，否则\ **你会丢数据**\ 。\ **必须**\ 在多个 OSD 上保留至少一\
-   份数据副本。
+.. important:: 如果你准备从填满的 OSD 中删除某个归置组，注意\
+   **不要**\ 删除另一个 OSD 上的同名归置组，否则\
+   **你会丢数据**\ 。\ **必须**\ 在多个 OSD 上保留至少一份数据\
+   副本。
 
 详情见\ `监视器配置参考`_\ 。
 
 
+.. OSDs are Slow/Unresponsive
+
 OSD 龟速或无响应
 ================
 
-一个反复出现的问题是龟速或无响应。在深入性能问题前，你应该先确保不是其他故障。例如，\
-确保你的网络运行正常、且 OSD 在运行，还要检查 OSD 是否被恢复流量拖住了。
+一个反复出现的问题是龟速或无响应。在深入性能问题前，你应该先确\
+保不是其他故障。例如，确保你的网络运行正常、且 OSD 在运行，还\
+要检查 OSD 是否被恢复流量拖住了。
 
-.. tip:: 较新版本的 Ceph 能更好地处理恢复，可防止恢复进程耗尽系统资源而导致 \
-   ``up`` 且 ``in`` 的 OSD 不可用或响应慢。
+.. tip:: 较新版本的 Ceph 能更好地处理恢复，可防止恢复进程耗尽\
+   系统资源而导致 ``up`` 且 ``in`` 的 OSD 不可用或响应慢。
 
+
+.. Networking Issues
 
 网络问题
 --------
@@ -267,6 +301,8 @@ Ceph 在日志记录\ *完成之后*\ 才会确认写操作，所以使用 ``XFS
 检修下硬盘是否有坏扇区和碎片。这会导致总吞吐量急剧下降。
 
 
+.. Co-resident Monitors/OSDs
+
 监视器和 OSD 蜗居
 -----------------
 
@@ -281,6 +317,8 @@ Ceph 在日志记录\ *完成之后*\ 才会确认写操作，所以使用 ``XFS
 在这些情况下，同一主机上的多个 OSD 会相互拖垮对方。它们经常导致爆炸式写入。
 
 
+.. Co-resident Processes
+
 进程蜗居
 --------
 
@@ -288,6 +326,8 @@ Ceph 在日志记录\ *完成之后*\ 才会确认写操作，所以使用 ``XFS
 序）会导致 OSD 延时大增。一般来说，我们建议用一主机跑 Ceph 、其它主机跑其它进程，实\
 践证明把 Ceph 和其他应用程序分开可提高性能、并简化故障排除和维护。
 
+
+.. Logging Levels
 
 日志记录级别
 ------------
@@ -297,6 +337,8 @@ Ceph 在日志记录\ *完成之后*\ 才会确认写操作，所以使用 ``XFS
 ``/var/log/ceph/$cluster-$name.log`` 。
 
 
+.. Recovery Throttling
+
 恢复节流
 --------
 
@@ -304,11 +346,15 @@ Ceph 在日志记录\ *完成之后*\ 才会确认写操作，所以使用 ``XFS
 度。检查下 OSD 是否正在恢复。
 
 
+.. Kernel Version
+
 内核版本
 --------
 
 检查下你在用的内核版本。较老的内核也许没有移植能提高 Ceph 性能的功能。
 
+
+.. Kernel Issues with SyncFS
 
 内核与 SyncFS 问题
 ------------------
@@ -331,6 +377,8 @@ Ceph 在日志记录\ *完成之后*\ 才会确认写操作，所以使用 ``XFS
 .. _文件系统推荐: ../configuration/filesystem-recommendations
 
 
+.. Insufficient RAM
+
 内存不足
 --------
 
@@ -338,6 +386,8 @@ Ceph 在日志记录\ *完成之后*\ 才会确认写操作，所以使用 ``XFS
 （如 100-200MB ）。你也许想用这些空闲内存跑一些其他应用，如虚拟机等等，然而当 OSD \
 进入恢复状态时，其内存利用率激增，如果没有可用内存，此 OSD 的性能将差的多。
 
+
+.. Old Requests or Slow Requests
 
 old requests 或  slow requests
 ------------------------------
@@ -370,6 +420,8 @@ old requests 或  slow requests
 - 升级 Ceph ；
 - 重启 OSD 。
 
+
+.. Flapping OSDs
 
 状态抖动的 OSD
 ==============

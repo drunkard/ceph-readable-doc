@@ -188,7 +188,7 @@
 
 ``client_reconnect_stale``
 
-:描述: 是否自动重连失败的会话。
+:描述: 是否自动重连过期的会话。
 :类型: Boolean
 :默认值: ``false``
 

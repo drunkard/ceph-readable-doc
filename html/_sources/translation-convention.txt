@@ -38,6 +38,9 @@
     epoch
         时间结 => <不翻译> ?
 
+    full ratio
+        占满率
+
     get ... (eg: get user quota)
         查看... (如：查看用户配额)
 

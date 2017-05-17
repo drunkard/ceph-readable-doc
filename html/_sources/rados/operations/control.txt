@@ -272,11 +272,11 @@ OSD 大致会收到相同的 I/O 请求、并存储相同数量的数据。
 	ceph osd repair N
 
 在 osdN 上做个简单的吞吐量测试，每次写入 ``BYTES_PER_WRITE`` 、\
-一共写入 ``TOTAL_BYTES`` 。默认以 4MB 增量写入 1GB 。此压力测\
-试是非破坏性的，不会覆盖已有 OSD 数据，但可能会暂时影响同时访\
-问此 OSD 的客户端性能。 ::
+一共写入 ``TOTAL_DATA_BYTES`` 。默认以 4MB 增量写入 1GB 。此压\
+力测试是非破坏性的，不会覆盖已有 OSD 数据，但可能会暂时影响同\
+时访问此 OSD 的客户端性能。 ::
 
-	ceph tell osd.N bench [NUMER_OF_OBJECTS] [BYTES_PER_WRITE]
+	ceph tell osd.N bench [TOTAL_DATA_BYTES] [BYTES_PER_WRITE]
 
 
 .. _MDS Subsystem:

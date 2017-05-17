@@ -333,6 +333,7 @@ Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ）
 	[global]
 
 		mon osd full ratio = .80
+		mon osd backfillfull ratio = .75
 		mon osd nearfull ratio = .70
 
 
@@ -343,6 +344,13 @@ Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ）
 :默认值: ``.95``
 
 
+``mon osd backfillfull ratio``
+
+:描述: OSD 磁盘空间利用率达到多少就认为它太满了，不能再接受回填。
+:类型: Float
+:默认值: ``.90``
+
+
 ``mon osd nearfull ratio``
 
 :描述: OSD 硬盘使用率达到多少就认为它 ``nearfull`` 。
@@ -350,7 +358,9 @@ Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ）
 :默认值: ``.85``
 
 
-.. tip:: 如果一些 OSD 快满了，但其他的仍有足够空间，你可能配错 CRUSH 权重了。
+.. tip:: 如果一些 OSD 快满了，但其他的仍有足够空间，你可能配错
+   CRUSH 权重了。
+
 
 .. index:: heartbeat
 

@@ -71,9 +71,9 @@
 <div class="section" id="id2">
 <h2>描述<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <p><strong>crushtool</strong> 是 CRUSH 图处理工具，它允许你创建、编译、反编译和测试 CRUSH 图。</p>
-<p>CRUSH 是个伪随机数据分布算法，它能高效地把输入值（通常是数据对象）映射到异构、结构化的分级设备图中。此算法最初是在下面的论文（已改进过了）中描述的：</p>
-<blockquote>
-<div><a class="reference external" href="http://www.ssrc.ucsc.edu/Papers/weil-sc06.pdf">http://www.ssrc.ucsc.edu/Papers/weil-sc06.pdf</a></div></blockquote>
+<p>CRUSH 是个伪随机数据分布算法，它能高效地把输入值（它在 Ceph 上下文中对应归置组）映射到异构、结构化的分级设备图中。此算法最初是在下面的论文（虽说已改进过了）中详细描述的：</p>
+<div class="highlight-python"><pre>http://www.ssrc.ucsc.edu/Papers/weil-sc06.pdf</pre>
+</div>
 <p>此工具有四种操作模式。</p>
 <dl class="option">
 <dt id="cmdoption-crushtool--compile">
@@ -96,53 +96,70 @@
 <dl class="option">
 <dt id="cmdoption-crushtool--test">
 <tt class="descname">--test</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-crushtool--test" title="Permalink to this definition">¶</a></dt>
-<dd><p>在一系列输入对象名上试运行 CRUSH 映射。详细解释见下文。</p>
+<dd><p>运行 CRUSH 模拟映射，参数是一系列输入值 <tt class="docutils literal"><span class="pre">[--min-x,--max-x]</span></tt>
+（默认是 <tt class="docutils literal"><span class="pre">[0,1023]</span></tt> ），这个参数可当作是模拟的归置组。详细解释见下文。</p>
 </dd></dl>
 
-<p>不像其它 Ceph 工具， <strong>crushtool</strong> 不接受命令行输入的像 <strong>&#8211;debug-crush</strong> 这样的通用选项；却可以通过 CEPH_ARGS 环境变量提供。例如，可以这样压制 CRUSH 子系统的所有输出：</p>
+<p>不像其它 Ceph 工具， <strong>crushtool</strong> 不接受命令行输入的像
+<strong>&#8211;debug-crush</strong> 这样的通用选项；却可以通过 CEPH_ARGS 环境变量提供。例如，可以这样压制 CRUSH 子系统的所有输出：</p>
 <div class="highlight-python"><pre>CEPH_ARGS="--debug-crush 0" crushtool ...</pre>
 </div>
 </div>
 <div class="section" id="test">
 <h2>用 &#8211;test 进行测试<a class="headerlink" href="#test" title="Permalink to this headline">¶</a></h2>
-<p>测试模式会采用指定的 crush 图（用 <strong>-i map</strong> 指定的），并试运行 CRUSH 映射或随机放置（若设置了 <strong>&#8211;simulate</strong> ）。完成后可创建两种报告类型：
+<p>测试模式会采用输入 crush 图（用 <strong>-i map</strong> 指定的），并模拟
+CRUSH 映射或随机放置（若设置了 <strong>&#8211;simulate</strong> ）。完成后可创建两种报告：
 1) <strong>&#8211;show-...</strong> 选项会把人类可读的信息输出到标准错误；
-2) <strong>&#8211;output-csv</strong> 选项会创建 CSV 文件，具体文档可在 <strong>&#8211;help-output</strong> 选项中见到。</p>
+2) <strong>&#8211;output-csv</strong> 选项会创建 CSV 文件，具体文档可在
+<strong>&#8211;help-output</strong> 选项中见到。</p>
+<p>注：每个归置组（ PG ）都有一个整数 ID ，可用 <tt class="docutils literal"><span class="pre">ceph</span> <span class="pre">pg</span> <span class="pre">dump</span></tt> 获取（例如 PG 2.2f 意思是存储池 id 为 2 ， PG id 为 32）。存储池和 PG 的 ID 用一个函数连结成一个值，然后传递给 CRUSH 就可以映射到一组 OSD 。 crushtool 不知道什么是 PG 或存储池，它只是对
+<tt class="docutils literal"><span class="pre">[--min-x,--max-x]</span></tt> 范围内的取值进行模拟映射。</p>
 <dl class="option">
 <dt id="cmdoption-crushtool--show-statistics">
 <tt class="descname">--show-statistics</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-crushtool--show-statistics" title="Permalink to this definition">¶</a></dt>
-<dd><p>对每条规则都显示各对象的映射。例如：</p>
-<div class="highlight-python"><pre>CRUSH rule 1 x 24 [11,6]</pre>
-</div>
-<p>表明对象 <strong>24</strong> 被规则 <strong>1</strong> 映射到了设备 <strong>[11,6]</strong> 。在映射详情的末尾，显示了一个分布情况汇总，例如：</p>
+<dd><p>显示分布情况的摘要，例如：</p>
 <div class="highlight-python"><pre>rule 1 (metadata) num_rep 5 result size == 5:    1024/1024</pre>
 </div>
-<p>以上输出表明，规则 <strong>1</strong> 名字为 <strong>metadata</strong> ，在试图把 <strong>1024</strong> 个对象映射为 <strong>num_rep 5</strong> 个副本时，最终映射到了 <strong>result size == 5</strong> 个设备。当没能达到要求的映射数量时（假设已<strong>尝试</strong>了规定次数），就会显示失败情况。比如：</p>
+<p>在如上输出中，规则 <strong>1</strong> 名字为 <strong>metadata</strong> ，在试图把
+<strong>1024</strong> 个值映射为 <strong>num_rep 5</strong> 个副本时，最终成功地映射到了 <strong>result size == 5</strong> 个设备。如果它最终没能输出映射，假设还需提高<strong>尝试</strong>次数），就会显示失败情况。比如：</p>
 <div class="highlight-python"><pre>rule 1 (metadata) num_rep 10 result size == 8:   4/1024
 rule 1 (metadata) num_rep 10 result size == 9:   93/1024
 rule 1 (metadata) num_rep 10 result size == 10:  927/1024</pre>
 </div>
-<p>以上表明，虽然要求的副本数是 <strong>num_rep 10</strong> ，但是 <strong>1024</strong> 个对象中有 <strong>4</strong> 个（ <strong>4/1024</strong> ）只映射到了 <strong>result size == 8</strong> 个设备。</p>
+<p>以上表明，虽然要求的副本数是 <strong>num_rep 10</strong> ，但是 <strong>1024</strong>
+个值中只有 <strong>4</strong> 个（ <strong>4/1024</strong> ）映射到了 <strong>result size == 8</strong>
+个设备。</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-crushtool--show-mappings">
+<tt class="descname">--show-mappings</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-crushtool--show-mappings" title="Permalink to this definition">¶</a></dt>
+<dd><p>显示 <tt class="docutils literal"><span class="pre">[--min-x,--max-x]</span></tt> 范围内每个值的映射，例如：</p>
+<div class="highlight-python"><pre>CRUSH rule 1 x 24 [11,6]</pre>
+</div>
+<p>显示了值 <strong>24</strong> 被规则 <strong>1</strong> 映射到了设备 <strong>[11,6]</strong> 。</p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption-crushtool--show-bad-mappings">
 <tt class="descname">--show-bad-mappings</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-crushtool--show-bad-mappings" title="Permalink to this definition">¶</a></dt>
-<dd><p>查看哪些对象的映射数量没达到要求，例如：</p>
+<dd><p>查看哪个值的映射数量没达到要求，例如：</p>
 <div class="highlight-python"><pre>bad mapping rule 1 x 781 num_rep 7 result [8,10,2,11,6,9]</pre>
 </div>
-<p>表明规则 <strong>1</strong> 要求映射到 <strong>7</strong> 个设备，实际上只映射了六个： <strong>[8,10,2,11,6,9]</strong> 。</p>
+<p>表明规则 <strong>1</strong> 要求映射到 <strong>7</strong> 个设备，实际上只映射了六个：
+<strong>[8,10,2,11,6,9]</strong> 。</p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption-crushtool--show-utilization">
 <tt class="descname">--show-utilization</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-crushtool--show-utilization" title="Permalink to this definition">¶</a></dt>
-<dd><p>显示各设备的期望和实际利用率，各种数量的副本也计算在内。例如：</p>
+<dd><p>显示每个设备的期望和实际利用率，各种数量的副本也计算在内。例如：</p>
 <div class="highlight-python"><pre>device 0: stored : 951      expected : 853.333
 device 1: stored : 963      expected : 853.333
 ...</pre>
 </div>
-<p>表明设备 <strong>0</strong> 实际存储了 <strong>951</strong> 个对象，本来期望存储 <strong>853</strong> 个。隐含了 <strong>&#8211;show-statistics</strong> 。</p>
+<p>表明设备 <strong>0</strong> 实际存储了 <strong>951</strong> 个值，本来期望存储 <strong>853</strong>
+个。隐含了 <strong>&#8211;show-statistics</strong> 。</p>
 </dd></dl>
 
 <dl class="option">
@@ -160,7 +177,8 @@ device 1: stored : 963      expected : 853.333
 2:      2225
 ..</pre>
 </div>
-<p>表明有 <strong>95224</strong> 次映射没重试就成功了， <strong>3745</strong> 次映射尝试一次后成功，等等。显示的最大行数与 <strong>&#8211;set-choose-total-tries</strong> 选项相同。</p>
+<p>表明有 <strong>95224</strong> 次映射没重试就成功了， <strong>3745</strong> 次映射尝试一次后成功，等等。显示的最大行数与 <strong>&#8211;set-choose-total-tries</strong>
+选项相同。</p>
 </dd></dl>
 
 <dl class="option">
@@ -183,7 +201,7 @@ Device ID, Absolute Weight
 <dl class="option">
 <dt id="cmdoption-crushtool--output-name">
 <tt class="descname">--output-name</tt><tt class="descclassname"> NAME</tt><a class="headerlink" href="#cmdoption-crushtool--output-name" title="Permalink to this definition">¶</a></dt>
-<dd><p>用了 <strong>&#8211;output-csv</strong> 选项时生成的文件名要加 <strong>NAME</strong> 前缀，例如 <strong>&#8211;output-name FOO</strong> 将创建这些文件：</p>
+<dd><p>指定了 <strong>&#8211;output-csv</strong> 选项时生成的文件名要加 <strong>NAME</strong> 前缀，例如 <strong>&#8211;output-name FOO</strong> 将创建这些文件：</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">FOO</span><span class="o">-</span><span class="n">metadata</span><span class="o">-</span><span class="n">absolute_weights</span><span class="o">.</span><span class="n">csv</span>
 <span class="n">FOO</span><span class="o">-</span><span class="n">metadata</span><span class="o">-</span><span class="n">device_utilization</span><span class="o">.</span><span class="n">csv</span>
 <span class="o">...</span>
@@ -207,14 +225,16 @@ bad mapping rule 1 x 781 num_rep 7 result [8,10,2,11,6,9]</pre>
 <p>各层都由如下要素组成：</p>
 <div class="highlight-python"><pre>bucket ( uniform | list | tree | straw ) size</pre>
 </div>
-<p>这里的 <strong>bucket</strong> 是本层桶的类型（如 &#8220;rack&#8221; ）。构建时各桶名 <strong>bucket</strong> 后将追加一个惟一的数字（如 &#8220;rack0&#8221; 、 &#8220;rack1&#8221; ……）。</p>
+<p>这里的 <strong>bucket</strong> 是本层桶的类型（如 &#8220;rack&#8221; ）。构建时各桶名
+<strong>bucket</strong> 后将追加一个惟一的数字（如 &#8220;rack0&#8221; 、 &#8220;rack1&#8221; ……）。</p>
 <p>第二个组件是桶类型：大多用 <strong>straw</strong> 。</p>
 <p>第三个组件是此桶的最大尺寸，为零时表示容量无限。</p>
 </div>
 <div class="section" id="id3">
 <h2>实例<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<p>假设我们有 2 行、每行有 2 个机架、每机架有 20 个节点、每个节点有 4 个存储设备用于 OSD 守护进程，这样的配置允许部署 320 个 OSD 守护进程。这里按照机架高 42U ，节点都是 2U 高的，另外空余 2U 装机架交换机。</p>
-<p>要如实反映我们的设备、节点、机架、行构成的分级结构，要用此命令：</p>
+<p>假设我们有 2 行、每行有 2 个机架、每机架有 20 个节点、每个节点有 4 个存储设备用于 OSD 守护进程，这样的配置允许部署 320 个 OSD
+守护进程。这里按照机架高 42U ，节点都是 2U 高的，另外空余 2U 装机架交换机。</p>
+<p>要如实展现我们的设备、节点、机架、行构成的分级结构，用此命令：</p>
 <div class="highlight-python"><pre>$ crushtool -o crushmap --build --num_osds 320 \
        node straw 4 \
        rack straw 20 \
@@ -246,16 +266,21 @@ crushtool -c map.txt -o crushmap</pre>
 </div>
 </div>
 <div class="section" id="id4">
-<h2>使用范围<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
-<p><strong>crushtool</strong> 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，更多信息参见 <a class="reference external" href="http://ceph.com/docs">http://ceph.com/docs</a> 。</p>
+<h2><tt class="docutils literal"><span class="pre">--test</span></tt> 的输出实例<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>请到 <a class="reference external" href="https://github.com/ceph/ceph/blob/master/src/test/cli/crushtool/set-choose.t">https://github.com/ceph/ceph/blob/master/src/test/cli/crushtool/set-choose.t</a>
+查看 <tt class="docutils literal"><span class="pre">crushtool</span> <span class="pre">--test</span></tt> 命令实例，及其输出。</p>
 </div>
 <div class="section" id="id5">
-<h2>参考<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<h2>使用范围<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p><strong>crushtool</strong> 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，更多信息参见 <a class="reference external" href="http://ceph.com/docs">http://ceph.com/docs</a> 。</p>
+</div>
+<div class="section" id="id6">
+<h2>参考<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
 <p><a class="reference internal" href="../ceph/"><em>ceph</em></a>(8),
 <a class="reference internal" href="../osdmaptool/"><em>osdmaptool</em></a>(8),</p>
 </div>
-<div class="section" id="id6">
-<h2>作者<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<h2>作者<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
 <p>John Wilkins, Sage Weil, Loic Dachary</p>
 </div>
 </div>
@@ -298,9 +323,10 @@ crushtool -c map.txt -o crushmap</pre>
 <li class="toctree-l4"><a class="reference internal" href="#test">用 &#8211;test 进行测试</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#build">用 <tt class="docutils literal"><span class="pre">--build</span></tt> 构建新图</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id3">实例</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id4">使用范围</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id5">参考</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6">作者</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4"><tt class="docutils literal"><span class="pre">--test</span></tt> 的输出实例</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">使用范围</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">参考</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">作者</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../librados-config/">librados-config &#8211; 显示关于 librados 的信息</a></li>

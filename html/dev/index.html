@@ -152,6 +152,14 @@
 <li><a class="reference internal" href="#deploy-a-cluster-for-manual-testing" id="id106">部署用于手动测试的集群</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#s3" id="id107">测试——如何在本地测试 S3</a><ul>
+<li><a class="reference internal" href="#step-1-build-ceph" id="id108">Step 1 - build Ceph</a></li>
+<li><a class="reference internal" href="#step-2-s3-tests" id="id109">Step 2 - s3-tests</a></li>
+<li><a class="reference internal" href="#step-3-vstart" id="id110">Step 3 - vstart</a></li>
+<li><a class="reference internal" href="#step-4-prepare-s3-environment" id="id111">Step 4 - prepare S3 environment</a></li>
+<li><a class="reference internal" href="#step-5-run-s3-tests" id="id112">Step 5 - run s3-tests</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -1264,6 +1272,78 @@ be found out by searching for the string <tt class="docutils literal"><span clas
 cluster.</p>
 </div>
 </div>
+<div class="section" id="s3">
+<span id="testing-how-to-run-s3-tests-locally"></span><h2><a class="toc-backref" href="#id107">测试——如何在本地测试 S3</a><a class="headerlink" href="#s3" title="Permalink to this headline">¶</a></h2>
+<p>RGW code can be tested by building Ceph locally from source, starting a vstart
+cluster, and running the &#8220;s3-tests&#8221; suite against it.</p>
+<p>The following instructions should work on jewel and above.</p>
+<div class="section" id="step-1-build-ceph">
+<h3><a class="toc-backref" href="#id108">Step 1 - build Ceph</a><a class="headerlink" href="#step-1-build-ceph" title="Permalink to this headline">¶</a></h3>
+<p>Refer to <tt class="xref doc docutils literal"><span class="pre">install/build-ceph</span></tt>.</p>
+<p>You can do step 2 separately while it is building.</p>
+</div>
+<div class="section" id="step-2-s3-tests">
+<h3><a class="toc-backref" href="#id109">Step 2 - s3-tests</a><a class="headerlink" href="#step-2-s3-tests" title="Permalink to this headline">¶</a></h3>
+<p>The test suite is in a separate git repo, and is written in python. Perform the
+following steps for jewel:</p>
+<div class="highlight-python"><pre>git clone git://github.com/ceph/s3-tests
+cd s3-tests
+git checkout ceph-jewel
+./bootstrap</pre>
+</div>
+<p>For kraken, checkout the <tt class="docutils literal"><span class="pre">ceph-kraken</span></tt> branch instead of <tt class="docutils literal"><span class="pre">ceph-jewel</span></tt>. For
+master, use <tt class="docutils literal"><span class="pre">ceph-master</span></tt>.</p>
+</div>
+<div class="section" id="step-3-vstart">
+<h3><a class="toc-backref" href="#id110">Step 3 - vstart</a><a class="headerlink" href="#step-3-vstart" title="Permalink to this headline">¶</a></h3>
+<p>When the build completes, and still in the top-level directory of the git
+clone where you built Ceph, do the following:</p>
+<div class="highlight-python"><pre>cd src/
+./vstart.sh -n -r --mds_num 0</pre>
+</div>
+<p>This will produce a lot of output as the vstart cluster is started up. At the
+end you should see a message like:</p>
+<div class="highlight-python"><pre>started.  stop.sh to stop.  see out/* (e.g. 'tail -f out/????') for debug output.</pre>
+</div>
+<p>This means the cluster is running.</p>
+</div>
+<div class="section" id="step-4-prepare-s3-environment">
+<h3><a class="toc-backref" href="#id111">Step 4 - prepare S3 environment</a><a class="headerlink" href="#step-4-prepare-s3-environment" title="Permalink to this headline">¶</a></h3>
+<p>The s3-tests suite expects to run in a particular environment (S3 users, keys,
+configuration file).</p>
+<p>Before you try to prepare the environment, make sure you don&#8217;t have any
+existing keyring or <tt class="docutils literal"><span class="pre">ceph.conf</span></tt> files in <tt class="docutils literal"><span class="pre">/etc/ceph</span></tt>.</p>
+<p>For jewel, Abhishek Lekshmanan wrote a script that can be used for this
+purpose. Assuming you are testing jewel, run the following commands from the
+<tt class="docutils literal"><span class="pre">src/</span></tt> directory of your ceph clone (where you just started the vstart
+cluster):</p>
+<div class="highlight-python"><pre>pushd ~
+wget https://gist.githubusercontent.com/theanalyst/2fee6bc2780f67c79cad7802040fcddc/raw/b497ddba053d9a6fb5d91b73924cbafcfc32f137/s3tests-bootstrap.sh
+popd
+sh ~/s3tests-bootstrap.sh</pre>
+</div>
+<p>If the script is successful, it will display a blob of JSON and create a file
+called <tt class="docutils literal"><span class="pre">s3.conf</span></tt> in the current directory.</p>
+</div>
+<div class="section" id="step-5-run-s3-tests">
+<h3><a class="toc-backref" href="#id112">Step 5 - run s3-tests</a><a class="headerlink" href="#step-5-run-s3-tests" title="Permalink to this headline">¶</a></h3>
+<p>To actually run the tests, take note of the full path to the <tt class="docutils literal"><span class="pre">s3.conf</span></tt> file
+created in the previous step and then move to the directory where you cloned
+<tt class="docutils literal"><span class="pre">s3-tests</span></tt> in Step 2.</p>
+<p>First, verify that the test suite is there and can be run:</p>
+<div class="highlight-python"><pre>S3TEST_CONF=/path/to/s3.conf ./virtualenv/bin/nosetests -a '!fails_on_rgw' -v --collect-only</pre>
+</div>
+<p>This should complete quickly - it is like a &#8220;dry run&#8221; of all the tests in the
+suite.</p>
+<p>Finally, run the test suite itself:</p>
+<div class="highlight-python"><pre>S3TEST_CONF=/path/to/s3.conf ./virtualenv/bin/nosetests -a '!fails_on_rgw' -v</pre>
+</div>
+<p>Note: the following test is expected to error - this is a problem in the test
+setup (WIP), not an actual test failure:</p>
+<div class="highlight-python"><pre>ERROR: s3tests.functional.test_s3.test_bucket_acl_grant_email</pre>
+</div>
+</div>
+</div>
 </div>
 
 
@@ -1384,6 +1464,14 @@ cluster.</p>
 <li class="toctree-l3"><a class="reference internal" href="#upload-logs-to-archive-server">Upload logs to archive server</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#provision-vms-ad-hoc">Provision VMs ad hoc</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#deploy-a-cluster-for-manual-testing">部署用于手动测试的集群</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#s3">测试——如何在本地测试 S3</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#step-1-build-ceph">Step 1 - build Ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-2-s3-tests">Step 2 - s3-tests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-3-vstart">Step 3 - vstart</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-4-prepare-s3-environment">Step 4 - prepare S3 environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-5-run-s3-tests">Step 5 - run s3-tests</a></li>
 </ul>
 </li>
 </ul>

@@ -1119,6 +1119,13 @@ pg
 
 	ceph pg set_full_ratio <float[0.0-1.0]>
 
+子命令 ``set_backfillfull_ratio`` 设置一个比例，达到的话就认为
+pg 满了，不能接受回填。
+
+用法： ::
+
+	ceph pg set_backfillfull_ratio <float[0.0-1.0]>
+
 子命令 ``set_nearfull_ratio`` 设置认为归置组将要占满的比率。
 
 用法： ::
