@@ -103,3 +103,33 @@ rank ： ::
 守护进程完成 stopping 状态后，它会自己重生并成为灾备。
 
 
+.. _Manually pinning directory trees to a particular rank:
+
+手动将目录树插入特定的 rank
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+在多活元数据服务器配置中，均衡器负责在集群内均匀地散布元数据负\
+荷。此设计对大多数用户来说都够用了，但是，有时人们想要跳过动态\
+均衡器，手动把某些元数据映射到特定的 rank ；这样一来，管理员或\
+用户就可以均匀地散布应用负荷、或者限制用户的元数据请求，以防他\
+影响整个集群。
+
+为实现此目的，引入了一个机制，名为 ``export pin`` （导出销），\
+是目录的一个扩展属性，名为 ``ceph.dir.pin`` 。用户可以用标准命\
+令配置此属性： ::
+
+    setfattr -n ceph.dir.pin -v 2 path/to/dir
+
+这个扩展属性的值是给这个目录树分配的 rank ，默认值 ``-1`` 表示\
+此目录没有销进（某个 rank ）。
+
+一个目录的导出销是从最近的、配置了导出销的父目录继承的；同理，\
+在一个目录上配置导出销会影响它的所有子目录。然而，设置子目录的\
+导出销可以覆盖从父目录继承来的销子，例如： ::
+
+    mkdir -p a/b
+    # "a" and "a/b" both start without an export pin set
+    setfattr -n ceph.dir.pin -v 1 a/
+    # a and b are now pinned to rank 1
+    setfattr -n ceph.dir.pin -v 0 a/b
+    # a/b is now pinned to rank 0 and a/ and the rest of its children are still pinned to rank 1

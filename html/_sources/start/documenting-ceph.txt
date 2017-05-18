@@ -1,3 +1,5 @@
+.. _Documenting Ceph:
+
 ================
  贡献 Ceph 文档
 ================
@@ -11,6 +13,8 @@ HTML 和手册页。 http://ceph.com/docs 链接默认展示 ``master`` 分支�
 较早分支（如 ``argonaut`` ）或者未来分支（如 ``next`` ）的文档，同样可以查看\
 正在改进的分支，只需把 ``master`` 改成你想看的分支即可。
 
+
+.. Making Contributions
 
 如何贡献
 ========
@@ -27,6 +31,8 @@ HTML 和手册页。 http://ceph.com/docs 链接默认展示 ``master`` 分支�
 #. `发出接收请求`_
 #. `通知相关人员`_
 
+
+.. Get the Source
 
 获取源代码
 ----------
@@ -89,6 +95,8 @@ Ceph 文档按主要组件来分类组织。
   目录下。
 
 
+.. Select a Branch
+
 进入分支
 --------
 
@@ -122,6 +130,8 @@ http://tracker.ceph.com/issues/4000 。
 
 	git checkout -b wip-doc-{your-branch-name}
 
+
+.. Make a Change
 
 开始更改
 --------
@@ -184,15 +194,17 @@ http://tracker.ceph.com/issues/4000 。
 页格式的文档。
 
 
+.. Build the Source (First Time)
+
 构建源码（首次）
 ~~~~~~~~~~~~~~~~
 
-Ceph 用 Python Sphinx 构建文档，此软件一般都没安装。首次构建文档时，它会生成一\
-个用于 doxygen 的 XML 树，这个过程比较耗时.
+Ceph 用 Python Sphinx 构建文档，此软件一般都没安装。首次构建文\
+档时，它会生成一个用于 doxygen 的 XML 树，这个过程比较耗时.
 
-Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构建文档时，如果你没安\
-装必要工具，构建脚本会提示你。要运行 Sphinx 并成功构建文档，至少要安装下面这些\
-软件包：
+Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构建文\
+档时，如果你没安装必要工具，构建脚本会提示你。要运行 Sphinx 并\
+成功构建文档，至少要安装下面这些软件包：
 
 .. raw:: html
 
@@ -281,43 +293,42 @@ Enterprise Linux) 软件库，因为它提供了很多默认软件库所没有�
 件库内，所以得到 http://rpmfind.net/ 找，然后到合适的镜像下载\
 并安装它们，比如： ::
 
-	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/python-jinja2-2.7.2-2.el7.noarch.rpm
+	wget http://rpmfind.net/linux/centos/7/os/x86_64/Packages/python-jinja2-2.7.2-2.el7.noarch.rpm
 	sudo yum install python-jinja2-2.7.2-2.el7.noarch.rpm
-	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/python-pygments-1.4-9.el7.noarch.rpm
+	wget http://rpmfind.net/linux/centos/7/os/x86_64/Packages/python-pygments-1.4-9.el7.noarch.rpm
 	sudo yum install python-pygments-1.4-9.el7.noarch.rpm
-	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/python-docutils-0.11-0.2.20130715svn7687.el7.noarch.rpm
+	wget http://rpmfind.net/linux/centos/7/os/x86_64/Packages/python-docutils-0.11-0.2.20130715svn7687.el7.noarch.rpm
 	sudo yum install python-docutils-0.11-0.2.20130715svn7687.el7.noarch.rpm
-	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/python-sphinx-1.1.3-8.el7.noarch.rpm
-	sudo yum install python-sphinx-1.1.3-8.el7.noarch.rpm
+	wget http://rpmfind.net/linux/centos/7/os/x86_64/Packages/python-sphinx-1.1.3-11.el7.noarch.rpm
+	sudo yum install python-sphinx-1.1.3-11.el7.noarch.rpm
 
-Ceph 文档大量使用了 `ditaa`_ ，它没有对应的 CentOS/RHEL7 二进制包。如果你要修\
-改 `ditaa`_ 图，那你必须安装 `ditaa`_ 才能确认你新增或修改的 `ditaa`_ 图可以正\
-确渲染。你可以自己去找与 CentOS/RHEL7 发行版兼容的包，并手动安装。在 \
-CentOS/RHEL7 下 `ditaa`_ 依赖下列软件包：
+Ceph 文档大量使用了 `ditaa`_ ，它没有对应的 CentOS/RHEL7 二进\
+制包。如果你要修改 `ditaa`_ 图，那你必须安装 `ditaa`_ 才能确认\
+你新增或修改的 `ditaa`_ 图可以正确渲染。你可以自己去找与
+CentOS/RHEL7 发行版兼容的包，并手动安装。在 CentOS/RHEL7 下
+`ditaa`_ 依赖下列软件包：
 
 - jericho-html
 - jai-imageio-core
 - batik
 
-到 http://rpmfind.net/ 找兼容的 ``ditaa`` 及其依赖，然后从某个镜像\
-下载并安装它们。例如： ::
+到 http://rpmfind.net/ 找兼容的 ``ditaa`` 及其依赖，然后从某个\
+镜像下载并安装它们。例如： ::
 
-	wget ftp://rpmfind.net/linux/fedora/linux/releases/20/Everything/x86_64/os/Packages/j/jericho-html-3.2-6.fc20.noarch.rpm
-	sudo yum install jericho-html-3.2-6.fc20.noarch.rpm
-	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/jai-imageio-core-1.2-0.14.20100217cvs.el7.noarch.rpm
+	wget http://rpmfind.net/linux/fedora/linux/releases/22/Everything/x86_64/os/Packages/j/jericho-html-3.3-4.fc22.noarch.rpm
+	sudo yum install jericho-html-3.3-4.fc22.noarch.rpm
+	wget http://rpmfind.net/linux/centos/7/os/x86_64/Packages/jai-imageio-core-1.2-0.14.20100217cvs.el7.noarch.rpm
 	sudo yum install jai-imageio-core-1.2-0.14.20100217cvs.el7.noarch.rpm
-	wget ftp://rpmfind.net/linux/centos/7.0.1406/os/x86_64/Packages/batik-1.8-0.12.svn1230816.el7.noarch.rpm
+	wget http://rpmfind.net/linux/centos/7/os/x86_64/Packages/batik-1.8-0.12.svn1230816.el7.noarch.rpm
 	sudo yum install batik-1.8-0.12.svn1230816.el7.noarch.rpm
-	wget ftp://rpmfind.net/linux/fedora/linux/releases/20/Everything/x86_64/os/Packages/d/ditaa-0.9-10.r74.fc20.noarch.rpm
-	sudo yum install ditaa-0.9-10.r74.fc20.noarch.rpm
+	wget http://rpmfind.net/linux/fedora/linux/releases/22/Everything/x86_64/os/Packages/d/ditaa-0.9-13.r74.fc21.noarch.rpm
+	sudo yum install ditaa-0.9-13.r74.fc21.noarch.rpm
 
-.. important:: 不要安装含 ``fc21`` 的 ``ditaa`` rpm包，因为它使用\
-   的 ``JRE`` 比 CentOS/RHEL7 自带的新，这样会导致冲突并抛出异常 \
-   ``Exception`` ，程序也因此不能运行。
+安装好所有这些包之后，就可以按照\ `构建文档源码`_\ 里的步骤构\
+建文档了。
 
-安装好所有这些包之后，就可以按照\ ``构建文档源码``\ 里的步骤构建\
-文档了。
 
+.. Commit the Change
 
 提交变更
 --------
@@ -391,6 +402,8 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 最后，点击 **File->Start git gui** 打开图形界面。
 
 
+.. Push the Change
+
 推送变更
 --------
 
@@ -404,17 +417,23 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 	git push
 
 
+.. Make a Pull Request
+
 发出接收请求
 ------------
 
 前面已经说过了，你可以依照\ `分支并拉入`_\ 方法共享文档。
 
 
+.. Notify the Relevant Person
+
 通知相关人员
 ------------
 
 发出接收请求后，还需通知相关人员。通常，文档的接收请求应该发给 `John Wilkins`_ 。
 
+
+.. Documentation Style Guide
 
 文档风格手册
 ============
@@ -429,18 +448,23 @@ Ceph 文档项目的目标之一就是可读性，包括 restructuredText 和渲
 为了维持一致性，请遵守下面的风格手册。
 
 
+.. Headings
+
 标题
 ----
 
-#. **文档标题：** 标题行的前/后各加一行 ``=`` ，且标题行首、行尾各有一个空格，\
-   详情见\ `文档标题`_\ 。
+#. **文档标题：** 标题行的前、后各加一行 ``=`` ，且标题行首、\
+   行尾各有一个空格，详情见\ `文档标题`_\ 。
 
-#. **段落标题：** 段标题行下是一行 ``=`` ，且标题行首、行尾都没有空格；段标题\
-   前应该有两个空行（除非前面是内嵌引用）。详情见\ `小节`_\ 。
+#. **段落标题：** 段标题行下是一行 ``=`` ，且标题行首、行尾都\
+   没有空格；段标题前应该有两个空行（除非前面是内嵌引用）。详\
+   情见\ `小节`_\ 。
 
-#. **小节标题：** 小节标题行下是一行 ``-`` ，且行首、行尾都没有空格；段标题前\
-   应该有两个空行（除非前面是内嵌引用）。
+#. **小节标题：** 小节标题行下是一行 ``-`` ，且行首、行尾都没\
+   有空格；段标题前应该有两个空行（除非前面是内嵌引用）。
 
+
+.. Text Body
 
 正文
 ----
@@ -471,6 +495,8 @@ Ceph 文档项目的目标之一就是可读性，包括 restructuredText 和渲
    开始重新编号，详情见\ `显示代码示例`_\ 。
 
 
+.. Paragraph Level Markup
+
 段落分级标记
 ------------
 
@@ -495,6 +521,8 @@ Ceph 文档项目用\ `段落分级标记`_\ 来高亮显示要点。
 #. **Topic:** 论题：用 ``.. topic::`` 指令来封装位于文档主体之外的文本。详情\
    见 `topic 指令`_\ 。
 
+
+.. TOC and Hyperlinks
 
 TOC 和超链接
 ------------

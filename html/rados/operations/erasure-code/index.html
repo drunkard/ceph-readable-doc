@@ -119,30 +119,34 @@ no two <em>chunks</em> are stored in the same rack.</p>
 </p>
 <p>More information can be found in the <a class="reference external" href="../erasure-code-profile">erasure code profiles</a> documentation.</p>
 </div>
-<div class="section" id="id4">
-<h2>纠删码存储池与缓存分级<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
-<p>Erasure coded pools require more resources than replicated pools and
-lack some functionalities such as partial writes. To overcome these
-limitations, it is recommended to set a <a class="reference external" href="../cache-tiering">cache tier</a>
-before the erasure coded pool.</p>
-<p>For instance, if the pool <em>hot-storage</em> is made of fast storage:</p>
+<div class="section" id="erasure-coding-with-overwrites">
+<span id="id4"></span><h2>在纠删码存储池上启用重写功能<a class="headerlink" href="#erasure-coding-with-overwrites" title="Permalink to this headline">¶</a></h2>
+<p>默认情况下，纠删码存储池只适用于像 RGW 这样进行完整对象写入和追加的场景。</p>
+<p>从 Luminous 起，在纠删码存储池里进行部分写入的功能可以在存储池配置里启用，这样 RBD 和 CephFS 就可以使用纠删码存储池存储数据了：</p>
+<div class="highlight-python"><pre>ceph osd pool set ec_pool allow_ec_overwrites true</pre>
+</div>
+<p>只有当存储池座落于 bluestore 格式的 OSD 上时才能启用此功能，因为 bluestore 的校验和功能在深度洗刷时能探测到位翻转或者其它的损坏。除了不安全外，在 filestore 上使用 EC 重写的性能也比
+bluestore 上差得多。</p>
+<p>纠删码存储池不支持 omap ，所以用于 RBD 和 CephFS 时你必须让它们把数据存到 EC 存储池里、而元数据存到副本存储池里。对 RBD 而言，这意味着在创建映像时要用纠删码存储池作 <tt class="docutils literal"><span class="pre">--data-pool</span></tt> （数据存储池）的参数：</p>
+<div class="highlight-python"><pre>rbd create --size 1G --data-pool ec_pool replicated_pool/image_name</pre>
+</div>
+<p>对 CephFS 而言，要想使用纠删码存储池，可在<a class="reference external" href="/cephfs/file-layouts">文件布局</a>里设置成那个存储池。</p>
+</div>
+<div class="section" id="id6">
+<h2>纠删码存储池与缓存分级<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>纠删码存储池与副本存储池相比需要的计算资源更多，而且还缺少一些功能，像 omap 。要消除这些局限性，可以在纠删码存储池前加一个<a class="reference external" href="../cache-tiering">缓存层</a>。</p>
+<p>例如，假设存储池 <em>hot-storage</em> 性能比较好：</p>
 <div class="highlight-python"><pre>$ ceph osd tier add ecpool hot-storage
 $ ceph osd tier cache-mode hot-storage writeback
 $ ceph osd tier set-overlay ecpool hot-storage</pre>
 </div>
-<p>will place the <em>hot-storage</em> pool as tier of <em>ecpool</em> in <em>writeback</em>
-mode so that every write and read to the <em>ecpool</em> are actually using
-the <em>hot-storage</em> and benefit from its flexibility and speed.</p>
-<p>It is not possible to create an RBD image on an erasure coded pool
-because it requires partial writes. It is however possible to create
-an RBD image on an erasure coded pools when a replicated pool tier set
-a cache tier:</p>
-<div class="highlight-python"><pre>$ rbd create --size 10G ecpool/myvolume</pre>
-</div>
+<p>这样就把 <em>hot-storage</em> 存储池配置成了 <em>ecpool</em> 的缓存层，模式为
+<em>writeback</em> 。如此一来，到 <em>ecpool</em> 的每个写和读实际上用的是
+<em>hot-storage</em> ，而且还受益于其灵活性和速度。</p>
 <p>更详细的文档请参阅<a class="reference external" href="../cache-tiering">分级缓存</a>。</p>
 </div>
-<div class="section" id="id6">
-<h2>术语<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id9">
+<h2>术语<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt><em>chunk</em></dt>
 <dd>when the encoding function is called, it returns chunks of the same
@@ -158,8 +162,8 @@ computed by the encoding functions. If there are 2 coding <em>chunks</em>,
 it means 2 OSDs can be out without losing data.</dd>
 </dl>
 </div>
-<div class="section" id="id7">
-<h2>内容列表<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id10">
+<h2>内容列表<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../erasure-code-profile/">纠删码配置</a></li>
@@ -199,9 +203,10 @@ it means 2 OSDs can be out without losing data.</dd>
 <li class="toctree-l3 current"><a class="current reference internal" href="">纠删码</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id2">创建样板纠删码存储池</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id3">纠删码配置</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id4">纠删码存储池与缓存分级</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6">术语</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">内容列表</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#erasure-coding-with-overwrites">在纠删码存储池上启用重写功能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">纠删码存储池与缓存分级</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">术语</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">内容列表</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="../erasure-code-profile/">纠删码配置</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../erasure-code-jerasure/">Jerasure 纠删码插件</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../erasure-code-isa/">ISA 纠删码插件</a></li>

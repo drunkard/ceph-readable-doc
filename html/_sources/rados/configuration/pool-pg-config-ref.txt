@@ -77,11 +77,13 @@
          时也能成功创建存储池。
 
 
-``osd pool erasure code stripe width``
+``osd pool erasure code stripe unit``
 
-:描述: 设置每个已编码池内的对象条带尺寸（单位为字节）。\
-       尺寸为 S 的各对象将存储为 N 个条带，且各条带将分\
-       别编码/解码。
+:描述: 设置纠删码存储池内对象条带的默认尺寸，单位为字节。每个\
+       尺寸为 S 的对象都将存储为单个数据块为 ``stripe unit`` \
+       字节的 N 个条带，每个尺寸为 ``N * stripe unit`` 字节的\
+       条带将分别独立地编码、解码。此选项可被纠删码配置中的
+       ``stripe_unit`` 选项覆盖。
 
 :类型: Unsigned 32-bit Integer
 :默认值: ``4096``

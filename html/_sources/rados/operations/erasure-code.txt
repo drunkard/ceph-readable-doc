@@ -1,3 +1,5 @@
+.. Erasure code
+
 ========
  纠删码
 ========
@@ -115,33 +117,59 @@ More information can be found in the `erasure code profiles
 <../erasure-code-profile>`_ documentation.
 
 
+.. _Erasure Coding with Overwrites:
+
+在纠删码存储池上启用重写功能
+----------------------------
+
+默认情况下，纠删码存储池只适用于像 RGW 这样进行完整对象写入和\
+追加的场景。
+
+从 Luminous 起，在纠删码存储池里进行部分写入的功能可以在存储池\
+配置里启用，这样 RBD 和 CephFS 就可以使用纠删码存储池存储数据\
+了： ::
+
+    ceph osd pool set ec_pool allow_ec_overwrites true
+
+只有当存储池座落于 bluestore 格式的 OSD 上时才能启用此功能，因\
+为 bluestore 的校验和功能在深度洗刷时能探测到位翻转或者其它的\
+损坏。除了不安全外，在 filestore 上使用 EC 重写的性能也比
+bluestore 上差得多。
+
+纠删码存储池不支持 omap ，所以用于 RBD 和 CephFS 时你必须让它\
+们把数据存到 EC 存储池里、而元数据存到副本存储池里。对 RBD 而\
+言，这意味着在创建映像时要用纠删码存储池作 ``--data-pool`` （\
+数据存储池）的参数： ::
+
+    rbd create --size 1G --data-pool ec_pool replicated_pool/image_name
+
+对 CephFS 而言，要想使用纠删码存储池，可在\
+`文件布局 </cephfs/file-layouts>`_\ 里设置成那个存储池。
+
+
+.. Erasure coded pool and cache tiering
+
 纠删码存储池与缓存分级
 ----------------------
 
-Erasure coded pools require more resources than replicated pools and
-lack some functionalities such as partial writes. To overcome these
-limitations, it is recommended to set a `cache tier <../cache-tiering>`_
-before the erasure coded pool.
+纠删码存储池与副本存储池相比需要的计算资源更多，而且还缺少一些\
+功能，像 omap 。要消除这些局限性，可以在纠删码存储池前加一个\
+`缓存层 <../cache-tiering>`_\ 。
 
-For instance, if the pool *hot-storage* is made of fast storage::
+例如，假设存储池 *hot-storage* 性能比较好： ::
 
     $ ceph osd tier add ecpool hot-storage
     $ ceph osd tier cache-mode hot-storage writeback
     $ ceph osd tier set-overlay ecpool hot-storage
 
-will place the *hot-storage* pool as tier of *ecpool* in *writeback*
-mode so that every write and read to the *ecpool* are actually using
-the *hot-storage* and benefit from its flexibility and speed.
-
-It is not possible to create an RBD image on an erasure coded pool
-because it requires partial writes. It is however possible to create
-an RBD image on an erasure coded pools when a replicated pool tier set
-a cache tier::
-
-	$ rbd create --size 10G ecpool/myvolume
+这样就把 *hot-storage* 存储池配置成了 *ecpool* 的缓存层，模式为
+*writeback* 。如此一来，到 *ecpool* 的每个写和读实际上用的是
+*hot-storage* ，而且还受益于其灵活性和速度。
 
 更详细的文档请参阅\ `分级缓存 <../cache-tiering>`_\ 。
 
+
+.. Glossary
 
 术语
 ----

@@ -302,6 +302,17 @@ true ，否则它会拒绝删除存储池。
 :类型: 整数
 
 
+.. _allow_ec_overwrites:
+
+``allow_ec_overwrites``
+
+:描述: 写入一个纠删码存储池时是否允许更新对象的部分数据，允许后
+       CephFS 和 RBD 才能用这个存储池，详情见\
+       `在纠删码存储池上启用重写功能`_\ 。
+:类型: Boolean
+:版本要求: ``12.2.0`` 以及更高版
+
+
 .. _hashpspool:
 
 ``hashpspool``
@@ -733,3 +744,4 @@ Ceph 会列出存储池，且高亮 ``replicated size`` 属性。默认情况\
 .. _存储池、归置组和 CRUSH 配置参考: ../../configuration/pool-pg-config-ref
 .. _Bloom 过滤器: http://en.wikipedia.org/wiki/Bloom_filter
 .. _设置归置组数量: ../placement-groups#set-the-number-of-placement-groups
+.. _在纠删码存储池上启用重写功能: ../erasure-code#erasure-coding-with-overwrites
