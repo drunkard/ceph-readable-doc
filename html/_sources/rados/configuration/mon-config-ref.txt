@@ -1,3 +1,5 @@
+.. _Monitor Config Reference:
+
 ================
  监视器配置参考
 ================
@@ -9,6 +11,8 @@
 
 
 .. index:: Ceph Monitor; Paxos
+
+.. Background
 
 背景
 ====
@@ -23,6 +27,7 @@
 们把监视器服务的所有更改写入一个单独的 Paxos 例程，然后 Paxos 以键/值方式存储所有变\
 更以实现高度一致性。同步期间， Ceph 监视器能查询集群运行图的近期版本，它们通过操作\
 键/值存储快照和迭代器（用 leveldb ）来进行存储级同步。
+
 
 .. ditaa::
 
@@ -51,7 +56,10 @@
 
 在 0.58 及更早版本中， Ceph 监视器每个服务用一个 Paxos 例程，并把运行图存储为文件。
 
+
 .. index:: Ceph Monitor; cluster map
+
+.. Cluster Maps
 
 集群运行图
 ----------
@@ -86,6 +94,13 @@
 成法定人数（如 1 个、 3 之 2 在运行、 5 之 3 、 6 之 4 等等）。
 
 
+``mon force quorum join``
+
+:描述: 强制监视器加入法定人数，即使它曾被踢出运行图。
+:类型: Boolean
+:默认值: ``False``
+
+
 .. index:: Ceph Monitor; consistency
 
 .. _Consistency:
@@ -115,6 +130,8 @@ monmap 的更新是增量的，所以监视器们都有最新的一致版本，�
 
 .. index:: Ceph Monitor; bootstrapping monitors
 
+.. Bootstrapping Monitors
+
 初始化监视器
 ------------
 
@@ -136,7 +153,10 @@ monmap 的更新是增量的，所以监视器们都有最新的一致版本，�
 
 关于初始化的具体信息见\ `初始化监视器`_\ 。
 
+
 .. index:: Ceph Monitor; configuring monitors
+
+.. Configuring Monitors
 
 监视器的配置
 ============
@@ -157,6 +177,8 @@ monmap 的更新是增量的，所以监视器们都有最新的一致版本，�
 
 	[mon.c]
 
+
+.. Minimum Configuration
 
 最小配置
 --------
@@ -210,6 +232,8 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 
 
 .. index:: Ceph Monitor; initial members
+
+.. Initial Members
 
 初始成员
 --------
@@ -265,6 +289,116 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 :描述: 监视器的数据位置。
 :类型: String
 :默认值: ``/var/lib/ceph/mon/$cluster-$id``
+
+
+``mon data size warn``
+
+:描述: 监视器的数据量大于 15GB 时发一条 ``HEALTH_WARN`` 集群日\
+       志。
+:类型: Integer
+:默认值: 15*1024*1024*1024*
+
+
+``mon data avail warn``
+
+:描述: 监视器的数据存储磁盘可用空间小于或等于此百分比时发一条
+       ``HEALTH_WARN`` 集群日志。
+:类型: Integer
+:默认值: 30
+
+
+``mon data avail crit``
+
+:描述: 监视器的数据存储磁盘可用空间小于或等于此百分比时发一条
+       ``HEALTH_ERR`` 集群日志。
+:类型: Integer
+:默认值: 5
+
+
+``mon warn on cache pools without hit sets``
+
+:描述: 如果某个缓存存储池没配置 ``hit set type`` ，发出一条
+       ``HEALTH_WARN`` 集群日志。详情见
+       `hit set type <../../operations/pools#hit-set-type>`_ 。
+:类型: Boolean
+:默认值: True
+
+
+``mon warn on crush straw calc version zero``
+
+:描述: 如果 CRUSH 的 ``straw_calc_version`` 值为 0 ，发出一条
+       ``HEALTH_WARN`` 集群日志。详情见
+       `CRUSH 图的可调选项 <../../operations/crush-map#tunables>`_\ 。
+:类型: Boolean
+:默认值: True
+
+
+``mon warn on legacy crush tunables``
+
+:描述: 如果 CRUSH 可调选项太旧（比 ``mon_min_crush_required_version``
+       旧），发出一条 ``HEALTH_WARN`` 集群日志。
+:类型: Boolean
+:默认值: True
+
+
+``mon crush min required version``
+
+:描述: 此集群要求的最低可调配置版本号，详情见
+       `CRUSH 图的可调选项 <../../operations/crush-map#tunables>`_\ 。
+:类型: String
+:默认值: ``firefly``
+
+
+``mon warn on osd down out interval zero``
+
+:描述: 如果 ``mon osd down out interval`` 是 0 ，发出一条
+       ``HEALTH_WARN`` 集群日志。 Leader 上的这个选项设置为 0 \
+       时，结果类似 ``noout`` 标记。集群没有设置 ``noout`` 标\
+       记，而表现出的行为却一样时很难查出为什么，所以我们对此\
+       情况发出警告。
+:类型: Boolean
+:默认值: True
+
+
+``mon cache target full warn ratio``
+
+:描述: 存储池使用率达到 ``cache_target_full`` 和 ``target_max_object``
+       的多大比例时发出警告。
+:类型: Float
+:默认值: ``0.66``
+
+
+``mon health data update interval``
+
+:描述: 法定人数里的监视器与它的互联点分享自己健康状态的频率，\
+       单位为秒。负数禁用此功能。
+:类型: Float
+:默认值: ``60``
+
+
+``mon health to clog``
+
+:描述: 是否周期性地向集群日志发送健康摘要。
+:类型: Boolean
+:默认值: True
+
+
+``mon health to clog tick interval``
+
+:描述: 监视器向集群日志发送健康摘要的频率，单位为秒。非正数禁\
+       用此功能。如果当前健康摘要为空或者与上次的相同，监视器\
+       就不会发给集群日志了。
+:类型: Integer
+:默认值: 3600
+
+
+``mon health to clog interval``
+
+:描述: 监视器向集群日志发送健康摘要的频率，单位为秒。非正数禁\
+       用此功能。不管摘要有没有变化，监视器都会把摘要发给集群\
+       日志。
+:类型: Integer
+:默认值: 60
 
 
 .. index:: Ceph Storage Cluster; capacity planning, Ceph Monitor; capacity planning
@@ -374,6 +508,8 @@ OSD 的交互`_\ 。
 
 .. index:: Ceph Monitor; leader, Ceph Monitor; provider, Ceph Monitor; requester, Ceph Monitor; synchronization
 
+.. Monitor Store Synchronization
+
 监视器存储同步
 --------------
 
@@ -461,7 +597,8 @@ provider 落后于 leader ）， provider 能终结和 requester 间的同步。
 
 ``mon sync timeout``
 
-:描述:
+:描述: 监视器与上家同步的时候，等待下一个更新消息的时长（单位\
+       为秒），超时此时间就放弃然后从头再来。
 :类型: Double
 :默认值: ``30.0``
 
@@ -475,18 +612,27 @@ provider 落后于 leader ）， provider 能终结和 requester 间的同步。
 
 ``mon sync max payload size``
 
-:描述: 同步载荷的最大尺寸。
+:描述: 同步载荷的最大尺寸（单位为字节）。
 :类型: 32-bit Integer
 :默认值: ``1045676``
 
 
-``mon accept timeout``
+``paxos max join drift``
 
-:描述: leader 等待  requester(s) 接受 PAXOS 更新的时间，出于同样的目的此值\
-       也用于 PAXOS 恢复阶段。
+:描述: 允许的最大 Paxos 迭代量，超过此值必须先同步监视器数据。\
+       当某个监视器发现别的互联点比它领先太多的时候，它得先同\
+       步数据才能继续工作。
+:类型: Integer
+:默认值: ``10``
 
-:类型: Float
-:默认值: ``10.0``
+
+``paxos stash full interval``
+
+:描述: 多久（按提交数量计算）存储一份完整的 PaxosService 状态。\
+       当前这个选项会影响 ``mds`` 、 ``mon`` 、 ``auth`` 和
+       ``mgr`` 的 PaxosService 。
+:类型: Integer
+:默认值: 25
 
 
 ``paxos propose interval``
@@ -496,11 +642,91 @@ provider 落后于 leader ）， provider 能终结和 requester 间的同步。
 :默认值: ``1.0``
 
 
+``paxos min``
+
+:描述: 保留着的 paxos 状态的最小数量。
+:类型: Integer
+:默认值: 500
+
+
 ``paxos min wait``
 
 :描述: 经过一段不活跃时间后，收集更新的最小等待时间。
 :类型: Double
 :默认值: ``0.05``
+
+
+``paxos trim min``
+
+:描述: 有多少多余的提议才能清理。
+:类型: Integer
+:默认值: 250
+
+
+``paxos trim max``
+
+:描述: 一次最多清理多少多余的提议。
+:类型: Integer
+:默认值: 500
+
+
+``paxos service trim min``
+
+:描述: 至少积攒多少个版本再触发清理机制（ 0 禁用此选项）。
+:类型: Integer
+:默认值: 250
+
+
+``paxos service trim max``
+
+:描述: 一次提议最多可以清理多少个版本（ 0 禁用此选项）。
+:类型: Integer
+:默认值: 500
+
+
+``mon max log epochs``
+
+:描述: 一次提议最多可以清理多少个日志时间结。
+:类型: Integer
+:默认值: 500
+
+
+``mon max pgmap epochs``
+
+:描述: 一次提议最多可以清理多少个 pgmap 时间结。
+:类型: Integer
+:默认值: 500
+
+
+``mon mds force trim to``
+
+:描述: 强制让监视器把 mdsmap 裁截到这一点（ 0 禁用此选项）。非\
+       常危险，慎用！
+:类型: Integer
+:默认值: 0
+
+
+``mon osd force trim to``
+
+:描述: 强制让监视器把 osdmap 裁截到这一点，即使指定的时间结上\
+       仍有不干净的 PG 也在所不惜。 0 禁用此选项。非常危险，慎\
+       用！
+:类型: Integer
+:默认值: 0
+
+
+``mon osd cache size``
+
+:描述: osdmap 缓存的尺寸，与底层存储的缓存无关。
+:类型: Integer
+:默认值: 10
+
+
+``mon election timeout``
+
+:描述: 等待大家确认选举提案的最大时长。单位为秒。
+:类型: Float
+:默认值: ``5``
 
 
 ``mon lease``
@@ -510,18 +736,30 @@ provider 落后于 leader ）， provider 能终结和 requester 间的同步。
 :默认值: ``5``
 
 
-``mon lease renew interval``
+``mon lease renew interval factor``
 
-:描述: 监视器 leader （头领）刷新其他监视器租期的间隔。
+:描述: ``mon lease`` \* ``mon lease renew interval factor`` 时\
+       长就是 Leader （头领）刷新其他监视器租期的间隔。此系数\
+       应该小于 ``1.0`` 。
 :类型: Float
-:默认值: ``3``
+:默认值: ``0.6``
 
 
-``mon lease ack timeout``
+``mon lease ack timeout factor``
 
-:描述: leader 在等到 providers （随从）确认延长租期前等待的时间。
+:描述: Leader 会等着各 Provider 确认租期延续，时间不超过
+       ``mon lease`` \* ``mon lease ack timeout factor`` 。
 :类型: Float
-:默认值: ``10.0``
+:默认值: ``2.0``
+
+
+``mon accept timeout factor``
+
+:描述: Leader 会等着 Requester(s) 接收 Paxos 更新，时间不超过
+       ``mon lease`` \* ``mon accept timeout factor`` 。出于类\
+       似目的，在 Paxos 恢复阶段也会用到此配置。
+:类型: Float
+:默认值: ``2.0``
 
 
 ``mon min osdmap epochs``
@@ -545,58 +783,29 @@ provider 落后于 leader ）， provider 能终结和 requester 间的同步。
 :默认值: ``500``
 
 
-Slurp
------
-
-在 Ceph 0.58 及之前版本中，当 Paxos 服务偏差的版本数大于某值时，就会触发 `slurp` \
-机制，它会和法定人数 leader 建立一个连接并获取 leader 拥有的每个版本，以同步每个有\
-偏差的服务。 Ceph 0.59 及后续版本的 slurp 机制取消了，因为所有服务共享一个 Paxos \
-例程。
-
-
-.. deprecated:: 0.58
-
-``paxos max join drift``
-
-:描述: 在我们首次同步监视器数据存储前， Paxos 迭代的最大数量。
-:类型: Integer
-:默认值: ``10``
-
-
-``mon slurp timeout``
-
-:描述: 监视器进程终止后、自举前，要等待多长时间才开始发出显式修复通告。
-:类型: Double
-:默认值: ``10.0``
-
-
-``mon slurp bytes``
-
-:描述: 显式修复消息尺寸限制。
-:类型: 32-bit Integer
-:默认值: ``256 * 1024``
-
-
 .. index:: Ceph Monitor; clock
 
 时钟
 ----
 
-Ceph 的守护进程会相互传递关键消息，这些消息必须在达到超时阀值前处理掉。如果 \
-Ceph 监视器时钟不同步，就可能出现多种异常情况。例如：
+Ceph 的守护进程会相互传递关键消息，这些消息必须在达到超时阀值\
+前处理掉。如果 Ceph 监视器时钟不同步，就可能出现多种异常情况。\
+例如：
 
 - 守护进程忽略了收到的消息（如时间戳过时了）
 - 消息未及时收到时，超时触发得太快或太晚。
 
-详情见\ `监视器存储同步`_\ 和 `Slurp`_ 。
+详情见\ `监视器存储同步`_\ 。
 
 
-.. tip:: 你\ **应该**\ 在所有监视器主机上安装 NTP 以确保监视器集群的时钟同步。
+.. tip:: 你\ **应该**\ 在所有监视器主机上安装 NTP 以确保监视器\
+   集群的时钟同步。
 
-时钟漂移即使尚未造成损坏也能被 NTP 感知， Ceph 的时钟漂移或时钟偏差警告即使\
-在 NTP 同步水平合理时也会被触发。提高时钟漂移值有时候尚可容忍，然而很多因素\
-（像载荷、网络延时、覆盖默认超时值和\ `监视器存储同步`_\ 选项）都能在不降低 \
-Paxos 保证级别的情况下影响可接受的时钟漂移水平。
+时钟漂移即使尚未造成损坏也能被 NTP 感知， Ceph 的时钟漂移或时\
+钟偏差警告即使在 NTP 同步水平合理时也会被触发。提高时钟漂移值\
+有时候尚可容忍，然而很多因素（像载荷、网络延时、覆盖默认超时值\
+和\ `监视器存储同步`_\ 选项）都能在不降低 Paxos 保证级别的情况\
+下影响可接受的时钟漂移水平。
 
 Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
@@ -633,11 +842,20 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 ``mon timecheck interval``
 
-:描述: 和 leader 的时间偏移检查（时钟漂移检查）。单位为秒。
+:描述: 和 Leader 的时间偏移检查（时钟漂移检查）。单位为秒。
 :类型: Float
 :默认值: ``300.0``
 
 
+``mon timecheck skew interval``
+
+:描述: 时间检查间隔（时钟漂移检查），单位为秒。出现时间偏差时，
+       Leader 间隔多久检查一次。
+:类型: Float
+:默认值: ``30.0``
+
+
+.. Client
 
 客户端
 ------
@@ -721,6 +939,8 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 关于存储池标记详情请看\ `存储池标记值`_\ 。
 
 
+.. Miscellaneous
+
 杂项
 ====
 
@@ -748,7 +968,8 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 ``mon subscribe interval``
 
-:描述: 同步的刷新间隔（秒），同步机制允许获取集群运行图和日志信息。
+:描述: 同步的刷新间隔（秒），同步机制允许获取集群运行图和日志\
+       信息。
 :类型: Double
 :默认值: ``300``
 
@@ -783,13 +1004,12 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 ``mon osd prime pg temp``
 
-:描述: 当一个先前处于 out 状态的 OSD 回到集群时，捡回（
-       prime ）还是不捡回包含先前各 OSD 的 PGMap 。设置为
-       ``true`` 时，客户端们会继续使用先前的 OSD 们，直到\
-       新增了 OSD ，因为原来的 PG 照旧互联。
+:描述: 当一个先前处于 out 状态的 OSD 回到集群时，捡回（prime ）\
+       还是不捡回包含先前各 OSD 的 PGMap 。设置为 ``true`` 时，\
+       客户端们会继续使用先前的 OSD 们，直到新增了 OSD ，因为\
+       原来的 PG 照旧互联。
 
        .. note::
-       
           译者注：原文的 priming 翻译为“捡回”。因为此字意为：\
           底漆、启动、起爆剂、点火装置等，我的理解是，旧版的
           PGMap 已经一层层盖着压箱底了，新的本应从当前运行的\
@@ -802,11 +1022,127 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 ``mon osd prime pg temp max time``
 
-:描述: 当某一先前状态为 out 的 OSD 回到集群、监视器在捡回
-       PGMap 时尝试的最大时间，单位为秒。
-
+:描述: 当某一先前状态为 out 的 OSD 回到集群、监视器在捡回 PGMap
+       时尝试的最大时间，单位为秒。
 :类型: Float
 :默认: ``0.5``
+
+
+``mon osd prime pg temp max time estimate``
+
+:描述: 在每个 PG 上所花费时间的最大估值，超过此值我们就并行地\
+       捡回所有 PG 。
+:类型: Float
+:默认值: ``0.25``
+
+
+``mon osd allow primary affinity``
+
+:描述: 允许在 osdmap 里设置 ``primary_affinity`` 。
+:类型: Boolean
+:默认值: False
+
+
+``mon osd pool ec fast read``
+
+:描述: 是否打开存储池的速读功能。如果新建纠删码存储池时没有指定
+       ``fast_read`` ，此值将是默认配置。
+:类型: Boolean
+:默认值: False
+
+
+``mon mds skip sanity``
+
+:描述: 跳过 FSMap 的安全性检查确认（遇到软件缺陷时还想继续）。\
+       如果 FSMap 健全性检查失败，监视器会终止，但我们可以让它\
+       继续，启用此选项即可。
+:类型: Boolean
+:默认值: False
+
+
+``mon max mdsmap epochs``
+
+:描述: 一次提议最多可清理多少 mdsmap 时间结。
+:类型: Integer
+:默认值: 500
+
+
+``mon config key max entry size``
+
+:描述: config-key 条目的最大尺寸，单位为字节。
+:类型: Integer
+:默认值: 4096
+
+
+``mon scrub interval``
+
+:描述: 监视器洗刷（对比存储的与根据存储的键计算出的两个校验和）\
+       其存储的频率，单位为秒。
+:类型: Integer
+:默认值: 3600*24
+
+
+``mon scrub max keys``
+
+:描述: 每次最多洗刷多少个键。
+:类型: Integer
+:默认值: 100
+
+
+``mon compact on start``
+
+:描述: ``ceph-mon`` 启动时压缩监视器存储所用的数据库。如果日常\
+       压缩失效，手动压缩有助于缩小监视器的数据库、并提升其性\
+       能。
+:类型: Boolean
+:默认值: False
+
+
+``mon compact on bootstrap``
+
+:描述: 自举引导期间压缩监视器所用的数据库。监视器完成自举引导\
+       后开始互相探测，以建立法定人数；如果加入法定人数超时，\
+       它会从头开始自举引导。
+:类型: Boolean
+:默认值: False
+
+
+``mon compact on trim``
+
+:描述: 清理旧的状态存档时也压缩这个前缀（包括 paxos ）。
+:类型: Boolean
+:默认值: True
+
+
+``mon cpu threads``
+
+:描述: 监视器执行 CPU 密集型工作时使用的线程数。
+:类型: Boolean
+:默认值: True
+
+
+``mon osd mapping pgs per chunk``
+
+:描述: 我们按块计算归置组到 OSD 的映射关系。这个选项指定了每个\
+       块的归置组数量。
+:类型: Integer
+:默认值: 4096
+
+
+``mon osd max split count``
+
+:描述: 每个“卷入的” OSD 上的 PG 数最大是多少才允许拆分。我们增\
+       加某个存储池的 ``pg_num`` 时，所有供养着此存储池的 OSD \
+       里的归置组都会被拆分。我们想尽可能避免 PG 拆分数量倍增。
+:类型: Integer
+:默认值: 300
+
+
+``mon session timeout``
+
+:描述: 会话闲置时间超过此限制，监视器就会终结这个不活跃的会话。
+:类型: Integer
+:默认值: 300
 
 
 .. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)

@@ -204,77 +204,106 @@ To re-enable a suspended user, specify ``user enable`` and the user ID. ::
   密钥。
 
 
+.. Remove a Subuser
+
 删除子用户
 ----------
 
-你删除子用户的同时，也失去了 Swift 接口的访问方式，但是这个用户还\
-在系统中存在。要删除子用户，可指定 ``subuser rm`` 及子用户 ID ： ::
+你删除子用户的同时，也失去了 Swift 接口的访问方式，但是这个用\
+户还在系统中存在。要删除子用户，可指定 ``subuser rm`` 及子用户
+ID ： ::
 
 	radosgw-admin subuser rm --subuser=johndoe:swift
 
 其它可选操作：
 
-- **清除密钥：** 加 ``--purge-keys`` 选项可清除与此 UID 相关的所有\
-  密钥。
+- **清除密钥：** 加 ``--purge-keys`` 选项可清除与此 UID 相关的\
+  所有密钥。
 
 
-.. _Create a Key:
+.. Add / Remove a Key
 
-创建密钥
---------
+增加、删除密钥
+--------------
 
-To create a key for a user, you must specify ``key create``. For a user, specify
-the user ID and the ``s3`` key type. To create a key for subuser, you must
-specify the subuser ID and the ``swift`` keytype. For example::
+用户和子用户都必须有密钥才能访问 S3 或 Swift 接口。用 S3 访问\
+时，用户需要一个由访问密钥和私钥组成的密钥对；而用 Swift 访问\
+时，通常只需要一个私钥（密码），并且要和相关的用户 ID 一起用才\
+行。你可以创建密钥，并指定或生成访问密钥和/或私钥；也可以删除\
+密钥。相关选项有：
 
-	radosgw-admin key create --subuser=johndoe:swift --key-type=swift --gen-secret
+- ``--key-type=<type>`` 指定密钥类型，选项有： s3 、 swift ；
+- ``--access-key=<key>`` 手动指定 S3 的访问密钥；
+- ``--secret-key=<key>`` 手动指定 S3 私钥或者 Swift 私钥；
+- ``--gen-access-key`` 自动生成 S3 访问密钥；
+- ``--gen-secret`` 自动生成一个 S3 私钥或 Swift 私钥。
+
+给用户人为指定 S3 密钥对的实例如下： ::
+
+	radosgw-admin key create --uid=foo --key-type=s3 --access-key fooAccessKey --secret-key fooSecretKey
 
 .. code-block:: javascript
 
-  { "user_id": "johndoe",
+  { "user_id": "foo",
     "rados_uid": 0,
-    "display_name": "John Doe",
-    "email": "john@example.com",
+    "display_name": "foo",
+    "email": "foo@example.com",
+    "suspended": 0,
+    "keys": [
+      { "user": "foo",
+        "access_key": "fooAccessKey",
+        "secret_key": "fooSecretKey"}],
+  }
+
+请注意，你可以给一个用户创建多个 S3 密钥对。
+
+给一个子用户配置指定的 swift 私钥： ::
+
+	radosgw-admin key create --subuser=foo:bar --key-type=swift --secret-key barSecret
+
+.. code-block:: javascript
+
+  { "user_id": "foo",
+    "rados_uid": 0,
+    "display_name": "foo",
+    "email": "foo@example.com",
     "suspended": 0,
     "subusers": [
-       { "id": "johndoe:swift",
+       { "id": "foo:bar",
+         "permissions": "full-control"}],
+    "swift_keys": [
+      { "user": "foo:bar",
+        "secret_key": "asfghjghghmgm"}]}
+
+请注意，一个子用户只能有一个 swift 私钥。
+
+如果将子用户与 S3 密钥对关联，那么这些子用户也能用于 S3 API::
+
+	radosgw-admin key create --subuser=foo:bar --key-type=s3 --access-key barAccessKey --secret-key barSecretKey
+
+.. code-block:: javascript
+
+  { "user_id": "foo",
+    "rados_uid": 0,
+    "display_name": "foo",
+    "email": "foo@example.com",
+    "suspended": 0,
+    "subusers": [
+       { "id": "foo:bar",
          "permissions": "full-control"}],
     "keys": [
-      { "user": "johndoe",
-        "access_key": "QFAMEDSJP5DEKJO0DDXY",
-        "secret_key": "iaSFLDVvDdQt6lkNzHyW4fPLZugBAI1g17LO0+87"}],
-    "swift_keys": [
-      { "user": "johndoe:swift",
-        "secret_key": "E9T2rUZNu2gxUjcwUBO8n\/Ev4KX6\/GprEuH4qhu1"}]}
+      { "user": "foo:bar",
+        "access_key": "barAccessKey",
+        "secret_key": "barSecretKey"}],
+  }
 
+要删除一个 S3 密钥对，需指定访问密钥。 ::
 
-.. _Add / Remove Access Keys:
+	radosgw-admin key rm --uid=foo --key-type=s3 --access-key=fooAccessKey
 
-增加、删除访问密钥
-------------------
+删除 swift 私钥。 ::
 
-Users and subusers must have access keys to use the S3 and Swift
-interfaces. When you create a user or subuser and you do not specify 
-an access key and secret, the key and secret get generated automatically. 
-You may create a key and either specify or generate the access key and/or
-secret. You may also remove an access key and secret. Options include:
-
-
-- ``--secret=<key>`` specifies a secret key (e.g,. manually generated).
-- ``--gen-access-key`` generates random access key (for S3 user by default).
-- ``--gen-secret`` generates a random secret key.
-- ``--key-type=<type>`` specifies a key type. The options are: swift, s3
-
-
-To add a key, specify the user. ::
-
-	radosgw-admin key create --uid=johndoe --key-type=s3 --gen-access-key --gen-secret
-
-You may also specify a key and a secret.
-
-To remove an access key, specify the user. :: 
-
-	radosgw-admin key rm --uid=johndoe
+	radosgw-admin key rm -subuser=foo:bar --key-type=swift
 
 
 .. _Add / Remove Admin Capabilities:
@@ -391,7 +420,7 @@ specific quota attribute check is disabled.
 ----------------
 
 You may access each user's quota settings via the user information
-API. To read user quota setting information with the CLI interface, 
+API. To read user quota setting information with the CLI interface,
 execute the following::
 
 	radosgw-admin user info --uid=<uid>

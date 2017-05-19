@@ -27,4 +27,4 @@ Apache 的步骤不再需要了。
 
 .. _存储集群快速入门: ../quick-ceph-deploy
 .. _RGW 管理手册: ../../radosgw/admin
-.. _Ceph 对象网关的配置: ../../radosgw/config
+.. _Ceph 对象网关的配置: ../../radosgw/config-fcgi

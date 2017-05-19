@@ -1,0 +1,252 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>用 BlkKin 最终 Ceph &mdash; Ceph Documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="top" title="Ceph Documentation" href="../../" />
+    
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="blkkin-ceph">
+<span id="tracing-ceph-with-blkkin"></span><h1>用 BlkKin 最终 Ceph<a class="headerlink" href="#blkkin-ceph" title="Permalink to this headline">¶</a></h1>
+<p>Ceph can use Blkin, a library created by Marios Kogias and others,
+which enables tracking a specific request from the time it enters
+the system at higher levels till it is finally served by RADOS.</p>
+<p>In general, Blkin implements the <a class="reference external" href="http://static.googleusercontent.com/media/research.google.com/el//pubs/archive/36356.pdf">Dapper</a> tracing semantics
+in order to show the causal relationships between the different
+processing phases that an IO request may trigger. The goal is an
+end-to-end visualisation of the request&#8217;s route in the system,
+accompanied by information concerning latencies in each processing
+phase. Thanks to LTTng this can happen with a minimal overhead and
+in realtime. The LTTng traces can then be visualized with Twitter&#8217;s
+<a class="reference external" href="http://twitter.github.io/zipkin/">Zipkin</a>.</p>
+<div class="section" id="installing-blkin">
+<h2>Installing Blkin<a class="headerlink" href="#installing-blkin" title="Permalink to this headline">¶</a></h2>
+<p>You can install Markos Kogias&#8217; upstream <a class="reference external" href="https://github.com/marioskogias/blkin">Blkin</a> by hand.:</p>
+<div class="highlight-python"><pre>cd blkin/
+make &amp;&amp; make install</pre>
+</div>
+<p>or build distribution packages using <a class="reference external" href="https://github.com/agshew/blkin">DistroReadyBlkin</a>, which also comes with
+pkgconfig support. If you choose the latter, then you must generate the
+configure and make files first.:</p>
+<div class="highlight-python"><pre>cd blkin
+autoreconf -i</pre>
+</div>
+</div>
+<div class="section" id="configuring-ceph-with-blkin">
+<h2>Configuring Ceph with Blkin<a class="headerlink" href="#configuring-ceph-with-blkin" title="Permalink to this headline">¶</a></h2>
+<p>If you built and installed Blkin by hand, rather than building and
+installing packages, then set these variables before configuring
+Ceph.:</p>
+<div class="highlight-python"><pre>export BLKIN_CFLAGS=-Iblkin/
+export BLKIN_LIBS=-lzipkin-cpp</pre>
+</div>
+<p>Since there are separate lttng and blkin changes to Ceph, you may
+want to configure with something like:</p>
+<div class="highlight-python"><pre>./configure --with-blkin --without-lttng --with-debug</pre>
+</div>
+</div>
+<div class="section" id="testing-blkin">
+<h2>Testing Blkin<a class="headerlink" href="#testing-blkin" title="Permalink to this headline">¶</a></h2>
+<p>It&#8217;s easy to test Ceph&#8217;s Blkin tracing. Let&#8217;s assume you don&#8217;t have
+Ceph already running, and you compiled Ceph with Blkin support but
+you did&#8217;t install it. Then launch Ceph with the <tt class="docutils literal"><span class="pre">vstart.sh</span></tt> script
+in Ceph&#8217;s src directgory so you can see the possible tracepoints.:</p>
+<div class="highlight-python"><pre>cd src
+OSD=3 MON=3 RGW=1 ./vstart.sh -n
+lttng list --userspace</pre>
+</div>
+<p>You&#8217;ll see something like the following::</p>
+<div class="highlight-python"><pre>UST events:
+-------------
+PID: 8987 - Name: ./ceph-osd
+      zipkin:timestamp (loglevel: TRACE_WARNING (4)) (type: tracepoint)
+      zipkin:keyval (loglevel: TRACE_WARNING (4)) (type: tracepoint)
+      ust_baddr_statedump:soinfo (loglevel: TRACE_DEBUG_LINE (13)) (type: tracepoint)
+
+PID: 8407 - Name: ./ceph-mon
+      zipkin:timestamp (loglevel: TRACE_WARNING (4)) (type: tracepoint)
+      zipkin:keyval (loglevel: TRACE_WARNING (4)) (type: tracepoint)
+      ust_baddr_statedump:soinfo (loglevel: TRACE_DEBUG_LINE (13)) (type: tracepoint)
+
+...</pre>
+</div>
+<p>Next, stop Ceph so that the tracepoints can be enabled.:</p>
+<div class="highlight-python"><pre>./stop.sh</pre>
+</div>
+<p>Start up an LTTng session and enable the tracepoints.:</p>
+<div class="highlight-python"><pre>lttng create blkin-test
+lttng enable-event --userspace zipkin:timestamp
+lttng enable-event --userspace zipkin:keyval
+lttng start</pre>
+</div>
+<p>Then start up Ceph again.:</p>
+<div class="highlight-python"><pre>OSD=3 MON=3 RGW=1 ./vstart.sh -n</pre>
+</div>
+<p>You may want to check that ceph is up.:</p>
+<div class="highlight-python"><pre>./ceph status</pre>
+</div>
+<p>Now put something in usin rados, check that it made it, get it back, and remove it.:</p>
+<div class="highlight-python"><pre>./rados mkpool test-blkin
+./rados put test-object-1 ./vstart.sh --pool=test-blkin
+./rados -p test-blkin ls
+./ceph osd map test-blkin test-object-1
+./rados get test-object-1 ./vstart-copy.sh --pool=test-blkin
+md5sum vstart*
+./rados rm test-object-1 --pool=test-blkin</pre>
+</div>
+<p>You could also use the example in <tt class="docutils literal"><span class="pre">examples/librados/</span></tt> or <tt class="docutils literal"><span class="pre">rados</span> <span class="pre">bench</span></tt>.</p>
+<p>Then stop the LTTng session and see what was collected.:</p>
+<div class="highlight-python"><pre>lttng stop
+lttng view</pre>
+</div>
+<p>You&#8217;ll see something like::</p>
+<div class="highlight-python"><pre>[13:09:07.755054973] (+?.?????????) scruffy zipkin:timestamp: { cpu_id = 5 }, { trace_name = "Main", service_name = "MOSDOp", port_no = 0, ip = "0.0.0.0", trace_id = 7492589359882233221, span_id = 2694140257089376129, parent_span_id = 0, event = "Message allocated" }
+[13:09:07.755071569] (+0.000016596) scruffy zipkin:keyval: { cpu_id = 5 }, { trace_name = "Main", service_name = "MOSDOp", port_no = 0, ip = "0.0.0.0", trace_id = 7492589359882233221, span_id = 2694140257089376129, parent_span_id = 0, key = "Type", val = "MOSDOp" }
+[13:09:07.755074217] (+0.000002648) scruffy zipkin:keyval: { cpu_id = 5 }, { trace_name = "Main", service_name = "MOSDOp", port_no = 0, ip = "0.0.0.0", trace_id = 7492589359882233221, span_id = 2694140257089376129, parent_span_id = 0, key = "Reqid", val = "client.4126.0:1" }
+...</pre>
+</div>
+</div>
+<div class="section" id="install-zipkin">
+<h2>Install  Zipkin<a class="headerlink" href="#install-zipkin" title="Permalink to this headline">¶</a></h2>
+<p>One of the points of using Blkin is so that you can look at the traces
+using Zipkin. Users should run Zipkin as a tracepoints collector and
+also a web service, which means users need to run three services,
+zipkin-collector, zipkin-query and zipkin-web.</p>
+<p>Download Zipkin Package:</p>
+<div class="highlight-python"><pre>wget https://github.com/twitter/zipkin/archive/1.1.0.tar.gz
+tar zxf 1.1.0.tar.gz
+cd zipkin-1.1.0
+bin/collector cassandra &amp;
+bin/query cassandra &amp;
+bin/web &amp;</pre>
+</div>
+<p>Check Zipkin:</p>
+<div class="highlight-python"><pre>bin/test
+Browse http://${zipkin-web-ip}:8080</pre>
+</div>
+</div>
+<div class="section" id="show-ceph-s-blkin-traces-in-zipkin-web">
+<h2>Show Ceph&#8217;s Blkin Traces in Zipkin-web<a class="headerlink" href="#show-ceph-s-blkin-traces-in-zipkin-web" title="Permalink to this headline">¶</a></h2>
+<p>Blkin provides a script which translates lttng result to Zipkin
+(Dapper) semantics.</p>
+<p>Send lttng data to Zipkin:</p>
+<div class="highlight-python"><pre>python3 babeltrace_zipkin.py ${lttng-traces-dir}/${blkin-test}/ust/uid/0/64-bit/ -p ${zipkin-collector-port(9410 by default)} -s ${zipkin-collector-ip}</pre>
+</div>
+<p>Example:</p>
+<div class="highlight-python"><pre>python3 babeltrace_zipkin.py ~/lttng-traces-dir/blkin-test-20150225-160222/ust/uid/0/64-bit/ -p 9410 -s 127.0.0.1</pre>
+</div>
+<p>Check Ceph traces on webpage:</p>
+<div class="highlight-python"><pre>Browse http://${zipkin-web-ip}:8080
+Click "Find traces"</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../README/">中文版翻译说明</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation-convention/">中文版词语翻译惯例</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../">Ceph Documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    </div>
+  </body>
+</html>

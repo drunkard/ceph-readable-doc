@@ -735,4 +735,4 @@ region 的主域作为二级域。启动 ``radosgw-agent`` 时加上 ``--metadat
 .. _配置参考——region: ../config-ref#regions
 .. _配置参考——域: ../config-ref#zones
 .. _存储池: ../../rados/operations/pools
-.. _简单配置: ../config
+.. _简单配置: ../config-fcgi

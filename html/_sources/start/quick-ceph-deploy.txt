@@ -41,14 +41,12 @@ OSD 守护进程。一旦集群达到 ``active + clean`` 状态，再扩展它�
 创建一集群
 ==========
 
-如果在某些地方碰到麻烦，想从头再来，可以用下列命令清除配置： ::
-
-	ceph-deploy purgedata {ceph-node} [{ceph-node}]
-	ceph-deploy forgetkeys
-
-用下列命令可以连 Ceph 安装包一起清除。
+如果在某些地方碰到麻烦，想从头再来，可以用下列命令清除 Ceph 软\
+件包，并擦除所有数据和配置： ::
 
 	ceph-deploy purge {ceph-node} [{ceph-node}]
+	ceph-deploy purgedata {ceph-node} [{ceph-node}]
+	ceph-deploy forgetkeys
 
 如果执行了 ``purge`` ，你必须重新安装 Ceph 。
 

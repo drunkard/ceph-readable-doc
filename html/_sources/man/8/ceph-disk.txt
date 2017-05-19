@@ -79,6 +79,13 @@ Ceph OSD 。可单独使用，也可由 :program:`ceph-deploy` 或
 ``--help`` 选项显示，例如 ``ceph-disk prepare --help`` 。
 
 
+已知缺陷
+========
+
+请参考 :doc:`ceph-detect-init <ceph-detect-init>`\(8) 里的\
+``已知缺陷``\ 一节。
+
+
 使用范围
 ========
 

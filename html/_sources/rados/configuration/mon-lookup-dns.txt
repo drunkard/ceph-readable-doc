@@ -16,6 +16,13 @@ Looking op Monitors through DNS
 *mon_dns_srv_name* 配置）的 TCP 服务。
 
 
+``mon dns srv name``
+
+:描述: 查询监视器主机、地址时，要向 DNS 查询的服务名称。
+:类型: String
+:默认值: ``ceph-mon``
+
+
 实例
 ----
 

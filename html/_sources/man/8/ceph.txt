@@ -13,7 +13,7 @@
 
 | **ceph** **compact**
 
-| **ceph** **config-key** [ *del* | *exists* | *get* | *list* | *put* ] ...
+| **ceph** **config-key** [ *del* | *exists* | *get* | *list* | *dump* | *put* ] ...
 
 | **ceph** **daemon** *<name>* \| *<path>* *<command>* ...
 
@@ -196,6 +196,12 @@ config-key
 用法： ::
 
 	ceph config-key list
+
+子命令 ``dump`` 倒出配置中的所有键及其值。
+
+用法： ::
+
+	ceph config-key dump
 
 子命令 ``put`` 上传配置密钥及其内容。
 

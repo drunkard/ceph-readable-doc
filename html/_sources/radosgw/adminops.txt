@@ -16,6 +16,10 @@ request and defaults to JSON if not specified.
 
 请求带宽利用率信息。
 
+注意：此功能默认是禁用的，可以在 ceph.conf 里的适当段落加上
+``rgw enable usage log = true`` 来启用，更改配置后需重启
+radosgw 进程才能生效。
+
 :caps: usage=read
 
 语法
@@ -165,8 +169,11 @@ TBD.
 裁剪使用率日志
 ==============
 
-Remove usage information. With no dates specified, removes all usage
-information.
+删除使用率信息。若未指定日期，会删除所有使用率信息。
+
+注意：此功能默认是禁用的，可以在 ceph.conf 里的适当段落加上
+``rgw enable usage log = true`` 来启用，更改配置后需重启
+radosgw 进程才能生效。
 
 :caps: usage=write
 
@@ -222,8 +229,7 @@ TBD.
 查看用户信息
 ============
 
-Get user information. If no user is specified returns the list of all users along with suspension
-information.
+查看用户信息。
 
 :caps: users=read
 

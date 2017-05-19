@@ -1,3 +1,5 @@
+.. _Pool, PG and CRUSH Config Reference:
+
 =================================
  存储池、归置组和 CRUSH 配置参考
 =================================
@@ -34,6 +36,80 @@
 :描述: 多长时间无响应的 PG 才认为它卡住了。
 :类型: 32-bit Integer
 :默认值: ``300``
+
+
+``mon pg min inactive``
+
+:描述: 如果处于不活跃状态的 PG 数量超过 ``mon_pg_stuck_threshold``
+       选项配置的值，就向集群日志发出一个 ``HEALTH_ERR`` 。负\
+       数表示禁用，永远别进入 ERR 状态。
+:类型: Integer
+:默认值: ``1``
+
+
+``mon pg warn min per osd``
+
+:描述: 如果每个 OSD 上的 PG 数量平均值低于此数值，就向集群日志\
+       发出一个 ``HEALTH_WARN`` 。负数禁用此功能。
+:类型: Integer
+:默认值: ``30``
+
+
+``mon pg warn max per osd``
+
+:描述: 如果每个 OSD 上的 PG 数量平均值超过此数值，就向集群日志\
+       发出一个 ``HEALTH_WARN`` 。负数禁用此功能。
+:类型: Integer
+:默认值: ``300``
+
+
+``mon pg warn min objects``
+
+:描述: 集群内的对象总数小于此数值时不发出警告。
+:类型: Integer
+:默认值: ``1000``
+
+
+``mon pg warn min pool objects``
+
+:描述: 存储池内对象数小于此数值时，不发出有关此存储池的警告。
+:类型: Integer
+:默认值: ``1000``
+
+
+``mon pg check down all threshold``
+
+:描述: 倒下的 OSD 百分比阈值，超过此值我们会检查所有 PG ，看有\
+       没有掉队的。
+:类型: Float
+:默认值: ``0.5``
+
+
+``mon pg warn max object skew``
+
+:描述: 如果某一个存储池的平均对象数大于全部存储池的 \
+       ``mon pg warn max object skew`` 倍，就向集群日志发出一个
+       ``HEALTH_WARN`` 。负数禁用此功能。
+:类型: Float
+:默认值: ``10``
+
+
+``mon delta reset interval``
+
+:描述: 多少秒没活动我们就把 pg 增量重置为 0 。我们会跟踪各存储\
+       池已用空间的增量，借此，我们可以更容易地理解恢复进度或\
+       者缓存层的性能；但是，如果没收到某个存储池的活动情况报\
+       告，我们会简单粗暴地重置与它相关的增量历史。
+:类型: Integer
+:默认值: ``10``
+
+
+``mon osd max op age``
+
+:描述: 最大操作时长（最好设置为 2 的幂），一个请求被阻塞的时间\
+       超过此值就会发出 ``HEALTH_WARN`` 告警。
+:类型: Float
+:默认值: ``32.0``
 
 
 ``osd pg bits``

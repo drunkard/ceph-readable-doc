@@ -454,7 +454,15 @@
 
 删除一个桶： ::
 
-        $ radosgw-admin bucket unlink --bucket=foo
+	$ radosgw-admin bucket rm --bucket=foo
+
+把桶链接到指定用户： ::
+
+	$ radosgw-admin bucket link --bucket=foo --bucket_id=<bucket id> --uid=johnny
+
+切断桶与指定用户的链接： ::
+
+        $ radosgw-admin bucket unlink --bucket=foo --uid=johnny
 
 显示一个桶从 2012 年 4 月 1 日起的日志： ::
 

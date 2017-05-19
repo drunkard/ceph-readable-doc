@@ -64,36 +64,48 @@ OSD 的状态标记为 ``down`` 、并上报给监视器，它会更新 Ceph 集
 
 .. index:: OSD down report
 
+.. OSDs Report Down OSDs
+
 OSD 报告死亡 OSD
 ================
 
-默认情况下，一个 OSD 必须向监视器报告三次另一个 OSD ``down`` \
-的消息，监视器才会认为那个被报告的 OSD ``down`` 了；默认情况\
-下，只要有一个 OSD 报告另一个 OSD 挂的消息即可， Ceph 配置文件\
-里 ``[mon]`` 段下的 ``mon osd min down reporters`` 可用来更改\
-必需的 OSD 数量（ v0.62 之前的 ``osd min down reporters`` ），\
-或者运行时更改。
+在默认配置下，必须有两个来自不同主机的 Ceph OSD 守护进程向监视\
+器报告了另一个 OSD 守护进程倒下（ ``down`` ）的消息，此时监视\
+器才会确认那个报告所指的 OSD 倒下了。但是有可能报告这个错误的\
+所有 OSD 都位于同一机架上、连着一个有问题的交换机，导致它们与\
+另一个 OSD 的连接有问题；为避免此类误报，我们把报告这个错误的\
+互联点们当作一个代理点，代理这部分滞后情况差不多的嫌疑“子集群”\
+（相对于整个集群）。很明显，它不可能百发百中，但是遇到了就能帮\
+我们把只需轻微修正的控制在遇挫系统的一个子集内。
+``mon osd reporter subtree level`` 选项可用于分组互联点，也就\
+是按照它们在 CRUSH 图里的共同父级把这些节点分组为“子集群”；按\
+默认配置，只需要有两个来自不同子树的报告就可以证明另一个 OSD \
+守护进程倒下了。你可以更改来自独立子树的报告者数量、以及要求的\
+共同父级类型（向 Ceph 监视器报告某个 OSD 倒下时会被采纳），在 \
+Ceph 配置文件的 ``[mon]`` 段下增加 ``mon osd min down reporters``
+和 ``mon osd reporter subtree level`` 即可，或者更改运行时配置。
 
 
-.. ditaa:: +---------+     +---------+
-           |  OSD 1  |     | Monitor |
-           +---------+     +---------+
-                |               |
-                | OSD 2 Is Down |
-                |-------------->|
-                |               |
-                | OSD 2 Is Down |
-                |-------------->|
-                |               |
-                | OSD 2 Is Down |
-                |-------------->|
-                |               |
-                |               |----------+ Mark
-                |               |          | OSD 2
-                |               |<---------+ Down
+.. ditaa:: +---------+     +---------+      +---------+
+           |  OSD 1  |     |  OSD 2  |      | Monitor |
+           +---------+     +---------+      +---------+
+                |               |                |
+                | OSD 3 Is Down |                |
+                |---------------+--------------->|
+                |               |                |
+                |               |                |
+                |               | OSD 3 Is Down  |
+                |               |--------------->|
+                |               |                |
+                |               |                |
+                |               |                |---------+ Mark
+                |               |                |         | OSD 3
+                |               |                |<--------+ Down
 
 
 .. index:: peering failure
+
+.. OSDs Report Peering Failure
 
 OSD 报告互联失败
 ================
@@ -128,15 +140,19 @@ OSD 报告互联失败
 
 .. index:: OSD status
 
+.. OSDs Report Their Status
+
 OSD 报告自己的状态
 ==================
 
-如果一 OSD 在 ``mon osd report timeout`` 时间内没向监视器报告过，监视器就认为\
-它 ``down`` 了。在 OSD 守护进程会向监视器报告某些事件，如某次操作失败、归置组\
-状态变更、 ``up_thru`` 变更、或它将在 5 秒内启动。你可以设置 ``[osd]`` 下的 \
-``osd mon report interval min`` 来更改最小报告间隔，或在运行时更改。 OSD 守护\
-进程每 120 秒会向监视器报告其状态，不论是否有值得报告的事件。在 ``[osd]`` 段\
-下设置 ``osd mon report interval max`` 可更改OSD报告间隔，或运行时更改。
+如果一 OSD 在 ``mon osd report timeout`` 时间内没向监视器报告\
+过，监视器就认为它 ``down`` 了。在 OSD 守护进程会向监视器报告\
+某些事件，如某次操作失败、归置组状态变更、 ``up_thru`` 变更、\
+或它将在 5 秒内启动。你可以设置 ``[osd]`` 下的 \
+``osd mon report interval min`` 来更改最小报告间隔，或在运行时\
+更改。 OSD 守护进程每 120 秒会向监视器报告其状态，不论是否有值\
+得报告的事件。在 ``[osd]`` 段下设置 ``osd mon report interval max``
+可更改 OSD 报告间隔，或运行时更改。
 
 
 .. ditaa:: +---------+          +---------+
@@ -218,6 +234,15 @@ OSD 报告自己的状态
 :默认值: ``0.3``
 
 
+``mon osd laggy max interval``
+
+:描述: 滞后量中 ``laggy_interval`` 的最大值，单位为秒。监视器\
+       用一种自适应方法来评估某个 OSD 的 ``laggy_interval`` ，\
+       计算这个 OSD 的宽限时间要用到此值。
+:类型: Integer
+:默认值: 300
+
+
 ``mon osd adjust heartbeat grace``
 
 :描述: 设置为 ``true`` 时， Ceph 将根据滞后量伸缩。
@@ -283,7 +308,16 @@ OSD 报告自己的状态
 
 :描述: 确定一 OSD 状态为 ``down`` 的最少报告来源 OSD 数。
 :类型: 32-bit Integer
-:默认值: ``1``
+:默认值: ``2``
+
+
+``mon osd reporter subtree level``
+
+:描述: 哪个父级桶内的报告者可计算在内。 OSD 们如果发现与它互联\
+       的 OSD 没响应了，会向监视器报告；监视器会把报告所指的
+       OSD 标记为 out 、过了宽限期再标记为 down 。
+:类型: String
+:默认值: ``host``
 
 
 .. index:: OSD hearbeat

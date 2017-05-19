@@ -95,5 +95,5 @@
 其它管理和 API 方面的详情可参考 `Ceph 对象网关的配置`_\ 手册。
 
 
-.. _Ceph 对象网关的配置: ../../radosgw/config
+.. _Ceph 对象网关的配置: ../../radosgw/config-fcgi
 .. _飞前检查: ../quick-start-preflight
