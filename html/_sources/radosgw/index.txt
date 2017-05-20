@@ -51,6 +51,7 @@ API 写、然后用另一个检出。
    多租户 <multitenancy>
    压缩 <compression>
    服务器端加密 <encryption>
+   桶策略 <bucketpolicy>
    RADOS 中的数据布局 <layout>
    升级到 Jewel 的早期版本 <upgrade_to_jewel>
    troubleshooting

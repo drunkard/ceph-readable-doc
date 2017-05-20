@@ -33,7 +33,8 @@
         自举引导
 
     bucket
-        桶
+    bucket policy
+        桶、桶策略
 
     clock drift
         时钟漂移
@@ -308,6 +309,11 @@
     stray
         an OSD who is not a member of the current acting set, but has not yet
         been told that it can delete its copies of a particular placement group.
+
+    string interpolation
+        字符串插值， https://en.wikipedia.org/wiki/String_interpolation
+
+        即把字符串替换成同名变量的值。
 
     subuser
         (Swift API) 子用户

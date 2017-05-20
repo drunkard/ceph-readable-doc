@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>把 RGW 升级到 Jewel 版本 10.2.0 、 10.2.1 、 10.2.2 和 10.2.3 &mdash; Ceph Documentation</title>
+    <title>桶策略 &mdash; Ceph Documentation</title>
     
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -27,8 +27,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="top" title="Ceph Documentation" href="../../" />
     <link rel="up" title="Ceph 对象网关" href="../" />
-    <link rel="next" title="故障排除" href="../troubleshooting/" />
-    <link rel="prev" title="Rados 网关的数据布局" href="../layout/" />
+    <link rel="next" title="Rados 网关的数据布局" href="../layout/" />
+    <link rel="prev" title="加密" href="../encryption/" />
     
 
   </head>
@@ -43,10 +43,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../troubleshooting/" title="故障排除"
+          <a href="../layout/" title="Rados 网关的数据布局"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../layout/" title="Rados 网关的数据布局"
+          <a href="../encryption/" title="加密"
              accesskey="P">previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../" accesskey="U">Ceph 对象网关</a> &raquo;</li> 
@@ -58,42 +58,109 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="rgw-jewel-10-2-0-10-2-1-10-2-2-10-2-3">
-<h1>把 RGW 升级到 Jewel 版本 10.2.0 、 10.2.1 、 10.2.2 和 10.2.3<a class="headerlink" href="#rgw-jewel-10-2-0-10-2-1-10-2-2-10-2-3" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="bucket-policies">
+<span id="id1"></span><h1>桶策略<a class="headerlink" href="#bucket-policies" title="Permalink to this headline">¶</a></h1>
 <p class="versionadded">
-<span class="versionmodified">New in version Jewel.</span></p>
-<p>把 <a class="reference internal" href="../../glossary/#term-34"><em class="xref std std-term">Ceph 对象网关</em></a>升级到 jewel 的早期版本（包括 10.2.3
-）会有问题，本文档给出了必要的恢复步骤。</p>
-<p><a class="reference internal" href="../../glossary/#term-34"><em class="xref std std-term">Ceph 对象网关</em></a>不支持多版本混合部署。</p>
-<div class="section" id="id1">
-<h2>备份旧配置文件<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>rados mkpool .rgw.root.backup
-rados cppool .rgw.root .rgw.root.backup</p>
+<span class="versionmodified">New in version Luminous.</span></p>
+<p>Ceph 对象网关支持部分 Amazon S3 桶策略语义。</p>
+<div class="section" id="id2">
+<h2>创建和删除<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>桶策略可通过标准的 S3 操作管理，而不是用 radosgw-admin 。</p>
+<p>比如，用 s3cmd 可以这样设置或删除策略：</p>
+<div class="highlight-python"><pre>$ cat &gt; examplepol
+{
+    "Version": "2012-10-17",
+    "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": ["arn:aws:iam::usfolks:user/fred"]},
+        "Action": "s3PutObjectAcl",
+        "Resource": [
+            "arn:aws:s3:::happybucket/*"
+        ]
+    }]
+}
+
+$ s3cmd setpolicy examplepol s3://happybucket
+$ s3cmd delpolicy s3://happybucket</pre>
 </div>
-<div class="section" id="rgw-region-root-pool">
-<h2><cite>rgw region root pool</cite> 选项不是默认值<a class="headerlink" href="#rgw-region-root-pool" title="Permalink to this headline">¶</a></h2>
-<p>如果已有的多站配置的 <tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">region</span> <span class="pre">root</span> <span class="pre">pool</span></tt> 选项不是默认值，那么新的存储池选项 <tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">zonegroup</span> <span class="pre">root</span> <span class="pre">pool</span></tt> 、
-<tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">period</span> <span class="pre">root</span> <span class="pre">pool</span></tt> 和 <tt class="docutils literal"><span class="pre">rgw</span> <span class="pre">realm</span> <span class="pre">root</span> <span class="pre">pool</span></tt> 也应该一并更改。</p>
 </div>
-<div class="section" id="fix-confgiuration-after-upgrade">
-<span id="id2"></span><h2>升级后更正配置<a class="headerlink" href="#fix-confgiuration-after-upgrade" title="Permalink to this headline">¶</a></h2>
-<p>停止集群内运行的所有 <a class="reference internal" href="../../glossary/#term-34"><em class="xref std std-term">Ceph 对象网关</em></a>。</p>
-<p>运行下面这些命令：</p>
-<div class="highlight-python"><pre>$ rados rmpool .rgw.root
-
-$ radosgw-admin zonegroup get --rgw-zonegroup=default | sed 's/"id":.*/"id": "default",/g' | sed 's/"master_zone.*/"master_zone":"default",/g' &gt; default-zg.json
-
-$ raodsgw-admin zone get --zone-id=default &gt; default-zone.json
-
-$ radosgw-admin realm create --rgw-realm=myrealm
-
-$ radosgw-admin zonegroup set --rgw-zonegroup=default --default &lt; default-zg.json
-
-$ radosgw-admin zone set --rgw-zone=default --default &lt; default-zone.json
-
-$ radosgw-admin period update --commit</pre>
+<div class="section" id="id3">
+<h2>限制<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>现在，我们只支持如下操作：</p>
+<ul class="simple">
+<li>s3:AbortMultipartUpload</li>
+<li>s3:CreateBucket</li>
+<li>s3:DeleteBucketPolicy</li>
+<li>s3:DeleteBucket</li>
+<li>s3:DeleteBucketWebsite</li>
+<li>s3:DeleteObject</li>
+<li>s3:DeleteObjectVersion</li>
+<li>s3:DeleteReplicationConfiguration</li>
+<li>s3:GetAccelerateConfiguration</li>
+<li>s3:GetBucketAcl</li>
+<li>s3:GetBucketCORS</li>
+<li>s3:GetBucketLocation</li>
+<li>s3:GetBucketLogging</li>
+<li>s3:GetBucketNotification</li>
+<li>s3:GetBucketPolicy</li>
+<li>s3:GetBucketRequestPayment</li>
+<li>s3:GetBucketTagging</li>
+<li>s3:GetBucketVersioning</li>
+<li>s3:GetBucketWebsite</li>
+<li>s3:GetLifecycleConfiguration</li>
+<li>s3:GetObjectAcl</li>
+<li>s3:GetObject</li>
+<li>s3:GetObjectTorrent</li>
+<li>s3:GetObjectVersionAcl</li>
+<li>s3:GetObjectVersion</li>
+<li>s3:GetObjectVersionTorrent</li>
+<li>s3:GetReplicationConfiguration</li>
+<li>s3:ListAllMyBuckets</li>
+<li>s3:ListBucketMultiPartUploads</li>
+<li>s3:ListBucket</li>
+<li>s3:ListBucketVersions</li>
+<li>s3:ListMultipartUploadParts</li>
+<li>s3:PutAccelerateConfiguration</li>
+<li>s3:PutBucketAcl</li>
+<li>s3:PutBucketCORS</li>
+<li>s3:PutBucketLogging</li>
+<li>s3:PutBucketNotification</li>
+<li>s3:PutBucketPolicy</li>
+<li>s3:PutBucketRequestPayment</li>
+<li>s3:PutBucketTagging</li>
+<li>s3:PutBucketVersioning</li>
+<li>s3:PutBucketWebsite</li>
+<li>s3:PutLifecycleConfiguration</li>
+<li>s3:PutObjectAcl</li>
+<li>s3:PutObject</li>
+<li>s3:PutObjectVersionAcl</li>
+<li>s3:PutReplicationConfiguration</li>
+<li>s3:RestoreObject</li>
+</ul>
+<p>还不支持对用户、组或角色设置策略。</p>
+<p>我们用 RGW “租户”标识符代替 Amazon 的 12 位帐户 ID 。未来，我们会允许你给租户分配帐户 ID ，但是目前，如果你想使用跨 AWS S3
+和 RGW S3 的策略，在创建用户时还只能把 Amazon 帐户 ID 当作租户
+ID 用。</p>
+<p>在 AWS 下，所有租户共享同一个命名空间，而 RGW 会给每个租户分配它自己的桶命名空间。未来版本可能会增加一个选项来启用像 AWS 一样的“扁平”桶命名空间。在现有版本中，通过 S3 接口访问另一个租户的桶可以按 &#8220;tenant:bucket&#8221; 格式指定。</p>
+<p>在 AWS 中，桶策略可以授权让另一个帐户访问，然后那个帐户的所有者又可以转手授权给他的用户。正因为我们现在还不支持用户、角色和组权限，所以帐户所有者现在还只能直接授权给独立用户，而且给一个帐户授予访问权限的同时也授权给了这个帐户内的所有用户们。</p>
+<p>桶变量现在还不支持字符串插值。</p>
+<p>当前仅支持下面的条件关键字：</p>
+<ul class="simple">
+<li>aws:CurrentTime</li>
+<li>aws:EpochTime</li>
+<li>aws:PrincipalType</li>
+<li>aws:Referer</li>
+<li>aws:SecureTransport</li>
+<li>aws:SourceIp</li>
+<li>aws:UserAgent</li>
+<li>aws:username</li>
+</ul>
+<p>很快会支持更多，因为我们正在与重写过的认证、授权子系统对接。</p>
 </div>
-<p>启动集群内的所有 <a class="reference internal" href="../../glossary/#term-34"><em class="xref std std-term">Ceph 对象网关</em></a>。</p>
+<div class="section" id="swift">
+<h2>Swift<a class="headerlink" href="#swift" title="Permalink to this headline">¶</a></h2>
+<p>在 Swift 下还不能设置策略，但是通过 S3 设置的桶策略一样会影响 Swift 。</p>
+<p>Swift 凭证与策略中定义的 Principal 匹配时，所用的方法因正在使用的后端而异。</p>
 </div>
 </div>
 
@@ -131,14 +198,14 @@ $ radosgw-admin period update --commit</pre>
 <li class="toctree-l2"><a class="reference internal" href="../multitenancy/">多租户</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../compression/">压缩</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../encryption/">服务器端加密</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../bucketpolicy/">桶策略</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../layout/">RADOS 中的数据布局</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="">升级到 Jewel 的早期版本</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">备份旧配置文件</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#rgw-region-root-pool"><cite>rgw region root pool</cite> 选项不是默认值</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#fix-confgiuration-after-upgrade">升级后更正配置</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">桶策略</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">创建和删除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">限制</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#swift">Swift</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../layout/">RADOS 中的数据布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../upgrade_to_jewel/">升级到 Jewel 的早期版本</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
@@ -185,10 +252,10 @@ $ radosgw-admin period update --commit</pre>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../troubleshooting/" title="故障排除"
+          <a href="../layout/" title="Rados 网关的数据布局"
              >next</a> |</li>
         <li class="right" >
-          <a href="../layout/" title="Rados 网关的数据布局"
+          <a href="../encryption/" title="加密"
              >previous</a> |</li>
         <li><a href="../../">Ceph Documentation</a> &raquo;</li>
           <li><a href="../" >Ceph 对象网关</a> &raquo;</li> 

@@ -6,6 +6,8 @@
 Ceph 、然后安装到用户区或者构建二进制包并安装。
 
 
+.. Build Prerequisites
+
 构建依赖
 ========
 
@@ -19,25 +21,28 @@ Ceph 、然后安装到用户区或者构建二进制包并安装。
    此（如 ``libgoogle-perftools4`` ）。
 
 
+.. Build Ceph
+
 构建 Ceph
 =========
 
 Ceph 是用 cmake 构建的，构建时，先进入刚克隆的 Ceph 源码库，然\
 后执行下面的： ::
 
-        cd ceph
-        mkdir build
-        cd build
-        cmake ..
-        make
+    cd ceph
+    ./do_cmake.sh
+    cd build
+    make
 
 .. topic:: 超线程
 
-	你可以根据自己的硬件配置情况用 ``make -j`` 并行编译，\
-        比如在双核处理器上用 ``make -j4`` 可能会编译得快些。
+   你可以根据自己的硬件配置情况用 ``make -j`` 并行编译，比如在\
+   双核处理器上用 ``make -j4`` 可能会编译得快些。
 
 参考\ `安装自构建软件`_\ 把构建好的软件安装到用户区。
 
+
+.. Build Ceph Packages
 
 构建 Ceph 安装包
 ================
