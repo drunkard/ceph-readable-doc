@@ -1,0 +1,712 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Manual Deployment on FreeBSD &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Upgrading Ceph" href="../upgrading-ceph/" />
+    <link rel="prev" title="Manual Deployment" href="../manual-deployment/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../upgrading-ceph/" title="Upgrading Ceph"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../manual-deployment/" title="Manual Deployment"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Installation (Manual)</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/install/manual-freebsd-deployment.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="manual-deployment-on-freebsd">
+<h1>Manual Deployment on FreeBSD<a class="headerlink" href="#manual-deployment-on-freebsd" title="Permalink to this headline">¶</a></h1>
+<p>This a largely a copy of the regular Manual Deployment with FreeBSD specifics.
+The difference lies in two parts: The underlying diskformat, and the way to use
+the tools.</p>
+<p>All Ceph clusters require at least one monitor, and at least as many OSDs as
+copies of an object stored on the cluster.  Bootstrapping the initial monitor(s)
+is the first step in deploying a Ceph Storage Cluster. Monitor deployment also
+sets important criteria for the entire cluster, such as the number of replicas
+for pools, the number of placement groups per OSD, the heartbeat intervals,
+whether authentication is required, etc. Most of these values are set by
+default, so it’s useful to know about them when setting up your cluster for
+production.</p>
+<p>Following the same configuration as <a class="reference external" href="../../start">Installation (Quick)</a>, we will set up a
+cluster with <code class="docutils literal notranslate"><span class="pre">node1</span></code> as  the monitor node, and <code class="docutils literal notranslate"><span class="pre">node2</span></code> and <code class="docutils literal notranslate"><span class="pre">node3</span></code> for
+OSD nodes.</p>
+<p class="ditaa">
+<img src="../../_images/ditaa-b67d58275cae03a5573d36907b437e36df685600.png"/>
+</p>
+<div class="section" id="disklayout-on-freebsd">
+<h2>Disklayout on FreeBSD<a class="headerlink" href="#disklayout-on-freebsd" title="Permalink to this headline">¶</a></h2>
+<p>Current implementation works on ZFS pools</p>
+<ul>
+<li><p class="first">All Ceph data is created in /var/lib/ceph</p>
+</li>
+<li><p class="first">Log files go into /var/log/ceph</p>
+</li>
+<li><p class="first">PID files go into /var/log/run</p>
+</li>
+<li><p class="first">One ZFS pool is allocated per OSD, like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gpart</span> <span class="n">create</span> <span class="o">-</span><span class="n">s</span> <span class="n">GPT</span> <span class="n">ada1</span>
+<span class="n">gpart</span> <span class="n">add</span> <span class="o">-</span><span class="n">t</span> <span class="n">freebsd</span><span class="o">-</span><span class="n">zfs</span> <span class="o">-</span><span class="n">l</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span> <span class="n">ada1</span>
+<span class="n">zpool</span> <span class="n">create</span> <span class="o">-</span><span class="n">m</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">osd</span><span class="o">.</span><span class="mi">1</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span> <span class="n">gpt</span><span class="o">/</span><span class="n">osd</span><span class="o">.</span><span class="mi">1</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Some cache and log (ZIL) can be attached.
+Please note that this is different from the Ceph journals. Cache and log are
+totally transparent for Ceph, and help the filesystem to keep the system
+consistent and help performance.
+Assuming that ada2 is an SSD:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gpart</span> <span class="n">create</span> <span class="o">-</span><span class="n">s</span> <span class="n">GPT</span> <span class="n">ada2</span>
+<span class="n">gpart</span> <span class="n">add</span> <span class="o">-</span><span class="n">t</span> <span class="n">freebsd</span><span class="o">-</span><span class="n">zfs</span> <span class="o">-</span><span class="n">l</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span><span class="o">-</span><span class="n">log</span> <span class="o">-</span><span class="n">s</span> <span class="mi">1</span><span class="n">G</span> <span class="n">ada2</span>
+<span class="n">zpool</span> <span class="n">add</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span> <span class="n">log</span> <span class="n">gpt</span><span class="o">/</span><span class="n">osd</span><span class="o">.</span><span class="mi">1</span><span class="o">-</span><span class="n">log</span>
+<span class="n">gpart</span> <span class="n">add</span> <span class="o">-</span><span class="n">t</span> <span class="n">freebsd</span><span class="o">-</span><span class="n">zfs</span> <span class="o">-</span><span class="n">l</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span><span class="o">-</span><span class="n">cache</span> <span class="o">-</span><span class="n">s</span> <span class="mi">10</span><span class="n">G</span> <span class="n">ada2</span>
+<span class="n">zpool</span> <span class="n">add</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span> <span class="n">log</span> <span class="n">gpt</span><span class="o">/</span><span class="n">osd</span><span class="o">.</span><span class="mi">1</span><span class="o">-</span><span class="n">cache</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Note: <em>UFS2 does not allow large xattribs</em></p>
+</li>
+</ul>
+<div class="section" id="configuration">
+<h3>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h3>
+<p>As per FreeBSD default parts of extra software go into <code class="docutils literal notranslate"><span class="pre">/usr/local/</span></code>. Which
+means that for <code class="docutils literal notranslate"><span class="pre">/etc/ceph.conf</span></code> the default location is
+<code class="docutils literal notranslate"><span class="pre">/usr/local/etc/ceph/ceph.conf</span></code>. Smartest thing to do is to create a softlink
+from <code class="docutils literal notranslate"><span class="pre">/etc/ceph</span></code> to <code class="docutils literal notranslate"><span class="pre">/usr/local/etc/ceph</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ln</span> <span class="o">-</span><span class="n">s</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span>
+</pre></div>
+</div>
+<p>A sample file is provided in <code class="docutils literal notranslate"><span class="pre">/usr/local/share/doc/ceph/sample.ceph.conf</span></code>
+Note that <code class="docutils literal notranslate"><span class="pre">/usr/local/etc/ceph/ceph.conf</span></code> will be found by most tools,
+linking it to <code class="docutils literal notranslate"><span class="pre">/etc/ceph/ceph.conf</span></code> will help with any scripts that are found
+in extra tools, scripts, and/or discussionlists.</p>
+</div>
+</div>
+<div class="section" id="monitor-bootstrapping">
+<h2>Monitor Bootstrapping<a class="headerlink" href="#monitor-bootstrapping" title="Permalink to this headline">¶</a></h2>
+<p>Bootstrapping a monitor (a Ceph Storage Cluster, in theory) requires
+a number of things:</p>
+<ul>
+<li><p class="first"><strong>Unique Identifier:</strong> The <code class="docutils literal notranslate"><span class="pre">fsid</span></code> is a unique identifier for the cluster,
+and stands for File System ID from the days when the Ceph Storage Cluster was
+principally for the Ceph Filesystem. Ceph now supports native interfaces,
+block devices, and object storage gateway interfaces too, so <code class="docutils literal notranslate"><span class="pre">fsid</span></code> is a
+bit of a misnomer.</p>
+</li>
+<li><p class="first"><strong>Cluster Name:</strong> Ceph clusters have a cluster name, which is a simple string
+without spaces. The default cluster name is <code class="docutils literal notranslate"><span class="pre">ceph</span></code>, but you may specify
+a different cluster name. Overriding the default cluster name is
+especially useful when you are working with multiple clusters and you need to
+clearly understand which cluster your are working with.</p>
+<p>For example, when you run multiple clusters in a <a class="reference internal" href="../../radosgw/multisite/#multisite"><span class="std std-ref">multisite configuration</span></a>,
+the cluster name (e.g., <code class="docutils literal notranslate"><span class="pre">us-west</span></code>, <code class="docutils literal notranslate"><span class="pre">us-east</span></code>) identifies the cluster for
+the current CLI session. <strong>Note:</strong> To identify the cluster name on the
+command line interface, specify the a Ceph configuration file with the
+cluster name (e.g., <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code>, <code class="docutils literal notranslate"><span class="pre">us-west.conf</span></code>, <code class="docutils literal notranslate"><span class="pre">us-east.conf</span></code>, etc.).
+Also see CLI usage (<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">--cluster</span> <span class="pre">{cluster-name}</span></code>).</p>
+</li>
+<li><p class="first"><strong>Monitor Name:</strong> Each monitor instance within a cluster has a unique name.
+In common practice, the Ceph Monitor name is the host name (we recommend one
+Ceph Monitor per host, and no commingling of Ceph OSD Daemons with
+Ceph Monitors). You may retrieve the short hostname with <code class="docutils literal notranslate"><span class="pre">hostname</span> <span class="pre">-s</span></code>.</p>
+</li>
+<li><p class="first"><strong>Monitor Map:</strong> Bootstrapping the initial monitor(s) requires you to
+generate a monitor map. The monitor map requires the <code class="docutils literal notranslate"><span class="pre">fsid</span></code>, the cluster
+name (or uses the default), and at least one host name and its IP address.</p>
+</li>
+<li><p class="first"><strong>Monitor Keyring</strong>: Monitors communicate with each other via a
+secret key. You must generate a keyring with a monitor secret and provide
+it when bootstrapping the initial monitor(s).</p>
+</li>
+<li><p class="first"><strong>Administrator Keyring</strong>: To use the <code class="docutils literal notranslate"><span class="pre">ceph</span></code> CLI tools, you must have
+a <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> user. So you must generate the admin user and keyring,
+and you must also add the <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> user to the monitor keyring.</p>
+</li>
+</ul>
+<p>The foregoing requirements do not imply the creation of a Ceph Configuration
+file. However, as a best practice, we recommend creating a Ceph configuration
+file and populating it with the <code class="docutils literal notranslate"><span class="pre">fsid</span></code>, the <code class="docutils literal notranslate"><span class="pre">mon</span> <span class="pre">initial</span> <span class="pre">members</span></code> and the
+<code class="docutils literal notranslate"><span class="pre">mon</span> <span class="pre">host</span></code> settings.</p>
+<p>You can get and set all of the monitor settings at runtime as well. However,
+a Ceph Configuration file may contain only those settings that override the
+default values. When you add settings to a Ceph configuration file, these
+settings override the default settings. Maintaining those settings in a
+Ceph configuration file makes it easier to maintain your cluster.</p>
+<p>The procedure is as follows:</p>
+<ol class="arabic">
+<li><p class="first">Log in to the initial monitor node(s):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="n">node1</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Ensure you have a directory for the Ceph configuration file. By default,
+Ceph uses <code class="docutils literal notranslate"><span class="pre">/etc/ceph</span></code>. When you install <code class="docutils literal notranslate"><span class="pre">ceph</span></code>, the installer will
+create the <code class="docutils literal notranslate"><span class="pre">/etc/ceph</span></code> directory automatically.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ls</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> Deployment tools may remove this directory when purging a
+cluster (e.g., <code class="docutils literal notranslate"><span class="pre">ceph-deploy</span> <span class="pre">purgedata</span> <span class="pre">{node-name}</span></code>, <code class="docutils literal notranslate"><span class="pre">ceph-deploy</span> <span class="pre">purge</span>
+<span class="pre">{node-name}</span></code>).</p>
+</li>
+<li><p class="first">Create a Ceph configuration file. By default, Ceph uses
+<code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code>, where <code class="docutils literal notranslate"><span class="pre">ceph</span></code> reflects the cluster name.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">vim</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">conf</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Generate a unique ID (i.e., <code class="docutils literal notranslate"><span class="pre">fsid</span></code>) for your cluster.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uuidgen</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Add the unique ID to your Ceph configuration file.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fsid</span> <span class="o">=</span> <span class="p">{</span><span class="n">UUID</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fsid</span> <span class="o">=</span> <span class="n">a7f64266</span><span class="o">-</span><span class="mi">0894</span><span class="o">-</span><span class="mi">4</span><span class="n">f1e</span><span class="o">-</span><span class="n">a635</span><span class="o">-</span><span class="n">d0aeaca0e993</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Add the initial monitor(s) to your Ceph configuration file.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon</span> <span class="n">initial</span> <span class="n">members</span> <span class="o">=</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}[,{</span><span class="n">hostname</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon</span> <span class="n">initial</span> <span class="n">members</span> <span class="o">=</span> <span class="n">node1</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Add the IP address(es) of the initial monitor(s) to your Ceph configuration
+file and save the file.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon</span> <span class="n">host</span> <span class="o">=</span> <span class="p">{</span><span class="n">ip</span><span class="o">-</span><span class="n">address</span><span class="p">}[,{</span><span class="n">ip</span><span class="o">-</span><span class="n">address</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon</span> <span class="n">host</span> <span class="o">=</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">0.1</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> You may use IPv6 addresses instead of IPv4 addresses, but
+you must set <code class="docutils literal notranslate"><span class="pre">ms</span> <span class="pre">bind</span> <span class="pre">ipv6</span></code> to <code class="docutils literal notranslate"><span class="pre">true</span></code>. See <a class="reference external" href="../../rados/configuration/network-config-ref">Network Configuration
+Reference</a> for details about network configuration.</p>
+</li>
+<li><p class="first">Create a keyring for your cluster and generate a monitor secret key.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">authtool</span> <span class="o">--</span><span class="n">create</span><span class="o">-</span><span class="n">keyring</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">mon</span><span class="o">.</span><span class="n">keyring</span> <span class="o">--</span><span class="n">gen</span><span class="o">-</span><span class="n">key</span> <span class="o">-</span><span class="n">n</span> <span class="n">mon</span><span class="o">.</span> <span class="o">--</span><span class="n">cap</span> <span class="n">mon</span> <span class="s1">&#39;allow *&#39;</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Generate an administrator keyring, generate a <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> user and add
+the user to the keyring.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">ceph</span><span class="o">-</span><span class="n">authtool</span> <span class="o">--</span><span class="n">create</span><span class="o">-</span><span class="n">keyring</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">admin</span><span class="o">.</span><span class="n">keyring</span> <span class="o">--</span><span class="n">gen</span><span class="o">-</span><span class="n">key</span> <span class="o">-</span><span class="n">n</span> <span class="n">client</span><span class="o">.</span><span class="n">admin</span> <span class="o">--</span><span class="n">cap</span> <span class="n">mon</span> <span class="s1">&#39;allow *&#39;</span> <span class="o">--</span><span class="n">cap</span> <span class="n">osd</span> <span class="s1">&#39;allow *&#39;</span> <span class="o">--</span><span class="n">cap</span> <span class="n">mds</span> <span class="s1">&#39;allow *&#39;</span> <span class="o">--</span><span class="n">cap</span> <span class="n">mgr</span> <span class="s1">&#39;allow *&#39;</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Add the <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> key to the <code class="docutils literal notranslate"><span class="pre">ceph.mon.keyring</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">authtool</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">mon</span><span class="o">.</span><span class="n">keyring</span> <span class="o">--</span><span class="n">import</span><span class="o">-</span><span class="n">keyring</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">admin</span><span class="o">.</span><span class="n">keyring</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Generate a monitor map using the hostname(s), host IP address(es) and the FSID.
+Save it as <code class="docutils literal notranslate"><span class="pre">/tmp/monmap</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">monmaptool</span> <span class="o">--</span><span class="n">create</span> <span class="o">--</span><span class="n">add</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}</span> <span class="p">{</span><span class="n">ip</span><span class="o">-</span><span class="n">address</span><span class="p">}</span> <span class="o">--</span><span class="n">fsid</span> <span class="p">{</span><span class="n">uuid</span><span class="p">}</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">monmap</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">monmaptool</span> <span class="o">--</span><span class="n">create</span> <span class="o">--</span><span class="n">add</span> <span class="n">node1</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">0.1</span> <span class="o">--</span><span class="n">fsid</span> <span class="n">a7f64266</span><span class="o">-</span><span class="mi">0894</span><span class="o">-</span><span class="mi">4</span><span class="n">f1e</span><span class="o">-</span><span class="n">a635</span><span class="o">-</span><span class="n">d0aeaca0e993</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">monmap</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create a default data directory (or directories) on the monitor host(s).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">mkdir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">mon</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">hostname</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">mkdir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">mon</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">node1</span>
+</pre></div>
+</div>
+<p>See <a class="reference external" href="../../rados/configuration/mon-config-ref#data">Monitor Config Reference - Data</a> for details.</p>
+</li>
+<li><p class="first">Populate the monitor daemon(s) with the monitor map and keyring.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">-</span><span class="n">u</span> <span class="n">ceph</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mon</span> <span class="p">[</span><span class="o">--</span><span class="n">cluster</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="o">--</span><span class="n">mkfs</span> <span class="o">-</span><span class="n">i</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}</span> <span class="o">--</span><span class="n">monmap</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">monmap</span> <span class="o">--</span><span class="n">keyring</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">mon</span><span class="o">.</span><span class="n">keyring</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">-</span><span class="n">u</span> <span class="n">ceph</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mon</span> <span class="o">--</span><span class="n">mkfs</span> <span class="o">-</span><span class="n">i</span> <span class="n">node1</span> <span class="o">--</span><span class="n">monmap</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">monmap</span> <span class="o">--</span><span class="n">keyring</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">mon</span><span class="o">.</span><span class="n">keyring</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Consider settings for a Ceph configuration file. Common settings include
+the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="k">global</span><span class="p">]</span>
+<span class="n">fsid</span> <span class="o">=</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span>
+<span class="n">mon</span> <span class="n">initial</span> <span class="n">members</span> <span class="o">=</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}[,</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}]</span>
+<span class="n">mon</span> <span class="n">host</span> <span class="o">=</span> <span class="p">{</span><span class="n">ip</span><span class="o">-</span><span class="n">address</span><span class="p">}[,</span> <span class="p">{</span><span class="n">ip</span><span class="o">-</span><span class="n">address</span><span class="p">}]</span>
+<span class="n">public</span> <span class="n">network</span> <span class="o">=</span> <span class="p">{</span><span class="n">network</span><span class="p">}[,</span> <span class="p">{</span><span class="n">network</span><span class="p">}]</span>
+<span class="n">cluster</span> <span class="n">network</span> <span class="o">=</span> <span class="p">{</span><span class="n">network</span><span class="p">}[,</span> <span class="p">{</span><span class="n">network</span><span class="p">}]</span>
+<span class="n">auth</span> <span class="n">cluster</span> <span class="n">required</span> <span class="o">=</span> <span class="n">cephx</span>
+<span class="n">auth</span> <span class="n">service</span> <span class="n">required</span> <span class="o">=</span> <span class="n">cephx</span>
+<span class="n">auth</span> <span class="n">client</span> <span class="n">required</span> <span class="o">=</span> <span class="n">cephx</span>
+<span class="n">osd</span> <span class="n">journal</span> <span class="n">size</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">}</span>
+<span class="n">osd</span> <span class="n">pool</span> <span class="n">default</span> <span class="n">size</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">}</span>  <span class="c1"># Write an object n times.</span>
+<span class="n">osd</span> <span class="n">pool</span> <span class="n">default</span> <span class="nb">min</span> <span class="n">size</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">}</span> <span class="c1"># Allow writing n copy in a degraded state.</span>
+<span class="n">osd</span> <span class="n">pool</span> <span class="n">default</span> <span class="n">pg</span> <span class="n">num</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">}</span>
+<span class="n">osd</span> <span class="n">pool</span> <span class="n">default</span> <span class="n">pgp</span> <span class="n">num</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">}</span>
+<span class="n">osd</span> <span class="n">crush</span> <span class="n">chooseleaf</span> <span class="nb">type</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>In the foregoing example, the <code class="docutils literal notranslate"><span class="pre">[global]</span></code> section of the configuration might
+look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="k">global</span><span class="p">]</span>
+<span class="n">fsid</span> <span class="o">=</span> <span class="n">a7f64266</span><span class="o">-</span><span class="mi">0894</span><span class="o">-</span><span class="mi">4</span><span class="n">f1e</span><span class="o">-</span><span class="n">a635</span><span class="o">-</span><span class="n">d0aeaca0e993</span>
+<span class="n">mon</span> <span class="n">initial</span> <span class="n">members</span> <span class="o">=</span> <span class="n">node1</span>
+<span class="n">mon</span> <span class="n">host</span> <span class="o">=</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">0.1</span>
+<span class="n">public</span> <span class="n">network</span> <span class="o">=</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">0.0</span><span class="o">/</span><span class="mi">24</span>
+<span class="n">auth</span> <span class="n">cluster</span> <span class="n">required</span> <span class="o">=</span> <span class="n">cephx</span>
+<span class="n">auth</span> <span class="n">service</span> <span class="n">required</span> <span class="o">=</span> <span class="n">cephx</span>
+<span class="n">auth</span> <span class="n">client</span> <span class="n">required</span> <span class="o">=</span> <span class="n">cephx</span>
+<span class="n">osd</span> <span class="n">journal</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">1024</span>
+<span class="n">osd</span> <span class="n">pool</span> <span class="n">default</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">osd</span> <span class="n">pool</span> <span class="n">default</span> <span class="nb">min</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">osd</span> <span class="n">pool</span> <span class="n">default</span> <span class="n">pg</span> <span class="n">num</span> <span class="o">=</span> <span class="mi">333</span>
+<span class="n">osd</span> <span class="n">pool</span> <span class="n">default</span> <span class="n">pgp</span> <span class="n">num</span> <span class="o">=</span> <span class="mi">333</span>
+<span class="n">osd</span> <span class="n">crush</span> <span class="n">chooseleaf</span> <span class="nb">type</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Touch the <code class="docutils literal notranslate"><span class="pre">done</span></code> file.</p>
+<p>Mark that the monitor is created and ready to be started:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">mon</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">node1</span><span class="o">/</span><span class="n">done</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">And for FreeBSD an entry for every monitor needs to be added to the config
+file. (The requirement will be removed in future releases).</p>
+<p>The entry should look like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">mon</span><span class="p">]</span>
+    <span class="p">[</span><span class="n">mon</span><span class="o">.</span><span class="n">node1</span><span class="p">]</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="n">node1</span>    <span class="c1"># this name can be resolve</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Start the monitor(s).</p>
+<p>For Ubuntu, use Upstart:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mon</span> <span class="nb">id</span><span class="o">=</span><span class="n">node1</span> <span class="p">[</span><span class="n">cluster</span><span class="o">=</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>In this case, to allow the start of the daemon at each reboot you
+must create two empty files like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">mon</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">hostname</span><span class="p">}</span><span class="o">/</span><span class="n">upstart</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">mon</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">node1</span><span class="o">/</span><span class="n">upstart</span>
+</pre></div>
+</div>
+<p>For Debian/CentOS/RHEL, use sysvinit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">ceph</span> <span class="n">start</span> <span class="n">mon</span><span class="o">.</span><span class="n">node1</span>
+</pre></div>
+</div>
+<p>For FreeBSD we use the rc.d init scripts (called bsdrc in Ceph):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">service</span> <span class="n">ceph</span> <span class="n">start</span> <span class="n">start</span> <span class="n">mon</span><span class="o">.</span><span class="n">node1</span>
+</pre></div>
+</div>
+<dl class="docutils">
+<dt>For this to work /etc/rc.conf also needs the entry to enable ceph::</dt>
+<dd><p class="first last">cat ‘ceph_enable=”YES”’ &gt;&gt; /etc/rc.conf</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">Verify that Ceph created the default pools.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">lspools</span>
+</pre></div>
+</div>
+<p>You should see output like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">0</span> <span class="n">data</span>
+<span class="mi">1</span> <span class="n">metadata</span>
+<span class="mi">2</span> <span class="n">rbd</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Verify that the monitor is running.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">-</span><span class="n">s</span>
+</pre></div>
+</div>
+<p>You should see output that the monitor you started is up and running, and
+you should see a health error indicating that placement groups are stuck
+inactive. It should look something like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cluster</span> <span class="n">a7f64266</span><span class="o">-</span><span class="mi">0894</span><span class="o">-</span><span class="mi">4</span><span class="n">f1e</span><span class="o">-</span><span class="n">a635</span><span class="o">-</span><span class="n">d0aeaca0e993</span>
+  <span class="n">health</span> <span class="n">HEALTH_ERR</span> <span class="mi">192</span> <span class="n">pgs</span> <span class="n">stuck</span> <span class="n">inactive</span><span class="p">;</span> <span class="mi">192</span> <span class="n">pgs</span> <span class="n">stuck</span> <span class="n">unclean</span><span class="p">;</span> <span class="n">no</span> <span class="n">osds</span>
+  <span class="n">monmap</span> <span class="n">e1</span><span class="p">:</span> <span class="mi">1</span> <span class="n">mons</span> <span class="n">at</span> <span class="p">{</span><span class="n">node1</span><span class="o">=</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">6789</span><span class="o">/</span><span class="mi">0</span><span class="p">},</span> <span class="n">election</span> <span class="n">epoch</span> <span class="mi">1</span><span class="p">,</span> <span class="n">quorum</span> <span class="mi">0</span> <span class="n">node1</span>
+  <span class="n">osdmap</span> <span class="n">e1</span><span class="p">:</span> <span class="mi">0</span> <span class="n">osds</span><span class="p">:</span> <span class="mi">0</span> <span class="n">up</span><span class="p">,</span> <span class="mi">0</span> <span class="ow">in</span>
+  <span class="n">pgmap</span> <span class="n">v2</span><span class="p">:</span> <span class="mi">192</span> <span class="n">pgs</span><span class="p">,</span> <span class="mi">3</span> <span class="n">pools</span><span class="p">,</span> <span class="mi">0</span> <span class="nb">bytes</span> <span class="n">data</span><span class="p">,</span> <span class="mi">0</span> <span class="n">objects</span>
+     <span class="mi">0</span> <span class="n">kB</span> <span class="n">used</span><span class="p">,</span> <span class="mi">0</span> <span class="n">kB</span> <span class="o">/</span> <span class="mi">0</span> <span class="n">kB</span> <span class="n">avail</span>
+     <span class="mi">192</span> <span class="n">creating</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> Once you add OSDs and start them, the placement group health errors
+should disappear. See the next section for details.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="adding-osds">
+<span id="freebsd-adding-osds"></span><h2>Adding OSDs<a class="headerlink" href="#adding-osds" title="Permalink to this headline">¶</a></h2>
+<p>Once you have your initial monitor(s) running, you should add OSDs. Your cluster
+cannot reach an <code class="docutils literal notranslate"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></code> state until you have enough OSDs to handle the
+number of copies of an object (e.g., <code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">size</span> <span class="pre">=</span> <span class="pre">2</span></code> requires at
+least two OSDs). After bootstrapping your monitor, your cluster has a default
+CRUSH map; however, the CRUSH map doesn’t have any Ceph OSD Daemons mapped to
+a Ceph Node.</p>
+<div class="section" id="long-form">
+<h3>Long Form<a class="headerlink" href="#long-form" title="Permalink to this headline">¶</a></h3>
+<p>Without the benefit of any helper utilities, create an OSD and add it to the
+cluster and CRUSH map with the following procedure. To create the first two
+OSDs with the long form procedure, execute the following on <code class="docutils literal notranslate"><span class="pre">node2</span></code> and
+<code class="docutils literal notranslate"><span class="pre">node3</span></code>:</p>
+<ol class="arabic">
+<li><p class="first">Connect to the OSD host.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">node</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Generate a UUID for the OSD.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uuidgen</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create the OSD. If no UUID is given, it will be set automatically when the
+OSD starts up. The following command will output the OSD number, which you
+will need for subsequent steps.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">create</span> <span class="p">[{</span><span class="n">uuid</span><span class="p">}</span> <span class="p">[{</span><span class="nb">id</span><span class="p">}]]</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create the default directory on your new OSD.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">new</span><span class="o">-</span><span class="n">osd</span><span class="o">-</span><span class="n">host</span><span class="p">}</span>
+<span class="n">sudo</span> <span class="n">mkdir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">number</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Above are the ZFS instructions to do this for FreeBSD.</p>
+</li>
+<li><p class="first">If the OSD is for a drive other than the OS drive, prepare it
+for use with Ceph, and mount it to the directory you just created.</p>
+</li>
+<li><p class="first">Initialize the OSD data directory.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">new</span><span class="o">-</span><span class="n">osd</span><span class="o">-</span><span class="n">host</span><span class="p">}</span>
+<span class="n">sudo</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="o">-</span><span class="n">i</span> <span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="o">--</span><span class="n">mkfs</span> <span class="o">--</span><span class="n">mkkey</span> <span class="o">--</span><span class="n">osd</span><span class="o">-</span><span class="n">uuid</span> <span class="p">[{</span><span class="n">uuid</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>The directory must be empty before you can run <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> with the
+<code class="docutils literal notranslate"><span class="pre">--mkkey</span></code> option. In addition, the ceph-osd tool requires specification
+of custom cluster names with the <code class="docutils literal notranslate"><span class="pre">--cluster</span></code> option.</p>
+</li>
+<li><p class="first">Register the OSD authentication key. The value of <code class="docutils literal notranslate"><span class="pre">ceph</span></code> for
+<code class="docutils literal notranslate"><span class="pre">ceph-{osd-num}</span></code> in the path is the <code class="docutils literal notranslate"><span class="pre">$cluster-$id</span></code>.  If your
+cluster name differs from <code class="docutils literal notranslate"><span class="pre">ceph</span></code>, use your cluster name instead.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">ceph</span> <span class="n">auth</span> <span class="n">add</span> <span class="n">osd</span><span class="o">.</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="n">osd</span> <span class="s1">&#39;allow *&#39;</span> <span class="n">mon</span> <span class="s1">&#39;allow profile osd&#39;</span> <span class="o">-</span><span class="n">i</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span><span class="o">/</span><span class="n">keyring</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Add your Ceph Node to the CRUSH map.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="p">[</span><span class="o">--</span><span class="n">cluster</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span><span class="o">-</span><span class="n">bucket</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}</span> <span class="n">host</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span><span class="o">-</span><span class="n">bucket</span> <span class="n">node1</span> <span class="n">host</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Place the Ceph Node under the root <code class="docutils literal notranslate"><span class="pre">default</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">move</span> <span class="n">node1</span> <span class="n">root</span><span class="o">=</span><span class="n">default</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Add the OSD to the CRUSH map so that it can begin receiving data. You may
+also decompile the CRUSH map, add the OSD to the device list, add the host as a
+bucket (if it’s not already in the CRUSH map), add the device as an item in the
+host, assign it a weight, recompile it and set it.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="p">[</span><span class="o">--</span><span class="n">cluster</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span> <span class="p">{</span><span class="nb">id</span><span class="o">-</span><span class="ow">or</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">weight</span><span class="p">}</span> <span class="p">[{</span><span class="n">bucket</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span><span class="o">=</span><span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span> <span class="n">osd</span><span class="o">.</span><span class="mi">0</span> <span class="mf">1.0</span> <span class="n">host</span><span class="o">=</span><span class="n">node1</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">After you add an OSD to Ceph, the OSD is in your configuration. However,
+it is not yet running. The OSD is <code class="docutils literal notranslate"><span class="pre">down</span></code> and <code class="docutils literal notranslate"><span class="pre">in</span></code>. You must start
+your new OSD before it can begin receiving data.</p>
+<p>For Ubuntu, use Upstart:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="nb">id</span><span class="o">=</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="p">[</span><span class="n">cluster</span><span class="o">=</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="nb">id</span><span class="o">=</span><span class="mi">0</span>
+<span class="n">sudo</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="nb">id</span><span class="o">=</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>For Debian/CentOS/RHEL, use sysvinit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="p">[</span><span class="o">--</span><span class="n">cluster</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="mi">0</span>
+<span class="n">sudo</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>In this case, to allow the start of the daemon at each reboot you
+must create an empty file like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span><span class="o">/</span><span class="n">sysvinit</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">0</span><span class="o">/</span><span class="n">sysvinit</span>
+<span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="n">sysvinit</span>
+</pre></div>
+</div>
+<p>Once you start your OSD, it is <code class="docutils literal notranslate"><span class="pre">up</span></code> and <code class="docutils literal notranslate"><span class="pre">in</span></code>.</p>
+<p>For FreeBSD using rc.d init.</p>
+<p>After adding the OSD to <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">service</span> <span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">service</span> <span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="mi">0</span>
+<span class="n">sudo</span> <span class="n">service</span> <span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>In this case, to allow the start of the daemon at each reboot you
+must create an empty file like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span><span class="o">/</span><span class="n">bsdrc</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">0</span><span class="o">/</span><span class="n">bsdrc</span>
+<span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="n">bsdrc</span>
+</pre></div>
+</div>
+<p>Once you start your OSD, it is <code class="docutils literal notranslate"><span class="pre">up</span></code> and <code class="docutils literal notranslate"><span class="pre">in</span></code>.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="adding-mds">
+<h2>Adding MDS<a class="headerlink" href="#adding-mds" title="Permalink to this headline">¶</a></h2>
+<p>In the below instructions, <code class="docutils literal notranslate"><span class="pre">{id}</span></code> is an arbitrary name, such as the hostname of the machine.</p>
+<ol class="arabic">
+<li><p class="first">Create the mds data directory.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">mds</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="nb">id</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create a keyring.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">authtool</span> <span class="o">--</span><span class="n">create</span><span class="o">-</span><span class="n">keyring</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">mds</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="nb">id</span><span class="p">}</span><span class="o">/</span><span class="n">keyring</span> <span class="o">--</span><span class="n">gen</span><span class="o">-</span><span class="n">key</span> <span class="o">-</span><span class="n">n</span> <span class="n">mds</span><span class="o">.</span><span class="p">{</span><span class="nb">id</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Import the keyring and set caps.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="n">add</span> <span class="n">mds</span><span class="o">.</span><span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="n">osd</span> <span class="s2">&quot;allow rwx&quot;</span> <span class="n">mds</span> <span class="s2">&quot;allow&quot;</span> <span class="n">mon</span> <span class="s2">&quot;allow profile mds&quot;</span> <span class="o">-</span><span class="n">i</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">mds</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="nb">id</span><span class="p">}</span><span class="o">/</span><span class="n">keyring</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Add to ceph.conf.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">mds</span><span class="o">.</span><span class="p">{</span><span class="nb">id</span><span class="p">}]</span>
+<span class="n">host</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Start the daemon the manual way.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">mds</span> <span class="o">--</span><span class="n">cluster</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="o">-</span><span class="n">i</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="o">-</span><span class="n">m</span> <span class="p">{</span><span class="n">mon</span><span class="o">-</span><span class="n">hostname</span><span class="p">}:{</span><span class="n">mon</span><span class="o">-</span><span class="n">port</span><span class="p">}</span> <span class="p">[</span><span class="o">-</span><span class="n">f</span><span class="p">]</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Start the daemon the right way (using ceph.conf entry).:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">service</span> <span class="n">ceph</span> <span class="n">start</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">If starting the daemon fails with this error:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mds</span><span class="o">.-</span><span class="mf">1.0</span> <span class="n">ERROR</span><span class="p">:</span> <span class="n">failed</span> <span class="n">to</span> <span class="n">authenticate</span><span class="p">:</span> <span class="p">(</span><span class="mi">22</span><span class="p">)</span> <span class="n">Invalid</span> <span class="n">argument</span>
+</pre></div>
+</div>
+<p>Then make sure you do not have a keyring set in ceph.conf in the global section; move it to the client section; or add a keyring setting specific to this mds daemon. And verify that you see the same key in the mds data directory and <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">auth</span> <span class="pre">get</span> <span class="pre">mds.{id}</span></code> output.</p>
+</li>
+<li><p class="first">Now you are ready to <a class="reference external" href="../../cephfs/createfs">create a Ceph filesystem</a>.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>Once you have your monitor and two OSDs up and running, you can watch the
+placement groups peer by executing the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">-</span><span class="n">w</span>
+</pre></div>
+</div>
+<p>To view the tree, execute the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tree</span>
+</pre></div>
+</div>
+<p>You should see output that looks something like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># id    weight  type name       up/down reweight</span>
+<span class="o">-</span><span class="mi">1</span>      <span class="mi">2</span>       <span class="n">root</span> <span class="n">default</span>
+<span class="o">-</span><span class="mi">2</span>      <span class="mi">2</span>               <span class="n">host</span> <span class="n">node1</span>
+<span class="mi">0</span>       <span class="mi">1</span>                       <span class="n">osd</span><span class="o">.</span><span class="mi">0</span>   <span class="n">up</span>      <span class="mi">1</span>
+<span class="o">-</span><span class="mi">3</span>      <span class="mi">1</span>               <span class="n">host</span> <span class="n">node2</span>
+<span class="mi">1</span>       <span class="mi">1</span>                       <span class="n">osd</span><span class="o">.</span><span class="mi">1</span>   <span class="n">up</span>      <span class="mi">1</span>
+</pre></div>
+</div>
+<p>To add (or remove) additional monitors, see <a class="reference external" href="../../rados/operations/add-or-rm-mons">Add/Remove Monitors</a>.
+To add (or remove) additional Ceph OSD Daemons, see <a class="reference external" href="../../rados/operations/add-or-rm-osds">Add/Remove OSDs</a>.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Installation (Manual)</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../#get-software">Get Software</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#install-software">Install Software</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../#deploy-a-cluster-manually">Deploy a Cluster Manually</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../manual-deployment/">Manual Deployment</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Manual Deployment on FreeBSD</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#disklayout-on-freebsd">Disklayout on FreeBSD</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#monitor-bootstrapping">Monitor Bootstrapping</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#adding-osds">Adding OSDs</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#long-form">Long Form</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#adding-mds">Adding MDS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#summary">Summary</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../#upgrade-software">Upgrade Software</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../upgrading-ceph/" title="Upgrading Ceph"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../manual-deployment/" title="Manual Deployment"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Installation (Manual)</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

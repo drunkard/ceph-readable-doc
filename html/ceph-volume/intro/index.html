@@ -1,0 +1,254 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Overview &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="systemd" href="../systemd/" />
+    <link rel="prev" title="ceph-volume" href="../" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../systemd/" title="systemd"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../" title="ceph-volume"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">ceph-volume</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/ceph-volume/intro.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="overview">
+<span id="ceph-volume-overview"></span><h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> tool aims to be a single purpose command line tool to deploy
+logical volumes as OSDs, trying to maintain a similar API to <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code> when
+preparing, activating, and creating OSDs.</p>
+<p>It deviates from <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code> by not interacting or relying on the udev rules
+that come installed for Ceph. These rules allow automatic detection of
+previously setup devices that are in turn fed into <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code> to activate
+them.</p>
+</div>
+<div class="section" id="replacing-ceph-disk">
+<span id="ceph-disk-replaced"></span><h1>Replacing <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code><a class="headerlink" href="#replacing-ceph-disk" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code> tool was created at a time were the project was required to
+support many different types of init systems (upstart, sysvinit, etc…) while
+being able to discover devices. This caused the tool to concentrate initially
+(and exclusively afterwards) on GPT partitions. Specifically on GPT GUIDs,
+which were used to label devices in a unique way to answer questions like:</p>
+<ul class="simple">
+<li>is this device a Journal?</li>
+<li>an encrypted data partition?</li>
+<li>was the device left partially prepared?</li>
+</ul>
+<p>To solve these, it used <code class="docutils literal notranslate"><span class="pre">UDEV</span></code> rules to match the GUIDs, that would call
+<code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code>, and end up in a back and forth between the <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code> systemd
+unit and the <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code> executable. The process was very unreliable and time
+consuming (a timeout of close to three hours <strong>per OSD</strong> had to be put in
+place), and would cause OSDs to not come up at all during the boot process of
+a node.</p>
+<p>It was hard to debug, or even replicate these problems given the asynchronous
+behavior of <code class="docutils literal notranslate"><span class="pre">UDEV</span></code>.</p>
+<p>Since the world-view of <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code> had to be GPT partitions exclusively, it meant
+that it couldn’t work with other technologies like LVM, or similar device
+mapper devices. It was ultimately decided to create something modular, starting
+with LVM support, and the ability to expand on other technologies as needed.</p>
+</div>
+<div class="section" id="gpt-partitions-are-simple">
+<h1>GPT partitions are simple?<a class="headerlink" href="#gpt-partitions-are-simple" title="Permalink to this headline">¶</a></h1>
+<p>Although partitions in general are simple to reason about, <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code>
+partitions were not simple by any means. It required a tremendous amount of
+special flags in order to get them to work correctly with the device discovery
+workflow. Here is an example call to create a data partition:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">sgdisk</span> <span class="o">--</span><span class="n">largest</span><span class="o">-</span><span class="n">new</span><span class="o">=</span><span class="mi">1</span> <span class="o">--</span><span class="n">change</span><span class="o">-</span><span class="n">name</span><span class="o">=</span><span class="mi">1</span><span class="p">:</span><span class="n">ceph</span> <span class="n">data</span> <span class="o">--</span><span class="n">partition</span><span class="o">-</span><span class="n">guid</span><span class="o">=</span><span class="mi">1</span><span class="p">:</span><span class="n">f0fc39fd</span><span class="o">-</span><span class="n">eeb2</span><span class="o">-</span><span class="mi">49</span><span class="n">f1</span><span class="o">-</span><span class="n">b922</span><span class="o">-</span><span class="n">a11939cf8a0f</span> <span class="o">--</span><span class="n">typecode</span><span class="o">=</span><span class="mi">1</span><span class="p">:</span><span class="mi">89</span><span class="n">c57f98</span><span class="o">-</span><span class="mi">2</span><span class="n">fe5</span><span class="o">-</span><span class="mi">4</span><span class="n">dc0</span><span class="o">-</span><span class="mi">89</span><span class="n">c1</span><span class="o">-</span><span class="n">f3ad0ceff2be</span> <span class="o">--</span><span class="n">mbrtogpt</span> <span class="o">--</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdb</span>
+</pre></div>
+</div>
+<p>Not only creating these was hard, but these partitions required devices to be
+exclusively owned by Ceph. For example, in some cases a special partition would
+be created when devices were encrypted, which would contain unencrypted keys.
+This was <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code> domain knowledge, which would not translate to a “GPT
+partitions are simple” understanding. Here is an example of that special
+partition being created:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">sgdisk</span> <span class="o">--</span><span class="n">new</span><span class="o">=</span><span class="mi">5</span><span class="p">:</span><span class="mi">0</span><span class="p">:</span><span class="o">+</span><span class="mi">10</span><span class="n">M</span> <span class="o">--</span><span class="n">change</span><span class="o">-</span><span class="n">name</span><span class="o">=</span><span class="mi">5</span><span class="p">:</span><span class="n">ceph</span> <span class="n">lockbox</span> <span class="o">--</span><span class="n">partition</span><span class="o">-</span><span class="n">guid</span><span class="o">=</span><span class="mi">5</span><span class="p">:</span><span class="kc">None</span> <span class="o">--</span><span class="n">typecode</span><span class="o">=</span><span class="mi">5</span><span class="p">:</span><span class="n">fb3aabf9</span><span class="o">-</span><span class="n">d25f</span><span class="o">-</span><span class="mi">47</span><span class="n">cc</span><span class="o">-</span><span class="n">bf5e</span><span class="o">-</span><span class="mi">721</span><span class="n">d181642be</span> <span class="o">--</span><span class="n">mbrtogpt</span> <span class="o">--</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdad</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="modularity">
+<h1>Modularity<a class="headerlink" href="#modularity" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> was designed to be a modular tool because we anticipate that
+there are going to be lots of ways that people provision the hardware devices
+that we need to consider. There are already two: legacy ceph-disk devices that
+are still in use and have GPT partitions (handled by <a class="reference internal" href="../simple/#ceph-volume-simple"><span class="std std-ref">simple</span></a>),
+and lvm. SPDK devices where we manage NVMe devices directly from userspace are
+on the immediate horizon, where LVM won’t work there since the kernel isn’t
+involved at all.</p>
+</div>
+<div class="section" id="ceph-volume-lvm">
+<h1><code class="docutils literal notranslate"><span class="pre">ceph-volume</span> <span class="pre">lvm</span></code><a class="headerlink" href="#ceph-volume-lvm" title="Permalink to this headline">¶</a></h1>
+<p>By making use of <a class="reference internal" href="../../glossary/#term-lvm-tags"><span class="xref std std-term">LVM tags</span></a>, the <a class="reference internal" href="../lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> sub-command is
+able to store and later re-discover and query devices associated with OSDs so
+that they can later activated. This includes support for lvm-based technologies
+like dm-cache as well.</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code>, the use of dm-cache is transparent, there is no difference
+for the tool, and it treats dm-cache like a plain logical volume.</p>
+</div>
+<div class="section" id="lvm-performance-penalty">
+<h1>LVM performance penalty<a class="headerlink" href="#lvm-performance-penalty" title="Permalink to this headline">¶</a></h1>
+<p>In short: we haven’t been able to notice any significant performance penalties
+associated with the change to LVM. By being able to work closely with LVM, the
+ability to work with other device mapper technologies (for example <code class="docutils literal notranslate"><span class="pre">dmcache</span></code>)
+was a given: there is no technical difficulty in working with anything that can
+sit below a Logical Volume.</p>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">ceph-volume</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../#migrating">Migrating</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../#new-deployments">New deployments</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="../#existing-osds">Existing OSDs</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#replacing-ceph-disk">Replacing <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gpt-partitions-are-simple">GPT partitions are simple?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#modularity">Modularity</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ceph-volume-lvm"><code class="docutils literal notranslate"><span class="pre">ceph-volume</span> <span class="pre">lvm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#lvm-performance-penalty">LVM performance penalty</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../systemd/">systemd</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../inventory/"><code class="docutils literal notranslate"><span class="pre">inventory</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/"><code class="docutils literal notranslate"><span class="pre">lvm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/activate/"><code class="docutils literal notranslate"><span class="pre">activate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/batch/"><code class="docutils literal notranslate"><span class="pre">batch</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/batch/#reporting">Reporting</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/encryption/">Encryption</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/prepare/"><code class="docutils literal notranslate"><span class="pre">prepare</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/create/"><code class="docutils literal notranslate"><span class="pre">create</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/scan/">scan</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/systemd/">systemd</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/list/"><code class="docutils literal notranslate"><span class="pre">list</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lvm/zap/"><code class="docutils literal notranslate"><span class="pre">zap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../simple/"><code class="docutils literal notranslate"><span class="pre">simple</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../simple/activate/"><code class="docutils literal notranslate"><span class="pre">activate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../simple/scan/"><code class="docutils literal notranslate"><span class="pre">scan</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../simple/systemd/">systemd</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../systemd/" title="systemd"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../" title="ceph-volume"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >ceph-volume</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

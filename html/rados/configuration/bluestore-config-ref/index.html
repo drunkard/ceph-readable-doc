@@ -1,0 +1,833 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>BlueStore 配置参考 &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="filestore 配置参考" href="../filestore-config-ref/" />
+    <link rel="prev" title="OSD 配置参考" href="../osd-config-ref/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../filestore-config-ref/" title="filestore 配置参考"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../osd-config-ref/" title="OSD 配置参考"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../" >Ceph 存储集群</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" accesskey="U">配置</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/rados/configuration/bluestore-config-ref.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="bluestore">
+<h1>BlueStore 配置参考<a class="headerlink" href="#bluestore" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id1">
+<h2>设备<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>BlueStore 可管理一个、两个、或（某些情况下）三个存储设备。</p>
+<p>In the simplest case, BlueStore consumes a single (primary) storage device.
+The storage device is normally used as a whole, occupying the full device that
+is managed directly by BlueStore. This <em>primary device</em> is normally identified
+by a <code class="docutils literal notranslate"><span class="pre">block</span></code> symlink in the data directory.</p>
+<p>The data directory is a <code class="docutils literal notranslate"><span class="pre">tmpfs</span></code> mount which gets populated (at boot time, or
+when <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> activates it) with all the common OSD files that hold
+information about the OSD, like: its identifier, which cluster it belongs to,
+and its private keyring.</p>
+<p>It is also possible to deploy BlueStore across two additional devices:</p>
+<ul class="simple">
+<li>A <em>WAL device</em> (identified as <code class="docutils literal notranslate"><span class="pre">block.wal</span></code> in the data directory) can be
+used for BlueStore’s internal journal or write-ahead log. It is only useful
+to use a WAL device if the device is faster than the primary device (e.g.,
+when it is on an SSD and the primary device is an HDD).</li>
+<li>A <em>DB device</em> (identified as <code class="docutils literal notranslate"><span class="pre">block.db</span></code> in the data directory) can be used
+for storing BlueStore’s internal metadata.  BlueStore (or rather, the
+embedded RocksDB) will put as much metadata as it can on the DB device to
+improve performance.  If the DB device fills up, metadata will spill back
+onto the primary device (where it would have been otherwise).  Again, it is
+only helpful to provision a DB device if it is faster than the primary
+device.</li>
+</ul>
+<p>If there is only a small amount of fast storage available (e.g., less
+than a gigabyte), we recommend using it as a WAL device.  If there is
+more, provisioning a DB device makes more sense.  The BlueStore
+journal will always be placed on the fastest device available, so
+using a DB device will provide the same benefit that the WAL device
+would while <em>also</em> allowing additional metadata to be stored there (if
+it will fit).</p>
+<p>A single-device BlueStore OSD can be provisioned with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">prepare</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">device</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>To specify a WAL device and/or DB device,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">prepare</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">device</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">block</span><span class="o">.</span><span class="n">wal</span> <span class="o">&lt;</span><span class="n">wal</span><span class="o">-</span><span class="n">device</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">block</span><span class="o">.</span><span class="n">db</span> <span class="o">&lt;</span><span class="n">db</span><span class="o">-</span><span class="n">device</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">–data can be a Logical Volume using the vg/lv notation. Other
+devices can be existing logical volumes or GPT partitions</p>
+</div>
+<div class="section" id="id2">
+<h3>存储配置策略<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>虽然有多种途径部署后端为 BlueStore 的 OSD （不像 Filestore 只有一种），但是这里的两种常见用法有助于澄清初步的部署策略。</p>
+<div class="section" id="block-data-only">
+<span id="bluestore-single-type-device-config"></span><h4><strong>block (data) only</strong><a class="headerlink" href="#block-data-only" title="Permalink to this headline">¶</a></h4>
+<p>If all the devices are the same type, for example all are spinning drives, and
+there are no fast devices to combine these, it makes sense to just deploy with
+block only and not try to separate <code class="docutils literal notranslate"><span class="pre">block.db</span></code> or <code class="docutils literal notranslate"><span class="pre">block.wal</span></code>. The
+<span class="xref std std-ref">ceph-volume-lvm</span> call for a single <code class="docutils literal notranslate"><span class="pre">/dev/sda</span></code> device would look like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">create</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sda</span>
+</pre></div>
+</div>
+<p>If logical volumes have already been created for each device (1 LV using 100%
+of the device), then the <span class="xref std std-ref">ceph-volume-lvm</span> call for an lv named
+<code class="docutils literal notranslate"><span class="pre">ceph-vg/block-lv</span></code> would look like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">create</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="n">ceph</span><span class="o">-</span><span class="n">vg</span><span class="o">/</span><span class="n">block</span><span class="o">-</span><span class="n">lv</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="block-and-block-db">
+<span id="bluestore-mixed-device-config"></span><h4><strong>block and block.db</strong><a class="headerlink" href="#block-and-block-db" title="Permalink to this headline">¶</a></h4>
+<p>If there is a mix of fast and slow devices (spinning and solid state),
+it is recommended to place <code class="docutils literal notranslate"><span class="pre">block.db</span></code> on the faster device while <code class="docutils literal notranslate"><span class="pre">block</span></code>
+(data) lives on the slower (spinning drive). Sizing for <code class="docutils literal notranslate"><span class="pre">block.db</span></code> should be
+as large as possible to avoid performance penalties otherwise. The
+<code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> tool is currently not able to create these automatically, so
+the volume groups and logical volumes need to be created manually.</p>
+<p>For the below example, lets assume 4 spinning drives (sda, sdb, sdc, and sdd)
+and 1 solid state drive (sdx). First create the volume groups:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ vgcreate ceph-block-0 /dev/sda
+$ vgcreate ceph-block-1 /dev/sdb
+$ vgcreate ceph-block-2 /dev/sdc
+$ vgcreate ceph-block-3 /dev/sdd
+</pre></div>
+</div>
+<p>Now create the logical volumes for <code class="docutils literal notranslate"><span class="pre">block</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ lvcreate -l 100%FREE -n block-0 ceph-block-0
+$ lvcreate -l 100%FREE -n block-1 ceph-block-1
+$ lvcreate -l 100%FREE -n block-2 ceph-block-2
+$ lvcreate -l 100%FREE -n block-3 ceph-block-3
+</pre></div>
+</div>
+<p>We are creating 4 OSDs for the four slow spinning devices, so assuming a 200GB
+SSD in <code class="docutils literal notranslate"><span class="pre">/dev/sdx</span></code> we will create 4 logical volumes, each of 50GB:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ vgcreate ceph-db-0 /dev/sdx
+$ lvcreate -L 50GB -n db-0 ceph-db-0
+$ lvcreate -L 50GB -n db-1 ceph-db-0
+$ lvcreate -L 50GB -n db-2 ceph-db-0
+$ lvcreate -L 50GB -n db-3 ceph-db-0
+</pre></div>
+</div>
+<p>Finally, create the 4 OSDs with <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm create --bluestore --data ceph-block-0/block-0 --block.db ceph-db-0/db-0
+$ ceph-volume lvm create --bluestore --data ceph-block-1/block-1 --block.db ceph-db-0/db-1
+$ ceph-volume lvm create --bluestore --data ceph-block-2/block-2 --block.db ceph-db-0/db-2
+$ ceph-volume lvm create --bluestore --data ceph-block-3/block-3 --block.db ceph-db-0/db-3
+</pre></div>
+</div>
+<p>These operations should end up creating 4 OSDs, with <code class="docutils literal notranslate"><span class="pre">block</span></code> on the slower
+spinning drives and a 50GB logical volume for each coming from the solid state
+drive.</p>
+</div>
+</div>
+</div>
+<div class="section" id="id3">
+<h2>调整尺寸<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>When using a <a class="reference internal" href="#bluestore-mixed-device-config"><span class="std std-ref">mixed spinning and solid drive setup</span></a> it is important to make a large-enough
+<code class="docutils literal notranslate"><span class="pre">block.db</span></code> logical volume for Bluestore. Generally, <code class="docutils literal notranslate"><span class="pre">block.db</span></code> should have
+<em>as large as possible</em> logical volumes.</p>
+<p>It is recommended that the <code class="docutils literal notranslate"><span class="pre">block.db</span></code> size isn’t smaller than 4% of
+<code class="docutils literal notranslate"><span class="pre">block</span></code>. For example, if the <code class="docutils literal notranslate"><span class="pre">block</span></code> size is 1TB, then <code class="docutils literal notranslate"><span class="pre">block.db</span></code>
+shouldn’t be less than 40GB.</p>
+<p>If <em>not</em> using a mix of fast and slow devices, it isn’t required to create
+separate logical volumes for <code class="docutils literal notranslate"><span class="pre">block.db</span></code> (or <code class="docutils literal notranslate"><span class="pre">block.wal</span></code>). Bluestore will
+automatically manage these within the space of <code class="docutils literal notranslate"><span class="pre">block</span></code>.</p>
+</div>
+<div class="section" id="id4">
+<h2>自动调整缓存尺寸<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>Bluestore can be configured to automatically resize it’s caches when tc_malloc
+is configured as the memory allocator and the <code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code>
+setting is enabled.  This option is currently enabled by default.  Bluestore
+will attempt to keep OSD heap memory usage under a designated target size via
+the <code class="docutils literal notranslate"><span class="pre">osd_memory_target</span></code> configuration option.  This is a best effort
+algorithm and caches will not shrink smaller than the amount specified by
+<code class="docutils literal notranslate"><span class="pre">osd_memory_cache_min</span></code>.  Cache ratios will be chosen based on a hierarchy
+of priorities.  If priority information is not availabe, the
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code> and <code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code> options are
+used as fallbacks.</p>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">Automatically tune the ratios assigned to different bluestore caches while respecting minimum values.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Requered:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">True</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd_memory_target</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">When tcmalloc is available and cache autotuning is enabled, try to keep this many bytes mapped in memory. Note: This may not exactly match the RSS memory usage of the process.  While the total amount of heap memory mapped by the process should generally stay close to this target, there is no guarantee that the kernel will actually reclaim  memory that has been unmapped.  During initial developement, it was found that some kernels result in the OSD’s RSS Memory exceeding the mapped memory by up to 20%.  It is hypothesised however, that the kernel generally may be more aggressive about reclaiming unmapped memory when there is a high amount of memory pressure.  Your mileage may vary.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Requered:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">4294967296</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune_chunk_size</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The chunk size in bytes to allocate to caches when cache autotune is enabled.  When the autotuner assigns memory to different caches, it will allocate memory in chunks.  This is done to avoid evictions when there are minor fluctuations in the heap size or autotuned cache ratios.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Requered:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">33554432</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune_interval</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The number of seconds to wait between rebalances when cache autotune is enabled.  This setting changes how quickly the ratios of the difference caches are recomputed.  Note:  Setting the interval too small can result in high CPU usage and lower performance.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Requered:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">5</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd_memory_base</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">When tcmalloc and cache autotuning is enabled, estimate the minimum amount of memory in bytes the OSD will need.  This is used to help the autotuner estimate the expected aggregate memory consumption of the caches.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Interger</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">805306368</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd_memory_expected_fragmentation</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">When tcmalloc and cache autotuning is enabled, estimate the percent of memory fragmentation.  This is used to help the autotuner estimate the expected aggregate memory consumption of the caches.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">0.15</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd_memory_cache_min</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">When tcmalloc and cache autotuning is enabled, set the minimum amount of memory used for caches. Note: Setting this value too low can result in significant cache thrashing.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">134217728</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd_memory_cache_resize_interval</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">When tcmalloc and cache autotuning is enabled, wait this many seconds between resizing caches.  This setting changes the total amount of memory available for bluestore to use for caching.  Note: Setting the interval too small can result in memory allocator thrashing and lower performance.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">1</span></code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id5">
+<h2>手动调整缓存尺寸<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>The amount of memory consumed by each OSD for BlueStore’s cache is
+determined by the <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code> configuration option.  If
+that config option is not set (i.e., remains at 0), there is a
+different default value that is used depending on whether an HDD or
+SSD is used for the primary device (set by the
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> and <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> config
+options).</p>
+<p>BlueStore and the rest of the Ceph OSD does the best it can currently
+to stick to the budgeted memory.  Note that on top of the configured
+cache size, there is also memory consumed by the OSD itself, and
+generally some overhead due to memory fragmentation and other
+allocator overhead.</p>
+<p>The configured cache memory budget can be used in a few different ways:</p>
+<ul class="simple">
+<li>Key/Value metadata (i.e., RocksDB’s internal cache)</li>
+<li>BlueStore metadata</li>
+<li>BlueStore data (i.e., recently read or written object data)</li>
+</ul>
+<p>Cache memory usage is governed by the following options:
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code>, <code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_max</span></code>.  The fraction of the cache devoted to data
+is 1.0 minus the meta and kv ratios.  The memory devoted to kv
+metadata (the RocksDB cache) is capped by <code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_max</span></code>
+since our testing indicates there are diminishing returns beyond a
+certain point.</p>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The amount of memory BlueStore will use for its cache.  If zero, <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> or <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> will be used instead.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">0</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The default amount of memory BlueStore will use for its cache when backed by an HDD.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span></code> (1 GB)</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The default amount of memory BlueStore will use for its cache when backed by an SSD.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">3</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span></code> (3 GB)</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The ratio of cache devoted to metadata.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Floating point</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">.01</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The ratio of cache devoted to key/value data (rocksdb).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Floating point</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">.99</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_max</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The maximum amount of cache devoted to key/value data (rocksdb).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">512</span> <span class="pre">*</span> <span class="pre">1024*1024</span></code> (512 MB)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id6">
+<h2>校验和<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>BlueStore checksums all metadata and data written to disk.  Metadata
+checksumming is handled by RocksDB and uses <cite>crc32c</cite>. Data
+checksumming is done by BlueStore and can make use of <cite>crc32c</cite>,
+<cite>xxhash32</cite>, or <cite>xxhash64</cite>.  The default is <cite>crc32c</cite> and should be
+suitable for most purposes.</p>
+<p>Full data checksumming does increase the amount of metadata that
+BlueStore must store and manage.  When possible, e.g., when clients
+hint that data is written and read sequentially, BlueStore will
+checksum larger blocks, but in many cases it must store a checksum
+value (usually 4 bytes) for every 4 kilobyte block of data.</p>
+<p>It is possible to use a smaller checksum value by truncating the
+checksum to two or one byte, reducing the metadata overhead.  The
+trade-off is that the probability that a random error will not be
+detected is higher with a smaller checksum, going from about one in
+four billion with a 32-bit (4 byte) checksum to one in 65,536 for a
+16-bit (2 byte) checksum or one in 256 for an 8-bit (1 byte) checksum.
+The smaller checksum values can be used by selecting <cite>crc32c_16</cite> or
+<cite>crc32c_8</cite> as the checksum algorithm.</p>
+<p>The <em>checksum algorithm</em> can be set either via a per-pool
+<code class="docutils literal notranslate"><span class="pre">csum_type</span></code> property or the global config option.  For example,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">csum_type</span> <span class="o">&lt;</span><span class="n">algorithm</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore_csum_type</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The default checksum algorithm to use.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">Yes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">有效范围:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">none</span></code>, <code class="docutils literal notranslate"><span class="pre">crc32c</span></code>, <code class="docutils literal notranslate"><span class="pre">crc32c_16</span></code>, <code class="docutils literal notranslate"><span class="pre">crc32c_8</span></code>, <code class="docutils literal notranslate"><span class="pre">xxhash32</span></code>, <code class="docutils literal notranslate"><span class="pre">xxhash64</span></code></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">crc32c</span></code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id7">
+<h2>内联压缩<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<p>BlueStore supports inline compression using <cite>snappy</cite>, <cite>zlib</cite>, or
+<cite>lz4</cite>. Please note that the <cite>lz4</cite> compression plugin is not
+distributed in the official release.</p>
+<p>Whether data in BlueStore is compressed is determined by a combination
+of the <em>compression mode</em> and any hints associated with a write
+operation.  The modes are:</p>
+<ul class="simple">
+<li><strong>none</strong>: Never compress data.</li>
+<li><strong>passive</strong>: Do not compress data unless the write operation has a
+<em>compressible</em> hint set.</li>
+<li><strong>aggressive</strong>: Compress data unless the write operation has an
+<em>incompressible</em> hint set.</li>
+<li><strong>force</strong>: Try to compress data no matter what.</li>
+</ul>
+<p>For more information about the <em>compressible</em> and <em>incompressible</em> IO
+hints, see <a class="reference internal" href="../../api/librados/#c.rados_set_alloc_hint" title="rados_set_alloc_hint"><code class="xref c c-func docutils literal notranslate"><span class="pre">rados_set_alloc_hint()</span></code></a>.</p>
+<p>Note that regardless of the mode, if the size of the data chunk is not
+reduced sufficiently it will not be used and the original
+(uncompressed) data will be stored.  For example, if the <code class="docutils literal notranslate"><span class="pre">bluestore</span>
+<span class="pre">compression</span> <span class="pre">required</span> <span class="pre">ratio</span></code> is set to <code class="docutils literal notranslate"><span class="pre">.7</span></code> then the compressed data
+must be 70% of the size of the original (or smaller).</p>
+<p>The <em>compression mode</em>, <em>compression algorithm</em>, <em>compression required
+ratio</em>, <em>min blob size</em>, and <em>max blob size</em> can be set either via a
+per-pool property or a global config option.  Pool properties can be
+set with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_algorithm</span> <span class="o">&lt;</span><span class="n">algorithm</span><span class="o">&gt;</span>
+<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_mode</span> <span class="o">&lt;</span><span class="n">mode</span><span class="o">&gt;</span>
+<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_required_ratio</span> <span class="o">&lt;</span><span class="n">ratio</span><span class="o">&gt;</span>
+<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_min_blob_size</span> <span class="o">&lt;</span><span class="n">size</span><span class="o">&gt;</span>
+<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_max_blob_size</span> <span class="o">&lt;</span><span class="n">size</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">algorithm</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The default compressor to use (if any) if the per-pool property
+<code class="docutils literal notranslate"><span class="pre">compression_algorithm</span></code> is not set. Note that zstd is <em>not</em>
+recommended for bluestore due to high CPU overhead when
+compressing small amounts of data.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">有效范围:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">lz4</span></code>, <code class="docutils literal notranslate"><span class="pre">snappy</span></code>, <code class="docutils literal notranslate"><span class="pre">zlib</span></code>, <code class="docutils literal notranslate"><span class="pre">zstd</span></code></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">snappy</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">mode</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The default policy for using compression if the per-pool property
+<code class="docutils literal notranslate"><span class="pre">compression_mode</span></code> is not set. <code class="docutils literal notranslate"><span class="pre">none</span></code> means never use
+compression. <code class="docutils literal notranslate"><span class="pre">passive</span></code> means use compression when
+<a class="reference internal" href="../../api/librados/#c.rados_set_alloc_hint" title="rados_set_alloc_hint"><code class="xref c c-func docutils literal notranslate"><span class="pre">clients</span> <span class="pre">hint</span></code></a> that data is
+compressible.  <code class="docutils literal notranslate"><span class="pre">aggressive</span></code> means use compression unless
+clients hint that data is not compressible.  <code class="docutils literal notranslate"><span class="pre">force</span></code> means use
+compression under all circumstances even if the clients hint that
+the data is not compressible.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">String</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">有效范围:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">none</span></code>, <code class="docutils literal notranslate"><span class="pre">passive</span></code>, <code class="docutils literal notranslate"><span class="pre">aggressive</span></code>, <code class="docutils literal notranslate"><span class="pre">force</span></code></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">none</span></code></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">required</span> <span class="pre">ratio</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">The ratio of the size of the data chunk after
+compression relative to the original size must be at
+least this small in order to store the compressed
+version.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Floating point</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body">.875</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">Chunks smaller than this are never compressed.
+The per-pool property <code class="docutils literal notranslate"><span class="pre">compression_min_blob_size</span></code> overrides
+this setting.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body">0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span> <span class="pre">hdd</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code>
+for rotational media.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body">128K</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span> <span class="pre">ssd</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code>
+for non-rotational (solid state) media.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body">8K</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">Chunks larger than this are broken into smaller blobs sizing
+<code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code> before being compressed.
+The per-pool property <code class="docutils literal notranslate"><span class="pre">compression_max_blob_size</span></code> overrides
+this setting.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body">0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span> <span class="pre">hdd</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code>
+for rotational media.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body">512K</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span> <span class="pre">ssd</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code>
+for non-rotational (solid state) media.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">是否必需:</th><td class="field-body">No</td>
+</tr>
+<tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body">64K</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="spdk">
+<h2>SPDK 用法<a class="headerlink" href="#spdk" title="Permalink to this headline">¶</a></h2>
+<p>If you want to use SPDK driver for NVME SSD, you need to ready your system.
+Please refer to <a class="reference external" href="http://www.spdk.io/doc/getting_started.html#getting_started_examples">SPDK document</a> for more details.</p>
+<p>SPDK offers a script to configure the device automatically. Users can run the
+script as root:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo src/spdk/scripts/setup.sh
+</pre></div>
+</div>
+<p>Then you need to specify NVMe device’s device selector here with “spdk:” prefix for
+<code class="docutils literal notranslate"><span class="pre">bluestore_block_path</span></code>.</p>
+<p>For example, users can find the device selector of an Intel PCIe SSD with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ lspci -mm -n -D -d 8086:0953
+</pre></div>
+</div>
+<p>The device selector always has the form of <code class="docutils literal notranslate"><span class="pre">DDDD:BB:DD.FF</span></code> or <code class="docutils literal notranslate"><span class="pre">DDDD.BB.DD.FF</span></code>.</p>
+<p>and then set:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bluestore</span> <span class="n">block</span> <span class="n">path</span> <span class="o">=</span> <span class="n">spdk</span><span class="p">:</span><span class="mi">0000</span><span class="p">:</span><span class="mi">01</span><span class="p">:</span><span class="mf">00.0</span>
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">0000:01:00.0</span></code> is the device selector found in the output of <code class="docutils literal notranslate"><span class="pre">lspci</span></code>
+command above.</p>
+<p>If you want to run multiple SPDK instances per node, you must specify the
+amount of dpdk memory size in MB each instance will use, to make sure each
+instance uses its own dpdk memory</p>
+<p>In most cases, we only need one device to serve as data, db, db wal purposes.
+We need to make sure configurations below to make sure all IOs issued under
+SPDK.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bluestore_block_db_path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<span class="n">bluestore_block_db_size</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">bluestore_block_wal_path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<span class="n">bluestore_block_wal_size</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Otherwise, the current implementation will setup symbol file to kernel
+filesystem location and uses kernel driver to issue DB/WAL IO.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（快速）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../">配置</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../storage-devices/">存储设备</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ceph-conf/">配置 Ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../network-config-ref/">网络选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../auth-config-ref/">认证选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mon-config-ref/">监视器选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mon-lookup-dns/">Looking op Monitors through DNS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mon-osd-interaction/">心跳选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../osd-config-ref/">OSD 选项</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">BlueStore 配置</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">设备</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id2">存储配置策略</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="#block-data-only"><strong>block (data) only</strong></a></li>
+<li class="toctree-l6"><a class="reference internal" href="#block-and-block-db"><strong>block and block.db</strong></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">调整尺寸</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">自动调整缓存尺寸</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">手动调整缓存尺寸</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">校验和</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">内联压缩</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#spdk">SPDK 用法</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../filestore-config-ref/">Filestore 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journal-ref/">日志选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pool-pg-config-ref/">存储池、归置组和 CRUSH 选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ms-ref/">消息传递选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../general-config-ref/">常规选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operations/">运维</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">开发文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../README/">中文版翻译说明</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../translation-convention/">中文版词语翻译惯例</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../build-errors/">文档编译错误</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../filestore-config-ref/" title="filestore 配置参考"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../osd-config-ref/" title="OSD 配置参考"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../" >Ceph 存储集群</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" >配置</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

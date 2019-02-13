@@ -1,0 +1,574 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Orchestrator CLI &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Rook orchestrator integration" href="../rook/" />
+    <link rel="prev" title="Crash plugin" href="../crash/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rook/" title="Rook orchestrator integration"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../crash/" title="Crash plugin"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph Manager Daemon</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/mgr/orchestrator_cli.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="orchestrator-cli">
+<span id="orchestrator-cli-module"></span><h1>Orchestrator CLI<a class="headerlink" href="#orchestrator-cli" title="Permalink to this headline">¶</a></h1>
+<p>This module provides a command line interface (CLI) to orchestrator
+modules (ceph-mgr modules which interface with external orchestation services)</p>
+<p>As the orchestrator CLI unifies different external orchestrators, a common nomenclature
+for the orchestrator module is needed.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="49%" />
+<col width="51%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>host</td>
+<td>hostname (not DNS name) of the
+physical&nbsp;host. Not the podname,
+container name, or hostname inside
+the container.</td>
+</tr>
+<tr class="row-even"><td>service type</td>
+<td>The type of the service. e.g., nfs,
+mds, osd, mon, rgw, mgr, iscsi</td>
+</tr>
+<tr class="row-odd"><td>service</td>
+<td><p class="first">A logical service, Typically
+comprised of multiple service
+instances on multiple hosts for HA</p>
+<ul class="last simple">
+<li><code class="docutils literal notranslate"><span class="pre">fs_name</span></code> for mds type</li>
+<li><code class="docutils literal notranslate"><span class="pre">rgw_zone</span></code> for rgw type</li>
+<li><code class="docutils literal notranslate"><span class="pre">ganesha_cluster_id</span></code> for nfs type</li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td>service instance</td>
+<td><p class="first">A single instance of a service.
+&nbsp;Usually a daemon, but maybe not
+(e.g., might be a kernel service
+like LIO or knfsd or whatever)</p>
+<p class="last">This identifier should
+uniquely identify the instance</p>
+</td>
+</tr>
+<tr class="row-odd"><td>daemon</td>
+<td>A running process on a host; use
+“service instance” instead</td>
+</tr>
+</tbody>
+</table>
+<p>The relation between the names is the following:</p>
+<ul class="simple">
+<li>a service belongs to a service type</li>
+<li>a service instance belongs to a service type</li>
+<li>a service instance belongs to a single service group</li>
+</ul>
+<div class="section" id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
+<p>You can select the orchestrator module to use with the <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">backend</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="nb">set</span> <span class="n">backend</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>For example, to enable the Rook orchestrator module and use it with the CLI:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">mgr</span> <span class="n">module</span> <span class="n">enable</span> <span class="n">orchestrator_cli</span>
+<span class="n">ceph</span> <span class="n">mgr</span> <span class="n">module</span> <span class="n">enable</span> <span class="n">rook</span>
+<span class="n">ceph</span> <span class="n">orchestrator</span> <span class="nb">set</span> <span class="n">backend</span> <span class="n">rook</span>
+</pre></div>
+</div>
+<p>You can then check backend is properly configured:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">status</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The orchestrator CLI is unfinished and work in progress. Some commands will not
+exist, or return a different result.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Orchestrator modules may only implement a subset of the commands listed below.
+Also, the implementation of the commands are orchestrator module dependent and will
+differ between implementations.</p>
+</div>
+<div class="section" id="status">
+<h3>Status<a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">status</span>
+</pre></div>
+</div>
+<p>Show current orchestrator mode and high-level status (whether the module able
+to talk to it)</p>
+<p>Also show any in-progress actions.</p>
+</div>
+<div class="section" id="osd-management">
+<h3>OSD Management<a class="headerlink" href="#osd-management" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="list-devices">
+<h4>List Devices<a class="headerlink" href="#list-devices" title="Permalink to this headline">¶</a></h4>
+<p>Print a list of discovered devices, grouped by node and optionally
+filtered to a particular node:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">device</span> <span class="n">ls</span> <span class="p">[</span><span class="o">--</span><span class="n">host</span><span class="o">=...</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">refresh</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-osds">
+<h4>Create OSDs<a class="headerlink" href="#create-osds" title="Permalink to this headline">¶</a></h4>
+<p>Create OSDs on a group of devices on a single host:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">osd</span> <span class="n">create</span> <span class="o">&lt;</span><span class="n">host</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">drive</span><span class="o">&gt;</span>
+<span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">osd</span> <span class="n">create</span> <span class="o">-</span><span class="n">i</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">drive</span><span class="o">-</span><span class="n">group</span><span class="o">.</span><span class="n">json</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>The output of <code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">create</span></code> is not specified and may vary between orchestrator backends.</p>
+<p>Where <code class="docutils literal notranslate"><span class="pre">drive.group.json</span></code> is a JSON file containing the fields defined in <a class="reference internal" href="../orchestrator_modules/#orchestrator.DriveGroupSpec" title="orchestrator.DriveGroupSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">orchestrator.DriveGroupSpec</span></code></a></p>
+</div>
+<div class="section" id="decommission-an-osd">
+<h4>Decommission an OSD<a class="headerlink" href="#decommission-an-osd" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">osd</span> <span class="n">rm</span> <span class="o">&lt;</span><span class="n">osd</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">osd</span><span class="o">-</span><span class="nb">id</span><span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Removes one or more OSDs from the cluster and the host, if the OSDs are marked as
+<code class="docutils literal notranslate"><span class="pre">destroyed</span></code>.</p>
+</div>
+</div>
+<div class="section" id="service-status">
+<h3>Service Status<a class="headerlink" href="#service-status" title="Permalink to this headline">¶</a></h3>
+<p>Print a list of services known to the orchestrator. The list can be limited to
+services on a particular host with the optional –host parameter and/or
+services of a particular type via optional –type parameter
+(mon, osd, mgr, mds, rgw):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">service</span> <span class="n">ls</span> <span class="p">[</span><span class="o">--</span><span class="n">host</span> <span class="n">host</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">svc_type</span> <span class="nb">type</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">refresh</span><span class="o">|--</span><span class="n">no</span><span class="o">-</span><span class="n">cache</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Discover the status of a particular service:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">service</span> <span class="n">status</span> <span class="o">&lt;</span><span class="nb">type</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">--</span><span class="n">refresh</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Query the status of a particular service instance (mon, osd, mds, rgw).  For OSDs
+the id is the numeric OSD ID, for MDS services it is the filesystem name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">service</span><span class="o">-</span><span class="n">instance</span> <span class="n">status</span> <span class="o">&lt;</span><span class="nb">type</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">instance</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">--</span><span class="n">refresh</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="stateless-services-mds-rgw-nfs-rbd-mirror-iscsi">
+<h3>Stateless services (MDS/RGW/NFS/rbd-mirror/iSCSI)<a class="headerlink" href="#stateless-services-mds-rgw-nfs-rbd-mirror-iscsi" title="Permalink to this headline">¶</a></h3>
+<p>The orchestrator is not responsible for configuring the services. Please look into the corresponding
+documentation for details.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">name</span></code> parameter is an identifier of the group of instances:
+* a CephFS filesystem for a group of MDS daemons,
+* a zone name for a group of RGWs</p>
+<p>Sizing: the <code class="docutils literal notranslate"><span class="pre">size</span></code> parameter gives the number of daemons in the cluster
+(e.g. the number of MDS daemons for a particular CephFS filesystem).</p>
+<p>Creating/growing/shrinking/removing services:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph orchestrator {mds,rgw} update &lt;name&gt; &lt;size&gt; [host…]
+ceph orchestrator {mds,rgw} add &lt;name&gt;
+ceph orchestrator nfs update &lt;name&gt; &lt;size&gt; [host…]
+ceph orchestrator nfs add &lt;name&gt; &lt;pool&gt; [--namespace=&lt;namespace&gt;]
+ceph orchestrator {mds,rgw,nfs} rm &lt;name&gt;
+</pre></div>
+</div>
+<p>e.g., <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">orchestrator</span> <span class="pre">mds</span> <span class="pre">update&nbsp;myfs</span> <span class="pre">3</span> <span class="pre">host1</span> <span class="pre">host2</span> <span class="pre">host3</span></code></p>
+<p>Start/stop/reload:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">service</span> <span class="p">{</span><span class="n">stop</span><span class="p">,</span><span class="n">start</span><span class="p">,</span><span class="n">reload</span><span class="p">}</span> <span class="o">&lt;</span><span class="nb">type</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span>
+
+<span class="n">ceph</span> <span class="n">orchestrator</span> <span class="n">service</span><span class="o">-</span><span class="n">instance</span> <span class="p">{</span><span class="n">start</span><span class="p">,</span><span class="n">stop</span><span class="p">,</span><span class="n">reload</span><span class="p">}</span> <span class="o">&lt;</span><span class="nb">type</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">instance</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="current-implementation-status">
+<h2>Current Implementation Status<a class="headerlink" href="#current-implementation-status" title="Permalink to this headline">¶</a></h2>
+<p>This is an overview of the current implementation status of the orchestrators.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="53%" />
+<col width="14%" />
+<col width="9%" />
+<col width="14%" />
+<col width="11%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Command</th>
+<th class="head">Ansible</th>
+<th class="head">Rook</th>
+<th class="head">DeepSea</th>
+<th class="head">SSH</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>host add</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>✔️</td>
+</tr>
+<tr class="row-odd"><td>host ls</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>✔️</td>
+</tr>
+<tr class="row-even"><td>host rm</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>✔️</td>
+</tr>
+<tr class="row-odd"><td>mgr update</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>mon update</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>osd create</td>
+<td>✔️</td>
+<td>✔️</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>osd device {ident,fault}-{on,off}</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>osd rm</td>
+<td>✔️</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>device {ident,fault}-(on,off}</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>device ls</td>
+<td>✔️</td>
+<td>✔️</td>
+<td>✔️</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>service ls</td>
+<td>⚪</td>
+<td>✔️</td>
+<td>✔️</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>service status</td>
+<td>⚪</td>
+<td>✔️</td>
+<td>✔️</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>service-instance status</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>iscsi {stop,start,reload}</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>iscsi add</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>iscsi rm</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>iscsi update</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>mds {stop,start,reload}</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>mds add</td>
+<td>⚪</td>
+<td>✔️</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>mds rm</td>
+<td>⚪</td>
+<td>✔️</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>mds update</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>nfs {stop,start,reload}</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>nfs add</td>
+<td>⚪</td>
+<td>✔️</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>nfs rm</td>
+<td>⚪</td>
+<td>✔️</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>nfs update</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>rbd-mirror {stop,start,reload}</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>rbd-mirror add</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>rbd-mirror rm</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>rbd-mirror update</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>rgw {stop,start,reload}</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>rgw add</td>
+<td>⚪</td>
+<td>✔️</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-odd"><td>rgw rm</td>
+<td>⚪</td>
+<td>✔️</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+<tr class="row-even"><td>rgw update</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+<td>⚪</td>
+</tr>
+</tbody>
+</table>
+<p>where</p>
+<ul class="simple">
+<li>⚪ = not yet implemented</li>
+<li>❌ = not applicable</li>
+<li>✔ = implemented</li>
+</ul>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Manager Daemon</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../administrator/">Installation and Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../plugins/">Writing plugins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../orchestrator_modules/">Writing orchestrator plugins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dashboard/">Dashboard plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../diskprediction/">DiskPrediction plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../localpool/">Local pool plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../restful/">RESTful plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../zabbix/">Zabbix plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../prometheus/">Prometheus plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../influx/">Influx plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../hello/">Hello plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../telegraf/">Telegraf plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../telemetry/">Telemetry plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../iostat/">Iostat plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../crash/">Crash plugin</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Orchestrator CLI plugin</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#usage">Usage</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#status">Status</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#osd-management">OSD Management</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#list-devices">List Devices</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#create-osds">Create OSDs</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#decommission-an-osd">Decommission an OSD</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#service-status">Service Status</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#stateless-services-mds-rgw-nfs-rbd-mirror-iscsi">Stateless services (MDS/RGW/NFS/rbd-mirror/iSCSI)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#current-implementation-status">Current Implementation Status</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../rook/">Rook plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deepsea/">DeepSea plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../insights/">Insights plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ansible/">Ansible plugin</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rook/" title="Rook orchestrator integration"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../crash/" title="Crash plugin"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph Manager Daemon</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

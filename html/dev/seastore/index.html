@@ -1,0 +1,356 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>SeaStore &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Sepia community test lab" href="../sepia/" />
+    <link rel="prev" title="Notes on Ceph repositories" href="../repo-access/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../sepia/" title="Sepia community test lab"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../repo-access/" title="Notes on Ceph repositories"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" accesskey="U">Ceph Internals</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/seastore.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="seastore">
+<h1>SeaStore<a class="headerlink" href="#seastore" title="Permalink to this headline">¶</a></h1>
+<p>This is a rough design doc for a new ObjectStore implementation design
+to facilitate higher performance on solid state devices.</p>
+<div class="section" id="name">
+<h2>Name<a class="headerlink" href="#name" title="Permalink to this headline">¶</a></h2>
+<p>SeaStore maximizes the opportunity for confusion (seastar? seashore?)
+and associated fun.  Alternative suggestions welcome.</p>
+</div>
+<div class="section" id="goals">
+<h2>Goals<a class="headerlink" href="#goals" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Target NVMe devices.  Not primarily concerned with pmem or HDD.</li>
+<li>make use of SPDK for user-space driven IO</li>
+<li>Use Seastar futures programming model to facilitate run-to-completion and a sharded memory/processing model</li>
+<li>Allow zero- (or minimal) data copying on read and write paths when combined with a seastar-based messenger using DPDK</li>
+</ul>
+</div>
+<div class="section" id="motivation-and-background">
+<h2>Motivation and background<a class="headerlink" href="#motivation-and-background" title="Permalink to this headline">¶</a></h2>
+<p>All flash devices are internally structured in terms of segments that
+can be written efficiently but must be erased in their entirety.  The
+NVMe device generally has limited knowledge about what data in a
+segment is still “live” (hasn’t been logically discarded), making the
+inevitable garbage collection within the device inefficient.  We can
+design an on-disk layout that is friendly to GC at lower layers and
+drive garbage collection at higher layers.</p>
+<p>In principle a fine-grained discard could communicate our intent to
+the device, but in practice discard is poorly implemented in the
+device and intervening software layers.</p>
+</div>
+<div class="section" id="basics">
+<h2>Basics<a class="headerlink" href="#basics" title="Permalink to this headline">¶</a></h2>
+<p>The basic idea is that all data will be stream out sequentially to
+large segments on the device.  In the SSD hardware, segments are
+likely to be on the order of 100’s of MB to tens of GB.</p>
+<p>SeaStore’s logical segments would ideally be perfectly aligned with
+the hardware segments.  In practice, it may be challenging to
+determine geometry and to sufficiently hint to the device that LBAs
+being written should be aligned to the underlying hardware.  In the
+worst case, we can structure our logical segments to correspond to
+e.g. 5x the physical segment size so that we have about ~20% of our
+data misaligned.</p>
+<p>When we reach some utilization threshold, we mix cleaning work in with
+the ongoing write workload in order to evacuate live data from
+previously written segments.  Once they are completely free we can
+discard the entire segment so that it can be erased and reclaimed by
+the device.</p>
+<p>The key is to mix a small bit of cleaning work with every write
+transaction to avoid spikes and variance in write latency.</p>
+</div>
+<div class="section" id="data-layout-basics">
+<h2>Data layout basics<a class="headerlink" href="#data-layout-basics" title="Permalink to this headline">¶</a></h2>
+<p>One or more cores/shards will be reading and writing to the device at
+once.  Each shard will have its own independent data it is operating
+on and stream to its own open segments.  Devices that support streams
+can be hinted accordingly so that data from different shards is not
+mixed on the underlying media.</p>
+<div class="section" id="global-state">
+<h3>Global state<a class="headerlink" href="#global-state" title="Permalink to this headline">¶</a></h3>
+<p>There will be a simple global table of segments and their usage/empty
+status.  Each shard will occasionally claim new empty segments for
+writing as needed, or return cleaned segments to the global free list.</p>
+<p>At a high level, all metadata will be structured as a b-tree.  The
+root for the metadata btree will also be stored centrally (along with
+the segment allocation table).</p>
+<p>This is hand-wavey, but it is probably sufficient to update the root
+pointer for the btree either as each segment is sealed or as a new
+segment is opened.</p>
+</div>
+<div class="section" id="writing-segments">
+<h3>Writing segments<a class="headerlink" href="#writing-segments" title="Permalink to this headline">¶</a></h3>
+<p>Each segment will be written sequentially as a sequence of
+transactions.  Each transaction will be on-disk expression of an
+ObjectStore::Transaction.  It will consist of</p>
+<ul class="simple">
+<li>new data blocks</li>
+<li>some metadata describing changes to b-tree metadata blocks.  This
+will be written compact as a delta: which keys are removed and which
+keys/values are inserted into the b-tree block.</li>
+</ul>
+<p>As each b-tree block is modified, we update the block in memory and
+put it on a ‘dirty’ list.  However, again, only the (compact) delta is journaled
+to the segment.</p>
+<p>As we approach the end of the segment, the goal is to undirty all of
+our dirty blocks in memory.  Based on the number of dirty blocks and
+the remaining space, we include a proportional number of dirty blocks
+in each transaction write so that we undirty some of the b-tree
+blocks.  Eventually, the last transaction written to the segment will
+include all of the remaining dirty b-tree blocks.</p>
+</div>
+<div class="section" id="segment-inventory">
+<h3>Segment inventory<a class="headerlink" href="#segment-inventory" title="Permalink to this headline">¶</a></h3>
+<p>At the end of each segment, an inventory will be written that includes
+any metadata needed to test whether blocks in the segment are still
+live.  For data blocks, that means an object id (e.g., ino number) and
+offset to test whether the block is still reference.  For metadata
+blocks, it would be at least one metadata key that lands in any b-tree
+block that is modified (via a delta) in the segment–enough for us to
+do a forward lookup in the b-tree to check whether the b-tree block is
+still referenced.  Once this is written, the segment is sealed and read-only.</p>
+</div>
+<div class="section" id="crash-recovery">
+<h3>Crash recovery<a class="headerlink" href="#crash-recovery" title="Permalink to this headline">¶</a></h3>
+<p>On any crash, we simply “replay” the currently open segment in memory.
+For any b-tree delta encountered, we load the original block, modify
+in memory, and mark it dirty.  Once we continue writing, the normal “write
+dirty blocks as we near the end of the segment” behavior will pick up where
+we left off.</p>
+</div>
+</div>
+<div class="section" id="objectstore-considerations">
+<h2>ObjectStore considerations<a class="headerlink" href="#objectstore-considerations" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="splits-merges-and-sharding">
+<h3>Splits, merges, and sharding<a class="headerlink" href="#splits-merges-and-sharding" title="Permalink to this headline">¶</a></h3>
+<p>One of the current ObjectStore requirements is to be able to split a
+collection (PG) in O(1) time.  Starting in mimic, we also need to be
+able to merge two collections into one (i.e., exactly the reverse of a
+split).</p>
+<p>However, the PGs that we split into would hash to different shards of
+the OSD in the current sharding scheme.  One can imagine replacing
+that sharding scheme with a temporary mapping directing the smaller
+child PG to the right shard since we generally then migrate that PG to
+another OSD anyway, but this wouldn’t help us in the merge case where
+the constituent pieces may start out on different shards and
+ultimately need to be handled in the same collection (and be operated
+on via single transactions).</p>
+<p>This suggests that we likely need a way for data written via one shard
+to “switch ownership” and later be read and managed by a different
+shard.</p>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../">Developer Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../internals/">Ceph Internals</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../blkin/">Tracing Ceph With Blkin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bluestore/">BlueStore Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph_krb_auth/">A Detailed Documentation on How to Set up Ceph Kerberos Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-reclaim/">CephFS Reclaim Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-snapshots/">CephFS Snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx/">Cephx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx_protocol/">A Detailed Description of the Cephx Authentication Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config/">Configuration Management System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-key/">config-key layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../corpus/">Corpus structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpu-profiler/">Installing Oprofile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cxx/">C++17 and libstdc++ ABI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/">Deploying a development cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/#deploying-multiple-development-clusters-on-the-same-machine">Deploying multiple development clusters on the same machine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../development-workflow/">Development workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../documenting/">Documenting Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encoding/">Serialization (encode/decode)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../erasure-coded-pool/">Erasure Coded pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../freebsd/">FreeBSD Implementation details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generatedocs/">Building Ceph Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../iana/">IANA Numbers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../">Contributing to Ceph: A Guide for Developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel-client-troubleshooting/">Kernel client troubleshooting (FS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kubernetes/">Hacking on Ceph in Kubernetes with Rook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logging/">Use of the cluster log</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logs/">Debug logs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../macos/">build on MacOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../messenger/">Messenger notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-on-disk-formats/">ON-DISK FORMAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-osdmap-prune/">FULL OSDMAP VERSION PRUNING</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../msgr2/">msgr2 protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-protocol/">Network Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../object-store/">Object Store Architecture Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../peering/">Peering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf/">Using perf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_counters/">Perf counters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_histograms/">Perf histograms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement-group/">PG (Placement Group) notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quick_guide/">Developer Guide (Quick)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rados-client-protocol/">RADOS client protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-diff/">RBD Incremental Backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-export/">RBD Export &amp; Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../repo-access/">Notes on Ceph repositories</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">SeaStore</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#name">Name</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#goals">Goals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#motivation-and-background">Motivation and background</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#basics">Basics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#data-layout-basics">Data layout basics</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#global-state">Global state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#writing-segments">Writing segments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#segment-inventory">Segment inventory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#crash-recovery">Crash recovery</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#objectstore-considerations">ObjectStore considerations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#splits-merges-and-sharding">Splits, merges, and sharding</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../sepia/">Sepia community test lab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../testing/">Testing notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd_internals/">OSD developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds_internals/">MDS developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../radosgw/">RADOS Gateway developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph-volume/">ceph-volume developer documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../sepia/" title="Sepia community test lab"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../repo-access/" title="Notes on Ceph repositories"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" >Ceph Internals</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

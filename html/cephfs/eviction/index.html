@@ -2,38 +2,29 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Ceph 文件系统客户端的驱逐 &mdash; Ceph Documentation</title>
-    
+    <title>Ceph 文件系统客户端的驱逐 &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../../',
-        VERSION:     'dev',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '',
-        HAS_SOURCE:  true
-      };
-    </script>
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
-    <link rel="top" title="Ceph Documentation" href="../../" />
-    <link rel="up" title="Ceph 文件系统" href="../" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
     <link rel="next" title="处理占满的 Ceph 文件系统" href="../full/" />
     <link rel="prev" title="文件布局" href="../file-layouts/" />
-    
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
-  </head>
-  <body>
-    <div class="related">
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -48,69 +39,108 @@
         <li class="right" >
           <a href="../file-layouts/" title="文件布局"
              accesskey="P">previous</a> |</li>
-        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" accesskey="U">Ceph 文件系统</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
       </ul>
     </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/eviction.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
   <div class="section" id="ceph">
-<h1>Ceph 文件系统客户端的驱逐<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
+<span id="ceph-filesystem-client-eviction"></span><h1>Ceph 文件系统客户端的驱逐<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
 <p>当某个文件系统客户端不响应或者有其它异常行为时，有必要强制切断它到文件系统的访问，这个过程就叫做<em>驱逐</em>。</p>
-<p>这个过程有点过头，它是为了防止异常客户端导致数据不一致。</p>
-<div class="section" id="osd">
-<h2>OSD 黑名单机制<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h2>
-<p>首先，把此客户端加入<em>黑名单</em>以防止此它在 RADOS 级再操作任何数据。你可能熟悉这个概念，它在其它存储系统里叫做<em>隔离栏（ fencing ）</em>。</p>
-<p>找出要从 MDS 会话列表中驱逐的客户端：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ceph daemon mds.a session ls</span>
+<p>驱逐 CephFS 客户端，就是防止它再与 MDS 和 OSD 守护进程通讯。如果客户端已经对文件系统的缓冲 IO 做了些操作，这些未刷回的数据会丢失。</p>
+<p>客户端也有可能被自动（如果它们没及时与 MDS 通讯）、或手动驱逐（被系统管理员）。</p>
+<p>客户端驱逐机制适用于所有类型的客户端，包括 FUSE 挂载客户端、内核挂载客户端、 nfs-ganesha 网关、以及其它使用 libcephfs 的进程。</p>
+<div class="section" id="automatic-client-eviction">
+<span id="id1"></span><h2>自动客户端驱逐<a class="headerlink" href="#automatic-client-eviction" title="Permalink to this headline">¶</a></h2>
+<p>在两种情况下，客户端会被自动驱逐：</p>
+<p>在一个活跃的 MDS 守护进程上，如果一个客户端在限定的时间 <code class="docutils literal notranslate"><span class="pre">session_autoclose</span></code> （一个文件系统变量）秒数（默认 300 秒）内没有与 MDS 通讯，它就会被自动驱逐。</p>
+<p>在 MDS 启动（包括故障恢复）期间，它要途径一个名为 <code class="docutils literal notranslate"><span class="pre">reconnect</span></code>
+的状态，在这个状态下，它会等待所有客户端连接到这个新 MDS 守护进程。如果有客户端在限期（ <code class="docutils literal notranslate"><span class="pre">mds_reconnect_timeout</span></code> ，默认 45
+秒 ）内未能连上，它们就会被驱逐。</p>
+<p>以上任何一种情况产生，就会向集群日志发送一条警告消息。</p>
+</div>
+<div class="section" id="manual-client-eviction">
+<span id="id2"></span><h2>手动客户端驱逐<a class="headerlink" href="#manual-client-eviction" title="Permalink to this headline">¶</a></h2>
+<p>有时候，管理员可能得手动驱逐某个客户端。比如说，一个客户端已死，管理员不想等它的会话超时；或者有个客户端行为异常，管理员又无法登录客户端节点卸载它。</p>
+<p>一般要先检查下客户端列表：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="mi">0</span> <span class="n">client</span> <span class="n">ls</span>
+
 <span class="p">[</span>
-    <span class="p">{</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">4117</span><span class="p">,</span>
-      <span class="s2">&quot;num_leases&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-      <span class="s2">&quot;num_caps&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-      <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;open&quot;</span><span class="p">,</span>
-      <span class="s2">&quot;replay_requests&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-      <span class="s2">&quot;reconnecting&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
-      <span class="s2">&quot;inst&quot;</span><span class="p">:</span> <span class="s2">&quot;client.4117 172.16.79.251:0\/3271&quot;</span><span class="p">,</span>
-      <span class="s2">&quot;client_metadata&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;entity_id&quot;</span><span class="p">:</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-          <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="s2">&quot;fedoravm.localdomain&quot;</span><span class="p">,</span>
-          <span class="s2">&quot;mount_point&quot;</span><span class="p">:</span> <span class="s2">&quot;\/home\/user\/mnt&quot;</span><span class="p">}}]</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">4305</span><span class="p">,</span>
+        <span class="s2">&quot;num_leases&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;num_caps&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;open&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;replay_requests&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;completed_requests&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;reconnecting&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+        <span class="s2">&quot;inst&quot;</span><span class="p">:</span> <span class="s2">&quot;client.4305 172.21.9.34:0/422650892&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;client_metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;ceph_sha1&quot;</span><span class="p">:</span> <span class="s2">&quot;ae81e49d369875ac8b569ff3e3c456a31b8f3af5&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ceph_version&quot;</span><span class="p">:</span> <span class="s2">&quot;ceph version 12.0.0-1934-gae81e49 (ae81e49d369875ac8b569ff3e3c456a31b8f3af5)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;entity_id&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="s2">&quot;senta04&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mount_point&quot;</span><span class="p">:</span> <span class="s2">&quot;/tmp/tmpcMpF1b/mnt.0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pid&quot;</span><span class="p">:</span> <span class="s2">&quot;29377&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;root&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">]</span>
 </pre></div>
 </div>
-<p>本例中， &#8216;fedoravm&#8217; 客户端的地址是 <tt class="docutils literal"><span class="pre">172.16.79.251:0/3271</span></tt> ，所以这样加黑名单：</p>
-<div class="highlight-python"><pre># ceph osd blacklist add 172.16.79.251:0/3271
-blacklisting 172.16.79.251:0/3271 until 2014-12-09 13:09:56.569368 (3600 sec)</pre>
-</div>
-</div>
-<div class="section" id="id1">
-<h2>OSD 元图屏蔽<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>被驱逐的客户端已在 OSD 图的中央（ mon ）副本中标记为进黑名单了，现在有必要确认一下本次 OSD 图更新已经传递给了后续文件系统 I/O 会涉及的所有守护进程。可以用 <tt class="docutils literal"><span class="pre">osdmap</span> <span class="pre">barrier</span></tt> 这个 MDS 管理套接字命令。</p>
-<p>首先读出最新的 OSD 元图：</p>
-<div class="highlight-python"><pre># ceph osd dump
-epoch 12
-fsid fd61ca96-53ff-4311-826c-f36b176d69ea
-created 2014-12-09 12:03:38.595844
-modified 2014-12-09 12:09:56.619957
-...</pre>
-</div>
-<p>本例中它是 12 ，让 MDS 屏蔽此元图：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ceph daemon mds.a osdmap barrier 12</span>
+<p>找到想要驱逐的客户端后，就可以用它的唯一 ID 、或者其它属性来标识它：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># 这些都可以</span>
+<span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="mi">0</span> <span class="n">client</span> <span class="n">evict</span> <span class="nb">id</span><span class="o">=</span><span class="mi">4305</span>
+<span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="mi">0</span> <span class="n">client</span> <span class="n">evict</span> <span class="n">client_metadata</span><span class="o">.=</span><span class="mi">4305</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="mds">
-<h2>MDS 会话驱逐<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h2>
-<p>最后就可以安全地驱逐此客户端的 MDS 会话了，这样它持有的所有能力就可以发行给其它客户端了。这里的 ID 是 <tt class="docutils literal"><span class="pre">session</span> <span class="pre">ls</span></tt> 输出里的 <tt class="docutils literal"><span class="pre">id</span></tt> 属性：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># ceph daemon mds.a session evict 4117</span>
+<div class="section" id="id3">
+<h2>高级话题：从黑名单踢出客户端<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>通常，进了黑名单的客户端就不能再重新连接服务器了：它必须被卸载、然后再重新挂载。</p>
+<p>然而，在某些情况下，还是得允许被驱逐后、又想重连的客户端。</p>
+<p>CephFS 是用 RADOS OSD 黑名单来控制客户端驱逐的，所以只要把它们从黑名单删除，就是允许这些 CephFS 客户端重连了：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd blacklist ls
+listed 1 entries
+127.0.0.1:0/3710147553 2018-03-19 11:32:24.716146
+$ ceph osd blacklist rm 127.0.0.1:0/3710147553
+un-blacklisting 127.0.0.1:0/3710147553
 </pre></div>
 </div>
-<p>好了！这个客户端现在已经被驱逐了，而且它持有的资源也可以重分配给其它客户端了。</p>
+<p>假如被拉黑的客户端对缓冲 IO 做了操作，而其它客户端访问了这些文件，这样做就可能会破坏数据完整性。而且也不能确定客户端功能会完全恢复——要想挽回一个完全健康的被驱逐客户端，最好的方法是把它卸载掉，然后再干净地挂载。</p>
+<p>如果你想这样重连客户端，可以在 FUSE 客户端上设置 <code class="docutils literal notranslate"><span class="pre">client_reconnect_stale</span></code> 为 <code class="docutils literal notranslate"><span class="pre">true</span></code> ，以此为客户端重连提速。</p>
 </div>
-<div class="section" id="id2">
-<h2>背景： OSD 元图屏蔽<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id4">
+<h2>高级话题：配置黑名单功能<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>如果由于客户端主机慢或者网络不可靠，频繁遇到客户端驱逐，这些底层问题还解决不了，你可以让 MDS 别那么严格。</p>
+<p>对于响应缓慢的客户端，可以简单地丢弃它们的 MDS 会话，却允许它们重新开启会话并且允许它们继续与 OSD 通讯。要打开这种模式，可以在 MDS 节点上把 <code class="docutils literal notranslate"><span class="pre">mds_session_blacklist_on_timeout</span></code> 设置为
+false 。</p>
+<p>对于手动驱逐时的类似情形，可以把 <code class="docutils literal notranslate"><span class="pre">mds_session_blacklist_on_evict</span></code> 设置为 false 。</p>
+<p>注意，如果禁用了黑名单功能，那么驱逐客户端只会在收到了命令的 MDS 上生效。在一个多活 MDS 系统上，你得向所有活跃的 MDS 守护进程发送驱逐命令。黑名单功能启用时（默认如此），只要把驱逐命令发给一个 MDS 就足够了，因为黑名单会自动扩散到其余守护进程。</p>
+<div class="section" id="osd">
+<span id="background-blacklisting-and-osd-epoch-barrier"></span><h3>背景： 黑名单和 OSD 元图屏蔽<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h3>
+<p>一个客户端被加入黑名单后，有必要确保其它客户端和 MDS 守护进程能收到最新的 OSDMap （新增了这条黑名单的），以免有人再访问那些进了黑名单的客户端访问过的数据对象。</p>
+<p>这是通过名为 “osdmap epoch barrier” 的内部机制保证的。</p>
 <p>此屏蔽的目的是为了确保当我们分配出这些能力后，别的客户端就有可能触碰同样的 RADOS 对象，接受分配能力的客户端们必须有足够新的 OSD 图，这样它们才不会与取消的操作（来自 ENOSPC ）或进了黑名单的客户端（来自驱逐过程）竞争。</p>
 <p>更具体些，我们设置元图屏蔽的情形有：</p>
 <blockquote>
@@ -129,15 +159,18 @@ modified 2014-12-09 12:09:56.619957
 <li>我们仅在极少数情形下使用这种屏蔽，所以每索引节点这样细粒度的实现带来的好处也很少见。</li>
 </ul>
 </div></blockquote>
-<p>元图屏蔽随其它能力消息一起传递，并且可指示消息接收器在看到这个 OSD 元图前、别再向那些 OSD 发送 RADOS 操作。主要是面向客户端（它们直接向文件写入数据）的，也适用于 MDS ，因为像文件尺寸探测和文件删除这样的操作都是直接在 MDS 上进行的。</p>
+<p>元图屏蔽随其它能力消息一起传递，并且可指示消息接收器在看到这个
+OSD 元图前、别再向那些 OSD 发送 RADOS 操作。主要是面向客户端（它们直接向文件写入数据）的，也适用于 MDS ，因为像文件尺寸探测和文件删除这样的操作都是直接在 MDS 上进行的。</p>
 </div>
 </div>
+</div>
+
 
 
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
             <p class="logo"><a href="../../">
               <img class="logo" src="../../_static/logo.png" alt="Logo"/>
@@ -175,11 +208,14 @@ modified 2014-12-09 12:09:56.619957
 <li class="toctree-l3"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="">驱逐客户端</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#osd">OSD 黑名单机制</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id1">OSD 元图屏蔽</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mds">MDS 会话驱逐</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id2">背景： OSD 元图屏蔽</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">驱逐客户端</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#automatic-client-eviction">自动客户端驱逐</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#manual-client-eviction">手动客户端驱逐</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">高级话题：从黑名单踢出客户端</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">高级话题：配置黑名单功能</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#osd">背景： 黑名单和 OSD 元图屏蔽</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
@@ -201,34 +237,33 @@ modified 2014-12-09 12:09:56.619957
 <li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../dev/">开发文档</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../release-notes/">Release Notes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../README/">中文版翻译说明</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../translation-convention/">中文版词语翻译惯例</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../build-errors/">文档编译错误</a></li>
 </ul>
 
 
 <!-- ugly kludge to make genindex look like it's part of the toc -->
 <ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
-<div id="searchbox" style="display: none">
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="../../search/" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -243,12 +278,12 @@ modified 2014-12-09 12:09:56.619957
         <li class="right" >
           <a href="../file-layouts/" title="文件布局"
              >previous</a> |</li>
-        <li><a href="../../">Ceph Documentation</a> &raquo;</li>
-          <li><a href="../" >Ceph 文件系统</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 
       </ul>
     </div>
-    <div class="footer">
-        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
     </div>
   </body>
 </html>

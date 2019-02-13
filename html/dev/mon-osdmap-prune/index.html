@@ -1,0 +1,590 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>FULL OSDMAP VERSION PRUNING &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="msgr2 protocol" href="../msgr2/" />
+    <link rel="prev" title="ON-DISK FORMAT" href="../mon-on-disk-formats/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../msgr2/" title="msgr2 protocol"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../mon-on-disk-formats/" title="ON-DISK FORMAT"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" accesskey="U">Ceph Internals</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/mon-osdmap-prune.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="full-osdmap-version-pruning">
+<h1>FULL OSDMAP VERSION PRUNING<a class="headerlink" href="#full-osdmap-version-pruning" title="Permalink to this headline">¶</a></h1>
+<p>For each incremental osdmap epoch, the monitor will keep a full osdmap
+epoch in the store.</p>
+<p>While this is great when serving osdmap requests from clients, allowing
+us to fulfill their request without having to recompute the full osdmap
+from a myriad of incrementals, it can also become a burden once we start
+keeping an unbounded number of osdmaps.</p>
+<p>The monitors will attempt to keep a bounded number of osdmaps in the store.
+This number is defined (and configurable) via <code class="docutils literal notranslate"><span class="pre">mon_min_osdmap_epochs</span></code>, and
+defaults to 500 epochs. Generally speaking, we will remove older osdmap
+epochs once we go over this limit.</p>
+<p>However, there are a few constraints to removing osdmaps. These are all
+defined in <code class="docutils literal notranslate"><span class="pre">OSDMonitor::get_trim_to()</span></code>.</p>
+<p>In the event one of these conditions is not met, we may go over the bounds
+defined by <code class="docutils literal notranslate"><span class="pre">mon_min_osdmap_epochs</span></code>. And if the cluster does not meet the
+trim criteria for some time (e.g., unclean pgs), the monitor may start
+keeping a lot of osdmaps. This can start putting pressure on the underlying
+key/value store, as well as on the available disk space.</p>
+<p>One way to mitigate this problem would be to stop keeping full osdmap
+epochs on disk. We would have to rebuild osdmaps on-demand, or grab them
+from cache if they had been recently served. We would still have to keep
+at least one osdmap, and apply all incrementals on top of either this
+oldest map epoch kept in the store or a more recent map grabbed from cache.
+While this would be feasible, it seems like a lot of cpu (and potentially
+IO) would be going into rebuilding osdmaps.</p>
+<p>Additionally, this would prevent the aforementioned problem going forward,
+but would do nothing for stores currently in a state that would truly
+benefit from not keeping osdmaps.</p>
+<p>This brings us to full osdmap pruning.</p>
+<p>Instead of not keeping full osdmap epochs, we are going to prune some of
+them when we have too many.</p>
+<p>Deciding whether we have too many will be dictated by a configurable option
+<code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_min</span></code> (default: 10000). The pruning algorithm will be
+engaged once we go over this threshold.</p>
+<p>We will not remove all <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_min</span></code> full osdmap epochs
+though. Instead, we are going to poke some holes in the sequence of full
+maps. By default, we will keep one full osdmap per 10 maps since the last
+map kept; i.e., if we keep epoch 1, we will also keep epoch 10 and remove
+full map epochs 2 to 9. The size of this interval is configurable with
+<code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_interval</span></code>.</p>
+<p>Essentially, we are proposing to keep ~10% of the full maps, but we will
+always honour the minimum number of osdmap epochs, as defined by
+<code class="docutils literal notranslate"><span class="pre">mon_min_osdmap_epochs</span></code>, and these won’t be used for the count of the
+minimum versions to prune. For instance, if we have on-disk versions
+[1..50000], we would allow the pruning algorithm to operate only over
+osdmap epochs [1..49500); but, if have on-disk versions [1..10200], we
+won’t be pruning because the algorithm would only operate on versions
+[1..9700), and this interval contains less versions than the minimum
+required by <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_min</span></code>.</p>
+<div class="section" id="algorithm">
+<h2>ALGORITHM<a class="headerlink" href="#algorithm" title="Permalink to this headline">¶</a></h2>
+<p>Say we have 50,000 osdmap epochs in the store, and we’re using the
+defaults for all configurable options.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-----------------------------------------------------------</span>
+<span class="o">|</span><span class="mi">1</span><span class="o">|</span><span class="mi">2</span><span class="o">|..|</span><span class="mi">10</span><span class="o">|</span><span class="mi">11</span><span class="o">|..|</span><span class="mi">100</span><span class="o">|..|</span><span class="mi">1000</span><span class="o">|..|</span><span class="mi">10000</span><span class="o">|</span><span class="mi">10001</span><span class="o">|..|</span><span class="mi">49999</span><span class="o">|</span><span class="mi">50000</span><span class="o">|</span>
+<span class="o">-----------------------------------------------------------</span>
+ <span class="o">^</span> <span class="n">first</span>                                            <span class="n">last</span> <span class="o">^</span>
+</pre></div>
+</div>
+<p>We will prune when all the following constraints are met:</p>
+<ol class="arabic simple">
+<li>number of versions is greater than <code class="docutils literal notranslate"><span class="pre">mon_min_osdmap_epochs</span></code>;</li>
+<li>the number of versions between <code class="docutils literal notranslate"><span class="pre">first</span></code> and <code class="docutils literal notranslate"><span class="pre">prune_to</span></code> is greater (or
+equal) than <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_min</span></code>, with <code class="docutils literal notranslate"><span class="pre">prune_to</span></code> being equal to
+<code class="docutils literal notranslate"><span class="pre">last</span></code> minus <code class="docutils literal notranslate"><span class="pre">mon_min_osdmap_epochs</span></code>.</li>
+</ol>
+<p>If any of these conditions fails, we will <em>not</em> prune any maps.</p>
+<p>Furthermore, if it is known that we have been pruning, but since then we
+are no longer satisfying at least one of the above constraints, we will
+not continue to prune. In essence, we only prune full osdmaps if the
+number of epochs in the store so warrants it.</p>
+<p>As pruning will create gaps in the sequence of full maps, we need to keep
+track of the intervals of missing maps. We do this by keeping a manifest of
+pinned maps – i.e., a list of maps that, by being pinned, are not to be
+pruned.</p>
+<p>While pinned maps are not removed from the store, maps between two consecutive
+pinned maps will; and the number of maps to be removed will be dictated by the
+configurable option <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_interval</span></code>. The algorithm makes an
+effort to keep pinned maps apart by as many maps as defined by this option,
+but in the event of corner cases it may allow smaller intervals. Additionally,
+as this is a configurable option that is read any time a prune iteration
+occurs, there is the possibility this interval will change if the user changes
+this config option.</p>
+<p>Pinning maps is performed lazily: we will be pinning maps as we are removing
+maps. This grants us more flexibility to change the prune interval while
+pruning is happening, but also simplifies considerably the algorithm, as well
+as the information we need to keep in the manifest. Below we show a simplified
+version of the algorithm::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">manifest</span><span class="o">.</span><span class="n">pin</span><span class="p">(</span><span class="n">first</span><span class="p">)</span>
+<span class="n">last_to_prune</span> <span class="o">=</span> <span class="n">last</span> <span class="o">-</span> <span class="n">mon_min_osdmap_epochs</span>
+
+<span class="k">while</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get_last_pinned</span><span class="p">()</span> <span class="o">+</span> <span class="n">prune_interval</span> <span class="o">&lt;</span> <span class="n">last_to_prune</span> <span class="n">AND</span>
+      <span class="n">last_to_prune</span> <span class="o">-</span> <span class="n">first</span> <span class="o">&gt;</span> <span class="n">mon_min_osdmap_epochs</span> <span class="n">AND</span>
+      <span class="n">last_to_prune</span> <span class="o">-</span> <span class="n">first</span> <span class="o">&gt;</span> <span class="n">mon_osdmap_full_prune_min</span> <span class="n">AND</span>
+      <span class="n">num_pruned</span> <span class="o">&lt;</span> <span class="n">mon_osdmap_full_prune_txsize</span><span class="p">:</span>
+
+  <span class="n">last_pinned</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get_last_pinned</span><span class="p">()</span>
+  <span class="n">new_pinned</span> <span class="o">=</span> <span class="n">last_pinned</span> <span class="o">+</span> <span class="n">prune_interval</span>
+  <span class="n">manifest</span><span class="o">.</span><span class="n">pin</span><span class="p">(</span><span class="n">new_pinned</span><span class="p">)</span>
+  <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="p">(</span><span class="n">last_pinned</span> <span class="o">..</span> <span class="n">new_pinned</span><span class="p">):</span>
+    <span class="n">store</span><span class="o">.</span><span class="n">erase</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="o">++</span><span class="n">num_pruned</span>
+</pre></div>
+</div>
+<p>In essence, the algorithm ensures that the first version in the store is
+<em>always</em> pinned. After all, we need a starting point when rebuilding maps, and
+we can’t simply remove the earliest map we have; otherwise we would be unable
+to rebuild maps for the very first pruned interval.</p>
+<p>Once we have at least one pinned map, each iteration of the algorithm can
+simply base itself on the manifest’s last pinned map (which we can obtain by
+reading the element at the tail of the manifest’s pinned maps list).</p>
+<p>We’ll next need to determine the interval of maps to be removed: all the maps
+from <code class="docutils literal notranslate"><span class="pre">last_pinned</span></code> up to <code class="docutils literal notranslate"><span class="pre">new_pinned</span></code>, which in turn is nothing more than
+<code class="docutils literal notranslate"><span class="pre">last_pinned</span></code> plus <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_interval</span></code>. We know that all maps
+between these two values, <code class="docutils literal notranslate"><span class="pre">last_pinned</span></code> and <code class="docutils literal notranslate"><span class="pre">new_pinned</span></code> can be removed,
+considering <code class="docutils literal notranslate"><span class="pre">new_pinned</span></code> has been pinned.</p>
+<p>The algorithm ceases to execute as soon as one of the two initial
+preconditions is not met, or if we do not meet two additional conditions that
+have no weight on the algorithm’s correctness:</p>
+<ol class="arabic simple">
+<li>We will stop if we are not able to create a new pruning interval properly
+aligned with <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_interval</span></code> that is lower than
+<code class="docutils literal notranslate"><span class="pre">last_pruned</span></code>. There is no particular technical reason why we enforce
+this requirement, besides allowing us to keep the intervals with an
+expected size, and preventing small, irregular intervals that would be
+bound to happen eventually (e.g., pruning continues over the course of
+several iterations, removing one or two or three maps each time).</li>
+<li>We will stop once we know that we have pruned more than a certain number of
+maps. This value is defined by <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_txsize</span></code>, and
+ensures we don’t spend an unbounded number of cycles pruning maps. We don’t
+enforce this value religiously (deletes do not cost much), but we make an
+effort to honor it.</li>
+</ol>
+<p>We could do the removal in one go, but we have no idea how long that would
+take. Therefore, we will perform several iterations, removing at most
+<code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_txsize</span></code> osdmaps per iteration.</p>
+<p>In the end, our on-disk map sequence will look similar to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">------------------------------------------</span>
+<span class="o">|</span><span class="mi">1</span><span class="o">|</span><span class="mi">10</span><span class="o">|</span><span class="mi">20</span><span class="o">|</span><span class="mi">30</span><span class="o">|..|</span><span class="mi">49500</span><span class="o">|</span><span class="mi">49501</span><span class="o">|..|</span><span class="mi">49999</span><span class="o">|</span><span class="mi">50000</span><span class="o">|</span>
+<span class="o">------------------------------------------</span>
+ <span class="o">^</span> <span class="n">first</span>                           <span class="n">last</span> <span class="o">^</span>
+</pre></div>
+</div>
+<p>Because we are not pruning all versions in one go, we need to keep state
+about how far along on our pruning we are. With that in mind, we have
+created a data structure, <code class="docutils literal notranslate"><span class="pre">osdmap_manifest_t</span></code>, that holds the set of pinned
+maps::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">osdmap_manifest_t</span><span class="p">:</span>
+    <span class="nb">set</span><span class="o">&lt;</span><span class="n">version_t</span><span class="o">&gt;</span> <span class="n">pinned</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Given we are only pinning maps while we are pruning, we don’t need to keep
+track of additional state about the last pruned version. We know as a matter
+of fact that we have pruned all the intermediate maps between any two
+consecutive pinned maps.</p>
+<p>The question one could ask, though, is how can we be sure we pruned all the
+intermediate maps if, for instance, the monitor crashes. To ensure we are
+protected against such an event, we always write the osdmap manifest to disk
+on the same transaction that is deleting the maps. This way we have the
+guarantee that, if the monitor crashes, we will read the latest version of the
+manifest: either containing the newly pinned maps, meaning we also pruned the
+in-between maps; or we will find the previous version of the osdmap manifest,
+which will not contain the maps we were pinning at the time we crashed, given
+the transaction on which we would be writing the updated osdmap manifest was
+not applied (alongside with the maps removal).</p>
+<p>The osdmap manifest will be written to the store each time we prune, with an
+updated list of pinned maps. It is written in the transaction effectively
+pruning the maps, so we guarantee the manifest is always up to date. As a
+consequence of this criteria, the first time we will write the osdmap manifest
+is the first time we prune. If an osdmap manifest does not exist, we can be
+certain we do not hold pruned map intervals.</p>
+<p>We will rely on the manifest to ascertain whether we have pruned maps
+intervals. In theory, this will always be the on-disk osdmap manifest, but we
+make sure to read the on-disk osdmap manifest each time we update from paxos;
+this way we always ensure having an up to date in-memory osdmap manifest.</p>
+<p>Once we finish pruning maps, we will keep the manifest in the store, to
+allow us to easily find which maps have been pinned (instead of checking
+the store until we find a map). This has the added benefit of allowing us to
+quickly figure out which is the next interval we need to prune (i.e., last
+pinned plus the prune interval). This doesn’t however mean we will forever
+keep the osdmap manifest: the osdmap manifest will no longer be required once
+the monitor trims osdmaps and the earliest available epoch in the store is
+greater than the last map we pruned.</p>
+<p>The same conditions from <code class="docutils literal notranslate"><span class="pre">OSDMonitor::get_trim_to()</span></code> that force the monitor
+to keep a lot of osdmaps, thus requiring us to prune, may eventually change
+and allow the monitor to remove some of its oldest maps.</p>
+<div class="section" id="map-trimming">
+<h3>MAP TRIMMING<a class="headerlink" href="#map-trimming" title="Permalink to this headline">¶</a></h3>
+<p>If the monitor trims maps, we must then adjust the osdmap manifest to
+reflect our pruning status, or remove the manifest entirely if it no longer
+makes sense to keep it. For instance, take the map sequence from before, but
+let us assume we did not finish pruning all the maps.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-------------------------------------------------------------</span>
+<span class="o">|</span><span class="mi">1</span><span class="o">|</span><span class="mi">10</span><span class="o">|</span><span class="mi">20</span><span class="o">|</span><span class="mi">30</span><span class="o">|..|</span><span class="mi">490</span><span class="o">|</span><span class="mi">500</span><span class="o">|</span><span class="mi">501</span><span class="o">|</span><span class="mi">502</span><span class="o">|..|</span><span class="mi">49500</span><span class="o">|</span><span class="mi">49501</span><span class="o">|..|</span><span class="mi">49999</span><span class="o">|</span><span class="mi">50000</span><span class="o">|</span>
+<span class="o">-------------------------------------------------------------</span>
+ <span class="o">^</span> <span class="n">first</span>            <span class="o">^</span> <span class="n">pinned</span><span class="o">.</span><span class="n">last</span><span class="p">()</span>                   <span class="n">last</span> <span class="o">^</span>
+
+<span class="n">pinned</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="mi">490</span><span class="p">,</span> <span class="mi">500</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Now let us assume that the monitor will trim up to epoch 501. This means
+removing all maps prior to epoch 501, and updating the <code class="docutils literal notranslate"><span class="pre">first_committed</span></code>
+pointer to <code class="docutils literal notranslate"><span class="pre">501</span></code>. Given removing all those maps would invalidate our
+existing pruning efforts, we can consider our pruning has finished and drop
+our osdmap manifest. Doing so also simplifies starting a new prune, if all
+the starting conditions are met once we refreshed our state from the
+store.</p>
+<p>We would then have the following map sequence:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">---------------------------------------</span>
+<span class="o">|</span><span class="mi">501</span><span class="o">|</span><span class="mi">502</span><span class="o">|..|</span><span class="mi">49500</span><span class="o">|</span><span class="mi">49501</span><span class="o">|..|</span><span class="mi">49999</span><span class="o">|</span><span class="mi">50000</span><span class="o">|</span>
+<span class="o">---------------------------------------</span>
+ <span class="o">^</span> <span class="n">first</span>                        <span class="n">last</span> <span class="o">^</span>
+</pre></div>
+</div>
+<p>However, imagine a slightly more convoluted scenario: the monitor will trim
+up to epoch 491. In this case, epoch 491 has been previously pruned from the
+store.</p>
+<p>Given we will always need to have the oldest known map in the store, before
+we trim we will have to check whether that map is in the prune interval
+(i.e., if said map epoch belongs to <code class="docutils literal notranslate"><span class="pre">[</span> <span class="pre">pinned.first()..pinned.last()</span> <span class="pre">)</span></code>).
+If so, we need to check if this is a pinned map, in which case we don’t have
+much to be concerned aside from removing lower epochs from the manifest’s
+pinned list. On the other hand, if the map being trimmed to is not a pinned
+map, we will need to rebuild said map and pin it, and only then will we remove
+the pinned maps prior to the map’s epoch.</p>
+<p>In this case, we would end up with the following sequence::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>-----------------------------------------------
+|491|500|501|502|..|49500|49501|..|49999|50000|
+-----------------------------------------------
+ ^   ^- pinned.last()                   last ^
+ `- first
+</pre></div>
+</div>
+<p>There is still an edge case that we should mention. Consider that we are
+going to trim up to epoch 499, which is the very last pruned epoch.</p>
+<p>Much like the scenario above, we would end up writing osdmap epoch 499 to
+the store; but what should we do about pinned maps and pruning?</p>
+<p>The simplest solution is to drop the osdmap manifest. After all, given we
+are trimming to the last pruned map, and we are rebuilding this map, we can
+guarantee that all maps greater than e 499 are sequential (because we have
+not pruned any of them). In essence, dropping the osdmap manifest in this
+case is essentially the same as if we were trimming over the last pruned
+epoch: we can prune again later if we meet the required conditions.</p>
+<p>And, with this, we have fully dwelled into full osdmap pruning. Later in this
+document one can find detailed <cite>REQUIREMENTS, CONDITIONS &amp; INVARIANTS</cite> for the
+whole algorithm, from pruning to trimming. Additionally, the next section
+details several additional checks to guarantee the sanity of our configuration
+options. Enjoy.</p>
+</div>
+<div class="section" id="configuration-options-sanity-checks">
+<h3>CONFIGURATION OPTIONS SANITY CHECKS<a class="headerlink" href="#configuration-options-sanity-checks" title="Permalink to this headline">¶</a></h3>
+<p>We perform additional checks before pruning to ensure all configuration
+options involved are sane:</p>
+<ol class="arabic simple">
+<li>If <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_interval</span></code> is zero we will not prune; we
+require an actual positive number, greater than one, to be able to prune
+maps. If the interval is one, we would not actually be pruning any maps, as
+the interval between pinned maps would essentially be a single epoch. This
+means we would have zero maps in-between pinned maps, hence no maps would
+ever be pruned.</li>
+<li>If <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_min</span></code> is zero we will not prune; we require a
+positive, greater than zero, value so we know the threshold over which we
+should prune. We don’t want to guess.</li>
+<li>If <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_interval</span></code> is greater than
+<code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_min</span></code> we will not prune, as it is impossible to
+ascertain a proper prune interval.</li>
+<li>If <code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_txsize</span></code> is lower than
+<code class="docutils literal notranslate"><span class="pre">mon_osdmap_full_prune_interval</span></code> we will not prune; we require a
+<code class="docutils literal notranslate"><span class="pre">txsize</span></code> with a value at least equal than <code class="docutils literal notranslate"><span class="pre">interval</span></code>, and (depending on
+the value of the latter) ideally higher.</li>
+</ol>
+</div>
+<div class="section" id="requirements-conditions-invariants">
+<h3>REQUIREMENTS, CONDITIONS &amp; INVARIANTS<a class="headerlink" href="#requirements-conditions-invariants" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="requirements">
+<h4>REQUIREMENTS<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li>All monitors in the quorum need to support pruning.</li>
+<li>Once pruning has been enabled, monitors not supporting pruning will not be
+allowed in the quorum, nor will be allowed to synchronize.</li>
+<li>Removing the osdmap manifest results in disabling the pruning feature quorum
+requirement. This means that monitors not supporting pruning will be allowed
+to synchronize and join the quorum, granted they support any other features
+required.</li>
+</ul>
+</div>
+<div class="section" id="conditions-invariants">
+<h4>CONDITIONS &amp; INVARIANTS<a class="headerlink" href="#conditions-invariants" title="Permalink to this headline">¶</a></h4>
+<ul>
+<li><p class="first">Pruning has never happened, or we have trimmed past its previous
+intervals::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>invariant: first_committed &gt; 1
+
+condition: pinned.empty() AND !store.exists(manifest)
+</pre></div>
+</div>
+</li>
+<li><p class="first">Pruning has happened at least once::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>invariant: first_committed &gt; 0
+invariant: !pinned.empty())
+invariant: pinned.first() == first_committed
+invariant: pinned.last() &lt; last_committed
+
+  precond: pinned.last() &lt; prune_to AND
+           pinned.last() + prune_interval &lt; prune_to
+
+ postcond: pinned.size() &gt; old_pinned.size() AND
+           (for each v in [pinned.first()..pinned.last()]:
+             if pinned.count(v) &gt; 0: store.exists_full(v)
+             else: !store.exists_full(v)
+           )
+</pre></div>
+</div>
+</li>
+<li><p class="first">Pruning has finished::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>invariant: first_committed &gt; 0
+invariant: !pinned.empty()
+invariant: pinned.first() == first_committed
+invariant: pinned.last() &lt; last_committed
+
+condition: pinned.last() == prune_to OR
+           pinned.last() + prune_interval &lt; prune_to
+</pre></div>
+</div>
+</li>
+<li><p class="first">Pruning intervals can be trimmed::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>precond:   OSDMonitor::get_trim_to() &gt; 0
+
+condition: !pinned.empty()
+
+invariant: pinned.first() == first_committed
+invariant: pinned.last() &lt; last_committed
+invariant: pinned.first() &lt;= OSDMonitor::get_trim_to()
+invariant: pinned.last() &gt;= OSDMonitor::get_trim_to()
+</pre></div>
+</div>
+</li>
+<li><p class="first">Trim pruned intervals::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>invariant: !pinned.empty()
+invariant: pinned.first() == first_committed
+invariant: pinned.last() &lt; last_committed
+invariant: pinned.first() &lt;= OSDMonitor::get_trim_to()
+invariant: pinned.last() &gt;= OSDMonitor::get_trim_to()
+
+postcond:  pinned.empty() OR
+           (pinned.first() == OSDMonitor::get_trim_to() AND
+            pinned.last() &gt; pinned.first() AND
+            (for each v in [0..pinned.first()]:
+              !store.exists(v) AND
+              !store.exists_full(v)
+            ) AND
+            (for each m in [pinned.first()..pinned.last()]:
+              if pinned.count(m) &gt; 0: store.exists_full(m)
+              else: !store.exists_full(m) AND store.exists(m)
+            )
+           )
+postcond:  !pinned.empty() OR
+           (!store.exists(manifest) AND
+            (for each v in [pinned.first()..pinned.last()]:
+              !store.exists(v) AND
+              !store.exists_full(v)
+            )
+           )
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../">Developer Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../internals/">Ceph Internals</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../blkin/">Tracing Ceph With Blkin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bluestore/">BlueStore Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph_krb_auth/">A Detailed Documentation on How to Set up Ceph Kerberos Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-reclaim/">CephFS Reclaim Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-snapshots/">CephFS Snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx/">Cephx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx_protocol/">A Detailed Description of the Cephx Authentication Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config/">Configuration Management System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-key/">config-key layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../corpus/">Corpus structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpu-profiler/">Installing Oprofile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cxx/">C++17 and libstdc++ ABI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/">Deploying a development cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/#deploying-multiple-development-clusters-on-the-same-machine">Deploying multiple development clusters on the same machine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../development-workflow/">Development workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../documenting/">Documenting Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encoding/">Serialization (encode/decode)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../erasure-coded-pool/">Erasure Coded pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../freebsd/">FreeBSD Implementation details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generatedocs/">Building Ceph Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../iana/">IANA Numbers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../">Contributing to Ceph: A Guide for Developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel-client-troubleshooting/">Kernel client troubleshooting (FS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kubernetes/">Hacking on Ceph in Kubernetes with Rook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logging/">Use of the cluster log</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logs/">Debug logs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../macos/">build on MacOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../messenger/">Messenger notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-on-disk-formats/">ON-DISK FORMAT</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">FULL OSDMAP VERSION PRUNING</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#algorithm">ALGORITHM</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#map-trimming">MAP TRIMMING</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configuration-options-sanity-checks">CONFIGURATION OPTIONS SANITY CHECKS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#requirements-conditions-invariants">REQUIREMENTS, CONDITIONS &amp; INVARIANTS</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#requirements">REQUIREMENTS</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#conditions-invariants">CONDITIONS &amp; INVARIANTS</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../msgr2/">msgr2 protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-protocol/">Network Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../object-store/">Object Store Architecture Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../peering/">Peering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf/">Using perf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_counters/">Perf counters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_histograms/">Perf histograms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement-group/">PG (Placement Group) notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quick_guide/">Developer Guide (Quick)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rados-client-protocol/">RADOS client protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-diff/">RBD Incremental Backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-export/">RBD Export &amp; Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../repo-access/">Notes on Ceph repositories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../seastore/">SeaStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sepia/">Sepia community test lab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../testing/">Testing notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd_internals/">OSD developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds_internals/">MDS developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../radosgw/">RADOS Gateway developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph-volume/">ceph-volume developer documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../msgr2/" title="msgr2 protocol"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../mon-on-disk-formats/" title="ON-DISK FORMAT"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" >Ceph Internals</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

@@ -1,0 +1,405 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Advanced: Metadata repair tools &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Capabilities in CephFS" href="../capabilities/" />
+    <link rel="prev" title="Application best practices for distributed filesystems" href="../app-best-practices/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../capabilities/" title="Capabilities in CephFS"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../app-best-practices/" title="Application best practices for distributed filesystems"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph Filesystem</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/disaster-recovery-experts.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="advanced-metadata-repair-tools">
+<span id="disaster-recovery-experts"></span><h1>Advanced: Metadata repair tools<a class="headerlink" href="#advanced-metadata-repair-tools" title="Permalink to this headline">¶</a></h1>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p>If you do not have expert knowledge of CephFS internals, you will
+need to seek assistance before using any of these tools.</p>
+<p>The tools mentioned here can easily cause damage as well as fixing it.</p>
+<p>It is essential to understand exactly what has gone wrong with your
+filesystem before attempting to repair it.</p>
+<p class="last">If you do not have access to professional support for your cluster,
+consult the ceph-users mailing list or the #ceph IRC channel.</p>
+</div>
+<div class="section" id="journal-export">
+<h2>Journal export<a class="headerlink" href="#journal-export" title="Permalink to this headline">¶</a></h2>
+<p>Before attempting dangerous operations, make a copy of the journal like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="n">journal</span> <span class="n">export</span> <span class="n">backup</span><span class="o">.</span><span class="n">bin</span>
+</pre></div>
+</div>
+<p>Note that this command may not always work if the journal is badly corrupted,
+in which case a RADOS-level copy should be made (<a class="reference external" href="http://tracker.ceph.com/issues/9902">http://tracker.ceph.com/issues/9902</a>).</p>
+</div>
+<div class="section" id="dentry-recovery-from-journal">
+<h2>Dentry recovery from journal<a class="headerlink" href="#dentry-recovery-from-journal" title="Permalink to this headline">¶</a></h2>
+<p>If a journal is damaged or for any reason an MDS is incapable of replaying it,
+attempt to recover what file metadata we can like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="n">event</span> <span class="n">recover_dentries</span> <span class="n">summary</span>
+</pre></div>
+</div>
+<p>This command by default acts on MDS rank 0, pass –rank=&lt;n&gt; to operate on other ranks.</p>
+<p>This command will write any inodes/dentries recoverable from the journal
+into the backing store, if these inodes/dentries are higher-versioned
+than the previous contents of the backing store.  If any regions of the journal
+are missing/damaged, they will be skipped.</p>
+<p>Note that in addition to writing out dentries and inodes, this command will update
+the InoTables of each ‘in’ MDS rank, to indicate that any written inodes’ numbers
+are now in use.  In simple cases, this will result in an entirely valid backing
+store state.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The resulting state of the backing store is not guaranteed to be self-consistent,
+and an online MDS scrub will be required afterwards.  The journal contents
+will not be modified by this command, you should truncate the journal
+separately after recovering what you can.</p>
+</div>
+</div>
+<div class="section" id="journal-truncation">
+<h2>Journal truncation<a class="headerlink" href="#journal-truncation" title="Permalink to this headline">¶</a></h2>
+<p>If the journal is corrupt or MDSs cannot replay it for any reason, you can
+truncate it like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="n">journal</span> <span class="n">reset</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Resetting the journal <em>will</em> lose metadata unless you have extracted
+it by other means such as <code class="docutils literal notranslate"><span class="pre">recover_dentries</span></code>.  It is likely to leave
+some orphaned objects in the data pool.  It may result in re-allocation
+of already-written inodes, such that permissions rules could be violated.</p>
+</div>
+</div>
+<div class="section" id="mds-table-wipes">
+<h2>MDS table wipes<a class="headerlink" href="#mds-table-wipes" title="Permalink to this headline">¶</a></h2>
+<p>After the journal has been reset, it may no longer be consistent with respect
+to the contents of the MDS tables (InoTable, SessionMap, SnapServer).</p>
+<p>To reset the SessionMap (erase all sessions), use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="nb">all</span> <span class="n">reset</span> <span class="n">session</span>
+</pre></div>
+</div>
+<p>This command acts on the tables of all ‘in’ MDS ranks.  Replace ‘all’ with an MDS
+rank to operate on that rank only.</p>
+<p>The session table is the table most likely to need resetting, but if you know you
+also need to reset the other tables then replace ‘session’ with ‘snap’ or ‘inode’.</p>
+</div>
+<div class="section" id="mds-map-reset">
+<h2>MDS map reset<a class="headerlink" href="#mds-map-reset" title="Permalink to this headline">¶</a></h2>
+<p>Once the in-RADOS state of the filesystem (i.e. contents of the metadata pool)
+is somewhat recovered, it may be necessary to update the MDS map to reflect
+the contents of the metadata pool.  Use the following command to reset the MDS
+map to a single MDS:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">reset</span> <span class="o">&lt;</span><span class="n">fs</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
+</pre></div>
+</div>
+<p>Once this is run, any in-RADOS state for MDS ranks other than 0 will be ignored:
+as a result it is possible for this to result in data loss.</p>
+<p>One might wonder what the difference is between ‘fs reset’ and ‘fs remove; fs new’.  The
+key distinction is that doing a remove/new will leave rank 0 in ‘creating’ state, such
+that it would overwrite any existing root inode on disk and orphan any existing files.  In
+contrast, the ‘reset’ command will leave rank 0 in ‘active’ state such that the next MDS
+daemon to claim the rank will go ahead and use the existing in-RADOS metadata.</p>
+</div>
+<div class="section" id="recovery-from-missing-metadata-objects">
+<h2>Recovery from missing metadata objects<a class="headerlink" href="#recovery-from-missing-metadata-objects" title="Permalink to this headline">¶</a></h2>
+<p>Depending on what objects are missing or corrupt, you may need to
+run various commands to regenerate default versions of the
+objects.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Session table</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="mi">0</span> <span class="n">reset</span> <span class="n">session</span>
+<span class="c1"># SnapServer</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="mi">0</span> <span class="n">reset</span> <span class="n">snap</span>
+<span class="c1"># InoTable</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="mi">0</span> <span class="n">reset</span> <span class="n">inode</span>
+<span class="c1"># Journal</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span> <span class="n">journal</span> <span class="n">reset</span>
+<span class="c1"># Root inodes (&quot;/&quot; and MDS directory)</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">init</span>
+</pre></div>
+</div>
+<p>Finally, you can regenerate metadata objects for missing files
+and directories based on the contents of a data pool.  This is
+a three-phase process.  First, scanning <em>all</em> objects to calculate
+size and mtime metadata for inodes.  Second, scanning the first
+object from every file to collect this metadata and inject it into
+the metadata pool. Third, checking inode linkages and fixing found
+errors.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_links</span>
+</pre></div>
+</div>
+<p>‘scan_extents’ and ‘scan_inodes’ commands may take a <em>very long</em> time
+if there are many files or very large files in the data pool.</p>
+<p>To accelerate the process, run multiple instances of the tool.</p>
+<p>Decide on a number of workers, and pass each worker a number within
+the range 0-(worker_m - 1).</p>
+<p>The example below shows how to run 4 workers simultaneously:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Worker 0</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">0</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+<span class="c1"># Worker 1</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">1</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+<span class="c1"># Worker 2</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">2</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+<span class="c1"># Worker 3</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">3</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+
+<span class="c1"># Worker 0</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">0</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+<span class="c1"># Worker 1</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">1</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+<span class="c1"># Worker 2</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">2</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+<span class="c1"># Worker 3</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">3</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>It is <strong>important</strong> to ensure that all workers have completed the
+scan_extents phase before any workers enter the scan_inodes phase.</p>
+<p>After completing the metadata recovery, you may want to run cleanup
+operation to delete ancillary data geneated during recovery.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">cleanup</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-an-alternate-metadata-pool-for-recovery">
+<h2>Using an alternate metadata pool for recovery<a class="headerlink" href="#using-an-alternate-metadata-pool-for-recovery" title="Permalink to this headline">¶</a></h2>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">There has not been extensive testing of this procedure. It should be
+undertaken with great care.</p>
+</div>
+<p>If an existing filesystem is damaged and inoperative, it is possible to create
+a fresh metadata pool and attempt to reconstruct the filesystem metadata
+into this new pool, leaving the old metadata in place. This could be used to
+make a safer attempt at recovery since the existing metadata pool would not be
+overwritten.</p>
+<div class="admonition caution">
+<p class="first admonition-title">Caution</p>
+<p class="last">During this process, multiple metadata pools will contain data referring to
+the same data pool. Extreme caution must be exercised to avoid changing the
+data pool contents while this is the case. Once recovery is complete, the
+damaged metadata pool should be deleted.</p>
+</div>
+<p>To begin this process, first create the fresh metadata pool and initialize
+it with empty file system data structures:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">flag</span> <span class="nb">set</span> <span class="n">enable_multiple</span> <span class="n">true</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
+<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">create</span> <span class="n">recovery</span> <span class="o">&lt;</span><span class="n">pg</span><span class="o">-</span><span class="n">num</span><span class="o">&gt;</span> <span class="n">replicated</span> <span class="o">&lt;</span><span class="n">crush</span><span class="o">-</span><span class="n">rule</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+<span class="n">ceph</span> <span class="n">fs</span> <span class="n">new</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span> <span class="n">recovery</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">dangerous</span><span class="o">-</span><span class="n">metadata</span><span class="o">-</span><span class="n">overlay</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">init</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">init</span> <span class="o">--</span><span class="n">filesystem</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">recovery</span>
+<span class="n">ceph</span> <span class="n">fs</span> <span class="n">reset</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">session</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">snap</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">inode</span>
+</pre></div>
+</div>
+<p>Next, run the recovery toolset using the –alternate-pool argument to output
+results to the alternate pool:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">recovery</span> <span class="o">--</span><span class="n">filesystem</span> <span class="o">&lt;</span><span class="n">original</span> <span class="n">filesystem</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">original</span> <span class="n">data</span> <span class="n">pool</span> <span class="n">name</span><span class="o">&gt;</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">recovery</span> <span class="o">--</span><span class="n">filesystem</span> <span class="o">&lt;</span><span class="n">original</span> <span class="n">filesystem</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">corrupt</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">init</span> <span class="o">&lt;</span><span class="n">original</span> <span class="n">data</span> <span class="n">pool</span> <span class="n">name</span><span class="o">&gt;</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_links</span> <span class="o">--</span><span class="n">filesystem</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span>
+</pre></div>
+</div>
+<p>If the damaged filesystem contains dirty journal data, it may be recovered next
+with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span><span class="o">=&lt;</span><span class="n">original</span> <span class="n">filesystem</span> <span class="n">name</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">0</span> <span class="n">event</span> <span class="n">recover_dentries</span> <span class="nb">list</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">recovery</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span><span class="p">:</span><span class="mi">0</span> <span class="n">journal</span> <span class="n">reset</span> <span class="o">--</span><span class="n">force</span>
+</pre></div>
+</div>
+<p>After recovery, some recovered directories will have incorrect statistics.
+Ensure the parameters mds_verify_scatter and mds_debug_scatterstat are set
+to false (the default) to prevent the MDS from checking the statistics, then
+run a forward scrub to repair them. Ensure you have an MDS running and issue:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">/</span> <span class="n">recursive</span> <span class="n">repair</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Filesystem</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../#using-cephfs">Using CephFS</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../add-remove-mds/">Add/Remove MDS(s)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/">Terminology</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#referring-to-mds-daemons">Referring to MDS daemons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#managing-failover">Managing failover</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#configuring-standby-daemons">Configuring standby daemons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#examples">Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS Configuration Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">Client Configuration Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">Manpage ceph-mds</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../createfs/">Create CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel/">Mount CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fuse/">Mount CephFS as FUSE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fstab/">Mount CephFS in fstab</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-shell/">Use the CephFS Shell</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel-features/">Supported Features of Kernel Driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/">Manpage ceph-fuse</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/">Manpage mount.ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.fuse.ceph/">Manpage mount.fuse.ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../best-practices/">Deployment best practices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../administration/">Administrative commands</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/">Understanding MDS Cache Size Limits</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX compatibility</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/">Experimental Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/#previously-experimental-features">Previously experimental features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS Quotas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hadoop/">Using Ceph with Hadoop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../file-layouts/">File layouts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../eviction/">Client eviction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../full/">Handling full filesystems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../health-messages/">Health messages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">Disaster recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-auth/">Client authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/">Upgrading the MDS Cluster</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/#upgrading-pre-firefly-filesystems-past-jewel">Upgrading pre-Firefly filesystems past Jewel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../dirfrags/">Configuring directory fragmentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multimds/">Configuring multiple active MDS daemons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../nfs/">Export over NFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../app-best-practices/">Application best practices</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#"> Advanced: Metadata repair</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#journal-export">Journal export</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dentry-recovery-from-journal">Dentry recovery from journal</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#journal-truncation">Journal truncation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mds-table-wipes">MDS table wipes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mds-map-reset">MDS map reset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#recovery-from-missing-metadata-objects">Recovery from missing metadata objects</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#using-an-alternate-metadata-pool-for-recovery">Using an alternate metadata pool for recovery</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../#for-developers">For developers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../capabilities/" title="Capabilities in CephFS"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../app-best-practices/" title="Application best practices for distributed filesystems"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph Filesystem</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

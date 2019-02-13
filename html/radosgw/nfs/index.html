@@ -1,0 +1,537 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>NFS &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Integrating with OpenStack Keystone" href="../keystone/" />
+    <link rel="prev" title="librgw (Python)" href="../api/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../keystone/" title="Integrating with OpenStack Keystone"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../api/" title="librgw (Python)"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph Object Gateway</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/radosgw/nfs.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="nfs">
+<h1>NFS<a class="headerlink" href="#nfs" title="Permalink to this headline">¶</a></h1>
+<div class="versionadded">
+<p><span class="versionmodified">New in version Jewel.</span></p>
+</div>
+<p>Ceph Object Gateway namespaces can now be exported over file-based
+access protocols such as NFSv3 and NFSv4, alongside traditional HTTP access
+protocols (S3 and Swift).</p>
+<p>In particular, the Ceph Object Gateway can now be configured to
+provide file-based access when embedded in the NFS-Ganesha NFS server.</p>
+<div class="section" id="librgw">
+<h2>librgw<a class="headerlink" href="#librgw" title="Permalink to this headline">¶</a></h2>
+<p>The librgw.so shared library (Unix) provides a loadable interface to
+Ceph Object Gateway services, and instantiates a full Ceph Object Gateway
+instance on initialization.</p>
+<p>In turn, librgw.so exports rgw_file, a stateful API for file-oriented
+access to RGW buckets and objects.  The API is general, but its design
+is strongly influenced by the File System Abstraction Layer (FSAL) API
+of NFS-Ganesha, for which it has been primarily designed.</p>
+<p>A set of Python bindings is also provided.</p>
+</div>
+<div class="section" id="namespace-conventions">
+<h2>Namespace Conventions<a class="headerlink" href="#namespace-conventions" title="Permalink to this headline">¶</a></h2>
+<p>The implementation conforms to Amazon Web Services (AWS) hierarchical
+namespace conventions which map UNIX-style path names onto S3 buckets
+and objects.</p>
+<p>The top level of the attached namespace consists of S3 buckets,
+represented as NFS directories. Files and directories subordinate to
+buckets are each represented as objects, following S3 prefix and
+delimiter conventions, with ‘/’ being the only supported path
+delimiter <a class="footnote-reference" href="#id2" id="id1">[1]</a>.</p>
+<p>For example, if an NFS client has mounted an RGW namespace at “/nfs”,
+then a file “/nfs/mybucket/www/index.html” in the NFS namespace
+corresponds to an RGW object “www/index.html” in a bucket/container
+“mybucket.”</p>
+<p>Although it is generally invisible to clients, the NFS namespace is
+assembled through concatenation of the corresponding paths implied by
+the objects in the namespace.  Leaf objects, whether files or
+directories, will always be materialized in an RGW object of the
+corresponding key name, “&lt;name&gt;” if a file, “&lt;name&gt;/” if a directory.
+Non-leaf directories (e.g., “www” above) might only be implied by
+their appearance in the names of one or more leaf objects. Directories
+created within NFS or directly operated on by an NFS client (e.g., via
+an attribute-setting operation such as chown or chmod) always have a
+leaf object representation used to store materialized attributes such
+as Unix ownership and permissions.</p>
+</div>
+<div class="section" id="supported-operations">
+<h2>Supported Operations<a class="headerlink" href="#supported-operations" title="Permalink to this headline">¶</a></h2>
+<p>The RGW NFS interface supports most operations on files and
+directories, with the following restrictions:</p>
+<ul class="simple">
+<li>Links, including symlinks, are not supported</li>
+<li>NFS ACLs are not supported<ul>
+<li>Unix user and group ownership and permissions <em>are</em> supported</li>
+</ul>
+</li>
+<li>Directories may not be moved/renamed<ul>
+<li>files may be moved between directories</li>
+</ul>
+</li>
+<li>Only full, sequential <em>write</em> i/o is supported<ul>
+<li>i.e., write operations are constrained to be <strong>uploads</strong></li>
+<li>many typical i/o operations such as editing files in place will necessarily fail as they perform non-sequential stores</li>
+<li>some file utilities <em>apparently</em> writing sequentially (e.g., some versions of GNU tar) may fail due to infrequent non-sequential stores</li>
+<li>When mounting via NFS, sequential application i/o can generally be constrained to be written sequentially to the NFS server via a synchronous mount option (e.g. -osync in Linux)</li>
+<li>NFS clients which cannot mount synchronously (e.g., MS Windows) will not be able to upload files</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="security">
+<h2>Security<a class="headerlink" href="#security" title="Permalink to this headline">¶</a></h2>
+<p>The RGW NFS interface provides a hybrid security model with the
+following characteristics:</p>
+<ul class="simple">
+<li>NFS protocol security is provided by the NFS-Ganesha server, as negotiated by the NFS server and clients<ul>
+<li>e.g., clients can by trusted (AUTH_SYS), or required to present Kerberos user credentials (RPCSEC_GSS)</li>
+<li>RPCSEC_GSS wire security can be integrity only (krb5i) or integrity and privacy (encryption, krb5p)</li>
+<li>various NFS-specific security and permission rules are available<ul>
+<li>e.g., root-squashing</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>a set of RGW/S3 security credentials (unknown to NFS) is associated with each RGW NFS mount (i.e., NFS-Ganesha EXPORT)<ul>
+<li>all RGW object operations performed via the NFS server will be performed by the RGW user associated with the credentials stored in the export being accessed (currently only RGW and RGW LDAP credentials are supported)<ul>
+<li>additional RGW authentication types such as Keystone are not currently supported</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="configuring-an-nfs-ganesha-instance">
+<h2>Configuring an NFS-Ganesha Instance<a class="headerlink" href="#configuring-an-nfs-ganesha-instance" title="Permalink to this headline">¶</a></h2>
+<p>Each NFS RGW instance is an NFS-Ganesha server instance <em>embeddding</em>
+a full Ceph RGW instance.</p>
+<p>Therefore, the RGW NFS configuration includes Ceph and Ceph Object
+Gateway-specific configuration in a local ceph.conf, as well as
+NFS-Ganesha-specific configuration in the NFS-Ganesha config file,
+ganesha.conf.</p>
+<div class="section" id="ceph-conf">
+<h3>ceph.conf<a class="headerlink" href="#ceph-conf" title="Permalink to this headline">¶</a></h3>
+<p>Required ceph.conf configuration for RGW NFS includes:</p>
+<ul class="simple">
+<li>valid [client.radosgw.{instance-name}] section</li>
+<li>valid values for minimal instance configuration, in particular, an installed and correct <code class="docutils literal notranslate"><span class="pre">keyring</span></code></li>
+</ul>
+<p>Other config variables are optional, front-end-specific and front-end
+selection variables (e.g., <code class="docutils literal notranslate"><span class="pre">rgw</span> <span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">rgw</span> <span class="pre">frontends</span></code>) are
+optional and in some cases ignored.</p>
+<p>A small number of config variables (e.g., <code class="docutils literal notranslate"><span class="pre">rgw_nfs_namespace_expire_secs</span></code>)
+are unique to RGW NFS.</p>
+</div>
+<div class="section" id="ganesha-conf">
+<h3>ganesha.conf<a class="headerlink" href="#ganesha-conf" title="Permalink to this headline">¶</a></h3>
+<p>A strictly minimal ganesha.conf for use with RGW NFS includes one
+EXPORT block with embedded FSAL block of type RGW:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">EXPORT</span>
+<span class="p">{</span>
+     <span class="n">Export_ID</span><span class="o">=</span><span class="p">{</span><span class="n">numeric</span><span class="o">-</span><span class="nb">id</span><span class="p">};</span>
+     <span class="n">Path</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="p">;</span>
+     <span class="n">Pseudo</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="p">;</span>
+     <span class="n">Access_Type</span> <span class="o">=</span> <span class="n">RW</span><span class="p">;</span>
+     <span class="n">SecType</span> <span class="o">=</span> <span class="s2">&quot;sys&quot;</span><span class="p">;</span>
+     <span class="n">NFS_Protocols</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+     <span class="n">Transport_Protocols</span> <span class="o">=</span> <span class="n">TCP</span><span class="p">;</span>
+
+     <span class="c1"># optional, permit unsquashed access by client &quot;root&quot; user</span>
+     <span class="c1">#Squash = No_Root_Squash;</span>
+
+     <span class="n">FSAL</span> <span class="p">{</span>
+             <span class="n">Name</span> <span class="o">=</span> <span class="n">RGW</span><span class="p">;</span>
+             <span class="n">User_Id</span> <span class="o">=</span> <span class="p">{</span><span class="n">s3</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="nb">id</span><span class="p">};</span>
+             <span class="n">Access_Key_Id</span> <span class="o">=</span><span class="s2">&quot;{s3-access-key}&quot;</span><span class="p">;</span>
+             <span class="n">Secret_Access_Key</span> <span class="o">=</span> <span class="s2">&quot;{s3-secret}&quot;</span><span class="p">;</span>
+     <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Export_ID</span></code> must have an integer value, e.g., “77”</p>
+<p><code class="docutils literal notranslate"><span class="pre">Path</span></code> (for RGW) should be “/”</p>
+<p><code class="docutils literal notranslate"><span class="pre">Pseudo</span></code> defines an NFSv4 pseudo root name (NFSv4 only)</p>
+<p><code class="docutils literal notranslate"><span class="pre">SecType</span> <span class="pre">=</span> <span class="pre">sys;</span></code> allows clients to attach without Kerberos
+authentication</p>
+<p><code class="docutils literal notranslate"><span class="pre">Squash</span> <span class="pre">=</span> <span class="pre">No_Root_Squash;</span></code> enables the client root user to override
+permissions (Unix convention).  When root-squashing is enabled,
+operations attempted by the root user are performed as if by the local
+“nobody” (and “nogroup”) user on the NFS-Ganesha server</p>
+<p>The RGW FSAL additionally supports RGW-specific configuration
+variables in the RGW config section:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">RGW</span> <span class="p">{</span>
+    <span class="n">cluster</span> <span class="o">=</span> <span class="s2">&quot;{cluster name, default &#39;ceph&#39;}&quot;</span><span class="p">;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;client.rgw.{instance-name}&quot;</span><span class="p">;</span>
+    <span class="n">ceph_conf</span> <span class="o">=</span> <span class="s2">&quot;/opt/ceph-rgw/etc/ceph/ceph.conf&quot;</span><span class="p">;</span>
+    <span class="n">init_args</span> <span class="o">=</span> <span class="s2">&quot;-d --debug-rgw=16&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">cluster</span></code> sets a Ceph cluster name (must match the cluster being exported)</p>
+<p><code class="docutils literal notranslate"><span class="pre">name</span></code> sets an RGW instance name (must match the cluster being exported)</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph_conf</span></code> gives a path to a non-default ceph.conf file to use</p>
+<div class="section" id="other-useful-nfs-ganesha-configuration">
+<h4>Other useful NFS-Ganesha configuration:<a class="headerlink" href="#other-useful-nfs-ganesha-configuration" title="Permalink to this headline">¶</a></h4>
+<p>Any EXPORT block which should support NFSv3 should include version 3
+in the NFS_Protocols setting. Additionally, NFSv3 is the last major
+version to support the UDP transport. To enable UDP, include it in the
+Transport_Protocols setting. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">EXPORT</span> <span class="p">{</span>
+ <span class="o">...</span>
+   <span class="n">NFS_Protocols</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">;</span>
+   <span class="n">Transport_Protocols</span> <span class="o">=</span> <span class="n">UDP</span><span class="p">,</span><span class="n">TCP</span><span class="p">;</span>
+ <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>One important family of options pertains to interaction with the Linux
+idmapping service, which is used to normalize user and group names
+across systems.  Details of idmapper integration are not provided here.</p>
+<p>With Linux NFS clients, NFS-Ganesha can be configured
+to accept client-supplied numeric user and group identifiers with
+NFSv4, which by default stringifies these–this may be useful in small
+setups and for experimentation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">NFSV4</span> <span class="p">{</span>
+    <span class="n">Allow_Numeric_Owners</span> <span class="o">=</span> <span class="n">true</span><span class="p">;</span>
+    <span class="n">Only_Numeric_Owners</span> <span class="o">=</span> <span class="n">true</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="troubleshooting">
+<h4>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h4>
+<p>NFS-Ganesha configuration problems are usually debugged by running the
+server with debugging options, controlled by the LOG config section.</p>
+<p>NFS-Ganesha log messages are grouped into various components, logging
+can be enabled separately for each component. Valid values for
+component logging include:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">*</span><span class="n">FATAL</span><span class="o">*</span> <span class="n">critical</span> <span class="n">errors</span> <span class="n">only</span>
+<span class="o">*</span><span class="n">WARN</span><span class="o">*</span> <span class="n">unusual</span> <span class="n">condition</span>
+<span class="o">*</span><span class="n">DEBUG</span><span class="o">*</span> <span class="n">mildly</span> <span class="n">verbose</span> <span class="n">trace</span> <span class="n">output</span>
+<span class="o">*</span><span class="n">FULL_DEBUG</span><span class="o">*</span> <span class="n">verbose</span> <span class="n">trace</span> <span class="n">output</span>
+</pre></div>
+</div>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span> <span class="n">LOG</span> <span class="p">{</span>
+
+       <span class="n">Components</span> <span class="p">{</span>
+               <span class="n">MEMLEAKS</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">FSAL</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">NFSPROTO</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">NFS_V4</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">EXPORT</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">FILEHANDLE</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">DISPATCH</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">CACHE_INODE</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">CACHE_INODE_LRU</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">HASHTABLE</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">HASHTABLE_CACHE</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">DUPREQ</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">INIT</span> <span class="o">=</span> <span class="n">DEBUG</span><span class="p">;</span>
+               <span class="n">MAIN</span> <span class="o">=</span> <span class="n">DEBUG</span><span class="p">;</span>
+               <span class="n">IDMAPPER</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">NFS_READDIR</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">NFS_V4_LOCK</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">CONFIG</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">CLIENTID</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">SESSIONS</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">PNFS</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">RW_LOCK</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">NLM</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">RPC</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">NFS_CB</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">THREAD</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">NFS_V4_ACL</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">STATE</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">FSAL_UP</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+               <span class="n">DBUS</span> <span class="o">=</span> <span class="n">FATAL</span><span class="p">;</span>
+       <span class="p">}</span>
+       <span class="c1"># optional: redirect log output</span>
+<span class="c1">#      Facility {</span>
+<span class="c1">#              name = FILE;</span>
+<span class="c1">#              destination = &quot;/tmp/ganesha-rgw.log&quot;;</span>
+<span class="c1">#              enable = active;</span>
+       <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="running-multiple-nfs-gateways">
+<h2>Running Multiple NFS Gateways<a class="headerlink" href="#running-multiple-nfs-gateways" title="Permalink to this headline">¶</a></h2>
+<p>Each NFS-Ganesha instance acts as a full gateway endpoint, with the
+limitation that currently an NFS-Ganesha instance cannot be configured
+to export HTTP services. As with ordinary gateway instances, any
+number of NFS-Ganesha instances can be started, exporting the same or
+different resources from the cluster. This enables the clustering of
+NFS-Ganesha instances. However, this does not imply high availability.</p>
+<p>When regular gateway instances and NFS-Ganesha instances overlap the
+same data resources, they will be accessible from both the standard S3
+API and through the NFS-Ganesha instance as exported. You can
+co-locate the NFS-Ganesha instance with a Ceph Object Gateway instance
+on the same host.</p>
+</div>
+<div class="section" id="rgw-vs-rgw-nfs">
+<h2>RGW vs RGW NFS<a class="headerlink" href="#rgw-vs-rgw-nfs" title="Permalink to this headline">¶</a></h2>
+<p>Exporting an NFS namespace and other RGW namespaces (e.g., S3 or Swift
+via the Civetweb HTTP front-end) from the same program instance is
+currently not supported.</p>
+<p>When adding objects and buckets outside of NFS, those objects will
+appear in the NFS namespace in the time set by
+<code class="docutils literal notranslate"><span class="pre">rgw_nfs_namespace_expire_secs</span></code>, which defaults to 300 seconds (5 minutes).
+Override the default value for <code class="docutils literal notranslate"><span class="pre">rgw_nfs_namespace_expire_secs</span></code> in the
+Ceph configuration file to change the refresh rate.</p>
+<p>If exporting Swift containers that do not conform to valid S3 bucket
+naming requirements, set <code class="docutils literal notranslate"><span class="pre">rgw_relaxed_s3_bucket_names</span></code> to true in the
+[client.radosgw] section of the Ceph configuration file. For example,
+if a Swift container name contains underscores, it is not a valid S3
+bucket name and will be rejected unless <code class="docutils literal notranslate"><span class="pre">rgw_relaxed_s3_bucket_names</span></code>
+is set to true.</p>
+</div>
+<div class="section" id="configuring-nfsv4-clients">
+<h2>Configuring NFSv4 clients<a class="headerlink" href="#configuring-nfsv4-clients" title="Permalink to this headline">¶</a></h2>
+<p>To access the namespace, mount the configured NFS-Ganesha export(s)
+into desired locations in the local POSIX namespace. As noted, this
+implementation has a few unique restrictions:</p>
+<ul class="simple">
+<li>NFS 4.1 and higher protocol flavors are preferred<ul>
+<li>NFSv4 OPEN and CLOSE operations are used to track upload transactions</li>
+</ul>
+</li>
+<li>To upload data successfully, clients must preserve write ordering<ul>
+<li>on Linux and many Unix NFS clients, use the -osync mount option</li>
+</ul>
+</li>
+</ul>
+<p>Conventions for mounting NFS resources are platform-specific. The
+following conventions work on Linux and some Unix platforms:</p>
+<p>From the command line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">nfs</span> <span class="o">-</span><span class="n">o</span> <span class="n">nfsvers</span><span class="o">=</span><span class="mf">4.1</span><span class="p">,</span><span class="n">noauto</span><span class="p">,</span><span class="n">soft</span><span class="p">,</span><span class="n">sync</span><span class="p">,</span><span class="n">proto</span><span class="o">=</span><span class="n">tcp</span> <span class="o">&lt;</span><span class="n">ganesha</span><span class="o">-</span><span class="n">host</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span><span class="p">:</span><span class="o">/</span> <span class="o">&lt;</span><span class="n">mount</span><span class="o">-</span><span class="n">point</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>In /etc/fstab:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">ganesha</span><span class="o">-</span><span class="n">host</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span><span class="p">:</span><span class="o">/</span> <span class="o">&lt;</span><span class="n">mount</span><span class="o">-</span><span class="n">point</span><span class="o">&gt;</span> <span class="n">nfs</span> <span class="n">noauto</span><span class="p">,</span><span class="n">soft</span><span class="p">,</span><span class="n">nfsvers</span><span class="o">=</span><span class="mf">4.1</span><span class="p">,</span><span class="n">sync</span><span class="p">,</span><span class="n">proto</span><span class="o">=</span><span class="n">tcp</span> <span class="mi">0</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Specify the NFS-Ganesha host name and the path to the mount point on
+the client.</p>
+</div>
+<div class="section" id="configuring-nfsv3-clients">
+<h2>Configuring NFSv3 Clients<a class="headerlink" href="#configuring-nfsv3-clients" title="Permalink to this headline">¶</a></h2>
+<p>Linux clients can be configured to mount with NFSv3 by supplying
+<code class="docutils literal notranslate"><span class="pre">nfsvers=3</span></code> and <code class="docutils literal notranslate"><span class="pre">noacl</span></code> as mount options. To use UDP as the
+transport, add <code class="docutils literal notranslate"><span class="pre">proto=udp</span></code> to the mount options. However, TCP is the
+preferred transport:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">ganesha</span><span class="o">-</span><span class="n">host</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span><span class="p">:</span><span class="o">/</span> <span class="o">&lt;</span><span class="n">mount</span><span class="o">-</span><span class="n">point</span><span class="o">&gt;</span> <span class="n">nfs</span> <span class="n">noauto</span><span class="p">,</span><span class="n">noacl</span><span class="p">,</span><span class="n">soft</span><span class="p">,</span><span class="n">nfsvers</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">sync</span><span class="p">,</span><span class="n">proto</span><span class="o">=</span><span class="n">tcp</span> <span class="mi">0</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Configure the NFS Ganesha EXPORT block Protocols setting with version
+3 and the Transports setting with UDP if the mount will use version 3 with UDP.</p>
+<div class="section" id="nfsv3-semantics">
+<h3>NFSv3 Semantics<a class="headerlink" href="#nfsv3-semantics" title="Permalink to this headline">¶</a></h3>
+<p>Since NFSv3 does not communicate client OPEN and CLOSE operations to
+file servers, RGW NFS cannot use these operations to mark the
+beginning and ending of file upload transactions. Instead, RGW NFS
+starts a new upload when the first write is sent to a file at offset
+0, and finalizes the upload when no new writes to the file have been
+seen for a period of time, by default, 10 seconds. To change this
+timeout, set an alternate value for <code class="docutils literal notranslate"><span class="pre">rgw_nfs_write_completion_interval_s</span></code>
+in the RGW section(s) of the Ceph configuration file.</p>
+</div>
+</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td><a class="reference external" href="http://docs.aws.amazon.com/AmazonS3/latest/dev/ListingKeysHierarchy.html">http://docs.aws.amazon.com/AmazonS3/latest/dev/ListingKeysHierarchy.html</a></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Object Gateway</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">Manual Install w/Civetweb</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../frontends/">HTTP Frontends</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multisite/">Multisite Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pools/">Configuring Pools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">Config Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">Admin Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">Admin Ops API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">Python binding</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Export over NFS</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#librgw">librgw</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#namespace-conventions">Namespace Conventions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#supported-operations">Supported Operations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#security">Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-an-nfs-ganesha-instance">Configuring an NFS-Ganesha Instance</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ceph-conf">ceph.conf</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ganesha-conf">ganesha.conf</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#other-useful-nfs-ganesha-configuration">Other useful NFS-Ganesha configuration:</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#running-multiple-nfs-gateways">Running Multiple NFS Gateways</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rgw-vs-rgw-nfs">RGW vs RGW NFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-nfsv4-clients">Configuring NFSv4 clients</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-nfsv3-clients">Configuring NFSv3 Clients</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#nfsv3-semantics">NFSv3 Semantics</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">OpenStack Keystone Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../barbican/">OpenStack Barbican Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../opa/">Open Policy Agent Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multitenancy/">Multi-tenancy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../compression/">Compression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ldap-auth/">LDAP Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encryption/">Server-Side Encryption</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bucketpolicy/">Bucket Policy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dynamicresharding/">Dynamic bucket index resharding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mfa/">Multi factor authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sync-modules/">Sync Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../layout/">Data Layout in RADOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../STSLite/">STS Lite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../role/">Role</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">Manpage radosgw</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">Manpage radosgw-admin</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../keystone/" title="Integrating with OpenStack Keystone"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../api/" title="librgw (Python)"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph Object Gateway</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

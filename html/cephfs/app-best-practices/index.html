@@ -1,0 +1,269 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Application best practices for distributed filesystems &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Advanced: Metadata repair tools" href="../disaster-recovery-experts/" />
+    <link rel="prev" title="NFS" href="../nfs/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../disaster-recovery-experts/" title="Advanced: Metadata repair tools"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../nfs/" title="NFS"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph Filesystem</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/app-best-practices.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="application-best-practices-for-distributed-filesystems">
+<h1>Application best practices for distributed filesystems<a class="headerlink" href="#application-best-practices-for-distributed-filesystems" title="Permalink to this headline">¶</a></h1>
+<p>CephFS is POSIX compatible, and therefore should work with any existing
+applications that expect a POSIX filesystem.  However, because it is a
+network filesystem (unlike e.g. XFS) and it is highly consistent (unlike
+e.g. NFS), there are some consequences that application authors may
+benefit from knowing about.</p>
+<p>The following sections describe some areas where distributed filesystems
+may have noticeably different performance behaviours compared with
+local filesystems.</p>
+<div class="section" id="ls-l">
+<h2>ls -l<a class="headerlink" href="#ls-l" title="Permalink to this headline">¶</a></h2>
+<p>When you run “ls -l”, the <code class="docutils literal notranslate"><span class="pre">ls</span></code> program
+is first doing a directory listing, and then calling <code class="docutils literal notranslate"><span class="pre">stat</span></code> on every
+file in the directory.</p>
+<p>This is usually far in excess of what an application really needs, and
+it can be slow for large directories.  If you don’t really need all
+this metadata for each file, then use a plain <code class="docutils literal notranslate"><span class="pre">ls</span></code>.</p>
+</div>
+<div class="section" id="ls-stat-on-files-being-extended">
+<h2>ls/stat on files being extended<a class="headerlink" href="#ls-stat-on-files-being-extended" title="Permalink to this headline">¶</a></h2>
+<p>If another client is currently extending files in the listed directory,
+then an <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-l</span></code> may take an exceptionally long time to complete, as
+the lister must wait for the writer to flush data in order to do a valid
+read of the every file’s size.  So unless you <em>really</em> need to know the
+exact size of every file in the directory, just don’t do it!</p>
+<p>This would also apply to any application code that was directly
+issuing <code class="docutils literal notranslate"><span class="pre">stat</span></code> system calls on files being appended from
+another node.</p>
+</div>
+<div class="section" id="very-large-directories">
+<h2>Very large directories<a class="headerlink" href="#very-large-directories" title="Permalink to this headline">¶</a></h2>
+<p>Do you really need that 10,000,000 file directory?  While directory
+fragmentation enables CephFS to handle it, it is always going to be
+less efficient than splitting your files into more modest-sized directories.</p>
+<p>Even standard userspace tools can become quite slow when operating on very
+large directories. For example, the default behaviour of <code class="docutils literal notranslate"><span class="pre">ls</span></code>
+is to give an alphabetically ordered result, but <code class="docutils literal notranslate"><span class="pre">readdir</span></code> system
+calls do not give an ordered result (this is true in general, not just
+with CephFS).  So when you <code class="docutils literal notranslate"><span class="pre">ls</span></code> on a million file directory, it is
+loading a list of a million names into memory, sorting the list, then writing
+it out to the display.</p>
+</div>
+<div class="section" id="hard-links">
+<h2>Hard links<a class="headerlink" href="#hard-links" title="Permalink to this headline">¶</a></h2>
+<p>Hard links have an intrinsic cost in terms of the internal housekeeping
+that a filesystem has to do to keep two references to the same data.  In
+CephFS there is a particular performance cost, because with normal files
+the inode is embedded in the directory (i.e. there is no extra fetch of
+the inode after looking up the path).</p>
+</div>
+<div class="section" id="working-set-size">
+<h2>Working set size<a class="headerlink" href="#working-set-size" title="Permalink to this headline">¶</a></h2>
+<p>The MDS acts as a cache for the metadata stored in RADOS.  Metadata
+performance is very different for workloads whose metadata fits within
+that cache.</p>
+<p>If your workload has more files than fit in your cache (configured using
+<code class="docutils literal notranslate"><span class="pre">mds_cache_memory_limit</span></code> or <code class="docutils literal notranslate"><span class="pre">mds_cache_size</span></code> settings), then
+make sure you test it appropriately: don’t test your system with a small
+number of files and then expect equivalent performance when you move
+to a much larger number of files.</p>
+</div>
+<div class="section" id="do-you-need-a-filesystem">
+<h2>Do you need a filesystem?<a class="headerlink" href="#do-you-need-a-filesystem" title="Permalink to this headline">¶</a></h2>
+<p>Remember that Ceph also includes an object storage interface.  If your
+application needs to store huge flat collections of files where you just
+read and write whole files at once, then you might well be better off
+using the <a class="reference internal" href="../../radosgw/#object-gateway"><span class="std std-ref">Object Gateway</span></a></p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Filesystem</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../#using-cephfs">Using CephFS</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../add-remove-mds/">Add/Remove MDS(s)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/">Terminology</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#referring-to-mds-daemons">Referring to MDS daemons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#managing-failover">Managing failover</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#configuring-standby-daemons">Configuring standby daemons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#examples">Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS Configuration Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">Client Configuration Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">Manpage ceph-mds</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../createfs/">Create CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel/">Mount CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fuse/">Mount CephFS as FUSE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fstab/">Mount CephFS in fstab</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-shell/">Use the CephFS Shell</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel-features/">Supported Features of Kernel Driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/">Manpage ceph-fuse</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/">Manpage mount.ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.fuse.ceph/">Manpage mount.fuse.ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../best-practices/">Deployment best practices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../administration/">Administrative commands</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/">Understanding MDS Cache Size Limits</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX compatibility</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/">Experimental Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/#previously-experimental-features">Previously experimental features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS Quotas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hadoop/">Using Ceph with Hadoop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../file-layouts/">File layouts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../eviction/">Client eviction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../full/">Handling full filesystems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../health-messages/">Health messages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">Disaster recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-auth/">Client authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/">Upgrading the MDS Cluster</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/#upgrading-pre-firefly-filesystems-past-jewel">Upgrading pre-Firefly filesystems past Jewel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../dirfrags/">Configuring directory fragmentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multimds/">Configuring multiple active MDS daemons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../nfs/">Export over NFS</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Application best practices</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ls-l">ls -l</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ls-stat-on-files-being-extended">ls/stat on files being extended</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#very-large-directories">Very large directories</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#hard-links">Hard links</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#working-set-size">Working set size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#do-you-need-a-filesystem">Do you need a filesystem?</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery-experts/"> Advanced: Metadata repair</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../#for-developers">For developers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../disaster-recovery-experts/" title="Advanced: Metadata repair tools"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../nfs/" title="NFS"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph Filesystem</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

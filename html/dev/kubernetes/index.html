@@ -1,0 +1,407 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Hacking on Ceph in Kubernetes with Rook &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Library architecture" href="../libs/" />
+    <link rel="prev" title="Kernel client troubleshooting (FS)" href="../kernel-client-troubleshooting/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../libs/" title="Library architecture"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../kernel-client-troubleshooting/" title="Kernel client troubleshooting (FS)"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" accesskey="U">Ceph Internals</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/kubernetes.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="hacking-on-ceph-in-kubernetes-with-rook">
+<span id="kubernetes-dev"></span><h1>Hacking on Ceph in Kubernetes with Rook<a class="headerlink" href="#hacking-on-ceph-in-kubernetes-with-rook" title="Permalink to this headline">¶</a></h1>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This is <em>not</em> official user documentation for setting up production
+Ceph clusters with Kubernetes.  It is aimed at developers who want
+to hack on Ceph in Kubernetes.</p>
+</div>
+<p>This guide is aimed at Ceph developers getting started with running
+in a Kubernetes environment.  It assumes that you may be hacking on Rook,
+Ceph or both, so everything is built from source.</p>
+<div class="section" id="build-a-kubernetes-cluster">
+<h2>1. Build a kubernetes cluster<a class="headerlink" href="#build-a-kubernetes-cluster" title="Permalink to this headline">¶</a></h2>
+<p>Before installing Ceph/Rook, make sure you’ve got a working kubernetes
+cluster with some nodes added (i.e. <code class="docutils literal notranslate"><span class="pre">kubectl</span> <span class="pre">get</span> <span class="pre">nodes</span></code> shows you something).
+The rest of this guide assumes that your development workstation has network
+access to your kubernetes cluster, such that <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> works from your
+workstation.</p>
+<p>There are many ways (<a class="reference external" href="https://kubernetes.io/docs/setup/pick-right-solution/">https://kubernetes.io/docs/setup/pick-right-solution/</a>)
+to build a kubernetes cluster: here we include some tips/pointers on where
+to get started.</p>
+<div class="section" id="host-your-own">
+<h3>Host your own<a class="headerlink" href="#host-your-own" title="Permalink to this headline">¶</a></h3>
+<p>If you already have some linux servers (bare metal or VMs), you can set up
+your own kubernetes cluster using the <code class="docutils literal notranslate"><span class="pre">kubeadm</span></code> tool.</p>
+<p><a class="reference external" href="https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/">https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/</a></p>
+<p>Here are some tips for a smoother ride with <code class="docutils literal notranslate"><span class="pre">kubeadm</span></code>:</p>
+<ul class="simple">
+<li>Don’t worry if your servers aren’t powerful: at time of writing, &#64;jcsp is
+running his home kubernetes cluster on 3 nodes Turion N54L nodes with 8GB RAM.</li>
+<li>If you have installed any kubernetes/etcd/flannel packages before, make sure
+they (and their configuration) are erased before you start.  kubeadm
+installs containerised daemons that will be oblivious to any non-containerised
+services you might already have running.</li>
+<li>If you have previously added any yum/deb repos for kubernetes packages,
+disable them before trying to use the packages.cloud.google.com repository.
+If you don’t, you’ll get quite confusing conflicts.</li>
+<li>Even if your distro already has docker, make sure you’re installing it
+a version from docker.com that is within the range mentioned in the
+kubeadm install instructions.  Especially, note that the docker in CentOS 7
+will <em>not</em> work.</li>
+</ul>
+</div>
+<div class="section" id="hosted-elsewhere">
+<h3>Hosted elsewhere<a class="headerlink" href="#hosted-elsewhere" title="Permalink to this headline">¶</a></h3>
+<p>If you do not have any servers to hand, you might try a pure
+container provider such as Google Compute Engine.  Your mileage may
+vary when it comes to what kinds of storage devices are visible
+to your kubernetes cluster.</p>
+<p>Make sure you check how much it’s costing you before you spin up a big cluster!</p>
+</div>
+</div>
+<div class="section" id="run-a-docker-repository">
+<h2>2. Run a docker repository<a class="headerlink" href="#run-a-docker-repository" title="Permalink to this headline">¶</a></h2>
+<p>Ideally, run this somewhere accessible from both your workstation and your
+kubernetes cluster (i.e. so that <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">push/pull</span></code> just works everywhere).
+This is likely to be the same host you’re using as your kubernetes master.</p>
+<ol class="arabic simple">
+<li>Install the <code class="docutils literal notranslate"><span class="pre">docker-distribution</span></code> package.</li>
+<li>If you want to configure the port, edit <code class="docutils literal notranslate"><span class="pre">/etc/docker-distribution/registry/config.yml</span></code></li>
+<li>Enable the registry service:</li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systemctl</span> <span class="n">enable</span> <span class="n">docker</span><span class="o">-</span><span class="n">distribution</span>
+<span class="n">systemctl</span> <span class="n">start</span> <span class="n">docker</span><span class="o">-</span><span class="n">distribution</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="build-rook">
+<h2>3. Build Rook<a class="headerlink" href="#build-rook" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Work within your $GOPATH – here we assume it’s ~/go</p>
+</div>
+<p>Install Go if you don’t already have it.</p>
+<p>Download the Rook source code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">go</span> <span class="n">get</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">rook</span><span class="o">/</span><span class="n">rook</span>
+
+<span class="c1"># Ignore this warning, as Rook is not a conventional go package</span>
+<span class="n">can</span><span class="s1">&#39;t load package: package github.com/rook/rook: no Go files in /home/jspray/go/src/github.com/rook/rook</span>
+</pre></div>
+</div>
+<p>You will now have a Rook source tree in ~/go/src/github.com/rook/rook – you may
+be tempted to clone it elsewhere, but your life will be easier if you
+leave it in your GOPATH.</p>
+<p>Run <code class="docutils literal notranslate"><span class="pre">make</span></code> in the root of your Rook tree to build its binaries and containers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span>
+<span class="o">...</span>
+<span class="o">===</span> <span class="n">saving</span> <span class="n">image</span> <span class="n">build</span><span class="o">-</span><span class="mi">9204</span><span class="n">c79b</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">amd64</span>
+<span class="o">===</span> <span class="n">docker</span> <span class="n">build</span> <span class="n">build</span><span class="o">-</span><span class="mi">9204</span><span class="n">c79b</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">toolbox</span><span class="o">-</span><span class="n">base</span><span class="o">-</span><span class="n">amd64</span>
+<span class="n">sha256</span><span class="p">:</span><span class="mi">653</span><span class="n">bb4f8d26d6178570f146fe637278957e9371014ea9fce79d8935d108f1eaa</span>
+<span class="o">===</span> <span class="n">docker</span> <span class="n">build</span> <span class="n">build</span><span class="o">-</span><span class="mi">9204</span><span class="n">c79b</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">toolbox</span><span class="o">-</span><span class="n">amd64</span>
+<span class="n">sha256</span><span class="p">:</span><span class="mi">445</span><span class="n">d97b71e6f8de68ca1c40793058db0b7dd1ebb5d05789694307fd567e13863</span>
+<span class="o">===</span> <span class="n">caching</span> <span class="n">image</span> <span class="n">build</span><span class="o">-</span><span class="mi">9204</span><span class="n">c79b</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">toolbox</span><span class="o">-</span><span class="n">base</span><span class="o">-</span><span class="n">amd64</span>
+</pre></div>
+</div>
+<p>You can use <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">image</span> <span class="pre">ls</span></code> to see the resulting built images.  The
+images you care about are the ones with tags ending “ceph-amd64” (used
+for the Rook operator and Ceph daemons) and “ceph-toolbox-amd64” (used
+for the “toolbox” container where the CLI is run).</p>
+<p>The rest of this guide assumes that you will want to load your own binaries,
+and then push the container directly into your docker repository.</p>
+</div>
+<div class="section" id="build-ceph">
+<h2>4. Build Ceph<a class="headerlink" href="#build-ceph" title="Permalink to this headline">¶</a></h2>
+<p>It is important that you build Ceph in an environment compatible with
+the base OS used in the Rook containers.  By default, the Rook containers
+are built with a CentOS base OS.  The simplest way to approach this
+is to build Ceph inside a docker container on your workstation.</p>
+<p>You can run a centos docker container with access to your Ceph source
+tree using a command like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">-</span><span class="n">i</span> <span class="o">-</span><span class="n">v</span> <span class="o">/</span><span class="n">my</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">src</span><span class="p">:</span><span class="o">/</span><span class="n">my</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">src</span> <span class="o">-</span><span class="n">t</span> <span class="n">centos</span><span class="p">:</span><span class="mi">7</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+</pre></div>
+</div>
+<p>Once you have built Ceph, you can inject the resulting binaries into
+the Rook container image using the <code class="docutils literal notranslate"><span class="pre">kubejacker.sh</span></code> script (run from
+your build directory but from <em>outside</em> your build container).</p>
+<p>Setting the <code class="docutils literal notranslate"><span class="pre">$REPO</span></code> environment variable to your docker repository,
+execute the script to build a docker image containing your latest Ceph
+binaries:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>build$ REPO=&lt;host&gt;:&lt;port&gt; sh ../src/script/kubejacker/kubejacker.sh
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You can also set <code class="docutils literal notranslate"><span class="pre">BASEIMAGE</span></code> to control that Rook image used
+as the base – by default this is set to any “ceph-amd64” image.</p>
+</div>
+<p>Now you’ve got your freshly built Rook and freshly built Ceph into
+a single container image, ready to run.  Next time you change something
+in Ceph, you can re-run this to update your image and restart your
+kubernetes containers.  If you change something in Rook, then re-run the Rook
+build, and the Ceph build too.</p>
+</div>
+<div class="section" id="run-a-rook-cluster">
+<h2>5. Run a Rook cluster<a class="headerlink" href="#run-a-rook-cluster" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This is just some basic instructions: the Rook documentation
+is much more expansive, at <a class="reference external" href="https://github.com/rook/rook/tree/master/Documentation">https://github.com/rook/rook/tree/master/Documentation</a></p>
+</div>
+<p>The Rook source tree includes example .yaml files in
+<code class="docutils literal notranslate"><span class="pre">cluster/examples/kubernetes/ceph/</span></code>.  The important ones are:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">operator.yaml</span></code> – runs the Rook operator, which will execute any other
+rook objects we create.</li>
+<li><code class="docutils literal notranslate"><span class="pre">cluster.yaml</span></code> – defines a Ceph cluster</li>
+<li><code class="docutils literal notranslate"><span class="pre">toolbox.yaml</span></code> – runs the toolbox container, which contains the Ceph
+CLI client.</li>
+</ul>
+<p>Copy these into a working directory, and edit as necessary to configure
+the setup you want:</p>
+<ul class="simple">
+<li>Ensure that the <code class="docutils literal notranslate"><span class="pre">image</span></code> field in the operator matches the built Ceph image
+you have uploaded to your Docker repository.</li>
+<li>Edit the <code class="docutils literal notranslate"><span class="pre">storage</span></code> section of the cluster: set <code class="docutils literal notranslate"><span class="pre">useAllNodes</span></code> and
+<code class="docutils literal notranslate"><span class="pre">useAllDevices</span></code> to false if you want to create OSDs explicitly
+using ceph-mgr.</li>
+</ul>
+<p>Then, load the configuration into the kubernetes API using <code class="docutils literal notranslate"><span class="pre">kubectl</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="n">apply</span> <span class="o">-</span><span class="n">f</span> <span class="o">./</span><span class="n">operator</span><span class="o">.</span><span class="n">yaml</span>
+<span class="n">kubectl</span> <span class="n">apply</span> <span class="o">-</span><span class="n">f</span> <span class="o">./</span><span class="n">cluster</span><span class="o">.</span><span class="n">yaml</span>
+<span class="n">kubectl</span> <span class="n">apply</span> <span class="o">-</span><span class="n">f</span> <span class="o">./</span><span class="n">toolbox</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">kubectl</span> <span class="pre">-n</span> <span class="pre">rook-ceph-system</span> <span class="pre">get</span> <span class="pre">pods</span></code> to check the operator
+pod is coming up, then <code class="docutils literal notranslate"><span class="pre">kubectl</span> <span class="pre">-n</span> <span class="pre">rook-ceph</span> <span class="pre">get</span> <span class="pre">pods</span></code> to check on
+the Ceph daemons and toolbox.  Once everything is up and running,
+you should be able to open a shell in the toolbox container and
+run <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">status</span></code>.</p>
+<p>If your mon services start but the rest don’t, it could be that they’re
+unable to form a quorum due to a Kubernetes networking issue: check that
+containers in your Kubernetes cluster can ping containers on other nodes.</p>
+</div>
+<div class="section" id="cheat-sheet">
+<h2>Cheat sheet<a class="headerlink" href="#cheat-sheet" title="Permalink to this headline">¶</a></h2>
+<p>Open a shell in your toolbox container:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="n">exec</span> <span class="o">-</span><span class="n">it</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">tools</span> <span class="n">bash</span>
+</pre></div>
+</div>
+<p>Inspect the Rook operator container’s logs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">system</span> <span class="n">logs</span> <span class="o">-</span><span class="n">l</span> <span class="n">app</span><span class="o">=</span><span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">operator</span>
+</pre></div>
+</div>
+<p>Inspect the ceph-mgr container’s logs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="n">logs</span> <span class="o">-</span><span class="n">l</span> <span class="n">app</span><span class="o">=</span><span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">mgr</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../">Developer Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../internals/">Ceph Internals</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../blkin/">Tracing Ceph With Blkin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bluestore/">BlueStore Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph_krb_auth/">A Detailed Documentation on How to Set up Ceph Kerberos Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-reclaim/">CephFS Reclaim Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-snapshots/">CephFS Snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx/">Cephx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx_protocol/">A Detailed Description of the Cephx Authentication Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config/">Configuration Management System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-key/">config-key layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../corpus/">Corpus structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpu-profiler/">Installing Oprofile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cxx/">C++17 and libstdc++ ABI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/">Deploying a development cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/#deploying-multiple-development-clusters-on-the-same-machine">Deploying multiple development clusters on the same machine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../development-workflow/">Development workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../documenting/">Documenting Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encoding/">Serialization (encode/decode)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../erasure-coded-pool/">Erasure Coded pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../freebsd/">FreeBSD Implementation details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generatedocs/">Building Ceph Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../iana/">IANA Numbers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../">Contributing to Ceph: A Guide for Developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel-client-troubleshooting/">Kernel client troubleshooting (FS)</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Hacking on Ceph in Kubernetes with Rook</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#build-a-kubernetes-cluster">1. Build a kubernetes cluster</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#host-your-own">Host your own</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#hosted-elsewhere">Hosted elsewhere</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#run-a-docker-repository">2. Run a docker repository</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#build-rook">3. Build Rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#build-ceph">4. Build Ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run-a-rook-cluster">5. Run a Rook cluster</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cheat-sheet">Cheat sheet</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logging/">Use of the cluster log</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logs/">Debug logs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../macos/">build on MacOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../messenger/">Messenger notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-on-disk-formats/">ON-DISK FORMAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-osdmap-prune/">FULL OSDMAP VERSION PRUNING</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../msgr2/">msgr2 protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-protocol/">Network Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../object-store/">Object Store Architecture Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../peering/">Peering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf/">Using perf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_counters/">Perf counters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_histograms/">Perf histograms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement-group/">PG (Placement Group) notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quick_guide/">Developer Guide (Quick)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rados-client-protocol/">RADOS client protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-diff/">RBD Incremental Backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-export/">RBD Export &amp; Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../repo-access/">Notes on Ceph repositories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../seastore/">SeaStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sepia/">Sepia community test lab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../testing/">Testing notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd_internals/">OSD developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds_internals/">MDS developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../radosgw/">RADOS Gateway developer documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph-volume/">ceph-volume developer documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../libs/" title="Library architecture"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../kernel-client-troubleshooting/" title="Kernel client troubleshooting (FS)"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" >Ceph Internals</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

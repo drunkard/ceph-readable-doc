@@ -1,0 +1,256 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Encryption &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="prepare" href="../prepare/" />
+    <link rel="prev" title="batch" href="../batch/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../prepare/" title="prepare"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../batch/" title="batch"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../" accesskey="U">ceph-volume</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/ceph-volume/lvm/encryption.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="encryption">
+<span id="ceph-volume-lvm-encryption"></span><h1>Encryption<a class="headerlink" href="#encryption" title="Permalink to this headline">¶</a></h1>
+<p>Logical volumes can be encrypted using <code class="docutils literal notranslate"><span class="pre">dmcrypt</span></code> by specifying the
+<code class="docutils literal notranslate"><span class="pre">--dmcrypt</span></code> flag when creating OSDs. Encryption can be done in different ways,
+specially with LVM. <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> is somewhat opinionated with the way it
+sets up encryption with logical volumes so that the process is consistent and
+robust.</p>
+<p>In this case, <code class="docutils literal notranslate"><span class="pre">ceph-volume</span> <span class="pre">lvm</span></code> follows these constraints:</p>
+<ul class="simple">
+<li>only LUKS (version 1) is used</li>
+<li>Logical Volumes are encrypted, while their underlying PVs (physical volumes)
+aren’t</li>
+<li>Non-LVM devices like partitions are also encrypted with the same OSD key</li>
+</ul>
+<div class="section" id="luks">
+<h2>LUKS<a class="headerlink" href="#luks" title="Permalink to this headline">¶</a></h2>
+<p>There are currently two versions of LUKS, 1 and 2. Version 2 is a bit easier
+to implement but not widely available in all distros Ceph supports. LUKS 1 is
+not going to be deprecated in favor of LUKS 2, so in order to have as wide
+support as possible, <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> uses LUKS version 1.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Version 1 of LUKS is just referenced as “LUKS” whereas version 2 is
+referred to as LUKS2</p>
+</div>
+</div>
+<div class="section" id="luks-on-lvm">
+<h2>LUKS on LVM<a class="headerlink" href="#luks-on-lvm" title="Permalink to this headline">¶</a></h2>
+<p>Encryption is done on top of existing logical volumes (unlike encrypting the
+physical device). Any single logical volume can be encrypted while other
+volumes can remain unencrypted. This method also allows for flexible logical
+volume setups, since encryption will happen once the LV is created.</p>
+</div>
+<div class="section" id="workflow">
+<h2>Workflow<a class="headerlink" href="#workflow" title="Permalink to this headline">¶</a></h2>
+<p>When setting up the OSD, a secret key will be created, that will be passed
+along to the monitor in JSON format as <code class="docutils literal notranslate"><span class="pre">stdin</span></code> to prevent the key from being
+captured in the logs.</p>
+<p>The JSON payload looks something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;cephx_secret&quot;</span><span class="p">:</span> <span class="n">CEPHX_SECRET</span><span class="p">,</span>
+    <span class="s2">&quot;dmcrypt_key&quot;</span><span class="p">:</span> <span class="n">DMCRYPT_KEY</span><span class="p">,</span>
+    <span class="s2">&quot;cephx_lockbox_secret&quot;</span><span class="p">:</span> <span class="n">LOCKBOX_SECRET</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The naming convention for the keys is <strong>strict</strong>, and they are named like that
+for the hardcoded (legacy) names ceph-disk used.</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">cephx_secret</span></code> : The cephx key used to authenticate</li>
+<li><code class="docutils literal notranslate"><span class="pre">dmcrypt_key</span></code> : The secret (or private) key to unlock encrypted devices</li>
+<li><code class="docutils literal notranslate"><span class="pre">cephx_lockbox_secret</span></code> : The authentication key used to retrieve the
+<code class="docutils literal notranslate"><span class="pre">dmcrypt_key</span></code>. It is named <em>lockbox</em> because ceph-disk used to have an
+unencrypted partition named after it, used to store public keys and other
+OSD metadata.</li>
+</ul>
+<p>The naming convention is strict because Monitors supported the naming
+convention by ceph-disk, which used these key names. In order to keep
+compatibility and prevent ceph-disk from breaking, ceph-volume will use the same
+naming convention <em>although they don’t make sense for the new encryption
+workflow</em>.</p>
+<p>After the common steps of setting up the OSD during the prepare stage, either
+with <a class="reference internal" href="../../../glossary/#term-filestore"><span class="xref std std-term">filestore</span></a> or <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a>, the logical volume is left ready
+to be activated, regardless of the state of the device (encrypted or decrypted).</p>
+<p>At activation time, the logical volume will get decrypted and the OSD started
+once the process completes correctly.</p>
+<p>Summary of the encryption workflow for creating a new OSD:</p>
+<ol class="arabic simple">
+<li>OSD is created, both lockbox and dmcrypt keys are created, and sent along
+with JSON to the monitors, indicating an encrypted OSD.</li>
+<li>All complementary devices (like journal, db, or wal) get created and
+encrypted with the same OSD key. Key is stored in the LVM metadata of the
+OSD</li>
+<li>Activation continues by ensuring devices are mounted, retrieving the dmcrypt
+secret key from the monitors and decrypting before the OSD gets started.</li>
+</ol>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Intro to Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">Installation (ceph-deploy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">Installation (Manual)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph Storage Cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/">Ceph Block Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph Object Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph Manager Daemon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/internals/">Ceph Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../governance/">Governance</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">ceph-volume</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../#migrating">Migrating</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../../#new-deployments">New deployments</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="../../#existing-osds">Existing OSDs</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="../../intro/">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../intro/#replacing-ceph-disk">Replacing <code class="docutils literal notranslate"><span class="pre">ceph-disk</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../intro/#gpt-partitions-are-simple">GPT partitions are simple?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../intro/#modularity">Modularity</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../intro/#ceph-volume-lvm"><code class="docutils literal notranslate"><span class="pre">ceph-volume</span> <span class="pre">lvm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../intro/#lvm-performance-penalty">LVM performance penalty</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../systemd/">systemd</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../inventory/"><code class="docutils literal notranslate"><span class="pre">inventory</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../"><code class="docutils literal notranslate"><span class="pre">lvm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../activate/"><code class="docutils literal notranslate"><span class="pre">activate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../batch/"><code class="docutils literal notranslate"><span class="pre">batch</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../batch/#reporting">Reporting</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Encryption</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#luks">LUKS</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#luks-on-lvm">LUKS on LVM</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#workflow">Workflow</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="../prepare/"><code class="docutils literal notranslate"><span class="pre">prepare</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../create/"><code class="docutils literal notranslate"><span class="pre">create</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scan/">scan</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../systemd/">systemd</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../list/"><code class="docutils literal notranslate"><span class="pre">list</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../zap/"><code class="docutils literal notranslate"><span class="pre">zap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../simple/"><code class="docutils literal notranslate"><span class="pre">simple</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../simple/activate/"><code class="docutils literal notranslate"><span class="pre">activate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../simple/scan/"><code class="docutils literal notranslate"><span class="pre">scan</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../simple/systemd/">systemd</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Glossary</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../prepare/" title="prepare"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../batch/" title="batch"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../" >ceph-volume</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

@@ -2,35 +2,27 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Erasure Code developer notes &mdash; Ceph Documentation</title>
-    
+    <title>Erasure Code developer notes &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../../../../',
-        VERSION:     'dev',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '',
-        HAS_SOURCE:  true
-      };
-    </script>
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../../_static/js/ceph.js"></script>
     <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
-    <link rel="top" title="Ceph Documentation" href="../../../../" />
-    
+    <link rel="index" title="Index" href="../../../../genindex/" />
+    <link rel="search" title="Search" href="../../../../search/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
-  </head>
-  <body>
-    <div class="related">
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -39,15 +31,30 @@
         <li class="right" >
           <a href="../../../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../../">Ceph Documentation</a> &#187;</li> 
       </ul>
     </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/osd_internals/erasure_coding/developer_notes.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
   <div class="section" id="erasure-code-developer-notes">
 <h1>Erasure Code developer notes<a class="headerlink" href="#erasure-code-developer-notes" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="introduction">
@@ -62,7 +69,7 @@ explained to demonstrate how things work.</p>
 into K data chunks and M coding chunks. The pool is configured to have
 a size of K+M so that each chunk is stored in an OSD in the acting
 set. The rank of the chunk is stored as an attribute of the object.</p>
-<p>Let&#8217;s say an erasure coded pool is created to use five OSDs ( K+M =
+<p>Let’s say an erasure coded pool is created to use five OSDs ( K+M =
 5 ) and sustain the loss of two of them ( M = 2 ).</p>
 <p>When the object <em>NYAN</em> containing <em>ABCDEFGHI</em> is written to it, the
 erasure encoding function splits the content in three data chunks,
@@ -76,44 +83,45 @@ OSDs. The order in which the chunks were created must be preserved and
 is stored as an attribute of the object ( shard_t ), in addition to its
 name. Chunk <em>1</em> contains <em>ABC</em> and is stored on <em>OSD5</em> while chunk <em>4</em>
 contains <em>YXY</em> and is stored on <em>OSD3</em>.</p>
-<div class="highlight-python"><pre>                          +-------------------+
-                     name |        NYAN       |
-                          +-------------------+
-                  content |      ABCDEFGHI    |
-                          +--------+----------+
-                                   |
-                                   |
-                                   v
-                            +------+------+
-            +---------------+ encode(3,2) +-----------+
-            |               +--+--+---+---+           |
-            |                  |  |   |               |
-            |          +-------+  |   +-----+         |
-            |          |          |         |         |
-         +--v---+   +--v---+   +--v---+  +--v---+  +--v---+
-   name  | NYAN |   | NYAN |   | NYAN |  | NYAN |  | NYAN |
-         +------+   +------+   +------+  +------+  +------+
-  shard  |  1   |   |  2   |   |  3   |  |  4   |  |  5   |
-         +------+   +------+   +------+  +------+  +------+
-content  | ABC  |   | DEF  |   | GHI  |  | YXY  |  | QGC  |
-         +--+---+   +--+---+   +--+---+  +--+---+  +--+---+
-            |          |          |         |         |
-            |          |          |         |         |
-            |          |       +--+---+     |         |
-            |          |       | OSD1 |     |         |
-            |          |       +------+     |         |
-            |          |       +------+     |         |
-            |          +------&gt;| OSD2 |     |         |
-            |                  +------+     |         |
-            |                  +------+     |         |
-            |                  | OSD3 |&lt;----+         |
-            |                  +------+               |
-            |                  +------+               |
-            |                  | OSD4 |&lt;--------------+
-            |                  +------+
-            |                  +------+
-            +-----------------&gt;| OSD5 |
-                               +------+</pre>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                          <span class="o">+-------------------+</span>
+                     <span class="n">name</span> <span class="o">|</span>        <span class="n">NYAN</span>       <span class="o">|</span>
+                          <span class="o">+-------------------+</span>
+                  <span class="n">content</span> <span class="o">|</span>      <span class="n">ABCDEFGHI</span>    <span class="o">|</span>
+                          <span class="o">+--------+----------+</span>
+                                   <span class="o">|</span>
+                                   <span class="o">|</span>
+                                   <span class="n">v</span>
+                            <span class="o">+------+------+</span>
+            <span class="o">+---------------+</span> <span class="n">encode</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="o">+-----------+</span>
+            <span class="o">|</span>               <span class="o">+--+--+---+---+</span>           <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">|</span>  <span class="o">|</span>   <span class="o">|</span>               <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">+-------+</span>  <span class="o">|</span>   <span class="o">+-----+</span>         <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">|</span>          <span class="o">|</span>         <span class="o">|</span>         <span class="o">|</span>
+         <span class="o">+--</span><span class="n">v</span><span class="o">---+</span>   <span class="o">+--</span><span class="n">v</span><span class="o">---+</span>   <span class="o">+--</span><span class="n">v</span><span class="o">---+</span>  <span class="o">+--</span><span class="n">v</span><span class="o">---+</span>  <span class="o">+--</span><span class="n">v</span><span class="o">---+</span>
+   <span class="n">name</span>  <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>   <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>   <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>  <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>  <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>
+         <span class="o">+------+</span>   <span class="o">+------+</span>   <span class="o">+------+</span>  <span class="o">+------+</span>  <span class="o">+------+</span>
+  <span class="n">shard</span>  <span class="o">|</span>  <span class="mi">1</span>   <span class="o">|</span>   <span class="o">|</span>  <span class="mi">2</span>   <span class="o">|</span>   <span class="o">|</span>  <span class="mi">3</span>   <span class="o">|</span>  <span class="o">|</span>  <span class="mi">4</span>   <span class="o">|</span>  <span class="o">|</span>  <span class="mi">5</span>   <span class="o">|</span>
+         <span class="o">+------+</span>   <span class="o">+------+</span>   <span class="o">+------+</span>  <span class="o">+------+</span>  <span class="o">+------+</span>
+<span class="n">content</span>  <span class="o">|</span> <span class="n">ABC</span>  <span class="o">|</span>   <span class="o">|</span> <span class="n">DEF</span>  <span class="o">|</span>   <span class="o">|</span> <span class="n">GHI</span>  <span class="o">|</span>  <span class="o">|</span> <span class="n">YXY</span>  <span class="o">|</span>  <span class="o">|</span> <span class="n">QGC</span>  <span class="o">|</span>
+         <span class="o">+--+---+</span>   <span class="o">+--+---+</span>   <span class="o">+--+---+</span>  <span class="o">+--+---+</span>  <span class="o">+--+---+</span>
+            <span class="o">|</span>          <span class="o">|</span>          <span class="o">|</span>         <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">|</span>          <span class="o">|</span>         <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">|</span>       <span class="o">+--+---+</span>     <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">|</span>       <span class="o">|</span> <span class="n">OSD1</span> <span class="o">|</span>     <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">|</span>       <span class="o">+------+</span>     <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">|</span>       <span class="o">+------+</span>     <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">+------&gt;|</span> <span class="n">OSD2</span> <span class="o">|</span>     <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>     <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>     <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">|</span> <span class="n">OSD3</span> <span class="o">|&lt;----+</span>         <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>               <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>               <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">|</span> <span class="n">OSD4</span> <span class="o">|&lt;--------------+</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>
+            <span class="o">+-----------------&gt;|</span> <span class="n">OSD5</span> <span class="o">|</span>
+                               <span class="o">+------+</span>
+</pre></div>
 </div>
 <p>When the object <em>NYAN</em> is read from the erasure coded pool, the
 decoding function reads three chunks : chunk <em>1</em> containing <em>ABC</em>,
@@ -125,59 +133,60 @@ is informed that the chunks <em>2</em> and <em>5</em> are missing ( they are cal
 <p>The decoding function could be called as soon as three chunks are
 read : <em>OSD2</em> was the slowest and its chunk does not need to be taken into
 account. This optimization is not implemented in Firefly.</p>
-<div class="highlight-python"><pre>                          +-------------------+
-                     name |        NYAN       |
-                          +-------------------+
-                  content |      ABCDEFGHI    |
-                          +--------+----------+
-                                   ^
-                                   |
-                                   |
-                            +------+------+
-                            | decode(3,2) |
-                            | erasures 2,5|
-            +--------------&gt;|             |
-            |               +-------------+
-            |                     ^   ^
-            |                     |   +-----+
-            |                     |         |
-         +--+---+   +------+   +--+---+  +--+---+
-   name  | NYAN |   | NYAN |   | NYAN |  | NYAN |
-         +------+   +------+   +------+  +------+
-  shard  |  1   |   |  2   |   |  3   |  |  4   |
-         +------+   +------+   +------+  +------+
-content  | ABC  |   | DEF  |   | GHI  |  | YXY  |
-         +--+---+   +--+---+   +--+---+  +--+---+
-            ^          .          ^         ^
-            |    TOO   .          |         |
-            |    SLOW  .       +--+---+     |
-            |          ^       | OSD1 |     |
-            |          |       +------+     |
-            |          |       +------+     |
-            |          +-------| OSD2 |     |
-            |                  +------+     |
-            |                  +------+     |
-            |                  | OSD3 |-----+
-            |                  +------+
-            |                  +------+
-            |                  | OSD4 | OUT
-            |                  +------+
-            |                  +------+
-            +------------------| OSD5 |
-                               +------+</pre>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                          <span class="o">+-------------------+</span>
+                     <span class="n">name</span> <span class="o">|</span>        <span class="n">NYAN</span>       <span class="o">|</span>
+                          <span class="o">+-------------------+</span>
+                  <span class="n">content</span> <span class="o">|</span>      <span class="n">ABCDEFGHI</span>    <span class="o">|</span>
+                          <span class="o">+--------+----------+</span>
+                                   <span class="o">^</span>
+                                   <span class="o">|</span>
+                                   <span class="o">|</span>
+                            <span class="o">+------+------+</span>
+                            <span class="o">|</span> <span class="n">decode</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="o">|</span>
+                            <span class="o">|</span> <span class="n">erasures</span> <span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="o">|</span>
+            <span class="o">+--------------&gt;|</span>             <span class="o">|</span>
+            <span class="o">|</span>               <span class="o">+-------------+</span>
+            <span class="o">|</span>                     <span class="o">^</span>   <span class="o">^</span>
+            <span class="o">|</span>                     <span class="o">|</span>   <span class="o">+-----+</span>
+            <span class="o">|</span>                     <span class="o">|</span>         <span class="o">|</span>
+         <span class="o">+--+---+</span>   <span class="o">+------+</span>   <span class="o">+--+---+</span>  <span class="o">+--+---+</span>
+   <span class="n">name</span>  <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>   <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>   <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>  <span class="o">|</span> <span class="n">NYAN</span> <span class="o">|</span>
+         <span class="o">+------+</span>   <span class="o">+------+</span>   <span class="o">+------+</span>  <span class="o">+------+</span>
+  <span class="n">shard</span>  <span class="o">|</span>  <span class="mi">1</span>   <span class="o">|</span>   <span class="o">|</span>  <span class="mi">2</span>   <span class="o">|</span>   <span class="o">|</span>  <span class="mi">3</span>   <span class="o">|</span>  <span class="o">|</span>  <span class="mi">4</span>   <span class="o">|</span>
+         <span class="o">+------+</span>   <span class="o">+------+</span>   <span class="o">+------+</span>  <span class="o">+------+</span>
+<span class="n">content</span>  <span class="o">|</span> <span class="n">ABC</span>  <span class="o">|</span>   <span class="o">|</span> <span class="n">DEF</span>  <span class="o">|</span>   <span class="o">|</span> <span class="n">GHI</span>  <span class="o">|</span>  <span class="o">|</span> <span class="n">YXY</span>  <span class="o">|</span>
+         <span class="o">+--+---+</span>   <span class="o">+--+---+</span>   <span class="o">+--+---+</span>  <span class="o">+--+---+</span>
+            <span class="o">^</span>          <span class="o">.</span>          <span class="o">^</span>         <span class="o">^</span>
+            <span class="o">|</span>    <span class="n">TOO</span>   <span class="o">.</span>          <span class="o">|</span>         <span class="o">|</span>
+            <span class="o">|</span>    <span class="n">SLOW</span>  <span class="o">.</span>       <span class="o">+--+---+</span>     <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">^</span>       <span class="o">|</span> <span class="n">OSD1</span> <span class="o">|</span>     <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">|</span>       <span class="o">+------+</span>     <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">|</span>       <span class="o">+------+</span>     <span class="o">|</span>
+            <span class="o">|</span>          <span class="o">+-------|</span> <span class="n">OSD2</span> <span class="o">|</span>     <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>     <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>     <span class="o">|</span>
+            <span class="o">|</span>                  <span class="o">|</span> <span class="n">OSD3</span> <span class="o">|-----+</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>
+            <span class="o">|</span>                  <span class="o">|</span> <span class="n">OSD4</span> <span class="o">|</span> <span class="n">OUT</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>
+            <span class="o">|</span>                  <span class="o">+------+</span>
+            <span class="o">+------------------|</span> <span class="n">OSD5</span> <span class="o">|</span>
+                               <span class="o">+------+</span>
+</pre></div>
 </div>
 </div>
 <div class="section" id="erasure-code-library">
 <h2>Erasure code library<a class="headerlink" href="#erasure-code-library" title="Permalink to this headline">¶</a></h2>
 <p>Using <a class="reference external" href="https://en.wikipedia.org/wiki/Reed_Solomon">Reed-Solomon</a>,
 with parameters K+M, object O is encoded by dividing it into chunks O1,
-O2, ...  OM and computing coding chunks P1, P2, ... PK. Any K chunks
+O2, …  OM and computing coding chunks P1, P2, … PK. Any K chunks
 out of the available K+M chunks can be used to obtain the original
 object.  If data chunk O2 or coding chunk P2 are lost, they can be
 repaired using any K chunks out of the K+M chunks. If more than M
 chunks are lost, it is not possible to recover the object.</p>
 <p>Reading the original content of object O can be a simple
-concatenation of O1, O2, ... OM, because the plugins are using
+concatenation of O1, O2, … OM, because the plugins are using
 <a class="reference external" href="http://en.wikipedia.org/wiki/Systematic_code">systematic codes</a>. Otherwise the chunks
 must be given to the erasure code library <em>decode</em> method to retrieve
 the content of the object.</p>
@@ -189,7 +198,7 @@ means more calls and more overhead.</p>
 <a class="reference external" href="https://github.com/ceph/ceph/blob/v0.78/src/erasure-code/ErasureCodeInterface.h">abstract API</a> designed to
 allow each pool to choose the plugin that implements it using
 key=value pairs stored in an <a class="reference external" href="../../../erasure-coded-pool">erasure code profile</a>.</p>
-<div class="highlight-python"><pre>$ ceph osd erasure-code-profile set myprofile \
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd erasure-code-profile set myprofile \
     ruleset-failure-domain=osd
 $ ceph osd erasure-code-profile get myprofile
 directory=/usr/lib/ceph/erasure-code
@@ -198,33 +207,37 @@ m=1
 plugin=jerasure
 technique=reed_sol_van
 ruleset-failure-domain=osd
-$ ceph osd pool create ecpool 12 12 erasure myprofile</pre>
+$ ceph osd pool create ecpool 12 12 erasure myprofile
+</pre></div>
 </div>
 <p>The <em>plugin</em> is dynamically loaded from <em>directory</em>  and expected to
 implement the <em>int __erasure_code_init(char *plugin_name, char *directory)</em> function
 which is responsible for registering an object derived from <em>ErasureCodePlugin</em>
 in the registry. The <a class="reference external" href="https://github.com/ceph/ceph/blob/v0.78/src/test/erasure-code/ErasureCodePluginExample.cc">ErasureCodePluginExample</a> plugin reads:</p>
-<div class="highlight-python"><pre>ErasureCodePluginRegistry &amp;instance =
-                           ErasureCodePluginRegistry::instance();
-instance.add(plugin_name, new ErasureCodePluginExample());</pre>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ErasureCodePluginRegistry</span> <span class="o">&amp;</span><span class="n">instance</span> <span class="o">=</span>
+                           <span class="n">ErasureCodePluginRegistry</span><span class="p">::</span><span class="n">instance</span><span class="p">();</span>
+<span class="n">instance</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">plugin_name</span><span class="p">,</span> <span class="n">new</span> <span class="n">ErasureCodePluginExample</span><span class="p">());</span>
+</pre></div>
 </div>
 <p>The <em>ErasureCodePlugin</em> derived object must provide a factory method
 from which the concrete implementation of the <em>ErasureCodeInterface</em>
-object can be generated. The <a class="reference external" href="https://github.com/ceph/ceph/blob/v0.78/src/test/osd/ErasureCodePluginExample.cc">ErasureCodePluginExample plugin</a> reads:</p>
-<div class="highlight-python"><pre>virtual int factory(const map&lt;std::string,std::string&gt; &amp;parameters,
-                    ErasureCodeInterfaceRef *erasure_code) {
-  *erasure_code = ErasureCodeInterfaceRef(new ErasureCodeExample(parameters));
-  return 0;
-}</pre>
+object can be generated. The <a class="reference external" href="https://github.com/ceph/ceph/blob/v0.78/src/test/erasure-code/ErasureCodePluginExample.cc">ErasureCodePluginExample plugin</a> reads:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">virtual</span> <span class="nb">int</span> <span class="n">factory</span><span class="p">(</span><span class="n">const</span> <span class="nb">map</span><span class="o">&lt;</span><span class="n">std</span><span class="p">::</span><span class="n">string</span><span class="p">,</span><span class="n">std</span><span class="p">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">parameters</span><span class="p">,</span>
+                    <span class="n">ErasureCodeInterfaceRef</span> <span class="o">*</span><span class="n">erasure_code</span><span class="p">)</span> <span class="p">{</span>
+  <span class="o">*</span><span class="n">erasure_code</span> <span class="o">=</span> <span class="n">ErasureCodeInterfaceRef</span><span class="p">(</span><span class="n">new</span> <span class="n">ErasureCodeExample</span><span class="p">(</span><span class="n">parameters</span><span class="p">));</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
 </div>
 <p>The <em>parameters</em> argument is the list of <em>key=value</em> pairs that were
 set in the erasure code profile, before the pool was created.</p>
-<div class="highlight-python"><pre>ceph osd erasure-code-profile set myprofile \
-   directory=&lt;dir&gt;         \ # mandatory
-   plugin=jerasure         \ # mandatory
-   m=10                    \ # optional and plugin dependant
-   k=3                     \ # optional and plugin dependant
-   technique=reed_sol_van  \ # optional and plugin dependant</pre>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span> <span class="nb">set</span> <span class="n">myprofile</span> \
+   <span class="n">directory</span><span class="o">=&lt;</span><span class="nb">dir</span><span class="o">&gt;</span>         \ <span class="c1"># mandatory</span>
+   <span class="n">plugin</span><span class="o">=</span><span class="n">jerasure</span>         \ <span class="c1"># mandatory</span>
+   <span class="n">m</span><span class="o">=</span><span class="mi">10</span>                    \ <span class="c1"># optional and plugin dependant</span>
+   <span class="n">k</span><span class="o">=</span><span class="mi">3</span>                     \ <span class="c1"># optional and plugin dependant</span>
+   <span class="n">technique</span><span class="o">=</span><span class="n">reed_sol_van</span>  \ <span class="c1"># optional and plugin dependant</span>
+</pre></div>
 </div>
 </div>
 <div class="section" id="notes">
@@ -239,10 +252,11 @@ and decode on its own when scrubbing.</p>
 </div>
 
 
+
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
             <p class="logo"><a href="../../../../">
               <img class="logo" src="../../../../_static/logo.png" alt="Logo"/>
@@ -260,34 +274,33 @@ and decode on its own when scrubbing.</p>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api/">API 文档</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../architecture/">体系结构</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../">开发文档</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../release-notes/">Release Notes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Ceph 版本</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../glossary/">Ceph 术语</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../README/">中文版翻译说明</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../translation-convention/">中文版词语翻译惯例</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../build-errors/">文档编译错误</a></li>
 </ul>
 
 
 <!-- ugly kludge to make genindex look like it's part of the toc -->
 <ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../../genindex/">Index</a></li></ul>
-<div id="searchbox" style="display: none">
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="../../../../search/" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -296,11 +309,11 @@ and decode on its own when scrubbing.</p>
         <li class="right" >
           <a href="../../../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../../../">Ceph Documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../../">Ceph Documentation</a> &#187;</li> 
       </ul>
     </div>
-    <div class="footer">
-        &copy; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons BY-SA.
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
     </div>
   </body>
 </html>
