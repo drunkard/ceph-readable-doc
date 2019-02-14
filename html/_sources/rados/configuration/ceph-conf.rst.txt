@@ -2,7 +2,7 @@
  配置 Ceph
 ===========
 
-你启动 Ceph 服务时，初始化进程会把一系列守护进程放到后台运行。 \
+你启动 Ceph 服务时，初始化进程会把一系列守护进程放到后台运行。
 :term:`Ceph 存储集群`\ 运行两种守护进程：
 
 - :term:`Ceph 监视器` （ ``ceph-mon`` ）
@@ -348,7 +348,7 @@ OSDs
 	sudo mkfs -t {fstype} /dev/{disk}
 	sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}
 
-我们推荐用 ``xfs`` 或 ``btrfs`` 文件系统，命令是 :command:mkfs 。
+用 :command:mkfs 创建文件系统时，我们推荐用 ``xfs`` 文件系统。
 
 配置详细步骤见 `OSD 配置参考`_\ 。
 

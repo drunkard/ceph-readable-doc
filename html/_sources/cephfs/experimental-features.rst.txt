@@ -28,26 +28,6 @@ Inline data has always been off by default and requires setting
 the "inline_data" flag.
 
 
-.. _Multi-MDS filesystem clusters:
-
-多个 MDS 驱动文件系统
----------------------
-CephFS has been designed from the ground up to support fragmenting the metadata
-hierarchy across multiple active metadata servers, to allow horizontal scaling
-to arbitrary throughput requirements. Unfortunately, doing so requires a lot
-more working code than having a single MDS which is authoritative over the
-entire filesystem namespace.
-
-Multiple active MDSes are generally stable under trivial workloads, but often
-break in the presence of any failure, and do not have enough testing to offer
-any stability guarantees. If a filesystem with multiple active MDSes does
-experience failure, it will require (generally extensive) manual intervention.
-There are serious known bugs.
-
-Multi-MDS filesystems have always required explicitly increasing the "max_mds"
-value and have been further protected with the "allow_multimds" flag for Jewel.
-
-
 .. _`Mantle: Programmable Metadata Load Balancer`:
 
 Mantle: 可编程的元数据负载均衡器
@@ -80,8 +60,8 @@ Snapshotting was blocked off with the "allow_new_snaps" flag prior to Firefly.
 
 .. _Multiple filesystems within a Ceph cluster:
 
-Ceph 单集群、多个文件系统
--------------------------
+单个 Ceph 集群内建多个文件系统
+------------------------------
 Code was merged prior to the Jewel release which enables administrators
 to create multiple independent CephFS filesystems within a single Ceph cluster.
 These independent filesystems have their own set of active MDSes, cluster maps,
@@ -99,7 +79,7 @@ Note that snapshots and multiple filesystems are *not* tested in combination
 and may not work together; see above.
 
 Multiple filesystems were available starting in the Jewel release candidates
-but were protected behind the "enable_multiple" flag before the final release.
+but must be turned on via the ``enable_multiple`` flag until declared stable.
 
 
 .. _Previously experimental features:

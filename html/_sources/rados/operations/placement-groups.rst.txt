@@ -275,16 +275,19 @@ designed your Ceph cluster to maximize `data durability`_,
    ----------- = 6667. Nearest power of 2: 8192
         3
 
-当用了多个数据存储池来存储数据时，你得确保均衡每个存储池的归置组数量、且归置组数量分\
-摊到每个 OSD ，这样才能达到较合理的归置组总量，并因此使得每个 OSD 无需耗费过多系统\
-资源或拖慢连接进程就能实现较小变迁。
+当用了多个数据存储池来存储数据时，你得确保均衡每个存储池的归置\
+组数量、且归置组数量分摊到每个 OSD ，这样才能达到较合理的归置\
+组总量，并因此使得每个 OSD 无需耗费过多系统资源或拖慢连接进程\
+就能实现较小变迁。
 
-For instance a cluster of 10 pools each with 512 placement groups on
-ten OSDs is a total of 5,120 placement groups spread over ten OSDs,
-that is 512 placement groups per OSD. That does not use too many
-resources. However, if 1,000 pools were created with 512 placement
-groups each, the OSDs will handle ~50,000 placement groups each and it
-would require significantly more resources and time for peering.
+以这样一个集群为例，它拥有 10 个存储池、每个存储池有 512 个归\
+置组，分布在 10 个 OSD 上；即 5120 个归置组散布在 10 个 OSD
+上，也就是平均每个 OSD 上有 512 个归置组；如此配置，不会占用太\
+多资源。然而，如果创建的是 1000 个存储池，且各存储池分别有 512
+个归置组，那么每个 OSD 就得处理 5 万多个归置组，这样的话光是建\
+立互联就需要不少资源和时间。
+
+你可以借助于 `PGCalc`_ 工具。
 
 
 .. _setting the number of placement groups:

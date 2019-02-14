@@ -25,7 +25,7 @@ default), you must specify a user name and a keyring containing the secret key
 of the specified user (usually via the command line). If you do not specify a
 user name, Ceph will use ``client.admin`` as the default user name. If you do
 not specify a keyring, Ceph will look for a keyring via the ``keyring`` setting
-in the Ceph configuration. For example, if you execute the ``ceph health`` 
+in the Ceph configuration. For example, if you execute the ``ceph health``
 command without specifying a user or keyring::
 
 	ceph health
@@ -36,7 +36,7 @@ Ceph interprets the command like this::
 
 另外你也可以用 ``CEPH_ARGS`` 环境变量来避免多次输入用户名和密钥。
 
-For details on configuring the Ceph Storage Cluster to use authentication, 
+For details on configuring the Ceph Storage Cluster to use authentication,
 see `Cephx 配置参考`_. For details on the architecture of Cephx, see
 `体系结构——高可用性认证`_.
 
@@ -77,10 +77,10 @@ type. So ``client.user1`` can be entered simply as ``user1``. If you specify
 wherever possible.
 
 .. note:: A Ceph Storage Cluster user is not the same as a Ceph Object Storage
-   user or a Ceph Filesystem user. The Ceph Object Gateway uses a Ceph Storage 
-   Cluster user to communicate between the gateway daemon and the storage 
-   cluster, but the gateway has its own user management functionality for end 
-   users. The Ceph Filesystem uses POSIX semantics. The user space associated 
+   user or a Ceph Filesystem user. The Ceph Object Gateway uses a Ceph Storage
+   Cluster user to communicate between the gateway daemon and the storage
+   cluster, but the gateway has its own user management functionality for end
+   users. The Ceph Filesystem uses POSIX semantics. The user space associated
    with the Ceph Filesystem is not the same as a Ceph Storage Cluster user.
 
 
@@ -112,7 +112,7 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 
 - **元数据服务器能力：** 元数据服务器能力比较简单，只需要 \
   ``allow`` 或者空白，也不会解析更多选项。 ::
-  
+
 	mds 'allow'
 
 .. note:: Ceph 对象网关守护进程（ ``radosgw`` ）是 Ceph 存储集群\
@@ -202,18 +202,18 @@ namespace such that reads and writes by the user take place only within the
 namespace. Objects written to a namespace within the pool can only be accessed
 by users who have access to the namespace.
 
-.. note:: Currently (i.e., ``firefly``), namespaces are only useful for 
-   applications written on top of ``librados``. Ceph clients such as block 
-   device, object storage and file system do not currently support this 
+.. note:: Currently (i.e., ``firefly``), namespaces are only useful for
+   applications written on top of ``librados``. Ceph clients such as block
+   device, object storage and file system do not currently support this
    feature.
 
 The rationale for namespaces is that pools can be a computationally expensive
 method of segregating data sets for the purposes of authorizing separate sets
-of users. For example, a pool should have ~100 placement groups per OSD. So an 
-exemplary cluster with 1000 OSDs would have 100,000 placement groups for one 
-pool. Each pool would create another 100,000 placement groups in the exemplary 
-cluster. By contrast, writing an object to a namespace simply associates the 
-namespace to the object name with out the computational overhead of a separate 
+of users. For example, a pool should have ~100 placement groups per OSD. So an
+exemplary cluster with 1000 OSDs would have 100,000 placement groups for one
+pool. Each pool would create another 100,000 placement groups in the exemplary
+cluster. By contrast, writing an object to a namespace simply associates the
+namespace to the object name with out the computational overhead of a separate
 pool. Rather than creating a separate pool for a user or set of users, you may
 use a namespace. **Note:** Only available using ``librados`` at this time.
 
@@ -269,14 +269,14 @@ user of type ``osd`` and its ID is ``0``, ``client.admin`` is a user of type
 Note also that each entry has a ``key: <value>`` entry, and one or more
 ``caps:`` entries.
 
-You may use the ``-o {filename}`` option with ``ceph auth list`` to 
+You may use the ``-o {filename}`` option with ``ceph auth list`` to
 save the output to a file.
 
 
 获取用户
 --------
 
-To retrieve a specific user, key and capabilities, execute the 
+To retrieve a specific user, key and capabilities, execute the
 following::
 
 	ceph auth get {TYPE.ID}
@@ -285,7 +285,7 @@ For example::
 
 	ceph auth get client.admin
 
-You may also use the ``-o {filename}`` option with ``ceph auth get`` to 
+You may also use the ``-o {filename}`` option with ``ceph auth get`` to
 save the output to a file. Developers may also execute the following::
 
 	ceph auth export {TYPE.ID}
@@ -300,7 +300,7 @@ out the internal ``auid``, which isn't relevant to end users.
 Adding a user creates a username (i.e., ``TYPE.ID``), a secret key and
 any capabilities included in the command you use to create the user.
 
-A user's key enables the user to authenticate with the Ceph Storage Cluster. 
+A user's key enables the user to authenticate with the Ceph Storage Cluster.
 The user's capabilities authorize the user to read, write, or execute on Ceph
 monitors (``mon``), Ceph OSDs (``osd``) or Ceph Metadata  Servers (``mds``).
 
@@ -308,26 +308,26 @@ There are a few ways to add a user:
 
 - ``ceph auth add``: This command is the canonical way to add a user. It
   will create the user, generate a key and add any specified capabilities.
-  
+
 - ``ceph auth get-or-create``: This command is often the most convenient way
-  to create a user, because it returns a keyfile format with the user name 
+  to create a user, because it returns a keyfile format with the user name
   (in brackets) and the key. If the user already exists, this command
-  simply returns the user name and key in the keyfile format. You may use the 
+  simply returns the user name and key in the keyfile format. You may use the
   ``-o {filename}`` option to save the output to a file.
 
 - ``ceph auth get-or-create-key``: This command is a convenient way to create
   a user and return the user's key (only). This is useful for clients that
   need the key only (e.g., libvirt). If the user already exists, this command
-  simply returns the key. You may use the ``-o {filename}`` option to save the 
+  simply returns the key. You may use the ``-o {filename}`` option to save the
   output to a file.
 
 When creating client users, you may create a user with no capabilities. A user
 with no capabilities is useless beyond mere authentication, because the client
-cannot retrieve the cluster map from the monitor. However, you can create a 
-user with no capabilities if you wish to defer adding capabilities later using 
+cannot retrieve the cluster map from the monitor. However, you can create a
+user with no capabilities if you wish to defer adding capabilities later using
 the ``ceph auth caps`` command.
 
-A typical user has at least read capabilities on the Ceph monitor and 
+A typical user has at least read capabilities on the Ceph monitor and
 read and write capability on Ceph OSDs. Additionally, a user's OSD permissions
 are often restricted to accessing a particular pool. ::
 
@@ -338,17 +338,20 @@ are often restricted to accessing a particular pool. ::
 
 
 .. important:: If you provide a user with capabilities to OSDs, but you DO NOT
-   restrict access to particular pools, the user will have access to ALL 
+   restrict access to particular pools, the user will have access to ALL
    pools in the cluster!
 
 
-修改用户能力
+.. Modify User Capabilities
+.. _modify-user-capabilities:
+
+更改用户能力
 ------------
 
-``ceph auth caps`` 命令可以用来修改指定用户的能力。设置新能力时会\
-覆盖当前能力。查看用户当前的能力可以用 \
-``ceph auth get USERTYPE.USERID`` ；增加能力时应该加上当前已经有的\
-能力，命令格式如下： ::
+``ceph auth caps`` 命令可以用来修改指定用户的能力。设置新能力\
+时会覆盖当前能力。查看用户当前的能力可以用 \
+``ceph auth get USERTYPE.USERID`` ；增加能力时应该加上当前已经\
+有的能力，命令格式如下： ::
 
 	ceph auth caps USERTYPE.USERID {daemon} 'allow [r|w|x|*|...] [pool={pool-name}] [namespace={namespace-name}]' [{daemon} 'allow [r|w|x|*|...] [pool={pool-name}] [namespace={namespace-name}]']
 
@@ -359,14 +362,15 @@ are often restricted to accessing a particular pool. ::
 	ceph auth caps client.paul mon 'allow rw' osd 'allow rwx pool=liverpool'
 	ceph auth caps client.brian-manager mon 'allow *' osd 'allow *'
 
-To remove a capability, you may reset the capability. If you want the user
-to have no access to a particular daemon that was previously set, specify 
-an empty string. For example:: 
+要删除一个能力，你可以重置此能力。如果你想让一个用户无权访问一\
+个之前配置给他的特定守护进程，指定一个空字符串即可。例如： ::
 
 	ceph auth caps client.ringo mon ' ' osd ' '
 
 关于能力请参考\ `授权（能力）`_\ 。
 
+
+.. Delete a User
 
 删除用户
 --------
@@ -375,9 +379,11 @@ an empty string. For example::
 
 	ceph auth del {TYPE}.{ID}
 
-其中 ``{TYPE}`` 是 ``client`` 、 ``osd`` 、 ``mon`` 或 ``mds`` 之一， \
-``{ID}`` 是用户名或守护进程的 ID 。
+其中 ``{TYPE}`` 是 ``client`` 、 ``osd`` 、 ``mon`` 或 ``mds``
+之一， ``{ID}`` 是用户名或守护进程的 ID 。
 
+
+.. Print a User's Key
 
 查看用户密钥
 ------------
@@ -386,40 +392,42 @@ To print a user's authentication key to standard output, execute the following::
 
 	ceph auth print-key {TYPE}.{ID}
 
-Where ``{TYPE}`` is one of ``client``, ``osd``, ``mon``, or ``mds``, 
+Where ``{TYPE}`` is one of ``client``, ``osd``, ``mon``, or ``mds``,
 and ``{ID}`` is the user name or ID of the daemon.
 
-Printing a user's key is useful when you need to populate client 
+Printing a user's key is useful when you need to populate client
 software with a user's key  (e.g., libvirt). ::
 
 	mount -t ceph serverhost:/ mountpoint -o name=client.user,secret=`ceph auth print-key client.user`
 
 
+.. Import a User(s)
+
 导入用户
 --------
 
-To import one or more users, use ``ceph auth import`` and
-specify a keyring:: 
+要导入一个或多个用户，可以用 ``ceph auth import`` 命令，并指定\
+一个密钥环： ::
 
 	ceph auth import -i /path/to/keyring
 
-For example:: 
+例如： ::
 
 	sudo ceph auth import -i /etc/ceph/ceph.keyring
 
+.. note:: Ceph 存储集群会新增用户、他们的密钥以及其能力，也会\
+   更新已有的用户们、他们的密钥和他们的能力。
 
-.. note:: The ceph storage cluster will add new users, their keys and their 
-   capabilities and will update existing users, their keys and their 
-   capabilities.
 
+.. Keyring Management
 
 密钥环管理
 ==========
 
-When you access Ceph via a Ceph client, the Ceph client will look for a local 
-keyring. Ceph presets the ``keyring`` setting with the following four keyring 
-names by default so you don't have to set them in your Ceph configuration file 
-unless you want to override the defaults (not recommended): 
+When you access Ceph via a Ceph client, the Ceph client will look for a local
+keyring. Ceph presets the ``keyring`` setting with the following four keyring
+names by default so you don't have to set them in your Ceph configuration file
+unless you want to override the defaults (not recommended):
 
 - ``/etc/ceph/$cluster.$name.keyring``
 - ``/etc/ceph/$cluster.keyring``
@@ -428,7 +436,7 @@ unless you want to override the defaults (not recommended):
 
 The ``$cluster`` metavariable is your Ceph cluster name as defined by the
 name of the Ceph configuration file (i.e., ``ceph.conf`` means the cluster name
-is ``ceph``; thus, ``ceph.keyring``). The ``$name`` metavariable is the user 
+is ``ceph``; thus, ``ceph.keyring``). The ``$name`` metavariable is the user
 type and user ID (e.g., ``client.admin``; thus, ``ceph.client.admin.keyring``).
 
 .. note:: When executing commands that read or write to ``/etc/ceph``, you may
@@ -446,10 +454,10 @@ users directly in the Ceph Storage Cluster. However, Ceph also provides the
 创建密钥环
 ----------
 
-When you use the procedures in the `管理用户`_ section to create users, 
-you need to provide user keys to the Ceph client(s) so that the Ceph client 
-can retrieve the key for the specified user and authenticate with the Ceph 
-Storage Cluster. Ceph Clients access keyrings to lookup a user name and 
+When you use the procedures in the `管理用户`_ section to create users,
+you need to provide user keys to the Ceph client(s) so that the Ceph client
+can retrieve the key for the specified user and authenticate with the Ceph
+Storage Cluster. Ceph Clients access keyrings to lookup a user name and
 retrieve the user's key.
 
 The ``ceph-authtool`` utility allows you to create a keyring. To create an 
@@ -487,8 +495,8 @@ ownership and access.
 户、及其密钥、能力，并存入一个密钥环文件。
 
 When you only want to use one user per keyring, the `获取用户`_ procedure with
-the ``-o`` option will save the output in the keyring file format. For example, 
-to create a keyring for the ``client.admin`` user, execute the following:: 
+the ``-o`` option will save the output in the keyring file format. For example,
+to create a keyring for the ``client.admin`` user, execute the following::
 
 	sudo ceph auth get client.admin -o /etc/ceph/ceph.client.admin.keyring
 
@@ -496,7 +504,7 @@ Notice that we use the recommended file format for an individual user.
 
 When you want to import users to a keyring, you can use ``ceph-authtool``
 to specify the destination keyring and the source keyring.
-For example:: 
+For example::
 
 	sudo ceph-authtool /etc/ceph/ceph.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 
@@ -518,7 +526,7 @@ For example::
 
 	sudo ceph-authtool -C /etc/ceph/ceph.keyring -n client.ringo --cap osd 'allow rwx' --cap mon 'allow rwx' --gen-key
 
-In the foregoing scenarios, the new user ``client.ringo`` is only in the 
+In the foregoing scenarios, the new user ``client.ringo`` is only in the
 keyring. To add the new user to the Ceph Storage Cluster, you must still add
 the new user to the Ceph Storage Cluster. ::
 
@@ -541,7 +549,7 @@ in the keyring to the user entry in the the Ceph Storage Cluster. ::
 See `导入用户`_ for details on updating a Ceph Storage Cluster user
 from a keyring.
 
-You may also `修改用户能力`_ directly in the cluster, store the
+You may also `更改用户能力`_ directly in the cluster, store the
 results to a keyring file; then, import the keyring into your main
 ``ceph.keyring`` file.
 

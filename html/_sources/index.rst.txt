@@ -99,8 +99,11 @@ Ceph 独一无二地在一个统一的系统中同时提供了\ **对象、块�
    api/index
    architecture
    开发文档 <dev/index>
+   dev/internals
+   ceph-volume/index
    releases/index
    Ceph 术语 <glossary>
    中文版翻译说明 <README>
-   中文版词语翻译惯例 <translation-convention>
+   中文版词句翻译惯例 <translation-convention>
    文档编译错误 <build-errors>
+   中文版待完成事项 <TODO>

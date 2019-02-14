@@ -49,6 +49,20 @@
    ``sudo chmod +r /etc/ceph/ceph.client.admin.keyring`` ）。
 
 
+.. Create a Block Device Pool
+
+创建一个块设备存储池
+====================
+
+#. 在管理节点上，用 ``ceph`` 工具来\ `创建一个存储池`_\ （我们\
+   建议以 rbd 为名）；
+
+#. 在管理节点上，用 ``rbd`` 工具来初始化新建的存储池，这样才能\
+   用作 RBD::
+
+        rbd pool init <pool-name>
+
+
 .. _Configure a Block Device:
 
 配置块设备
@@ -81,6 +95,7 @@
 
 
 .. _存储集群入门: ../quick-ceph-deploy
+.. _创建一个存储池: ../../rados/operations/pools/#create-a-pool
 .. _块设备: ../../rbd/rbd
 .. _FAQ: http://wiki.ceph.com/How_Can_I_Give_Ceph_a_Try
 .. _操作系统推荐: ../os-recommendations

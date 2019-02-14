@@ -12,8 +12,8 @@
 用 systemd 控制 Ceph
 ====================
 
-现在，所有支持 systemd 的发行版（ CentOS 7 、 Fedora 、
-Debian Jessie 8.x 、 SUSE ）都用原生的 systemd 文件来管理 ceph
+现在，所有支持 systemd 的发行版（ CentOS 7 、 Fedora 、Debian
+Jessie 以及更高版、 SUSE ）都用原生的 systemd 文件来管理 ceph
 守护进程，不再使用原来的 sysvinit 脚本了。例如： ::
 
         sudo systemctl start ceph.target       # start all daemons

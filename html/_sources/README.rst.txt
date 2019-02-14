@@ -103,7 +103,7 @@ translation-convention.rst ）。
 	cd /git/ceph
 	./admin/serve-doc
 
-如果遇到编译错误，请参考\ `此文档 </build-errors>`_\ （即 build-errors.rst ）\
+如果编译失败，请参考\ `此文档 </build-errors>`_\ （即 build-errors.rst ）\
 解决。
 
 .. vim: set colorcolumn=80 noexpandtab smarttab:

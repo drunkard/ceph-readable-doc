@@ -29,6 +29,19 @@ ceph-mgr 管理员指南
     mgr active: $name
 
 
+.. Client authentication
+
+客户端认证
+----------
+
+管理器是一种新的守护进程，需要新的 CephX 能力。如果你是从旧版
+Ceph 升级集群、或者使用默认的安装/部署工具，那么管理客户端应该\
+可以自动获取到这个能力。如果你用了非标准工具，在调用某些 ceph
+集群命令时可能会遇到 EACCES 错误。要修正此问题，需\
+`更改用户能力`_\ ，在客户端的 cephx 能力里加上 ``mgr allow \*``
+声明。
+
+
 高可用性
 --------
 
@@ -69,23 +82,20 @@ modules.
 
 OPTION(mgr_module_path, OPT_STR, CEPH_PKGLIBDIR "/mgr") // 从哪里载入 python 模块
 
+
 ``mgr module path``
 
 :描述: 从这个路径载人模块
 :类型: String
 :默认值: ``"<library dir>/mgr"``
 
-``mgr modules``
-
-:描述: 要载入的 python 模块列表
-:类型: String
-:默认值: ``"rest"`` (Load the REST API module only)
 
 ``mgr data``
 
 :描述: 从这个路径载人守护进程数据（如密钥环）
 :类型: String
 :默认值: ``"/var/lib/ceph/mgr/$cluster-$id"``
+
 
 ``mgr tick period``
 
@@ -94,9 +104,12 @@ OPTION(mgr_module_path, OPT_STR, CEPH_PKGLIBDIR "/mgr") // 从哪里载入 pytho
 :类型: Integer
 :默认值: ``5``
 
+
 ``mon mgr beacon grace``
 
 :描述: 上一个信标收到后过多久没反应就当它失败了。
 :类型: Integer
 :默认值: ``30``
 
+
+.. _更改用户能力: ../../rados/operations/user-management/#modify-user-capabilities

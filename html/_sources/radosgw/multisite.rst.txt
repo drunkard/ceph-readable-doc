@@ -73,58 +73,7 @@ Ceph 对象网关支持几种多站配置方案：
 在本指南中， ``rgw1`` 主机将在主域组的主域中提供服务；而
 ``rgw2`` 主机将在主域组的副域中提供服务。
 
-
-
-
-.. Pools
-
-存储池
-======
-
-我们建议用 `Ceph 归置组的单存储池计算器 <http://ceph.com/pgcalc/>`__\
-给这些存储池计算个合适的归置组数量， ``ceph-radosgw`` 守护进程\
-创建存储池时会用到。把算出的值写入 Ceph 配置文件，作为默认值，\
-例如： ::
-
-    osd pool default pg num = 50
-    osd pool default pgp num = 50
-
-.. note:: 把这些变更写入你的 Ceph 配置文件，然后使之生效，这样\
-   网关例程在创建存储池时就会使用这些默认值了。
-
-或者，手动创建存储池，创建细节请参考\ `存储池
-<http://docs.ceph.com/docs/master/rados/operations/pools/#pools>`__\ 。
-
-一个域的存储池名称应该遵循命名惯例 ``{zone-name}.pool-name`` ，\
-例如，名为 ``us-east`` 的域需要创建如下存储池：
-
--  ``.rgw.root``
-
--  ``us-east.rgw.control``
-
--  ``us-east.rgw.data.root``
-
--  ``us-east.rgw.gc``
-
--  ``us-east.rgw.log``
-
--  ``us-east.rgw.intent-log``
-
--  ``us-east.rgw.usage``
-
--  ``us-east.rgw.users.keys``
-
--  ``us-east.rgw.users.email``
-
--  ``us-east.rgw.users.swift``
-
--  ``us-east.rgw.users.uid``
-
--  ``us-east.rgw.buckets.index``
-
--  ``us-east.rgw.buckets.data``
-
-
+为 Ceph 对象存储服务创建和调整存储池的文档请参考\ `存储池`_\ 。
 
 
 .. _Configuring a Master Zone:
@@ -1400,3 +1349,6 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 | ``rgw_num_zone_opstate_shards``     | 用于暂存域组之间同步进度的   | Integer | ``128``               |
 |                                     | 最大片段数。                 |         |                       |
 +-------------------------------------+------------------------------+---------+-----------------------+
+
+
+.. _`存储池`: ../pools

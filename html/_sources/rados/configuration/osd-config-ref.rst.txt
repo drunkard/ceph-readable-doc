@@ -666,6 +666,8 @@ OSD 们建立连接，这样才能正常工作。详情见\
 `cache target dirty high ratio`_ 选项。
 
 
+.. Miscellaneous
+
 杂项
 ====
 
@@ -729,13 +731,6 @@ OSD 们建立连接，这样才能正常工作。详情见\
 ``osd tmapput sets users tmap``
 
 :描述: 只在调试时使用 ``tmap`` 。
-:类型: Boolean
-:默认值: ``false``
-
-
-``osd preserve trimmed log``
-
-:描述: 保留本该修剪掉的日志文件，但是会占用更多磁盘空间。
 :类型: Boolean
 :默认值: ``false``
 

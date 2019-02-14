@@ -385,14 +385,6 @@ OSD
 :默认值: 1
 
 
-``osd preserve trimmed log``
-
-:描述: 裁减后保留剩余日志。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
 ``osd tmapput sets uses tmap``
 
 :描述: 使用 ``tmap`` ，仅用于调试。

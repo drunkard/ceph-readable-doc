@@ -4,7 +4,9 @@
 万精油
 ------
 
-有错误就试试升级 python 库，或者哪个库出问题了，就试试它的其它版本（开发者可能只是测试过了他自己的版本，没考虑其它版本能不能跑通）。
+有错误就试试升级 python 库，或者哪个库出问题了，就试试它的其它\
+版本（开发者可能只是测试过了他自己的版本，没考虑其它版本能不能\
+跑通）。
 
 
 ImportError: librados.so: cannot open shared object file: No such file or directory
@@ -21,7 +23,7 @@ ImportError: librados.so: cannot open shared object file: No such file or direct
 
 原因：没找到对应的库。
 
-解决方法：手动链接到系统库位置。
+解决方法：手动链接到系统库位置，需 root 权限。
 
 .. code:: bash
 
@@ -120,11 +122,22 @@ bad magic number in 'rados': b'\x03\xf3\r\n'
 
 解决方法：
 
-#. Python 版本可能不对，我这里是用了 Python 3.6，但当前只支持 3.4 、 3.5 ::
+#. Python 版本可能不对，我这里是用了 Python 3.6，但当前只支持
+   3.4 、 3.5 ::
 
-      18:27:15 /git/ceph/build-doc $ python3.5 -m venv virtualenv/
+      cd /git/ceph/build-doc
+      python3.5 -m venv virtualenv/
 
-#. 缓存文件问题，删除即可::
+#. 用更高版本的 Python 。 Python 3 向前兼容，但未必向后兼容；\
+   有些开发者可能用了最新版 Python 的功能，而这个功能可能在
+   ``setup.py`` 里声明的 Python 版本中不支持，所以应该尝试下更\
+   高版本的 Python ::
 
-      (virtualenv) 19:32:54 /git/ceph $ find build-doc/ src/ -name \*.pyc -exec rm -vf {} +
+      cd /git/ceph/build-doc
+      python3.6 -m venv virtualenv/
+
+#. Python 的缓存文件问题，删除即可::
+
+      cd /git/ceph
+      find build-doc/ src/ -name \*.pyc -exec rm -vf {} +
 

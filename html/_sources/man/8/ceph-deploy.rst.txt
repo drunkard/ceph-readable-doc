@@ -444,7 +444,8 @@ calamari 的初始配置、安装 salt-minion 软件包。如果是 Redhat/CentO
 
 .. option:: --dev
 
-   安装最前沿版本，从 Git 分支或某标签（默认为 master ）编译而来。
+   安装最前沿版本，从 Git 分支或某标签（默认为 master ）编译而\
+   来。
 
 .. option:: --cluster-network
 
@@ -465,7 +466,8 @@ calamari 的初始配置、安装 salt-minion 软件包。如果是 Redhat/CentO
 .. option:: --fs-type
 
    格式化磁盘时指定的文件系统（如 ``xfs`` 、 ``btrfs`` 或
-   ``ext4`` ）。
+   ``ext4`` ）。注意，对 btrfs 和 ext4 的支持已经不再测试，也\
+   不建议再用了，请转向 xfs 。
 
 .. option:: --fsid
 

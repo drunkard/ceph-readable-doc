@@ -16,21 +16,22 @@ ceph-mgr 插件编程指南
 * ``notify`` 成员函数，如果你的模块想对新的集群数据有所动作。
 * ``handle_command`` 成员函数，如果你的模块要暴露 CLI 命令。
 
+
+.. Installing a plugin
+
 安装插件
 --------
 
-Once your module is present in the location set by the
-``mgr module path`` configuration setting, add its name
-to the ``mgr modules`` configuration setting and restart the ceph-mgr
-daemon to load it.
+你自己的模块放入 ``mgr module path`` 配置选项所指的路径后，可\
+以用 ``ceph mgr module enable`` 命令启用它： ::
 
-If you're working within a Ceph vstart cluster then your module
-should be found in the default pybind/mgr location, and you only
-have to add it to ``mgr modules`` to get it loaded.
+  ceph mgr module enable mymodule
 
-Note that the MgrModule interface is not stable, so any modules maintained
-outside of the Ceph tree are liable to break when run against any newer
-or older versions of Ceph.
+请注意， MgrModule 接口不稳定，所以 Ceph 树以外维护的模块用于\
+较新或较低版本的 Ceph 时可能很容易崩溃。
+
+
+.. Logging
 
 日志记录
 --------

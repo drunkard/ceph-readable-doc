@@ -284,7 +284,7 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
 #. 准备OSD。 ::
 
 	ssh {node-name}
-	sudo ceph-disk prepare --cluster {cluster-name} --cluster-uuid {uuid} --fs-type {ext4|xfs|btrfs} {data-path} [{journal-path}]
+	sudo ceph-volume lvm create --data {data-path}
 
    例如： ::
 
