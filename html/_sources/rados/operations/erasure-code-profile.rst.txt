@@ -1,4 +1,5 @@
-.. _Erasure code profiles:
+.. Erasure code profiles
+.. _erasure-code-profiles:
 
 ============
  纠删码配置

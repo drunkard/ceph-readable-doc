@@ -19,8 +19,9 @@
              k={data-chunks} \
              m={coding-chunks} \
              technique={reed_sol_van|reed_sol_r6_op|cauchy_orig|cauchy_good|liberation|blaum_roth|liber8tion} \
-             [ruleset-root={root}] \
-             [ruleset-failure-domain={bucket-type}] \
+             [crush-root={root}] \
+             [crush-failure-domain={bucket-type}] \
+             [crush-device-class={device-class}] \
              [directory={directory}] \
              [--force]
 
@@ -37,8 +38,8 @@
 
 ``m={coding-chunks}``
 
-:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的数量等同于在\
-       不丢数据的前提下允许同时失效的 OSD 数量。
+:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的\
+       数量等同于在不丢数据的前提下允许同时失效的 OSD 数量。
 
 :类型: Integer
 :是否必需: Yes.
@@ -47,9 +48,10 @@
 
 ``technique={reed_sol_van|reed_sol_r6_op|cauchy_orig|cauchy_good|liberation|blaum_roth|liber8tion}``
 
-:描述: *reed_sol_van* 技术更灵活：它足以设置 *k* 和 *m* 值。 *cauchy_good* 技\
-       术更快，但你得谨慎地选择 *packetsize* 值。 *reed_sol_r6_op* 、 \
-       *liberation* 、  *blaum_roth* 、 *liber8tion* 都是与 *RAID6* 等价的技\
+:描述: *reed_sol_van* 技术更灵活：它足以设置 *k* 和 *m* 值。
+       *cauchy_good* 技术更快，但你得谨慎地选择 *packetsize*
+       值。 *reed_sol_r6_op* 、 *liberation* 、
+       *blaum_roth* 、 *liber8tion* 都是与 *RAID6* 等价的技\
        术，它们只能配置为 *m=2* 。
 
 :类型: String
@@ -59,31 +61,42 @@
 
 ``packetsize={bytes}``
 
-:描述: 以 *bytes* 大小的包为单位进行编码。确定合适的包尺寸很难， *jerasure* \
-       文档对此有很详细的描述。
+:描述: 以 *bytes* 大小的包为单位进行编码。确定合适的包尺寸很\
+       难， *jerasure* 文档对此有很详细的描述。
 
 :类型: Integer
 :是否必需: No.
 :默认值: 2048
 
 
-``ruleset-root={root}``
+``crush-root={root}``
 
-:描述: 规则集的第一步所用的 crush 桶的名字，例如 **step take default** 。
+:描述: 规则集的第一步所用的 crush 桶的名字，例如
+       **step take default** 。
 :类型: String
 :是否必需: No.
 :默认值: default
 
 
-``ruleset-failure-domain={bucket-type}``
+``crush-failure-domain={bucket-type}``
 
-:描述: 确保两个数据块不会存储到同一故障域中的桶里。例如，假设故障域是 \
-       **host** ，那么两个数据块就不会存储到同一主机。它被用于创建规则集阶\
-       梯，如 **step chooseleaf host** 。
+:描述: 确保两个数据块不会存储到同一故障域中的桶里。例如，\
+       假设故障域是 **host** ，那么两个数据块就不会存储到\
+       同一主机。它被用于创建规则集阶梯，如
+       **step chooseleaf host** 。
 
 :类型: String
 :是否必需: No.
 :默认值: host
+
+
+``crush-device-class={device-class}``
+
+:描述: 使归置限于指定的设备类（比如 ``ssd`` 或 ``hdd`` ）之\
+       内，在 CRUSH 图内用的是 crush 设备类的名字。
+
+:类型: String
+:是否必需: No.
 
 
 ``directory={directory}``

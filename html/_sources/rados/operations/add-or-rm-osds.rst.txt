@@ -135,6 +135,40 @@ CRUSH 图。
    注意，以上经验在 Bobtail 及后续版本已不再必要。
 
 
+.. Replacing an OSD
+.. _rados-replacing-an-osd:
+
+替换一个 OSD
+------------
+
+When disks fail, or if an administrator wants to reprovision OSDs with a new
+backend, for instance, for switching from FileStore to BlueStore, OSDs need to
+be replaced. Unlike `删除 OSD`_, replaced OSD's id and CRUSH map entry
+need to be keep intact after the OSD is destroyed for replacement.
+
+#. 先销毁这个 OSD::
+
+     ceph osd destroy {id} --yes-i-really-mean-it
+
+#. Zap a disk for the new OSD, if the disk was used before for other purposes.
+   It's not necessary for a new disk::
+
+     ceph-volume lvm zap /dev/sdX
+
+#. Prepare the disk for replacement by using the previously destroyed OSD id::
+
+     ceph-volume lvm  prepare --osd-id {id} --data /dev/sdX
+
+#. And activate the OSD::
+
+     ceph-volume lvm activate {id} {fsid}
+
+Alternatively, instead of preparing and activating, the device can be recreated
+in one call, like::
+
+    ceph-volume lvm create --osd-id {id} --data /dev/sdX
+
+
 启动 OSD
 --------
 
@@ -235,12 +269,13 @@ CRUSH 图。
 停止 OSD 后，状态变为 ``down`` 。
 
 
+.. Removing the OSD
+
 删除 OSD
 --------
 
 此步骤依次把一个 OSD 移出集群 CRUSH 图、删除认证密钥、删除 OSD 图条目、删除 \
 ``ceph.conf`` 条目。如果主机有多个硬盘，每个硬盘对应的 OSD 都得重复此步骤。
-
 
 #. 删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了。你也可以反编译 CRUSH 图、删\
    除 device 列表条目、删除对应的 host 桶条目或删除 host 桶（如果它在 CRUSH 图里，\

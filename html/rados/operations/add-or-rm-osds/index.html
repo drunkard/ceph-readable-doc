@@ -20,7 +20,7 @@
     <link rel="index" title="Index" href="../../../genindex/" />
     <link rel="search" title="Search" href="../../../search/" />
     <link rel="next" title="增加/删除监视器" href="../add-or-rm-mons/" />
-    <link rel="prev" title="CRUSH 图" href="../crush-map/" />
+    <link rel="prev" title="使用 pg-upmap" href="../upmap/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head><body>
@@ -37,7 +37,7 @@
           <a href="../add-or-rm-mons/" title="增加/删除监视器"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../crush-map/" title="CRUSH 图"
+          <a href="../upmap/" title="使用 pg-upmap"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../" >Ceph 存储集群</a> &#187;</li>
@@ -161,8 +161,43 @@
 <p>注意，以上经验在 Bobtail 及后续版本已不再必要。</p>
 </div>
 </div>
-<div class="section" id="id8">
-<h3>启动 OSD<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="rados-replacing-an-osd">
+<span id="id8"></span><h3>替换一个 OSD<a class="headerlink" href="#rados-replacing-an-osd" title="Permalink to this headline">¶</a></h3>
+<p>When disks fail, or if an administrator wants to reprovision OSDs with a new
+backend, for instance, for switching from FileStore to BlueStore, OSDs need to
+be replaced. Unlike <a class="reference external" href="../crush-map#removeosd">删除 OSD</a>, replaced OSD’s id and CRUSH map entry
+need to be keep intact after the OSD is destroyed for replacement.</p>
+<ol class="arabic">
+<li><p class="first">先销毁这个 OSD:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">destroy</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Zap a disk for the new OSD, if the disk was used before for other purposes.
+It’s not necessary for a new disk:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">zap</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdX</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Prepare the disk for replacement by using the previously destroyed OSD id:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span>  <span class="n">prepare</span> <span class="o">--</span><span class="n">osd</span><span class="o">-</span><span class="nb">id</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="o">--</span><span class="n">data</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdX</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">And activate the OSD:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">activate</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="p">{</span><span class="n">fsid</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>Alternatively, instead of preparing and activating, the device can be recreated
+in one call, like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">create</span> <span class="o">--</span><span class="n">osd</span><span class="o">-</span><span class="nb">id</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="o">--</span><span class="n">data</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdX</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id9">
+<h3>启动 OSD<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
 <p>把 OSD 加入 Ceph 后， OSD 就在配置里了。然而它还没运行，它现在的状态为 <code class="docutils literal notranslate"><span class="pre">down</span></code> 且 <code class="docutils literal notranslate"><span class="pre">out</span></code> 。你必须先启动 OSD 它才能收数据。可以用管理主机上的 <code class="docutils literal notranslate"><span class="pre">service</span> <span class="pre">ceph</span></code> 、或从 OSD 所在主机启动。</p>
 <p>在 Ubuntu Trusty 上用 Upstart。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="nb">id</span><span class="o">=</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span>
@@ -174,8 +209,8 @@
 </div>
 <p>一旦你启动了 OSD ，其状态就变成了 <code class="docutils literal notranslate"><span class="pre">up</span></code> 且 <code class="docutils literal notranslate"><span class="pre">in</span></code> 。</p>
 </div>
-<div class="section" id="id9">
-<h3>观察数据迁移<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id10">
+<h3>观察数据迁移<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
 <p>把新 OSD 加入 CRUSH 图后， Ceph 会重新均衡服务器，一些归置组会迁移到新 OSD 里，你可以用 <a class="reference external" href="../monitoring">ceph</a> 命令观察此过程。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">-</span><span class="n">w</span>
 </pre></div>
@@ -185,7 +220,7 @@
 </div>
 </div>
 <div class="section" id="removing-osds-manual">
-<span id="id12"></span><h2>删除 OSD （手动）<a class="headerlink" href="#removing-osds-manual" title="Permalink to this headline">¶</a></h2>
+<span id="id13"></span><h2>删除 OSD （手动）<a class="headerlink" href="#removing-osds-manual" title="Permalink to this headline">¶</a></h2>
 <p>要想缩减集群尺寸或替换硬件，可在运行时删除 OSD 。在 Ceph 里，一个 OSD 通常是一台主机上的一个 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 守护进程、它运行在一个硬盘之上。如果一台主机上有多个数据盘，你得挨个删除其对应
 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 。通常，操作前应该检查集群容量，看是否快达到上限了，确保删除 OSD 后不会使集群达到 <code class="docutils literal notranslate"><span class="pre">near</span> <span class="pre">full</span></code> 比率。</p>
 <div class="admonition warning">
@@ -193,15 +228,15 @@
 <p class="last">删除 OSD 时不要让集群达到 <code class="docutils literal notranslate"><span class="pre">full</span> <span class="pre">ratio</span></code> 值，删除
 OSD 可能导致集群达到或超过 <code class="docutils literal notranslate"><span class="pre">full</span> <span class="pre">ratio</span></code> 值。</p>
 </div>
-<div class="section" id="id13">
-<h3>把 OSD 踢出集群<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id14">
+<h3>把 OSD 踢出集群<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
 <p>删除 OSD 前，它通常是 <code class="docutils literal notranslate"><span class="pre">up</span></code> 且 <code class="docutils literal notranslate"><span class="pre">in</span></code> 的，要先把它踢出集群，以使 Ceph 启动重新均衡、把数据拷贝到其他 OSD 。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">out</span> <span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id14">
-<h3>观察数据迁移<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id15">
+<h3>观察数据迁移<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
 <p>一旦把 OSD 踢出（ <code class="docutils literal notranslate"><span class="pre">out</span></code> ）集群， Ceph 就会开始重新均衡集群、把归置组迁出将删除的 OSD 。你可以用 <a class="reference external" href="../monitoring">ceph</a> 工具观察此过程。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">-</span><span class="n">w</span>
 </pre></div>
@@ -220,8 +255,8 @@ OSD 可能导致集群达到或超过 <code class="docutils literal notranslate"
 <p class="last">执行后，你可以观察数据迁移过程，应该可以正常结束。把某一 OSD 标记为 <code class="docutils literal notranslate"><span class="pre">out</span></code> 和权重改为 0 的区别在于，前者，包含此 OSD 的桶、其权重没变；而后一种情况下，桶的权重变了（降低了此 OSD 的权重）。某些情况下， reweight 命令更适合“小”集群。</p>
 </div>
 </div>
-<div class="section" id="id15">
-<h3>停止 OSD<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id16">
+<h3>停止 OSD<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
 <p>把 OSD 踢出集群后，它可能仍在运行，就是说其状态为 <code class="docutils literal notranslate"><span class="pre">up</span></code> 且
 <code class="docutils literal notranslate"><span class="pre">out</span></code> 。删除前要先停止 OSD 进程。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">host</span><span class="p">}</span>
@@ -230,8 +265,8 @@ OSD 可能导致集群达到或超过 <code class="docutils literal notranslate"
 </div>
 <p>停止 OSD 后，状态变为 <code class="docutils literal notranslate"><span class="pre">down</span></code> 。</p>
 </div>
-<div class="section" id="id16">
-<h3>删除 OSD<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id17">
+<h3>删除 OSD<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
 <p>此步骤依次把一个 OSD 移出集群 CRUSH 图、删除认证密钥、删除 OSD 图条目、删除 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 条目。如果主机有多个硬盘，每个硬盘对应的 OSD 都得重复此步骤。</p>
 <ol class="arabic">
 <li><p class="first">删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了。你也可以反编译 CRUSH 图、删除 device 列表条目、删除对应的 host 桶条目或删除 host 桶（如果它在 CRUSH 图里，而且你想删除主机），重编译 CRUSH 图并应用它。详情参见<a class="reference external" href="../crush-map#removeosd">删除 OSD</a> 。</p>
@@ -301,25 +336,28 @@ OSD 可能导致集群达到或超过 <code class="docutils literal notranslate"
 <li class="toctree-l3"><a class="reference internal" href="../cache-tiering/">分级缓存</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upmap/">使用 pg-upmap</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">增加/删除 OSD</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id1">增加 OSD</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#id2">部署硬件</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id6">安装必要软件</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id7">增加 OSD （手动）</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id8">启动 OSD</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id9">观察数据迁移</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#rados-replacing-an-osd">替换一个 OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id9">启动 OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id10">观察数据迁移</a></li>
 </ul>
 </li>
 <li class="toctree-l4"><a class="reference internal" href="#removing-osds-manual">删除 OSD （手动）</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id13">把 OSD 踢出集群</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id14">观察数据迁移</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id15">停止 OSD</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id16">删除 OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id14">把 OSD 踢出集群</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id15">观察数据迁移</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id16">停止 OSD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id17">删除 OSD</a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../bluestore-migration/">迁移到 BlueStore</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../control/">命令参考</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/community/">Ceph 社区</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-mon/">监视器故障排除</a></li>
@@ -385,7 +423,7 @@ OSD 可能导致集群达到或超过 <code class="docutils literal notranslate"
           <a href="../add-or-rm-mons/" title="增加/删除监视器"
              >next</a> |</li>
         <li class="right" >
-          <a href="../crush-map/" title="CRUSH 图"
+          <a href="../upmap/" title="使用 pg-upmap"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../" >Ceph 存储集群</a> &#187;</li>

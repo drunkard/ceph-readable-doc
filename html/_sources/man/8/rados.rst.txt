@@ -94,8 +94,12 @@
 :command:`get` *name* *outfile*
   从集群读出名为 name 的对象、并把它写入 outfile 。
 
-:command:`put` *name* *infile*
-  把 infile 的内容写入成集群内名为 name 的对象。
+:command:`put` *name* *infile* [--offset offset]
+  把 infile 的内容写入集群内名为 name 的对象、从偏移量 *offset*
+  （默认为 0 ）处写起。
+  **警告：**\ put 命令创建的是单个 RADOS 对象，尺寸和你的输入\
+  文件完全一样。你如果不能保证对象的尺寸合理且一致，最好改用
+  RGW/S3 、 CephFS 或 RBD ，否则实际运行情况和你期望的会有出入。
 
 :command:`append` *name* *infile*
   把 infile 的内容追加给集群内名为 name 的对象。

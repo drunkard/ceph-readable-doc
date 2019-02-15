@@ -40,33 +40,31 @@ requires at least three hosts::
     k=2
     m=1
     plugin=jerasure
-    ruleset-failure-domain=host
+    crush-failure-domain=host
     technique=reed_sol_van
 
-Choosing the right profile is important because it cannot be modified
-after the pool is created: a new pool with a different profile needs
-to be created and all objects from the previous pool moved to the new.
+确定合理的配置文件很重要，因为存储池创建后就不能再修改了。要改\
+的话，只能另外创建一个采用新配置的存储池，然后再把所有对象挪过\
+去。
 
-The most important parameters of the profile are *K*, *M* and
-*ruleset-failure-domain* because they define the storage overhead and
-the data durability. For instance, if the desired architecture must
-sustain the loss of two racks with a storage overhead of 40% overhead,
-the following profile can be defined::
+配置文件里最重要的参数是 *K* 、 *M* 和
+*crush-failure-domain* ，因为它们决定了存储的开销和数据的\
+持久性。例如，假设期望的系统架构必须能承受两个故障机架和 40%
+的开销，可以用下列配置文件： ::
 
     $ ceph osd erasure-code-profile set myprofile \
        k=3 \
        m=2 \
-       ruleset-failure-domain=rack
+       crush-failure-domain=rack
     $ ceph osd pool create ecpool 12 12 erasure myprofile
     $ echo ABCDEFGHI | rados --pool ecpool put NYAN -
     $ rados --pool ecpool get NYAN -
     ABCDEFGHI
 
-The *NYAN* object will be divided in three (*K=3*) and two additional
-*chunks* will be created (*M=2*). The value of *M* defines how many
-OSD can be lost simultaneously without losing any data. The
-*ruleset-failure-domain=rack* will create a CRUSH ruleset that ensures
-no two *chunks* are stored in the same rack.
+对象 *NYAN* 将被分割成三块（ *K=3* ）、并额外创建两个\
+*校验块*\ （ *M=2* ）。 *M* 值决定了在不丢数据的前提下可以同时\
+失去多少 OSD 。 *crush-failure-domain=rack* 能使创建的 CRUSH
+规则集可确保两个\ *校验块*\ 不会存储在同一机架上。
 
 .. ditaa::
                             +-------------------+

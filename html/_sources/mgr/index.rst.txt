@@ -28,3 +28,4 @@ mgr 启动。
     仪表盘插件 <dashboard>
     REST 风格的插件 <restful>
     Zabbix 插件 <zabbix>
+    Iostat 插件 <iostat>

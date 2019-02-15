@@ -17,8 +17,9 @@
              technique={reed_sol_van|cauchy} \
              [k={data-chunks}] \
              [m={coding-chunks}] \
-             [ruleset-root={root}] \
-             [ruleset-failure-domain={bucket-type}] \
+             [crush-root={root}] \
+             [crush-failure-domain={bucket-type}] \
+             [crush-device-class={device-class}] \
              [directory={directory}] \
              [--force]
 
@@ -57,23 +58,36 @@
 :默认值: reed_sol_van
 
 
-``ruleset-root={root}``
+``crush-root={root}``
 
-:描述: 规则集（如 **step take default** ）第一步要用的 crush 桶的名字。
+:描述: 规则集（如 **step take default** ）第一步要用的 crush
+       桶的名字。
+
 :类型: String
 :是否必需: No.
 :默认值: default
 
 
-``ruleset-failure-domain={bucket-type}``
+``crush-failure-domain={bucket-type}``
 
-:描述: 确保两个编码块不会存在于同一故障域的桶中。比如，假设故障域是 \
-       **host** ，就不会有两个编码块存储到同一主机；此值用于在规则集中创建类\
-       似 **step chooseleaf host** 的步骤。
+:描述: 确保两个编码块不会存在于同一故障域的桶中。比如，假设\
+       故障域是 **host** ，就不会有两个编码块存储到同一主机；\
+       此值用于在规则集中创建类似 **step chooseleaf host** \
+       的步骤。
 
 :类型: String
 :是否必需: No.
 :默认值: host
+
+
+``crush-device-class={device-class}``
+
+:描述: 使归置限于指定的设备类（比如 ``ssd`` 或 ``hdd`` ）之\
+       内，在 CRUSH 图里使用设备类的名字。
+
+:类型: String
+:是否必需: No.
+:默认值:
 
 
 ``directory={directory}``

@@ -166,7 +166,7 @@ key=value pairs stored in an `erasure code profile`_.
 ::
  
  $ ceph osd erasure-code-profile set myprofile \
-     ruleset-failure-domain=osd
+     crush-failure-domain=osd
  $ ceph osd erasure-code-profile get myprofile
  directory=/usr/lib/ceph/erasure-code
  k=2

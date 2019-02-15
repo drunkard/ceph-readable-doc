@@ -17,26 +17,27 @@ OSD 丢失时，它只需四个 OSD 即可恢复，而不需要十一个。
 降低主机间的恢复带宽
 --------------------
 
-虽然当所有主机都接入同一交换机时，这不会是诱人的用法，但是带宽利用率确实降低\
-了。 ::
+虽然当所有主机都接入同一交换机时，这不会是诱人的用法，但是带宽\
+利用率确实降低了。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
              k=4 m=2 l=3 \
-             ruleset-failure-domain=host
+             crush-failure-domain=host
         $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
 
 
 降低机架间的恢复带宽
 --------------------
 
-在 Firefly 版中，只有主 OSD 与丢失块位于同一机架时所需带宽才能降低。 ::
+在 Firefly 版中，只有主 OSD 与丢失块位于同一机架时所需带宽才能\
+降低。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
              k=4 m=2 l=3 \
-             ruleset-locality=rack \
-             ruleset-failure-domain=host
+             crush-locality=rack \
+             crush-failure-domain=host
         $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
 
 
@@ -50,9 +51,10 @@ OSD 丢失时，它只需四个 OSD 即可恢复，而不需要十一个。
              k={data-chunks} \
              m={coding-chunks} \
              l={locality} \
-             [ruleset-root={root}] \
-             [ruleset-locality={bucket-type}] \
-             [ruleset-failure-domain={bucket-type}] \
+             [crush-root={root}] \
+             [crush-locality={bucket-type}] \
+             [crush-failure-domain={bucket-type}] \
+             [crush-device-class={device-class}] \
              [directory={directory}] \
              [--force]
 
@@ -69,8 +71,8 @@ OSD 丢失时，它只需四个 OSD 即可恢复，而不需要十一个。
 
 ``m={coding-chunks}``
 
-:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的数量等同于在\
-       不丢数据的前提下允许同时失效的 OSD 数量。
+:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的\
+       数量等同于在不丢数据的前提下允许同时失效的 OSD 数量。
 
 :类型: Integer
 :是否必需: Yes.
@@ -79,43 +81,56 @@ OSD 丢失时，它只需四个 OSD 即可恢复，而不需要十一个。
 
 ``l={locality}``
 
-:描述: 把编码块和数据块分组为大小为 **locality** 的集合。比如， **k=4** 且 \
-       **m=2** 时，若设置 **locality=3** ，将会分组为大小为三的两组，这样各组\
-       都能自行恢复，无需从另一组读数据块。
+:描述: 把编码块和数据块分组为大小为 **locality** 的集合。比如，
+       **k=4** 且 **m=2** 时，若设置 **locality=3** ，将会分组\
+       为大小为三的两组，这样各组都能自行恢复，无需从另一组读\
+       数据块。
 
 :类型: Integer
 :是否必需: Yes.
 :实例: 3
 
 
-``ruleset-root={root}``
+``crush-root={root}``
 
-:描述: 规则集第一步所指向的 CRUSH 桶之名，如 **step take default** 。
+:描述: 规则集第一步所指向的 CRUSH 桶之名，如
+       **step take default** 。
+
 :类型: String
 :是否必需: No.
 :默认值: default
 
 
-``ruleset-locality={bucket-type}``
+``crush-locality={bucket-type}``
 
-:描述: 由 **l** 定义的块集合将按哪种 crush 桶类型存储。比如，若设\
-       置为 **rack** ，大小为 **l** 块的各组将被存入不同的机架，\
-       此值会被用于创建类似 **step choose rack** 的规则集。如果没\
-       设置，就不会这样分组。
+:描述: 由 **l** 定义的块集合将按哪种 crush 桶类型存储。比如，\
+       若设置为 **rack** ，大小为 **l** 块的各组将被存入不同\
+       的机架，此值会被用于创建类似 **step choose rack** 的规\
+       则集。如果没设置，就不会这样分组。
 
 :类型: String
 :是否必需: No.
 
 
-``ruleset-failure-domain={bucket-type}``
+``crush-failure-domain={bucket-type}``
 
-:描述: 确保两个编码块不会存在于同一故障域的桶里面。比如，假设故障\
-       域是 **host** ，就不会有两个编码块存储到同一主机；此值用于\
-       在规则集中创建类似 **step chooseleaf host** 的步骤。
+:描述: 确保两个编码块不会存在于同一故障域的桶里面。比如，假设\
+       故障域是 **host** ，就不会有两个编码块存储到同一主机；\
+       此值用于在规则集中创建类似 **step chooseleaf host** 的\
+       步骤。
 
 :类型: String
 :是否必需: No.
 :默认值: host
+
+
+``crush-device-class={device-class}``
+
+:描述: 使归置限于指定的设备类（比如 ``ssd`` 或 ``hdd`` ）之\
+       内，在 CRUSH 图内用的是 crush 设备类的名字。
+
+:类型: String
+:是否必需: No.
 
 
 ``directory={directory}``
@@ -201,7 +216,7 @@ OSD 丢失时，它只需四个 OSD 即可恢复，而不需要十一个。
                        [ "cDDD____", "" ],
                        [ "____cDDD", "" ],
                      ]' \
-             ruleset-steps='[
+             crush-steps='[
                              [ "choose", "rack", 2 ],
                              [ "chooseleaf", "host", 4 ],
                             ]'
@@ -266,13 +281,13 @@ EC 后端、算法。 layers='[ [ "DDc", "" ] ]' 里的第二个参数其实是�
    step 2      cD D____
    step 3      __ _cDDD
 
-将通过解码来恢复它，反向依次执行： *step 3* 然后 *step 2* 最后是 \
-*step 1* 。
+将通过解码来恢复它，反向依次执行： *step 3* 然后 *step 2* 最后\
+是 *step 1* 。
 
 *step 3* 对 *2* 一无所知（即它是下划线），所以跳过此步。
 
-*step 2* 里的编码块存储在 *0* 块中，可用来恢复 *2* 块的内容。没有\
-需要恢复的数据块了，不再考虑 *step 1* ，进程终止。
+*step 2* 里的编码块存储在 *0* 块中，可用来恢复 *2* 块的内容。\
+没有需要恢复的数据块了，不再考虑 *step 1* ，进程终止。
 
 恢复块 *2* 需读取块 *0, 1, 3* 并写回块 *2* 。
 
@@ -292,7 +307,8 @@ EC 后端、算法。 layers='[ [ "DDc", "" ] ]' 里的第二个参数其实是�
    step 2      cD  ____
    step 3      __  cDDD
 
-*step 2* 未能恢复被跳过了，因为丢失了两块（ *2, 3* ），它只能恢复一个块的丢失。
+*step 2* 未能恢复被跳过了，因为丢失了两块（ *2, 3* ），它只能\
+恢复一个块的丢失。
 
 *step 1* 中的编码块位于块 *1, 5* ，因此能恢复块 *2, 3* 的内容。 ::
 
@@ -314,15 +330,16 @@ CRUSH 归置的控制
    step 2      cDDD____
    step 3      ____cDDD
 
-需要整整 8 个 OSD ，分别存储 8 个块。如果这些主机分别位于相邻的机架，前四块可\
-放到第一个机架，后四块可放到第二个机架，这样丢失单个 OSD 恢复时就不会用到机架\
-间的带宽。
+需要整整 8 个 OSD ，分别存储 8 个块。如果这些主机分别位于相邻\
+的机架，前四块可放到第一个机架，后四块可放到第二个机架，这样丢\
+失单个 OSD 恢复时就不会用到机架间的带宽。
 
 例如： ::
 
-   ruleset-steps='[ [ "choose", "rack", 2 ], [ "chooseleaf", "host", 4 ] ]'
+   crush-steps='[ [ "choose", "rack", 2 ], [ "chooseleaf", "host", 4 ] ]'
 
-此配置会创建这样的规则集，选定类型为 *rack* 的两个 crush 桶、并在\
-各桶中再选四个 OSD ，这几个 OSD 分别位于类型为 *host* 的不同桶中。
+此配置会创建这样的规则集，选定类型为 *rack* 的两个 crush 桶、\
+并在各桶中再选四个 OSD ，这几个 OSD 分别位于类型为 *host* 的\
+不同桶中。
 
 此规则集还可以手工雕琢一下，使其更精细。

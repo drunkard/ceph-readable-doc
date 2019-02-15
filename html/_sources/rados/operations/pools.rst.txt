@@ -57,9 +57,9 @@
 要创建一个存储池，执行： ::
 
 	ceph osd pool create {pool-name} {pg-num} [{pgp-num}] [replicated] \
-		[crush-ruleset-name] [expected-num-objects]
+		[crush-crush-name] [expected-num-objects]
 	ceph osd pool create {pool-name} {pg-num}  {pgp-num}   erasure \
-		[erasure-code-profile] [crush-ruleset-name] [expected_num_objects]
+		[erasure-code-profile] [crush-rule-name] [expected_num_objects]
 
 参数含义如下：
 
@@ -105,23 +105,24 @@
 .. _RAID5: ../erasure-code
 
 
-``[crush-ruleset-name]``
+``[crush-rule-name]``
 
-:描述: 此存储池所用的 CRUSH 规则集名字。指定的规则集必须存在。
+:描述: 此存储池所用的 CRUSH 规则名字。指定的规则必须存在。
 :类型: String
 :是否必需: No.
-:默认值: 对于多副本（ **replicated** ）存储池来说，其默认规则集由 \
-         ``osd pool default crush replicated ruleset`` 配置决定，此规则集\
-         必须存在。
-         对于用 ``erasure-code`` 编码的纠删码（ **erasure** ）存储池来说，\
-         不同的 ``{pool-name}`` 所使用的默认（ ``default`` ）\ \
-         `纠删码配置`_\ 是不同的，如果它不存在的话，会显式地创建它。
+:默认值: 对于多副本（ **replicated** ）存储池来说，其默认规则\
+         集由 ``osd pool default crush replicated ruleset``
+         配置决定，此规则集必须存在。
+         对于用 ``erasure-code`` 编码的纠删码（ **erasure** ）\
+         存储池来说，不同的 ``{pool-name}`` 所使用的默认（
+         ``default`` ）\ `纠删码配置`_\ 是不同的，如果它不存在\
+         的话，会显式地创建它。
 
 
 ``[erasure-code-profile=profile]``
 
-:描述: 仅用于\ **纠删**\ 存储池。指定\ `纠删码配置`_\ 框架，此配置必须已由 \
-       ``osd erasure-code-profile set`` 定义。
+:描述: 仅用于\ **纠删**\ 存储池。指定\ `纠删码配置`_\ 框架，\
+       此配置必须已由 ``osd erasure-code-profile set`` 定义。
 
 :类型: String
 :是否必需: No.

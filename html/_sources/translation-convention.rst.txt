@@ -1,3 +1,5 @@
+:orphan:
+
 ==============
  词语翻译惯例
 ==============
@@ -36,6 +38,9 @@
     bucket
     bucket policy
         桶、桶策略
+
+    chunk
+        块、校验块。EC术语。
 
     clock drift
         时钟漂移
@@ -344,6 +349,11 @@
     standby-replay
     standby-replay daemon
         灾备重放、灾备重放守护进程； => 热备？
+
+    storage overhead
+        存储开销
+        假设数据存储了 3 个副本，其实我们只要保证一份完整即可，另外两份就是
+        overhead 。
 
     stray
         an OSD who is not a member of the current acting set, but has not yet

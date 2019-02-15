@@ -1,3 +1,5 @@
+.. Erasure Coded pool
+
 纠删码存储池
 ============
 
@@ -9,11 +11,13 @@ pools.  The erasure-coding support has higher computational requirements and
 only supports a subset of the operations allowed on an object (for instance,
 partial write is not supported).
 
-Use cases
----------
+使用情形
+--------
 
-Cold storage
-~~~~~~~~~~~~
+.. Cold storage
+
+冷存储
+~~~~~~
 
 An erasure-coded pool is created to store a large number of 1GB
 objects (imaging, genomics, etc.) and 10% of them are read per
@@ -31,8 +35,10 @@ cold storage with high latency and slow access time. The replicated
 pool crush ruleset targets faster hardware to provide better response
 times.
 
-Cheap multidatacenter storage
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. Cheap multidatacenter storage
+
+廉价的多数据中心存储
+~~~~~~~~~~~~~~~~~~~~
 
 Ten datacenters are connected with dedicated network links. Each
 datacenter contains the same amount of storage with no power-supply
@@ -60,13 +66,13 @@ Set up an erasure-coded pool and the associated crush ruleset::
 Set the ruleset failure domain to osd (instead of the host which is the default)::
 
  $ ceph osd erasure-code-profile set myprofile \
-     ruleset-failure-domain=osd
+     crush-failure-domain=osd
  $ ceph osd erasure-code-profile get myprofile
  k=2
  m=1
  plugin=jerasure
  technique=reed_sol_van
- ruleset-failure-domain=osd
+ crush-failure-domain=osd
  $ ceph osd pool create ecpool 12 12 erasure myprofile
 
 Control the parameters of the erasure code plugin::
@@ -127,11 +133,11 @@ Remove a profile that is no longer in use (otherwise it will fail with EBUSY)::
 Set the ruleset to take ssd (instead of default)::
 
  $ ceph osd erasure-code-profile set myprofile \
-     ruleset-root=ssd
+     crush-root=ssd
  $ ceph osd erasure-code-profile get myprofile
  k=2
  m=1
  plugin=jerasure
  technique=reed_sol_van
- ruleset-root=ssd
+ crush-root=ssd
 

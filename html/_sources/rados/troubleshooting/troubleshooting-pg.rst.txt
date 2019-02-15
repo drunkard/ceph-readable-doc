@@ -472,11 +472,14 @@ CRUSH 条件不能满足
 	          "type": "host"},
 	        { "op": "emit"}]}
 
-可以这样解决此问题，创建新存储池，其内的 PG 允许多个 OSD 位于同一主机，命令\
-如下： ::
+可以这样解决此问题，创建新存储池，其内的 PG 允许多个 OSD 位于\
+同一主机，命令如下： ::
 
-	ceph osd erasure-code-profile set myprofile ruleset-failure-domain=osd
+	ceph osd erasure-code-profile set myprofile crush-failure-domain=osd
 	ceph osd pool create erasurepool 16 16 erasure myprofile
+
+
+.. CRUSH gives up too soon
 
 CRUSH 过早中止
 --------------

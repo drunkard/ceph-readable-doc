@@ -36,6 +36,7 @@ API 写、然后用另一个检出。
    :maxdepth: 1
 
    基于 Civetweb 手动安装 <../../install/install-ceph-gateway>
+   HTTP 前端 <frontends>
    基于 Apache/FastCGI 的简单配置 <config-fcgi>
    多站配置 <multisite>
    存储池的配置 <pools>
@@ -53,6 +54,7 @@ API 写、然后用另一个检出。
    压缩 <compression>
    服务器端加密 <encryption>
    桶策略 <bucketpolicy>
+   多因子认证 <mfa>
    RADOS 中的数据布局 <layout>
    troubleshooting
    radosgw 手册页 <../../man/8/radosgw>
