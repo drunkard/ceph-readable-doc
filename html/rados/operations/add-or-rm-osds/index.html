@@ -163,35 +163,31 @@
 </div>
 <div class="section" id="rados-replacing-an-osd">
 <span id="id8"></span><h3>替换一个 OSD<a class="headerlink" href="#rados-replacing-an-osd" title="Permalink to this headline">¶</a></h3>
-<p>When disks fail, or if an administrator wants to reprovision OSDs with a new
-backend, for instance, for switching from FileStore to BlueStore, OSDs need to
-be replaced. Unlike <a class="reference external" href="../crush-map#removeosd">删除 OSD</a>, replaced OSD’s id and CRUSH map entry
-need to be keep intact after the OSD is destroyed for replacement.</p>
+<p>当磁盘损坏、或者某管理员想用新后端重新开通 OSD ，比如从
+FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像<a class="reference external" href="../crush-map#removeosd">删除 OSD</a> ，要更换的 OSD ，在经历销毁后，其 id 和 CRUSH 图条目都需要保持不变。</p>
 <ol class="arabic">
 <li><p class="first">先销毁这个 OSD:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">destroy</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
 </pre></div>
 </div>
 </li>
-<li><p class="first">Zap a disk for the new OSD, if the disk was used before for other purposes.
-It’s not necessary for a new disk:</p>
+<li><p class="first">如果这个硬盘之前另作他用，先擦除它再用于新 OSD 。对于新磁盘没必要：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">zap</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdX</span>
 </pre></div>
 </div>
 </li>
-<li><p class="first">Prepare the disk for replacement by using the previously destroyed OSD id:</p>
+<li><p class="first">用销毁前的 OSD id 来准备这个磁盘：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span>  <span class="n">prepare</span> <span class="o">--</span><span class="n">osd</span><span class="o">-</span><span class="nb">id</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="o">--</span><span class="n">data</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdX</span>
 </pre></div>
 </div>
 </li>
-<li><p class="first">And activate the OSD:</p>
+<li><p class="first">然后激活此 OSD ：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">activate</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="p">{</span><span class="n">fsid</span><span class="p">}</span>
 </pre></div>
 </div>
 </li>
 </ol>
-<p>Alternatively, instead of preparing and activating, the device can be recreated
-in one call, like:</p>
+<p>或者，不需要准备再激活，只需一个命令即可完成重建，如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">create</span> <span class="o">--</span><span class="n">osd</span><span class="o">-</span><span class="nb">id</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="o">--</span><span class="n">data</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdX</span>
 </pre></div>
 </div>
@@ -267,7 +263,35 @@ OSD 可能导致集群达到或超过 <code class="docutils literal notranslate"
 </div>
 <div class="section" id="id17">
 <h3>删除 OSD<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
-<p>此步骤依次把一个 OSD 移出集群 CRUSH 图、删除认证密钥、删除 OSD 图条目、删除 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 条目。如果主机有多个硬盘，每个硬盘对应的 OSD 都得重复此步骤。</p>
+<p>此步骤依次把一个 OSD 移出集群运行图、删除认证密钥、删除
+OSD 运行图条目、删除 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 条目。如果主机有多个硬盘，每个硬盘对应的 OSD 都得重复此步骤。</p>
+<ol class="arabic">
+<li><p class="first">首先，让集群忘掉这个 OSD 。这一步会从 CRUSH 图中删掉这个
+OSD 、删除其认证密钥，也会从 OSD 运行图中删掉。请注意，
+<a class="reference internal" href="../../../man/8/ceph/#ceph-admin-osd"><span class="std std-ref">purge 子命令</span></a> 在 Luminous 中才引进，老版本继续往下看：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">purge</span> <span class="p">{</span><span class="nb">id</span><span class="p">}</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">登录保存着 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 主副本的主机：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">admin</span><span class="o">-</span><span class="n">host</span><span class="p">}</span>
+<span class="n">cd</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span>
+<span class="n">vim</span> <span class="n">ceph</span><span class="o">.</span><span class="n">conf</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">删除 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 文件内的相关 OSD 条目（如果还有的话）：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">osd</span><span class="o">.</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">在保存着 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 文件主副本的主机上操作，把更新过的
+<code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 文件复制到集群内其余主机的 <code class="docutils literal notranslate"><span class="pre">/etc/ceph</span></code> 目录下。</p>
+</li>
+</ol>
+<p>如果你的 Ceph 集群版本低于 Luminous ，就不能用
+<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">purge</span></code> 子命令，需要手动执行如下步骤：</p>
 <ol class="arabic">
 <li><p class="first">删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了。你也可以反编译 CRUSH 图、删除 device 列表条目、删除对应的 host 桶条目或删除 host 桶（如果它在 CRUSH 图里，而且你想删除主机），重编译 CRUSH 图并应用它。详情参见<a class="reference external" href="../crush-map#removeosd">删除 OSD</a> 。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">remove</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span>
@@ -278,7 +302,8 @@ OSD 可能导致集群达到或超过 <code class="docutils literal notranslate"
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="k">del</span> <span class="n">osd</span><span class="o">.</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">ceph-{osd-num}</span></code> 路径里的 <code class="docutils literal notranslate"><span class="pre">ceph</span></code> 值是 <code class="docutils literal notranslate"><span class="pre">$cluster-$id</span></code> ，如果集群名字不是 <code class="docutils literal notranslate"><span class="pre">ceph</span></code> ，这里要更改。</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-{osd-num}</span></code> 路径里的 <code class="docutils literal notranslate"><span class="pre">ceph</span></code> 值是
+<code class="docutils literal notranslate"><span class="pre">$cluster-$id</span></code> ，如果集群名字不是 <code class="docutils literal notranslate"><span class="pre">ceph</span></code> ，这里要更改。</p>
 </li>
 <li><p class="first">删除 OSD 。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">rm</span> <span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span>
@@ -286,21 +311,6 @@ OSD 可能导致集群达到或超过 <code class="docutils literal notranslate"
 <span class="n">ceph</span> <span class="n">osd</span> <span class="n">rm</span> <span class="mi">1</span>
 </pre></div>
 </div>
-</li>
-<li><p class="first">登录到保存 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 主拷贝的主机。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">admin</span><span class="o">-</span><span class="n">host</span><span class="p">}</span>
-<span class="n">cd</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span>
-<span class="n">vim</span> <span class="n">ceph</span><span class="o">.</span><span class="n">conf</span>
-</pre></div>
-</div>
-</li>
-<li><p class="first">从 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 配置文件里删除对应条目。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">osd</span><span class="o">.</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">host</span> <span class="o">=</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}</span>
-</pre></div>
-</div>
-</li>
-<li><p class="first">从保存 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 主拷贝的主机，把更新过的 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 拷贝到集群其他主机的 <code class="docutils literal notranslate"><span class="pre">/etc/ceph</span></code> 目录下。</p>
 </li>
 </ol>
 </div>

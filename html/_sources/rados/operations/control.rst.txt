@@ -54,7 +54,7 @@
 
 要列出集群的密钥及其能力，执行下列命令： ::
 
-	ceph auth list
+	ceph auth ls
 
 
 .. _Placement Group Subsystem:

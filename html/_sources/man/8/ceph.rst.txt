@@ -47,7 +47,7 @@
 
 | **ceph** **osd** **tier** [ *add* \| *add-cache* \| *cache-mode* \| *remove* \| *remove-overlay* \| *set-overlay* ] ...
 
-| **ceph** **pg** [ *debug* \| *deep-scrub* \| *dump* \| *dump_json* \| *dump_pools_json* \| *dump_stuck* \| *force_create_pg* \| *getmap* \| *ls* \| *ls-by-osd* \| *ls-by-pool* \| *ls-by-primary* \| *map* \| *repair* \| *scrub* \| *set_full_ratio* \| *set_nearfull_ratio* \| *stat* ] ...
+| **ceph** **pg** [ *debug* \| *deep-scrub* \| *dump* \| *dump_json* \| *dump_pools_json* \| *dump_stuck* \| *getmap* \| *ls* \| *ls-by-osd* \| *ls-by-pool* \| *ls-by-primary* \| *map* \| *repair* \| *scrub* \| *stat* ] ...
 
 | **ceph** **quorum** [ *enter* \| *exit* ]
 
@@ -139,11 +139,11 @@ auth
 
 	ceph auth import
 
-子命令 ``list`` 罗列认证状态。
+子命令 ``ls`` 罗列认证状态。
 
 用法： ::
 
-	ceph auth list
+	ceph auth ls
 
 子命令 ``print-key`` 显示请求的密钥。
 
@@ -195,7 +195,7 @@ config-key
 
 用法： ::
 
-	ceph config-key list
+	ceph config-key ls
 
 子命令 ``dump`` 倒出配置中的所有键及其值。
 
@@ -414,6 +414,8 @@ mon_status
 	ceph mon_status
 
 
+.. _ceph-admin-osd:
+
 osd
 ---
 
@@ -604,11 +606,6 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须是下面
 
 	ceph osd crush rule dump {<name>}
 
-子命令 ``list`` 罗列 crush 规则。
-
-用法： ::
-
-	ceph osd crush rule list
 
 子命令 ``ls`` 罗列 crush 规则。
 
@@ -797,12 +794,18 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须是下面
 
 	ceph osd perf
 
-子命令 ``pg-temp`` 设置 pg_temp 映射 pgid:[<id> [<id>...]] ，适\
-用于开发者。
+子命令 ``pg-temp`` 设置 pg_temp 映射 pgid:[<id> [<id>...]] ，\
+适用于开发者。
 
 用法： ::
 
 	ceph osd pg-temp <pgid> {<id> [<id>...]}
+
+子命令 ``force-create-pg`` 可强行创建 pg <pgid> 。
+
+用法： ::
+
+	ceph osd force-create-pg <pgid>
 
 子命令 ``pool`` 用于管理数据存储池，需额外加子命令。
 
@@ -934,7 +937,7 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须是下面
 	ceph osd reweight-by-utilization {<int[100-]>}
 	{--no-increasing}
 
-子命令 ``rm`` 删除集群中的 OSD ，其编号为 <id> [<id>...] 。
+子命令 ``rm`` 删除 OSD 运行图中的 OSD ，其编号为 <id> [<id>...] 。
 
 用法： ::
 
@@ -1107,12 +1110,6 @@ pg
 
 	ceph pg dump_stuck {inactive|unclean|stale|undersized|degraded [inactive|unclean|stale|undersized|degraded...]}
 	{<int>}
-
-子命令 ``force_create_pg`` 强制创建归置组 <pgid> 。
-
-用法： ::
-
-	ceph pg force_create_pg <pgid>
 
 子命令 ``getmap`` 获取二进制归置组图，保存到 -o/stdout 。
 

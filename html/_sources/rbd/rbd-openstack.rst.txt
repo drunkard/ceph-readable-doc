@@ -69,10 +69,12 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
    For earlier versions of OpenStack see
    `块设备与 OpenStack (Dumpling)`_.
 
+
+.. Create a Pool
 .. index:: pools; OpenStack
 
-Create a Pool
-=============
+创建一个存储池
+==============
 
 默认情况下， Ceph 块设备使用 ``rbd`` 存储池，你可以用任何可用\
 存储池。但我们建议分别为 Cinder 和 Glance 创建存储池。确保 Ceph
@@ -86,11 +88,19 @@ Create a Pool
 参考\ `创建存储池`_\ 为存储池指定归置组数量，参考\ `归置组`_\
 确定应该为存储池分配多少归置组。
 
+新建的存储池必须先初始化才能使用，用 ``rbd`` 工具来初始化此\
+存储池： ::
+
+        rbd pool init volumes
+        rbd pool init images
+        rbd pool init backups
+        rbd pool init vms
+
 .. _创建存储池: ../../rados/operations/pools#createpool
 .. _归置组: ../../rados/operations/placement-groups
 
 
-.. _Configure OpenStack Ceph Clients:
+.. Configure OpenStack Ceph Clients
 
 配置 OpenStack 的 Ceph 客户端
 =============================

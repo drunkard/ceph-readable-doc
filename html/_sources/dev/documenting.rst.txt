@@ -2,6 +2,31 @@
  为 Ceph 写作文档
 ==================
 
+
+.. User documentation
+
+用户文档
+========
+
+docs.ceph.com 上的文档是从 Ceph 的 git 源码库内 ``/doc/`` 目录\
+下的 restructuredText 源码生成的。
+
+请确保你的变更是面向这款软件的终端用户的；除非你是增加到
+``/doc/dev/`` ，这里是面向开发者的。
+
+所有与面向用户的功能相关的修订拉取请求（ PR ）必须包含对文档的\
+相应更新：详情见\ `提交补丁`_\ 。
+
+检查一下你的 .rst 文件语法是否正确，可以在查看 .rst 差异时点击
+github 用户界面的 View 按钮；或者用 ``admin/build-doc`` 脚本\
+自行构建文档。
+
+关于为 Ceph 写作文档的更多信息，请参考
+:doc:`/start/documenting-ceph` 。
+
+
+.. Code Documentation
+
 代码文档
 ========
 
@@ -48,7 +73,7 @@ Graphviz
    digraph "example" {
      foo -> bar;
      bar -> baz;
-     bar -> thud;
+     bar -> th;
    }
 
 大多数时候，我们都会把实际的 DOT 文件放在单独的文件内，比如： ::
@@ -100,3 +125,6 @@ http://inkscape.org 。
 如果提交的是 SVG 文件，其他人也能用 Inkscape 更新 SVG 图表。
 
 HTML5 将内嵌对 SVG 的支持。
+
+
+.. _`提交补丁`: https://github.com/ceph/ceph/blob/master/SubmittingPatches.rst

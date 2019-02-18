@@ -57,14 +57,18 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 
 要把 Ceph 用于 ``libvirt`` ，执行下列步骤：
 
-#. `创建一存储池`_\ （或者用默认的）。本例用 ``libvirt-pool``
-   作存储池名，配备了 128 个归置组。 ::
+#. `创建一存储池`_\ 。本例用 ``libvirt-pool`` 作存储池名，配备\
+   了 128 个归置组。 ::
 
 	ceph osd pool create libvirt-pool 128 128
 
    验证存储池是否存在。 ::
 
 	ceph osd lspools
+
+#. 用 ``rbd`` 工具初始化这个存储池以用于 RBD ： ::
+
+        rbd pool init <pool-name>
 
 #. `创建一 Ceph 用户`_\ （ 0.9.7 版之前的话用 ``client.admin``
    ），本例用 ``client.libvirt`` 、且权限限制到
@@ -74,7 +78,7 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 
    验证名字是否存在。 ::
 
-	ceph auth list
+	ceph auth ls
 
    **注：** ``libvirt`` 访问 Ceph 时将用 ``libvirt`` 作为 ID ，\
    而不是 ``client.libvirt`` 。关于 ID 和名字不同的详细解释请\

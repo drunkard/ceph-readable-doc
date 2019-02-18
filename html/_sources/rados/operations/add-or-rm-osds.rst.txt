@@ -141,33 +141,34 @@ CRUSH 图。
 替换一个 OSD
 ------------
 
-When disks fail, or if an administrator wants to reprovision OSDs with a new
-backend, for instance, for switching from FileStore to BlueStore, OSDs need to
-be replaced. Unlike `删除 OSD`_, replaced OSD's id and CRUSH map entry
-need to be keep intact after the OSD is destroyed for replacement.
+当磁盘损坏、或者某管理员想用新后端重新开通 OSD ，比如从
+FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
+`删除 OSD`_ ，要更换的 OSD ，在经历销毁后，其 id 和 CRUSH 图\
+条目都需要保持不变。
 
 #. 先销毁这个 OSD::
 
      ceph osd destroy {id} --yes-i-really-mean-it
 
-#. Zap a disk for the new OSD, if the disk was used before for other purposes.
-   It's not necessary for a new disk::
+#. 如果这个硬盘之前另作他用，先擦除它再用于新 OSD 。对于新磁盘\
+   没必要： ::
 
      ceph-volume lvm zap /dev/sdX
 
-#. Prepare the disk for replacement by using the previously destroyed OSD id::
+#. 用销毁前的 OSD id 来准备这个磁盘： ::
 
      ceph-volume lvm  prepare --osd-id {id} --data /dev/sdX
 
-#. And activate the OSD::
+#. 然后激活此 OSD ： ::
 
      ceph-volume lvm activate {id} {fsid}
 
-Alternatively, instead of preparing and activating, the device can be recreated
-in one call, like::
+或者，不需要准备再激活，只需一个命令即可完成重建，如： ::
 
     ceph-volume lvm create --osd-id {id} --data /dev/sdX
 
+
+.. Starting the OSD
 
 启动 OSD
 --------
@@ -274,12 +275,40 @@ in one call, like::
 删除 OSD
 --------
 
-此步骤依次把一个 OSD 移出集群 CRUSH 图、删除认证密钥、删除 OSD 图条目、删除 \
-``ceph.conf`` 条目。如果主机有多个硬盘，每个硬盘对应的 OSD 都得重复此步骤。
+此步骤依次把一个 OSD 移出集群运行图、删除认证密钥、删除
+OSD 运行图条目、删除 ``ceph.conf`` 条目。如果主机有多个硬盘，\
+每个硬盘对应的 OSD 都得重复此步骤。
 
-#. 删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了。你也可以反编译 CRUSH 图、删\
-   除 device 列表条目、删除对应的 host 桶条目或删除 host 桶（如果它在 CRUSH 图里，\
-   而且你想删除主机），重编译 CRUSH 图并应用它。详情参见\ `删除 OSD`_ 。 ::
+#. 首先，让集群忘掉这个 OSD 。这一步会从 CRUSH 图中删掉这个
+   OSD 、删除其认证密钥，也会从 OSD 运行图中删掉。请注意，
+   :ref:`purge 子命令 <ceph-admin-osd>` 在 Luminous 中才引进，\
+   老版本继续往下看： ::
+
+         ceph osd purge {id} --yes-i-really-mean-it
+
+#. 登录保存着 ``ceph.conf`` 主副本的主机： ::
+
+	ssh {admin-host}
+	cd /etc/ceph
+	vim ceph.conf
+
+#. 删除 ``ceph.conf`` 文件内的相关 OSD 条目（如果还有的话）： ::
+
+	[osd.1]
+		host = {hostname}
+
+#. 在保存着 ``ceph.conf`` 文件主副本的主机上操作，把更新过的
+   ``ceph.conf`` 文件复制到集群内其余主机的 ``/etc/ceph`` \
+   目录下。
+
+
+如果你的 Ceph 集群版本低于 Luminous ，就不能用
+``ceph osd purge`` 子命令，需要手动执行如下步骤：
+
+#. 删除 CRUSH 图的对应 OSD 条目，它就不再接收数据了。你也可以\
+   反编译 CRUSH 图、删除 device 列表条目、删除对应的 host 桶\
+   条目或删除 host 桶（如果它在 CRUSH 图里，而且你想删除\
+   主机），重编译 CRUSH 图并应用它。详情参见\ `删除 OSD`_ 。 ::
 
 	ceph osd crush remove {name}
 
@@ -287,29 +316,14 @@ in one call, like::
 
 	ceph auth del osd.{osd-num}
 
-   ``ceph-{osd-num}`` 路径里的 ``ceph`` 值是 ``$cluster-$id`` ，如果集群名字不\
-   是 ``ceph`` ，这里要更改。
+   ``ceph-{osd-num}`` 路径里的 ``ceph`` 值是
+   ``$cluster-$id`` ，如果集群名字不是 ``ceph`` ，这里要更改。
 
 #. 删除 OSD 。 ::
 
 	ceph osd rm {osd-num}
 	#for example
 	ceph osd rm 1
-
-#. 登录到保存 ``ceph.conf`` 主拷贝的主机。 ::
-
-	ssh {admin-host}
-	cd /etc/ceph
-	vim ceph.conf
-
-#. 从 ``ceph.conf`` 配置文件里删除对应条目。 ::
-
-	[osd.1]
-		host = {hostname}
-
-#. 从保存 ``ceph.conf`` 主拷贝的主机，把更新过的 ``ceph.conf`` 拷贝到集群其他主机\
-   的 ``/etc/ceph`` 目录下。
-
 
 
 .. _删除 OSD: ../crush-map#removeosd

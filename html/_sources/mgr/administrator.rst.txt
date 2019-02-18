@@ -61,30 +61,29 @@ ceph-mgr ，以实现相同级别的可用性。
 ceph-mgr 明确地标记为已失效。
 
 
-.. _Calling module commands:
+.. Calling module commands
 
 调用模块命令
 ------------
 
-Where a module implements command line hooks, using the Ceph CLI's
-``tell`` command to call them like this::
+对于实现了命令行钩子的模块，其实现的命令可以像一般的 Ceph 命令\
+那样调用： ::
 
-    ceph tell mgr <command | help>
+    ceph <command | help>
 
-Note that it is not necessary to address a particular mgr instance,
-simply ``mgr`` will pick the current active daemon.
+如果你想查看管理器可以处理的命令列表（通常 ``ceph help`` 会显\
+示所有 mon 和 mgr 命令），你可以直接向管理器守护进程发命令： ::
 
-Use the ``help`` command to get a list of available commands from all
-modules.
+    ceph tell mgr help
+
+注意，没必要盯住具体的 mgr 例程，用 ``mgr`` 会自动选当前活跃的\
+守护进程。
 
 
 .. Configuration
 
 配置选项
 --------
-
-OPTION(mgr_module_path, OPT_STR, CEPH_PKGLIBDIR "/mgr") // 从哪里载入 python 模块
-
 
 ``mgr module path``
 

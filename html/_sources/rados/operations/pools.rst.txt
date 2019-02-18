@@ -40,6 +40,7 @@
 在新安装好的集群上，只有一个 ``rbd`` 存储池。
 
 
+.. Create a Pool
 .. _createpool:
 
 创建存储池
@@ -48,6 +49,9 @@
 创建存储池前先看看\ `存储池、归置组和 CRUSH 配置参考`_\ 。你最好在配置文件\
 里重置默认归置组数量，因为默认值并不理想。关于归置组数量请参考\
 `设置归置组数量`_\ 。
+
+.. note:: 从 Luminous 版起，所有存储池都需要与使用它们的\
+   应用程序关联。详情见\ `关联存储池与应用程序`_\ 。
 
 例如： ::
 
@@ -150,6 +154,24 @@
 :默认值: 0 ，创建存储池时不拆分目录。
 
 
+.. Associate Pool to Application
+.. _associate-pool-to-application:
+
+关联存储池与应用程序
+====================
+
+存储池要先与应用程序关联才能使用。要用于 CephFS 的存储池、或由
+RGW 创建的存储池已经自动关联过了；计划用于 RBD 的存储池应该用
+``rbd`` 工具初始化（详情见\ `块设备命令`_\ ）。
+
+对于其它案例，你可以手动关联存储池与应用程序名字。 ::
+
+        ceph osd pool application enable {pool-name} {application-name}
+
+.. note:: CephFS 的应用程序名字是 ``cephfs`` ； RBD 的应用程序\
+   名字是 ``rbd`` ， RGW 的应用程序名字是 ``rgw`` 。
+
+
 设置存储池配额
 ==============
 
@@ -195,7 +217,7 @@ true ，否则它会拒绝删除存储池。
 如果你曾创建过一些用户及其权限、并与存储池绑死了，但如今这些存\
 储池已不存在，最好也删除那些用户： ::
 
-	ceph auth list | grep -C 5 {pool-name}
+	ceph auth ls | grep -C 5 {pool-name}
 	ceph auth del {user}
 
 
@@ -746,3 +768,4 @@ Ceph 会列出存储池，且高亮 ``replicated size`` 属性。默认情况\
 .. _Bloom 过滤器: http://en.wikipedia.org/wiki/Bloom_filter
 .. _设置归置组数量: ../placement-groups#set-the-number-of-placement-groups
 .. _在纠删码存储池上启用重写功能: ../erasure-code#erasure-coding-with-overwrites
+.. _块设备命令: ../../../rbd/rados-rbd-cmds/#create-a-block-device-pool

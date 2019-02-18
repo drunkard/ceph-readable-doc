@@ -30,7 +30,7 @@ ceph-create-keys -- ceph 密钥环生成工具
 
 要罗列此集群内的所有用户： ::
 
-	ceph auth list
+	ceph auth ls
 
 
 选项

@@ -48,19 +48,27 @@ Ceph 存储集群在运行，配置好 QEMU 即可；然后安装 ``libvirt``
    而且默认启用了 RBD 存储池支持。
 
 
+.. Create a Pool
 .. index:: pools; CloudStack
 
 创建存储池
 ==========
 
-默认情况下， Ceph 块设备使用 ``rbd`` 存储池，建议为 CloudStack NFS 主存储新建一存\
-储池。确保 Ceph 集群在运行，再创建存储池： ::
+默认情况下， Ceph 块设备使用 ``rbd`` 存储池，建议为 CloudStack
+NFS 主存储新建一存储池。确保 Ceph 集群在运行，再创建存储池： ::
 
    ceph osd pool create cloudstack
 
-参考\ `创建存储池`_\ 为存储池指定归置组数量，参考\ `归置组`_\ 确定应该为存储池分配\
-多少归置组。
+参考\ `创建存储池`_\ 为存储池指定归置组数量，参考\ `归置组`_\
+确定应该为存储池分配多少归置组。
 
+新建的存储池在使用前必须先初始化，用 ``rbd`` 工具初始化此\
+存储池： ::
+
+        rbd pool init cloudstack
+
+
+.. Create a Ceph User
 
 创建 Ceph 用户
 ==============

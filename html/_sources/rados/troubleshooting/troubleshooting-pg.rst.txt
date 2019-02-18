@@ -15,8 +15,11 @@ and make appropriate adjustments.
 As a general rule, you should run your cluster with more than one OSD and a
 pool size greater than 1 object replica.
 
-One Node Cluster
-----------------
+
+.. One Node Cluster
+
+单节点集群
+----------
 
 Ceph no longer provides documentation for operating on a single node, because
 you would never deploy a system designed for distributed computing on a single
@@ -46,8 +49,10 @@ for the data manually first. For example::
 	ceph-deploy osd activate {localhost-name}:/var/local/osd0 {localhost-name}:/var/local/osd1
 
 
-Fewer OSDs than Replicas
-------------------------
+.. Fewer OSDs than Replicas
+
+OSD 数量小于副本数
+------------------
 
 If you've brought up two OSDs to an ``up`` and ``in`` state, but you still 
 don't see ``active + clean`` placement groups, you may have an 
@@ -65,8 +70,10 @@ state.
    your Ceph configuration file, you may need to restart your cluster.
 
 
-Pool Size = 1
--------------
+.. Pool Size = 1
+
+存储池副本数为 1
+----------------
 
 If you have the ``osd pool default size`` set to ``1``, you will only have 
 one copy of the object. OSDs rely on other OSDs to tell them which objects 
@@ -75,9 +82,11 @@ second copy, then no second OSD can tell the first OSD that it should have
 that copy. For each placement group mapped to the first OSD (see 
 ``ceph pg dump``), you can force the first OSD to notice the placement groups
 it needs by running::
-   
-   	ceph pg force_create_pg <pgid>
-   
+
+   	ceph osd force-create-pg <pgid>
+
+
+.. CRUSH Map Errors
 
 CRUSH 图错误
 ------------
@@ -85,6 +94,8 @@ CRUSH 图错误
 Another candidate for placement groups remaining unclean involves errors 
 in your CRUSH map.
 
+
+.. Stuck Placement Groups
 
 卡住的归置组
 ============
@@ -178,7 +189,8 @@ in your CRUSH map.
 未找到的对象
 ============
 
-某几种失败相组合可能导致 Ceph 抱怨有找不到（ ``unfound`` ）的对象： ::
+某几种失败相组合可能导致 Ceph 抱怨有找不到（ ``unfound`` ）的\
+对象： ::
 
 	ceph health detail
 	HEALTH_WARN 1 pgs degraded; 78/3778 unfound (2.065%)

@@ -1,3 +1,5 @@
+.. Block Device Commands
+
 ============
  块设备命令
 ============
@@ -10,6 +12,23 @@
 
 .. important:: 要使用 Ceph 块设备命令，你必须有对应集群的访问权限。
 
+
+.. Create a Block Device Pool
+
+创建一个块设备存储池
+====================
+
+#. 在管理节点上，用 ``ceph`` 工具\ `创建一个存储池`_\ 。
+
+#. 在管理节点上，用 ``rbd`` 工具初始化这个存储池以用于 RBD： ::
+
+        rbd pool init <pool-name>
+
+.. note:: 没指定存储池名字时， ``rbd`` 工具会假设默认的为
+   rbd 。
+
+
+.. Creating a Block Device Image
 
 创建块设备映像
 ==============
@@ -106,5 +125,6 @@
 
 
 
+.. _创建一个存储池: ../../rados/operations/pools/#create-a-pool
 .. _存储池: ../../rados/operations/pools
 .. _RBD – 管理 RADOS 块设备映像: ../../man/8/rbd/

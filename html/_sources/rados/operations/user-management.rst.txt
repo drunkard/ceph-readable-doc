@@ -218,27 +218,29 @@ pool. Rather than creating a separate pool for a user or set of users, you may
 use a namespace. **Note:** Only available using ``librados`` at this time.
 
 
-管理用户
-========
+.. Managing Users
 
-User management functionality provides Ceph Storage Cluster administrators with
-the ability to create, update and delete users directly in the Ceph Storage
-Cluster.
+用户的管理
+==========
 
-When you create or delete users in the Ceph Storage Cluster, you may need to
-distribute keys to clients so that they can be added to keyrings. 详情见\ `密钥环管理`_\ 。
+用户管理功能赋予 Ceph 存储集群管理员直接从 Ceph 存储集群创建、\
+更新和删除用户的能力。
 
+当你在 Ceph 存储集群中创建或删除用户时，可能得把密钥分发到各\
+客户端，以便加入他们的密钥环。详情见\ `密钥环管理`_\ 。
+
+
+.. List Users
 
 罗列用户
 --------
 
-To list the users in your cluster, execute the following::
+罗列集群内的用户，用下列命令： ::
 
-	ceph auth list
+	ceph auth ls
 
-Ceph will list out all users in your cluster. For example, in a two-node
-exemplary cluster, ``ceph auth list`` will output something that looks like
-this::
+Ceph 将列出集群内的所有用户。例如，在一个双节点示例集群中，
+``ceph auth ls`` 会显示类似如下的内容： ::
 
 	installed auth entries:
 
@@ -262,15 +264,14 @@ this::
 		key: AQBHCbtT4GxqORAADE5u7RkpCN/oo4e5W0uBtw==
 		caps: [mon] allow profile bootstrap-osd
 
+注意， ``TYPE.ID`` 写法对于用户来说，如 ``osd.0`` 表示用户类型\
+是 ``osd`` 、其 ID 是 ``0`` ； ``client.admin`` 是一个用户类型\
+为 ``client`` 、 ID 为 ``admin`` （即默认的 ``client.admin``
+用户）。还有，每条都有一行 ``key: <value>`` 条目、和一或多行
+``caps:`` 条目。
 
-Note that the ``TYPE.ID`` notation for users applies such that ``osd.0`` is a
-user of type ``osd`` and its ID is ``0``, ``client.admin`` is a user of type
-``client`` and its ID is ``admin`` (i.e., the default ``client.admin`` user).
-Note also that each entry has a ``key: <value>`` entry, and one or more
-``caps:`` entries.
-
-You may use the ``-o {filename}`` option with ``ceph auth list`` to
-save the output to a file.
+你可以给 ``ceph auth ls`` 加上 ``-o {filename}`` 选项，把输出\
+保存到一个文件。
 
 
 获取用户
@@ -454,7 +455,7 @@ users directly in the Ceph Storage Cluster. However, Ceph also provides the
 创建密钥环
 ----------
 
-When you use the procedures in the `管理用户`_ section to create users,
+When you use the procedures in the `用户的管理`_ section to create users,
 you need to provide user keys to the Ceph client(s) so that the Ceph client
 can retrieve the key for the specified user and authenticate with the Ceph
 Storage Cluster. Ceph Clients access keyrings to lookup a user name and
