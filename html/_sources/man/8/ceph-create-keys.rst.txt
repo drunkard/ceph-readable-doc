@@ -9,13 +9,14 @@ ceph-create-keys -- ceph 密钥环生成工具
 提纲
 ====
 
-| **ceph-create-keys** [-h] [-v] [--cluster *name*] --id *id*
+| **ceph-create-keys** [-h] [-v] [-t seconds] [--cluster *name*] --id *id*
 
 
 描述
 ====
 
-:program:`ceph-create-keys` 工具用于在指定监视器可用时、生成自举引导密钥环。
+:program:`ceph-create-keys` 工具用于在指定监视器可用时、生成\
+自举引导密钥环。
 
 它可以创建以下认证项目（或用户）：
 
@@ -39,6 +40,10 @@ ceph-create-keys -- ceph 密钥环生成工具
 
    集群名字，默认为 'ceph' 。
 
+.. option:: -t
+
+   等待监视器回应的超时时长，单位为\ **秒**\ （默认 600 ）
+
 .. option:: -i, --id
 
    将会起来的 ceph-mon 进程的唯一标识符，在它加入法定人数前， \
@@ -52,8 +57,8 @@ ceph-create-keys -- ceph 密钥环生成工具
 使用范围
 ========
 
-:program:`ceph-create-keys` 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的\
-存储系统，更多信息参见 http://ceph.com/docs 。
+:program:`ceph-create-keys` 是 Ceph 的一部分，这是个伸缩力强、\
+开源、分布式的存储系统，更多信息参见 http://ceph.com/docs 。
 
 
 参考

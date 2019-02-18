@@ -337,9 +337,9 @@ are often restricted to accessing a particular pool. ::
 	ceph auth get-or-create-key client.ringo mon 'allow r' osd 'allow rw pool=liverpool' -o ringo.key
 
 
-.. important:: If you provide a user with capabilities to OSDs, but you DO NOT
-   restrict access to particular pools, the user will have access to ALL
-   pools in the cluster!
+.. important:: 如果你给用户分配了访问 OSD 的能力，但是\
+   **没有**\ 限制他可以访问哪些存储池，那么他可以访问集群内的\
+   所有存储池！
 
 
 .. Modify User Capabilities

@@ -1,3 +1,6 @@
+.. Ceph Object Gateway
+.. _object-gateway:
+
 ===============
  Ceph 对象网关
 ===============

@@ -1,26 +1,25 @@
+.. Preflight Checklist
+
 ==========
  飞前检查
 ==========
 
-.. versionadded:: 0.60
-
-谢谢您尝试 Ceph ！我们建议安装一个 ``ceph-deploy`` 管理节点和一\
-个三节点的 :term:`Ceph 存储集群`\ 来发掘 Ceph 的基本特性。这篇\
-**飞前检查**\ 会帮你准备一个 ``ceph-deploy`` 管理节点、以及三个\
-\ Ceph 节点（或虚拟机），以此构成 Ceph 存储集群。动手之前，请参\
-见\ `操作系统推荐`_\ 确认你安装了合适的 Linux 发行版。如果你在\
-整个生产集群中只部署了一种 Linux 发行版的同一版本，那么比较容易\
-找到问题根源。
+``ceph-deploy`` 工具在一台管理\ :term:`节点`\ 上的一个目录下\
+完成所有操作。任何一台有网络、较新的 python 环境、和 ssh （如
+Linux ）的主机都可以。
 
 在下面的描述中\ :term:`节点`\ 代表一台机器。
 
 .. include:: quick-common.rst
 
 
-Ceph 部署工具的安装
-===================
+.. Ceph-deploy Setup
 
-把 Ceph 仓库添加到 ``ceph-deploy`` 管理节点，然后安装 ``ceph-deploy`` 。
+ceph-deploy 的安装
+==================
+
+把 Ceph 仓库添加到 ``ceph-deploy`` 管理节点，然后安装
+``ceph-deploy`` 。
 
 Debian/Ubuntu
 -------------
@@ -31,14 +30,15 @@ Debian/Ubuntu
 
 	wget -q -O- 'https://download.ceph.com/keys/release.asc' | sudo apt-key add -
 
-#. 添加 Ceph 软件包源，用稳定版 Ceph （如 ``hammer`` 、
-   ``jewel`` 等等）替换掉 ``{ceph-stable-release}`` 。例如： ::
+#. 添加 Ceph 软件包源，用稳定版 Ceph （如 ``luminous`` ）替换掉
+   ``{ceph-stable-release}`` ，然后运行命令。例如： ::
 
 	echo deb https://download.ceph.com/debian-{ceph-stable-release}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-#. 更新你的仓库，并安装 ``ceph-deploy`` ： ::
+#. 更新你的仓库，而后安装 ``ceph-deploy`` ： ::
 
-	sudo apt-get update && sudo apt-get install ceph-deploy
+	sudo apt-get update
+	sudo apt-get install ceph-deploy
 
 .. note:: 你也可以从欧洲镜像 eu.ceph.com 下载软件包，只需把 \
    ``http://ceph.com/`` 替换成 ``http://eu.ceph.com/`` 即可。
@@ -61,31 +61,23 @@ RHEL/CentOS
 
    背景信息请参考 `EPEL 百科`_\ 。
 
+#. 用下列命令，把 Ceph 软件库写入你的 yum 配置文件
+   ``/etc/yum.repos.d/ceph.repo`` 。用一个 Ceph 稳定版（例如
+   ``luminous`` ）替换掉 ``{ceph-stable-release}`` 。例如： ::
 
-#. 把软件包源加入软件库，用文本编辑器创建一个 YUM (Yellowdog \
-   Updater, Modified) 库文件，其路径为 \
-   ``/etc/yum.repos.d/ceph.repo`` 。例如： ::
-
-	sudo vim /etc/yum.repos.d/ceph.repo
-
-   把如下内容粘帖进去，用最新稳定版 Ceph 名字替换 \
-   ``{ceph-stable-release}`` （如 ``jewel`` ）、用你的发行版\
-   名字替换 ``{distro}`` （如 ``el7`` 为 CentOS 7 ）。最后保\
-   存到 ``/etc/yum.repos.d/ceph.repo`` 文件。 ::
-
-	[ceph-noarch]
-	name=Ceph noarch packages
-	baseurl=https://download.ceph.com/rpm-{ceph-release}/{distro}/noarch
-	enabled=1
-	gpgcheck=1
-	type=rpm-md
-	gpgkey=https://download.ceph.com/keys/release.asc
-
+     cat << EOM > /etc/yum.repos.d/ceph.repo
+     [ceph-noarch]
+     name=Ceph noarch packages
+     baseurl=https://download.ceph.com/rpm-{ceph-stable-release}/el7/noarch
+     enabled=1
+     gpgcheck=1
+     type=rpm-md
+     gpgkey=https://download.ceph.com/keys/release.asc
+     EOM
 
 #. 更新软件库并安装 ``ceph-deploy`` ： ::
 
 	sudo yum update && sudo yum install ceph-deploy
-
 
 .. note:: 你也可以从欧洲镜像 eu.ceph.com 下载软件包，只需把 \
    ``http://ceph.com/`` 替换成 ``http://eu.ceph.com/`` 即可。
@@ -112,6 +104,8 @@ Ceph 稳定版，所以安装很简单： ::
         https://software.opensuse.org/download.html?project=filesystems%3Aceph%3Ajewel&package=ceph
 
 
+.. Ceph Node Setup
+
 Ceph 节点安装
 =============
 
@@ -132,7 +126,7 @@ Ceph 节点安装
 
 在 Debian / Ubuntu 上可执行： ::
 
-	sudo apt-get install ntp
+	sudo apt install ntp
 
 确保在各 Ceph 节点上启动了 NTP 服务，并且要使用同一个 NTP 服务器，\
 详情见 `NTP`_ 。
@@ -145,7 +139,7 @@ Ceph 节点安装
 
 #. 在各 Ceph 节点安装 SSH 服务器（如果还没有）： ::
 
-	sudo apt-get install openssh-server
+	sudo apt install openssh-server
 
    或者 ::
 

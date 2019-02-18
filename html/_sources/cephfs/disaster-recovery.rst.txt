@@ -136,6 +136,7 @@ mtime 元数据；其次，从每个文件的第一个对象扫描出元数据�
 
 	cephfs-data-scan scan_extents <data pool>
 	cephfs-data-scan scan_inodes <data pool>
+	cephfs-data-scan scan_links
 
 如果数据存储池内的文件很多、或者有很大的文件，这个命令就要花费\
 *很长时间*\ 。
@@ -231,7 +232,7 @@ mtime 元数据；其次，从每个文件的第一个对象扫描出元数据�
     ceph osd pool create recovery <pg-num> replicated <crush-ruleset-name>
     ceph fs new recovery-fs recovery <data pool> --allow-dangerous-metadata-overlay
     cephfs-data-scan init --force-init --filesystem recovery-fs --alternate-pool recovery
-    ceph fs reset recovery-fs --yes-i-realy-mean-it
+    ceph fs reset recovery-fs --yes-i-really-mean-it
     cephfs-table-tool recovery-fs:all reset session
     cephfs-table-tool recovery-fs:all reset snap
     cephfs-table-tool recovery-fs:all reset inode
@@ -239,8 +240,9 @@ mtime 元数据；其次，从每个文件的第一个对象扫描出元数据�
 接下来，运行恢复工具集，加上 ``--alternate-pool`` 参数即可把结\
 果输出到别的存储池： ::
 
-    cephfs-data-scan scan_extents --alternate-pool recovery --filesystem <original filesystem name>
+    cephfs-data-scan scan_extents --alternate-pool recovery --filesystem <original filesystem name> <original data pool name>
     cephfs-data-scan scan_inodes --alternate-pool recovery --filesystem <original filesystem name> --force-corrupt --force-init <original data pool name>
+    cephfs-data-scan scan_links --filesystem recovery-fs
 
 如果损坏的文件系统包含脏日志数据，随后可以用如下命令恢复： ::
 

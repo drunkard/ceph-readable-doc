@@ -1,4 +1,5 @@
-.. _Multi-Site:
+.. Multi-Site
+.. _multisite:
 
 ======
  多站
@@ -34,8 +35,6 @@ Ceph 对象网关支持几种多站配置方案：
 
 网关集群的配置细节请参考\ `产品级的 Ceph 对象网关
 <https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/ceph_object_gateway_for_production/>`__\ 。
-
-
 
 
 .. Functional Changes from Infernalis

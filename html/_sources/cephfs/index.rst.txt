@@ -97,6 +97,11 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
         目录分片的配置 <dirfrags>
         多活 MDS 的配置 <multimds>
 
+.. toctree:: 
+   :hidden:
+
+    高级话题：元数据修复 <disaster-recovery-experts>
+
 .. raw:: html
 
         </td></tr></tbody></table>
