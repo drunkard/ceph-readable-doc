@@ -71,10 +71,10 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
         rbd pool init <pool-name>
 
 #. `创建一 Ceph 用户`_\ （ 0.9.7 版之前的话用 ``client.admin``
-   ），本例用 ``client.libvirt`` 、且权限限制到
+   ），本例用 Ceph 用户名 ``client.libvirt`` 、且权限限制到
    ``libvirt-pool`` 。 ::
 
-	ceph auth get-or-create client.libvirt mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=libvirt-pool'
+	ceph auth get-or-create client.libvirt mon 'profile rbd' osd 'profile rbd pool=libvirt-pool'
 
    验证名字是否存在。 ::
 

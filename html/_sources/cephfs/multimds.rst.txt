@@ -64,7 +64,7 @@ MDS 活跃集群的扩容
 程，以弥补你能承受的服务器失效数量。
 
 
-.. _Decreasing the number of ranks:
+.. Decreasing the number of ranks
 
 减少 rank 数量
 ~~~~~~~~~~~~~~
@@ -81,7 +81,7 @@ MDS 活跃集群的扩容
 注意，此时我们仍然有两个活跃 MDS ，即使降低了 max_mds 两个 rank
 还都在，因为 max_mds 只能限制新 rank 的创建。
 
-接下来，用 ``ceph mds deactivate <rank>`` 命令删除不需要的
+接下来，用 ``ceph mds deactivate <role>`` 命令删除不需要的
 rank ： ::
 
     ceph mds deactivate cephfs_a:1
@@ -90,6 +90,9 @@ rank ： ::
     # fsmap e11: 2/2/1 up {0=a=up:active,1=c=up:stopping}, 1 up:standby
     # fsmap e12: 1/1/1 up {0=a=up:active}, 1 up:standby
     # fsmap e13: 1/1/1 up {0=a=up:active}, 2 up:standby
+
+See :doc:`/cephfs/administration` for more details which forms ``<role>`` can
+take.
 
 被取消活跃状态的 rank 会先进入 stopping 状态，并持续一段时间，\
 在此期间它要把它分享的那部分元数据让出给活跃 MDS 守护进程，这\

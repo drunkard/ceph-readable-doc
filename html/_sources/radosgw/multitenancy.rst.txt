@@ -1,4 +1,5 @@
-.. _RGW Multi-tenancy:
+.. RGW Multi-tenancy
+.. _rgw-multitenancy:
 
 ============
  RGW 多租户
@@ -20,7 +21,7 @@ to create and access buckets as before. The layout of objects in RADOS
 is extended in a compatible way, ensuring a smooth upgrade to Jewel.
 
 
-.. _Administering Users With Explicit Tenants:
+.. Administering Users With Explicit Tenants
 
 指定租户内的用户管理
 ====================
@@ -43,10 +44,12 @@ in the parameters of the radosgw-admin command.
   # radosgw-admin --tenant testx --uid tester --display-name "Test User" --subuser tester:test --key-type swift --access full user create
   # radosgw-admin --subuser 'testx$tester:test' --key-type swift --secret test123
 
-Note that the subuser with explicit tenant had to be quoted in the shell.
+.. note:: 在 shell 里，要指定带租户的子用户时必须加引号。
+
+   租户名只能包含字母、数字、和下划线。
 
 
-.. _Accessing Buckets with Explicit Tenants:
+.. Accessing Buckets with Explicit Tenants
 
 访问指定租户的桶
 ================

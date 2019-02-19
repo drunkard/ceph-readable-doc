@@ -32,8 +32,9 @@
 	erasure-code
 	cache-tiering
 	placement-groups
-	crush-map
 	upmap
+	crush-map
+	crush-map-edits
 
 
 

@@ -4,7 +4,6 @@ CephFS 管理命令
 ===============
 
 
-
 .. Filesystems
 
 文件系统管理
@@ -90,7 +89,14 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 守护进程管理
 ------------
 
-以下命令适用于指定的 mds 守护进程或 rank 。
+大多数可操纵 MDS 的命令都需要一个 ``<role>`` 参数，它必须是以\
+下三种格式之一： ::
+
+    <fs_name>:<rank>
+    <fs_id>:<rank>
+    <rank>
+
+可操纵 MDS 守护进程的命令：
 
 ::
 
@@ -105,21 +111,28 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 使之重启；如果它之前是活跃的、并且还有可用的备机，那么这个\
 “已失效”的守护进程回来后将作为备机。
 
-::
-
-    mds deactivate <role>
 
 ::
 
-    tell mds.<daemon name>
+    tell mds.<daemon name> command ...
+
+向 MDS 守护进程发出一个命令，指定 ``mds.*`` 可向所有守护进程\
+发送命令。用 ``ceph tell mds.* help`` 命令获取所有可用命令。
+
 
 ::
 
     mds metadata <gid/name/role>
 
+获取指定 MDS （监视器知道它）的元数据。
+
+
 ::
 
     mds repaired <role>
+
+把文件系统 rank 标记为已修复。这里不像名字说明的那样，这个命令\
+不会更改 MDS ，它操纵的是先前被标记为已损坏的文件系统 rank 。
 
 
 .. Global settings

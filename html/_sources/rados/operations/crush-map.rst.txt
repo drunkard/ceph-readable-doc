@@ -22,33 +22,24 @@ CRUSH 归置策略可把对象副本分离到不同的失败域，却仍能保�
 制到的设备位于不同机架、不同托盘、不同电源、不同控制器、甚\
 至不同物理位置。
 
-当你写好配置文件，用 ``ceph-deploy`` 部署 Ceph 后，它生成了\
-一个默认的 CRUSH 图，对于你的沙盒环境来说它很好。然而，部署\
-一个大规模数据集群的时候，应该好好设计自己的 CRUSH 图，因为\
-它帮你管理 Ceph 集群、提升性能、和保证数据安全性。
+你在部署 OSD 时，它们自动被放入 CRUSH 图中的 ``host`` 节点下，\
+其名字就是此 OSD 所在主机的主机名。这个，加上默认的 CRUSH \
+失效域，确保了副本或纠删码分片会跨主机散布，而且单个主机的失效\
+不会影响可用性。然而，对于大一些的集群，管理员就应该仔细考虑\
+失效域的选择；例如，副本跨机柜散布，对很多中型到大型集群来说\
+很常见。
 
-例如，如果一个 OSD 挂了， CRUSH 图可帮你定位此事件中 OSD 所\
-在主机的物理数据中心、房间、行和机架，据此你可以请求在线支\
-持或替换硬件。
 
-类似地， CRUSH 可帮你更快地找出问题。例如，如果一个机架上的\
-所有 OSD 同时挂了，问题可能在于机架的交换机或电源，而非 OSD
-本身。
-
-定制的 CRUSH 图也能在归置组降级时，帮你找出冗余副本所在主机\
-的物理位置。
-
-.. note:: 文本框里的代码实例可能超出了边界，读或拷贝时注意\
-   滚动。
-
+.. CRUSH Location
 
 CRUSH 位置
 ==========
 
-用 CRUSH 图层次结构所表示的 OSD 位置被称为“ crush 位置”，它\
-用键/值对列表来表示。例如，一 OSD 位于某特定行、机柜、机架、\
-和主机，且是 CRUSH 图里名为 default 树的一部分，那么其 crush
-位置可表示如下： ::
+用 CRUSH 图层次结构所表示的 OSD 位置被称为“ crush 位置（
+crush location ）”，它用键/值对列表来表示。例如，一 OSD 位于\
+某特定行、机柜、机架、和主机，且是 CRUSH 图里名为 default 树\
+的一部分（绝大多数集群都是这样的情形），那么其 crush 位置可\
+表示如下： ::
 
   root=default row=a rack=a2 chassis=a2a host=a2a1
 
@@ -63,678 +54,271 @@ CRUSH 位置
    ``ceph-osd`` 守护进程的位置设置为
    ``root=default host=HOSTNAME`` （即是 ``hostname -s`` ）。
 
+一个 OSD 的 crush 位置可以用 ``crush location`` 配置选项表示，\
+写入 ``ceph.conf`` 文件。 OSD 每次启动时，都会验证它还在
+CRUSH 图内的正确位置，如果不是，就自己挪过去。要禁用 CRUSH 图\
+的这个自动管理功能，把下面的加进配置文件的 ``[osd]`` 段下： ::
 
-ceph-crush-location 挂钩
-------------------------
+  osd crush update on start = false
 
-``ceph-crush-location`` 工具可为某守护进程生成默认 CRUSH 位\
-置字符串，此位置依次基于：
 
-#. ceph.conf 里的 ``TYPE crush location`` ，例如这是 OSD 守\
-   护进程的： ``osd crush location`` ；
-#. ceph.conf 里的 ``crush location`` ；
-#. 默认的 ``root=default host=HOSTNAME`` ，其中主机名由 \
-   ``hostname -s`` 获取。
-
-典型部署场景下，部署软件（或系统管理员）会在此主机的
-ceph.conf 配置文件里设置 ``crush location`` 字段来描述此机\
-器在数据中心或集群内的位置。这样 Ceph 守护进程和客户端就能\
-感知位置。
-
-完全手动管理 CRUSH 图也是可能的，在配置中把挂钩关掉即可： ::
-
-	osd crush update on start = false
-
+.. Custom location hooks
 
 定制位置挂钩
 ------------
 
-定制的位置挂钩可代替通用挂钩，用于控制 OSD 在分级结构中的\
-位置（启动时，各 OSD 都确认它们的位置正确无误）： ::
+定制的位置钩子可用于在启动时生成更完整的 crush 位置。按先后\
+顺序， crush 位置是基于：
 
-	osd crush location hook = /path/to/script
+#. ceph.conf 内的 ``crush location`` 选项；
+#. 默认的 ``root=default host=HOSTNAME`` ，其中主机名是用
+   ``hostname -s`` 生成的。
+
+这个用处不大，因为 OSD 自身有着完全相同的行为。然而，可以写个\
+脚本来提供额外的位置字段（例如，机柜或数据中心），然后通过\
+配置选项启用这个钩子： ::
+
+  crush location hook = /path/to/customized-ceph-crush-location
 
 此挂钩应该接受几个参数（下述）并向标准输出打印一行 CRUSH 位\
 置描述： ::
 
-	$ ceph-crush-location --cluster CLUSTER --id ID --type TYPE
-
-其中，集群名通常是 ceph ， id 是守护进程标识符（ OSD 号），\
-守护进程类型通常是 ``osd`` 。
-
-
-编辑 CRUSH 图
-=============
-
-要编辑现有的 CRUSH 图：
-
-#. `获取 CRUSH 图`_\ ；
-#. `反编译`_ CRUSH 图；
-#. 至少编辑一个\ `设备`_\ 、\ `桶`_\ 、\ `规则`_\ ；
-#. `重编译`_ CRUSH 图；
-#. `注入 CRUSH 图`_\ 。
-
-要激活 CRUSH 图里指定存储池的规则，找到那些规则的通用规则集\
-编号，然后把它指定给那个存储池。详情参见\ `调整存储池`_\ 。
-
-.. _获取 CRUSH 图: #getcrushmap
-.. _反编译: #decompilecrushmap
-.. _设备: #crushmapdevices
-.. _桶: #crushmapbuckets
-.. _规则: #crushmaprules
-.. _重编译: #compilecrushmap
-.. _注入 CRUSH 图: #setcrushmap
-.. _调整存储池: ../pools#setpoolvalues
-
-
-.. _getcrushmap:
-
-获取 CRUSH 图
--------------
-
-要获取集群的 CRUSH 图，执行命令： ::
-
-	ceph osd getcrushmap -o {compiled-crushmap-filename}
-
-Ceph 将把 CRUSH 输出（ -o ）到你指定的文件，由于 CRUSH 图是\
-已编译的，所以编辑前必须先反编译。
-
-
-.. _decompilecrushmap:
-
-反编译 CRUSH 图
----------------
-
-要反编译 CRUSH 图，执行命令： ::
-
-	crushtool -d {compiled-crushmap-filename} -o {decompiled-crushmap-filename}
-
-Ceph 将反编译（ -d ）二进制 CRUSH 图，且输出（ -o ）到你指\
-定的文件。
-
-
-.. _compilecrushmap:
-
-编译 CRUSH 图
--------------
-
-要编译 CRUSH 图，执行命令： ::
-
-	crushtool -c {decompiled-crush-map-filename} -o {compiled-crush-map-filename}
-
-Ceph 将把已编译的 CRUSH 图保存到你指定的文件。
-
-
-.. _setcrushmap:
-
-注入 CRUSH 图
--------------
-
-要把 CRUSH 图应用到集群，执行命令： ::
-
-	ceph osd setcrushmap -i  {compiled-crushmap-filename}
-
-Ceph 将把你指定的已编译 CRUSH 图输入到集群。
-
-
-CRUSH 图参数
-============
-
-CRUSH 图主要有 4 个主要段落。
-
-#. **设备** 由任意对象存储设备组成，即对应一个 ``ceph-osd``
-   进程的存储器。 Ceph 配置文件里的每个 OSD 都应该有一个设\
-   备。
-
-#. **桶类型：** 定义了 CRUSH 分级结构里要用的桶类型（
-   ``types`` ），桶由逐级汇聚的存储位置（如行、机柜、机箱、\
-   主机等等）及其权重组成。
-
-#. **桶例程：** 定义了桶类型后，还必须声明主机的桶类型、以\
-   及规划的其它故障域。
-
-#. **规则：** 由选择桶的方法组成。
-
-如果你用我们的某个“入门手册”配起了 Ceph ，应该注意到了，你\
-并不需要创建 CRUSH 图。 Ceph 部署工具生成了默认 CRUSH 运行\
-图，它列出了你定义在 Ceph 配置文件中的 OSD 设备、并把配置\
-文件 ``[osd]`` 段下定义的各 OSD 主机声明为桶。为保证数据安\
-全和可用，你应该创建自己的 CRUSH 图，以反映出自己集群的故\
-障域。
-
-.. note:: 生成的 CRUSH 图没考虑大粒度故障域，所以你修改
-   CRUSH 图时要考虑上，像机柜、行、数据中心。
-
-
-.. _crushmapdevices:
-
-CRUSH 图之设备
---------------
-
-为把归置组映射到 OSD ， CRUSH 图需要 OSD 列表（即配置文件所\
-定义的 OSD 守护进程名称），所以它们首先出现在 CRUSH 图里。\
-要在 CRUSH 图里声明一个设备，在设备列表后面新建一行，输入
-``device`` 、之后是唯一的数字 ID 、之后是相应的 ``ceph-osd``
-守护进程例程名字。 device 类支持可选参数 class ，用以对设备分\
-组，这样就可以让 crush 规则方便地引用。 ::
-
-	#devices
-	device {num} {osd.name} [class {class}]
-
-例如： ::
-
-	#devices
-	device 0 osd.0 class ssd
-	device 1 osd.1 class hdd
-	device 2 osd.2
-	device 3 osd.3
-
-一般来说，一个 OSD 映射到一个单独的硬盘或 RAID 。
-
-
-CRUSH 图之桶类型
-----------------
-
-CRUSH 图里的第二个列表定义了 bucket （桶）类型，桶简化了节点和\
-叶子层次。节点（或非叶子）桶在分级结构里一般表示物理位置，节点\
-汇聚了其它节点或叶子，叶桶表示 ``ceph-osd`` 守护进程及其对应的\
-存储媒体。
-
-.. tip:: CRUSH 中用到的 bucket 意思是分级结构中的一个节点，也就\
-   是一个位置或一部分硬件。但是在 RADOS 网关接口的术语中，它又\
-   是不同的概念。
-
-要往 CRUSH 图中增加一种 bucket 类型，在现有桶类型列表下方新增一\
-行，输入 ``type`` 、之后是惟一数字 ID 和一个桶名。按惯例，会有\
-一个叶子桶为 ``type 0`` ，然而你可以指定任何名字（如 osd 、 \
-disk 、 drive 、 storage 等等）： ::
-
-	#types
-	type {num} {bucket-name}
-
-例如： ::
-
-	# types
-	type 0 osd
-	type 1 host
-	type 2 chassis
-	type 3 rack
-	type 4 row
-	type 5 pdu
-	type 6 pod
-	type 7 room
-	type 8 datacenter
-	type 9 region
-	type 10 root
-
-
-
-.. _crushmapbuckets:
-
-CRUSH 图之桶层次
-----------------
-
-CRUSH 算法根据各设备的权重、大致统一的概率把数据对象分布到存储\
-设备中。 CRUSH 根据你定义的集群运行图分布对象及其副本， CRUSH \
-图表达了可用存储设备以及包含它们的逻辑单元。
-
-要把归置组映射到跨故障域的 OSD ，一个 CRUSH 图需定义一系列分级\
-桶类型（即现有 CRUSH 图的 ``#type`` 下）。创建桶分级结构的目的\
-是按故障域隔离叶节点，像主机、机箱、机柜、电力分配单元、机群、\
-行、房间、和数据中心。除了表示叶节点的 OSD ，其它分级结构都是\
-任意的，你可以按需定义。
-
-我们建议 CRUSH 图内的命名符合贵公司的硬件命名规则，并且采用反\
-映物理硬件的例程名。良好的命名可简化集群管理和故障排除，当 OSD \
-和/或其它硬件出问题时，管理员可轻易找到对应物理硬件。
-
-在下例中，桶分级结构有一个名为 ``osd`` 的分支、和两个节点分别\
-名为 ``host`` 和 ``rack`` 。
+  --cluster CLUSTER --id ID --type TYPE
+
+其中，集群名通常是 "ceph" ， id 是守护进程标识符（ OSD 号或\
+守护进程标识符），守护进程类型是 ``osd`` 、 ``mds`` 之类的。
+
+For example, a simple hook that additionally specified a rack location
+based on a hypothetical file ``/etc/rack`` might be::
+
+  #!/bin/sh
+  echo "host=$(hostname -s) rack=$(cat /etc/rack) root=default"
+
+
+.. CRUSH structure
+
+CRUSH 结构
+==========
+
+The CRUSH map consists of, loosely speaking, a hierarchy describing
+the physical topology of the cluster, and a set of rules defining
+policy about how we place data on those devices.  The hierarchy has
+devices (``ceph-osd`` daemons) at the leaves, and internal nodes
+corresponding to other physical features or groupings: hosts, racks,
+rows, datacenters, and so on.  The rules describe how replicas are
+placed in terms of that hierarchy (e.g., 'three replicas in different
+racks').
+
+Devices
+-------
+
+Devices are individual ``ceph-osd`` daemons that can store data.  You
+will normally have one defined here for each OSD daemon in your
+cluster.  Devices are identified by an id (a non-negative integer) and
+a name, normally ``osd.N`` where ``N`` is the device id.
+
+Devices may also have a *device class* associated with them (e.g.,
+``hdd`` or ``ssd``), allowing them to be conveniently targeted by a
+crush rule.
+
+Types and Buckets
+-----------------
+
+A bucket is the CRUSH term for internal nodes in the hierarchy: hosts,
+racks, rows, etc.  The CRUSH map defines a series of *types* that are
+used to describe these nodes.  By default, these types include:
+
+- osd (or device)
+- host
+- chassis
+- rack
+- row
+- pdu
+- pod
+- room
+- datacenter
+- region
+- root
+
+Most clusters make use of only a handful of these types, and others
+can be defined as needed.
+
+The hierarchy is built with devices (normally type ``osd``) at the
+leaves, interior nodes with non-device types, and a root node of type
+``root``.  For example,
 
 .. ditaa::
-                           +-----------+
-                           | {o}rack   |
-                           |   Bucket  |
-                           +-----+-----+
+
+                        +-----------------+
+                        |{o}root default  |
+                        +--------+--------+
                                  |
                  +---------------+---------------+
                  |                               |
-           +-----+-----+                   +-----+-----+
-           | {o}host   |                   | {o}host   |
-           |   Bucket  |                   |   Bucket  |
-           +-----+-----+                   +-----+-----+
+          +------+------+                 +------+------+
+          |{o}host foo  |                 |{o}host bar  |
+          +------+------+                 +------+------+
                  |                               |
          +-------+-------+               +-------+-------+
          |               |               |               |
    +-----+-----+   +-----+-----+   +-----+-----+   +-----+-----+
-   |    osd    |   |    osd    |   |    osd    |   |    osd    |
-   |   Bucket  |   |   Bucket  |   |   Bucket  |   |   Bucket  |
+   |   osd.0   |   |   osd.1   |   |   osd.2   |   |   osd.3   |
    +-----------+   +-----------+   +-----------+   +-----------+
 
-.. note:: 编号较高的 ``rack`` 桶类型汇聚编号较低的 ``host`` 桶\
-   类型。
+Each node (device or bucket) in the hierarchy has a *weight*
+associated with it, indicating the relative proportion of the total
+data that device or hierarchy subtree should store.  Weights are set
+at the leaves, indicating the size of the device, and automatically
+sum up the tree from there, such that the weight of the default node
+will be the total of all devices contained beneath it.  Normally
+weights are in units of terabytes (TB).
 
-位于 CRUSH 图起始部分、 ``#devices`` 列表内是表示叶节点的存\
-储设备，没必要声明为桶例程。位于分级结构第二低层的桶一般用\
-于汇聚设备（即它通常是包含存储媒体的计算机，你可以用自己喜\
-欢的名字描述，如节点、计算机、服务器、主机、机器等等）。在\
-高密度环境下，经常出现一机框内安装多个主机/节点的情况，因此\
-还要考虑机框故障——比如，某一节点故障后需要拉出机框维修，这\
-会影响多个主机/节点和其内的 OSD 。
+You can get a simple view the CRUSH hierarchy for your cluster,
+including the weights, with::
 
-声明一个桶例程时，你必须指定其类型、惟一名称（字符串）、惟\
-一负整数 ID （可选）、指定和各条目总容量/能力相关的权重、指\
-定桶算法（通常是 ``straw`` ）、和哈希（通常为 ``0`` ，表示\
-散列算法 ``rjenkins1`` ）。一个桶可以包含一到多条，这些条目\
-可以由节点桶或叶子组成，它们可以有个权重用来反映条目的相对\
-权重。
+  ceph osd crush tree
 
-你可以按下列语法声明一个节点桶： ::
+Rules
+-----
 
-	[bucket-type] [bucket-name] {
-		id [a unique negative numeric ID]
-		weight [the relative capacity/capability of the item(s)]
-		alg [the bucket type: uniform | list | tree | straw ]
-		hash [the hash type: 0 by default]
-		item [item-name] weight [weight]
-	}
+Rules define policy about how data is distributed across the devices
+in the hierarchy.
 
-例如，用上面的图表，我们可以定义两个主机桶和一个机柜桶，
-OSD 被声明为主机桶内的条目： ::
+CRUSH rules define placement and replication strategies or
+distribution policies that allow you to specify exactly how CRUSH
+places object replicas. For example, you might create a rule selecting
+a pair of targets for 2-way mirroring, another rule for selecting
+three targets in two different data centers for 3-way mirroring, and
+yet another rule for erasure coding over six storage devices. For a
+detailed discussion of CRUSH rules, refer to `CRUSH - 可控、可伸缩、分布式地归置多副本数据`_,
+and more
+specifically to **Section 3.2**.
 
-	host node1 {
-		id -1
-		alg straw
-		hash 0
-		item osd.0 weight 1.00
-		item osd.1 weight 1.00
-	}
+In almost all cases, CRUSH rules can be created via the CLI by
+specifying the *pool type* they will be used for (replicated or
+erasure coded), the *failure domain*, and optionally a *device class*.
+In rare cases rules must be written by hand by manually editing the
+CRUSH map.
 
-	host node2 {
-		id -2
-		alg straw
-		hash 0
-		item osd.2 weight 1.00
-		item osd.3 weight 1.00
-	}
+You can see what rules are defined for your cluster with::
 
-	rack rack1 {
-		id -3
-		alg straw
-		hash 0
-		item node1 weight 2.00
-		item node2 weight 2.00
-	}
+  ceph osd crush rule ls
 
-.. note:: 在前述示例中，机柜桶不包含任何 OSD ，它只包含低一\
-   级的主机桶、以及其内条目的权重之和。
+You can view the contents of the rules with::
 
-.. topic:: 桶类型
+  ceph osd crush rule dump
 
-   Ceph 支持四种桶，每种都是性能和组织简易间的折衷。如果你\
-   不确定用哪种桶，我们建议 ``straw`` ，关于桶类型的详细讨\
-   论见 `CRUSH - 可控、可伸缩、分布式地归置多副本数据`_\ ，\
-   特别是 **Section 3.4** 。支持的桶类型有：
-
-	#. **Uniform**: 这种桶用\ **完全**\ 相同的权重汇聚设备。\
-	   例如，公司采购或淘汰硬件时，一般都有相同的物理配置（如\
-	   批发）。当存储设备权重都相同时，你可以用 ``uniform`` \
-	   桶类型，它允许 CRUSH 按常数把副本映射到 uniform 桶。权\
-	   重不统一时，你应该采用其它算法。
-
-	#. **List**: 这种桶把它们的内容汇聚为链表。它基于 \
-	   :abbr:`RUSH (Replication Under Scalable Hashing)` \
-	   :sub:`P` 算法，一个列表就是一个自然、直观的\ \
-	   **扩张集群**\ ：对象会按一定概率被重定位到最新的设备、\
-	   或者像从前一样仍保留在较老的设备上。结果是优化了新条目\
-	   加入桶时的数据迁移。然而，如果从链表的中间或末尾删除了\
-	   一些条目，将会导致大量没必要的挪动。所以这种桶适合\ \
-	   **永不或极少缩减**\ 的场景。
-
-	#. **Tree**: 它用一种二进制搜索树，在桶包含大量条目时比 \
-	   list 桶更高效。它基于 \
-	   :abbr:`RUSH (Replication Under Scalable Hashing)` \
-	   :sub:`R` 算法， tree 桶把归置时间减少到了 \
-	   O(log :sub:`n`) ，这使得它们更适合管理更大规模的设备\
-	   或嵌套桶。
-
-	#. **Straw**: list 和 tree 桶用分而治之策略，给特定条目\
-	   一定优先级（如位于链表开头的条目）、或避开对整个子树\
-	   上所有条目的考虑。这样提升了副本归置进程的性能，但是\
-	   也导致了重新组织时的次优结果，如增加、拆除、或重设某\
-	   条目的权重。 straw 桶类型允许所有条目模拟拉稻草的过程\
-           公平地相互“竞争”副本归置。
-
-.. topic:: Hash
-
-   各个桶都用了一种散列算法，当前 Ceph 仅支持 ``rjenkins1`` ，\
-   输入 ``0`` 表示散列算法设置为 ``rjenkins1`` 。
-
-
-.. _weightingbucketitems:
-
-.. topic:: 调整桶的权重
-
-   Ceph 用双整形表示桶权重。权重和设备容量不同，我们建议用
-   ``1.00`` 作为 1TB 存储设备的相对权重，这样 ``0.5`` 的权\
-   重大概代表 500GB 、 ``3.00`` 大概代表 3TB 。较高级桶的\
-   权重是所有枝叶桶的权重之和。
-
-   一个桶的权重是一维的，你也可以计算条目权重来反映存储设\
-   备性能。例如，如果你有很多 1TB 的硬盘，其中一些数据传输\
-   速率相对低、其他的数据传输率相对高，即使它们容量相同，\
-   也应该设置不同的权重（如给吞吐量较低的硬盘设置权重 0.8 ，\
-   较高的设置 1.20 ）。
-
-
-.. _crushmaprules:
-
-CRUSH 图之规则
+Device classes
 --------------
 
-CRUSH 图支持“ CRUSH 规则”概念，用以确定一个存储池里数据的归置。对\
-大型集群来说，你可能创建很多存储池，且每个存储池都有它自己的 CRUSH \
-规则集和规则。默认的 CRUSH 图里，每个存储池有一条规则、一个规则集\
-被分配到每个默认存储池。
+Each device can optionally have a *class* associated with it.  By
+default, OSDs automatically set their class on startup to either
+`hdd`, `ssd`, or `nvme` based on the type of device they are backed
+by.
 
-.. note:: 大多数情况下，你都不需要修改默认规则。新创建存储池\
-   的默认规则集是 ``0`` 。
+The device class for one or more OSDs can be explicitly set with::
 
-CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规定
-CRUSH 如何放置对象副本。例如，你也许想创建一条规则用以选择\
-一对目的地做双路复制；另一条规则用以选择位于两个数据中心的\
-三个目的地做三路镜像；又一条规则用 6 个设备做纠删编码。关于
-CRUSH 规则的详细研究见
-`CRUSH - 可控、可伸缩、分布式地归置多副本数据`_\ ，主要是 \
-**Section 3.2** 。
+  ceph osd crush set-device-class <class> <osd-name> [...]
 
-规则格式如下： ::
+Once a device class is set, it cannot be changed to another class
+until the old class is unset with::
 
-	rule <rulename> {
+  ceph osd crush rm-device-class <osd-name> [...]
 
-		ruleset <ruleset>
-		type [ replicated | erasure ]
-		min_size <min-size>
-		max_size <max-size>
-		step take <bucket-name> [class <device-class>]
-		step [choose|chooseleaf] [firstn|indep] <N> <bucket-type>
-		step emit
-	}
+This allows administrators to set device classes without the class
+being changed on OSD restart or by some other script.
 
+A placement rule that targets a specific device class can be created with::
 
-``ruleset``
+  ceph osd crush rule create-replicated <rule-name> <root> <failure-domain> <class>
 
-:描述: 区分一条规则属于某个规则集的手段。\ `给存储池设置规则集`_\
-       后激活。
+A pool can then be changed to use the new rule with::
 
-:目的: 规则掩码的一个组件。
-:类型: Integer
-:是否必需: Yes
-:默认值: 0
+  ceph osd pool set <pool-name> crush_rule <rule-name>
 
-.. _给存储池设置规则集: ../pools#setpoolvalues
+Device classes are implemented by creating a "shadow" CRUSH hierarchy
+for each device class in use that contains only devices of that class.
+Rules can then distribute data over the shadow hierarchy.  One nice
+thing about this approach is that it is fully backward compatible with
+old Ceph clients.  You can view the CRUSH hierarchy with shadow items
+with::
+
+  ceph osd crush tree --show-shadow
+
+For older clusters created before Luminous that relied on manually
+crafted CRUSH maps to maintain per-device-type hierarchies, there is a
+*reclassify* tool available to help transition to device classes
+without triggering data movement (see :ref:`crush-reclassify`).
 
 
-``type``
+Weights sets
+------------
 
-:描述: 为硬盘（复制的）或 RAID 写一条规则。
-:目的: 规则掩码的一个组件。
-:类型: String
-:是否必需: Yes
-:默认值: ``replicated``
-:合法取值: 当前仅支持 ``replicated`` 和 ``erasure``
+A *weight set* is an alternative set of weights to use when
+calculating data placement.  The normal weights associated with each
+device in the CRUSH map are set based on the device size and indicate
+how much data we *should* be storing where.  However, because CRUSH is
+based on a pseudorandom placement process, there is always some
+variation from this ideal distribution, the same way that rolling a
+dice sixty times will not result in rolling exactly 10 ones and 10
+sixes.  Weight sets allow the cluster to do a numerical optimization
+based on the specifics of your cluster (hierarchy, pools, etc.) to achieve
+a balanced distribution.
 
+There are two types of weight sets supported:
 
-``min_size``
+ #. A **compat** weight set is a single alternative set of weights for
+    each device and node in the cluster.  This is not well-suited for
+    correcting for all anomalies (for example, placement groups for
+    different pools may be different sizes and have different load
+    levels, but will be mostly treated the same by the balancer).
+    However, compat weight sets have the huge advantage that they are
+    *backward compatible* with previous versions of Ceph, which means
+    that even though weight sets were first introduced in Luminous
+    v12.2.z, older clients (e.g., firefly) can still connect to the
+    cluster when a compat weight set is being used to balance data.
+ #. A **per-pool** weight set is more flexible in that it allows
+    placement to be optimized for each data pool.  Additionally,
+    weights can be adjusted for each position of placement, allowing
+    the optimizer to correct for a subtle skew of data toward devices
+    with small weights relative to their peers (and effect that is
+    usually only apparently in very large clusters but which can cause
+    balancing problems).
 
-:描述: 如果一个归置组副本数小于此数， CRUSH 将\ **不**\ 应用此规则。
-:类型: Integer
-:目的: 规则掩码的一个组件。
-:是否必需: Yes
-:默认值: ``1``
+When weight sets are in use, the weights associated with each node in
+the hierarchy is visible as a separate column (labeled either
+``(compat)`` or the pool name) from the command::
 
+  ceph osd crush tree
 
-``max_size``
+When both *compat* and *per-pool* weight sets are in use, data
+placement for a particular pool will use its own per-pool weight set
+if present.  If not, it will use the compat weight set if present.  If
+neither are present, it will use the normal CRUSH weights.
 
-:描述: 如果一个归置组副本数大于此数， CRUSH 将\ **不**\ 应用此规则。
-:类型: Integer
-:目的: 规则掩码的一个组件。
-:是否必需: Yes
-:默认值: 10
-
-
-``step take <bucket-name> [class <device-class>]``
-
-:描述: 选取一个桶名，并沿树往下迭代。如果指定了
-       ``device-class`` ，它必须与前面定义设备时的分类名一致，\
-       不属于此类的设备都会被排除在外。
-:目的: 规则掩码的一个组件。
-:是否必需: Yes
-:实例: ``step take data``
-
-
-``step choose firstn {num} type {bucket-type}``
-
-:描述: 选取指定类型桶的数量，这个数字通常是存储池的副本数（即 \
-       pool size ）。
-
-       - 如果 ``{num} == 0`` 选择 ``pool-num-replicas`` 个桶\
-	 （所有可用的）；
-       - 如果 ``{num} > 0 && < pool-num-replicas`` 就选择那么多\
-	 的桶；
-       - 如果 ``{num} < 0`` 它意为 ``pool-num-replicas - {num}`` 。
-
-:目的: 规则掩码的一个组件。
-:先决条件: 跟在 ``step take`` 或 ``step choose`` 之后。
-:实例: ``step choose firstn 1 type row``
+Although weight sets can be set up and manipulated by hand, it is
+recommended that the *balancer* module be enabled to do so
+automatically.
 
 
-``step chooseleaf firstn {num} type {bucket-type}``
+.. Modifying the CRUSH map
 
-:描述: 选择 ``{bucket-type}`` 类型的一堆桶，并从各桶的子树里选择\
-       一个叶\
-       子节点。集合内桶的数量通常是存储池的副本数（即 pool size ）。
-
-       - 如果 ``{num} == 0`` 选择 ``pool-num-replicas`` 个桶（所\
-	 有可用的）；
-       - 如果 ``{num} > 0 && < pool-num-replicas`` 就选择那么多\
-	 的桶；
-       - 如果 ``{num} < 0`` 它意为 ``pool-num-replicas - {num}`` 。
-
-:目的: 规则掩码的一个组件。 它的使用避免了通过两步来选择一设备。
-:先决条件: Follows ``step take`` or ``step choose``.
-:实例: ``step chooseleaf firstn 0 type row``
-
-
-``step emit``
-
-:描述: 输出当前值并清空堆栈。通常用于规则末尾，也适用于相同规则\
-       应用到不同树的情况。
-:目的: 规则掩码的一个组件。
-:先决条件: Follows ``step choose``.
-:实例: ``step emit``
-
-.. important:: 把规则集编号设置到存储池，才能用一个通用规则集编\
-   号激活一或多条规则。
-
-
-主亲和性
-========
-
-一 Ceph 客户端读写数据时，总是连接 acting set 里的主 OSD （如 ``[2, 3, 4]`` \
-中， ``osd.2`` 是主的）。有时候某个 OSD 与其它的相比并不适合做主 OSD （比如其\
-硬盘慢、或控制器慢），最大化硬件利用率时为防止性能瓶颈（特别是读操作），你可\
-以调整 OSD 的主亲和性，这样 CRUSH 就尽量不把它用作 acting set 里的主 OSD 了。 ::
-
-	ceph osd primary-affinity <osd-id> <weight>
-
-主亲和性默认为 ``1`` （\ **就是说**\ 此 OSD 可作为主 OSD ）。此值合法范围为 \
-``0-1`` ，其中 ``0`` 意为此 OSD 不能用作主的， ``1`` 意为 OSD 可用作主的；此\
-权重小于 ``1`` 时， CRUSH 选择主 OSD 时选中它的可能性低。
-
-
-.. _Placing Different Pools on Different OSDS:
-
-给存储池指定 OSD
-================
-
-假设你想让大多数存储池坐落到使用大硬盘的 OSD 上，但是其中一些\
-存储池映射到使用高速 SSD 的 OSD 上。在同一个 CRUSH 图内有多个\
-独立的 CRUSH 树是可能的，定义两棵树、分别有自己的根节点——一个\
-用于硬盘（如 root platter ）、一个用于 SSD （如 root ssd ），\
-如： ::
-
-  device 0 osd.0
-  device 1 osd.1
-  device 2 osd.2
-  device 3 osd.3
-  device 4 osd.4
-  device 5 osd.5
-  device 6 osd.6
-  device 7 osd.7
-
-	host ceph-osd-ssd-server-1 {
-		id -1
-		alg straw
-		hash 0
-		item osd.0 weight 1.00
-		item osd.1 weight 1.00
-	}
-
-	host ceph-osd-ssd-server-2 {
-		id -2
-		alg straw
-		hash 0
-		item osd.2 weight 1.00
-		item osd.3 weight 1.00
-	}
-
-	host ceph-osd-platter-server-1 {
-		id -3
-		alg straw
-		hash 0
-		item osd.4 weight 1.00
-		item osd.5 weight 1.00
-	}
-
-	host ceph-osd-platter-server-2 {
-		id -4
-		alg straw
-		hash 0
-		item osd.6 weight 1.00
-		item osd.7 weight 1.00
-	}
-
-	root platter {
-		id -5
-		alg straw
-		hash 0
-		item ceph-osd-platter-server-1 weight 2.00
-		item ceph-osd-platter-server-2 weight 2.00
-	}
-
-	root ssd {
-		id -6
-		alg straw
-		hash 0
-		item ceph-osd-ssd-server-1 weight 2.00
-		item ceph-osd-ssd-server-2 weight 2.00
-	}
-
-	rule data {
-		ruleset 0
-		type replicated
-		min_size 2
-		max_size 2
-		step take platter
-		step chooseleaf firstn 0 type host
-		step emit
-	}
-
-	rule metadata {
-		ruleset 1
-		type replicated
-		min_size 0
-		max_size 10
-		step take platter
-		step chooseleaf firstn 0 type host
-		step emit
-	}
-
-	rule rbd {
-		ruleset 2
-		type replicated
-		min_size 0
-		max_size 10
-		step take platter
-		step chooseleaf firstn 0 type host
-		step emit
-	}
-
-	rule platter {
-		ruleset 3
-		type replicated
-		min_size 0
-		max_size 10
-		step take platter
-		step chooseleaf firstn 0 type host
-		step emit
-	}
-
-	rule ssd {
-		ruleset 4
-		type replicated
-		min_size 0
-		max_size 4
-		step take ssd
-		step chooseleaf firstn 0 type host
-		step emit
-	}
-
-	rule ssd-primary {
-		ruleset 5
-		type replicated
-		min_size 5
-		max_size 10
-		step take ssd
-		step chooseleaf firstn 1 type host
-		step emit
-		step take platter
-		step chooseleaf firstn -1 type host
-		step emit
-	}
-
-然后你可以设置一个存储池，让它使用 SSD 规则： ::
-
-	ceph osd pool set <poolname> crush_ruleset 4
-
-同样，用 ``ssd-primary`` 规则将使存储池内的各归置组用 SSD 作主 OSD ，普通硬盘\
-作副本。
-
+修改 CRUSH 图
+=============
 
 .. _addosd:
 
 增加/移动 OSD
-=============
+-------------
 
-要增加或删除在线集群里 OSD 所对应的 CRUSH 图条目，执行 ``ceph osd crush set`` \
-命令。对于 v0.48 版，执行下列： ::
+.. note: OSDs are normally automatically added to the CRUSH map when
+         the OSD is created.  This command is rarely needed.
 
-	ceph osd crush set {id} {name} {weight} pool={pool-name}  [{bucket-type}={bucket-name} ...]
+要增加或删除在线集群里 OSD 所对应的 CRUSH 图条目，执行： ::
 
-Bobtail (v0.56) 可执行下列： ::
-
-	ceph osd crush set {id-or-name} {weight} root={pool-name}  [{bucket-type}={bucket-name} ...]
+  ceph osd crush set {name} {weight} root={root} [{bucket-type}={bucket-name} ...]
 
 其中：
-
-
-``id``
-
-:描述: OSD 的数字标识符。
-:类型: Integer
-:是否必需: Yes
-:实例: ``0``
 
 
 ``name``
@@ -747,7 +331,7 @@ Bobtail (v0.56) 可执行下列： ::
 
 ``weight``
 
-:描述: OSD 的 CRUSH 权重。
+:描述: OSD 的 CRUSH 权重，通常是以 TB 计算的数值。
 :类型: Double
 :是否必需: Yes
 :实例: ``2.0``
@@ -755,7 +339,7 @@ Bobtail (v0.56) 可执行下列： ::
 
 ``root``
 
-:描述: OSD 所在树的根。
+:描述: OSD 所在树的根节点（通常是 ``default`` ）。
 :类型: Key/value pair.
 :是否必需: Yes
 :实例: ``root=default``
@@ -769,17 +353,25 @@ Bobtail (v0.56) 可执行下列： ::
 :实例: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
 
 
-下例把 ``osd.0`` 添加到分级结构里、或者说从前一个位置挪动一下。 ::
+下例把 ``osd.0`` 添加到分级结构里、或者说从前一个位置挪动\
+一下。 ::
 
-	ceph osd crush set osd.0 1.0 root=default datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1
+  ceph osd crush set osd.0 1.0 root=default datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1
 
 
-调整一 OSD 的 CRUSH 权重
-========================
+.. Adjust OSD weight
 
-要调整在线集群中一 OSD 的 CRUSH 权重，执行命令： ::
+调整 OSD 的权重
+---------------
 
-	ceph osd crush reweight {name} {weight}
+.. note: Normally OSDs automatically add themselves to the CRUSH map
+         with the correct weight when they are created. This command
+         is rarely needed.
+
+要调整在线集群中一个 OSD 在 CRUSH 图中的 CRUSH 权重，执行\
+命令： ::
+
+  ceph osd crush reweight {name} {weight}
 
 其中：
 
@@ -800,14 +392,18 @@ Bobtail (v0.56) 可执行下列： ::
 :实例: ``2.0``
 
 
+.. Remove an OSD
 .. _removeosd:
 
 删除 OSD
-========
+--------
+
+.. note: OSDs are normally removed from the CRUSH as part of the
+   ``ceph osd purge`` command.  This command is rarely needed.
 
 要从在线集群里把一 OSD 踢出 CRUSH 图，执行命令： ::
 
-	ceph osd crush remove {name}
+  ceph osd crush remove {name}
 
 其中：
 
@@ -820,12 +416,22 @@ Bobtail (v0.56) 可执行下列： ::
 :实例: ``osd.0``
 
 
+.. Add a Bucket
+
 增加桶
-======
+------
 
-要在运行集群的 CRUSH 图中新建一个桶，用 ``ceph osd crush add-bucket`` 命令： ::
+.. note: Buckets are normally implicitly created when an OSD is added
+   that specifies a ``{bucket-type}={bucket-name}`` as part of its
+   location and a bucket with that name does not already exist.  This
+   command is typically used when manually adjusting the structure of the
+   hierarchy after OSDs have been created (for example, to move a
+   series of hosts underneath a new rack-level bucket).
 
-	ceph osd crush add-bucket {bucket-name} {bucket-type}
+要在在线集群的 CRUSH 图中新建一个桶，用
+``ceph osd crush add-bucket`` 命令： ::
+
+  ceph osd crush add-bucket {bucket-name} {bucket-type}
 
 其中：
 
@@ -851,22 +457,25 @@ Bobtail (v0.56) 可执行下列： ::
 	ceph osd crush add-bucket rack12 rack
 
 
+.. Move a Bucket
+
 移动桶
-======
+------
 
 要把一个桶挪动到 CRUSH 图里的不同位置，执行命令： ::
 
-	ceph osd crush move {bucket-name} {bucket-type}={bucket-name}, [...]
+  ceph osd crush move {bucket-name} {bucket-type}={bucket-name}, [...]
 
 其中：
 
 
 ``bucket-name``
 
-:描述: 要移动或复位的桶名。
+:描述: 要移动或重新定位的桶名。
 :类型: String
 :是否必需: Yes
 :实例: ``foo-bar-1``
+
 
 ``bucket-type``
 
@@ -876,12 +485,14 @@ Bobtail (v0.56) 可执行下列： ::
 :实例: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
 
 
+.. Remove a Bucket
+
 删除桶
-======
+------
 
 要把一个桶从 CRUSH 图的分级结构中删除，可用此命令： ::
 
-	ceph osd crush remove {bucket-name}
+  ceph osd crush remove {bucket-name}
 
 .. note:: 从 CRUSH 分级结构里删除时必须是空桶。
 
@@ -897,8 +508,192 @@ Bobtail (v0.56) 可执行下列： ::
 
 下例从分级结构里删除了 ``rack12`` 。 ::
 
-	ceph osd crush remove rack12
+  ceph osd crush remove rack12
 
+
+Creating a compat weight set
+----------------------------
+
+.. note: This step is normally done automatically by the ``balancer``
+   module when enabled.
+
+To create a *compat* weight set::
+
+  ceph osd crush weight-set create-compat
+
+Weights for the compat weight set can be adjusted with::
+
+  ceph osd crush weight-set reweight-compat {name} {weight}
+
+The compat weight set can be destroyed with::
+
+  ceph osd crush weight-set rm-compat
+
+
+Creating per-pool weight sets
+-----------------------------
+
+To create a weight set for a specific pool,::
+
+  ceph osd crush weight-set create {pool-name} {mode}
+
+.. note:: Per-pool weight sets require that all servers and daemons
+          run Luminous v12.2.z or later.
+
+Where:
+
+``pool-name``
+
+:Description: The name of a RADOS pool
+:Type: String
+:Required: Yes
+:Example: ``rbd``
+
+``mode``
+
+:Description: Either ``flat`` or ``positional``.  A *flat* weight set
+	      has a single weight for each device or bucket.  A
+	      *positional* weight set has a potentially different
+	      weight for each position in the resulting placement
+	      mapping.  For example, if a pool has a replica count of
+	      3, then a positional weight set will have three weights
+	      for each device and bucket.
+:Type: String
+:Required: Yes
+:Example: ``flat``
+
+To adjust the weight of an item in a weight set::
+
+  ceph osd crush weight-set reweight {pool-name} {item-name} {weight [...]}
+
+To list existing weight sets,::
+
+  ceph osd crush weight-set ls
+
+To remove a weight set,::
+
+  ceph osd crush weight-set rm {pool-name}
+
+
+.. Creating a rule for a replicated pool
+
+为多副本存储池创建规则
+----------------------
+
+For a replicated pool, the primary decision when creating the CRUSH
+rule is what the failure domain is going to be.  For example, if a
+failure domain of ``host`` is selected, then CRUSH will ensure that
+each replica of the data is stored on a different host.  If ``rack``
+is selected, then each replica will be stored in a different rack.
+What failure domain you choose primarily depends on the size of your
+cluster and how your hierarchy is structured.
+
+Normally, the entire cluster hierarchy is nested beneath a root node
+named ``default``.  If you have customized your hierarchy, you may
+want to create a rule nested at some other node in the hierarchy.  It
+doesn't matter what type is associated with that node (it doesn't have
+to be a ``root`` node).
+
+It is also possible to create a rule that restricts data placement to
+a specific *class* of device.  By default, Ceph OSDs automatically
+classify themselves as either ``hdd`` or ``ssd``, depending on the
+underlying type of device being used.  These classes can also be
+customized.
+
+To create a replicated rule,::
+
+  ceph osd crush rule create-replicated {name} {root} {failure-domain-type} [{class}]
+
+Where:
+
+``name``
+
+:Description: The name of the rule
+:Type: String
+:Required: Yes
+:Example: ``rbd-rule``
+
+``root``
+
+:Description: The name of the node under which data should be placed.
+:Type: String
+:Required: Yes
+:Example: ``default``
+
+``failure-domain-type``
+
+:Description: The type of CRUSH nodes across which we should separate replicas.
+:Type: String
+:Required: Yes
+:Example: ``rack``
+
+``class``
+
+:Description: The device class data should be placed on.
+:Type: String
+:Required: No
+:Example: ``ssd``
+
+
+.. Creating a rule for an erasure coded pool
+
+为纠删码存储池创建规则
+----------------------
+
+For an erasure-coded pool, the same basic decisions need to be made as
+with a replicated pool: what is the failure domain, what node in the
+hierarchy will data be placed under (usually ``default``), and will
+placement be restricted to a specific device class.  Erasure code
+pools are created a bit differently, however, because they need to be
+constructed carefully based on the erasure code being used.  For this reason,
+you must include this information in the *erasure code profile*.  A CRUSH
+rule will then be created from that either explicitly or automatically when
+the profile is used to create a pool.
+
+The erasure code profiles can be listed with::
+
+  ceph osd erasure-code-profile ls
+
+An existing profile can be viewed with::
+
+  ceph osd erasure-code-profile get {profile-name}
+
+Normally profiles should never be modified; instead, a new profile
+should be created and used when creating a new pool or creating a new
+rule for an existing pool.
+
+An erasure code profile consists of a set of key=value pairs.  Most of
+these control the behavior of the erasure code that is encoding data
+in the pool.  Those that begin with ``crush-``, however, affect the
+CRUSH rule that is created.
+
+The erasure code profile properties of interest are:
+
+ * **crush-root**: the name of the CRUSH node to place data under [default: ``default``].
+ * **crush-failure-domain**: the CRUSH type to separate erasure-coded shards across [default: ``host``].
+ * **crush-device-class**: the device class to place data on [default: none, meaning all devices are used].
+ * **k** and **m** (and, for the ``lrc`` plugin, **l**): these determine the number of erasure code shards, affecting the resulting CRUSH rule.
+
+Once a profile is defined, you can create a CRUSH rule with::
+
+  ceph osd crush rule create-erasure {name} {profile-name}
+
+.. note: When creating a new pool, it is not actually necessary to
+   explicitly create the rule.  If the erasure code profile alone is
+   specified and the rule argument is left off then Ceph will create
+   the CRUSH rule automatically.
+
+
+Deleting rules
+--------------
+
+Rules that are not in use by pools can be deleted with::
+
+  ceph osd crush rule rm {rule-name}
+
+
+.. Tunables
+.. _crush-map-tunables:
 
 可调选项
 ========
@@ -916,11 +711,12 @@ firefly 版首次支持的，而且不支持更老的（如 dumpling ）客户\
 些新 CRUSH 功能的客户端连接集群。
 
 
-argonaut (最初的)
+argonaut (遗老)
 -----------------
 
 argonaut 和更老版本的 CRUSH 工作方式对大多数集群来说都没问\
 题，也没有太多 OSD 被标记为 out 。
+
 
 bobtail (CRUSH_TUNABLES2)
 -------------------------
@@ -1134,6 +930,8 @@ jewel 版的可调配置能够提升 CRUSH 的整体行为，这样，在 OSD
  * ``argonaut``: 采用 argonaut 版最初的配置；
  * ``bobtail``: 采用 bobtail 版的配置；
  * ``firefly``: 采用 firefly 版的配置；
+ * ``hammer``: hammer 版支持的值
+ * ``jewel``: jewel 版支持的值
  * ``optimal``: 当前 Ceph 版本的最佳（即最优的）值；
  * ``default``: 从头安装的新集群的默认值。这些值依附于当前的
    Ceph 版本，是写死的（ hard coded ），而且通常是最优值和遗留\
@@ -1148,41 +946,24 @@ jewel 版的可调配置能够提升 CRUSH 的整体行为，这样，在 OSD
 要注意，这可能产生一些数据迁移。
 
 
-.. _Tuning CRUSH, the hard way:
+.. Primary Affinity
 
-调整 CRUSH ——强硬方法
----------------------
+主亲和性
+========
 
-如果你能保证所有客户端都运行最新代码，你可以这样调整可调值：从集\
-群抽取 CRUSH 图、修改值、重注入。
+一 Ceph 客户端读写数据时，总是连接 acting set 里的主 OSD （如
+``[2, 3, 4]`` 中， ``osd.2`` 是主的）。有时候某个 OSD 与其它\
+的相比并不适合做主 OSD （比如其硬盘慢、或控制器慢），最大化\
+硬件利用率时为防止性能瓶颈（特别是读操作），你可以调整 OSD 的\
+主亲和性，这样 CRUSH 就尽量不把它用作 acting set 里的主 OSD
+了。 ::
 
- * 提抽取最新 CRUSH 图： ::
+	ceph osd primary-affinity <osd-id> <weight>
 
-	ceph osd getcrushmap -o /tmp/crush
-
- * 调整可调参数。这些值在我们测试过的大、小型集群上都有最佳表现。\
-   在极端情况下，你需要给 ``crushtool`` 额外指定 \
-   ``--enable-unsafe-tunables`` 参数才行： ::
-
-	crushtool -i /tmp/crush --set-choose-local-tries 0 --set-choose-local-fallback-tries 0 --set-choose-total-tries 50 -o /tmp/crush.new
-
- * 重注入修改的图。 ::
-
-	ceph osd setcrushmap -i /tmp/crush.new
-
-
-.. _Legacy values:
-
-遗留值
-------
-
-CRUSH 可调参数的遗留值可以用下面命令设置： ::
-
-	crushtool -i /tmp/crush --set-choose-local-tries 2 --set-choose-local-fallback-tries 5 --set-choose-total-tries 19 --set-chooseleaf-descend-once 0 --set-chooseleaf-vary-r 0 -o /tmp/crush.legacy
-
-再次申明， ``--enable-unsafe-tunables`` 是必需的，而且前面也提到\
-了，回退到遗留值后慎用旧版 ``ceph-osd`` 进程，因为此功能位不是完\
-全强制的。
+主亲和性默认为 ``1`` （\ **就是说**\ 此 OSD 可作为主 OSD ）。\
+此值合法范围为 ``0-1`` ，其中 ``0`` 意为此 OSD 不能用作主的，
+``1`` 意为 OSD 可用作主的；此权重小于 ``1`` 时， CRUSH 选择\
+主 OSD 时选中它的可能性低。
 
 
 .. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf

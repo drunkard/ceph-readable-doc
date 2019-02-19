@@ -26,6 +26,7 @@ mgr 启动。
     安装和配置 <administrator>
     插件编程 <plugins>
     仪表盘插件 <dashboard>
-    REST 风格的插件 <restful>
+    REST 风格插件 <restful>
     Zabbix 插件 <zabbix>
+    Prometheus 插件 <prometheus>
     Iostat 插件 <iostat>

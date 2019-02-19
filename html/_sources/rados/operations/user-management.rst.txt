@@ -84,6 +84,7 @@ wherever possible.
    with the Ceph Filesystem is not the same as a Ceph Storage Cluster user.
 
 
+.. Authorization (Capabilities)
 
 授权（能力）
 ------------
@@ -95,20 +96,31 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 
 能力的语法符合下面的形式： ::
 
-	{daemon-type} 'allow {capability}' [{daemon-type} 'allow {capability}']
+	{daemon-type} '{cap-spec}[, {cap-spec} ...]'
 
+- **监视器能力：** 监视器能力包括 ``r`` 、 ``w`` 、 ``x`` \
+  访问选项或 ``profile {name}`` ，例如： ::
 
-- **监视器能力：** 监视器能力包括 ``r`` 、 ``w`` 、 ``x`` 和 \
-  ``allow profile {cap}`` ，例如： ::
+	mon 'allow {access-spec} [network {network/prefix}]'
 
-	mon 'allow rwx'
-	mon 'allow profile osd'
+	mon 'profile {name}'
+
+  ``{access-spec}`` 语法如下： ::
+
+        * | all | [r][w][x]
+
+  可选项 ``{network/prefix}`` 是个标准网络名和前缀长度（
+  CIDR 表示法，如 ``10.3.0.0/16`` ）。如果设置了，此能力就\
+  仅限于从这个网络连接过来的客户端。
 
 - **OSD 能力：** OSD 能力包括 ``r`` 、 ``w`` 、 ``x`` 、 \
-  ``class-read`` 、 ``class-write`` 和 ``profile osd`` 。另外， \
-  OSD 能力还支持存储池和命名空间的配置。 ::
+  ``class-read`` 、 ``class-write`` 访问选项和
+  ``profile {name}`` 。另外， OSD 能力还支持存储池和命名空间\
+  的配置。 ::
 
-	osd 'allow {capability}' [pool={poolname}] [namespace={namespace-name}]
+	osd 'allow {access-spec} [{match-spec}] [network {network/prefix}]'
+
+	osd 'profile {name} [pool={pool-name} [namespace={namespace-name}]] [network {network/prefix}]'
 
 - **元数据服务器能力：** 元数据服务器能力比较简单，只需要 \
   ``allow`` 或者空白，也不会解析更多选项。 ::
@@ -158,29 +170,65 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 :描述: 授权此用户读、写和执行某守护进程/存储池，且允许执行管理命令。
 
 
-``profile osd``
+``profile osd`` （仅用于监视器）
 
 :描述: 授权一个用户以 OSD 身份连接其它 OSD 或监视器。授予 OSD \
        们允许其它 OSD 处理复制、心跳流量和状态报告。
 
 
-``profile mds``
+``profile mds`` （仅用于监视器）
 
 :描述: 授权一个用户以 MDS 身份连接其它 MDS 或监视器。
 
 
-``profile bootstrap-osd``
+``profile bootstrap-osd`` （仅用于监视器）
 
 :描述: 授权一用户自举引导一 OSD 。授予部署工具，像 \
        ``ceph-disk`` 、 ``ceph-deploy`` 等等，这样它们在自举引导 \
        OSD 时就有权限增加密钥了。
 
 
-``profile bootstrap-mds``
+``profile bootstrap-mds`` （仅用于监视器）
 
 :描述: 授权一用户自举引导一元数据服务器。授予像 ``ceph-deploy`` \
        一样的部署工具，这样它们在自举引导元数据服务器时就有权限\
        增加密钥了。
+
+
+``profile bootstrap-rbd`` （仅用于监视器）
+
+:描述: Gives a user permissions to bootstrap an RBD user.
+              Conferred on deployment tools such as ``ceph-deploy``, etc.
+              so they have permissions to add keys, etc. when bootstrapping
+              an RBD user.
+
+
+``profile bootstrap-rbd-mirror`` （仅用于监视器）
+
+:描述: Gives a user permissions to bootstrap an ``rbd-mirror`` daemon
+              user. Conferred on deployment tools such as ``ceph-deploy``, etc.
+              so they have permissions to add keys, etc. when bootstrapping
+              an ``rbd-mirror`` daemon.
+
+
+``profile rbd`` （用于监视器和 OSD ）
+
+:描述: Gives a user permissions to manipulate RBD images. When used
+              as a Monitor cap, it provides the minimal privileges required
+              by an RBD client application. When used as an OSD cap, it
+              provides read-write access to an RBD client application.
+
+
+``profile rbd-mirror`` （仅用于监视器）
+
+:描述: Gives a user permissions to manipulate RBD images and retrieve
+              RBD mirroring config-key secrets. It provides the minimal
+              privileges required for the ``rbd-mirror`` daemon.
+
+
+``profile rbd-read-only`` （仅用于 OSD ）
+
+:描述: Gives a user read-only permissions to RBD images.
 
 
 存储池

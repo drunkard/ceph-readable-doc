@@ -128,7 +128,7 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
     sudo yum install ceph-common
 
 
-.. _Setup Ceph Client Authentication:
+.. Setup Ceph Client Authentication
 
 配置 Ceph 客户端认证
 --------------------
@@ -136,19 +136,9 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
 如果你启用了 `cephx 认证`_\ ，需要分别为 Nova/Cinder 和 Glance
 创建新用户。命令如下： ::
 
-    ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'
-    ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'
-
-如果你的 OpenStack 版本低于 Mitaka ，还需给 ``client.cinder`` \
-创建密钥： ::
-
-    ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'
-
-Mitaka 开始支持一个新功能， Nova 例程的快照可以用 RBD 快照功能\
-实现，所以得允许 ``client.cinder`` 密钥写入 ``images`` 存储池；\
-故此创建密钥： ::
-
-    ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rwx pool=images'
+    ceph auth get-or-create client.glance mon 'profile rbd' osd 'profile rbd pool=images'
+    ceph auth get-or-create client.cinder mon 'profile rbd' osd 'profile rbd pool=volumes, profile rbd pool=vms, profile rbd-read-only pool=images'
+    ceph auth get-or-create client.cinder-backup mon 'profile rbd' osd 'profile rbd pool=backups'
 
 把这些用户 ``client.cinder`` 、 ``client.glance`` 和
 ``client.cinder-backup`` 的密钥环复制到各自所在节点，并修正\

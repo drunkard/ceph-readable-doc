@@ -414,6 +414,64 @@ mon_status
 	ceph mon_status
 
 
+mgr
+---
+
+Ceph 管理器守护进程的配置和管理。
+
+子命令 ``dump`` 转储最新的 MgrMap ，其中有活跃的和备用的管理器\
+守护进程。
+
+用法： ::
+
+  ceph mgr dump
+
+子命令 ``fail`` 可把一个管理器守护进程标记为已失效，并把它从\
+管理器运行图中删掉。如果它是活跃管理器，将会有一个备机顶替它。
+
+用法： ::
+
+  ceph mgr fail <name>
+
+子命令 ``module ls`` 可罗列当前已启用的管理器模块（插件）。
+
+用法： ::
+
+  ceph mgr module ls
+
+子命令 ``module enable`` 可启用一个管理器模块。可用模块在
+MgrMap 内，可以用 ``mgr dump`` 查看。
+
+用法： ::
+
+  ceph mgr module enable <module>
+
+子命令 ``module disable`` 可禁用当前活跃的管理器模块。
+
+用法： ::
+
+  ceph mgr module disable <module>
+
+子命令 ``metadata`` 可显示所有管理器守护进程的元数据；如果指定\
+了名字，就只显示它的。
+
+用法： ::
+
+  ceph mgr metadata [name]
+
+子命令 ``versions`` 可显示所有在运行守护进程的版本个数。
+
+用法： ::
+
+  ceph mgr versions
+
+子命令 ``count-metadata`` 可显示任意守护进程的元数据字段个数。
+
+用法： ::
+
+  ceph mgr count-metadata <field>
+
+
 .. _ceph-admin-osd:
 
 osd

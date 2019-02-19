@@ -315,7 +315,23 @@ designed your Ceph cluster to maximize <a class="reference internal" href="#data
 <p>Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目录，然后再对比，确保没有对象丢失或不匹配，并且它们的内容一致。</p>
 </div>
 <div class="section" id="id12">
-<h2>恢复丢失的<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
+<h2>改变归置组的回填/恢复优先级<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
+<p>你可能会遇到这样的情形，有一大堆归置组需要恢复和/或回填，而其中有几个组内的数据比其它的更重要（例如，那些 PG 持有正在运行着的机器的映像数据，而其它 PG 上的数据是不太活跃的机器、或不相干的数据用着）。在那种情形下，你可能想更改那些归置组的恢复优先级，这样它们的性能和/或数据可用性就可以早些恢复。要达成这个目标（把特定归置组标记为在回填或恢复期间有高优先级），用此命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="n">force</span><span class="o">-</span><span class="n">recovery</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="p">[{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span> <span class="c1">#2}] [{pg-id #3} ...]</span>
+<span class="n">ceph</span> <span class="n">pg</span> <span class="n">force</span><span class="o">-</span><span class="n">backfill</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="p">[{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span> <span class="c1">#2}] [{pg-id #3} ...]</span>
+</pre></div>
+</div>
+<p>这样， Ceph 就会优先处理指定归置组的恢复或回填工作，其它则靠后。这个设置不会中断当前正在进行的回填或恢复，而是让指定的
+PG 尽快被处理。如果你改主意了，或者弄错了归置组，可以用如下命令取消：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="n">cancel</span><span class="o">-</span><span class="n">force</span><span class="o">-</span><span class="n">recovery</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="p">[{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span> <span class="c1">#2}] [{pg-id #3} ...]</span>
+<span class="n">ceph</span> <span class="n">pg</span> <span class="n">cancel</span><span class="o">-</span><span class="n">force</span><span class="o">-</span><span class="n">backfill</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="p">[{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span> <span class="c1">#2}] [{pg-id #3} ...]</span>
+</pre></div>
+</div>
+<p>这会删除那些 PG 的 force 标记，然后系统会按默认顺序处理它们。再次提醒，这操作不会影响当前正处理着的归置组，只影响还在队列里的那些。</p>
+<p>归置组恢复或回填完后， force 标记会被自动清除。</p>
+</div>
+<div class="section" id="id13">
+<h2>恢复丢失的<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
 <p>如果集群丢了一或多个对象，而且必须放弃搜索这些数据，你就要把未找到的对象标记为丢失（ <code class="docutils literal notranslate"><span class="pre">lost</span></code> ）。</p>
 <p>如果所有可能的位置都查询过了，而仍找不到这些对象，你也许得放弃它们了。这可能是罕见的失败组合导致的，集群在写入完成前，未能得知写入是否已执行。</p>
 <p>当前只支持 revert 选项，它使得回滚到对象的前一个版本（如果它是新对象）或完全忽略它。要把 unfound 对象标记为 lost ，执行命令：</p>
@@ -324,7 +340,7 @@ designed your Ceph cluster to maximize <a class="reference internal" href="#data
 </div>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p class="last">要谨慎使用，它可能迷惑那些期望对象存在的应用程序。</p>
+<p class="last">此功能要谨慎使用，它可能迷惑那些期望对象存在的应用程序。</p>
 </div>
 <div class="toctree-wrapper compound">
 </div>
@@ -375,15 +391,17 @@ designed your Ceph cluster to maximize <a class="reference internal" href="#data
 <li class="toctree-l4"><a class="reference internal" href="#id10">获取一归置组运行图</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pg">获取一 PG 的统计信息</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id11">洗刷归置组</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id12">恢复丢失的</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id12">改变归置组的回填/恢复优先级</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">恢复丢失的</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="../pg-states/">归置组状态</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../pg-concepts/">归置组术语解释</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../upmap/">使用 pg-upmap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../crush-map-edits/">手动编辑一个 CRUSH 图</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../add-or-rm-osds/">增加/删除 OSD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../bluestore-migration/">迁移到 BlueStore</a></li>

@@ -24,24 +24,30 @@
 *Degraded*
   归置组内的对象还没复制到规定次数。
 
-*Inconsistent*
+*inconsistent*
   Ceph 检测到了归置组内某一对象的一或多个副本间不一致（如各对\
   象大小不一、恢复后对象还没复制到副本那里、等等）。
 
-*Peering*
+*peering*
   归置组正在互联。
 
-*Repair*
+*repair*
   Ceph 正在检查归置组、并试图修复发现的不一致（如果可能的话）。
 
-*Recovering*
+*recovering*
   Ceph 正在迁移/同步对象及其副本。
 
-*Backfill*
+*forced_recovery*
+  用户人为提高了那个 PG 的恢复优先级。
+
+*backfill*
   Ceph 正在扫描并同步整个归置组的内容，而不是根据日志推算哪些\
   最新操作需要同步。 *Backfill* 是恢复的一种特殊情况。
 
-*Wait-backfill*
+*forced_backfill*
+  用户人为提高了那个 PG 的回填优先级。
+
+*wait-backfill*
   归置组正在排队，等候回填。
 
 *Backfill-toofull*

@@ -135,6 +135,9 @@
     failsafe
         故障双保险，位于 architecture / Smart Daemons Enable Hyperscale
 
+    failure domain
+        失效域。 CRUSH 术语。
+
     fast read
         （EC 存储池的）速读（功能）
 
@@ -295,7 +298,11 @@
         been recognized as such and activated by the primary).
 
     replicated pool
-        副本存储池
+        多副本存储池
+
+    rule mask
+        ?
+        crush 相关的。
 
     sanity check
         健全性检查
