@@ -220,6 +220,23 @@ df
 	ceph df {detail}
 
 
+.. _ceph features:
+
+features
+--------
+
+查看所有已连接守护进程、以及连入集群的各客户端的版本号及其\
+功能，还有各功能、版本号集合对应的（守护进程、客户端）数量。
+Ceph 的各个版本都有不同的功能集，以功能位掩码表示。新集群功能\
+要求客户端也支持这些功能，否则不允许它们连接这些新功能。因为\
+新功能或能力是系统升级后才启用的，（新集群）会阻止老客户端\
+连接。
+
+用法： ::
+
+    ceph features
+
+
 fs
 --
 
@@ -1060,6 +1077,19 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须是下面
 
 	ceph osd setmaxosd <int[0-]>
 
+
+子命令 ``set-require-min-compat-client`` 强制集群向后兼容，\
+使之与指定的客户端版本相兼容。用这个子命令无需做破坏当前配置\
+的更改（如 crush 可调值、或使用新功能）。请注意，如果存在与\
+指定版本 <version> 的功能不兼容的已连接守护进程或客户端，这\
+个子命令会失败。要查看已连入集群的所有客户端的功能和版本，\
+请看 `ceph features`_ 。
+
+用法： ::
+
+    ceph osd set-require-min-compat-client <version>
+
+
 子命令 ``stat`` 打印 OSD 图摘要。
 
 用法： ::
@@ -1068,14 +1098,15 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须是下面
 
 子命令 ``tier`` 用于管理（存储池）分级，需额外加子命令。
 
-子命令 ``add`` 把 <tierpool> （第二个）加到基础存储池 <pool> （第一个）之前。
+子命令 ``add`` 把 <tierpool> （第二个）加到基础存储池 <pool>
+（第一个）之前。
 
 用法： ::
 
 	ceph osd tier add <poolname> <poolname> {--force-nonempty}
 
-子命令 ``add-cache`` 把尺寸为 <size> 的缓存存储池 <tierpool> （第二个）加到\
-现有存储池 <pool> （第一个）之前。
+子命令 ``add-cache`` 把尺寸为 <size> 的缓存存储池 <tierpool>
+（第二个）加到现有存储池 <pool> （第一个）之前。
 
 用法： ::
 
@@ -1088,8 +1119,8 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须是下面
 	ceph osd tier cache-mode <poolname> none|writeback|forward|readonly|
 	readforward|readproxy
 
-子命令 ``remove`` 删掉基础存储池 <pool> （第一个）的马甲存储池 <tierpool> \
-（第二个）。
+子命令 ``remove`` 删掉基础存储池 <pool> （第一个）的马甲存储池
+<tierpool> （第二个）。
 
 用法： ::
 
@@ -1101,7 +1132,8 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须是下面
 
 	ceph osd tier remove-overlay <poolname>
 
-子命令 ``set-overlay`` 把 <overlaypool> 设置为基础存储池 <pool> 的马甲存储池。
+子命令 ``set-overlay`` 把 <overlaypool> 设置为基础存储池 <pool>
+的马甲存储池。
 
 用法： ::
 

@@ -381,7 +381,8 @@ What should I do if there's a clock skew?
 监视器存储故障
 ==============
 
-.. _Symptoms of store corruption:
+
+.. Symptoms of store corruption
 
 存储损坏的症状
 --------------
@@ -396,7 +397,8 @@ Ceph 监视器把\ `集群运行图`_\ 存储在键值数据库里，像 LevelDB
 
         Corruption: 1 missing files; e.g.: /var/lib/ceph/mon/mon.0/store.db/1234567.ldb
 
-.. _Recovery using healthy monitor(s):
+
+.. Recovery using healthy monitor(s)
 
 用健康的监视器恢复
 ------------------
@@ -404,7 +406,8 @@ Ceph 监视器把\ `集群运行图`_\ 存储在键值数据库里，像 LevelDB
 只要有幸存的，我们就可以用新的\ `替换掉`_\ 损坏的；而且新加入\
 的监视器启动后会与健康节点同步，完全同步后就可以服务于客户端了。
 
-.. _Recovery using OSDs:
+
+.. Recovery using OSDs
 
 用 OSD 恢复
 -----------
@@ -432,9 +435,9 @@ OSD 上的信息恢复监视器存储。 ::
     # 我们可以跳过更新密钥环的步骤，也不用加 --keyring 选项了，\
     # 就是说可以直接运行 ``ceph-monstore-tool /tmp/mon-store rebuild``
     ceph-authtool /path/to/admin.keyring -n mon. \
-        --cap mon allow 'allow *'
+        --cap mon 'allow *'
     ceph-authtool /path/to/admin.keyring -n client.admin \
-        --cap mon allow 'allow *' --cap osd 'allow *' --cap mds 'allow *'
+        --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *'
     ceph-monstore-tool /tmp/mon-store rebuild -- --keyring /path/to/admin.keyring
     # 备份损坏的 store.db 以防万一
     mv /var/lib/ceph/mon/mon.0/store.db /var/lib/ceph/mon/mon.0/store.db.corrupted
@@ -447,6 +450,7 @@ OSD 上的信息恢复监视器存储。 ::
 #. 然后重建监视器存储
 #. 把各项目加进密钥环文件，并分配相应的能力
 #. 用恢复好的副本替换 ``mon.0`` 上损坏的存储。
+
 
 已知的局限性
 ~~~~~~~~~~~~

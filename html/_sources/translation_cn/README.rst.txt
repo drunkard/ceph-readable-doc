@@ -64,14 +64,12 @@ https://github.com/drunkard/ceph-readable-doc
 文档编译
 ========
 
+注意事项：
+
 #. Java 虚拟机应该用 oracle-jdk-bin-1.8 或 oracle-jdk-bin-1.7 ， jre \
    缺少必要的库文件。
 
-#. 编译系统是基于 python2 的，还不支持 python3 ，会遇到语法错误。在 \
-   Gentoo/Funtoo 下如果环境不对，可以这样临时地切换到 python2.7 ： ::
-
-	eselect python set python2.7
-	ln -sf /usr/bin/python2.7 /usr/bin/python
+#. Sphinx 文档编译系统是基于 python 的，建议使用 python 3.6 ；
 
 #. ditaa 图还不能翻译为中文，因为渲染时的字体问题还未解决；
 
