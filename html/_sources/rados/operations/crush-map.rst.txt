@@ -251,8 +251,10 @@ crafted CRUSH maps to maintain per-device-type hierarchies, there is a
 without triggering data movement (see :ref:`crush-reclassify`).
 
 
-Weights sets
-------------
+.. Weights sets
+
+权重的设置
+----------
 
 A *weight set* is an alternative set of weights to use when
 calculating data placement.  The normal weights associated with each

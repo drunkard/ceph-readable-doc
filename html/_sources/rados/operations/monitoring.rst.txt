@@ -2,12 +2,18 @@
  监控集群
 ==========
 
-集群运行起来后，你可以用 ``ceph`` 工具来监控，典型的监控包括检查 OSD 状态、监视器状\
-态、归置组状态和元数据服务器状态。
+集群运行起来后，你可以用 ``ceph`` 工具来监控，典型的监控包括\
+检查 OSD 状态、监视器状态、归置组状态和元数据服务器状态。
+
+
+.. Using the command line
+
+使用命令行
+==========
 
 
 交互模式
-========
+--------
 
 要在交互模式下运行 ``ceph`` ，不要带参数运行 ``ceph`` ，例如： ::
 
@@ -17,74 +23,146 @@
 	ceph> quorum_status
 	ceph> mon_status
 
+.. Non-default paths
 
-检查集群健康状况
-================
+非默认的路径
+------------
 
-启动集群后、读写数据前，先检查下集群的健康状态。你可以用下面的命令检查： ::
-
-	ceph health
-
-如果你的配置文件或密钥环不在默认路径下，你得指定： ::
+如果你的配置文件或密钥环不在默认位置内，可以手动指定其位置： ::
 
    ceph -c /path/to/conf -k /path/to/keyring health
 
-集群起来的时候，你也许会碰到像  ``HEALTH_WARN XXX num placement groups stale`` \
-这样的健康告警，等一会再检查下。集群准备好的话 ``ceph health`` 会给出像 \
-``HEALTH_OK`` 一样的消息，这时候就可以开始使用集群了。
 
+.. Checking a Cluster's Status
+
+检查集群的状态
+==============
+
+启动集群后、读写数据前，先检查下集群的健康状态。
+
+可以用下面的命令检查集群状态： ::
+
+	ceph status
+
+或者： ::
+
+        ceph -s
+
+在交互模式下，输入 ``status`` 再按回车 **Enter** 。 ::
+
+	ceph> status
+
+Ceph 就会打印出集群状态。例如，一个小型的演示集群，各种服务\
+都有一个，可能会打印如下的： ::
+
+  cluster:
+    id:     477e46f1-ae41-4e43-9c8f-72c918ab0a20
+    health: HEALTH_OK
+
+  services:
+    mon: 3 daemons, quorum a,b,c
+    mgr: x(active)
+    mds: cephfs_a-1/1/1 up  {0=a=up:active}, 2 up:standby
+    osd: 3 osds: 3 up, 3 in
+
+  data:
+    pools:   2 pools, 16 pgs
+    objects: 21 objects, 2.19K
+    usage:   546 GB used, 384 GB / 931 GB avail
+    pgs:     16 active+clean
+
+.. topic:: Ceph 如何计算数据量
+
+   ``usage`` 值反映了\ *事实上*\ 已占用的原始存储空间。
+   ``xxx GB / xxx GB`` 值则是剩余空间（较小的数）与集群总容量\
+   的比较。理论数值反映了所存储数据的原始尺寸，未计算其副本、\
+   克隆、或快照空间，所以数据存储实际占用的空间通常会超过\
+   理论数值，因为 Ceph 会自动创建数据副本，另外存储空间也可能\
+   用于克隆和快照。
+
+
+.. Watching a Cluster
 
 观察集群
 ========
 
-要观察集群内正发生的事件，打开一个新终端，然后输入： ::
+除了各守护进程的本地日志， Ceph 集群还维护着一个\
+*集群日志*\ ，它记录着事关整个系统的高级事件。此类日志记录在\
+监视器服务器的磁盘上（默认为 ``/var/log/ceph/ceph.log`` ），\
+也可以通过命令行监控。
+
+要持续关注集群日志，用下列命令： ::
 
 	ceph -w
 
-Ceph 会打印各种事件。例如一个包括 1 个监视器、和 2 个 OSD 的小型 Ceph 集群可能会打\
-印出这些： ::
+Ceph 会打印系统的状态，然后是正发生着的各日子消息。例如： ::
 
-    cluster b370a29d-9287-4ca3-ab57-3d824f65e339
-     health HEALTH_OK
-     monmap e1: 1 mons at {ceph1=10.0.0.8:6789/0}, election epoch 2, quorum 0 ceph1
-     osdmap e63: 2 osds: 2 up, 2 in
-      pgmap v41338: 952 pgs, 20 pools, 17130 MB data, 2199 objects
-            115 GB used, 167 GB / 297 GB avail
-                 952 active+clean
-
-    2014-06-02 15:45:21.655871 osd.0 [INF] 17.71 deep-scrub ok
-    2014-06-02 15:45:47.880608 osd.1 [INF] 1.0 scrub ok
-    2014-06-02 15:45:48.865375 osd.1 [INF] 1.3 scrub ok
-    2014-06-02 15:45:50.866479 osd.1 [INF] 1.4 scrub ok
-    2014-06-02 15:45:01.345821 mon.0 [INF] pgmap v41339: 952 pgs: 952 active+clean; 17130 MB data, 115 GB used, 167 GB / 297 GB avail
-    2014-06-02 15:45:05.718640 mon.0 [INF] pgmap v41340: 952 pgs: 1 active+clean+scrubbing+deep, 951 active+clean; 17130 MB data, 115 GB used, 167 GB / 297 GB avail
-    2014-06-02 15:45:53.997726 osd.1 [INF] 1.5 scrub ok
-    2014-06-02 15:45:06.734270 mon.0 [INF] pgmap v41341: 952 pgs: 1 active+clean+scrubbing+deep, 951 active+clean; 17130 MB data, 115 GB used, 167 GB / 297 GB avail
-    2014-06-02 15:45:15.722456 mon.0 [INF] pgmap v41342: 952 pgs: 952 active+clean; 17130 MB data, 115 GB used, 167 GB / 297 GB avail
-    2014-06-02 15:46:06.836430 osd.0 [INF] 17.75 deep-scrub ok
-    2014-06-02 15:45:55.720929 mon.0 [INF] pgmap v41343: 952 pgs: 1 active+clean+scrubbing+deep, 951 active+clean; 17130 MB data, 115 GB used, 167 GB / 297 GB avail
-
-
-输出信息里包含：
-
-- 集群唯一标识符
-- 集群健康状况
-- 监视器图元版本、和监视器法定人数状态
-- OSD 图元版本、和 OSD 状态摘要
-- 归置组图版本
-- 归置组和存储池数量
-- 其内存储的数据和对象数量的\ *粗略*\ 统计，以及
-- 数据总量
-
-.. topic:: Ceph 如何计算数据量
-
-   ``used`` 值反映了\ *确实*\ 已占用的原始存储空间。 ``xxx GB / xxx GB`` 值则是剩\
-   余空间（较小的数）与集群总容量的比较。理论数值反映了所存储数据的原始尺寸，未计算\
-   其副本、克隆、或快照空间，所以数据存储实际占用的空间通常会超过理论数值，因为 \
-   Ceph 会自动创建数据副本，另外存储空间也可能用于克隆和快照。
+  cluster:
+    id:     477e46f1-ae41-4e43-9c8f-72c918ab0a20
+    health: HEALTH_OK
+  
+  services:
+    mon: 3 daemons, quorum a,b,c
+    mgr: x(active)
+    mds: cephfs_a-1/1/1 up  {0=a=up:active}, 2 up:standby
+    osd: 3 osds: 3 up, 3 in
+  
+  data:
+    pools:   2 pools, 16 pgs
+    objects: 21 objects, 2.19K
+    usage:   546 GB used, 384 GB / 931 GB avail
+    pgs:     16 active+clean
+  
+  
+  2017-07-24 08:15:11.329298 mon.a mon.0 172.21.9.34:6789/0 23 : cluster [INF] osd.0 172.21.9.34:6806/20527 boot
+  2017-07-24 08:15:14.258143 mon.a mon.0 172.21.9.34:6789/0 39 : cluster [INF] Activating manager daemon x
+  2017-07-24 08:15:15.446025 mon.a mon.0 172.21.9.34:6789/0 47 : cluster [INF] Manager daemon x is now available
 
 
-.. _Checking a Cluster's Usage Stats:
+除了用 ``ceph -w`` 打印它们发出的日志行，还可以用
+``ceph log last [n]`` 查看最近的 ``n`` 行集群日志。
+
+
+.. Monitoring Health Checks
+
+监控健康检查信息
+================
+
+Ceph 不间断地对自身状态做\ *健康检查*\ 。查到问题时，会在
+``ceph status`` （或 ``ceph health`` ）的输出中反映出来。\
+另外，检查失败时、或集群恢复时，相关消息也会发往集群日志。
+
+例如，一个 OSD 挂掉时，状态输出的 ``health`` 那段可能会更新为\
+如下： ::
+
+    health: HEALTH_WARN
+            1 osds down
+            Degraded data redundancy: 21/63 objects degraded (33.333%), 16 pgs unclean, 16 pgs degraded
+
+此时，也发送了集群日志消息，以记录此次健康检查失败事件： ::
+
+    2017-07-25 10:08:58.265945 mon.a mon.0 172.21.9.34:6789/0 91 : cluster [WRN] Health check failed: 1 osds down (OSD_DOWN)
+    2017-07-25 10:09:01.302624 mon.a mon.0 172.21.9.34:6789/0 94 : cluster [WRN] Health check failed: Degraded data redundancy: 21/63 objects degraded (33.333%), 16 pgs unclean, 16 pgs degraded (PG_DEGRADED)
+
+当这个 OSD 恢复在线时，集群日志也会记录集群已回归健康状态： ::
+
+    2017-07-25 10:11:11.526841 mon.a mon.0 172.21.9.34:6789/0 109 : cluster [WRN] Health check update: Degraded data redundancy: 2 pgs unclean, 2 pgs degraded, 2 pgs undersized (PG_DEGRADED)
+    2017-07-25 10:11:13.535493 mon.a mon.0 172.21.9.34:6789/0 110 : cluster [INF] Health check cleared: PG_DEGRADED (was: Degraded data redundancy: 2 pgs unclean, 2 pgs degraded, 2 pgs undersized)
+    2017-07-25 10:11:13.535577 mon.a mon.0 172.21.9.34:6789/0 111 : cluster [INF] Cluster is now healthy
+
+
+.. Detecting configuration issues
+
+检测配置问题
+============
+
+除了 Ceph 持续运行时进行的自我健康检查，还有一些配置问题只能用\
+外部工具探测。
+
+可以用 `ceph-medic`_ 工具另行检查你的 Ceph 集群配置。
+
+
+.. Checking a Cluster's Usage Stats
 
 检查集群的使用情况
 ==================
@@ -124,34 +202,7 @@ Ceph 会打印各种事件。例如一个包括 1 个监视器、和 2 个 OSD �
    还有配置的 mon_osd_full_ratio 。
 
 
-.. _Checking a Cluster's Status:
-
-检查集群状态
-============
-
-要检查集群的状态，执行下面的命令： ::
-
-	ceph status
-
-或者： ::
-
-	ceph -s
-
-在交互模式下，输入 ``status`` 然后按\ **回车**\ ： ::
-
-	ceph> status
-
-Ceph 将打印集群状态，例如一个包括 1 个监视器、和 2 个 OSD 的小型 Ceph 集群可能打印： ::
-
-    cluster b370a29d-9287-4ca3-ab57-3d824f65e339
-     health HEALTH_OK
-     monmap e1: 1 mons at {ceph1=10.0.0.8:6789/0}, election epoch 2, quorum 0 ceph1
-     osdmap e63: 2 osds: 2 up, 2 in
-      pgmap v41332: 952 pgs, 20 pools, 17130 MB data, 2199 objects
-            115 GB used, 167 GB / 297 GB avail
-                   1 active+clean+scrubbing+deep
-                 951 active+clean
-
+.. Checking OSD Status
 
 检查 OSD 状态
 =============
@@ -181,11 +232,14 @@ Ceph 会打印 CRUSH 的树状态、它的 OSD 例程、状态、权重： ::
 个中详情见\ `监控 OSD 和归置组`_\ 。
 
 
+.. Checking Monitor Status
+
 检查监视器状态
 ==============
 
-如果你有多个监视器（很可能），你启动集群后、读写数据前应该检查监视器法定人数状态。\
-运行着多个监视器时必须形成法定人数，最好周期性地检查监视器状态来确定它们在运行。
+如果你有多个监视器（很可能），你启动集群后、读写数据前应该检查\
+监视器法定人数状态。运行着多个监视器时必须形成法定人数，最好\
+周期性地检查监视器状态来确定它们在运行。
 
 要查看监视器图，执行下面的命令： ::
 
@@ -199,7 +253,8 @@ Ceph 会打印 CRUSH 的树状态、它的 OSD 例程、状态、权重： ::
 
 	ceph quorum_status
 
-Ceph 会返回法定人数状态，例如，包含 3 个监视器的 Ceph 集群可能返回下面的：
+Ceph 会返回法定人数状态，例如，包含 3 个监视器的 Ceph 集群可能\
+返回下面的：
 
 .. code-block:: javascript
 
@@ -227,6 +282,8 @@ Ceph 会返回法定人数状态，例如，包含 3 个监视器的 Ceph 集群
 	}
 
 
+.. Checking MDS Status
+
 检查 MDS 状态
 =============
 
@@ -241,6 +298,8 @@ Ceph 会返回法定人数状态，例如，包含 3 个监视器的 Ceph 集群
 	ceph fs dump
 
 
+.. Checking Placement Group States
+
 检查归置组状态
 ==============
 
@@ -250,11 +309,14 @@ Ceph 会返回法定人数状态，例如，包含 3 个监视器的 Ceph 集群
 .. _监控 OSD 和归置组: ../monitoring-osd-pg
 
 
+.. Using the Admin Socket
+
 使用管理套接字
 ==============
 
-Ceph 管理套接字允许你通过套接字接口查询守护进程，它们默认存在于 ``/var/run/ceph`` \
-下。要通过管理套接字访问某个守护进程，先登录它所在的主机、再执行下列命令： ::
+Ceph 管理套接字允许你通过套接字接口查询守护进程，它们默认存在于
+``/var/run/ceph`` 下。要通过管理套接字访问某个守护进程，先登录\
+它所在的主机、再执行下列命令： ::
 
 	ceph daemon {daemon-name}
 	ceph daemon {path-to-socket-file}
@@ -268,10 +330,13 @@ Ceph 管理套接字允许你通过套接字接口查询守护进程，它们默
 
 	ceph daemon {daemon-name} help
 
-管理套接字命令允许你在运行时查看和修改配置，见\ `查看运行时配置`_\ 。
+管理套接字命令允许你在运行时查看和修改配置，见\
+`查看运行时配置`_\ 。
 
-另外，你可以在运行时直接修改配置选项（也就是说管理套接字会绕过监视器，不要求你直接登\
-录宿主主机，不像 ``ceph {daemon-type} tell {id} injectargs`` 依赖监视器。
+另外，你可以在运行时直接修改配置选项（也就是说管理套接字会绕过\
+监视器，不要求你直接登录宿主主机，不像
+``ceph {daemon-type} tell {id} injectargs`` 依赖监视器。
 
 .. _查看运行时配置: ../../configuration/ceph-conf#ceph-runtime-config
 .. _存储容量: ../../configuration/mon-config-ref#storage-capacity
+.. _ceph-medic: http://docs.ceph.com/ceph-medic/master/

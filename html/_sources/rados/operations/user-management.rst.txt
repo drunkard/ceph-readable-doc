@@ -241,6 +241,17 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 ``client.cinder`` 等）。
 
 
+.. Application Tags
+
+应用程序标签
+------------
+可以将访问限定于指定存储池，正如其应用程序元数据所定义的那样。\
+通配符 ``*`` 可以用于 ``key`` 参数、 ``value`` 参数、或二者。
+``all`` 与 ``*`` 同义。
+
+
+.. Namespace
+
 命名空间
 --------
 
@@ -250,10 +261,9 @@ namespace such that reads and writes by the user take place only within the
 namespace. Objects written to a namespace within the pool can only be accessed
 by users who have access to the namespace.
 
-.. note:: Currently (i.e., ``firefly``), namespaces are only useful for
-   applications written on top of ``librados``. Ceph clients such as block
-   device, object storage and file system do not currently support this
-   feature.
+.. note:: 命名空间主要适用于 ``librados`` 之上的应用程序，\
+   逻辑分组可减少新建存储池的必要。 Ceph 对象网关（从
+   ``luminous`` 起）就把命名空间用于各种元数据对象。
 
 The rationale for namespaces is that pools can be a computationally expensive
 method of segregating data sets for the purposes of authorizing separate sets

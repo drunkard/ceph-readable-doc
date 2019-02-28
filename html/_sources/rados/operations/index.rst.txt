@@ -13,9 +13,11 @@
 	:maxdepth: 1 
 
 	operating
+	health-checks
 	monitoring
 	monitoring-osd-pg
 	user-management
+	pg-repair
 
 .. raw:: html 
 

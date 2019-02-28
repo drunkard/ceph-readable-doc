@@ -318,17 +318,21 @@ Request Parameters
 None.
 
 
-.. _Create User:
+.. Create User
 
 创建用户
 ========
 
-Create a new user. By Default, a S3 key pair will be created automatically
-and returned in the response. If only one of ``access-key`` or ``secret-key``
-is provided, the omitted key will be automatically generated. By default, a
-generated key is added to the keyring without replacing an existing key pair.
-If ``access-key`` is specified and refers to an existing key owned by the user
-then it will be modified.
+新建一个用户。默认情况下，会自动创建一个 S3 密钥对、并在响应时\
+返回。如果只提供了一个 ``access-key`` 或 ``secret-key`` ，缺失\
+的那个密钥会自动生成。默认情况下，生成的密钥会加进密钥环，而非\
+替换已有的密钥对；如果指定了 ``access-key`` 且引用的是此用户\
+已有的密钥，此时会修改这个密钥。
+
+.. versionadded:: Luminous
+
+指定租户 ``tenant`` 时，可以作为 uid 的一部分、或单独的\
+请求参数。
 
 :caps: users=write
 
@@ -340,8 +344,10 @@ then it will be modified.
 	PUT /{admin}/user?format=json HTTP/1.1
 	Host: {fqdn}
 
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+.. Request Parameters
+
+请求参数
+~~~~~~~~
 
 ``uid``
 
@@ -349,6 +355,9 @@ Request Parameters
 :类型: String
 :实例: ``foo_user``
 :是否必需: Yes
+
+``uid`` 可以带上租户名，遵守 ``tenant$user`` 语法就行，详情请\
+参考\ :ref:`多租户 <rgw-multitenancy>`\ 。
 
 ``display-name``
 
@@ -417,6 +426,15 @@ Request Parameters
 :实例: False [False]
 :是否必需: No
 
+.. versionadded:: Jewel
+
+``tenant``
+
+:描述: 用户所属的租户。
+:类型: string
+:实例: tenant1
+:是否必需: No
+
 Response Entities
 ~~~~~~~~~~~~~~~~~
 
@@ -426,6 +444,12 @@ If successful, the response contains the user information.
 
 :描述: A container for the user data information.
 :类型: Container
+
+``tenant``
+
+:描述: 用户所属的租户。
+:类型: String
+:父节点: ``user``
 
 ``user_id``
 

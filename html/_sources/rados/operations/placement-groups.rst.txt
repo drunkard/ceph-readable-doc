@@ -234,19 +234,27 @@ three OSDs supporting the placement group in which the object has been
 placed will be filled with 400MB + 400MB = 800MB while the seven
 others will remain occupied with only 400MB.
 
+
+.. Memory, CPU and network usage
 .. _resource usage:
 
 内存、处理器和网络使用情况
 --------------------------
 
-各个归置组、 OSD 和监视器都一直需要内存、网络、处理器，在恢复期间需求更大。为消除\
-过载而把对象聚集成簇是归置组存在的主要原因。
+各个归置组、 OSD 和监视器都一直需要内存、网络、处理器，在\
+恢复期间需求更大。为消除过载而把对象聚集成簇是归置组存在的\
+主要原因。
 
 最小化归置组数量可节省不少资源。
 
 
+.. Choosing the number of Placement Groups
+.. _choosing-number-of-placement-groups:
+
 确定归置组数量
 ==============
+
+.. note: It is rarely necessary to do this math by hand.  Instead, use the ``ceph osd pool autoscale-status`` command in combination with the ``target_size_bytes`` or ``target_size_ratio`` pool properties.  See :ref:`pg-autoscaler` for more information.
 
 If you have more than 50 OSDs, we recommend approximately 50-100
 placement groups per OSD to balance out resource usage, data
@@ -266,10 +274,11 @@ You should then check if the result makes sense with the way you
 designed your Ceph cluster to maximize `data durability`_,
 `object distribution`_ and minimize `resource usage`_.
 
-其结果\ **汇总后应该接近 2 的幂**\ 。汇总并非强制的，如果你想确保所有归置组内的对象\
-数大致相等，最好检查下。
+其结果\ **汇总后应该接近 2 的幂**\ 。汇总并非强制的，如果你想\
+确保所有归置组内的对象数大致相等，最好检查下。
 
-比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样估算归置组数量： ::
+比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样\
+估算归置组数量： ::
 
    (200 * 100)
    ----------- = 6667. Nearest power of 2: 8192

@@ -314,110 +314,86 @@ ceph-mgr 守护进程。</p>
 </li>
 </ol>
 </div>
-<div class="section" id="long-form">
-<span id="id5"></span><h3>细致型<a class="headerlink" href="#long-form" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id5">
+<h3>细致型<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
 <p>要是不想借助任何辅助工具，可按下列步骤创建 OSD 、将之加入集群和
-CRUSH 图。按下列详细步骤可在 <code class="docutils literal notranslate"><span class="pre">node2</span></code> 和 <code class="docutils literal notranslate"><span class="pre">node3</span></code> 上增加前 2
-个 OSD ：</p>
+CRUSH 图。对于每个 OSD ，执行下列详细步骤。</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">本过程不涉及使用 dm-crypt “密码箱”实现基于 dm-crypt
+的部署。</p>
+</div>
 <ol class="arabic">
-<li><p class="first">登录到OSD主机。</p>
+<li><p class="first">登录到 OSD 主机、并切换为 root 用户。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">node</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
 </li>
-<li><p class="first">给 OSD 分配 UUID 。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uuidgen</span>
+<li><p class="first">给 OSD 生成 UUID 。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>UUID=$(uuidgen)
 </pre></div>
 </div>
 </li>
-<li><p class="first">创建 OSD 。如果没有指定 UUID ，将会在 OSD 首次启动时分配一个。下列命令执行完成后将输出 OSD 号，在后续步骤里还会用到这个号。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">create</span> <span class="p">[{</span><span class="n">uuid</span><span class="p">}</span> <span class="p">[{</span><span class="nb">id</span><span class="p">}]]</span>
+<li><p class="first">给 OSD 生成 cephx 密钥。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>OSD_SECRET=$(ceph-authtool --gen-print-key)
 </pre></div>
 </div>
+</li>
+<li><p class="first">创建 OSD 。注意，如果你想重用先前已销毁 OSD 的 id ，可以给
+<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">new</span></code> 命令再加上 OSD ID 参数。我们假设
+<code class="docutils literal notranslate"><span class="pre">client.bootstrap-osd</span></code> 密钥已存在于目标机器上。或者，你可以在持有此密钥的其它主机上、以 <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> 身份执行这个命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ID=$(echo &quot;{\&quot;cephx_secret\&quot;: \&quot;$OSD_SECRET\&quot;}&quot; | \
+   ceph osd new $UUID -i - \
+   -n client.bootstrap-osd -k /var/lib/ceph/bootstrap-osd/ceph.keyring)
+</pre></div>
+</div>
+<p>还可以在 JSON 里加一个 <code class="docutils literal notranslate"><span class="pre">crush_device_class</span></code> 属性来设置一个默认值（基于自动探测到的设备类型生成的 <code class="docutils literal notranslate"><span class="pre">ssd</span></code> 或
+<code class="docutils literal notranslate"><span class="pre">hdd</span></code> ）以外的初始类。</p>
 </li>
 <li><p class="first">在新 OSD 主机上创建默认目录。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">new</span><span class="o">-</span><span class="n">osd</span><span class="o">-</span><span class="n">host</span><span class="p">}</span>
-<span class="n">sudo</span> <span class="n">mkdir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">number</span><span class="p">}</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mkdir /var/lib/ceph/osd/ceph-$ID
 </pre></div>
 </div>
 </li>
 <li><p class="first">如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后挂载到刚创建的目录下：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">new</span><span class="o">-</span><span class="n">osd</span><span class="o">-</span><span class="n">host</span><span class="p">}</span>
-<span class="n">sudo</span> <span class="n">mkfs</span> <span class="o">-</span><span class="n">t</span> <span class="p">{</span><span class="n">fstype</span><span class="p">}</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="p">{</span><span class="n">hdd</span><span class="p">}</span>
-<span class="n">sudo</span> <span class="n">mount</span> <span class="o">-</span><span class="n">o</span> <span class="n">user_xattr</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="p">{</span><span class="n">hdd</span><span class="p">}</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">number</span><span class="p">}</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mkfs.xfs /dev/{DEV}
+mount /dev/{DEV} /var/lib/ceph/osd/ceph-$ID
+</pre></div>
+</div>
+</li>
+<li><p class="first">把密钥写入 OSD 密钥环文件：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph-authtool --create-keyring /var/lib/ceph/osd/ceph-$ID/keyring \
+     --name osd.$ID --add-key $OSD_SECRET
 </pre></div>
 </div>
 </li>
 <li><p class="first">初始化 OSD 数据目录：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="p">{</span><span class="n">new</span><span class="o">-</span><span class="n">osd</span><span class="o">-</span><span class="n">host</span><span class="p">}</span>
-<span class="n">sudo</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="o">-</span><span class="n">i</span> <span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="o">--</span><span class="n">mkfs</span> <span class="o">--</span><span class="n">mkkey</span> <span class="o">--</span><span class="n">osd</span><span class="o">-</span><span class="n">uuid</span> <span class="p">[{</span><span class="n">uuid</span><span class="p">}]</span>
-</pre></div>
-</div>
-<p>加 <code class="docutils literal notranslate"><span class="pre">--mkkey</span></code> 选项运行 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 之前，此目录必须是空的；另外，如果集群名字不是默认值，还要给 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 指定 <code class="docutils literal notranslate"><span class="pre">--cluster</span></code> 选项。</p>
-</li>
-<li><p class="first">注册此 OSD 的密钥。路径内 <code class="docutils literal notranslate"><span class="pre">ceph-{osd-num}</span></code> 里的 <code class="docutils literal notranslate"><span class="pre">ceph</span></code> 其含义为 <code class="docutils literal notranslate"><span class="pre">$cluster-$id</span></code> ，如果你的集群名字不是 <code class="docutils literal notranslate"><span class="pre">ceph</span></code> ，请指定自己的集群名：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">ceph</span> <span class="n">auth</span> <span class="n">add</span> <span class="n">osd</span><span class="o">.</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="n">osd</span> <span class="s1">&#39;allow *&#39;</span> <span class="n">mon</span> <span class="s1">&#39;allow profile osd&#39;</span> <span class="o">-</span><span class="n">i</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span><span class="o">/</span><span class="n">keyring</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph-osd -i $ID --mkfs --osd-uuid $UUID
 </pre></div>
 </div>
 </li>
-<li><p class="first">把此节点加入 CRUSH 图。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="p">[</span><span class="o">--</span><span class="n">cluster</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span><span class="o">-</span><span class="n">bucket</span> <span class="p">{</span><span class="n">hostname</span><span class="p">}</span> <span class="n">host</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span><span class="o">-</span><span class="n">bucket</span> <span class="n">node1</span> <span class="n">host</span>
+<li><p class="first">修正所有权：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>chown -R ceph:ceph /var/lib/ceph/osd/ceph-$ID
 </pre></div>
 </div>
 </li>
-<li><p class="first">把此 Ceph 节点放入 <code class="docutils literal notranslate"><span class="pre">default</span></code> 根下。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">move</span> <span class="n">node1</span> <span class="n">root</span><span class="o">=</span><span class="n">default</span>
-</pre></div>
-</div>
-</li>
-<li><p class="first">把此 OSD 加入 CRUSH 图之后，它就能接收数据了。你也可以反编译 CRUSH 图、把此 OSD 加入设备列表、对应主机作为桶加入（如果它还不在 CRUSH 图里）、然后此设备作为主机的一个条目、分配权重、重新编译、注入集群。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="p">[</span><span class="o">--</span><span class="n">cluster</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span> <span class="p">{</span><span class="nb">id</span><span class="o">-</span><span class="ow">or</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">weight</span><span class="p">}</span> <span class="p">[{</span><span class="n">bucket</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span><span class="o">=</span><span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="o">...</span><span class="p">]</span>
+<li><p class="first">把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始运行，要启动这个新 OSD 它才能收数据。</p>
+<p>在基于 systemd 的发行版上：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>systemctl enable ceph-osd@$ID
+systemctl start ceph-osd@$ID
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span> <span class="n">osd</span><span class="o">.</span><span class="mi">0</span> <span class="mf">1.0</span> <span class="n">host</span><span class="o">=</span><span class="n">node1</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systemctl</span> <span class="n">enable</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span><span class="nd">@12</span>
+<span class="n">systemctl</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span><span class="nd">@12</span>
 </pre></div>
 </div>
-</li>
-<li><p class="first">把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始运行，这时处于 <code class="docutils literal notranslate"><span class="pre">down</span></code> 且 <code class="docutils literal notranslate"><span class="pre">in</span></code> 状态，要启动进程才能收数据。</p>
-<p>在 Ubuntu 系统上用 Upstart 启动：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="nb">id</span><span class="o">=</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="p">[</span><span class="n">cluster</span><span class="o">=</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="nb">id</span><span class="o">=</span><span class="mi">0</span>
-<span class="n">sudo</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span> <span class="nb">id</span><span class="o">=</span><span class="mi">1</span>
-</pre></div>
-</div>
-<p>在 Debian/CentOS/RHEL 上用 sysvinit 启动：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="p">[</span><span class="o">--</span><span class="n">cluster</span> <span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="mi">0</span>
-<span class="n">sudo</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">ceph</span> <span class="n">start</span> <span class="n">osd</span><span class="o">.</span><span class="mi">1</span>
-</pre></div>
-</div>
-<p>要让守护进程开机自启，必须创建一个空文件：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">-</span><span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span><span class="o">/</span><span class="n">sysvinit</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">0</span><span class="o">/</span><span class="n">sysvinit</span>
-<span class="n">sudo</span> <span class="n">touch</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="n">sysvinit</span>
-</pre></div>
-</div>
-<p>OSD 启动后，它应该处于 <code class="docutils literal notranslate"><span class="pre">up</span></code> 且 <code class="docutils literal notranslate"><span class="pre">in</span></code> 状态。</p>
 </li>
 </ol>
 </div>
 </div>
 <div class="section" id="mds">
-<span id="adding-mds"></span><h2>添加 MDS<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h2>
+<h2>添加 MDS<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h2>
 <p>在下面的命令中， <code class="docutils literal notranslate"><span class="pre">{id}</span></code> 可以是任意名字，如此机器的主机名。</p>
 <ol class="arabic">
 <li><p class="first">创建 MDS 数据目录：</p>
@@ -508,7 +484,7 @@ CRUSH 图。按下列详细步骤可在 <code class="docutils literal notranslat
 <li class="toctree-l4"><a class="reference internal" href="#manager-daemon-configuration">管理守护进程配置</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#osd">添加 OSD</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#short-form">精简型</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#long-form">细致型</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id5">细致型</a></li>
 </ul>
 </li>
 <li class="toctree-l4"><a class="reference internal" href="#mds">添加 MDS</a></li>

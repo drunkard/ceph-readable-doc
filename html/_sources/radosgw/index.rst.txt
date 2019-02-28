@@ -57,6 +57,7 @@ API 写、然后用另一个检出。
    压缩 <compression>
    服务器端加密 <encryption>
    桶策略 <bucketpolicy>
+   动态的桶索引重分片 <dynamicresharding>
    多因子认证 <mfa>
    RADOS 中的数据布局 <layout>
    troubleshooting

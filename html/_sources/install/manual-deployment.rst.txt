@@ -303,108 +303,81 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
    那么应该外加 ``--activate-key`` 参数。
 
 
-.. _Long Form:
+.. Long Form
 
 细致型
 ------
 
 要是不想借助任何辅助工具，可按下列步骤创建 OSD 、将之加入集群和
-CRUSH 图。按下列详细步骤可在 ``node2`` 和 ``node3`` 上增加前 2
-个 OSD ：
+CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 
-#. 登录到OSD主机。 ::
+.. note:: 本过程不涉及使用 dm-crypt “密码箱”实现基于 dm-crypt
+   的部署。
 
-	ssh {node-name}
+#. 登录到 OSD 主机、并切换为 root 用户。 ::
 
-#. 给 OSD 分配 UUID 。 ::
+     ssh {node-name}
 
-	uuidgen
+#. 给 OSD 生成 UUID 。 ::
 
-#. 创建 OSD 。如果没有指定 UUID ，将会在 OSD 首次启动时分配一个。下列命令执行完成后\
-   将输出 OSD 号，在后续步骤里还会用到这个号。 ::
+     UUID=$(uuidgen)
 
-	ceph osd create [{uuid} [{id}]]
+#. 给 OSD 生成 cephx 密钥。 ::
+
+     OSD_SECRET=$(ceph-authtool --gen-print-key)
+
+#. 创建 OSD 。注意，如果你想重用先前已销毁 OSD 的 id ，可以给
+   ``ceph osd new`` 命令再加上 OSD ID 参数。我们假设
+   ``client.bootstrap-osd`` 密钥已存在于目标机器上。或者，你\
+   可以在持有此密钥的其它主机上、以 ``client.admin`` 身份执行\
+   这个命令： ::
+
+     ID=$(echo "{\"cephx_secret\": \"$OSD_SECRET\"}" | \
+	ceph osd new $UUID -i - \
+	-n client.bootstrap-osd -k /var/lib/ceph/bootstrap-osd/ceph.keyring)
+
+   还可以在 JSON 里加一个 ``crush_device_class`` 属性来设置\
+   一个默认值（基于自动探测到的设备类型生成的 ``ssd`` 或
+   ``hdd`` ）以外的初始类。
 
 #. 在新 OSD 主机上创建默认目录。 ::
 
-	ssh {new-osd-host}
-	sudo mkdir /var/lib/ceph/osd/{cluster-name}-{osd-number}
+     mkdir /var/lib/ceph/osd/ceph-$ID
 
-#. 如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后挂载到刚创建的目录下： ::
+#. 如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后\
+   挂载到刚创建的目录下： ::
 
-	ssh {new-osd-host}
-	sudo mkfs -t {fstype} /dev/{hdd}
-	sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/{cluster-name}-{osd-number}
+     mkfs.xfs /dev/{DEV}
+     mount /dev/{DEV} /var/lib/ceph/osd/ceph-$ID
+
+#. 把密钥写入 OSD 密钥环文件： ::
+
+     ceph-authtool --create-keyring /var/lib/ceph/osd/ceph-$ID/keyring \
+          --name osd.$ID --add-key $OSD_SECRET
 
 #. 初始化 OSD 数据目录： ::
 
-	ssh {new-osd-host}
-	sudo ceph-osd -i {osd-num} --mkfs --mkkey --osd-uuid [{uuid}]
+     ceph-osd -i $ID --mkfs --osd-uuid $UUID
 
-   加 ``--mkkey`` 选项运行 ``ceph-osd`` 之前，此目录必须是空的；另外，如果集群名字\
-   不是默认值，还要给 ``ceph-osd`` 指定 ``--cluster`` 选项。
+#. 修正所有权： ::
 
-#. 注册此 OSD 的密钥。路径内 ``ceph-{osd-num}`` 里的 ``ceph`` 其含义为 \
-   ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，请指定自己的集群名： ::
+     chown -R ceph:ceph /var/lib/ceph/osd/ceph-$ID
 
-	sudo ceph auth add osd.{osd-num} osd 'allow *' mon 'allow profile osd' -i /var/lib/ceph/osd/{cluster-name}-{osd-num}/keyring
+#. 把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始\
+   运行，要启动这个新 OSD 它才能收数据。
 
-#. 把此节点加入 CRUSH 图。 ::
+   在基于 systemd 的发行版上： ::
 
-	ceph [--cluster {cluster-name}] osd crush add-bucket {hostname} host
-
-   例如： ::
-
-	ceph osd crush add-bucket node1 host
-
-#. 把此 Ceph 节点放入 ``default`` 根下。 ::
-
-	ceph osd crush move node1 root=default
-
-#. 把此 OSD 加入 CRUSH 图之后，它就能接收数据了。你也可以反编译 CRUSH 图、把此 \
-   OSD 加入设备列表、对应主机作为桶加入（如果它还不在 CRUSH 图里）、然后此设备作为\
-   主机的一个条目、分配权重、重新编译、注入集群。 ::
-
-	ceph [--cluster {cluster-name}] osd crush add {id-or-name} {weight} [{bucket-type}={bucket-name} ...]
+     systemctl enable ceph-osd@$ID
+     systemctl start ceph-osd@$ID
 
    例如： ::
 
-	ceph osd crush add osd.0 1.0 host=node1
-
-#. 把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始运行，这时处于 ``down`` \
-   且 ``in`` 状态，要启动进程才能收数据。
-
-   在 Ubuntu 系统上用 Upstart 启动： ::
-
-	sudo start ceph-osd id={osd-num} [cluster={cluster-name}]
-
-   例如： ::
-
-	sudo start ceph-osd id=0
-	sudo start ceph-osd id=1
-
-   在 Debian/CentOS/RHEL 上用 sysvinit 启动： ::
-
-	sudo /etc/init.d/ceph start osd.{osd-num} [--cluster {cluster-name}]
-
-   例如： ::
-
-	sudo /etc/init.d/ceph start osd.0
-	sudo /etc/init.d/ceph start osd.1
-
-   要让守护进程开机自启，必须创建一个空文件： ::
-
-	sudo touch /var/lib/ceph/osd/{cluster-name}-{osd-num}/sysvinit
-
-   例如： ::
-
-	sudo touch /var/lib/ceph/osd/ceph-0/sysvinit
-	sudo touch /var/lib/ceph/osd/ceph-1/sysvinit
-
-   OSD 启动后，它应该处于 ``up`` 且 ``in`` 状态。
+     systemctl enable ceph-osd@12
+     systemctl start ceph-osd@12
 
 
-.. _Adding MDS:
+.. Adding MDS
 
 添加 MDS
 ========

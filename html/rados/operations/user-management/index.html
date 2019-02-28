@@ -19,7 +19,7 @@
     <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../../genindex/" />
     <link rel="search" title="Search" href="../../../search/" />
-    <link rel="next" title="数据归置概览" href="../data-placement/" />
+    <link rel="next" title="修复 PG 不一致状态" href="../pg-repair/" />
     <link rel="prev" title="监控 OSD 和归置组" href="../monitoring-osd-pg/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
@@ -34,7 +34,7 @@
           <a href="../../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../data-placement/" title="数据归置概览"
+          <a href="../pg-repair/" title="修复 PG 不一致状态"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="../monitoring-osd-pg/" title="监控 OSD 和归置组"
@@ -328,7 +328,12 @@ privileges required for the <code class="docutils literal notranslate"><span cla
 <p>存储池是用户存储数据的逻辑分区。在 Ceph 部署中，经常创建存储池作为逻辑分区、用以归类相似的数据。例如，用 Ceph 作为 OpenStack 的后端时，典型的部署通常会创建多个存储池，分别用于存储卷宗、映像、备份和虚拟机，以及用户（如 <code class="docutils literal notranslate"><span class="pre">client.glance</span></code> 、 <code class="docutils literal notranslate"><span class="pre">client.cinder</span></code> 等）。</p>
 </div>
 <div class="section" id="id6">
-<h3>命名空间<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<h3>应用程序标签<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>可以将访问限定于指定存储池，正如其应用程序元数据所定义的那样。通配符 <code class="docutils literal notranslate"><span class="pre">*</span></code> 可以用于 <code class="docutils literal notranslate"><span class="pre">key</span></code> 参数、 <code class="docutils literal notranslate"><span class="pre">value</span></code> 参数、或二者。
+<code class="docutils literal notranslate"><span class="pre">all</span></code> 与 <code class="docutils literal notranslate"><span class="pre">*</span></code> 同义。</p>
+</div>
+<div class="section" id="id7">
+<h3>命名空间<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
 <p>Objects within a pool can be associated to a namespace–a logical group of
 objects within the pool. A user’s access to a pool can be associated with a
 namespace such that reads and writes by the user take place only within the
@@ -336,10 +341,8 @@ namespace. Objects written to a namespace within the pool can only be accessed
 by users who have access to the namespace.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Currently (i.e., <code class="docutils literal notranslate"><span class="pre">firefly</span></code>), namespaces are only useful for
-applications written on top of <code class="docutils literal notranslate"><span class="pre">librados</span></code>. Ceph clients such as block
-device, object storage and file system do not currently support this
-feature.</p>
+<p class="last">命名空间主要适用于 <code class="docutils literal notranslate"><span class="pre">librados</span></code> 之上的应用程序，逻辑分组可减少新建存储池的必要。 Ceph 对象网关（从
+<code class="docutils literal notranslate"><span class="pre">luminous</span></code> 起）就把命名空间用于各种元数据对象。</p>
 </div>
 <p>The rationale for namespaces is that pools can be a computationally expensive
 method of segregating data sets for the purposes of authorizing separate sets
@@ -352,12 +355,12 @@ pool. Rather than creating a separate pool for a user or set of users, you may
 use a namespace. <strong>Note:</strong> Only available using <code class="docutils literal notranslate"><span class="pre">librados</span></code> at this time.</p>
 </div>
 </div>
-<div class="section" id="id7">
-<h2>用户的管理<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
-<p>用户管理功能赋予 Ceph 存储集群管理员直接从 Ceph 存储集群创建、更新和删除用户的能力。</p>
-<p>当你在 Ceph 存储集群中创建或删除用户时，可能得把密钥分发到各客户端，以便加入他们的密钥环。详情见<a class="reference internal" href="#id15">密钥环管理</a>。</p>
 <div class="section" id="id8">
-<h3>罗列用户<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<h2>用户的管理<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<p>用户管理功能赋予 Ceph 存储集群管理员直接从 Ceph 存储集群创建、更新和删除用户的能力。</p>
+<p>当你在 Ceph 存储集群中创建或删除用户时，可能得把密钥分发到各客户端，以便加入他们的密钥环。详情见<a class="reference internal" href="#id16">密钥环管理</a>。</p>
+<div class="section" id="id9">
+<h3>罗列用户<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
 <p>罗列集群内的用户，用下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="n">ls</span>
 </pre></div>
@@ -392,8 +395,8 @@ use a namespace. <strong>Note:</strong> Only available using <code class="docuti
 <code class="docutils literal notranslate"><span class="pre">caps:</span></code> 条目。</p>
 <p>你可以给 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">auth</span> <span class="pre">ls</span></code> 加上 <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">{filename}</span></code> 选项，把输出保存到一个文件。</p>
 </div>
-<div class="section" id="id9">
-<h3>获取用户<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id10">
+<h3>获取用户<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
 <p>To retrieve a specific user, key and capabilities, execute the
 following:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="n">get</span> <span class="p">{</span><span class="n">TYPE</span><span class="o">.</span><span class="n">ID</span><span class="p">}</span>
@@ -411,8 +414,8 @@ save the output to a file. Developers may also execute the following:</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">auth</span> <span class="pre">export</span></code> command is identical to <code class="docutils literal notranslate"><span class="pre">auth</span> <span class="pre">get</span></code>, but also prints
 out the internal <code class="docutils literal notranslate"><span class="pre">auid</span></code>, which isn’t relevant to end users.</p>
 </div>
-<div class="section" id="id10">
-<h3>新增用户<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id11">
+<h3>新增用户<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
 <p>Adding a user creates a username (i.e., <code class="docutils literal notranslate"><span class="pre">TYPE.ID</span></code>), a secret key and
 any capabilities included in the command you use to create the user.</p>
 <p>A user’s key enables the user to authenticate with the Ceph Storage Cluster.
@@ -453,7 +456,7 @@ are often restricted to accessing a particular pool.</p>
 </div>
 </div>
 <div class="section" id="modify-user-capabilities">
-<span id="id11"></span><h3>更改用户能力<a class="headerlink" href="#modify-user-capabilities" title="Permalink to this headline">¶</a></h3>
+<span id="id12"></span><h3>更改用户能力<a class="headerlink" href="#modify-user-capabilities" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">auth</span> <span class="pre">caps</span></code> 命令可以用来修改指定用户的能力。设置新能力时会覆盖当前能力。查看用户当前的能力可以用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">auth</span> <span class="pre">get</span> <span class="pre">USERTYPE.USERID</span></code> ；增加能力时应该加上当前已经有的能力，命令格式如下：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="n">caps</span> <span class="n">USERTYPE</span><span class="o">.</span><span class="n">USERID</span> <span class="p">{</span><span class="n">daemon</span><span class="p">}</span> <span class="s1">&#39;allow [r|w|x|*|...] [pool={pool-name}] [namespace={namespace-name}]&#39;</span> <span class="p">[{</span><span class="n">daemon</span><span class="p">}</span> <span class="s1">&#39;allow [r|w|x|*|...] [pool={pool-name}] [namespace={namespace-name}]&#39;</span><span class="p">]</span>
 </pre></div>
@@ -471,8 +474,8 @@ are often restricted to accessing a particular pool.</p>
 </div>
 <p>关于能力请参考<a class="reference internal" href="#id4">授权（能力）</a>。</p>
 </div>
-<div class="section" id="id12">
-<h3>删除用户<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id13">
+<h3>删除用户<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
 <p>要删除一用户，用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">auth</span> <span class="pre">del</span></code> 命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="k">del</span> <span class="p">{</span><span class="n">TYPE</span><span class="p">}</span><span class="o">.</span><span class="p">{</span><span class="n">ID</span><span class="p">}</span>
 </pre></div>
@@ -480,8 +483,8 @@ are often restricted to accessing a particular pool.</p>
 <p>其中 <code class="docutils literal notranslate"><span class="pre">{TYPE}</span></code> 是 <code class="docutils literal notranslate"><span class="pre">client</span></code> 、 <code class="docutils literal notranslate"><span class="pre">osd</span></code> 、 <code class="docutils literal notranslate"><span class="pre">mon</span></code> 或 <code class="docutils literal notranslate"><span class="pre">mds</span></code>
 之一， <code class="docutils literal notranslate"><span class="pre">{ID}</span></code> 是用户名或守护进程的 ID 。</p>
 </div>
-<div class="section" id="id13">
-<h3>查看用户密钥<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id14">
+<h3>查看用户密钥<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
 <p>To print a user’s authentication key to standard output, execute the following:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="nb">print</span><span class="o">-</span><span class="n">key</span> <span class="p">{</span><span class="n">TYPE</span><span class="p">}</span><span class="o">.</span><span class="p">{</span><span class="n">ID</span><span class="p">}</span>
 </pre></div>
@@ -494,8 +497,8 @@ software with a user’s key  (e.g., libvirt).</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id14">
-<h3>导入用户<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id15">
+<h3>导入用户<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
 <p>要导入一个或多个用户，可以用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">auth</span> <span class="pre">import</span></code> 命令，并指定一个密钥环：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="kn">import</span> <span class="o">-</span><span class="n">i</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">keyring</span>
 </pre></div>
@@ -510,8 +513,8 @@ software with a user’s key  (e.g., libvirt).</p>
 </div>
 </div>
 </div>
-<div class="section" id="id15">
-<h2>密钥环管理<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id16">
+<h2>密钥环管理<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h2>
 <p>When you access Ceph via a Ceph client, the Ceph client will look for a local
 keyring. Ceph presets the <code class="docutils literal notranslate"><span class="pre">keyring</span></code> setting with the following four keyring
 names by default so you don’t have to set them in your Ceph configuration file
@@ -537,9 +540,9 @@ Cluster.</p>
 <p>The <a class="reference internal" href="#id1">用户管理</a> section details how to list, get, add, modify and delete
 users directly in the Ceph Storage Cluster. However, Ceph also provides the
 <code class="docutils literal notranslate"><span class="pre">ceph-authtool</span></code> utility to allow you to manage keyrings from a Ceph client.</p>
-<div class="section" id="id16">
-<h3>创建密钥环<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
-<p>When you use the procedures in the <a class="reference internal" href="#id7">用户的管理</a> section to create users,
+<div class="section" id="id17">
+<h3>创建密钥环<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
+<p>When you use the procedures in the <a class="reference internal" href="#id8">用户的管理</a> section to create users,
 you need to provide user keys to the Ceph client(s) so that the Ceph client
 can retrieve the key for the specified user and authenticate with the Ceph
 Storage Cluster. Ceph Clients access keyrings to lookup a user name and
@@ -569,9 +572,9 @@ that you execute <code class="docutils literal notranslate"><span class="pre">ch
 ownership and access.</p>
 </div>
 <div class="section" id="add-a-user-to-a-keyring">
-<span id="id17"></span><h3>把用户加入密钥环<a class="headerlink" href="#add-a-user-to-a-keyring" title="Permalink to this headline">¶</a></h3>
-<p>当你在 Ceph 存储集群中<a class="reference internal" href="#id18">创建用户</a>后，你可以用<a class="reference internal" href="#id9">获取用户</a>里面的方法获取此用户、及其密钥、能力，并存入一个密钥环文件。</p>
-<p>When you only want to use one user per keyring, the <a class="reference internal" href="#id9">获取用户</a> procedure with
+<span id="id18"></span><h3>把用户加入密钥环<a class="headerlink" href="#add-a-user-to-a-keyring" title="Permalink to this headline">¶</a></h3>
+<p>当你在 Ceph 存储集群中<a class="reference internal" href="#id19">创建用户</a>后，你可以用<a class="reference internal" href="#id10">获取用户</a>里面的方法获取此用户、及其密钥、能力，并存入一个密钥环文件。</p>
+<p>When you only want to use one user per keyring, the <a class="reference internal" href="#id10">获取用户</a> procedure with
 the <code class="docutils literal notranslate"><span class="pre">-o</span></code> option will save the output in the keyring file format. For example,
 to create a keyring for the <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> user, execute the following:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">ceph</span> <span class="n">auth</span> <span class="n">get</span> <span class="n">client</span><span class="o">.</span><span class="n">admin</span> <span class="o">-</span><span class="n">o</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">admin</span><span class="o">.</span><span class="n">keyring</span>
@@ -585,9 +588,9 @@ For example:</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id18">
-<h3>创建用户<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h3>
-<p>Ceph provides the <a class="reference internal" href="#id18">创建用户</a> function to create a user directly in the Ceph
+<div class="section" id="id19">
+<h3>创建用户<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h3>
+<p>Ceph provides the <a class="reference internal" href="#id19">创建用户</a> function to create a user directly in the Ceph
 Storage Cluster. However, you can also create a user, keys and capabilities
 directly on a Ceph client keyring. Then, you can import the user to the Ceph
 Storage Cluster. For example:</p>
@@ -607,8 +610,8 @@ the new user to the Ceph Storage Cluster.</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id19">
-<h3>修改用户属性<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id20">
+<h3>修改用户属性<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h3>
 <p>To modify the capabilities of a user record in a keyring, specify the keyring,
 and the user followed by the capabilities. For example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">ceph</span><span class="o">-</span><span class="n">authtool</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">keyring</span> <span class="o">-</span><span class="n">n</span> <span class="n">client</span><span class="o">.</span><span class="n">ringo</span> <span class="o">--</span><span class="n">cap</span> <span class="n">osd</span> <span class="s1">&#39;allow rwx&#39;</span> <span class="o">--</span><span class="n">cap</span> <span class="n">mon</span> <span class="s1">&#39;allow rwx&#39;</span>
@@ -619,15 +622,15 @@ in the keyring to the user entry in the the Ceph Storage Cluster.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">ceph</span> <span class="n">auth</span> <span class="kn">import</span> <span class="o">-</span><span class="n">i</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">keyring</span>
 </pre></div>
 </div>
-<p>See <a class="reference internal" href="#id14">导入用户</a> for details on updating a Ceph Storage Cluster user
+<p>See <a class="reference internal" href="#id15">导入用户</a> for details on updating a Ceph Storage Cluster user
 from a keyring.</p>
-<p>You may also <a class="reference internal" href="#id11">更改用户能力</a> directly in the cluster, store the
+<p>You may also <a class="reference internal" href="#id12">更改用户能力</a> directly in the cluster, store the
 results to a keyring file; then, import the keyring into your main
 <code class="docutils literal notranslate"><span class="pre">ceph.keyring</span></code> file.</p>
 </div>
 </div>
-<div class="section" id="id20">
-<h2>命令行用法<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id21">
+<h2>命令行用法<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h2>
 <p>Ceph 支持用户名和密钥的下列用法：</p>
 <p><code class="docutils literal notranslate"><span class="pre">--id</span></code> | <code class="docutils literal notranslate"><span class="pre">--user</span></code></p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -671,8 +674,8 @@ results to a keyring file; then, import the keyring into your main
 </tbody>
 </table>
 </div>
-<div class="section" id="id21">
-<h2>局限性<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id22">
+<h2>局限性<a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">cephx</span></code> 协议提供 Ceph 客户端和服务器间的相互认证，并没打算认证人类用户或者应用程序。如果有访问控制需求，那必须用另外一种机制，它对于前端用户访问 Ceph 对象存储可能是特定的，其任务是确保只有此机器上可接受的用户和程序才能访问 Ceph 的对象存储。</p>
 <p>用于认证 Ceph 客户端和服务器的密钥通常以纯文本存储在权限合适的文件里，并保存于可信主机上。</p>
 <div class="admonition important">
@@ -705,6 +708,7 @@ results to a keyring file; then, import the keyring into your main
 <li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../">运维</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../operating/">操纵集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../health-checks/">健康检查</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../monitoring/">监控集群</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../monitoring-osd-pg/">监控 OSD 和归置组</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">用户管理</a><ul>
@@ -712,30 +716,32 @@ results to a keyring file; then, import the keyring into your main
 <li class="toctree-l5"><a class="reference internal" href="#id3">用户</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id4">授权（能力）</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id5">存储池</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id6">命名空间</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id6">应用程序标签</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id7">命名空间</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">用户的管理</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id8">罗列用户</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id9">获取用户</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id10">新增用户</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">用户的管理</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id9">罗列用户</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id10">获取用户</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id11">新增用户</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#modify-user-capabilities">更改用户能力</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id12">删除用户</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id13">查看用户密钥</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id14">导入用户</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id13">删除用户</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id14">查看用户密钥</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id15">导入用户</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#id15">密钥环管理</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#id16">创建密钥环</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id16">密钥环管理</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id17">创建密钥环</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#add-a-user-to-a-keyring">把用户加入密钥环</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id18">创建用户</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#id19">修改用户属性</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id19">创建用户</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id20">修改用户属性</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#id20">命令行用法</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id21">局限性</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id21">命令行用法</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id22">局限性</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../pg-repair/">修复 PG 不一致状态</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../data-placement/">数据归置概览</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../pools/">存储池</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../erasure-code/">纠删码</a></li>
@@ -805,7 +811,7 @@ results to a keyring file; then, import the keyring into your main
           <a href="../../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../data-placement/" title="数据归置概览"
+          <a href="../pg-repair/" title="修复 PG 不一致状态"
              >next</a> |</li>
         <li class="right" >
           <a href="../monitoring-osd-pg/" title="监控 OSD 和归置组"

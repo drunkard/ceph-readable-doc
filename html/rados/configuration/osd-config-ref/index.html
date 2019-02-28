@@ -137,7 +137,7 @@
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">内存里允许的最大客户端数据消息。</td>
 </tr>
-<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">64-bit Integer Unsigned</td>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">64-bit Unsigned Integer</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">默认为 500MB 。 <code class="docutils literal notranslate"><span class="pre">500*1024L*1024L</span></code></td>
 </tr>
@@ -475,12 +475,15 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情况�
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">本选项用于配置 OSD 内各种操作（ ops ）的优先顺序。两种队列都实现了严格子队列，出常规队列之前要先出子队列，它与常规队列的实现机制不同。最初的 PrioritizedQueue
-(<code class="docutils literal notranslate"><span class="pre">prio</span></code>) 使用令牌桶系统，在令牌足够多时它会先处理优先级高的队列；在令牌不够多时，则按优先级从低到高依次处理。新的 WeightedPriorityQueue (<code class="docutils literal notranslate"><span class="pre">wpq</span></code>) 会根据其优先级处理所有队列，以避免出现饥饿队列。在一部分
-OSD 负载高于其它的时， WPQ 应该有优势。此配置更改后需重启。</td>
+(<code class="docutils literal notranslate"><span class="pre">prio</span></code>) 使用令牌桶系统，在令牌足够多时它会先处理优先级高的队列；在令牌不够多时，则按优先级从低到高依次处理。 WeightedPriorityQueue (<code class="docutils literal notranslate"><span class="pre">wpq</span></code>) 会根据其优先级处理所有队列，以避免出现饥饿队列。在一部分
+OSD 负载高于其它的时， WPQ 应该有优势。
+新的、基于 mClock 的 OpClassQueue (<code class="docutils literal notranslate"><span class="pre">mclock_opclass</span></code>)可针对它们所属的类（ recovery 、 scrub 、 snaptrim 、
+client op 、 osd subop ）来划分优先级。还有，基于 mClock
+的 ClientQueue (<code class="docutils literal notranslate"><span class="pre">mclock_client</span></code>) 还能结合客户端标识符来增进各客户端之间的公平性。见<a class="reference internal" href="#mclock-qos">基于 mClock 的 QoS</a>。此配置更改后需重启。</td>
 </tr>
 <tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">String</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">可选值:</th><td class="field-body">prio, wpq</td>
+<tr class="field-odd field"><th class="field-name">可选值:</th><td class="field-body">prio, wpq, mclock_opclass, mclock_client</td>
 </tr>
 <tr class="field-even field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">prio</span></code></td>
 </tr>
@@ -673,9 +676,347 @@ Jewel 版起，洗刷操作已经不再由磁盘的 iothread 发起了，请参�
 </tr>
 </tbody>
 </table>
+<div class="section" id="mclock-qos">
+<h3>基于 mClock 的 QoS<a class="headerlink" href="#mclock-qos" title="Permalink to this headline">¶</a></h3>
+<p>Ceph 对 mClock 的应用仍处于实验阶段，应当以探索心态试用。</p>
+<div class="section" id="id8">
+<h4>核心概念<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h4>
+<p>The QoS support of Ceph is implemented using a queueing scheduler
+based on <a class="reference external" href="https://www.usenix.org/legacy/event/osdi10/tech/full_papers/Gulati.pdf">the dmClock algorithm</a>. This algorithm allocates the I/O
+resources of the Ceph cluster in proportion to weights, and enforces
+the constraints of minimum reservation and maximum limitation, so that
+the services can compete for the resources fairly. Currently the
+<em>mclock_opclass</em> operation queue divides Ceph services involving I/O
+resources into following buckets:</p>
+<ul class="simple">
+<li>client op: the iops issued by client</li>
+<li>osd subop: the iops issued by primary OSD</li>
+<li>snap trim: the snap trimming related requests</li>
+<li>pg recovery: the recovery related requests</li>
+<li>pg scrub: the scrub related requests</li>
+</ul>
+<p>And the resources are partitioned using following three sets of tags. In other
+words, the share of each type of service is controlled by three tags:</p>
+<ol class="arabic simple">
+<li>reservation: the minimum IOPS allocated for the service.</li>
+<li>limitation: the maximum IOPS allocated for the service.</li>
+<li>weight: the proportional share of capacity if extra capacity or system
+oversubscribed.</li>
+</ol>
+<p>In Ceph operations are graded with “cost”. And the resources allocated
+for serving various services are consumed by these “costs”. So, for
+example, the more reservation a services has, the more resource it is
+guaranteed to possess, as long as it requires. Assuming there are 2
+services: recovery and client ops:</p>
+<ul class="simple">
+<li>recovery: (r:1, l:5, w:1)</li>
+<li>client ops: (r:2, l:0, w:9)</li>
+</ul>
+<p>The settings above ensure that the recovery won’t get more than 5
+requests per second serviced, even if it requires so (see CURRENT
+IMPLEMENTATION NOTE below), and no other services are competing with
+it. But if the clients start to issue large amount of I/O requests,
+neither will they exhaust all the I/O resources. 1 request per second
+is always allocated for recovery jobs as long as there are any such
+requests. So the recovery jobs won’t be starved even in a cluster with
+high load. And in the meantime, the client ops can enjoy a larger
+portion of the I/O resource, because its weight is “9”, while its
+competitor “1”. In the case of client ops, it is not clamped by the
+limit setting, so it can make use of all the resources if there is no
+recovery ongoing.</p>
+<p>Along with <em>mclock_opclass</em> another mclock operation queue named
+<em>mclock_client</em> is available. It divides operations based on category
+but also divides them based on the client making the request. This
+helps not only manage the distribution of resources spent on different
+classes of operations but also tries to insure fairness among clients.</p>
+<p>CURRENT IMPLEMENTATION NOTE: the current experimental implementation
+does not enforce the limit values. As a first approximation we decided
+not to prevent operations that would otherwise enter the operation
+sequencer from doing so.</p>
+</div>
+<div class="section" id="mclock">
+<h4>mClock 的精妙之处<a class="headerlink" href="#mclock" title="Permalink to this headline">¶</a></h4>
+<p>The reservation and limit values have a unit of requests per
+second. The weight, however, does not technically have a unit and the
+weights are relative to one another. So if one class of requests has a
+weight of 1 and another a weight of 9, then the latter class of
+requests should get 9 executed at a 9 to 1 ratio as the first class.
+However that will only happen once the reservations are met and those
+values include the operations executed under the reservation phase.</p>
+<p>Even though the weights do not have units, one must be careful in
+choosing their values due how the algorithm assigns weight tags to
+requests. If the weight is <em>W</em>, then for a given class of requests,
+the next one that comes in will have a weight tag of <em>1/W</em> plus the
+previous weight tag or the current time, whichever is larger. That
+means if <em>W</em> is sufficiently large and therefore <em>1/W</em> is sufficiently
+small, the calculated tag may never be assigned as it will get a value
+of the current time. The ultimate lesson is that values for weight
+should not be too large. They should be under the number of requests
+one expects to ve serviced each second.</p>
+</div>
+<div class="section" id="id9">
+<h4>注意事项<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h4>
+<p>There are some factors that can reduce the impact of the mClock op
+queues within Ceph. First, requests to an OSD are sharded by their
+placement group identifier. Each shard has its own mClock queue and
+these queues neither interact nor share information among them. The
+number of shards can be controlled with the configuration options
+<code class="docutils literal notranslate"><span class="pre">osd_op_num_shards</span></code>, <code class="docutils literal notranslate"><span class="pre">osd_op_num_shards_hdd</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">osd_op_num_shards_ssd</span></code>. A lower number of shards will increase the
+impact of the mClock queues, but may have other deleterious effects.</p>
+<p>Second, requests are transferred from the operation queue to the
+operation sequencer, in which they go through the phases of
+execution. The operation queue is where mClock resides and mClock
+determines the next op to transfer to the operation sequencer. The
+number of operations allowed in the operation sequencer is a complex
+issue. In general we want to keep enough operations in the sequencer
+so it’s always getting work done on some operations while it’s waiting
+for disk and network access to complete on other operations. On the
+other hand, once an operation is transferred to the operation
+sequencer, mClock no longer has control over it. Therefore to maximize
+the impact of mClock, we want to keep as few operations in the
+operation sequencer as possible. So we have an inherent tension.</p>
+<p>The configuration options that influence the number of operations in
+the operation sequencer are <code class="docutils literal notranslate"><span class="pre">bluestore_throttle_bytes</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bluestore_throttle_deferred_bytes</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bluestore_throttle_cost_per_io</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bluestore_throttle_cost_per_io_hdd</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">bluestore_throttle_cost_per_io_ssd</span></code>.</p>
+<p>A third factor that affects the impact of the mClock algorithm is that
+we’re using a distributed system, where requests are made to multiple
+OSDs and each OSD has (can have) multiple shards. Yet we’re currently
+using the mClock algorithm, which is not distributed (note: dmClock is
+the distributed version of mClock).</p>
+<p>Various organizations and individuals are currently experimenting with
+mClock as it exists in this code base along with their modifications
+to the code base. We hope you’ll share you’re experiences with your
+mClock and dmClock experiments in the ceph-devel mailing list.</p>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">push</span> <span class="pre">per</span> <span class="pre">object</span> <span class="pre">cost</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">一个推送操作允许的开销。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">1000</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">recovery</span> <span class="pre">max</span> <span class="pre">chunk</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">一个恢复操作可携带数据块的最大尺寸。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Unsigned Integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">8 MiB</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">client</span> <span class="pre">op</span> <span class="pre">res</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">为客户端操作预留的值。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">1000.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">client</span> <span class="pre">op</span> <span class="pre">wgt</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">客户端操作的权重。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">500.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">client</span> <span class="pre">op</span> <span class="pre">lim</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">客户端操作的上限。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">1000.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">osd</span> <span class="pre">subop</span> <span class="pre">res</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">为 OSD 子操作预留的值。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">1000.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">osd</span> <span class="pre">subop</span> <span class="pre">wgt</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">OSD 子操作的权重。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">500.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">osd</span> <span class="pre">subop</span> <span class="pre">lim</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">OSD 子操作的上限。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">0.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">snap</span> <span class="pre">res</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">为快照修剪操作预留的值。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">0.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">snap</span> <span class="pre">wgt</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">快照修剪操作的权重。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">1.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">snap</span> <span class="pre">lim</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">快照修剪操作的上限。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">0.001</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">recov</span> <span class="pre">res</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">为恢复预留的值。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">0.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">recov</span> <span class="pre">wgt</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">恢复操作的权重。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">1.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">recov</span> <span class="pre">lim</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">恢复操作的上限。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">0.001</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">scrub</span> <span class="pre">res</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">为洗刷作业预留的值。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">0.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">scrub</span> <span class="pre">wgt</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">洗刷作业的权重。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">1.0</td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">op</span> <span class="pre">queue</span> <span class="pre">mclock</span> <span class="pre">scrub</span> <span class="pre">lim</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">洗刷作业的上限。</td>
+</tr>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">Float</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body">0.001</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 <div class="section" id="index-6">
-<span id="id8"></span><h2>回填<a class="headerlink" href="#index-6" title="Permalink to this headline">¶</a></h2>
+<span id="id10"></span><h2>回填<a class="headerlink" href="#index-6" title="Permalink to this headline">¶</a></h2>
 <p>当集群新增或移除 OSD 时，按照 CRUSH 算法应该重新均衡集群，它会把一些归置组移出或移入多个 OSD 以回到均衡状态。归置组和对象的迁移会导致集群运营性能显著降低，为维持运营性能， Ceph 用 backfilling 来执行此迁移，它可以使得 Ceph 的回填操作优先级低于用户读写请求。</p>
 <p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">max</span> <span class="pre">backfills</span></code></p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -731,7 +1072,7 @@ Jewel 版起，洗刷操作已经不再由磁盘的 iothread 发起了，请参�
 </table>
 </div>
 <div class="section" id="index-7">
-<span id="id9"></span><h2>OSD 运行图<a class="headerlink" href="#index-7" title="Permalink to this headline">¶</a></h2>
+<span id="id11"></span><h2>OSD 运行图<a class="headerlink" href="#index-7" title="Permalink to this headline">¶</a></h2>
 <p>OSD 运行图反映集群中运行的 OSD 守护进程，斗转星移，图元增加。
 Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。</p>
 <p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">map</span> <span class="pre">dedup</span></code></p>
@@ -801,7 +1142,7 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。</p>
 </table>
 </div>
 <div class="section" id="index-8">
-<span id="id10"></span><h2>恢复<a class="headerlink" href="#index-8" title="Permalink to this headline">¶</a></h2>
+<span id="id12"></span><h2>恢复<a class="headerlink" href="#index-8" title="Permalink to this headline">¶</a></h2>
 <p>当集群启动、或某 OSD 守护进程崩溃后重启时，此 OSD 开始与其它 OSD 们建立连接，这样才能正常工作。详情见<a class="reference external" href="../../operations/monitoring-osd-pg#peering">监控 OSD 和归置组</a>。</p>
 <p>如果某 OSD 崩溃并重生，通常会落后于其他 OSD ，也就是没有同归置组内最新版本的对象。这时， OSD 守护进程进入恢复模式并检索最新数据副本，并更新运行图。根据 OSD 挂的时间长短， OSD 的对象和归置组可能落后得厉害，另外，如果挂的是一个失效域（如一个机柜），多个 OSD 会同时重生，这样恢复时间更长、更耗资源。</p>
 <p>为保持运营性能， Ceph 进行恢复时会限制恢复请求数、线程数、对象块尺寸，这样在降级状态下也能保持良好的性能。</p>
@@ -838,7 +1179,7 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">一次推送的数据块的最大尺寸。</td>
 </tr>
-<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">64-bit Integer Unsigned</td>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">64-bit Unsigned Integer</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">8</span> <span class="pre">&lt;&lt;</span> <span class="pre">20</span></code></td>
 </tr>
@@ -936,8 +1277,8 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。</p>
 </tbody>
 </table>
 </div>
-<div class="section" id="id11">
-<h2>分级缓存选项<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id13">
+<h2>分级缓存选项<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">agent</span> <span class="pre">max</span> <span class="pre">ops</span></code></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -967,8 +1308,8 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。</p>
 <p>关于在高速模式下，分级缓存代理何时刷回脏对象，见
 <a class="reference external" href="../../operations/pools#cache-target-dirty-high-ratio">cache target dirty high ratio</a> 选项。</p>
 </div>
-<div class="section" id="id12">
-<h2>杂项<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id14">
+<h2>杂项<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">snap</span> <span class="pre">trim</span> <span class="pre">thread</span> <span class="pre">timeout</span></code></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1002,7 +1343,7 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">描述:</th><td class="field-body">OSD 默认通告超时，秒。</td>
 </tr>
-<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">32-bit Integer Unsigned</td>
+<tr class="field-even field"><th class="field-name">类型:</th><td class="field-body">32-bit Unsigned Integer</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">默认值:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">30</span></code></td>
 </tr>
@@ -1133,12 +1474,20 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。</p>
 <li class="toctree-l4"><a class="reference internal" href="#id4">监视器和 OSD 的交互</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id5">数据归置</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#index-4">洗刷</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#index-5">操作数</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#index-5">操作数</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#mclock-qos">基于 mClock 的 QoS</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="#id8">核心概念</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#mclock">mClock 的精妙之处</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#id9">注意事项</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l4"><a class="reference internal" href="#index-6">回填</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#index-7">OSD 运行图</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#index-8">恢复</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id11">分级缓存选项</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id12">杂项</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">分级缓存选项</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">杂项</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../bluestore-config-ref/">BlueStore 配置</a></li>

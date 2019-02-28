@@ -1,6 +1,8 @@
-=====================
-Development workflows
-=====================
+.. Development workflows
+
+==========
+ 开发流程
+==========
 
 This page explains the workflows a developer is expected to follow to
 implement the goals that are part of the Ceph release cycle. It does not
@@ -34,8 +36,11 @@ were not written prior to checking all integration tests, they can be
 commited to the stable branch and the result sent for publication
 without going through another run of integration tests.
 
-Release Cycle
-=============
+
+.. Release Cycle
+
+发布周期
+========
 
 ::
 
@@ -61,8 +66,11 @@ frequency.  Every other release (firefly, hammer, jewel...) is a `Long Term
 Stable (LTS) <../../releases>`_.  See `Understanding the release cycle
 <../../releases#understanding-the-release-cycle>`_ for more information.
 
-Merging bug fixes or features
-=============================
+
+.. Merging bug fixes or features
+
+缺陷修正或功能的合并
+====================
 
 The development branch is ``master`` and the workflow followed by all
 developers can be summarized as follows:
@@ -97,12 +105,9 @@ follows:
   assign them a priority
 * The bugs with higher priority are worked on first
 
-Each ``team`` is responsible for a project:
+各小组（ ``team`` ）分别负责一个项目，由\ `项目领导`_\ 管理。
 
-* rgw lead is Yehuda Sadeh
-* CephFS lead is John Spray
-* rados lead is Samuel Just
-* rbd lead is Jason Dillaman
+.. _项目领导: ../#leads
 
 The ``developer`` assigned to an issue is responsible for it. The
 status of an open issue can be:

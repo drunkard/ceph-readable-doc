@@ -68,7 +68,7 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 ``osd client message size cap``
 
 :描述: 内存里允许的最大客户端数据消息。
-:类型: 64-bit Integer Unsigned
+:类型: 64-bit Unsigned Integer
 :默认值: 默认为 500MB 。 ``500*1024L*1024L``
 
 
@@ -336,13 +336,18 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
        它与常规队列的实现机制不同。最初的 PrioritizedQueue
        (``prio``) 使用令牌桶系统，在令牌足够多时它会先处理\
        优先级高的队列；在令牌不够多时，则按优先级从低到高依\
-       次处理。新的 WeightedPriorityQueue (``wpq``) 会根据\
+       次处理。 WeightedPriorityQueue (``wpq``) 会根据\
        其优先级处理所有队列，以避免出现饥饿队列。在一部分
-       OSD 负载高于其它的时， WPQ 应该有优势。此配置更改后需\
-       重启。
+       OSD 负载高于其它的时， WPQ 应该有优势。
+       新的、基于 mClock 的 OpClassQueue (``mclock_opclass``)\
+       可针对它们所属的类（ recovery 、 scrub 、 snaptrim 、
+       client op 、 osd subop ）来划分优先级。还有，基于 mClock
+       的 ClientQueue (``mclock_client``) 还能结合客户端标识符\
+       来增进各客户端之间的公平性。见\
+       `基于 mClock 的 QoS`_\ 。此配置更改后需重启。
 
 :类型: String
-:可选值: prio, wpq
+:可选值: prio, wpq, mclock_opclass, mclock_client
 :默认值: ``prio``
 
 
@@ -478,7 +483,267 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 :默认值: ``5``
 
 
+.. QoS Based on mClock
 
+基于 mClock 的 QoS
+------------------
+
+Ceph 对 mClock 的应用仍处于实验阶段，应当以探索心态试用。
+
+
+.. Core Concepts
+
+核心概念
+````````
+
+The QoS support of Ceph is implemented using a queueing scheduler
+based on `the dmClock algorithm`_. This algorithm allocates the I/O
+resources of the Ceph cluster in proportion to weights, and enforces
+the constraints of minimum reservation and maximum limitation, so that
+the services can compete for the resources fairly. Currently the
+*mclock_opclass* operation queue divides Ceph services involving I/O
+resources into following buckets:
+
+- client op: the iops issued by client
+- osd subop: the iops issued by primary OSD
+- snap trim: the snap trimming related requests
+- pg recovery: the recovery related requests
+- pg scrub: the scrub related requests
+
+And the resources are partitioned using following three sets of tags. In other
+words, the share of each type of service is controlled by three tags:
+
+#. reservation: the minimum IOPS allocated for the service.
+#. limitation: the maximum IOPS allocated for the service.
+#. weight: the proportional share of capacity if extra capacity or system
+   oversubscribed.
+
+In Ceph operations are graded with "cost". And the resources allocated
+for serving various services are consumed by these "costs". So, for
+example, the more reservation a services has, the more resource it is
+guaranteed to possess, as long as it requires. Assuming there are 2
+services: recovery and client ops:
+
+- recovery: (r:1, l:5, w:1)
+- client ops: (r:2, l:0, w:9)
+
+The settings above ensure that the recovery won't get more than 5
+requests per second serviced, even if it requires so (see CURRENT
+IMPLEMENTATION NOTE below), and no other services are competing with
+it. But if the clients start to issue large amount of I/O requests,
+neither will they exhaust all the I/O resources. 1 request per second
+is always allocated for recovery jobs as long as there are any such
+requests. So the recovery jobs won't be starved even in a cluster with
+high load. And in the meantime, the client ops can enjoy a larger
+portion of the I/O resource, because its weight is "9", while its
+competitor "1". In the case of client ops, it is not clamped by the
+limit setting, so it can make use of all the resources if there is no
+recovery ongoing.
+
+Along with *mclock_opclass* another mclock operation queue named
+*mclock_client* is available. It divides operations based on category
+but also divides them based on the client making the request. This
+helps not only manage the distribution of resources spent on different
+classes of operations but also tries to insure fairness among clients.
+
+CURRENT IMPLEMENTATION NOTE: the current experimental implementation
+does not enforce the limit values. As a first approximation we decided
+not to prevent operations that would otherwise enter the operation
+sequencer from doing so.
+
+
+.. Subtleties of mClock
+
+mClock 的精妙之处
+`````````````````
+
+The reservation and limit values have a unit of requests per
+second. The weight, however, does not technically have a unit and the
+weights are relative to one another. So if one class of requests has a
+weight of 1 and another a weight of 9, then the latter class of
+requests should get 9 executed at a 9 to 1 ratio as the first class.
+However that will only happen once the reservations are met and those
+values include the operations executed under the reservation phase.
+
+Even though the weights do not have units, one must be careful in
+choosing their values due how the algorithm assigns weight tags to
+requests. If the weight is *W*, then for a given class of requests,
+the next one that comes in will have a weight tag of *1/W* plus the
+previous weight tag or the current time, whichever is larger. That
+means if *W* is sufficiently large and therefore *1/W* is sufficiently
+small, the calculated tag may never be assigned as it will get a value
+of the current time. The ultimate lesson is that values for weight
+should not be too large. They should be under the number of requests
+one expects to ve serviced each second.
+
+
+.. Caveats
+
+注意事项
+````````
+
+There are some factors that can reduce the impact of the mClock op
+queues within Ceph. First, requests to an OSD are sharded by their
+placement group identifier. Each shard has its own mClock queue and
+these queues neither interact nor share information among them. The
+number of shards can be controlled with the configuration options
+``osd_op_num_shards``, ``osd_op_num_shards_hdd``, and
+``osd_op_num_shards_ssd``. A lower number of shards will increase the
+impact of the mClock queues, but may have other deleterious effects.
+
+Second, requests are transferred from the operation queue to the
+operation sequencer, in which they go through the phases of
+execution. The operation queue is where mClock resides and mClock
+determines the next op to transfer to the operation sequencer. The
+number of operations allowed in the operation sequencer is a complex
+issue. In general we want to keep enough operations in the sequencer
+so it's always getting work done on some operations while it's waiting
+for disk and network access to complete on other operations. On the
+other hand, once an operation is transferred to the operation
+sequencer, mClock no longer has control over it. Therefore to maximize
+the impact of mClock, we want to keep as few operations in the
+operation sequencer as possible. So we have an inherent tension.
+
+The configuration options that influence the number of operations in
+the operation sequencer are ``bluestore_throttle_bytes``,
+``bluestore_throttle_deferred_bytes``,
+``bluestore_throttle_cost_per_io``,
+``bluestore_throttle_cost_per_io_hdd``, and
+``bluestore_throttle_cost_per_io_ssd``.
+
+A third factor that affects the impact of the mClock algorithm is that
+we're using a distributed system, where requests are made to multiple
+OSDs and each OSD has (can have) multiple shards. Yet we're currently
+using the mClock algorithm, which is not distributed (note: dmClock is
+the distributed version of mClock).
+
+Various organizations and individuals are currently experimenting with
+mClock as it exists in this code base along with their modifications
+to the code base. We hope you'll share you're experiences with your
+mClock and dmClock experiments in the ceph-devel mailing list.
+
+
+``osd push per object cost``
+
+:描述: 一个推送操作允许的开销。
+:类型: Unsigned Integer
+:默认值: 1000
+
+``osd recovery max chunk``
+
+:描述: 一个恢复操作可携带数据块的最大尺寸。
+:类型: Unsigned Integer
+:默认值: 8 MiB
+
+
+``osd op queue mclock client op res``
+
+:描述: 为客户端操作预留的值。
+:类型: Float
+:默认值: 1000.0
+
+
+``osd op queue mclock client op wgt``
+
+:描述: 客户端操作的权重。
+:类型: Float
+:默认值: 500.0
+
+
+``osd op queue mclock client op lim``
+
+:描述: 客户端操作的上限。
+:类型: Float
+:默认值: 1000.0
+
+
+``osd op queue mclock osd subop res``
+
+:描述: 为 OSD 子操作预留的值。
+:类型: Float
+:默认值: 1000.0
+
+
+``osd op queue mclock osd subop wgt``
+
+:描述: OSD 子操作的权重。
+:类型: Float
+:默认值: 500.0
+
+
+``osd op queue mclock osd subop lim``
+
+:描述: OSD 子操作的上限。
+:类型: Float
+:默认值: 0.0
+
+
+``osd op queue mclock snap res``
+
+:描述: 为快照修剪操作预留的值。
+:类型: Float
+:默认值: 0.0
+
+
+``osd op queue mclock snap wgt``
+
+:描述: 快照修剪操作的权重。
+:类型: Float
+:默认值: 1.0
+
+
+``osd op queue mclock snap lim``
+
+:描述: 快照修剪操作的上限。
+:类型: Float
+:默认值: 0.001
+
+
+``osd op queue mclock recov res``
+
+:描述: 为恢复预留的值。
+:类型: Float
+:默认值: 0.0
+
+
+``osd op queue mclock recov wgt``
+
+:描述: 恢复操作的权重。
+:类型: Float
+:默认值: 1.0
+
+
+``osd op queue mclock recov lim``
+
+:描述: 恢复操作的上限。
+:类型: Float
+:默认值: 0.001
+
+
+``osd op queue mclock scrub res``
+
+:描述: 为洗刷作业预留的值。
+:类型: Float
+:默认值: 0.0
+
+
+``osd op queue mclock scrub wgt``
+
+:描述: 洗刷作业的权重。
+:类型: Float
+:默认值: 1.0
+
+
+``osd op queue mclock scrub lim``
+
+:描述: 洗刷作业的上限。
+:类型: Float
+:默认值: 0.001
+
+.. _the dmClock algorithm: https://www.usenix.org/legacy/event/osdi10/tech/full_papers/Gulati.pdf
+
+
+.. Backfilling
 .. index:: OSD; backfilling
 
 回填
@@ -605,7 +870,7 @@ OSD 们建立连接，这样才能正常工作。详情见\
 ``osd recovery max chunk``
 
 :描述: 一次推送的数据块的最大尺寸。
-:类型: 64-bit Integer Unsigned
+:类型: 64-bit Unsigned Integer
 :默认值: ``8 << 20``
 
 
@@ -715,7 +980,7 @@ OSD 们建立连接，这样才能正常工作。详情见\
 ``osd default notify timeout``
 
 :描述: OSD 默认通告超时，秒。
-:类型: 32-bit Integer Unsigned
+:类型: 32-bit Unsigned Integer
 :默认值: ``30``
 
 

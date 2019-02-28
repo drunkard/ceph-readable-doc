@@ -36,12 +36,17 @@ notice that a link is broken or if you know of a better link, please
 .. _`report it as a bug`: http://tracker.ceph.com/projects/ceph/issues/new
 
 
+.. Essentials (tl;dr)
+
 必备知识
 ========
 
 本章包含必要信息，每个 Ceph 开发者都应该知道。
 
-项目领袖
+
+.. _Leads:
+
+项目领导
 --------
 
 Ceph 项目是由 Sage Weil 领导的。另外，各主要项目组件有自己的领\
@@ -49,16 +54,19 @@ Ceph 项目是由 Sage Weil 领导的。另外，各主要项目组件有自己�
 
 .. _github: https://github.com/
 
-========= =============== =============
-Scope     Lead            GitHub nick
-========= =============== =============
-Ceph      Sage Weil       liewegas
-RADOS     Samuel Just     athanatos
-RGW       Yehuda Sadeh    yehudasa
-RBD       Jason Dillaman  dillaman
-CephFS    John Spray      jcsp
-Build/Ops Ken Dreyer      ktdreyer
-========= =============== =============
+========= ================ =============
+Scope     Lead             GitHub nick
+========= ================ =============
+Ceph      Sage Weil        liewegas
+RADOS     Neha Ojha        neha-ojha
+RGW       Yehuda Sadeh     yehudasa
+RGW       Matt Benjamin    mattbenjamin
+RBD       Jason Dillaman   dillaman
+CephFS    Patrick Donnelly batrick
+Dashboard Lenz Grimmer     LenzGr
+MON       Joao Luis        jecluis
+Build/Ops Ken Dreyer       ktdreyer
+========= ================ =============
 
 上述表格里的 Ceph 专有缩写在 :doc:`/architecture` 里面有解释。
 

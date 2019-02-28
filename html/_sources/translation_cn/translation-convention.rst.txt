@@ -63,6 +63,9 @@
     corruption
         （数据）损坏
 
+    defer delete a block device
+        延期删除一个块设备
+
     delta
         (pg) 增量
 

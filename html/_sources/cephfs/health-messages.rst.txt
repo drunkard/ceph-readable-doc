@@ -1,8 +1,11 @@
+.. CephFS health messages
+.. _cephfs-health-messages:
+
 =================
  CephFS 健康消息
 =================
 
-.. _Cluster health checks:
+.. Cluster health checks
 
 集群健康检查
 ============
