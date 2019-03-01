@@ -4,13 +4,14 @@
  手动部署
 ==========
 
-所有 Ceph 集群都需要至少一个监视器、且 OSD 数量不小于副本数。自举引导初始监视器是\
-部署 Ceph 存储集群的第一步，监视器的部署也为整个集群奠定了重要框架，如存储池副本数、\
-每个 OSD 拥有的归置组数量、心跳周期、是否需认证等，其中大多数选项都有默认值，但是建\
-设生产集群时仍需要您熟知它们。
+所有 Ceph 集群都需要至少一个监视器、且 OSD 数量不小于副本数。\
+自举引导初始监视器是部署 Ceph 存储集群的第一步，监视器的部署\
+也为整个集群奠定了重要框架，如存储池副本数、每个 OSD 拥有的\
+归置组数量、心跳周期、是否需认证等，其中大多数选项都有默认值，\
+但是建设生产集群时仍需要您熟知它们。
 
-按照\ `安装（快速）`_\ 里的相同配置，我们能配置起监视器为 ``node1`` ， OSD 节点为 \
-``node2`` 、 ``node3`` 的集群。
+按照\ `安装（快速）`_\ 里的相同配置，我们能配置起监视器为
+``node1`` ， OSD 节点为 ``node2`` 、 ``node3`` 的集群。
 
 
 
@@ -131,7 +132,7 @@
 
 #. 生成管理员密钥环，生成 ``client.admin`` 用户并加入密钥环。 ::
 
-	sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
+	sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
 
 #. 把 ``client.admin`` 密钥加入 ``ceph.mon.keyring`` 。 ::
 

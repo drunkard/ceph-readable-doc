@@ -122,14 +122,13 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 
 	osd 'profile {name} [pool={pool-name} [namespace={namespace-name}]] [network {network/prefix}]'
 
-- **元数据服务器能力：** 元数据服务器能力比较简单，只需要 \
-  ``allow`` 或者空白，也不会解析更多选项。 ::
+- **元数据服务器能力：** 对于管理员，设置 ``allow *`` 。对于\
+  其它的所有用户，如 CephFS 客户端，参考
+  :doc:`/cephfs/client-auth` 。
 
-	mds 'allow'
-
-.. note:: Ceph 对象网关守护进程（ ``radosgw`` ）是 Ceph 存储集群\
-   的一种客户端，所以它没被表示成一种独立的 Ceph 存储集群守护进程\
-   类型。
+.. note:: Ceph 对象网关守护进程（ ``radosgw`` ）是 Ceph 存储\
+   集群的一种客户端，所以它没被表示成一种独立的 Ceph 存储集群\
+   守护进程类型。
 
 下面描述了各种能力。
 

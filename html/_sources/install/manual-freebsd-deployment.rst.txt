@@ -215,8 +215,8 @@ The procedure is as follows:
 	ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
 
-#. Generate an administrator keyring, generate a ``client.admin`` user and add
-   the user to the keyring. ::
+#. 生成管理员密钥环，生成一个 ``client.admin`` 用户，并把它\
+   加进密钥环。 ::
 
 	sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
 
