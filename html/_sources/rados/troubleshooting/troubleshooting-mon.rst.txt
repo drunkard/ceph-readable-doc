@@ -221,7 +221,7 @@ What if state is ``electing``?
   `时钟偏移`_ for more infos on that. If all your clocks are properly
   synchronized, it is best if you prepare some logs and reach out to the
   community. This is not a state that is likely to persist and aside from
-  (*really*) old bugs there isn't an obvious reason besides clock skews on
+  (*really*) old bugs there is not an obvious reason besides clock skews on
   why this would happen.
 
 What if state is ``synchronizing``?

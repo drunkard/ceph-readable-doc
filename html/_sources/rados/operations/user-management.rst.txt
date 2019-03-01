@@ -349,8 +349,8 @@ save the output to a file. Developers may also execute the following::
 
 	ceph auth export {TYPE.ID}
 
-The ``auth export`` command is identical to ``auth get``, but also prints
-out the internal ``auid``, which isn't relevant to end users.
+``auth export`` 等价于 ``auth get`` ，它还会打印出内部的
+``auid`` ，这东西和终端用户无关。
 
 
 新增用户

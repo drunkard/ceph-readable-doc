@@ -203,11 +203,11 @@ config-key
 
 	ceph config-key dump
 
-子命令 ``put`` 上传配置密钥及其内容。
+子命令 ``set`` 上传配置密钥及其内容。
 
 用法： ::
 
-	ceph config-key put <key> {<val>}
+	ceph config-key set <key> {<val>}
 
 
 df

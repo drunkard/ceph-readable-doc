@@ -148,10 +148,6 @@ OSD 子系统
 
 	ceph osd crush reweight {name} {weight}
 
-创建集群快照。 ::
-
-	ceph osd cluster_snap {name}
-
 把 OSD 标记为丢失，有可能导致永久性数据丢失，慎用！ ::
 
 	ceph osd lost {id} [--yes-i-really-mean-it]
@@ -187,10 +183,6 @@ OSD 子系统
 把 OSD ``{osd-num}`` 标记为数据分布之内（即分配了数据）。 ::
 
 	ceph osd in {osd-num}
-
-列出 Ceph 集群载入的类。 ::
-
-	ceph class list
 
 设置或清空 OSD 运行图里的暂停标记。若设置了，不会有 IO 请求发\
 送到任何 OSD ；用 ``unpause`` 清空此标记会导致重发未决的请求。 ::

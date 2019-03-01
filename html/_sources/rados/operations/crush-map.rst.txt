@@ -253,21 +253,17 @@ without triggering data movement (see :ref:`crush-reclassify`).
 
 .. Weights sets
 
-权重的设置
-----------
+权重集
+------
 
-A *weight set* is an alternative set of weights to use when
-calculating data placement.  The normal weights associated with each
-device in the CRUSH map are set based on the device size and indicate
-how much data we *should* be storing where.  However, because CRUSH is
-based on a pseudorandom placement process, there is always some
-variation from this ideal distribution, the same way that rolling a
-dice sixty times will not result in rolling exactly 10 ones and 10
-sixes.  Weight sets allow the cluster to do a numerical optimization
-based on the specifics of your cluster (hierarchy, pools, etc.) to achieve
-a balanced distribution.
+*权重集*\ 是计算数据归置时使用的另一种集。常规权重与 CRUSH 图\
+内各设备的尺寸相关联，表明哪里\ *应该*\ 存储多少数据。然而，\
+由于 CRUSH 是基于伪随机归置过程，总会各种变数干扰这种理想的\
+分布，道理和掷色子一样，掷 60 次不会正好是 10 个一点、和 10 个\
+六点。权重集可以让集群系统针对特定的集群（层级、存储池、等等）\
+做一些数字上的优化，以实现更均衡的分布。
 
-There are two types of weight sets supported:
+当前支持两种权重集：
 
  #. A **compat** weight set is a single alternative set of weights for
     each device and node in the cluster.  This is not well-suited for
