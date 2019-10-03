@@ -63,6 +63,9 @@
     corruption
         （数据）损坏
 
+    CRUSH map
+        CRUSH 图
+
     defer delete a block device
         延期删除一个块设备
 
@@ -75,6 +78,9 @@
     destroyed
         已销毁；
         OSD 状态，如 ``ceph osd destroy <id>`` 后的状态。
+
+    device class
+        设备类别
 
     down / up
         倒下、倒下了；起来了，活过来了；

@@ -74,9 +74,9 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
 
 	</td></tr></tbody></table>
 
-它可靠性高、管理简单，并且是开源软件。 Ceph 的强大可以改变您公司的 IT 基础架\
-构和海量数据管理能力。想试试 Ceph 的话看\ `入门`_\ 手册；想深入理解可以看\ \
-`体系结构`_\ 一节。
+它可靠性高、管理简单，并且是开源软件。 Ceph 的强大可以改变您\
+公司的 IT 基础架构和海量数据管理能力。想试试 Ceph 的话看\
+`入门`_\ 手册；想深入理解可以看\ `体系结构`_\ 一节。
 
 
 .. _Ceph 对象存储: radosgw
@@ -86,7 +86,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
 .. _体系结构: architecture
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    :hidden:
 
    start/intro
@@ -99,7 +99,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
    mgr/index
    api/index
    architecture
-   开发文档 <dev/index>
+   开发者指南 <dev/developer_guide/index>
    dev/internals
    ceph-volume/index
    releases/index

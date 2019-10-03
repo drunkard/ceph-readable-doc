@@ -379,6 +379,10 @@
 
    能力列表，如 "usage=read, write; user=read" 。
 
+.. option:: --compression=<compression-algorithm>
+
+   归置目的地的压缩算法（ lz4|snappy|zlib|zstd ）
+
 .. option:: --yes-i-really-mean-it
 
    某些特定操作需要。

@@ -403,7 +403,8 @@ Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守
 查看运行时配置
 ==============
 
-如果你的 Ceph 存储集群在运行，而你想看一个在运行进程的配置，用下面的命令： ::
+如果你的 Ceph 存储集群在运行，而你想看一个在运行进程的配置，\
+用下面的命令： ::
 
 	ceph daemon {daemon-type}.{id} config show | less
 

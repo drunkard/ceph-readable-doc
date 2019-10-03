@@ -35,38 +35,35 @@ Ceph 包含一个名为 ``vstart.sh`` 的脚本（还有\ \
 
 	$ MON=1 MDS=1 ../src/vstart.sh -d -n -x
 
-这个系统启动时创建了三个存储池： `cephfs_data` 、 `cephfs_metadata`
-和 `rbd` ，我们看看当前存储池的统计信息：
+这个系统启动时创建了两个存储池： `cephfs_data_a` 和
+`cephfs_metadata_a` ，我们看看当前存储池的统计信息：
 
 .. code::
 
 	$ bin/ceph osd pool stats
 	*** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
-	pool rbd id 0
+	pool cephfs_data_a id 1
 	  nothing is going on
-
-	pool cephfs_data id 1
+	
+	pool cephfs_metadata_a id 2
 	  nothing is going on
-
-	pool cephfs_metadata id 2
-	  nothing is going on
-
-	$ bin/ceph osd pool stats cephfs_data
+	
+	$ bin/ceph osd pool stats cephfs_data_a
 	*** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
-	pool cephfs_data id 1
+	pool cephfs_data_a id 1
 	  nothing is going on
 
-	$ ./rados df
-	pool name       category                 KB      objects       clones     degraded      unfound     rd        rd KB           wr        wr KB
-	rbd             -                          0            0            0            0     0            0            0            0            0
-	cephfs_data     -                          0            0            0            0     0            0            0            0            0
-	cephfs_metadata -                          2           20            0           40     0            0            0           21            8
-	  total used        12771536           20
-	  total avail     3697045460
-	  total space     3709816996
+	$ bin/rados df
+	POOL_NAME         USED OBJECTS CLONES COPIES MISSING_ON_PRIMARY UNFOUND DEGRADED RD_OPS RD WR_OPS WR
+	cephfs_data_a        0       0      0      0                  0       0        0      0  0      0    0
+	cephfs_metadata_a 2246      21      0     63                  0       0        0      0  0     42 8192
+
+	total_objects    21
+	total_used       244G
+	total_space      1180G
 
 
-Make a pool and run some benchmarks against it:
+创建个存储池，并给它做个压力测试：
 
 .. code::
 

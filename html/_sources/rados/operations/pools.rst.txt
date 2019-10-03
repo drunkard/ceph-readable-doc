@@ -266,7 +266,7 @@ true ，否则它会拒绝删除存储池。
 
 .. _setpoolvalues:
 
-.. _Set Pool Values:
+.. Set Pool Values
 
 调整存储池选项值
 ================
@@ -276,6 +276,41 @@ true ，否则它会拒绝删除存储池。
 	ceph osd pool set {pool-name} {key} {value}
 
 你可以设置下列键的值：
+
+
+.. _compression_algorithm:
+
+``compression_algorithm``
+
+:描述: 设置底层 BlueStore 所用的内联压缩算法。此选项会覆盖
+       ``bluestore compression algorithm`` 的\
+       `全局配置 <http://docs.ceph.com/docs/master/rados/configuration/bluestore-config-ref/#inline-compression>`_ 。
+:类型: String
+:有效选项: ``lz4``, ``snappy``, ``zlib``, ``zstd``
+
+
+``compression_mode``
+
+:描述: 设置底层 BlueStore 所用压缩算法的策略。此选项会覆盖
+       ``bluestore compression mode`` 的\
+       `全局配置 <http://docs.ceph.com/docs/master/rados/configuration/bluestore-config-ref/#inline-compression>`_ 。
+:类型: String
+:有效选项: ``none``, ``passive``, ``aggressive``, ``force``
+
+
+``compression_min_blob_size``
+
+:描述: 小于这个的数据块不会被压缩。此选项会覆盖
+       ``bluestore compression min blob *`` 的\
+       `全局配置 <http://docs.ceph.com/docs/master/rados/configuration/bluestore-config-ref/#inline-compression>`_ 。
+:类型: Unsigned Integer
+
+
+``compression_max_blob_size``
+
+:描述: 大于此数值的数据块在压缩前会破碎成尺寸为
+       ``compression_max_blob_size`` 的较小二进制块。
+:类型: Unsigned Integer
 
 
 .. _size:

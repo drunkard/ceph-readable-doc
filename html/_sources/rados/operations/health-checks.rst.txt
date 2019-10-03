@@ -122,29 +122,28 @@ OSD
 OSD_DOWN
 ________
 
-One or more OSDs are marked down.  The ceph-osd daemon may have been
-stopped, or peer OSDs may be unable to reach the OSD over the network.
-Common causes include a stopped or crashed daemon, a down host, or a
-network outage.
+至少有一个 OSD 被标记成了 down 状态，其 ceph-osd 守护进程可能\
+已经停掉了、或者是对端 OSD 与此 OSD 之间的网络不通。常见起因有\
+守护进程停止或崩溃、主机挂了、或者网络中断。
 
-Verify the host is healthy, the daemon is started, and network is
-functioning.  If the daemon has crashed, the daemon log file
-(``/var/log/ceph/ceph-osd.*``) may contain debugging information.
+核实一下此主机是否健康、守护进程是否启动、网络是否正常。如果\
+那个守护进程崩溃了，其守护进程日志文件（
+``/var/log/ceph/ceph-osd.*`` ）里会包含调试信息。
 
 OSD_<crush type>_DOWN
 _____________________
 
-(e.g. OSD_HOST_DOWN, OSD_ROOT_DOWN)
+(例如 OSD_HOST_DOWN, OSD_ROOT_DOWN)
 
-All the OSDs within a particular CRUSH subtree are marked down, for example
-all OSDs on a host.
+某一个 CRUSH 子树里的所有 OSD 都被标记成 down 了，例如一台主机\
+上的所有 OSD 。
 
 OSD_ORPHAN
 __________
 
-An OSD is referenced in the CRUSH map hierarchy but does not exist.
+CRUSH 图分级结构里提到了这个 OSD ，但它并不存在。
 
-The OSD can be removed from the CRUSH hierarchy with::
+CRUSH 图分级结构里的这个 OSD 可以用以下命令删除： ::
 
   ceph osd crush rm osd.<id>
 
@@ -234,7 +233,8 @@ With the exception of *full*, these flags can be set or cleared with::
 OSD_FLAGS
 _________
 
-One or more OSDs has a per-OSD flag of interest set.  These flags include:
+One or more OSDs or CRUSH {nodes,device classes} has a flag of interest set.
+These flags include:
 
 * *noup*: OSD is not allowed to start
 * *nodown*: failure reports for this OSD will be ignored
@@ -243,14 +243,19 @@ One or more OSDs has a per-OSD flag of interest set.  These flags include:
 * *noout*: if this OSD is down it will not automatically be marked
   `out` after the configured interval
 
-Per-OSD flags can be set and cleared with::
+这些标记可以这样批量设置和清除： ::
 
-  ceph osd add-<flag> <osd-id>
-  ceph osd rm-<flag> <osd-id>
+  ceph osd set-group <flags> <who>
+  ceph osd unset-group <flags> <who>
 
-For example, ::
+例如： ::
 
-  ceph osd rm-nodown osd.123
+  ceph osd set-group noup,noout osd.0 osd.1
+  ceph osd unset-group noup,noout osd.0 osd.1
+  ceph osd set-group noup,noout host-foo
+  ceph osd unset-group noup,noout host-foo
+  ceph osd set-group noup,noout class-hdd
+  ceph osd unset-group noup,noout class-hdd
 
 OLD_CRUSH_TUNABLES
 __________________
@@ -443,6 +448,18 @@ is above the *backfillfull* threshold.
 See the discussion for *OSD_BACKFILLFULL* or *OSD_FULL* above for
 steps to resolve this condition.
 
+PG_BACKFILL_FULL
+________________
+
+Data redundancy may be reduced or at risk for some data due to a lack
+of free space in the cluster.  Specifically, one or more PGs has the
+*backfill_toofull* flag set, meaning that the
+cluster is unable to migrate or recover data because one or more OSDs
+is above the *backfillfull* threshold.
+
+See the discussion for *OSD_BACKFILLFULL* above for
+steps to resolve this condition.
+
 PG_DAMAGED
 __________
 
@@ -452,15 +469,15 @@ the cluster.  Specifically, one or more PGs has the *inconsistent* or
 found a problem, or that the *repair* flag is set, meaning a repair
 for such an inconsistency is currently in progress.
 
-See :doc:`pg-repair` for more information.
+详情见 :doc:`pg-repair` 。
 
 OSD_SCRUB_ERRORS
 ________________
 
-Recent OSD scrubs have uncovered inconsistencies. This error is generally
-paired with *PG_DAMAGED* (see above).
+近期的 OSD 洗刷出现了明显不一致的地方。这个错误一般和
+*PG_DAMAGED* （见上文）成对出现。
 
-See :doc:`pg-repair` for more information.
+详情见 :doc:`pg-repair` 。
 
 LARGE_OMAP_OBJECTS
 __________________
@@ -619,6 +636,12 @@ the pool is too large and should be reduced or set to zero with::
   ceph osd pool set <pool-name> target_size_bytes 0
 
 For more information, see :ref:`specifying_pool_target_size`.
+
+TOO_FEW_OSDS
+____________
+
+The number of OSDs in the cluster is below the configurable
+threshold of ``osd_pool_default_size``.
 
 SMALLER_PGP_NUM
 _______________

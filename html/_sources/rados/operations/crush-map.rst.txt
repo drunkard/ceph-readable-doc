@@ -208,40 +208,40 @@ You can view the contents of the rules with::
 
   ceph osd crush rule dump
 
-Device classes
---------------
+  
+.. Device classes
 
-Each device can optionally have a *class* associated with it.  By
-default, OSDs automatically set their class on startup to either
-`hdd`, `ssd`, or `nvme` based on the type of device they are backed
-by.
+设备类别
+--------
 
-The device class for one or more OSDs can be explicitly set with::
+每个设备都可以选择性地关联一个类别 *class* 。默认情况下， OSD
+们在启动时会根据其后端的设备类型自动将其类别设置为 `hdd` 、
+`ssd` 或 `nvme` 。
 
+以下命令可以设置一或多个 OSD 的设备类别： ::
   ceph osd crush set-device-class <class> <osd-name> [...]
 
-Once a device class is set, it cannot be changed to another class
-until the old class is unset with::
+设备类别配置后就不能再更改为另一个类别，得先删掉其旧类别，用\
+命令： ::
 
   ceph osd crush rm-device-class <osd-name> [...]
 
-This allows administrators to set device classes without the class
-being changed on OSD restart or by some other script.
+如此一来，管理员配置设备类别后，就不会被 OSD 重启或其它脚本\
+误改。
 
-A placement rule that targets a specific device class can be created with::
+指向某个特定设备类别的归置规则可以这样创建： ::
 
   ceph osd crush rule create-replicated <rule-name> <root> <failure-domain> <class>
 
-A pool can then be changed to use the new rule with::
+然后，存储池就可以改用新规则了： ::
 
   ceph osd pool set <pool-name> crush_rule <rule-name>
 
-Device classes are implemented by creating a "shadow" CRUSH hierarchy
-for each device class in use that contains only devices of that class.
-Rules can then distribute data over the shadow hierarchy.  One nice
-thing about this approach is that it is fully backward compatible with
-old Ceph clients.  You can view the CRUSH hierarchy with shadow items
-with::
+设备类别的实现是在现有类别之上再创建一个“影子” CRUSH
+分级结构，此类别中只包含了本类别下的设备。这样，各规则就可以\
+通过影子分级结构分发数据了。这个实现方法的好处之一是，它与\
+老的Ceph 客户端们完全向后兼容。 CRUSH 分级结构的影子条目可以\
+这样查看： ::
 
   ceph osd crush tree --show-shadow
 
