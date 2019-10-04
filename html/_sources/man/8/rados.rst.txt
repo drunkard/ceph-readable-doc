@@ -137,7 +137,9 @@
   注： *write* 和 *seq* 必须运行在相同的主机上，否则 *write* \
   所创建对象的名字不能被 *seq* 所接受。
 
-:command:`cleanup`
+:command:`cleanup` [ --run-name *run_name* ] [ --prefix *prefix* ]
+  清理先前的基准测试操作。
+  注意：默认的 run-name 是 ``benchmark_last_metadata``
 
 :command:`listxattr` *name*
   罗列一个对象的所有扩展属性。

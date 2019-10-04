@@ -337,20 +337,19 @@ The *checksum algorithm* can be set either via a per-pool
 内联压缩
 ========
 
-BlueStore supports inline compression using `snappy`, `zlib`, or
-`lz4`. Please note that the `lz4` compression plugin is not
-distributed in the official release.
+BlueStore 支持内联压缩，可用 `snappy` 、 `zlib` 或 `lz4`
+压缩算法。请注意， `lz4` 压缩插件不在官方发布内。
 
 Whether data in BlueStore is compressed is determined by a combination
 of the *compression mode* and any hints associated with a write
 operation.  The modes are:
 
-* **none**: Never compress data.
+* **none**: 永不压缩数据；
 * **passive**: Do not compress data unless the write operation has a
   *compressible* hint set.
 * **aggressive**: Compress data unless the write operation has an
   *incompressible* hint set.
-* **force**: Try to compress data no matter what.
+* **force**: 压缩一切数据。
 
 For more information about the *compressible* and *incompressible* IO
 hints, see :c:func:`rados_set_alloc_hint`.
@@ -371,6 +370,7 @@ set with::
   ceph osd pool set <pool-name> compression_required_ratio <ratio>
   ceph osd pool set <pool-name> compression_min_blob_size <size>
   ceph osd pool set <pool-name> compression_max_blob_size <size>
+
 
 ``bluestore compression algorithm``
 
@@ -398,12 +398,11 @@ set with::
 :有效范围: ``none``, ``passive``, ``aggressive``, ``force``
 :默认值: ``none``
 
+
 ``bluestore compression required ratio``
 
-:描述: The ratio of the size of the data chunk after
-              compression relative to the original size must be at
-              least this small in order to store the compressed
-              version.
+:描述: 为了存得下压缩后的版本，压缩后的数据块尺寸与原始尺寸的\
+       比率必须小于此数值。
 
 :类型: Floating point
 :是否必需: No
