@@ -63,7 +63,9 @@ last ten years.  Key BlueStore features include:
   and for erasure coded pools (which rely on cloning to implement
   efficient two-phase commits).
 
-For more information, see :doc:`bluestore-config-ref` and :doc:`/rados/operations/bluestore-migration`.
+更多信息请看 :doc:`bluestore-config-ref` 和
+:doc:`/rados/operations/bluestore-migration` 。
+
 
 FileStore
 ---------
@@ -83,4 +85,4 @@ recommend that XFS be used.  Both btrfs and ext4 have known bugs and
 deficiencies and their use may lead to data loss.  By default all Ceph
 provisioning tools will use XFS.
 
-For more information, see :doc:`filestore-config-ref`.
+更多信息请看 :doc:`filestore-config-ref` 。

@@ -83,8 +83,7 @@ more data migration than should be necessary, so it is not optimal.
 
      ceph-volume lvm zap $DEVICE
 
-#. Tell the cluster the OSD has been destroyed (and a new OSD can be
-   reprovisioned with the same ID)::
+#. 告诉集群这个 OSD 已销毁（且新的 OSD 可以使用同一 ID ）： ::
 
      ceph osd destroy $ID --yes-i-really-mean-it
 
@@ -188,14 +187,14 @@ jump to step #5 below.
 
      ceph-volume lvm create --bluestore --data /dev/$DEVICE
 
-#. Verify OSDs join the cluster with::
+#. 用此命令核对各 OSD 是否加入集群： ::
 
      ceph osd tree
 
-   You should see the new host ``$NEWHOST`` with all of the OSDs beneath
-   it, but the host should *not* be nested beneath any other node in
-   hierarchy (like ``root default``).  For example, if ``newhost`` is
-   the empty host, you might see something like::
+   你应该能看到这个新主机 ``$NEWHOST`` ，它下面还挂着所有的
+   OSD ，但是这台主机\ *不应该*\ 嵌入分级结构的其它任何节点\
+   （像 ``root default`` ）。例如，假设 ``newhost`` 就是这台\
+   空主机，你可能看到类似的： ::
 
      $ bin/ceph osd tree
      ID CLASS WEIGHT  TYPE NAME     STATUS REWEIGHT PRI-AFF

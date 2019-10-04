@@ -260,11 +260,10 @@ These flags include:
 OLD_CRUSH_TUNABLES
 __________________
 
-The CRUSH map is using very old settings and should be updated.  The
-oldest tunables that can be used (i.e., the oldest client version that
-can connect to the cluster) without triggering this health warning is
-determined by the ``mon_crush_min_required_version`` config option.
-See :ref:`crush-map-tunables` for more information.
+CRUSH 图在使用很老的选项，应该更新它。还能使用（即，可连接此\
+集群的最老客户端版本号）而不会触发此健康告警的最老可调选项由
+``mon_crush_min_required_version`` 配置选项决定。详情见
+ref:`crush-map-tunables` 。
 
 OLD_CRUSH_STRAW_CALC_VERSION
 ____________________________

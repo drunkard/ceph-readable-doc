@@ -187,6 +187,11 @@
     link (bucket)
         链接（桶到用户）
 
+    live migration
+        在线迁移
+
+        RBD 术语。
+
     manpage
         手册页
 
@@ -226,6 +231,12 @@
 
         界期保存着组界当前状态的配置数据结构。每个界期都包含一个唯一标识符和一\
         个时间结（ epoch )，每个提交操作都会使界期的时间结递增。
+
+    persistent cache
+        持久缓存
+
+        RBD 术语。父映像的缓存，只读的。
+
 
     pin, pinning
         销子，插入

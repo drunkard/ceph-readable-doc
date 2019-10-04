@@ -314,13 +314,29 @@ rbd-mirror 守护进程
 
 .. important:: 每个 ``rbd-mirror`` 守护进程都要求能同时连接两\
    边的集群。
-.. warning:: 每个 Ceph 集群只能运行一个 ``rbd-mirror`` 守护进\
-   程。以后的 Ceph 版本会支持 ``rbd-mirror`` 守护进程的横向扩\
-   展。
+.. warning:: 小于 Luminous 的版本：每个 Ceph 集群只能运行一个
+   ``rbd-mirror`` 守护进程。
+
+每个 ``rbd-mirror`` 守护进程都应该使用唯一的 Ceph 用户 ID 。\
+要\ `_创建一个 Ceph 用户`\ ，用 ``ceph`` 命令，加上
+``auth get-or-create`` 、用户名、监视器能力、和 OSD 能力： ::
+
+  ceph auth get-or-create client.rbd-mirror.{unique id} mon 'profile rbd-mirror' osd 'profile rbd'
+
+``rbd-mirror`` 守护进程可以用 ``systemd`` 管理，用户 ID 作为\
+守护进程例程： ::
+
+  systemctl enable ceph-rbd-mirror@rbd-mirror.{unique id}
+
+``rbd-mirror`` 也能放在前台运行，命令如下： ::
+
+  rbd-mirror -f --log-file={log_path}
+
 
 .. _rbd: ../../man/8/rbd
 .. _ceph-conf: ../../rados/configuration/ceph-conf/#running-multiple-clusters
 .. _显式地开启: #enable-image-mirroring
 .. _强制重新同步命令: #force-image-resync
 .. _降级此映像: #image-promotion-and-demotion
+.. _创建一个 Ceph 用户: ../../rados/operations/user-management#add-a-user
 

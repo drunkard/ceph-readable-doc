@@ -24,42 +24,33 @@
 准备工作
 ========
 
-所有 Ceph 部署都需要 Ceph 软件包（除非是开发），你应该安装相应的\
-密钥和推荐的软件包。
+所有 Ceph 部署都需要 Ceph 软件包（除非是开发），你应该安装\
+相应的密钥和推荐的软件包。
 
-- **密钥：（推荐）** 不管你是用仓库还是手动下载，你都需要用密钥\
-  校验软件包。如果你没有密钥，就会收到安全警告。有两个密钥：一个\
-  用于发布（常用）、一个用于开发（仅适用于程序员和 QA ），请按需\
-  选择，详情见\ `安装密钥`_\ 。
+- **密钥：（推荐）** 不管你是用仓库还是手动下载，你都需要用\
+  密钥校验软件包。如果你没有密钥，就会收到安全警告。详情见\
+  `安装密钥`_\ 。
 
-- **Ceph:（必要）** 所有 Ceph 部署都需要 Ceph 发布的软件包，除非\
-  你部署开发版软件包（仅有开发版、 QA 、和尖端部署）。详情见\ \
-  `添加 Ceph 库`_\ 。
+- **Ceph:（必要）** 所有 Ceph 部署都需要 Ceph 发布的软件包，\
+  除非你部署开发版软件包（仅有开发版、 QA 、和尖端部署）。\
+  详情见\ `添加 Ceph 库`_\ 。
 
-- **Ceph Development:（可选）** 如果你在做 Ceph 开发、为 Ceph 做\
-  构建测试、或者急需开发版中的尖端功能，可以安装开发版软件包，详\
-  情见 `添加 Ceph 开发库`_ 。
-
-- **Apache/FastCGI:（可选）** 如果你想部署 \
-  :term:`Ceph 对象存储`\ 服务，那么必须安装 Apache 和 FastCGI 。 \
-  Ceph 库提供的 Apache 和 FastCGI 二进制包和来自 Apache 的是一样\
-  的，但它打开了 100-continue 支持。如果你想启用 \
-  :term:`Ceph 对象网关`\ 、且支持 100-continue ，那必须从 Ceph \
-  库下载 Apache/FastCGI 软件包。详情见\ `添加 Apache/CGI 源`_\ 。
+- **Ceph Development:（可选）** 如果你在做 Ceph 开发、为 Ceph
+  做构建测试、或者急需开发版中的尖端功能，可以安装开发版\
+  软件包，详情见 `添加 Ceph 开发库`_ 。
 
 如果你想手动下载二进制包，请参考\ `下载软件包`_\ 。
 
 
-.. _Add Keys:
+.. Add Keys
 
 安装密钥
 ========
 
 把密钥加入你系统的可信密钥列表内，以消除安全告警。对主要发行版\
-（如 ``hammer`` 、 ``jewel`` ）和开发版（如 \
+（如 ``luminous`` 、 ``mimic`` 、 ``nautilus`` ）和开发版（如 \
 ``release-name-rc1`` 、 ``release-name-rc2`` ）应该用 \
-``release.asc`` 密钥；开发中的测试版应使用 ``autobuild.asc`` \
-密钥（开发者和 QA ）。
+``release.asc`` 密钥。
 
 
 APT
@@ -69,11 +60,6 @@ APT
 
 	wget -q -O- 'https://download.ceph.com/keys/release.asc' | sudo apt-key add -
 
-执行下列命令安装 ``autobuild.asc`` 密钥（仅适用于 QA 和开发\
-者）： ::
-
-	wget -q -O- 'https://download.ceph.com/keys/autobuild.asc' | sudo apt-key add -
-
 
 RPM
 ---
@@ -82,18 +68,14 @@ RPM
 
 	sudo rpm --import 'https://download.ceph.com/keys/release.asc'
 
-执行下列命令安装 ``autobuild.asc`` 密钥（仅对 QA 和开发者）： ::
-
-	sudo rpm --import 'https://download.ceph.com/keys/autobuild.asc'
-
 
 .. _Add Ceph:
 
 添加 Ceph 库
 ============
 
-发布库用 ``release.asc`` 公钥校验软件包。要通过 APT 或 YUM 安装 \
-Ceph 二进制包，必须先配置库。
+发布库用 ``release.asc`` 公钥校验软件包。要通过 APT 或 YUM
+安装 Ceph 二进制包，必须先配置库。
 
 适合 Debian/Ubuntu 的包位于： ::
 
@@ -109,18 +91,16 @@ Ceph 的主要版本都汇总到了 :ref:`ceph-releases`\ 。
 植到 LTS 版，直到它退役。退役版本不再维护，所以我们建议用户们\
 定期升级集群——最好升级到最新的 LTS 版。
 
-最新的 LTS 版是 Jewel (10.2.x) 。
-
-.. tip:: 对国际用户来说，你也许可以从比较近的镜像下载 Ceph 。\
-   请参考 `Ceph 镜像`_\ 。
+.. tip:: 对不在美国的用户来说，你也许可以从比较近的镜像下载
+   Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
 Debian 二进制包
 ---------------
 
-把 Ceph 库加入系统级 APT 源列表。在较新版本的 Debian/Ubuntu 上，\
-用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换下列命令\
-里的 ``{codename}`` 。 ::
+把 Ceph 库加入系统级 APT 源列表。在较新版本的 Debian/Ubuntu
+上，用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换\
+下列命令里的 ``{codename}`` 。 ::
 
 	sudo apt-add-repository 'deb https://download.ceph.com/debian-jewel/ {codename} main'
 
@@ -128,9 +108,9 @@ Debian 二进制包
 
 	echo deb https://download.ceph.com/debian-jewel/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-对于早期 Ceph 发布，可用 Ceph 发布名替换 ``{release-name}`` 。用\
-命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换下列命令里\
-的 ``{codename}`` 。 ::
+对于早期 Ceph 发布，可用 Ceph 发布名替换 ``{release-name}`` 。\
+用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换下列\
+命令里的 ``{codename}`` 。 ::
 
 	sudo apt-add-repository 'deb https://download.ceph.com/debian-{release-name}/ {codename} main'
 
@@ -149,8 +129,8 @@ https://download.ceph.com/packages/google-perftools/debian 。 ::
 
 	echo deb https://download.ceph.com/debian-testing/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-.. tip:: 对国际用户来说，你也许可以从比较近的镜像下载 Ceph 。\
-   请参考 `Ceph 镜像`_\ 。
+.. tip:: 对不在美国的用户来说，你也许可以从比较近的镜像下载
+   Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
 RPM 二进制包
@@ -188,34 +168,6 @@ https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
 	gpgcheck=1
 	gpgkey=https://download.ceph.com/keys/release.asc
 
-
-如果想用开发版，你也可以用相应配置： ::
-
-	[ceph]
-	name=Ceph packages for $basearch/$releasever
-	baseurl=https://download.ceph.com/rpm-testing/{distro}/$basearch
-	enabled=1
-	priority=2
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/release.asc
-
-	[ceph-noarch]
-	name=Ceph noarch packages
-	baseurl=https://download.ceph.com/rpm-testing/{distro}/noarch
-	enabled=1
-	priority=2
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/release.asc
-
-	[ceph-source]
-	name=Ceph source packages
-	baseurl=https://download.ceph.com/rpm-testing/{distro}/SRPMS
-	enabled=0
-	priority=2
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/release.asc
-
-
 对于某些包，你可以通过名字直接下载。按照我们的开发进度，每 3-4
 周会发布一次。这些包的变动比主要发布频繁，开发版会迅速地集成新\
 功能，然而这些新功能需要几周时间的质检才会发布。
@@ -230,128 +182,69 @@ https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
 
 	https://download.ceph.com/rpm-testing
 
-.. tip:: 对国际用户来说，你也许可以从比较近的镜像下载 Ceph 。\
-   请参考 `Ceph 镜像`_\ 。
+.. tip:: 对于不在美国的用户来说，你也许可以从比较近的镜像下载
+   Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
-.. _Add Ceph Development:
+.. Add Ceph Development
 
 添加 Ceph 开发库
 ================
 
-开发库用 ``autobuild.asc`` 密钥校验软件包。如果你在参与 Ceph
-开发，想要部署并测试某个分支，确保先删除（或禁用）主要版本库\
-的配置文件。
+如果你在参与 Ceph 开发，想要部署并测试某个分支，确保先删除\
+主版本库的配置文件。
 
 
-Debian 二进制包
---------------- 
+DEB 二进制包
+------------ 
 
-我们自动为 Debian 和 Ubuntu 构建 Ceph 当前分支的二进制包，这\
+我们自动为 Ubuntu 构建 Ceph 当前开发分支的二进制包，这\
 些包只适合开发者和质检人员。
 
-把此仓库加入 APT 源，用你要测试的分支名（如 chef-3 、 wip-hack 、 \
-master ）替换 ``{BRANCH}`` 。我们所构建的完整分支列表在 \
-`the gitbuilder page`_ 。 ::
+把此仓库加进你的 APT 源，用你要测试的分支名（如 wip-hack 、 \
+master ）替换 ``{BRANCH}`` 。我们所构建发布的完整列表在 \
+`shaman 网页`\ 。 ::
 
-	echo deb http://gitbuilder.ceph.com/ceph-deb-$(lsb_release -sc)-x86_64-basic/ref/{BRANCH} $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+    curl -L https://shaman.ceph.com/api/repos/ceph/{BRANCH}/latest/ubuntu/$(lsb_release -sc)/repo/ | sudo tee /etc/apt/sources.list.d/shaman.list
+
+.. note:: 如果某个仓库还没准备好，你就会遇到 HTTP 504 。
+
+上面 URL 里用了 ``latest`` ，它用来指示本次构建的最后一个\
+提交。另外，还能指定某个特定的 sha1 号码。要给 Ubuntu Xenial
+构建 Ceph 的 master 分支，命令如下： ::
+
+    curl -L https://shaman.ceph.com/api/repos/ceph/master/53e772a45fdf2d211c0c383106a66e1feedec8fd/ubuntu/xenial/repo/ | sudo tee /etc/apt/sources.list.d/shaman.list
+
+.. warning:: 两周后开发库就不再可用了。
 
 
 RPM 二进制包
 ------------
 
 对于当前开发分支，你可以在 ``/etc/yum.repos.d/`` 目录下创建 \
-``ceph.repo`` 文件，内容如下，用你的 Linux 发行版名字（ ``el7``
-等）替换 ``{distro}`` 、用你想安装的分支名替换 ``{branch}`` 。 ::
+Ceph 条目。你可以从 `shaman 网页`\ 获取软件库文件的所有细节，\
+可以通过 HTTP 请求获取，例如： ::
 
-	[ceph-source]
-	name=Ceph source packages
-	baseurl=http://gitbuilder.ceph.com/ceph-rpm-{distro}-x86_64-basic/ref/{branch}/SRPMS
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/autobuild.asc
+    curl -L https://shaman.ceph.com/api/repos/ceph/{BRANCH}/latest/centos/7/repo/ | sudo tee /etc/yum.repos.d/shaman.repo
 
+上面 URL 里用了 ``latest`` ，它用来指示本次构建的最后一个\
+提交。另外，还能指定某个特定的 sha1 号码。要给 CentOS 7
+构建 Ceph 的 master 分支，命令如下： ::
 
-你可以到 http://gitbuilder.ceph.com 查看 Ceph 支持哪些发行版。
+    curl -L https://shaman.ceph.com/api/repos/ceph/master/53e772a45fdf2d211c0c383106a66e1feedec8fd/centos/7/repo/ | sudo tee /etc/apt/sources.list.d/shaman.list
 
+.. warning:: 两周后开发库就不再可用了。
 
-.. _Add Apache/FastCGI:
-
-添加 Apache/CGI 源
-==================
-
-Ceph 对象存储与普通的 Apache 和 FastCGI 库对接，只是 Ceph 要求 \
-Apache 和 FastCGI 支持 100-continue 功能。请配置相应的软件库，\
-以使用对应的 Apache 和 FastCGI 包。
+.. note:: 如果某个仓库还没准备好，你就会遇到 HTTP 504 。
 
 
-Debian 二进制包
----------------
-
-如果想要 100-continue 功能，请把我们的源加入 APT 源列表。 ::
-
-	echo deb http://gitbuilder.ceph.com/apache2-deb-$(lsb_release -sc)-x86_64-basic/ref/master $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph-apache.list
-	echo deb http://gitbuilder.ceph.com/libapache-mod-fastcgi-deb-$(lsb_release -sc)-x86_64-basic/ref/master $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph-fastcgi.list
-
-
-RPM 二进制包
-------------
-
-你可以在 ``/etc/yum.repos.d/`` 目录下创建 ``ceph-apache.repo``
-文件，内容如下，用你的 Linux 发行版名字（如 ``el7`` ）替换
-``{distro}`` ， http://gitbuilder.ceph.com 列出了支持的发行版。 ::
-
-	[apache2-ceph-noarch]
-	name=Apache noarch packages for Ceph
-	baseurl=http://gitbuilder.ceph.com/apache2-rpm-{distro}-x86_64-basic/ref/master
-	enabled=1
-	priority=2
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/autobuild.asc
-
-	[apache2-ceph-source]
-	name=Apache source packages for Ceph
-	baseurl=http://gitbuilder.ceph.com/apache2-rpm-{distro}-x86_64-basic/ref/master
-	enabled=0
-	priority=2
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/autobuild.asc
-
-
-仿照前述步骤创建 ``ceph-fastcgi.repo`` 文件。 ::
-
-	[fastcgi-ceph-basearch]
-	name=FastCGI basearch packages for Ceph
-	baseurl=http://gitbuilder.ceph.com/mod_fastcgi-rpm-{distro}-x86_64-basic/ref/master
-	enabled=1
-	priority=2
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/autobuild.asc
-
-	[fastcgi-ceph-noarch]
-	name=FastCGI noarch packages for Ceph
-	baseurl=http://gitbuilder.ceph.com/mod_fastcgi-rpm-{distro}-x86_64-basic/ref/master
-	enabled=1
-	priority=2
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/autobuild.asc
-
-	[fastcgi-ceph-source]
-	name=FastCGI source packages for Ceph
-	baseurl=http://gitbuilder.ceph.com/mod_fastcgi-rpm-{distro}-x86_64-basic/ref/master
-	enabled=0
-	priority=2
-	gpgcheck=1
-	gpgkey=https://download.ceph.com/keys/autobuild.asc
-
-
-.. _Download Packages:
+.. Download Packages
 
 下载软件包
 ==========
 
-如果你位于防火墙之内，不能访问互联网，那你必须先下载齐所需软件包\
-（镜像所有依赖）。
+如果你位于防火墙之内，不能访问互联网，那你必须先下载齐所需\
+软件包（镜像所有依赖）。
 
 
 Debian 二进制包
@@ -414,5 +307,5 @@ Ceph 依赖下列包：
 
 .. _安装 Ceph 对象存储: ../install-storage-cluster
 .. _Debian 测试版软件库: https://download.ceph.com/debian-testing/dists
-.. _the gitbuilder page: http://gitbuilder.ceph.com
+.. _shaman 网页: https://shaman.ceph.com
 .. _Ceph 镜像: ../mirrors

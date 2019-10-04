@@ -96,7 +96,7 @@
 
 .. _存储集群入门: ../quick-ceph-deploy
 .. _创建一个存储池: ../../rados/operations/pools/#create-a-pool
-.. _块设备: ../../rbd/rbd
+.. _块设备: ../../rbd
 .. _FAQ: http://wiki.ceph.com/How_Can_I_Give_Ceph_a_Try
 .. _操作系统推荐: ../os-recommendations
 .. _rbdmap 手册页: ../../man/8/rbdmap

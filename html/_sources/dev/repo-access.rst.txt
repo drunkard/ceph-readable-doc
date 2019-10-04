@@ -1,28 +1,29 @@
 Notes on Ceph repositories
 ==========================
 
-Special branches
-----------------
+.. Special branches
+
+特殊分支
+--------
 
 * ``master``: current tip (integration branch)
-* ``next``: pending release (feature frozen, bugfixes only)
-* ``last``: last/previous release
-* ``dumpling``, ``cuttlefish``, ``bobtail``, ``argonaut``, etc.: stable release branches
-* ``dumpling-next``: backports for stable release, pending testing
+* 与 :ref:`ceph-releases` 中罗列的版本相对应的发布分支（比如 ``luminous`` ）。
 
-Rules
------
 
-The source repos are all on github.
+.. Rules
 
-* Any branch pushed to ceph.git will kick off builds that will either
-  run unit tests or generate packages for gitbuilder.ceph.com.  Try
+规则
+----
+
+源码库全都在 github 上。
+
+* Any branch pushed to ceph-ci.git will kick off builds that will
+  generate packages and repositories on shaman.ceph.com. Try
   not to generate unnecessary load.  For private, unreviewed work,
   only push to branches named ``wip-*``.  This avoids colliding with
   any special branches.
 
-* Nothing should every reach a special branch unless it has been
-  reviewed.
+* 特殊分支不应该合并未经重审的东西；
 
 * Preferred means of review is via github pull requests to capture any
   review discussion.

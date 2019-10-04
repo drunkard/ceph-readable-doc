@@ -80,7 +80,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
 
 
 .. _Ceph 对象存储: radosgw
-.. _Ceph 块设备: rbd/rbd
+.. _Ceph 块设备: rbd
 .. _Ceph 文件系统: cephfs
 .. _入门: start
 .. _体系结构: architecture
@@ -94,7 +94,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
    install/index
    rados/index
    cephfs/index
-   rbd/rbd
+   rbd/index
    radosgw/index
    mgr/index
    api/index
