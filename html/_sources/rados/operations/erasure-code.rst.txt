@@ -1,4 +1,5 @@
 .. Erasure code
+.. _ecpool:
 
 ========
  纠删码

@@ -18,21 +18,21 @@ Ceph 对象网关支持部分 Amazon S3 桶策略语义。
 
 比如，用 s3cmd 可以这样设置或删除策略： ::
 
-    $ cat > examplepol
-    {
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"AWS": ["arn:aws:iam::usfolks:user/fred"]},
-            "Action": "s3PutObjectAcl",
-            "Resource": [
-                "arn:aws:s3:::happybucket/*"
-            ]
-        }]
-    }
+  $ cat > examplepol
+  {
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": {"AWS": ["arn:aws:iam::usfolks:user/fred"]},
+      "Action": "s3:PutObjectAcl",
+      "Resource": [
+        "arn:aws:s3:::happybucket/*"
+      ]
+    }]
+  }
 
-    $ s3cmd setpolicy examplepol s3://happybucket
-    $ s3cmd delpolicy s3://happybucket
+  $ s3cmd setpolicy examplepol s3://happybucket
+  $ s3cmd delpolicy s3://happybucket
 
 
 .. Limitations
@@ -149,8 +149,8 @@ ID 用。
 |                       | s3:x-amz-grant-<perm>|                |
 +-----------------------+----------------------+----------------+
 
-.. _tag_policy:
 .. Object Related Operations
+.. _tag_policy:
 
 与对象相关的操作
 ~~~~~~~~~~~~~~~~

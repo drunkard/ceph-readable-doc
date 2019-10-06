@@ -1,3 +1,5 @@
+.. _hardware-recommendations:
+
 ==========
  硬件推荐
 ==========

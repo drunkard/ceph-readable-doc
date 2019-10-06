@@ -154,6 +154,12 @@
 :command:`rmxattr` *name* *attr*
   删除某一对象的扩展属性 *attr* 。
 
+:command:`stat` *name*
+  获取指定对象的 stat 信息（即 mtime 、 size ）。
+
+:command:`stat2` *name*
+  获取指定对象的 stat 信息（与 stat 类似，但是时间精度更高）。
+
 :command:`listomapkeys` *name*
   罗列 name 对象的对象映射图内存储的所有键。
 

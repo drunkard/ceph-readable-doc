@@ -167,11 +167,29 @@ Civetweb 要求服务器密钥、服务器证书、以及其它 CA 或者中间�
 书都在同一个文件里，而且它们都必须是 `pem` 格式。这个整合的\
 文件包含了密钥，所以应该把它保护起来，防止未经授权的访问。
 
-要启用 SSL ，在端口号后面加 ``s`` （当前的 radosgw 还不能同\
-时支持 http 和 https ，你必须二选一。）如： ::
+要启用 SSL ，在端口号后面加 ``s`` 。如： ::
 
         [client.rgw.gateway-node1]
         rgw_frontends = civetweb port=443s ssl_certificate=/etc/ceph/private/keyandcert.pem
+
+.. versionadded:: Luminous
+
+此外， civetweb 还能配置为绑定多个端口，在配置时用 ``+`` 分隔\
+多个端口号即可。如此一来，单个 rgw 例程就能满足需要同时开放
+SSL 和非 SSL 连接的场景。例如： ::
+
+        [client.rgw.gateway-node1]
+        rgw_frontends = civetweb port=80+443s ssl_certificate=/etc/ceph/private/keyandcert.pem
+
+
+.. Additional Civetweb Configuration Options
+
+额外的 Civetweb 配置选项
+------------------------
+
+还有些额外配置选项可用来调整嵌入式的 Civetweb 网页服务器，位于
+``ceph.conf`` 文件的 **Ceph 对象网关**\ 一节。
+支持的选项、包括例子，都在 `HTTP 前端`_\ 里。
 
 
 从 Apache 迁移到 Civetweb
@@ -610,3 +628,4 @@ swift 访问可用下列命令验证： ::
 
 
 .. _飞前检查:  ../../start/quick-start-preflight
+.. _HTTP 前端: ../../radosgw/frontends

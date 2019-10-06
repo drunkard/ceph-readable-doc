@@ -161,7 +161,7 @@ email addresses, display names and access levels. For example::
 
 To modify subuser values, specify ``subuser modify`` and the subuser ID. For example::
 
-	radosgw-admin subuser modify --uid=johndoe:swift --access=full
+	radosgw-admin subuser modify --uid=johndoe --subuser=johndoe:swift --access=full
 
 
 .. _User Enable/Suspend:
@@ -235,8 +235,8 @@ ID ： ::
 - ``--key-type=<type>`` 指定密钥类型，选项有： s3 、 swift ；
 - ``--access-key=<key>`` 手动指定 S3 的访问密钥；
 - ``--secret-key=<key>`` 手动指定 S3 私钥或者 Swift 私钥；
-- ``--gen-access-key`` 自动生成 S3 访问密钥；
-- ``--gen-secret`` 自动生成一个 S3 私钥或 Swift 私钥。
+- ``--gen-access-key`` 自动生成随机的 S3 访问密钥；
+- ``--gen-secret`` 自动生成一个随机的 S3 私钥或随机的 Swift 私钥。
 
 给用户人为指定 S3 密钥对的实例如下： ::
 

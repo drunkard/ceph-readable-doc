@@ -73,10 +73,13 @@ MDS 活跃集群的扩容
 说，你必须有至少 max_mds 个 MDS 守护进程可用。
 
 首先，把 max_mds 设置为较小的数字，比如我们想回到单活 MDS ： ::
-    
+
     # fsmap e9: 2/2/2 up {0=a=up:active,1=c=up:active}, 1 up:standby
-    ceph fs set max_mds 1
-    # fsmap e10: 2/2/1 up {0=a=up:active,1=c=up:active}, 1 up:standby
+    ceph fs set <fs_name> max_mds 1
+    # fsmap e10: 2/2/1 up {0=a=up:active,1=c=up:stopping}, 1 up:standby
+    # fsmap e10: 2/2/1 up {0=a=up:active,1=c=up:stopping}, 1 up:standby
+    ...
+    # fsmap e10: 1/1/1 up {0=a=up:active}, 2 up:standby
 
 注意，此时我们仍然有两个活跃 MDS ，即使降低了 max_mds 两个 rank
 还都在，因为 max_mds 只能限制新 rank 的创建。

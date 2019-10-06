@@ -534,19 +534,19 @@ osd
 	ceph osd create {<uuid>} {<id>}
 
 
-子命令 ``new`` 可用来创建新 OSD 或者重新创建以前销毁的 OSD ，\
-需指定 *id* ；这个新 OSD 会用指定的 *uuid* ，此命令还需指定一\
-个 JSON 文件，其内有认证实体 *client.osd.<id>* 的 base64 编码
-cephx 密钥；还有些可选项，如访问 dm-crypt 密码箱的 base64 编码
-cephx 密钥、和一个 dm-crypt 密钥。指定 dm-crypt 密钥时，还必须\
-同时指定密码箱的 cephx 密钥。
+子命令 ``new`` 可用来创建新 OSD 或者重新创建之前销毁的已经\
+分配过 *id* 的 OSD ；这个新 OSD 会用指定的 *uuid* ，此命令\
+还需指定一个 JSON 文件，其内有认证实体 *client.osd.<id>* 的
+base64 编码 cephx 密钥；还有些可选项，如访问 dm-crypt 密码箱的
+base64 编码 cephx 密钥、和一个 dm-crypt 密钥。指定 dm-crypt
+密钥时，还必须同时指定密码箱的 cephx 密钥。
 
 用法： ::
 
     ceph osd new {<uuid>} {<id>} -i {<params.json>}
 
-JSON 文件内的参数是可选的，但是如果设置了，就必须是下面的几种\
-格式之一： ::
+JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下面的\
+几种格式之一： ::
 
     {
         "cephx_secret": "AQBWtwhZdBO5ExAAIDyjK2Bh16ZXylmzgYYEjg==",

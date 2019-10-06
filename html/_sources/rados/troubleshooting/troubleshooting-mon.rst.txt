@@ -44,20 +44,18 @@ calm down, take a breath and try answering our initial troubleshooting script.
 
 **ceph -s 没完成是什么情况？**
 
-  If you haven't gone through all the steps so far, please go back and do.
+  如果你还没跑通所有步骤，先回去做完。
 
-  For those running on Emperor 0.72-rc1 and forward, you will be able to
-  contact each monitor individually asking them for their status, regardless
-  of a quorum being formed. This an be achieved using ``ceph ping mon.ID``,
-  ID being the monitor's identifier. You should perform this for each monitor
-  in the cluster. In section `理解 mon_status`_ we will explain how
-  to interpret the output of this command.
+  如果你在用 Emperor 0.72-rc1 或更高版本，不管是否达成\
+  法定人数，你都可以单独地连接到各个监视器去询问其状态。命令\
+  是 ``ceph ping mon.ID`` ，其中 ID 是监视器的标识符，它是\
+  针对集群内单个监视器的命令。在\ `理解 mon_status`_ 小节中，\
+  我们将会解读此命令的输出。
 
-  For the rest of you who don't tread on the bleeding edge, you will need to
-  ssh into the server and use the monitor's admin socket. Please jump to
-  `使用监视器的管理套接字`_.
+  至于其余没有紧跟前沿的人，就得 ssh 登录到那台服务器然后用\
+  监视器的管理套接字查询。请参看\ `使用监视器的管理套接字`_\ 。
 
-For other specific issues, keep on reading.
+要是还有其他特殊问题，继续往下看。
 
 
 使用监视器的管理套接字

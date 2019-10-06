@@ -171,11 +171,24 @@
         and it's up to the upper layer to schedule this operation.
         e.g., log intent in intent log
 
+    iSCSI initiator
+        <不翻译>
+
+        iSCSI 启动器，相当于客户端，由它向 iSCSI target 发起连接。
+
+    iSCSI target
+        <不翻译>
+
+        相当于服务器、硬盘的代理，处理 iSCSI initiator 的连接。
+
     keystone
         <不翻译>
 
         Keystone 是 OpenStack 项目的子项目，提供身份识别、令牌、目录和策略服\
         务。实现了 OpenStack 的身份识别 API 。
+
+    kvstore
+        <键值存储，不翻译>
 
     laggy (osd)
     laggy estimation
@@ -427,7 +440,9 @@
 
     zonegroup map
     zone group map
-        域组映射图，是个配置的数据结构，它保存着整个系统的映射图，也就是哪个域\
+        域组映射图
+
+        是个配置的数据结构，它保存着整个系统的映射图，也就是哪个域\
         组是主的、各个域组间的关系、以及其它可配置信息，如存储策略。
 
 

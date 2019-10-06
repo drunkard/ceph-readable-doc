@@ -77,8 +77,8 @@ able to store and later re-discover and query devices associated with OSDs so
 that they can later activated. This includes support for lvm-based technologies
 like dm-cache as well.
 
-For ``ceph-volume``, the use of dm-cache is transparent, there is no difference
-for the tool, and it treats dm-cache like a plain logical volume.
+对 ``ceph-volume`` 来说， dm-cache 的使用是透明的，对这个工具\
+来说没什么不一样的地方，它把 dm-cache 当作一般的逻辑卷。
 
 LVM performance penalty
 -----------------------

@@ -1,17 +1,20 @@
+.. _file-layouts:
+
 文件布局
 ========
 
-文件布局可控制如何把文件内容映射到各 Ceph RADOS 对象，你可以用\ \
-*虚拟扩展属性*\ 或 xattrs 来读、写某一文件的布局。
+文件布局可控制如何把文件内容映射到各 Ceph RADOS 对象，你可以\
+用\ *虚拟扩展属性*\ 或 xattrs 来读、写某一文件的布局。
 
-布局 xattrs 的名字取决于此文件是常规文件还是目录，常规文件的布局 xattrs 叫\
-作 ``ceph.file.layout`` 、目录的布局 xattrs 叫作 ``ceph.dir.layout`` 。因此\
-后续实例中若用的是 ``ceph.file.layout`` ，处理目录时就要替换为 ``dir`` 。
+布局 xattrs 的名字取决于此文件是常规文件还是目录，常规文件的\
+布局 xattrs 叫作 ``ceph.file.layout`` 、目录的布局 xattrs 叫作
+``ceph.dir.layout`` 。因此后续实例中若用的是
+``ceph.file.layout`` ，处理目录时就要替换为 ``dir`` 。
 
 .. tip::
 
-    你的 Linux 发行版也许默认没提供操作 xattrs 的命令，所需软件包通常是 \
-    ``attr`` 。
+    你的 Linux 发行版也许默认没提供操作 xattrs 的命令，所需\
+    软件包通常是 ``attr`` 。
 
 
 布局字段

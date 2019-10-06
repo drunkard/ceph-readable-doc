@@ -1,3 +1,5 @@
+.. _configuring-ceph:
+
 ===========
  配置 Ceph
 ===========

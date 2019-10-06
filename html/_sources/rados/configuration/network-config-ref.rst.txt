@@ -159,7 +159,7 @@ OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址
 .. code-block:: ini
 
 	[global]
-		...
+		# ... elided configuration
 		public network = {public-network/netmask}
 
 
@@ -172,7 +172,7 @@ OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址
 .. code-block:: ini
 
 	[global]
-		...
+		# ... elided configuration
 		cluster network = {cluster-network/netmask}
 
 为安全起见，从公共网或互联网到集群网应该是\ **不可达**\ 的。

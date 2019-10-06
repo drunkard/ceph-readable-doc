@@ -17,6 +17,8 @@ RBD 映像可在两个 Ceph 集群间异步地镜像。此能力利用了 RBD �
    二者都要运行 ``rbd-mirror`` 守护进程。
 
 
+.. Pool Configuration
+
 存储池配置
 ==========
 
@@ -27,15 +29,14 @@ RBD 映像可在两个 Ceph 集群间异步地镜像。此能力利用了 RBD �
 假设有两个集群，为清晰起见，分别命名为 local 和 remote ，\
 二者都可以从一台主机访问。
 
-关于如何用 ``rbd`` 命令连接两个不同的集群，请参考其 `rbd`_
-手册页。
+关于如何连接到不同的 Ceph 集群，请参考 `rbd`_ 手册页。
 
 .. note:: 以下实例中的集群名对应着同名的 Ceph 配置文件（如
-   ``/etc/ceph/remote.conf`` ）。如何配置多个集群请参考
+   ``/etc/ceph/site-b.conf`` ）。如何配置多个集群请参考
    `ceph-conf`_ 文档。
 
 
-.. _Enable Mirroring:
+.. Enable Mirroring
 
 启用镜像功能
 ------------

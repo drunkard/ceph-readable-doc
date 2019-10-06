@@ -40,6 +40,7 @@ API 写、然后用另一个检出。
 
    基于 Civetweb 手动安装 <../../install/install-ceph-gateway>
    HTTP 前端 <frontends>
+   Pool Placement and Storage Classes <placement>
    基于 Apache/FastCGI 的简单配置 <config-fcgi>
    多站配置 <multisite>
    存储池的配置 <pools>

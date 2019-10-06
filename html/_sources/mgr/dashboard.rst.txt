@@ -695,7 +695,7 @@ to use hyperlinks that include your prefix, you can set the
 
   ceph config set mgr mgr/dashboard/url_prefix $PREFIX
 
-so you can access the dashboard at ``http://$IP:$PORT/$PREFIX/``.
+这样你就能在 ``http://$IP:$PORT/$PREFIX/`` 访问面板了。
 
 
 .. _dashboard-auditing:

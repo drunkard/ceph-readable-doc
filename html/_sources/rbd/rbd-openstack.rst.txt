@@ -310,6 +310,7 @@ OpenStack 需要一个驱动和 Ceph 块设备交互，还得指定块设备所\
     [DEFAULT]
     ...
     enabled_backends = ceph
+    glance_api_version = 2
     ...
     [ceph]
     volume_driver = cinder.volume.drivers.rbd.RBDDriver
@@ -320,7 +321,6 @@ OpenStack 需要一个驱动和 Ceph 块设备交互，还得指定块设备所\
     rbd_max_clone_depth = 5
     rbd_store_chunk_size = 4
     rados_connect_timeout = -1
-    glance_api_version = 2
 
 如果你在用 `cephx 认证`_\ ，还需要配置用户及其密钥（前述文\
 档中存进了 ``libvirt`` ）的 uuid ： ::
@@ -330,15 +330,18 @@ OpenStack 需要一个驱动和 Ceph 块设备交互，还得指定块设备所\
     rbd_user = cinder
     rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
 
-Note that if you are configuring multiple cinder back ends,
-``glance_api_version = 2`` must be in the ``[DEFAULT]`` section.
+注意：如果你想配置多个 cinder 后端， ``glance_api_versio = 2``
+必须放到 ``[DEFAULT`` 段下。
 
 
-Configuring Cinder Backup
--------------------------
+.. Configuring Cinder Backup
 
-OpenStack Cinder Backup requires a specific daemon so don't forget to install it.
-On your Cinder Backup node, edit ``/etc/cinder/cinder.conf`` and add::
+Cinder Backup 的配置
+--------------------
+
+OpenStack Cinder Backup 需要专有守护进程，所以别忘了安装。\
+在你的 Cinder Backup 节点上，编辑 ``/etc/cinder/cinder.conf``
+并加上： ::
 
     backup_driver = cinder.backup.drivers.ceph
     backup_ceph_conf = /etc/ceph/ceph.conf

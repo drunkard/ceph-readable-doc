@@ -64,22 +64,27 @@
   
   <div class="section" id="ceph">
 <h1>创建 Ceph 文件系统<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p><code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">fs</span> <span class="pre">new</span></code> 命令是从 Ceph 0.84 起引入的，在此之前，无需手动创建文件系统，名为 <code class="docutils literal notranslate"><span class="pre">data</span></code> 和 <code class="docutils literal notranslate"><span class="pre">metadata</span></code> 的存储池默认即存在。</p>
-<p>Ceph 命令行现在有了创建和删除文件系统的命令，但是当前一套集群只能有一个文件系统存在。</p>
-</div>
+<div class="section" id="id1">
+<h2>创建存储池<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <p>一个 Ceph 文件系统需要至少两个 RADOS 存储池，一个用于数据、一个用于元数据。配置这些存储池时需考虑：</p>
 <ul class="simple">
-<li><p>为元数据存储池设置较高的副本水平，因为此存储池丢失任何数据都会导致整个文件系统失效。</p></li>
-<li><p>为元数据存储池分配低延时存储器（像 SSD ），因为它会直接影响到客户端的操作延时。</p></li>
+<li><p>为元数据存储池设置更高的副本级别，因为此存储池丢失任何数据都会导致整个文件系统失效。</p></li>
+<li><p>为元数据存储池分配延时较低的存储器（像 SSD ），因为它会直接影响到客户端的操作延时。</p></li>
+<li><p>用于创建文件系统的数据存储池是“默认”存储池，它还存储着所有的索引节点回溯信息，可用于管理硬链接和灾难恢复。正因为如此，
+CephFS 内创建的所有索引节点都至少有一个对象存储于默认的数据存储池。如果文件系统打算采用纠删码存储池，一般来说，最好用副本存储池作为默认的数据存储池，以提升更新回溯信息时涉及的小对象读写性能。另外，可以单独加一个纠删码存储池（参见
+<a class="reference internal" href="../../rados/operations/erasure-code/#ecpool"><span class="std std-ref">纠删码</span></a> ）用于存储整个子树下的目录和文件（参见
+<a class="reference internal" href="../file-layouts/#file-layouts"><span class="std std-ref">文件布局</span></a> ）。</p></li>
 </ul>
 <p>关于存储池的管理请参考 <a class="reference internal" href="../../rados/operations/pools/"><span class="doc">存储池</span></a> 。例如，要用默认设置为文件系统创建两个存储池，你可以用下列命令：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ ceph osd pool create cephfs_data &lt;pg_num&gt;
 $ ceph osd pool create cephfs_metadata &lt;pg_num&gt;
 </pre></div>
 </div>
-<p>创建好存储池后，你就可以用 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">new</span></code> 命令创建文件系统了：</p>
+<p>通常，元数据存储池最多也就有几个 GB 的数据，因此我们建议用较小的 PG 数，在用的大型集群通常用 64 或 128 个。</p>
+</div>
+<div class="section" id="id2">
+<h2>创建文件系统<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>创建好存储池后，你就可以用 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">new</span></code> 命令启用文件系统了：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ ceph fs new &lt;fs_name&gt; &lt;metadata&gt; &lt;data&gt;
 </pre></div>
 </div>
@@ -101,6 +106,17 @@ e5: <span class="m">1</span>/1/1 up <span class="o">{</span><span class="nv">0</
 <li><p><a class="reference external" href="../../cephfs/fuse">把 CephFS 挂载为用户空间文件系统</a></p></li>
 </ul>
 </div></blockquote>
+<p>如果你创建了不止一个文件系统，而且客户端在挂载时还不指定哪个文件系统，这时你可以用 <cite>ceph fs set-default</cite> 命令来决定他们能看到的文件系统。</p>
+</div>
+<div class="section" id="id4">
+<h2>在 CephFS 中使用纠删码存储池<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>纠删码存储池在启用覆写功能后可以用作 CephFS 的数据存储池，这样启用：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph osd pool <span class="nb">set</span> my_ec_pool allow_ec_overwrites <span class="nb">true</span>
+</pre></div>
+</div>
+<p>注意， EC 的覆写功能只有在 OSD 们都使用 BlueStore 后端时才支持。</p>
+<p>纠删码存储池不能用作 CephFS 的元数据存储池，因为 CephFS 元数据是用 RADOS <em>OMAP</em> 数据结构存储的，而 EC 存储池不能存储。</p>
+</div>
 </div>
 
 
@@ -131,7 +147,12 @@ e5: <span class="m">1</span>/1/1 up <span class="o">{</span><span class="nv">0</
 <li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">创建 CephFS 文件系统</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">创建 CephFS 文件系统</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">创建存储池</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">创建文件系统</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">在 CephFS 中使用纠删码存储池</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>

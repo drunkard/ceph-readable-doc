@@ -26,11 +26,10 @@ is extended in a compatible way, ensuring a smooth upgrade to Jewel.
 指定租户内的用户管理
 ====================
 
-Tenants as such do not have any operations on them. They appear and
-and disappear as needed, when users are administered. In order to create,
-modify, and remove users with explicit tenants, either an additional
-option --tenant is supplied, or a syntax "<tenant>$<user>" is used
-in the parameters of the radosgw-admin command.
+这样的租户本身没有任何操作。在进行用户管理时，他们都是按需\
+出现和消失。要想创建、修改、和删除带有租户的用户，使用
+``radosgw-admin`` 命令时必须额外加参数 ``--tenant`` 、或者用
+``<tenant>$<user>`` 语法指定用户。
 
 实例
 ----
