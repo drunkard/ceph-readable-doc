@@ -193,7 +193,8 @@ object_size
     # file: dir/file2
     ceph.file.layout="stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data"
 
-如果中层目录没有设置布局，那么内层目录中创建的文件也会继承此目录的布局：
+如果中层目录没有设置布局，那么内层目录中创建的文件也会继承此\
+目录的布局：
 
 .. code-block:: bash
 
@@ -209,16 +210,32 @@ object_size
     ceph.file.layout="stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data"
 
 
+.. Adding a data pool to the MDS
+
 把数据存储池加入 MDS
 --------------------
 
-要把存储池当 CephFS 用，你必须把它加入元数据服务器。
+要通过 CephFS 使用一个存储池，你必须把它加入元数据服务器。
 
 .. code-block:: bash
 
     $ ceph fs add_data_pool cephfs cephfs_data_ssd
-    # 现在应该能看到存储池了
-    $ ceph fs ls
+    $ ceph fs ls  # Pool should now show up
     .... data pools: [cephfs_data cephfs_data_ssd ]
 
-确保你的 cephx 密钥允许客户端访问新存储池。
+确保你的 cephx 密钥允许客户端访问这个新存储池。
+
+然后就能在 CephFS 内更新一个目录的布局了，以使用刚加上的存储池：
+
+.. code-block:: bash
+
+    $ mkdir /mnt/cephfs/myssddir
+    $ setfattr -n ceph.dir.layout.pool -v cephfs_data_ssd /mnt/cephfs/myssddir
+
+此后，在那个目录内新创建的文件都会继承它的布局、并把它们的\
+数据放入你新加的存储池。
+
+你也许注意到了，主数据存储池（传递给 ``fs new`` 的那个）内的\
+对象计数仍在继续增加，即使创建的文件位于你后加的存储池内。\
+这很正常：文件的数据存储于由布局指定的存储池内，但是所有文件\
+的元数据还都存储在主数据存储池内，数量很小。

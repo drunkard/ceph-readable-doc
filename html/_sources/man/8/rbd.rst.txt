@@ -195,6 +195,27 @@
 
   只适用于 format 2 。
 
+:command:`group create` *group-spec*
+  创建一个组。
+
+:command:`group image add` *group-spec* *image-spec*
+  把一个映像加入某一组。
+
+:command:`group image list` *group-spec*
+  罗列一个组内的映像。
+
+:command:`group image remove` *group-spec* *image-spec*
+  删除一个组内的对象。
+
+:command:`group ls` [-p | --pool *pool-name*]
+  罗列所有 rbd 组。
+
+:command:`group rename` *src-group-spec* *dest-group-spec*
+  重命名一个组。注意：不支持跨存储池重命名。
+
+:command:`group rm` *group-spec*
+  删除一个组。
+
 :command:`children` *snap-spec*
   列出此映像指定快照的克隆品。它会检查各存储池、并输出存储池\
   名/映像名。
@@ -355,11 +376,16 @@
   --io-pattern seq 。
 
 
+.. Image, snap, group and journal specs
+
 映像名和快照名规则
 ==================
 
 | *image-spec* is [*pool-name*]/*image-name*
 | *snap-spec*  is [*pool-name*]/*image-name*\ @\ *snap-name*
+| *group-spec*      is [*pool-name*/[*namespace-name*/]]\ *group-name*
+| *group-snap-spec* is [*pool-name*/[*namespace-name*/]]\ *group-name*\ @\ *snap-name*
+| *journal-spec*    is [*pool-name*/[*namespace-name*/]]\ *journal-name*
 
 *pool-name* 的默认值是 rbd 。如果某个映像名包含斜杠字符（ / ），\
 那么还必须指定 *pool-name* 。

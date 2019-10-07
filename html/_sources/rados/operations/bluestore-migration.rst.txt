@@ -29,6 +29,7 @@ is needed.
 Similarly, any OSDs that are reprovisioned after replacing a failed drive
 can use BlueStore.
 
+
 .. Convert existing OSDs
 
 转换已有 OSD
@@ -127,8 +128,11 @@ the data migrating only once.
 
 First, you need have empty host that has no data.  There are two ways to do this: either by starting with a new, empty host that isn't yet part of the cluster, or by offloading data from an existing host that in the cluster.
 
-Use a new, empty host
-^^^^^^^^^^^^^^^^^^^^^
+
+.. Use a new, empty host
+
+利用新的、空主机
+^^^^^^^^^^^^^^^^
 
 Ideally the host should have roughly the
 same capacity as other hosts you will be converting (although it
@@ -142,8 +146,11 @@ Add the host to the CRUSH hierarchy, but do not attach it to the root::
 
 Make sure the ceph packages are installed.
 
-Use an existing host
-^^^^^^^^^^^^^^^^^^^^
+
+.. Use an existing host
+
+利用已有主机
+^^^^^^^^^^^^
 
 If you would like to use an existing host
 that is already part of the cluster, and there is sufficient free
@@ -174,6 +181,7 @@ see the host at the top of the OSD tree output with no parent::
 If everything looks good, jump directly to the "Wait for data
 migration to complete" step below and proceed from there to clean up
 the old OSDs.
+
 
 .. Migration process
 
@@ -287,13 +295,13 @@ Caveats:
 
 * Not documented!
 
-Advantages:
+优点：
 
-* Little or no data migrates over the network during the conversion.
+* 转换期间只有少量或没有数据通过网络迁移。
 
-Disadvantages:
+缺点：
 
-* Tooling not fully implemented.
+* 工具链尚未完全实现；
 * Process not documented.
 * Each host must have a spare or empty device.
 * The OSD is offline during the conversion, which means new writes will
