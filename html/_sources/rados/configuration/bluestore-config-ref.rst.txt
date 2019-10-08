@@ -458,8 +458,8 @@ set with::
 
 ``bluestore compression max blob size ssd``
 
-:描述: Default value of ``bluestore compression max blob size``
-              for non-rotational (solid state) media.
+:描述: 用非旋转（固态）媒体时
+       ``bluestore compression max blob size`` 的默认值。
 
 :类型: Unsigned Integer
 :是否必需: No
@@ -471,13 +471,12 @@ set with::
 SPDK 用法
 =========
 
-If you want to use SPDK driver for NVME SSD, you need to ready your system.
-Please refer to `SPDK document`__ for more details.
+如果你想让 NVMe SSD 使用 SPDK 驱动，你得先配置好系统。详情见
+`SPDK 文档`_\ 。
 
-.. __: http://www.spdk.io/doc/getting_started.html#getting_started_examples
+.. _SPDK 文档: http://www.spdk.io/doc/getting_started.html#getting_started_examples
 
-SPDK offers a script to configure the device automatically. Users can run the
-script as root::
+SPDK 有个脚本可以自动配置设备，以 root 身份执行： ::
 
   $ sudo src/spdk/scripts/setup.sh
 

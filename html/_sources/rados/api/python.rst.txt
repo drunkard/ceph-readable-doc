@@ -392,8 +392,10 @@ has a name (or key) and data.
 .. automethod:: Ioctx.remove_object(key)
 
 
-Object Extended Attributes
---------------------------
+.. Object Extended Attributes
+
+对象的扩展属性
+--------------
 
 You may set extended attributes (XATTRs) on an object. You can retrieve a list
 of objects or XATTRs and iterate over them.

@@ -560,11 +560,13 @@ leader 请求同步， leader 让它去和 provider 同步。
                   |                    |
 
 
-新监视器加入集群时有必要进行同步。在运行中，监视器会不定时收到集群运行图的更新，这\
-就意味着 leader 和 provider 角色可能在监视器间变幻。如果这事发生在同步期间（如 \
-provider 落后于 leader ）， provider 能终结和 requester 间的同步。
+新监视器加入集群时有必要进行同步。在运行中，监视器会不定时收到\
+集群运行图的更新，这就意味着 leader 和 provider 角色可能在\
+监视器间变幻。如果这事发生在同步期间（如 provider 落后于
+leader ）， provider 能终结和 requester 间的同步。
 
-一旦同步完成， Ceph 需要修复整个集群，使归置组回到 ``active + clean`` 状态。
+一旦同步完成， Ceph 需要修复整个集群，使归置组回到
+``active + clean`` 状态。
 
 
 ``mon sync trim timeout``
@@ -964,7 +966,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :描述: 同步的刷新间隔（秒），同步机制允许获取集群运行图和日志\
        信息。
 :类型: Double
-:默认值: ``300``
+:默认值: ``86400.00``
 
 
 ``mon stat smooth intervals``
