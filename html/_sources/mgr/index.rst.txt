@@ -24,10 +24,11 @@ mgr 启动。
     :maxdepth: 1
 
     安装和配置 <administrator>
-    插件编程 <plugins>
-    仪表盘插件 <dashboard>
-    本地存储池模块 <localpool>
-    REST 风格插件 <restful>
-    Zabbix 插件 <zabbix>
-    Prometheus 插件 <prometheus>
-    Iostat 插件 <iostat>
+    模块编程 <plugins>
+    仪表盘模块 <dashboard>
+    localpool 模块 <localpool>
+    REST 风格模块 <restful>
+    Zabbix 模块 <zabbix>
+    Prometheus 模块 <prometheus>
+    Influx 模块 <influx>
+    Iostat 模块 <iostat>

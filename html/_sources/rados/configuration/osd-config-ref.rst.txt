@@ -53,7 +53,8 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 
 ``osd data``
 
-:描述: OSD 数据存储位置，你得创建并把数据盘挂载到其下。我们不推荐更改默认值。
+:描述: OSD 数据存储位置，你得创建并把数据盘挂载到其下。我们\
+       不推荐更改默认值。
 :类型: String
 :默认值: ``/var/lib/ceph/osd/$cluster-$id``
 
@@ -63,6 +64,13 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 :描述: 一次写入的最大尺寸，MB。
 :类型: 32-bit Integer
 :默认值: ``90``
+
+
+``osd max object size``
+
+:描述: 单个 RADOS 对象的最大尺寸，单位为字节。
+:类型: 32-bit Unsigned Integer
+:默认值: 128MB
 
 
 ``osd client message size cap``

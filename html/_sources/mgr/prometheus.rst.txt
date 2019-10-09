@@ -1,5 +1,7 @@
+.. _mgr-prometheus:
+
 =================
- Prometheus 插件
+ Prometheus 模块
 =================
 
 Provides a Prometheus exporter to pass on Ceph performance counters

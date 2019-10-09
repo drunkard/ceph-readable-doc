@@ -27,6 +27,9 @@
     array
         JSON 相关的为数组；
 
+    assume role
+        <暂未翻译>，AWS 术语。
+
     backfill
         回填
 
@@ -332,6 +335,12 @@
 
     replicated pool
         多副本存储池
+
+    reshard
+        重分片
+
+    role
+        角色。 AWS 术语？
 
     rule mask
         ?

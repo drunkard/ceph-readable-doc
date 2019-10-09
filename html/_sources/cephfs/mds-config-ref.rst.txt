@@ -19,11 +19,29 @@
 :默认值:  ``1ULL << 40``
 
 
+``mds cache memory limit``
+
+:描述: MDS 对其缓存内存的硬限制。管理员应该用
+       ``mds cache size`` 。
+:类型:  64-bit Integer Unsigned
+:默认值: ``1073741824``
+
+
+``mds cache reservation``
+
+:描述: MDS 缓存（子系统）要维持的保留缓存空间。 MDS 一旦开始\
+       恢复其缓存保留值，它会回调客户端状态，直到它的缓存尺寸\
+       也缩减到空出保留值。
+:类型:  Float
+:默认值: ``0.05``
+
+
 ``mds cache size``
 
-:描述: 缓存的索引节点数。
+:描述: 缓存的索引节点数。值为 0 表示不限制，我们建议使用
+       ``mds_cache_memory_limit`` 来限制 MDS 缓存使用的内存量。
 :类型:  32-bit Integer
-:默认值: ``100000``
+:默认值: ``0``
 
 
 ``mds cache mid``
@@ -70,7 +88,10 @@
 
 ``mds blacklist interval``
 
-:描述: OSD 运行图里的 MDS 失败后，把它留在黑名单里的时间。
+:描述: OSD 运行图里的 MDS 失败后，把它留在黑名单里的时间。\
+       注意，此选项控制着失败的 OSD 在 OSDMap 黑名单里呆多长\
+       时间，它对管理员手动加进黑名单的东西没影响。例如，
+       ``ceph osd blacklist add`` 仍将遵循默认的黑名单时间。
 :类型:  Float
 :默认值: ``24.0*60.0``
 
@@ -489,14 +510,14 @@
 
 :描述: Ceph 将在启动时删除所有客户端会话（仅适合测试）。
 :类型:  Boolean
-:默认值: ``0``
+:默认值: ``false``
 
 
 ``mds wipe ino prealloc``
 
 :描述: Ceph 将在启动时删除索引节点号预分配元数据（仅适合测试）。
 :类型:  Boolean
-:默认值: ``0``
+:默认值: ``false``
 
 
 ``mds skip ino``
@@ -522,6 +543,21 @@
 
 ``mds standby replay``
 
-:描述: 决定一 ``ceph-mds`` 守护进程是否应该滚动并重放活跃 MDS 的日志（热备）。
+:描述: 决定一 ``ceph-mds`` 守护进程是否应该滚动并重放活跃 MDS
+       的日志（热备）。
 :类型:  Boolean
 :默认值:  ``false``
+
+
+``mds min caps per client``
+
+:描述: 设置一个客户端可以持有的最小容量。
+:类型: Integer
+:默认值: ``100``
+
+
+``mds max ratio caps per client``
+
+:描述: 设置在 MDS 缓存有压力时可以回调的、当前容量的最大比率。
+:类型: Float
+:默认值: ``0.8``

@@ -87,12 +87,15 @@ MDS 守护进程能定位各种各样不该出现的状况，并通过 ``ceph st
 :代码: MDS_HEALTH_CLIENT_RECALL, MDS_HEALTH_CLIENT_RECALL_MANY
 :描述: 客户端有各自的元数据缓存，客户端缓存中的条目（比如索引\
        节点）也会存在于 MDS 缓存中，所以当 MDS 需要削减其缓存\
-       时（保持在 ``mds_cache_size`` 以下），它也会发消息给客\
-       户端让它们削减自己的缓存。如果有客户端没响应或者有缺陷，\
-       就会妨碍 MDS 将缓存保持在 ``mds_cache_size`` 以下， MDS
-       就有可能耗尽内存而后崩溃。如果某个客户端的响应时间超过了
-       ``mds_recall_state_timeout`` （默认为 60s ），这条消息\
-       就会出现。
+       时（为了使之保持在
+       ``mds_cache_size`` 或 ``mds_cache_memory_limit``
+       以下），它也会发消息给客户端让它们削减各自的缓存。如果\
+       有客户端没响应或者有缺陷，就会妨碍 MDS 将缓存保持在其\
+       限额以下， MDS 就有可能耗尽内存而后崩溃。如果某个客户端\
+       在最后一个 ``mds_recall_warning_decay_rate`` 秒数内都\
+       没能释放到 ``mds_recall_warning_threshold`` （以
+       ``mds_recall_max_decay_rate`` 为半衰期衰减）之下，这条\
+       消息就会出现。
 
 ------
 
@@ -141,6 +144,9 @@ MDS 守护进程能定位各种各样不该出现的状况，并通过 ``ceph st
 :消息: "Too many inodes in cache"
 :代码: MDS_HEALTH_CACHE_OVERSIZED
 :描述: MDS 没能成功削减缓存，未能降到管理员设置的上限之下。如\
-       果 MDS 缓存涨得太大，守护进程可能会耗尽内存然后崩溃。如\
-       果实际的缓存尺寸（按索引节点算）比 ``mds_cache_size``
-       （默认为 100000 ）大至少 50% ，这个消息就会出现。
+       果 MDS 缓存涨得太大，守护进程可能会耗尽内存然后崩溃。\
+       默认情况下，如果实际的缓存尺寸（按索引节点或内存计算）\
+       比 ``mds_cache_size`` （默认为 100000 ）或
+       ``mds_cache_memory_limit`` （默认为 1GB ）大至少 50% ，\
+       这个消息就会出现。更改 ``mds_health_cache_threshold``
+       可设置超出的告警比率。

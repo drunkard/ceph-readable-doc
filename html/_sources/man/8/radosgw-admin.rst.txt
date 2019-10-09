@@ -218,6 +218,51 @@
 :command:`orphans finish`
   清理遗漏 RADOS 对象的检索结果。
 
+:command:`orphans list-jobs`
+  罗列当前正在进行的遗漏对象检索作业号。
+
+:command:`role create`
+  新建一个用于 STS 的 AWS 角色。
+
+:command:`role rm`
+  删除一个角色。
+
+:command:`role get`
+  获取一个角色。
+
+:command:`role list`
+  罗列带有指定路径前缀的角色。
+
+:command:`role modify`
+  修改现有角色的 assume role 策略。
+
+:command:`role-policy put`
+  新增、更新角色的权限策略。
+
+:command:`role-policy list`
+  罗列与一个角色相关的策略。
+
+:command:`role-policy get`
+  获取给定角色内嵌的指定内联策略文档。
+
+:command:`role-policy rm`
+  删除与一个角色相关的策略。
+
+:command:`reshard add`
+  安排一个桶进行重分片。
+
+:command:`reshard list`
+  罗列所有正在进行的桶重分片、或已安排准备重分片的作业。
+
+:command:`reshard process`
+  已安排重分片作业的进度。
+
+:command:`reshard status`
+  一个桶的重分片状态。
+
+:command:`reshard cancel`
+  取消一个桶的重分片。
+
 
 选项
 ====

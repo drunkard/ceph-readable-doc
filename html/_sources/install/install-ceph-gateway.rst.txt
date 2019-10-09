@@ -287,26 +287,24 @@ Red Hat Enteprise Linux 上需执行： ::
         sudo service radosgw restart id=rgw.<short-hostname>
 
 在联盟化配置中，为实现故障切换，各区域的 ``index_pool`` 可\
-能配置得不一样，为使一个 region 内的各个域的配置保持一致，\
-你可以在网关的 region 配置中设置
+能配置得不一样，为使一个 zonegroup 内的各个域的配置保持一致，\
+你可以在网关的 zonegroup 配置中设置
 ``rgw_override_bucket_index_max_shards`` 。例如： ::
 
-        radosgw-admin region get > region.json
+        radosgw-admin zonegroup get > zonegroup.json
 
-打开 ``region.json`` 文件、编辑相关各域的
-``bucket_index_max_shards`` 选项，保存到 ``region.json``
-文件、并重置此 region ，例如： ::
+打开 ``zonegroup.json`` 文件、编辑相关各域的
+``bucket_index_max_shards`` 选项，保存到 ``zonegroup.json``
+文件、并重置此 zonegroup ，例如： ::
 
-        radosgw-admin region set < region.json
+        radosgw-admin zonegroup set < zonegroup.json
 
-更新完 region 后，再更新 region 映射图，例如： ::
+更新完 zonegroup 后，再更新并提交 period ，例如： ::
 
-        radosgw-admin regionmap update --name client.rgw.ceph-client
+   radosgw-admin period update --commit
 
-其中， ``client.rgw.ceph-client`` 是网关用户的用户名。
-
-.. note:: 把索引存储池（每个域的索引存储池，可能的话）指向\
-   使用 SSD 的 OSD 组成的规则集也有助于提升桶索引性能。
+.. note:: 把索引存储池（每个域的索引存储池，可能的话）映射到\
+   使用 SSD 的 OSD 组成的 CRUSH 规则集也有助于提升桶索引性能。
 
 
 .. _Add Wildcard to DNS:

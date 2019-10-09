@@ -447,6 +447,6 @@
 
 .. _创建存储池: ../pools#create-a-pool
 .. _存储池——调整存储池: ../pools#set-pool-values
-.. _给存储池指定 OSD: ../crush-map/#placing-different-pools-on-different-osds
+.. _给存储池指定 OSD: ../crush-map-edits/#placing-different-pools-on-different-osds
 .. _Bloom 过滤器: http://en.wikipedia.org/wiki/Bloom_filter
 .. _CRUSH 图: ../crush-map

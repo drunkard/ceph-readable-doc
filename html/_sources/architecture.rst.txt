@@ -464,19 +464,22 @@ Ceph 客户端绑定到某监视器时，会索取最新的\ `集群运行图`_\
 	对象位置是计算出来的。
 
 
-客户端只需输入对象 ID 和存储池，此事简单： Ceph 把数据存在某存储池（如 liverpool ）\
-中。当客户端想要存命名对象（如 john 、 paul 、 george 、 ringo 等等）时，它用对象\
-名计算归置组（一个哈希值）、 OSD 号、存储池。 Ceph 按下列步骤计算 PG ID 。
+客户端只需输入对象 ID 和存储池，此事简单： Ceph 把数据存在某\
+存储池（如 liverpool ）中。当客户端想要存命名对象（如 john 、
+paul 、 george 、 ringo 等等）时，它用对象名计算归置组（一个\
+哈希值）、 OSD 号、存储池。 Ceph 按下列步骤计算 PG ID 。
 
-#. 客户端输入存储池 ID 和对象 ID （如 pool="liverpool" 和 object-id="john" ）；
+#. 客户端输入存储池名和对象 ID （如 pool="liverpool" 和
+   object-id="john" ）；
 #. CRUSH 拿到对象 ID 并哈希它；
 #. CRUSH 用 OSD 数（如 ``58`` ）对哈希值取模，这就是归置组 ID ；
 #. CRUSH 根据存储池名取得存储池 ID （如liverpool = ``4`` ）；
 #. CRUSH 把存储池 ID 加到PG ID（如 ``4.58`` ）之前。
 
 计算对象位置远快于查询定位， \
-:abbr:`CRUSH (Controlled Replication Under Scalable Hashing)` 算法允许客户端计\
-算对象\ *应该*\ 存到哪里，并允许客户端连接存储此主 OSD 来存储或检索对象。
+:abbr:`CRUSH (Controlled Replication Under Scalable Hashing)`
+算法允许客户端计算对象\ *应该*\ 存到哪里，并允许客户端连接存储\
+此主 OSD 来存储或检索对象。
 
 
 .. index:: architecture; PG Peering

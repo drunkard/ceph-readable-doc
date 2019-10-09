@@ -178,30 +178,8 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 
 ::
 
-    mds getmap
-
-::
-
     mds set_state
 
 ::
 
     mds rmfailed
-
-
-旧命令
-------
-
-::
-
-    mds stat
-    mds dump  # replaced by "fs get"
-    mds stop  # replaced by "mds deactivate"
-    mds set_max_mds  # replaced by "fs set max_mds"
-    mds set  # replaced by "fs set"
-    mds cluster_down  # replaced by "fs set cluster_down"
-    mds cluster_up  # replaced by "fs set cluster_up"
-    mds newfs  # replaced by "fs new"
-    mds add_data_pool  # replaced by "fs add_data_pool"
-    mds remove_data_pool # replaced by "fs remove_data_pool"
-

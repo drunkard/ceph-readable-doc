@@ -814,7 +814,7 @@ If you are satisfied with the adjusted map, you can apply it to the cluster with
 
 然后你可以设置一个存储池，让它使用 SSD 规则： ::
 
-	ceph osd pool set <poolname> crush_ruleset 4
+	ceph osd pool set <poolname> crush_rule ssd
 
 同样，用 ``ssd-primary`` 规则将使存储池内的各归置组用 SSD 作\
 主 OSD ，普通硬盘作副本。

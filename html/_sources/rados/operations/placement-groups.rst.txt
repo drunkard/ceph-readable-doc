@@ -116,12 +116,11 @@ After an OSD fails, the risk of data loss increases until the data it
 contained is fully recovered. Let's imagine a scenario that causes
 permanent data loss in a single placement group:
 
-- The OSD fails and all copies of the object it contains are lost.
-  For all objects within the placement group the number of replica
-  suddently drops from three to two.
+- 某一 OSD 失败了，然后其内的所有对象都丢失了。对于那个归置组\
+  内的所有对象来说，副本数一下子从 3 降到了 2 。
 
-- Ceph starts recovery for this placement group by chosing a new OSD
-  to re-create the third copy of all objects.
+- Ceph 开始恢复这个归置组，选定一个新 OSD ，并重建所有对象的\
+  第三份副本。
 
 - Another OSD, within the same placement group, fails before the new
   OSD is fully populated with the third copy. Some objects will then
@@ -213,7 +212,7 @@ placement group, the ratio between the number of placement groups and
 the number of OSDs may influence the distribution of the data
 significantly.
 
-For instance, if there was single a placement group for ten OSDs in a
+For instance, if there was a single placement group for ten OSDs in a
 three replica pool, only three OSD would be used because CRUSH would
 have no other choice. When more placement groups are available,
 objects are more likely to be evenly spread among them. CRUSH also

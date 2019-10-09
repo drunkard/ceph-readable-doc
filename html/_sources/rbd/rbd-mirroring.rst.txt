@@ -111,8 +111,21 @@ RBD 映像可在两个 Ceph 集群间异步地镜像。此能力利用了 RBD �
         rbd --cluster local mirror pool peer remove image-pool 55672766-c02b-4729-8567-f13a66893445
         rbd --cluster remote mirror pool peer remove image-pool 60c0e299-b38f-4234-91f6-eed0a367be08
 
+.. Data Pools
 
-.. _Image Configuration:
+数据存储池
+----------
+
+在目的集群创建映像时， ``rbd-mirror`` 这样选择数据集群：
+
+#. 如果目的集群已配置了一个默认的数据存储池（用
+   ``rbd_default_data_pool`` 配置选项），那就用它；
+#. 否则，如果源映像位于独立的数据存储池内，而且目的集群上也有\
+   同名的一个存储池，那就选用它；
+#. 如果上述二者都不可行，那就不会选中数据存储池。
+
+
+.. Image Configuration
 
 映像配置
 ========

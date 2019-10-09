@@ -37,8 +37,6 @@
 
 	ceph osd lspools
 
-在新安装好的集群上，只有一个 ``rbd`` 存储池。
-
 
 .. Create a Pool
 .. _createpool:
