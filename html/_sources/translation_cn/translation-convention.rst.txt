@@ -30,6 +30,9 @@
     assume role
         <暂未翻译>，AWS 术语。
 
+    auxiliary device
+        辅助设备。 BlueStore 术语，相对于 main device 。
+
     backfill
         回填
 
@@ -207,6 +210,9 @@
         在线迁移
 
         RBD 术语。
+
+    main device
+        主设备。 BlueStore 术语，相对的是 auxiliary device 。
 
     manpage
         手册页

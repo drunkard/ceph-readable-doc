@@ -53,7 +53,7 @@ Zabbix 插件可向 Zabbix 服务器持续发送信息，像这些：
 Two configuration keys are vital for the module to work:
 
 - zabbix_host
-- identifier (optional)
+- identifier （可选项）
 
 The parameter *zabbix_host* controls the hostname of the Zabbix server to which
 *zabbix_sender* will send the items. This can be a IP-Address if required by
@@ -73,6 +73,7 @@ Additional configuration keys which can be configured and their default values:
 - zabbix_port: 10051
 - zabbix_sender: /usr/bin/zabbix_sender
 - interval: 60
+- discovery_interval: 100
 
 
 .. Configuration keys
@@ -115,6 +116,13 @@ This template contains all items and a few triggers. You can customize the trigg
     ceph zabbix send
 
 此模块就会立即把它的最新数据发送给 Zabbix 服务器。
+
+Items discovery is accomplished also via zabbix_sender, and runs every `discovery_interval * interval` seconds. If you wish to launch discovery 
+manually, this can be done with this command:
+
+::
+
+    ceph zabbix discovery
 
 
 .. Debugging
