@@ -1,4 +1,4 @@
-.. _Manual Deployment:
+.. Manual Deployment
 
 ==========
  手动部署
@@ -134,9 +134,15 @@
 
 	sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
 
-#. 把 ``client.admin`` 密钥加入 ``ceph.mon.keyring`` 。 ::
+#. 生成一个 bootstrap-osd 密钥环、生成一个
+   ``client.bootstrap-osd`` 用户并把此用户加入密钥环。 ::
 
-	ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
+	sudo ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
+
+#. 把生成的密钥加进 ``ceph.mon.keyring`` 。 ::
+
+	sudo ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
+	sudo ceph-authtool /tmp/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
 
 #. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，\
    并保存为 ``/tmp/monmap`` 。 ::
@@ -153,7 +159,7 @@
 
    例如： ::
 
-	sudo mkdir /var/lib/ceph/mon/ceph-node1
+	sudo -u ceph mkdir /var/lib/ceph/mon/ceph-node1
 
    详情见\ `监视器配置参考——数据`_\ 。
 
@@ -178,7 +184,7 @@
 	auth client required = cephx
 	osd journal size = {n}
 	osd pool default size = {n}  # Write an object n times.
-	osd pool default min size = {n} # Allow writing n copy in a degraded state.
+	osd pool default min size = {n} # 在降级状态下允许写 n 个副本
 	osd pool default pg num = {n}
 	osd pool default pgp num = {n}
 	osd crush chooseleaf type = {n}
@@ -206,50 +212,42 @@
 
 #. 启动监视器。
 
-   在 Ubuntu 上用 Upstart ： ::
+   在大多数发行版上，现在都是用 systemd 启动服务的： ::
 
-	sudo start ceph-mon id=node1 [cluster={cluster-name}]
+	sudo systemctl start ceph-mon@node1
 
-   要使此守护进程开机自启，需要创建两个空文件，像这样： ::
-
-	sudo touch /var/lib/ceph/mon/{cluster-name}-{hostname}/upstart
-
-   例如： ::
-
-	sudo touch /var/lib/ceph/mon/ceph-node1/upstart
-
-   在 Debian/CentOS/RHEL 上用 sysvinit ： ::
+   在较老的 Debian/CentOS/RHEL 上用 sysvinit ： ::
 
 	sudo /etc/init.d/ceph start mon.node1
-
-#. 验证下 Ceph 已经创建了默认存储池。 ::
-
-	ceph osd lspools
-
-   你应该会看到这样的输出： ::
-
-	0 data,1 metadata,2 rbd,
 
 #. 确认下集群在运行。 ::
 
 	ceph -s
 
-   你应该从输出里看到刚刚启动的监视器在正常运行，并且应该会看到一个健康错误：它表明\
-   归置组卡在了 ``stuck inactive`` 状态。输出大致如此： ::
+   你应该从输出里看到刚刚启动的监视器在正常运行，并且应该会\
+   看到一个健康错误：它表明归置组卡在了 ``stuck inactive``
+   状态。输出大致如此： ::
 
-	cluster a7f64266-0894-4f1e-a635-d0aeaca0e993
-	  health HEALTH_ERR 192 pgs stuck inactive; 192 pgs stuck unclean; no osds
-	  monmap e1: 1 mons at {node1=192.168.0.1:6789/0}, election epoch 1, quorum 0 node1
-	  osdmap e1: 0 osds: 0 up, 0 in
-	  pgmap v2: 192 pgs, 3 pools, 0 bytes data, 0 objects
-	     0 kB used, 0 kB / 0 kB avail
-	     192 creating
+      cluster:
+        id:     a7f64266-0894-4f1e-a635-d0aeaca0e993
+        health: HEALTH_OK
+
+      services:
+        mon: 1 daemons, quorum node1
+        mgr: node1(active)
+        osd: 0 osds: 0 up, 0 in
+
+      data:
+        pools:   0 pools, 0 pgs
+        objects: 0 objects, 0 bytes
+        usage:   0 kB used, 0 kB / 0 kB avail
+        pgs:
 
    **注意：** 一旦你添加了 OSD 并启动，归置组健康错误应该消\
-   失，详情见下一节。
+   失，详情见\ `添加 OSD`_\ 。
 
 
-.. _Manager daemon configuration:
+.. Manager daemon configuration
 
 管理守护进程配置
 ================
@@ -260,7 +258,7 @@ ceph-mgr 守护进程。
 请参考 :ref:`mgr-administrator-guide` 。
 
 
-.. _Adding OSDs:
+.. Adding OSDs
 
 添加 OSD
 ========

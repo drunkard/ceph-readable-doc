@@ -233,6 +233,30 @@
 :默认值: ``45``
 
 
+``osd max pg per osd hard ratio``
+
+:描述: 集群内每个 OSD 上的 PG 数量的最大占比，超过后 OSD 就会\
+       拒绝新建 PG 。如果一个 OSD 所托管的 PG 超过
+       ``osd max pg per osd hard ratio`` \* ``mon max pg per osd`` ，\
+       它就会停止创建新 PG 。
+:类型: Float
+:默认值: ``2``
+
+
+``osd recovery priority``
+
+:描述: 工作队列里恢复的优先级。
+:类型: Integer
+:默认值: ``5``
+
+
+``osd recovery op priority``
+
+:描述: 如果存储池没有理会，给恢复操作的默认优先级。
+:类型: Integer
+:默认值: ``3``
+
+
 .. _pool: ../../operations/pools
 .. _监控 OSD 和归置组: ../../operations/monitoring-osd-pg#peering
 .. _调整桶条目的权重: ../../operations/crush-map#weightingbucketitems

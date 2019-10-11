@@ -911,7 +911,7 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
 
 用法： ::
 
-	ceph osd pool get <poolname> size|min_size|crash_replay_interval|pg_num|
+	ceph osd pool get <poolname> size|min_size|pg_num|
 	pgp_num|crush_ruleset|auid|write_fadvise_dontneed
 
 以下命令只适用于分层存储池： ::
@@ -959,7 +959,7 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
 
 用法： ::
 
-	ceph osd pool set <poolname> size|min_size|crash_replay_interval|pg_num|
+	ceph osd pool set <poolname> size|min_size|pg_num|
 	pgp_num|crush_ruleset|hashpspool|nodelete|nopgchange|nosizechange|
 	hit_set_type|hit_set_period|hit_set_count|hit_set_fpp|debug_fake_ec_pool|
 	target_max_bytes|target_max_objects|cache_target_dirty_ratio|
