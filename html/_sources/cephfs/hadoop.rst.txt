@@ -2,8 +2,8 @@
  在 CephFS 上使用 Hadoop
 =========================
 
-Ceph 文件系统可作为 Hadoop 文件系统（ HDFS ）的落地式替代品，本章描述了 Ceph 用于 \
-Hadoop 存储的安装和配置过程。
+Ceph 文件系统可作为 Hadoop 文件系统（ HDFS ）的落地式替代品，\
+本章描述了 Ceph 用于 Hadoop 存储的安装和配置过程。
 
 
 依赖关系
@@ -18,22 +18,25 @@ Hadoop 存储的安装和配置过程。
 安装
 ====
 
-在 CephFS 上使用 Hadoop 有三个必要条件。首先，必须有一个运行的 Ceph 。建设一个 \
-Ceph 集群和文件系统不是本章的讨论范围，请参考 Ceph 安装文档。
+在 CephFS 上使用 Hadoop 有三个必要条件。首先，必须有一个运行的
+Ceph 。建设一个 Ceph 集群和文件系统不是本章的讨论范围，请参考
+Ceph 安装文档。
 
-另外两个必要条件是 Hadoop 安装和 Ceph 文件系统 Java 软件包，包括 Java 的 CephFS \
-Hadoop 插件。后续步骤分别是把依赖添加到 Hadoop 的环境变量 ``CLASSPATH`` 、更改 \
-Hadoop 配置让它使用 Ceph 文件系统。
+另外两个必要条件是 Hadoop 安装和 Ceph 文件系统 Java 软件包，\
+包括 Java 的 CephFS Hadoop 插件。后续步骤分别是把依赖添加到
+Hadoop 的环境变量 ``CLASSPATH`` 、更改 Hadoop 配置让它使用
+Ceph 文件系统。
 
 
 CephFS Java 软件包
 ------------------
 
-* CephFS Hadoop 插件 (`hadoop-cephfs.jar <http://ceph.com/download/hadoop-cephfs.jar>`_)
+* CephFS Hadoop 插件 (`hadoop-cephfs.jar <https://download.ceph.com/tarballs/hadoop-cephfs.jar>`_)
 
-安装 Hadoop 时的依赖取决于你怎么部署的，一般来说，这些依赖必须安装到 Hadoop 集群的\
-各节点、且必须能从 ``CLASSPATH`` 里找到。典型做法是把另加的 ``jar`` 文件放入 \
-``hadoop/lib`` 目录、或编辑 ``hadoop-env.sh`` 中的 ``HADOOP_CLASSPATH`` 变量。
+安装 Hadoop 时的依赖取决于你怎么部署的，一般来说，这些依赖\
+必须安装到 Hadoop 集群的各节点、且必须能从 ``CLASSPATH`` 里\
+找到。典型做法是把另加的 ``jar`` 文件放入 ``hadoop/lib``
+目录、或编辑 ``hadoop-env.sh`` 中的 ``HADOOP_CLASSPATH`` 变量。
 
 Hadoop 集群内的各参与节点都必须安装原生 Ceph 文件系统客户端。
 

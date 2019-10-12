@@ -518,16 +518,17 @@ OSD 事件，数据已存入本地硬盘后的：
 	ceph osd unset noup
 	ceph osd unset nodown
 
-``mon osd down out interval`` is).
-还支持其它两个标记 ``noin`` 和 ``noout`` ，它们分别可防止正在启动的 OSD 被标记为 \
-``in`` 、或被误标记为 ``out`` （不管 `` mon osd down out interval`` 的值是什么）。
+还支持其它两个标记 ``noin`` 和 ``noout`` ，它们分别可防止\
+正在启动的 OSD 被标记为 ``in`` 、或被误标记为 ``out`` （不管
+`` mon osd down out interval`` 的值是什么）。
 
-.. note:: ``noup`` 、 ``noout`` 和 ``nodown`` 从某种意义上说是临时的，一旦标记清\
-   除了，它们被阻塞的动作短时间内就会发生；相反， ``noin`` 标记阻止 OSD 启动后进入\
-   集群，但其它守护进程都维持原样。
+.. note:: ``noup`` 、 ``noout`` 和 ``nodown`` 从某种意义上说是\
+   临时的，一旦标记清除了，它们被阻塞的动作短时间内就会发生；\
+   相反， ``noin`` 标记阻止 OSD 启动后进入集群，但其它守护进程\
+   都维持原样。
 
 
-.. _iostat: http://en.wikipedia.org/wiki/Iostat
+.. _iostat: https://en.wikipedia.org/wiki/Iostat
 .. _Ceph 日志记录和调试: ../../configuration/ceph-conf#ceph-logging-and-debugging
 .. _日志记录和调试: ../log-and-debug
 .. _调试和日志记录: ../debug

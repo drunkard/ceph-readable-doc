@@ -1140,12 +1140,12 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :默认值: 300
 
 
-.. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)
+.. _Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 .. _监视器密钥环: ../../../dev/mon-bootstrap#secret-keys
 .. _Ceph 配置文件: ../ceph-conf/#monitors
 .. _网络配置参考: ../network-config-ref
 .. _通过 DNS 查询监视器: ../mon-lookup-dns
-.. _ACID: http://en.wikipedia.org/wiki/ACID
+.. _ACID: https://en.wikipedia.org/wiki/ACID
 .. _增加/删除监视器: ../../operations/add-or-rm-mons
 .. _增加/删除监视器（ ceph-deploy ）: ../../deployment/ceph-deploy-mon
 .. _监控集群: ../../operations/monitoring

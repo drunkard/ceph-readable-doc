@@ -28,17 +28,18 @@ Inline data has always been off by default and requires setting
 the "inline_data" flag.
 
 
-.. _`Mantle: Programmable Metadata Load Balancer`:
+.. Mantle: Programmable Metadata Load Balancer
 
 Mantle: 可编程的元数据负载均衡器
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 
 Mantle is a programmable metadata balancer built into the MDS. The idea is to
 protect the mechanisms for balancing load (migration, replication,
 fragmentation) but stub out the balancing policies using Lua. For details, see
 :doc:`/cephfs/mantle`.
 
-.. _Snapshots:
+
+.. Snapshots
 
 快照
 ----
@@ -53,9 +54,10 @@ some cases. Specifically, if you share a pool for multiple FSes and delete
 a snapshot in one FS, expect to lose snapshotted file data in any other FS using
 snapshots. See the :doc:`/dev/cephfs-snapshots` page for more information.
 
-Snapshots are known not to work with multi-MDS filesystems.
+出于某些含糊的实现原因，内核客户端仅支持最多 400 个快照（
+http://tracker.ceph.com/issues/21420 ）。
 
-Snapshotting was blocked off with the "allow_new_snaps" flag prior to Firefly.
+在 Firefly 版之前，快照功能是用 allow_new_snaps 标记屏蔽的。
 
 
 .. _Multiple filesystems within a Ceph cluster:

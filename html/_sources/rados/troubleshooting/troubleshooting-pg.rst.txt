@@ -619,15 +619,16 @@ CRUSH 过早中止
 	104:         0
 	...
 
-有 42 个归置组需 11 次重试、 44 个归置组需 12 次重试，以此类推。这样，重试\
-的最高次数就是防止坏映射的最低值，也就是 ``set_choose_tries`` 的取值（即上\
-面输出中的 103 ，因为任意归置组成功映射的重试次数都没有超过 103 ）。
+有 42 个归置组需 11 次重试、 44 个归置组需 12 次重试，\
+以此类推。这样，重试的最高次数就是防止坏映射的最低值，也就是
+``set_choose_tries`` 的取值（即上面输出中的 103 ，因为任意\
+归置组成功映射的重试次数都没有超过 103 ）。
 
 
 .. _检查: ../../operations/placement-groups#get-the-number-of-placement-groups
 .. _这里: ../../configuration/pool-pg-config-ref
 .. _归置组: ../../operations/placement-groups
 .. _存储池、归置组和 CRUSH 配置参考: ../../configuration/pool-pg-config-ref
-.. _NTP: http://en.wikipedia.org/wiki/Network_Time_Protocol
+.. _NTP: https://en.wikipedia.org/wiki/Network_Time_Protocol
 .. _网络时间协议: http://www.ntp.org/
 .. _时钟选项: ../../configuration/mon-config-ref/#clock

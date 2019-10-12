@@ -542,7 +542,7 @@ calamari 的初始配置、安装 salt-minion 软件包。如果是 Redhat/CentO
 ========
 
 :program:`ceph-deploy` 是 Ceph 的一部分，这是个伸缩力强、开源、\
-分布式的存储系统，更多信息参见 http://ceph.com/docs 。
+分布式的存储系统，更多信息参见 https://ceph.com/ceph-deploy/docs 。
 
 
 参考

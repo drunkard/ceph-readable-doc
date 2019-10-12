@@ -290,8 +290,8 @@ IP 地址。
 	1: 10.1.0.2:6789/0 mon.b
 	2: 10.1.0.3:6789/0 mon.c
 
-从这里开始，假设监视器（及存储）已经被安装到了新位置。下一步把修正的 monmap 散播到\
-新监视器，并且注入每个监视器。
+从这里开始，假设监视器（及存储）已经被安装到了新位置。下一步把\
+修正的 monmap 散播到新监视器，并且注入每个监视器。
 
 #. 首先，停止所有监视器，注入必须在守护进程停止时进行。
 
@@ -306,4 +306,4 @@ IP 地址。
 
 .. _手动部署: ../../../install/manual-deployment
 .. _监视器自举启动: ../../../dev/mon-bootstrap
-.. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)
+.. _Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)

@@ -74,4 +74,4 @@ API
 +---------------------------------+-----------------+----------------------------------------+
 
 
-.. _Swift API: http://developer.openstack.org/api-ref-objectstorage-v1.html
+.. _Swift API: https://developer.openstack.org/api-ref/object-store/index.html

@@ -1,13 +1,17 @@
-=========================
- Authentication and ACLs
-=========================
+.. Authentication and ACLs
+
+====================
+ 认证和访问控制列表
+====================
 
 Requests to the RADOS Gateway (RGW) can be either authenticated or
 unauthenticated. RGW assumes unauthenticated requests are sent by an anonymous
 user. RGW supports canned ACLs.
 
-Authentication
---------------
+.. Authentication
+
+认证
+----
 Authenticating a request requires including an access key and a Hash-based
 Message Authentication Code (HMAC) in the request before it is sent to the
 RGW server. RGW uses an S3-compatible authentication approach.
@@ -49,8 +53,11 @@ To normalize the header into canonical form:
 
 Replace the ``{hash-of-header-and-secret}`` with the base-64 encoded HMAC string.
 
-Access Control Lists (ACLs)
----------------------------
+
+.. Access Control Lists (ACLs)
+
+访问控制列表（ ACL ）
+---------------------
 
 RGW supports S3-compatible ACL functionality. An ACL is a list of access grants
 that specify which operations a user can perform on a bucket or on an object.
@@ -72,4 +79,4 @@ an object:
 +------------------+--------------------------------------------------------+----------------------------------------------+
 
 .. _RFC 2104: http://www.ietf.org/rfc/rfc2104.txt
-.. _HMAC: http://en.wikipedia.org/wiki/HMAC
+.. _HMAC: https://en.wikipedia.org/wiki/HMAC

@@ -2,8 +2,9 @@
  克隆 Ceph 源码库
 ==================
 
-你可以去\ `位于 github 的 Ceph 源码库`_\ 克隆某个 Ceph 分支，先选择一个分支（默认\
-是 ``master`` ），然后点击 **Download ZIP** 按钮。
+你可以去\ `位于 github 的 Ceph 源码库`_\ 克隆某个 Ceph 分支，\
+先选择一个分支（默认是 ``master`` ），然后点击 **Download ZIP**
+按钮。
 
 .. _位于 github 的 Ceph 源码库: https://github.com/ceph/ceph
 
@@ -22,11 +23,11 @@
 
 	sudo yum install git
 
-相应地，你必须有 ``github`` 帐户。如果你还没有，去 `github.com`_ 注册一个，然后按\
-照\ `设置 Git`_ 指引配置 git 。
+相应地，你必须有 ``github`` 帐户。如果你还没有，去
+`github.com`_ 注册一个，然后按照\ `设置 Git`_ 指引配置 git 。
 
-.. _github.com: http://github.com
-.. _设置 Git: http://help.github.com/linux-set-up-git
+.. _github.com: https://github.com
+.. _设置 Git: https://help.github.com/linux-set-up-git
 
 
 添加 SSH 密钥（可选）

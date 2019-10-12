@@ -92,6 +92,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
    start/intro
    start/index
    install/index
+   start/kube-helm
    rados/index
    cephfs/index
    rbd/index

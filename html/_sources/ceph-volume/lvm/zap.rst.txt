@@ -21,8 +21,10 @@ Zapping a partition::
 
     ceph-volume lvm zap /dev/sdc1
 
-Removing Devices
-----------------
+.. Removing Devices
+
+删除设备
+--------
 When zapping, and looking for full removal of the device (lv, vg, or partition)
 use the ``--destroy`` flag. A common use case is to simply deploy OSDs using
 a whole raw device. If you do so and then wish to reuse that device for another

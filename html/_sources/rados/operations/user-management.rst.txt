@@ -89,10 +89,11 @@ wherever possible.
 授权（能力）
 ------------
 
-Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的授权，\
-这样才能使用监视器、 OSD 、和元数据服务器的功能。能力也用于限制对一\
-存储池内的数据或某个名字空间的访问。 Ceph 的管理用户可在创建或更新\
-某用户时赋予他能力。
+Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
+的授权，这样才能使用监视器、 OSD 、和元数据服务器的功能。能力\
+也用于限制对一存储池内的数据、存储池内某个名字空间、或由\
+应用标签所标识的一系列存储池的访问。 Ceph 的管理用户可在创建或\
+更新某用户时赋予他能力。
 
 能力的语法符合下面的形式： ::
 
@@ -121,6 +122,22 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给认证用户的�
 	osd 'allow {access-spec} [{match-spec}] [network {network/prefix}]'
 
 	osd 'profile {name} [pool={pool-name} [namespace={namespace-name}]] [network {network/prefix}]'
+
+  其中， ``{access-spec}`` 语法是下列之一： ::
+
+        * | all | [r][w][x] [class-read] [class-write]
+
+        class {class name} [{method name}]
+
+  可选的 ``{match-spec}`` 语法是下列之一： ::
+
+        pool={pool-name} [namespace={namespace-name}] [object_prefix {prefix}]
+
+        [namespace={namespace-name}] tag {application} {key}={value}
+
+  可选的 ``{network/prefix}`` 是一个标准网络名、且前缀长度遵循
+  CIDR 表示法（如 ``10.3.0.0/16`` ）。如果配置了，对此能力的\
+  使用就仅限于从这个网络连入的客户端。
 
 - **元数据服务器能力：** 对于管理员，设置 ``allow *`` 。对于\
   其它的所有用户，如 CephFS 客户端，参考
@@ -273,6 +290,10 @@ cluster. By contrast, writing an object to a namespace simply associates the
 namespace to the object name with out the computational overhead of a separate
 pool. Rather than creating a separate pool for a user or set of users, you may
 use a namespace. **Note:** Only available using ``librados`` at this time.
+
+用 ``namespace`` 能力可以把访问权限局限于特定的 RADOS 命名空间。\
+命名空间支持有限的通配；如果指定的命名空间最后一个字符是 ``*`` ，\
+那就把访问权限授予所有以所提供参数打头的命名空间。
 
 
 .. Managing Users

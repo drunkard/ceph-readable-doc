@@ -1420,7 +1420,7 @@ Ceph FS 从数据中分离出了元数据、并存储于 MDS ，文件数据存�
 
 
 .. _RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters: https://ceph.com/wp-content/uploads/2016/08/weil-rados-pdsw07.pdf
-.. _Paxos: http://en.wikipedia.org/wiki/Paxos_(computer_science)
+.. _Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 .. _监视器配置参考: ../rados/configuration/mon-config-ref
 .. _监控 OSD 和归置组: ../rados/operations/monitoring-osd-pg
 .. _心跳: ../rados/configuration/mon-osd-interaction
@@ -1432,14 +1432,14 @@ Ceph FS 从数据中分离出了元数据、并存储于 MDS ，文件数据存�
 .. _Ceph 认证和授权: ../rados/operations/auth-intro/
 .. _硬件推荐: ../start/hardware-recommendations
 .. _网络配置参考: ../rados/configuration/network-config-ref
-.. _条带化: http://en.wikipedia.org/wiki/Data_striping
-.. _RAID: http://en.wikipedia.org/wiki/RAID
-.. _RAID 0: http://en.wikipedia.org/wiki/RAID_0#RAID_0
+.. _条带化: https://en.wikipedia.org/wiki/Data_striping
+.. _RAID: https://en.wikipedia.org/wiki/RAID
+.. _RAID 0: https://en.wikipedia.org/wiki/RAID_0#RAID_0
 .. _Ceph 对象存储: ../radosgw/
-.. _REST 风格: http://en.wikipedia.org/wiki/RESTful
+.. _REST 风格: https://en.wikipedia.org/wiki/RESTful
 .. _纠删码笔记: https://github.com/ceph/ceph/blob/40059e12af88267d0da67d8fd8d9cd81244d8f93/doc/dev/osd_internals/erasure_coding/developer_notes.rst
 .. _缓存分级: ../rados/operations/cache-tiering
 .. _调整存储池: ../rados/operations/pools#set-pool-values
-.. _Kerberos: http://en.wikipedia.org/wiki/Kerberos_(protocol)
+.. _Kerberos: https://en.wikipedia.org/wiki/Kerberos_(protocol)
 .. _Cephx 配置指南: ../rados/configuration/auth-config-ref
 .. _用户管理: ../rados/operations/user-management

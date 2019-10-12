@@ -128,6 +128,8 @@ subsystem 代表 Ceph 子系统的名字： ``mon`` 、 ``mds`` 、或
         mon = "allow r"
 
 
+.. OSD Capabilities
+
 OSD 能力
 ========
 
@@ -135,7 +137,9 @@ OSD 能力
 
         osdcap  := grant[,grant...]
         grant   := allow (match capspec | capspec match)
-        match   := [pool[=]<poolname> | object_prefix <prefix>]
+        match   := [ pool[=]<poolname> | object_prefix <prefix>
+                    | namespace[=]<rados-namespace>
+                    | tag <application-name> <key>=<value> ]
         capspec := * | [r][w][x] [class-read] [class-write]
 
 capspec 决定了此实体可执行哪些操作： ::
@@ -145,14 +149,17 @@ capspec 决定了此实体可执行哪些操作： ::
     x           = 可调用任何类方法（等同于 class-read 、 class-write ）
     class-read  = 可调用读数据的类方法
     class-write = 可调用写数据的类方法
-    *           = 等价于 rwx ，另外还可运行 OSD 管理命令，即 ceph osd tell ...
+    * 或 all    = 等价于 rwx ，另外还可运行 OSD 管理命令，即 ceph osd tell ...
 
-匹配规则限制了授权是基于被访问存储池的，客户端满足匹配条件时授权会叠加。例\
-如，假设客户端的 OSD 能力为： \
-"allow r object_prefix prefix, allow w pool foo, allow x pool bar" ，那么它\
-有 foo 存储池的读写权限（ rw ）、有 bar 存储池的读和执行权限（ rx ）、还有\
-任意存储池中以 prefix 打头的对象的读（ r ）权限。
+匹配规则限制了授权是基于被访问存储池的，客户端满足匹配条件时\
+授权会叠加。例如，假设客户端的 OSD 能力为： \
+"allow r object_prefix prefix, allow w pool foo, allow x pool bar" ，\
+那么它有 foo 存储池的读写权限（ rw ）、有 bar 存储池的读和\
+执行权限（ rx ）、还有任意存储池中以 prefix 打头的对象的\
+读（ r ）权限。
 
+
+.. Caps file format
 
 能力文件的格式
 ==============

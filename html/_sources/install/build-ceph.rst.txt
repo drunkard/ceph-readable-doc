@@ -83,11 +83,11 @@ RPM 包管理器
 
 下载源码包，编译 RPM 时需要： ::
 
-	wget -P ~/rpmbuild/SOURCES/ http://ceph.com/download/ceph-<version>.tar.bz2
+	wget -P ~/rpmbuild/SOURCES/ https://download.ceph.com/tarballs/ceph-<version>.tar.bz2
 
 或者从欧洲镜像下载： ::
 
-	wget -P ~/rpmbuild/SOURCES/ http://eu.ceph.com/download/ceph-<version>.tar.bz2
+	wget -P ~/rpmbuild/SOURCES/ http://eu.ceph.com/tarballs/ceph-<version>.tar.bz2
 
 提取规范文件： ::
 

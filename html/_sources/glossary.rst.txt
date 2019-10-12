@@ -24,7 +24,7 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
 	Ceph
 	Ceph Platform
         Ceph 平台
-		所有与 Ceph 相关的软件，包括所有位于 `http://github.com/ceph`_ \
+		所有与 Ceph 相关的软件，包括所有位于 `https://github.com/ceph`_ \
 		的源码。
 
 	Ceph System
@@ -99,10 +99,9 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
 	Object Storage Device
 	OSD
         对象存储设备
-		A physical or logical storage unit (*e.g.*, LUN).
-		Sometimes, Ceph users use the
-		term "OSD" to refer to :term:`Ceph OSD Daemon`, though the
-		proper term is "Ceph OSD".
+                一个物理的或逻辑的存储单元（如 LUN ）。
+                有时候， Ceph 用户以术语 OSD 来引用 :term:`Ceph OSD 守护进程`\ ，\
+                然而恰当的术语应该是 Ceph OSD 。
 
 	Ceph OSD Daemon
 	Ceph OSD Daemons
@@ -242,5 +241,5 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
                 相关的信息，如各设备、以及它们与 OSD 的关系。
 
 
-.. _http://github.com/ceph: http://github.com/ceph
+.. _https://github.com/ceph: https://github.com/ceph
 .. _Cluster Map: ../architecture#cluster-map

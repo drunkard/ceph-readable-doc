@@ -227,30 +227,30 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
 
 .. topic:: 单网卡OSD、双网络集群
 
-   一般来说，我们不建议用单网卡 OSD 主机部署两个网络。然而这事可以实现，把 \
-   ``public addr`` 选项配在 ``[osd.n]`` 段下即可强制 OSD 主机运行在公共网，其中 \
-   ``n`` 是其 OSD 号。另外，公共网和集群网必须互通，考虑到安全因素我们不建议这样做。
+   一般来说，我们不建议用单网卡 OSD 主机部署两个网络。然而这事\
+   可以实现，把 ``public addr`` 选项配在 ``[osd.n]`` 段下即可\
+   强制 OSD 主机运行在公共网，其中 ``n`` 是其 OSD 号。另外，\
+   公共网和集群网必须互通，考虑到安全因素我们不建议这样做。
 
 
 网络配置选项
 ============
 
-网络配置选项不是必需的， Ceph 假设所有主机都运行于公共网，除非你特意配置了一个集群\
-网。
+网络配置选项不是必需的， Ceph 假设所有主机都运行于公共网，除非\
+你特意配置了一个集群网。
 
 
 公共网
 ------
 
-公共网配置用于明确地为公共网定义 IP 地址和子网。你可以分配静态 IP 或用 \
-``public addr`` 覆盖 ``public network`` 选项。
+公共网配置用于明确地为公共网定义 IP 地址和子网。你可以分配\
+静态 IP 或用 ``public addr`` 覆盖 ``public network`` 选项。
 
 
 ``public network``
 
-:描述: 公共网（前端）的 IP 地址和掩码（如 ``192.168.0.0/24`` ），置于 \
-       ``[global]`` 下。多个子网用逗号分隔。
-
+:描述: 公共网（前端）的 IP 地址和掩码（如 ``192.168.0.0/24``
+       ），置于 ``[global]`` 下。多个子网用逗号分隔。
 :类型: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
 :是否必需: No
 :默认值: N/A
@@ -268,15 +268,15 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
 集群网
 ------
 
-集群网配置用来声明一个集群网，并明确地定义其 IP 地址和子网。你可以配置静态 IP 或为\
-某 OSD 守护进程配置 ``cluster addr`` 以覆盖 ``cluster network`` 选项。
+集群网配置用来声明一个集群网，并明确地定义其 IP 地址和子网。\
+你可以配置静态 IP 或为某 OSD 守护进程配置 ``cluster addr`` 以\
+覆盖 ``cluster network`` 选项。
 
 
 ``cluster network``
 
-:描述: 集群网（后端）的 IP 地址及掩码（如 ``10.0.0.0/24`` ），置于 \
-       ``[global]`` 下。多个子网用逗号分隔。
-
+:描述: 集群网（后端）的 IP 地址及掩码（如 ``10.0.0.0/24`` ），\
+       置于 ``[global]`` 下。多个子网用逗号分隔。
 :类型: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
 :是否必需: No
 :默认值: N/A
@@ -335,7 +335,6 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
        它，并且在监视器运行图（ monmap ）里使用 ``public addr``
        地址、并向其余节点广播其地址。此行为仅限于监视器\
        守护进程。
-
 :类型: IP 地址
 :是否必需: No
 :默认值: N/A
@@ -345,14 +344,15 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
 主机
 ----
 
-Ceph 配置文件里至少要写一个监视器、且每个监视器下都要配置 ``mon addr`` 选项；\
-每个监视器、元数据服务器和 OSD 下都要配 ``host`` 选项。
+Ceph 配置文件里至少要写一个监视器、且每个监视器下都要配置
+``mon addr`` 选项；每个监视器、元数据服务器和 OSD 下都要配
+``host`` 选项。
+
 
 ``mon addr``
 
-:描述: ``{hostname}:{port}`` 条目列表，用以让客户端连接 Ceph 监视器。如果未设\
-       置， Ceph 查找 ``[mon.*]`` 段。
-
+:描述: ``{hostname}:{port}`` 条目列表，用以让客户端连接
+       Ceph 监视器。如果未设置， Ceph 查找 ``[mon.*]`` 段。
 :类型: String
 :是否必需: No
 :默认值: N/A
@@ -365,10 +365,11 @@ Ceph 配置文件里至少要写一个监视器、且每个监视器下都要配
 :是否必需: Yes, for daemon instances.
 :默认值: ``localhost``
 
-.. tip:: 不要用 ``localhost`` 。在命令行下执行 ``hostname -s`` 获取主机名（到第一\
-   个点，不是全资域名），并用于配置文件。
+.. tip:: 不要用 ``localhost`` 。在命令行下执行 ``hostname -s``
+   获取主机名（到第一个点，不是全资域名），并用于配置文件。
 
-.. important:: 用第三方部署工具时不要指定 ``host`` 选项，它会自行获取。
+.. important:: 用第三方部署工具时不要指定 ``host`` 选项，它会\
+   自行获取。
 
 
 
@@ -383,7 +384,6 @@ Ceph 默认禁用 TCP 缓冲。
 :描述: Ceph 用 ``ms tcp nodelay`` 使系统尽快（不缓冲）发送每个\
        请求。禁用 `Nagle 算法`_\ 可增加吞吐量，但会引进延时。\
        如果你遇到大量小包，可以禁用 ``ms tcp nodelay`` 试试。
-
 :类型: Boolean
 :是否必需: No
 :默认值: ``true``
@@ -399,10 +399,9 @@ Ceph 默认禁用 TCP 缓冲。
 
 ``ms tcp read timeout``
 
-:描述: 如果一客户端或守护进程发送请求到另一个 Ceph 守护进程，且\
-       没有断开不再使用的连接，在 ``ms tcp read timeout`` 指定的\
-       秒数之后它将被标记为空闲。
-
+:描述: 如果一客户端或守护进程发送请求到另一个 Ceph 守护进程，\
+       且没有断开不再使用的连接，在 ``ms tcp read timeout``
+       指定的秒数之后它将被标记为空闲。
 :类型: Unsigned 64-bit Integer
 :是否必需: No
 :默认值: ``900`` 15 minutes.
@@ -415,5 +414,5 @@ Ceph 默认禁用 TCP 缓冲。
 .. _硬件推荐: ../../../start/hardware-recommendations
 .. _监视器与 OSD 的交互: ../mon-osd-interaction
 .. _消息签名: ../auth-config-ref#signatures
-.. _CIDR: http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing
-.. _Nagle 算法: http://en.wikipedia.org/wiki/Nagle's_algorithm
+.. _CIDR: https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing
+.. _Nagle 算法: https://en.wikipedia.org/wiki/Nagle's_algorithm

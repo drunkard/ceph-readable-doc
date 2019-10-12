@@ -96,8 +96,8 @@
 方法会限制所有以 ``ceph.`` 为前缀的特殊扩展属性、也会限制以其\
 它方法配置这些字段（如对布局进行 openc 操作）。
 
-例如，在下面的配置片段中， client.0 可以更改布局和配额，而
-client.1 却不能。
+例如，在下面的配置片段中， client.0 可以更改 cephfs_a 文件系统\
+的布局和配额，而 client.1 却不能。
 
 ::
 
@@ -105,13 +105,13 @@ client.1 却不能。
         key: AQAz7EVWygILFRAAdIcuJ12opU/JKyfFmxhuaw==
         caps: [mds] allow rwp
         caps: [mon] allow r
-        caps: [osd] allow rw pool=data
+        caps: [osd] allow rw tag cephfs data=data
 
     client.1
         key: AQAz7EVWygILFRAAdIcuJ12opU/JKyfFmxhuaw==
         caps: [mds] allow rw
         caps: [mon] allow r
-        caps: [osd] allow rw pool=data
+        caps: [osd] allow rw tag cephfs data=data
 
 
 .. _用户管理 - 把用户加入密钥环: ../../rados/operations/user-management/#add-a-user-to-a-keyring

@@ -799,7 +799,7 @@ Ceph 会列出存储池，且高亮 ``replicated size`` 属性。默认情况\
 
 
 .. _存储池、归置组和 CRUSH 配置参考: ../../configuration/pool-pg-config-ref
-.. _Bloom 过滤器: http://en.wikipedia.org/wiki/Bloom_filter
+.. _Bloom 过滤器: https://en.wikipedia.org/wiki/Bloom_filter
 .. _设置归置组数量: ../placement-groups#set-the-number-of-placement-groups
 .. _在纠删码存储池上启用重写功能: ../erasure-code#erasure-coding-with-overwrites
 .. _块设备命令: ../../../rbd/rados-rbd-cmds/#create-a-block-device-pool
