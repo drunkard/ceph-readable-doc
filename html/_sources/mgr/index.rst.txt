@@ -24,7 +24,7 @@ mgr 启动。
     :maxdepth: 1
 
     安装和配置 <administrator>
-    模块编程 <plugins>
+    模块编程 <modules>
     仪表盘模块 <dashboard>
     localpool 模块 <localpool>
     REST 风格模块 <restful>

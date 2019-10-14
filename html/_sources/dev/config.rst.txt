@@ -14,7 +14,7 @@ How can the configuration be set? Well, there are several sources:
     --debug-ms=1
     --debug-pg=10
     etc.
- - arguments injected at runtime by using injectargs
+ - 在运行时用 injectargs 或 config set 注入的参数
 
 
 .. The Configuration File

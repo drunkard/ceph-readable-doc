@@ -897,7 +897,7 @@ jewel 版的可调配置能够提升 CRUSH 的整体行为，这样，在 OSD
 
    为使变更生效需重启所有监视器，或者执行下列命令： ::
 
-	ceph tell mon.\* injectargs --no-mon-warn-on-legacy-crush-tunables
+        ceph tell mon.\* config set mon_warn_on_legacy_crush_tunables false
 
 
 .. _A few important points:

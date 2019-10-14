@@ -38,26 +38,39 @@ features that make CephFS snapshots different from what you might expect:
   the inode number and first `snapid` of the inode/snapshot referenced.
 
 
-.. _Creating a snapshot:
+.. Creating a snapshot
 
 创建快照
 --------
 
-To make a snapshot on directory "/1/2/3/foo", the client invokes "mkdir" on
-"/1/2/3/foo/.snaps" directory. This is transmitted to the MDS Server as a
+CephFS snapshot feature is enabled by default on new file system. To enable it
+on existing file systems, use command below.
+
+.. code::
+
+       $ ceph fs set <fs_name> allow_new_snaps true
+
+When snapshots are enabled, all directories in CephFS will have a special
+``.snap`` directory. (You may configure a different name with the ``client
+snapdir`` setting if you wish.)
+
+To create a CephFS snapshot, create a subdirectory under
+``.snap`` with a name of your choice. For example, to create a snapshot on
+directory "/1/2/3/", invoke ``mkdir /1/2/3/.snap/my-snapshot-name`` .
+
+This is transmitted to the MDS Server as a
 CEPH_MDS_OP_MKSNAP-tagged `MClientRequest`, and initially handled in
 Server::handle_client_mksnap(). It allocates a `snapid` from the `SnapServer`,
 projects a new inode with the new SnapRealm, and commits it to the MDLog as
 usual. When committed, it invokes
-`MDCache::do_realm_invalidate_and_update_notify()`, which triggers most of the
-real work of the snapshot.
+`MDCache::do_realm_invalidate_and_update_notify()`, which notifies all clients
+with caps on files under "/1/2/3/", about the new SnapRealm. When clients get
+the notifications, they update client-side SnapRealm hierarchy, link files
+under "/1/2/3/" to the new SnapRealm and generate a `SnapContext` for the
+new SnapRealm.
 
-If there were already snapshots above directory "foo" (rooted at "/1", say),
-the new SnapRealm adds its most immediate ancestor as a `past_parent` on
-creation. After committing to the MDLog, all clients with caps on files in
-"/1/2/3/foo/" are notified (MDCache::send_snaps()) of the new SnapRealm, and
-update the `SnapContext` they are using with that data. Note that this
-*is not* a synchronous part of the snapshot creation!
+Note that this *is not* a synchronous part of the snapshot creation!
+
 
 .. _Updating a snapshot:
 

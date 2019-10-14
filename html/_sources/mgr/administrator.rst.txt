@@ -61,6 +61,76 @@ ceph-mgr ，以实现相同级别的可用性。
 ceph-mgr 明确地标记为已失效。
 
 
+.. Using modules
+
+模块的使用
+----------
+
+用 ``ceph mgr module ls`` 命令可查看有哪些模块可用、哪些是当前\
+已经启用的。启用或禁用模块分别使用命令 ``ceph mgr module enable <module>``
+和 ``ceph mgr module disable <module>`` 。
+
+If a module is *enabled* then the active ceph-mgr daemon will load
+and execute it.  In the case of modules that provide a service,
+such as an HTTP server, the module may publish its address when it
+is loaded.  To see the addresses of such modules, use the command 
+``ceph mgr services``.
+
+Some modules may also implement a special standby mode which runs on
+standby ceph-mgr daemons as well as the active daemon.  This enables
+modules that provide services to redirect their clients to the active
+daemon, if the client tries to connect to a standby.
+
+Consult the documentation pages for individual manager modules for more
+information about what functionality each module provides.
+
+Here is an example of enabling the :term:`Dashboard` module:
+
+::
+
+	$ ceph mgr module ls
+	{
+		"enabled_modules": [
+			"restful",
+			"status"
+		],
+		"disabled_modules": [
+			"dashboard"
+		]
+	}
+
+	$ ceph mgr module enable dashboard
+	$ ceph mgr module ls
+	{
+		"enabled_modules": [
+			"restful",
+			"status",
+			"dashboard"
+		],
+		"disabled_modules": [
+		]
+	}
+
+	$ ceph mgr services
+	{
+		"dashboard": "http://myserver.com:7789/",
+		"restful": "https://myserver.com:8789/"
+	}
+
+
+The first time the cluster starts, it uses the ``mgr_initial_modules``
+setting to override which modules to enable.  However, this setting
+is ignored through the rest of the lifetime of the cluster: only
+use it for bootstrapping.  For example, before starting your
+monitor daemons for the first time, you might add a section like
+this to your ``ceph.conf``:
+
+::
+
+    [mon]
+        mgr initial modules = dashboard balancer
+
+
 .. Calling module commands
 
 调用模块命令

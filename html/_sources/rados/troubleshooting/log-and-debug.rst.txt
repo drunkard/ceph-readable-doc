@@ -24,7 +24,8 @@
 运行时
 ======
 
-如果你想查看一进程的运行时配置，必须先登录对应主机，然后执行命令： ::
+如果你想查看一进程的运行时配置，必须先登录对应主机，然后执行\
+命令： ::
 
 	ceph daemon {daemon-name} config show | less
 
@@ -32,20 +33,20 @@
 
 	ceph daemon osd.0 config show | less
 
-要在运行时激活 Ceph 的调试输出（即 ``dout()`` ），用 ``ceph tell`` \
-命令把参数注入运行时配置： ::
+要在运行时激活 Ceph 的调试输出（即 ``dout()`` ），用
+``ceph tell`` 命令把参数注入运行时配置： ::
 
-	ceph tell {daemon-type}.{daemon id or *} injectargs --{name} {value} [--{name} {value}]
+	ceph tell {daemon-type}.{daemon id or *} config set {name} {value}
 
-用 ``osd`` 、 ``mon`` 或 ``mds`` 替代 ``{daemon-type}`` 。你可以用\
-星号（ ``*`` ）把配置应用到同类型的所有守护进程，或者指定具体守护\
-进程的 ID 。例如，要给名为 ``ods.0`` 的 ``ceph-osd`` 守护进程提高\
-调试级别，用下列命令： ::
+用 ``osd`` 、 ``mon`` 或 ``mds`` 替代 ``{daemon-type}`` 。你\
+可以用星号（ ``*`` ）把配置应用到同类型的所有守护进程，或者\
+指定具体守护进程的 ID 。例如，要给名为 ``ods.0`` 的
+``ceph-osd`` 守护进程提高调试级别，用下列命令： ::
 
-	ceph tell osd.0 injectargs --debug-osd 0/5
+	ceph tell osd.0 config set debug_osd 0/5
 
-``ceph tell`` 命令会贯穿所有监视器。如果你不能绑定监视器，还可以\
-登录你要改的那台主机用 ``ceph daemon`` 来更改。例如： ::
+``ceph tell`` 命令会贯穿所有监视器。如果你不能绑定监视器，还\
+可以登录你要改的那台主机用 ``ceph daemon`` 来更改。例如： ::
 
 	sudo ceph daemon osd.0 config set debug_osd 0/5
 

@@ -390,16 +390,16 @@ Ceph 可以在运行时更改 ``ceph-osd`` 、 ``ceph-mon`` 、 ``ceph-mds`` 守
 置，此功能在增加/降低日志输出、启用/禁用调试设置、甚至是运行时优化的时候非常有用，\
 下面是运行时配置方法： ::
 
-	ceph tell {daemon-type}.{id or *} injectargs --{name} {value} [--{name} {value}]
+	ceph tell {daemon-type}.{id or *} config set {name} {value}
 
 用 ``osd`` 、 ``mon`` 、 ``mds`` 中的一个替代 ``{daemon-type}`` ，你可以用星号\
 （ ``*`` ）更改一类进程的所有例程配置、或者更改某一具体进程 ID （即数字或字母）的配\
 置。例如提高名为 ``osd.0`` 的 ``ceph-osd`` 进程之调试级别的命令如下： ::
 
-	ceph tell osd.0 injectargs --debug-osd 20 --debug-ms 1
+	ceph tell osd.0 config set debug_osd 20
 
 在 ``ceph.conf`` 文件里配置时用空格分隔关键词；但在命令行使用的时候要用下划线或连字\
-符（ ``_`` 或 ``-`` ）分隔，例如 ``debug osd`` 变成 ``debug-osd`` 。
+符（ ``_`` 或 ``-`` ）分隔，例如 ``debug osd`` 变成 ``debug_osd`` 。
 
 
 查看运行时配置

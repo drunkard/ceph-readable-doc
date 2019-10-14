@@ -335,7 +335,7 @@ Ceph 管理套接字允许你通过套接字接口查询守护进程，它们默
 
 另外，你可以在运行时直接修改配置选项（也就是说管理套接字会绕过\
 监视器，不要求你直接登录宿主主机，不像
-``ceph {daemon-type} tell {id} injectargs`` 依赖监视器。
+``ceph {daemon-type} tell {id} config set`` 依赖监视器。
 
 .. _查看运行时配置: ../../configuration/ceph-conf#ceph-runtime-config
 .. _存储容量: ../../configuration/mon-config-ref#storage-capacity

@@ -278,11 +278,11 @@ MDS 子系统
 
 更改在运行 mds 的参数： ::
 
-	ceph tell mds.{mds-id} injectargs --{switch} {value} [--{switch} {value}]
+	ceph tell mds.{mds-id} config set {setting} {value}
 
 例如： ::
 
-	ceph tell mds.0 injectargs --debug_ms 1 --debug_mds 10
+	ceph tell mds.0 config set debug_ms 1
 
 打开了调试消息。 ::
 
