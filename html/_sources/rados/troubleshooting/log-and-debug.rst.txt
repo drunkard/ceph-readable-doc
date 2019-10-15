@@ -386,10 +386,15 @@ Ceph 子系统概览
 
 ``mon cluster log file``
 
-:描述: 集群日志位置。
+:描述: 集群各日志文件的位置。 Ceph 里有两个通道： ``cluster``
+       和 ``audit`` 。这个选项表示从通道至日志文件的映射，
+       ``default`` 配置是个退路，在通道没有明确配置时用到。所以，\
+       下面的默认配置将把集群日志发送到 ``$cluster.log`` 、\
+       审计日志发送到 ``$cluster.audit.log`` ，其中，
+       ``$cluster`` 将被替换成具体的集群名字。
 :类型: String
 :是否必需: No
-:默认值: ``/var/log/ceph/$cluster.log``
+:默认值: ``default=/var/log/ceph/$cluster.$channel.log,cluster=/var/log/ceph/$cluster.log``
 
 
 
