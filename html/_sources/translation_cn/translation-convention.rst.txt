@@ -43,8 +43,9 @@
         自举引导
 
     bucket
+    bucket index
     bucket policy
-        桶、桶策略
+        桶、桶索引（ ``bi`` ）、桶策略
 
     chunk
         块、校验块。EC术语。
@@ -238,6 +239,11 @@
         对象存储器
         可用的有 filestore 、 bluestore
 
+    orphans search, find orphans
+        捡漏
+
+        RGW 术语。
+
     (osd) reporter
         报告者 => 报信的?
 
@@ -399,6 +405,11 @@
 
     spread metadata load
         散布元数据负荷
+
+    staging period
+        暂存的 period
+
+        RGW 术语。
 
     stale pg
         掉队、落伍的归置组

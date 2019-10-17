@@ -87,11 +87,65 @@
 :command:`bucket check`
   检查桶的索引信息。
 
+:command:`bucket rewrite`
+  重写指定桶内的所有对象。
+
+:command:`bucket reshard`
+  对桶进行重分片。
+
+:command:`bucket sync disable`
+  禁用桶同步。
+
+:command:`bucket sync enable`
+  允许桶同步。
+
+:command:`bi get`
+  检出桶索引对象条目。
+
+:command:`bi put`
+  存入桶索引对象条目。
+
+:command:`bi list`
+  罗列原始的桶索引条目。
+
+:command:`bi purge`
+  清除桶索引条目。
+
 :command:`object rm`
   删除一个对象。
 
 :command:`object unlink`
   从桶索引里去掉对象。
+
+:command:`object rewrite`
+  重写指定对象。
+
+:command:`objects expire`
+  启动过期对象的清理。
+
+:command:`period rm`
+  删除一个 period 。
+
+:command:`period get`
+  查看指定 period 的信息。
+
+:command:`period get-current`
+  查看当前 period 的信息。
+
+:command:`period pull`
+  拉取一个 period 。
+
+:command:`period push`
+  推送一个 period 。
+
+:command:`period list`
+  罗列所有 period 。
+
+:command:`period update`
+  更新暂存的 period 。
+
+:command:`period commit`
+  提交暂存的 period 。
 
 :command:`quota set`
   设置配额参数。
@@ -128,6 +182,45 @@
 
 :command:`zone list`
   列出本集群内配置的所有区域。
+
+:command:`metadata sync status`
+  查看元数据同步状态。
+
+:command:`metadata sync init`
+  初始化元数据同步。
+
+:command:`metadata sync run`
+  启动元数据同步。
+
+:command:`data sync status`
+  查看指定源 zone 的数据同步状态。
+
+:command:`data sync init`
+  初始化指定源 zone 的数据同步。
+
+:command:`data sync run`
+  启动指定源 zone 的数据同步。
+
+:command:`sync error list`
+  罗列同步错误。
+
+:command:`sync error trim`
+  清理同步错误。
+
+:command:`zone rename`
+  重命名一个 zone 。
+
+:command:`zone placement list`
+  罗列 zone 的归置目的地。
+
+:command:`zone placement add`
+  新增一个 zone 归置目的地。
+
+:command:`zone placement modify`
+  更改一个 zone 的归置目的地。
+
+:command:`zone placement rm`
+  删除一个 zone 的归置目的地。
 
 :command:`pool add`
   增加一个已有存储池用于数据归置。
@@ -374,6 +467,10 @@
 
    radosgw 所在的区域。
 
+.. option:: --source-zone
+
+   数据同步的源 zone 。
+
 .. option:: --fix
 
    除了检查桶索引，还修复它。
@@ -432,6 +529,39 @@
 
    某些特定操作需要。
 
+.. option:: --min-rewrite-size
+
+   指定桶重写时的最小对象尺寸（默认 4M ）。
+
+.. option:: --max-rewrite-size
+
+   指定桶重写时的最大对象尺寸（默认 ULLONG_MAX ）。
+
+.. option:: --min-rewrite-stripe-size
+
+   指定对象重写时的最小条带尺寸（默认 0 ）。如果此值设置为 0 ，\
+   那么被指定对象被重写后还需重新条带化。
+
+.. option:: --warnings-only
+
+   进行桶超限检查时若加了此选项，仅罗列出那些当前分片内\
+   最大对象数接近或超过的桶。
+
+.. option:: --bypass-gc
+
+   删除桶时若加了此选项，则跳过 GC 直接触发对象删除。
+
+.. option:: --inconsistent-index
+
+   删除桶时若加了此选项、且加了 ``--bypass-gc`` 选项，则无视\
+   桶索引的一致性。
+
+.. option:: --max-concurrent-ios
+
+   进行桶操作时的最大并行 IO 数。影响的操作诸如扫描桶索引，\
+   如罗列、删除；还有所有的扫描、搜索操作，比如捡漏或\
+   检查桶索引。默认值为 32 。
+
 
 配额选项
 ========
@@ -454,25 +584,20 @@
 
 .. option:: --pool
 
-	指定需要检索遗漏 RADOS 对象的存储池。
+   指定需要检索遗漏 RADOS 对象的存储池。
 
 .. option:: --num-shards
 
-	用多少个分片临时保存扫描信息。
+   用多少个分片临时保存扫描信息。
 
 .. option:: --orphan-stale-secs
 
-        对象被遗漏多久才被当作孤儿，单位是秒。
-        默认是 86400 （ 24 小时）。
+   对象被遗漏多久才被当作孤儿，单位是秒。
+   默认是 86400 （ 24 小时）。
 
 .. option:: --job-id
 
-        设置作业标识符（适用于 ``orphans find`` ）。
-
-.. option:: --max-concurrent-ios
-
-        ``orphans find`` 命令运行的最大并行 IO 数量。
-        默认是 32 。
+   设置作业标识符（适用于 ``orphans find`` ）。
 
 
 实例
