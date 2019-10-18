@@ -77,25 +77,27 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
         </td><td><h3>其它详细信息</h3>
 
 .. toctree::
-        :maxdepth: 1
+    :maxdepth: 1
+    :hidden:
 
-        最佳部署实践 <best-practices>
-        CephFS 管理命令 <administration>
-        POSIX 兼容性 <posix>
-        实验性功能 <experimental-features>
-        CephFS 配额管理 <quota>
-        在 Ceph 上使用 Hadoop <hadoop>
-        cephfs-journal-tool <cephfs-journal-tool>
-        文件布局 <file-layouts>
-        驱逐客户端 <eviction>
-        文件系统占满的处理 <full>
-        健康消息 <health-messages>
-        故障排除 <troubleshooting>
-        灾难恢复 <disaster-recovery>
-        客户端认证 <client-auth>
-        旧文件系统的升级 <upgrading>
-        目录分片的配置 <dirfrags>
-        多活 MDS 的配置 <multimds>
+    最佳部署实践 <best-practices>
+    CephFS 管理命令 <administration>
+    深入理解 MDS 的缓存尺寸限制 <cache-size-limits>
+    POSIX 兼容性 <posix>
+    实验性功能 <experimental-features>
+    CephFS 配额管理 <quota>
+    在 Ceph 上使用 Hadoop <hadoop>
+    cephfs-journal-tool <cephfs-journal-tool>
+    文件布局 <file-layouts>
+    驱逐客户端 <eviction>
+    文件系统占满的处理 <full>
+    健康消息 <health-messages>
+    故障排除 <troubleshooting>
+    灾难恢复 <disaster-recovery>
+    客户端认证 <client-auth>
+    旧文件系统的升级 <upgrading>
+    目录分片的配置 <dirfrags>
+    多活 MDS 的配置 <multimds>
 
 .. toctree:: 
    :hidden:

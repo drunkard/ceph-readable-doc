@@ -6,22 +6,25 @@
 报告归置组状态。一个归置组有一到多种状态，其最优状态为
 ``active+clean`` 。
 
-*Creating*
+*creating*
   Ceph 仍在创建归置组。
 
-*Active*
+*active*
   Ceph 可处理到归置组的请求。
 
-*Clean*
+*clean*
   Ceph 把归置组内的对象复制了规定次数。
 
-*Down*
+*down*
   包含必备数据的副本挂了，所以归置组离线。
 
-*Scrubbing*
-  Ceph 正在检查归置组的一致性。
+*scrubbing*
+  Ceph 正在检查归置组元数据，看是否有不一致的地方。
 
-*Degraded*
+*deep*
+  Ceph 正在检查比对归置组数据与存储的校验和。
+
+*degraded*
   归置组内的对象还没复制到规定次数。
 
 *inconsistent*
@@ -50,24 +53,24 @@
 *wait-backfill*
   归置组正在排队，等候回填。
 
-*Backfill-toofull*
+*backfill-toofull*
   一回填操作在等待，因为目标 OSD 使用率超过了占满率。
 
-*Incomplete*
+*incomplete*
   Ceph 探测到某一归置组丢失了写入信息，或者没有健康的副本。如\
   果你遇到了这个状态，试着启动一下可能包含所需信息的失败 OSD 。\
   如果是纠删码存储池，临时降低 min_size 也许能完成恢复。
 
-*Stale*
+*stale*
   归置组处于一种未知状态——归置组运行图变更后就没再收到它的更新。
 
-*Remapped*
+*remapped*
   归置组被临时映射到了另外一组 OSD ，它们不是 CRUSH 算法指定的。
 
-*Undersized*
+*undersized*
   此归置组的副本数小于配置的存储池副本水平。
 
-*Peered*
-  此归置组已互联，但是不能向客户端提供服务，因为其副本数没达到本存储池的配\
-  置值（ min_size 参数）。在此状态下可以进行恢复，所以此归置组最终能达到 \
-  min_size 。
+*peered*
+  此归置组已互联，但是不能向客户端提供服务，因为其副本数没达到\
+  本存储池的配置值（ min_size 参数）。在此状态下可以进行恢复，\
+  所以此归置组最终能达到 min_size 。

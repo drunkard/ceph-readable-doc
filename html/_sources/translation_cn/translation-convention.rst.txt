@@ -89,6 +89,11 @@
     device class
         设备类别
 
+    display name
+        显示名称，昵称。
+
+        RGW 术语。
+
     down / up
         倒下、倒下了；起来了，活过来了；
 
@@ -203,6 +208,11 @@
 
     layout
         （ CephFS 的）布局
+
+    lifecycle
+        生命周期
+
+        RGW 术语。 bucket lifecycle => 桶生命周期
 
     link (bucket)
         链接（桶到用户）

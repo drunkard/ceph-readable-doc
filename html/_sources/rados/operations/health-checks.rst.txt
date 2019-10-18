@@ -769,7 +769,7 @@ A summary of the slowest recent requests can be seen with::
 
   ceph daemon osd.<id> dump_historic_ops
 
-The location of an OSD can be found with::
+OSD 的位置可用此命令找到： ::
 
   ceph osd find osd.<id>
 

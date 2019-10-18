@@ -20,7 +20,7 @@ features that make CephFS snapshots different from what you might expect:
   very fast.
 
 
-.. _Important Data Structures:
+.. Important Data Structures
 
 重要的数据结构
 --------------
@@ -43,8 +43,8 @@ features that make CephFS snapshots different from what you might expect:
 创建快照
 --------
 
-CephFS snapshot feature is enabled by default on new file system. To enable it
-on existing file systems, use command below.
+CephFS 的快照功能在新文件系统上是默认启用的，要在现有文件系统\
+上启用，用以下命令。
 
 .. code::
 

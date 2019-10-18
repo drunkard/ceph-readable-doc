@@ -2004,5 +2004,30 @@ as encoded in the corresponding read operation.
 :状态码: 404 Not Found
 
 
+.. Binding libraries
+
+绑定库
+======
+
+``Golang``
+
+ - `IrekFasikhov/go-rgwadmin`_
+ - `QuentinPerez/go-radosgw`_
+
+``Java``
+ 
+ - `twonote/radosgw-admin4j`_
+
+``Python``
+
+ - `UMIACS/rgwadmin`_
+ - `valerytschopp/python-radosgw-admin`_
+
+
 .. _管理指南: ../admin
 .. _配额管理: ../admin#quota-management
+.. _IrekFasikhov/go-rgwadmin: https://github.com/IrekFasikhov/go-rgwadmin
+.. _QuentinPerez/go-radosgw: https://github.com/QuentinPerez/go-radosgw
+.. _twonote/radosgw-admin4j: https://github.com/twonote/radosgw-admin4j
+.. _UMIACS/rgwadmin: https://github.com/UMIACS/rgwadmin
+.. _valerytschopp/python-radosgw-admin: https://github.com/valerytschopp/python-radosgw-admin
