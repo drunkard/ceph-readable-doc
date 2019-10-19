@@ -44,11 +44,11 @@ default::
 	auth_service_required = cephx
 	auth_client_required = cephx
 
-When you execute ``ceph-deploy mon create-initial``, Ceph will bootstrap the
-initial monitor(s), retrieve a ``ceph.client.admin.keyring`` file containing the
-key for the  ``client.admin`` user. Additionally, it will also retrieve keyrings
-that give ``ceph-deploy`` and ``ceph-disk`` utilities the ability to prepare and
-activate OSDs and metadata servers.
+你在执行 ``ceph-deploy mon create-initial`` 命令时， Ceph 会\
+自举引导一到多个初始监视器、收集一个包含了 ``client.admin``
+用户密钥的 ``ceph.client.admin.keyring`` 文件。另外，它还会\
+收集数个密钥环，以便 ``ceph-deploy`` 和 ``ceph-volume`` 工具\
+可以准备并激活各个 OSD 和 MDS 服务器。
 
 When you execute ``ceph-deploy admin {node-name}`` (**note:** Ceph must be 
 installed first), you are pushing a Ceph configuration file and the

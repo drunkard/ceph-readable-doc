@@ -170,11 +170,9 @@ Ceph 分布式存储系统的一部分。它是用 libfcgi 实现的一个 FastC
 
 		</VirtualHost>
 
-   Ubuntu 14.04 自带 ``Apache 2.4.7`` ，它不支持 Unix 域套接字，\
-   所以必须配置成本机 TCP 。 Unix 域套接字支持存在于 \
-   ``Apache 2.4.9`` 及其后续版本中。已经有人提交了申请，要求把 \
-   UDS 支持移植到 ``Ubuntu 14.04`` 的 ``Apache 2.4.7`` 。在这里：\
-   https://bugs.launchpad.net/ubuntu/+source/apache2/+bug/1411030
+   请注意， ``Apache 2.4.7`` 不支持 Unix 域套接字，所以必须\
+   配置成本机 TCP 。 Unix 域套接字支持存在于 ``Apache 2.4.9``
+   及其后续版本中。
 
 #. 给 radosgw 生成一个密钥，用于到集群认证。 ::
 

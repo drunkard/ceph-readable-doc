@@ -49,17 +49,17 @@ To specify a WAL device and/or DB device, ::
 
   ceph-volume lvm prepare --bluestore --data <device> --block.wal <wal-device> --block.db <db-device>
 
-.. note:: --data can be a Logical Volume using the vg/lv notation. Other
-          devices can be existing logical volumes or GPT partitions
+.. note:: --data 可以是以 vg/lv 方式表达的逻辑卷。其他设备\
+   可以是现有的逻辑卷或 GPT 分区。
 
 
 .. Provisioning strategies
 
 存储配置策略
 ------------
-
 虽然有多种途径部署后端为 BlueStore 的 OSD （不像 Filestore 只\
 有一种），但是这里的两种常见用法有助于澄清初步的部署策略。
+
 
 .. _bluestore-single-type-device-config:
 
@@ -77,6 +77,7 @@ of the device), then the :ref:`ceph-volume-lvm` call for an lv named
 ``ceph-vg/block-lv`` would look like::
 
     ceph-volume lvm create --bluestore --data ceph-vg/block-lv
+
 
 .. _bluestore-mixed-device-config:
 

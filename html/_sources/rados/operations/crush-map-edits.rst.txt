@@ -298,11 +298,11 @@ OSD 被声明为主机桶内的条目： ::
            拆除、或重设某条目的权重。 straw 桶类型允许所有\
            条目模拟拉稻草的过程公平地相互“竞争”副本归置。
 
-        #. **Straw2**: Straw2 buckets improve Straw to correctly avoid any data 
-           movement between items when neighbor weights change.
+        #. **Straw2**: Straw2 桶是对 straw 的改进，在邻居权重\
+           改变时可正确地避免条目间的数据迁移。
 
-           For example the weight of item A including adding it anew or removing
-           it completely, there will be data movement only to or from item A.
+           例如，条目 A 的权重再次增大或完全删除，都仅会有数据\
+           迁移进或移出条目 A 。
 
 .. topic:: Hash
 

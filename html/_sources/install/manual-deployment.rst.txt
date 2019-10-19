@@ -269,18 +269,21 @@ ceph-mgr 守护进程。
 空的，里面没有任何 OSD 映射到 Ceph 节点。
 
 
-.. _Short Form:
+.. Short Form
 
 精简型
 ------
 
-Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分区或用于 Ceph 的目\
-录。 ``ceph-disk`` 可通过递增索引来创建 OSD ID ；还能把 OSD 加入 CRUSH 图。 \
-``ceph-disk`` 的详细用法可参考 ``ceph-disk -h`` ，此工具把后面将提到的\ \
-`精简型`_\ 里面的步骤都自动化了。为按照精简型创建前两个 OSD ，在 ``node2`` 和 \
-``node3`` 上执行下列命令：
+Ceph 软件包提供了 ``ceph-volume`` 工具，可为 Ceph 准备好\
+逻辑卷、硬盘或分区。 ``ceph-volume`` 可通过递增索引来创建
+OSD ID ；还能把新 OSD 加入 CRUSH 图内的主机之下。
+``ceph-volume`` 的详细用法可参考 ``ceph-volume -h`` ，此工具把\
+后面将提到的\ `细致型`_\ 里面的步骤都自动化了。为按照精简型\
+创建前两个 OSD ，在 ``node2`` 和 ``node3`` 上执行下列命令：
 
-#. 准备OSD。 ::
+bluestore
+^^^^^^^^^
+#. 创建 OSD 。 ::
 
 	ssh {node-name}
 	sudo ceph-volume lvm create --data {data-path}
@@ -288,18 +291,70 @@ Ceph 软件包提供了 ``ceph-disk`` 工具，用于准备硬盘：可以是分
    例如： ::
 
 	ssh node1
-	sudo ceph-disk prepare --cluster ceph --cluster-uuid a7f64266-0894-4f1e-a635-d0aeaca0e993 --fs-type ext4 /dev/hdd1
+	sudo ceph-volume lvm create --data /dev/hdd1
 
-#. 激活 OSD： ::
+或者，可以把创建过程分拆成两步（准备和激活）：
 
-	sudo ceph-disk activate {data-path} [--activate-key {path}]
+#. 准备 OSD 。 ::
+
+	ssh {node-name}
+	sudo ceph-volume lvm prepare --data {data-path}
 
    例如： ::
 
-	sudo ceph-disk activate /dev/hdd1
+	ssh node1
+	sudo ceph-volume lvm prepare --data /dev/hdd1
 
-   **注：** 如果你的 Ceph 节点上没有 ``/var/lib/ceph/bootstrap-osd/{cluster}.keyring`` ，\
-   那么应该外加 ``--activate-key`` 参数。
+   准备完成后，已准备好的 OSD 的 ``ID`` 和 ``FSID`` 是激活所\
+   必需的。它们可以通过罗列当前服务器上的 OSD 获得： ::
+
+    sudo ceph-volume lvm list
+
+#. 激活 OSD： ::
+
+	sudo ceph-volume lvm activate {ID} {FSID}
+
+   例如： ::
+
+	sudo ceph-volume lvm activate 0 a7f64266-0894-4f1e-a635-d0aeaca0e993
+
+
+filestore
+^^^^^^^^^
+#. 创建 OSD 。 ::
+
+	ssh {node-name}
+	sudo ceph-volume lvm create --filestore --data {data-path} --journal {journal-path}
+
+   例如： ::
+
+	ssh node1
+	sudo ceph-volume lvm create --filestore --data /dev/hdd1 --journal /dev/hdd2
+
+或者，可以把创建过程分拆成两步（准备和激活）：
+
+#. 准备 OSD 。 ::
+
+	ssh {node-name}
+	sudo ceph-volume lvm prepare --filestore --data {data-path} --journal {journal-path}
+
+   例如： ::
+
+	ssh node1
+	sudo ceph-volume lvm prepare --filestore --data /dev/hdd1 --journal /dev/hdd2
+
+   准备完成后，已准备好的 OSD 的 ``ID`` 和 ``FSID`` 是激活所\
+   必需的。它们可以通过罗列当前服务器上的 OSD 获得： ::
+
+    sudo ceph-volume lvm list
+
+#. 激活 OSD： ::
+
+	sudo ceph-volume lvm activate --filestore {ID} {FSID}
+
+   例如： ::
+
+	sudo ceph-volume lvm activate --filestore 0 a7f64266-0894-4f1e-a635-d0aeaca0e993
 
 
 .. Long Form
