@@ -36,9 +36,8 @@
 
 ``m={coding-chunks}``
 
-:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的数量等同于在\
-       不丢数据的前提下允许同时失效的 OSD 数量。
-
+:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的\
+       数量等同于在不丢数据的前提下允许同时失效的 OSD 数量。
 :类型: Integer
 :是否必需: No.
 :默认值: 3
@@ -60,9 +59,8 @@
 
 ``crush-root={root}``
 
-:描述: 规则集（如 **step take default** ）第一步要用的 crush
-       桶的名字。
-
+:描述: CRUSH 规则（如 **step take default** ）第一步要用的
+       crush 桶的名字。
 :类型: String
 :是否必需: No.
 :默认值: default
@@ -72,9 +70,8 @@
 
 :描述: 确保两个编码块不会存在于同一故障域的桶中。比如，假设\
        故障域是 **host** ，就不会有两个编码块存储到同一主机；\
-       此值用于在规则集中创建类似 **step chooseleaf host** \
+       此值用于在 CRUSH 规则中创建类似 **step chooseleaf host**
        的步骤。
-
 :类型: String
 :是否必需: No.
 :默认值: host

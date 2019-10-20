@@ -144,13 +144,12 @@
          数值，详情见\ `调整桶条目的权重`_\ 。
 
 
-``osd pool default crush replicated ruleset``
+``osd pool default crush rule``
 
-:描述: 创建多副本存储池时用哪个默认 CRUSH 规则集。
+:描述: 创建多副本存储池时用哪个默认 CRUSH 规则。
 :类型: 8-bit Integer
-:默认值: ``CEPH_DEFAULT_CRUSH_REPLICATED_RULESET`` ，也就是\
-         说，“挑选数字 ID 最小的规则集”。这样，没有规则集 0
-         时也能成功创建存储池。
+:默认值: ``-1`` ，也就是说，“选用数字 ID 最小的规则”。这样，\
+         没有规则 0 时也能成功创建存储池。
 
 
 ``osd pool erasure code stripe unit``

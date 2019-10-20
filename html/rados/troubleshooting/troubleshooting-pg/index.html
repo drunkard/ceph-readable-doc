@@ -407,8 +407,9 @@ OSD.0 和 OSD.1 说是 968 。</p></li>
 状态，最好在监视器主机上配置 peer 角色的 <a class="reference external" href="https://en.wikipedia.org/wiki/Network_Time_Protocol">NTP</a> 服务。配置细节可参考<a class="reference external" href="http://www.ntp.org/">网络时间协议</a>和 Ceph <a class="reference external" href="../../configuration/mon-config-ref/#clock">时钟选项</a>。</p>
 </div>
 <div class="section" id="active-clean">
-<span id="erasure-coded-pgs-are-not-active-clean"></span><h2>纠删编码的归置组不是 active+clean<a class="headerlink" href="#active-clean" title="Permalink to this headline">¶</a></h2>
-<p>CRUSH 找不到足够多的 OSD 映射到某个 PG 时，它会显示为 <code class="docutils literal notranslate"><span class="pre">2147483647</span></code> ，意思是 ITEM_NONE 或 <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">OSD</span> <span class="pre">found</span></code> ，例如：</p>
+<h2>纠删编码的归置组不是 active+clean<a class="headerlink" href="#active-clean" title="Permalink to this headline">¶</a></h2>
+<p>CRUSH 找不到足够多的 OSD 映射到某个 PG 时，它会显示为
+<code class="docutils literal notranslate"><span class="pre">2147483647</span></code> ，意思是 ITEM_NONE 或 <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">OSD</span> <span class="pre">found</span></code> ，例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">2147483647</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -423,10 +424,10 @@ OSD.0 和 OSD.1 说是 968 。</p></li>
 </div>
 <div class="section" id="id13">
 <h3>CRUSH 条件不能满足<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
-<p>即使集群拥有足够多的 OSD ， CRUSH 规则集的强制要求仍有可能无法满足。假如有 10 个 OSD 分布于两个主机上，且 CRUSH 规则集要求相同归置组不得使用位于同一主机的两个 OSD ，这样映射就会失败，因为只能找到两个 OSD ，你可以从规则集里查看必要条件：</p>
+<p>即使集群拥有足够多的 OSD ， CRUSH 规则的强制要求仍有可能无法满足。假如有 10 个 OSD 分布于两个主机上，且 CRUSH 规则要求相同归置组不得使用位于同一主机的两个 OSD ，这样映射就会失败，因为只能找到两个 OSD ，你可以从规则里查看必要条件：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd crush rule ls
 [
-    &quot;replicated_ruleset&quot;,
+    &quot;replicated_rule&quot;,
     &quot;erasurepool&quot;]
 $ ceph osd crush rule dump erasurepool
 { &quot;rule_id&quot;: 1,
@@ -457,7 +458,7 @@ $ ceph osd crush rule dump erasurepool
 <ul class="simple">
 <li><p>降低纠删存储池内 PG 的要求，让它使用较少的 OSD （需创建另一个存储池，因为纠删码配置不支持动态修改）。</p></li>
 <li><p>向集群添加更多 OSD （无需修改纠删存储池，它会自动回到清洁状态）。</p></li>
-<li><p>通过手工打造的 CRUSH 规则集，让它多试几次以找到合适的映射。把 <code class="docutils literal notranslate"><span class="pre">set_choose_tries</span></code> 设置得高于默认值即可。</p></li>
+<li><p>通过手工打造的 CRUSH 规则，让它多试几次以找到合适的映射。把 <code class="docutils literal notranslate"><span class="pre">set_choose_tries</span></code> 设置得高于默认值即可。</p></li>
 </ul>
 <p>你从集群中提取出 crushmap 之后，应该先用 <code class="docutils literal notranslate"><span class="pre">crushtool</span></code> 校验一下是否有问题，这样你的试验就无需触及 Ceph 集群，只要在一个本地文件上测试即可：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd crush rule dump erasurepool
@@ -485,12 +486,15 @@ bad mapping rule 8 x 79 num_rep 9 result [6,0,2,1,4,7,2147483647,5,8]
 bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]
 </pre></div>
 </div>
-<p>其中 <code class="docutils literal notranslate"><span class="pre">--num-rep</span></code> 是纠删码 crush 规则集所需的 OSD 数量， <code class="docutils literal notranslate"><span class="pre">--rule</span></code> 是 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">rule</span> <span class="pre">dump</span></code> 命令结果中 <code class="docutils literal notranslate"><span class="pre">ruleset</span></code> 字段的值。此测试会尝试映射一百万个值（即 <code class="docutils literal notranslate"><span class="pre">[--min-x,--max-x]</span></code> 所指定的范围），且必须至少显示一个坏映射；如果它没有任何输出，说明所有映射都成功了，你可以就此打住：问题的根源不在这里。</p>
-<p>反编译 crush 图后，你可以手动编辑其规则集：</p>
+<p>其中 <code class="docutils literal notranslate"><span class="pre">--num-rep</span></code> 是纠删码 CRUSH 规则所需的 OSD 数量，
+<code class="docutils literal notranslate"><span class="pre">--rule</span></code> 是 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">rule</span> <span class="pre">dump</span></code> 命令结果中
+<code class="docutils literal notranslate"><span class="pre">ruleset</span></code> 字段的值。此测试会尝试映射一百万个值（即
+<code class="docutils literal notranslate"><span class="pre">[--min-x,--max-x]</span></code> 所指定的范围），且必须至少显示一个坏映射；如果它没有任何输出，说明所有映射都成功了，你可以就此打住：问题的根源不在这里。</p>
+<p>反编译 crush 图后，你可以手动编辑其 CRUSH 规则：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ crushtool --decompile crush.map &gt; crush.txt
 </pre></div>
 </div>
-<p>并把下面这行加进规则集：</p>
+<p>并把下面这行加进规则：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">step</span> <span class="n">set_choose_tries</span> <span class="mi">100</span>
 </pre></div>
 </div>
@@ -512,7 +516,8 @@ bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ crushtool --compile crush.txt -o better-crush.map
 </pre></div>
 </div>
-<p>所有映射都成功时，用 <code class="docutils literal notranslate"><span class="pre">crushtool</span></code> 的 <code class="docutils literal notranslate"><span class="pre">--show-choose-tries</span></code> 选项能看到成功映射的尝试次数直方图：</p>
+<p>所有映射都成功时，用 <code class="docutils literal notranslate"><span class="pre">crushtool</span></code> 的 <code class="docutils literal notranslate"><span class="pre">--show-choose-tries</span></code>
+选项能看到成功映射的尝试次数直方图：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ crushtool -i better-crush.map --test --show-bad-mappings \
    --show-choose-tries \
    --rule 1 \

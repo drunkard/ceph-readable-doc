@@ -12,13 +12,6 @@
 :默认值: ``true``
 
 
-``mds max file size``
-
-:描述: 创建一新文件系统时允许的最大文件尺寸。
-:类型:  64-bit Integer Unsigned
-:默认值:  ``1ULL << 40``
-
-
 ``mds cache memory limit``
 
 :描述: MDS 对其缓存内存的硬限制。管理员应该用
@@ -94,20 +87,6 @@
        ``ceph osd blacklist add`` 仍将遵循默认的黑名单时间。
 :类型:  Float
 :默认值: ``24.0*60.0``
-
-
-``mds session timeout``
-
-:描述: 客户端多久不活跃时， Ceph 就清除其能力和租期。
-:类型:  Float
-:默认值: ``60``
-
-
-``mds session autoclose``
-
-:描述: 自动关闭空闲会话前的等待时间，秒。
-:类型:  Float
-:默认值: ``300``
 
 
 ``mds reconnect timeout``
@@ -231,13 +210,6 @@
 :描述: 热度低到多少时 Ceph 就不再把元数据复制到其它节点。
 :类型:  Float
 :默认值: ``0``
-
-
-``mds bal frag``
-
-:描述: MDS 是否应该给目录分片。
-:类型:  Boolean
-:默认值:  ``false``
 
 
 ``mds bal split size``

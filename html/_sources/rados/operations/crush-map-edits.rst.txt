@@ -334,11 +334,11 @@ CRUSH 图之规则
 
 CRUSH 图支持“ CRUSH 规则”概念，用以决定一个存储池里的数据如何\
 归置。默认的 CRUSH 图有一条规则适用于各存储池。对大型集群\
-来说，你可能创建很多存储池，且每个存储池都有它自己的 CRUSH
-规则。
+来说，你可能创建很多存储池，且每个存储池都有它自己的、非默认的
+CRUSH 规则。
 
-.. note:: 大多数情况下，你都不需要修改默认规则。新创建存储池\
-   的默认规则集是 ``0`` 。
+.. note:: 大多数情况下，你都不需要修改默认规则。默认情况下，\
+   新创建的存储池其规则会设置为 ``0`` 。
 
 CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规定
 CRUSH 如何放置对象副本。例如，你也许想创建一条规则用以选择\
@@ -352,7 +352,7 @@ CRUSH 规则的详细研究见
 
 	rule <rulename> {
 
-		ruleset <ruleset>
+		id [a unique whole numeric ID]
 		type [ replicated | erasure ]
 		min_size <min-size>
 		max_size <max-size>
@@ -362,12 +362,9 @@ CRUSH 规则的详细研究见
 	}
 
 
-``ruleset``
+``id``
 
-:描述: A unique whole number for identifying the rule. The name ``ruleset``
-              is a carry-over from the past, when it was possible to have multiple
-              CRUSH rules per pool.
-
+:描述: 全局唯一的数字，用于标识此规则。
 :目的: 规则掩码的一个组件。
 :类型: Integer
 :是否必需: Yes

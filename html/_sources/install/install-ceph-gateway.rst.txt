@@ -304,10 +304,10 @@ Red Hat Enteprise Linux 上需执行： ::
    radosgw-admin period update --commit
 
 .. note:: 把索引存储池（每个域的索引存储池，可能的话）映射到\
-   使用 SSD 的 OSD 组成的 CRUSH 规则集也有助于提升桶索引性能。
+   使用 SSD 的 OSD 组成的 CRUSH 规则也有助于提升桶索引性能。
 
 
-.. _Add Wildcard to DNS:
+.. Add Wildcard to DNS
 
 增加 DNS 通配符
 ---------------

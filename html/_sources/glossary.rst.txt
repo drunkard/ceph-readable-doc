@@ -221,10 +221,6 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
         CRUSH 规则
 		The CRUSH data placement rule that applies to a particular pool(s).
 
-	ruleset
-        规则集
-		A set of CRUSH data placement rules that applies to a particular pool(s).
-
 	Pool
 	Pools
         存储池

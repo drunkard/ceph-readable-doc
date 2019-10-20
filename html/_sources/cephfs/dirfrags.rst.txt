@@ -23,14 +23,10 @@ may be *split* to divide up the directory into more fragments, and these
 fragments may be *merged* to reduce the number of fragments in the directory.
 
 
-.. _Splitting and merging:
+.. Splitting and merging
 
 拆分和合并
 ==========
-
-只有在 MDS 配置文件的 ``mds_bal_frag`` 为 true 、且文件系统图的
-allow_dirfrags 为 true （在监视器上设置）时， MDS 才允许拆分和\
-合并。从 *Luminous* (12.2.x) 版起，这两个选项默认都是 true 。
 
 When an MDS identifies a directory fragment to be split, it does not
 do the split immediately.  Because splitting interrupts metadata IO,

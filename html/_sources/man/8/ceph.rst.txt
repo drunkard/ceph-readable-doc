@@ -33,7 +33,7 @@
 
 | **ceph** **log** *<logtext>* [ *<logtext>*... ]
 
-| **ceph** **mds** [ *compat* \| *deactivate* \| *fail* \| *rm* \| *rmfailed* \| *set_state* \| *stat* \| *tell* ] ...
+| **ceph** **mds** [ *compat* \| *fail* \| *rm* \| *rmfailed* \| *set_state* \| *stat* \| *repaired* ] ...
 
 | **ceph** **mon** [ *add* \| *dump* \| *getmap* \| *remove* \| *stat* ] ...
 
@@ -61,7 +61,7 @@
 
 | **ceph** **sync** **force** {--yes-i-really-mean-it} {--i-know-what-i-am-doing}
 
-| **ceph** **tell** *<name (type.id)> <args> [<args>...]*
+| **ceph** **tell** *<name (type.id)> <command> [options...]*
 
 | **ceph** **version**
 
@@ -346,13 +346,13 @@ mds
 
 用法： ::
 
-	ceph mds deactivate <who>
+	ceph mds deactivate <role>
 
 子命令 ``fail`` 强制把 mds 状态设置为失效。
 
 用法： ::
 
-	ceph mds fail <who>
+	ceph mds fail <role|gid>
 
 子命令 ``rm`` 用于删除不活跃的 mds 。
 
@@ -378,11 +378,11 @@ mds
 
 	ceph mds stat
 
-子命令 ``tell`` 用于向某个 mds 发送命令。
+子命令 ``repaired`` 把损坏的 MDS rank 标记为不再是损坏的。
 
 用法： ::
 
-	ceph mds tell <who> <args> [<args>...]
+	ceph mds repaired <role>
 
 
 mon
@@ -899,7 +899,7 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
 用法： ::
 
 	ceph osd pool create <poolname> <int[0-]> {<int[0-]>} {replicated|erasure}
-	{<erasure_code_profile>} {<ruleset>} {<int>}
+	{<erasure_code_profile>} {<rule>} {<int>}
 
 子命令 ``delete`` 删除存储池。
 
@@ -912,7 +912,7 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
 用法： ::
 
 	ceph osd pool get <poolname> size|min_size|pg_num|
-	pgp_num|crush_ruleset|auid|write_fadvise_dontneed
+	pgp_num|crush_rule|auid|write_fadvise_dontneed
 
 以下命令只适用于分层存储池： ::
 
@@ -960,7 +960,7 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
 用法： ::
 
 	ceph osd pool set <poolname> size|min_size|pg_num|
-	pgp_num|crush_ruleset|hashpspool|nodelete|nopgchange|nosizechange|
+	pgp_num|crush_rule|hashpspool|nodelete|nopgchange|nosizechange|
 	hit_set_type|hit_set_period|hit_set_count|hit_set_fpp|debug_fake_ec_pool|
 	target_max_bytes|target_max_objects|cache_target_dirty_ratio|
 	cache_target_dirty_high_ratio|

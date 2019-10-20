@@ -69,7 +69,8 @@
 <ul class="simple">
 <li><p><strong>自恢复力：</strong> 你可以设置在不丢数据的前提下允许多少 OSD 失效，对多副本存储池来说，此值是一对象应达到的副本数。典型配置存储一个对象和它的一个副本（即 <code class="docutils literal notranslate"><span class="pre">size</span> <span class="pre">=</span> <span class="pre">2</span></code> ），但你可以更改副本数；对<a class="reference external" href="../erasure-code">纠删编码的存储池</a>来说，此值是编码块数（即<strong>纠删码配置</strong>里的 <code class="docutils literal notranslate"><span class="pre">m=2</span></code> ）。</p></li>
 <li><p><strong>归置组：</strong> 你可以设置一个存储池的归置组数量。典型配置给每个 OSD 分配大约 100 个归置组，这样，不用过多计算资源就能得到较优的均衡。配置了多个存储池时，要考虑到这些存储池和整个集群的归置组数量要合理。</p></li>
-<li><p><strong>CRUSH 规则：</strong> 当你在存储池里存数据的时候，与此存储池相关联的 CRUSH 规则集可控制 CRUSH 算法，并以此操纵集群内对象及其副本的复制（或纠删码编码的存储池里的数据块）。你可以自定义存储池的 CRUSH 规则。</p></li>
+<li><p><strong>CRUSH 规则：</strong> 当你往存储池里存数据的时候，此集群内对象及其副本（或纠删码存储池里的数据块）的归置由 CRUSH 规则控制。如果默认规则不符合你的使用情形，你可以给自己的存储池定制
+CRUSH 规则。</p></li>
 <li><p><strong>快照：</strong> 用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">mksnap</span></code> 创建快照的时候，实际上创建了某一特定存储池的快照。</p></li>
 </ul>
 <p>要把数据组织到存储池里，你可以列出、创建、删除存储池，也可以查看每个存储池的利用率。</p>
@@ -169,10 +170,9 @@
 <dd class="field-odd"><p>No.</p>
 </dd>
 <dt class="field-even">默认值</dt>
-<dd class="field-even"><p>对于多副本（ <strong>replicated</strong> ）存储池来说，其默认规则集由 <code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">crush</span> <span class="pre">replicated</span> <span class="pre">ruleset</span></code>
-配置决定，此规则集必须存在。
-对于用 <code class="docutils literal notranslate"><span class="pre">erasure-code</span></code> 编码的纠删码（ <strong>erasure</strong> ）存储池来说，不同的 <code class="docutils literal notranslate"><span class="pre">{pool-name}</span></code> 所使用的默认（
-<code class="docutils literal notranslate"><span class="pre">default</span></code> ）<a class="reference external" href="../erasure-code-profile">纠删码配置</a>是不同的，如果它不存在的话，会显式地创建它。</p>
+<dd class="field-even"><p>对于多副本存储池（ <strong>replicated pool</strong> ）来说，其规则由 <code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">default</span> <span class="pre">crush</span> <span class="pre">rule</span></code> 配置决定，此规则必须存在。对于纠删码存储池（ <strong>erasure pool</strong> ）来说，
+如果用的是 <code class="docutils literal notranslate"><span class="pre">default</span></code> <a class="reference external" href="../erasure-code-profile">纠删码配置</a>那就是
+<code class="docutils literal notranslate"><span class="pre">erasure-code</span></code> ，否则就是 <code class="docutils literal notranslate"><span class="pre">{pool-name}</span></code> 。如果此规则不存在，会悄悄地创建。</p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">[erasure-code-profile=profile]</span></code></p>
@@ -240,23 +240,23 @@ RGW 创建的存储池已经自动关联过了；计划用于 RBD 的存储池�
 <p>要删除存储池，监视器配置的 mon_allow_pool_delete 标志必须设置为
 true ，否则它会拒绝删除存储池。</p>
 <p>详情见<a class="reference external" href="../../configuration/mon-config-ref">监视器配置</a>。</p>
-<p>如果你给自建的存储池创建了定制的规则集和规则，那么没有存储池在用它时你应该删掉它：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">get</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="n">crush_ruleset</span>
+<p>如果你给自建的存储池创建了定制的规则，那么没有存储池在用它时你应该删掉它：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">get</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="n">crush_rule</span>
 </pre></div>
 </div>
-<p>假设规则集 id 为 123 ，你可以这样找出还在用它的其它存储池：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">dump</span> <span class="o">|</span> <span class="n">grep</span> <span class="s2">&quot;^pool&quot;</span> <span class="o">|</span> <span class="n">grep</span> <span class="s2">&quot;crush_ruleset 123&quot;</span>
+<p>假设规则 id 为 123 ，你可以这样找出还在用它的其它存储池：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">dump</span> <span class="o">|</span> <span class="n">grep</span> <span class="s2">&quot;^pool&quot;</span> <span class="o">|</span> <span class="n">grep</span> <span class="s2">&quot;crush_rule 123&quot;</span>
 </pre></div>
 </div>
-<p>如果没有别的存储池使用这个定制规则集，那就可以安全地从集群里删掉它。</p>
+<p>如果没有别的存储池使用这个定制规则，那就可以安全地从集群里删掉它。</p>
 <p>如果你曾创建过一些用户及其权限、并与存储池绑死了，但如今这些存储池已不存在，最好也删除那些用户：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="n">ls</span> <span class="o">|</span> <span class="n">grep</span> <span class="o">-</span><span class="n">C</span> <span class="mi">5</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 <span class="n">ceph</span> <span class="n">auth</span> <span class="k">del</span> <span class="p">{</span><span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="rename-a-pool">
-<span id="id11"></span><h2>重命名存储池<a class="headerlink" href="#rename-a-pool" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id11">
+<h2>重命名存储池<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h2>
 <p>要重命名一个存储池，执行：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">rename</span> <span class="p">{</span><span class="n">current</span><span class="o">-</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">new</span><span class="o">-</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
@@ -394,10 +394,10 @@ true ，否则它会拒绝删除存储池。</p>
 <dd class="field-odd"><p>等于或小于 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 。</p>
 </dd>
 </dl>
-<p id="crush-ruleset"><code class="docutils literal notranslate"><span class="pre">crush_ruleset</span></code></p>
+<p id="crush-rule"><code class="docutils literal notranslate"><span class="pre">crush_rule</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>集群内映射对象归置时使用的规则集。</p>
+<dd class="field-odd"><p>集群内映射对象归置时使用的规则。</p>
 </dd>
 <dt class="field-even">类型</dt>
 <dd class="field-even"><p>整数</p>
@@ -778,10 +778,10 @@ CephFS 和 RBD 才能用这个存储池，详情见<a class="reference external"
 <dd class="field-odd"><p>小于等于 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 。</p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">crush_ruleset</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">crush_rule</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#crush-ruleset">crush_ruleset</a></p>
+<dd class="field-odd"><p>见 <a class="reference internal" href="#crush-rule">crush_rule</a></p>
 </dd>
 <dt class="field-even">类型</dt>
 <dd class="field-even"><p>整数</p>
@@ -991,7 +991,7 @@ CephFS 和 RBD 才能用这个存储池，详情见<a class="reference external"
 <li class="toctree-l4"><a class="reference internal" href="#associate-pool-to-application">关联存储池与应用程序</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id8">设置存储池配额</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#delete-a-pool">删除存储池</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#rename-a-pool">重命名存储池</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id11">重命名存储池</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id12">查看存储池统计信息</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id13">拍下存储池快照</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id14">删除存储池快照</a></li>

@@ -64,8 +64,8 @@ requires at least three hosts::
 
 对象 *NYAN* 将被分割成三块（ *K=3* ）、并额外创建两个\
 *校验块*\ （ *M=2* ）。 *M* 值决定了在不丢数据的前提下可以同时\
-失去多少 OSD 。 *crush-failure-domain=rack* 能使创建的 CRUSH
-规则集可确保两个\ *校验块*\ 不会存储在同一机架上。
+失去多少 OSD 。 *crush-failure-domain=rack* 能使创建的
+CRUSH 规则可确保两个\ *校验块*\ 不会存储在同一机架上。
 
 .. ditaa::
                             +-------------------+

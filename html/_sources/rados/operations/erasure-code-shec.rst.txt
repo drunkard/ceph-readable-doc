@@ -61,7 +61,7 @@
 
 ``crush-root={root}``
 
-:描述: 规则集第一步所用的 crush 桶名字。例如
+:描述: CRUSH 规则第一步所用的 crush 桶名字。例如
        **step take default** 。
 
 :类型: String
@@ -73,7 +73,7 @@
 
 :描述: 要确保同一故障域内不能把任意两个块放进一个桶内。例如，\
        如果故障域是 **host** ，那就不能把任意两个块放到同一主\
-       机。它被用于创建规则集的一步，像
+       机。它被用于创建 CRUSH 规则的一步，像
        **step chooseleaf host** 。
 
 :类型: String

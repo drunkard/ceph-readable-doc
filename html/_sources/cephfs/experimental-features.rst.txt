@@ -84,19 +84,35 @@ Multiple filesystems were available starting in the Jewel release candidates
 but must be turned on via the ``enable_multiple`` flag until declared stable.
 
 
-.. _Previously experimental features:
+.. Previously experimental features
 
 曾经是实验性的功能
 ==================
 
-.. _Directory Fragmentation:
+.. Directory Fragmentation
 
 目录分片
 --------
-
 在 *Luminous* (12.2.x) 版以前，目录分片功能是实验性的，现在会\
 给新文件系统默认启用。旧版 Ceph 上的文件系统若要启用目录分片功\
 能，可给此文件系统设置 ``allow_dirfrags`` 标记。 ::
 
-    ceph fs set <filesystem name> allow_dirfrags
+    ceph fs set <filesystem name> allow_dirfrags 1
+
+
+.. Multiple active metadata servers
+
+多活元数据服务器
+----------------
+在 *Luminous* 12.2.x 版之前，在单个文件系统内运行多活\
+元数据服务器是实验性的功能；现在，默认就允许在新文件系统上创建\
+多活元数据服务器。
+
+用较老版本的 Ceph 创建的文件系统仍然需要明确启用多活\
+元数据服务器，如下： ::
+
+    ceph fs set <file system name> allow_multimds 1
+
+注意，活跃 MDS 集群的默认尺寸（ ``max_mds`` ），其初始值仍然是
+1 。
 

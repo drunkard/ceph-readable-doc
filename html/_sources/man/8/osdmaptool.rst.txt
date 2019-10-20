@@ -28,6 +28,11 @@ CRUSH 图。
 
    修改完成后，打印此图的一份纯文本转储。
 
+.. option:: --dump <format>
+
+   <format> 为 plain 时以纯文本方式显示运行图，若不支持指定\
+   格式就默认为 json 。这是 print 选项的替代品。
+
 .. option:: --clobber
 
    修改时允许 osdmaptool 覆盖 mapfilename 。
@@ -40,19 +45,75 @@ CRUSH 图。
 
    从 OSD 图提取出 CRUSH 图并写入 mapfile 。
 
-.. option:: --createsimple numosd [--pgbits bitsperosd]
+.. option:: --createsimple numosd [--pg-bits bitsperosd] [--pgp-bits bits]
 
-   创建有 numosd 个设备的相对通用的 OSD 图。若指定了 --pgbits
+   创建有 numosd 个设备的相对通用的 OSD 图。若指定了 --pg-bits
    选项，每个 OSD 的归置组数量将是 bitsperosd 个位偏移。也就是
-   pg_num 属性将被设置为 numosd 数值再右移 bitsperosd 位。
+   pg_num 属性将被设置为 numosd 数值再右移 bitsperosd 位。若\
+   指定了 --pgp-bits 选项， pgp_num 属性将被设置为 numosd 数值\
+   再右移 bits 位。
 
-.. option:: --test-map-pgs [--pool poolid]
+   <译者注>: pgp_num map attribute: 意为 osd map 之中的 pgp_num 属性
 
-   打印出归置组到 OSD 的映射关系。
+.. option:: --create-from-conf
 
-.. option:: --test-map-pgs-dump [--pool poolid]
+   按默认配置创建一份 OSD 图。
 
-   打印出所有归置组及其与 OSD 映射关系的汇总。
+.. option:: --test-map-pgs [--pool poolid] [--range-first <first> --range-last <last>]
+
+   打印出归置组到 OSD 的映射关系。如果指定了范围，那它就依次\
+   递归 osdmaptool 参数所指目录内 first 到 last 之间的。
+   例如： **osdmaptool --test-map-pgs --range-first 0 --range-last 2 osdmap_dir**.
+   它会递归 osdmap_dir 内名为 0 、 1 、 2 的文件。
+
+.. option:: --test-map-pgs-dump [--pool poolid] [--range-first <first> --range-last <last>]
+
+   打印出所有归置组及其与 OSD 映射关系的汇总。如果指定了范围，\
+   那它就依次递归 osdmaptool 参数所指目录内 first 到 last 之间\
+   的。
+   例如： **osdmaptool --test-map-pgs-dump --range-first 0 --range-last 2 osdmap_dir**.
+   它会递归 osdmap_dir 内名为 0 、 1 、 2 的文件。
+
+.. option:: --test-map-pgs-dump-all [--pool poolid] [--range-first <first> --range-last <last>]
+
+   will print out the summary of all placement groups and the mappings
+   from them to all the OSDs.
+   If range is specified, then it iterates from first to last in the directory
+   specified by argument to osdmaptool.
+   Eg: **osdmaptool --test-map-pgs-dump-all --range-first 0 --range-last 2 osdmap_dir**.
+   This will iterate through the files named 0,1,2 in osdmap_dir.
+
+.. option:: --test-random
+
+   does a random mapping of placement groups to the OSDs.
+
+.. option:: --test-map-pg <pgid>
+
+   map a particular placement group(specified by pgid) to the OSDs.
+
+.. option:: --test-map-object <objectname> [--pool <poolid>]
+
+   map a particular placement group(specified by objectname) to the OSDs.
+
+.. option:: --test-crush [--range-first <first> --range-last <last>]
+
+   map placement groups to acting OSDs.
+   If range is specified, then it iterates from first to last in the directory
+   specified by argument to osdmaptool.
+   Eg: **osdmaptool --test-crush --range-first 0 --range-last 2 osdmap_dir**.
+   This will iterate through the files named 0,1,2 in osdmap_dir.
+
+.. option:: --mark-up-in
+
+   mark osds up and in (but do not persist).
+
+.. option:: --tree
+
+   Displays a hierarchical tree of the map.
+
+.. option:: --clear-temp
+
+   clears pg_temp and primary_temp variables.
 
 
 实例
