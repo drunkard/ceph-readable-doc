@@ -70,7 +70,7 @@
 
 #. 在 ``ceph-client`` 节点上创建一个块设备映像。 ::
 
-	rbd create foo --size 4096 [-m {mon-IP}] [-k /path/to/ceph.client.admin.keyring]
+	rbd create foo --size 4096 --image-feature layering [-m {mon-IP}] [-k /path/to/ceph.client.admin.keyring] [-p {pool-name}]
 
 #. 在 ``ceph-client`` 节点上，把映像映射为块设备。 ::
 

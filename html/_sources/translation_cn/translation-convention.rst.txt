@@ -73,6 +73,9 @@
     CRUSH map
         CRUSH 图
 
+    deep copy
+        深复制
+
     defer delete a block device
         延期删除一个块设备
 
@@ -149,6 +152,9 @@
 
         释义：默认情况下， MDS 会动态地做负载均衡；而此功能可让目录绑死到一个
         rank ，就像用“销子”固定住了，不能再随便动。
+
+    extent
+        条带。 image extent => 映像条带
 
     failover
         故障恢复

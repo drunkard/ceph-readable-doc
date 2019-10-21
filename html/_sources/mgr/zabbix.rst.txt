@@ -49,8 +49,7 @@ Zabbix 插件可向 Zabbix 服务器持续发送信息，像这些：
 
 配置
 ----
-
-Two configuration keys are vital for the module to work:
+有两个配置选项对于模块是否能运行至关重要：
 
 - zabbix_host
 - identifier （可选项）

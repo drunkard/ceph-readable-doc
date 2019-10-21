@@ -10,9 +10,7 @@ influx 模块是在 13.x *Mimic* 版首次引进的。
 启用
 ----
 
-To enable the module, use the following command:
-
-::
+启用模块用下列命令： ::
 
     ceph mgr module enable influx
 
@@ -23,9 +21,9 @@ If you wish to subsequently disable the module, you can use the equivalent
 
     ceph mgr module disable influx
 
--------------
-Configuration 
--------------
+----
+配置
+----
 
 For the influx module to send statistics to an InfluxDB server, it
 is necessary to configure the servers address and some authentication
@@ -57,9 +55,12 @@ Additional optional configuration settings are:
 :threads: How many worker threads should be spawned for sending data to InfluxDB. Default is 5
 :batch_size: How big batches of data points should be when sending to InfluxDB. Default is 5000
 
----------
-Debugging 
----------
+
+.. Debugging 
+
+----
+调试
+----
 
 By default, a few debugging statements as well as error statements have been set to print in the log files. Users can add more if necessary.
 To make use of the debugging option in the module:

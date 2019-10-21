@@ -160,25 +160,17 @@
 
 .. TODO rst "option" directive seems to require --foo style options, parsing breaks on subcommands.. the args show up as bold too
 
-:command:`ls` [-l | --long] [*pool-name*]
-  列出 rbd_directory 对象中的所有 rbd 映像。加 -l 选项后也显示\
-  快照，并用长格式输出，包括大小、父映像（若是克隆品）、格式等\
-  等。
+:command:`bench` --io-type <read | write | readwrite | rw> [--io-size *size-in-B/K/M/G/T*] [--io-threads *num-ios-in-flight*] [--io-total *size-in-B/K/M/G/T*] [--io-pattern seq | rand] [--rw-mix-read *read proportion in readwrite*] *image-spec*
+  向指定映像生成一系列 IO 操作，以此衡量 IO 吞吐量和延时。如果\
+  不加后缀， --io-size 和 --io-total 的单位就当是 B 。默认参数\
+  为 --io-size 4096 、 --io-threads 16 、 --io-total 1G 、 \
+  --io-pattern seq 、 --rw-mix-read 50 。
 
-:command:`du` [-p | --pool *pool-name*] [*image-spec* | *snap-spec*]
-  计算指定存储池内所有映像及其相关快照的磁盘使用量，包括分配的\
-  和实际使用的。此命令也可用于单个映像和快照。
+:command:`children` *snap-spec*
+  列出此映像指定快照的克隆品。它会检查各存储池、并输出存储池\
+  名/映像名。
 
-  如果 RBD 映像的 fast-diff 功能没启用，那么这个操作需向多个
-  OSD 查询此映像涉及的每个对象。
-
-:command:`info` *image-spec* | *snap-spec*
-  显示指定 rbd 映像的信息（如大小和对象尺寸）。若映像是克隆\
-  品，会显示相关父快照；若指定了快照，会显示是否被保护。
-
-:command:`create` (-s | --size *size-in-M/G/T*) [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*]... [--image-shared] *image-spec*
-  如要新建 rbd 映像，必须用 --size 指定尺寸。 --strip-unit 和 \
-  --strip-count 参数是可选项，但必须一起用。
+  只适用于 format 2 。
 
 :command:`clone` [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*] [--image-shared] *parent-snap-spec* *child-image-spec*
   创建一个父快照的克隆品（写时复制子映像）。若不指定，对象尺\
@@ -187,6 +179,103 @@
 
   父快照必须已被保护（见 `rbd snap protect` ）。 format 2 格式\
   的映像才支持。
+
+:command:`config global get` *config-entity* *key*
+  Get a global-level configuration override.
+
+:command:`config global list` [--format plain | json | xml] [--pretty-format] *config-entity*
+  List global-level configuration overrides.
+
+:command:`config global set` *config-entity* *key* *value*
+  Set a global-level configuration override.
+
+:command:`config global remove` *config-entity* *key*
+  Remove a global-level configuration override.
+
+:command:`config image get` *image-spec* *key*
+  Get an image-level configuration override.
+
+:command:`config image list` [--format plain | json | xml] [--pretty-format] *image-spec*
+  List image-level configuration overrides.
+
+:command:`config image set` *image-spec* *key* *value*
+  Set an image-level configuration override.
+
+:command:`config image remove` *image-spec* *key*
+  Remove an image-level configuration override.
+
+:command:`config pool get` *pool-name* *key*
+  Get a pool-level configuration override.
+
+:command:`config pool list` [--format plain | json | xml] [--pretty-format] *pool-name*
+  List pool-level configuration overrides.
+
+:command:`config pool set` *pool-name* *key* *value*
+  Set a pool-level configuration override.
+
+:command:`config pool remove` *pool-name* *key*
+  Remove a pool-level configuration override.
+
+:command:`cp` (*src-image-spec* | *src-snap-spec*) *dest-image-spec*
+  把源映像内容复制进新建的目标映像，目标映像和源映像将有相同\
+  的尺寸、对象尺寸和格式。
+
+:command:`create` (-s | --size *size-in-M/G/T*) [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*]... [--image-shared] *image-spec*
+  如要新建 rbd 映像，必须用 --size 指定尺寸。 --strip-unit 和 \
+  --strip-count 参数是可选项，但必须一起用。
+
+:command:`deep cp` (*src-image-spec* | *src-snap-spec*) *dest-image-spec*
+  把 src-image 的内容深复制到新建的 dest-image 。 dest-image
+  将会有和 src-image 相同的尺寸、对象尺寸、映像格式、和快照。
+
+:command:`device list` [-t | --device-type *device-type*] [--format plain | json | xml] --pretty-format
+  展示通过 rbd 内核模块映射的 rbd 映像（默认的）或其它支持的\
+  设备。
+
+:command:`device map` [-t | --device-type *device-type*] [--read-only] [--exclusive] [-o | --options *device-options*] *image-spec* | *snap-spec*
+  把指定映像通过 rbd 内核模块映射成一个块设备（默认的）、或\
+  其它支持的设备（ Linux 上的 *nbd* 或 FreeBSD 上的 *ggate* ）。
+
+  --options 参数是个逗号分隔的特定于某类型设备的一系列选项（
+  opt1,opt2=val,... ）。
+
+:command:`device unmap` [-t | --device-type *device-type*] [-o | --options *device-options*] *image-spec* | *snap-spec* | *device-path*
+  断开块设备映射，之前通过 rbd 内核模块映射的（默认的）、或\
+  其它支持的设备。
+
+  --options 参数是个逗号分隔的特定于某类型设备的一系列选项（
+  opt1,opt2=val,... ）。
+
+:command:`diff` [--from-snap *snap-name*] [--whole-object] *image-spec* | *snap-spec*
+  打印出从指定快照点起、或从映像创建点起，映像内的变动区域。\
+  输出的各行都包含起始偏移量（按字节）、数据块长度（按字节）、\
+  还有 zero 或 data ，用来指示此范围以前是 0 还是其它数据。
+
+:command:`du` [-p | --pool *pool-name*] [*image-spec* | *snap-spec*]
+  会计算指定存储池内所有映像及其相关快照的磁盘使用量，包括\
+  分配的和实际使用的。此命令也可用于单个映像和快照。
+
+  如果 RBD 映像的 fast-diff 特性没启用，本操作就需要向各个 OSD
+  挨个查询此映像涉及的每个潜在对象。
+
+:command:`export` [--export-format *format (1 or 2)*] (*image-spec* | *snap-spec*) [*dest-path*]
+  把映像导出到目的路径，用 - （短线）输出到标准输出。
+  --export-format 现在只认 '1' 或 '2' 。格式 2 不仅允许我们导\
+  出映像内容，还可以导出快照和其它属性，如 image_order 、功能\
+  标志。
+
+:command:`export-diff` [--from-snap *snap-name*] [--whole-object] (*image-spec* | *snap-spec*) *dest-path*
+  导出一映像的增量差异，用-导出到标准输出。若给了起始快照，就\
+  只包含与此快照的差异部分；否则包含映像的所有数据部分；结束\
+  快照用 --snap 选项或 @snap （见下文）指定。此映像的差异格式\
+  包含了映像尺寸变更的元数据、起始和结束快照，它高效地表达了\
+  被忽略或映像内的全 0 区域。
+
+:command:`feature disable` *image-spec* *feature-name*...
+  禁用指定镜像的某些功能，可以一次指定多个功能。
+
+:command:`feature enable` *image-spec* *feature-name*...
+  启用指定镜像的某些功能，可以一次指定多个功能。
 
 :command:`flatten` *image-spec*
   如果映像是个克隆品，就从父快照拷贝所有共享块，并使子快照独立\
@@ -216,23 +305,32 @@
 :command:`group rm` *group-spec*
   删除一个组。
 
-:command:`children` *snap-spec*
-  列出此映像指定快照的克隆品。它会检查各存储池、并输出存储池\
-  名/映像名。
+:command:`group snap create` *group-snap-spec*
+  创建一个组的快照。
 
-  只适用于 format 2 。
+:command:`group snap list` *group-spec*
+  罗列一个组的快照。
 
-:command:`resize` (-s | --size *size-in-M/G/T*) [--allow-shrink] *image-spec*
-  rbd 大小调整。尺寸参数必须指定； --allow-shrink 选项允许缩小。
+:command:`group snap rm` *group-snap-spec*
+  删除一个组的某一快照。
 
-:command:`rm` *image-spec*
-  删除一 rbd 映像，包括所有数据块。如果映像有快照，此命令会失效。
+:command:`group snap rename` *group-snap-spec* *snap-name*
+  重命名组的快照。
 
-:command:`export` [--export-format *format (1 or 2)*] (*image-spec* | *snap-spec*) [*dest-path*]
-  把映像导出到目的路径，用 - （短线）输出到标准输出。
-  --export-format 现在只认 '1' 或 '2' 。格式 2 不仅允许我们导\
-  出映像内容，还可以导出快照和其它属性，如 image_order 、功能\
-  标志。
+:command:`group snap rollback` *group-snap-spec*
+  把组回滚到某快照。
+
+:command:`image-meta list` *image-spec*
+  显示此映像持有的元数据。第一列是关键字、第二列是值。
+
+:command:`image-meta get` *image-spec* *key*
+  获取关键字对应的元数据值。
+
+:command:`image-meta remove` *image-spec* *key*
+  删除元数据关键字及其值。
+
+:command:`image-meta set` *image-spec* *key* *value*
+  设置指定元数据关键字的值，会显示在 `metadata-list` 中。
 
 :command:`import` [--export-format *format (1 or 2)*] [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*]... [--image-shared] *src-path* [*image-spec*]
   创建一映像，并从目的路径导入数据，用 - （短线）从标准输入导\
@@ -245,12 +343,59 @@
   出映像内容，还可以导出快照和其它属性，如 image_order 、功能\
   标志。
 
-:command:`export-diff` [--from-snap *snap-name*] [--whole-object] (*image-spec* | *snap-spec*) *dest-path*
-  导出一映像的增量差异，用-导出到标准输出。若给了起始快照，就\
-  只包含与此快照的差异部分；否则包含映像的所有数据部分；结束\
-  快照用 --snap 选项或 @snap （见下文）指定。此映像的差异格式\
-  包含了映像尺寸变更的元数据、起始和结束快照，它高效地表达了\
-  被忽略或映像内的全 0 区域。
+:command:`import-diff` *src-path* *image-spec*
+  导入一映像的增量差异并应用到当前映像。如果此差异是在起始快照\
+  基础上生成的，我们会先校验那个已存在快照再继续；如果指定了结\
+  束快照，我们先检查它是否存在、再应用变更，结束后再创建结束快\
+  照。
+
+:command:`info` *image-spec* | *snap-spec*
+  显示指定 rbd 映像的信息（如大小和对象尺寸）。若映像是克隆\
+  品，会显示相关父快照；若指定了快照，会显示是否被保护。
+
+:command:`journal client disconnect` *journal-spec*
+  把映像日志客户端标记为连接已断。
+
+:command:`journal export` [--verbose] [--no-error] *src-journal-spec* *path-name*
+  把映像日志导出到指定路径（ ``-`` 导出到标准输出 stdout ）。\
+  它可以作为映像日志的备份手段，特别是打算做危险的操作前。
+
+  注意，如果日志损坏严重，此命令有可能失效。
+
+:command:`journal import` [--verbose] [--no-error] *path-name* *dest-journal-spec*
+  从指定路径导入映像日志（ ``-`` 从标准输入 stdin 导入）。
+
+:command:`journal info` *journal-spec*
+  展示映像日志的信息。
+
+:command:`journal inspect` [--verbose] *journal-spec*
+  检查并报告映像日志的结构性错误。
+
+:command:`journal reset` *journal-spec*
+  重置映像日志。
+
+:command:`journal status` *journal-spec*
+  展示映像日志的状态。
+
+:command:`lock add` [--shared *lock-tag*] *image-spec* *lock-id*
+  为映像加锁，锁标识是用户一己所好的任意名字。默认加的是互斥\
+  锁，也就是说如果已经加过锁的话此命令会失败； --shared 选项\
+  会改变此行为。注意，加锁操作本身不影响除加锁之外的任何操作，\
+  也不会保护对象、防止它被删除。
+
+:command:`lock list` *image-spec*
+  显示锁着映像的锁，第一列是 `lock remove` 可以使用的锁名。
+
+:command:`lock remove` *image-spec* *lock-id* *locker*
+  释放映像上的锁。锁标识和其持有者来自 lock ls 。
+
+:command:`ls` [-l | --long] [*pool-name*]
+  列出 rbd_directory 对象中的所有 rbd 映像。加 -l 选项后也显示\
+  快照，并用长格式输出，包括大小、父映像（若是克隆品）、格式等\
+  等。
+
+  如果 RBD 映像的 fast-diff 功能没启用，那么这个操作需向多个
+  OSD 查询此映像涉及的每个对象。
 
 :command:`merge-diff` *first-diff-path* *second-diff-path* *merged-diff-path*
   把两个连续的增量差异合并为单个差异。前一个差异的末尾快照必须\
@@ -260,55 +405,141 @@
   rbd merge-diff - third result' 。\
   注意，当前此命令只支持 stripe_count == 1 这样的源增量差异。
 
-:command:`import-diff` *src-path* *image-spec*
-  导入一映像的增量差异并应用到当前映像。如果此差异是在起始快照\
-  基础上生成的，我们会先校验那个已存在快照再继续；如果指定了结\
-  束快照，我们先检查它是否存在、再应用变更，结束后再创建结束快\
-  照。
+:command:`migration abort` *image-spec*
+  Cancel image migration. This step may be run after successful or
+  failed migration prepare or migration execute steps and returns the
+  image to its initial (before migration) state. All modifications to
+  the destination image are lost.
 
-:command:`diff` [--from-snap *snap-name*] [--whole-object] *image-spec* | *snap-spec*
-  打印出从指定快照点起、或从映像创建点起，映像内的变动区域。\
-  输出的各行都包含起始偏移量（按字节）、数据块长度（按字节）、\
-  还有 zero 或 data ，用来指示此范围以前是 0 还是其它数据。
+:command:`migration commit` *image-spec*
+  Commit image migration. This step is run after a successful migration
+  prepare and migration execute steps and removes the source image data.
 
-:command:`cp` (*src-image-spec* | *src-snap-spec*) *dest-image-spec*
-  把源映像内容复制进新建的目标映像，目标映像和源映像将有相同\
-  的尺寸、对象尺寸和格式。
+:command:`migration execute` *image-spec*
+  Execute image migration. This step is run after a successful migration
+  prepare step and copies image data to the destination.
+
+:command:`migration prepare` [--order *order*] [--object-size *object-size*] [--image-feature *image-feature*] [--image-shared] [--stripe-unit *stripe-unit*] [--stripe-count *stripe-count*] [--data-pool *data-pool*] *src-image-spec* [*dest-image-spec*]
+  Prepare image migration. This is the first step when migrating an
+  image, i.e. changing the image location, format or other
+  parameters that can't be changed dynamically. The destination can
+  match the source, and in this case *dest-image-spec* can be omitted.
+  After this step the source image is set as a parent of the
+  destination image, and the image is accessible in copy-on-write mode
+  by its destination spec.
+
+:command:`mirror image demote` *image-spec*
+  Demote a primary image to non-primary for RBD mirroring.
+
+:command:`mirror image disable` [--force] *image-spec*
+  Disable RBD mirroring for an image. If the mirroring is
+  configured in ``image`` mode for the image's pool, then it
+  can be explicitly disabled mirroring for each image within
+  the pool.
+
+:command:`mirror image enable` *image-spec*
+  Enable RBD mirroring for an image. If the mirroring is
+  configured in ``image`` mode for the image's pool, then it
+  can be explicitly enabled mirroring for each image within
+  the pool.
+
+  This requires the RBD journaling feature is enabled.
+
+:command:`mirror image promote` [--force] *image-spec*
+  Promote a non-primary image to primary for RBD mirroring.
+
+:command:`mirror image resync` *image-spec*
+  Force resync to primary image for RBD mirroring.
+
+:command:`mirror image status` *image-spec*
+  Show RBD mirroring status for an image.
+
+:command:`mirror pool demote` [*pool-name*]
+  Demote all primary images within a pool to non-primary.
+  Every mirroring enabled image will demoted in the pool.
+
+:command:`mirror pool disable` [*pool-name*]
+  Disable RBD mirroring by default within a pool. When mirroring
+  is disabled on a pool in this way, mirroring will also be
+  disabled on any images (within the pool) for which mirroring
+  was enabled explicitly.
+
+:command:`mirror pool enable` [*pool-name*] *mode*
+  Enable RBD mirroring by default within a pool.
+  The mirroring mode can either be ``pool`` or ``image``.
+  If configured in ``pool`` mode, all images in the pool
+  with the journaling feature enabled are mirrored.
+  If configured in ``image`` mode, mirroring needs to be
+  explicitly enabled (by ``mirror image enable`` command)
+  on each image.
+
+:command:`mirror pool info` [*pool-name*]
+  Show information about the pool mirroring configuration.
+  It includes mirroring mode, peer UUID, remote cluster name,
+  and remote client name.
+
+:command:`mirror pool peer add` [*pool-name*] *remote-cluster-spec*
+  Add a mirroring peer to a pool.
+  *remote-cluster-spec* is [*remote client name*\ @\ ]\ *remote cluster name*.
+
+  The default for *remote client name* is "client.admin".
+
+  This requires mirroring mode is enabled.
+
+:command:`mirror pool peer remove` [*pool-name*] *uuid*
+  Remove a mirroring peer from a pool. The peer uuid is available
+  from ``mirror pool info`` command.
+
+:command:`mirror pool peer set` [*pool-name*] *uuid* *key* *value*
+  Update mirroring peer settings.
+  The key can be either ``client`` or ``cluster``, and the value
+  is corresponding to remote client name or remote cluster name.
+
+:command:`mirror pool promote` [--force] [*pool-name*]
+  Promote all non-primary images within a pool to primary.
+  Every mirroring enabled image will promoted in the pool.
+
+:command:`mirror pool status` [--verbose] [*pool-name*]
+  Show status for all mirrored images in the pool.
+  With --verbose, also show additionally output status
+  details for every mirroring image in the pool.
 
 :command:`mv` *src-image-spec* *dest-image-spec*
   映像改名。注：不支持跨存储池。
 
-:command:`image-meta list` *image-spec*
-  显示此映像持有的元数据。第一列是关键字、第二列是值。
+:command:`namespace create` *pool-name*/*namespace-name*
+  在存储池内新建一个映像命名空间。
 
-:command:`image-meta get` *image-spec* *key*
-  获取关键字对应的元数据值。
+:command:`namespace list` *pool-name*
+  罗列存储池内定义的映像命名空间。
 
-:command:`image-meta set` *image-spec* *key* *value*
-  设置指定元数据关键字的值，会显示在 `metadata-list` 中。
-
-:command:`image-meta remove` *image-spec* *key*
-  删除元数据关键字及其值。
+:command:`namespace remove` *pool-name*/*namespace-name*
+  从存储池删除一个空的映像命名空间。
 
 :command:`object-map rebuild` *image-spec* | *snap-spec*
   为指定映像重建无效的对象映射关系。指定映像快照时，将为此快照\
   重建无效的对象映射关系。
 
-:command:`snap ls` *image-spec*
-  列出一映像内的快照。
+:command:`pool init` [*pool-name*] [--force]
+  初始化用于 RBD 的存储池。新建的存储池必须先初始化才能使用。
+
+:command:`resize` (-s | --size *size-in-M/G/T*) [--allow-shrink] *image-spec*
+  rbd 大小调整。尺寸参数必须指定； --allow-shrink 选项允许缩小。
+
+:command:`rm` *image-spec*
+  删除一 rbd 映像，包括所有数据块。如果映像有快照，此命令会失效。
 
 :command:`snap create` *snap-spec*
   新建一快照。需指定快照名。
 
-:command:`snap rollback` *snap-spec*
-  把指定映像回滚到快照。此动作会递归整个块阵列，并把数据头内容\
-  更新到快照版本。
+:command:`snap limit clear` *image-spec*
+  清除先前设置的映像所允许的快照数量上限。
 
-:command:`snap rm` [--force] *snap-spec*
-  删除指定快照。
+:command:`snap limit set` [--limit] *limit* *image-spec*
+  设置一个映像所允许的快照数量上限。
 
-:command:`snap purge` *image-spec*
-  删除一映像的所有快照。
+:command:`snap ls` *image-spec*
+  列出一映像内的快照。
 
 :command:`snap protect` *snap-spec*
   保护快照，防删除，这样才能从它克隆（见 `rbd clone` ）。做克\
@@ -317,6 +548,19 @@
 
   只适用于 format 2 。
 
+:command:`snap purge` *image-spec*
+  删除一映像的所有快照。
+
+:command:`snap rename` *src-snap-spec* *dest-snap-spec*
+  重命名一个快照。注意：不支持跨存储池和跨映像重命名。
+
+:command:`snap rm` [--force] *snap-spec*
+  删除指定快照。
+
+:command:`snap rollback` *snap-spec*
+  把指定映像回滚到快照。此动作会递归整个块阵列，并把数据头内容\
+  更新到快照版本。
+
 :command:`snap unprotect` *snap-spec*
   取消对快照的保护（撤销 `snap protect` ）。如果还有克隆出的\
   子快照尚在， `snap unprotect` 命令会失效。（注意克隆品可能\
@@ -324,56 +568,33 @@
 
   只适用于 format 2 。
 
-:command:`snap limit set` [--limit] *limit* *image-spec*
-  设置一个映像所允许的快照数量上限。
-
-:command:`snap limit clear` *image-spec*
-  清除先前设置的映像所允许的快照数量上限。
-
-:command:`map` [-o | --options *krbd-options* ] [--read-only] *image-spec* | *snap-spec*
-  通过内核 rbd 模块把指定映像映射到某一块设备。
-
-:command:`unmap` [-o | --options *krbd-options* ] *image-spec* | *snap-spec* | *device-path*
-  取消通过内核 rbd 模块的映射。
-
-:command:`showmapped`
-  显示通过内核 rbd 模块映射过的 rbd 映像。
-
-:command:`nbd map` [--device *device-path*] [--read-only] *image-spec* | *snap-spec*
-  通过 rbd-nbd 工具把指定映像映射成一个块设备。
-
-:command:`nbd unmap` *device-path*
-  取消映射的块设备，之前通过 rbd-nbd 工具映射好的。
-
-:command:`nbd list`
-  显示用着的 nbd 设备，通过 rbd-nbd 工具映射的。
+:command:`sparsify` [--sparse-size *sparse-size*] *image-spec*
+  回收已被清零的映像条带所占的空间。默认的稀疏尺寸为
+  4096 字节，可用 --sparse-size 选项更改，但有这些限制条件：\
+  它应该是 2 幂、不小于 4096 、且不大于映像的对象尺寸。
 
 :command:`status` *image-spec*
   显示映像状态，包括哪个客户端打开着它。
 
-:command:`feature disable` *image-spec* *feature-name*...
-  禁用指定镜像的某些功能，可以一次指定多个功能。
+:command:`trash ls` [*pool-name*]
+  罗列垃圾桶内的所有条目。
 
-:command:`feature enable` *image-spec* *feature-name*...
-  启用指定镜像的某些功能，可以一次指定多个功能。
+:command:`trash mv` *image-spec*
+  把映像移入垃圾桶。所有映像，包括正被克隆件引用的，都能被移入\
+  垃圾桶，而后删除。
 
-:command:`lock list` *image-spec*
-  显示锁着映像的锁，第一列是 `lock remove` 可以使用的锁名。
+:command:`trash purge` [*pool-name*]
+  删除垃圾桶内所有过期的映像。
 
-:command:`lock add` [--shared *lock-tag*] *image-spec* *lock-id*
-  为映像加锁，锁标识是用户一己所好的任意名字。默认加的是互斥\
-  锁，也就是说如果已经加过锁的话此命令会失败； --shared 选项\
-  会改变此行为。注意，加锁操作本身不影响除加锁之外的任何操作，\
-  也不会保护对象、防止它被删除。
+:command:`trash restore` *image-id*  
+  从垃圾桶恢复一个映像。
 
-:command:`lock remove` *image-spec* *lock-id* *locker*
-  释放映像上的锁。锁标识和其持有者来自 lock ls 。
+:command:`trash rm` *image-id* 
+  从垃圾桶删除一个映像。如果映像的延期时间尚未满，那就不能\
+  删除，除非强删。但是正被克隆件引用的、或还有快照的删不掉。
 
-:command:`bench` --io-type <read | write | readwrite | rw> [--io-size *size-in-B/K/M/G/T*] [--io-threads *num-ios-in-flight*] [--io-total *size-in-B/K/M/G/T*] [--io-pattern seq | rand] [--rw-mix-read *read proportion in readwrite*] *image-spec*
-  向指定映像生成一系列 IO 操作，以此衡量 IO 吞吐量和延时。如果\
-  不加后缀， --io-size 和 --io-total 的单位就当是 B 。默认参数\
-  为 --io-size 4096 、 --io-threads 16 、 --io-total 1G 、 \
-  --io-pattern seq 、 --rw-mix-read 50 。
+:command:`watch` *image-spec*
+  盯着有关此映像的事件。
 
 
 .. Image, snap, group and journal specs

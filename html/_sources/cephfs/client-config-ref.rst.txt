@@ -165,7 +165,7 @@
 
 ``client_readahead_max_bytes``
 
-:描述: 设置内核预读数据的最大尺寸，单位为字节。本选项可被
+:描述: 设置客户端预读数据的最大尺寸，单位为字节。本选项可被
        ``client_readahead_max_periods`` 覆盖。
 :类型: Integer
 :默认值: ``0`` (unlimited)
@@ -173,7 +173,7 @@
 
 ``client_readahead_max_periods``
 
-:描述: 设置内核预读的文件布局分片最大数量（对象尺寸 * 条带数\
+:描述: 设置客户端预读的文件布局分片最大数量（对象尺寸 * 条带数\
        量）。本选项会覆盖 ``client_readahead_max_bytes`` 选项。
 :类型: Integer
 :默认值: ``4``
@@ -181,7 +181,7 @@
 
 ``client_readahead_min``
 
-:描述: 设置内核预读的最小尺寸，单位为字节。
+:描述: 设置客户端预读的最小尺寸，单位为字节。
 :类型: Integer
 :默认值: ``131072`` (128KB)
 
