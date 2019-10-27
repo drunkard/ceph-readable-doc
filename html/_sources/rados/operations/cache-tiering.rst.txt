@@ -225,8 +225,8 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 
 	ceph osd pool set hot-storage hit_set_type bloom
 
-``hit_set_count`` 和 ``hit_set_period`` 选项分别定义了 HitSet
-覆盖的时间区间、以及保留多少个这样的 HitSet 。 ::
+``hit_set_count`` 和 ``hit_set_period`` 选项定义了要保留多少个\
+这样的 HitSet ，以及各 HitSet 覆盖的时间区间。 ::
 
 	ceph osd pool set {cachepool} hit_set_count 12
 	ceph osd pool set {cachepool} hit_set_period 14400

@@ -1,3 +1,5 @@
+.. _ceph-file-system:
+
 ===============
  Ceph 文件系统
 ===============
@@ -70,6 +72,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
         通过 fstab 挂载 CephFS <fstab>
         ceph-fuse 手册页 <../../man/8/ceph-fuse>
         mount.ceph 手册页 <../../man/8/mount.ceph>
+	mount.fuse.ceph 手册页 <../../man/8/mount.fuse.ceph>
 
 
 .. raw:: html

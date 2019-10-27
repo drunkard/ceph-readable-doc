@@ -1,14 +1,16 @@
-=====================
- Installing Oprofile
-=====================
+=================
+ Oprofile 的安装
+=================
 
 The easiest way to profile Ceph's CPU consumption is to use the `oprofile`_
 system-wide profiler.
 
 .. _oprofile: http://oprofile.sourceforge.net/about/
 
-Installation
-============
+.. Installation
+
+安装
+====
 
 If you are using a Debian/Ubuntu distribution, you can install ``oprofile`` by
 executing the following::
@@ -16,8 +18,10 @@ executing the following::
 	sudo apt-get install oprofile oprofile-gui
 
 
-Compiling Ceph for Profiling
-============================
+.. Compiling Ceph for Profiling
+
+编译用于剖析的 Ceph
+===================
 
 To compile Ceph for profiling, first clean everything. :: 
 
@@ -25,7 +29,7 @@ To compile Ceph for profiling, first clean everything. ::
 
 Then, export the following settings so that you can see callgraph output. :: 
 
-	export CFLAGS="-fno=omit-frame-pointer -O2 -g"
+	export CFLAGS="-fno-omit-frame-pointer -O2 -g"
 
 Finally, compile Ceph. :: 
 
@@ -39,8 +43,10 @@ example::
 	make -j4
 
 
-Ceph Configuration 
-==================
+.. Ceph Configuration
+
+Ceph 配置
+=========
 
 Ensure that you disable ``lockdep``. Consider setting logging to 
 levels appropriate for a production cluster. See `Ceph Logging and Debugging`_ 

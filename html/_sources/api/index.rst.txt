@@ -24,7 +24,7 @@ Ceph 块设备 API
 
 见 `librbdpy`_ 。
 
-.. _librbdpy: ../rbd/librbdpy
+.. _librbdpy: ../rbd/api/librbdpy
 
 
 Ceph RADOS 网关 APIs

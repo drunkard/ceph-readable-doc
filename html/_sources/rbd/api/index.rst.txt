@@ -1,5 +1,3 @@
-.. Ceph Block Device APIs
-
 =================
  Ceph 块设备 API
 =================

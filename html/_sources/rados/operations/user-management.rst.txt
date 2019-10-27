@@ -147,7 +147,7 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
    集群的一种客户端，所以它没被表示成一种独立的 Ceph 存储集群\
    守护进程类型。
 
-下面描述了各种能力。
+下面描述了各种访问能力。
 
 
 ``allow``
@@ -181,7 +181,7 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
 :描述: 授予用户调用类写入方法的能力， ``x`` 的子集。
 
 
-``*``
+``*``, ``all``
 
 :描述: 授权此用户读、写和执行某守护进程/存储池，且允许执行\
        管理命令。
@@ -244,7 +244,7 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
 
 ``profile rbd-read-only`` （仅用于 OSD ）
 
-:描述: Gives a user read-only permissions to RBD images.
+:描述: 授予一个用户访问一或多个 RBD 映像的只读权限。
 
 
 存储池

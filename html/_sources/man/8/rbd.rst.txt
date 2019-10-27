@@ -137,6 +137,7 @@
    * fast-diff: 快速计算差异（依赖 object-map ）
    * deep-flatten: 支持快照扁平化操作
    * journaling: 支持记录 IO 操作（依赖独占锁）
+   * data-pool: 纠删码存储池支持
 
 .. option:: --image-shared
 
@@ -429,7 +430,7 @@
   by its destination spec.
 
 :command:`mirror image demote` *image-spec*
-  Demote a primary image to non-primary for RBD mirroring.
+  把 RBD 映像中的主映像降级成非主映像。
 
 :command:`mirror image disable` [--force] *image-spec*
   Disable RBD mirroring for an image. If the mirroring is
@@ -516,6 +517,9 @@
 :command:`namespace remove` *pool-name*/*namespace-name*
   从存储池删除一个空的映像命名空间。
 
+:command:`object-map check` *image-spec* | *snap-spec*
+  核验对象映射图是否正确。
+
 :command:`object-map rebuild` *image-spec* | *snap-spec*
   为指定映像重建无效的对象映射关系。指定映像快照时，将为此快照\
   重建无效的对象映射关系。
@@ -599,8 +603,8 @@
 
 .. Image, snap, group and journal specs
 
-映像名和快照名规则
-==================
+映像、快照、组和日志的名称规范
+==============================
 
 | *image-spec* is [*pool-name*]/*image-name*
 | *snap-spec*  is [*pool-name*]/*image-name*\ @\ *snap-name*
@@ -608,11 +612,14 @@
 | *group-snap-spec* is [*pool-name*/[*namespace-name*/]]\ *group-name*\ @\ *snap-name*
 | *journal-spec*    is [*pool-name*/[*namespace-name*/]]\ *journal-name*
 
-*pool-name* 的默认值是 rbd 。如果某个映像名包含斜杠字符（ / ），\
-那么还必须指定 *pool-name* 。
+*pool-name* 的默认值是 rbd 、 *namespace-name* 默认是 "" （\
+为空）。如果某个映像名包含斜杠字符（ / ），那么还必须指定
+*pool-name* 。
 
-你可以用 --pool 、 --image 和 --snap 选项分别指定各个名字，但\
-是这种用法不普遍，大家还是倾向于上面的规则。
+*journal-name* 是 *image-id* 。
+
+你可以用 --pool 、 --namespace 、 --image 和 --snap 选项分别\
+指定各个名字，但是不鼓励这样用，大家还是倾向于上面的规范语法。
 
 
 条带化

@@ -178,6 +178,9 @@
     grace time
         宽限期；宽限时间；
 
+    individual bucket
+        个人桶
+
     inline compression
         内联压缩、内联数据压缩；
 

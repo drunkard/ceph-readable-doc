@@ -1973,7 +1973,20 @@ The content must include a JSON representation of the quota settings
 as encoded in the corresponding read operation.
 
 
-.. _Standard Error Responses:
+.. Set Quota for an Individual Bucket
+
+设置个人桶的配额
+~~~~~~~~~~~~~~~~
+要设置配额，此用户必须有设置了 ``write`` 权限的 ``buckets``
+能力。 ::
+
+	PUT /admin/bucket?quota&uid=<uid>&bucket=<bucket-name>&quota
+
+其内容必须包含一个以 JSON 格式表达的配额配置，如前面\
+`设置桶配额`_\ 一节所述。
+
+
+.. Standard Error Responses
 
 标准错误响应
 ============
