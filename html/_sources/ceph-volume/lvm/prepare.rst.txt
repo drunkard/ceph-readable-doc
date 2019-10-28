@@ -268,10 +268,12 @@ device is already a logical volume it *should* work, given that the LVM
 configuration is done correctly to avoid issues.
 
 
-Storing metadata
-----------------
-The following tags will get applied as part of the preparation process
-regardless of the type of volume (journal or data) or OSD objectstore:
+.. Storing metadata
+
+存入元数据
+----------
+不管是什么类型的卷（日志或数据）或 OSD 对象存储器，下面的标签\
+都会在准备过程中打上：
 
 * ``cluster_fsid``
 * ``encrypted``
@@ -279,12 +281,12 @@ regardless of the type of volume (journal or data) or OSD objectstore:
 * ``osd_id``
 * ``crush_device_class``
 
-For :term:`filestore` these tags will be added:
+如果是 :term:`filestore` 会加上这些标签：
 
 * ``journal_device``
 * ``journal_uuid``
 
-For :term:`bluestore` these tags will be added:
+如果是 :term:`bluestore` 会加上这些标签：
 
 * ``block_device``
 * ``block_uuid``
@@ -293,7 +295,7 @@ For :term:`bluestore` these tags will be added:
 * ``wal_device``
 * ``wal_uuid``
 
-.. note:: For the complete lvm tag conventions see :ref:`ceph-volume-lvm-tag-api`
+.. note:: 完整的 LVM 标签惯例见 :ref:`ceph-volume-lvm-tag-api` 。
 
 
 Summary

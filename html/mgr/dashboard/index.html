@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>Ceph 管理器仪表盘 &#8212; Ceph Documentation</title>
+    <title>Ceph 仪表盘 &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -63,7 +63,7 @@
 
   
   <div class="section" id="ceph">
-<span id="mgr-dashboard"></span><h1>Ceph 管理器仪表盘<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
+<span id="mgr-dashboard"></span><h1>Ceph 仪表盘<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id1">
 <h2>概述<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <p>The original Ceph Manager Dashboard that was shipped with Ceph Luminous started
@@ -680,18 +680,92 @@ $ ceph dashboard ac-role-add-scope-perms rbd/pool-manager pool read create
 </div>
 </div>
 <div class="section" id="id12">
-<h2>反向代理<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
-<p>If you are accessing the dashboard via a reverse proxy configuration,
-you may wish to service it under a URL prefix.  To get the dashboard
-to use hyperlinks that include your prefix, you can set the
-<code class="docutils literal notranslate"><span class="pre">url_prefix</span></code> setting:</p>
+<h2>代理配置<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
+<p>In a Ceph cluster with multiple ceph-mgr instances, only the dashboard running
+on the currently active ceph-mgr daemon will serve incoming requests. Accessing
+the dashboard’s TCP port on any of the other ceph-mgr instances that are
+currently on standby will perform a HTTP redirect (303) to the currently active
+manager’s dashboard URL. This way, you can point your browser to any of the
+ceph-mgr instances in order to access the dashboard.</p>
+<p>If you want to establish a fixed URL to reach the dashboard or if you don’t want
+to allow direct connections to the manager nodes, you could set up a proxy that
+automatically forwards incoming requests to the currently active ceph-mgr
+instance.</p>
+<div class="section" id="url">
+<h3>配置一个 URL 前缀<a class="headerlink" href="#url" title="Permalink to this headline">¶</a></h3>
+<p>如果要通过一个反向代理访问仪表盘，你可能想把它放到一个
+URL 前缀之下。要让仪表盘使用内含自定义 URL 前缀的超链接，你可以设置 <code class="docutils literal notranslate"><span class="pre">url_prefix</span></code> 选项：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph config set mgr mgr/dashboard/url_prefix $PREFIX
 </pre></div>
 </div>
 <p>这样你就能在 <code class="docutils literal notranslate"><span class="pre">http://$IP:$PORT/$PREFIX/</span></code> 访问面板了。</p>
 </div>
+<div class="section" id="id13">
+<h3>禁用重定向<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<p>If the dashboard is behind a load-balancing proxy like <a class="reference external" href="https://www.haproxy.org/">HAProxy</a>
+you might want to disable the redirection behaviour to prevent situations that
+internal (unresolvable) URL’s are published to the frontend client. Use the
+following command to get the dashboard to respond with a HTTP error (500 by default)
+instead of redirecting to the active dashboard:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph config set mgr mgr/dashboard/standby_behaviour &quot;error&quot;
+</pre></div>
+</div>
+<p>To reset the setting to the default redirection behaviour, use the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph config set mgr mgr/dashboard/standby_behaviour &quot;redirect&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="id14">
+<h3>配置错误状态码<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<p>When the redirection behaviour is disabled, then you want to customize the HTTP status
+code of standby dashboards. To do so you need to run the command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph config set mgr mgr/dashboard/standby_error_status_code 503
+</pre></div>
+</div>
+</div>
+<div class="section" id="id15">
+<h3>HAProxy 配置实例<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<p>Below you will find an example configuration for SSL/TLS pass through using
+<a class="reference external" href="https://www.haproxy.org/">HAProxy</a>.</p>
+<p>Please note that the configuration works under the following conditions.
+If the dashboard fails over, the front-end client might receive a HTTP redirect
+(303) response and will be redirected to an unresolvable host. This happens when
+the failover occurs during two HAProxy health checks. In this situation the
+previously active dashboard node will now respond with a 303 which points to
+the new active node. To prevent that situation you should consider to disable
+the redirection behaviour on standby nodes.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>defaults
+  log global
+  option log-health-checks
+  timeout connect 5s
+  timeout client 50s
+  timeout server 450s
+
+frontend dashboard_front
+  mode http
+  bind *:80
+  option httplog
+  redirect scheme https code 301 if !{ ssl_fc }
+
+frontend dashboard_front_ssl
+  mode tcp
+  bind *:443
+  option tcplog
+  default_backend dashboard_back_ssl
+
+backend dashboard_back_ssl
+  mode tcp
+  option httpchk GET /
+  http-check expect status 200
+  server x &lt;HOST&gt;:&lt;PORT&gt; check-ssl check verify none
+  server y &lt;HOST&gt;:&lt;PORT&gt; check-ssl check verify none
+  server z &lt;HOST&gt;:&lt;PORT&gt; check-ssl check verify none
+</pre></div>
+</div>
+</div>
+</div>
 <div class="section" id="dashboard-auditing">
-<span id="id13"></span><h2>审计<a class="headerlink" href="#dashboard-auditing" title="Permalink to this headline">¶</a></h2>
+<span id="id17"></span><h2>审计<a class="headerlink" href="#dashboard-auditing" title="Permalink to this headline">¶</a></h2>
 <p>The REST API is capable of logging PUT, POST and DELETE requests to the Ceph
 audit log. This feature is disabled by default, but can be enabled with the
 following command:</p>
@@ -716,7 +790,7 @@ by default. Execute the following command to disable this behaviour:</p>
 </div>
 </div>
 <div class="section" id="nfs-ganesha">
-<h2>NFS-Ganesha 的管理<a class="headerlink" href="#nfs-ganesha" title="Permalink to this headline">¶</a></h2>
+<span id="dashboard-nfs-ganesha-management"></span><h2>NFS-Ganesha 的管理<a class="headerlink" href="#nfs-ganesha" title="Permalink to this headline">¶</a></h2>
 <p>Ceph Dashboard can manage <a class="reference external" href="http://nfs-ganesha.github.io/">NFS Ganesha</a> exports that use
 CephFS or RadosGW as their backstore.</p>
 <p>To enable this feature in Ceph Dashboard there are some assumptions that need
@@ -738,8 +812,8 @@ the NFS-Ganesha daemon should serve. These URLs are of the form:</p>
 </div>
 <p>Both the <code class="docutils literal notranslate"><span class="pre">conf-&lt;daemon_id&gt;</span></code> and <code class="docutils literal notranslate"><span class="pre">export-&lt;id&gt;</span></code> objects must be stored in the
 same RADOS pool/namespace.</p>
-<div class="section" id="id15">
-<h3>NFS-Ganesha 在仪表盘中的配置<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id19">
+<h3>NFS-Ganesha 在仪表盘中的配置<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h3>
 <p>To enable the management of NFS-Ganesha exports in Ceph Dashboard, we only
 need to tell the Dashboard, in which RADOS pool and namespace the
 configuration objects are stored. Then, Ceph Dashboard can access the objects
@@ -752,8 +826,8 @@ location is:</p>
 <p>After running the above command, Ceph Dashboard is able to find the NFS-Ganesha
 configuration objects and we can start manage the exports through the Web UI.</p>
 </div>
-<div class="section" id="id16">
-<h3>多个 NFS-Ganesha 集群的支持情况<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id20">
+<h3>多个 NFS-Ganesha 集群的支持情况<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h3>
 <p>Ceph Dashboard also supports the management of NFS-Ganesha exports belonging
 to different NFS-Ganesha clusters. An NFS-Ganesha cluster is a group of
 NFS-Ganesha service daemons sharing the same exports. Different NFS-Ganesha
@@ -819,11 +893,17 @@ Web UI will automatically allow to choose to which cluster an export belongs.</p
 <li class="toctree-l4"><a class="reference internal" href="#id11">用户和定制角色创建实例</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#id12">反向代理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">代理配置</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#url">配置一个 URL 前缀</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">禁用重定向</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">配置错误状态码</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">HAProxy 配置实例</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#dashboard-auditing">审计</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#nfs-ganesha">NFS-Ganesha 的管理</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id15">NFS-Ganesha 在仪表盘中的配置</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id16">多个 NFS-Ganesha 集群的支持情况</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id19">NFS-Ganesha 在仪表盘中的配置</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id20">多个 NFS-Ganesha 集群的支持情况</a></li>
 </ul>
 </li>
 </ul>

@@ -8,6 +8,7 @@
 :term:`Ceph 存储集群`\ 运行两种守护进程：
 
 - :term:`Ceph 监视器` （ ``ceph-mon`` ）
+- :term:`Ceph 管理器` （ ``ceph-mgr`` ）
 - :term:`Ceph OSD 守护进程` （ ``ceph-osd`` ）
 
 要支持 :term:`Ceph 文件系统`\ 功能，它还需要运行至少一个 \
@@ -17,6 +18,7 @@
 些默认值。
 
 
+.. The Configuration File
 .. _ceph-conf-file:
 
 配置文件
@@ -40,12 +42,15 @@
 
 #. ``$CEPH_CONF`` （\ *就是* ``$CEPH_CONF`` 环境变量所指示的路径）；
 #. ``-c path/path``  （\ *就是* ``-c`` 命令行参数）；
-#. ``/etc/ceph/ceph.conf``
-#. ``~/.ceph/config``
-#. ``./ceph.conf`` （\ *就是*\ 当前所在的工作路径。
+#. ``/etc/ceph/$cluster.conf``
+#. ``~/.ceph/$cluster.conf``
+#. ``./$cluster.conf`` （\ *就是*\ 当前的工作路径）。
+#. 对 FreeBSD 而言， ``/usr/local/etc/ceph/$cluster.conf``
 
+其中， ``$cluster`` 代表集群名（默认为 ``ceph`` ）。
 
-Ceph 配置文件使用 *ini* 风格的语法，以分号 (;) 和井号 (#) 开始的行是注释，如下：
+Ceph 配置文件使用 *ini* 风格的语法，以分号 (;) 和井号 (#) 开始\
+的行是注释，如下：
 
 .. code-block:: ini
 

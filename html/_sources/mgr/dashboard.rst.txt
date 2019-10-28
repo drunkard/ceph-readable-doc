@@ -1,8 +1,7 @@
-.. Ceph Manager Dashboard
 .. _mgr-dashboard:
 
-Ceph 管理器仪表盘
-=================
+Ceph 仪表盘
+===========
 
 概述
 ----
@@ -683,19 +682,106 @@ view and create Ceph pools, and have read-only access to any other scopes.
    $ ceph dashboard ac-user-set-roles bob rbd/pool-manager read-only
 
 
-反向代理
+.. Proxy Configuration
+
+代理配置
 --------
+In a Ceph cluster with multiple ceph-mgr instances, only the dashboard running
+on the currently active ceph-mgr daemon will serve incoming requests. Accessing
+the dashboard's TCP port on any of the other ceph-mgr instances that are
+currently on standby will perform a HTTP redirect (303) to the currently active
+manager's dashboard URL. This way, you can point your browser to any of the
+ceph-mgr instances in order to access the dashboard.
 
-If you are accessing the dashboard via a reverse proxy configuration,
-you may wish to service it under a URL prefix.  To get the dashboard
-to use hyperlinks that include your prefix, you can set the
-``url_prefix`` setting:
+If you want to establish a fixed URL to reach the dashboard or if you don't want
+to allow direct connections to the manager nodes, you could set up a proxy that
+automatically forwards incoming requests to the currently active ceph-mgr
+instance.
 
-::
+
+.. Configuring a URL Prefix
+
+配置一个 URL 前缀
+^^^^^^^^^^^^^^^^^
+如果要通过一个反向代理访问仪表盘，你可能想把它放到一个
+URL 前缀之下。要让仪表盘使用内含自定义 URL 前缀的超链接，你\
+可以设置 ``url_prefix`` 选项： ::
 
   ceph config set mgr mgr/dashboard/url_prefix $PREFIX
 
 这样你就能在 ``http://$IP:$PORT/$PREFIX/`` 访问面板了。
+
+
+.. Disable the redirection
+
+禁用重定向
+^^^^^^^^^^
+If the dashboard is behind a load-balancing proxy like `HAProxy <https://www.haproxy.org/>`_
+you might want to disable the redirection behaviour to prevent situations that
+internal (unresolvable) URL's are published to the frontend client. Use the
+following command to get the dashboard to respond with a HTTP error (500 by default)
+instead of redirecting to the active dashboard::
+
+  $ ceph config set mgr mgr/dashboard/standby_behaviour "error"
+
+To reset the setting to the default redirection behaviour, use the following command::
+
+  $ ceph config set mgr mgr/dashboard/standby_behaviour "redirect"
+
+
+.. Configure the error status code
+
+配置错误状态码
+^^^^^^^^^^^^^^
+When the redirection behaviour is disabled, then you want to customize the HTTP status
+code of standby dashboards. To do so you need to run the command::
+
+  $ ceph config set mgr mgr/dashboard/standby_error_status_code 503
+
+
+.. HAProxy example configuration
+
+HAProxy 配置实例
+^^^^^^^^^^^^^^^^
+Below you will find an example configuration for SSL/TLS pass through using
+`HAProxy <https://www.haproxy.org/>`_.
+
+Please note that the configuration works under the following conditions.
+If the dashboard fails over, the front-end client might receive a HTTP redirect
+(303) response and will be redirected to an unresolvable host. This happens when
+the failover occurs during two HAProxy health checks. In this situation the
+previously active dashboard node will now respond with a 303 which points to
+the new active node. To prevent that situation you should consider to disable
+the redirection behaviour on standby nodes.
+
+::
+
+  defaults
+    log global
+    option log-health-checks
+    timeout connect 5s
+    timeout client 50s
+    timeout server 450s
+
+  frontend dashboard_front
+    mode http
+    bind *:80
+    option httplog
+    redirect scheme https code 301 if !{ ssl_fc }
+
+  frontend dashboard_front_ssl
+    mode tcp
+    bind *:443
+    option tcplog
+    default_backend dashboard_back_ssl
+
+  backend dashboard_back_ssl
+    mode tcp
+    option httpchk GET /
+    http-check expect status 200
+    server x <HOST>:<PORT> check-ssl check verify none
+    server y <HOST>:<PORT> check-ssl check verify none
+    server z <HOST>:<PORT> check-ssl check verify none
 
 
 .. _dashboard-auditing:
@@ -725,6 +811,7 @@ A log entry may look like this::
 
   2018-10-22 15:27:01.302514 mgr.x [INF] [DASHBOARD] from='https://[::ffff:127.0.0.1]:37022' path='/api/rgw/user/klaus' method='PUT' user='admin' params='{"max_buckets": "1000", "display_name": "Klaus Mustermann", "uid": "klaus", "suspended": "0", "email": "klaus.mustermann@ceph.com"}'
 
+.. _dashboard-nfs-ganesha-management:
 
 NFS-Ganesha 的管理
 ------------------

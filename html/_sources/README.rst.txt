@@ -11,6 +11,13 @@ https://github.com/drunkard/ceph-readable-doc
 中文版文档风格
 ==============
 
+译文的语言风格：
+
+- 通俗易懂，尽量不用生僻的词语，前人没有翻译过的术语、又不太好直译的，想办法用\
+  转义、通感之类的修辞方法翻译；
+- 尽量用本土化的语言风格；中文就按汉语习惯翻译，不做直译，有时候反而不好理解；
+- 废话少说，捞干的。
+
 词语的翻译应该尽量一致，请参考\ `翻译惯例 </translation_cn/translation-convention>`_\
 （即 translation-convention.rst ）。
 

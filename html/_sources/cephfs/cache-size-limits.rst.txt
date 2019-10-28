@@ -1,5 +1,3 @@
-.. Understanding MDS Cache Size Limits
-
 深入理解 MDS 的缓存尺寸限制
 ===========================
 

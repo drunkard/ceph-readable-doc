@@ -88,8 +88,8 @@ CRUSH 图内的正确位置，如果不是，就自己挪过去。要禁用 CRUS
 其中，集群名通常是 "ceph" ， id 是守护进程标识符（ OSD 号或\
 守护进程标识符），守护进程类型是 ``osd`` 、 ``mds`` 之类的。
 
-For example, a simple hook that additionally specified a rack location
-based on a hypothetical file ``/etc/rack`` might be::
+例如，下面这个简单的钩子，基于一个假设的文件 ``/etc/rack`` 、\
+它额外指定了一个机架位，如下： ::
 
   #!/bin/sh
   echo "host=$(hostname -s) rack=$(cat /etc/rack) root=default"
