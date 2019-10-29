@@ -12,18 +12,22 @@ understand what OSD is enabled and needs to be mounted.
 .. note:: The execution of this call is fully idempotent, and there is no
           side-effects when running multiple times
 
-New OSDs
---------
+.. New OSDs
+
+新 OSD
+------
 To activate newly prepared OSDs both the :term:`OSD id` and :term:`OSD uuid`
 need to be supplied. For example::
 
     ceph-volume lvm activate --bluestore 0 0263644D-0BF1-4D6D-BC34-28BD98AE3BC8
 
-.. note:: The UUID is stored in the ``fsid`` file in the OSD path, which is
-          generated when :ref:`ceph-volume-lvm-prepare` is used.
+.. note:: 这个 UUID 存储于 OSD 路径下的 ``fsid`` 文件内，它\
+   是在调用 :ref:`ceph-volume-lvm-prepare` 时生成的。
 
-Activating all OSDs
--------------------
+.. Activating all OSDs
+
+激活所有 OSD
+------------
 It is possible to activate all existing OSDs at once by using the ``--all``
 flag. For example::
 

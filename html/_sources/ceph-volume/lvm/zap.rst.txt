@@ -8,18 +8,19 @@ by ceph OSDs so that they may be reused. If given a path to a logical
 volume it must be in the format of vg/lv. Any filesystems present
 on the given lv or partition will be removed and all data will be purged.
 
-.. note:: The lv or partition will be kept intact.
+.. note:: 逻辑卷或分区会保持原样。
 
-.. note:: If the logical volume, raw device or partition is being used for any ceph related
-          mount points they will be unmounted.
+.. note:: 如果逻辑卷、原始设备或分区当前还挂载在 ceph 相关的\
+          挂载点下，它们将被卸载。
 
-Zapping a logical volume::
+zap 一个逻辑卷： ::
 
     ceph-volume lvm zap {vg name/lv name}
 
-Zapping a partition::
+zap 一个分区： ::
 
     ceph-volume lvm zap /dev/sdc1
+
 
 .. Removing Devices
 

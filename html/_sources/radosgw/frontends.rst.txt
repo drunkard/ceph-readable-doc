@@ -23,7 +23,7 @@ and the Boost.Asio library for asynchronous network i/o.
 选项
 ----
 
-``port`` and ``ssl_port``
+``port`` 和 ``ssl_port``
 
 :描述: Sets the listening port number. Can be specified multiple
               times as in ``port=80 port=8000``.
@@ -149,7 +149,7 @@ A complete list of supported options can be found in the `Civetweb User Manual`_
 通用选项
 ========
 
-Some frontend options are generic and supported by all frontends:
+有些前端选项是通用的，所有前端都支持：
 
 ``prefix``
 

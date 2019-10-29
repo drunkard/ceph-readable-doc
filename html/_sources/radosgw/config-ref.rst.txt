@@ -9,6 +9,16 @@
 认值，你若未指定，自然用默认。
 
 
+``rgw frontends``
+
+:描述: 配置的是 HTTP 前端。多个前端的配置可以写成逗号分隔的\
+       列表。各个前端的配置是空格分隔的一系列选项，各选项都得\
+       遵照 key=value 或 key 格式。所支持的选项请参考
+       `HTTP 前端`_\ 。
+:类型: String
+:默认值: ``beast port=7480``
+
+
 ``rgw data``
 
 :描述: 设置 Ceph 对象网关的数据文件位置。
@@ -804,3 +814,4 @@ Barbican 选项
 .. _RADOS 集群句柄: ../../rados/api/librados-intro/#step-2-configuring-a-cluster-handle
 .. _Barbican: ../barbican
 .. _加密: ../encryption
+.. _HTTP 前端: ../frontends

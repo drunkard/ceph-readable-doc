@@ -1,4 +1,4 @@
-.. _Bucket Policies:
+.. Bucket Policies
 
 ========
  桶策略
@@ -110,7 +110,7 @@ ID 用。
 
 桶变量现在还不支持字符串插值。
 
-当前仅支持下面的条件关键字：
+对于所有请求，我们支持的条件关键字有：
 
 - aws:CurrentTime
 - aws:EpochTime

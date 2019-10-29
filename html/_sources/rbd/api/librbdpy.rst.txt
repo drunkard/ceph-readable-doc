@@ -28,8 +28,9 @@
     data = 'foo' * 200
     image.write(data, 0)
 
-上面的代码向映像前面写入了 600 字节的 foo 字符串。注意数据不能是 :type:unicode ， \
-librbd 不能如何处理大于 :c:type:char 的字符串。
+上面的代码向映像前面写入了 600 字节的 foo 字符串。注意数据不能\
+是 :type:unicode ， librbd 不能如何处理大于 :c:type:char 的\
+字符串。
 
 最后，关闭映像、 IO 上下文、和到 RADOS 的连接。 ::
 
@@ -41,6 +42,7 @@ librbd 不能如何处理大于 :c:type:char 的字符串。
 
     cluster = rados.Rados(conffile='my_ceph_conf')
     try:
+        cluster.connect()
         ioctx = cluster.open_ioctx('my_pool')
         try:
             rbd_inst = rbd.RBD()

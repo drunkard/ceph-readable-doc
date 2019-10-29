@@ -1,7 +1,7 @@
 .. _ceph-volume-lvm-encryption:
 
-Encryption
-==========
+加密
+====
 
 Logical volumes can be encrypted using ``dmcrypt`` by specifying the
 ``--dmcrypt`` flag when creating OSDs. Encryption can be done in different ways,
@@ -36,7 +36,9 @@ volumes can remain unencrypted. This method also allows for flexible logical
 volume setups, since encryption will happen once the LV is created.
 
 
-Workflow
+.. Workflow
+
+工作流程
 --------
 When setting up the OSD, a secret key will be created, that will be passed
 along to the monitor in JSON format as ``stdin`` to prevent the key from being

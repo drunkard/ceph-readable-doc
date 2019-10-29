@@ -1,4 +1,5 @@
-.. _Configuring multiple active MDS daemons:
+.. Configuring multiple active MDS daemons
+.. _cephfs-multimds:
 
 多活 MDS 守护进程的配置
 -----------------------

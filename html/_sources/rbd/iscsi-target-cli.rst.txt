@@ -9,7 +9,7 @@ node. The Ceph iSCSI gateway can be a standalone node or be colocated on
 a Ceph Object Store Disk (OSD) node. Completing the following steps will
 install, and configure the Ceph iSCSI gateway for basic operation.
 
-**Requirements:**
+**必备条件：**
 
 -  A running Ceph Luminous or later storage cluster
 
@@ -50,7 +50,7 @@ to the *Installing* section:
 
 #. Create a new or use an existing RADOS Block Device (RBD).
 
-**Installing:**
+**安装：**
 
 If you are using the upstream ceph-iscsi package follow the
 `manual install instructions`_.
@@ -78,7 +78,7 @@ For rpm based instructions execute the following commands:
 
        # yum install tcmu-runner
 
-**Setup:**
+**配置得跑起来：**
 
 #. gwcli requires a pool with the name ``rbd``, so it can store metadata
    like the iSCSI configuration. To check if this pool has been created
@@ -154,7 +154,7 @@ For rpm based instructions execute the following commands:
        # systemctl enable rbd-target-api
        # systemctl start rbd-target-api
 
-**Configuring:**
+**后续配置：**
 
 gwcli will create and configure the iSCSI target and RBD images and copy the
 configuration across the gateways setup in the last section. Lower level
