@@ -65,8 +65,23 @@
   <div class="section" id="msgr2">
 <span id="msgr2-protocol"></span><h1>msgr2 协议<a class="headerlink" href="#msgr2" title="Permalink to this headline">¶</a></h1>
 <p>老的 Ceph 底层协议是用 SimpleMessenger 实现的，这个协议是它的修订版，解决了性能和安全问题。</p>
-<div class="section" id="definitions">
-<h2>Definitions<a class="headerlink" href="#definitions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h2>目标<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>与最初的协议相比，这个协议修订有几个目标：</p>
+<ul class="simple">
+<li><p><em>Flexible handshaking</em>.  The original protocol did not have a
+sufficiently flexible protocol negotiation that allows for features
+that were not required.</p></li>
+<li><p><em>Encryption</em>.  We will incorporate encryption over the wire.</p></li>
+<li><p><em>Performance</em>.  We would like to provide for protocol features
+(e.g., padding) that keep computation and memory copies out of the
+fast path where possible.</p></li>
+<li><p><em>Signing</em>.  We will allow for traffic to be signed (but not
+necessarily encrypted).  This may not be implemented in the initial version.</p></li>
+</ul>
+</div>
+<div class="section" id="id2">
+<h2>定义<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li><p><em>client</em> (C): the party initiating a (TCP) connection</p></li>
 <li><p><em>server</em> (S): the party accepting a (TCP) connection</p></li>
@@ -74,36 +89,25 @@
 <li><p><em>entity</em>: a ceph entity instantiation, e.g. ‘osd.0’.  each entity
 has one or more unique entity_addr_t’s by virtue of the ‘nonce’
 field, which is typically a pid or random value.</p></li>
-<li><p><em>stream</em>: an exchange, passed over a connection, between two unique
-entities. in the future multiple entities may coexist within the
-same process.</p></li>
 <li><p><em>session</em>: a stateful session between two entities in which message
 exchange is ordered and lossless.  A session might span multiple
-connections (and streams) if there is an interruption (TCP connection
-disconnect).</p></li>
+connections if there is an interruption (TCP connection disconnect).</p></li>
 <li><p><em>frame</em>: a discrete message sent between the peers.  Each frame
-consists of a tag (type code), stream id, payload, and (if signing
+consists of a tag (type code), payload, and (if signing
 or encryption is enabled) some other fields.  See below for the
 structure.</p></li>
-<li><p><em>stream id</em>: a 32-bit value that uniquely identifies a stream within
-a given connection.  the stream id implicitly instantiated when the send
-sends a frame using that id.</p></li>
-<li><p><em>tag</em>: a single-byte type code associated with a frame.  The tag
+<li><p><em>tag</em>: a type code associated with a frame.  The tag
 determines the structure of the payload.</p></li>
 </ul>
 </div>
 <div class="section" id="phases">
 <h2>Phases<a class="headerlink" href="#phases" title="Permalink to this headline">¶</a></h2>
-<p>A connection has two distinct phases:</p>
+<p>A connection has four distinct phases:</p>
 <ol class="arabic simple">
 <li><p>banner</p></li>
-<li><p>frame exchange for one or more strams</p></li>
-</ol>
-<p>A stream has three distinct phases:</p>
-<ol class="arabic simple">
-<li><p>authentication</p></li>
-<li><p>message flow handshake</p></li>
-<li><p>message exchange</p></li>
+<li><p>authentication frame exchange</p></li>
+<li><p>message flow handshake frame exchange</p></li>
+<li><p>message frame exchange</p></li>
 </ol>
 </div>
 <div class="section" id="banner">
@@ -116,89 +120,129 @@ determines the structure of the payload.</p></li>
 features are defined or required, so this will be “ceph 0 0n”.</p>
 <p>If the remote party advertises required features we don’t support, we
 can disconnect.</p>
+<p class="ditaa">
+<img src="../../_images/ditaa-beb124bffbf2c51c1f44a1dead74f6aabe6d22a8.png"/>
+</p>
 </div>
-<div class="section" id="frame-format">
-<span id="id1"></span><h2>帧格式<a class="headerlink" href="#frame-format" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id3">
+<h2>帧格式<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
 <p>All further data sent or received is contained by a frame.  Each frame has
 the form:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stream_id</span> <span class="p">(</span><span class="n">le32</span><span class="p">)</span>
-<span class="n">frame_len</span> <span class="p">(</span><span class="n">le32</span><span class="p">)</span>
-<span class="n">tag</span> <span class="p">(</span><span class="n">TAG_</span><span class="o">*</span> <span class="n">byte</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">frame_len</span> <span class="p">(</span><span class="n">le32</span><span class="p">)</span>
+<span class="n">tag</span> <span class="p">(</span><span class="n">TAG_</span><span class="o">*</span> <span class="n">le32</span><span class="p">)</span>
+<span class="n">frame_header_checksum</span> <span class="p">(</span><span class="n">le32</span><span class="p">)</span>
 <span class="n">payload</span>
 <span class="p">[</span><span class="n">payload</span> <span class="n">padding</span> <span class="o">--</span> <span class="n">only</span> <span class="n">present</span> <span class="n">after</span> <span class="n">stream</span> <span class="n">auth</span> <span class="n">phase</span><span class="p">]</span>
 <span class="p">[</span><span class="n">signature</span> <span class="o">--</span> <span class="n">only</span> <span class="n">present</span> <span class="n">after</span> <span class="n">stream</span> <span class="n">auth</span> <span class="n">phase</span><span class="p">]</span>
 </pre></div>
 </div>
 <ul class="simple">
+<li><p>The frame_header_checksum is over just the frame_len and tag values (8 bytes).</p></li>
 <li><p>frame_len includes everything after the frame_len le32 up to the end of the
 frame (all payloads, signatures, and padding).</p></li>
 <li><p>The payload format and length is determined by the tag.</p></li>
-<li><p>The signature portion is only present in a given stream if the
-authentication phase has completed (TAG_AUTH_DONE has been sent) and
-signatures are enabled.</p></li>
+<li><p>The signature portion is only present if the authentication phase
+has completed (TAG_AUTH_DONE has been sent) and signatures are
+enabled.</p></li>
+</ul>
+</div>
+<div class="section" id="hello">
+<h2>Hello<a class="headerlink" href="#hello" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p>TAG_HELLO: client-&gt;server and server-&gt;client:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__u8</span> <span class="n">entity_type</span>
+<span class="n">entity_addr_t</span> <span class="n">peer_socket_address</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We immediately share our entity type and the address of the peer (which can be useful
+for detecting our effective IP address, especially in the presence of NAT).</p></li>
+</ul>
+</li>
 </ul>
 </div>
 <div class="section" id="authentication">
 <h2>Authentication<a class="headerlink" href="#authentication" title="Permalink to this headline">¶</a></h2>
 <ul>
-<li><p>TAG_AUTH_METHODS (server only): list authentication methods (none, cephx, …):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">num_methods</span><span class="p">;</span>
-<span class="n">__le32</span> <span class="n">methods</span><span class="p">[</span><span class="n">num_methods</span><span class="p">];</span>   <span class="o">//</span> <span class="n">CEPH_AUTH_</span><span class="p">{</span><span class="n">NONE</span><span class="p">,</span> <span class="n">CEPHX</span><span class="p">}</span>
+<li><p>TAG_AUTH_REQUEST: client-&gt;server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">method</span><span class="p">;</span>  <span class="o">//</span> <span class="n">CEPH_AUTH_</span><span class="p">{</span><span class="n">NONE</span><span class="p">,</span> <span class="n">CEPHX</span><span class="p">,</span> <span class="o">...</span><span class="p">}</span>
+<span class="n">__le32</span> <span class="n">num_preferred_modes</span><span class="p">;</span>
+<span class="nb">list</span><span class="o">&lt;</span><span class="n">__le32</span><span class="o">&gt;</span> <span class="n">mode</span>  <span class="o">//</span> <span class="n">CEPH_CON_MODE_</span><span class="o">*</span>
+<span class="n">method</span> <span class="n">specific</span> <span class="n">payload</span>
 </pre></div>
 </div>
 </li>
-<li><p>TAG_AUTH_SET_METHOD (client only): set auth method for this connection:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">method</span><span class="p">;</span>
+<li><p>TAG_AUTH_BAD_METHOD server -&gt; client: reject client-selected auth method:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">method</span>
+<span class="n">__le32</span> <span class="n">negative</span> <span class="n">error</span> <span class="n">result</span> <span class="n">code</span>
+<span class="n">__le32</span> <span class="n">num_methods</span>
+<span class="nb">list</span><span class="o">&lt;</span><span class="n">__le32</span><span class="o">&gt;</span> <span class="n">allowed_methods</span> <span class="o">//</span> <span class="n">CEPH_AUTH_</span><span class="p">{</span><span class="n">NONE</span><span class="p">,</span> <span class="n">CEPHX</span><span class="p">,</span> <span class="o">...</span><span class="p">}</span>
+<span class="n">__le32</span> <span class="n">num_modes</span>
+<span class="nb">list</span><span class="o">&lt;</span><span class="n">__le32</span><span class="o">&gt;</span> <span class="n">allowed_modes</span>   <span class="o">//</span> <span class="n">CEPH_CON_MODE_</span><span class="o">*</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>The selected auth method determines the sig_size and block_size in any
-subsequent messages (TAG_AUTH_DONE and non-auth messages).</p></li>
+<li><p>Returns the attempted auth method, and error code (-EOPNOTSUPP if
+the method is unsupported), and the list of allowed authentication
+methods.</p></li>
 </ul>
 </li>
-<li><p>TAG_AUTH_BAD_METHOD (server only): reject client-selected auth method:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">method</span>
-</pre></div>
-</div>
-</li>
-<li><p>TAG_AUTH: client-&gt;server or server-&gt;client auth message:</p>
+<li><p>TAG_AUTH_REPLY_MORE: server-&gt;client:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="nb">len</span><span class="p">;</span>
 <span class="n">method</span> <span class="n">specific</span> <span class="n">payload</span>
 </pre></div>
 </div>
 </li>
-<li><p>TAG_AUTH_DONE:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">confounder</span> <span class="p">(</span><span class="n">block_size</span> <span class="nb">bytes</span> <span class="n">of</span> <span class="n">random</span> <span class="n">garbage</span><span class="p">)</span>
-<span class="n">__le64</span> <span class="n">flags</span>
-  <span class="n">FLAG_ENCRYPTED</span>  <span class="mi">1</span>
-  <span class="n">FLAG_SIGNED</span>     <span class="mi">2</span>
-<span class="n">signature</span>
+<li><p>TAG_AUTH_REQUEST_MORE: client-&gt;server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="nb">len</span><span class="p">;</span>
+<span class="n">method</span> <span class="n">specific</span> <span class="n">payload</span>
+</pre></div>
+</div>
+</li>
+<li><p>TAG_AUTH_DONE: (server-&gt;client):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le64</span> <span class="n">global_id</span>
+<span class="n">__le32</span> <span class="n">connection</span> <span class="n">mode</span> <span class="o">//</span> <span class="n">CEPH_CON_MODE_</span><span class="o">*</span>
+<span class="n">method</span> <span class="n">specific</span> <span class="n">payload</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>The client first says AUTH_DONE, and the server replies to
-acknowledge it.</p></li>
+<li><p>The server is the one to decide authentication has completed and what
+the final connection mode will be.</p></li>
 </ul>
 </li>
 </ul>
+<p>Example of authentication phase interaction when the client uses an
+allowed authentication method:</p>
+<p class="ditaa">
+<img src="../../_images/ditaa-310ba4a52c55a7981d3524ab9e3e7ac13501881b.png"/>
+</p>
+<p>Example of authentication phase interaction when the client uses a forbidden
+authentication method as the first attempt:</p>
+<p class="ditaa">
+<img src="../../_images/ditaa-c344f712b43b992381a9a1af728936508e02fd7f.png"/>
+</p>
 </div>
-<div class="section" id="message-frame-format">
-<h2>Message frame format<a class="headerlink" href="#message-frame-format" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="post-auth-frame-format">
+<h2>Post-auth frame format<a class="headerlink" href="#post-auth-frame-format" title="Permalink to this headline">¶</a></h2>
 <p>The frame format is fixed (see above), but can take three different
 forms, depending on the AUTH_DONE flags:</p>
 <ul>
 <li><p>If neither FLAG_SIGNED or FLAG_ENCRYPTED is specified, things are simple:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stream_id</span>
-<span class="n">frame_len</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">frame_len</span>
 <span class="n">tag</span>
 <span class="n">payload</span>
 <span class="n">payload_padding</span> <span class="p">(</span><span class="n">out</span> <span class="n">to</span> <span class="n">auth</span> <span class="n">block_size</span><span class="p">)</span>
 </pre></div>
 </div>
+<ul class="simple">
+<li><p>The padding is some number of bytes &lt; the auth block_size that
+brings the total length of the payload + payload_padding to a
+multiple of block_size.  It does not include the frame_len or tag.  Padding
+content can be zeros or (better) random bytes.</p></li>
+</ul>
 </li>
 <li><p>If FLAG_SIGNED has been specified:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stream_id</span>
-<span class="n">frame_len</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">frame_len</span>
 <span class="n">tag</span>
 <span class="n">payload</span>
 <span class="n">payload_padding</span> <span class="p">(</span><span class="n">out</span> <span class="n">to</span> <span class="n">auth</span> <span class="n">block_size</span><span class="p">)</span>
@@ -211,10 +255,9 @@ signature input must include some state from the session key and the
 previous message.</p>
 </li>
 <li><p>If FLAG_ENCRYPTED has been specified:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stream_id</span>
-<span class="n">frame_len</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">frame_len</span>
+<span class="n">tag</span>
 <span class="p">{</span>
-  <span class="n">payload_sig_length</span>
   <span class="n">payload</span>
   <span class="n">payload_padding</span> <span class="p">(</span><span class="n">out</span> <span class="n">to</span> <span class="n">auth</span> <span class="n">block_size</span><span class="p">)</span>
 <span class="p">}</span> <span class="o">^</span> <span class="n">stream</span> <span class="n">cipher</span>
@@ -231,42 +274,78 @@ the wire without waiting for the next frame in the stream.</p>
 <p>In this phase the peers identify each other and (if desired) reconnect to
 an established session.</p>
 <ul>
-<li><p>TAG_IDENT: identify ourselves:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">entity_addrvec_t</span> <span class="n">addr</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-<span class="n">__u8</span>   <span class="n">my</span> <span class="nb">type</span> <span class="p">(</span><span class="n">CEPH_ENTITY_TYPE_</span><span class="o">*</span><span class="p">)</span>
-<span class="n">__le32</span> <span class="n">protocol</span> <span class="n">version</span>
+<li><p>TAG_CLIENT_IDENT (client-&gt;server): identify ourselves:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">num_addrs</span>
+<span class="n">entity_addrvec_t</span><span class="o">*</span><span class="n">num_addrs</span> <span class="n">entity</span> <span class="n">addrs</span>
+<span class="n">entity_addr_t</span> <span class="n">target</span> <span class="n">entity</span> <span class="n">addr</span>
+<span class="n">__le64</span> <span class="n">gid</span> <span class="p">(</span><span class="n">numeric</span> <span class="n">part</span> <span class="n">of</span> <span class="n">osd</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="n">client</span><span class="o">.</span><span class="mi">123456</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">__le64</span> <span class="n">global_seq</span>
 <span class="n">__le64</span> <span class="n">features</span> <span class="n">supported</span> <span class="p">(</span><span class="n">CEPH_FEATURE_</span><span class="o">*</span> <span class="n">bitmask</span><span class="p">)</span>
 <span class="n">__le64</span> <span class="n">features</span> <span class="n">required</span> <span class="p">(</span><span class="n">CEPH_FEATURE_</span><span class="o">*</span> <span class="n">bitmask</span><span class="p">)</span>
 <span class="n">__le64</span> <span class="n">flags</span> <span class="p">(</span><span class="n">CEPH_MSG_CONNECT_</span><span class="o">*</span> <span class="n">bitmask</span><span class="p">)</span>
-<span class="n">__le64</span> <span class="n">cookie</span> <span class="p">(</span><span class="n">a</span> <span class="n">client</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">assigned</span> <span class="n">by</span> <span class="n">the</span> <span class="n">sender</span><span class="o">.</span> <span class="n">unique</span> <span class="n">on</span> <span class="n">the</span> <span class="n">sender</span><span class="o">.</span><span class="p">)</span>
+<span class="n">__le64</span> <span class="n">cookie</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>client will send first, server will reply with same.</p></li>
+<li><p>client will send first, server will reply with same.  if this is a
+new session, the client and server can proceed to the message exchange.</p></li>
+<li><p>the target addr is who the client is trying to connect <em>to</em>, so
+that the server side can close the connection if the client is
+talking to the wrong daemon.</p></li>
+<li><p>type.gid (entity_name_t) is set here, by combinging the type shared in the hello
+frame with the gid here.  this means we don’t need it
+in the header of every message.  it also means that we can’t send
+messages “from” other entity_name_t’s.  the current
+implementations set this at the top of _send_message etc so this
+shouldn’t break any existing functionality.  implementation will
+likely want to mask this against what the authenticated credential
+allows.</p></li>
+<li><p>cookie is the client coookie used to identify a session, and can be used
+to reconnect to an existing session.</p></li>
+<li><p>we’ve dropped the ‘protocol_version’ field from msgr1</p></li>
 </ul>
 </li>
-<li><p>TAG_IDENT_MISSING_FEATURES (server only): complain about a TAG_IDENT with too few features:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le64</span> <span class="n">features</span> <span class="n">we</span> <span class="n">require</span> <span class="n">that</span> <span class="n">peer</span> <span class="n">didn</span><span class="s1">&#39;t advertise</span>
+<li><p>TAG_IDENT_MISSING_FEATURES (server-&gt;client): complain about a TAG_IDENT
+with too few features:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le64</span> <span class="n">features</span> <span class="n">we</span> <span class="n">require</span> <span class="n">that</span> <span class="n">the</span> <span class="n">peer</span> <span class="n">didn</span><span class="s1">&#39;t advertise</span>
 </pre></div>
 </div>
 </li>
-<li><p>TAG_IDENT_BAD_PROTOCOL (server only): complain about an old protocol version:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">protocol_version</span> <span class="p">(</span><span class="n">our</span> <span class="n">protocol</span> <span class="n">version</span><span class="p">)</span>
+<li><p>TAG_SERVER_IDENT (server-&gt;client): accept client ident and identify server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">num_addrs</span>
+<span class="n">entity_addrvec_t</span><span class="o">*</span><span class="n">num_addrs</span> <span class="n">entity</span> <span class="n">addrs</span>
+<span class="n">__le64</span> <span class="n">gid</span> <span class="p">(</span><span class="n">numeric</span> <span class="n">part</span> <span class="n">of</span> <span class="n">osd</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="n">client</span><span class="o">.</span><span class="mi">123456</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">__le64</span> <span class="n">global_seq</span>
+<span class="n">__le64</span> <span class="n">features</span> <span class="n">supported</span> <span class="p">(</span><span class="n">CEPH_FEATURE_</span><span class="o">*</span> <span class="n">bitmask</span><span class="p">)</span>
+<span class="n">__le64</span> <span class="n">features</span> <span class="n">required</span> <span class="p">(</span><span class="n">CEPH_FEATURE_</span><span class="o">*</span> <span class="n">bitmask</span><span class="p">)</span>
+<span class="n">__le64</span> <span class="n">flags</span> <span class="p">(</span><span class="n">CEPH_MSG_CONNECT_</span><span class="o">*</span> <span class="n">bitmask</span><span class="p">)</span>
+<span class="n">__le64</span> <span class="n">cookie</span>
 </pre></div>
 </div>
+<ul class="simple">
+<li><p>The server cookie can be used by the client if it is later disconnected
+and wants to reconnect and resume the session.</p></li>
+</ul>
 </li>
-<li><p>TAG_RECONNECT (client only): reconnect to an established session:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le64</span> <span class="n">cookie</span>
+<li><p>TAG_RECONNECT (client-&gt;server): reconnect to an established session:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le32</span> <span class="n">num_addrs</span>
+<span class="n">entity_addr_t</span> <span class="o">*</span> <span class="n">num_addrs</span>
+<span class="n">__le64</span> <span class="n">client_cookie</span>
+<span class="n">__le64</span> <span class="n">server_cookie</span>
 <span class="n">__le64</span> <span class="n">global_seq</span>
 <span class="n">__le64</span> <span class="n">connect_seq</span>
 <span class="n">__le64</span> <span class="n">msg_seq</span> <span class="p">(</span><span class="n">the</span> <span class="n">last</span> <span class="n">msg</span> <span class="n">seq</span> <span class="n">received</span><span class="p">)</span>
 </pre></div>
 </div>
 </li>
-<li><p>TAG_RECONNECT_OK (server only): acknowledge a reconnect attempt:</p>
+<li><p>TAG_RECONNECT_OK (server-&gt;client): acknowledge a reconnect attempt:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le64</span> <span class="n">msg_seq</span> <span class="p">(</span><span class="n">last</span> <span class="n">msg</span> <span class="n">seq</span> <span class="n">received</span><span class="p">)</span>
 </pre></div>
 </div>
+<ul class="simple">
+<li><p>once the client receives this, the client can proceed to message exchange.</p></li>
+<li><p>once the server sends this, the server can proceed to message exchange.</p></li>
+</ul>
 </li>
 <li><p>TAG_RECONNECT_RETRY_SESSION (server only): fail reconnect due to stale connect_seq</p></li>
 <li><p>TAG_RECONNECT_RETRY_GLOBAL (server only): fail reconnect due to stale global_seq</p></li>
@@ -277,22 +356,84 @@ that direction should win the race.  The client should wait for that
 connection to complete.</p></li>
 </ul>
 </li>
+<li><p>TAG_RESET_SESSION (server only): ask client to reset session:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__u8</span> <span class="n">full</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>full flag indicates whether peer should do a full reset, i.e., drop
+message queue.</p></li>
 </ul>
+</li>
+</ul>
+<p>Example of failure scenarios:</p>
+<ul class="simple">
+<li><p>First client’s client_ident message is lost, and then client reconnects.</p></li>
+</ul>
+<p class="ditaa">
+<img src="../../_images/ditaa-83e956eac5be56a4c2b18cf90b4fa163d586b5eb.png"/>
+</p>
+<ul class="simple">
+<li><p>Server’s server_ident message is lost, and then client reconnects.</p></li>
+</ul>
+<p class="ditaa">
+<img src="../../_images/ditaa-b3ab33b6a3d16a18e0c546ed6ccb3082d96ddf31.png"/>
+</p>
+<ul class="simple">
+<li><p>Server’s server_ident message is lost, and then server reconnects.</p></li>
+</ul>
+<p class="ditaa">
+<img src="../../_images/ditaa-9864e73027aaa6817df1e8cce1a30306b85f54ac.png"/>
+</p>
+<ul class="simple">
+<li><p>Connection failure after session is established, and then client reconnects.</p></li>
+</ul>
+<p class="ditaa">
+<img src="../../_images/ditaa-d00e0511910e29808b48b8ec2d52e0e5550270b3.png"/>
+</p>
+<ul class="simple">
+<li><p>Connection failure after session is established because server reset,
+and then client reconnects.</p></li>
+</ul>
+<p class="ditaa">
+<img src="../../_images/ditaa-d78f67cdc7c42f556dbc463c0e4376cb7d27cf0d.png"/>
+</p>
+<p>RC* means that the reset session full flag depends on the policy.resetcheck
+of the connection.</p>
+<ul class="simple">
+<li><p>Connection failure after session is established because client reset,
+and then client reconnects.</p></li>
+</ul>
+<p class="ditaa">
+<img src="../../_images/ditaa-3acb0893a4871be1dbe92f87d7457e081dc05b60.png"/>
+</p>
 </div>
 <div class="section" id="message-exchange">
 <h2>Message exchange<a class="headerlink" href="#message-exchange" title="Permalink to this headline">¶</a></h2>
-<p>Once a session is stablished, we can exchange messages.</p>
+<p>Once a session is established, we can exchange messages.</p>
 <ul>
 <li><p>TAG_MSG: a message:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph_msg_header2</span>
 <span class="n">front</span>
 <span class="n">middle</span>
+<span class="n">data_pre_padding</span>
 <span class="n">data</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>The ceph_msg_header is modified in ceph_msg_header2 to include an
-ack_seq.  This avoids the need for a TAG_ACK message most of the time.</p></li>
+<li><dl class="simple">
+<dt>The ceph_msg_header2 is modified from ceph_msg_header:</dt><dd><ul>
+<li><p>include an ack_seq.  This avoids the need for a TAG_ACK
+message most of the time.</p></li>
+<li><p>remove the src field, which we now get from the message flow
+handshake (TAG_IDENT).</p></li>
+<li><p>specifies the data_pre_padding length, which can be used to
+adjust the alignment of the data payload.  (NOTE: is this is
+useful?)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
 </ul>
 </li>
 <li><p>TAG_ACK: acknowledge receipt of message(s):</p>
@@ -319,15 +460,19 @@ ack_seq.  This avoids the need for a TAG_ACK message most of the time.</p></li>
 <li><p>Time stamp is from the TAG_KEEPALIVE2 we are responding to.</p></li>
 </ul>
 </li>
-<li><p>TAG_CLOSE: terminate a stream</p>
-<p>Indicates that a stream should be terminated. This is equivalent to
-a hangup or reset (i.e., should trigger ms_handle_reset).  It isn’t
-strictly necessary or useful if there is only a single stream as we
-could just disconnect the TCP connection, although one could
-certainly use it creatively (e.g., reset the stream state and retry
-an authentication handshake).</p>
+<li><p>TAG_CLOSE: terminate a connection</p>
+<p>Indicates that a connection should be terminated. This is equivalent
+to a hangup or reset (i.e., should trigger ms_handle_reset).  It
+isn’t strictly necessary or useful as we could just disconnect the
+TCP connection.</p>
 </li>
 </ul>
+<div class="section" id="example-of-protocol-interaction-wip">
+<h3>Example of protocol interaction (WIP)<a class="headerlink" href="#example-of-protocol-interaction-wip" title="Permalink to this headline">¶</a></h3>
+<p class="ditaa">
+<img src="../../_images/ditaa-2942ef5e505e7bb0cee61699f805af3a3378cb21.png"/>
+</p>
+</div>
 </div>
 </div>
 
@@ -371,6 +516,7 @@ an authentication handshake).</p>
 <li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/#id6">在同一机器上部署多套开发集群</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../development-workflow/">开发流程</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../documenting/">为 Ceph 写作文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encoding/">序列化（编码、解码）</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../erasure-coded-pool/">纠删码存储池</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../file-striping/">File striping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../freebsd/">FreeBSD Implementation details</a></li>
@@ -383,14 +529,19 @@ an authentication handshake).</p>
 <li class="toctree-l2"><a class="reference internal" href="../messenger/">Messenger notes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../mon-bootstrap/">Monitor bootstrap</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">msgr2 协议</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#definitions">Definitions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">目标</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">定义</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#phases">Phases</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#banner">Banner</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#frame-format">帧格式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">帧格式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hello">Hello</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#authentication">Authentication</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#message-frame-format">Message frame format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#post-auth-frame-format">Post-auth frame format</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#message-flow-handshake">Message flow handshake</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#message-exchange">Message exchange</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#message-exchange">Message exchange</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#example-of-protocol-interaction-wip">Example of protocol interaction (WIP)</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../network-encoding/">Network Encoding</a></li>

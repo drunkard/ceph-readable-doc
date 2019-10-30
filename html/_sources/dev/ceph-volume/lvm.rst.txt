@@ -30,12 +30,12 @@ in the context of lvm tags::
     ceph.osd_id=0
 
 
+.. Metadata
 .. _ceph-volume-lvm-tags:
 
-Metadata
---------
-The following describes all the metadata from Ceph OSDs that is stored on an
-LVM volume:
+元数据
+------
+下面描述的是存储在一个 LVM 卷中的所有 Ceph OSD 元数据：
 
 
 ``type``
@@ -43,67 +43,67 @@ LVM volume:
 Describes if the device is an OSD or Journal, with the ability to expand to
 other types when supported (for example a lockbox)
 
-Example::
+实例： ::
 
     ceph.type=osd
 
 
 ``cluster_fsid``
 ----------------
-Example::
+实例： ::
 
     ceph.cluster_fsid=7146B649-AE00-4157-9F5D-1DBFF1D52C26
 
 
 ``data_device``
 ---------------
-Example::
+实例： ::
 
     ceph.data_device=/dev/ceph/data-0
 
 
 ``data_uuid``
 -------------
-Example::
+实例： ::
 
     ceph.data_uuid=B76418EB-0024-401C-8955-AE6919D45CC3
 
 
 ``journal_device``
 ------------------
-Example::
+实例： ::
 
     ceph.journal_device=/dev/ceph/journal-0
 
 
 ``journal_uuid``
 ----------------
-Example::
+实例： ::
 
     ceph.journal_uuid=2070E121-C544-4F40-9571-0B7F35C6CB2B
 
 
 ``encrypted``
 -------------
-Example for enabled encryption with ``luks``::
+用 ``luks`` 实现加密的实例： ::
 
     ceph.encrypted=1
 
-When encryption is not supported or simply disabled::
+不支持加密功能时、或完全禁用时： ::
 
     ceph.encrypted=0
 
 
 ``osd_fsid``
 ------------
-Example::
+实例： ::
 
     ceph.osd_fsid=88ab9018-f84b-4d62-90b4-ce7c076728ff
 
 
 ``osd_id``
 ----------
-Example::
+实例： ::
 
     ceph.osd_id=1
 
@@ -113,7 +113,7 @@ Example::
 Just used on :term:`bluestore` backends. Captures the path to the logical
 volume path.
 
-Example::
+实例： ::
 
     ceph.block_device=/dev/mapper/vg-block-0
 
@@ -123,7 +123,7 @@ Example::
 Just used on :term:`bluestore` backends. Captures either the logical volume UUID or
 the partition UUID.
 
-Example::
+实例： ::
 
     ceph.block_uuid=E5F041BB-AAD4-48A8-B3BF-31F7AFD7D73E
 
@@ -133,7 +133,7 @@ Example::
 Just used on :term:`bluestore` backends. Captures the path to the logical
 volume path.
 
-Example::
+实例： ::
 
     ceph.db_device=/dev/mapper/vg-db-0
 
@@ -143,7 +143,7 @@ Example::
 Just used on :term:`bluestore` backends. Captures either the logical volume UUID or
 the partition UUID.
 
-Example::
+实例： ::
 
     ceph.db_uuid=F9D02CF1-31AB-4910-90A3-6A6302375525
 
@@ -153,7 +153,7 @@ Example::
 Just used on :term:`bluestore` backends. Captures the path to the logical
 volume path.
 
-Example::
+实例： ::
 
     ceph.wal_device=/dev/mapper/vg-wal-0
 
@@ -163,7 +163,7 @@ Example::
 Just used on :term:`bluestore` backends. Captures either the logical volume UUID or
 the partition UUID.
 
-Example::
+实例： ::
 
     ceph.wal_uuid=A58D1C68-0D6E-4CB3-8E99-B261AD47CC39
 

@@ -75,41 +75,51 @@ OSDs and metadata servers. If you are simply toggling Cephx on / off,
 you do not have to repeat the bootstrapping procedures.
 
 
+.. Enabling Cephx
+
 启用 Cephx
 ----------
 
-启用 ``cephx`` 后， Ceph 将在默认搜索路径（包括 ``/etc/ceph/ceph.$name.keyring`` \
-）里查找密钥环。你可以在 `Ceph 配置`_\ 文件的 ``[global]`` 段里添加 ``keyring`` \
-选项来修改，但不推荐。
+启用 ``cephx`` 后， Ceph 将在默认搜索路径（包括
+``/etc/ceph/ceph.$name.keyring`` ）里查找密钥环。你可以在
+`Ceph 配置`_\ 文件的 ``[global]`` 段里添加 ``keyring`` 选项来\
+修改，但不推荐。
 
-在禁用了 ``cephx`` 的集群上执行下面的步骤来启用它，如果你（或者部署工具）已经生成了\
-密钥，你可以跳过相关步骤。
+在禁用了 ``cephx`` 的集群上执行下面的步骤来启用它，如果你（\
+或者部署工具）已经生成了密钥，你可以跳过相关步骤。
 
 #. 创建 ``client.admin`` 密钥，并为客户端保存此密钥的副本： ::
 
-	ceph auth get-or-create client.admin mon 'allow *' mds 'allow *' osd 'allow *' -o /etc/ceph/ceph.client.admin.keyring
+	ceph auth get-or-create client.admin mon 'allow *' mds 'allow *' mgr 'allow *' osd 'allow *' -o /etc/ceph/ceph.client.admin.keyring
 
-   **警告：** 此命令会覆盖任何存在的 ``/etc/ceph/client.admin.keyring`` 文件，如\
-   果部署工具已经完成此步骤，千万别再执行此命令。多加小心！
+   **警告：** 此命令会覆盖任何存在的
+   ``/etc/ceph/client.admin.keyring`` 文件，如果部署工具已经\
+   完成此步骤，千万别再执行此命令。多加小心！
 
 #. 创建监视器集群所需的密钥环、并给它们生成密钥。 ::
 
 	ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
-#. 把监视器密钥环复制到 ``ceph.mon.keyring`` 文件，再把此文件复制到各监视器的 
-   ``mon data`` 目录下。比如要把它复制给名为 ``ceph`` 集群的 ``mon.a`` ，用此命令： ::
+#. 把监视器密钥环复制到 ``ceph.mon.keyring`` 文件，再把此文件\
+   复制到各监视器的 ``mon data`` 目录下。比如要把它复制给名为
+   ``ceph`` 集群的 ``mon.a`` ，用此命令： ::
 
 	cp /tmp/ceph.mon.keyring /var/lib/ceph/mon/ceph-a/keyring
 
+#. 为每个 MGR 生成一个密钥， ``{$id}`` 是 MGR 的名字： ::
+
+    ceph auth get-or-create mgr.{$id} mon 'allow profile mgr' mds 'allow *' osd 'allow *' -o /var/lib/ceph/mgr/ceph-{$id}/keyring
+
 #. 为每个 OSD 生成密钥， ``{$id}`` 是 OSD 编号： ::
 
-	ceph auth get-or-create osd.{$id} mon 'allow rwx' osd 'allow *' -o /var/lib/ceph/osd/ceph-{$id}/keyring
+    ceph auth get-or-create osd.{$id} mon 'allow rwx' osd 'allow *' -o /var/lib/ceph/osd/ceph-{$id}/keyring
 
 #. 为每个 MDS 生成密钥， ``{$id}`` 是 MDS 的标识字母： ::
 
-	ceph auth get-or-create mds.{$id} mon 'allow rwx' osd 'allow *' mds 'allow *' -o /var/lib/ceph/mds/ceph-{$id}/keyring
+    ceph auth get-or-create mds.{$id} mon 'allow rwx' osd 'allow *' mds 'allow *' mgr 'allow profile mds' -o /var/lib/ceph/mds/ceph-{$id}/keyring
 
-#. 把以下配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下以启用 ``cephx`` 认证： ::
+#. 把以下配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下以启用
+   ``cephx`` 认证： ::
 
 	auth cluster required = cephx
 	auth service required = cephx
@@ -135,18 +145,22 @@ you do not have to repeat the bootstrapping procedures.
 #. 启动或重启 Ceph 集群，具体参考\ `操纵集群`_\ 。
 
 
+.. Configuration Settings
+
 配置选项
 ========
+
+
+.. Enablement
 
 启用事项
 --------
 
-
 ``auth cluster required``
 
-:描述: 如果启用了，集群守护进程（如 ``ceph-mon`` 、 ``ceph-osd`` 和 \
-       ``ceph-mds`` ）间必须相互认证。可用选项有 ``cephx`` 或 ``none`` 。
-
+:描述: 如果启用了， Ceph 存储集群守护进程（如 ``ceph-mon`` 、
+       ``ceph-osd`` 、 ``ceph-mds`` 和 ``ceph-mgr`` ）间必须\
+       相互认证。可用选项有 ``cephx`` 或 ``none`` 。
 :类型: String
 :是否必需: No
 :默认值: ``cephx``.
@@ -156,7 +170,6 @@ you do not have to repeat the bootstrapping procedures.
 
 :描述: 如果启用，客户端要访问 Ceph 服务的话，集群守护进程会要求它和集群认\
        证。可用选项为 ``cephx`` 或 ``none`` 。
-
 :类型: String
 :是否必需: No
 :默认值: ``cephx``.
@@ -166,7 +179,6 @@ you do not have to repeat the bootstrapping procedures.
 
 :描述: 如果启用，客户端会要求 Ceph 集群和它认证。可用选项为 ``cephx`` 或 \
        ``none`` 。
-
 :类型: String
 :是否必需: No
 :默认值: ``cephx``.
@@ -221,12 +233,15 @@ you do not have to repeat the bootstrapping procedures.
 :默认值: None
 
 
+.. Daemon Keyrings
+
 守护进程密钥环
 --------------
 
-管理员用户们或部署工具（如 ``ceph-deploy`` ）生成守护进程密钥环与生成用户密钥环的\
-方法一样。默认情况下，守护进程把密钥环保存在各自的数据目录下，默认密钥环位置、和守护\
-进程发挥作用必需的能力展示如下：
+管理用户们或各种部署工具（如 ``ceph-deploy`` ）生成\
+守护进程密钥环与生成用户密钥环的方法一样。默认情况下，守护进程\
+把密钥环保存在各自的数据目录下，默认密钥环位置、和守护进程发挥\
+作用必需的能力展示如下：
 
 ``ceph-mon``
 
@@ -236,12 +251,17 @@ you do not have to repeat the bootstrapping procedures.
 ``ceph-osd``
 
 :位置: ``$osd_data/keyring``
-:能力: ``mon 'allow profile osd' osd 'allow *'``
+:能力: ``mgr 'allow profile osd' mon 'allow profile osd' osd 'allow *'``
 
 ``ceph-mds``
 
 :位置: ``$mds_data/keyring``
-:能力: ``mds 'allow' mon 'allow profile mds' osd 'allow rwx'``
+:能力: ``mds 'allow' mgr 'allow profile mds' mon 'allow profile mds' osd 'allow rwx'``
+
+``ceph-mgr``
+
+:位置: ``$mgr_data/keyring``
+:能力: ``mon 'allow profile mgr' mds 'allow *' osd 'allow *'``
 
 ``radosgw``
 
@@ -249,8 +269,8 @@ you do not have to repeat the bootstrapping procedures.
 :能力: ``mon 'allow rwx' osd 'allow rwx'``
 
 
-.. note:: 监视器密钥环（即 ``mon.`` ）包含一个密钥，但没有能力，且不是集群 \
-   ``auth`` 数据库的一部分。
+.. note:: 监视器密钥环（即 ``mon.`` ）包含一个密钥，但没有\
+   能力，且不是集群 ``auth`` 数据库的一部分。
 
 守护进程数据目录位置默认格式如下： ::
 
