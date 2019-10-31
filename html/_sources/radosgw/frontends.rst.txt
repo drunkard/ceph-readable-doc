@@ -25,9 +25,7 @@ and the Boost.Asio library for asynchronous network i/o.
 
 ``port`` 和 ``ssl_port``
 
-:描述: Sets the listening port number. Can be specified multiple
-              times as in ``port=80 port=8000``.
-
+:描述: 设置监听端口号。可以指定多次，如 ``port=80 port=8000`` 。
 :类型: Integer
 :默认值: ``80``
 
@@ -77,12 +75,11 @@ fork of Mongoose.
 
 ``port``
 
-:描述: Sets the listening port number. For SSL-enabled ports, add an
-              ``s`` suffix like ``443s``. To bind a specific IPv4 or IPv6
-              address, use the form ``address:port``. Multiple endpoints
-              can either be separated by ``+`` as in ``127.0.0.1:8000+443s``,
-              or by providing multiple options as in ``port=8000 port=443s``.
-
+:描述: 设置监听端口号。对于启用了 SSL 的端口，加个 ``s``
+       后缀，如 ``443s`` 。要绑定某个特定的 IPv4 或 IPv6
+       地址，按照 ``address:port`` 格式；多个终结点可以用 ``+``
+       分隔（如 ``127.0.0.1:8000+443s`` ）或写多个选项（如
+       ``port=8000 port=443s`` ）。
 :类型: String
 :默认值: ``7480``
 

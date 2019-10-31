@@ -2,13 +2,13 @@
 
 ``scan``
 ========
-Scanning allows to capture any important details from an already-deployed OSD
-so that ``ceph-volume`` can manage it without the need of any other startup
-workflows or tools (like ``udev`` or ``ceph-disk``). Encryption with LUKS or
-PLAIN formats is fully supported.
+扫描可以从一个已部署的 OSD 中捕捉到重要细节，这样
+``ceph-volume`` 无需借助其它的启动工作流或工具（像 ``udev`` 或
+``ceph-disk`` ）就可以管理它。 LUKS 加密的或明文格式都完全支持。
 
-The command has the ability to inspect a running OSD, by inspecting the
-directory where the OSD data is stored, or by consuming the data partition.
+此命令可以通过检查存储 OSD 数据的目录、或数据分区来检查一个\
+运行着的 OSD 。如果没提供路径或设备，此命令就会扫描所有运行着的
+OSD 。
 
 Once scanned, information will (by default) persist the metadata as JSON in
 a file in ``/etc/ceph/osd``. This ``JSON`` file will use the naming convention
@@ -29,10 +29,24 @@ the contents to ``stdout`` (no file will be written)::
     ceph-volume simple scan --stdout {path}
 
 
+.. Running OSDs scan
 .. _ceph-volume-simple-scan-directory:
 
-Directory scan
---------------
+扫描在线 OSD
+------------
+运行此命令时不提供 OSD 目录或设备就会扫描当前所有在线 OSD 的\
+目录。如果在线 OSD 不是 ceph-disk 创建的，它就会被忽略，不予\
+扫描。
+
+要扫描所有在线的 ceph-disk OSD 们，命令如下： ::
+
+    ceph-volume simple scan
+
+
+.. Directory scan
+
+目录扫描
+--------
 The directory scan will capture OSD file contents from interesting files. There
 are a few files that must exist in order to have a successful scan:
 
@@ -43,7 +57,7 @@ are a few files that must exist in order to have a successful scan:
 * ``type``
 * ``whoami``
 
-If the OSD is encrypted, it will additionally add the following keys:
+如果此 OSD 加密了，它还会另外加下面的几个键：
 
 * ``encrypted``
 * ``encryption_type``
@@ -77,10 +91,11 @@ like::
     ceph-volume simple scan /var/lib/ceph/osd/ceph1
 
 
+.. Device scan
 .. _ceph-volume-simple-scan-device:
 
-Device scan
------------
+设备扫描
+--------
 When an OSD directory is not available (OSD is not running, or device is not
 mounted) the ``scan`` command is able to introspect the device to capture
 required data. Just like :ref:`ceph-volume-simple-scan-directory`, it would
@@ -103,10 +118,11 @@ could look like::
     ceph-volume simple scan /dev/sda1
 
 
+.. ``JSON`` contents
 .. _ceph-volume-simple-scan-json:
 
-``JSON`` contents
------------------
+``JSON`` 内容
+-------------
 The contents of the JSON object is very simple. The scan not only will persist
 information from the special OSD files and their contents, but will also
 validate paths and device UUIDs. Unlike what ``ceph-disk`` would do, by storing

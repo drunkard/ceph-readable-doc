@@ -60,6 +60,7 @@ API 写、然后用另一个检出。
    桶策略 <bucketpolicy>
    动态的桶索引重分片 <dynamicresharding>
    多因子认证 <mfa>
+   同步模块 <sync-modules>
    RADOS 中的数据布局 <layout>
    troubleshooting
    radosgw 手册页 <../../man/8/radosgw>

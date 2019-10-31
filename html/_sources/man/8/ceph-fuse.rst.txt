@@ -15,8 +15,10 @@
 描述
 ====
 
-**ceph-fuse** 是 Ceph 分布式文件系统的 FUSE （用户空间文件系统）客户端，它会把 \
-Ceph 文件系统（用 -m 选项或 ceph.conf 指定）挂载到指定挂载点。
+**ceph-fuse** 是 Ceph 分布式文件系统的 FUSE
+（用户空间文件系统）客户端，它会把 Ceph 文件系统（用 -m 选项或
+ceph.conf 指定）挂载到指定挂载点。详情见\
+`用 FUSE 挂载 CephFS`_ 。
 
 文件系统可这样卸载： ::
 
@@ -60,3 +62,5 @@ ceph-fuse 识别不了的选项将传递给 libfuse 。
 
 fusermount(8),
 :doc:`ceph <ceph>`\(8)
+
+.. _用 FUSE 挂载 CephFS: ../../../cephfs/fuse/

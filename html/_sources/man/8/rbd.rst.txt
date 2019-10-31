@@ -659,7 +659,7 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
 这里的大多数选项主要适用于调试和压力测试。默认值设置于内核中，\
 因此还与所用内核的版本有关。
 
-每个客户端例程的 `rbd map` 选项：
+每个客户端例程的 `rbd device map` 选项：
 
 * fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee - 应该由客户端提供\
   的 FSID 。
@@ -688,15 +688,15 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
 
 * nocephx_sign_messages - 禁用消息签名（从 4.4 起）。
 
-* mount_timeout=x - 执行 `rbd map` 和 `rbd unmap` 时所涉及的各\
-  操作步骤的超时值（默认为 60 秒）。特别是从 4.2 起，与集群间没\
-  有连接时，即认为 `rbd unmap` 操作超时了。
+* mount_timeout=x - 执行 `rbd device map` 和 `rbd device unmap`
+  时所涉及的各操作步骤的超时值（默认为 60 秒）。特别是从 4.2
+  起，与集群间没有连接时，即认为 `rbd device unmap` 操作超时了。
 
 * osdkeepalive=x - OSD 保持连接的期限（默认为 5 秒）。
 
 * osd_idle_ttl=x - OSD 闲置 TTL （默认为 60 秒）。
 
-每个映射（块设备）的 `rbd map` 选项：
+每个映射（块设备）的 `rbd device map` 选项：
 
 * rw - 以读写方式映射映像（默认）。
 
@@ -709,7 +709,7 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
 
 * exclusive - 禁止自动转换互斥锁（从 4.12 起）。
 
-`rbd unmap` 选项：
+`rbd device unmap` 选项：
 
 * force - 让某一已打开的块设备强制取消映射（从 4.9 起支持）。\
   其驱动会等待当前的请求完成之后再 unmap ；在 unmap 初始化之后\
@@ -749,15 +749,15 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
 
 启用 cephx 时通过内核映射一映像： ::
 
-	rbd map mypool/myimage --id admin --keyfile secretfile
+	rbd device map mypool/myimage --id admin --keyfile secretfile
 
 要通过内核把某一映像映射到没用默认名字 *ceph* 的集群： ::
 
-	rbd map mypool/myimage --cluster cluster-name
+	rbd device map mypool/myimage --cluster cluster-name
 
 取消映像映射： ::
 
-	rbd unmap /dev/rbd0
+	rbd device unmap /dev/rbd0
 
 创建一映像及其克隆品： ::
 
@@ -783,12 +783,38 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
 
 	rbd lock remove mypool/myimage mylockid client.2485
 
+罗列垃圾桶里的映像： ::
+
+       rbd trash ls mypool
+
+推迟删除一个映像（用 *--expires-at* 设置一个过期时间，默认是\
+现在）： ::
+
+       rbd trash mv mypool/myimage --expires-at "tomorrow"
+
+从垃圾桶删除一个映像（谨慎啊！）： ::
+
+       rbd trash rm mypool/myimage-id
+
+从垃圾桶强行删除一个映像（谨慎啊！）： ::
+
+       rbd trash rm mypool/myimage-id  --force
+
+从垃圾桶恢复一个映像： ::
+
+       rbd trash restore mypool/myimage-id
+
+从垃圾桶恢复一个映像、并给它改个名字： ::
+
+       rbd trash restore mypool/myimage-id --image mynewimage
+
+
 
 使用范围
 ========
 
-**rbd** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
-更多信息参见 http://ceph.com/docs 。
+**rbd** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的\
+存储系统，更多信息参见 http://ceph.com/docs 。
 
 
 参考
