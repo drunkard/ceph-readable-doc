@@ -62,24 +62,24 @@ OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD �
 
 	ceph osd stat
 
-其结果会告诉你运行图版本（ eNNNN ）、 总共有 x 个 OSD 、 y 个是 ``up`` 的、 z 个\
-是 ``in`` 的。
+其结果会告诉你 OSD 总数（ x ）、多少个是 ``up`` 的（ y ）、\
+多少个是 ``in`` 的（ z ）、还有运行图的 epoch (eNNNN) 。 ::
 
-	eNNNN: x osds: y up, z in
+	x osds: y up, z in; epoch: eNNNN
 
-如果处于 ``in`` 状态的 OSD 多于 ``up`` 的，用下列命令看看哪些 ``ceph-osd`` 守护进\
-程没在运行： ::
+如果处于 ``in`` 状态的 OSD 多于 ``up`` 的，用下列命令看看哪些
+``ceph-osd`` 守护进程没在运行： ::
 
-	ceph osd tree ::
+	ceph osd tree
 
-	dumped osdmap tree epoch 1
-	# id	weight	type name	up/down	reweight
-	-1	2	pool openstack
-	-3	2		rack dell-2950-rack-A
-	-2	2			host dell-2950-A1
-	0	1				osd.0	up	1
-	1	1				osd.1	down	1
+:: 
 
+	#ID CLASS WEIGHT  TYPE NAME             STATUS REWEIGHT PRI-AFF
+	 -1       2.00000 pool openstack
+	 -3       2.00000 rack dell-2950-rack-A
+	 -2       2.00000 host dell-2950-A1
+	  0   ssd 1.00000      osd.0                up  1.00000 1.00000
+	  1   ssd 1.00000      osd.1              down  1.00000 1.00000
 
 .. tip:: 精心设计的 CRUSH 分级结构可以帮你更快的定位到物理位置、\
    加快故障排除。
@@ -131,7 +131,7 @@ OSD 。大多数情况下 up set 和 acting set 本质上相同，如果不同�
 Up Set 内的 OSD （ up[] ）、和 Acting Set 内的 OSD （ acting[] \
 ）。 ::
 
-	osdmap eNNN pg {pg-num} -> up [0,1,2] acting [0,1,2]
+	osdmap eNNN pg {raw-pg-num} ({pg-num}) -> up [0,1,2] acting [0,1,2]
 
 .. note:: 如果 Up Set 和 Acting Set 不一致，这可能表明集群内部\
    在重均衡或者有潜在问题。
@@ -192,14 +192,14 @@ OSD 们也向监视器报告自己的状态，详情见\ `监视器与 OSD 交�
 
 	ceph pg stat
 
-其结果会告诉你归置组运行图的版本号（ vNNNNNN ）、归置组总数 x 、\
-有多少归置组处于某种特定状态，如 ``active+clean`` （ y ）。 ::
+其结果会告诉你归置组总数（ x ）、有多少归置组处于某种特定\
+状态，如 ``active+clean`` （ y ）、还有存储的数据量（ z ）。 ::
 
-	vNNNNNN: x pgs: y active+clean; z bytes data, aa MB used, bb GB / cc GB avail
+	x pgs: y active+clean; z bytes data, aa MB used, bb GB / cc GB avail
 
-.. note:: Ceph 同时报告出多种状态是正常的。
+.. note:: 对 Ceph 来说，同时报告出归置组的多种状态是正常的。
 
-除了归置组状态之外， Ceph 也会报告数据占据的空间（ aa ）、剩余\
+除了归置组状态之外， Ceph 也会报告已用的存储容量（ aa ）、剩余\
 空间（ bb ）和归置组总容量。这些数字在某些情况下是很重要的： ::
 
 - 快达到 ``near full ratio`` 或 ``full ratio`` 时；
@@ -532,15 +532,17 @@ Ceph 的自修复功能往往无能为力，卡住的状态细分为：
 #. 设置对象名
 #. 指定一\ `存储池`_
 
-Ceph 客户端索取最新集群运行图、并用 CRUSH 算法计算对象到\ `归置组`_\ 的映射，然后\
-计算如何动态地把归置组映射到 OSD 。要定位对象，只需要知道对象名和存储池名字，例如： ::
+Ceph 客户端索取最新集群运行图、并用 CRUSH 算法计算对象到\
+`归置组`_\ 的映射，然后计算如何动态地把归置组映射到 OSD 。要\
+定位对象，只需要知道对象名和存储池名字，例如： ::
 
-	ceph osd map {poolname} {object-name}
+	ceph osd map {poolname} {object-name} [namespace]
 
 .. topic:: 练习：定位一个对象
 
-   反正是练习，我们先创建一个对象。给 ``rados put`` 命令指定一对象名、一个包\
-   含数据的测试文件路径、和一个存储池名字，例如： ::
+   反正是练习，我们先创建一个对象。给 ``rados put`` 命令指定\
+   一对象名、一个包含数据的测试文件路径、和一个存储池名字，\
+   例如： ::
 
 	rados put {object-name} {file-path} --pool=data
 	rados put test-object-1 testfile.txt --pool=data
@@ -556,15 +558,15 @@ Ceph 客户端索取最新集群运行图、并用 CRUSH 算法计算对象到\ 
 
    Ceph 应该输出对象的位置，例如： ::
 
-	osdmap e537 pool 'data' (0) object 'test-object-1' -> pg 0.d1743484 (0.4) -> up [1,0] acting [1,0]
+        osdmap e537 pool 'data' (1) object 'test-object-1' -> pg 1.d1743484 (1.4) -> up ([0,1], p0) acting ([0,1], p0)
 
    要删除测试对象，用 ``rados rm`` 即可，如： ::
 
 	rados rm test-object-1 --pool=data
 
 
-随着集群的运转，对象位置会动态改变。 Ceph 动态重均衡的优点之一，就是把你从人工迁移\
-中解救了，详情见\ `体系结构`_\ 。
+随着集群的运转，对象位置会动态改变。 Ceph 动态重均衡的优点\
+之一，就是把你从人工迁移中解救了，详情见\ `体系结构`_\ 。
 
 
 .. _数据归置: ../data-placement

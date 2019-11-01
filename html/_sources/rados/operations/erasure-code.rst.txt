@@ -30,6 +30,8 @@ requires at least three hosts::
           `the number of placement groups <../pools>`_.
 
 
+.. Erasure code profiles
+
 纠删码配置
 ----------
 
@@ -50,7 +52,7 @@ requires at least three hosts::
 
 配置文件里最重要的参数是 *K* 、 *M* 和
 *crush-failure-domain* ，因为它们决定了存储的开销和数据的\
-持久性。例如，假设期望的系统架构必须能承受两个故障机架和 40%
+持久性。例如，假设期望的系统架构必须能承受两个故障机架和 67%
 的开销，可以用下列配置文件： ::
 
     $ ceph osd erasure-code-profile set myprofile \
@@ -142,8 +144,9 @@ bluestore 上差得多。
 
     rbd create --size 1G --data-pool ec_pool replicated_pool/image_name
 
-对 CephFS 而言，要想使用纠删码存储池，可在\
-`文件布局 </cephfs/file-layouts>`_\ 里设置成那个存储池。
+对 CephFS 而言，可在文件系统创建期间、或通过\
+`文件布局 <../../../cephfs/file-layouts>`_\ 把一个纠删码存储池\
+设置为默认的数据存储池。
 
 
 .. Erasure coded pool and cache tiering

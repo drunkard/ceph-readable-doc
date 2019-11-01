@@ -191,7 +191,7 @@ Ceph 不间断地对自身状态做\ *健康检查*\ 。查到问题时，会在
 - **USED:** 大概数据量，单位为 KB 、 MB 或 GB ；
 - **%USED:** 各存储池的大概使用率；
 - **MAX AVAIL:** 这个存储池还能容纳的数据量估值；
-- **Objects:** 各存储池内的大概对象数。
+- **OBJECTS:** 各存储池内的大概对象数。
 
 .. note:: **POOLS** 段内的数字是理论值，它们不包含副本、快照或\
    克隆。因此，它与 **USED** 和 **%USED** 数量之和不会达到
@@ -221,13 +221,13 @@ Ceph 不间断地对自身状态做\ *健康检查*\ 。查到问题时，会在
 
 Ceph 会打印 CRUSH 的树状态、它的 OSD 例程、状态、权重： ::
 
-	# id	weight	type name	up/down	reweight
-	-1	3	pool default
-	-3	3		rack mainrack
-	-2	3			host osd-host
-	0	1				osd.0	up	1
-	1	1				osd.1	up	1
-	2	1				osd.2	up	1
+	#ID CLASS WEIGHT  TYPE NAME             STATUS REWEIGHT PRI-AFF
+	 -1       3.00000 pool default
+	 -3       3.00000 rack mainrack
+	 -2       3.00000 host osd-host
+	  0   ssd 1.00000         osd.0             up  1.00000 1.00000
+	  1   ssd 1.00000         osd.1             up  1.00000 1.00000
+	  2   ssd 1.00000         osd.2             up  1.00000 1.00000
 
 个中详情见\ `监控 OSD 和归置组`_\ 。
 
@@ -263,22 +263,36 @@ Ceph 会返回法定人数状态，例如，包含 3 个监视器的 Ceph 集群
 	        0,
 	        1,
 	        2],
+	  "quorum_names": [
+		"a",
+		"b",
+		"c"],
+	  "quorum_leader_name": "a",
 	  "monmap": { "epoch": 1,
 	      "fsid": "444b489c-4f16-4b75-83f0-cb8097468898",
 	      "modified": "2011-12-12 13:28:27.505520",
 	      "created": "2011-12-12 13:28:27.505520",
+	      "features": {"persistent": [
+				"kraken",
+				"luminous",
+				"mimic"],
+		"optional": []
+	      },
 	      "mons": [
 	            { "rank": 0,
 	              "name": "a",
-	              "addr": "127.0.0.1:6789\/0"},
+	              "addr": "127.0.0.1:6789/0",
+		      "public_addr": "127.0.0.1:6789/0"},
 	            { "rank": 1,
 	              "name": "b",
-	              "addr": "127.0.0.1:6790\/0"},
+	              "addr": "127.0.0.1:6790/0",
+		      "public_addr": "127.0.0.1:6790/0"},
 	            { "rank": 2,
 	              "name": "c",
-	              "addr": "127.0.0.1:6791\/0"}
+	              "addr": "127.0.0.1:6791/0",
+		      "public_addr": "127.0.0.1:6791/0"}
 	           ]
-	    }
+	  }
 	}
 
 
@@ -337,6 +351,6 @@ Ceph 管理套接字允许你通过套接字接口查询守护进程，它们默
 监视器，不要求你直接登录宿主主机，不像
 ``ceph {daemon-type} tell {id} config set`` 依赖监视器。
 
-.. _查看运行时配置: ../../configuration/ceph-conf#ceph-runtime-config
+.. _查看运行时配置: ../../configuration/ceph-conf#viewing-a-configuration-at-runtime
 .. _存储容量: ../../configuration/mon-config-ref#storage-capacity
 .. _ceph-medic: http://docs.ceph.com/ceph-medic/master/

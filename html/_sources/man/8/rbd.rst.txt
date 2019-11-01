@@ -553,7 +553,7 @@
   只适用于 format 2 。
 
 :command:`snap purge` *image-spec*
-  删除一映像的所有快照。
+  删除一映像的所有未保护快照。
 
 :command:`snap rename` *src-snap-spec* *dest-snap-spec*
   重命名一个快照。注意：不支持跨存储池和跨映像重命名。

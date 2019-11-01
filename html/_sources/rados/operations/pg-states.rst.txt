@@ -9,6 +9,9 @@
 *creating*
   Ceph 仍在创建归置组。
 
+*activating*
+  归置组互联好了，但还没活跃起来。
+
 *active*
   Ceph 可处理到归置组的请求。
 
@@ -17,6 +20,13 @@
 
 *down*
   包含必备数据的副本挂了，所以归置组离线。
+
+*laggy*
+  一个副本没有及时确认主 PG 签发的新租期， IO 临时停顿了。
+
+*wait*
+  负责此 PG 的 OSD 集合刚刚变更了、而且在前一个租期间隔过期前
+  IO 临时停顿了，
 
 *scrubbing*
   Ceph 正在检查归置组元数据，看是否有不一致的地方。
@@ -43,23 +53,36 @@
 *forced_recovery*
   用户人为提高了那个 PG 的恢复优先级。
 
-*backfill*
+*recovery_wait*
+  此归置组正排队等着启动恢复。
+
+*recovery_toofull*
+  一个恢复操作正在等待，因为目标 OSD 超过了它的占满率。
+
+*recovery_unfound*
+  由于有找不到的对象，恢复已停止。
+
+*backfilling*
   Ceph 正在扫描并同步整个归置组的内容，而不是根据日志推算哪些\
   最新操作需要同步。 *Backfill* 是恢复的一种特殊情况。
 
 *forced_backfill*
   用户人为提高了那个 PG 的回填优先级。
 
-*wait-backfill*
+*backfill_wait*
   归置组正在排队，等候回填。
 
-*backfill-toofull*
+*backfill_toofull*
   一回填操作在等待，因为目标 OSD 使用率超过了占满率。
 
+*backfill_unfound*
+  由于有找不到的对象，回填已停止。
+
 *incomplete*
-  Ceph 探测到某一归置组丢失了写入信息，或者没有健康的副本。如\
-  果你遇到了这个状态，试着启动一下可能包含所需信息的失败 OSD 。\
-  如果是纠删码存储池，临时降低 min_size 也许能完成恢复。
+  Ceph 探测到某一归置组丢失了写入信息，或者没有健康的副本。\
+  如果你遇到了这个状态，试着启动一下可能包含所需信息的\
+  失败 OSD 。如果是纠删码存储池，临时降低 min_size 也许能完成\
+  恢复。
 
 *stale*
   归置组处于一种未知状态——归置组运行图变更后就没再收到它的更新。
@@ -74,3 +97,16 @@
   此归置组已互联，但是不能向客户端提供服务，因为其副本数没达到\
   本存储池的配置值（ min_size 参数）。在此状态下可以进行恢复，\
   所以此归置组最终能达到 min_size 。
+
+*snaptrim*
+  正在修剪快照。
+
+*snaptrim_wait*
+  在队列里等着修剪快照。
+
+*snaptrim_error*
+  修剪快照时遇挫，已停止。
+
+*unknown*
+  自从 mgr 启动以来， ceph-mgr 还没从 OSD 收到有关此 PG 状态的\
+  任何信息。

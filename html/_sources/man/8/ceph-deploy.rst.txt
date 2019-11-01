@@ -1,5 +1,7 @@
 :orphan:
 
+.. _ceph-deploy:
+
 ==============================
  ceph-deploy -- Ceph 部署工具
 ==============================
@@ -15,11 +17,7 @@
 
 | **ceph-deploy** **mon** *create-initial*
 
-| **ceph-deploy** **osd** *prepare* [*ceph-node*]:[*dir-path*]
-
-| **ceph-deploy** **osd** *activate* [*ceph-node*]:[*dir-path*]
-
-| **ceph-deploy** **osd** *create* [*ceph-node*]:[*dir-path*]
+| **ceph-deploy** **osd** *create* *--data* *device* *ceph-node*
 
 | **ceph-deploy** **admin** [*admin-node*][*ceph-node*...]
 
@@ -210,88 +208,53 @@ gatherkeys
 disk
 ----
 
-管理远程主机上的硬盘，实际上它会调用 ``ceph-disk`` 工具及其子命令来管理硬盘。
+管理远程主机上的硬盘，实际上它会调用 ``ceph-volume`` 工具及其\
+子命令来管理硬盘。
 
 ``list`` 子命令罗列硬盘分区和 Ceph OSD 。
 
 用法： ::
 
-	ceph-deploy disk list [HOST:[DISK]]
+	ceph-deploy disk list HOST
 
-这里的 [HOST] 是节点的主机名、 [DISK] 是硬盘名称或路径。
-
-``prepare`` 子命令用于预处理 Ceph OSD 所需的目录、硬盘或驱动器。它会创建 GPT \
-分区、用 Ceph 的类型 UUID 标记分区、创建文件系统、把文件系统标记为可接收 \
-Ceph 数据、使用日志硬盘的整个分区并新增一分区。
-
-用法： ::
-
-	ceph-deploy disk prepare [HOST:[DISK]]
-
-这里的 [HOST] 是节点主机名， [DISK] 是硬盘名或路径。
-
-``activate`` 子命令用于激活 Ceph OSD 。它会把卷挂载到一个临时位置、分配 OSD \
-惟一标识符（如有必要）、重新挂载到正确位置 ``/var/lib/ceph/osd/$cluster-$id`` \
-并启动 ``ceph-osd`` 。此 OSD 可由 ``udev`` （当它探测到 OSD GPT 分区类型时）\
-或 ceph 服务启动命令 ``ceph disk activate-all`` 激活。
-
-用法： ::
-
-	ceph-deploy disk activate [HOST:[DISK]]
-
-这里的 [HOST] 是节点主机名， [DISK] 是硬盘名或路径。
-
-``zap`` 子命令可用于杀死、擦除、销毁一设备的分区表和内容。实际上它用 \
-``sgdisk`` 加 ``--zap-all`` 选项来销毁 GPT 和 MBR 数据结构，这样才能重新分\
-区；然后用 ``--mbrtogpt`` 选项把 MBR 或 BSD 格式的分区转换为 GPT 格式。现\
-在就可以执行 ``prepare`` 子命令来新建 GPT 分区了。
-
-用法： ::
-
-	ceph-deploy disk zap [HOST:[DISK]]
-
-这里的 [HOST] 是节点主机名， [DISK] 是硬盘名或路径。
+``zap`` 子命令可用于杀死、擦除、销毁一设备的分区表和内容。\
+实际上它是远程调用 ``ceph-volume lvm zap`` ，另外还可以用来\
+删除逻辑卷的 Ceph 元数据。
 
 
 osd
 ---
 
-用于管理 OSD ，预处理远程主机上的数据盘。 ``osd`` 用几个子命令管理 OSD 。
+用于管理 OSD ，预处理远程主机上的数据盘。 ``osd`` 用几个子命令\
+管理 OSD 。
 
-``prepare`` 子命令用于预处理用作 Ceph OSD 的目录、硬盘或驱动器。它会先检查将\
-要创建的多个 OSD 、并且在可能会超过建议值时发出警告，超过系统允许的最大 PID \
-数时会产生问题；然后读取集群的 bootstrap-osd 密钥，或没找到时生成一个自举引\
-导密钥；然后调用 :program:`ceph-disk` 工具的 ``prepare`` 子命令预处理硬盘、\
-日志并在目标主机上部署 OSD 。预处理完成后，它会给 OSD 一些时间处理自身事务，\
-并检查任何可能错误，发现的话报告给用户。
+``create`` 子命令预处理用作 Ceph OSD 的设备。它会先检查将要\
+创建的多个 OSD 、并且在可能会超过建议值时发出警告，超过系统\
+允许的最大 PID 数时会产生问题；然后读取集群的 bootstrap-osd
+密钥，或没找到时生成一个自举引导密钥；然后用
+:program:`ceph-volume` 工具的 ``lvm create`` 子命令预处理硬盘\
+（用 filestore 时还有日志）、并在目标主机上部署 OSD 。预处理\
+完成后，它会给 OSD 一些时间启动并检查任何可能的错误，发现的话\
+报告给用户。
 
-用法： ::
+Bluestore 用法： ::
 
-	ceph-deploy osd prepare HOST:DISK[:JOURNAL] [HOST:DISK[:JOURNAL]...]
+	ceph-deploy osd create --data DISK HOST
 
-``activate`` 子命令可激活用 ``prepare`` 子命令预处理过的 OSD 。实际上它是基\
-于发行版的 init 类型执行 :program:`ceph-disk` 工具的 ``activate`` 子命令来激\
-活 OSD 的。激活后，它会给 OSD 一些时间让它启动，然后检查任何可能错误，发现的\
-话报告给用户。它会检查预处理过的 OSD 状态、检查 OSD 树、确保这些 OSD 已启动\
-且在运行。
+Filestore 用法： ::
 
-用法： ::
+	ceph-deploy osd create --data DISK --journal JOURNAL HOST
 
-	ceph-deploy osd activate HOST:DISK[:JOURNAL] [HOST:DISK[:JOURNAL]...]
+.. note:: 其余可用选项可以看手册页或 ceph-deploy osd create 的
+   --help 菜单。
 
-``create`` 子命令用 ``prepare`` 和 ``activate`` 子命令创建 OSD 。
-
-用法： ::
-
-	ceph-deploy osd create HOST:DISK[:JOURNAL] [HOST:DISK[:JOURNAL]...]
-
-``list`` 子命令可罗列磁盘分区、 Ceph OSD 且打印 OSD 元数据。它要先从监视器主\
-机获取 OSD 树、根据 ``ceph-disk-list`` 的输出匹配 OSD 名字以获取挂载点、从文\
-件读取元数据、检查是否存在日志路径、此 OSD 是否在 OSD 树里并打印 OSD 元数据。
+``list`` 子命令可罗列与 Ceph 相关、用作 OSD 的设备。它利用了
+``ceph-volume lvm list`` 丰富的输出，并映射出了 OSD 的设备以及\
+其它与 OSD 安装有关的信息。
 
 用法： ::
 
-	ceph-deploy osd list HOST:DISK[:JOURNAL] [HOST:DISK[:JOURNAL]...]
+	ceph-deploy osd list HOST
 
 
 admin

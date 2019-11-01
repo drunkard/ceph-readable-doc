@@ -9,7 +9,7 @@
 提纲
 ====
 
-| **ceph-fuse** [ -m *monaddr*:*port* ] *mountpoint* [ *fuse options* ]
+| **ceph-fuse** [-n *client.username*] [ -m *monaddr*:*port* ] *mountpoint* [ *fuse options* ]
 
 
 描述
@@ -32,22 +32,39 @@ ceph.conf 指定）挂载到指定挂载点。详情见\
 
 ceph-fuse 识别不了的选项将传递给 libfuse 。
 
+.. option:: -o opt,[opt...]
+
+   挂载选项。
+
 .. option:: -d
 
    启动后将脱离终端、进入守护状态。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   用指定的 *ceph.conf* 而非默认的 ``/etc/ceph/ceph.conf`` 来查找启动时需要的监视\
-   器地址。
+   用指定的 *ceph.conf* 而非默认的 ``/etc/ceph/ceph.conf`` 来\
+   查找启动时需要的监视器地址。
 
 .. option:: -m monaddress[:port]
 
    连接到指定监视器，而不是从 ceph.conf 里找。
 
-.. option:: -r root_directory
+.. option:: -k <path-to-keyring>
 
-   把文件系统内的 root_directory 作为根挂载，而不是整个 Ceph 文件系统树。
+   提供密钥环路径，在标准位置没有时就用的上了。
+
+.. option:: --client_mountpoint/-r root_directory
+
+   把文件系统内的 root_directory 作为根挂载，而不是整个
+   Ceph 文件系统树。
+
+.. option:: -f
+
+   前台：启动后不要退居后台（在前台运行）。不要生成 PID 文件。
+
+.. option:: -s
+
+   禁止多线程运行。
 
 
 使用范围

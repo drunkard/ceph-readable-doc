@@ -44,9 +44,7 @@ another node, chassis, rack, row, or even datacenter depending on the setting.
 If you are creating OSDs using a single disk, you must create directories
 for the data manually first. For example:: 
 
-	mkdir /var/local/osd0 /var/local/osd1
-	ceph-deploy osd prepare {localhost-name}:/var/local/osd0 {localhost-name}:/var/local/osd1
-	ceph-deploy osd activate {localhost-name}:/var/local/osd0 {localhost-name}:/var/local/osd1
+	ceph-deploy osd create --data {disk} {host}
 
 
 .. Fewer OSDs than Replicas
