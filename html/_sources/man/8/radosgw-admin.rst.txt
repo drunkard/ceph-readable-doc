@@ -401,7 +401,7 @@
 :command:`replicalog get`
   读取复制元数据日志条目。
 
-:command:`replicalog delete`
+:command:`replicalog rm`
   删除复制元数据日志条目。
 
 :command:`orphans find`

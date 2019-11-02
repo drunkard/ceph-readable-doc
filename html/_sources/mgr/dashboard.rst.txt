@@ -6,6 +6,10 @@ Ceph 仪表盘
 概述
 ----
 
+The Ceph Dashboard is a built-in web-based Ceph management and monitoring
+application to administer various aspects and objects of the cluster. It is
+implemented as a :ref:`ceph-manager-daemon` module.
+
 The original Ceph Manager Dashboard that was shipped with Ceph Luminous started
 out as a simple read-only view into various run-time information and performance
 data of a Ceph cluster. It used a very simple architecture to achieve the
@@ -21,17 +25,21 @@ derived from and inspired by the `openATTIC Ceph management and monitoring tool
 behind openATTIC at `SUSE <https://www.suse.com/>`_, with a lot of support from
 the Ceph community and other companies like Red Hat.
 
-
-The dashboard plugin's backend code uses the CherryPy framework and a custom
+The dashboard module's backend code uses the CherryPy framework and a custom
 REST API implementation. The WebUI implementation is based on
 Angular/TypeScript, merging both functionality from the original dashboard as
 well as adding new functionality originally developed for the standalone version
-of openATTIC. The Ceph Manager Dashboard plugin is implemented as a web
+of openATTIC. The Ceph Dashboard module is implemented as a web
 application that visualizes information and statistics about the Ceph cluster
 using a web server hosted by ``ceph-mgr``.
 
-The dashboard currently provides the following features to monitor and manage
-various aspects of your Ceph cluster:
+
+.. Feature Overview
+
+功能概述
+^^^^^^^^
+
+The dashboard provides the following features:
 
 * **Multi-User and Role Management**: The dashboard supports multiple user
   accounts with different permissions (roles). The user accounts and roles
@@ -47,47 +55,95 @@ various aspects of your Ceph cluster:
 * **Auditing**: the dashboard backend can be configured to log all PUT, POST
   and DELETE API requests in the Ceph audit log. See :ref:`dashboard-auditing`
   for instructions on how to enable this feature.
-* **Internationalization (I18N)**: use the dashboard in different languages.
-* **Overall cluster health**: Displays overall cluster status, performance
+* **Internationalization (I18N)**: the dashboard can be used in different
+  languages that can be selected at run-time.
+
+Currently, Ceph Dashboard is capable of monitoring and managing the following
+aspects of your Ceph cluster:
+
+* **Overall cluster health**: Display overall cluster status, performance
   and capacity metrics.
-* **Cluster logs**: Display the latest updates to the cluster's event and audit
-  log files.
-* **Hosts**: Provides a list of all hosts associated to the cluster, which
+* **Embedded Grafana Dashboards**: Ceph Dashboard is capable of embedding
+  `Grafana <https://grafana.com>`_ dashboards in many locations, to display
+  additional information and performance metrics gathered by the
+  :ref:`mgr-prometheus`. See :ref:`dashboard-grafana` for details on how to
+  configure this functionality.
+* **Cluster logs**: Display the latest updates to the cluster's event and
+  audit log files. Log entries can be filtered by priority, date or keyword.
+* **Hosts**: Display a list of all hosts associated to the cluster, which
   services are running and which version of Ceph is installed.
-* **Performance counters**: Displays detailed service-specific statistics for
+* **Performance counters**: Display detailed service-specific statistics for
   each running service.
-* **Monitors**: Lists all MONs, their quorum status, open sessions.
-* **Configuration Editor**: View all available configuration options,
+* **Monitors**: List all MONs, their quorum status, open sessions.
+* **Configuration Editor**: Display all available configuration options,
   their description, type and default values and edit the current values.
-* **Pools**: List all Ceph pools and their details (e.g. applications, placement
-  groups, replication size, EC profile, CRUSH ruleset, etc.)
-* **OSDs**: Lists all OSDs, their status and usage statistics as well as
-  detailed information like attributes (OSD map), metadata, performance counters
-  and usage histograms for read/write operations. Mark OSDs as up/down/out,
-  perform scrub operations. Select between different recovery profiles to adjust
-  the level of backfilling activity.
-* **iSCSI**: Lists all hosts that run the TCMU runner service, displaying all
+* **Pools**: List all Ceph pools and their details (e.g. applications,
+  placement groups, replication size, EC profile, CRUSH ruleset, etc.)
+* **OSDs**: List all OSDs, their status and usage statistics as well as
+  detailed information like attributes (OSD map), metadata, performance
+  counters and usage histograms for read/write operations. Mark OSDs
+  up/down/out, purge and reweight OSDs, perform scrub operations, modify
+  various scrub-related configuration options, select different profiles to
+  adjust the level of backfilling activity.
+* **iSCSI**: List all hosts that run the TCMU runner service, display all
   images and their performance characteristics (read/write ops, traffic).
-* **RBD**: Lists all RBD images and their properties (size, objects, features).
-  Create, copy, modify and delete RBD images. Create, delete and rollback
-  snapshots of selected images, protect/unprotect these snapshots against
-  modification. Copy or clone snapshots, flatten cloned images.
+  Create, modify and delete iSCSI targets (via ``ceph-iscsi``). See
+  :ref:`dashboard-iscsi-management` for instructions on how to configure this
+  feature.
+* **RBD**: List all RBD images and their properties (size, objects, features).
+  Create, copy, modify and delete RBD images. Define various I/O or bandwidth
+  limitation settings on a global, per-pool or per-image level. Create, delete
+  and rollback snapshots of selected images, protect/unprotect these snapshots
+  against modification. Copy or clone snapshots, flatten cloned images.
 * **RBD mirroring**: Enable and configure RBD mirroring to a remote Ceph server.
   Lists all active sync daemons and their status, pools and RBD images including
-  their synchronization state. 
-* **CephFS**: Lists all active filesystem clients and associated pools,
+  their synchronization state.
+* **CephFS**: List all active file system clients and associated pools,
   including their usage statistics.
-* **Object Gateway**: Lists all active object gateways and their performance
+* **Object Gateway**: List all active object gateways and their performance
   counters. Display and manage (add/edit/delete) object gateway users and their
   details (e.g. quotas) as well as the users' buckets and their details (e.g.
-  owner, quotas).
-* **NFS**: Manage NFS exports of CephFS filesystems and RGW S3 buckets via NFS Ganesha.```
+  owner, quotas). See :ref:`dashboard-enabling-object-gateway` for configuration
+  instructions.
+* **NFS**: Manage NFS exports of CephFS file systems and RGW S3 buckets via NFS
+  Ganesha. See :ref:`dashboard-nfs-ganesha-management` for details on how to
+  enable this functionality.
+* **Ceph Manager Modules**: Enable and disable all Ceph Manager modules, change
+  the module-specific configuration settings.
+
+
+.. Supported Browsers
+
+支持的浏览器
+^^^^^^^^^^^^
+
+Ceph Dashboard is primarily tested and developed using the following web
+browsers:
+
++----------------------------------------------+----------+
+|                    Browser                   | Versions |
++==============================================+==========+
+| `Chrome <https://www.google.com/chrome/>`_   | 68+      |
++----------------------------------------------+----------+
+| `Firefox <http://www.mozilla.org/firefox/>`_ | 61+      |
++----------------------------------------------+----------+
+
+While Ceph Dashboard might work in older browsers, we cannot guarantee it and
+recommend you to update your browser to the latest version.
 
 
 .. Enabling
 
 如何启用
 --------
+
+If you have installed ``ceph-mgr-dashboard`` from distribution packages, the
+package management system should have taken care of installing all the required
+dependencies.
+
+If you're installing Ceph from source and want to start the dashboard from your
+development environment, please see the files ``README.rst`` and ``HACKING.rst``
+in directory ``src/pybind/mgr/dashboard`` of the source code.
 
 Within a running Ceph cluster, the Ceph Manager Dashboard is enabled with::
 
@@ -98,7 +154,6 @@ Within a running Ceph cluster, the Ceph Manager Dashboard is enabled with::
 
 配置
 ----
-
 
 .. SSL/TLS Support
 .. _dashboard-ssl-tls-support:
@@ -182,6 +237,7 @@ cluster-wide level (so they apply to all manager instances) as follows::
 
   $ ceph config set mgr mgr/dashboard/server_addr $IP
   $ ceph config set mgr mgr/dashboard/server_port $PORT
+  $ ceph config set mgr mgr/dashboard/ssl_server_port $PORT
 
 Since each ``ceph-mgr`` hosts its own instance of dashboard, it may also be
 necessary to configure them separately. The IP address and port for a specific
@@ -189,6 +245,7 @@ manager instance can be changed with the following commands::
 
   $ ceph config set mgr mgr/dashboard/$name/server_addr $IP
   $ ceph config set mgr mgr/dashboard/$name/server_port $PORT
+  $ ceph config set mgr mgr/dashboard/$name/ssl_server_port $PORT
 
 Replace ``$name`` with the ID of the ceph-mgr instance hosting the dashboard web
 app.
@@ -215,6 +272,7 @@ app.
 
 
 .. Enabling the Object Gateway management frontend
+.. _dashboard-enabling-object-gateway:
 
 启用对象网关管理前端
 ^^^^^^^^^^^^^^^^^^^^
@@ -242,8 +300,10 @@ Finally, provide the credentials to the dashboard::
   $ ceph dashboard set-rgw-api-access-key <access_key>
   $ ceph dashboard set-rgw-api-secret-key <secret_key>
 
-This is all you have to do to get the Object Gateway management functionality
-working. The host and port of the Object Gateway are determined automatically.
+In a typical default configuration with a single RGW endpoint, this is all you
+have to do to get the Object Gateway management functionality working. The
+dashboard will try to automatically determine the host and port of the Object
+Gateway by obtaining this information from the Ceph Manager's service map.
 
 If multiple zones are used, it will automatically determine the host within the
 master zone group and master zone. This should be sufficient for most setups,
@@ -275,22 +335,38 @@ The default value is 45 seconds.
 
 
 .. Enabling iSCSI Management
+.. _dashboard-iscsi-management:
 
 启用 iSCSI 的管理
 ^^^^^^^^^^^^^^^^^
 
-The Ceph Manager Dashboard can manage iSCSI targets using the REST API provided
-by the `rbd-target-api` service of the `ceph-iscsi <https://github.com/ceph/ceph-iscsi>`_
-project. Please make sure that it's installed and enabled on the iSCSI gateways.
+The Ceph Dashboard can manage iSCSI targets using the REST API provided by the
+`rbd-target-api` service of the :ref:`ceph-iscsi`. Please make sure that it's
+installed and enabled on the iSCSI gateways.
+
+.. note::
+  The iSCSI management functionality of Ceph Dashboard depends on the latest
+  version 3 of the `ceph-iscsi <https://github.com/ceph/ceph-iscsi>`_ project.
+  Make sure that your operating system provides the correct version, otherwise
+  the dashboard won't enable the management features.
+
+If ceph-iscsi REST API is configured in HTTPS mode and its using a self-signed
+certificate, then you need to configure the dashboard to avoid SSL certificate
+verification when accessing ceph-iscsi API.
+
+To disable API SSL verification run the following command::
+
+    $ ceph dashboard set-iscsi-api-ssl-verification false
 
 The available iSCSI gateways must be defined using the following commands::
 
     $ ceph dashboard iscsi-gateway-list
-    $ ceph dashboard iscsi-gateway-add <gateway_name> <scheme>://<username>:<password>@<host>[:port]
+    $ ceph dashboard iscsi-gateway-add <scheme>://<username>:<password>@<host>[:port]
     $ ceph dashboard iscsi-gateway-rm <gateway_name>
 
 
 .. Enabling the Embedding of Grafana Dashboards
+.. _dashboard-grafana:
 
 允许嵌入 Grafana 仪表盘
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -304,8 +380,7 @@ Grafana on your preferred hosts, proceed with the following steps.
 
     $ ceph mgr module enable prometheus
 
-More details can be found on the `documentation <http://docs.ceph.com/docs/master/
-mgr/prometheus/>`_ of the prometheus module.
+更多细节请看文档 :ref:`mgr-prometheus` 。
 
 #. Add the corresponding scrape configuration to Prometheus. This may look
    like::
@@ -360,6 +435,16 @@ You need to tell the dashboard on which url Grafana instance is running/deployed
   $ ceph dashboard set-grafana-api-url <grafana-server-url>  # default: ''
 
 The format of url is : `<protocol>:<IP-address>:<port>`
+
+.. note::
+  Ceph Dashboard embeds the Grafana dashboards via ``iframe`` HTML elements.
+  If Grafana is configured without SSL/TLS support, most browsers will block the
+  embedding of insecure content into a secured web page, if the SSL support in
+  the dashboard has been enabled (which is the default configuration). If you
+  can't see the embedded Grafana dashboards after enabling them as outlined
+  above, check your browser's documentation on how to unblock mixed content.
+  Alternatively, consider enabling SSL/TLS support in Grafana.
+
 You can directly access Grafana Instance as well to monitor your cluster.
 
 
@@ -369,7 +454,7 @@ You can directly access Grafana Instance as well to monitor your cluster.
 启用单点登录（ Single Sign-On, SSO ）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The Ceph Manager Dashboard supports external authentication of users via the
+The Ceph Dashboard supports external authentication of users via the
 `SAML 2.0 <https://en.wikipedia.org/wiki/SAML_2.0>`_ protocol. You need to create
 the user accounts and associate them with the desired roles first, as authorization
 is still performed by the Dashboard. However, the authentication process can be
@@ -388,7 +473,7 @@ To configure SSO on Ceph Dashboard, you should use the following command::
 参数：
 
 * **<ceph_dashboard_base_url>**: Base URL where Ceph Dashboard is accessible (e.g., `https://cephdashboard.local`)
-* **<idp_metadata>**: URL, file path or content of the IdP metadata XML (e.g., `https://myidp/metadata`)
+* **<idp_metadata>**: URL to remote (`http://`, `https://`) or local (`file://`) path or content of the IdP metadata XML (e.g., `https://myidp/metadata`, `file:///home/myuser/metadata.xml`).
 * **<idp_username_attribute>** *(optional)*: Attribute that should be used to get the username from the authentication response. Defaults to `uid`.
 * **<idp_entity_id>** *(optional)*: Use this when more than one entity id exists on the IdP metadata.
 * **<sp_x_509_cert> / <sp_private_key>** *(optional)*: File path or content of the certificate that should be used by Ceph Dashboard (Service Provider) for signing and encryption.
@@ -438,8 +523,8 @@ ways:
 
 #. Use both sources simultaneously.
 
-All three methods are going to notify you about alerts. You won't be notified
-twice if you use both sources.
+这三种方法都能把告警通知到你。如果你两个源都用了，也不会被通知\
+两次，但起码你也得用 Alertmanager API 才能保持清静。
 
 #. Use the notification receiver of the dashboard:
 
@@ -467,16 +552,26 @@ twice if you use both sources.
 
 #. Use the API of the Prometheus Alertmanager
 
-   This allows you to manage alerts. You will see all alerts, the Alertmanager
-   currently knows of, in the alerts listing. It can be found in the *Cluster*
-   submenu as *Alerts*. The alerts can be sorted by name, job, severity,
-   state and start time. Unfortunately it's not possible to know when an alert
+   This allows you to manage alerts and silences. You will see all alerts and silences
+   the Alertmanager currently knows of in the corresponding listing.
+   Both can be found in the *Cluster* submenu.
+
+   Alerts can be sorted by name, job, severity, state and start time.
+   Unfortunately it's not possible to know when an alert
    was sent out through a notification by the Alertmanager based on your
    configuration, that's why the dashboard will notify the user on any visible
    change to an alert and will notify the changed alert.
 
-   Currently it's not yet possible to silence an alert and expire an silenced
-   alert, but this is work in progress and will be added in a future release.
+   Silences can be sorted by id, creator, status, start, updated and end time.
+   Silences can be created in various ways, it's also possible to expire them.
+
+   #. Create from scratch
+
+   #. Based on a selected alert
+
+   #. Recreate from expired silence
+
+   #. Update a silence (which will recreate and expire it (default Alertmanager behaviour))
 
    To use it, specify the host and port of the Alertmanager server::
 
@@ -486,6 +581,16 @@ twice if you use both sources.
 
      $ ceph dashboard set-alertmanager-api-host 'http://localhost:9093'
 
+   To be able to show what a silence will match beforehand, you have to add the host
+   and port of the Prometheus server::
+
+     $ ceph dashboard set-prometheus-api-host <prometheus-host:port>  # default: ''
+
+   For example::
+
+     $ ceph dashboard set-prometheus-api-host 'http://localhost:9090'
+
+   After setting up the hosts, you have to refresh your the dashboard in your browser window.
 
 #. Use both methods
 
@@ -509,10 +614,13 @@ checkbox if you want to skip the username/password request when accessing the
 dashboard in the future.
 
 
+.. User and Role Management
 .. _dashboard-user-role-management:
 
 用户和角色管理
 --------------
+
+.. User Accounts
 
 用户帐户
 ^^^^^^^^
@@ -532,7 +640,7 @@ We provide a set of CLI commands to manage user accounts:
 
 - *Create User*::
 
-  $ ceph dashboard ac-user-create <username> [<password>] [<rolename>] [<name>] [<email>]
+  $ ceph dashboard ac-user-create <username> [<password>] [<rolename>] [<name>] [<email>] [<enabled>]
 
 - *Delete User*::
 
@@ -542,10 +650,27 @@ We provide a set of CLI commands to manage user accounts:
 
   $ ceph dashboard ac-user-set-password <username> <password>
 
+- *Change Password Hash*::
+
+  $ ceph dashboard ac-user-set-password-hash <username> <hash>
+
+  The hash must be a bcrypt hash and salt, e.g. ``$2b$12$Pt3Vq/rDt2y9glTPSV.VFegiLkQeIpddtkhoFetNApYmIJOY8gau2``.
+  This can be used to import users from an external database.
+
 - *Modify User (name, and email)*::
 
   $ ceph dashboard ac-user-set-info <username> <name> <email>
 
+- *Disable User*::
+
+  $ ceph dashboard ac-user-disable <username>
+
+- *Enable User*::
+
+  $ ceph dashboard ac-user-enable <username>
+
+
+.. User Roles and Permissions
 
 用户角色和权限
 ^^^^^^^^^^^^^^
@@ -784,18 +909,17 @@ the redirection behaviour on standby nodes.
     server z <HOST>:<PORT> check-ssl check verify none
 
 
+.. Auditing API Requests
 .. _dashboard-auditing:
 
-审计
-----
-
-The REST API is capable of logging PUT, POST and DELETE requests to the Ceph
-audit log. This feature is disabled by default, but can be enabled with the
-following command::
+审计 API 请求
+-------------
+REST API 可以把 PUT 、 POST 、和 DELETE 请求记录到审计日志。\
+此功能默认是禁用的，可以用下列命令启用： ::
 
   $ ceph dashboard set-audit-api-enabled <true|false>
 
-If enabled, the following parameters are logged per each request:
+如果启用了，每个请求的下面几个参数都会被记录：
 
 * from - The origin of the request, e.g. https://[::1]:44410
 * path - The REST API path, e.g. /api/auth
@@ -826,7 +950,6 @@ The dashboard manages NFS-Ganesha config files stored in RADOS objects on the Ce
 NFS-Ganesha must store part of their configuration in the Ceph cluster.
 
 These configuration files must follow some conventions.
-conventions.
 Each export block must be stored in its own RADOS object named
 ``export-<id>``, where ``<id>`` must match the ``Export_ID`` attribute of the
 export configuration. Then, for each NFS-Ganesha service daemon there should
@@ -841,6 +964,8 @@ the NFS-Ganesha daemon should serve. These URLs are of the form::
 Both the ``conf-<daemon_id>`` and ``export-<id>`` objects must be stored in the
 same RADOS pool/namespace.
 
+
+.. Configuring NFS-Ganesha in the Dashboard
 
 NFS-Ganesha 在仪表盘中的配置
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -884,3 +1009,12 @@ NFS-Ganesha cluster.
 When configuring the Ceph Dashboard with multiple NFS-Ganesha clusters, the
 Web UI will automatically allow to choose to which cluster an export belongs.
 
+
+.. Plug-ins
+
+插件
+----
+仪表盘插件能以一种模块化和松耦合的方式扩展仪表盘功能。
+
+.. include:: dashboard_plugins/feature_toggles.inc.rst
+.. include:: dashboard_plugins/debug.inc.rst

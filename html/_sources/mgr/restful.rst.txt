@@ -1,15 +1,14 @@
-.. restful plugin
-
-rest 风格的插件
+rest 风格的模块
 ===============
 
-REST 风格的插件提供了通过 SSL 加密连接访问集群状态的 REST 风格\
+REST 风格的模块提供了通过 SSL 加密连接访问集群状态的 REST 风格\
 接口。
 
 
+.. Enabling
+
 启用此功能
 ----------
-
 *restful* 模块用此命令启用： ::
 
   ceph mgr module enable restful
@@ -18,6 +17,8 @@ REST 风格的插件提供了通过 SSL 加密连接访问集群状态的 REST �
 情况下，此模块会在 ``8003`` 端口上接受此主机上所有 IPv4 和 IPv6
 地址的 HTTPS 请求。
 
+
+.. Securing
 
 安全加固
 --------
@@ -53,6 +54,8 @@ REST 风格的插件提供了通过 SSL 加密连接访问集群状态的 REST �
   ceph config-key set mgr/restful/key -i restful.key
 
 
+.. Configuring IP and port
+
 IP 和端口的配置
 ---------------
 
@@ -76,6 +79,41 @@ IP 和端口的配置
 如果没配置端口， *restful* 将绑定到 ``8003`` 端口；如果没配置\
 地址， *restful* 将绑定到 ``::`` ，意思是所有可用的 IPv4 和
 IPv6 地址。
+
+
+.. Creating an API User
+.. _creating-an-api-user:
+
+创建一个 API 用户
+-----------------
+
+To create an API user, please run the following command::
+
+  ceph restful create-key <username>
+
+Replace ``<username>`` with the desired name of the user. For example, to create a user named
+``api``::
+
+  $ ceph restful create-key api
+  52dffd92-a103-4a10-bfce-5b60f48f764e
+
+The UUID generated from ``ceph restful create-key api`` acts as the key for the user.
+
+To list all of your API keys, please run the following command::
+
+  ceph restful list-keys
+
+The ``ceph restful list-keys`` command will output in JSON::
+
+  {
+  	"api": "52dffd92-a103-4a10-bfce-5b60f48f764e"
+  }
+
+You can use ``curl`` in order to test your user with the API. Here is an example::
+
+  curl -k https://api:52dffd92-a103-4a10-bfce-5b60f48f764e@<ceph-mgr>:<port>/server
+
+In the case above, we are using ``GET`` to fetch information from the ``server`` endpoint.
 
 
 .. Load balancer

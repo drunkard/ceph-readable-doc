@@ -38,7 +38,8 @@ ceph-fuse 识别不了的选项将传递给 libfuse 。
 
 .. option:: -d
 
-   启动后将脱离终端、进入守护状态。
+   在前台运行，把所有日志输出发送到标准错误 stderr 、并打开
+   FUSE 调试（ -o debug ）。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 

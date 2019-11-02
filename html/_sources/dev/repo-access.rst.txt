@@ -7,7 +7,8 @@ Notes on Ceph repositories
 --------
 
 * ``master``: current tip (integration branch)
-* 与 :ref:`ceph-releases` 中罗列的版本相对应的发布分支（比如 ``luminous`` ）。
+* 与 :ref:`ceph-releases` 中罗列的版本相对应的发布分支（比如
+  ``luminous`` ）。
 
 
 .. Rules
