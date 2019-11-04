@@ -221,9 +221,12 @@
   把源映像内容复制进新建的目标映像，目标映像和源映像将有相同\
   的尺寸、对象尺寸和格式。
 
-:command:`create` (-s | --size *size-in-M/G/T*) [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*]... [--image-shared] *image-spec*
-  如要新建 rbd 映像，必须用 --size 指定尺寸。 --strip-unit 和 \
-  --strip-count 参数是可选项，但必须一起用。
+:command:`create` (-s | --size *size-in-M/G/T*) [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--thick-provision] [--no-progress] [--image-feature *feature-name*]... [--image-shared] *image-spec*
+  新建一个 rbd 映像。还必须用 --size 指定尺寸。 --strip-unit 和
+  --strip-count 参数是可选项，但必须一起用。如果加了
+  --thick-provision 选项，它会在创建时就为映像分配所需的所有\
+  存储空间，需要很长时间完成。注意：全配（ thick provisioning
+  ）要求把整个映像的内容都清零。
 
 :command:`deep cp` (*src-image-spec* | *src-snap-spec*) *dest-image-spec*
   把 src-image 的内容深复制到新建的 dest-image 。 dest-image

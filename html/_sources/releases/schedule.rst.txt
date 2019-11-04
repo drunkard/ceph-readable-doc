@@ -1,5 +1,3 @@
-.. Ceph Releases
-
 ===========
  Ceph 版本
 ===========
@@ -11,14 +9,23 @@
 
 .. ceph_releases:: releases.yml
 
+
 .. Timeline
 
 时间表
 ------
+.. ceph_timeline:: releases.yml development nautilus mimic luminous kraken jewel infernalis hammer giant firefly emperor
 
-.. ceph_timeline:: releases.yml development mimic luminous kraken jewel infernalis hammer giant firefly emperor dumpling
+.. _Nautilus: ../nautilus
+.. _14.2.4: ../nautilus#v14-2-4-nautilus
+.. _14.2.3: ../nautilus#v14-2-3-nautilus
+.. _14.2.2: ../nautilus#v14-2-2-nautilus
+.. _14.2.1: ../nautilus#v14-2-1-nautilus
+.. _14.2.0: ../nautilus#v14-2-0-nautilus
 
 .. _Mimic: ../mimic
+.. _13.2.6: ../mimic#v13-2-6-mimic
+.. _13.2.5: ../mimic#v13-2-5-mimic
 .. _13.2.4: ../mimic#v13-2-4-mimic
 .. _13.2.3: ../mimic#v13-2-3-mimic
 .. _13.2.2: ../mimic#v13-2-2-mimic
@@ -26,6 +33,8 @@
 .. _13.2.0: ../mimic#v13-2-0-mimic
 
 .. _Luminous: ../luminous#v12-2-0-luminous
+.. _12.2.12: ../luminous#v12-2-12-luminous
+.. _12.2.11: ../luminous#v12-2-11-luminous
 .. _12.2.10: ../luminous#v12-2-10-luminous
 .. _12.2.9: ../luminous#v12-2-9-luminous
 .. _12.2.8: ../luminous#v12-2-8-luminous

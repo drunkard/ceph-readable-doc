@@ -98,10 +98,11 @@ mounted, re-using all the pieces of information from the initial steps::
       --setuser ceph --setgroup ceph
 
 
+.. Partitioning
 .. _ceph-volume-lvm-partitions:
 
-Partitioning
-------------
+分区
+----
 ``ceph-volume lvm`` does not currently create partitions from a whole device.
 If using device partitions the only requirement is that they contain the
 ``PARTUUID`` and that it is discoverable by ``blkid``. Both ``fdisk`` and
@@ -137,10 +138,11 @@ a ``PARTUUID`` that is needed by ``ceph-volume``::
     /dev/sdd1: PARTLABEL="primary" PARTUUID="16399d72-1e1f-467d-96ee-6fe371a7d0d4"
 
 
+.. Existing OSDs
 .. _ceph-volume-lvm-existing-osds:
 
-Existing OSDs
--------------
+对于已有 OSD
+------------
 For existing clusters that want to use this new system and have OSDs that are
 already running there are a few things to take into account:
 
@@ -232,8 +234,10 @@ a volume group and a logical volume using the following convention:
 * logical volume name: ``osd-block-{osd_fsid}``
 
 
-Crush device class
-------------------
+.. Crush device class
+
+CRUSH 设备类
+------------
 
 To set the crush device class for the OSD, use the ``--crush-device-class`` flag. This will
 work for both bluestore and filestore OSDs::
@@ -241,10 +245,11 @@ work for both bluestore and filestore OSDs::
     ceph-volume lvm prepare --bluestore --data vg/lv --crush-device-class foo
 
 
+.. ``multipath`` support
 .. _ceph-volume-lvm-multipath:
 
-``multipath`` support
----------------------
+``multipath`` 支持
+------------------
 Devices that come from ``multipath`` are not supported as-is. The tool will
 refuse to consume a raw multipath device and will report a message like::
 
@@ -298,8 +303,10 @@ configuration is done correctly to avoid issues.
 .. note:: 完整的 LVM 标签惯例见 :ref:`ceph-volume-lvm-tag-api` 。
 
 
-Summary
--------
+.. Summary
+
+总结
+----
 To recap the ``prepare`` process for :term:`bluestore`:
 
 #. Accept a logical volume for block or a raw device (that will get converted

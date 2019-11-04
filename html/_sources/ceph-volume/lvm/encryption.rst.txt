@@ -40,11 +40,10 @@ volume setups, since encryption will happen once the LV is created.
 
 工作流程
 --------
-When setting up the OSD, a secret key will be created, that will be passed
-along to the monitor in JSON format as ``stdin`` to prevent the key from being
-captured in the logs.
+装配起 OSD 的过程中，需要创建一个密钥，它会包装成 JSON 格式以
+``stdin`` 传递给监视器，以免被记入日志。
 
-The JSON payload looks something like::
+JSON 内容形似： ::
 
         {
             "cephx_secret": CEPHX_SECRET,

@@ -460,6 +460,9 @@
     tenant
         (OpenStack) 租户
 
+    thin provisioning / thick provisioning
+        简配、全配
+
     token
         (OpenStack) 令牌
 

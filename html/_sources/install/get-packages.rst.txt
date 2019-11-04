@@ -102,11 +102,11 @@ Debian 二进制包
 上，用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换\
 下列命令里的 ``{codename}`` 。 ::
 
-	sudo apt-add-repository 'deb https://download.ceph.com/debian-jewel/ {codename} main'
+	sudo apt-add-repository 'deb https://download.ceph.com/debian-luminous/ {codename} main'
 
 对于早期 Linux 发行版，你可以执行下列命令： ::
 
-	echo deb https://download.ceph.com/debian-jewel/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+	echo deb https://download.ceph.com/debian-luminous/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 对于早期 Ceph 发布，可用 Ceph 发布名替换 ``{release-name}`` 。\
 用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换下列\
@@ -137,12 +137,12 @@ RPM 二进制包
 ------------
 
 对于主要发布，你可以在 ``/etc/yum.repos.d/`` 目录下新增一个
-Ceph 库：创建 ``ceph.repo`` 。在下例中，需要用 Ceph 主要发布名\
-（如 ``hammer`` 、 ``jewel`` 等等）替换 ``{ceph-release}`` 、\
-用 Linux 发行版名（ ``el7`` 等等）替换 ``{distro}`` 。你可以到
-https://download.ceph.com/rpm-{ceph-release}/ 看看 Ceph 支持哪\
-些发行版。有些 Ceph 包（如 EPEL ）必须优先于标准包，所以你必须\
-确保设置了 ``priority=2`` 。 ::
+Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
+发布名（如 ``luminous`` 、 ``mimic`` 、 ``nautilus`` 等等）替换
+``{ceph-release}`` 、用 Linux 发行版名（ ``el7`` 等等）替换
+``{distro}`` 。你可以到 https://download.ceph.com/rpm-{ceph-release}/
+看看 Ceph 支持哪些发行版。有些 Ceph 包（如 EPEL ）必须优先于\
+标准包，所以你必须确保设置了 ``priority=2`` 。 ::
 
 	[ceph]
 	name=Ceph packages for $basearch
@@ -284,19 +284,20 @@ Ceph 依赖下列包：
 - python-argparse
 - gperftools-libs
 
-当前，我们为 RHEL/CentOS7 （ ``el7`` ）平台构建二进制包，软件\
-库包会在本地系统上安装 Ceph 库配置文件，这样 ``yum`` 就可以使\
-用这些配置文件自动安装了。用自己的发行版名字替换 ``{distro}`` 。 ::
+当前，我们为 RHEL/CentOS7 （ ``el7`` ）平台构建二进制包，\
+软件库包会在本地系统上安装 Ceph 库配置文件，这样 ``yum`` 就\
+可以使用这些配置文件自动安装了。用你自己的发行版名字替换
+``{distro}`` 。 ::
 
-	su -c 'rpm -Uvh https://download.ceph.com/rpm-jewel/{distro}/noarch/ceph-{version}.{distro}.noarch.rpm'
+    su -c 'rpm -Uvh https://download.ceph.com/rpm-luminous/{distro}/noarch/ceph-{version}.{distro}.noarch.rpm'
 
 例如，对于 CentOS 7 （ ``el7`` ）： ::
 
-	su -c 'rpm -Uvh https://download.ceph.com/rpm-jewel/el7/noarch/ceph-release-1-0.el7.noarch.rpm'
+    su -c 'rpm -Uvh https://download.ceph.com/rpm-luminous/el7/noarch/ceph-release-1-0.el7.noarch.rpm'
 
 你可以从这里直接下载RPM包： ::
 
-	https://download.ceph.com/rpm-jewel
+    https://download.ceph.com/rpm-luminous
 
 对较老的 Ceph 发布，用 Ceph 发布名替换 ``{release-name}`` ，你\
 可以执行 ``lsb_release -sc`` 命令获取发行版代号。 ::

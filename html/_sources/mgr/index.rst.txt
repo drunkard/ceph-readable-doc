@@ -1,4 +1,5 @@
 .. Ceph Manager Daemon
+.. _ceph-manager-daemon:
 
 =====================
  Ceph 管理器守护进程

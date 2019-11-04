@@ -3,7 +3,7 @@ scan
 This sub-command will allow to discover Ceph volumes previously setup by the
 tool by looking into the system's logical volumes and their tags.
 
-As part of the :ref:`ceph-volume-lvm-prepare` process, the logical volumes are assigned
-a few tags with important pieces of information.
+作为 :ref:`ceph-volume-lvm-prepare` 过程的一部分，逻辑卷会被\
+分配一些标签，含有重要信息。
 
-.. note:: This sub-command is not yet implemented
+.. note:: 这个子命令还没实现。

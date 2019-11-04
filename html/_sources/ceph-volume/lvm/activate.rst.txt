@@ -24,6 +24,7 @@ need to be supplied. For example::
 .. note:: 这个 UUID 存储于 OSD 路径下的 ``fsid`` 文件内，它\
    是在调用 :ref:`ceph-volume-lvm-prepare` 时生成的。
 
+
 .. Activating all OSDs
 
 激活所有 OSD
@@ -38,8 +39,11 @@ and will activate them one by one. If any of the OSDs are already running, it
 will report them in the command output and skip them, making it safe to rerun
 (idempotent).
 
-requiring uuids
-^^^^^^^^^^^^^^^
+
+.. requiring uuids
+
+必备 uuid
+^^^^^^^^^
 The :term:`OSD uuid` is being required as an extra step to ensure that the
 right OSD is being activated. It is entirely possible that a previous OSD with
 the same id exists and would end up activating the incorrect one.
@@ -52,8 +56,10 @@ specify ``--dmcrypt`` on the command line again (that flag is not available for
 the ``activate`` subcommand). An encrypted OSD will be automatically detected.
 
 
-Discovery
----------
+.. Discovery
+
+发现
+----
 With OSDs previously created by ``ceph-volume``, a *discovery* process is
 performed using :term:`LVM tags` to enable the systemd units.
 
@@ -62,7 +68,7 @@ persist it. Internally, the activation will enable it like::
 
     systemctl enable ceph-volume@lvm-$id-$uuid
 
-For example::
+例如： ::
 
     systemctl enable ceph-volume@lvm-0-8715BEB4-15C5-49DE-BA6F-401086EC7B41
 
@@ -83,21 +89,26 @@ a journal (when ``--filestore`` is selected) the device will be queried (with
 correct device is being linked. The symbolic link will *always* be re-done to
 ensure that the correct device is linked.
 
-# start the ``ceph-osd@0`` systemd unit
+# 启动 ``ceph-osd@0`` systemd unit
 
 .. note:: The system infers the objectstore type (filestore or bluestore) by
           inspecting the LVM tags applied to the OSD devices
 
-Existing OSDs
--------------
-For existing OSDs that have been deployed with ``ceph-disk``, they need to be
-scanned and activated :ref:`using the simple sub-command <ceph-volume-simple>`.
-If a different tooling was used then the only way to port them over to the new
-mechanism is to prepare them again (losing data). See
-:ref:`ceph-volume-lvm-existing-osds` for details on how to proceed.
 
-Summary
--------
+.. Existing OSDs
+
+对于已有 OSD
+------------
+对于之前已经用 ``ceph-disk`` 部署的各 OSD ，需要\
+:ref:`用 simple 子命令 <ceph-volume-simple>`\ 扫描并激活。如果\
+用的是其它的工具链，把它们移植到新机制唯一的方法是再准备一次\
+（会丢数据）。如何操作见 :ref:`ceph-volume-lvm-existing-osds` 。
+
+
+.. Summary
+
+总结
+----
 To recap the ``activate`` process for :term:`bluestore`:
 
 #. require both :term:`OSD id` and :term:`OSD uuid`
