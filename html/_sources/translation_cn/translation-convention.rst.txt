@@ -92,6 +92,10 @@
     device class
         设备类别
 
+    discard
+        <不翻译>，专业术语，尚未找到好译文。
+        文件系统功能。
+
     display name
         显示名称，昵称。
 
@@ -372,6 +376,9 @@
 
     role
         角色。 AWS 术语？
+
+    round off
+        对齐数据块。本义为四舍五入。
 
     rule mask
         ?

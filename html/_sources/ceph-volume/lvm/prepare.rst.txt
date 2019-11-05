@@ -238,9 +238,8 @@ a volume group and a logical volume using the following convention:
 
 CRUSH 设备类
 ------------
-
-To set the crush device class for the OSD, use the ``--crush-device-class`` flag. This will
-work for both bluestore and filestore OSDs::
+要设置 OSD 所属的 CRUSH 设备类，用 ``--crush-device-class``
+选项。对基于 bluestore 和 filestore 的 OSD 都适用： ::
 
     ceph-volume lvm prepare --bluestore --data vg/lv --crush-device-class foo
 

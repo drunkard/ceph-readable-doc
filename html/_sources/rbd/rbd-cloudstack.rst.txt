@@ -86,23 +86,51 @@ Primary Storage.
 详情见 `用户管理`_ 。
 
 
+.. Add Primary Storage
+
 添加主存储
 ==========
 
-添加主存储方法见 `添加主存储 (4.2.0)`_ ，要添加一个 Ceph 块设备，步骤包括：
+要添加一个 Ceph 块设备作为 Primary Storage ，步骤包括：
 
 #. 登录 CloudStack 界面；
 #. 点击左侧导航条的 **Infrastructure** ；
-#. 选择要用于主存储的域；
-#. 点击 **Compute** 标签；
-#. 选择图表中 `Primary Storage` 节点上的 **View All** ；
-#. 点击 **Add Primary Storage** ；
-#. 依次按提示执行：
+#. 选择 **Primary Storage** 下的 **View All** ；
+#. 点击右上角的 **Add Primary Storage** 按钮；
+#. 按照你的基础设施配置，填入下列信息：
+
+   - Scope (i.e. Cluster or Zone-Wide).
+
+   - Zone.
+
+   - Pod.
+
+   - Cluster.
+
+   - Name of Primary Storage.
 
    - **Protocol** 那里选择 ``RBD`` ；
-   - 添加集群信息（支持 cephx ）。注：不要加用户名的 ``client.`` 部分；
-   - 把 ``rbd`` 加为标签。
 
+   - For **Provider**, select the appropriate provider type (i.e. DefaultPrimary, SolidFire, SolidFireShared, or CloudByte).  Depending on the provider chosen, fill out the information pertinent to your setup.
+
+#. 添加集群信息（支持 ``cephx`` ）。
+
+   - **RADOS Monitor** 这里填入一个 Ceph 监视器节点的 IP 地址。
+   
+   - **RADOS Pool** 这里填入一个 RBD 存储池的名字。
+   
+   - **RADOS User** 这里填入用户，这个用户应该有此存储池的足够\
+     的权限。注：不要加用户名的 ``client.`` 部分；
+   
+   - **RADOS Secret** 这里填入用户的密钥；
+   
+   - **Storage Tags** 是可选的。用不用标签由你，关于 CloudStack
+     的存储标签，请参考\ `存储标签`_ 。
+   
+#. 点击 **OK** 。
+
+
+.. Create a Disk Offering
 
 创建存储服务
 ============
@@ -127,6 +155,6 @@ Primary Storage.
 .. _安装和配置 QEMU: ../qemu-rbd
 .. _安装和配置 libvirt: ../libvirt
 .. _KVM Hypervisor Host Installation: http://cloudstack.apache.org/docs/en-US/Apache_CloudStack/4.2.0/html/Installation_Guide/hypervisor-kvm-install-flow.html
-.. _添加主存储 (4.2.0): http://cloudstack.apache.org/docs/en-US/Apache_CloudStack/4.2.0/html/Admin_Guide/primary-storage-add.html
+.. _存储标签: http://docs.cloudstack.apache.org/en/latest/adminguide/storage.html#storage-tags
 .. _创建存储服务 (4.2.0): http://cloudstack.apache.org/docs/en-US/Apache_CloudStack/4.2.0/html/Admin_Guide/compute-disk-service-offerings.html#creating-disk-offerings
 .. _用户管理: ../../rados/operations/user-management

@@ -42,6 +42,10 @@
 
    在指定存储池下操作，大多数命令都得指定。
 
+.. option:: --namespace namespace-name
+
+   使用存储池内一个预定义的映像命名空间。
+
 .. option:: --no-progress
 
    不显示进度（有些命令会默认输出到标准输出）。
@@ -656,6 +660,8 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
 功能（ Ceph 0.53 起加入）并使用 format 2 格式的映像。
 
 
+.. Kernel rbd (krbd) options
+
 内核 rbd (krbd) 选项
 ====================
 
@@ -711,6 +717,24 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
   （从 4.9 起）。
 
 * exclusive - 禁止自动转换互斥锁（从 4.12 起）。
+
+* lock_timeout=x - 获取互斥锁的超时时长（ 4.17 起支持，默认是
+  0 秒，意味着没有超时）。
+
+* notrim - 关闭 discard 、和填 0 功能，以免全配映像的空间被\
+  收回（从 4.17 起支持）。启用后， discard 请求会以 -EOPNOTSUPP
+  代码失败，填 0 请求会回退成手动填 0 。
+
+* abort_on_full - 在集群空间用尽或数据存储池用完配额时让写请求\
+  以 -ENOSPC 代码失败（从 5.0 起支持）。默认行为是阻塞着，直到\
+  占满条件释放。
+
+* alloc_size - OSD 底层对象存储后端的最小分配单元（从 5.1 起\
+  支持，默认为 64KB ）。这是用于对齐数据块和丢弃太小的 discard
+  操作。对于 bluestore ，推荐的配置是 bluestore_min_alloc_size
+  （一般来说，硬盘是 64K 、 SSD 是 16K ）； filestore 用
+  filestore_punch_hole = false 配置，推荐的配置是映像对象尺寸\
+  （一般是 4M ）。
 
 `rbd device unmap` 选项：
 

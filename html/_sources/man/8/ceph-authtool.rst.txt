@@ -21,6 +21,7 @@
   [ -a | --add-key *base64_key* ]
   [ --cap *subsystem* *capability* ]
   [ --caps *capfile* ]
+  [ --mode *mode* ]
 
 
 描述
@@ -84,6 +85,10 @@
 .. option:: --caps *capsfile*
 
    在所有子系统内设置与给定密钥相关的所有能力
+
+ .. option:: --mode *mode*
+
+    给密钥环文件设置想要的文件模式，如 0644 ，默认是 0600 。
 
 
 能力
@@ -164,17 +169,18 @@ capspec 决定了此实体可执行哪些操作： ::
 能力文件的格式
 ==============
 
-能力配置文件是格式化的零或多个键值对，每条一行。键和值以 ``=`` 分隔，且值内\
-包含空格时必须用 ``'`` 或 ``"`` 包起来。键是某个 Ceph 子系统（ ``osd`` 、 \
-``mds`` 、 ``mon`` ），值是能力字符串（见上文）。
+能力配置文件是格式化的零或多个键值对，每条一行。键和值以 ``=``
+分隔，且值内包含空格时必须用 ``'`` 或 ``"`` 包起来。键是某个
+Ceph 子系统（ ``osd`` 、 ``mds`` 、 ``mon`` ），值是能力字符串\
+（见上文）。
 
 
 实例
 ====
 
-给 client.foo 生成密钥并新建密钥环： ::
+给 client.foo 生成密钥并新建密钥环、且文件模式为 0644 ： ::
 
-        ceph-authtool -C -n client.foo --gen-key keyring
+        ceph-authtool -C -n client.foo --gen-key keyring --mode 0644
 
 给此密钥关联一些能力（也就是挂载 Ceph 文件系统的能力）： ::
 

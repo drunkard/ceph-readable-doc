@@ -223,13 +223,21 @@
 :默认值: ``true``
 
 
+``fuse max write``
+
+:描述: 设置单次写入操作的最大字节数。由于 FUSE 的默认值是 128kB ，\
+       所以 fuse_max_write 默认为 0 （此默认值不起作用）。
+:类型: Integer
+:默认值: ``0``
+
+
 .. Developer Options
 
 开发者选项
-----------
+##########
 
-.. important:: 以下选项仅供内部测试，只是为了保持文档完整才罗\
-   列在这里。
+.. important:: 以下选项仅供内部测试，只是为了保持文档完整才\
+   罗列在这里。
 
 
 ``client debug getattr caps``

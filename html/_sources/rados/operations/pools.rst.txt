@@ -30,6 +30,8 @@
 .. _纠删编码的存储池: ../erasure-code
 
 
+.. List Pools
+
 列出存储池
 ==========
 
@@ -170,6 +172,8 @@ RGW 创建的存储池已经自动关联过了；计划用于 RBD 的存储池�
    名字是 ``rbd`` ， RGW 的应用程序名字是 ``rgw`` 。
 
 
+.. Set Pool Quotas
+
 设置存储池配额
 ==============
 
@@ -184,7 +188,7 @@ RGW 创建的存储池已经自动关联过了；计划用于 RBD 的存储池�
 要取消配额，设置为 ``0`` 。
 
 
-.. _Delete a Pool:
+.. Delete a Pool
 
 删除存储池
 ==========
@@ -234,6 +238,8 @@ true ，否则它会拒绝删除存储池。
 .. note:: 适用 ``0.48 Argonaut`` 及以上。
 
 
+.. Show Pool Statistics
+
 查看存储池统计信息
 ==================
 
@@ -241,6 +247,12 @@ true ，否则它会拒绝删除存储池。
 
 	rados df
 
+另外，要获取某个或所有存储池的 I/O 信息，用命令： ::
+
+        ceph osd pool stats [{pool-name}]
+
+
+.. Make a Snapshot of a Pool
 
 拍下存储池快照
 ==============
@@ -252,6 +264,8 @@ true ，否则它会拒绝删除存储池。
 .. note:: 适用 ``0.48 Argonaut`` 及以上。
 
 
+.. Remove a Snapshot of a Pool
+
 删除存储池快照
 ==============
 
@@ -262,9 +276,8 @@ true ，否则它会拒绝删除存储池。
 .. note:: 适用 ``0.48 Argonaut`` 及以上。
 
 
-.. _setpoolvalues:
-
 .. Set Pool Values
+.. _setpoolvalues:
 
 调整存储池选项值
 ================
@@ -583,7 +596,6 @@ true ，否则它会拒绝删除存储池。
 
 :描述: 在负载低时，洗刷存储池的最小间隔秒数。如果是 0 ，就按照\
        配置文件里的 osd_scrub_min_interval 。
-
 :类型: Double
 :默认值: ``0``
 
@@ -594,7 +606,6 @@ true ，否则它会拒绝删除存储池。
 
 :描述: 不管集群负载如何，都要洗刷存储池的最大间隔秒数。如果是 \
        0 ，就按照配置文件里的 osd_scrub_max_interval 。
-
 :类型: Double
 :默认值: ``0``
 
@@ -605,10 +616,32 @@ true ，否则它会拒绝删除存储池。
 
 :描述: “深度”洗刷存储池的间隔秒数。如果是 0 ，就按照配置文件里\
        的 osd_deep_scrub_interval 。
-
 :类型: Double
 :默认值: ``0``
 
+
+.. _recovery_priority:
+
+``recovery_priority``
+
+:描述: 设置此值后，它会提高或降低计算出的保留优先级，此值必须\
+       介于 -10 到 10 之间。给不太重要的存储池分配负值，其\
+       优先级就低于其它新存储池。
+:类型: Integer
+:默认值: ``0``
+
+
+.. _recovery_op_priority:
+
+``recovery_op_priority``
+
+:描述: 指定此存储池的恢复操作优先级，而非
+       ``osd_recovery_op_priority`` 。
+:类型: Integer
+:默认值: ``0``
+
+
+.. Get Pool Values
 
 获取存储池选项值
 ================
@@ -759,6 +792,29 @@ true ，否则它会拒绝删除存储池。
 
 :类型: Double
 
+
+``allow_ec_overwrites``
+
+:描述: 见 allow_ec_overwrites_
+
+:类型: Boolean
+
+
+``recovery_priority``
+
+:描述: 见 recovery_priority_
+
+:类型: Integer
+
+
+``recovery_op_priority``
+
+:描述: 见 recovery_op_priority_
+
+:类型: Integer
+
+
+.. Set the Number of Object Replicas
 
 设置对象副本数
 ==============

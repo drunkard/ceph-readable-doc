@@ -101,6 +101,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
     旧文件系统的升级 <upgrading>
     目录分片的配置 <dirfrags>
     多活 MDS 的配置 <multimds>
+    通过 NFS 导出 <nfs>
 
 .. toctree:: 
    :hidden:
