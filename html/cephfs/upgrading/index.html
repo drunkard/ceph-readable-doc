@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>升级比 Firefly 老的文件系统，需过 Jewel 这个槛 &#8212; Ceph Documentation</title>
+    <title>升级 MDS 集群 &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -62,7 +62,63 @@
   </div>
 
   
-  <div class="section" id="firefly-jewel">
+  <div class="section" id="mds">
+<h1>升级 MDS 集群<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h1>
+<p>Currently the MDS cluster does not have built-in versioning or file system
+flags to support seamless upgrades of the MDSs without potentially causing
+assertions or other faults due to incompatible messages or other functional
+differences. For this reason, it’s necessary during any cluster upgrade to
+reduce the number of active MDS for a file system to one first so that two
+active MDS do not communicate with different versions.  Further, it’s also
+necessary to take standbys offline as any new CompatSet flags will propagate
+via the MDSMap to all MDS and cause older MDS to suicide.</p>
+<p>The proper sequence for upgrading the MDS cluster is:</p>
+<ol class="arabic simple">
+<li><p>Reduce the number of ranks to 1:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">max_mds</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Wait for cluster to stop non-zero ranks where only rank 0 is active and the rest are standbys.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">status</span> <span class="c1"># wait for MDS to finish stopping</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>Take all standbys offline, e.g. using systemctl:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systemctl</span> <span class="n">stop</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mds</span><span class="o">.</span><span class="n">target</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="4">
+<li><p>Confirm only one MDS is online and is rank 0 for your FS:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">status</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="5">
+<li><p>Upgrade the single active MDS, e.g. using systemctl:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># use package manager to update cluster</span>
+<span class="n">systemctl</span> <span class="n">restart</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mds</span><span class="o">.</span><span class="n">target</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="6">
+<li><p>Upgrade/start the standby daemons.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># use package manager to update cluster</span>
+<span class="n">systemctl</span> <span class="n">restart</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mds</span><span class="o">.</span><span class="n">target</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="7">
+<li><p>Restore the previous max_mds for your cluster:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">max_mds</span> <span class="o">&lt;</span><span class="n">old_max_mds</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="firefly-jewel">
 <h1>升级比 Firefly 老的文件系统，需过 Jewel 这个槛<a class="headerlink" href="#firefly-jewel" title="Permalink to this headline">¶</a></h1>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
@@ -102,9 +158,9 @@ Jewel 更高的版本，必须先升级到 Jewel 版，然后运行
 <li class="toctree-l3"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">增加/删除 MDS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/">术语</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/#mds">MDS 守护进程的引用</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#managing-failover">故障切换的管理</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#configuring-standby-daemons">灾备守护进程的配置</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#examples">实例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#id3">故障切换的管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#id4">灾备守护进程的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#id5">实例</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS 配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
@@ -132,14 +188,16 @@ Jewel 更高的版本，必须先升级到 Jewel 版，然后运行
 <li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">旧文件系统的升级</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">升级 MDS 集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#firefly-jewel">升级比 Firefly 老的文件系统，需过 Jewel 这个槛</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../dirfrags/">目录分片的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../multimds/">多活 MDS 的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery-experts/"> 高级话题：元数据修复</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../scrub/">洗刷</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../#id1">元数据修复</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../#for-developers">开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#id2">开发者文档</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>

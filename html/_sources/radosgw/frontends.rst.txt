@@ -20,6 +20,8 @@ The ``beast`` frontend uses the Boost.Beast library for HTTP parsing
 and the Boost.Asio library for asynchronous network i/o.
 
 
+.. Options
+
 选项
 ----
 
@@ -45,18 +47,15 @@ and the Boost.Asio library for asynchronous network i/o.
 
 ``ssl_certificate``
 
-:描述: Path to the SSL certificate file used for SSL-enabled endpoints.
-
+:描述: SSL 证书文件的路径，用于启用了 SSL 的终结点。
 :类型: String
 :默认值: None
 
 
 ``ssl_private_key``
 
-:描述: Optional path to the private key file used for SSL-enabled
-              endpoints. If one is not given, the ``ssl_certificate`` file
-              is used as the private key.
-
+:描述: 可选配置，私钥文件的路径，用于启用了 SSL 的终结点。如果\
+       没配置此路径，就把 ``ssl_certificate`` 文件当作私钥用。
 :类型: String
 :默认值: None
 

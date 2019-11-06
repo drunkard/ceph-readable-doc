@@ -156,7 +156,7 @@ These sections include:
 ``client``
 
 :描述: ``[client]`` 下的配置影响所有 Ceph 客户端（如挂载的 Ceph
-       文件系统、挂载的块设备等等）、还有 Rados 网关（ RGW ）\
+       文件系统、挂载的块设备等等）、也影响 Rados 网关（ RGW ）\
        守护进程。
 :实例: ``objecter_inflight_ops = 512``
 

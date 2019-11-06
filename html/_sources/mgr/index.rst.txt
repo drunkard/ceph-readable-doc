@@ -34,3 +34,4 @@ mgr 启动。
     Prometheus 模块 <prometheus>
     Influx 模块 <influx>
     Iostat 模块 <iostat>
+    Orchestrator CLI 模块 <orchestrator_cli>

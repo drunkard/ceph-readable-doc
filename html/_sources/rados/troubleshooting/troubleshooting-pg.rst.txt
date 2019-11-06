@@ -2,6 +2,8 @@
  归置组排障
 ============
 
+.. Placement Groups Never Get Clean
+
 归置组总不整洁
 ==============
 
@@ -122,6 +124,7 @@ in your CRUSH map.
 见 :ref:`failures-osd-unfound` ）。
 
 
+.. Placement Group Down - Peering Failure
 .. _failures-osd-peering:
 
 归置组挂了——互联失败
@@ -182,6 +185,7 @@ in your CRUSH map.
 恢复将继续。
 
 
+.. Unfound Objects
 .. _failures-osd-unfound:
 
 未找到的对象
@@ -272,6 +276,8 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 它。要慎用，它可能迷惑那些期望对象存在的应用程序。
 
 
+.. Homeless Placement Groups
+
 无根归置组
 ==========
 
@@ -297,6 +303,8 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 ``osd.2`` 处理，重启这些 ``ceph-osd`` 将恢复之（还有其它的很多 PG ）。
 
 
+.. Only a Few OSDs Receive Data
+
 只有几个 OSD 接收数据
 =====================
 
@@ -305,6 +313,8 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 储池，其归置组数量是 OSD 数量的若干倍。详情见\ `归置组`_\ ，存储池的默认归置组数量\
 没多大用，你可以参考\ `这里`_\ 更改它。
 
+
+.. Can't Write Data
 
 不能写入数据
 ============
@@ -315,7 +325,7 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 ``osd pool default min size`` 。
 
 
-.. _PGs Inconsistent:
+.. PGs Inconsistent
 
 归置组不一致
 ============
@@ -357,8 +367,8 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
                     "size_mismatch"
                 ],
                 "union_shard_errors": [
-                    "data_digest_mismatch_oi",
-                    "size_mismatch_oi"
+                    "data_digest_mismatch_info",
+                    "size_mismatch_info"
                 ],
                 "selected_object_info": "0:602f83fe:::foo:head(16'1 client.4110.0:1 dirty|data_digest|omap_digest s 968 uv 1 dd e978e67f od ffffffff alloc_hint [0 0 0])",
                 "shards": [
@@ -379,8 +389,8 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
                     {
                         "osd": 2,
                         "errors": [
-                            "data_digest_mismatch_oi",
-                            "size_mismatch_oi"
+                            "data_digest_mismatch_info",
+                            "size_mismatch_info"
                         ],
                         "size": 0,
                         "omap_digest": "0xffffffff",
@@ -410,10 +420,10 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
     的 ``errors`` 表明它是与 ``selected_object_info`` 的对照结\
     果。从 ``shards`` 阵列里可以查到哪个分片有什么样的错误。
 
-    * ``data_digest_mismatch_oi``: 存储在 object-info （对象信\
-      息）里的数字签名不是 ``0xffffffff`` （这个是根据 OSD.2 \
-      上的分片计算出来的）。
-    * ``size_mismatch_oi``: object-info 内存储的尺寸与 OSD.2 \
+    * ``data_digest_mismatch_info``: 存储在 object-info （
+      对象信息）里的数字签名不是 ``0xffffffff`` （这个是根据
+      OSD.2 上的分片计算出来的）。
+    * ``size_mismatch_info``: object-info 内存储的尺寸与 OSD.2
       上的对象尺寸 0 不同。
 
 你可以用下列命令修复不一致的归置组： ::

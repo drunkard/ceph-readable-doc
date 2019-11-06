@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>NFS &#8212; Ceph Documentation</title>
+    <title>Ceph 文件系统洗刷 &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -17,8 +17,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
-    <link rel="next" title="Ceph 文件系统洗刷" href="../scrub/" />
-    <link rel="prev" title="多活 MDS 守护进程的配置" href="../multimds/" />
+    <link rel="next" title="高级话题：元数据修复工具" href="../disaster-recovery-experts/" />
+    <link rel="prev" title="NFS" href="../nfs/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head><body>
@@ -32,10 +32,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../scrub/" title="Ceph 文件系统洗刷"
+          <a href="../disaster-recovery-experts/" title="高级话题：元数据修复工具"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../multimds/" title="多活 MDS 守护进程的配置"
+          <a href="../nfs/" title="NFS"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
@@ -58,84 +58,128 @@
   <p class="last">This document is for an unsupported version of Ceph.</p>
 </div>
   <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
-    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/nfs.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/scrub.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
   </div>
 
   
-  <div class="section" id="nfs">
-<h1>NFS<a class="headerlink" href="#nfs" title="Permalink to this headline">¶</a></h1>
-<p>CephFS namespaces can be exported over NFS protocol using the
-<a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/wiki">NFS-Ganesha NFS server</a>.</p>
+  <div class="section" id="ceph">
+<span id="mds-scrub"></span><h1>Ceph 文件系统洗刷<a class="headerlink" href="#ceph" title="Permalink to this headline">¶</a></h1>
+<p>CephFS provides the cluster admin (operator) to check consistency of a file system
+via a set of scrub commands. Scrub can be classified into two parts:</p>
+<ol class="arabic simple">
+<li><p>Forward Scrub: In which the scrub operation starts at the root of the file system
+(or a sub directory) and looks at everything that can be touched in the hierarchy
+to ensure consistency.</p></li>
+<li><p>Backward Scrub: In which the scrub operation looks at every RADOS object in the
+file system pools and maps it back to the file system hierarchy.</p></li>
+</ol>
+<p>This document details commands to initiate and control forward scrub (referred as
+scrub thereafter).</p>
 <div class="section" id="id1">
-<h2>必要条件<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li><p>Ceph file system (preferably latest stable luminous or higher versions)</p></li>
-<li><p>In the NFS server host machine, ‘libcephfs2’ (preferably latest stable
-luminous or higher), ‘nfs-ganesha’ and ‘nfs-ganesha-ceph’ packages (latest
-ganesha v2.5 stable or higher versions)</p></li>
-<li><p>NFS-Ganesha server host connected to the Ceph public network</p></li>
-</ul>
-</div>
-<div class="section" id="nfs-ganesha-cephfs">
-<h2>配置 NFS-Ganesha 来导出 CephFS<a class="headerlink" href="#nfs-ganesha-cephfs" title="Permalink to this headline">¶</a></h2>
-<p>NFS-Ganesha provides a File System Abstraction Layer (FSAL) to plug in different
-storage backends. <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a>
-is the plugin FSAL for CephFS. For each NFS-Ganesha export, FSAL_CEPH uses a
-libcephfs client, user-space CephFS client, to mount the CephFS path that
-NFS-Ganesha exports.</p>
-<p>Setting up NFS-Ganesha with CephFS, involves setting up NFS-Ganesha’s
-configuration file, and also setting up a Ceph configuration file and cephx
-access credentials for the Ceph clients created by NFS-Ganesha to access
-CephFS.</p>
-<div class="section" id="nfs-ganesha">
-<h3>NFS-Ganesha 配置<a class="headerlink" href="#nfs-ganesha" title="Permalink to this headline">¶</a></h3>
-<p>A sample ganesha.conf configured with FSAL_CEPH can be found here,
-<a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ceph.conf">https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ceph.conf</a>.
-It is suitable for a standalone NFS-Ganesha server, or an active/passive
-configuration of NFS-Ganesha servers managed by some sort of clustering
-software (e.g., Pacemaker). Important details about the options are
-added as comments in the sample conf. There are options to do the following:</p>
-<ul class="simple">
-<li><p>minimize Ganesha caching wherever possible since the libcephfs clients
-(of FSAL_CEPH) also cache aggressively</p></li>
-<li><p>read from Ganesha config files stored in RADOS objects</p></li>
-<li><p>store client recovery data in RADOS OMAP key-value interface</p></li>
-<li><p>mandate NFSv4.1+ access</p></li>
-<li><p>enable read delegations (need at least v13.0.1 ‘libcephfs2’ package
-and v2.6.0 stable ‘nfs-ganesha’ and ‘nfs-ganesha-ceph’ packages)</p></li>
-</ul>
-</div>
-<div class="section" id="libcephfs">
-<h3>给 libcephfs 客户端的配置<a class="headerlink" href="#libcephfs" title="Permalink to this headline">¶</a></h3>
-<p>libcephfs 客户端所需的 ceph.conf 配置包括：</p>
-<ul>
-<li><p>a [client] section with <code class="docutils literal notranslate"><span class="pre">mon_host</span></code> option set to let the clients connect
-to the Ceph cluster’s monitors, usually generated via <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span> <span class="pre">generate-minimal-conf</span></code>, e.g.,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="k">global</span><span class="p">]</span>
-        <span class="n">mon</span> <span class="n">host</span> <span class="o">=</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">1.7</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">1.7</span><span class="p">:</span><span class="mi">6789</span><span class="p">],</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">1.8</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">1.8</span><span class="p">:</span><span class="mi">6789</span><span class="p">],</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">1.9</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">1.9</span><span class="p">:</span><span class="mi">6789</span><span class="p">]</span>
+<h2>初始化文件系统洗刷<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>To start a scrub operation for a directory tree use the following command</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">/</span> <span class="n">recursive</span>
+<span class="p">{</span>
+    <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;scrub_tag&quot;</span><span class="p">:</span> <span class="s2">&quot;6f0d204c-6cfd-4300-9e02-73f382fd23c1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;asynchronous&quot;</span>
+<span class="p">}</span>
 </pre></div>
 </div>
-</li>
-</ul>
-</div>
-</div>
-<div class="section" id="nfsv4">
-<h2>用 NFSv4 客户端挂载<a class="headerlink" href="#nfsv4" title="Permalink to this headline">¶</a></h2>
-<p>It is preferred to mount the NFS-Ganesha exports using NFSv4.1+ protocols
-to get the benefit of sessions.</p>
-<p>Conventions for mounting NFS resources are platform-specific. The
-following conventions work on Linux and some Unix platforms:</p>
-<p>From the command line:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">nfs</span> <span class="o">-</span><span class="n">o</span> <span class="n">nfsvers</span><span class="o">=</span><span class="mf">4.1</span><span class="p">,</span><span class="n">proto</span><span class="o">=</span><span class="n">tcp</span> <span class="o">&lt;</span><span class="n">ganesha</span><span class="o">-</span><span class="n">host</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">ganesha</span><span class="o">-</span><span class="n">pseudo</span><span class="o">-</span><span class="n">path</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">mount</span><span class="o">-</span><span class="n">point</span><span class="o">&gt;</span>
+<p>Recursive scrub is asynchronous (as hinted by <cite>mode</cite> in the output above). Scrub tag is
+a random string that can used to monitor the progress of the scrub operation (explained
+further in this document).</p>
+<p>Custom tag can also be specified when initiating the scrub operation. Custom tags get
+persisted in the metadata object for every inode in the file system tree that is being
+scrubbed.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">/</span><span class="n">a</span><span class="o">/</span><span class="n">b</span><span class="o">/</span><span class="n">c</span> <span class="n">recursive</span> <span class="n">tag0</span>
+<span class="p">{</span>
+    <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;scrub_tag&quot;</span><span class="p">:</span> <span class="s2">&quot;tag0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;asynchronous&quot;</span>
+<span class="p">}</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id2">
-<h2>当前限制<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="monitor-ongoing-file-system-scrubs">
+<h2>Monitor (ongoing) File System Scrubs<a class="headerlink" href="#monitor-ongoing-file-system-scrubs" title="Permalink to this headline">¶</a></h2>
+<p>Status of ongoing scrubs can be monitored using in <cite>scrub status</cite> command. This commands
+lists out ongoing scrubs (identified by the tag) along with the path and options used to
+initiate the scrub.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">status</span>
+<span class="p">{</span>
+    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;scrub active (85 inodes in the stack)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;scrubs&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;6f0d204c-6cfd-4300-9e02-73f382fd23c1&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;options&quot;</span><span class="p">:</span> <span class="s2">&quot;recursive&quot;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><cite>status</cite> shows the number of inodes that are scheduled to be scrubbed at any point in time,
+hence, can change on subsequent <cite>scrub status</cite> invocations. Also, a high level summary of
+scrub operation (which includes the operation state and paths on which scrub is triggered)
+gets displayed in <cite>ceph status</cite>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">status</span>
+<span class="p">[</span><span class="o">...</span><span class="p">]</span>
+
+<span class="n">task</span> <span class="n">status</span><span class="p">:</span>
+  <span class="n">scrub</span> <span class="n">status</span><span class="p">:</span>
+      <span class="n">mds</span><span class="o">.</span><span class="mi">0</span><span class="p">:</span> <span class="n">active</span> <span class="p">[</span><span class="n">paths</span><span class="p">:</span><span class="o">/</span><span class="p">]</span>
+
+<span class="p">[</span><span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="control-ongoing-file-system-scrubs">
+<h2>Control (ongoing) File System Scrubs<a class="headerlink" href="#control-ongoing-file-system-scrubs" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><p>Per running ganesha daemon, FSAL_CEPH can only export one Ceph file system
-although multiple directories in a Ceph file system may be exported.</p></li>
+<li><p>Pause: Pausing ongoing scrub operations results in no new or pending inodes being
+scrubbed after in-flight RADOS ops (for the inodes that are currently being scrubbed)
+finish.</p></li>
 </ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">pause</span>
+<span class="p">{</span>
+    <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><cite>scrub status</cite> after pausing reflects the paused state. At this point, initiating new scrub
+operations (via <cite>scrub start</cite>) would just queue the inode for scrub.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">status</span>
+<span class="p">{</span>
+    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;PAUSED (66 inodes in the stack)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;scrubs&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;6f0d204c-6cfd-4300-9e02-73f382fd23c1&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;options&quot;</span><span class="p">:</span> <span class="s2">&quot;recursive&quot;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Resume: Resuming kick starts a paused scrub operation.</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span><span class="o">.</span> <span class="n">scrub</span> <span class="n">resume</span>
+<span class="p">{</span>
+    <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Abort: Aborting ongoing scrub operations removes pending inodes from the scrub
+queue (thereby aborting the scrub) after in-flight RADOS ops (for the inodes that
+are currently being scrubbed) finish.</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span><span class="o">.</span> <span class="n">scrub</span> <span class="n">abort</span>
+<span class="p">{</span>
+    <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 </div>
 </div>
 
@@ -195,18 +239,13 @@ although multiple directories in a Ceph file system may be exported.</p></li>
 <li class="toctree-l3"><a class="reference internal" href="../upgrading/#firefly-jewel">升级比 Firefly 老的文件系统，需过 Jewel 这个槛</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../dirfrags/">目录分片的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../multimds/">多活 MDS 的配置</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">通过 NFS 导出</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id1">必要条件</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#nfs-ganesha-cephfs">配置 NFS-Ganesha 来导出 CephFS</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#nfs-ganesha">NFS-Ganesha 配置</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#libcephfs">给 libcephfs 客户端的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">洗刷</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">初始化文件系统洗刷</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#monitor-ongoing-file-system-scrubs">Monitor (ongoing) File System Scrubs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#control-ongoing-file-system-scrubs">Control (ongoing) File System Scrubs</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#nfsv4">用 NFSv4 客户端挂载</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id2">当前限制</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../scrub/">洗刷</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../#id1">元数据修复</a></li>
 </ul>
 </li>
@@ -253,10 +292,10 @@ although multiple directories in a Ceph file system may be exported.</p></li>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../scrub/" title="Ceph 文件系统洗刷"
+          <a href="../disaster-recovery-experts/" title="高级话题：元数据修复工具"
              >next</a> |</li>
         <li class="right" >
-          <a href="../multimds/" title="多活 MDS 守护进程的配置"
+          <a href="../nfs/" title="NFS"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 

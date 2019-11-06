@@ -188,6 +188,9 @@
     inline compression
         内联压缩、内联数据压缩；
 
+    inode
+        索引节点
+
     intent log
         意图日志
 
@@ -261,6 +264,11 @@
     objectstore
         对象存储器
         可用的有 filestore 、 bluestore
+
+    open file table
+        打开文件表。当前正被打开的文件列表。
+
+        此翻译不能准确表达原文的含义，但尚未想到更好的词。
 
     orphans search, find orphans
         捡漏
@@ -447,6 +455,9 @@
     standby-replay daemon
         灾备重放、灾备重放守护进程； => 热备？
 
+    stopped set
+        停止集。 MDS 术语。
+
     storage overhead
         存储开销
         假设数据存储了 3 个副本，其实我们只要保证一份完整即可，另外两份就是
@@ -469,6 +480,9 @@
 
     thin provisioning / thick provisioning
         简配、全配
+
+    tier type
+        <不翻译> RGW 术语。
 
     token
         (OpenStack) 令牌

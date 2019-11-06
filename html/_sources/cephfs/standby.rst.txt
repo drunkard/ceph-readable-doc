@@ -1,4 +1,4 @@
-.. _Terminology:
+.. _mds-standby:
 
 术语
 ----
@@ -29,7 +29,7 @@ rank ，只有在 ceph-mds 守护进程停止的时候才会释放 rank 。
    据，且动态分配，类似客服中心的座席。
 
 
-.. _Referring to MDS daemons:
+.. Referring to MDS daemons
 
 MDS 守护进程的引用
 ------------------
@@ -52,7 +52,7 @@ MDS 守护进程的引用
     ceph mds fail myfs:0   # Filesystem name and rank
 
 
-.. _Managing failover:
+.. Managing failover
 
 故障切换的管理
 --------------
@@ -72,7 +72,7 @@ MDS 守护进程的引用
 ``count`` 设置为 0 表示禁用健康检查。
 
 
-.. _Configuring standby daemons:
+.. Configuring standby daemons
 
 灾备守护进程的配置
 ------------------
@@ -151,7 +151,7 @@ mon_force_standby_active
 被分配其它 rank 。
 
 
-.. _Examples:
+.. Examples
 
 实例
 ----
@@ -160,7 +160,8 @@ mon_force_standby_active
 守护进程都使用相同的配置文件，也可以让各服务器上的配置文件各不\
 相同，其中只包含它的其守护进程相关的配置。
 
-.. _Simple pair:
+
+.. Simple pair
 
 简单的一对
 ~~~~~~~~~~
@@ -178,7 +179,8 @@ mon_force_standby_active
     mds standby replay = true
     mds standby for rank = 0
 
-.. _Floating standby:
+
+.. Floating standby
 
 浮动灾备
 ~~~~~~~~
@@ -189,7 +191,8 @@ mon_force_standby_active
     # 无须过多配置，没有分到 rank 的守护进程会成为灾备，它会顶
     # 替任何一个失效的守护进程。
 
-.. _Two MDS clusters:
+
+.. Two MDS clusters
 
 两个 MDS 集群
 ~~~~~~~~~~~~~

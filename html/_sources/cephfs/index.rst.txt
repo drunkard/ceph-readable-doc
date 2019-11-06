@@ -102,23 +102,48 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
     目录分片的配置 <dirfrags>
     多活 MDS 的配置 <multimds>
     通过 NFS 导出 <nfs>
+    应用最佳实践 <app-best-practices>
+    洗刷 <scrub>
+    LazyIO <lazyio>
+    分布式元数据缓存 <mdcache>
+    FS 卷和子卷 <fs-volumes>
+    CephFS 内的动态元数据管理 <dynamic-metadata-management>
+    CephFS IO 路径 <cephfs-io-path>
+
+.. raw:: html
+
+   <!---
+
+元数据修复
+^^^^^^^^^^
+
+.. raw:: html
+
+   --->
 
 .. toctree:: 
    :hidden:
 
     高级话题：元数据修复 <disaster-recovery-experts>
 
+
 .. raw:: html
 
-        </td></tr></tbody></table>
+   <!---
 
-.. _For developers:
+
+.. For developers
 
 开发者文档
 ==========
 
+.. raw:: html
+
+   --->
+
 .. toctree:: 
-    :maxdepth: 1
+   :maxdepth: 1
+   :hidden:
 
     客户端的能力 <capabilities>
     libcephfs <../../api/libcephfs-java/>

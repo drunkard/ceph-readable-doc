@@ -1,3 +1,5 @@
+.. OSD Config Reference
+
 ==============
  OSD 配置参考
 ==============
@@ -31,6 +33,7 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 
 
 .. index:: OSD; config settings
+.. General Settings
 
 常规配置
 ========
@@ -88,6 +91,7 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 
 
 .. index:: OSD; file system
+.. File System Settings
 
 文件系统选项
 ============
@@ -114,6 +118,7 @@ Ceph 可自动创建并挂载所需的文件系统。
 
 
 .. index:: OSD; journal settings
+.. Journal Settings
 
 日志选项
 ========
@@ -160,6 +165,8 @@ Ceph 可自动创建并挂载所需的文件系统。
 详情见\ `日志配置参考`_\ 。
 
 
+.. Monitor OSD Interaction
+
 监视器和 OSD 的交互
 ===================
 
@@ -167,6 +174,7 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 网络延时大，就得用较长间隔。关于心跳的讨论参见\ `监视器与 OSD 交互的配置`_\ 。
 
 
+.. Data Placement
 
 数据归置
 ========
@@ -174,8 +182,8 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 详情见\ `存储池和归置组配置参考`_\ 。
 
 
-
 .. index:: OSD; scrubbing
+.. Scrubbing
 
 洗刷
 ====
@@ -317,24 +325,10 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 
 
 .. index:: OSD; operations settings
+.. Operations
 
 操作数
 ======
-
-操作数选项允许你设置用于服务的线程数，如果把
-``osd op threads`` 设置为 ``0`` 就禁用了多线程。默认情况下，
-Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
-况。你可以调整客户端操作和恢复操作的优先程度来优化恢复期间\
-的性能。
-
-
-``osd op threads``
-
-:描述: OSD 操作线程数， ``0`` 为禁用。增大数量可以增加请求处\
-       理速度。
-
-:类型: 32-bit Integer
-:默认值: ``2``
 
 
 ``osd op queue``
@@ -404,6 +398,17 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 :有效范围: 1-63
 
 
+``osd requested scrub priority``
+
+:描述: The priority set for user requested scrub on the work queue.  If
+              this value were to be smaller than ``osd client op priority`` it
+              can be boosted to the value of ``osd client op priority`` when
+              scrub is blocking client operations.
+
+:类型: 32-bit Integer
+:默认值: ``120``
+
+
 ``osd snap trim priority``
 
 :描述: 设置快照修建操作的优先级。与 ``osd client op priority``
@@ -412,6 +417,43 @@ Ceph 用 30 秒超时和 30 秒抗议时间来把握 2 个线程的运行情\
 :类型: 32-bit Integer
 :默认值: ``5``
 :有效范围: 1-63
+
+
+``osd snap trim sleep``
+
+:描述: Time in seconds to sleep before next snap trim op.
+              Increasing this value will slow down snap trimming.
+              This option overrides backend specific variants.
+
+:类型: Float
+:默认值: ``0``
+
+
+``osd snap trim sleep hdd``
+
+:描述: Time in seconds to sleep before next snap trim op
+              for HDDs.
+
+:类型: Float
+:默认值: ``5``
+
+
+``osd snap trim sleep ssd``
+
+:描述: Time in seconds to sleep before next snap trim op
+              for SSDs.
+
+:类型: Float
+:默认值: ``0``
+
+
+``osd snap trim sleep hybrid``
+
+:描述: Time in seconds to sleep before next snap trim op
+              when osd data is on HDD and osd journal is on SSD.
+
+:类型: Float
+:默认值: ``2``
 
 
 ``osd op thread timeout``
@@ -794,6 +836,7 @@ backfilling 来执行此迁移，它可以使得 Ceph 的回填操作优先级�
 
 
 .. index:: OSD; osdmap
+.. OSD Map
 
 OSD 运行图
 ==========
@@ -839,6 +882,7 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。
 
 
 .. index:: OSD; recovery
+.. Recovery
 
 恢复
 ====

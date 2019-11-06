@@ -152,7 +152,7 @@ OSD 报告自己的状态
 过，监视器就认为它 ``down`` 了。在 OSD 守护进程会向监视器报告\
 某些事件，如某次操作失败、归置组状态变更、 ``up_thru`` 变更、\
 或它将在 5 秒内启动。你可以设置 ``[osd]`` 下的 \
-``osd mon report interval min`` 来更改最小报告间隔，或在运行时\
+``osd mon report interval`` 来更改最小报告间隔，或在运行时\
 更改。 OSD 守护进程每 120 秒会向监视器报告其状态，不论是否有值\
 得报告的事件。在 ``[osd]`` 段下设置 ``osd mon report interval max``
 可更改 OSD 报告间隔，或运行时更改。
@@ -325,6 +325,8 @@ OSD 报告自己的状态
 
 .. index:: OSD hearbeat
 
+.. OSD Settings
+
 OSD 选项
 --------
 
@@ -358,21 +360,20 @@ OSD 选项
 :默认值: ``30``
 
 
-``osd mon report interval max``
+``osd mon heartbeat stat stale``
 
-:描述: 监视器允许 OSD 报告的最大间隔，超时将认为 OSD 挂了（
-       ``down`` ）。
+:描述: 心跳状态这么长时间都没更新就停止有关它的报告。设置为 0
+       可以禁用此行为。
 :类型: 32-bit Integer
-:默认值: ``120``
+:默认值: ``3600``
 
 
-``osd mon report interval min``
+``osd mon report interval``
 
-:描述: 从一 OSD 启动或其它可报告事件发生以来，多长时间内必须向\
-       监视器报告一次。
+:描述: 从一个 Ceph OSD 守护进程启动或其它可报告事件发生以来，\
+       多长时间内必须向监视器报告一次。单位为秒。
 :类型: 32-bit Integer
 :默认值: ``5``
-:有效范围: 要小于 ``osd mon report interval max`` 。
 
 
 ``osd mon ack timeout``
