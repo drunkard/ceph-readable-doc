@@ -128,8 +128,10 @@ a device like ``/dev/sdd1`` it can look like::
 
 
 
-``json`` output
----------------
+.. ``json`` output
+
+``json`` 输出
+-------------
 All output using ``--format=json`` will show everything the system has stored
 as metadata for the devices, including tags.
 

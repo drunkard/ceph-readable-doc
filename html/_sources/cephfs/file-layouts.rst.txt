@@ -17,6 +17,8 @@
     软件包通常是 ``attr`` 。
 
 
+.. Layout fields
+
 布局字段
 --------
 
@@ -99,6 +101,8 @@ object_size
     ceph.dir.layout="stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data"
 
 
+.. Writing layouts with ``setfattr``
+
 用 ``setfattr`` 设置布局
 ------------------------
 
@@ -107,7 +111,9 @@ object_size
 .. code-block:: bash
 
     $ ceph osd lspools
-    0 rbd,1 cephfs_data,2 cephfs_metadata,
+    0 rbd
+    1 cephfs_data
+    2 cephfs_metadata
 
     $ setfattr -n ceph.file.layout.stripe_unit -v 1048576 file2
     $ setfattr -n ceph.file.layout.stripe_count -v 8 file2
@@ -132,7 +138,7 @@ object_size
     setfattr: file1: Directory not empty
 
 
-.. _Clearing layouts:
+.. Clearing layouts
 
 清除布局
 --------
@@ -160,7 +166,7 @@ object_size
     ceph.dir.layout="stripe_unit=4194304 stripe_count=1 object_size=4194304 pool=cephfs_data_a"
 
 
-.. _Inheritance of layouts:
+.. Inheritance of layouts
 
 布局的继承
 ----------

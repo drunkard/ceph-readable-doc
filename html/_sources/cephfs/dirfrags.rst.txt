@@ -1,4 +1,4 @@
-.. _Configuring Directory fragmentation:
+.. Configuring Directory fragmentation
 
 ================
  目录分片的配置
@@ -17,6 +17,8 @@ numbers of entries in a single directory, application programmers should
 remain conservative about creating very large directories, as they still
 have a resource cost in situations such as a CephFS client listing
 the directory, where all the fragments must be loaded at once.
+
+.. tip:: The root directory cannot be fragmented.
 
 All directories are initially created as a single fragment.  This fragment
 may be *split* to divide up the directory into more fragments, and these
@@ -44,7 +46,7 @@ The criteria for initiating a split or a merge are described in the
 following sections.
 
 
-.. _Size thresholds:
+.. Size thresholds
 
 尺寸阈值
 ========
@@ -72,7 +74,7 @@ creating oversized directory fragments, there is no equivalent issue
 to avoid when merging.  The default merge size is 50.
 
 
-.. _Activity thresholds:
+.. Activity thresholds
 
 活跃度阈值
 ==========

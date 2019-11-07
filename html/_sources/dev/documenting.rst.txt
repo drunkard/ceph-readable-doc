@@ -98,15 +98,16 @@ Ditaa
 Blockdiag
 ---------
 
-如果有必要，还可以用 Blockdiag_ ，它是个 Graphviz 风格的申诉式绘图语言，包括：
+如果有必要，还可以用 Blockdiag_ ，它是个 Graphviz 风格的申诉式\
+绘图语言，包括：
 
 - `框图`_\ ：方框和箭头（自动排版，相对于 Ditaa_ ）
 - `时序图`_\ ：带说明信息的时间线
 - `活动图`_\ ：子系统以及其内的活动
 - `网络图`_\ ：主机、局域网、 IP 地址等（可选用 `Cisco 图标`_\ ）
 
-.. _Blockdiag: http://blockdiag.com/
-.. _`Cisco 图标`: http://pypi.python.org/pypi/blockdiagcontrib-cisco/
+.. _Blockdiag: http://blockdiag.com/en/
+.. _`Cisco 图标`: https://pypi.python.org/pypi/blockdiagcontrib-cisco/
 .. _`框图`: http://blockdiag.com/en/blockdiag/
 .. _`时序图`: http://blockdiag.com/en/seqdiag/index.html
 .. _`活动图`: http://blockdiag.com/en/actdiag/index.html
@@ -116,8 +117,8 @@ Blockdiag
 Inkscape
 --------
 
-你可以用 Inkscape 生成可伸缩矢量图。 restructedText 文档位于 \
-http://inkscape.org 。
+你可以用 Inkscape 生成可伸缩矢量图。 restructedText 文档位于
+https://inkscape.org/en/ 。
 
 如果你是用 Inkscape 生成图表的，你应该同时提交可伸缩矢量图（ SVG ）和导出\
 的流式网络图（ PNG ）文件。应该引用 PNG 文件。

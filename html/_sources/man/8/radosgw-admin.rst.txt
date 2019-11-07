@@ -398,12 +398,6 @@
 :command:`opstate rm`
   删除条目（需指定 client_id 、 op_id 、对象）。
 
-:command:`replicalog get`
-  读取复制元数据日志条目。
-
-:command:`replicalog rm`
-  删除复制元数据日志条目。
-
 :command:`orphans find`
   初始化、并开始检索遗漏的 RADOS 对象。
 

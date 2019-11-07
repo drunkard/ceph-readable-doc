@@ -1,4 +1,4 @@
-.. _msgr2 protocol:
+.. _msgr2-protocol:
 
 msgr2 协议
 ==========

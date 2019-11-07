@@ -28,10 +28,21 @@ mgr 启动。
     模块编程 <modules>
     编写 orchestrator 插件 <orchestrator_modules>
     仪表盘模块 <dashboard>
+    Alerts 模块 <alerts>
+    DiskPrediction 模块 <diskprediction>
     localpool 模块 <localpool>
     REST 风格模块 <restful>
     Zabbix 模块 <zabbix>
     Prometheus 模块 <prometheus>
     Influx 模块 <influx>
+    Hello 模块 <hello>
+    Telegraf 模块 <telegraf>
+    Telemetry 模块 <telemetry>
     Iostat 模块 <iostat>
+    Crash 模块 <crash>
     Orchestrator CLI 模块 <orchestrator_cli>
+    Rook 模块 <rook>
+    DeepSea 模块 <deepsea>
+    Insights 模块 <insights>
+    Ansible 模块 <ansible>
+    SSH orchestrator <ssh>

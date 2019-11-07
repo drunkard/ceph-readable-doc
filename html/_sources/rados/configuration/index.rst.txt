@@ -31,6 +31,7 @@
 
    通用选项 <common>
    网络选项 <network-config-ref>
+   信使协议 v2 <msgr2>
    认证选项 <auth-config-ref>
    监视器选项 <mon-config-ref>
    mon-lookup-dns

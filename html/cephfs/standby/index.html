@@ -18,7 +18,7 @@
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
     <link rel="next" title="MDS 配置参考" href="../mds-config-ref/" />
-    <link rel="prev" title="Ceph 文件系统" href="../" />
+    <link rel="prev" title="部署元数据服务器" href="../add-remove-mds/" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head><body>
@@ -35,7 +35,7 @@
           <a href="../mds-config-ref/" title="MDS 配置参考"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../" title="Ceph 文件系统"
+          <a href="../add-remove-mds/" title="部署元数据服务器"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
@@ -96,101 +96,30 @@ rank ，只有在 ceph-mds 守护进程停止的时候才会释放 rank 。</p>
 <div class="section" id="id3">
 <h1>故障切换的管理<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h1>
 <p>如果一个 MDS 守护进程不再与监视器通讯，监视器把它标记为 <em>laggy</em>
-（滞后）状态前会等待 <code class="docutils literal notranslate"><span class="pre">mds_beacon_grace</span></code> 秒（默认是 15 秒）。</p>
-<p>为安全起见，每个文件系统都要指定一些灾备守护进程，灾备数量包括处于灾备重放状态、等着接替失效 rank 的（记着，灾备重放守护进程不会被重分配去接管另一个 rank 、或者另一个 CephFS 文件系统内的失效守护进程）。不在重放状态的灾备守护进程会被任意文件系统当作自己的灾备。每个文件系统都可以单独配置期望的灾备守护进程数量，用这个：</p>
+（滞后）状态前会等待 <code class="docutils literal notranslate"><span class="pre">mds_beacon_grace</span></code> 秒（默认是 15 秒）。如果有可用灾备，监视器会立即替换处于 laggy 状态的守护进程。</p>
+<p>为安全起见，每个文件系统都要指定一些灾备守护进程，灾备数量包括处于热备状态、等着接替失效 rank 的（记着，热备守护进程不会被重分配去接管另一个 rank 、或者另一个 CephFS 文件系统内的失效守护进程）。不在重放状态的灾备守护进程会被任意文件系统当作自己的灾备。每个文件系统都可以单独配置期望的灾备守护进程数量，用这个：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs</span> <span class="n">name</span><span class="o">&gt;</span> <span class="n">standby_count_wanted</span> <span class="o">&lt;</span><span class="n">count</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">count</span></code> 设置为 0 表示禁用健康检查。</p>
 </div>
-<div class="section" id="id4">
-<h1>灾备守护进程的配置<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h1>
-<p>共有四个选项，用于控制守护进程处于灾备状态时如何工作：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mds_standby_for_name</span>
-<span class="n">mds_standby_for_rank</span>
-<span class="n">mds_standby_for_fscid</span>
-<span class="n">mds_standby_replay</span>
-</pre></div>
-</div>
-<p>这些配置可写入 MDS 守护进程所在主机（而非监视器上）的 ceph.conf
-配置文件。守护进程会在启动时加载这些配置，并发送给监视器。</p>
-<p>默认情况下，如果这些选项一个也没配置，那么没领到 rank 的所有
-MDS 守护进程都会作为任意 rank 的灾备。</p>
-<p>这些配置虽说可以把灾备守护进程关联到特定的名字或 rank ，然而并不能保证这个守护进程只用于那个 rank 。也就是说，有好几个灾备可用时，会用关联的守护进程。假如一个 rank 失效了，而且有一个可用的灾备，那么即使此灾备已关联了另外的 rank 或守护进程名，它仍然会被用掉。</p>
 <div class="section" id="mds-standby-replay">
-<h2>mds_standby_replay<a class="headerlink" href="#mds-standby-replay" title="Permalink to this headline">¶</a></h2>
-<p>如果此选项设置为 true ，灾备守护进程就会持续读取某个处于 up 状态的 rank 的元数据日志。这样它就有元数据的热缓存，在负责这个
-rank 的守护进程失效时，可加速故障切换。</p>
-<p>一个正常运行的 rank 只能有一个灾备重放守护进程（ standby replay
-daemon ），如果两个守护进程都设置成了灾备重放状态，那么其中任意一个会取胜，另一个会变为普通的、非重放灾备状态。</p>
-<p>一旦某个守护进程进入灾备重放状态，它就只能为它那个 rank 提供灾备。如果有另外一个 rank 失效了，即使没有灾备可用，这个灾备重放守护进程也不会去顶替那个失效的。</p>
-<p><em>历史问题：</em>在 v10.2.1 版之前的 Ceph 中，只要设置了
-<code class="docutils literal notranslate"><span class="pre">mds_standby_for_*</span></code> ，这个选项（设置为 <code class="docutils literal notranslate"><span class="pre">false</span></code> 时）就始终为
-true 。</p>
-</div>
-<div class="section" id="mds-standby-for-name">
-<h2>mds_standby_for_name<a class="headerlink" href="#mds-standby-for-name" title="Permalink to this headline">¶</a></h2>
-<p>设置此选项可使灾备守护进程只接替与此名字相同的 rank 。</p>
-</div>
-<div class="section" id="mds-standby-for-rank">
-<h2>mds_standby_for_rank<a class="headerlink" href="#mds-standby-for-rank" title="Permalink to this headline">¶</a></h2>
-<p>设置此选项可使灾备守护进程只接替指定的 rank ，如果有其它 rank
-失效了，此守护进程不会去顶替它。</p>
-<p>你有多个文件系统时，可联合使用 <code class="docutils literal notranslate"><span class="pre">mds_standby_for_fscid</span></code> 选项来指定想为哪个文件系统的 rank 提供灾备。</p>
-</div>
-<div class="section" id="mds-standby-for-fscid">
-<h2>mds_standby_for_fscid<a class="headerlink" href="#mds-standby-for-fscid" title="Permalink to this headline">¶</a></h2>
-<p>如果设置了 <code class="docutils literal notranslate"><span class="pre">mds_standby_for_rank</span></code> ，那么这里可把它限定为是哪个文件系统的 rank 。</p>
-<p>如果没设置 <code class="docutils literal notranslate"><span class="pre">mds_standby_for_rank</span></code> ，那么设置 FSCID 后，这个守护进程可用于此 FSCID 所相关的任意 rank 。当你想让某一守护进程可作任意 rank 的灾备、但仅限于某个特定文件系统时，可用此选项实现。</p>
-</div>
-<div class="section" id="mon-force-standby-active">
-<h2>mon_force_standby_active<a class="headerlink" href="#mon-force-standby-active" title="Permalink to this headline">¶</a></h2>
-<p>这些选项用于监视器主机，默认值为 true 。</p>
-<p>如果设置为 false ，那么配置为 standby_replay=true 的灾备守护进程<em>只会</em>顶替它们负责的 rank 或指定名字。反之，如果这里设置为 true ，那么配置为 standby_replay=true 的灾备守护进程有可能被分配其它 rank 。</p>
-</div>
-</div>
-<div class="section" id="id5">
-<h1>实例<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h1>
-<p>这些是 ceph.conf 配置实例。实践中，你可以让所有服务器上的所有守护进程都使用相同的配置文件，也可以让各服务器上的配置文件各不相同，其中只包含它的其守护进程相关的配置。</p>
-<div class="section" id="id6">
-<h2>简单的一对<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
-<p>两个 MDS 守护进程 a 和 b 作为一对，其中任意一个没分到 rank 的将作为另一个的灾备重放追随者。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">mds</span><span class="o">.</span><span class="n">a</span><span class="p">]</span>
-<span class="n">mds</span> <span class="n">standby</span> <span class="n">replay</span> <span class="o">=</span> <span class="n">true</span>
-<span class="n">mds</span> <span class="n">standby</span> <span class="k">for</span> <span class="n">rank</span> <span class="o">=</span> <span class="mi">0</span>
-
-<span class="p">[</span><span class="n">mds</span><span class="o">.</span><span class="n">b</span><span class="p">]</span>
-<span class="n">mds</span> <span class="n">standby</span> <span class="n">replay</span> <span class="o">=</span> <span class="n">true</span>
-<span class="n">mds</span> <span class="n">standby</span> <span class="k">for</span> <span class="n">rank</span> <span class="o">=</span> <span class="mi">0</span>
+<span id="id4"></span><h1>热备的配置<a class="headerlink" href="#mds-standby-replay" title="Permalink to this headline">¶</a></h1>
+<p>Each CephFS file system may be configured to add standby-replay daemons.  These
+standby daemons follow the active MDS’s metadata journal to reduce failover
+time in the event the active MDS becomes unavailable. Each active MDS may have
+only one standby-replay daemon following it.</p>
+<p>Configuring standby-replay on a file system is done using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs</span> <span class="n">name</span><span class="o">&gt;</span> <span class="n">allow_standby_replay</span> <span class="o">&lt;</span><span class="nb">bool</span><span class="o">&gt;</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="id7">
-<h2>浮动灾备<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
-<p>某一文件系统有三个 MDS 守护进程： a 、 b 、 c ，其 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code>
-为 2 。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># 无须过多配置，没有分到 rank 的守护进程会成为灾备，它会顶</span>
-<span class="c1"># 替任何一个失效的守护进程。</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="id8">
-<h2>两个 MDS 集群<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
-<p>有两个文件系统、四个 MDS 守护进程，我想让其中两个作为一对服务于一个文件系统，另外两个作为一对服务于另一个文件系统。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">mds</span><span class="o">.</span><span class="n">a</span><span class="p">]</span>
-<span class="n">mds</span> <span class="n">standby</span> <span class="k">for</span> <span class="n">fscid</span> <span class="o">=</span> <span class="mi">1</span>
-
-<span class="p">[</span><span class="n">mds</span><span class="o">.</span><span class="n">b</span><span class="p">]</span>
-<span class="n">mds</span> <span class="n">standby</span> <span class="k">for</span> <span class="n">fscid</span> <span class="o">=</span> <span class="mi">1</span>
-
-<span class="p">[</span><span class="n">mds</span><span class="o">.</span><span class="n">c</span><span class="p">]</span>
-<span class="n">mds</span> <span class="n">standby</span> <span class="k">for</span> <span class="n">fscid</span> <span class="o">=</span> <span class="mi">2</span>
-
-<span class="p">[</span><span class="n">mds</span><span class="o">.</span><span class="n">d</span><span class="p">]</span>
-<span class="n">mds</span> <span class="n">standby</span> <span class="k">for</span> <span class="n">fscid</span> <span class="o">=</span> <span class="mi">2</span>
-</pre></div>
-</div>
-</div>
+<p>Once set, the monitors will assign available standby daemons to follow the
+active MDSs in that file system.</p>
+<p>Once an MDS has entered the standby-replay state, it will only be used as a
+standby for the rank that it is following. If another rank fails, this
+standby-replay daemon will not be used as a replacement, even if no other
+standbys are available. For this reason, it is advised that if standby-replay
+is used then every active MDS should have a standby-replay daemon.</p>
 </div>
 
 
@@ -212,24 +141,11 @@ true 。</p>
 <li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="../#cephfs">CephFS 使用文档</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="../../rados/deployment/ceph-deploy-mds/">增加/删除 MDS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-remove-mds/">配备、增加、删除 MDS</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">术语</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#mds">MDS 守护进程的引用</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id3">故障切换的管理</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id4">灾备守护进程的配置</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#mds-standby-replay">mds_standby_replay</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mds-standby-for-name">mds_standby_for_name</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mds-standby-for-rank">mds_standby_for_rank</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mds-standby-for-fscid">mds_standby_for_fscid</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mon-force-standby-active">mon_force_standby_active</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="#id5">实例</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id6">简单的一对</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">浮动灾备</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id8">两个 MDS 集群</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="#mds-standby-replay">热备的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS 配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
@@ -312,7 +228,7 @@ true 。</p>
           <a href="../mds-config-ref/" title="MDS 配置参考"
              >next</a> |</li>
         <li class="right" >
-          <a href="../" title="Ceph 文件系统"
+          <a href="../add-remove-mds/" title="部署元数据服务器"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 

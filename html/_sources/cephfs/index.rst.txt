@@ -48,7 +48,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 .. toctree::
         :maxdepth: 1
 
-        增加/删除 MDS <../../rados/deployment/ceph-deploy-mds>
+	配备、增加、删除 MDS <add-remove-mds>
         MDS 故障切换和灾备配置 <standby>
         MDS 配置选项 <mds-config-ref>
 	客户端配置选项 <client-config-ref>

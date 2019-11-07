@@ -1,14 +1,15 @@
-.. _CephFS Snapshots:
+.. CephFS Snapshots
 
 CephFS 快照
 ===========
+CephFS 支持快照，通常是在 .snap 目录下调用 mkdir 。注意，这是\
+个隐藏的、特殊目录，罗列目录时不可见。
 
-CephFS 支持快照，通常是在（隐藏的、特殊目录） .snap 目录下调用 mkdir 。
 
+.. Overview
 
 概览
 ----
-
 Generally, snapshots do what they sound like: they create an immutable view
 of the filesystem at the point in time they're taken. There are some headline
 features that make CephFS snapshots different from what you might expect:
@@ -24,29 +25,29 @@ features that make CephFS snapshots different from what you might expect:
 
 重要的数据结构
 --------------
-
 * SnapRealm: A `SnapRealm` is created whenever you create a snapshot at a new
-  point in the hierarchy (or, when a snapshotted inode is moved outside of its
-  parent snapshot). SnapRealms contain an `sr_t srnode`, links to `past_parents`
-  and `past_children`, and all `inodes_with_caps` that are part of the snapshot.
-  Clients also have a SnapRealm concept that maintains less data but is used to
-  associate a `SnapContext` with each open file for writing.
+  point in the hierarchy (or, when a snapshotted inode is move outside of its
+  parent snapshot). SnapRealms contain an `sr_t srnode`, and `inodes_with_caps`
+  that are part of the snapshot. Clients also have a SnapRealm concept that
+  maintains less data but is used to associate a `SnapContext` with each open
+  file for writing.
 * sr_t: An `sr_t` is the on-disk snapshot metadata. It is part of the containing
   directory and contains sequence counters, timestamps, the list of associated
-  snapshot IDs, and `past_parents`.
-* snaplink_t: `past_parents` et al are stored on-disk as a `snaplink_t`, holding
-  the inode number and first `snapid` of the inode/snapshot referenced.
+  snapshot IDs, and `past_parent_snaps`.
+* SnapServer: SnapServer manages snapshot ID allocation, snapshot deletion and
+  tracks list of effective snapshots in the file system. A file system only has
+  one instance of snapserver.
+* SnapClient: SnapClient is used to communicate with snapserver, each MDS rank
+  has its own snapclient instance. SnapClient also caches effective snapshots
+  locally.
 
 
 .. Creating a snapshot
 
 创建快照
 --------
-
 CephFS 的快照功能在新文件系统上是默认启用的，要在现有文件系统\
-上启用，用以下命令。
-
-.. code::
+上启用，用以下命令。 ::
 
        $ ceph fs set <fs_name> allow_new_snaps true
 
@@ -71,32 +72,34 @@ new SnapRealm.
 
 Note that this *is not* a synchronous part of the snapshot creation!
 
-
-.. _Updating a snapshot:
+.. Updating a snapshot
 
 更新快照
 --------
-If you delete a snapshot, or move data out of the parent snapshot's hierarchy,
-a similar process is followed. Extra code paths check to see if we can break
-the `past_parent` links between SnapRealms, or eliminate them entirely.
+If you delete a snapshot, a similar process is followed. If you remove an inode
+out of its parent SnapRealm, the rename code creates a new SnapRealm for the
+renamed inode (if SnapRealm does not already exist), saves IDs of snapshots that
+are effective on the original parent SnapRealm into `past_parent_snaps` of the
+new SnapRealm, then follows a process similar to creating snapshot.
 
-.. _Generating a SnapContext:
+.. Generating a SnapContext
 
 生成 SnapContext
 ----------------
 A RADOS `SnapContext` consists of a snapshot sequence ID (`snapid`) and all
 the snapshot IDs that an object is already part of. To generate that list, we
-generate a list of all `snapids` associated with the SnapRealm and all its
-`past_parents`.
+combine `snapids` associated with the SnapRealm and all valid `snapids` in
+`past_parent_snaps`. Stale `snapids` are filtered out by SnapClient's cached
+effective snapshots.
 
-.. _Storing snapshot data:
+.. Storing snapshot data
 
 存入快照数据
 ------------
 File data is stored in RADOS "self-managed" snapshots. Clients are careful to
 use the correct `SnapContext` when writing file data to the OSDs.
 
-.. _Storing snapshot metadata:
+.. Storing snapshot metadata
 
 存入快照元数据
 --------------
@@ -105,7 +108,7 @@ directory they were in at the time of the snapshot. *All dentries* include a
 `first` and `last` snapid for which they are valid. (Non-snapshotted dentries
 will have their `last` set to CEPH_NOSNAP).
 
-.. _Snapshot writeback:
+.. Snapshot writeback
 
 快照回写
 --------
@@ -120,7 +123,7 @@ In the MDS, we generate snapshot-representing dentries as part of the regular
 process for flushing them. Dentries with outstanding `CapSnap` data is kept
 pinned and in the journal.
 
-.. _Deleting snapshots:
+.. Deleting snapshots
 
 删除快照
 --------
@@ -131,13 +134,16 @@ you must delete the snapshots first.) Once deleted, they are entered into the
 Metadata is cleaned up as the directory objects are read in and written back
 out again.
 
+.. Hard links
+
 硬链接
 ------
-Hard links do not interact well with snapshots. A file is snapshotted when its
-primary link is part of a SnapRealm; other links *will not* preserve data.
-Generally the location where a file was first created will be its primary link,
-but if the original link has been deleted it is not easy (nor always
-determnistic) to find which link is now the primary.
+Inode with multiple hard links is moved to a dummy global SnapRealm. The
+dummy SnapRealm covers all snapshots in the file system. The inode's data
+will be preserved for any new snapshot. These preserved data will cover
+snapshots on any linkage of the inode.
+
+.. Multi-FS
 
 多文件系统情况
 --------------

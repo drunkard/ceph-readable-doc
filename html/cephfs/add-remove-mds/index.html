@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Add/Remove Metadata Server &#8212; Ceph Documentation</title>
+    <meta charset="utf-8" />
+    <title>部署元数据服务器 &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -19,8 +17,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
-    <link rel="next" title="MDS States" href="../mds-states/" />
-    <link rel="prev" title="Ceph Filesystem" href="../" />
+    <link rel="next" title="术语" href="../standby/" />
+    <link rel="prev" title="Ceph 文件系统" href="../" />
     <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
 
   </head><body>
@@ -34,13 +32,13 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../mds-states/" title="MDS States"
+          <a href="../standby/" title="术语"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../" title="Ceph Filesystem"
+          <a href="../" title="Ceph 文件系统"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph Filesystem</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -64,58 +62,101 @@
   </div>
 
   
-  <div class="section" id="add-remove-metadata-server">
-<h1>Add/Remove Metadata Server<a class="headerlink" href="#add-remove-metadata-server" title="Permalink to this headline">¶</a></h1>
-<p>You must deploy at least one metadata server daemon to use CephFS.  Instructions are given here for setting up an MDS manually, but you might prefer to use another tool such as ceph-deploy or ceph-ansible.</p>
-<p>See <a class="reference external" href="../mds-config-ref">MDS Config Reference</a> for details on configuring metadata servers.</p>
-<div class="section" id="add-a-metadata-server">
-<h2>Add a Metadata Server<a class="headerlink" href="#add-a-metadata-server" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="id1">
+<h1>部署元数据服务器<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>Each CephFS file system requires at least one MDS. The cluster operator will
+generally use their automated deployment tool to launch required MDS servers as
+needed.  Rook and ansible (via the ceph-ansible playbooks) are recommended
+tools for doing this. For clarity, we also show the systemd commands here which
+may be run by the deployment technology if executed on bare-metal.</p>
+<p>关于元数据服务器的配置，见 <a class="reference external" href="../mds-config-ref">MDS 配置参考</a>。</p>
+<div class="section" id="mds">
+<h2>为 MDS 准备硬件<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h2>
+<p>The present version of the MDS is single-threaded and CPU-bound for most
+activities, including responding to client requests. Even so, an MDS under the
+most aggressive client loads still uses about 2 to 3 CPU cores. This is due to
+the other miscellaneous upkeep threads working in tandem.</p>
+<p>Even so, it is recommended that an MDS server be well provisioned with an
+advanced CPU with sufficient cores. Development is on-going to make better use
+of available CPU cores in the MDS; it is expected in future versions of Ceph
+that the MDS server will improve performance by taking advantage of more cores.</p>
+<p>The other dimension to MDS performance is the available RAM for caching. The
+MDS necessarily manages a distributed and cooperative metadata cache among all
+clients and other active MDSs. Therefore it is essential to provide the MDS
+with sufficient RAM to enable faster metadata access and mutation.</p>
+<p>Generally, an MDS serving a large cluster of clients (1000 or more) will use at
+least 64GB of cache (see also <a class="reference internal" href="../cache-size-limits/"><span class="doc">深入理解 MDS 的缓存尺寸限制</span></a>). An MDS with a larger
+cache is not well explored in the largest known community clusters; there may
+be diminishing returns where management of such a large cache negatively
+impacts performance in surprising ways. It would be best to do analysis with
+expected workloads to determine if provisioning more RAM is worthwhile.</p>
+<p>In a bare-metal cluster, the best practice is to over-provision hardware for
+the MDS server. Even if a single MDS daemon is unable to fully utilize the
+hardware, it may be desirable later on to start more active MDS daemons on the
+same node to fully utilize the available cores and memory. Additionally, it may
+become clear with workloads on the cluster that performance improves with
+multiple active MDS on the same node rather than over-provisioning a single
+MDS.</p>
+<p>Finally, be aware that CephFS is a highly-available file system by supporting
+standby MDS (see also <a class="reference internal" href="../standby/#mds-standby"><span class="std std-ref">术语</span></a>) for rapid failover. To get a real
+benefit from deploying standbys, it is usually necessary to distribute MDS
+daemons across at least two nodes in the cluster. Otherwise, a hardware failure
+on a single node may result in the file system becoming unavailable.</p>
+<p>Co-locating the MDS with other Ceph daemons (hyperconverged) is an effective
+and recommended way to accomplish this so long as all daemons are configured to
+use available hardware within certain limits.  For the MDS, this generally
+means limiting its cache size.</p>
+</div>
+<div class="section" id="id2">
+<h2>增加一个 MDS<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
-<li><p class="first">Create an mds data point <code class="docutils literal notranslate"><span class="pre">/var/lib/ceph/mds/ceph-{$id}</span></code>.</p>
-</li>
-<li><p class="first">Edit <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> and add MDS section.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[mds.{$id}]
+<li><p>Create an mds data point <code class="docutils literal notranslate"><span class="pre">/var/lib/ceph/mds/ceph-${id}</span></code>. The daemon only uses this directory to store its keyring.</p></li>
+<li><p>Edit <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> and add MDS section.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[mds.${id}]
 host = {hostname}
 </pre></div>
 </div>
 </li>
-<li><p class="first">Create the authentication key, if you use CephX.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo ceph auth get-or-create mds.{$id} mon &#39;profile mds&#39; mgr &#39;profile mds&#39; mds &#39;allow *&#39; osd &#39;allow *&#39; &gt; /var/lib/ceph/mds/ceph-{$id}/keyring
+<li><p>Create the authentication key, if you use CephX.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo ceph auth get-or-create mds.${id} mon &#39;profile mds&#39; mgr &#39;profile mds&#39; mds &#39;allow *&#39; osd &#39;allow *&#39; &gt; /var/lib/ceph/mds/ceph-${id}/keyring
 </pre></div>
 </div>
 </li>
-<li><p class="first">Start the service.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo service ceph start mds.{$id}
+<li><p>Start the service.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo systemctl start mds.${id}
 </pre></div>
 </div>
 </li>
-<li><p class="first">The status of the cluster shows:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mds</span><span class="p">:</span> <span class="n">cephfs_a</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="mi">1</span><span class="o">/</span><span class="mi">1</span> <span class="n">up</span>  <span class="p">{</span><span class="mi">0</span><span class="o">=</span><span class="n">c</span><span class="o">=</span><span class="n">up</span><span class="p">:</span><span class="n">active</span><span class="p">},</span> <span class="mi">3</span> <span class="n">up</span><span class="p">:</span><span class="n">standby</span>
+<li><p>The status of the cluster should show:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mds: ${id}:1 {0=${id}=up:active} 2 up:standby
 </pre></div>
 </div>
 </li>
 </ol>
 </div>
-<div class="section" id="remove-a-metadata-server">
-<h2>Remove a Metadata Server<a class="headerlink" href="#remove-a-metadata-server" title="Permalink to this headline">¶</a></h2>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Ensure that if you remove a metadata server, the remaining metadata
-servers will be able to service requests from CephFS clients. If that is not
-possible, consider adding a metadata server before destroying the metadata
-server you would like to take offline.</p>
-</div>
+<div class="section" id="id3">
+<h2>删除一个 MDS<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
 <p>If you have a metadata server in your cluster that you’d like to remove, you may use
 the following method.</p>
 <ol class="arabic">
-<li><p class="first">Create a new Metadata Server as shown in the above section.</p>
-</li>
-<li><p class="first">Stop the old Metadata Server and start using the new one.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph mds fail &lt;mds name&gt;
+<li><p>(Optionally:) Create a new replacement Metadata Server. If there are no
+replacement MDS to take over once the MDS is removed, the file system will
+become unavailable to clients.  If that is not desirable, consider adding a
+metadata server before tearing down the metadata server you would like to
+take offline.</p></li>
+<li><p>Stop the MDS to be removed.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo systemctl stop mds.${id}
 </pre></div>
 </div>
+<p>The MDS will automatically notify the Ceph monitors that it is going down.
+This enables the monitors to perform instantaneous failover to an available
+standby, if one exists. It is unnecessary to use administrative commands to
+effect this failover, e.g. through the use of <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">mds</span> <span class="pre">fail</span> <span class="pre">mds.${id}</span></code>.</p>
 </li>
-<li><p class="first">Remove the <code class="docutils literal notranslate"><span class="pre">/var/lib/ceph/mds/ceph-{$id}</span></code> directory on the old Metadata server.</p>
+<li><p>Remove the <code class="docutils literal notranslate"><span class="pre">/var/lib/ceph/mds/ceph-${id}</span></code> directory on the MDS.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo rm -rf /var/lib/ceph/mds/ceph-${id}
+</pre></div>
+</div>
 </li>
 </ol>
 </div>
@@ -133,90 +174,84 @@ the following method.</p>
             </a></p>
 <h3><a href="../../">Table Of Contents</a></h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Intro to Ceph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../start/">Installation (ceph-deploy)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../install/">Installation (Manual)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">Installation (Kubernetes + Helm)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph Storage Cluster</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph Filesystem</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="../#using-cephfs">Using CephFS</a><ul class="current">
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Add/Remove MDS(s)</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#add-a-metadata-server">Add a Metadata Server</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#remove-a-metadata-server">Remove a Metadata Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（ ceph-deploy ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">安装（ Kubernetes + Helm ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../#cephfs">CephFS 使用文档</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">配备、增加、删除 MDS</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mds">为 MDS 准备硬件</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">增加一个 MDS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">删除一个 MDS</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS states</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/">Terminology</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#referring-to-mds-daemons">Referring to MDS daemons</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#managing-failover">Managing failover</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#configuring-standby-daemons">Configuring standby daemons</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../standby/#examples">Examples</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS Configuration Settings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">Client Configuration Settings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler Configuration</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">Manpage ceph-mds</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../createfs/">Create CephFS</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../kernel/">Mount CephFS</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../fuse/">Mount CephFS as FUSE</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../fstab/">Mount CephFS in fstab</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cephfs-shell/">Use the CephFS Shell</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../kernel-features/">Supported Features of Kernel Driver</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/">Manpage ceph-fuse</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/">Manpage mount.ceph</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.fuse.ceph/">Manpage mount.fuse.ceph</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../best-practices/">Deployment best practices</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS States</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../administration/">Administrative commands</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/">Understanding MDS Cache Size Limits</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX compatibility</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../experimental-features/">Experimental Features</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../experimental-features/#previously-experimental-features">Previously experimental features</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS Quotas</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../hadoop/">Using Ceph with Hadoop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/">术语</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#mds">MDS 守护进程的引用</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#id3">故障切换的管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#mds-standby-replay">热备的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS 配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.fuse.ceph/">mount.fuse.ceph 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../best-practices/">最佳部署实践</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/">深入理解 MDS 的缓存尺寸限制</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/">实验性功能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/#id4">曾经是实验性的功能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../file-layouts/">File layouts</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../eviction/">Client eviction</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../full/">Handling full filesystems</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../health-messages/">Health messages</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">Disaster recovery</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../client-auth/">Client authentication</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../upgrading/">Upgrading the MDS Cluster</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../upgrading/#upgrading-pre-firefly-filesystems-past-jewel">Upgrading pre-Firefly filesystems past Jewel</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../dirfrags/">Configuring directory fragmentation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../multimds/">Configuring multiple active MDS daemons</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../nfs/">Export over NFS</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../app-best-practices/">Application best practices</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery-experts/"> Advanced: Metadata repair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../health-messages/">健康消息</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/">升级 MDS 集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/#firefly-jewel">升级比 Firefly 老的文件系统，需过 Jewel 这个槛</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../dirfrags/">目录分片的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multimds/">多活 MDS 的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../scrub/">洗刷</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../#id1">元数据修复</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../#for-developers">For developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#id2">开发者文档</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph Block Device</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph Object Gateway</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph Manager Daemon</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/">API Documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../architecture/">Architecture</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../dev/">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph Internals</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../governance/">Governance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph Releases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
 </ul>
 
 
 <!-- ugly kludge to make genindex look like it's part of the toc -->
 <ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search/" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -235,13 +270,13 @@ the following method.</p>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../mds-states/" title="MDS States"
+          <a href="../standby/" title="术语"
              >next</a> |</li>
         <li class="right" >
-          <a href="../" title="Ceph Filesystem"
+          <a href="../" title="Ceph 文件系统"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../" >Ceph Filesystem</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

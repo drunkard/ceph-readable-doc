@@ -453,7 +453,7 @@
 
     standby-replay
     standby-replay daemon
-        灾备重放、灾备重放守护进程； => 热备？
+        灾备重放、灾备重放守护进程； => 热备
 
     stopped set
         停止集。 MDS 术语。

@@ -284,24 +284,29 @@ you do not have to repeat the bootstrapping procedures.
 
 
 .. index:: signatures
+.. Signatures
 
 签名
 ----
 
-在 Bobtail 及后续版本中， Ceph 会用开始认证时生成的会话密钥认证所有在线实体。然而 \
-Argonaut 及之前版本不知道如何认证在线消息，为保持向后兼容性（如在同一个集群里运行 \
-Bobtail 和 Argonaut ），消息签名默认是\ **关闭**\ 的。如果你只运行 Bobtail 和后续\
-版本，可以让 Ceph 要求签名。
+Ceph 施行的签名检查可以为消息提供一些有限的保护，以防消息被\
+在线篡改（比如被“中间人”攻击篡改）。
 
-像 Ceph 认证的其他部分一样，客户端和集群间的消息签名也能做到细粒度控制；而且能启用\
-或禁用 Ceph 守护进程间的签名。
+像 Ceph 认证的其他部分一样，客户端和集群间的消息签名也能做到\
+细粒度控制；而且能启用或禁用 Ceph 守护进程间的签名。
+
+注意，即便启用了签名，数据也没在线加密。
 
 
 ``cephx require signatures``
 
-:描述: 若设置为 ``true`` ， Ceph 集群会要求客户端签名所有消息，包括集群内\
-       其他守护进程间的。
+:描述: 若设置为 ``true`` ， Ceph 会要求对所有消息流量签名，\
+       包括 Ceph 客户端与 Ceph 存储集群间的、和构成 Ceph
+       存储集群的各守护进程之间。
 
+       Ceph Argonaut 和版本号小于 3.19 的 Linux 内核不支持\
+       签名，如果在用这样的客户端，可以关闭此选项，以允许它们\
+       连接。
 :类型: Boolean
 :是否必需: No
 :默认值: ``false``
@@ -309,7 +314,8 @@ Bobtail 和 Argonaut ），消息签名默认是\ **关闭**\ 的。如果你只
 
 ``cephx cluster require signatures``
 
-:描述: 若设置为 ``true`` ， Ceph 要求集群内所有守护进程签名相互之间的消息。
+:描述: 若设置为 ``true`` ， Ceph 要求集群内所有守护进程签名\
+       相互之间的消息。
 :类型: Boolean
 :是否必需: No
 :默认值: ``false``
@@ -325,10 +331,13 @@ Bobtail 和 Argonaut ），消息签名默认是\ **关闭**\ 的。如果你只
 
 ``cephx sign messages``
 
-:描述: 如果 Ceph 版本支持消息签名， Ceph 会签名所有消息以防欺骗。
+:描述: 如果 Ceph 版本支持对消息签名， Ceph 会签名所有消息以使\
+       欺骗更困难。
 :类型: Boolean
 :默认值: ``true``
 
+
+.. Time to Live
 
 生存期
 ------

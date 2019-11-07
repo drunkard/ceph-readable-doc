@@ -1,0 +1,399 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Messenger v2 &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="Cephx 配置参考" href="../auth-config-ref/" />
+    <link rel="prev" title="网络配置参考" href="../network-config-ref/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../auth-config-ref/" title="Cephx 配置参考"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../network-config-ref/" title="网络配置参考"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../" >Ceph 存储集群</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" accesskey="U">配置</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/rados/configuration/msgr2.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://github.com/ceph/ceph/projects/4">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="messenger-v2">
+<span id="msgr2"></span><h1>Messenger v2<a class="headerlink" href="#messenger-v2" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id1">
+<h2>这是什么<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>The messenger v2 protocol, or msgr2, is the second major revision on
+Ceph’s on-wire protocol.  It brings with it several key features:</p>
+<ul class="simple">
+<li><p>A <em>secure</em> mode that encrypts all data passing over the network</p></li>
+<li><p>Improved encapsulation of authentication payloads, enabling future
+integration of new authentication modes like Kerberos</p></li>
+<li><p>Improved earlier feature advertisement and negotiation, enabling
+future protocol revisions</p></li>
+</ul>
+<p>Ceph daemons can now bind to multiple ports, allowing both legacy Ceph
+clients and new v2-capable clients to connect to the same cluster.</p>
+<p>By default, monitors now bind to the new IANA-assigned port <code class="docutils literal notranslate"><span class="pre">3300</span></code>
+(ce4h or 0xce4) for the new v2 protocol, while also binding to the
+old default port <code class="docutils literal notranslate"><span class="pre">6789</span></code> for the legacy v1 protocol.</p>
+</div>
+<div class="section" id="id2">
+<h2>地址格式<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>Prior to nautilus, all network addresses were rendered like
+<code class="docutils literal notranslate"><span class="pre">1.2.3.4:567/89012</span></code> where there was an IP address, a port, and a
+nonce to uniquely identify a client or daemon on the network.
+Starting with nautilus, we now have three different address types:</p>
+<ul class="simple">
+<li><p><strong>v2</strong>: <code class="docutils literal notranslate"><span class="pre">v2:1.2.3.4:578/89012</span></code> identifies a daemon binding to a
+port speaking the new v2 protocol</p></li>
+<li><p><strong>v1</strong>: <code class="docutils literal notranslate"><span class="pre">v1:1.2.3.4:578/89012</span></code> identifies a daemon binding to a
+port speaking the legacy v1 protocol.  Any address that was
+previously shown with any prefix is now shown as a <code class="docutils literal notranslate"><span class="pre">v1:</span></code> address.</p></li>
+<li><p><strong>TYPE_ANY</strong> addresses identify a client that can speak either
+version of the protocol.  Prior to nautilus, clients would appear as
+<code class="docutils literal notranslate"><span class="pre">1.2.3.4:0/123456</span></code>, where the port of 0 indicates they are clients
+and do not accept incoming connections.  Starting with Nautilus,
+these clients are now internally represented by a <strong>TYPE_ANY</strong>
+address, and still shown with no prefix, because they may
+connect to daemons using the v2 or v1 protocol, depending on what
+protocol(s) the daemons are using.</p></li>
+</ul>
+<p>Because daemons now bind to multiple ports, they are now described by
+a vector of addresses instead of a single address.  For example,
+dumping the monitor map on a Nautilus cluster now includes lines
+like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epoch</span> <span class="mi">1</span>
+<span class="n">fsid</span> <span class="mi">50</span><span class="n">fcf227</span><span class="o">-</span><span class="n">be32</span><span class="o">-</span><span class="mi">4</span><span class="n">bcb</span><span class="o">-</span><span class="mi">8</span><span class="n">b41</span><span class="o">-</span><span class="mi">34</span><span class="n">ca8370bd16</span>
+<span class="n">last_changed</span> <span class="mi">2019</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">25</span> <span class="mi">11</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mf">46.700821</span>
+<span class="n">created</span> <span class="mi">2019</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">25</span> <span class="mi">11</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mf">46.700821</span>
+<span class="n">min_mon_release</span> <span class="mi">14</span> <span class="p">(</span><span class="n">nautilus</span><span class="p">)</span>
+<span class="mi">0</span><span class="p">:</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.10</span><span class="p">:</span><span class="mi">3300</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.10</span><span class="p">:</span><span class="mi">6789</span><span class="o">/</span><span class="mi">0</span><span class="p">]</span> <span class="n">mon</span><span class="o">.</span><span class="n">foo</span>
+<span class="mi">1</span><span class="p">:</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.11</span><span class="p">:</span><span class="mi">3300</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.11</span><span class="p">:</span><span class="mi">6789</span><span class="o">/</span><span class="mi">0</span><span class="p">]</span> <span class="n">mon</span><span class="o">.</span><span class="n">bar</span>
+<span class="mi">2</span><span class="p">:</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.12</span><span class="p">:</span><span class="mi">3300</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.12</span><span class="p">:</span><span class="mi">6789</span><span class="o">/</span><span class="mi">0</span><span class="p">]</span> <span class="n">mon</span><span class="o">.</span><span class="n">baz</span>
+</pre></div>
+</div>
+<p>The bracketed list or vector of addresses means that the same daemon can be
+reached on multiple ports (and protocols).  Any client or other daemon
+connecting to that daemon will use the v2 protocol (listed first) if
+possible; otherwise it will back to the legacy v1 protocol.  Legacy
+clients will only see the v1 addresses and will continue to connect as
+they did before, with the v1 protocol.</p>
+<p>Starting in Nautilus, the <code class="docutils literal notranslate"><span class="pre">mon_host</span></code> configuration option and <code class="docutils literal notranslate"><span class="pre">-m</span>
+<span class="pre">&lt;mon-host&gt;</span></code> command line options support the same bracketed address
+vector syntax.</p>
+<div class="section" id="id3">
+<h3>绑定配置选项<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>Two new configuration options control whether the v1 and/or v2
+protocol is used:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_bind_msgr1</span></code> [default: true] controls whether a daemon binds
+to a port speaking the v1 protocol</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_bind_msgr2</span></code> [default: true] controls whether a daemon binds
+to a port speaking the v2 protocol</p></li>
+</ul>
+</div></blockquote>
+<p>Similarly, two options control whether IPv4 and IPv6 addresses are used:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_bind_ipv4</span></code> [default: true] controls whether a daemon binds
+to an IPv4 address</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_bind_ipv6</span></code> [default: false] controls whether a daemon binds
+to an IPv6 address</p></li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="id4">
+<h2>连接模式<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>v2 协议支持两种连接模式：</p>
+<ul>
+<li><p><em>crc</em> mode provides:</p>
+<ul class="simple">
+<li><p>a strong initial authentication when the connection is established
+(with cephx, mutual authentication of both parties with protection
+from a man-in-the-middle or eavesdropper), and</p></li>
+<li><p>a crc32c integrity check to protect against bit flips due to flaky
+hardware or cosmic rays</p></li>
+</ul>
+<p><em>crc</em> mode does <em>not</em> provide:</p>
+<ul class="simple">
+<li><p>secrecy (an eavesdropper on the network can see all
+post-authentication traffic as it goes by) or</p></li>
+<li><p>protection from a malicious man-in-the-middle (who can deliberate
+modify traffic as it goes by, as long as they are careful to
+adjust the crc32c values to match)</p></li>
+</ul>
+</li>
+<li><p><em>secure</em> mode provides:</p>
+<ul class="simple">
+<li><p>a strong initial authentication when the connection is established
+(with cephx, mutual authentication of both parties with protection
+from a man-in-the-middle or eavesdropper), and</p></li>
+<li><p>full encryption of all post-authentication traffic, including a
+cryptographic integrity check.</p></li>
+</ul>
+<p>In Nautilus, secure mode uses the <a class="reference external" href="https://en.wikipedia.org/wiki/Galois/Counter_Mode">AES-GCM</a> stream cipher,
+which is generally very fast on modern processors (e.g., faster than
+a SHA-256 cryptographic hash).</p>
+</li>
+</ul>
+<div class="section" id="id5">
+<h3>连接模式配置选项<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>For most connections, there are options that control which modes are used:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_cluster_mode</span></code> is the connection mode (or permitted modes) used
+for intra-cluster communication between Ceph daemons.  If multiple
+modes are listed, the modes listed first are preferred.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_service_mode</span></code> is a list of permitted modes for clients to use
+when connecting to the cluster.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_client_mode</span></code> is a list of connection modes, in order of
+preference, for clients to use (or allow) when talking to a Ceph
+cluster.</p></li>
+</ul>
+<p>There are a parallel set of options that apply specifically to
+monitors, allowing administrators to set different (usually more
+secure) requirements on communication with the monitors.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_mon_cluster_mode</span></code> is the connection mode (or permitted modes)
+to use between monitors.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_mon_service_mode</span></code> is a list of permitted modes for clients or
+other Ceph daemons to use when connecting to monitors.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ms_mon_client_mode</span></code> is a list of connection modes, in order of
+preference, for clients or non-monitor daemons to use when
+connecting to monitors.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="v1-v2-v1">
+<h2>从仅有 v1 过渡到 v2+v1<a class="headerlink" href="#v1-v2-v1" title="Permalink to this headline">¶</a></h2>
+<p>By default, <code class="docutils literal notranslate"><span class="pre">ms_bind_msgr2</span></code> is true starting with Nautilus 14.2.z.
+However, until the monitors start using v2, only limited services will
+start advertising v2 addresses.</p>
+<p>For most users, the monitors are binding to the default legacy port <code class="docutils literal notranslate"><span class="pre">6789</span></code> for the v1 protocol.  When this is the case, enabling v2 is as simple as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">mon</span> <span class="n">enable</span><span class="o">-</span><span class="n">msgr2</span>
+</pre></div>
+</div>
+<p>If the monitors are bound to non-standard ports, you will need to
+specify an additional port for v2 explicitly.  For example, if your
+monitor <code class="docutils literal notranslate"><span class="pre">mon.a</span></code> binds to <code class="docutils literal notranslate"><span class="pre">1.2.3.4:1111</span></code>, and you want to add v2 on
+port <code class="docutils literal notranslate"><span class="pre">1112</span></code>,:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">mon</span> <span class="nb">set</span><span class="o">-</span><span class="n">addrs</span> <span class="n">a</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">1.2</span><span class="o">.</span><span class="mf">3.4</span><span class="p">:</span><span class="mi">1112</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">1.2</span><span class="o">.</span><span class="mf">3.4</span><span class="p">:</span><span class="mi">1111</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Once the monitors bind to v2, each daemon will start advertising a v2
+address when it is next restarted.</p>
+</div>
+<div class="section" id="ceph-conf-mon-host">
+<span id="msgr2-ceph-conf"></span><h2>更新 ceph.conf 和 mon_host<a class="headerlink" href="#ceph-conf-mon-host" title="Permalink to this headline">¶</a></h2>
+<p>Prior to Nautilus, a CLI user or daemon will normally discover the
+monitors via the <code class="docutils literal notranslate"><span class="pre">mon_host</span></code> option in <code class="docutils literal notranslate"><span class="pre">/etc/ceph/ceph.conf</span></code>.  The
+syntax for this option has expanded starting with Nautilus to allow
+support the new bracketed list format.  For example, an old line
+like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon_host</span> <span class="o">=</span> <span class="mf">10.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">6789</span><span class="p">,</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.2</span><span class="p">:</span><span class="mi">6789</span><span class="p">,</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.3</span><span class="p">:</span><span class="mi">6789</span>
+</pre></div>
+</div>
+<p>Can be changed to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon_host</span> <span class="o">=</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">3300</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">6789</span><span class="o">/</span><span class="mi">0</span><span class="p">],[</span><span class="n">v2</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.2</span><span class="p">:</span><span class="mi">3300</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.2</span><span class="p">:</span><span class="mi">6789</span><span class="o">/</span><span class="mi">0</span><span class="p">],[</span><span class="n">v2</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.3</span><span class="p">:</span><span class="mi">3300</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.3</span><span class="p">:</span><span class="mi">6789</span><span class="o">/</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>However, when default ports are used (<code class="docutils literal notranslate"><span class="pre">3300</span></code> and <code class="docutils literal notranslate"><span class="pre">6789</span></code>), they can
+be omitted:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon_host</span> <span class="o">=</span> <span class="mf">10.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.3</span>
+</pre></div>
+</div>
+<p>Once v2 has been enabled on the monitors, <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> may need to be
+updated to either specify no ports (this is usually simplest), or
+explicitly specify both the v2 and v1 addresses.  Note, however, that
+the new bracketed syntax is only understood by Nautilus and later, so
+do not make that change on hosts that have not yet had their ceph
+packages upgraded.</p>
+<p>When you are updating <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code>, note the new <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span>
+<span class="pre">generate-minimal-conf</span></code> command (which generates a barebones config
+file with just enough information to reach the monitors) and the
+<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span> <span class="pre">assimilate-conf</span></code> (which moves config file options into
+the monitors’ configuration database) may be helpful.  For example,:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph config assimilate-conf &lt; /etc/ceph/ceph.conf</span>
+<span class="c1"># ceph config generate-minimal-config &gt; /etc/ceph/ceph.conf.new</span>
+<span class="c1"># cat /etc/ceph/ceph.conf.new</span>
+<span class="c1"># minimal ceph.conf for 0e5a806b-0ce5-4bc6-b949-aa6f68f5c2a3</span>
+<span class="p">[</span><span class="k">global</span><span class="p">]</span>
+        <span class="n">fsid</span> <span class="o">=</span> <span class="mf">0e5</span><span class="n">a806b</span><span class="o">-</span><span class="mi">0</span><span class="n">ce5</span><span class="o">-</span><span class="mi">4</span><span class="n">bc6</span><span class="o">-</span><span class="n">b949</span><span class="o">-</span><span class="n">aa6f68f5c2a3</span>
+        <span class="n">mon_host</span> <span class="o">=</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">3300</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">10.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">6789</span><span class="o">/</span><span class="mi">0</span><span class="p">]</span>
+<span class="c1"># mv /etc/ceph/ceph.conf.new /etc/ceph/ceph.conf</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id6">
+<h2>协议内幕<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>For a detailed description of the v2 wire protocol, see <a class="reference internal" href="../../../dev/msgr2/#msgr2-protocol"><span class="std std-ref">msgr2 协议</span></a>.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（ ceph-deploy ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/kube-helm/">安装（ Kubernetes + Helm ）</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../">配置</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../storage-devices/">存储设备</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ceph-conf/">配置 Ceph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/">通用选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#ceph-network-config">网络</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#id3">监视器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#ceph-osd-config">认证</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#osds">OSDs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#id5">心跳</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#ceph-logging-and-debugging">日志记录、调试</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#ceph-conf">ceph.conf 实例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#id7">跑多个集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../network-config-ref/">网络选项</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">信使协议 v2</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">这是什么</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">地址格式</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id3">绑定配置选项</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">连接模式</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id5">连接模式配置选项</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#v1-v2-v1">从仅有 v1 过渡到 v2+v1</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ceph-conf-mon-host">更新 ceph.conf 和 mon_host</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">协议内幕</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../auth-config-ref/">认证选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mon-config-ref/">监视器选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mon-lookup-dns/">Looking op Monitors through DNS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mon-osd-interaction/">心跳选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../osd-config-ref/">OSD 选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../bluestore-config-ref/">BlueStore 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../filestore-config-ref/">FileStore 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journal-ref/">日志选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pool-pg-config-ref/">存储池、归置组和 CRUSH 选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ms-ref/">消息传递选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../general-config-ref/">常规选项</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operations/">运维</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/internals/">Ceph Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../auth-config-ref/" title="Cephx 配置参考"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../network-config-ref/" title="网络配置参考"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../" >Ceph 存储集群</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" >配置</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Red Hat, Inc, and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

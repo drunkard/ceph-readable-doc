@@ -11,7 +11,7 @@
 进程，它们会共同承担元数据负载。
 
 
-.. _When should I use multiple active MDS daemons?:
+.. When should I use multiple active MDS daemons?
 
 什么情况下我需要多个活跃的 MDS 守护进程？
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -27,7 +27,7 @@
 MDS 守护进程有利于性能提升。
 
 
-.. _Increasing the MDS active cluster size:
+.. Increasing the MDS active cluster size
 
 MDS 活跃集群的扩容
 ~~~~~~~~~~~~~~~~~~
@@ -50,7 +50,7 @@ MDS 活跃集群的扩容
 新创建的 rank (1) 会从 creating 状态过渡到 active 状态。
 
 
-.. _Standby daemons:
+.. Standby daemons
 
 灾备守护进程
 ~~~~~~~~~~~~
@@ -70,10 +70,7 @@ MDS 活跃集群的扩容
 减少 rank 数量
 ~~~~~~~~~~~~~~
 
-所有的 rank ，包括你要删除的 rank(s) ，必须先是活跃的。也就是\
-说，你必须有至少 max_mds 个 MDS 守护进程可用。
-
-首先，把 max_mds 设置为较小的数字，比如我们想回到单活 MDS ： ::
+减少 rank 数量和减少 ``max_mds`` 一样简单： ::
 
     # fsmap e9: 2/2/2 up {0=a=up:active,1=c=up:active}, 1 up:standby
     ceph fs set <fs_name> max_mds 1
@@ -82,35 +79,24 @@ MDS 活跃集群的扩容
     ...
     # fsmap e10: 1/1/1 up {0=a=up:active}, 2 up:standby
 
-注意，此时我们仍然有两个活跃 MDS ，即使降低了 max_mds 两个 rank
-还都在，因为 max_mds 只能限制新 rank 的创建。
-
-接下来，用 ``ceph mds deactivate <role>`` 命令删除不需要的
-rank ： ::
-
-    ceph mds deactivate cephfs_a:1
-    telling mds.1:1 172.21.9.34:6806/837679928 to deactivate
-
-    # fsmap e11: 2/2/1 up {0=a=up:active,1=c=up:stopping}, 1 up:standby
-    # fsmap e12: 1/1/1 up {0=a=up:active}, 1 up:standby
-    # fsmap e13: 1/1/1 up {0=a=up:active}, 2 up:standby
+集群将会自动逐步地停掉多余的 rank ，直到符合 ``max_mds`` 。
 
 See :doc:`/cephfs/administration` for more details which forms ``<role>`` can
 take.
 
-被取消活跃状态的 rank 会先进入 stopping 状态，并持续一段时间，\
-在此期间它要把它分享的那部分元数据让出给活跃 MDS 守护进程，这\
-个过程可能要持续数秒到数分钟。如果这个 MDS 卡在了 stopping 状\
-态，那可能是触发了软件缺陷。
+注意：被停掉的 rank 会先进入 stopping 状态，并持续一段时间，\
+在此期间它要把它分享的那部分元数据转手给仍然活跃着的
+MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 MDS
+卡在了 stopping 状态，那可能是触发了软件缺陷。
 
-如果处于 stopping 状态的 MDS 守护进程崩溃、或是被杀死了，就会\
-有一个灾备顶替它，这个 rank 会回到 active 状态。等它回来后，你\
-可以再次实施去激活操作。
+如果一个 MDS 守护进程正处于 ``up:stopping`` 状态时崩溃了、或是\
+被杀死了，就会有一个灾备顶替它，而且集群的监视器们也会阻止停止\
+此守护进程的尝试。
 
 守护进程完成 stopping 状态后，它会自己重生并成为灾备。
 
 
-.. _Manually pinning directory trees to a particular rank:
+.. Manually pinning directory trees to a particular rank
 
 手动将目录树插入特定的 rank
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

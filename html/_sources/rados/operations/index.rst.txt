@@ -34,6 +34,7 @@
 	erasure-code
 	cache-tiering
 	placement-groups
+	balancer
 	upmap
 	crush-map
 	crush-map-edits
@@ -53,6 +54,7 @@
 
 	add-or-rm-osds
 	add-or-rm-mons
+	devices
         bluestore-migration
 	命令参考 <control>
 
