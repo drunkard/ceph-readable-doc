@@ -599,7 +599,7 @@ ways:
    popping up.
 
 
-.. Accessing the dashboard
+.. Accessing the Dashboard
 
 仪表盘的访问
 ^^^^^^^^^^^^

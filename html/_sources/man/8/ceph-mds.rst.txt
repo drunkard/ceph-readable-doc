@@ -9,7 +9,7 @@
 提纲
 ====
 
-| **ceph-mds** -i *name* [ --hot-standby [*rank*] ]
+| **ceph-mds** -i <*ID*> [flags]
 
 
 描述
@@ -22,13 +22,9 @@ OSD 集群的访问。
 各 ceph-mds 守护进程例程都应该有惟一的名字，此名用于在
 ceph.conf 里标识例程。
 
-一旦守护进程启动，监视器集群会给它分配一个逻辑机架，或把它放如\
+一旦守护进程启动，监视器集群会给它分配一个逻辑机架，或把它放入\
 一个候补存储池用于接替其它崩溃的进程。一些特定选项会导致其它行\
 为。
-
-如果你指定了热备，还必须在命令行加上 rank 、或在配置文件里指定
-mds_standby_for_[rank|name] 之一。命令行中指定的会覆盖配置文\
-件，指定 rank 会覆盖指定的名字。
 
 
 选项
@@ -61,16 +57,16 @@ mds_standby_for_[rank|name] 之一。命令行中指定的会覆盖配置文\
 
    连接到指定监视器（而非通过 ``ceph.conf`` 查找）。
 
-.. option:: --hot-standby <rank>
+.. option:: --id/-i ID
 
-   启动后作为 MDS <rank> 的热备。
+   指定 MDS 名字的 ID 部分。
 
 
 使用范围
 ========
 
-**ceph-mds** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储\
-系统，更多信息参见 http://ceph.com/docs 。
+**ceph-mds** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的\
+存储系统，更多信息参见 http://ceph.com/docs 。
 
 
 参考

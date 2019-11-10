@@ -254,6 +254,9 @@
     messenger layer
         信使层
 
+    nearfull ratio
+        将满比率
+
     non-master zone
     non-master zone group
         副域、副域组

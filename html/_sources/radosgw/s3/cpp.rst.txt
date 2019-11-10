@@ -244,10 +244,13 @@ This creates a file ``hello.txt``.
 	};
 
 	S3_put_object(&bucketContext, sample_key, contentLength, NULL, NULL, 0, &putObjectHandler, &data);
+	fclose(data.infile);
 
 
-Download an Object (to a file)
-------------------------------
+.. Download an Object (to a file)
+
+下载一个对象（到一文件）
+------------------------
 
 This downloads a file and prints the contents.
 

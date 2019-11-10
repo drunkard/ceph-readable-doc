@@ -102,6 +102,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
    architecture
    开发者指南 <dev/developer_guide/index>
    dev/internals
+   governance
    ceph-volume/index
    releases/index
    Ceph 术语 <glossary>

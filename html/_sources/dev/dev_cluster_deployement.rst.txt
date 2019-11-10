@@ -6,9 +6,10 @@
 伪集群，以便测试。
 
 
+.. Usage
+
 用法
 ====
-
 用此工具可在本机部署伪集群以便开发，它可以启动 rgw 、 mon 、
 osd 、和/或 mds ，不指定的话会启动所有类型。
 
@@ -21,8 +22,34 @@ osd 、和/或 mds ，不指定的话会启动所有类型。
 	./stop.sh
 
 
+.. Options
+
 选项
 ====
+
+.. option:: --bluestore
+
+    指定 bluestore 作为 OSD 的对象存储后端。
+
+.. option:: --cache <pool>
+
+    给指定存储池配置一个缓存层。
+
+.. option:: -d, --debug
+
+    在调试模式下启动。
+
+.. option:: -e
+
+    创建一个纠删码存储池。
+
+.. option:: -f, --filestore
+
+    指定 filestore 作为 OSD 的对象存储后端。
+
+.. option:: --hitset <pool> <hit_set_type>
+
+    启用 hitset 追踪。
 
 .. option:: -i ip_address
 
@@ -32,29 +59,74 @@ osd 、和/或 mds ，不指定的话会启动所有类型。
 
     保留旧的配置文件，而非覆盖它们。
 
+.. option:: -K, --kstore
+
+    指定 kstore 作为 OSD 的对象存储后端。
+
 .. option:: -l, --localhost
 
-    Use localhost instead of hostanme.
+    用 localhost 作为主机名。
 
 .. option:: -m ip[:port]
 
-    Specifies monitor *ip* address and *port*.
+    指定监视器的 *ip* 地址和端口 *port* 。
+
+.. option:: --memstore
+
+    指定 memstore 作为 OSD 的对象存储后端。
+
+.. option:: --multimds <count>
+
+    启用多 MDS 功能、且指定最大活跃数。
 
 .. option:: -n, --new
 
-    Create a new cluster.
+    创建一个新集群。
 
-.. option:: -o config
+.. option:: -N, --not-new
 
-    Add *config* to all sections in the ceph configuration.
+    重用现有的集群配置（默认行为）。
 
 .. option:: --nodaemon
 
-    Use ceph-run as wrapper for mon/osd/mds.
+    用 ceph-run 作为 mon/osd/mds 的包装。
+
+.. option:: --nolockdep
+
+    禁用 lockdep 。
+
+.. option:: -o config
+
+    把配置 *config* 加进 ceph 配置的所有段落下。
+
+.. option:: --rgw_port <port>
+
+    指定 ceph rgw 的 HTTP 监听端口。
+
+.. option:: --rgw_frontend <frontend>
+
+    指定 rgw 前端（默认是 civetweb ）。
+
+.. option:: --rgw_compression <compression_type>
+
+    指定 rgw 压缩插件（默认是禁用的）。
 
 .. option:: --smallmds
 
-    Configure mds with small limit cache size.
+    给 MDS 配置小缓存尺寸。
+
+.. option:: --short
+
+    只能用短对象名，对 ext4 开发版有必要指定。
+
+.. option:: --valgrind[_{osd,mds,mon}] 'valgrind_toolname [args...]'
+
+    在 valgrind 环境下、用指定的工具和参数，启动 ceph 的 \
+    osd/mds/mon/all 二进制。
+
+.. option:: --without-dashboard
+
+    不要用 mgr 的仪表盘运行。
 
 .. option:: -x
 
@@ -63,27 +135,6 @@ osd 、和/或 mds ，不指定的话会启动所有类型。
 .. option:: -X
 
     禁用 Cephx 。
-
-.. option:: -d, --debug
-
-    在调试模式下启动。
-
-.. option:: --valgrind[_{osd,mds,mon}] 'valgrind_toolname [args...]'
-
-    在 valgrind 环境下、用指定的工具和参数，启动 ceph 的 \
-    osd/mds/mon/all 二进制。
-
-.. option:: --bluestore
-
-    指定 bluestore 作为 OSD 的对象存储后端。
-
-.. option:: --memstore
-
-    指定 memstore 作为 OSD 的对象存储后端。
-
-.. option:: --cache <pool>
-
-    给指定存储池配置一个缓存层。
 
 
 环境变量
@@ -117,7 +168,7 @@ osd 、和/或 mds ，不指定的话会启动所有类型。
 
 例如： ::
 
-        ./mstart.sh cluster1 -n -r
+        ./mstart.sh cluster1 -n
 
 关闭集群可以用： ::
 

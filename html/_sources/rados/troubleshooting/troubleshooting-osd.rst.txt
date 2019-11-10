@@ -1,16 +1,14 @@
-.. _Troubleshooting OSDs:
+.. Troubleshooting OSDs
 
 ==============
  OSD 故障排除
 ==============
 
 对 OSD 排障前，先检查一下监视器集群和网络。如果 ``ceph health``
-或 ``ceph -s`` 返回的是健康状态，这意味着监视器们形成了法定人\
-数。如果你还没监视器法定人数、或者监视器状态错误，要先\
-`解决监视器问题`_\ 。核实下你的网络，确保它在正常运行，因为网\
-络对 OSD 的运行和性能有显著影响。
-
-.. _解决监视器问题: ../troubleshooting-mon
+或 ``ceph -s`` 返回的是健康状态，这意味着监视器们形成了\
+法定人数。如果你还没监视器法定人数、或者监视器状态错误，要\
+`先定位监视器问题 <../troubleshooting-mon>`_\ 。核实下你的\
+网络，确保它在正常运行，因为网络对 OSD 的运行和性能有显著影响。
 
 
 .. Obtaining Data About OSDs
@@ -203,18 +201,28 @@ OSD 失败
 --------------
 
 Ceph 不允许你向满的 OSD 写入数据，以免丢失数据。在运营着的集群\
-中，你应该能收到集群空间将满的警告。 ``mon osd full ratio`` 默\
-认为 ``0.95`` 、或达到 95% 时它将阻止客户端写入数据；
+中，你应该能收到集群空间将满的警告。 ``mon osd full ratio``
+默认为 ``0.95`` 、或达到 95% 时它将阻止客户端写入数据；
 ``mon osd backfillfull ratio`` 默认为 ``0.90`` 、或达到容量的
-90% 时它会阻塞，防止回填启动； ``mon osd nearfull ratio`` 默认\
-为 ``0.85`` 、也就是说达到容量的 85% 时它会产生健康警告。
+90% 时它会阻塞，防止回填启动； OSD 将满比率默认为 ``0.85`` 、\
+也就是说达到容量的 85% 时它会产生健康警告。
+
+可以用此命令更改将满比率： ::
+
+    ceph osd set-nearfull-ratio <float[0.0-1.0]>
 
 集群用满的问题一般出现在测试过程中，为了检验 Ceph 在小型集群上\
-如何处理 OSD 失败。当某一节点存储的集群数据比例较高时，集群能\
-够很快掩盖将满和占满率。如果你在小型集群上测试 Ceph 如何应对
-OSD 失败，应该保留足够的空闲空间，然后临时降低
-``mon osd full ratio`` 、 ``mon osd backfillfull ratio`` 和 \
-``mon osd nearfull ratio`` 值试一下。
+如何处理 OSD 失败。当某一节点存储的集群数据比例较高时，集群
+能够很快掩盖将满和占满率。如果你在小型集群上测试 Ceph 如何应对
+OSD 失败，应该保留足够的空闲空间，然后临时降低 OSD 的
+``full ratio`` 、 ``backfillfull ratio`` 和 ``nearfull ratio``
+值，命令为：
+
+::
+
+    ceph osd set-nearfull-ratio <float[0.0-1.0]>
+    ceph osd set-full-ratio <float[0.0-1.0]>
+    ceph osd set-backfillfull-ratio <float[0.0-1.0]>
 
 ``ceph health`` 会显示将满的 ``ceph-osds`` ： ::
 
@@ -237,8 +245,8 @@ OSD 失败，应该保留足够的空闲空间，然后临时降低
 
 .. important:: 如果你准备从填满的 OSD 中删除某个归置组，注意\
    **不要**\ 删除另一个 OSD 上的同名归置组，否则\
-   **你会丢数据**\ 。\ **必须**\ 在多个 OSD 上保留至少一份数据\
-   副本。
+   **你会丢数据**\ 。\ **必须**\ 在多个 OSD 上保留至少一份\
+   数据副本。
 
 详情见\ `监视器配置参考`_\ 。
 
