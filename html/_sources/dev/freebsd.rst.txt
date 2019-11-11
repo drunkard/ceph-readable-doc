@@ -50,9 +50,4 @@ Monitors are created by following the manual creation steps on::
 OSD creation
 ------------
 
-OSDs can be create with ``ceph-disk``::
-
-  ceph-disk prepare /var/lib/ceph/osd/osd1
-  ceph-disk activate /var/lib/ceph/osd/osd1
-  
-And things should automagically work out.
+OSDs can be manually created only, see :ref:`freebsd_adding_osds`
