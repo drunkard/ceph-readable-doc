@@ -69,7 +69,7 @@ RPM
 	sudo rpm --import 'https://download.ceph.com/keys/release.asc'
 
 
-.. _Add Ceph:
+.. Add Ceph
 
 添加 Ceph 库
 ============
@@ -117,12 +117,6 @@ Debian 二进制包
 对较老的 Linux 发行版，用发布名替换 ``{release-name}`` 。 ::
 
 	echo deb https://download.ceph.com/debian-{release-name}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
-
-要在 ARM 处理器上运行 Ceph 的话，需要 Google 的内存剖析工具\
-（ ``google-perftools`` ）， Ceph 库里有： \
-https://download.ceph.com/packages/google-perftools/debian 。 ::
-
-	echo deb https://download.ceph.com/packages/google-perftools/debian  $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/google-perftools.list
 
 对于开发版，把我们的软件库加入 APT 源。这里 \
 `Debian 测试版软件库`_ 是已支持的 Debian/Ubuntu 列表。 ::

@@ -16,8 +16,8 @@ ceph-mgr 管理员指南
 
     ceph auth get-or-create mgr.$name mon 'allow profile mgr' osd 'allow *' mds 'allow *'
 
-把创建的密钥放入 ``mgr data`` 所指向的路径，对于名为 ceph 的集\
-群、 mgr 的 $name 为 foo 的路径可能是
+把创建的密钥放入 ``mgr data`` 所指向的路径，对于名为 ceph 的\
+集群、 mgr 的 $name 为 foo 的路径可能是
 ``/var/lib/ceph/mgr/ceph-foo`` 。
 
 启动 ceph-mgr 守护进程： ::

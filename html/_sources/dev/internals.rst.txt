@@ -1,6 +1,8 @@
-================
- Ceph Internals
-================
+.. Ceph Internals
+
+===========
+ Ceph 内幕
+===========
 
 .. note:: If you're looking for how to use Ceph as a library from your
    own software, please see :doc:`/api/index`.

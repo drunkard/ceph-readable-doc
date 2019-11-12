@@ -114,4 +114,44 @@
         caps: [osd] allow rw tag cephfs data=data
 
 
+.. Snapshot restriction (the 's' flag)
+
+快照限定（ s 标记）
+===================
+
+To create or delete snapshots, clients require the 's' flag in addition to 'rw'.
+Note that when capability string also contains the 'p' flag, the 's' flag must
+appear after it (all flags except 'rw' must be specified in alphabetical order).
+
+For example, in the following snippet client.0 can create or delete snapshots
+in the ``bar`` directory of file system ``cephfs_a``.
+
+::
+
+    client.0
+        key: AQAz7EVWygILFRAAdIcuJ12opU/JKyfFmxhuaw==
+        caps: [mds] allow rw, allow rws path=/bar
+        caps: [mon] allow r
+        caps: [osd] allow rw tag cephfs data=cephfs_a
+
+
+.. Network restriction
+
+网络限定
+========
+
+::
+
+ client.foo
+   key: *key*
+   caps: [mds] allow r network 10.0.0.0/8, allow rw path=/bar network 10.0.0.0/8
+   caps: [mon] allow r network 10.0.0.0/8
+   caps: [osd] allow rw tag cephfs data=cephfs_a network 10.0.0.0/8
+
+The optional ``{network/prefix}`` is a standard network name and
+prefix length in CIDR notation (e.g., ``10.3.0.0/16``).  If present,
+the use of this capability is restricted to clients connecting from
+this network.
+
+
 .. _用户管理 - 把用户加入密钥环: ../../rados/operations/user-management/#add-a-user-to-a-keyring

@@ -1,4 +1,4 @@
-.. _Experimental Features:
+.. Experimental Features
 
 实验性功能
 ==========
@@ -14,7 +14,7 @@ in the monitor as having once enabled this flag to improve debugging and
 support processes.
 
 
-.. _Inline data:
+.. Inline data
 
 内联数据
 --------
@@ -57,10 +57,10 @@ snapshots. See the :doc:`/dev/cephfs-snapshots` page for more information.
 出于某些含糊的实现原因，内核客户端仅支持最多 400 个快照（
 http://tracker.ceph.com/issues/21420 ）。
 
-在 Firefly 版之前，快照功能是用 allow_new_snaps 标记屏蔽的。
+在 Mimic 版之前，快照功能是用 allow_new_snaps 标记屏蔽的。
 
 
-.. _Multiple filesystems within a Ceph cluster:
+.. Multiple filesystems within a Ceph cluster
 
 单个 Ceph 集群内建多个文件系统
 ------------------------------
@@ -82,6 +82,13 @@ and may not work together; see above.
 
 Multiple filesystems were available starting in the Jewel release candidates
 but must be turned on via the ``enable_multiple`` flag until declared stable.
+
+
+LazyIO
+------
+LazyIO 放松了 POSIX 语义的要求，允许读、写缓冲的存在，即使有\
+多个客户端上的多个应用程序同时打开一个文件时也允许。应用程序\
+自行负责缓存一致性的管理。
 
 
 .. Previously experimental features

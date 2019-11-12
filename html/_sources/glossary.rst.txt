@@ -156,8 +156,9 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
         Ceph 仪表盘
         仪表盘插件
         仪表盘
-                Ceph 管理器自带的、基于网页的监控和管理应用程\
-                序，详情请参考 :ref:`mgr-dashboard` 。
+                一个内建的、基于网页的 Ceph 管理和监控应用程序，\
+                可用于管理集群的各方面以及对象。仪表盘是以一个
+                Ceph 管理器模块实现的。详情见 :ref:`mgr-dashboard` 。
 
 	Ceph Metadata Server
 	MDS
