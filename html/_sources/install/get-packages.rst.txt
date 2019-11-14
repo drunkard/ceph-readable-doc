@@ -6,6 +6,8 @@
 载，然后继续看\ `安装 Ceph 对象存储`_\ 。
 
 
+.. Getting Packages
+
 获取软件包
 ==========
 
@@ -19,7 +21,7 @@
   问互联网，手动下载软件包安装 Ceph 也不复杂。
 
 
-.. _Requirements:
+.. Requirements
 
 准备工作
 ========
@@ -95,6 +97,8 @@ Ceph 的主要版本都汇总到了 :ref:`ceph-releases`\ 。
    Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
+.. Debian Packages
+
 Debian 二进制包
 ---------------
 
@@ -127,8 +131,13 @@ Debian 二进制包
    Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
+.. RPM Packages
+
 RPM 二进制包
 ------------
+
+RHEL
+----
 
 对于主要发布，你可以在 ``/etc/yum.repos.d/`` 目录下新增一个
 Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
@@ -180,6 +189,19 @@ Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
    Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
+openSUSE Leap 15.1
+------------------
+You need to add the Ceph package repository to your list of zypper sources. This can be done with the following command ::
+
+    zypper ar https://download.opensuse.org/repositories/filesystems:/ceph/openSUSE_Leap_15.1/filesystems:ceph.repo
+
+
+openSUSE Tumbleweed
+-------------------
+The newest major release of Ceph is already available through the normal Tumbleweed repositories.
+There's no need to add another package repository manually.
+
+
 .. Add Ceph Development
 
 添加 Ceph 开发库
@@ -188,6 +210,8 @@ Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
 如果你在参与 Ceph 开发，想要部署并测试某个分支，确保先删除\
 主版本库的配置文件。
 
+
+.. DEB Packages
 
 DEB 二进制包
 ------------ 
@@ -211,6 +235,8 @@ master ）替换 ``{BRANCH}`` 。我们所构建发布的完整列表在 \
 
 .. warning:: 两周后开发库就不再可用了。
 
+
+.. RPM Packages
 
 RPM 二进制包
 ------------
@@ -241,6 +267,8 @@ Ceph 条目。你可以从 `shaman 网页`\ 获取软件库文件的所有细节
 软件包（镜像所有依赖）。
 
 
+.. Debian Packages
+
 Debian 二进制包
 ---------------
 
@@ -254,7 +282,6 @@ Ceph 依赖这些第三方库。
 - google-perftools
 - libleveldb1
 
-
 这个软件库包会装好所需的 ``apt`` 软件库的配置文件。需用最新 Ceph \
 发布替换掉 ``{release}`` 、用最新 Ceph 版本号替换 ``{version}`` 、\
 用自己的 Linux 发行版代号替换 ``{distro}`` 、用自己的 CPU 架构替\
@@ -262,6 +289,8 @@ Ceph 依赖这些第三方库。
 
 	wget -q https://download.ceph.com/debian-{release}/pool/main/c/ceph/ceph_{version}{distro}_{arch}.deb
 
+
+.. RPM Packages
 
 RPM 二进制包
 ------------

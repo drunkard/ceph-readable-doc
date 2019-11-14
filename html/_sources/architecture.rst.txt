@@ -1340,7 +1340,7 @@ Ceph 对象存储守护进程是 ``radosgw`` ，它是一个 FastCGI 服务，�
 
 
 .. index:: Ceph Block Device; block device; RBD; Rados Block Device
-.. _Ceph Block Device:
+.. Ceph Block Device
 
 Ceph 块设备
 -----------
@@ -1365,9 +1365,8 @@ Ceph 块设备，其中宿主机用 ``librbd`` 向访客提供块设备服务；
 
 .. index:: Ceph FS; Ceph Filesystem; libcephfs; MDS; metadata server; ceph-mds
 
+.. Ceph Filesystem
 .. _arch-cephfs:
-
-.. _Ceph Filesystem:
 
 Ceph 文件系统
 -------------

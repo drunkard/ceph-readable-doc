@@ -4,9 +4,9 @@
  Ceph 文件系统
 ===============
 
-:term:`Ceph 文件系统`\ （ Ceph FS ）是个与 POSIX 标准兼容的文\
-件系统，它使用 Ceph 存储集群来存储数据。 Ceph 文件系统与 Ceph
-块设备、同时提供 S3 和 Swift API 的 Ceph 对象存储、或者原生库\
+Ceph 文件系统（ CephFS ）是个与 POSIX 标准兼容的文\件系统，\
+它使用 Ceph 存储集群来存储数据。 Ceph 文件系统与 Ceph 块设备、\
+同时提供 S3 和 Swift API 的 Ceph 对象存储、或者原生库\
 （ librados ）一样，都使用着相同的 Ceph 存储集群系统。
 
 .. note:: 如果你是第一次评测 CephFS ，请仔细看看部署的最佳实践\

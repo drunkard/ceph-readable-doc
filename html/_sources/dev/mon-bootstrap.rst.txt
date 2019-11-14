@@ -152,8 +152,10 @@ Once they learn enough of their peers from the initial member set,
 they will be able to create the cluster.
 
 
-Cluster expansion
-=================
+.. Cluster expansion
+
+集群的扩展
+==========
 
 Cluster expansion is slightly less demanding than creation, because
 the creation of the initial quorum is not an issue and there is no
@@ -164,11 +166,12 @@ New nodes can be forced to join an existing cluster in two ways:
 #. by providing no initial monitor peers addresses, and feeding them dynamically.
 #. by specifying the ``mon initial members`` config option to prevent the new nodes from forming a new, independent cluster, and feeding some existing monitors via any available method.
 
-Initially peerless expansion
-----------------------------
 
-Create a new monitor and give it no peer addresses other than it's own.  For
-example::
+.. Initially peerless expansion
+
+最初无互联点时的扩展
+--------------------
+新建一个监视器，除了它自己的地址不给任何互联地址，例如： ::
 
      ceph-mon --mkfs -i <myid> --fsid <fsid> --keyring <mon secret key> --public-addr <ip>
 

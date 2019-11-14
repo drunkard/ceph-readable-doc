@@ -23,14 +23,12 @@
 导出日志
 --------
 
-Before attempting dangerous operations, make a copy of the journal like so:
-
-::
+尝试危险的操作前，先备份个日志副本，像这样： ::
 
     cephfs-journal-tool journal export backup.bin
 
-Note that this command may not always work if the journal is badly corrupted,
-in which case a RADOS-level copy should be made (http://tracker.ceph.com/issues/9902).
+需要注意的是，此命令在日志损坏严重时也许会失效，在这种情况下，\
+应该进行 RADOS 级的复制（ http://tracker.ceph.com/issues/9902 ）。
 
 
 .. Dentry recovery from journal
@@ -38,31 +36,26 @@ in which case a RADOS-level copy should be made (http://tracker.ceph.com/issues/
 从日志中恢复 dentry
 -------------------
 
-If a journal is damaged or for any reason an MDS is incapable of replaying it,
-attempt to recover what file metadata we can like so:
-
-::
+如果日志损坏、或因其它原因导致 MDS 不能重放它，可以这样尝试\
+恢复文件元数据： ::
 
     cephfs-journal-tool event recover_dentries summary
 
-This command by default acts on MDS rank 0, pass --rank=<n> to operate on other ranks.
+此命令默认会操作 rank 0 的 MDS ，用 --rank=<n> 指定其它 rank 。
 
-This command will write any inodes/dentries recoverable from the journal
-into the backing store, if these inodes/dentries are higher-versioned
-than the previous contents of the backing store.  If any regions of the journal
-are missing/damaged, they will be skipped.
+在条件满足的情况下，此命令会把日志中可恢复的 inode/dentry 写入\
+后端存储，比如这些 inode/dentry 的版本号高于后端存储中的版本。\
+如果日志中的某一部分丢失或损坏，就会被跳过。
 
-Note that in addition to writing out dentries and inodes, this command will update
-the InoTables of each 'in' MDS rank, to indicate that any written inodes' numbers
-are now in use.  In simple cases, this will result in an entirely valid backing
-store state.
+注意，除了写出 dentry 和 inode 之外，此命令还会更新各 MDS rank
+“内”的 InoTables ，以把写入的 inode 标识为正在使用。在简单的\
+案例中，此操作即可使后端存储回到完全正确的状态。
 
 .. warning::
 
-    The resulting state of the backing store is not guaranteed to be self-consistent,
-    and an online MDS scrub will be required afterwards.  The journal contents
-    will not be modified by this command, you should truncate the journal
-    separately after recovering what you can.
+   此操作不能保证后端存储的状态达到自我一致，而且在此之后\
+   有必要执行 MDS 在线洗刷。此命令不会更改日志内容，所以把能\
+   恢复的给恢复之后，应该分别裁截日志。
 
 
 .. Journal truncation
@@ -70,19 +63,16 @@ store state.
 舍弃日志
 --------
 
-If the journal is corrupt or MDSs cannot replay it for any reason, you can
-truncate it like so:
-
-::
+如果日志损坏或因故 MDS 不能重放它，你可以这样裁截它： ::
 
     cephfs-journal-tool journal reset
 
 .. warning::
 
-    Resetting the journal *will* lose metadata unless you have extracted
-    it by other means such as ``recover_dentries``.  It is likely to leave
-    some orphaned objects in the data pool.  It may result in re-allocation
-    of already-written inodes, such that permissions rules could be violated.
+    重置日志\ *会*\ 导致元数据丢失，除非你已经用其它方法（如 \
+    ``recover_dentries`` ）提取过了。此操作很可能会在\
+    数据存储池中留下一些孤儿对象，并导致已写过的索引节点被\
+    重分配，以致权限规则被破坏。
 
 
 .. MDS table wipes
@@ -97,11 +87,11 @@ SessionMap 、 SnapServer ）的内容变得不一致。
 
     cephfs-table-tool all reset session
 
-This command acts on the tables of all 'in' MDS ranks.  Replace 'all' with an MDS
-rank to operate on that rank only.
+此命令会在所有 MDS rank “内”的表中执行。如果只想在指定 rank 中\
+执行，把 all 换成对应的 MDS rank 。
 
-The session table is the table most likely to need resetting, but if you know you
-also need to reset the other tables then replace 'session' with 'snap' or 'inode'.
+会话表是最有可能需要重置的表，但是如果你知道你还需要重置其它\
+表，那就把 session 换成 snap 或者 inode 。
 
 
 .. MDS map reset
@@ -109,23 +99,22 @@ also need to reset the other tables then replace 'session' with 'snap' or 'inode
 重置 MDS 运行图
 ---------------
 
-Once the in-RADOS state of the filesystem (i.e. contents of the metadata pool)
-is somewhat recovered, it may be necessary to update the MDS map to reflect
-the contents of the metadata pool.  Use the following command to reset the MDS
-map to a single MDS:
+一旦文件系统底层的 RADOS 状态（即元数据存储池的内容）恢复到\
+一定程度，也许有必要更新 MDS 图以反映元数据存储池的内容。可以\
+用下面的命令把 MDS 图重置到单个 MDS ：
 
 ::
 
     ceph fs reset <fs name> --yes-i-really-mean-it
 
-Once this is run, any in-RADOS state for MDS ranks other than 0 will be ignored:
-as a result it is possible for this to result in data loss.
+运行此命令之后， MDS rank 保存在 RADOS 上的任何不为 0 的状态\
+都会被忽略：因此这有可能导致数据丢失。
 
-One might wonder what the difference is between 'fs reset' and 'fs remove; fs new'.  The
-key distinction is that doing a remove/new will leave rank 0 in 'creating' state, such
-that it would overwrite any existing root inode on disk and orphan any existing files.  In
-contrast, the 'reset' command will leave rank 0 in 'active' state such that the next MDS
-daemon to claim the rank will go ahead and use the existing in-RADOS metadata.
+也许有人想知道 'fs reset' 和 'fs remove; fs new' 的不同。主要\
+区别在于，执行删除、新建操作会使 rank 0 处于 creating 状态，\
+那样会覆盖所有根索引节点、并使所有文件变成孤儿；相反， reset
+命令会使 rank 0 处于 active 状态，这样下一个要认领此 rank 的
+MDS 守护进程会继续、并使用已存在于 RADOS 中的数据。
 
 
 .. Recovery from missing metadata objects
@@ -133,48 +122,38 @@ daemon to claim the rank will go ahead and use the existing in-RADOS metadata.
 元数据对象丢失的恢复
 --------------------
 
-Depending on what objects are missing or corrupt, you may need to
-run various commands to regenerate default versions of the
-objects.
+取决于丢失或被篡改的是哪种对象，你得运行几个命令生成这些对象的\
+默认版本。 ::
 
-::
+	# 会话表
+	cephfs-table-tool 0 reset session
+	# SnapServer 快照服务器
+	cephfs-table-tool 0 reset snap
+	# InoTable 索引节点表
+	cephfs-table-tool 0 reset inode
+	# Journal 日志
+	cephfs-journal-tool --rank=0 journal reset
+	# 根索引节点（ / 和所有 MDS 目录）
+	cephfs-data-scan init
 
-    # Session table
-    cephfs-table-tool 0 reset session
-    # SnapServer
-    cephfs-table-tool 0 reset snap
-    # InoTable
-    cephfs-table-tool 0 reset inode
-    # Journal
-    cephfs-journal-tool --rank=0 journal reset
-    # Root inodes ("/" and MDS directory)
-    cephfs-data-scan init
-
-Finally, you can regenerate metadata objects for missing files
-and directories based on the contents of a data pool.  This is
-a three-phase process.  First, scanning *all* objects to calculate
-size and mtime metadata for inodes.  Second, scanning the first
-object from every file to collect this metadata and inject it into
-the metadata pool. Third, checking inode linkages and fixing found
-errors.
-
-::
+最后，根据数据存储池中的内容重新生成丢失文件和目录的元数据\
+对象。这要分两步完成，首先，扫描\ *所有*\ 对象以计算索引节点的\
+尺寸和 mtime 元数据；其次，从每个文件的第一个对象扫描出元数据\
+并注入元数据存储池。 ::
 
     cephfs-data-scan scan_extents <data pool>
     cephfs-data-scan scan_inodes <data pool>
     cephfs-data-scan scan_links
 
-'scan_extents' and 'scan_inodes' commands may take a *very long* time
-if there are many files or very large files in the data pool.
+如果数据存储池内的文件很多、或者有很大的文件， scan_extents 和
+scan_inodes 命令就要花费\ *很长时间*\ 。
 
-To accelerate the process, run multiple instances of the tool.
+要加快处理，可以让这个工具多跑几个例程。
 
-Decide on a number of workers, and pass each worker a number within
-the range 0-(worker_m - 1).
+先确定例程数量、再传递给每个例程一个数字 N ，此数字应大于 0 且\
+小于 (worker_m - 1) 。
 
-The example below shows how to run 4 workers simultaneously:
-
-::
+下面的实例演示了如何同时运行 4 个例程： ::
 
     # Worker 0
     cephfs-data-scan scan_extents --worker_n 0 --worker_m 4 <data pool>
@@ -194,13 +173,10 @@ The example below shows how to run 4 workers simultaneously:
     # Worker 3
     cephfs-data-scan scan_inodes --worker_n 3 --worker_m 4 <data pool>
 
-It is **important** to ensure that all workers have completed the
-scan_extents phase before any workers enter the scan_inodes phase.
+**切记！！！**\ 所有运行 scan_extents 阶段的例程都结束后才能\
+开始 scan_inodes 。
 
-After completing the metadata recovery, you may want to run cleanup
-operation to delete ancillary data geneated during recovery.
-
-::
+元数据恢复完后，你可以清理掉恢复期间产生的辅助数据。 ::
 
     cephfs-data-scan cleanup <data pool>
 
@@ -212,26 +188,21 @@ operation to delete ancillary data geneated during recovery.
 
 .. warning::
 
-   There has not been extensive testing of this procedure. It should be
-   undertaken with great care.
+   这个方法尚未全面地测试过，下手时要格外小心。
 
-If an existing filesystem is damaged and inoperative, it is possible to create
-a fresh metadata pool and attempt to reconstruct the filesystem metadata
-into this new pool, leaving the old metadata in place. This could be used to
-make a safer attempt at recovery since the existing metadata pool would not be
-overwritten.
+如果一个在用的文件系统损坏了、且无法使用，可以试着创建一个新的\
+元数据存储池、并尝试把文件系统元数据重构进这个新存储池，旧的\
+元数据仍原地保留。这是一种比较安全的恢复方法，因为不会覆盖已有\
+的元数据存储池。
 
 .. caution::
 
-   During this process, multiple metadata pools will contain data referring to
-   the same data pool. Extreme caution must be exercised to avoid changing the
-   data pool contents while this is the case. Once recovery is complete, the
-   damaged metadata pool should be deleted.
+   在此过程中，多个元数据存储池包含着指向同一数据存储池的\
+   元数据。在这种情况下，必须格外小心，以免更改数据存储池\
+   内容。一旦恢复结束，就应该删除损坏的元数据存储池。
 
-To begin this process, first create the fresh metadata pool and initialize
-it with empty file system data structures:
-
-::
+开始前，先创建好新的元数据存储池，并用空文件系统数据结构初始化\
+它。 ::
 
     ceph fs flag set enable_multiple true --yes-i-really-mean-it
     ceph osd pool create recovery <pg-num> replicated <crush-rule-name>
@@ -242,28 +213,21 @@ it with empty file system data structures:
     cephfs-table-tool recovery-fs:all reset snap
     cephfs-table-tool recovery-fs:all reset inode
 
-Next, run the recovery toolset using the --alternate-pool argument to output
-results to the alternate pool:
-
-::
+接下来，运行恢复工具集，加上 ``--alternate-pool`` 参数即可把结\
+果输出到别的存储池： ::
 
     cephfs-data-scan scan_extents --alternate-pool recovery --filesystem <original filesystem name> <original data pool name>
     cephfs-data-scan scan_inodes --alternate-pool recovery --filesystem <original filesystem name> --force-corrupt --force-init <original data pool name>
     cephfs-data-scan scan_links --filesystem recovery-fs
 
-If the damaged filesystem contains dirty journal data, it may be recovered next
-with:
-
-::
+如果损坏的文件系统包含脏日志数据，随后可以用如下命令恢复： ::
 
     cephfs-journal-tool --rank=<original filesystem name>:0 event recover_dentries list --alternate-pool recovery
     cephfs-journal-tool --rank recovery-fs:0 journal reset --force
 
-After recovery, some recovered directories will have incorrect statistics.
-Ensure the parameters mds_verify_scatter and mds_debug_scatterstat are set
-to false (the default) to prevent the MDS from checking the statistics, then
-run a forward scrub to repair them. Ensure you have an MDS running and issue:
-
-::
+恢复完之后，有些恢复过来的目录其链接计数不对。首先确保
+``mds_debug_scatterstat`` 参数为 ``false`` （默认值），以防 MDS
+检查链接计数，再运行正向洗刷以修复它们。确保有一个 MDS 在运行，\
+然后执行命令： ::
 
     ceph tell mds.a scrub start / recursive repair

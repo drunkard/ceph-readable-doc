@@ -87,7 +87,9 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
 	CephFS
 	Ceph FS
         Ceph 文件系统
-		The POSIX filesystem components of Ceph.
+		Ceph 的组件之一，与 POSIX 兼容的文件系统。详情\
+                见 :ref:`CephFS 体系结构 <arch-cephfs>` 和
+                :ref:`ceph-file-system` 。
 
 	Cloud Platforms
 	Cloud Stacks
