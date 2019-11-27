@@ -235,8 +235,6 @@ true ，否则它会拒绝删除存储池。
 如果重命名了一个存储池，且认证用户有每存储池能力，那你必须用新\
 存储池名字更新用户的能力（即 caps ）。
 
-.. note:: 适用 ``0.48 Argonaut`` 及以上。
-
 
 .. Show Pool Statistics
 
@@ -261,8 +259,6 @@ true ，否则它会拒绝删除存储池。
 
 	ceph osd pool mksnap {pool-name} {snap-name}
 
-.. note:: 适用 ``0.48 Argonaut`` 及以上。
-
 
 .. Remove a Snapshot of a Pool
 
@@ -272,8 +268,6 @@ true ，否则它会拒绝删除存储池。
 要删除某存储池的一个快照，执行命令： ::
 
 	ceph osd pool rmsnap {pool-name} {snap-name}
-
-.. note:: 适用 ``0.48 Argonaut`` 及以上。
 
 
 .. Set Pool Values
@@ -389,7 +383,6 @@ true ，否则它会拒绝删除存储池。
 :描述: 给指定存储池设置/取消 HASHPSPOOL 标志。
 :类型: 整数
 :有效范围: 1 开启， 0 取消
-:适用版本: ``0.48`` 及以上。
 
 
 .. _nodelete:

@@ -4,16 +4,18 @@
 
 （认证配置）
 
-``cephx`` 协议已默认开启。加密认证要耗费一定计算资源，但通常很低。如果您的客户端和\
-服务器网络环境相当安全，而且认证的负面效应更大，你可以关闭它，\ \
-**通常不推荐您这么做**\ 。
+``cephx`` 协议已默认开启。加密认证要耗费一定计算资源，但通常\
+很低。如果您的客户端和服务器网络环境相当安全，而且认证的\
+负面效应更大，你可以关闭它，\ **通常不推荐您这么做**\ 。
 
-.. note:: 如果禁用了认证，就会有篡改客户端/服务器消息这样的中间人攻击风险，这会导致\
-   灾难性后果。
+.. note:: 如果禁用了认证，就会有篡改客户端/服务器消息这样的\
+   中间人攻击风险，这会导致灾难性后果。
 
-关于创建用户请参考\ `用户管理`_\ ；关于 Cephx 的体系结构请参考\ \
+关于创建用户请参考\ `用户管理`_\ ；关于 Cephx 的体系结构请参考\
 `体系结构——高可用性认证`_\ 。
 
+
+.. Deployment Scenarios
 
 部署场景
 ========
@@ -57,6 +59,8 @@ will be able to execute Ceph administrative functions as ``root`` on the command
 line of that node.
 
 
+.. Manual Deployment
+
 手动部署
 --------
 
@@ -66,6 +70,8 @@ the steps in `监视器的自举引导`_. The steps for monitor bootstrapping ar
 the logical steps you must perform when using third party deployment tools like
 Chef, Puppet,  Juju, etc.
 
+
+.. Enabling/Disabling Cephx
 
 启用和禁用 Cephx
 ================
@@ -130,6 +136,8 @@ you do not have to repeat the bootstrapping procedures.
 要手动自启监视器，请参考\ `手动部署`_\ 。
 
 
+.. Disabling Cephx
+
 禁用 Cephx
 ----------
 
@@ -185,6 +193,7 @@ you do not have to repeat the bootstrapping procedures.
 
 
 .. index:: keys; keyring
+.. Keys
 
 密钥
 ----
@@ -203,10 +212,11 @@ you do not have to repeat the bootstrapping procedures.
 
 	sudo scp {user}@{ceph-cluster-host}:/etc/ceph/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
 
-.. tip:: 确保给客户端上的 ``ceph.keyring`` 设置合理的权限位（如 ``chmod 644`` ）。
+.. tip:: 确保给客户端上的 ``ceph.keyring`` 设置合理的权限位（如
+   ``chmod 644`` ）。
 
-你可以用 ``key`` 选项把密钥写在配置文件里（别这样），或者用 ``keyfile`` 选项指定个\
-路径。
+你可以用 ``key`` 选项把密钥写在配置文件里（别这样），或者用
+``keyfile`` 选项指定个路径。
 
 
 ``keyring``
@@ -344,58 +354,16 @@ Ceph 施行的签名检查可以为消息提供一些有限的保护，以防消
 
 ``auth service ticket ttl``
 
-:描述: Ceph 存储集群发给客户端一个用于认证的票据时分配给这个票据的生存期。
+:描述: Ceph 存储集群发给客户端一个用于认证的票据时分配给这个\
+       票据的生存期。
 :类型: Double
 :默认值: ``60*60``
-
-
-向后兼容性
-==========
-
-关于 Cuttlefish 及更低版本，参考 `Cephx`_ 。
-
-在 Ceph 0.48 及更早版本，启用 ``cephx`` 认证后， Ceph 仅认证客户端和守护进程间的\
-最初通讯，不会认证后续相互发送的消息，这导致了安全隐患； Bobtail 及后续版本会用认证\
-后生成的会话密钥来认证所有消息。
-
-我们确定了一个向后兼容性问题，在 Argonaut v0.48 （及之前版本）和 Bobtail（ 及后续\
-版本）之间。测试发现，如果你混用 Argonaut （及更小版）和 Bobtail 的守护进程， \
-Argonaut 的守护进程将对正在进行的消息不知所措，因为 Bobtail 进程坚持要求认证最初请\
-求/响应之后的消息，导致二者无法交互。
-
-我们已经提供了一种方法，解决了 Argonaut （及之前）和 Bobtail （及后续）系统间交互\
-的潜在的问题。是这样解决的，默认情况下，较新系统不会再坚持要求较老系统的签名，只是简\
-单地接收这些消息而不对其认证。这个默认行为使得两个不同版本可以交互，但\ \
-**我们不推荐作为长期方案**\ 。允许较新进程不认证正在进行的消息会导致安全问题，因为\
-攻击者如果能控制你的机器、或访问你的网络，就可以宣称不能签署消息，从而禁用会话安全。
-
-.. note:: 即使你没有使用旧版的 Ceph ，在默认配置下，攻击者也可以强制一些未签署消息\
-   被接受；虽然初始通讯认证通过了，但你失去了会话安全。
-
-如果你确定不会使用旧版 Ceph 、或者新旧服务器不能交互无所谓，那就可以排除这个安全风\
-险；如果你这样做了，任何支持会话认证、启用了 Cephx 的 Ceph 系统都会拒绝未签名的消\
-息。要防止新服务器和旧服务器交互，在 `Ceph 配置`_\ 文件的 ``[global]`` 下添加下列\
-这行，要加到启用 Cephx 之后。 ::
-
-	cephx require signatures = true    ; everywhere possible
-
-你也可以选择只对集群内部通讯要求签名，它和面向客户端的服务是分离的： ::
-
-	cephx cluster require signatures = true    ; for cluster-internal communication
-	cephx service require signatures = true    ; for client-facing service
-
-客户端向集群要求签名的选项还没实现。
-
-**我们推荐把所有进程迁移到较新版本，并启用前述选项选项**\ ，以增强认证安全性。
-
-.. note:: Ceph 内核模块还不支持签名。
 
 
 .. _存储集群入门: ../../../start/quick-ceph-deploy/
 .. _监视器的自举引导: ../../../install/manual-deployment#monitor-bootstrapping
 .. _操纵集群: ../../operations/operating
 .. _手动部署: ../../../install/manual-deployment
-.. _Cephx: http://docs.ceph.com/docs/cuttlefish/rados/configuration/auth-config-ref/
 .. _Ceph 配置: ../ceph-conf
 .. _部署管理主机: ../../deployment/ceph-deploy-admin
 .. _体系结构——高可用性认证: ../../../architecture#high-availability-authentication

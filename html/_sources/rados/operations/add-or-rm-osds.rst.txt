@@ -42,40 +42,44 @@ OSD 一般是一个 ``ceph-osd`` 守护进程，它运行在硬盘之上，如�
 .. _安装 Ceph （手动）: ../../../install
 
 
+.. Adding an OSD (Manual)
+
 增加 OSD （手动）
 -----------------
 
-此过程要设置一个 ``ceph-osd`` 守护进程，让它使用一个硬盘，且让集群把数据发布到 \
-OSD 。如果一台主机有多个硬盘，可以重复此过程，把每个硬盘配置为一个 OSD 。
+此过程要设置一个 ``ceph-osd`` 守护进程，让它使用一个硬盘，且\
+让集群把数据发布到 OSD 。如果一台主机有多个硬盘，可以重复此\
+过程，把每个硬盘配置为一个 OSD 。
 
-要添加 OSD ，要依次创建数据目录、把硬盘挂载到目录、把 OSD 加入集群、然后把它加入 \
-CRUSH 图。
+要添加 OSD ，要依次创建数据目录、把硬盘挂载到目录、把 OSD 加入\
+集群、然后把它加入 CRUSH 图。
 
-往 CRUSH 图里添加 OSD 时建议设置权重，硬盘容量每年增长 40% ，所以较新的 OSD 主机拥\
-有更大的空间（即它们可以有更大的权重）。
+往 CRUSH 图里添加 OSD 时建议设置权重，硬盘容量每年增长 40% ，\
+所以较新的 OSD 主机拥有更大的空间（即它们可以有更大的权重）。
 
-.. tip:: Ceph 喜欢统一的硬件，与存储池无关。如果你要新增容量不一的驱动器，还\
-   需调整它们的权重。但是，为实现最佳性能，CRUSH 的分级结构最好按类型、容量\
-   定义。
+.. tip:: Ceph 喜欢统一的硬件，与存储池无关。如果你要新增容量\
+   不一的驱动器，还需调整它们的权重。但是，为实现最佳性能，
+   CRUSH 的分级结构最好按类型、容量定义。
 
-#. 创建 OSD 。如果未指定 UUID ， OSD 启动时会自动生成一个。下列命令会输出 \
-   OSD 号，后续步骤你会用到。 ::
+#. 创建 OSD 。如果未指定 UUID ， OSD 启动时会自动生成一个。\
+   下列命令会输出 OSD 号，后续步骤你会用到。 ::
 
 	ceph osd create [{uuid} [{id}]]
 
-   如果指定了可选参数 {id} ，那么它将作为 OSD id 。要注意，如果此数字已使\
-   用，此命令会出错。
+   如果指定了可选参数 {id} ，那么它将作为 OSD id 。要注意，\
+   如果此数字已使用，此命令会出错。
 
-   .. warning:: 一般来说，我们不建议指定 {id} 。因为 ID 是按照数组分配的，\
-      跳过一些依然会浪费内存；尤其是跳过太多、或者集群很大时，会更明显。若\
-      未指定 {id} ，将用最小可用数字。
+   .. warning:: 一般来说，我们不建议指定 {id} 。因为 ID 是按照\
+      数组分配的，跳过一些依然会浪费内存；尤其是跳过太多、或者\
+      集群很大时，会更明显。若未指定 {id} ，将用最小可用数字。
 
 #. 在新 OSD 主机上创建默认目录。 ::
 
 	ssh {new-osd-host}
 	sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
 
-#. 如果准备用于 OSD 的是单独的而非系统盘，先把它挂载到刚创建的目录下： ::
+#. 如果准备用于 OSD 的是单独的而非系统盘，先把它挂载到刚创建的\
+   目录下： ::
 
 	ssh {new-osd-host}
 	sudo mkfs -t {fstype} /dev/{drive}
@@ -88,51 +92,26 @@ CRUSH 图。
 
    运行 ``ceph-osd`` 时目录必须是空的。
 
-#. 注册 OSD 认证密钥， ``ceph-{osd-num}`` 路径里的 ``ceph`` 值应该是 \
-   ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，那就用改过的名字。 ::
+#. 注册 OSD 认证密钥， ``ceph-{osd-num}`` 路径里的 ``ceph`` 值\
+   应该是 ``$cluster-$id`` ，如果你的集群名字不是 ``ceph`` ，\
+   那就用改过的名字。 ::
 
 	ceph auth add osd.{osd-num} osd 'allow *' mon 'allow rwx' -i /var/lib/ceph/osd/ceph-{osd-num}/keyring
 
-#. 把 OSD 加入 CRUSH 图，这样它才开始收数据。用 ``ceph osd crush add`` 命令\
-   把 OSD 加入 CRUSH 分级结构的合适位置。如果你指定了不止一个桶，此命令会把\
-   它加入你所指定的桶中最具体的一个，\ *并且*\ 把此桶挪到你指定的其它桶之内。\
-   **重要：**\ 如果你只指定了 root 桶，此命令会把 OSD 直接挂到 root 下面，但\
-   是 CRUSH 规则期望它位于主机内。
+#. 把 OSD 加入 CRUSH 图，这样它才开始收数据。用 ``ceph osd crush add``
+   命令把 OSD 加入 CRUSH 分级结构的合适位置。如果你指定了不止\
+   一个桶，此命令会把它加入你所指定的桶中最具体的一个，\
+   *并且*\ 把此桶挪到你指定的其它桶之内。\ **重要：**\ 如果你\
+   只指定了 root 桶，此命令会把 OSD 直接挂到 root 下面，但是
+   CRUSH 规则期望它位于主机内。
 
-   若用的是 v0.48 版，执行下列命令： ::
-
-	ceph osd crush add {id} {name} {weight}  [{bucket-type}={bucket-name} ...]
-
-   若用的是 v0.56 及更高版，执行下列命令： ::
+   执行下列命令： ::
 
 	ceph osd crush add {id-or-name} {weight}  [{bucket-type}={bucket-name} ...]
 
-   你也可以反编译 CRUSH 图、把 OSD 加入设备列表、以桶的形式加入主机（如果它没在 \
-   CRUSH 图里）、以条目形式把设备加入主机、分配权重、重编译并应用它。详情参见\ \
-   `增加/移动 OSD`_ 。
-
-
-.. topic:: Argonaut 0.48 版最佳实践
-
-   为降低对用户 I/O 性能的影响，加入 CRUSH 图时应该把 OSD 的初始权重设为 ``0`` ，\
-   然后每次增大一点、逐步增大 CRUSH 权重。例如每次增加 ``0.2`` ： ::
-
-      ceph osd crush reweight {osd-id} .2
-
-   迁移完成前，可以依次把权重重置为 ``0.4`` 、 ``0.6`` 等等，直到达到期望权重。
-
-   为降低 OSD 失败的影响，你可以设置： ::
-
-      mon osd down out interval = 0
-
-   它防止挂了的 OSD 自动被标记为 ``out`` ，然后逐步降低其权重： ::
-
-      ceph osd reweight {osd-num} .8
-
-   还是等着集群完成数据迁移，然后再次调整权重，直到权重为 0 。注意，这会阻止集群在\
-   发生故障时自动重复制数据，所以要确保监控的及时性，以便管理员迅速介入。
-
-   注意，以上经验在 Bobtail 及后续版本已不再必要。
+   你也可以反编译 CRUSH 图、把 OSD 加入设备列表、以桶的形式\
+   加入主机（如果它没在 CRUSH 图里）、以条目形式把设备加入\
+   主机、分配权重、重编译并应用它。详情参见\ `增加/移动 OSD`_ 。
 
 
 .. Replacing an OSD
@@ -145,6 +124,10 @@ CRUSH 图。
 FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 `删除 OSD`_ ，要更换的 OSD ，在经历销毁后，其 id 和 CRUSH 图\
 条目都需要保持不变。
+
+#. 确保销毁此 OSD 不会有问题： ::
+
+     while ! ceph osd safe-to-destroy osd.{id} ; do sleep 10 ; done
 
 #. 先销毁这个 OSD::
 
@@ -188,6 +171,8 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 一旦你启动了 OSD ，其状态就变成了 ``up`` 且 ``in`` 。
 
 
+.. Observe the Data Migration
+
 观察数据迁移
 ------------
 
@@ -205,7 +190,7 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 .. _ceph: ../monitoring
 
 
-.. _Removing OSDs (Manual):
+.. Removing OSDs (Manual)
 
 删除 OSD （手动）
 =================
@@ -220,6 +205,8 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
    OSD 可能导致集群达到或超过 ``full ratio`` 值。
 
 
+.. Take the OSD out of the Cluster
+
 把 OSD 踢出集群
 ---------------
 
@@ -229,34 +216,40 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 	ceph osd out {osd-num}
 
 
+.. Observe the Data Migration
+
 观察数据迁移
 ------------
 
-一旦把 OSD 踢出（ ``out`` ）集群， Ceph 就会开始重新均衡集群、把归置组迁出将删除\
-的 OSD 。你可以用 `ceph`_ 工具观察此过程。 ::
+一旦把 OSD 踢出（ ``out`` ）集群， Ceph 就会开始重新均衡集群、\
+把归置组迁出将删除的 OSD 。你可以用 `ceph`_ 工具观察此过程。 ::
 
 	ceph -w
 
-你会看到归置组状态从 ``active+clean`` 变为 ``active, some degraded objects`` 、\
-迁移完成后最终回到 ``active+clean`` 状态。（ Ctrl-c 中止）
+你会看到归置组状态从 ``active+clean`` 变为
+``active, some degraded objects`` 、迁移完成后最终回到
+``active+clean`` 状态。（ Ctrl-c 中止）
 
-.. note:: 有时候，（通常是只有几台主机的“小”集群，比如小型测试集群）拿出\
-   （ ``out`` ）某个 OSD 可能会使 CRUSH 进入临界状态，这时某些 PG 一直卡\
-   在 ``active+remapped`` 状态。如果遇到了这种情况，你应该把此 OSD 标记\
-   为 ``in`` ，用这个命令： ::
+.. note:: 有时候，（通常是只有几台主机的“小”集群，比如小型\
+   测试集群）拿出（ ``out`` ）某个 OSD 可能会使 CRUSH 进入\
+   临界状态，这时某些 PG 一直卡在 ``active+remapped`` 状态。\
+   如果遇到了这种情况，你应该把此 OSD 标记为 ``in`` ，用这个\
+   命令： ::
 
 	``ceph osd in {osd-num}``
 
-   等回到最初的状态后，把它的权重设置为 0 ，而不是标记为 ``out`` ，用此\
-   命令： ::
+   等回到最初的状态后，把它的权重设置为 0 ，而不是标记为
+   ``out`` ，用此命令： ::
 
 	``ceph osd crush reweight osd.{osd-num} 0``
 
-   执行后，你可以观察数据迁移过程，应该可以正常结束。把某一 OSD 标记为 \
-   ``out`` 和权重改为 0 的区别在于，前者，包含此 OSD 的桶、其权重没变；\
-   而后一种情况下，桶的权重变了（降低了此 OSD 的权重）。某些情况下， \
-   reweight 命令更适合“小”集群。
+   执行后，你可以观察数据迁移过程，应该可以正常结束。把某一 OSD
+   标记为 ``out`` 和权重改为 0 的区别在于，前者，包含此 OSD 的\
+   桶、其权重没变；而后一种情况下，桶的权重变了（降低了此 OSD
+   的权重）。某些情况下， reweight 命令更适合“小”集群。
 
+
+.. Stopping the OSD
 
 停止 OSD
 --------

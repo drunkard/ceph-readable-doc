@@ -4,43 +4,70 @@
  硬件推荐
 ==========
 
-Ceph 为普通硬件设计，这可使构建、维护 PB 级数据集群的费用相对低廉。规划集群硬\
-件时，需要均衡几方面的因素，包括区域失效和潜在的性能问题。硬件规划要包含把使\
-用 Ceph 集群的 Ceph 守护进程和其他进程恰当分布。通常，我们推荐在一台机器上只运\
-行一种类型的守护进程。我们推荐把使用数据集群的进程（如 OpenStack 、 \
+Ceph 为普通硬件设计，这可使构建、维护 PB 级数据集群的费用相对\
+低廉。规划集群硬件时，需要均衡几方面的因素，包括区域失效和潜在\
+的性能问题。硬件规划要包含把使用 Ceph 集群的 Ceph 守护进程和\
+其他进程恰当分布。通常，我们推荐在一台机器上只运行一种类型的\
+守护进程。我们推荐把使用数据集群的进程（如 OpenStack 、 \
 CloudStack 等）安装在别的机器上。
 
 
-.. tip:: 关于 Ceph 的高品质博客文章也值得参考，比如 `Ceph Write Throughput 1`_ 、 \
-   `Ceph Write Throughput 2`_ 、 `Argonaut v. Bobtail Performance Preview`_ 、 \
-   `Bobtail Performance - I/O Scheduler Comparison`_ 。
+.. tip:: 另请参考 `Ceph 博客文章`_\ 。
 
 
 CPU
 ===
 
-Ceph 元数据服务器对 CPU 敏感，它会动态地重分布它们的负载，所以你的元数据服务\
-器应该有足够的处理能力（如 4 核或更强悍的 CPU ）。 Ceph 的 OSD 运行着 \
-:term:`RADOS` 服务、用 :term:`CRUSH` 计算数据存放位置、复制数据、维护它自己的\
-集群运行图副本，因此 OSD 需要一定的处理能力（如双核 CPU ）。监视器只简单地维\
-护着集群运行图的副本，因此对 CPU 不敏感；但必须考虑机器以后是否还会运行 Ceph \
-监视器以外的 CPU 密集型任务。例如，如果服务器以后要运行用于计算的虚拟机（如 \
-OpenStack Nova ），你就要确保给 Ceph 进程保留了足够的处理能力，所以我们推荐在\
-其他机器上运行 CPU 密集型任务。
+Ceph 元数据服务器对 CPU 敏感，它会动态地重分布它们的负载，所以\
+你的元数据服务器应该有足够的处理能力（如 4 核或更强悍的 CPU
+）。 Ceph 的 OSD 运行着 :term:`RADOS` 服务、用 :term:`CRUSH`
+计算数据存放位置、复制数据、维护它自己的集群运行图副本，因此
+OSD 需要一定的处理能力（如双核 CPU ）。监视器只简单地维护着\
+集群运行图的副本，因此对 CPU 不敏感；但必须考虑机器以后是否\
+还会运行 Ceph 监视器以外的 CPU 密集型任务。例如，如果服务器\
+以后要运行用于计算的虚拟机（如 OpenStack Nova ），你就要确保给
+Ceph 进程保留了足够的处理能力，所以我们推荐在其他机器上运行
+CPU 密集型任务。
 
 
-.. _RAM:
+.. RAM
 
 RAM 内存
 ========
 
-元数据服务器和监视器必须可以尽快地提供它们的数据，所以他们应\
-该有足够的内存，至少每进程 1GB 。 OSD 的日常运行不需要那么多\
-内存（如每进程 500MB ）差不多了；然而在恢复期间它们占用内存\
-比较大（如每进程每 TB 数据需要约 1GB 内存）。通常内存越多越好。
+一般来说，内存越多越好。
 
 
-.. _Data Storage:
+.. Monitors and managers (ceph-mon and ceph-mgr)
+
+监视器和管理器（ ceph-mon 和 ceph-mgr ）
+----------------------------------------
+
+Monitor and manager daemon memory usage generally scales with the size of the
+cluster.  For small clusters, 1-2 GB is generally sufficient.  For
+large clusters, you should provide more (5-10 GB).  You may also want
+to consider tuning settings like ``mon_osd_cache_size`` or
+``rocksdb_cache_size``.
+
+
+.. Metadata servers (ceph-mds)
+
+元数据服务器（ ceph-mds ）
+--------------------------
+
+The metadata daemon memory utilization depends on how much memory its cache is
+configured to consume.  We recommend 1 GB as a minimum for most systems.  See
+``mds_cache_memory``.
+
+
+OSDs (ceph-osd)
+---------------
+
+By default, OSDs that use the BlueStore backend require 3-5 GB of RAM.  You can
+adjust the amount of memory the OSD consumes with the ``osd_memory_target`` configuration option when BlueStore is in use.  When using the legacy FileStore backend, the operating system page cache is used for caching data, so no tuning is normally needed, and the OSD memory consumption is generally related to the number of PGs per daemon in the system.
+
+
+.. Data Storage
 
 数据存储
 ========
@@ -53,7 +80,7 @@ RAM 内存
    至少对 xfs 来说是），因此均衡日志和 OSD 性能相当重要。
 
 
-.. _Hard Disk Drives:
+.. Hard Disk Drives
 
 硬盘驱动器
 ----------
@@ -90,7 +117,7 @@ Ceph 最佳实践指示，你应该分别在单独的硬盘运行操作系统、
 数据和 OSD 日志。
 
 
-.. _Solid State Drives:
+.. Solid State Drives
 
 固态硬盘
 --------
@@ -131,14 +158,18 @@ SSD 用于对象存储太昂贵了，但是把 OSD 的日志存到 SSD 、把对
 见\ `给存储池指定 OSD`_ 。
 
 
+.. Controllers
+
 控制器
 ------
 
 硬盘控制器对写吞吐量也有显著影响，要谨慎地选择，以免产生性能瓶颈。
 
-.. tip:: Ceph blog通常是优秀的Ceph性能问题来源，见 `Ceph Write Throughput 1`_ \
-   和 `Ceph Write Throughput 2`_ 。
+.. tip:: `Ceph 博客文章`_ 常常是优秀的 Ceph 性能问题信息源，见
+   `Ceph Write Throughput 1`_ 和 `Ceph Write Throughput 2`_ 。
 
+
+.. Additional Considerations
 
 其他注意事项
 ------------
@@ -158,6 +189,8 @@ OSD 数量较多（如 20 个以上）的主机会派生出大量线程，尤其
 
 	kernel.pid_max = 4194303
 
+
+.. Networks
 
 网络
 ====
@@ -185,6 +218,8 @@ VLAN 来处理集群和计算栈（如 OpenStack 、 CloudStack 等等）之间�
 虑的潜能力、吞吐量、性能瓶颈。
 
 
+.. Failure Domains
+
 故障域
 ======
 
@@ -194,7 +229,7 @@ VLAN 来处理集群和计算栈（如 OpenStack 、 CloudStack 等等）之间�
 在故障域增加的成本。
 
 
-.. _Minimum Hardware Recommendations:
+.. Minimum Hardware Recommendations
 
 最低硬件推荐
 ============
@@ -239,6 +274,8 @@ Ceph 可以运行在廉价的普通硬件上，小型生产集群和开发集群
    统分别放到不同分区；一般来说，我们推荐操作系统和数据分别使\
    用不同的硬盘。
 
+
+.. Production Cluster Examples
 
 生产集群实例
 ============
@@ -287,9 +324,8 @@ Dell 实例
 
 
 
+.. _Ceph 博客文章: https://ceph.com/community/blog/
 .. _Ceph Write Throughput 1: http://ceph.com/community/ceph-performance-part-1-disk-controller-write-throughput/
 .. _Ceph Write Throughput 2: http://ceph.com/community/ceph-performance-part-2-write-throughput-without-ssd-journals/
-.. _Argonaut v. Bobtail Performance Preview: http://ceph.com/uncategorized/argonaut-vs-bobtail-performance-preview/
-.. _Bobtail Performance - I/O Scheduler Comparison: http://ceph.com/community/ceph-bobtail-performance-io-scheduler-comparison/
 .. _给存储池指定 OSD: ../../rados/operations/crush-map#placing-different-pools-on-different-osds
 .. _操作系统推荐: ../os-recommendations
