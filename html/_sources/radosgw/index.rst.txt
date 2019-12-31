@@ -54,6 +54,7 @@ API 写、然后用另一个检出。
    与 LDAP 认证服务对接 <ldap-auth>
    与 OpenStack Keystone 对接 <keystone>
    与 OpenStack Barbican 对接 <barbican>
+   与 Open Policy Agent 对接 <opa>
    多租户 <multitenancy>
    压缩 <compression>
    服务器端加密 <encryption>

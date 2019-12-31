@@ -86,6 +86,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
     最佳部署实践 <best-practices>
     CephFS 管理命令 <administration>
     深入理解 MDS 的缓存尺寸限制 <cache-size-limits>
+    MDS 的各种状态 <mds-states>
     POSIX 兼容性 <posix>
     实验性功能 <experimental-features>
     CephFS 配额管理 <quota>

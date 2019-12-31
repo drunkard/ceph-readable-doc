@@ -9,16 +9,14 @@
 提纲
 ====
 
-| **rados** [ -m *monaddr* ] [ mkpool | rmpool *foo* ] [ -p | --pool
-  *pool* ] [ -s | --snap *snap* ] [ -i *infile* ] [ -o *outfile* ]
-  *command* ...
+| **rados** [ *options* ] [ *command* ]
 
 
 描述
 ====
 
-**rados** 工具可操作 Ceph 对象存储集群（ RADOS ），是 Ceph 分\
-布式存储系统的一部分。
+**rados** 工具可操纵 Ceph 对象存储集群（ RADOS ），是 Ceph
+分布式存储系统的一部分。
 
 
 选项
@@ -27,6 +25,16 @@
 .. option:: -p pool, --pool pool
 
    操作指定的存储池。大多数命令都得指定此参数。
+
+.. option:: --pgid
+
+   作为 ``--pool`` 的外加参数， ``--pgid`` 是让用户指定 PG id
+   的，然后命令就径直导向此 PG 。加上这个选项，用户就可以把\
+   某些命令（如 ``ls`` ）的范围限定于指定 PG 。
+
+.. option:: -N namespace, --namespace namespace
+
+   指定要给对象用的 rados 命名空间。
 
 .. option:: -s snap, --snap snap
 
@@ -60,6 +68,10 @@
    使用 rados 的条带化 API 而非默认的，支持的操作有 stat 、
    get 、 put 、 append 、 truncate 、 rm 、 ls 以及所有与
    xattr 相关的操作。
+
+.. option:: -O object_size
+
+   在做写入压力测试的时候，设置 put/get 操作的对象尺寸。
 
 
 全局命令
@@ -164,8 +176,8 @@
   罗列 name 对象的对象映射图内存储的所有键。
 
 :command:`listomapvals` *name*
-  罗列 name 对象的对象映射图内存储的所有键值对。值会被转储为十\
-  六进制。
+  罗列 name 对象的对象映射图内存储的所有键值对。值会被转储为\
+  十六进制。
 
 :command:`getomapval` [ --omap-key-file *file* ] *name* *key* [ *out-file* ]
   把 name 对象的对象映射图内 key 的值转储为十六进制。如果没有\
@@ -183,6 +195,12 @@
 
 :command:`setomapheader` *name* *value*
   设置 name 对象的对象映射图头部的值。
+
+:command:`export` *filename*
+  把存储池内容序列化为一个文件或标准输出。
+
+:command:`import` [--dry-run] [--no-overwrite] < filename | - >
+  把一个文件或标准输入的内容载入存储池。
 
 
 实例

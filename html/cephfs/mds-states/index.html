@@ -1,0 +1,370 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>MDS 的各种状态 &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="与 POSIX 标准的差异" href="../posix/" />
+    <link rel="prev" title="深入理解 MDS 的缓存尺寸限制" href="../cache-size-limits/" />
+    <script type="text/javascript" src="http://ayni.ceph.com/public/js/ceph.js"></script>
+
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../posix/" title="与 POSIX 标准的差异"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../cache-size-limits/" title="深入理解 MDS 的缓存尺寸限制"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/mds-states.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="mds">
+<h1>MDS 的各种状态<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h1>
+<p>The Metadata Server (MDS) goes through several states during normal operation
+in CephFS. For example, some states indicate that the MDS is recovering from a
+failover by a previous instance of the MDS. Here we’ll document all of these
+states and include a state diagram to visualize the transitions.</p>
+<div class="section" id="id1">
+<h2>状态描述<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id2">
+<h3>常见状态<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">active</span>
+</pre></div>
+</div>
+<p>This is the normal operating state of the MDS. It indicates that the MDS
+and its rank in the file system is available.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">standby</span>
+</pre></div>
+</div>
+<p>The MDS is available to takeover for a failed rank (see also <a class="reference internal" href="../standby/#mds-standby"><span class="std std-ref">术语</span></a>).
+The monitor will automatically assign an MDS in this state to a failed rank
+once available.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">standby_replay</span>
+</pre></div>
+</div>
+<p>The MDS is following the journal of another <code class="docutils literal notranslate"><span class="pre">up:active</span></code> MDS. Should the
+active MDS fail, having a standby MDS in replay mode is desirable as the MDS is
+replaying the live journal and will more quickly takeover. A downside to having
+standby replay MDSs is that they are not available to takeover for any other
+MDS that fails, only the MDS they follow.</p>
+</div>
+<div class="section" id="id3">
+<h3>不太常见的或过渡状态<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">boot</span>
+</pre></div>
+</div>
+<p>This state is broadcast to the Ceph monitors during startup. This state is
+never visible as the Monitor immediately assign the MDS to an available rank or
+commands the MDS to operate as a standby. The state is documented here for
+completeness.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">creating</span>
+</pre></div>
+</div>
+<p>The MDS is creating a new rank (perhaps rank 0) by constructing some per-rank
+metadata (like the journal) and entering the MDS cluster.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">starting</span>
+</pre></div>
+</div>
+<p>The MDS is restarting a stopped rank. It opens associated per-rank metadata
+and enters the MDS cluster.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">stopping</span>
+</pre></div>
+</div>
+<p>When a rank is stopped, the monitors command an active MDS to enter the
+<code class="docutils literal notranslate"><span class="pre">up:stopping</span></code> state. In this state, the MDS accepts no new client
+connections, migrates all subtrees to other ranks in the file system, flush its
+metadata journal, and, if the last rank (0), evict all clients and shutdown
+(see also <a class="reference internal" href="../administration/#cephfs-administration"><span class="std std-ref">CephFS 管理命令</span></a>).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">replay</span>
+</pre></div>
+</div>
+<p>The MDS taking over a failed rank. This state represents that the MDS is
+recovering its journal and other metadata.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">resolve</span>
+</pre></div>
+</div>
+<p>The MDS enters this state from <code class="docutils literal notranslate"><span class="pre">up:replay</span></code> if the Ceph file system has
+multiple ranks (including this one), i.e. it’s not a single active MDS cluster.
+The MDS is resolving any uncommitted inter-MDS operations. All ranks in the
+file system must be in this state or later for progress to be made, i.e. no
+rank can be failed/damaged or <code class="docutils literal notranslate"><span class="pre">up:replay</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">reconnect</span>
+</pre></div>
+</div>
+<p>An MDS enters this state from <code class="docutils literal notranslate"><span class="pre">up:replay</span></code> or <code class="docutils literal notranslate"><span class="pre">up:resolve</span></code>. This state is to
+solicit reconnections from clients. Any client which had a session with this
+rank must reconnect during this time, configurable via
+<code class="docutils literal notranslate"><span class="pre">mds_reconnect_timeout</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">rejoin</span>
+</pre></div>
+</div>
+<p>The MDS enters this state from <code class="docutils literal notranslate"><span class="pre">up:reconnect</span></code>. In this state, the MDS is
+rejoining the MDS cluster cache. In particular, all inter-MDS locks on metadata
+are reestablished.</p>
+<p>If there are no known client requests to be replayed, the MDS directly becomes
+<code class="docutils literal notranslate"><span class="pre">up:active</span></code> from this state.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">up</span><span class="p">:</span><span class="n">clientreplay</span>
+</pre></div>
+</div>
+<p>The MDS may enter this state from <code class="docutils literal notranslate"><span class="pre">up:rejoin</span></code>. The MDS is replaying any
+client requests which were replied to but not yet durable (not journaled).
+Clients resend these requests during <code class="docutils literal notranslate"><span class="pre">up:reconnect</span></code> and the requests are
+replayed once again. The MDS enters <code class="docutils literal notranslate"><span class="pre">up:active</span></code> after completing replay.</p>
+</div>
+<div class="section" id="id4">
+<h3>失败状态<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">down</span><span class="p">:</span><span class="n">failed</span>
+</pre></div>
+</div>
+<p>No MDS actually holds this state. Instead, it is applied to the rank in the file system. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs dump
+...
+max_mds 1
+in      0
+up      {}
+failed  0
+...
+</pre></div>
+</div>
+<p>Rank 0 is part of the failed set.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">down</span><span class="p">:</span><span class="n">damaged</span>
+</pre></div>
+</div>
+<p>No MDS actually holds this state. Instead, it is applied to the rank in the file system. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs dump
+...
+max_mds 1
+in      0
+up      {}
+failed
+damaged 0
+...
+</pre></div>
+</div>
+<p>Rank 0 has become damaged (see also <a class="reference internal" href="../disaster-recovery/#cephfs-disaster-recovery"><span class="std std-ref">灾难恢复</span></a>) and placed in
+the <code class="docutils literal notranslate"><span class="pre">damaged</span></code> set. An MDS which was running as rank 0 found metadata damage
+that could not be automatically recovered. Operator intervention is required.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">down</span><span class="p">:</span><span class="n">stopped</span>
+</pre></div>
+</div>
+<p>No MDS actually holds this state. Instead, it is applied to the rank in the file system. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs dump
+...
+max_mds 1
+in      0
+up      {}
+failed
+damaged
+stopped 1
+...
+</pre></div>
+</div>
+<p>The rank has been stopped by reducing <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> (see also <a class="reference internal" href="../multimds/#cephfs-multimds"><span class="std std-ref">多活 MDS 守护进程的配置</span></a>).</p>
+</div>
+</div>
+<div class="section" id="id5">
+<h2>状态图<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>这张状态图展示了 MDS/rank 可能的状态转变，图例如下：</p>
+<div class="section" id="id6">
+<h3>颜色<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Green: MDS is active.</p></li>
+<li><p>Orange: MDS is in transient state trying to become active.</p></li>
+<li><p>Red: MDS is indicating a state that causes the rank to be marked failed.</p></li>
+<li><p>Purple: MDS and rank is stopping.</p></li>
+<li><p>Black: MDS is indicating a state that causes the rank to be marked damaged.</p></li>
+</ul>
+</div>
+<div class="section" id="id7">
+<h3>形状<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Circle: an MDS holds this state.</p></li>
+<li><p>Hexagon: no MDS holds this state (it is applied to the rank).</p></li>
+</ul>
+</div>
+<div class="section" id="id8">
+<h3>线<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>A double-lined shape indicates the rank is “in”.</p></li>
+</ul>
+<img alt="../../_images/mds-state-diagram.svg" src="../../_images/mds-state-diagram.svg" /></div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（ ceph-deploy ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">安装（ Kubernetes + Helm ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../#cephfs">CephFS 使用文档</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../add-remove-mds/">配备、增加、删除 MDS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/">术语</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#mds">MDS 守护进程的引用</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#id3">故障切换的管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#mds-standby-replay">热备的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS 配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel/">挂载 CephFS 文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fuse/">把 CephFS 挂载为 FUSE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fstab/">通过 fstab 挂载 CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/">ceph-fuse 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/">mount.ceph 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.fuse.ceph/">mount.fuse.ceph 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../best-practices/">最佳部署实践</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/">深入理解 MDS 的缓存尺寸限制</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">MDS 的各种状态</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">状态描述</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id2">常见状态</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id3">不太常见的或过渡状态</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id4">失败状态</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">状态图</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id6">颜色</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id7">形状</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id8">线</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/">实验性功能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/#id4">曾经是实验性的功能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../health-messages/">健康消息</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/">升级 MDS 集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/#firefly-jewel">升级比 Firefly 老的文件系统，需过 Jewel 这个槛</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../dirfrags/">目录分片的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multimds/">多活 MDS 的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../scrub/">洗刷</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../#id1">元数据修复</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../#id2">开发者文档</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../posix/" title="与 POSIX 标准的差异"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../cache-size-limits/" title="深入理解 MDS 的缓存尺寸限制"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>
