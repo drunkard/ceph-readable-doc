@@ -74,13 +74,14 @@ Ceph 存储集群默认需要认证，所以挂载时需要指定用户名和\ `
 
 	sudo mount -t ceph 192.168.0.1:6789:/ /mnt/mycephfs -o name=admin,secretfile=admin.secret
 
-.. note:: 从管理节点而非服务器节点挂载 Ceph FS 文件系统，详情见 `FAQ`_ 。
+.. note:: 从管理节点而非服务器节点挂载 CephFS 文件系统，详情见
+   `FAQ`_ 。
 
 
 用户空间文件系统
 ================
 
-在用户空间（ FUSE ）下挂载 Ceph FS 文件系统。 ::
+在用户空间（ FUSE ）下挂载 CephFS 文件系统。 ::
 
 	sudo mkdir ~/mycephfs
 	sudo ceph-fuse -m {ip-address-of-monitor}:6789 ~/mycephfs
@@ -94,12 +95,12 @@ Ceph 存储集群默认要求认证，需指定相应的密钥环文件，除非
 额外信息
 ========
 
-额外信息见 `Ceph FS`_ 。 Ceph FS 还不像 Ceph 块设备和 Ceph 对\
+额外信息见 `CephFS`_ 。 CephFS 还不像 Ceph 块设备和 Ceph 对\
 象存储那么稳定，如果遇到问题请参考\ `故障排除`_\ 。
 
 
 .. _存储集群入门: ../quick-ceph-deploy
-.. _Ceph FS: ../../cephfs/
+.. _CephFS: ../../cephfs/
 .. _FAQ: http://wiki.ceph.com/How_Can_I_Give_Ceph_a_Try
 .. _故障排除: ../../cephfs/troubleshooting
 .. _操作系统推荐: ../os-recommendations
