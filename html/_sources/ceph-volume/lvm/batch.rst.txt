@@ -65,10 +65,12 @@ If a raw solid device is used along with a device that has a volume group in
 addition to some spinning devices, ``ceph-volume`` will try to extend the
 existing volume group and then create a logical volume.
 
+
+.. Reporting
 .. _ceph-volume-lvm-batch_report:
 
-Reporting
-=========
+报表
+====
 When a call is received to create OSDs, the tool will prompt the user to
 continue if the pre-computed output is acceptable. This output is useful to
 understand the outcome of the received devices. Once confirmation is accepted,
@@ -79,7 +81,7 @@ try different inputs to find the best product possible. With the ``--report``
 flag, one can prevent any actual operations and just verify outcomes from
 inputs.
 
-**pretty reporting**
+**易读的报表**
 For two spinning devices, this is how the ``pretty`` report (the default) would
 look::
 
@@ -94,8 +96,7 @@ look::
       [data]          /dev/sdc                  10.74 GB        100%
 
 
-
-**JSON reporting**
+**JSON 格式的报表**
 Reporting can produce a richer output with ``JSON``, which gives a few more
 hints on sizing. This feature might be better for other tooling to consume
 information that will need to be transformed.

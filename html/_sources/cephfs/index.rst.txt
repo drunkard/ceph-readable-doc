@@ -69,6 +69,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
         创建 CephFS 文件系统 <createfs>
         挂载 CephFS 文件系统 <kernel>
         把 CephFS 挂载为 FUSE <fuse>
+        CephFS Shell 的用法 <cephfs-shell>
         通过 fstab 挂载 CephFS <fstab>
         ceph-fuse 手册页 <../../man/8/ceph-fuse>
         mount.ceph 手册页 <../../man/8/mount.ceph>

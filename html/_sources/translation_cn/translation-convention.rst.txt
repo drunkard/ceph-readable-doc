@@ -199,6 +199,9 @@
         and it's up to the upper layer to schedule this operation.
         e.g., log intent in intent log
 
+    inventory
+        （存储空间）余量
+
     iSCSI initiator
         <不翻译>
 

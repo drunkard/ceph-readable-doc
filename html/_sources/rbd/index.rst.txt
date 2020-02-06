@@ -11,10 +11,10 @@
 
 Ceph 块设备是瘦接口、大小可调且数据条带化到集群内的多个 OSD 。 \
 Ceph 块设备均衡多个 \
-:abbr:`RADOS (Reliable Autonomic Distributed Object Store)` 能\
-力，如快照、复制和一致性， Ceph 的 \
-:abbr:`RADOS (Reliable Autonomic Distributed Object Store)` 块\
-设备（ RBD ）用内核模块或 librbd 库与 OSD 交互。
+:abbr:`RADOS (Reliable Autonomic Distributed Object Store)`
+能力，如快照、复制和一致性， Ceph 的 \
+:abbr:`RADOS (Reliable Autonomic Distributed Object Store)`
+块设备（ RBD ）用内核模块或 librbd 库与各个 OSD 交互。
 
 .. ditaa::  +------------------------+ +------------------------+
             |     Kernel Module      | |        librbd          |

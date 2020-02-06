@@ -900,7 +900,7 @@ jewel 版的可调配置能够提升 CRUSH 的整体行为，这样，在 OSD
         ceph tell mon.\* config set mon_warn_on_legacy_crush_tunables false
 
 
-.. _A few important points:
+.. A few important points
 
 一些要点
 --------

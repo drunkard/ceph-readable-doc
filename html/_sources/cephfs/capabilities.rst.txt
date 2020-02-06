@@ -1,4 +1,4 @@
-.. _Capabilities in CephFS:
+.. Capabilities in CephFS
 
 ===================
  CephFS 支持的能力
@@ -11,7 +11,7 @@
 个客户端同时持有同一索引节点的不同能力。
 
 
-.. _Types of Capabilities:
+.. Types of Capabilities
 
 能力的种类
 ----------
@@ -83,10 +83,10 @@ pin 只是把 inode 插入内存，不授予任何能力。
 当前尚未使用第二个 bit 。
 
 
-.. _Abilities granted by each cap:
+.. Abilities granted by each cap
 
-各个 cap 授予的能力：
----------------------
+各个 cap 授予的能力
+-------------------
 
 这就解释完了能力是如何授予的（和通讯的），以下重要的位说明了允\
 许客户端干什么：
@@ -107,6 +107,8 @@ pin 只是把 inode 插入内存，不授予任何能力。
 * FILE: 这是个大头，允许客户端访问和修改数据。也涵盖了与文件数\
   据相关的元数据——特别是尺寸、 mtime 、 atime 、 ctime 。
 
+
+.. Shorthand
 
 简写
 ----
