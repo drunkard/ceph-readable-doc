@@ -17,13 +17,13 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 	osd.1
 	osd.2
 
-在配置文件里， ``[osd]`` 段下的配置适用于所有 OSD ；要添加针对特\
-定 OSD 的选项（如 ``host`` ），把它放到那个 OSD 段下即可，如：
+在配置文件里， ``[osd]`` 段下的配置适用于所有 OSD ；要添加针对\
+特定 OSD 的选项（如 ``host`` ），把它放到那个 OSD 段下即可，如：
 
 .. code-block:: ini
 
 	[osd]
-		osd journal size = 1024
+		osd journal size = 5120
 
 	[osd.0]
 		host = osd-host-a
@@ -38,12 +38,15 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 常规配置
 ========
 
-下列选项可配置一 OSD 的唯一标识符、以及数据和日志的路径。 Ceph 部署脚本通常会自动生\
-成 UUID 。我们\ **不建议**\ 更改数据和日志的默认路径，因为这样会增加后续的排障难度。
+下列选项可配置一 OSD 的唯一标识符、以及数据和日志的路径。 Ceph
+部署脚本通常会自动生成 UUID 。
 
-日志尺寸应该大于期望的驱动器速度和 ``filestore max sync interval`` 之乘积的两倍；\
-最常见的方法是为日志驱动器（通常是 SSD ）分区并挂载好，这样 Ceph 就可以用整个分区做\
-日志。
+.. warning:: 我们\ **不建议**\ 更改数据和日志的默认路径，因为\
+   这样会增加后续的排障难度。
+
+日志尺寸应该大于期望的驱动器速度和 ``filestore max sync interval``
+之乘积的两倍；最常见的方法是为日志驱动器（通常是 SSD ）分区并\
+挂载好，这样 Ceph 就可以用整个分区做日志。
 
 
 ``osd uuid``
@@ -127,19 +130,18 @@ Ceph 可自动创建并挂载所需的文件系统。
 
 	/var/lib/ceph/osd/$cluster-$id/journal
 
-未做性能优化时， Ceph 会把日志存储在与 OSD 数据相同的硬盘上。追求高性能的 OSD 可用\
-单独的硬盘存储日志数据，如固态硬盘能提供高性能日志。
+When using a single device type (for example, spinning drives), the journals
+should be *colocated*: the logical volume (or partition) should be in the same
+device as the ``data`` logical volume.
 
-``osd journal size`` 默认值是 0 ，所以你得在 ``ceph.conf`` 里设置。日志尺寸应该\
-是 ``filestore max sync interval`` 与期望吞吐量的乘积再乘以 2 。 ::
+When using a mix of fast (SSDs, NVMe) devices with slower ones (like spinning
+drives) it makes sense to place the journal on the faster device, while
+``data`` occupies the slower device fully.
 
-	osd journal size = {2 * (expected throughput * filestore max sync interval)}
+The default ``osd journal size`` value is 5120 (5 gigabytes), but it can be
+larger, in which case it will need to be set in the ``ceph.conf`` file::
 
-期望吞吐量应考虑期望的硬盘吞吐量（即持续数据传输速率）、和网络吞吐量，例如一个 \
-7200 转硬盘的速度大致是 100MB/s 。硬盘和网络吞吐量中较小的（ ``min()`` ）一个是相\
-对合理的吞吐量，有的用户则以 10GB 日志尺寸起步，例如： ::
-
-	osd journal size = 10000
+	osd journal size = 10240
 
 
 ``osd journal``
@@ -153,13 +155,9 @@ Ceph 可自动创建并挂载所需的文件系统。
 
 ``osd journal size``
 
-:描述: 日志尺寸（ MB ）。如果是 0 且日志文件是块设备，它会使用整个块设备。\
-       从 v0.54 起，如果日志文件是块设备，这个选项会被忽略，且使用整个块设备。
-
+:描述: 日志尺寸（ MB ）。
 :类型: 32-bit Integer
 :默认值: ``5120``
-:推荐值: 最少 1G ，应该是期望的驱动器速度和 ``filestore max sync interval`` \
-         的乘积。
 
 
 详情见\ `日志配置参考`_\ 。

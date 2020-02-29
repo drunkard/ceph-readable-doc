@@ -91,7 +91,7 @@ OSD 回来。
 	ceph pg {pgid} mark_unfound_lost revert|delete
 
 
-.. _OSD Subsystem:
+.. OSD Subsystem
 
 OSD 子系统
 ==========
@@ -100,11 +100,10 @@ OSD 子系统
 
 	ceph osd stat
 
-把最新的 OSD 运行图拷贝到一个文件，参见 `osdmaptool`_ ： ::
+把最新的 OSD 运行图拷贝到一个文件，参见
+:ref:`osdmaptool <osdmaptool>` ：::
 
 	ceph osd getmap -o file
-
-.. _osdmaptool: ../../man/8/osdmaptool
 
 从最新 OSD 运行图拷出 CRUSH 图： ::
 

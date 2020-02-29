@@ -135,6 +135,8 @@ in the ``bar`` directory of file system ``cephfs_a``.
         caps: [osd] allow rw tag cephfs data=cephfs_a
 
 
+.. _用户管理 - 把用户加入密钥环: ../../rados/operations/user-management/#add-a-user-to-a-keyring
+
 .. Network restriction
 
 网络限定
@@ -153,5 +155,3 @@ prefix length in CIDR notation (e.g., ``10.3.0.0/16``).  If present,
 the use of this capability is restricted to clients connecting from
 this network.
 
-
-.. _用户管理 - 把用户加入密钥环: ../../rados/operations/user-management/#add-a-user-to-a-keyring
