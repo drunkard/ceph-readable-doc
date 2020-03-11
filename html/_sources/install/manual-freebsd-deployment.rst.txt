@@ -75,6 +75,8 @@ FreeBSD 上的磁盘布局
 * 注意： *UFS2 不支持大量 xattribs*
 
 
+.. Configuration
+
 配置文件
 --------
 

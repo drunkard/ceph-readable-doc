@@ -487,6 +487,9 @@
     thin provisioning / thick provisioning
         简配、全配
 
+    throttling
+        抑制
+
     tier type
         <不翻译> RGW 术语。
 

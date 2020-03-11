@@ -8,16 +8,20 @@ The *balancer* can optimize the placement of PGs across OSDs in
 order to achieve a balanced distribution, either automatically or in a
 supervised fashion.
 
-Status
-------
+.. Status
+
+状态
+----
 
 The current status of the balancer can be checked at any time with::
 
   ceph balancer status
 
 
-Automatic balancing
--------------------
+.. Automatic balancing
+
+自动均衡
+--------
 
 The automatic balancing can be enabled, using the default settings, with::
 
@@ -32,8 +36,10 @@ with older clients, and will make small changes to the data
 distribution over time to ensure that OSDs are equally utilized.
 
 
-Throttling
-----------
+.. Throttling
+
+抑制
+----
 
 No adjustments will be made to the PG distribution if the cluster is
 degraded (e.g., because an OSD has failed and the system has not yet
@@ -47,8 +53,10 @@ be moved) is below a threshold of (by default) 5%.  The
   ceph config set mgr mgr/balancer/max_misplaced .07   # 7%
 
 
-Modes
------
+.. Modes
+
+模式
+----
 
 There are currently two supported balancer modes:
 
@@ -94,8 +102,10 @@ or::
 
   ceph balancer mode crush-compat
 
-Supervised optimization
------------------------
+.. Supervised optimization
+
+受控的优化
+----------
 
 The balancer operation is broken into a few distinct phases:
 

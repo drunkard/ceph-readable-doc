@@ -549,7 +549,7 @@ Ceph 文档内的链接可以这样写：反引号（重音符号）、之后跟
 .. _ditaa: http://ditaa.sourceforge.net/
 .. _文档标题: http://docutils.sourceforge.net/docs/user/rst/quickstart.html#document-title-subtitle
 .. _小节: http://docutils.sourceforge.net/docs/user/rst/quickstart.html#sections
-.. _交叉引用任意位置: http://sphinx-doc.org/markup/inline.html#ref-role
+.. _交叉引用任意位置: http://www.sphinx-doc.org/en/master/usage/restructuredtext/roles.html#role-ref
 .. _TOC 树: http://sphinx-doc.org/markup/toctree.html
 .. _显示代码示例: http://sphinx-doc.org/markup/code.html
 .. _段落级别标记: http://sphinx-doc.org/markup/para.html

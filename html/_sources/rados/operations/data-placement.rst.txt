@@ -1,4 +1,4 @@
-.. _Data Placement Overview:
+.. Data Placement Overview
 
 ==============
  数据归置概览
@@ -25,6 +25,11 @@ Ceph 通过 RADOS 集群动态地存储、复制和重新均衡数据对象。�
   本应该在哪里、怎样跨故障域存储，以提升数据安全。详情见 \
   `CRUSH 图`_\ 。
 
+- **均化器：** The balancer is a feature that will automatically optimize the
+  distribution of PGs across devices to achieve a balanced data distribution,
+  maximizing the amount of data that can be stored in the cluster and evenly
+  distributing the workload across OSDs.
+
 起初安装测试集群的时候，可以使用默认值。但开始规划一个大型 Ceph
 集群，做数据归置操作的时候会涉及存储池、归置组、和 CRUSH 。
 
@@ -32,3 +37,4 @@ Ceph 通过 RADOS 集群动态地存储、复制和重新均衡数据对象。�
 .. _存储池: ../pools
 .. _归置组: ../placement-groups
 .. _CRUSH 图: ../crush-map
+.. _均衡器: ../balancer

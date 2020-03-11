@@ -148,6 +148,8 @@ Ceph 节点安装
 #. 确保\ **所有** Ceph 节点上的 SSH 服务器都在运行。
 
 
+.. Create a Ceph Deploy User
+
 创建部署 Ceph 的用户
 --------------------
 
@@ -167,9 +169,9 @@ Ceph 节点安装
 ``{productname}`` ）。后续步骤描述了如何创建无 ``sudo`` 密码的用\
 户，你要用自己取的名字取代 ``{username}`` 。
 
-.. note:: 从 `Infernalis 版`_\ 起，用户名 "ceph" 保留给了 Ceph \
-   守护进程。如果 Ceph 节点上已经有了 "ceph" 用户，升级前必须先\
-   删掉这个用户。
+.. note:: 从 :ref:`Infernalis 版 <infernalis-release-notes>`\
+   起，用户名 "ceph" 保留给了 Ceph 守护进程。如果 Ceph 节点上\
+   已经有了 "ceph" 用户，升级前必须先删掉这个用户。
 
 #. 在各 Ceph 节点创建新用户。 ::
 
@@ -182,6 +184,8 @@ Ceph 节点安装
 	echo "{username} ALL = (root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/{username}
 	sudo chmod 0440 /etc/sudoers.d/{username}
 
+
+.. Enable Password-less SSH
 
 允许无密码 SSH 登录
 -------------------
