@@ -66,8 +66,8 @@ Ceph 对象网关支持几种多站配置方案：
 都在本地也能跑通；还假设有两个 Ceph 对象网关服务器，分别名为
 ``rgw1`` 和 ``rgw2`` 。
 
-.. important:: Running a single Ceph storage cluster is NOT recommended unless you have 
-               low latency WAN connections.
+.. important:: **不建议**\ 运营单个（跨区域的） Ceph 存储集群，\
+   除非你的 WAN 连接延时够低。
 
 一套多站配置必须有一个主域组和一个主域，另外，各域组都得有自己\
 的主域；域组可以有一或多个副域组、副域。

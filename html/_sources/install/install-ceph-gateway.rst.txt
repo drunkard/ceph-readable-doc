@@ -608,7 +608,7 @@ Linux 上： ::
 
 swift 访问可用下列命令验证： ::
 
-        swift -A http://{IP ADDRESS}:{port}/auth/1.0 -U testuser:swift -K '{swift_secret_key}' list
+        swift -V 1 -A http://{IP ADDRESS}:{port}/auth -U testuser:swift -K '{swift_secret_key}' list
 
 把 ``{IP ADDRESS}`` 替换成网关服务器的公网 IP 地址；
 ``{swift_secret_key}`` 替换为创建 ``swift`` 用户（从
@@ -618,7 +618,7 @@ swift 访问可用下列命令验证： ::
 
 例如： ::
 
-        swift -A http://10.19.143.116:7480/auth/1.0 -U testuser:swift -K '244+fz2gSqoHwR3lYtSbIyomyPHf3i7rgSJrF/IA' list
+        swift -V 1 -A http://10.19.143.116:7480/auth -U testuser:swift -K '244+fz2gSqoHwR3lYtSbIyomyPHf3i7rgSJrF/IA' list
 
 其输出应该是： ::
 
