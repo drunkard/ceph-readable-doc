@@ -430,7 +430,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 通知我们
 --------
 
-发出接收请求后，还需通知相关人员。通常，文档的接收请求应该发给 `John Wilkins`_ 。
+发出接收请求后，请发邮件给 ceph-doc@redhat.com 。
 
 
 .. Documentation Style Guide

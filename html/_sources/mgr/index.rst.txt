@@ -42,7 +42,4 @@ mgr 启动。
     Crash 模块 <crash>
     Orchestrator CLI 模块 <orchestrator_cli>
     Rook 模块 <rook>
-    DeepSea 模块 <deepsea>
     Insights 模块 <insights>
-    Ansible 模块 <ansible>
-    SSH orchestrator <ssh>

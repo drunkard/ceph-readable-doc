@@ -32,11 +32,9 @@ the dashboard, to work with various different backends.
             volumes [label="mgr/volumes"]
             rook [label="mgr/rook"]
             dashboard [label="mgr/dashboard"]
-            orchestrator_cli [label="mgr/orchestrator_cli"]
+            orchestrator_cli [label="mgr/orchestrator"]
             orchestrator [label="Orchestrator Interface"]
-            ansible [label="mgr/ansible"]
-            ssh [label="mgr/ssh"]
-            deepsea [label="mgr/deepsea"]
+            cephadm [label="mgr/cephadm"]
 
             label = "ceph-mgr";
         }
@@ -45,14 +43,10 @@ the dashboard, to work with various different backends.
         dashboard -> orchestrator
         orchestrator_cli -> orchestrator
         orchestrator -> rook -> rook_io
-        orchestrator -> ansible -> ceph_ansible
-        orchestrator -> deepsea -> suse_deepsea
-        orchestrator -> ssh
+        orchestrator -> cephadm
 
 
         rook_io [label="Rook"]
-        ceph_ansible [label="ceph-ansible"]
-        suse_deepsea [label="DeepSea"]
 
         rankdir="TB";
     }
@@ -116,9 +110,9 @@ Completions and batching
 ------------------------
 
 All methods that read or modify the state of the system can potentially
-be long running.  To handle that, all such methods return a *completion*
-object (a *ReadCompletion* or a *WriteCompletion*).  Orchestrator modules
-must implement the *wait* method: this takes a list of completions, and
+be long running.  To handle that, all such methods return a *Completion*
+object.  Orchestrator modules
+must implement the *process* method: this takes a list of completions, and
 is responsible for checking if they're finished, and advancing the underlying
 operations as needed.
 
@@ -127,38 +121,21 @@ for completions.  This might involve running the underlying operations
 in threads, or batching the operations up before later executing
 in one go in the background.  If implementing such a batching pattern, the
 module would do no work on any operation until it appeared in a list
-of completions passed into *wait*.
+of completions passed into *process*.
 
-*WriteCompletion* objects have a two-stage execution.  First they become
-*persistent*, meaning that the write has made it to the orchestrator
-itself, and been persisted there (e.g. a manifest file has been updated).
-If ceph-mgr crashed at this point, the operation would still eventually take
-effect.  Second, the completion becomes *effective*, meaning that the operation has really happened (e.g. a service has actually been started).
+Some operations need to show a progress. Those operations need to add
+a *ProgressReference* to the completion. At some point, the progress reference
+becomes *effective*, meaning that the operation has really happened
+(e.g. a service has actually been started).
 
-.. automethod:: Orchestrator.wait
+.. automethod:: Orchestrator.process
 
-.. autoclass:: _Completion
+.. autoclass:: Completion
    :members:
 
-.. autoclass:: ReadCompletion
+.. autoclass:: ProgressReference
    :members:
 
-.. autoclass:: WriteCompletion
-   :members:
-
-.. Placement
-
-归置
-----
-
-In general, stateless services do not require any specific placement
-rules, as they can run anywhere that sufficient system resources
-are available.  However, some orchestrators may not include the
-functionality to choose a location in this way, so we can optionally
-specify a location when creating a stateless service.
-
-OSD services generally require a specific placement choice, as this
-will determine which storage devices are used.
 
 .. Error Handling
 
@@ -234,11 +211,16 @@ logged into the mgr log file. If there is a completion object at that point,
 .. automethod:: Orchestrator.add_host
 .. automethod:: Orchestrator.remove_host
 .. automethod:: Orchestrator.get_hosts
+.. automethod:: Orchestrator.update_host_addr
+.. automethod:: Orchestrator.add_host_label
+.. automethod:: Orchestrator.remove_host_label
 
-.. Inventory and status
+.. autoclass:: HostSpec
 
-余量和状态
-----------
+.. Devices
+
+设备
+----
 
 .. automethod:: Orchestrator.get_inventory
 .. autoclass:: InventoryFilter
@@ -253,15 +235,46 @@ logged into the mgr log file. If there is a completion object at that point,
 
 .. py:currentmodule:: orchestrator
 
+Placement
+---------
+
+A :ref:`orchestrator-cli-placement-spec` defines the placement of
+daemons of a specifc service.
+
+In general, stateless services do not require any specific placement
+rules as they can run anywhere that sufficient system resources
+are available. However, some orchestrators may not include the
+functionality to choose a location in this way. Optionally, you can
+specify a location when creating a stateless service.
 
 
-.. automethod:: Orchestrator.describe_service
+.. autoclass:: PlacementSpec
+   :members:
+
+   
+.. Services
+
+服务
+----
+
 .. autoclass:: ServiceDescription
 
-Service Actions
----------------
+.. autoclass:: ServiceSpec
+
+.. automethod:: Orchestrator.describe_service
 
 .. automethod:: Orchestrator.service_action
+.. automethod:: Orchestrator.remove_service
+
+
+.. Daemons
+
+守护进程
+--------
+
+.. automethod:: Orchestrator.list_daemons
+.. automethod:: Orchestrator.remove_daemons
+.. automethod:: Orchestrator.daemon_action
 
 
 .. OSD management
@@ -270,18 +283,9 @@ OSD 管理
 --------
 
 .. automethod:: Orchestrator.create_osds
-.. automethod:: Orchestrator.remove_osds
 
-.. py:currentmodule:: ceph.deployment.drive_group
-
-.. autoclass:: DeviceSelection
-   :members:
-
-.. autoclass:: DriveGroupSpec
-   :members:
-   :exclude-members: from_json
-
-.. py:currentmodule:: orchestrator
+.. automethod:: Orchestrator.blink_device_light
+.. autoclass:: DeviceLightLoc
 
 
 .. OSD Replacement
@@ -307,25 +311,35 @@ Phase two is a call to  :meth:`Orchestrator.create_osds` with a Drive Group with
 
 .. py:currentmodule:: orchestrator
 
+.. Monitors
+
+监视器
+------
+
+.. automethod:: Orchestrator.add_mon
+.. automethod:: Orchestrator.apply_mon
+
 .. Stateless Services
 
 无状态服务
 ----------
 
-.. autoclass:: StatelessServiceSpec
-
+.. automethod:: Orchestrator.add_mgr
+.. automethod:: Orchestrator.apply_mgr
 .. automethod:: Orchestrator.add_mds
-.. automethod:: Orchestrator.remove_mds
-.. automethod:: Orchestrator.update_mds
+.. automethod:: Orchestrator.apply_mds
+.. automethod:: Orchestrator.add_rbd_mirror
+.. automethod:: Orchestrator.apply_rbd_mirror
+
+.. autoclass:: RGWSpec
+
 .. automethod:: Orchestrator.add_rgw
-.. automethod:: Orchestrator.remove_rgw
-.. automethod:: Orchestrator.update_rgw
+.. automethod:: Orchestrator.apply_rgw
 
 .. autoclass:: NFSServiceSpec
 
 .. automethod:: Orchestrator.add_nfs
-.. automethod:: Orchestrator.remove_nfs
-.. automethod:: Orchestrator.update_nfs
+.. automethod:: Orchestrator.apply_nfs
 
 .. Upgrades
 
@@ -335,7 +349,6 @@ Phase two is a call to  :meth:`Orchestrator.create_osds` with a Drive Group with
 .. automethod:: Orchestrator.upgrade_available
 .. automethod:: Orchestrator.upgrade_start
 .. automethod:: Orchestrator.upgrade_status
-.. autoclass:: UpgradeSpec
 .. autoclass:: UpgradeStatusSpec
 
 .. Utility

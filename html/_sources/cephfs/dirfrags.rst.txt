@@ -8,9 +8,8 @@
 把元数据拆分开，分成多个对象置于元数据存储池内，以便由多个 MDS
 守护进程共同处理。
 
-In normal operation, directory fragmentation is invisbible to
-users and administrators, and all the configuration settings mentioned
-here should be left at their default values.
+在常规操作中，目录碎片对用户和管理员不可见，并且这里提到的\
+所有配置选项都应该维持其默认值。
 
 While directory fragmentation enables CephFS to handle very large
 numbers of entries in a single directory, application programmers should
@@ -51,12 +50,11 @@ following sections.
 尺寸阈值
 ========
 
-A directory fragment is elegible for splitting when its size exceeds
-``mds_bal_split_size`` (default 10000).  Ordinarily this split is
-delayed by ``mds_bal_fragment_interval``, but if the fragment size
-exceeds a factor of ``mds_bal_fragment_fast_factor`` the split size,
-the split will happen immediately (holding up any client metadata
-IO on the directory).
+一个目录碎片的尺寸超过 ``mds_bal_split_size`` （默认 10000 ）\
+时就达到分割的条件了。通常，此分割会被延迟
+``mds_bal_fragment_interval`` 长的时间，但如果这个碎片尺寸超过\
+分割尺寸的 ``mds_bal_fragment_fast_factor`` 倍数，分割就会\
+立马开始（先拦截着所有客户端在此目录上的元数据 IO ）。
 
 ``mds_bal_fragment_size_max`` is the hard limit on the size of
 directory fragments.  If it is reached, clients will receive

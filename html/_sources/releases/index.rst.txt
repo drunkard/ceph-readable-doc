@@ -1,19 +1,22 @@
-.. Ceph Releases
+.. Ceph Releases (index)
+.. _ceph-releases-index:
 
-===========
- Ceph 版本
-===========
-
-.. _ceph-releases:
-
-发布目录
---------
+==================
+ Ceph 版本（索引）
+==================
 
 .. toctree::
    :maxdepth: 1
 
-   发布时间表 <schedule>
+.. Pending Release
 
+待发布版本
+~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 1
+
+   Octopus <octopus>
 
 .. Active Releases
 
@@ -26,7 +29,6 @@
    Nautilus <nautilus>
    Mimic <mimic>
    Luminous <luminous>
-   Jewel <jewel>
 
 .. Archived Releases
 
