@@ -255,7 +255,7 @@ is changed from two to three, an additional OSD will be assigned to
 the placement group and will receive copies of all objects in the
 placement group.
 
-Placement groups do not own the OSD, they share it with other
+Placement groups do not own the OSD; they share it with other
 placement groups from the same pool or even other pools. If OSD #2
 fails, the Placement Group #2 will also have to restore copies of
 objects, using OSD #3.
@@ -467,24 +467,31 @@ designed your Ceph cluster to maximize `data durability`_,
 你可以借助于 `PGCalc`_ 工具。
 
 
+.. Set the Number of Placement Groups
 .. _setting the number of placement groups:
 
 设置归置组数量
 ==============
 
-要设置某存储池的归置组数量，你必须在创建它时就指定好，详情见\ `创建存储池`_\ 。一存\
-储池的归置组数量设置好之后，还可以增加（但不可以减少），下列命令可增加归置组数量： ::
+要设置某存储池的归置组数量，你必须在创建它时就指定好，详情见\
+`创建存储池`_\ 。即使某一存储池已创建，你仍然可以用下面的命令\
+更改归置组数量： ::
 
 	ceph osd pool set {pool-name} pg_num {pg_num}
 
-你增加归置组数量后、还必须增加用于归置的归置组（ ``pgp_num`` ）数量，这样\
-才会开始重均衡。 ``pgp_num`` 数值才是 CRUSH 算法采用的用于归置的归置组数量。\
-虽然 ``pg_num`` 的增加引起了归置组的分割，但是只有当用于归置的归置组（即 \
-``pgp_num`` ）增加以后，数据才会被迁移到新归置组里。 ``pgp_num`` 的数值应\
-等于 ``pg_num`` 。可用下列命令增加用于归置的归置组数量： ::
+你增加归置组数量后、还必须增加用于归置的归置组（ ``pgp_num`` ）\
+数量，这样才会开始重均衡。 ``pgp_num`` 数值才是 CRUSH 算法采用\
+的用于归置的归置组数量。虽然 ``pg_num`` 的增加引起了归置组的\
+分割，但是只有当用于归置的归置组（即 ``pgp_num`` ）增加以后，\
+数据才会被迁移到新归置组里。 ``pgp_num`` 的数值应等于
+``pg_num`` 。可用下列命令增加用于归置的归置组数量： ::
 
 	ceph osd pool set {pool-name} pgp_num {pgp_num}
 
+减少归置组数量时，系统会自动调整 ``pgp_num`` 数值。
+
+
+.. Get the Number of Placement Groups
 
 获取归置组数量
 ==============

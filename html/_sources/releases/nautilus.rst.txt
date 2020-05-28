@@ -1,3 +1,16 @@
+v14.2.9 Nautilus
+================
+
+This is the ninth bugfix release of Nautilus. This release fixes a
+couple of security issues in RGW & Messenger V2. We recommend all users
+to upgrade to this release.
+
+Notable Changes
+---------------
+
+- CVE-2020-1759: Fixed nonce reuse in msgr V2 secure mode
+- CVE-2020-1760: Fixed XSS due to RGW GetObject header-splitting
+
 v14.2.8 Nautilus
 ================
 
@@ -1666,6 +1679,9 @@ Instructions
 
    and verify that each monitor has both a ``v2:`` and ``v1:`` address
    listed.
+
+   Running nautilus OSDs will not bind to their v2 address automatically.
+   They must be restarted for that to happen.
 
    .. important:: 
       Before this step is run, the following command must already have been run:

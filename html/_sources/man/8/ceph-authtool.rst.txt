@@ -17,7 +17,6 @@
   [ --gen-print-key ]
   [ --import-keyring *otherkeyringfile* ]
   [ -n | --name *entityname* ]
-  [ -u | --set-uid *auid* ]
   [ -a | --add-key *base64_key* ]
   [ --cap *subsystem* *capability* ]
   [ --caps *capfile* ]
@@ -69,10 +68,6 @@
 .. option:: -n, --name *name*
 
    指定要操作的条目名（ entityname ）
-
-.. option:: -u, --set-uid *auid*
-
-   设置指定条目（ entityname ）的 auid （已认证用户的标识符）
 
 .. option:: -a, --add-key *base64_key*
 

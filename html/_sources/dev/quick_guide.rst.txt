@@ -67,7 +67,7 @@ Ceph 包含一个名为 ``vstart.sh`` 的脚本（还有\ \
 
 .. code::
 
-	$ bin/rados mkpool mypool
+	$ bin/ceph osd pool create mypool
 	$ bin/rados -p mypool bench 10 write -b 123
 
 放一个文件到新存储池里：

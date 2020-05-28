@@ -84,12 +84,6 @@
   显示利用率统计信息，显示整个系统以及各存储池的磁盘空间（字节\
   数）、对象数量。
 
-:command:`mkpool` *foo*
-  创建名为 foo 的存储池。
-
-:command:`rmpool` *foo* [ *foo* --yes-i-really-really-mean-it ]
-  删除存储池 foo （以及其内的所有数据）
-
 :command:`list-inconsistent-pg` *pool*
   罗列指定存储池内不一致的归置组。
 

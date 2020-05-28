@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
     <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
@@ -146,9 +147,14 @@ consistent hashing; you can think of it as:</p>
 </dd>
 <dt><em>down</em></dt><dd><p>a replica with necessary data is down, so the pg is offline</p>
 </dd>
-<dt><em>replay</em></dt><dd><p>the PG is waiting for clients to replay operations after an OSD crashed</p>
+<dt><em>recovery_unfound</em></dt><dd><p>recovery could not finish because object(s) are unfound.</p>
 </dd>
-<dt><em>splitting</em></dt><dd><p>the PG is being split into multiple PGs (not functional as of 2012-02)</p>
+<dt><em>backfill_unfound</em></dt><dd><p>backfill could not finish because object(s) are unfound.</p>
+</dd>
+<dt><em>premerge</em></dt><dd><p>the PG is in a quiesced-IO state due to an impending PG merge.  That
+happens when pg_num_pending &lt; pg_num, and applies to the PGs with
+pg_num_pending &lt;= ps &lt; pg_num as well as the corresponding peer PG
+that it is merging with.</p>
 </dd>
 <dt><em>scrubbing</em></dt><dd><p>the PG is being checked for inconsistencies</p>
 </dd>
@@ -164,15 +170,7 @@ finished, etc.)</p>
 </dd>
 <dt><em>recovering</em></dt><dd><p>objects are being migrated/synchronized with replicas</p>
 </dd>
-<dt><em>recovery_wait</em></dt><dd><p>the PG is waiting for the local/remote recovery reservations</p>
-</dd>
-<dt><em>backfilling</em></dt><dd><p>a special case of recovery, in which the entire contents of
-the PG are scanned and synchronized, instead of inferring what
-needs to be transferred from the PG logs of recent operations</p>
-</dd>
 <dt><em>backfill_wait</em></dt><dd><p>the PG is waiting in line to start backfill</p>
-</dd>
-<dt><em>backfill_toofull</em></dt><dd><p>backfill reservation rejected, OSD too full</p>
 </dd>
 <dt><em>incomplete</em></dt><dd><p>a pg is missing a necessary period of history from its
 log.  If you see this state, report a bug, and try to start any
@@ -184,7 +182,55 @@ an update for it since the PG mapping changed.</p>
 <dt><em>remapped</em></dt><dd><p>the PG is temporarily mapped to a different set of OSDs from what
 CRUSH specified</p>
 </dd>
+<dt><em>deep</em></dt><dd><p>In conjunction with <em>scrubbing</em> the scrub is a deep scrub</p>
+</dd>
+<dt><em>backfilling</em></dt><dd><p>a special case of recovery, in which the entire contents of
+the PG are scanned and synchronized, instead of inferring what
+needs to be transferred from the PG logs of recent operations</p>
+</dd>
+<dt><em>backfill_toofull</em></dt><dd><p>backfill reservation rejected, OSD too full</p>
+</dd>
+<dt><em>recovery_wait</em></dt><dd><p>the PG is waiting for the local/remote recovery reservations</p>
+</dd>
+<dt><em>undersized</em></dt><dd><p>the PG can’t select enough OSDs given its size</p>
+</dd>
+<dt><em>activating</em></dt><dd><p>the PG is peered but not yet active</p>
+</dd>
+<dt><em>peered</em></dt><dd><p>the PG peered but can’t go active</p>
+</dd>
+<dt><em>snaptrim</em></dt><dd><p>the PG is trimming snaps</p>
+</dd>
+<dt><em>snaptrim_wait</em></dt><dd><p>the PG is queued to trim snaps</p>
+</dd>
+<dt><em>recovery_toofull</em></dt><dd><p>recovery reservation rejected, OSD too full</p>
+</dd>
+<dt><em>snaptrim_error</em></dt><dd><p>the PG could not complete snap trimming due to errors</p>
+</dd>
+<dt><em>forced_recovery</em></dt><dd><p>the PG has been marked for highest priority recovery</p>
+</dd>
+<dt><em>forced_backfill</em></dt><dd><p>the PG has been marked for highest priority backfill</p>
+</dd>
+<dt><em>failed_repair</em></dt><dd><p>an attempt to repair the PG has failed.  Manual intervention is required.</p>
+</dd>
 </dl>
+</div>
+<div class="section" id="omap">
+<h2>OMAP 统计信息<a class="headerlink" href="#omap" title="Permalink to this headline">¶</a></h2>
+<p>Omap statistics are gathered during deep scrub and displayed in the output of
+the following commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="n">dump</span>
+<span class="n">ceph</span> <span class="n">pg</span> <span class="n">dump</span> <span class="nb">all</span>
+<span class="n">ceph</span> <span class="n">pg</span> <span class="n">dump</span> <span class="n">summary</span>
+<span class="n">ceph</span> <span class="n">pg</span> <span class="n">dump</span> <span class="n">pgs</span>
+<span class="n">ceph</span> <span class="n">pg</span> <span class="n">dump</span> <span class="n">pools</span>
+<span class="n">ceph</span> <span class="n">pg</span> <span class="n">ls</span>
+</pre></div>
+</div>
+<p>As these statistics are not updated continuously they may be quite inaccurate in
+an environment where deep scrubs are run infrequently and/or there is a lot of
+omap activity. As such they should not be relied on for exact accuracy but
+rather used as a guide. Running a deep scrub and checking these statistics
+immediately afterwards should give a good indication of current omap usage.</p>
 </div>
 </div>
 
@@ -258,6 +304,7 @@ CRUSH specified</p>
 <li class="toctree-l3"><a class="reference internal" href="#id1">概览</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id2">映射算法（简化的）</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id3">用户可见的归置组状态</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#omap">OMAP 统计信息</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../quick_guide/">开发者指南（快速）</a></li>

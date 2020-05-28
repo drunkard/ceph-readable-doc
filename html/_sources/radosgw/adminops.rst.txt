@@ -1248,15 +1248,14 @@ Response Entities
 None.
 
 
-.. _Get Bucket Info:
+.. Get Bucket Info
 
 查看桶信息
 ==========
 
-Get information about a subset of the existing buckets. If ``uid`` is specified
-without ``bucket`` then all buckets beloning to the user will be returned. If
-``bucket`` alone is specified, information for that particular bucket will be
-retrieved.
+获取一部分已有桶的相关信息。如果指定了 ``uid`` 却没有
+``bucket`` ，就会得到属于此用户的所有桶；如果还指定了
+``bucket`` ，就只去检索那一个桶的信息。
 
 :caps: buckets=read
 
