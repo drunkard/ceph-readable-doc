@@ -64,14 +64,53 @@
   
   <div class="section" id="rbd">
 <h1>RBD 镜像<a class="headerlink" href="#rbd" title="Permalink to this headline">¶</a></h1>
-<p id="index-0">RBD 映像可在两个 Ceph 集群间异步地镜像。此能力利用了 RBD 映像的 journaling 功能，以此保证集群间副本在崩溃后的一致性。镜像是以互联集群的存储池为单位配置的，可以配置为自动地镜像存储池内的所有映像、或者只镜像一部分。镜像可用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令来配置， <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> 守护进程负责拉取远端映像的变更、互联集群、以及把变更应用到本地集群。</p>
+<p id="index-0">RBD 映像可在两个 Ceph 集群间异步地镜像。此能力有两种模式可用：</p>
+<ul class="simple">
+<li><p><strong>Journal-based</strong>: This mode uses the RBD journaling image feature to ensure
+point-in-time, crash-consistent replication between clusters. Every write to
+the RBD image is first recorded to the associated journal before modifying the
+actual image. The remote cluster will read from this associated journal and
+replay the updates to its local copy of the image. Since each write to the
+RBD image will result in two writes to the Ceph cluster, expect write
+latencies to nearly double when using the RBD journaling image feature.</p></li>
+<li><p><strong>Snapshot-based</strong>: This mode uses periodically scheduled or manually
+created RBD image mirror-snapshots to replicate crash-consistent RBD images
+between clusters. The remote cluster will determine any data or metadata
+updates between two mirror-snapshots and copy the deltas to its local copy of
+the image. With the help of the RBD fast-diff image feature, updated data
+blocks can be quickly computed without the need to scan the full RBD image.
+Since this mode is not as fine-grained as journaling, the complete delta
+between two snapshots will need to be synced prior to use during a failover
+scenario. Any partially applied set of deltas will be rolled back at moment
+of failover.</p></li>
+</ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>RBD 镜像功能在 Ceph Jewel 或更高版本才具备。</p>
+<p>journal-based mirroring requires the Ceph Jewel release or later;
+snapshot-based mirroring requires the Ceph Octopus release or later.</p>
 </div>
+<p>Mirroring is configured on a per-pool basis within peer clusters and can be
+configured on a specific subset of images within the pool or configured to
+automatically mirror all images within a pool when using journal-based
+mirroring only. Mirroring is configured using the <code class="docutils literal notranslate"><span class="pre">rbd</span></code> command. The
+<code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> daemon is responsible for pulling image updates from the remote,
+peer cluster and applying them to the image within the local cluster.</p>
+<p>Depending on the desired needs for replication, RBD mirroring can be configured
+for either one- or two-way replication:</p>
+<ul class="simple">
+<li><p><strong>One-way Replication</strong>: When data is only mirrored from a primary cluster to
+a secondary cluster, the <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> daemon runs only on the secondary
+cluster.</p></li>
+<li><p><strong>Two-way Replication</strong>: When data is mirrored from primary images on one
+cluster to non-primary images on another cluster (and vice-versa), the
+<code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> daemon runs on both clusters.</p></li>
+</ul>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p>要使用 RBD 镜像功能，你必须有两个 Ceph 集群，二者都要运行 <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> 守护进程。</p>
+<p>Each instance of the <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> daemon must be able to
+connect to both the local and remote Ceph clusters simultaneously (i.e.
+all monitor and OSD hosts). Additionally, the network must have sufficient
+bandwidth between the two data centers to handle mirroring workload.</p>
 </div>
 <div class="section" id="id1">
 <h2>存储池配置<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
@@ -91,20 +130,20 @@
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">enable</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">mode</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>其中，镜像模式可以是 <code class="docutils literal notranslate"><span class="pre">pool</span></code> 或 <code class="docutils literal notranslate"><span class="pre">image</span></code> ：</p>
+<p>其中，镜像模式可以是 <code class="docutils literal notranslate"><span class="pre">image</span></code> 或 <code class="docutils literal notranslate"><span class="pre">pool</span></code> ：</p>
 <ul class="simple">
+<li><p><strong>image</strong>: 配置为 <code class="docutils literal notranslate"><span class="pre">image</span></code> 模式时，需<a class="reference external" href="#enable-image-mirroring">显式地开启</a>各个镜像的镜像功能。</p></li>
 <li><p><strong>pool</strong>: 配置为 <code class="docutils literal notranslate"><span class="pre">pool</span></code> 模式时，存储池内所有启用了
 journaling 功能的映像都会被镜像。</p></li>
-<li><p><strong>image</strong>: 配置为 <code class="docutils literal notranslate"><span class="pre">image</span></code> 模式时，需<a class="reference external" href="#enable-image-mirroring">显式地开启</a>各个镜像的镜像功能。</p></li>
 </ul>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">enable</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span> <span class="n">pool</span>
-<span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">remote</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">enable</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span> <span class="n">pool</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror pool enable image-pool image
+$ rbd --cluster site-b mirror pool enable image-pool image
 </pre></div>
 </div>
 </div>
-<div class="section" id="disable-mirroring">
-<span id="id3"></span><h3>禁用镜像功能<a class="headerlink" href="#disable-mirroring" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id3">
+<h3>禁用镜像功能<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
 <p>要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令禁用存储池的镜像功能，可指定
 <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">disable</span></code> 命令和存储池名字：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">disable</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
@@ -112,34 +151,102 @@ journaling 功能的映像都会被镜像。</p></li>
 </div>
 <p>用这个方法禁用一个存储池的镜像功能时，此存储池内所有明确启用了镜像功能的所有映像，其镜像功能都会被禁用。</p>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">disable</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span>
-<span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">remote</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">disable</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror pool disable image-pool
+$ rbd --cluster site-b mirror pool disable image-pool
 </pre></div>
 </div>
 </div>
-<div class="section" id="add-cluster-peer">
-<span id="id4"></span><h3>增加互联的集群<a class="headerlink" href="#add-cluster-peer" title="Permalink to this headline">¶</a></h3>
-<p>为使 <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> 守护进程发现它的互联集群，得让互联点注册到这个存储池。要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 新增一个镜像点 Ceph 集群，需指定
-<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">add</span></code> 命令、存储池名字、以及集群连接方式：</p>
+<div class="section" id="bootstrap-peers">
+<h3>Bootstrap Peers<a class="headerlink" href="#bootstrap-peers" title="Permalink to this headline">¶</a></h3>
+<p>In order for the <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> daemon to discover its peer cluster, the peer
+needs to be registered to the pool and a user account needs to be created.
+This process can be automated with <code class="docutils literal notranslate"><span class="pre">rbd</span></code> and the
+<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">bootstrap</span> <span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">bootstrap</span> <span class="pre">import</span></code>
+commands.</p>
+<p>To manually create a new bootstrap token with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the
+<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">bootstrap</span> <span class="pre">create</span></code> command, a pool name, along with an
+optional friendly site name to describe the local cluster:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">peer</span> <span class="n">bootstrap</span> <span class="n">create</span> <span class="p">[</span><span class="o">--</span><span class="n">site</span><span class="o">-</span><span class="n">name</span> <span class="p">{</span><span class="n">local</span><span class="o">-</span><span class="n">site</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>The output of <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">bootstrap</span> <span class="pre">create</span></code> will be a token that should
+be provided to the <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">bootstrap</span> <span class="pre">import</span></code> command. For example,
+on site-a:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror pool peer bootstrap create --site-name site-a image-pool
+eyJmc2lkIjoiOWY1MjgyZGItYjg5OS00NTk2LTgwOTgtMzIwYzFmYzM5NmYzIiwiY2xpZW50X2lkIjoicmJkLW1pcnJvci1wZWVyIiwia2V5IjoiQVFBUnczOWQwdkhvQmhBQVlMM1I4RmR5dHNJQU50bkFTZ0lOTVE9PSIsIm1vbl9ob3N0IjoiW3YyOjE5Mi4xNjguMS4zOjY4MjAsdjE6MTkyLjE2OC4xLjM6NjgyMV0ifQ==
+</pre></div>
+</div>
+<p>To manually import the bootstrap token created by another cluster with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>,
+specify the <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">bootstrap</span> <span class="pre">import</span></code> command, the pool name, a file
+path to the created token (or ‘-‘ to read from standard input), along with an
+optional friendly site name to describe the local cluster and a mirroring
+direction (defaults to rx-tx for bidirectional mirroring, but can also be set
+to rx-only for unidirectional mirroring):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">peer</span> <span class="n">bootstrap</span> <span class="kn">import</span> <span class="p">[</span><span class="o">--</span><span class="n">site</span><span class="o">-</span><span class="n">name</span> <span class="p">{</span><span class="n">local</span><span class="o">-</span><span class="n">site</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">direction</span> <span class="p">{</span><span class="n">rx</span><span class="o">-</span><span class="n">only</span> <span class="ow">or</span> <span class="n">rx</span><span class="o">-</span><span class="n">tx</span><span class="p">}]</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">token</span><span class="o">-</span><span class="n">path</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For example, on site-b:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; token
+eyJmc2lkIjoiOWY1MjgyZGItYjg5OS00NTk2LTgwOTgtMzIwYzFmYzM5NmYzIiwiY2xpZW50X2lkIjoicmJkLW1pcnJvci1wZWVyIiwia2V5IjoiQVFBUnczOWQwdkhvQmhBQVlMM1I4RmR5dHNJQU50bkFTZ0lOTVE9PSIsIm1vbl9ob3N0IjoiW3YyOjE5Mi4xNjguMS4zOjY4MjAsdjE6MTkyLjE2OC4xLjM6NjgyMV0ifQ==
+EOF
+$ rbd --cluster site-b mirror pool peer bootstrap import --site-name site-b image-pool token
+</pre></div>
+</div>
+</div>
+<div class="section" id="id4">
+<h3>手动增加互联的集群<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>Cluster peers can be specified manually if desired or if the above bootstrap
+commands are not available with the currently installed Ceph release.</p>
+<p>The remote <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> daemon will need access to the local cluster to
+perform mirroring. A new local Ceph user should be created for the remote
+daemon to use. To <a href="#id17"><span class="problematic" id="id18">`create a Ceph user`_</span></a>, with <code class="docutils literal notranslate"><span class="pre">ceph</span></code> specify the
+<code class="docutils literal notranslate"><span class="pre">auth</span> <span class="pre">get-or-create</span></code> command, user name, monitor caps, and OSD caps:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="n">get</span><span class="o">-</span><span class="ow">or</span><span class="o">-</span><span class="n">create</span> <span class="n">client</span><span class="o">.</span><span class="n">rbd</span><span class="o">-</span><span class="n">mirror</span><span class="o">-</span><span class="n">peer</span> <span class="n">mon</span> <span class="s1">&#39;profile rbd&#39;</span> <span class="n">osd</span> <span class="s1">&#39;profile rbd&#39;</span>
+</pre></div>
+</div>
+<p>The resulting keyring should be copied to the other cluster’s <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code>
+daemon hosts if not using the Ceph monitor <code class="docutils literal notranslate"><span class="pre">config-key</span></code> store described below.</p>
+<p>To manually add a mirroring peer Ceph cluster with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the
+<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">add</span></code> command, the pool name, and a cluster specification:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">peer</span> <span class="n">add</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">client</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">@</span><span class="p">{</span><span class="n">cluster</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">peer</span> <span class="n">add</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span> <span class="n">client</span><span class="o">.</span><span class="n">remote</span><span class="nd">@remote</span>
-<span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">remote</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">peer</span> <span class="n">add</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span> <span class="n">client</span><span class="o">.</span><span class="n">local</span><span class="nd">@local</span>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror pool peer add image-pool client.rbd-mirror-peer@site-b
+$ rbd --cluster site-b mirror pool peer add image-pool client.rbd-mirror-peer@site-a
+</pre></div>
+</div>
+<p>By default, the <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> daemon needs to have access to a Ceph
+configuration file located at <code class="docutils literal notranslate"><span class="pre">/etc/ceph/{cluster-name}.conf</span></code> that provides
+the addresses of the peer cluster’s monitors, in addition to a keyring for
+<code class="docutils literal notranslate"><span class="pre">{client-name}</span></code> located in the default or configured keyring search paths
+(e.g. <code class="docutils literal notranslate"><span class="pre">/etc/ceph/{cluster-name}.{client-name}.keyring</span></code>).</p>
+<p>Alternatively, the peer cluster’s monitor and/or client key can be securely
+stored within the local Ceph monitor <code class="docutils literal notranslate"><span class="pre">config-key</span></code> store. To specify the
+peer cluster connection attributes when adding a mirroring peer, use the
+<code class="docutils literal notranslate"><span class="pre">--remote-mon-host</span></code> and <code class="docutils literal notranslate"><span class="pre">--remote-key-file</span></code> optionals. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; remote-key-file
+AQAeuZdbMMoBChAAcj++/XUxNOLFaWdtTREEsw==
+EOF
+$ rbd --cluster site-a mirror pool peer add image-pool client.rbd-mirror-peer@site-b --remote-mon-host 192.168.1.1,192.168.1.2 --remote-key-file remote-key-file
+$ rbd --cluster site-a mirror pool info image-pool --all
+Mode: pool
+Peers:
+  UUID                                 NAME   CLIENT                 MON_HOST                KEY
+  587b08db-3d33-4f32-8af8-421e77abb081 site-b client.rbd-mirror-peer 192.168.1.1,192.168.1.2 AQAeuZdbMMoBChAAcj++/XUxNOLFaWdtTREEsw==
 </pre></div>
 </div>
 </div>
-<div class="section" id="remove-cluster-peer">
-<span id="id5"></span><h3>删除互联的集群<a class="headerlink" href="#remove-cluster-peer" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id5">
+<h3>删除互联的集群<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
 <p>要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 删除镜像点 Ceph 集群，可指定 <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">peer</span> <span class="pre">remove</span></code>
 命令、以及互联点的 UUID （可用 <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">info</span></code> 命令找出）：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">peer</span> <span class="n">remove</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">peer</span><span class="o">-</span><span class="n">uuid</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">peer</span> <span class="n">remove</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span> <span class="mi">55672766</span><span class="o">-</span><span class="n">c02b</span><span class="o">-</span><span class="mi">4729</span><span class="o">-</span><span class="mi">8567</span><span class="o">-</span><span class="n">f13a66893445</span>
-<span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">remote</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">peer</span> <span class="n">remove</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span> <span class="mi">60</span><span class="n">c0e299</span><span class="o">-</span><span class="n">b38f</span><span class="o">-</span><span class="mi">4234</span><span class="o">-</span><span class="mi">91</span><span class="n">f6</span><span class="o">-</span><span class="n">eed0a367be08</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror pool peer remove image-pool 55672766-c02b-4729-8567-f13a66893445
+$ rbd --cluster site-b mirror pool peer remove image-pool 60c0e299-b38f-4234-91f6-eed0a367be08
 </pre></div>
 </div>
 </div>
@@ -159,9 +266,34 @@ journaling 功能的映像都会被镜像。</p></li>
 <p>不像存储池配置方式，映像配置只需要操作单个镜像点 Ceph 集群就行。</p>
 <p>被镜像的 RBD 映像需指定为主、或非主的，这是映像的属性、不是存储池的。被指定为非主的映像不能被修改。</p>
 <p>某一映像的镜像功能被开启时，它会被自动晋级为主映像（在存储池镜像模式为 <strong>pool</strong> 且映像开启了 journaling 映像功能时为隐式的，也可以用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令<a class="reference external" href="#enable-image-mirroring">显式地开启</a>）。</p>
+<div class="section" id="id8">
+<h3>启用基于映像的镜像<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<p>如果映像所在存储池的镜像功能配置成了 <code class="docutils literal notranslate"><span class="pre">image</span></code> 模式，那就得显式地启用各个映像的镜像功能。可以用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 的
+<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">image</span> <span class="pre">enable</span></code> 命令、再加上存储池、映像名和模式：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">enable</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">mode</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>The mirror image mode can either be <code class="docutils literal notranslate"><span class="pre">journal</span></code> or <code class="docutils literal notranslate"><span class="pre">snapshot</span></code>:</p>
+<ul class="simple">
+<li><p><strong>journal</strong> (default): When configured in <code class="docutils literal notranslate"><span class="pre">journal</span></code> mode, mirroring will
+utilize the RBD journaling image feature to replicate the image contents. If
+the RBD journaling image feature is not yet enabled on the image, it will be
+automatically enabled.</p></li>
+<li><p><strong>snapshot</strong>:  When configured in <code class="docutils literal notranslate"><span class="pre">snapshot</span></code> mode, mirroring will utilize
+RBD image mirror-snapshots to replicate the image contents. Once enabled, an
+initial mirror-snapshot will automatically be created. Additional RBD image
+<a class="reference external" href="#create-image-mirror-snapshots">mirror-snapshots</a> can be created by the <code class="docutils literal notranslate"><span class="pre">rbd</span></code> command.</p></li>
+</ul>
+<p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror image enable image-pool/image-1 snapshot
+$ rbd --cluster site-a mirror image enable image-pool/image-2 journal
+</pre></div>
+</div>
+</div>
 <div class="section" id="journaling">
-<span id="enable-image-journaling-support"></span><h3>开启映像的 journaling 支持<a class="headerlink" href="#journaling" title="Permalink to this headline">¶</a></h3>
-<p>RBD 镜像用 journaling 功能来保证复制的映像始终保持崩溃一致性。一个映像能被镜像到互联集群前，必须先打开 journaling 功能。此功能可在创建映像时打开，即执行 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令时加上
+<h3>开启映像的 journaling 功能<a class="headerlink" href="#journaling" title="Permalink to this headline">¶</a></h3>
+<p>RBD 镜像用 journaling 功能来保证复制的映像始终保持崩溃一致性。使用 <code class="docutils literal notranslate"><span class="pre">image</span></code> 镜像模式时，在此映像上启用镜像的同时就会自动启用日志功能；使用 <code class="docutils literal notranslate"><span class="pre">pool</span></code> 镜像模式时，必须先启用
+RBD 映像日志功能，映像才能被镜像到对点集群。此功能可在创建映像时打开，即执行 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令时加上
 <code class="docutils literal notranslate"><span class="pre">--image-feature</span> <span class="pre">exclusive-lock,journaling</span></code> 选项。</p>
 <p>另外，在已存在的 RBD 映像上也可以动态地开启 journaling 功能。要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令开启 journaling 功能可指定 <code class="docutils literal notranslate"><span class="pre">feature</span> <span class="pre">enable</span></code>
 命令、存储池名和映像名、以及功能名：</p>
@@ -169,7 +301,7 @@ journaling 功能的映像都会被镜像。</p></li>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">feature</span> <span class="n">enable</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span><span class="o">/</span><span class="n">image</span><span class="o">-</span><span class="mi">1</span> <span class="n">journaling</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a feature enable image-pool/image-1 journaling
 </pre></div>
 </div>
 <div class="admonition note">
@@ -182,32 +314,84 @@ journaling 功能的映像都会被镜像。</p></li>
 <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">default</span> <span class="pre">features</span> <span class="pre">=</span> <span class="pre">125</span></code> 写入配置文件即可。</p>
 </div>
 </div>
-<div class="section" id="enable-image-mirroring">
-<span id="id8"></span><h3>启用基于映像的镜像<a class="headerlink" href="#enable-image-mirroring" title="Permalink to this headline">¶</a></h3>
-<p>如果映像所在存储池的镜像功能配置成了 <code class="docutils literal notranslate"><span class="pre">image</span></code> 模式，那就得显式地启用各个映像的镜像功能。可以用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 的
-<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">image</span> <span class="pre">enable</span></code> 命令、再加上存储池和映像名：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">enable</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+<div class="section" id="create-image-mirror-snapshots">
+<h3>Create Image Mirror-Snapshots<a class="headerlink" href="#create-image-mirror-snapshots" title="Permalink to this headline">¶</a></h3>
+<p>When using snapshot-based mirroring, mirror-snapshots will need to be created
+whenever it is desired to mirror the changed contents of the RBD image. To
+create a mirror-snapshot manually with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the
+<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">image</span> <span class="pre">snapshot</span></code> command along with the pool and image name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">snapshot</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">enable</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span><span class="o">/</span><span class="n">image</span><span class="o">-</span><span class="mi">1</span>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror image snapshot image-pool/image-1
+</pre></div>
+</div>
+<p>By default only <code class="docutils literal notranslate"><span class="pre">3</span></code> mirror-snapshots will be created per-image. The most
+recent mirror-snapshot is automatically pruned if the limit is reached.
+The limit can be overridden via the <code class="docutils literal notranslate"><span class="pre">rbd_mirroring_max_mirroring_snapshots</span></code>
+configuration option if required. Additionally, mirror-snapshots are
+automatically deleted when the image is removed or when mirroring is disabled.</p>
+<p>Mirror-snapshots can also be automatically created on a periodic basis if
+mirror-snapshot schedules are defined. The mirror-snapshot can be scheduled
+globally, per-pool, or per-image levels. Multiple mirror-snapshot schedules can
+be defined at any level, but only the most-specific snapshot schedules that
+match an individual mirrored image will run.</p>
+<p>To create a mirror-snapshot schedule with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the
+<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">snapshot</span> <span class="pre">schedule</span> <span class="pre">add</span></code> command along with an optional pool or
+image name; interval; and optional start time:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">snapshot</span> <span class="n">schedule</span> <span class="n">add</span> <span class="p">[</span><span class="o">--</span><span class="n">pool</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">image</span> <span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="p">{</span><span class="n">interval</span><span class="p">}</span> <span class="p">[{</span><span class="n">start</span><span class="o">-</span><span class="n">time</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">interval</span></code> can be specified in days, hours, or minutes using <code class="docutils literal notranslate"><span class="pre">d</span></code>, <code class="docutils literal notranslate"><span class="pre">h</span></code>,
+<code class="docutils literal notranslate"><span class="pre">m</span></code> suffix respectively. The optional <code class="docutils literal notranslate"><span class="pre">start-time</span></code> can be specified using
+the ISO 8601 time format. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror snapshot schedule add --pool image-pool 24h 14:00:00-05:00
+$ rbd --cluster site-a mirror snapshot schedule add --pool image-pool --image image1 6h
+</pre></div>
+</div>
+<p>To remove a mirror-snapshot schedules with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the
+<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">snapshot</span> <span class="pre">schedule</span> <span class="pre">remove</span></code> command with options that match the
+corresponding <code class="docutils literal notranslate"><span class="pre">add</span></code> schedule command.</p>
+<p>To list all snapshot schedules for a specific level (global, pool, or image)
+with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">snapshot</span> <span class="pre">schedule</span> <span class="pre">ls</span></code> command along with
+an optional pool or image name. Additionally, the <code class="docutils literal notranslate"><span class="pre">--recursive</span></code> option can
+be specified to list all schedules at the specified level and below. For
+example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror schedule ls --pool image-pool --recursive
+POOL        NAMESPACE IMAGE  SCHEDULE
+image-pool  -         -      every 1d starting at 14:00:00-05:00
+image-pool            image1 every 6h
+</pre></div>
+</div>
+<p>To view the status for when the next snapshots will be created for
+snapshot-based mirroring RBD images with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the
+<code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">snapshot</span> <span class="pre">schedule</span> <span class="pre">status</span></code> command along with an optional pool or
+image name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">snapshot</span> <span class="n">schedule</span> <span class="n">status</span> <span class="p">[</span><span class="o">--</span><span class="n">pool</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">image</span> <span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror schedule status
+SCHEDULE TIME       IMAGE
+2020-02-26 18:00:00 image-pool/image1
 </pre></div>
 </div>
 </div>
-<div class="section" id="disable-image-mirroring">
-<span id="id9"></span><h3>禁用基于映像的镜像<a class="headerlink" href="#disable-image-mirroring" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id9">
+<h3>禁用映像的镜像功能<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
 <p>要禁用某一映像的镜像功能，可用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 、加
 <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">image</span> <span class="pre">disable</span></code> 命令，再加上存储池名和映像名：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">disable</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">disable</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span><span class="o">/</span><span class="n">image</span><span class="o">-</span><span class="mi">1</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror image disable image-pool/image-1
 </pre></div>
 </div>
 </div>
-<div class="section" id="image-promotion-and-demotion">
-<span id="id10"></span><h3>映像的晋级和降级<a class="headerlink" href="#image-promotion-and-demotion" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id10">
+<h3>映像的晋级和降级<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>译者注： promotion 翻译为晋级， demotion 翻译为降级。</p>
@@ -223,7 +407,7 @@ journaling 功能的映像都会被镜像。</p></li>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">demote</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span><span class="o">/</span><span class="n">image</span><span class="o">-</span><span class="mi">1</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror image demote image-pool/image-1
 </pre></div>
 </div>
 <p>要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令把存储池内的所有映像降级为非主的，可用
@@ -232,7 +416,7 @@ journaling 功能的映像都会被镜像。</p></li>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">demote</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror pool demote image-pool
 </pre></div>
 </div>
 <p>要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 把某一映像晋级为主的，可用 <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">image</span> <span class="pre">promote</span></code>
@@ -241,7 +425,7 @@ journaling 功能的映像都会被镜像。</p></li>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">remote</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">promote</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span><span class="o">/</span><span class="n">image</span><span class="o">-</span><span class="mi">1</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-b mirror image promote image-pool/image-1
 </pre></div>
 </div>
 <p>要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令把存储池内的所有映像晋级为主的，可用
@@ -250,7 +434,7 @@ journaling 功能的映像都会被镜像。</p></li>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="o">--</span><span class="n">cluster</span> <span class="n">local</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">promote</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd --cluster site-a mirror pool promote image-pool
 </pre></div>
 </div>
 <div class="admonition tip">
@@ -262,15 +446,15 @@ journaling 功能的映像都会被镜像。</p></li>
 <p>晋级可用 <code class="docutils literal notranslate"><span class="pre">--force</span></code> 选项强制施行。在降级未能传达到互联的 Ceph 集群时（例如 Ceph 集群故障，通讯中断），就需要强制晋级。这会导致两个对等点形成裂脑（ split-brain ），并且这两个映像无法回到同步状态，只能通过<a class="reference external" href="#force-image-resync">强制重新同步命令</a>恢复同步。</p>
 </div>
 </div>
-<div class="section" id="force-image-resync">
-<span id="id11"></span><h3>强制重新同步映像<a class="headerlink" href="#force-image-resync" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id11">
+<h3>强制重新同步映像<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
 <p>如果 <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> 守护进程探测到了裂脑事件，它就不会再企图镜像受影响的映像，除非已纠正。要恢复一个映像的镜像，首先找出过期的映像、并<a class="reference external" href="#image-promotion-and-demotion">降级此映像</a>，然后向主映像发出一个重新同步的请求。要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 请求重新同步映像，可用
 <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">image</span> <span class="pre">resync</span></code> 命令、加上存储池名和映像名：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">resync</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">resync</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span><span class="o">/</span><span class="n">image</span><span class="o">-</span><span class="mi">1</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd mirror image resync image-pool/image-1
 </pre></div>
 </div>
 <div class="admonition note">
@@ -279,8 +463,8 @@ journaling 功能的映像都会被镜像。</p></li>
 </div>
 </div>
 </div>
-<div class="section" id="mirror-status">
-<span id="id12"></span><h2>镜像状态<a class="headerlink" href="#mirror-status" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id12">
+<h2>镜像状态<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
 <p>每一个主的、被镜像的映像都存储了互联集群的复制状态，这些状态信息可用 <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">image</span> <span class="pre">status</span></code> 和 <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">pool</span> <span class="pre">status</span></code>
 命令查看。</p>
 <p>要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 查看映像的镜像状态，可用 <code class="docutils literal notranslate"><span class="pre">mirror</span> <span class="pre">image</span> <span class="pre">status</span></code>
@@ -289,7 +473,7 @@ journaling 功能的映像都会被镜像。</p></li>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">image</span> <span class="n">status</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span><span class="o">/</span><span class="n">image</span><span class="o">-</span><span class="mi">1</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd mirror image status image-pool/image-1
 </pre></div>
 </div>
 <p>要用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 命令查看存储池的镜像汇总状态，可用
@@ -298,7 +482,7 @@ journaling 功能的映像都会被镜像。</p></li>
 </pre></div>
 </div>
 <p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">mirror</span> <span class="n">pool</span> <span class="n">status</span> <span class="n">image</span><span class="o">-</span><span class="n">pool</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd mirror pool status image-pool
 </pre></div>
 </div>
 <div class="admonition note">
@@ -308,7 +492,7 @@ journaling 功能的映像都会被镜像。</p></li>
 </div>
 </div>
 <div class="section" id="rbd-mirror">
-<span id="rbd-mirror-daemon"></span><h2>rbd-mirror 守护进程<a class="headerlink" href="#rbd-mirror" title="Permalink to this headline">¶</a></h2>
+<h2>rbd-mirror 守护进程<a class="headerlink" href="#rbd-mirror" title="Permalink to this headline">¶</a></h2>
 <p>两边的 <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> 守护进程负责监视远端的、互联集群的映像日志，并在本地集群回放这些日志事件。 RBD 映像的 journaling 功能会在映像内按其发生顺序记录所有变更，这样可确保远端映像的崩溃一致镜像在本地可用。</p>
 <p><code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> 守护进程随可选的 <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> 发行版软件包提供。</p>
 <div class="admonition important">
@@ -361,21 +545,23 @@ journaling 功能的映像都会被镜像。</p></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">镜像</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id1">存储池配置</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#id2">启用镜像功能</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#disable-mirroring">禁用镜像功能</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#add-cluster-peer">增加互联的集群</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#remove-cluster-peer">删除互联的集群</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id3">禁用镜像功能</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#bootstrap-peers">Bootstrap Peers</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id4">手动增加互联的集群</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id5">删除互联的集群</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#id6">数据存储池</a></li>
 </ul>
 </li>
 <li class="toctree-l4"><a class="reference internal" href="#id7">映像配置</a><ul>
-<li class="toctree-l5"><a class="reference internal" href="#journaling">开启映像的 journaling 支持</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#enable-image-mirroring">启用基于映像的镜像</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#disable-image-mirroring">禁用基于映像的镜像</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#image-promotion-and-demotion">映像的晋级和降级</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#force-image-resync">强制重新同步映像</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id8">启用基于映像的镜像</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#journaling">开启映像的 journaling 功能</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#create-image-mirror-snapshots">Create Image Mirror-Snapshots</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id9">禁用映像的镜像功能</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id10">映像的晋级和降级</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id11">强制重新同步映像</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#mirror-status">镜像状态</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id12">镜像状态</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rbd-mirror">rbd-mirror 守护进程</a></li>
 </ul>
 </li>

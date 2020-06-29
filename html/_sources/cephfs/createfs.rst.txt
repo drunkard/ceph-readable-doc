@@ -60,7 +60,7 @@
 .. code:: bash
 
     $ ceph mds stat
-    e5: 1/1/1 up {0=a=up:active}
+    cephfs-1/1/1 up {0=a=up:active}
 
 建好文件系统且 MDS 活跃后，你就可以挂载此文件系统了。如果你创\
 建的文件系统不止一个，挂载的时候还需指定挂载哪个。

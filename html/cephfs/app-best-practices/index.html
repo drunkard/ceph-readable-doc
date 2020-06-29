@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>与 POSIX 标准的差异 &#8212; Ceph Documentation</title>
+    <title>分布式文件系统之上的应用程序最佳实践 &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -18,8 +18,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
-    <link rel="next" title="实验性功能" href="../experimental-features/" />
-    <link rel="prev" title="MDS 的各种状态" href="../mds-states/" /> 
+    <link rel="next" title="Ceph 文件系统洗刷" href="../scrub/" />
+    <link rel="prev" title="NFS" href="../nfs/" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -31,10 +31,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../experimental-features/" title="实验性功能"
+          <a href="../scrub/" title="Ceph 文件系统洗刷"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../mds-states/" title="MDS 的各种状态"
+          <a href="../nfs/" title="NFS"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
@@ -57,93 +57,68 @@
   <p class="last">This document is for an unsupported version of Ceph.</p>
 </div>
   <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
-    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/posix.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/app-best-practices.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
   </div>
 
   
-  <div class="section" id="posix">
-<h1>与 POSIX 标准的差异<a class="headerlink" href="#posix" title="Permalink to this headline">¶</a></h1>
-<p>CephFS 尽可能地严格遵循 POSIX 语义，比如，与其他很多网络文件系统（如 NFS ）相反， CephFS 与各个客户端之间维持着缓存的强一致性。目的就是为了让不同主机上的进程通过这个文件系统通讯时，可以表现得与本机进程间的通讯一样。</p>
-<p>然而，CephFS 确实由于各种原因在某些地方偏离了严谨的 POSIX
-语义：</p>
-<ul class="simple">
-<li><p>If a client is writing to a file and fails, its writes are not
-necessarily atomic. That is, the client may call write(2) on a file
-opened with O_SYNC with an 8 MB buffer and then crash and the write
-may be only partially applied.  (Almost all file systems, even local
-file systems, have this behavior.)</p></li>
-<li><p>In shared simultaneous writer situations, a write that crosses
-object boundaries is not necessarily atomic. This means that you
-could have writer A write “aa|aa” and writer B write “bb|bb”
-simultaneously (where | is the object boundary), and end up with
-“aa|bb” rather than the proper “aa|aa” or “bb|bb”.</p></li>
-<li><p>Sparse files propagate incorrectly to the stat(2) st_blocks field.
-Because CephFS does not explicitly track which parts of a file are
-allocated/written, the st_blocks field is always populated by the
-file size divided by the block size.  This will cause tools like
-du(1) to overestimate consumed space.  (The recursive size field,
-maintained by CephFS, also includes file “holes” in its count.)</p></li>
-<li><p>When a file is mapped into memory via mmap(2) on multiple hosts,
-writes are not coherently propagated to other clients’ caches.  That
-is, if a page is cached on host A, and then updated on host B, host
-A’s page is not coherently invalidated.  (Shared writable mmap
-appears to be quite rare–we have yet to here any complaints about this
-behavior, and implementing cache coherency properly is complex.)</p></li>
-<li><p>CephFS clients present a hidden <code class="docutils literal notranslate"><span class="pre">.snap</span></code> directory that is used to
-access, create, delete, and rename snapshots.  Although the virtual
-directory is excluded from readdir(2), any process that tries to
-create a file or directory with the same name will get an error
-code.  The name of this hidden directory can be changed at mount
-time with <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">snapdirname=.somethingelse</span></code> (Linux) or the config
-option <code class="docutils literal notranslate"><span class="pre">client_snapdir</span></code> (libcephfs, ceph-fuse).</p></li>
-</ul>
-<div class="section" id="id1">
-<h2>前景展望<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>People talk a lot about “POSIX compliance,” but in reality most file
-system implementations do not strictly adhere to the spec, including
-local Linux file systems like ext4 and XFS.  For example, for
-performance reasons, the atomicity requirements for reads are relaxed:
-processing reading from a file that is also being written may see torn
-results.</p>
-<p>Similarly, NFS has extremely weak consistency semantics when multiple
-clients are interacting with the same files or directories, opting
-instead for “close-to-open”.  In the world of network attached
-storage, where most environments use NFS, whether or not the server’s
-file system is “fully POSIX” may not be relevant, and whether client
-applications notice depends on whether data is being shared between
-clients or not.  NFS may also “tear” the results of concurrent writers
-as client data may not even be flushed to the server until the file is
-closed (and more generally writes will be significantly more
-time-shifted than CephFS, leading to less predictable results).</p>
-<p>However, all of there are very close to POSIX, and most of the time
-applications don’t notice too much.  Many other storage systems (e.g.,
-HDFS) claim to be “POSIX-like” but diverge significantly from the
-standard by dropping support for things like in-place file
-modifications, truncate, or directory renames.</p>
+  <div class="section" id="id1">
+<h1>分布式文件系统之上的应用程序最佳实践<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>CephFS 与 POSIX 标准兼容的、所以它应该适用于使用 POSIX
+文件系统的任意应用程序。然而，由于它是一个网络文件系统（不像诸如 XFS 的）并且是强一致性的（不像诸如 NFS 的），所以，应用程序作者了解一下某些后果是有好处的。</p>
+<p>下面几节描述了分布式文件系统与本地文件系统在性能表现上有明显差异的一些地方。</p>
+<div class="section" id="ls-l">
+<h2>ls -l<a class="headerlink" href="#ls-l" title="Permalink to this headline">¶</a></h2>
+<p>当你运行 <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-l</span></code> 命令时， <code class="docutils literal notranslate"><span class="pre">ls</span></code> 程序会先罗列目录、然后对其内每一个文件调用一次 <code class="docutils literal notranslate"><span class="pre">stat</span></code> 。</p>
+<p>这通常远超一个应用程序的真实需求，而且在大目录上会很慢。如果你不是真的需要各文件的所有此类元数据，那就只用一个 <code class="docutils literal notranslate"><span class="pre">ls</span></code> 吧。</p>
+</div>
+<div class="section" id="ls-stat-on-files-being-extended">
+<h2>ls/stat on files being extended<a class="headerlink" href="#ls-stat-on-files-being-extended" title="Permalink to this headline">¶</a></h2>
+<p>If another client is currently extending files in the listed directory,
+then an <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-l</span></code> may take an exceptionally long time to complete, as
+the lister must wait for the writer to flush data in order to do a valid
+read of the every file’s size.  So unless you <em>really</em> need to know the
+exact size of every file in the directory, just don’t do it!</p>
+<p>This would also apply to any application code that was directly
+issuing <code class="docutils literal notranslate"><span class="pre">stat</span></code> system calls on files being appended from
+another node.</p>
 </div>
 <div class="section" id="id2">
-<h2>底线<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<p>CephFS relaxes more than local Linux kernel file systems (e.g., writes
-spanning object boundaries may be torn).  It relaxes strictly less
-than NFS when it comes to multiclient consistency, and generally less
-than NFS when it comes to write atomicity.</p>
-<p>In other words, when it comes to POSIX,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HDFS</span> <span class="o">&lt;</span> <span class="n">NFS</span> <span class="o">&lt;</span> <span class="n">CephFS</span> <span class="o">&lt;</span> <span class="p">{</span><span class="n">XFS</span><span class="p">,</span> <span class="n">ext4</span><span class="p">}</span>
-</pre></div>
+<h2>巨型目录<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>Do you really need that 10,000,000 file directory?  While directory
+fragmentation enables CephFS to handle it, it is always going to be
+less efficient than splitting your files into more modest-sized directories.</p>
+<p>Even standard userspace tools can become quite slow when operating on very
+large directories. For example, the default behaviour of <code class="docutils literal notranslate"><span class="pre">ls</span></code>
+is to give an alphabetically ordered result, but <code class="docutils literal notranslate"><span class="pre">readdir</span></code> system
+calls do not give an ordered result (this is true in general, not just
+with CephFS).  So when you <code class="docutils literal notranslate"><span class="pre">ls</span></code> on a million file directory, it is
+loading a list of a million names into memory, sorting the list, then writing
+it out to the display.</p>
 </div>
+<div class="section" id="id3">
+<h2>硬链接<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>Hard links have an intrinsic cost in terms of the internal housekeeping
+that a file system has to do to keep two references to the same data.  In
+CephFS there is a particular performance cost, because with normal files
+the inode is embedded in the directory (i.e. there is no extra fetch of
+the inode after looking up the path).</p>
 </div>
-<div class="section" id="fsync">
-<h2>fsync() 和报错<a class="headerlink" href="#fsync" title="Permalink to this headline">¶</a></h2>
-<p>POSIX is somewhat vague about the state of an inode after fsync reports
-an error. In general, CephFS uses the standard error-reporting
-mechanisms in the client’s kernel, and therefore follows the same
-conventions as other file systems.</p>
-<p>In modern Linux kernels (v4.17 or later), writeback errors are reported
-once to every file description that is open at the time of the error. In
-addition, unreported errors that occurred before the file description was
-opened will also be returned on fsync.</p>
-<p>See <a class="reference external" href="https://wiki.postgresql.org/wiki/Fsync_Errors">PostgreSQL’s summary of fsync() error reporting across operating systems</a> and <a class="reference external" href="https://www.youtube.com/watch?v=74c19hwY2oE">Matthew Wilcox’s
-presentation on Linux IO error handling</a> for more information.</p>
+<div class="section" id="working-set-size">
+<h2>Working set size<a class="headerlink" href="#working-set-size" title="Permalink to this headline">¶</a></h2>
+<p>The MDS acts as a cache for the metadata stored in RADOS.  Metadata
+performance is very different for workloads whose metadata fits within
+that cache.</p>
+<p>If your workload has more files than fit in your cache (configured using
+<code class="docutils literal notranslate"><span class="pre">mds_cache_memory_limit</span></code> settings), then make sure you test it
+appropriately: don’t test your system with a small number of files and then
+expect equivalent performance when you move to a much larger number of files.</p>
+</div>
+<div class="section" id="id4">
+<h2>你真的需要文件系统么？<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>Remember that Ceph also includes an object storage interface.  If your
+application needs to store huge flat collections of files where you just
+read and write whole files at once, then you might well be better off
+using the <a class="reference internal" href="../../radosgw/#object-gateway"><span class="std std-ref">Object Gateway</span></a></p>
 </div>
 </div>
 
@@ -188,12 +163,7 @@ presentation on Linux IO error handling</a> for more information.</p>
 <li class="toctree-l3"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/">深入理解 MDS 的缓存尺寸限制</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS 的各种状态</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">POSIX 兼容性</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id1">前景展望</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id2">底线</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#fsync">fsync() 和报错</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../experimental-features/">实验性功能</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../experimental-features/#id4">曾经是实验性的功能</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
@@ -211,7 +181,15 @@ presentation on Linux IO error handling</a> for more information.</p>
 <li class="toctree-l3"><a class="reference internal" href="../dirfrags/">目录分片的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../multimds/">多活 MDS 的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../app-best-practices/">应用最佳实践</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">应用最佳实践</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ls-l">ls -l</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ls-stat-on-files-being-extended">ls/stat on files being extended</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">巨型目录</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">硬链接</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#working-set-size">Working set size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">你真的需要文件系统么？</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../scrub/">洗刷</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../#id1">元数据修复</a></li>
 </ul>
@@ -260,10 +238,10 @@ presentation on Linux IO error handling</a> for more information.</p>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../experimental-features/" title="实验性功能"
+          <a href="../scrub/" title="Ceph 文件系统洗刷"
              >next</a> |</li>
         <li class="right" >
-          <a href="../mds-states/" title="MDS 的各种状态"
+          <a href="../nfs/" title="NFS"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 

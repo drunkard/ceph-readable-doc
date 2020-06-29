@@ -328,11 +328,11 @@
 :command:`group snap rollback` *group-snap-spec*
   把组回滚到某快照。
 
-:command:`image-meta list` *image-spec*
-  显示此映像持有的元数据。第一列是关键字、第二列是值。
-
 :command:`image-meta get` *image-spec* *key*
   获取关键字对应的元数据值。
+
+:command:`image-meta list` *image-spec*
+  显示此映像持有的元数据。第一列是关键字、第二列是值。
 
 :command:`image-meta remove` *image-spec* *key*
   删除元数据关键字及其值。

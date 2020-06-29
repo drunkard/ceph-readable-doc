@@ -244,8 +244,11 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
 
 ``profile rbd-read-only`` （仅用于 OSD ）
 
-:描述: 授予一个用户访问一或多个 RBD 映像的只读权限。
+:描述: 授予一个用户访问 RBD 映像的只读权限。 Manager 能力支持\
+       可选的 ``pool`` 和 ``namespace`` 关键字参数。
 
+
+.. Pool
 
 存储池
 ------
