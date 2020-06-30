@@ -351,8 +351,9 @@ client.admin 密钥环、 bootstrap-osd 和 bootstrap-mds 密钥环。
 pkg
 ---
 
-管理远程主机上的软件包，可用于安装或删除软件包。要安装或删除的软件包名字必须\
-加在命令行之后，对应选项分别为 :option:`--install` 和 :option:`--remove` 。
+管理远程主机上的软件包，可用于安装或删除软件包。要安装或删除的\
+软件包名字必须加在命令行之后，对应选项分别为
+:option:`--install` 和 :option:`--remove` 。
 
 用法： ::
 
@@ -360,35 +361,11 @@ pkg
 
 	ceph-deploy pkg --remove [PKGs] [HOST] [HOST...]
 
-这里的 [PKGs] 是逗号分隔的软件包名字， [HOST] 是远程节点的主机名，将在此主机\
-安装或删除软件包。
+这里的 [PKGs] 是逗号分隔的软件包名字， [HOST] 是远程节点的\
+主机名，将在此主机安装或删除软件包。
 
 
-calamari
---------
-
-安装并配置 Calamari 节点。它首先检查 ceph-deploy 是否支持在此发行版上安装 \
-Calamari 。 ``connect`` 参数用于安装和配置，它会检查 ``ceph-deploy`` 配置文\
-件（ cd_conf ）和 Calamari 或 ``calamari-minion`` 软件库，它靠默认值安装软\
-件库，除非另外指定，否则它不会安装 Ceph 。 ``options`` 字典也需定义，因为 \
-``ceph-deploy`` 内部会弹出各条目，如果各主机都必须有这些条目时就可能产生问\
-题。若发行版是 Debian/Ubuntu ，它会确保对 ``calamari-minion`` 禁用了代理，\
-之后就会安装 ``calamari-minion`` 包、并添加定制软件库文件。安装时会优先放置 \
-minion 配置，这样在 minion 首次启动时就能使用它了；然后创建配置目录、 \
-calamari 的初始配置、安装 salt-minion 软件包。如果是 Redhat/CentOS 发行版，\
-还需启动 salt-minion 服务。
-
-用法： ::
-
-	ceph-deploy calamari {connect} [HOST] [HOST...]
-
-这里的 [HOST] 是要安装 Calamari 的主机名。
-
-``--release`` 选项可用于选定 :program:`ceph-deploy` 配置里指定的版本，默认\
-为 ``calamari-minion`` 。
-
-此命令也支持 :option:`--master` 选项。
-
+.. Options
 
 选项
 ====
@@ -451,10 +428,6 @@ calamari 的初始配置、安装 salt-minion 软件包。如果是 Redhat/CentO
 .. option:: --local-mirror
 
    抓取软件包并推送到某些主机上作为本地软件库镜像。
-
-.. option:: --master
-
-   Calamari 主服务器的域。
 
 .. option:: --mkfs
 

@@ -1912,8 +1912,8 @@ If successful, the response contains the user's capabilities.
 - **最大对象数：** ``max-objects`` 选项用于指定最大对象数，负\
   数表示禁用此选项。
 
-- **最大尺寸** ``max-size`` 选项用于指定最大字节数，负数表示禁\
-  用此选项。
+- **最大尺寸** ``max-size`` 选项用于指定最大字节数，
+  ``max-size-kb`` 选项指定的以 KiB 为单位。负数表示禁用此选项。
 
 - **配额类型：** ``quota-type`` 选项用于指定配额的适用范围，可\
   以是 ``bucket`` 和 ``user`` 。

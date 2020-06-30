@@ -111,9 +111,8 @@ fork of Mongoose.
 
 ``access_log_file``
 
-:描述: Path to a file for access logs. Either full path, or relative
-			  to the current working directory. If absent (default), then
-			  accesses are not logged.
+:描述: 访问日志的文件路径。可以是完整路径、或当前工作目录的\
+       相对路径。如果未设置（默认的），就不会记录访问日志。
 
 :类型: String
 :默认值: ``EMPTY``

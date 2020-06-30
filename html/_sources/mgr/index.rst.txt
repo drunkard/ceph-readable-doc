@@ -40,6 +40,6 @@ mgr 启动。
     Telemetry 模块 <telemetry>
     Iostat 模块 <iostat>
     Crash 模块 <crash>
-    Orchestrator CLI 模块 <orchestrator_cli>
-    Rook 模块 <rook>
     Insights 模块 <insights>
+    Orchestrator 模块 <orchestrator>
+    Rook 模块 <rook>

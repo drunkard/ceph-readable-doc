@@ -342,12 +342,6 @@ mds
 
 	ceph mds compat show
 
-子命令 ``deactivate`` 可停止 mds 。
-
-用法： ::
-
-	ceph mds deactivate <role>
-
 子命令 ``fail`` 强制把 mds 状态设置为失效。
 
 用法： ::

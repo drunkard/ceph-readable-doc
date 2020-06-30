@@ -1,0 +1,353 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>STS Lite &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="故障排除" href="../troubleshooting/" />
+    <link rel="prev" title="Rados 网关的数据布局" href="../layout/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../troubleshooting/" title="故障排除"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../layout/" title="Rados 网关的数据布局"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 对象网关</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/radosgw/STSLite.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="sts-lite">
+<h1>STS Lite<a class="headerlink" href="#sts-lite" title="Permalink to this headline">¶</a></h1>
+<p>Ceph Object Gateway provides support for a subset of Amazon Secure Token Service
+(STS) APIs. STS Lite is an extension of STS and builds upon one of its APIs to
+decrease the load on external IDPs like Keystone and LDAP.</p>
+<p>A set of temporary security credentials is returned after authenticating
+a set of AWS credentials with the external IDP. These temporary credentials can be used
+to make subsequent S3 calls which will be authenticated by the STS engine in Ceph,
+resulting in less load on the Keystone/ LDAP server.</p>
+<p>Temporary and limited privileged credentials can be obtained for a local user
+also using the STS Lite API.</p>
+<div class="section" id="sts-lite-rest-apis">
+<h2>STS Lite REST APIs<a class="headerlink" href="#sts-lite-rest-apis" title="Permalink to this headline">¶</a></h2>
+<p>The following STS Lite REST API is part of STS Lite in Ceph Object Gateway:</p>
+<p>1. GetSessionToken: Returns a set of temporary credentials for a set of AWS
+credentials. After initial authentication with Keystone/ LDAP, the temporary
+credentials returned can be used to make subsequent S3 calls. The temporary
+credentials will have the same permission as that of the AWS credentials.</p>
+<dl>
+<dt>Parameters:</dt><dd><p><strong>DurationSeconds</strong> (Integer/ Optional): The duration in seconds for which the
+credentials should remain valid. Its default value is 3600. Its default max
+value is 43200 which is can be configured using rgw sts max session duration.</p>
+<p><strong>SerialNumber</strong> (String/ Optional): The Id number of the MFA device associated
+with the user making the GetSessionToken call.</p>
+<p><strong>TokenCode</strong> (String/ Optional): The value provided by the MFA device, if MFA is required.</p>
+</dd>
+</dl>
+<p>An administrative user needs to attach a policy to allow invocation of GetSessionToken API using its permanent
+credentials and to allow subsequent s3 operations invocation using only the temporary credentials returned
+by GetSessionToken.</p>
+<p>The user attaching the policy needs to have admin caps. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">radosgw</span><span class="o">-</span><span class="n">admin</span> <span class="n">caps</span> <span class="n">add</span> <span class="o">--</span><span class="n">uid</span><span class="o">=</span><span class="s2">&quot;TESTER&quot;</span> <span class="o">--</span><span class="n">caps</span><span class="o">=</span><span class="s2">&quot;user-policy=*&quot;</span>
+</pre></div>
+</div>
+<p>The following is the policy that needs to be attached to a user ‘TESTER1’:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">user_policy</span> <span class="o">=</span> <span class="s2">&quot;{</span><span class="se">\&quot;</span><span class="s2">Version</span><span class="se">\&quot;</span><span class="s2">:</span><span class="se">\&quot;</span><span class="s2">2012-10-17</span><span class="se">\&quot;</span><span class="s2">,</span><span class="se">\&quot;</span><span class="s2">Statement</span><span class="se">\&quot;</span><span class="s2">:[{</span><span class="se">\&quot;</span><span class="s2">Effect</span><span class="se">\&quot;</span><span class="s2">:</span><span class="se">\&quot;</span><span class="s2">Deny</span><span class="se">\&quot;</span><span class="s2">,</span><span class="se">\&quot;</span><span class="s2">Action</span><span class="se">\&quot;</span><span class="s2">:</span><span class="se">\&quot;</span><span class="s2">s3:*</span><span class="se">\&quot;</span><span class="s2">,</span><span class="se">\&quot;</span><span class="s2">Resource</span><span class="se">\&quot;</span><span class="s2">:[</span><span class="se">\&quot;</span><span class="s2">*</span><span class="se">\&quot;</span><span class="s2">],</span><span class="se">\&quot;</span><span class="s2">Condition</span><span class="se">\&quot;</span><span class="s2">:{</span><span class="se">\&quot;</span><span class="s2">BoolIfExists</span><span class="se">\&quot;</span><span class="s2">:{</span><span class="se">\&quot;</span><span class="s2">sts:authentication</span><span class="se">\&quot;</span><span class="s2">:</span><span class="se">\&quot;</span><span class="s2">false</span><span class="se">\&quot;</span><span class="s2">}}},{</span><span class="se">\&quot;</span><span class="s2">Effect</span><span class="se">\&quot;</span><span class="s2">:</span><span class="se">\&quot;</span><span class="s2">Allow</span><span class="se">\&quot;</span><span class="s2">,</span><span class="se">\&quot;</span><span class="s2">Action</span><span class="se">\&quot;</span><span class="s2">:</span><span class="se">\&quot;</span><span class="s2">sts:GetSessionToken</span><span class="se">\&quot;</span><span class="s2">,</span><span class="se">\&quot;</span><span class="s2">Resource</span><span class="se">\&quot;</span><span class="s2">:</span><span class="se">\&quot;</span><span class="s2">*</span><span class="se">\&quot;</span><span class="s2">,</span><span class="se">\&quot;</span><span class="s2">Condition</span><span class="se">\&quot;</span><span class="s2">:{</span><span class="se">\&quot;</span><span class="s2">BoolIfExists</span><span class="se">\&quot;</span><span class="s2">:{</span><span class="se">\&quot;</span><span class="s2">sts:authentication</span><span class="se">\&quot;</span><span class="s2">:</span><span class="se">\&quot;</span><span class="s2">false</span><span class="se">\&quot;</span><span class="s2">}}}]}&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="sts-lite-configuration">
+<h2>STS Lite Configuration<a class="headerlink" href="#sts-lite-configuration" title="Permalink to this headline">¶</a></h2>
+<p>The following configurable options are available for STS Lite integration:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">radosgw</span><span class="o">.</span><span class="n">gateway</span><span class="p">]</span>
+<span class="n">rgw</span> <span class="n">sts</span> <span class="n">key</span> <span class="o">=</span> <span class="p">{</span><span class="n">sts</span> <span class="n">key</span> <span class="k">for</span> <span class="n">encrypting</span> <span class="n">the</span> <span class="n">session</span> <span class="n">token</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">s3</span> <span class="n">auth</span> <span class="n">use</span> <span class="n">sts</span> <span class="o">=</span> <span class="n">true</span>
+</pre></div>
+</div>
+<p>The above STS configurables can be used with the Keystone configurables if one
+needs to use STS Lite in conjunction with Keystone. The complete set of
+configurable options will be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">radosgw</span><span class="o">.</span><span class="n">gateway</span><span class="p">]</span>
+<span class="n">rgw</span> <span class="n">sts</span> <span class="n">key</span> <span class="o">=</span> <span class="p">{</span><span class="n">sts</span> <span class="n">key</span> <span class="k">for</span> <span class="n">encrypting</span><span class="o">/</span> <span class="n">decrypting</span> <span class="n">the</span> <span class="n">session</span> <span class="n">token</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">s3</span> <span class="n">auth</span> <span class="n">use</span> <span class="n">sts</span> <span class="o">=</span> <span class="n">true</span>
+
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">url</span> <span class="o">=</span> <span class="p">{</span><span class="n">keystone</span> <span class="n">server</span> <span class="n">url</span><span class="p">:</span><span class="n">keystone</span> <span class="n">server</span> <span class="n">admin</span> <span class="n">port</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">admin</span> <span class="n">project</span> <span class="o">=</span> <span class="p">{</span><span class="n">keystone</span> <span class="n">admin</span> <span class="n">project</span> <span class="n">name</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">admin</span> <span class="n">tenant</span> <span class="o">=</span> <span class="p">{</span><span class="n">keystone</span> <span class="n">service</span> <span class="n">tenant</span> <span class="n">name</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">admin</span> <span class="n">domain</span> <span class="o">=</span> <span class="p">{</span><span class="n">keystone</span> <span class="n">admin</span> <span class="n">domain</span> <span class="n">name</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">api</span> <span class="n">version</span> <span class="o">=</span> <span class="p">{</span><span class="n">keystone</span> <span class="n">api</span> <span class="n">version</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">implicit</span> <span class="n">tenants</span> <span class="o">=</span> <span class="p">{</span><span class="n">true</span> <span class="k">for</span> <span class="n">private</span> <span class="n">tenant</span> <span class="k">for</span> <span class="n">each</span> <span class="n">new</span> <span class="n">user</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">admin</span> <span class="n">password</span> <span class="o">=</span> <span class="p">{</span><span class="n">keystone</span> <span class="n">service</span> <span class="n">tenant</span> <span class="n">user</span> <span class="n">name</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">admin</span> <span class="n">user</span> <span class="o">=</span> <span class="n">keystone</span> <span class="n">service</span> <span class="n">tenant</span> <span class="n">user</span> <span class="n">password</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">accepted</span> <span class="n">roles</span> <span class="o">=</span> <span class="p">{</span><span class="n">accepted</span> <span class="n">user</span> <span class="n">roles</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">keystone</span> <span class="n">token</span> <span class="n">cache</span> <span class="n">size</span> <span class="o">=</span> <span class="p">{</span><span class="n">number</span> <span class="n">of</span> <span class="n">tokens</span> <span class="n">to</span> <span class="n">cache</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">s3</span> <span class="n">auth</span> <span class="n">use</span> <span class="n">keystone</span> <span class="o">=</span> <span class="n">true</span>
+</pre></div>
+</div>
+<p>The details of the integrating ldap with Ceph Object Gateway can be found here:
+<a class="reference internal" href="../keystone/"><span class="doc">与 OpenStack Keystone 对接</span></a></p>
+<p>The complete set of configurables to use STS Lite with LDAP are:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">radosgw</span><span class="o">.</span><span class="n">gateway</span><span class="p">]</span>
+<span class="n">rgw</span> <span class="n">sts</span> <span class="n">key</span> <span class="o">=</span> <span class="p">{</span><span class="n">sts</span> <span class="n">key</span> <span class="k">for</span> <span class="n">encrypting</span><span class="o">/</span> <span class="n">decrypting</span> <span class="n">the</span> <span class="n">session</span> <span class="n">token</span><span class="p">}</span>
+<span class="n">rgw</span> <span class="n">s3</span> <span class="n">auth</span> <span class="n">use</span> <span class="n">sts</span> <span class="o">=</span> <span class="n">true</span>
+
+<span class="n">rgw_s3_auth_use_ldap</span> <span class="o">=</span> <span class="n">true</span>
+<span class="n">rgw_ldap_uri</span> <span class="o">=</span> <span class="p">{</span><span class="n">LDAP</span> <span class="n">server</span> <span class="n">to</span> <span class="n">use</span><span class="p">}</span>
+<span class="n">rgw_ldap_binddn</span> <span class="o">=</span> <span class="p">{</span><span class="n">Distinguished</span> <span class="n">Name</span> <span class="p">(</span><span class="n">DN</span><span class="p">)</span> <span class="n">of</span> <span class="n">the</span> <span class="n">service</span> <span class="n">account</span><span class="p">}</span>
+<span class="n">rgw_ldap_secret</span> <span class="o">=</span> <span class="p">{</span><span class="n">password</span> <span class="k">for</span> <span class="n">the</span> <span class="n">service</span> <span class="n">account</span><span class="p">}</span>
+<span class="n">rgw_ldap_searchdn</span> <span class="o">=</span> <span class="p">{</span><span class="n">base</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">directory</span> <span class="n">information</span> <span class="n">tree</span> <span class="k">for</span> <span class="n">searching</span> <span class="n">users</span><span class="p">}</span>
+<span class="n">rgw_ldap_dnattr</span> <span class="o">=</span> <span class="p">{</span><span class="n">attribute</span> <span class="n">being</span> <span class="n">used</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">constructed</span> <span class="n">search</span> <span class="nb">filter</span> <span class="n">to</span> <span class="n">match</span> <span class="n">a</span> <span class="n">username</span><span class="p">}</span>
+<span class="n">rgw_ldap_searchfilter</span> <span class="o">=</span> <span class="p">{</span><span class="n">search</span> <span class="nb">filter</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>The details of the integrating ldap with Ceph Object Gateway can be found here:
+<a class="reference internal" href="../ldap-auth/"><span class="doc">LDAP 认证</span></a></p>
+<p>Note: By default, STS and S3 APIs co-exist in the same namespace, and both S3
+and STS APIs can be accessed via the same endpoint in Ceph Object Gateway.</p>
+</div>
+<div class="section" id="example-showing-how-to-use-sts-lite-with-keystone">
+<h2>Example showing how to Use STS Lite with Keystone<a class="headerlink" href="#example-showing-how-to-use-sts-lite-with-keystone" title="Permalink to this headline">¶</a></h2>
+<p>The following are the steps needed to use STS Lite with Keystone. Boto 3.x has
+been used to write an example code to show the integration of STS Lite with
+Keystone.</p>
+<ol class="arabic simple">
+<li><p>Generate EC2 credentials :</p></li>
+</ol>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">openstack</span> <span class="nx">ec2</span> <span class="nx">credentials</span> <span class="nx">create</span>
+<span class="o">+------------+--------------------------------------------------------+</span>
+<span class="o">|</span> <span class="nx">Field</span>      <span class="o">|</span> <span class="nx">Value</span>                                                  <span class="o">|</span>
+<span class="o">+------------+--------------------------------------------------------+</span>
+<span class="o">|</span> <span class="nx">access</span>     <span class="o">|</span> <span class="nx">b924dfc87d454d15896691182fdeb0ef</span>                       <span class="o">|</span>
+<span class="o">|</span> <span class="nx">links</span>      <span class="o">|</span> <span class="p">{</span><span class="nx">u</span><span class="s1">&#39;self&#39;</span><span class="o">:</span> <span class="nx">u</span><span class="s1">&#39;http://192.168.0.15/identity/v3/users/     |</span>
+<span class="s1">|            | 40a7140e424f493d8165abc652dc731c/credentials/          |</span>
+<span class="s1">|            | OS-EC2/b924dfc87d454d15896691182fdeb0ef&#39;</span><span class="p">}</span>              <span class="o">|</span>
+<span class="o">|</span> <span class="nx">project_id</span> <span class="o">|</span> <span class="nx">c703801dccaf4a0aaa39bec8c481e25a</span>                       <span class="o">|</span>
+<span class="o">|</span> <span class="nx">secret</span>     <span class="o">|</span> <span class="mi">6</span><span class="nx">a2142613c504c42a94ba2b82147dc28</span>                       <span class="o">|</span>
+<span class="o">|</span> <span class="nx">trust_id</span>   <span class="o">|</span> <span class="nx">None</span>                                                   <span class="o">|</span>
+<span class="o">|</span> <span class="nx">user_id</span>    <span class="o">|</span> <span class="mi">40</span><span class="nx">a7140e424f493d8165abc652dc731c</span>                       <span class="o">|</span>
+<span class="o">+------------+--------------------------------------------------------+</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Use the credentials created in the step 1. to get back a set of temporary
+credentials using GetSessionToken API.</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">boto3</span>
+
+<span class="n">access_key</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">ec2</span> <span class="n">access</span> <span class="n">key</span><span class="o">&gt;</span>
+<span class="n">secret_key</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">ec2</span> <span class="n">secret</span> <span class="n">key</span><span class="o">&gt;</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s1">&#39;sts&#39;</span><span class="p">,</span>
+<span class="n">aws_access_key_id</span><span class="o">=</span><span class="n">access_key</span><span class="p">,</span>
+<span class="n">aws_secret_access_key</span><span class="o">=</span><span class="n">secret_key</span><span class="p">,</span>
+<span class="n">endpoint_url</span><span class="o">=&lt;</span><span class="n">STS</span> <span class="n">URL</span><span class="o">&gt;</span><span class="p">,</span>
+<span class="n">region_name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_session_token</span><span class="p">(</span>
+    <span class="n">DurationSeconds</span><span class="o">=</span><span class="mi">43200</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>The temporary credentials obtained in step 2. can be used for making S3 calls:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s3client</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span>
+  <span class="n">aws_access_key_id</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s1">&#39;Credentials&#39;</span><span class="p">][</span><span class="s1">&#39;AccessKeyId&#39;</span><span class="p">],</span>
+  <span class="n">aws_secret_access_key</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s1">&#39;Credentials&#39;</span><span class="p">][</span><span class="s1">&#39;SecretAccessKey&#39;</span><span class="p">],</span>
+  <span class="n">aws_session_token</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s1">&#39;Credentials&#39;</span><span class="p">][</span><span class="s1">&#39;SessionToken&#39;</span><span class="p">],</span>
+  <span class="n">endpoint_url</span><span class="o">=&lt;</span><span class="n">S3</span> <span class="n">URL</span><span class="o">&gt;</span><span class="p">,</span>
+  <span class="n">region_name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+<span class="n">bucket</span> <span class="o">=</span> <span class="n">s3client</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="s1">&#39;my-new-shiny-bucket&#39;</span><span class="p">)</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">s3client</span><span class="o">.</span><span class="n">list_buckets</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">bucket</span> <span class="ow">in</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Buckets&quot;</span><span class="p">]:</span>
+    <span class="k">print</span> <span class="s2">&quot;{name}</span><span class="se">\t</span><span class="s2">{created}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">bucket</span><span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">],</span>
+                <span class="n">created</span> <span class="o">=</span> <span class="n">bucket</span><span class="p">[</span><span class="s1">&#39;CreationDate&#39;</span><span class="p">],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Similar steps can be performed for using GetSessionToken with LDAP.</p>
+</div>
+<div class="section" id="limitations-and-workarounds">
+<h2>Limitations and Workarounds<a class="headerlink" href="#limitations-and-workarounds" title="Permalink to this headline">¶</a></h2>
+<p>1. Keystone currently supports only S3 requests, hence in order to successfully
+authenticate an STS request, the following workaround needs to be added to boto
+to the following file - botocore/auth.py</p>
+<p>Lines 13-16 have been added as a workaround in the code block below:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">SigV4Auth</span><span class="p">(</span><span class="n">BaseSigner</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Sign a request with Signature V4.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="n">REQUIRES_REGION</span> <span class="o">=</span> <span class="bp">True</span>
+
+  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">credentials</span><span class="p">,</span> <span class="n">service_name</span><span class="p">,</span> <span class="n">region_name</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">credentials</span> <span class="o">=</span> <span class="n">credentials</span>
+      <span class="c1"># We initialize these value here so the unit tests can have</span>
+      <span class="c1"># valid values.  But these will get overridden in ``add_auth``</span>
+      <span class="c1"># later for real requests.</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_region_name</span> <span class="o">=</span> <span class="n">region_name</span>
+      <span class="k">if</span> <span class="n">service_name</span> <span class="o">==</span> <span class="s1">&#39;sts&#39;</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_service_name</span> <span class="o">=</span> <span class="s1">&#39;s3&#39;</span>
+      <span class="k">else</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_service_name</span> <span class="o">=</span> <span class="n">service_name</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（ ceph-deploy ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">安装（ Kubernetes + Helm ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 对象网关</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">基于 Civetweb 手动安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../frontends/">HTTP 前端</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement/">Pool Placement and Storage Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-fcgi/">基于 Apache/FastCGI 的简单配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multisite/">多站配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pools/">存储池的配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">配置参考</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">管理操作 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">Python 接口</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../barbican/">与 OpenStack Barbican 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../opa/">与 Open Policy Agent 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multitenancy/">多租户</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../compression/">压缩</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ldap-auth/">LDAP 认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encryption/">服务器端加密</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bucketpolicy/">桶策略</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dynamicresharding/">动态的桶索引重分片</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mfa/">多因子认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sync-modules/">同步模块</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../layout/">RADOS 中的数据布局</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">STS Lite</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sts-lite-rest-apis">STS Lite REST APIs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sts-lite-configuration">STS Lite Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-showing-how-to-use-sts-lite-with-keystone">Example showing how to Use STS Lite with Keystone</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#limitations-and-workarounds">Limitations and Workarounds</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../troubleshooting/" title="故障排除"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../layout/" title="Rados 网关的数据布局"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 对象网关</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>
