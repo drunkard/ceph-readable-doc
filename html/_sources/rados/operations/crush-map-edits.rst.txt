@@ -415,8 +415,8 @@ CRUSH 规则的详细研究见
 
 ``step choose firstn {num} type {bucket-type}``
 
-:描述: 选取指定类型桶的数量，这个数字通常是存储池的副本数（即 \
-       pool size ）。
+:描述: 在当前可用桶中选取指定类型桶的数量，这个数字通常是所在\
+       存储池的副本数（即 pool size ）。
 
        - 如果 ``{num} == 0`` 选择 ``pool-num-replicas`` 个桶\
 	 （所有可用的）；
@@ -433,7 +433,7 @@ CRUSH 规则的详细研究见
 
 :描述: 选择 ``{bucket-type}`` 类型的一堆桶，并从各桶的子树里\
        选择一个叶子节点（即一个 OSD ）。集合内桶的数量通常是\
-       存储池的副本数（即 pool size ）。
+       所在存储池的副本数（即 pool size ）。
 
        - 如果 ``{num} == 0`` 选择 ``pool-num-replicas`` 个桶\
          （所有可用的）；

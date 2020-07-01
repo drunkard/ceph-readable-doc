@@ -9,7 +9,7 @@
 提纲
 ====
 
-| **rbd-nbd** [-c conf] [--read-only] [--device *nbd device*] [--nbds_max *limit*] [--max_part *limit*] [--exclusive] map *image-spec* | *snap-spec*
+| **rbd-nbd** [-c conf] [--read-only] [--device *nbd device*] [--nbds_max *limit*] [--max_part *limit*] [--exclusive] [--timeout *seconds*] map *image-spec* | *snap-spec*
 | **rbd-nbd** unmap *nbd device*
 | **rbd-nbd** list-mapped
 
@@ -17,9 +17,9 @@
 描述
 ====
 
-**rbd-nbd** 是个 RADOS 块设备（ rbd ）映像的客户端，与 rbd 内核\
-模块类似。它可以把一个 rbd 映像映射为 nbd （网络块设备）设备，这\
-样就可以当常规的本地块设备使用了。
+**rbd-nbd** 是个 RADOS 块设备（ rbd ）映像的客户端，与 rbd
+内核模块类似。它可以把一个 rbd 映像映射为 nbd （网络块设备）\
+设备，这样就可以当常规的本地块设备使用了。
 
 
 选项
@@ -46,6 +46,13 @@
 
    禁止其它客户端写入。
 
+.. option:: --timeout *seconds*
+
+   会覆盖设备超时值。 Linux 内核请求的默认超时时间是 30 秒。\
+   这个可选参数允许你另外指定超时时长。
+
+
+.. Image and snap specs
 
 映像名和快照名规则
 ==================

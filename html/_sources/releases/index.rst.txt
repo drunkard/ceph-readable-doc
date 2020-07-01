@@ -8,16 +8,6 @@
 .. toctree::
    :maxdepth: 1
 
-.. Pending Release
-
-待发布版本
-~~~~~~~~~~
-
-.. toctree::
-   :maxdepth: 1
-
-   Octopus <octopus>
-
 .. Active Releases
 
 活跃版本
@@ -26,9 +16,9 @@
 .. toctree::
    :maxdepth: 1
 
+   Octopus <octopus>
    Nautilus <nautilus>
    Mimic <mimic>
-   Luminous <luminous>
 
 .. Archived Releases
 

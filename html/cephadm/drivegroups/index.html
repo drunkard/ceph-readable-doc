@@ -1,0 +1,532 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>OSD Service Specification &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephadm/drivegroups.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="osd-service-specification">
+<span id="drivegroups"></span><h1>OSD Service Specification<a class="headerlink" href="#osd-service-specification" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference internal" href="../../mgr/orchestrator/#orchestrator-cli-service-spec"><span class="std std-ref">Service Specification</span></a> of type <code class="docutils literal notranslate"><span class="pre">osd</span></code> are a way to describe a cluster layout using the properties of disks.
+It gives the user an abstract way tell ceph which disks should turn into an OSD
+with which configuration without knowing the specifics of device names and paths.</p>
+<p>Instead of doing this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">monitor</span> <span class="mi">1</span><span class="p">]</span> <span class="c1"># ceph orch daemon add osd *&lt;host&gt;*:*&lt;path-to-device&gt;*</span>
+</pre></div>
+</div>
+<p>for each device and each host, we can define a yaml|json file that allows us to describe
+the layout. Here’s the most basic example.</p>
+<p>Create a file called i.e. osd_spec.yml</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">default_drive_group  &lt;- name of the drive_group (name can be custom)</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;*&#39;</span>              <span class="l l-Scalar l-Scalar-Plain">&lt;- which hosts to target, currently only supports globs</span>
+<span class="nt">data_devices</span><span class="p">:</span>                    <span class="l l-Scalar l-Scalar-Plain">&lt;- the type of devices you are applying specs to</span>
+  <span class="l l-Scalar l-Scalar-Plain">all</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true                      &lt;- a filter, check below for a full list</span>
+</pre></div>
+</div>
+<p>This would translate to:</p>
+<p>Turn any available(ceph-volume decides what ‘available’ is) into an OSD on all hosts that match
+the glob pattern ‘*’. (The glob pattern matches against the registered hosts from <cite>host ls</cite>)
+There will be a more detailed section on host_pattern down below.</p>
+<p>and pass it to <cite>osd create</cite> like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">monitor</span> <span class="mi">1</span><span class="p">]</span> <span class="c1"># ceph orch apply osd -i /path/to/osd_spec.yml</span>
+</pre></div>
+</div>
+<p>This will go out on all the matching hosts and deploy these OSDs.</p>
+<p>Since we want to have more complex setups, there are more filters than just the ‘all’ filter.</p>
+<div class="section" id="filters">
+<h2>Filters<a class="headerlink" href="#filters" title="Permalink to this headline">¶</a></h2>
+<p>You can assign disks to certain groups by their attributes using filters.</p>
+<p>The attributes are based off of ceph-volume’s disk query. You can retrieve the information
+with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">inventory</span> <span class="o">&lt;/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">disk</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<div class="section" id="vendor-or-model">
+<h3>Vendor or Model:<a class="headerlink" href="#vendor-or-model" title="Permalink to this headline">¶</a></h3>
+<p>You can target specific disks by their Vendor or by their Model</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">disk_model_name</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">vendor</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">disk_vendor_name</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="size">
+<h3>Size:<a class="headerlink" href="#size" title="Permalink to this headline">¶</a></h3>
+<p>You can also match by disk <cite>Size</cite>.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">size</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">size_spec</span>
+</pre></div>
+</div>
+<div class="section" id="size-specs">
+<h4>Size specs:<a class="headerlink" href="#size-specs" title="Permalink to this headline">¶</a></h4>
+<p>Size specification of format can be of form:</p>
+<ul class="simple">
+<li><p>LOW:HIGH</p></li>
+<li><p>:HIGH</p></li>
+<li><p>LOW:</p></li>
+<li><p>EXACT</p></li>
+</ul>
+<p>Concrete examples:</p>
+<p>Includes disks of an exact size:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">size</span><span class="p">:</span> <span class="s1">&#39;10G&#39;</span>
+</pre></div>
+</div>
+<p>Includes disks which size is within the range:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">size</span><span class="p">:</span> <span class="s1">&#39;10G:40G&#39;</span>
+</pre></div>
+</div>
+<p>Includes disks less than or equal to 10G in size:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">size</span><span class="p">:</span> <span class="s1">&#39;:10G&#39;</span>
+</pre></div>
+</div>
+<p>Includes disks equal to or greater than 40G in size:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">size</span><span class="p">:</span> <span class="s1">&#39;40G:&#39;</span>
+</pre></div>
+</div>
+<p>Sizes don’t have to be exclusively in Gigabyte(G).</p>
+<p>Supported units are Megabyte(M), Gigabyte(G) and Terrabyte(T). Also appending the (B) for byte is supported. MB, GB, TB</p>
+</div>
+</div>
+<div class="section" id="rotational">
+<h3>Rotational:<a class="headerlink" href="#rotational" title="Permalink to this headline">¶</a></h3>
+<p>This operates on the ‘rotational’ attribute of the disk.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">rotational</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0 | 1</span>
+</pre></div>
+</div>
+<p><cite>1</cite> to match all disks that are rotational</p>
+<p><cite>0</cite> to match all disks that are non-rotational (SSD, NVME etc)</p>
+</div>
+<div class="section" id="all">
+<h3>All:<a class="headerlink" href="#all" title="Permalink to this headline">¶</a></h3>
+<p>This will take all disks that are ‘available’</p>
+<p>Note: This is exclusive for the data_devices section.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">all</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="limiter">
+<h3>Limiter:<a class="headerlink" href="#limiter" title="Permalink to this headline">¶</a></h3>
+<p>When you specified valid filters but want to limit the amount of matching disks you can use the ‘limit’ directive.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">limit</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">2</span>
+</pre></div>
+</div>
+<p>For example, if you used <cite>vendor</cite> to match all disks that are from <cite>VendorA</cite> but only want to use the first two
+you could use <cite>limit</cite>.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">vendor</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">VendorA</span>
+  <span class="nt">limit</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">2</span>
+</pre></div>
+</div>
+<p>Note: Be aware that <cite>limit</cite> is really just a last resort and shouldn’t be used if it can be avoided.</p>
+</div>
+</div>
+<div class="section" id="additional-options">
+<h2>Additional Options<a class="headerlink" href="#additional-options" title="Permalink to this headline">¶</a></h2>
+<p>There are multiple optional settings you can use to change the way OSDs are deployed.
+You can add these options to the base level of a DriveGroup for it to take effect.</p>
+<p>This example would deploy all OSDs with encryption enabled.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">example_osd_spec</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;*&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">all</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">encrypted</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+<p>See a full list in the DriveGroupSpecs</p>
+<dl class="class">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec">
+<em class="property">class </em><code class="sig-prename descclassname">ceph.deployment.drive_group.</code><code class="sig-name descname">DriveGroupSpec</code><span class="sig-paren">(</span><em class="sig-param">placement=None</em>, <em class="sig-param">service_id=None</em>, <em class="sig-param">data_devices=None</em>, <em class="sig-param">db_devices=None</em>, <em class="sig-param">wal_devices=None</em>, <em class="sig-param">journal_devices=None</em>, <em class="sig-param">data_directories=None</em>, <em class="sig-param">osds_per_device=None</em>, <em class="sig-param">objectstore='bluestore'</em>, <em class="sig-param">encrypted=False</em>, <em class="sig-param">db_slots=None</em>, <em class="sig-param">wal_slots=None</em>, <em class="sig-param">osd_id_claims=None</em>, <em class="sig-param">block_db_size=None</em>, <em class="sig-param">block_wal_size=None</em>, <em class="sig-param">journal_size=None</em>, <em class="sig-param">service_type=None</em>, <em class="sig-param">unmanaged=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Describe a drive group in the same form that ceph-volume
+understands.</p>
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.block_db_size">
+<code class="sig-name descname">block_db_size</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.block_db_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set (or override) the “bluestore_block_db_size” value, in bytes</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.block_wal_size">
+<code class="sig-name descname">block_wal_size</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.block_wal_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set (or override) the “bluestore_block_wal_size” value, in bytes</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.data_devices">
+<code class="sig-name descname">data_devices</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.data_devices" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">ceph.deployment.drive_group.DeviceSelection</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.data_directories">
+<code class="sig-name descname">data_directories</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.data_directories" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of strings, containing paths which should back OSDs</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.db_devices">
+<code class="sig-name descname">db_devices</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.db_devices" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">ceph.deployment.drive_group.DeviceSelection</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.db_slots">
+<code class="sig-name descname">db_slots</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.db_slots" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many OSDs per DB device</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.encrypted">
+<code class="sig-name descname">encrypted</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.encrypted" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.journal_devices">
+<code class="sig-name descname">journal_devices</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.journal_devices" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">ceph.deployment.drive_group.DeviceSelection</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.journal_size">
+<code class="sig-name descname">journal_size</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.journal_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>set journal_size is bytes</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.objectstore">
+<code class="sig-name descname">objectstore</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.objectstore" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">filestore</span></code> or <code class="docutils literal notranslate"><span class="pre">bluestore</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.osd_id_claims">
+<code class="sig-name descname">osd_id_claims</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.osd_id_claims" title="Permalink to this definition">¶</a></dt>
+<dd><p>Optional: mapping of host -&gt; List of osd_ids that should be replaced
+See <a class="reference internal" href="../../mgr/orchestrator_modules/#orchestrator-osd-replace"><span class="std std-ref">OSD 替换</span></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.osds_per_device">
+<code class="sig-name descname">osds_per_device</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.osds_per_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of osd daemons per “DATA” device.
+To fully utilize nvme devices multiple osds are required.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.wal_devices">
+<code class="sig-name descname">wal_devices</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.wal_devices" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">ceph.deployment.drive_group.DeviceSelection</span></code></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ceph.deployment.drive_group.DriveGroupSpec.wal_slots">
+<code class="sig-name descname">wal_slots</code><em class="property"> = None</em><a class="headerlink" href="#ceph.deployment.drive_group.DriveGroupSpec.wal_slots" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many OSDs per WAL device</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="the-simple-case">
+<h3>The simple case<a class="headerlink" href="#the-simple-case" title="Permalink to this headline">¶</a></h3>
+<p>All nodes with the same setup:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">20</span> <span class="n">HDDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorA</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">HDD</span><span class="o">-</span><span class="mi">123</span><span class="o">-</span><span class="n">foo</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">4</span><span class="n">TB</span>
+
+<span class="mi">2</span> <span class="n">SSDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorB</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">MC</span><span class="o">-</span><span class="mi">55</span><span class="o">-</span><span class="mi">44</span><span class="o">-</span><span class="n">ZX</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">512</span><span class="n">GB</span>
+</pre></div>
+</div>
+<p>This is a common setup and can be described quite easily:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd_spec_default</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;*&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">HDD-123-foo &lt;- note that HDD-123 would also be valid</span>
+<span class="nt">db_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">MC-55-44-XZ &lt;- same here, MC-55-44 is valid</span>
+</pre></div>
+</div>
+<p>However, we can improve it by reducing the filters on core properties of the drives:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd_spec_default</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;*&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">rotational</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">db_devices</span><span class="p">:</span>
+  <span class="nt">rotational</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0</span>
+</pre></div>
+</div>
+<p>Now, we enforce all rotating devices to be declared as ‘data devices’ and all non-rotating devices will be used as shared_devices (wal, db)</p>
+<p>If you know that drives with more than 2TB will always be the slower data devices, you can also filter by size:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd_spec_default</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;*&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">size</span><span class="p">:</span> <span class="s">&#39;2TB:&#39;</span>
+<span class="nt">db_devices</span><span class="p">:</span>
+  <span class="nt">size</span><span class="p">:</span> <span class="s">&#39;:2TB&#39;</span>
+</pre></div>
+</div>
+<p>Note: All of the above DriveGroups are equally valid. Which of those you want to use depends on taste and on how much you expect your node layout to change.</p>
+</div>
+<div class="section" id="the-advanced-case">
+<h3>The advanced case<a class="headerlink" href="#the-advanced-case" title="Permalink to this headline">¶</a></h3>
+<p>Here we have two distinct setups:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">20</span> <span class="n">HDDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorA</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">HDD</span><span class="o">-</span><span class="mi">123</span><span class="o">-</span><span class="n">foo</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">4</span><span class="n">TB</span>
+
+<span class="mi">12</span> <span class="n">SSDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorB</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">MC</span><span class="o">-</span><span class="mi">55</span><span class="o">-</span><span class="mi">44</span><span class="o">-</span><span class="n">ZX</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">512</span><span class="n">GB</span>
+
+<span class="mi">2</span> <span class="n">NVMEs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorC</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">NVME</span><span class="o">-</span><span class="n">QQQQ</span><span class="o">-</span><span class="mi">987</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">256</span><span class="n">GB</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>20 HDDs should share 2 SSDs</p></li>
+<li><p>10 SSDs should share 2 NVMes</p></li>
+</ul>
+<p>This can be described with two layouts.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd_spec_hdd</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;*&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">rotational</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="nt">db_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">MC-55-44-XZ</span>
+  <span class="nt">limit</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">2 (db_slots is actually to be favoured here, but it&#39;s not implemented yet)</span>
+
+<span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd_spec_ssd</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;*&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">MC-55-44-XZ</span>
+<span class="nt">db_devices</span><span class="p">:</span>
+  <span class="nt">vendor</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">VendorC</span>
+</pre></div>
+</div>
+<p>This would create the desired layout by using all HDDs as data_devices with two SSD assigned as dedicated db/wal devices.
+The remaining SSDs(8) will be data_devices that have the ‘VendorC’ NVMEs assigned as dedicated db/wal devices.</p>
+</div>
+<div class="section" id="the-advanced-case-with-non-uniform-nodes">
+<h3>The advanced case (with non-uniform nodes)<a class="headerlink" href="#the-advanced-case-with-non-uniform-nodes" title="Permalink to this headline">¶</a></h3>
+<p>The examples above assumed that all nodes have the same drives. That’s however not always the case.</p>
+<p>Node1-5:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">20</span> <span class="n">HDDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">Intel</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">SSD</span><span class="o">-</span><span class="mi">123</span><span class="o">-</span><span class="n">foo</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">4</span><span class="n">TB</span>
+<span class="mi">2</span> <span class="n">SSDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorA</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">MC</span><span class="o">-</span><span class="mi">55</span><span class="o">-</span><span class="mi">44</span><span class="o">-</span><span class="n">ZX</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">512</span><span class="n">GB</span>
+</pre></div>
+</div>
+<p>Node6-10:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">5</span> <span class="n">NVMEs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">Intel</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">SSD</span><span class="o">-</span><span class="mi">123</span><span class="o">-</span><span class="n">foo</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">4</span><span class="n">TB</span>
+<span class="mi">20</span> <span class="n">SSDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorA</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">MC</span><span class="o">-</span><span class="mi">55</span><span class="o">-</span><span class="mi">44</span><span class="o">-</span><span class="n">ZX</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">512</span><span class="n">GB</span>
+</pre></div>
+</div>
+<p>You can use the ‘host_pattern’ key in the layout to target certain nodes. Salt target notation helps to keep things easy.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd_spec_node_one_to_five</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;node[1-5]&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">rotational</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">db_devices</span><span class="p">:</span>
+  <span class="nt">rotational</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0</span>
+
+
+<span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd_spec_six_to_ten</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;node[6-10]&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">MC-55-44-XZ</span>
+<span class="nt">db_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">SSD-123-foo</span>
+</pre></div>
+</div>
+<p>This applies different OSD specs to different hosts depending on the <cite>host_pattern</cite> key.</p>
+</div>
+<div class="section" id="dedicated-wal-db">
+<h3>Dedicated wal + db<a class="headerlink" href="#dedicated-wal-db" title="Permalink to this headline">¶</a></h3>
+<p>All previous cases co-located the WALs with the DBs.
+It’s however possible to deploy the WAL on a dedicated device as well, if it makes sense.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">20</span> <span class="n">HDDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorA</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">SSD</span><span class="o">-</span><span class="mi">123</span><span class="o">-</span><span class="n">foo</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">4</span><span class="n">TB</span>
+
+<span class="mi">2</span> <span class="n">SSDs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorB</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">MC</span><span class="o">-</span><span class="mi">55</span><span class="o">-</span><span class="mi">44</span><span class="o">-</span><span class="n">ZX</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">512</span><span class="n">GB</span>
+
+<span class="mi">2</span> <span class="n">NVMEs</span>
+<span class="n">Vendor</span><span class="p">:</span> <span class="n">VendorC</span>
+<span class="n">Model</span><span class="p">:</span> <span class="n">NVME</span><span class="o">-</span><span class="n">QQQQ</span><span class="o">-</span><span class="mi">987</span>
+<span class="n">Size</span><span class="p">:</span> <span class="mi">256</span><span class="n">GB</span>
+</pre></div>
+</div>
+<p>The OSD spec for this case would look like the following (using the <cite>model</cite> filter):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">osd_spec_default</span>
+<span class="nt">placement</span><span class="p">:</span>
+  <span class="nt">host_pattern</span><span class="p">:</span> <span class="s">&#39;*&#39;</span>
+<span class="nt">data_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">MC-55-44-XZ</span>
+<span class="nt">db_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">SSD-123-foo</span>
+<span class="nt">wal_devices</span><span class="p">:</span>
+  <span class="nt">model</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">NVME-QQQQ-987</span>
+</pre></div>
+</div>
+<p>This can easily be done with other filters, like <cite>size</cite> or <cite>vendor</cite> as well.</p>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（ ceph-deploy ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">安装（ Kubernetes + Helm ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

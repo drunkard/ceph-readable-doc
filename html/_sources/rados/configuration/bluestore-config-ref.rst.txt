@@ -483,21 +483,21 @@ SPDK 有个脚本可以自动配置设备，以 root 身份执行： ::
 
   $ sudo src/spdk/scripts/setup.sh
 
-Then you need to specify NVMe device's device selector here with "spdk:" prefix for
-``bluestore_block_path``.
+之后你需要在这里给 ``bluestore_block_path`` 指定 NVMe 设备的\
+设备档位，它以 spdk: 为前缀。
 
-For example, users can find the device selector of an Intel PCIe SSD with::
+例如，你可以这样找出一个 Intel PCIe SSD 的设备档位： ::
 
   $ lspci -mm -n -D -d 8086:0953
 
-The device selector always has the form of ``DDDD:BB:DD.FF`` or ``DDDD.BB.DD.FF``.
+设备档位的格式肯定是 ``DDDD:BB:DD.FF`` 或 ``DDDD.BB.DD.FF`` 。
 
-and then set::
+然后这样设置： ::
 
   bluestore block path = spdk:0000:01:00.0
 
-Where ``0000:01:00.0`` is the device selector found in the output of ``lspci``
-command above.
+其中， ``0000:01:00.0`` 就是在前面 ``lspci`` 命令的输出里找到\
+的。
 
 If you want to run multiple SPDK instances per node, you must specify the
 amount of dpdk memory size in MB each instance will use, to make sure each

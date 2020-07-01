@@ -13,7 +13,9 @@
 
 | **ceph** **compact**
 
-| **ceph** **config-key** [ *del* | *exists* | *get* | *list* | *dump* | *put* ] ...
+| **ceph** **config** [ *dump* | *ls* | *help* | *get* | *show* | *show-with-defaults* | *set* | *rm* | *log* | *reset* | *assimilate-conf* | *generate-minimal-conf* ] ...
+
+| **ceph** **config-key** [ *rm* | *exists* | *get* | *ls* | *dump* | *set* ] ...
 
 | **ceph** **daemon** *<name>* \| *<path>* *<command>* ...
 
@@ -27,8 +29,6 @@
 
 | **ceph** **health** *{detail}*
 
-| **ceph** **heap** [ *dump* \| *start_profiler* \| *stop_profiler* \| *release* \| *stats* ] ...
-
 | **ceph** **injectargs** *<injectedargs>* [ *<injectedargs>*... ]
 
 | **ceph** **log** *<logtext>* [ *<logtext>*... ]
@@ -37,25 +37,21 @@
 
 | **ceph** **mon** [ *add* \| *dump* \| *getmap* \| *remove* \| *stat* ] ...
 
-| **ceph** **mon_status**
-
 | **ceph** **osd** [ *blacklist* \| *blocked-by* \| *create* \| *new* \| *deep-scrub* \| *df* \| *down* \| *dump* \| *erasure-code-profile* \| *find* \| *getcrushmap* \| *getmap* \| *getmaxosd* \| *in* \| *ls* \| *lspools* \| *map* \| *metadata* \| *ok-to-stop* \| *out* \| *pause* \| *perf* \| *pg-temp* \| *force-create-pg* \| *primary-affinity* \| *primary-temp* \| *repair* \| *reweight* \| *reweight-by-pg* \| *rm* \| *destroy* \| *purge* \| *safe-to-destroy* \| *scrub* \| *set* \| *setcrushmap* \| *setmaxosd*  \| *stat* \| *tree* \| *unpause* \| *unset* ] ...
 
 | **ceph** **osd** **crush** [ *add* \| *add-bucket* \| *create-or-move* \| *dump* \| *get-tunable* \| *link* \| *move* \| *remove* \| *rename-bucket* \| *reweight* \| *reweight-all* \| *reweight-subtree* \| *rm* \| *rule* \| *set* \| *set-tunable* \| *show-tunables* \| *tunables* \| *unlink* ] ...
 
 | **ceph** **osd** **pool** [ *create* \| *delete* \| *get* \| *get-quota* \| *ls* \| *mksnap* \| *rename* \| *rmsnap* \| *set* \| *set-quota* \| *stats* ] ...
 
+| **ceph** **osd** **pool** **application** [ *disable* \| *enable* \| *get* \| *rm* \| *set* ] ...
+
 | **ceph** **osd** **tier** [ *add* \| *add-cache* \| *cache-mode* \| *remove* \| *remove-overlay* \| *set-overlay* ] ...
 
 | **ceph** **pg** [ *debug* \| *deep-scrub* \| *dump* \| *dump_json* \| *dump_pools_json* \| *dump_stuck* \| *getmap* \| *ls* \| *ls-by-osd* \| *ls-by-pool* \| *ls-by-primary* \| *map* \| *repair* \| *scrub* \| *stat* ] ...
 
-| **ceph** **quorum** [ *enter* \| *exit* ]
-
 | **ceph** **quorum_status**
 
 | **ceph** **report** { *<tags>* [ *<tags>...* ] }
-
-| **ceph** **scrub**
 
 | **ceph** **status**
 
@@ -69,8 +65,9 @@
 描述
 ====
 
-:program:`ceph` 是个控制工具，可用于手动部署和维护 Ceph 集群。它提供的多种工\
-具可用于部署监视器、 OSD 、归置组、 MDS 和维护、管理整个集群。
+:program:`ceph` 是个控制工具，可用于手动部署和维护 Ceph 集群。\
+它提供的多种工具可用于部署监视器、 OSD 、归置组、 MDS 和维护、\
+管理整个集群。
 
 
 命令
@@ -973,6 +970,48 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
 用法： ::
 
 	ceph osd pool stats {<name>}
+
+子命令 ``application`` is used for adding an annotation to the given
+pool. By default, the possible applications are object, block, and file
+storage (corresponding app-names are "rgw", "rbd", and "cephfs"). However,
+there might be other applications as well. Based on the application, there
+may or may not be some processing conducted.
+
+子命令 ``disable`` disables the given application on the given pool.
+
+用法： ::
+
+        ceph osd pool application disable <pool-name> <app> {--yes-i-really-mean-it}
+
+子命令 ``enable`` adds an annotation to the given pool for the mentioned
+application.
+
+用法： ::
+
+        ceph osd pool application enable <pool-name> <app> {--yes-i-really-mean-it}
+
+子命令 ``get`` displays the value for the given key that is associated
+with the given application of the given pool. Not passing the optional
+arguments would display all key-value pairs for all applications for all
+pools.
+
+用法： ::
+
+        ceph osd pool application get {<pool-name>} {<app>} {<key>}
+
+子命令 ``rm`` removes the key-value pair for the given key in the given
+application of the given pool.
+
+用法： ::
+
+        ceph osd pool application rm <pool-name> <app> <key>
+
+子命令 ``set`` assosciates or updates, if it already exists, a key-value
+pair with the given application for the given pool.
+
+用法： ::
+
+        ceph osd pool application set <pool-name> <app> <key> <value>
 
 子命令 ``primary-affinity`` 设置主 OSD 亲和性，有效值范围 \
 0.0 <= <weight> <= 1.0
