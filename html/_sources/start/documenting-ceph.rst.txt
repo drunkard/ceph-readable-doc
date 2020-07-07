@@ -1,4 +1,4 @@
-.. _Documenting Ceph:
+.. Documenting Ceph
 
 ================
  贡献 Ceph 文档
@@ -136,17 +136,19 @@ http://tracker.ceph.com/issues/4000 。
 开始更改
 --------
 
-修改文档很简单，打开 restructuredText 文件、修改、保存即可。相关的语法请参考 \
-`文档风格手册`_ 。
+修改文档很简单，打开 restructuredText 文件、修改、保存即可。
+相关的语法请参考 `文档风格手册`_ 。
 
-新增文档要在 ``doc`` 目录或其子目录下新建 restructuredText 文件，并以 \
-``*.rst`` 作后缀。还必须包含对它的引用：如超链接或目录条目。某个顶极目录中的 \
-``index.rst`` 文件通常也包含一个 TOC ，你可以在这里添加新文件名。所有文档都必\
-须有标题，详情见\ `标题`_\ 。
+新增文档要在 ``doc`` 目录或其子目录下新建 restructuredText
+文件，并以 ``*.rst`` 作后缀。还必须包含对它的引用：如超链接或\
+目录条目。某个顶极目录中的 ``index.rst`` 文件通常也包含一个
+TOC ，你可以在这里添加新文件名。所有文档都必须有标题，详情见\
+`标题`_\ 。
 
-你新建的文档不会自动被 ``git`` 跟踪，如果想把它加进仓库，必须用 \
-``git add {path-to-filename}`` 命令。比如，在 Ceph 仓库的顶极目录下，把 \
-``example.rst`` 文件加到 ``rados`` 子目录下，可以这样： ::
+你新建的文档不会自动被 ``git`` 跟踪，如果想把它加进仓库，必须\
+用 ``git add {path-to-filename}`` 命令。比如，在 Ceph 仓库的\
+顶极目录下，把 ``example.rst`` 文件加到 ``rados`` 子目录下，\
+可以这样： ::
 
 	git add doc/rados/example.rst
 
@@ -157,7 +159,7 @@ http://tracker.ceph.com/issues/4000 。
 还必须从其他文档删除与之相关的引用。
 
 
-.. _Build the Source:
+.. Build the Source
 
 构建文档源码
 ------------
@@ -186,10 +188,12 @@ http://tracker.ceph.com/issues/4000 。
 .. important:: 你必须核实\ **所有超链接**\ ，损坏的超链接会中\
    止构建过程。
 
-文档构建完成后你就可以到源码目录下查看了： ::
+文档构建完成后你就可以启动一个 HTTP 服务器、通过
+``http://localhost:8080/`` 查看了： ::
 
-	cd build-doc/output
+	admin/serve-doc
 
+或者，你可以直接到 ``build-doc/output`` 下看看构建好的文档。\
 那里应该有 ``html`` 目录和 ``man`` 目录分别存放着 HTML 和手册\
 页格式的文档。
 

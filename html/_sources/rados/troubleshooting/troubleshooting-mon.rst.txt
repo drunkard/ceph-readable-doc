@@ -385,7 +385,7 @@ What should I do if there's a clock skew?
 存储损坏的症状
 --------------
 
-Ceph 监视器把\ `集群运行图`_\ 存储在键值数据库里，像 LevelDB 。\
+Ceph 监视器把\ :term:`集群运行图`\ 存储在键值数据库里，像 LevelDB 。\
 如果某个监视器由于键值存储损坏而失败，监视器日志里可能出现如下\
 错误消息： ::
 
@@ -401,8 +401,9 @@ Ceph 监视器把\ `集群运行图`_\ 存储在键值数据库里，像 LevelDB
 用健康的监视器恢复
 ------------------
 
-只要有幸存的，我们就可以用新的\ `替换掉`_\ 损坏的；而且新加入\
-的监视器启动后会与健康节点同步，完全同步后就可以服务于客户端了。
+只要有幸存的，我们就可以用新的\ :ref:`替换掉 <adding-and-removing-monitors>`\
+损坏的；而且新加入的监视器启动后会与健康节点同步，完全同步后就\
+可以服务于客户端了。
 
 
 .. Recovery using OSDs
@@ -564,6 +565,4 @@ based on that.
 Finally, you should reach out to us on the mailing lists, on IRC or file
 a new issue on the `tracker`_.
 
-.. _集群运行图: ../../architecture#cluster-map
-.. _替换掉: ../operation/add-or-rm-mons
 .. _tracker: http://tracker.ceph.com/projects/ceph/issues/new

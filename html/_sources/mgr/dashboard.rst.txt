@@ -466,7 +466,7 @@ Grafana on your preferred hosts, proceed with the following steps.
    Dashboards can be added to Grafana by importing dashboard jsons. 
    Following command can be used for downloading json files::
 	
-	wget https://raw.githubusercontent.com/ceph/ceph/master/monitoring/grafana/dashboards/<Dashboard-name>.json
+        wget https://raw.githubusercontent.com/ceph/ceph/master/monitoring/grafana/dashboards/<Dashboard-name>.json
 
    You can find all the dashboard jsons `here <https://github.com/ceph/ceph/tree/
    master/monitoring/grafana/dashboards>`_ .

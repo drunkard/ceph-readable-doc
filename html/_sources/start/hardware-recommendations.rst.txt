@@ -63,8 +63,47 @@ configured to consume.  We recommend 1 GB as a minimum for most systems.  See
 OSDs (ceph-osd)
 ---------------
 
-By default, OSDs that use the BlueStore backend require 3-5 GB of RAM.  You can
-adjust the amount of memory the OSD consumes with the ``osd_memory_target`` configuration option when BlueStore is in use.  When using the legacy FileStore backend, the operating system page cache is used for caching data, so no tuning is normally needed, and the OSD memory consumption is generally related to the number of PGs per daemon in the system.
+.. Memory
+
+内存
+====
+
+Bluestore uses its own memory to cache data rather than relying on the
+operating system page cache.  In bluestore you can adjust the amount of memory
+the OSD attempts to consume with the ``osd_memory_target`` configuration
+option.
+
+- Setting the osd_memory_target below 2GB is typically not recommended (it may
+  fail to keep the memory that low and may also cause extremely slow performance.
+
+- Setting the memory target between 2GB and 4GB typically works but may result
+  in degraded performance as metadata may be read from disk during IO unless the
+  active data set is relatively small.
+
+- 4GB is the current default osd_memory_target size and was set that way to try
+  and balance memory requirements and OSD performance for typical use cases.
+
+- Setting the osd_memory_target higher than 4GB may improve performance when
+  there are many (small) objects or large (256GB/OSD or more) data sets being
+  processed.
+
+.. important:: The OSD memory autotuning is "best effort".  While the OSD may
+   unmap memory to allow the kernel to reclaim it, there is no guarantee that
+   the kernel will actually reclaim freed memory within any specific time
+   frame.  This is especially true in older versions of Ceph where transparent
+   huge pages can prevent the kernel from reclaiming memory freed from
+   fragmented huge pages. Modern versions of Ceph disable transparent huge
+   pages at the application level to avoid this, though that still does not
+   guarantee that the kernel will immediately reclaim unmapped memory.  The OSD
+   may still at times exceed it's memory target.  We recommend budgeting around
+   20% extra memory on your system to prevent OSDs from going OOM during
+   temporary spikes or due to any delay in reclaiming freed pages by the
+   kernel.  That value may be more or less than needed depending on the exact
+   configuration of the system.
+
+When using the legacy FileStore backend, the page cache is used for caching
+data, so no tuning is normally needed, and the OSD memory consumption is
+generally related to the number of PGs per daemon in the system.
 
 
 .. Data Storage
@@ -238,87 +277,53 @@ Ceph 可以运行在廉价的普通硬件上，小型生产集群和开发集群
 一般的硬件上。
 
 +--------------+----------------+-----------------------------------------+
-|  进程        | 条件           | 最低建议                                |
+|  进程        | 规范           | 最低建议                                |
 +==============+================+=========================================+
-| ``ceph-osd`` | Processor      | - 1x 64-bit AMD-64                      |
-|              |                | - 1x 32-bit ARM dual-core or better     |
+| ``ceph-osd`` | Processor      | - 1 core minimum                        |
+|              |                | - 1 core per 200-500 MB/s               |
+|              |                | - 1 core per 1000-3000 IOPS             |
+|              |                |                                         |
+|              |                | * Results are before replication.       |
+|              |                | * Results may vary with different       |
+|              |                |   CPU models and Ceph features.         |
+|              |                |   (erasure coding, compression, etc)    |
+|              |                | * ARM processors specifically may       |
+|              |                |   require additional cores.             |
+|              |                | * Actual performance depends on many    |
+|              |                |   factors including disk, network, and  |
+|              |                |   client throughput and latency.        |
+|              |                |   Benchmarking is highly recommended.   |
 |              +----------------+-----------------------------------------+
-|              | RAM            |  ~1GB for 1TB of storage per daemon     |
+|              | RAM            | - 4GB+ per daemon (more is better)      |
+|              |                | - 2-4GB often functions (may be slow)   |
+|              |                | - Less than 2GB not recommended         |
 |              +----------------+-----------------------------------------+
 |              | Volume Storage |  1x storage drive per daemon            |
 |              +----------------+-----------------------------------------+
-|              | Journal        |  1x SSD partition per daemon (optional) |
+|              | DB/WAL         |  1x SSD partition per daemon (optional) |
 |              +----------------+-----------------------------------------+
-|              | Network        |  2x 1GB Ethernet NICs                   |
+|              | Network        |  1x 1GbE+ NICs (10GbE+ recommended)     |
 +--------------+----------------+-----------------------------------------+
-| ``ceph-mon`` | Processor      | - 1x 64-bit AMD-64                      |
-|              |                | - 1x 32-bit ARM dual-core or better     |
+| ``ceph-mon`` | Processor      | - 1 core minimum                        |
 |              +----------------+-----------------------------------------+
-|              | RAM            |  1 GB per daemon                        |
+|              | RAM            |  2GB+ per daemon                        |
 |              +----------------+-----------------------------------------+
 |              | Disk Space     |  10 GB per daemon                       |
 |              +----------------+-----------------------------------------+
-|              | Network        |  2x 1GB Ethernet NICs                   |
+|              | Network        |  1x 1GbE+ NICs                          |
 +--------------+----------------+-----------------------------------------+
-| ``ceph-mds`` | Processor      | - 1x 64-bit AMD-64 quad-core            |
-|              |                | - 1x 32-bit ARM quad-core               |
+| ``ceph-mds`` | Processor      | - 1 core minimum                        |
 |              +----------------+-----------------------------------------+
-|              | RAM            |  1 GB minimum per daemon                |
+|              | RAM            |  2GB+ per daemon                        |
 |              +----------------+-----------------------------------------+
 |              | Disk Space     |  1 MB per daemon                        |
 |              +----------------+-----------------------------------------+
-|              | Network        |  2x 1GB Ethernet NICs                   |
+|              | Network        |  1x 1GbE+ NICs                          |
 +--------------+----------------+-----------------------------------------+
 
 .. tip:: 如果在只有一块硬盘的机器上运行 OSD ，要把数据和操作系\
    统分别放到不同分区；一般来说，我们推荐操作系统和数据分别使\
    用不同的硬盘。
-
-
-.. Production Cluster Examples
-
-生产集群实例
-============
-
-PB 级生产集群也可以使用普通硬件，但应该配备更多内存、 CPU 和数据存储空间来解\
-决流量压力。
-
-
-Dell 实例
----------
-
-一个最新（ 2012 ）的 Ceph 集群项目使用了 2 个相当强悍的 OSD 硬件配置，和稍逊\
-的监视器配置。
-
-+----------------+----------------+------------------------------------+
-|  Configuration | Criteria       | Minimum Recommended                |
-+================+================+====================================+
-| Dell PE R510   | Processor      |  2x 64-bit quad-core Xeon CPUs     |
-|                +----------------+------------------------------------+
-|                | RAM            |  16 GB                             |
-|                +----------------+------------------------------------+
-|                | Volume Storage |  8x 2TB drives. 1 OS, 7 Storage    |
-|                +----------------+------------------------------------+
-|                | Client Network |  2x 1GB Ethernet NICs              |
-|                +----------------+------------------------------------+
-|                | OSD Network    |  2x 1GB Ethernet NICs              |
-|                +----------------+------------------------------------+
-|                | Mgmt. Network  |  2x 1GB Ethernet NICs              |
-+----------------+----------------+------------------------------------+
-| Dell PE R515   | Processor      |  1x hex-core Opteron CPU           |
-|                +----------------+------------------------------------+
-|                | RAM            |  16 GB                             |
-|                +----------------+------------------------------------+
-|                | Volume Storage |  12x 3TB drives. Storage           |
-|                +----------------+------------------------------------+
-|                | OS Storage     |  1x 500GB drive. Operating System. |
-|                +----------------+------------------------------------+
-|                | Client Network |  2x 1GB Ethernet NICs              |
-|                +----------------+------------------------------------+
-|                | OSD Network    |  2x 1GB Ethernet NICs              |
-|                +----------------+------------------------------------+
-|                | Mgmt. Network  |  2x 1GB Ethernet NICs              |
-+----------------+----------------+------------------------------------+
 
 
 

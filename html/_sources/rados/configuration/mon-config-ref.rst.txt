@@ -334,7 +334,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 
 :描述: 如果 CRUSH 的 ``straw_calc_version`` 值为 0 ，发出一条
        ``HEALTH_WARN`` 集群日志。详情见
-       `CRUSH 图的可调选项 <../../operations/crush-map#tunables>`_\ 。
+       :ref:`CRUSH 图的可调选项 <crush-map-tunables>`\ 。
 :类型: Boolean
 :默认值: True
 
@@ -350,7 +350,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 ``mon crush min required version``
 
 :描述: 此集群要求的最低可调配置版本号，详情见
-       `CRUSH 图的可调选项 <../../operations/crush-map#tunables>`_\ 。
+       :ref:`CRUSH 图的可调选项 <crush-map-tunables>`\ 。
 :类型: String
 :默认值: ``firefly``
 

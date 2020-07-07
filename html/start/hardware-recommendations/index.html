@@ -96,19 +96,55 @@ configured to consume.  We recommend 1 GB as a minimum for most systems.  See
 </div>
 <div class="section" id="osds-ceph-osd">
 <h3>OSDs (ceph-osd)<a class="headerlink" href="#osds-ceph-osd" title="Permalink to this headline">¶</a></h3>
-<p>By default, OSDs that use the BlueStore backend require 3-5 GB of RAM.  You can
-adjust the amount of memory the OSD consumes with the <code class="docutils literal notranslate"><span class="pre">osd_memory_target</span></code> configuration option when BlueStore is in use.  When using the legacy FileStore backend, the operating system page cache is used for caching data, so no tuning is normally needed, and the OSD memory consumption is generally related to the number of PGs per daemon in the system.</p>
 </div>
 </div>
 <div class="section" id="id2">
-<h2>数据存储<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<h2>内存<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>Bluestore uses its own memory to cache data rather than relying on the
+operating system page cache.  In bluestore you can adjust the amount of memory
+the OSD attempts to consume with the <code class="docutils literal notranslate"><span class="pre">osd_memory_target</span></code> configuration
+option.</p>
+<ul class="simple">
+<li><p>Setting the osd_memory_target below 2GB is typically not recommended (it may
+fail to keep the memory that low and may also cause extremely slow performance.</p></li>
+<li><p>Setting the memory target between 2GB and 4GB typically works but may result
+in degraded performance as metadata may be read from disk during IO unless the
+active data set is relatively small.</p></li>
+<li><p>4GB is the current default osd_memory_target size and was set that way to try
+and balance memory requirements and OSD performance for typical use cases.</p></li>
+<li><p>Setting the osd_memory_target higher than 4GB may improve performance when
+there are many (small) objects or large (256GB/OSD or more) data sets being
+processed.</p></li>
+</ul>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The OSD memory autotuning is “best effort”.  While the OSD may
+unmap memory to allow the kernel to reclaim it, there is no guarantee that
+the kernel will actually reclaim freed memory within any specific time
+frame.  This is especially true in older versions of Ceph where transparent
+huge pages can prevent the kernel from reclaiming memory freed from
+fragmented huge pages. Modern versions of Ceph disable transparent huge
+pages at the application level to avoid this, though that still does not
+guarantee that the kernel will immediately reclaim unmapped memory.  The OSD
+may still at times exceed it’s memory target.  We recommend budgeting around
+20% extra memory on your system to prevent OSDs from going OOM during
+temporary spikes or due to any delay in reclaiming freed pages by the
+kernel.  That value may be more or less than needed depending on the exact
+configuration of the system.</p>
+</div>
+<p>When using the legacy FileStore backend, the page cache is used for caching
+data, so no tuning is normally needed, and the OSD memory consumption is
+generally related to the number of PGs per daemon in the system.</p>
+</div>
+<div class="section" id="id3">
+<h2>数据存储<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
 <p>要谨慎地规划数据存储配置，因为其间涉及明显的成本和性能折衷。来自操作系统的并行操作和到单个硬盘的多个守护进程并发读、写请求操作会极大地降低性能。</p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
 <p>因为 Ceph 发送 ACK 前必须把所有数据写入日志（至少对 xfs 来说是），因此均衡日志和 OSD 性能相当重要。</p>
 </div>
-<div class="section" id="id3">
-<h3>硬盘驱动器<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id4">
+<h3>硬盘驱动器<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
 <p>OSD 应该有足够的空间用于存储对象数据。考虑到大硬盘的每 GB 成本，我们建议用容量大于 1TB 的硬盘。建议用 GB 数除以硬盘价格来计算每 GB 成本，因为较大的硬盘通常会对每 GB 成本有较大影响，例如，单价为 $75 的 1TB 硬盘其每 GB 价格为 $0.07 （
 $75/1024=0.0732 ），又如单价为 $150 的 3TB 硬盘其每 GB 价格为
 $0.05 （ $150/3072=0.0488 ），这样使用 1TB 硬盘会增加 40% 的每 GB 价格，它将表现为较低的经济性。另外，单个驱动器容量越大，其对应的 OSD 所需内存就越大，特别是在重均衡、回填、恢复期间。根据经验， 1TB 的存储空间大约需要 1GB 内存。</p>
@@ -125,8 +161,8 @@ $0.05 （ $150/3072=0.0488 ），这样使用 1TB 硬盘会增加 40% 的每 GB 
 <p>Ceph 最佳实践指示，你应该分别在单独的硬盘运行操作系统、 OSD
 数据和 OSD 日志。</p>
 </div>
-<div class="section" id="id4">
-<h3>固态硬盘<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id5">
+<h3>固态硬盘<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
 <p>一种提升性能的方法是使用固态硬盘（ SSD ）来降低随机访问时间和读延时，同时增加吞吐量。 SSD 和硬盘相比每 GB 成本通常要高 10 倍以上，但访问时间至少比硬盘快 100 倍。</p>
 <p>SSD 没有可移动机械部件，所以不存在和硬盘一样的局限性。但 SSD 也有局限性，评估SSD 时，顺序读写性能很重要，在为多个 OSD 存储日志时，有着 400MB/s 顺序读写吞吐量的 SSD 其性能远高于 120MB/s 的。</p>
 <div class="admonition important">
@@ -142,8 +178,8 @@ $0.05 （ $150/3072=0.0488 ），这样使用 1TB 硬盘会增加 40% 的每 GB 
 <p>SSD 用于对象存储太昂贵了，但是把 OSD 的日志存到 SSD 、把对象数据存储到独立的硬盘可以明显提升性能。 <code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">journal</span></code> 选项的默认值是 <code class="docutils literal notranslate"><span class="pre">/var/lib/ceph/osd/$cluster-$id/journal</span></code> ，你可以把它挂载到一个 SSD 或 SSD 分区，这样它就不再是和对象数据一样存储在同一个硬盘上的文件了。</p>
 <p>提升 CephFS 文件系统性能的一种方法是从 CephFS 文件内容里分离出元数据。 Ceph 提供了默认的 <code class="docutils literal notranslate"><span class="pre">metadata</span></code> 存储池来存储 CephFS 元数据，所以你不需要给 CephFS 元数据创建存储池，但是可以给它创建一个仅指向某主机 SSD 的 CRUSH 运行图。详情见<a class="reference external" href="../../rados/operations/crush-map#placing-different-pools-on-different-osds">给存储池指定 OSD</a> 。</p>
 </div>
-<div class="section" id="id5">
-<h3>控制器<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id6">
+<h3>控制器<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
 <p>硬盘控制器对写吞吐量也有显著影响，要谨慎地选择，以免产生性能瓶颈。</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
@@ -151,8 +187,8 @@ $0.05 （ $150/3072=0.0488 ），这样使用 1TB 硬盘会增加 40% 的每 GB 
 <a class="reference external" href="http://ceph.com/community/ceph-performance-part-1-disk-controller-write-throughput/">Ceph Write Throughput 1</a> 和 <a class="reference external" href="http://ceph.com/community/ceph-performance-part-2-write-throughput-without-ssd-journals/">Ceph Write Throughput 2</a> 。</p>
 </div>
 </div>
-<div class="section" id="id6">
-<h3>其他注意事项<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id7">
+<h3>其他注意事项<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
 <p>你可以在同一主机上运行多个 OSD ，但要确保 OSD 硬盘总吞吐量不超过为客户端提供读写服务所需的网络带宽；还要考虑集群在每台主机上所存储的数据占总体的百分比，如果一台主机所占百分比太大而它挂了，就可能导致诸如超过 <code class="docutils literal notranslate"><span class="pre">full</span> <span class="pre">ratio</span></code> 的问题，此问题会使 Ceph 中止运作以防数据丢失。</p>
 <p>如果每台主机运行多个 OSD ，也得保证内核是最新的。参阅<a class="reference external" href="../os-recommendations">操作系统推荐</a>里关于 <code class="docutils literal notranslate"><span class="pre">glibc</span></code> 和 <code class="docutils literal notranslate"><span class="pre">syncfs(2)</span></code> 的部分，确保硬件性能可达期望值。</p>
 <p>OSD 数量较多（如 20 个以上）的主机会派生出大量线程，尤其是在恢复和重均衡期间。很多 Linux 内核默认的最大线程数较小（如 32k 个），如果您遇到了这类问题，可以把 <code class="docutils literal notranslate"><span class="pre">kernel.pid_max</span></code> 值调高些。理论最大值是 4194303 。例如把下列这行加入 <code class="docutils literal notranslate"><span class="pre">/etc/sysctl.conf</span></code> 文件：</p>
@@ -161,17 +197,17 @@ $0.05 （ $150/3072=0.0488 ），这样使用 1TB 硬盘会增加 40% 的每 GB 
 </div>
 </div>
 </div>
-<div class="section" id="id7">
-<h2>网络<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id8">
+<h2>网络<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
 <p>建议每台机器最少两个千兆网卡，现在大多数机械硬盘都能达到大概 100MB/s 的吞吐量，网卡应该能处理所有 OSD 硬盘总吞吐量，所以推荐最少两个千兆网卡，分别用于公网（前端）和集群网络（后端）。集群网络（最好别连接到国际互联网）用于处理由数据复制产生的额外负载，而且可防止拒绝服务攻击，拒绝服务攻击会干扰数据归置组，使之在 OSD 数据复制时不能回到 <code class="docutils literal notranslate"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></code> 状态。请考虑部署万兆网卡。通过 1Gbps 网络复制 1TB 数据耗时 3 小时，而 3TB （典型配置）需要 9 小时，相比之下，如果使用 10Gbps 复制时间可分别缩减到 20 分钟和 1 小时。在一个 PB 级集群中， OSD 磁盘失败是常态，而非异常；在性价比合理的的前提下，系统管理员想让 PG 尽快从 <code class="docutils literal notranslate"><span class="pre">degraded</span></code> （降级）状态恢复到 <code class="docutils literal notranslate"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></code> 状态。另外，一些部署工具（如 Dell 的 Crowbar ）部署了 5 个不同的网络，但使用了 VLAN 以提高网络和硬件可管理性。 VLAN 使用 802.1q 协议，还需要采用支持 VLAN 功能的网卡和交换机，增加的硬件成本可用节省的运营（网络安装、维护）成本抵消。使用 VLAN 来处理集群和计算栈（如 OpenStack 、 CloudStack 等等）之间的 VM 流量时，采用 10G 网卡仍然值得。每个网络的机架路由器到核心路由器应该有更大的带宽，如 40Gbps 到 100Gbps 。</p>
 <p>服务器应配置底板管理控制器（ Baseboard Management Controller, BMC ），管理和部署工具也应该大规模使用 BMC ，所以请考虑带外网络管理的成本/效益平衡，此程序管理着 SSH 访问、 VM 映像上传、操作系统安装、端口管理、等等，会徒增网络负载。运营 3 个网络有点过分，但是每条流量路径都指示了部署一个大型数据集群前要仔细考虑的潜能力、吞吐量、性能瓶颈。</p>
 </div>
-<div class="section" id="id8">
-<h2>故障域<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id9">
+<h2>故障域<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
 <p>故障域指任何导致不能访问一个或多个 OSD 的故障，可以是主机上停止的进程、硬盘故障、操作系统崩溃、有问题的网卡、损坏的电源、断网、断电等等。规划硬件需求时，要在多个需求间寻求平衡点，像付出很多努力减少故障域带来的成本削减、隔离每个潜在故障域增加的成本。</p>
 </div>
-<div class="section" id="id9">
-<h2>最低硬件推荐<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id10">
+<h2>最低硬件推荐<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
 <p>Ceph 可以运行在廉价的普通硬件上，小型生产集群和开发集群可以在一般的硬件上。</p>
 <table class="docutils align-default">
 <colgroup>
@@ -181,7 +217,7 @@ $0.05 （ $150/3072=0.0488 ），这样使用 1TB 硬盘会增加 40% 的每 GB 
 </colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>进程</p></th>
-<th class="head"><p>条件</p></th>
+<th class="head"><p>规范</p></th>
 <th class="head"><p>最低建议</p></th>
 </tr>
 </thead>
@@ -189,126 +225,78 @@ $0.05 （ $150/3072=0.0488 ），这样使用 1TB 硬盘会增加 40% 的每 GB 
 <tr class="row-even"><td rowspan="5"><p><code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code></p></td>
 <td><p>Processor</p></td>
 <td><ul class="simple">
-<li><p>1x 64-bit AMD-64</p></li>
-<li><p>1x 32-bit ARM dual-core or better</p></li>
+<li><p>1 core minimum</p></li>
+<li><p>1 core per 200-500 MB/s</p></li>
+<li><p>1 core per 1000-3000 IOPS</p></li>
+</ul>
+<ul class="simple">
+<li><p>Results are before replication.</p></li>
+<li><p>Results may vary with different
+CPU models and Ceph features.
+(erasure coding, compression, etc)</p></li>
+<li><p>ARM processors specifically may
+require additional cores.</p></li>
+<li><p>Actual performance depends on many
+factors including disk, network, and
+client throughput and latency.
+Benchmarking is highly recommended.</p></li>
 </ul>
 </td>
 </tr>
 <tr class="row-odd"><td><p>RAM</p></td>
-<td><p>~1GB for 1TB of storage per daemon</p></td>
+<td><ul class="simple">
+<li><p>4GB+ per daemon (more is better)</p></li>
+<li><p>2-4GB often functions (may be slow)</p></li>
+<li><p>Less than 2GB not recommended</p></li>
+</ul>
+</td>
 </tr>
 <tr class="row-even"><td><p>Volume Storage</p></td>
 <td><p>1x storage drive per daemon</p></td>
 </tr>
-<tr class="row-odd"><td><p>Journal</p></td>
+<tr class="row-odd"><td><p>DB/WAL</p></td>
 <td><p>1x SSD partition per daemon (optional)</p></td>
 </tr>
 <tr class="row-even"><td><p>Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
+<td><p>1x 1GbE+ NICs (10GbE+ recommended)</p></td>
 </tr>
 <tr class="row-odd"><td rowspan="4"><p><code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code></p></td>
 <td><p>Processor</p></td>
 <td><ul class="simple">
-<li><p>1x 64-bit AMD-64</p></li>
-<li><p>1x 32-bit ARM dual-core or better</p></li>
+<li><p>1 core minimum</p></li>
 </ul>
 </td>
 </tr>
 <tr class="row-even"><td><p>RAM</p></td>
-<td><p>1 GB per daemon</p></td>
+<td><p>2GB+ per daemon</p></td>
 </tr>
 <tr class="row-odd"><td><p>Disk Space</p></td>
 <td><p>10 GB per daemon</p></td>
 </tr>
 <tr class="row-even"><td><p>Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
+<td><p>1x 1GbE+ NICs</p></td>
 </tr>
 <tr class="row-odd"><td rowspan="4"><p><code class="docutils literal notranslate"><span class="pre">ceph-mds</span></code></p></td>
 <td><p>Processor</p></td>
 <td><ul class="simple">
-<li><p>1x 64-bit AMD-64 quad-core</p></li>
-<li><p>1x 32-bit ARM quad-core</p></li>
+<li><p>1 core minimum</p></li>
 </ul>
 </td>
 </tr>
 <tr class="row-even"><td><p>RAM</p></td>
-<td><p>1 GB minimum per daemon</p></td>
+<td><p>2GB+ per daemon</p></td>
 </tr>
 <tr class="row-odd"><td><p>Disk Space</p></td>
 <td><p>1 MB per daemon</p></td>
 </tr>
 <tr class="row-even"><td><p>Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
+<td><p>1x 1GbE+ NICs</p></td>
 </tr>
 </tbody>
 </table>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>如果在只有一块硬盘的机器上运行 OSD ，要把数据和操作系统分别放到不同分区；一般来说，我们推荐操作系统和数据分别使用不同的硬盘。</p>
-</div>
-</div>
-<div class="section" id="id10">
-<h2>生产集群实例<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
-<p>PB 级生产集群也可以使用普通硬件，但应该配备更多内存、 CPU 和数据存储空间来解决流量压力。</p>
-<div class="section" id="dell">
-<h3>Dell 实例<a class="headerlink" href="#dell" title="Permalink to this headline">¶</a></h3>
-<p>一个最新（ 2012 ）的 Ceph 集群项目使用了 2 个相当强悍的 OSD 硬件配置，和稍逊的监视器配置。</p>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 24%" />
-<col style="width: 24%" />
-<col style="width: 53%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Configuration</p></th>
-<th class="head"><p>Criteria</p></th>
-<th class="head"><p>Minimum Recommended</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td rowspan="6"><p>Dell PE R510</p></td>
-<td><p>Processor</p></td>
-<td><p>2x 64-bit quad-core Xeon CPUs</p></td>
-</tr>
-<tr class="row-odd"><td><p>RAM</p></td>
-<td><p>16 GB</p></td>
-</tr>
-<tr class="row-even"><td><p>Volume Storage</p></td>
-<td><p>8x 2TB drives. 1 OS, 7 Storage</p></td>
-</tr>
-<tr class="row-odd"><td><p>Client Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
-</tr>
-<tr class="row-even"><td><p>OSD Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
-</tr>
-<tr class="row-odd"><td><p>Mgmt. Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
-</tr>
-<tr class="row-even"><td rowspan="7"><p>Dell PE R515</p></td>
-<td><p>Processor</p></td>
-<td><p>1x hex-core Opteron CPU</p></td>
-</tr>
-<tr class="row-odd"><td><p>RAM</p></td>
-<td><p>16 GB</p></td>
-</tr>
-<tr class="row-even"><td><p>Volume Storage</p></td>
-<td><p>12x 3TB drives. Storage</p></td>
-</tr>
-<tr class="row-odd"><td><p>OS Storage</p></td>
-<td><p>1x 500GB drive. Operating System.</p></td>
-</tr>
-<tr class="row-even"><td><p>Client Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
-</tr>
-<tr class="row-odd"><td><p>OSD Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
-</tr>
-<tr class="row-even"><td><p>Mgmt. Network</p></td>
-<td><p>2x 1GB Ethernet NICs</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 </div>
@@ -334,20 +322,17 @@ $0.05 （ $150/3072=0.0488 ），这样使用 1TB 硬盘会增加 40% 的每 GB 
 <li class="toctree-l4"><a class="reference internal" href="#osds-ceph-osd">OSDs (ceph-osd)</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#id2">数据存储</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id3">硬盘驱动器</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id4">固态硬盘</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id5">控制器</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6">其他注意事项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">内存</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">数据存储</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id4">硬盘驱动器</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">固态硬盘</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">控制器</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">其他注意事项</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#id7">网络</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id8">故障域</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id9">最低硬件推荐</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id10">生产集群实例</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#dell">Dell 实例</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">网络</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">故障域</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">最低硬件推荐</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../os-recommendations/">操作系统推荐</a></li>
