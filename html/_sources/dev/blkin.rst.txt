@@ -1,8 +1,8 @@
-.. Tracing Ceph With BlkKin
+.. Tracing Ceph With Blkin
 
-=====================
- 用 BlkKin 追踪 Ceph
-=====================
+====================
+ 用 Blkin 追踪 Ceph
+====================
 
 Ceph can use Blkin, a library created by Marios Kogias and others,
 which enables tracking a specific request from the time it enters

@@ -203,3 +203,4 @@ bluestore 上差得多。
 	erasure-code-isa
 	erasure-code-lrc
 	erasure-code-shec
+	erasure-code-clay

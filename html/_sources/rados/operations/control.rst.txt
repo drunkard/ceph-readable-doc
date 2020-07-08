@@ -1,3 +1,4 @@
+.. Control Commands
 .. index:: control, commands
 
 ==========
@@ -5,7 +6,7 @@
 ==========
 
 
-.. _Monitor Commands:
+.. Monitor Commands
 
 监视器命令
 ==========
@@ -19,7 +20,7 @@
 	ceph {subsystem} {command}
 
 
-.. _System Commands:
+.. System Commands
 
 系统命令
 ========
@@ -43,7 +44,7 @@
 	ceph [-m monhost] mon_status
 
 
-.. _Authentication Subsystem:
+.. Authentication Subsystem
 
 认证子系统
 ==========
@@ -57,7 +58,7 @@
 	ceph auth ls
 
 
-.. _Placement Group Subsystem:
+.. Placement Group Subsystem
 
 归置组子系统
 ============
@@ -267,8 +268,16 @@ OSD 大致会收到相同的 I/O 请求、并存储相同数量的数据。
 
 	ceph tell osd.N bench [TOTAL_DATA_BYTES] [BYTES_PER_WRITE]
 
+要清除测试期间某个 OSD 上的缓存，用 cache drop 命令： ::
 
-.. _MDS Subsystem:
+	ceph tell osd.N cache drop
+
+要查看某一 OSD 缓存的统计信息，用 cache status 命令： ::
+
+	ceph tell osd.N cache status
+
+
+.. MDS Subsystem
 
 MDS 子系统
 ==========
@@ -294,7 +303,7 @@ MDS 子系统
 .. todo:: ``ceph mds`` 子命令缺少文档：set, dump, getmap, stop, setmap
 
 
-.. _Mon Subsystem:
+.. Mon Subsystem
 
 监视器子系统
 ============
@@ -363,11 +372,11 @@ MDS 子系统
 
 如果法定人数未形成，上述命令会一直等待。
 
-你刚刚连接的监视器的状态（用 ``-m HOST:PORT`` 另外指定）： ::
+只看单个监视器的状态： ::
 
-	ceph mon_status -f json-pretty
+	ceph tell mon.[name] mon_status
 
-.. code-block:: javascript
+其中， ``[name]`` 的值取自 ``ceph quorum_status`` ，其输出样本： ::
 
 	{
 	    "name": "b",
@@ -426,7 +435,7 @@ MDS 子系统
 	    }
 	}
 
-监视器状态转储： ::
+监视器状态的一个转储： ::
 
 	ceph mon dump
 

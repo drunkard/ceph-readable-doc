@@ -1,3 +1,5 @@
+.. Troubleshooting Monitors
+
 ================
  监视器故障排除
 ================
@@ -12,6 +14,8 @@ Regardless of how bad the situation is, the first thing you should do is to
 calm down, take a breath and try answering our initial troubleshooting script.
 
 
+.. Initial Troubleshooting
+
 开始排障
 ========
 
@@ -23,7 +27,7 @@ calm down, take a breath and try answering our initial troubleshooting script.
   an upgrade. There's no shame in that, but let's try not losing a couple of
   hours chasing an issue that is not there.
 
-**Are you able to connect to the monitor's servers?**
+**能连接到监视器所在服务器么？**
 
   Doesn't happen often, but sometimes people do have ``iptables`` rules that
   block accesses to monitor servers or monitor ports. Usually leftovers from
@@ -58,6 +62,8 @@ calm down, take a breath and try answering our initial troubleshooting script.
 要是还有其他特殊问题，继续往下看。
 
 
+.. Using the monitor's admin socket
+
 使用监视器的管理套接字
 ======================
 
@@ -75,27 +81,31 @@ calm down, take a breath and try answering our initial troubleshooting script.
 用管理套接字， ``ceph`` 命令会返回类似 \
 ``Error 111: Connection Refused`` 的错误消息。
 
-访问管理套接字很简单，就是让 ``ceph`` 工具使用 ``asok`` 文件。\
-对于 Dumpling 之前的版本，命令是这样的： ::
+Accessing the admin socket is as simple as running ``ceph tell`` on the daemon
+you are interested in. For example::
 
-	ceph --admin-daemon /var/run/ceph/ceph-mon.<id>.asok <command>
+  ceph tell mon.<id> mon_status
 
-对于 Dumpling 及后续版本，你可以用另一个（推荐的）命令： ::
+Under the hood, this passes the command ``help`` to the running MON daemon
+``<id>`` via its "admin socket", which is a file ending in ``.asok``
+somewhere under ``/var/run/ceph``. Once you know the full path to the file,
+you can even do this yourself::
 
-	ceph daemon mon.<id> <command>
+  ceph --admin-daemon <full_path_to_asok_file> <command>
 
 ``ceph`` 工具的 ``help`` 命令会显示管理套接字支持的其它命令。请\
 仔细了解一下 ``config get`` 、 ``config show`` 、 ``mon_status`` \
 和 ``quorum_status`` 命令，在排除监视器故障时它们能给你些启发。
 
 
+.. Understanding mon_status
+
 理解 mon_status
 ===============
 
-``mon_status`` can be obtained through the ``ceph`` tool when you have
-a formed quorum, or via the admin socket if you don't. This command will
-output a multitude of information about the monitor, including the same
-output you would get with ``quorum_status``.
+``mon_status`` can always be obtained via the admin socket. This command will
+output a multitude of information about the monitor, including the same output
+you would get with ``quorum_status``.
 
 Take the following example of ``mon_status``::
 
@@ -148,11 +158,15 @@ By the way, how are ranks established?
   the remaining ``IP:PORT`` combinations, ``mon.a`` has rank 0.
 
 
+.. Most Common Monitor Issues
+
 最常见的监视器问题
 ==================
 
-Have Quorum but at least one Monitor is down
----------------------------------------------
+.. Have Quorum but at least one Monitor is down
+
+存在法定人数但是挂了不止一个监视器
+----------------------------------
 
 When this happens, depending on the version of Ceph you are running,
 you should be seeing something similar to::
@@ -246,8 +260,10 @@ What if state is ``leader`` or ``peon``?
   `收集所需日志`_) and reach out to us.
 
 
-Recovering a Monitor's Broken monmap
--------------------------------------
+.. Recovering a Monitor's Broken monmap
+
+修复监视器损坏的 monmap
+-----------------------
 
 This is how a ``monmap`` usually looks like, depending on the number of
 monitors::
@@ -313,6 +329,8 @@ Inject a monmap into the monitor
   overwrite the latest, existing monmap kept by the monitor.
 
 
+.. Clock Skews
+
 时钟偏移
 --------
 
@@ -358,23 +376,27 @@ What should I do if there's a clock skew?
   monitor clock skews.
 
 
+.. Client Can't Connect or Mount
+
 客户端不能连接或挂载
 --------------------
 
-检查防火墙配置。有些系统安装工具把 ``REJECT`` 规则加入了 ``iptables`` ，它会拒绝\
-除 ``ssh`` 以外的所有入栈连接。如果你的监视器主机有这样的 ``REJECT`` 规则，别的客\
-户端进来的连接将遇到超时错误而不能挂载。得先找到这条拒绝客户端连入的 ``iptables`` \
+检查防火墙配置。有些系统安装工具把 ``REJECT`` 规则加入了
+``iptables`` ，它会拒绝除 ``ssh`` 以外的所有入栈连接。如果你的\
+监视器主机有这样的 ``REJECT`` 规则，别的客户端进来的连接将遇到\
+超时错误而不能挂载。得先找到这条拒绝客户端连入的 ``iptables`` \
 规则，例如，你要找到形似以下的规则： ::
 
 	REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
 
-你也许还要在 Ceph 主机上增加 iptables 规则来放通 Ceph 监视器端口（即默认\
-的 6789 端口）、和 OSD 端口（默认从 6800 到 7300 ）。例如： ::
+你也许还要在 Ceph 主机上增加 iptables 规则来放通 Ceph 监视器\
+端口（即默认的 6789 端口）、和 OSD 端口（默认从 6800 到 7300
+）。例如： ::
 
 	iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:7300 -j ACCEPT
 
 
-.. _Monitor Store Failures:
+.. Monitor Store Failures
 
 监视器存储故障
 ==============
@@ -385,15 +407,15 @@ What should I do if there's a clock skew?
 存储损坏的症状
 --------------
 
-Ceph 监视器把\ :term:`集群运行图`\ 存储在键值数据库里，像 LevelDB 。\
-如果某个监视器由于键值存储损坏而失败，监视器日志里可能出现如下\
-错误消息： ::
+Ceph 监视器把\ :term:`集群运行图`\ 存储在键值数据库里，像
+LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日志里\
+可能出现如下错误消息： ::
 
-        Corruption: error in middle of record
+  Corruption: error in middle of record
 
 或者： ::
 
-        Corruption: 1 missing files; e.g.: /var/lib/ceph/mon/mon.0/store.db/1234567.ldb
+  Corruption: 1 missing files; e.g.: /var/lib/ceph/mon/mon.foo/store.db/1234567.ldb
 
 
 .. Recovery using healthy monitor(s)
@@ -412,64 +434,80 @@ Ceph 监视器把\ :term:`集群运行图`\ 存储在键值数据库里，像 Le
 -----------
 
 但是，所有监视器同时失效怎么办呢？我们建议用户在一个 Ceph 集群\
-内至少部署三个监视器，所以同时失效的可能性非常低。但是，计划外\
-的数据中心掉电、加上配置不当的磁盘和文件系统可能致使底层文件系\
-统损坏，并因此损坏所有监视器。在这种情况下，我们可以用存储在
-OSD 上的信息恢复监视器存储。 ::
+内至少部署三个监视器（最好是五个），所以同时失效的可能性\
+非常低。但是，计划外的数据中心掉电、加上配置不当的磁盘和\
+文件系统可能致使底层文件系统损坏，并因此损坏所有监视器。在\
+这种情况下，我们可以用存储在 OSD 上的信息恢复监视器存储。 ::
 
-    ms=/tmp/mon-store
-    mkdir $ms
-    # 从 OSD 收集集群运行图
-    for host in $hosts; do
-        rsync -avz $ms user@host:$ms
-        rm -rf $ms
-        ssh user@host <<EOF
-            for osd in /var/lib/osd/osd-*; do
-                ceph-objectstore-tool --data-path \$osd --op update-mon-db --mon-store-path $ms
-            done
-        EOF
-        rsync -avz user@host:$ms $ms
-    done
-    # 用收集来的运行图重建监视器存储，如果集群没用 cephx 认证，\
-    # 我们可以跳过更新密钥环的步骤，也不用加 --keyring 选项了，\
-    # 就是说可以直接运行 ``ceph-monstore-tool /tmp/mon-store rebuild``
-    ceph-authtool /path/to/admin.keyring -n mon. \
-        --cap mon 'allow *'
-    ceph-authtool /path/to/admin.keyring -n client.admin \
-        --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *'
-    ceph-monstore-tool /tmp/mon-store rebuild -- --keyring /path/to/admin.keyring
-    # 备份损坏的 store.db 以防万一
-    mv /var/lib/ceph/mon/mon.0/store.db /var/lib/ceph/mon/mon.0/store.db.corrupted
-    mv /tmp/mon-store/store.db /var/lib/ceph/mon/mon.0/store.db
-    chown -R ceph:ceph /var/lib/ceph/mon/mon.0/store.db
+  ms=/root/mon-store
+  mkdir $ms
+
+  # 从 OSD 收集集群运行图
+  for host in $hosts; do
+    rsync -avz $ms/. user@$host:$ms.remote
+    rm -rf $ms
+    ssh user@$host <<EOF
+      for osd in /var/lib/ceph/osd/ceph-*; do
+        ceph-objectstore-tool --data-path \$osd --no-mon-config --op update-mon-db --mon-store-path $ms.remote
+      done
+  EOF
+    rsync -avz user@$host:$ms.remote/. $ms
+  done
+
+  # 用收集来的运行图重建监视器存储，如果集群没用 cephx 认证，\
+  # 我们可以跳过更新密钥环的步骤，也不用加 --keyring 选项了，\
+  # 就是说可以直接运行 ``ceph-monstore-tool $ms rebuild``
+  ceph-authtool /path/to/admin.keyring -n mon. \
+    --cap mon 'allow *'
+  ceph-authtool /path/to/admin.keyring -n client.admin \
+    --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *'
+  # add one or more ceph-mgr's key to the keyring. in this case, an encoded key
+  # for mgr.x is added, you can find the encoded key in
+  # /etc/ceph/${cluster}.${mgr_name}.keyring on the machine where ceph-mgr is
+  # deployed
+  ceph-authtool /path/to/admin.keyring --add-key 'AQDN8kBe9PLWARAAZwxXMr+n85SBYbSlLcZnMA==' -n mgr.x \
+    --cap mon 'allow profile mgr' --cap osd 'allow *' --cap mds 'allow *'
+  # if your monitors' ids are not single characters like 'a', 'b', 'c', please
+  # specify them in the command line by passing them as arguments of the "--mon-ids"
+  # option. if you are not sure, please check your ceph.conf to see if there is any
+  # sections named like '[mon.foo]'. don't pass the "--mon-ids" option, if you are
+  # using DNS SRV for looking up monitors.
+  ceph-monstore-tool $ms rebuild -- --keyring /path/to/admin.keyring --mon-ids alpha beta gamma
+  
+  # 备份一下损坏的 store.db 以防万一！所有监视器上都要备份一下。
+  mv /var/lib/ceph/mon/mon.foo/store.db /var/lib/ceph/mon/mon.foo/store.db.corrupted
 
 上面的步骤
 
 #. 从所有 OSD 收集映射图
 #. 然后重建监视器存储
 #. 把各项目加进密钥环文件，并分配相应的能力
-#. 用恢复好的副本替换 ``mon.0`` 上损坏的存储。
+#. 用恢复好的副本替换 ``mon.foo`` 上损坏的存储。
 
+
+.. Known limitations
 
 已知的局限性
 ~~~~~~~~~~~~
 
 通过上面的步骤无法恢复以下信息：
 
-- **一些密钥环**\ ：所有用 ``ceph auth add`` 命令加上的 OSD 密\
+- **一些加过的密钥环**\ ：所有用 ``ceph auth add`` 命令加上的 OSD 密\
   钥环都从 OSD 副本中恢复了； ``client.admin`` 密钥环也用
   ``ceph-monstore-tool`` 导入了。但是 MDS 密钥环和其它密钥环却\
   丢失了，你也许得手动重加。
 
-- **归置组设置**\ ：用 ``ceph pg set_full_ratio`` 和
-  ``ceph pg set_nearfull_ratio`` 命令配置的 ``full ratio`` 和
-  ``nearfull ratio`` 会丢失。
+- **正在创建的存储池**: If any RADOS pools were in the process of being creating, that state is lost.  The recovery tool assumes that all pools have been created.  If there are PGs that are stuck in the 'unknown' after the recovery for a partially created pool, you can force creation of the *empty* PG with the ``ceph osd force-create-pg`` command.  Note that this will create an *empty* PG, so only do this if you know the pool is empty.
 
 - **MDS 映射图**\ ： MDS 的各种映射图会丢失。
 
 
+.. Everything Failed! Now What?
+
 所有尝试都失败了，怎么办？
 ==========================
+
+.. Reaching out for help
 
 到外面寻求帮助
 --------------
@@ -480,6 +518,8 @@ sure you have grabbed your logs and have them ready if someone asks: the faster
 the interaction and lower the latency in response, the better chances everyone's
 time is optimized.
 
+
+.. Preparing your logs
 
 收集所需日志
 ------------
@@ -515,6 +555,8 @@ from -- but at least we started off with some useful information, instead
 of a massively empty log without much to go on with.
 
 
+.. Do I need to restart a monitor to adjust debug levels?
+
 我需要重启监视器来更改调试级别吗？
 ----------------------------------
 
@@ -548,6 +590,8 @@ or::
 
       ceph daemon mon.FOO config get 'OPTION_NAME'
 
+
+.. Reproduced the problem with appropriate debug levels. Now what?
 
 在某个调试级别下重现了问题，然后呢？
 ------------------------------------

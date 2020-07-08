@@ -1,0 +1,524 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>CLAY 码插件 &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="分级缓存" href="../cache-tiering/" />
+    <link rel="prev" title="SHEC 纠删码插件" href="../erasure-code-shec/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../cache-tiering/" title="分级缓存"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../erasure-code-shec/" title="SHEC 纠删码插件"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../" >Ceph 存储集群</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" >集群运维</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="../erasure-code/" accesskey="U">纠删码</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/rados/operations/erasure-code-clay.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="clay">
+<h1>CLAY 码插件<a class="headerlink" href="#clay" title="Permalink to this headline">¶</a></h1>
+<p>CLAY (short for coupled-layer) codes are erasure codes designed to bring about significant savings
+in terms of network bandwidth and disk IO when a failed node/OSD/rack is being repaired. Let:</p>
+<blockquote>
+<div><p>d = number of OSDs contacted during repair</p>
+</div></blockquote>
+<p>If <em>jerasure</em> is configured with <em>k=8</em> and <em>m=4</em>, losing one OSD requires
+reading from the <em>d=8</em> others to repair. And recovery of say a 1GiB needs
+a download of 8 X 1GiB = 8GiB of information.</p>
+<p>However, in the case of the <em>clay</em> plugin <em>d</em> is configurable within the limits:</p>
+<blockquote>
+<div><p>k+1 &lt;= d &lt;= k+m-1</p>
+</div></blockquote>
+<p>By default, the clay code plugin picks <em>d=k+m-1</em> as it provides the greatest savings in terms
+of network bandwidth and disk IO. In the case of the <em>clay</em> plugin configured with
+<em>k=8</em>, <em>m=4</em> and <em>d=11</em> when a single OSD fails, d=11 osds are contacted and
+250MiB is downloaded from each of them, resulting in a total download of 11 X 250MiB = 2.75GiB
+amount of information. More general parameters are provided below. The benefits are substantial
+when the repair is carried out for a rack that stores information on the order of
+Terabytes.</p>
+<blockquote>
+<div><table class="docutils align-default">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 68%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>plugin</p></th>
+<th class="head"><p>total amount of disk IO</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>jerasure,isa</p></td>
+<td><p>k*S</p></td>
+</tr>
+<tr class="row-odd"><td><p>clay</p></td>
+<td><p>d*S/(d-k+1) = (k+m-1)*S/m</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>where <em>S</em> is the amount of data stored on a single OSD undergoing repair. In the table above, we have
+used the largest possible value of <em>d</em> as this will result in the smallest amount of data download needed
+to achieve recovery from an OSD failure.</p>
+<div class="section" id="id1">
+<h2>纠删码配置实例<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>An example configuration that can be used to observe reduced bandwidth usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd erasure-code-profile set CLAYprofile \
+     plugin=clay \
+     k=4 m=2 d=5 \
+     crush-failure-domain=host
+$ ceph osd pool create claypool erasure CLAYprofile
+</pre></div>
+</div>
+</div>
+<div class="section" id="id2">
+<h2>新建一个 clay 配置<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>To create a new clay code profile:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span> <span class="nb">set</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span> \
+     <span class="n">plugin</span><span class="o">=</span><span class="n">clay</span> \
+     <span class="n">k</span><span class="o">=</span><span class="p">{</span><span class="n">data</span><span class="o">-</span><span class="n">chunks</span><span class="p">}</span> \
+     <span class="n">m</span><span class="o">=</span><span class="p">{</span><span class="n">coding</span><span class="o">-</span><span class="n">chunks</span><span class="p">}</span> \
+     <span class="p">[</span><span class="n">d</span><span class="o">=</span><span class="p">{</span><span class="n">helper</span><span class="o">-</span><span class="n">chunks</span><span class="p">}]</span> \
+     <span class="p">[</span><span class="n">scalar_mds</span><span class="o">=</span><span class="p">{</span><span class="n">plugin</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> \
+     <span class="p">[</span><span class="n">technique</span><span class="o">=</span><span class="p">{</span><span class="n">technique</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span> \
+     <span class="p">[</span><span class="n">crush</span><span class="o">-</span><span class="n">failure</span><span class="o">-</span><span class="n">domain</span><span class="o">=</span><span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="nb">type</span><span class="p">}]</span> \
+     <span class="p">[</span><span class="n">directory</span><span class="o">=</span><span class="p">{</span><span class="n">directory</span><span class="p">}]</span> \
+     <span class="p">[</span><span class="o">--</span><span class="n">force</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Where:</p>
+<p><code class="docutils literal notranslate"><span class="pre">k={data</span> <span class="pre">chunks}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p>Each object is split into <strong>data-chunks</strong> parts,
+each of which is stored on a different OSD.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>Integer</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>Yes.</p>
+</dd>
+<dt class="field-even">Example</dt>
+<dd class="field-even"><p>4</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">m={coding-chunks}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p>Compute <strong>coding chunks</strong> for each object and store them
+on different OSDs. The number of coding chunks is also
+the number of OSDs that can be down without losing data.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>Integer</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>Yes.</p>
+</dd>
+<dt class="field-even">Example</dt>
+<dd class="field-even"><p>2</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">d={helper-chunks}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p>Number of OSDs requested to send data during recovery of
+a single chunk. <em>d</em> needs to be chosen such that
+k+1 &lt;= d &lt;= k+m-1. Larger the <em>d</em>, the better the savings.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>Integer</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>No.</p>
+</dd>
+<dt class="field-even">Default</dt>
+<dd class="field-even"><p>k+m-1</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">scalar_mds={jerasure|isa|shec}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p><strong>scalar_mds</strong> specifies the plugin that is used as a
+building block in the layered construction. It can be
+one of <em>jerasure</em>, <em>isa</em>, <em>shec</em></p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>No.</p>
+</dd>
+<dt class="field-even">Default</dt>
+<dd class="field-even"><p>jerasure</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">technique={technique}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p><strong>technique</strong> specifies the technique that will be picked
+within the ‘scalar_mds’ plugin specified. Supported techniques
+are ‘reed_sol_van’, ‘reed_sol_r6_op’, ‘cauchy_orig’,
+‘cauchy_good’, ‘liber8tion’ for jerasure, ‘reed_sol_van’,
+‘cauchy’ for isa and ‘single’, ‘multiple’ for shec.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>No.</p>
+</dd>
+<dt class="field-even">Default</dt>
+<dd class="field-even"><p>reed_sol_van (for jerasure, isa), single (for shec)</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">crush-root={root}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p>The name of the crush bucket used for the first step of
+the CRUSH rule. For instance <strong>step take default</strong>.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>No.</p>
+</dd>
+<dt class="field-even">Default</dt>
+<dd class="field-even"><p>default</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">crush-failure-domain={bucket-type}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p>Ensure that no two chunks are in a bucket with the same
+failure domain. For instance, if the failure domain is
+<strong>host</strong> no two chunks will be stored on the same
+host. It is used to create a CRUSH rule step such as <strong>step
+chooseleaf host</strong>.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>No.</p>
+</dd>
+<dt class="field-even">Default</dt>
+<dd class="field-even"><p>host</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">crush-device-class={device-class}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p>Restrict placement to devices of a specific class (e.g.,
+<code class="docutils literal notranslate"><span class="pre">ssd</span></code> or <code class="docutils literal notranslate"><span class="pre">hdd</span></code>), using the crush device class names
+in the CRUSH map.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>No.</p>
+</dd>
+<dt class="field-even">Default</dt>
+<dd class="field-even"><p></p></dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">directory={directory}</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p>Set the <strong>directory</strong> name from which the erasure code
+plugin is loaded.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>No.</p>
+</dd>
+<dt class="field-even">Default</dt>
+<dd class="field-even"><p>/usr/lib/ceph/erasure-code</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">--force</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Description</dt>
+<dd class="field-odd"><p>Override an existing profile by the same name.</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">Required</dt>
+<dd class="field-odd"><p>No.</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="id3">
+<h2>子块概念<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>The Clay code is able to save in terms of disk IO, network bandwidth as it
+is a vector code and it is able to view and manipulate data within a chunk
+at a finer granularity termed as a sub-chunk. The number of sub-chunks within
+a chunk for a Clay code is given by:</p>
+<blockquote>
+<div><p>sub-chunk count = q<sup>(k+m)/q</sup>, where q=d-k+1</p>
+</div></blockquote>
+<p>During repair of an OSD, the helper information requested
+from an available OSD is only a fraction of a chunk. In fact, the number
+of sub-chunks within a chunk that are accessed during repair is given by:</p>
+<blockquote>
+<div><p>repair sub-chunk count = sub-chunk count / q</p>
+</div></blockquote>
+<div class="section" id="id4">
+<h3>实例<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li><p>For a configuration with <em>k=4</em>, <em>m=2</em>, <em>d=5</em>, the sub-chunk count is
+8 and  the repair sub-chunk count is 4. Therefore, only half of a chunk is read
+during repair.</p></li>
+<li><p>When <em>k=8</em>, <em>m=4</em>, <em>d=11</em> the sub-chunk count is 64 and repair sub-chunk count
+is 16. A quarter of a chunk is read from an available OSD for repair of a failed
+chunk.</p></li>
+</ol>
+</div>
+</div>
+<div class="section" id="id5">
+<h2>已知载荷如何敲定配置<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>Only a few sub-chunks are read of all the sub-chunks within a chunk. These sub-chunks
+are not necessarily stored consecutively within a chunk. For best disk IO
+performance, it is helpful to read contiguous data. For this reason, it is suggested that
+you choose stripe-size such that the sub-chunk size is sufficiently large.</p>
+<p>For a given stripe-size (that’s fixed based on a workload), choose <code class="docutils literal notranslate"><span class="pre">k</span></code>, <code class="docutils literal notranslate"><span class="pre">m</span></code>, <code class="docutils literal notranslate"><span class="pre">d</span></code> such that:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sub</span><span class="o">-</span><span class="n">chunk</span> <span class="n">size</span> <span class="o">=</span> <span class="n">stripe</span><span class="o">-</span><span class="n">size</span> <span class="o">/</span> <span class="p">(</span><span class="n">k</span><span class="o">*</span><span class="n">sub</span><span class="o">-</span><span class="n">chunk</span> <span class="n">count</span><span class="p">)</span> <span class="o">=</span> <span class="mi">4</span><span class="n">KB</span><span class="p">,</span> <span class="mi">8</span><span class="n">KB</span><span class="p">,</span> <span class="mi">12</span><span class="n">KB</span> <span class="o">...</span>
+</pre></div>
+</div>
+<ol class="arabic simple">
+<li><p>For large size workloads for which the stripe size is large, it is easy to choose k, m, d.
+For example consider a stripe-size of size 64MB, choosing <em>k=16</em>, <em>m=4</em> and <em>d=19</em> will
+result in a sub-chunk count of 1024 and a sub-chunk size of 4KB.</p></li>
+<li><p>For small size workloads, <em>k=4</em>, <em>m=2</em> is a good configuration that provides both network
+and disk IO benefits.</p></li>
+</ol>
+</div>
+<div class="section" id="lrc">
+<h2>对比 LRC<a class="headerlink" href="#lrc" title="Permalink to this headline">¶</a></h2>
+<p>Locally Recoverable Codes (LRC) are also designed in order to save in terms of network
+bandwidth, disk IO during single OSD recovery. However, the focus in LRCs is to keep the
+number of OSDs contacted during repair (d) to be minimal, but this comes at the cost of storage overhead.
+The <em>clay</em> code has a storage overhead m/k. In the case of an <em>lrc</em>, it stores (k+m)/d parities in
+addition to the <code class="docutils literal notranslate"><span class="pre">m</span></code> parities resulting in a storage overhead (m+(k+m)/d)/k. Both <em>clay</em> and <em>lrc</em>
+can recover from the failure of any <code class="docutils literal notranslate"><span class="pre">m</span></code> OSDs.</p>
+<blockquote>
+<div><table class="docutils align-default">
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 19%" />
+<col style="width: 20%" />
+<col style="width: 40%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameters</p></th>
+<th class="head" colspan="2"><p>disk IO, storage overhead (LRC)</p></th>
+<th class="head"><p>disk IO, storage overhead (CLAY)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>(k=10, m=4)</p></td>
+<td colspan="2"><p>7 * S, 0.6 (d=7)</p></td>
+<td><p>3.25 * S, 0.4 (d=13)</p></td>
+</tr>
+<tr class="row-odd"><td><p>(k=16, m=4)</p></td>
+<td colspan="2"><p>4 * S, 0.5625 (d=4)</p></td>
+<td><p>4.75 * S, 0.25 (d=19)</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>where <code class="docutils literal notranslate"><span class="pre">S</span></code> is the amount of data stored of single OSD being recovered.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/">安装（ ceph-deploy ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../start/kube-helm/">安装（ Kubernetes + Helm ）</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../">Ceph 存储集群</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../configuration/">配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deployment/">部署</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">运维</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../operating/">操纵集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../health-checks/">健康检查</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring/">监控集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../monitoring-osd-pg/">监控 OSD 和归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../user-management/">用户管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pg-repair/">修复 PG 不一致状态</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-placement/">数据归置概览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pools/">存储池</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="../erasure-code/">纠删码</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id2">创建样板纠删码存储池</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id3">纠删码配置</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#erasure-coding-with-overwrites">在纠删码存储池上启用重写功能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id6">纠删码存储池与缓存分级</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id9">术语</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="../erasure-code/#id10">内容列表</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="../erasure-code-profile/">纠删码配置</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../erasure-code-jerasure/">Jerasure 纠删码插件</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../erasure-code-isa/">ISA 纠删码插件</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../erasure-code-lrc/">局部自修复纠删码插件</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../erasure-code-shec/">SHEC 纠删码插件</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">CLAY 码插件</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="#id1">纠删码配置实例</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#id2">新建一个 clay 配置</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#id3">子块概念</a><ul>
+<li class="toctree-l7"><a class="reference internal" href="#id4">实例</a></li>
+</ul>
+</li>
+<li class="toctree-l6"><a class="reference internal" href="#id5">已知载荷如何敲定配置</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#lrc">对比 LRC</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-tiering/">分级缓存</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../balancer/">均衡器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upmap/">使用 pg-upmap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../crush-map-edits/">手动编辑一个 CRUSH 图</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-osds/">增加/删除 OSD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../devices/">设备管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../bluestore-migration/">迁移到 BlueStore</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../control/">命令参考</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/community/">Ceph 社区</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-mon/">监视器故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-osd/">OSD 故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/troubleshooting-pg/">归置组排障</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/log-and-debug/">日志记录和调试</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/cpu-profiling/">CPU 剖析</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshooting/memory-profiling/">内存剖析</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../cache-tiering/" title="分级缓存"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../erasure-code-shec/" title="SHEC 纠删码插件"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../" >Ceph 存储集群</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" >集群运维</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="../erasure-code/" >纠删码</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>
