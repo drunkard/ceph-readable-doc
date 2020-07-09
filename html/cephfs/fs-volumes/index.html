@@ -1,0 +1,489 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>FS volumes and subvolumes &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="高级话题：元数据修复工具" href="../disaster-recovery-experts/" />
+    <link rel="prev" title="Ceph 文件系统洗刷" href="../scrub/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../disaster-recovery-experts/" title="高级话题：元数据修复工具"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../scrub/" title="Ceph 文件系统洗刷"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/fs-volumes.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="fs-volumes-and-subvolumes">
+<span id="id1"></span><h1>FS volumes and subvolumes<a class="headerlink" href="#fs-volumes-and-subvolumes" title="Permalink to this headline">¶</a></h1>
+<p>A  single source of truth for CephFS exports is implemented in the volumes
+module of the <a class="reference internal" href="../../glossary/#term-ceph-manager"><span class="xref std std-term">Ceph Manager</span></a> daemon (ceph-mgr). The OpenStack shared
+file system service (<a class="reference external" href="https://github.com/openstack/manila">manila</a>), Ceph Container Storage Interface (<a class="reference external" href="https://github.com/ceph/ceph-csi">CSI</a>),
+storage administrators among others can use the common CLI provided by the
+ceph-mgr volumes module to manage the CephFS exports.</p>
+<p>The ceph-mgr volumes module implements the following file system export
+abstactions:</p>
+<ul class="simple">
+<li><p>FS volumes, an abstraction for CephFS file systems</p></li>
+<li><p>FS subvolumes, an abstraction for independent CephFS directory trees</p></li>
+<li><p>FS subvolume groups, an abstraction for a directory level higher than FS
+subvolumes to effect policies (e.g., <a class="reference internal" href="../file-layouts/"><span class="doc">文件布局</span></a>) across a
+set of subvolumes</p></li>
+</ul>
+<p>Some possible use-cases for the export abstractions:</p>
+<ul class="simple">
+<li><p>FS subvolumes used as manila shares or CSI volumes</p></li>
+<li><p>FS subvolume groups used as manila share groups</p></li>
+</ul>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p>Nautilus (14.2.x) or a later version of Ceph</p></li>
+<li><p>Cephx client user (see <a class="reference internal" href="../../rados/operations/user-management/"><span class="doc">用户管理</span></a>) with
+the following minimum capabilities:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon</span> <span class="s1">&#39;allow r&#39;</span>
+<span class="n">mgr</span> <span class="s1">&#39;allow rw&#39;</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+<div class="section" id="fs-volumes">
+<h2>FS Volumes<a class="headerlink" href="#fs-volumes" title="Permalink to this headline">¶</a></h2>
+<p>Create a volume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs volume create &lt;vol_name&gt; [&lt;placement&gt;]
+</pre></div>
+</div>
+<p>This creates a CephFS file system and its data and metadata pools. It also tries
+to create MDSes for the filesystem using the enabled ceph-mgr orchestrator
+module  (see <a class="reference internal" href="../../mgr/orchestrator/"><span class="doc">Orchestrator CLI</span></a>) , e.g., rook.</p>
+<p>Remove a volume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs volume rm &lt;vol_name&gt; [--yes-i-really-mean-it]
+</pre></div>
+</div>
+<p>This removes a file system and its data and metadata pools. It also tries to
+remove MDSes using the enabled ceph-mgr orchestrator module.</p>
+<p>List volumes using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs volume ls
+</pre></div>
+</div>
+</div>
+<div class="section" id="fs-subvolume-groups">
+<h2>FS Subvolume groups<a class="headerlink" href="#fs-subvolume-groups" title="Permalink to this headline">¶</a></h2>
+<p>Create a subvolume group using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup create &lt;vol_name&gt; &lt;group_name&gt; [--pool_layout &lt;data_pool_name&gt; --uid &lt;uid&gt; --gid &lt;gid&gt; --mode &lt;octal_mode&gt;]
+</pre></div>
+</div>
+<p>The command succeeds even if the subvolume group already exists.</p>
+<p>When creating a subvolume group you can specify its data pool layout (see
+<a class="reference internal" href="../file-layouts/"><span class="doc">文件布局</span></a>), uid, gid, and file mode in octal numerals. By default, the
+subvolume group is created with an octal file mode ‘755’, uid ‘0’, gid ‘0’ and data pool
+layout of its parent directory.</p>
+<p>Remove a subvolume group using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup rm &lt;vol_name&gt; &lt;group_name&gt; [--force]
+</pre></div>
+</div>
+<p>The removal of a subvolume group fails if it is not empty or non-existent.
+‘–force’ flag allows the non-existent subvolume group remove command to succeed.</p>
+<p>Fetch the absolute path of a subvolume group using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup getpath &lt;vol_name&gt; &lt;group_name&gt;
+</pre></div>
+</div>
+<p>List subvolume groups using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup ls &lt;vol_name&gt;
+</pre></div>
+</div>
+<p>Create a snapshot (see <a class="reference internal" href="../experimental-features/"><span class="doc">实验性功能</span></a>) of a
+subvolume group using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup snapshot create &lt;vol_name&gt; &lt;group_name&gt; &lt;snap_name&gt;
+</pre></div>
+</div>
+<p>This implicitly snapshots all the subvolumes under the subvolume group.</p>
+<p>Remove a snapshot of a subvolume group using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup snapshot rm &lt;vol_name&gt; &lt;group_name&gt; &lt;snap_name&gt; [--force]
+</pre></div>
+</div>
+<p>Using the ‘–force’ flag allows the command to succeed that would otherwise
+fail if the snapshot did not exist.</p>
+<p>List snapshots of a subvolume group using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup snapshot ls &lt;vol_name&gt; &lt;group_name&gt;
+</pre></div>
+</div>
+</div>
+<div class="section" id="fs-subvolumes">
+<h2>FS Subvolumes<a class="headerlink" href="#fs-subvolumes" title="Permalink to this headline">¶</a></h2>
+<p>Create a subvolume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume create &lt;vol_name&gt; &lt;subvol_name&gt; [--size &lt;size_in_bytes&gt; --group_name &lt;subvol_group_name&gt; --pool_layout &lt;data_pool_name&gt; --uid &lt;uid&gt; --gid &lt;gid&gt; --mode &lt;octal_mode&gt; --namespace-isolated]
+</pre></div>
+</div>
+<p>The command succeeds even if the subvolume already exists.</p>
+<p>When creating a subvolume you can specify its subvolume group, data pool layout,
+uid, gid, file mode in octal numerals, and size in bytes. The size of the subvolume is
+specified by setting a quota on it (see <a class="reference internal" href="../quota/"><span class="doc">配额管理</span></a>). The subvolume can be
+created in a separate RADOS namespace by specifying –namespace-isolated option. By
+default a subvolume is created within the default subvolume group, and with an octal file
+mode ‘755’, uid of its subvolume group, gid of its subvolume group, data pool layout of
+its parent directory and no size limit.</p>
+<p>Remove a subvolume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume rm &lt;vol_name&gt; &lt;subvol_name&gt; [--group_name &lt;subvol_group_name&gt; --force]
+</pre></div>
+</div>
+<p>The command removes the subvolume and its contents. It does this in two steps.
+First, it move the subvolume to a trash folder, and then asynchronously purges
+its contents.</p>
+<p>The removal of a subvolume fails if it has snapshots, or is non-existent.
+‘–force’ flag allows the non-existent subvolume remove command to succeed.</p>
+<p>Resize a subvolume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume resize &lt;vol_name&gt; &lt;subvol_name&gt; &lt;new_size&gt; [--group_name &lt;subvol_group_name&gt;] [--no_shrink]
+</pre></div>
+</div>
+<p>The command resizes the subvolume quota using the size specified by ‘new_size’.
+‘–no_shrink’ flag prevents the subvolume to shrink below the current used size of the subvolume.</p>
+<p>The subvolume can be resized to an infinite size by passing ‘inf’ or ‘infinite’ as the new_size.</p>
+<p>Fetch the absolute path of a subvolume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume getpath &lt;vol_name&gt; &lt;subvol_name&gt; [--group_name &lt;subvol_group_name&gt;]
+</pre></div>
+</div>
+<p>Fetch the metadata of a subvolume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume info &lt;vol_name&gt; &lt;subvol_name&gt; [--group_name &lt;subvol_group_name&gt;]
+</pre></div>
+</div>
+<p>The output format is json and contains fields as follows.</p>
+<ul class="simple">
+<li><p>atime: access time of subvolume path in the format “YYYY-MM-DD HH:MM:SS”</p></li>
+<li><p>mtime: modification time of subvolume path in the format “YYYY-MM-DD HH:MM:SS”</p></li>
+<li><p>ctime: change time of subvolume path in the format “YYYY-MM-DD HH:MM:SS”</p></li>
+<li><p>uid: uid of subvolume path</p></li>
+<li><p>gid: gid of subvolume path</p></li>
+<li><p>mode: mode of subvolume path</p></li>
+<li><p>mon_addrs: list of monitor addresses</p></li>
+<li><p>bytes_pcent: quota used in percentage if quota is set, else displays “undefined”</p></li>
+<li><p>bytes_quota: quota size in bytes if quota is set, else displays “infinite”</p></li>
+<li><p>bytes_used: current used size of the subvolume in bytes</p></li>
+<li><p>created_at: time of creation of subvolume in the format “YYYY-MM-DD HH:MM:SS”</p></li>
+<li><p>data_pool: data pool the subvolume belongs to</p></li>
+<li><p>path: absolute path of a subvolume</p></li>
+<li><p>type: subvolume type indicating whether it’s clone or subvolume</p></li>
+<li><p>pool_namespace: RADOS namespace of the subvolume</p></li>
+</ul>
+<p>List subvolumes using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume ls &lt;vol_name&gt; [--group_name &lt;subvol_group_name&gt;]
+</pre></div>
+</div>
+<p>Create a snapshot of a subvolume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot create &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;]
+</pre></div>
+</div>
+<p>Remove a snapshot of a subvolume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot rm &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt; --force]
+</pre></div>
+</div>
+<p>Using the ‘–force’ flag allows the command to succeed that would otherwise
+fail if the snapshot did not exist.</p>
+<p>List snapshots of a subvolume using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot ls &lt;vol_name&gt; &lt;subvol_name&gt; [--group_name &lt;subvol_group_name&gt;]
+</pre></div>
+</div>
+<p>Fetch the metadata of a snapshot using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot info &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;]
+</pre></div>
+</div>
+<p>The output format is json and contains fields as follows.</p>
+<ul class="simple">
+<li><p>created_at: time of creation of snapshot in the format “YYYY-MM-DD HH:MM:SS:ffffff”</p></li>
+<li><p>data_pool: data pool the snapshot belongs to</p></li>
+<li><p>has_pending_clones: “yes” if snapshot clone is in progress otherwise “no”</p></li>
+<li><p>protected: “yes” if snapshot is protected otherwise “no”</p></li>
+<li><p>size: snapshot size in bytes</p></li>
+</ul>
+</div>
+<div class="section" id="cloning-snapshots">
+<h2>Cloning Snapshots<a class="headerlink" href="#cloning-snapshots" title="Permalink to this headline">¶</a></h2>
+<p>Subvolumes can be created by cloning subvolume snapshots. Cloning is an asynchronous operation involving copying
+data from a snapshot to a subvolume. Due to this bulk copy nature, cloning is currently inefficient for very huge
+data sets.</p>
+<p>Before starting a clone operation, the snapshot should be protected. Protecting a snapshot ensures that the snapshot
+cannot be deleted when a clone operation is in progress. Snapshots can be protected using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot protect &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;]
+</pre></div>
+</div>
+<p>To initiate a clone operation use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; &lt;target_subvol_name&gt;
+</pre></div>
+</div>
+<p>If a snapshot (source subvolume) is a part of non-default group, the group name needs to be specified as per:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; &lt;target_subvol_name&gt; --group_name &lt;subvol_group_name&gt;
+</pre></div>
+</div>
+<p>Cloned subvolumes can be a part of a different group than the source snapshot (by default, cloned subvolumes are created in default group). To clone to a particular group use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; &lt;target_subvol_name&gt; --target_group_name &lt;subvol_group_name&gt;
+</pre></div>
+</div>
+<p>Similar to specifying a pool layout when creating a subvolume, pool layout can be specified when creating a cloned subvolume. To create a cloned subvolume with a specific pool layout use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; &lt;target_subvol_name&gt; --pool_layout &lt;pool_layout&gt;
+</pre></div>
+</div>
+<p>To check the status of a clone operation use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs clone status &lt;vol_name&gt; &lt;clone_name&gt; [--group_name &lt;group_name&gt;]
+</pre></div>
+</div>
+<p>A clone can be in one of the following states:</p>
+<ol class="arabic simple">
+<li><p><cite>pending</cite>     : Clone operation has not started</p></li>
+<li><p><cite>in-progress</cite> : Clone operation is in progress</p></li>
+<li><p><cite>complete</cite>    : Clone operation has sucessfully finished</p></li>
+<li><p><cite>failed</cite>      : Clone operation has failed</p></li>
+</ol>
+<p>Sample output from an <cite>in-progress</cite> clone operation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot protect cephfs subvol1 snap1
+$ ceph fs subvolume snapshot clone cephfs subvol1 snap1 clone1
+$ ceph fs clone status cephfs clone1
+{
+  &quot;status&quot;: {
+    &quot;state&quot;: &quot;in-progress&quot;,
+    &quot;source&quot;: {
+      &quot;volume&quot;: &quot;cephfs&quot;,
+      &quot;subvolume&quot;: &quot;subvol1&quot;,
+      &quot;snapshot&quot;: &quot;snap1&quot;
+    }
+  }
+}
+</pre></div>
+</div>
+<p>(NOTE: since <cite>subvol1</cite> is in default group, <cite>source</cite> section in <cite>clone status</cite> does not include group name)</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cloned subvolumes are accessible only after the clone operation has successfully completed.</p>
+</div>
+<p>For a successsful clone operation, <cite>clone status</cite> would look like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs clone status cephfs clone1
+{
+  &quot;status&quot;: {
+    &quot;state&quot;: &quot;complete&quot;
+  }
+}
+</pre></div>
+</div>
+<p>or <cite>failed</cite> state when clone is unsuccessful.</p>
+<p>On failure of a clone operation, the partial clone needs to be deleted and the clone operation needs to be retriggered.
+To delete a partial clone use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume rm &lt;vol_name&gt; &lt;clone_name&gt; [--group_name &lt;group_name&gt;] --force
+</pre></div>
+</div>
+<p>When no clone operations are in progress or scheduled, the snaphot can be unprotected. To unprotect a snapshot use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot unprotect &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;]
+</pre></div>
+</div>
+<p>Note that unprotecting a snapshot would fail if there are pending or in progress clone operations. Also note that,
+only unprotected snapshots can be removed. This guarantees that a snapshot cannot be deleted when clones are pending
+(or in progress).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cloning only synchronizes directories, regular files and symbolic links. Also, inode timestamps (access and
+modification times) are synchronized upto seconds granularity.</p>
+</div>
+<p>An <cite>in-progress</cite> or a <cite>pending</cite> clone operation can be canceled. To cancel a clone operation use the <cite>clone cancel</cite> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs clone cancel &lt;vol_name&gt; &lt;clone_name&gt; [--group_name &lt;group_name&gt;]
+</pre></div>
+</div>
+<p>On successful cancelation, the cloned subvolume is moved to <cite>canceled</cite> state:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot protect cephfs subvol1 snap1
+$ ceph fs subvolume snapshot clone cephfs subvol1 snap1 clone1
+$ ceph fs clone cancel cephfs clone1
+$ ceph fs clone status cephfs clone1
+{
+  &quot;status&quot;: {
+    &quot;state&quot;: &quot;canceled&quot;,
+    &quot;source&quot;: {
+      &quot;volume&quot;: &quot;cephfs&quot;,
+      &quot;subvolume&quot;: &quot;subvol1&quot;,
+      &quot;snapshot&quot;: &quot;snap1&quot;
+    }
+  }
+}
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The canceled cloned can be deleted by using –force option in <cite>fs subvolume rm</cite> command.</p>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（ ceph-deploy ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">安装（ Kubernetes + Helm ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../#cephfs">CephFS 使用文档</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../add-remove-mds/">配备、增加、删除 MDS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/">术语</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#mds">MDS 守护进程的引用</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#id3">故障切换的管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../standby/#mds-standby-replay">热备的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS 配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../createfs/"> 创建 CephFS 文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel/"> 挂载 CephFS 文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fuse/"> 把 CephFS 挂载为 FUSE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fstab/"> 通过 fstab 挂载 CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-shell/"> CephFS Shell 的用法</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel-features/"> 内核驱动支持的功能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/"> ceph-fuse 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/"> mount.ceph 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.fuse.ceph/"> mount.fuse.ceph 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../best-practices/">最佳部署实践</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/">深入理解 MDS 的缓存尺寸限制</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS 的各种状态</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/">实验性功能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../experimental-features/#id4">曾经是实验性的功能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quota/">CephFS 配额管理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hadoop/">在 Ceph 上使用 Hadoop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-journal-tool/">cephfs-journal-tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../file-layouts/">文件布局</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../eviction/">驱逐客户端</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../health-messages/">健康消息</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/">升级 MDS 集群</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/#firefly-jewel">升级比 Firefly 老的文件系统，需过 Jewel 这个槛</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../dirfrags/">目录分片的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multimds/">多活 MDS 的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../app-best-practices/">应用最佳实践</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../scrub/">洗刷</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">FS 卷和子卷</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#requirements">Requirements</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fs-volumes">FS Volumes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fs-subvolume-groups">FS Subvolume groups</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fs-subvolumes">FS Subvolumes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cloning-snapshots">Cloning Snapshots</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../#id1">元数据修复</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../#id2">开发者文档</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../disaster-recovery-experts/" title="高级话题：元数据修复工具"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../scrub/" title="Ceph 文件系统洗刷"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

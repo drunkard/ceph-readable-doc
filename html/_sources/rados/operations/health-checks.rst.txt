@@ -1,4 +1,5 @@
 .. Health checks
+.. _health-checks:
 
 ==========
  健康检查

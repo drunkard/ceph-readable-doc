@@ -162,7 +162,7 @@ commands are not available with the currently installed Ceph release.
 
 The remote ``rbd-mirror`` daemon will need access to the local cluster to
 perform mirroring. A new local Ceph user should be created for the remote
-daemon to use. To `create a Ceph user`_, with ``ceph`` specify the
+daemon to use. To `创建一个 Ceph 用户`_, with ``ceph`` specify the
 ``auth get-or-create`` command, user name, monitor caps, and OSD caps::
 
         ceph auth get-or-create client.rbd-mirror-peer mon 'profile rbd' osd 'profile rbd'

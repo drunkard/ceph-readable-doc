@@ -14,9 +14,9 @@ Ceph 存储集群 API
 Ceph 文件系统 API
 =================
 
-见 `libcephfs (javadoc)`_ 。
+见 `libcephfs`_ 。
 
-.. _libcephfs (javadoc): libcephfs-java
+.. _libcephfs: ../cephfs/api
 
 
 Ceph 块设备 API
@@ -42,6 +42,12 @@ Ceph 对象存储 API
 - 见 `Swift-compatible API`_ 。
 - 见 `Admin Ops API`_ 。
 
+
+Ceph MON 命令 API
+=================
+- 见 `Mon 命令 API`_ 。
+
 .. _S3-compatible API: ../radosgw/s3/
 .. _Swift-compatible API: ../radosgw/swift/
 .. _Admin Ops API: ../radosgw/adminops
+.. _Mon 命令 API: mon_command_api

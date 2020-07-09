@@ -1,9 +1,15 @@
+.. Adding/Removing Monitors
+.. _adding-and-removing-monitors:
+
 =================
  增加/删除监视器
 =================
 
 你的集群启动并运行后，可以在运行时增加、或删除监视器。请参考\
 `手动部署`_\ 或\ `监视器自举启动`_\ 完成初始设置。
+
+.. Adding Monitors
+.. _adding-monitors:
 
 增加监视器
 ==========
@@ -33,21 +39,29 @@ for more than three exists.
 
 .. note:: 这里的\ *大多数*\ 监视器之间必须能互通，这样才能形成法定人数。
 
+
+.. Deploy your Hardware
+
 部署硬件
 --------
 
-如果你增加新监视器时要新增一台主机，关于其最低硬件配置请参见\ `硬件推荐`_\ 。要增加\
-一个监视器主机，首先要安装最新版的 Linux （如 Ubuntu 12.04 或者 RHEL 7 ）。
+如果你增加新监视器时要新增一台主机，关于其最低硬件配置请参见\
+`硬件推荐`_\ 。要增加一个监视器主机，首先要安装最新版的 Linux
+（如 Ubuntu 12.04 或者 RHEL 7 ）。
 
 把监视器主机安装上架，连通网络。
 
 .. _硬件推荐: ../../../start/hardware-recommendations
 
+
+.. Install the Required Software
+
 安装必要软件
 ------------
 
-手动部署的集群， Ceph 软件包必须手动装，详情参见\ `安装软件包`_\ 。应该配置一个用\
-户，使之可以无密码登录 SSH 、且有 root 权限。
+手动部署的集群， Ceph 软件包必须手动装，详情参见\
+`安装软件包`_\ 。应该配置一个用户，使之可以无密码登录 SSH 、\
+且有 root 权限。
 
 .. _安装软件包: ../../../install/install-storage-cluster
 
@@ -97,11 +111,14 @@ for more than three exists.
 	ceph-mon -i {mon-id} --public-addr {ip:port}
 
 
+.. _removing-monitors:
+
 删除监视器
 ==========
 
 从集群删除监视器时，必须认识到， Ceph 监视器用 PASOX 算法关于主集群运行图达成共识。\
 必须有足够多的监视器才能对集群运行图达成共识。
+
 
 .. _删除监视器（手动）:
 
@@ -121,6 +138,8 @@ for more than three exists.
 
 #. 删除 ``ceph.conf`` 对应条目。
 
+
+.. Removing Monitors from an Unhealthy Cluster
 
 从不健康集群删除监视器
 ----------------------
@@ -165,8 +184,8 @@ for more than three exists.
 #. 你也许得把已删除监视器的数据目录 ``/var/lib/ceph/mon`` 备份到安全位置，\
    如果您对其余监视器很有信心、或者有足够的冗余，也可以删除。
 
-.. _更改监视器的 IP 地址:
 
+.. _更改监视器的 IP 地址:
 
 更改监视器的 IP 地址
 ====================
@@ -182,6 +201,8 @@ Ceph 客户端及其它 Ceph 守护进程用 ``ceph.conf`` 发现监视器，然
 --mkfs`` 命令的必要参数。下面几段解释了 Ceph 监视器的一致性要求，和几种改 IP 的安\
 全方法。
 
+
+.. Consistency Requirements
 
 一致性要求
 ----------
@@ -202,6 +223,8 @@ monmap 的监视器赶上集群当前的状态。
 器、掉出法定人数、或者发展为一种 `Paxos`_ 不能精确确定当前系统状态的情形。总之，更\
 改现有监视器的 IP 地址必须慎之又慎。
 
+
+.. Changing a Monitor's IP address (The Right Way)
 
 更改监视器 IP 地址（正确方法）
 ------------------------------
@@ -228,6 +251,8 @@ monmap 的监视器赶上集群当前的状态。
 则会破坏法定人数；最后依照\ `删除监视器（手动）`_\ 删除 ``mon.c`` 。 3 个监视器都\
 要更改的话，每次都要重复一次。
 
+
+.. Changing a Monitor's IP address (The Messy Way)
 
 更改监视器 IP 地址（凌乱方法）
 ------------------------------

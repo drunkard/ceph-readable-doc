@@ -1,0 +1,281 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>现有集群切换到 cephadm &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephadm/adoption.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="cephadm">
+<span id="cephadm-adoption"></span><h1>现有集群切换到 cephadm<a class="headerlink" href="#cephadm" title="Permalink to this headline">¶</a></h1>
+<p>Cephadm allows you to convert an existing Ceph cluster that
+has been deployed with ceph-deploy, ceph-ansible, DeepSea, or similar tools.</p>
+<div class="section" id="id1">
+<h2>局限性<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>Cephadm only works with BlueStore OSDs.  If there are FileStore OSDs
+in your cluster you cannot manage them.</p></li>
+</ul>
+</div>
+<div class="section" id="preparation">
+<h2>Preparation<a class="headerlink" href="#preparation" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p>Get the <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> command line tool on each host in the existing
+cluster.  See <a class="reference internal" href="../install/#get-cephadm"><span class="std std-ref">Install cephadm</span></a>.</p></li>
+<li><p>Prepare each host for use by <code class="docutils literal notranslate"><span class="pre">cephadm</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cephadm prepare-host</span>
+</pre></div>
+</div>
+</li>
+<li><p>Determine which Ceph version you will use.  You can use any Octopus (15.2.z)
+release or later.  For example, <code class="docutils literal notranslate"><span class="pre">docker.io/ceph/ceph:v15.2.0</span></code>.  The default
+will be the latest stable release, but if you are upgrading from an earlier
+release at the same time be sure to refer to the upgrade notes for any
+special steps to take while upgrading.</p>
+<p>The image is passed to cephadm with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cephadm --image $IMAGE &lt;rest of command goes here&gt;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Cephadm can provide a list of all Ceph daemons on the current host:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cephadm ls</span>
+</pre></div>
+</div>
+<p>Before starting, you should see that all existing daemons have a
+style of <code class="docutils literal notranslate"><span class="pre">legacy</span></code> in the resulting output.  As the adoption
+process progresses, adopted daemons will appear as style
+<code class="docutils literal notranslate"><span class="pre">cephadm:v1</span></code>.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="adoption-process">
+<h2>Adoption process<a class="headerlink" href="#adoption-process" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p>Ensure the ceph configuration is migrated to use the cluster config database.
+If the <code class="docutils literal notranslate"><span class="pre">/etc/ceph/ceph.conf</span></code> is identical on each host, then on one host:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph config assimilate-conf -i /etc/ceph/ceph.conf</span>
+</pre></div>
+</div>
+<p>If there are config variations on each host, you may need to repeat
+this command on each host.  You can view the cluster’s
+configuration to confirm that it is complete with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph config dump</span>
+</pre></div>
+</div>
+</li>
+<li><p>Adopt each monitor:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cephadm adopt --style legacy --name mon.&lt;hostname&gt;</span>
+</pre></div>
+</div>
+<p>Each legacy monitor should stop, quickly restart as a cephadm
+container, and rejoin the quorum.</p>
+</li>
+<li><p>Adopt each manager:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cephadm adopt --style legacy --name mgr.&lt;hostname&gt;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Enable cephadm:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph mgr module enable cephadm</span>
+<span class="c1"># ceph orch set backend cephadm</span>
+</pre></div>
+</div>
+</li>
+<li><p>Generate an SSH key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph cephadm generate-key</span>
+<span class="c1"># ceph cephadm get-pub-key &gt; ceph.pub</span>
+</pre></div>
+</div>
+</li>
+<li><p>Install the cluster SSH key on each host in the cluster:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ssh-copy-id -f -i ceph.pub root@&lt;host&gt;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It is also possible to import an existing ssh key. See
+<a class="reference internal" href="../troubleshooting/#cephadm-ssh-errors"><span class="std std-ref">ssh errors</span></a> in the troubleshooting
+document for instructions describing how to import existing
+ssh keys.</p>
+</div>
+</li>
+<li><p>Tell cephadm which hosts to manage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch host add &lt;hostname&gt; [ip-address]</span>
+</pre></div>
+</div>
+<p>This will perform a <code class="docutils literal notranslate"><span class="pre">cephadm</span> <span class="pre">check-host</span></code> on each host before
+adding it to ensure it is working.  The IP address argument is only
+required if DNS does not allow you to connect to each host by its
+short name.</p>
+</li>
+<li><p>Verify that the adopted monitor and manager daemons are visible:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch ps</span>
+</pre></div>
+</div>
+</li>
+<li><p>Adopt all OSDs in the cluster:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cephadm adopt --style legacy --name &lt;name&gt;</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cephadm adopt --style legacy --name osd.1</span>
+<span class="c1"># cephadm adopt --style legacy --name osd.2</span>
+</pre></div>
+</div>
+</li>
+<li><p>Redeploy MDS daemons by telling cephadm how many daemons to run for
+each file system.  You can list file systems by name with <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">fs</span>
+<span class="pre">ls</span></code>.  For each file system:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch apply mds &lt;fs-name&gt; [--placement=&lt;placement&gt;]</span>
+</pre></div>
+</div>
+<p>For example, in a cluster with a single file system called <cite>foo</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph fs ls</span>
+<span class="n">name</span><span class="p">:</span> <span class="n">foo</span><span class="p">,</span> <span class="n">metadata</span> <span class="n">pool</span><span class="p">:</span> <span class="n">foo_metadata</span><span class="p">,</span> <span class="n">data</span> <span class="n">pools</span><span class="p">:</span> <span class="p">[</span><span class="n">foo_data</span> <span class="p">]</span>
+<span class="c1"># ceph orch apply mds foo 2</span>
+</pre></div>
+</div>
+<p>Wait for the new MDS daemons to start with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch ps --daemon-type mds</span>
+</pre></div>
+</div>
+<p>Finally, stop and remove the legacy MDS daemons:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># systemctl stop ceph-mds.target</span>
+<span class="c1"># rm -rf /var/lib/ceph/mds/ceph-*</span>
+</pre></div>
+</div>
+</li>
+<li><p>Redeploy RGW daemons.  Cephadm manages RGW daemons by zone.  For each
+zone, deploy new RGW daemons with cephadm:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch apply rgw &lt;realm&gt; &lt;zone&gt; [--subcluster=&lt;subcluster&gt;] [--port=&lt;port&gt;] [--ssl] [--placement=&lt;placement&gt;]</span>
+</pre></div>
+</div>
+<p>where <em>&lt;placement&gt;</em> can be a simple daemon count, or a list of
+specific hosts (see <a class="reference internal" href="../../mgr/orchestrator/#orchestrator-cli-placement-spec"><span class="std std-ref">Placement Specification</span></a>).</p>
+<p>Once the daemons have started and you have confirmed they are functioning,
+stop and remove the old legacy daemons:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># systemctl stop ceph-rgw.target</span>
+<span class="c1"># rm -rf /var/lib/ceph/radosgw/ceph-*</span>
+</pre></div>
+</div>
+<p>For adopting single-site systems without a realm, see also
+<a class="reference internal" href="../../radosgw/multisite/#rgw-multisite-migrate-from-single-site"><span class="std std-ref">从单站迁移到多站配置</span></a>.</p>
+</li>
+<li><p>Check the <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">health</span> <span class="pre">detail</span></code> output for cephadm warnings about
+stray cluster daemons or hosts that are not yet managed.</p></li>
+</ol>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/">安装（ ceph-deploy ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装（手动）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../start/kube-helm/">安装（ Kubernetes + Helm ）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

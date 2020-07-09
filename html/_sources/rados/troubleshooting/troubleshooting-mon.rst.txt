@@ -218,7 +218,7 @@ What if the state is ``probing``?
   to reach the other monitors on a wrong address. ``mon_status`` outputs the
   ``monmap`` known to the monitor: check if the other monitor's locations
   match reality. If they don't, jump to
-  `Recovering a Monitor's Broken monmap`_; if they do, then it may be related
+  `修复监视器损坏的 monmap`_; if they do, then it may be related
   to severe clock skews amongst the monitor nodes and you should refer to
   `时钟偏移`_ first, but if that doesn't solve your problem then it is
   the time to prepare some logs and reach out to the community (please refer
