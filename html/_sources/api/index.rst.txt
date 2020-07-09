@@ -51,3 +51,9 @@ Ceph MON 命令 API
 .. _Swift-compatible API: ../radosgw/swift/
 .. _Admin Ops API: ../radosgw/adminops
 .. _Mon 命令 API: mon_command_api
+
+
+.. toctree::
+    :hidden:
+
+    mon_command_api

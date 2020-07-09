@@ -82,7 +82,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
 .. _Ceph 对象存储: radosgw
 .. _Ceph 块设备: rbd
 .. _Ceph 文件系统: cephfs
-.. _入门: start
+.. _入门: install
 .. _体系结构: architecture
 
 .. toctree::
@@ -90,20 +90,22 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
    :hidden:
 
    start/intro
-   start/index
    install/index
-   start/kube-helm
+   cephadm/index
    rados/index
    cephfs/index
    rbd/index
    radosgw/index
    mgr/index
+   mgr/dashboard
    api/index
    architecture
    开发者指南 <dev/developer_guide/index>
    dev/internals
    governance
+   foundation
    ceph-volume/index
+   releases/general
    releases/index
    Ceph 术语 <glossary>
    中文版翻译资源 <translation_cn/index>

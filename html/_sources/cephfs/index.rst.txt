@@ -136,9 +136,9 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
    <!---
 
 
-.. For developers
+.. Developer Guides
 
-开发者文档
+开发者指南
 ==========
 
 .. raw:: html
@@ -149,6 +149,12 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
    :maxdepth: 1
    :hidden:
 
+    Journaler 配置 <journaler>
     客户端的能力 <capabilities>
-    libcephfs <../../api/libcephfs-java/>
+    Java 和 Python 捆绑库 <api/index>
     Mantle <mantle>
+
+
+.. raw:: html
+
+   <!---

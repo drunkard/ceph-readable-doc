@@ -1,4 +1,4 @@
-.. _Encryption:
+.. Encryption
 
 ======
  加密
@@ -6,12 +6,20 @@
 
 .. versionadded:: Luminous
 
-配置好 3 个加密密钥管理选项， Ceph 对象网关可支持在服务器端加\
-密上传的对象。服务器端加密的含义是，通过 HTTP 发出的数据是未加\
-密的，但是 Ceph 对象网关在 Ceph 存储集群中存储的却是加密数据。
+配置好 3 个加密密钥管理选项， Ceph 对象网关可支持在服务器端\
+加密上传的对象。服务器端加密的含义是，通过 HTTP 发出的数据是\
+未加密的，但是 Ceph 对象网关在 Ceph 存储集群中存储的却是\
+加密数据。
+
+.. note:: Requests for server-side encryption must be sent over a secure HTTPS
+          connection to avoid sending secrets in plaintext. If a proxy is used
+          for SSL termination, ``rgw trust forwarded https`` must be enabled
+          before forwarded requests will be trusted as secure.
+
+.. note:: Server-side encryption keys must be 256-bit long and base64 encoded.
 
 
-.. _Customer-Provided Keys:
+.. Customer-Provided Keys
 
 客户提供的密钥
 ==============
@@ -26,7 +34,7 @@
 需要什么特殊的配置。
 
 
-.. _Key Management Service:
+.. Key Management Service
 
 密钥管理服务
 ============
@@ -37,12 +45,12 @@
 这是根据 `Amazon SSE-KMS`_ 标准在 S3 里实现的。
 
 原则上，这里可以用任何密钥管理服务，但现在只实现了与 `Barbican`_
-的对接。
+和 `Vault`_ 的对接。
 
-参见\ `与 OpenStack Barbican 对接`_\ 。
+参见\ `与 OpenStack Barbican 对接`_\ 和\ `与 HashiCorp Vault 对接`_\ 。
 
 
-.. _Automatic Encryption (for testing only):
+.. Automatic Encryption (for testing only)
 
 自动化加密（仅用于测试）
 ========================
@@ -61,4 +69,6 @@
 .. _Amazon SSE-C: https://docs.aws.amazon.com/AmazonS3/latest/dev/ServerSideEncryptionCustomerKeys.html
 .. _Amazon SSE-KMS: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html
 .. _Barbican: https://wiki.openstack.org/wiki/Barbican
+.. _Vault: https://www.vaultproject.io/docs/
 .. _与 OpenStack Barbican 对接: ../barbican
+.. _与 HashiCorp Vault 对接: ../vault

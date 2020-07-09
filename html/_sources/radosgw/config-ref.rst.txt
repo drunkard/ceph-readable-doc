@@ -526,17 +526,35 @@ Swift 选项
 
 ``rgw swift versioning enabled``
 
-:描述: 启用 OpenStack 对象存储 API 的对象版本控制功能，这样客\
-       户端就能在想要做版本控制的容器上设置
-       ``X-Versions-Location`` 属性了，该属性用于指定存储着存\
-       档版本的容器。做版本控制的容器必须是同一个用户拥有的，\
+:描述: 启用 OpenStack 对象存储 API 的对象版本控制功能，这样\
+       客户端就能在想要做版本控制的容器上设置
+       ``X-Versions-Location`` 属性了，该属性用于指定存储着\
+       存档版本的容器。做版本控制的容器必须是同一个用户拥有的，\
        因为要通过访问控制验证—— ACL **不会**\ 被纳入版本控制。\
        容器版本控制与 S3 对象版本控制机制不兼容。
+
+       还有个稍有不同的属性， ``X-History-Location`` ，
+       `OpenStack Swift <https://docs.openstack.org/swift/latest/api/object_versioning.html>`_
+       也支持，是用于处理 ``DELETE`` 操作的。现在还不支持。
 :类型: Boolean
 :默认值: ``false``
 
 
-.. _Logging Settings:
+``rgw trust forwarded https``
+
+:描述: When a proxy in front of radosgw is used for ssl termination, radosgw
+              does not know whether incoming http connections are secure. Enable
+              this option to trust the ``Forwarded`` and ``X-Forwarded-Proto`` headers
+              sent by the proxy when determining whether the connection is secure.
+              This is required for some features, such as server side encryption.
+              (Never enable this setting if you do not have a trusted proxy in front of
+              radosgw, or else malicious users will be able to set these headers in
+              any request.)
+:类型: Boolean
+:默认值: ``false``
+
+
+.. Logging Settings
 
 日志记录选项
 ============

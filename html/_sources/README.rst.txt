@@ -94,21 +94,24 @@ https://github.com/drunkard/ceph-readable-doc
 	git clone https://github.com/ceph/ceph.git
 	git clone https://github.com/drunkard/ceph-Chinese-doc.git
 
-#. 把源码树里的 doc 目录备份为 doc-en，然后把中文文档库的 \
-   ceph-Chinese-doc 目录链接为原 ceph 源码库的 doc ； ::
+#. 配置环境，链接： ::
 
-	cd /git
-	ln -s /git/ceph-Chinese-doc /git/ceph/doc
+	cd /git/ceph
+	ln -s /git/ceph-Chinese-doc doc-zh
+
+	cd /git/ceph/admin
+	ln -sf ../doc-zh/translation_cn/zh_build-doc .
+	ln -sf ../doc-zh/translation_cn/zh_serve-doc serve-doc_zh
 
 #. 执行 ceph 库内 admin 目录下的 build-doc 开始构建文档； ::
 
 	cd /git/ceph
-	./admin/build-doc html man
+	./admin/zh_build-doc
 
-#. 启动文档服务器，这样就可以通过 http://localhost:8080/ 阅读文档了。 ::
+#. 启动文档服务器，这样就可以通过 http://localhost:9080/ 阅读文档了。 ::
 
 	cd /git/ceph
-	./admin/serve-doc
+	./admin/serve-doc_zh
 
 如果编译失败，请参考\ `此文档 </translation_cn/build-errors>`_\
 （即 build-errors.rst ）解决。
