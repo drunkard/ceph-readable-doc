@@ -1,9 +1,13 @@
+.. Adding/Removing OSDs
+
 ===============
  增加/删除 OSD
 ===============
 
 如果您的集群已经在运行，你可以在运行时添加或删除 OSD 。
 
+
+.. Adding OSDs
 
 增加 OSD
 ========
@@ -18,6 +22,8 @@ OSD 一般是一个 ``ceph-osd`` 守护进程，它运行在硬盘之上，如�
 .. warning:: 不要等空间满了再增加 OSD ，空间使用率达到
    ``near full`` 比率后， OSD 失败可能导致集群空间占满。
 
+
+.. Deploy your Hardware
 
 部署硬件
 --------
