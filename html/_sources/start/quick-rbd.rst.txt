@@ -1,4 +1,4 @@
-.. _Block Device Quick Start:
+.. Block Device Quick Start
 
 ============
  块设备入门
@@ -20,33 +20,8 @@
 
 
 你可以在虚拟机上运行 ``ceph-client`` 节点，但是不能在与 Ceph
-存储集群（除非它们也用 VM ）相同的物理节点上执行下列步骤。详\
-情见 `FAQ`_ 。
-
-
-.. _Install Ceph:
-
-安装 Ceph
-=========
-
-#. 确认下你的内核版本没问题，详情见\ `操作系统推荐`_\ 。 ::
-
-	lsb_release -a
-	uname -r
-
-#. 在管理节点上，通过 ``ceph-deploy`` 把 Ceph 安装到
-   ``ceph-client`` 节点。 ::
-
-	ceph-deploy install ceph-client
-
-#. 在管理节点上，用 ``ceph-deploy`` 把 Ceph 配置文件和 \
-   ``ceph.client.admin.keyring`` 拷贝到 ``ceph-client`` 。 ::
-
-	ceph-deploy admin ceph-client
-
-   ``ceph-deploy`` 工具会把密钥环复制到 ``/etc/ceph`` 目录，要\
-   确保此密钥环文件可读（如
-   ``sudo chmod +r /etc/ceph/ceph.client.admin.keyring`` ）。
+存储集群（除非它们也用 VM ）相同的物理节点上执行下列步骤。\
+详情见 `FAQ`_ 。
 
 
 .. Create a Block Device Pool
@@ -63,7 +38,7 @@
         rbd pool init <pool-name>
 
 
-.. _Configure a Block Device:
+.. Configure a Block Device
 
 配置块设备
 ==========
@@ -74,18 +49,18 @@
 
 #. 在 ``ceph-client`` 节点上，把映像映射为块设备。 ::
 
-	sudo rbd map foo --name client.admin [-m {mon-IP}] [-k /path/to/ceph.client.admin.keyring]
+	sudo rbd map foo --name client.admin [-m {mon-IP}] [-k /path/to/ceph.client.admin.keyring] [-p {pool-name}]
 
 #. 在 ``ceph-client`` 节点上，创建文件系统后就可以使用了。 ::
 
-	sudo mkfs.ext4 -m0 /dev/rbd/rbd/foo
+	sudo mkfs.ext4 -m0 /dev/rbd/{pool-name}/foo
 
    此命令可能耗时较长。
 
 #. 在 ``ceph-client`` 节点上挂载此文件系统。 ::
 
 	sudo mkdir /mnt/ceph-block-device
-	sudo mount /dev/rbd/rbd/foo /mnt/ceph-block-device
+	sudo mount /dev/rbd/{pool-name}/foo /mnt/ceph-block-device
 	cd /mnt/ceph-block-device
 
 #. 如果你想让块设备在启动时自动映射并挂载（而且在关机时卸载并\

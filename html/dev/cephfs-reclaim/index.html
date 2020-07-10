@@ -1,0 +1,309 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>CephFS Reclaim Interface &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="CephFS 快照" href="../cephfs-snapshots/" />
+    <link rel="prev" title="Cache pool" href="../cache-pool/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../cephfs-snapshots/" title="CephFS 快照"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../cache-pool/" title="Cache pool"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" accesskey="U">Ceph 内幕</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/cephfs-reclaim.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="cephfs-reclaim-interface">
+<h1>CephFS Reclaim Interface<a class="headerlink" href="#cephfs-reclaim-interface" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>NFS servers typically do not track ephemeral state on stable storage. If
+the NFS server is restarted, then it will be resurrected with no
+ephemeral state, and the NFS clients are expected to send requests to
+reclaim what state they held during a grace period.</p>
+<p>In order to support this use-case, libcephfs has grown several functions
+that allow a client that has been stopped and restarted to destroy or
+reclaim state held by a previous incarnation of itself. This allows the
+client to reacquire state held by its previous incarnation, and to avoid
+the long wait for the old session to time out before releasing the state
+previously held.</p>
+<p>As soon as an NFS server running over cephfs goes down, it’s racing
+against its MDS session timeout. If the Ceph session times out before
+the NFS grace period is started, then conflicting state could be
+acquired by another client. This mechanism also allows us to increase
+the timeout for these clients, to ensure that the server has a long
+window of time to be restarted.</p>
+</div>
+<div class="section" id="setting-the-uuid">
+<h2>Setting the UUID<a class="headerlink" href="#setting-the-uuid" title="Permalink to this headline">¶</a></h2>
+<p>In order to properly reset or reclaim against the old session, we need a
+way to identify the old session. This done by setting a unique opaque
+value on the session using <strong>ceph_set_uuid()</strong>. The uuid value can be
+any string and is treated as opaque by the client.</p>
+<p>Setting the uuid directly can only be done on a new session, prior to
+mounting. When reclaim is performed the current session will inherit the
+old session’s uuid.</p>
+</div>
+<div class="section" id="starting-reclaim">
+<h2>Starting Reclaim<a class="headerlink" href="#starting-reclaim" title="Permalink to this headline">¶</a></h2>
+<p>After calling ceph_create and ceph_init on the resulting struct
+ceph_mount_info, the client should then issue ceph_start_reclaim,
+passing in the uuid of the previous incarnation of the client with any
+flags.</p>
+<dl class="simple">
+<dt>CEPH_RECLAIM_RESET</dt><dd><p>This flag indicates that we do not intend to do any sort of reclaim
+against the old session indicated by the given uuid, and that it
+should just be discarded. Any state held by the previous client
+should be released immediately.</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="finishing-reclaim">
+<h2>Finishing Reclaim<a class="headerlink" href="#finishing-reclaim" title="Permalink to this headline">¶</a></h2>
+<p>After the Ceph client has completed all of its reclaim operations, the
+client should issue ceph_finish_reclaim to indicate that the reclaim is
+now complete.</p>
+</div>
+<div class="section" id="setting-session-timeout-optional">
+<h2>Setting Session Timeout (Optional)<a class="headerlink" href="#setting-session-timeout-optional" title="Permalink to this headline">¶</a></h2>
+<p>When a client dies and is restarted, and we need to preserve its state,
+we are effectively racing against the session expiration clock. In this
+situation we generally want a longer timeout since we expect to
+eventually kill off the old session manually.</p>
+</div>
+<div class="section" id="example-1-reset-old-session">
+<h2>Example 1: Reset Old Session<a class="headerlink" href="#example-1-reset-old-session" title="Permalink to this headline">¶</a></h2>
+<p>This example just kills off the MDS session held by a previous instance
+of itself. An NFS server can start a grace period and then ask the MDS
+to tear down the old session. This allows clients to start reclaim
+immediately.</p>
+<p>(Note: error handling omitted for clarity)</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">ceph_mount_info</span> <span class="o">*</span><span class="n">cmount</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uuid</span> <span class="o">=</span> <span class="s">&quot;foobarbaz&quot;</span><span class="p">;</span>
+
+<span class="cm">/* Set up a new cephfs session, but don&#39;t mount it yet. */</span>
+<span class="n">rc</span> <span class="o">=</span> <span class="n">ceph_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cmount</span><span class="p">);</span>
+<span class="n">rc</span> <span class="o">=</span> <span class="n">ceph_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cmount</span><span class="p">);</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Set the timeout to 5 minutes to lengthen the window of time for</span>
+<span class="cm"> * the server to restart, should it crash.</span>
+<span class="cm"> */</span>
+<span class="n">ceph_set_session_timeout</span><span class="p">(</span><span class="n">cmount</span><span class="p">,</span> <span class="mi">300</span><span class="p">);</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Start reclaim vs. session with old uuid. Before calling this,</span>
+<span class="cm"> * all NFS servers that could acquire conflicting state _must_ be</span>
+<span class="cm"> * enforcing their grace period locally.</span>
+<span class="cm"> */</span>
+<span class="n">rc</span> <span class="o">=</span> <span class="n">ceph_start_reclaim</span><span class="p">(</span><span class="n">cmount</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">CEPH_RECLAIM_RESET</span><span class="p">);</span>
+
+<span class="cm">/* Declare reclaim complete */</span>
+<span class="n">rc</span> <span class="o">=</span> <span class="n">ceph_finish_reclaim</span><span class="p">(</span><span class="n">cmount</span><span class="p">);</span>
+
+<span class="cm">/* Set uuid held by new session */</span>
+<span class="n">ceph_set_uuid</span><span class="p">(</span><span class="n">cmount</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">);</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Now mount up the file system and do normal open/lock operations to</span>
+<span class="cm"> * satisfy reclaim requests.</span>
+<span class="cm"> */</span>
+<span class="n">ceph_mount</span><span class="p">(</span><span class="n">cmount</span><span class="p">,</span> <span class="n">rootpath</span><span class="p">);</span>
+<span class="p">...</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/">开发者指南</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../internals/">Ceph 内幕</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../blkin/">用 Blkin 追踪 Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bluestore/">BlueStore Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">CephFS Reclaim Interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setting-the-uuid">Setting the UUID</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#starting-reclaim">Starting Reclaim</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#finishing-reclaim">Finishing Reclaim</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setting-session-timeout-optional">Setting Session Timeout (Optional)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-1-reset-old-session">Example 1: Reset Old Session</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-snapshots/">CephFS 快照</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx_protocol/">Cephx 认证协议详细阐述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config/">配置管理系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-key/">config-key layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../corpus/">资料库结构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpu-profiler/">Oprofile 的安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cxx/">C++17 and libstdc++ ABI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/">开发集群的部署</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/#id6">在同一机器上部署多套开发集群</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../development-workflow/">开发流程</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../documenting/">为 Ceph 写作文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encoding/">序列化（编码、解码）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../erasure-coded-pool/">纠删码存储池</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../freebsd/">FreeBSD Implementation details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generatedocs/">Ceph 文档的构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../iana/">IANA 号</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel-client-troubleshooting/">Kernel client troubleshooting (FS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kubernetes/">Hacking on Ceph in Kubernetes with Rook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logging/">集群日志的用法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logs/">调试日志</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../macos/">在 MacOS 上构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../messenger/">Messenger notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-on-disk-formats/">ON-DISK FORMAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-osdmap-prune/">FULL OSDMAP VERSION PRUNING</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../msgr2/">msgr2 协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-protocol/">网络协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../object-store/">对象存储架构概述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../peering/">互联</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf/">Using perf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_counters/">性能计数器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_histograms/">Perf histograms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement-group/">PG （归置组）说明</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quick_guide/">开发者指南（快速）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rados-client-protocol/">RADOS 客户端协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-diff/">RBD 增量备份</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-export/">RBD Export &amp; Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../seastore/">SeaStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sepia/">Sepia 社区测试实验室</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../testing/">测试笔记</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd_internals/">OSD 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds_internals/">MDS 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../radosgw/">RADOS 网关开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph-volume/">ceph-volume 开发者文档</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../cephfs-snapshots/" title="CephFS 快照"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../cache-pool/" title="Cache pool"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" >Ceph 内幕</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

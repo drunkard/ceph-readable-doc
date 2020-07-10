@@ -23,6 +23,7 @@
 | **ceph-bluestore-tool** bluefs-bdev-new-db --path *osd path* --dev-target *new-device*
 | **ceph-bluestore-tool** bluefs-bdev-migrate --path *osd path* --dev-target *new-device* --devs-source *device1* [--devs-source *device2*]
 | **ceph-bluestore-tool** free-dump|free-score --path *osd path* [ --allocator block/bluefs-wal/bluefs-db/bluefs-slow ]
+| **ceph-bluestore-tool** reshard --path *osd path* --sharding *new sharding* [ --sharding-ctrl *control string* ]
 
 
 描述
@@ -58,8 +59,12 @@
 
 :command:`bluefs-bdev-expand` --path *osd path*
 
-   让 BlueFS 检查它的块设备尺寸，而且，如果发现它们扩大了，把\
-   那些额外空间也用起来。
+   让 BlueFS 检查它的块设备尺寸，并且，如果发现它们扩大了，把\
+   那些额外空间也用起来。请注意，在空闲空间足够的前提下，只有
+   BlueFS 新建的文件才会被分配到首选块设备；而已经存在的、溢出\
+   到慢速设备上的文件会在 RocksDB 压缩时逐渐删除。换句话说，\
+   如果有数据溢出到了慢速设备上，它会随着时间的推移被挪到\
+   高速设备上。
 
 :command:`bluefs-bdev-new-wal` --path *osd path* --dev-target *new-device*
 
@@ -94,6 +99,17 @@
    会收到一个 0-1 之间的数字，用于表示分配器中碎片的质量。\
    0 表示所有空闲空间都在一个块中的情形； 1 表示最糟糕的\
    碎片散布情形。
+
+:command:`reshard` --path *osd path* --sharding *new sharding* [ --resharding-ctrl *control string* ]
+
+   更改 BlueStore 内 RocksDB 的分片配置。分片建立在
+   RocksDB 列族基础之上。此选项方便你测试 *new sharding* 的\
+   性能，而无需重新部署 OSD 。重分片一般都耗时绵长，需要遍历\
+   整个 RocksDB 键名空间、并把其中某些挪到别的列族。
+   ``--resharding-ctrl`` 选项便于你对重分片过程进行性能控制。\
+   中断重分片会妨碍 OSD 的正常运行；中断重分片不会损坏数据；\
+   而且随时可以继续之前的重分片，或者选用其它分片方案，包括\
+   回退到最初的那个。
 
 
 选项
@@ -138,6 +154,13 @@
 .. option:: --allocator *name*
 
    适用于 *free-dump* 和 *free-score* 操作。选择分配器。
+
+.. option:: --resharding-ctrl *control string*
+
+   提供了对重分片过程的控制手段，指示多久刷一次 RocksDB 递归器，\
+   以及提交给 RocksDB 的批次应该是多大。选项格式为：
+   <iterator_refresh_bytes>/<iterator_refresh_keys>/<batch_commit_bytes>/<batch_commit_keys>
+   默认值： 10000000/10000/1000000/1000
 
 
 设备标签

@@ -38,6 +38,7 @@ quality and engagement in the project over time.
 
 
 .. Ceph Leadership Team
+.. _clt:
 
 Ceph 领导团队
 -------------
