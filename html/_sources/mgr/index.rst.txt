@@ -39,6 +39,7 @@ mgr 启动。
     Telegraf 模块 <telegraf>
     Telemetry 模块 <telemetry>
     Iostat 模块 <iostat>
+    OSD Support 模块 <osd_support>
     Crash 模块 <crash>
     Insights 模块 <insights>
     Orchestrator 模块 <orchestrator>

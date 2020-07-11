@@ -1,0 +1,389 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ZFS &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="systemd" href="../systemd/" />
+    <link rel="prev" title="LVM" href="../lvm/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../systemd/" title="systemd"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../lvm/" title="LVM"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" accesskey="U">ceph-volume 开发者文档</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/ceph-volume/zfs.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="zfs">
+<span id="ceph-volume-zfs-api"></span><h1>ZFS<a class="headerlink" href="#zfs" title="Permalink to this headline">¶</a></h1>
+<p>The backend of <code class="docutils literal notranslate"><span class="pre">ceph-volume</span> <span class="pre">zfs</span></code> is ZFS, it relies heavily on the usage of
+tags, which is a way for ZFS to allow extending its volume metadata. These
+values can later be queried against devices and it is how they get discovered
+later.</p>
+<p>Currently this interface is only usable when running on FreeBSD.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>These APIs are not meant to be public, but are documented so that
+it is clear what the tool is doing behind the scenes. Do not alter
+any of these values.</p>
+</div>
+<div class="section" id="tag-api">
+<span id="ceph-volume-zfs-tag-api"></span><h2>Tag API<a class="headerlink" href="#tag-api" title="Permalink to this headline">¶</a></h2>
+<p>The process of identifying filesystems, volumes and pools as part of Ceph relies
+on applying tags on all volumes. It follows a naming convention for the
+namespace that looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.&lt;</span><span class="n">tag</span> <span class="n">name</span><span class="o">&gt;=&lt;</span><span class="n">tag</span> <span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>All tags are prefixed by the <code class="docutils literal notranslate"><span class="pre">ceph</span></code> keyword to claim ownership of that
+namespace and make it easily identifiable. This is how the OSD ID would be used
+in the context of zfs tags:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">osd_id</span><span class="o">=</span><span class="mi">0</span>
+</pre></div>
+</div>
+<p>Tags on filesystems are stored as property.
+Tags on a zpool are stored in the comment property as a concatenated list
+seperated by <code class="docutils literal notranslate"><span class="pre">;</span></code></p>
+</div>
+<div class="section" id="metadata">
+<span id="ceph-volume-zfs-tags"></span><h2>Metadata<a class="headerlink" href="#metadata" title="Permalink to this headline">¶</a></h2>
+<p>The following describes all the metadata from Ceph OSDs that is stored on a
+ZFS filesystem, volume, pool:</p>
+</div>
+<div class="section" id="type">
+<h2><code class="docutils literal notranslate"><span class="pre">type</span></code><a class="headerlink" href="#type" title="Permalink to this headline">¶</a></h2>
+<p>Describes if the device is an OSD or Journal, with the ability to expand to
+other types when supported</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">type</span><span class="o">=</span><span class="n">osd</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="cluster-fsid">
+<h2><code class="docutils literal notranslate"><span class="pre">cluster_fsid</span></code><a class="headerlink" href="#cluster-fsid" title="Permalink to this headline">¶</a></h2>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">cluster_fsid</span><span class="o">=</span><span class="mi">7146</span><span class="n">B649</span><span class="o">-</span><span class="n">AE00</span><span class="o">-</span><span class="mi">4157</span><span class="o">-</span><span class="mi">9</span><span class="n">F5D</span><span class="o">-</span><span class="mi">1</span><span class="n">DBFF1D52C26</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="data-device">
+<h2><code class="docutils literal notranslate"><span class="pre">data_device</span></code><a class="headerlink" href="#data-device" title="Permalink to this headline">¶</a></h2>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">data_device</span><span class="o">=/</span><span class="n">dev</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">data</span><span class="o">-</span><span class="mi">0</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="data-uuid">
+<h2><code class="docutils literal notranslate"><span class="pre">data_uuid</span></code><a class="headerlink" href="#data-uuid" title="Permalink to this headline">¶</a></h2>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">data_uuid</span><span class="o">=</span><span class="n">B76418EB</span><span class="o">-</span><span class="mi">0024</span><span class="o">-</span><span class="mi">401</span><span class="n">C</span><span class="o">-</span><span class="mi">8955</span><span class="o">-</span><span class="n">AE6919D45CC3</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="journal-device">
+<h2><code class="docutils literal notranslate"><span class="pre">journal_device</span></code><a class="headerlink" href="#journal-device" title="Permalink to this headline">¶</a></h2>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">journal_device</span><span class="o">=/</span><span class="n">dev</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">journal</span><span class="o">-</span><span class="mi">0</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="journal-uuid">
+<h2><code class="docutils literal notranslate"><span class="pre">journal_uuid</span></code><a class="headerlink" href="#journal-uuid" title="Permalink to this headline">¶</a></h2>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">journal_uuid</span><span class="o">=</span><span class="mf">2070E121</span><span class="o">-</span><span class="n">C544</span><span class="o">-</span><span class="mi">4</span><span class="n">F40</span><span class="o">-</span><span class="mi">9571</span><span class="o">-</span><span class="mi">0</span><span class="n">B7F35C6CB2B</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="osd-fsid">
+<h2><code class="docutils literal notranslate"><span class="pre">osd_fsid</span></code><a class="headerlink" href="#osd-fsid" title="Permalink to this headline">¶</a></h2>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">osd_fsid</span><span class="o">=</span><span class="mi">88</span><span class="n">ab9018</span><span class="o">-</span><span class="n">f84b</span><span class="o">-</span><span class="mi">4</span><span class="n">d62</span><span class="o">-</span><span class="mi">90</span><span class="n">b4</span><span class="o">-</span><span class="n">ce7c076728ff</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="osd-id">
+<h2><code class="docutils literal notranslate"><span class="pre">osd_id</span></code><a class="headerlink" href="#osd-id" title="Permalink to this headline">¶</a></h2>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">osd_id</span><span class="o">=</span><span class="mi">1</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="block-device">
+<h2><code class="docutils literal notranslate"><span class="pre">block_device</span></code><a class="headerlink" href="#block-device" title="Permalink to this headline">¶</a></h2>
+<p>Just used on <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a> backends. Captures the path to the logical
+volume path.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">block_device</span><span class="o">=/</span><span class="n">dev</span><span class="o">/</span><span class="n">gpt</span><span class="o">/</span><span class="n">block</span><span class="o">-</span><span class="mi">0</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="block-uuid">
+<h2><code class="docutils literal notranslate"><span class="pre">block_uuid</span></code><a class="headerlink" href="#block-uuid" title="Permalink to this headline">¶</a></h2>
+<p>Just used on <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a> backends. Captures either the logical volume UUID or
+the partition UUID.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">block_uuid</span><span class="o">=</span><span class="n">E5F041BB</span><span class="o">-</span><span class="n">AAD4</span><span class="o">-</span><span class="mi">48</span><span class="n">A8</span><span class="o">-</span><span class="n">B3BF</span><span class="o">-</span><span class="mi">31</span><span class="n">F7AFD7D73E</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="db-device">
+<h2><code class="docutils literal notranslate"><span class="pre">db_device</span></code><a class="headerlink" href="#db-device" title="Permalink to this headline">¶</a></h2>
+<p>Just used on <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a> backends. Captures the path to the logical
+volume path.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">db_device</span><span class="o">=/</span><span class="n">dev</span><span class="o">/</span><span class="n">gpt</span><span class="o">/</span><span class="n">db</span><span class="o">-</span><span class="mi">0</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="db-uuid">
+<h2><code class="docutils literal notranslate"><span class="pre">db_uuid</span></code><a class="headerlink" href="#db-uuid" title="Permalink to this headline">¶</a></h2>
+<p>Just used on <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a> backends. Captures either the logical volume UUID or
+the partition UUID.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">db_uuid</span><span class="o">=</span><span class="n">F9D02CF1</span><span class="o">-</span><span class="mi">31</span><span class="n">AB</span><span class="o">-</span><span class="mi">4910</span><span class="o">-</span><span class="mi">90</span><span class="n">A3</span><span class="o">-</span><span class="mi">6</span><span class="n">A6302375525</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="wal-device">
+<h2><code class="docutils literal notranslate"><span class="pre">wal_device</span></code><a class="headerlink" href="#wal-device" title="Permalink to this headline">¶</a></h2>
+<p>Just used on <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a> backends. Captures the path to the logical
+volume path.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">wal_device</span><span class="o">=/</span><span class="n">dev</span><span class="o">/</span><span class="n">gpt</span><span class="o">/</span><span class="n">wal</span><span class="o">-</span><span class="mi">0</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="wal-uuid">
+<h2><code class="docutils literal notranslate"><span class="pre">wal_uuid</span></code><a class="headerlink" href="#wal-uuid" title="Permalink to this headline">¶</a></h2>
+<p>Just used on <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a> backends. Captures either the logical volume UUID or
+the partition UUID.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">wal_uuid</span><span class="o">=</span><span class="n">A58D1C68</span><span class="o">-</span><span class="mi">0</span><span class="n">D6E</span><span class="o">-</span><span class="mi">4</span><span class="n">CB3</span><span class="o">-</span><span class="mf">8E99</span><span class="o">-</span><span class="n">B261AD47CC39</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="compression">
+<h2><code class="docutils literal notranslate"><span class="pre">compression</span></code><a class="headerlink" href="#compression" title="Permalink to this headline">¶</a></h2>
+<p>A compression-enabled device can allways be set using the native zfs settings on
+a volume or filesystem. This will/can be activated during creation of the volume
+of filesystem.
+When activated by <code class="docutils literal notranslate"><span class="pre">ceph-volume</span> <span class="pre">zfs</span></code> this tag will be created.
+Compression manually set AFTER <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> will go unnoticed, unless this
+tag is also manually set.</p>
+<p>Example for an enabled compression device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">.</span><span class="n">vdo</span><span class="o">=</span><span class="mi">1</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer_guide/">开发者指南</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../internals/">Ceph 内幕</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../blkin/">用 Blkin 追踪 Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../bluestore/">BlueStore Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephfs-reclaim/">CephFS Reclaim Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephfs-snapshots/">CephFS 快照</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephx_protocol/">Cephx 认证协议详细阐述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../config/">配置管理系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../config-key/">config-key layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../corpus/">资料库结构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cpu-profiler/">Oprofile 的安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cxx/">C++17 and libstdc++ ABI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/">开发集群的部署</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/#id6">在同一机器上部署多套开发集群</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../development-workflow/">开发流程</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../documenting/">为 Ceph 写作文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../encoding/">序列化（编码、解码）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../erasure-coded-pool/">纠删码存储池</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../freebsd/">FreeBSD Implementation details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generatedocs/">Ceph 文档的构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../iana/">IANA 号</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../kernel-client-troubleshooting/">Kernel client troubleshooting (FS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../kubernetes/">Hacking on Ceph in Kubernetes with Rook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../logging/">集群日志的用法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../logs/">调试日志</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../macos/">在 MacOS 上构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../messenger/">Messenger notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-on-disk-formats/">ON-DISK FORMAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-osdmap-prune/">FULL OSDMAP VERSION PRUNING</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../msgr2/">msgr2 协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../network-protocol/">网络协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../object-store/">对象存储架构概述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../peering/">互联</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf/">Using perf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf_counters/">性能计数器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf_histograms/">Perf histograms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../placement-group/">PG （归置组）说明</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quick_guide/">开发者指南（快速）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rados-client-protocol/">RADOS 客户端协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-diff/">RBD 增量备份</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-export/">RBD Export &amp; Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../seastore/">SeaStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sepia/">Sepia 社区测试实验室</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../testing/">测试笔记</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../osd_internals/">OSD 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mds_internals/">MDS 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../radosgw/">RADOS 网关开发者文档</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">ceph-volume 开发者文档</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../plugins/">Plugins</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../lvm/">LVM</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ZFS</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tag-api">Tag API</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#metadata">Metadata</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#type"><code class="docutils literal notranslate"><span class="pre">type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cluster-fsid"><code class="docutils literal notranslate"><span class="pre">cluster_fsid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#data-device"><code class="docutils literal notranslate"><span class="pre">data_device</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#data-uuid"><code class="docutils literal notranslate"><span class="pre">data_uuid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#journal-device"><code class="docutils literal notranslate"><span class="pre">journal_device</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#journal-uuid"><code class="docutils literal notranslate"><span class="pre">journal_uuid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#osd-fsid"><code class="docutils literal notranslate"><span class="pre">osd_fsid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#osd-id"><code class="docutils literal notranslate"><span class="pre">osd_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#block-device"><code class="docutils literal notranslate"><span class="pre">block_device</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#block-uuid"><code class="docutils literal notranslate"><span class="pre">block_uuid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-device"><code class="docutils literal notranslate"><span class="pre">db_device</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-uuid"><code class="docutils literal notranslate"><span class="pre">db_uuid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wal-device"><code class="docutils literal notranslate"><span class="pre">wal_device</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wal-uuid"><code class="docutils literal notranslate"><span class="pre">wal_uuid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#compression"><code class="docutils literal notranslate"><span class="pre">compression</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../systemd/">systemd</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../systemd/" title="systemd"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../lvm/" title="LVM"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" >ceph-volume 开发者文档</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

@@ -57,6 +57,30 @@ Ceph 将把 CRUSH 输出（ -o ）到你指定的文件，由于 CRUSH 图是\
 	crushtool -d {compiled-crushmap-filename} -o {decompiled-crushmap-filename}
 
 
+.. Recompile a CRUSH Map
+.. _compilecrushmap:
+
+重编译 CRUSH 图
+---------------
+
+To compile a CRUSH map, execute the following::
+
+	crushtool -c {decompiled-crushmap-filename} -o {compiled-crushmap-filename}
+
+
+.. Set the CRUSH Map
+.. _setcrushmap:
+
+设置 CRUSH 图
+-------------
+
+To set the CRUSH map for your cluster, execute the following::
+
+	ceph osd setcrushmap -i {compiled-crushmap-filename}
+
+Ceph will load (-i) a compiled CRUSH map from the filename you specified.
+
+
 .. Sections
 
 分段
@@ -646,22 +670,22 @@ If you are satisfied with the adjusted map, you can apply it to the cluster with
 调整 CRUSH ，强硬方法
 ---------------------
 
-如果你能保证所有客户端都运行最新代码，你可以这样调整可调值：从集\
-群抽取 CRUSH 图、修改值、重注入。
+如果你能保证所有客户端都运行最新代码，你可以这样调整可调值：从\
+集群抽取 CRUSH 图、修改值、重注入。
 
  * 提抽取最新 CRUSH 图： ::
 
-	ceph osd getcrushmap -o /tmp/crush
+        ceph osd getcrushmap -o /tmp/crush
 
  * 调整可调参数。这些值在我们测试过的大、小型集群上都有最佳表现。\
    在极端情况下，你需要给 ``crushtool`` 额外指定 \
    ``--enable-unsafe-tunables`` 参数才行： ::
 
-	crushtool -i /tmp/crush --set-choose-local-tries 0 --set-choose-local-fallback-tries 0 --set-choose-total-tries 50 -o /tmp/crush.new
+        crushtool -i /tmp/crush --set-choose-local-tries 0 --set-choose-local-fallback-tries 0 --set-choose-total-tries 50 -o /tmp/crush.new
 
  * 重注入修改的图。 ::
 
-	ceph osd setcrushmap -i /tmp/crush.new
+        ceph osd setcrushmap -i /tmp/crush.new
 
 
 .. Legacy values
