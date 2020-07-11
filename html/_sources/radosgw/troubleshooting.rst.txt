@@ -10,22 +10,22 @@ If you cannot start the gateway (i.e., there is no existing ``pid``),
 check to see if there is an existing ``.asok`` file from another 
 user. If an ``.asok`` file from another user exists and there is no
 running ``pid``, remove the ``.asok`` file and try to start the
-process again.
-
-This may occur when you start the process as a ``root`` user and 
+process again. This may occur when you start the process as a ``root`` user and 
 the startup script is trying to start the process as a 
 ``www-data`` or ``apache`` user and an existing ``.asok`` is 
 preventing the script from starting the daemon.
 
 The radosgw init script (/etc/init.d/radosgw) also has a verbose argument that
-can provide some insight as to what could be the issue:
+can provide some insight as to what could be the issue::
 
   /etc/init.d/radosgw start -v
 
-or
+或者： ::
 
   /etc/init.d radosgw start --verbose
 
+
+.. HTTP Request Errors
 
 HTTP 请求错误
 =============
@@ -38,8 +38,10 @@ configured, and that the web server is looking for it in the proper
 location.
 
 
-``radosgw`` 崩溃
-================
+.. Crashed ``radosgw`` process
+
+``radosgw`` 进程崩溃
+====================
 
 如果 ``radosgw`` 进程挂了，一般会看到网页服务器（ apache 、 nginx \
 等）返回 500 错误，这种情况下，只要重启 radosgw 就能恢复服务。
@@ -48,12 +50,14 @@ location.
 文件（如果生成了）。
 
 
+.. Blocked ``radosgw`` Requests
+
 阻塞的 ``radosgw`` 请求
 =======================
 
-如果某些（或者所有） radosgw 请求被阻塞了，你可以通过管理套接字深\
-入了解 ``radosgw`` 守护进程的内部状态。默认情况下，套接字文件位于\
-\ ``/var/run/ceph`` ，可以这样查询： ::
+如果某些（或者所有） radosgw 请求被阻塞了，你可以通过管理\
+套接字深入了解 ``radosgw`` 守护进程的内部状态。默认情况下，\
+套接字文件位于 ``/var/run/ceph`` ，可以这样查询： ::
 
 	ceph daemon /var/run/ceph/client.rgw help
 
@@ -68,8 +72,8 @@ location.
 	ceph daemon /var/run/ceph/client.rgw objecter_requests
 	...
 
-它会显示当前正在进行的、发往 RADOS 集群的请求。用这个功能你就能\
-确定是否有请求因 OSD 不响应而被阻塞，比如，你也许能看到： ::
+它会显示当前正在进行的、发往 RADOS 集群的请求。用这个功能你就\
+能确定是否有请求因 OSD 不响应而被阻塞，比如，你也许能看到： ::
 
 	{ "ops": [
 	      { "tid": 1858,
@@ -128,6 +132,8 @@ location.
 ``flag_point`` 字段表明这个 OSD 正在等待副本（本例中是 ``osd.0`` ）\
 的响应。
 
+
+.. Java S3 API Troubleshooting
 
 Java S3 API 故障排除
 ====================

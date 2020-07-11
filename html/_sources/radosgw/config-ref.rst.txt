@@ -1,12 +1,18 @@
-.. _Ceph Object Gateway Config Reference:
+.. Ceph Object Gateway Config Reference
 
 =======================
  Ceph 对象网关配置参考
 =======================
 
 下列的选项可加入 Ceph 配置文件（一般是 ``ceph.conf`` ）的
-``[client.radosgw.{instance-name}]`` 段下，很多选项都有默\
-认值，你若未指定，自然用默认。
+``[client.radosgw.{instance-name}]`` 段下，很多选项都有\
+默认值，你若未指定，自然用默认。
+
+Configuration variables set under the ``[client.radosgw.{instance-name}]``
+section will not apply to rgw or radosgw-admin commands without an instance-name
+specified in the command. Thus variables meant to be applied to all RGW
+instances or all radosgw-admin commands can be put into the ``[global]`` or the
+``[client]`` section to avoid specifying instance-name.
 
 
 ``rgw frontends``
@@ -29,6 +35,9 @@
 ``rgw enable apis``
 
 :描述: 启用指定的 API 。
+
+       .. note:: 在\ `多站 <../multisite>`_\ 配置中，任何要\
+                 参与的 radosgw 例程都必须启用 ``s3`` API 。
 :类型: String
 :默认值: 所有 API ： ``s3, swift, swift_auth, admin`` 。
 
@@ -49,10 +58,9 @@
 
 ``rgw socket path``
 
-:描述: 域套接字的路径， ``FastCgiExternalServer`` 要使用此套接\
-       字。若未指定， Ceph 对象网关就不会以外部服务器运行。这\
-       里的路径必须与 ``rgw.conf`` 里的路径相同。
-
+:描述: 域套接字的路径， ``FastCgiExternalServer`` 要使用此\
+       套接字。若未指定， Ceph 对象网关就不会以外部服务器运行。\
+       这里的路径必须与 ``rgw.conf`` 里的路径相同。
 :类型: String
 :默认值: N/A
 
@@ -140,17 +148,6 @@
 :默认值: 100 threads.
 
 
-``rgw num rados handles``
-
-:描述: Ceph 对象网关的 `RADOS 集群句柄`_\ 数量。通过配置
-       RADOS 处理器数量可以使得各种类型的载荷都明显地提升性\
-       能，因为各个 RGW 工作线程在其短暂的活跃期内都可以分别\
-       挂靠一个 RADOS 处理器。
-
-:类型: Integer
-:默认值: ``1``
-
-
 ``rgw num control oids``
 
 :描述: 不同的 ``rgw`` 例程间用于缓存同步的通知对象数量。
@@ -170,34 +167,6 @@
 :描述: MIME 类型数据库文件的路径，Swift 自动探测对象类型时要用到。
 :类型: String
 :默认值: ``/etc/mime.types``
-
-
-``rgw gc max objs``
-
-:描述: 垃圾回收进程在一个处理周期内可处理的最大对象数。
-:类型: Integer
-:默认值: ``32``
-
-
-``rgw gc obj min wait``
-
-:描述: 对象可被删除并由垃圾回收器处理前最少等待多长时间。
-:类型: Integer
-:默认值: ``2 * 3600``
-
-
-``rgw gc processor max time``
-
-:描述: 两个连续的垃圾回收周期起点的最大时间间隔。
-:类型: Integer
-:默认值: ``3600``
-
-
-``rgw gc processor period``
-
-:描述: 垃圾回收进程的运行周期。
-:类型: Integer
-:默认值: ``3600``
 
 
 ``rgw s3 success create obj status``
@@ -274,8 +243,10 @@
 
 ``rgw override bucket index max shards``
 
-:描述: 桶索引对象的分片数量， 0 表示没有分片。我们不建议把这个值\
-       设置得太大（比如大于 1000 ），因为这样会增加罗列桶时的开销。
+:描述: 桶索引对象的分片数量， 0 表示没有分片。我们不建议把这个\
+       值设置得太大（比如大于 1000 ），因为这样会增加罗列桶时\
+       的开销。本变量应该配置在 client 或 global 段下，这样它\
+       就会自动应用到 radosgw-admin 命令。
 
 :类型: Integer
 :默认值: ``0``
@@ -387,6 +358,76 @@
 :默认值: ``true``
 
 
+.. Garbage Collection Settings
+
+垃圾回收选项
+============
+
+The Ceph Object Gateway allocates storage for new objects immediately.
+
+The Ceph Object Gateway purges the storage space used for deleted and overwritten 
+objects in the Ceph Storage cluster some time after the gateway deletes the 
+objects from the bucket index. The process of purging the deleted object data 
+from the Ceph Storage cluster is known as Garbage Collection or GC.
+
+To view the queue of objects awaiting garbage collection, execute the following::
+
+  $ radosgw-admin gc list 
+
+  Note: specify --include-all to list all entries, including unexpired
+  
+Garbage collection is a background activity that may
+execute continuously or during times of low loads, depending upon how the
+administrator configures the Ceph Object Gateway. By default, the Ceph Object
+Gateway conducts GC operations continuously. Since GC operations are a normal
+part of Ceph Object Gateway operations, especially with object delete
+operations, objects eligible for garbage collection exist most of the time.
+
+Some workloads may temporarily or permanently outpace the rate of garbage
+collection activity. This is especially true of delete-heavy workloads, where
+many objects get stored for a short period of time and then deleted. For these
+types of workloads, administrators can increase the priority of garbage
+collection operations relative to other operations with the following
+configuration parameters.
+
+
+``rgw gc max objs``
+
+:描述: 垃圾回收进程在一个处理周期内可处理的最大对象数。首次\
+       部署后请勿更改此值。
+:类型: Integer
+:默认值: ``32``
+
+
+``rgw gc obj min wait``
+
+:描述: 对象可被删除并由垃圾回收器处理前最少等待多长时间。
+:类型: Integer
+:默认值: ``2 * 3600``
+
+
+``rgw gc processor max time``
+
+:描述: 两个连续的垃圾回收周期起点的最大时间间隔。
+:类型: Integer
+:默认值: ``3600``
+
+
+``rgw gc processor period``
+
+:描述: 垃圾回收进程的运行周期。
+:类型: Integer
+:默认值: ``3600``
+
+
+``rgw gc max concurrent io``
+
+:描述: The maximum number of concurrent IO operations that the RGW garbage
+              collection thread will use when purging old data.
+:类型: Integer
+:默认值: ``10``
+
+
 .. Multisite Settings
 
 多站设置
@@ -471,7 +512,19 @@
    取值了。
 
 
-.. _Swift Settings:
+.. S3 Settings
+
+S3 选项
+=======
+
+``rgw s3 auth use ldap``
+
+:描述: Should S3 authentication use LDAP.
+:类型: Boolean
+:默认值: ``false``
+
+
+.. Swift Settings
 
 Swift 选项
 ==========
@@ -499,13 +552,27 @@ Swift 选项
 
 ``rgw swift url prefix``
 
-:描述: Swift StorageURL 的前缀 URL ，位于 /v1 之前的部分。\
-       用这个此选项可以做到在同一主机上运行多个网关例程。\
-       为保持兼容性，此选项配置为空时将默认使用 /swift 。\
-       指定的 StorageURL 以 / 打头时表示访问根目录。警告：\
-       启用了 S3 API 时，如果这里设置为 / ， S3 API 就\ \
-       **不能**\ 正常运作。换个角度说，禁用 S3 后也不可能\
-       部署多站点 RadosGW 了。
+:描述: Swift API 的 URL 前缀，为区别于 S3 API 的终结点。默认是
+       ``swift`` ，这样 Swift API 就会以 URL
+       ``http://host:port/swift/v1`` （或者，启用
+       ``rgw swift account in url`` 时将是
+       ``http://host:port/swift/v1/AUTH_%(tenant_id)s`` ）暴露\
+       出来。
+
+       为兼容起见，此选项为空字符串时，将使用默认值 ``swift`` ；\
+       如果你想要前缀为空，可以把此选项设置为 ``/`` 。
+
+       .. warning:: If you set this option to ``/``, you must
+                           disable the S3 API by modifying ``rgw
+                           enable apis`` to exclude ``s3``. It is not
+                           possible to operate radosgw with ``rgw
+                           swift url prefix = /`` and simultaneously
+                           support both the S3 and Swift APIs. If you
+                           do need to support both APIs without
+                           prefixes, deploy multiple radosgw instances
+                           to listen on different hosts (or ports)
+                           instead, enabling some for S3 and some for
+                           Swift.
 :默认值: ``swift``
 :实例: ``/swift-testing``
 
@@ -522,6 +589,35 @@ Swift 选项
 :描述: Swift 认证 URL 的入口点。
 :类型: String
 :默认值: ``auth``
+
+
+``rgw swift account in url``
+
+:描述: Whether or not the Swift account name should be included
+              in the Swift API URL.
+
+              If set to ``false`` (the default), then the Swift API
+              will listen on a URL formed like
+              ``http://host:port/<rgw_swift_url_prefix>/v1``, and the
+              account name (commonly a Keystone project UUID if
+              radosgw is configured with `Keystone integration
+              <../keystone>`_) will be inferred from request
+              headers.
+
+              If set to ``true``, the Swift API URL will be
+              ``http://host:port/<rgw_swift_url_prefix>/v1/AUTH_<account_name>``
+              (or
+              ``http://host:port/<rgw_swift_url_prefix>/v1/AUTH_<keystone_project_id>``)
+              instead, and the Keystone ``object-store`` endpoint must
+              accordingly be configured to include the
+              ``AUTH_%(tenant_id)s`` suffix.
+
+              You **must** set this option to ``true`` (and update the
+              Keystone service catalog) if you want radosgw to support
+              publicly-readable containers and `temporary URLs
+              <../swift/tempurl>`_.
+:类型: Boolean
+:默认值: ``false``
 
 
 ``rgw swift versioning enabled``
@@ -671,7 +767,7 @@ Swift 选项
 
 
 
-.. _Keystone Settings:
+.. Keystone Settings
 
 Keystone 选项
 =============
@@ -720,6 +816,21 @@ Keystone 选项
 :默认值: None
 
 
+``rgw keystone admin token path``
+
+:描述: Path to a file containing the Keystone admin token
+	      (shared secret).  In Ceph RadosGW authentication with
+	      the admin token has priority over authentication with
+	      the admin credentials
+              (``rgw keystone admin user``, ``rgw keystone admin password``,
+              ``rgw keystone admin tenant``, ``rgw keystone admin project``,
+              ``rgw keystone admin domain``).
+              The Keystone admin token has been deprecated, but can be
+              used to integrate with older environments.
+:类型: String
+:默认值: None
+
+
 ``rgw keystone admin tenant``
 
 :描述: 使用 v2 版本的 OpenStack Identity API 时，在这里配置具\
@@ -742,6 +853,14 @@ Keystone 选项
 
 :描述: 使用 v2 版本的 OpenStack Identity API 时，在这里配置
        OpenStack 管理用户的密码。
+:类型: String
+:默认值: None
+
+
+``rgw keystone admin password path``
+
+:描述: Path to a file containing the password for OpenStack
+              admin user when using OpenStack Identity API v2.
 :类型: String
 :默认值: None
 
@@ -774,11 +893,24 @@ Keystone 选项
 :默认值: ``true``
 
 
-.. _Barbican Settings:
+.. Server-side encryption Settings
+
+服务端加密选项
+==============
+
+``rgw crypt s3 kms backend``
+
+:描述: Where the SSE-KMS encryption keys are stored. Supported KMS
+              systems are OpenStack Barbican (``barbican``, the default) and
+              HashiCorp Vault (``vault``).
+:类型: String
+:默认值: None
+
+
+.. Barbican Settings
 
 Barbican 选项
 =============
-
 
 ``rgw barbican url``
 
@@ -824,6 +956,115 @@ Barbican 选项
        `Barbican`_ 用户相关联的 OpenStack 域名。
 :类型: String
 :默认值: None
+
+
+.. HashiCorp Vault Settings
+
+HashiCorp Vault 选项
+====================
+
+``rgw crypt vault auth``
+
+:描述: Type of authentication method to be used. The only method
+              currently supported is ``token``.
+:类型: String
+:默认值: ``token``
+
+``rgw crypt vault token file``
+
+:描述: If authentication method is ``token``, provide a path to the token
+              file, which should be readable only by Rados Gateway.
+:类型: String
+:默认值: None
+
+``rgw crypt vault addr``
+
+:描述: Vault server base address, e.g. ``http://vaultserver:8200``.
+:类型: String
+:默认值: None
+
+``rgw crypt vault prefix``
+
+:描述: The Vault secret URL prefix, which can be used to restrict access
+              to a particular subset of the secret space, e.g. ``/v1/secret/data``.
+:类型: String
+:默认值: None
+
+``rgw crypt vault secret engine``
+
+:描述: Vault Secret Engine to be used to retrieve encryption keys: choose
+              between kv-v2, transit.
+:类型: String
+:默认值: None
+
+``rgw crypt vault namespace``
+
+:描述: If set, Vault Namespace provides tenant isolation for teams and individuals
+              on the same Vault Enterprise instance, e.g. ``acme/tenant1``
+:类型: String
+:默认值: None
+
+
+.. QoS settings
+
+QoS 选项
+--------
+
+.. versionadded:: Nautilus
+
+The ``civetweb`` frontend has a threading model that uses a thread per
+connection and hence automatically throttled by ``rgw thread pool size``
+configurable when it comes to accepting connections. The ``beast`` frontend is
+not restricted by the thread pool size when it comes to accepting new
+connections, so a scheduler abstraction is introduced in Nautilus release which
+for supporting ways for scheduling requests in the future.
+
+Currently the scheduler defaults to a throttler which throttles the active
+connections to a configured limit. QoS based on mClock is currently in an
+*experimental* phase and not recommended for production yet. Current
+implementation of *dmclock_client* op queue divides RGW Ops on admin, auth
+(swift auth, sts) metadata & data requests.
+
+
+``rgw max concurrent requests``
+
+:描述: Maximum number of concurrent HTTP requests that the beast frontend
+              will process. Tuning this can help to limit memory usage under
+              heavy load.
+:类型: Integer
+:默认值: 1024
+
+
+``rgw scheduler type``
+
+:描述: The type of RGW Scheduler to use. Valid values are throttler,
+              dmclock. Currently defaults to throttler which throttles beast
+              frontend requests. dmclock is *experimental* and will need the
+              experimental flag set
+
+
+The options below are to tune the experimental dmclock scheduler. For some
+further reading on dmclock, see :ref:`dmclock-qos`. `op_class` for the flags below is
+one of admin, auth, metadata or data.
+
+``rgw_dmclock_<op_class>_res``
+
+:描述: The mclock reservation for `op_class` requests
+:类型: float
+:默认值: 100.0
+
+``rgw_dmclock_<op_class>_wgt``
+
+:描述: The mclock weight for `op_class` requests
+:类型: float
+:默认值: 1.0
+
+``rgw_dmclock_<op_class>_lim``
+
+:描述: The mclock limit for `op_class` requests
+:类型: float
+:默认值: 0.0
+
 
 
 .. _体系结构: ../../architecture#data-striping

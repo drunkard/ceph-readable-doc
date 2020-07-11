@@ -399,23 +399,23 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 	ceph osd tier remove cold-storage hot-storage
 
 
-.. _Removing a Writeback Cache:
+.. Removing a Writeback Cache
 
 拆除回写缓存
 ------------
 
-回写缓存可能含有更改过的数据，所以在禁用并去除前，必须采取些手\
-段以免丢失缓存内近期更改的对象。
+回写缓存可能含有更改过的数据，所以在禁用并去除前，必须采取些\
+手段以免丢失缓存内近期更改的对象。
 
 
-#. 把缓存模式改为 ``forward`` ，这样新的和更改过的对象将直接刷\
-   回到后端存储池。 ::
+#. 把缓存模式改为 ``proxy`` ，这样新的和更改过的对象将直接\
+   刷回到后端存储池。 ::
 
-	ceph osd tier cache-mode {cachepool} forward
+	ceph osd tier cache-mode {cachepool} proxy
 
    例如： ::
 
-	ceph osd tier cache-mode hot-storage forward
+	ceph osd tier cache-mode hot-storage proxy
 
 
 #. 确保缓存池已刷回，可能要等数分钟： ::

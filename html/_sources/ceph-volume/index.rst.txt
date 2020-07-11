@@ -18,6 +18,7 @@ ceph-volume
 
 * :ref:`ceph-volume-lvm`
 * :ref:`ceph-volume-simple`
+* :ref:`ceph-volume-zfs`
 
 **节点清单**
 
@@ -81,3 +82,5 @@ Ceph 从 13.0.0 版起， ``ceph-disk`` 已弃用，弃用警告消息将链接\
    simple/activate
    simple/scan
    simple/systemd
+   zfs/index
+   zfs/inventory

@@ -131,13 +131,6 @@
 :默认值: ``true``
 
 
-``mds use tmap``
-
-:描述: 把  trivialmap 用于目录更新。
-:类型:  Boolean
-:默认值: ``true``
-
-
 ``mds default dir hash``
 
 :描述: 用于哈希文件在目录中分布情况的函数。

@@ -433,14 +433,6 @@ OSD
 :默认值: 1
 
 
-``osd tmapput sets uses tmap``
-
-:描述: 使用 ``tmap`` ，仅用于调试。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
 ``osd min pg log entries``
 
 :描述: 归置组日志最小条数。

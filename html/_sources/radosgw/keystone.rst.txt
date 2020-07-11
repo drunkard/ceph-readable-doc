@@ -1,4 +1,4 @@
-.. _Integrating with OpenStack Keystone:
+.. Integrating with OpenStack Keystone
 
 ============================
  与 OpenStack Keystone 对接
@@ -6,8 +6,8 @@
 
 Ceph 对象网关可以与 Keystone 对接，它是 OpenStack 的鉴权服务。\
 这需要让网关把 Keystone 当作用户认证机构，经过 Keystone 授权、\
-允许访问网关的用户， Ceph 对象网关内也会自动创建此用户（如果此\
-前还没有）。 Keystone 认定有效的令牌，网关也会认为有效。
+允许访问网关的用户， Ceph 对象网关内也会自动创建此用户（如果\
+此前还没有）。 Keystone 认定有效的令牌，网关也会认为有效。
 
 与 Keystone 对接相关的网关配置选项有： ::
 
@@ -15,12 +15,10 @@ Ceph 对象网关可以与 Keystone 对接，它是 OpenStack 的鉴权服务。
 	rgw keystone api version = {keystone api version}
 	rgw keystone url = {keystone server url:keystone server admin port}
 	rgw keystone admin token = {keystone admin token}
+	rgw keystone admin token path = {path to keystone admin token} #preferred
 	rgw keystone accepted roles = {accepted user roles}
 	rgw keystone token cache size = {number of tokens to cache}
-	rgw keystone revocation interval = {number of seconds before checking revoked tickets}
 	rgw keystone implicit tenants = {true for private tenant for each new user}
-	rgw s3 auth use keystone = true
-	nss db path = {path to nss db}
 
 也能配置 Keystone 服务的租户、用户名、密码（适用于 v2.0 版的
 OpenStack Identity API ），与 OpenStack 服务的配置过程相似，这\
@@ -29,9 +27,10 @@ OpenStack Identity API ），与 OpenStack 服务的配置过程相似，这\
 有管理员权限，详情见 `Openstack keystone 文档`_\ ，里面详细解\
 释了机制。必需的配置选项有： ::
 
-        rgw keystone admin user = {keystone service tenant user name}
-        rgw keystone admin password = {keystone service tenant user password}
-        rgw keystone admin tenant = {keystone service tenant name}
+   rgw keystone admin user = {keystone service tenant user name}
+   rgw keystone admin password = {keystone service tenant user password}
+   rgw keystone admin password = {keystone service tenant user password path} # preferred
+   rgw keystone admin tenant = {keystone service tenant name}
 
 Ceph 对象网关的用户被映射为 Keystone 的 ``tenant`` 。 Keystone
 用户具有不同的角色，角色可能对应着不止一个租户。 Ceph 拿到票据\
@@ -44,8 +43,16 @@ Ceph 对象网关的用户被映射为 Keystone 的 ``tenant`` 。 Keystone
         rgw keystone admin domain = {keystone admin domain name}
         rgw keystone admin project = {keystone admin project name}
 
+For compatibility with previous versions of ceph, it is also
+possible to set ``rgw keystone implicit tenants`` to either
+``s3`` or ``swift``.  This has the effect of splitting
+the identity space such that the indicated protocol will
+only use implicit tenants, and the other protocol will
+never use implicit tenants.  Some older versions of ceph
+only supported implicit tenants with swift.
 
-.. _Prior to Kilo:
+
+.. Prior to Kilo
 
 Kilo 之前
 ---------
