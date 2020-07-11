@@ -285,6 +285,9 @@
 
         RGW 术语。
 
+    osd draining
+        osd 排空
+
     (osd) reporter
         报告者 => 报信的?
 

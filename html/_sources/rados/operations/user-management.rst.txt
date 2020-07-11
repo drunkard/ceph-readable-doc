@@ -443,12 +443,7 @@ are often restricted to accessing a particular pool. ::
 	ceph auth caps client.paul mon 'allow rw' osd 'allow rwx pool=liverpool'
 	ceph auth caps client.brian-manager mon 'allow *' osd 'allow *'
 
-要删除一个能力，你可以重置此能力。如果你想让一个用户无权访问一\
-个之前配置给他的特定守护进程，指定一个空字符串即可。例如： ::
-
-	ceph auth caps client.ringo mon ' ' osd ' '
-
-关于能力请参考\ `授权（能力）`_\ 。
+关于能力的更多信息请参考\ `授权（能力）`_\ 。
 
 
 .. Delete a User

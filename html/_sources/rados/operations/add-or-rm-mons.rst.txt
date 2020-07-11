@@ -37,7 +37,8 @@ for more than three exists.
 正因为监视器是轻量级的，所以有可能在作为 OSD 的主机上同时运行它；然而，我们推荐运行\
 于单独主机，因为与内核的 fsync 问题会影响性能。
 
-.. note:: 这里的\ *大多数*\ 监视器之间必须能互通，这样才能形成法定人数。
+.. note:: 这里的\ *大多数*\ 监视器之间必须能互通，这样才能形成\
+   法定人数。
 
 
 .. Deploy your Hardware
@@ -111,6 +112,7 @@ for more than three exists.
 	ceph-mon -i {mon-id} --public-addr {ip:port}
 
 
+.. Removing Monitors
 .. _removing-monitors:
 
 删除监视器
@@ -120,6 +122,7 @@ for more than three exists.
 必须有足够多的监视器才能对集群运行图达成共识。
 
 
+.. Removing a Monitor (Manual)
 .. _删除监视器（手动）:
 
 删除监视器（手动）
@@ -185,6 +188,7 @@ for more than three exists.
    如果您对其余监视器很有信心、或者有足够的冗余，也可以删除。
 
 
+.. Changing a Monitor's IP Address
 .. _更改监视器的 IP 地址:
 
 更改监视器的 IP 地址

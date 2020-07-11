@@ -26,13 +26,18 @@ Ceph 、然后安装到用户区或者构建二进制包并安装。
 构建 Ceph
 =========
 
-Ceph 是用 cmake 构建的，构建时，先进入刚克隆的 Ceph 源码库，然\
-后执行下面的： ::
+Ceph 是用 cmake 构建的，构建时，先进入刚克隆的 Ceph 源码库，\
+然后执行下面的： ::
 
     cd ceph
     ./do_cmake.sh
     cd build
     make
+
+.. note:: By default do_cmake.sh will build a debug version of ceph that may
+   perform up to 5 times slower with certain workloads. Pass 
+   '-DCMAKE_BUILD_TYPE=RelWithDebInfo' to do_cmake.sh if you would like to
+   build a release version of the ceph executables instead.
 
 .. topic:: 超线程
 
