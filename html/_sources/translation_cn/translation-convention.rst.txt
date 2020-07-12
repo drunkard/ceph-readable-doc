@@ -70,6 +70,9 @@
     corruption
         （数据）损坏
 
+    crash-consistent
+        崩溃一致
+
     CRUSH map
         CRUSH 图
 

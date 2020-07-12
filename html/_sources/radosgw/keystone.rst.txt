@@ -119,6 +119,10 @@ Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置�
   | service_type | object-store                             |
   +--------------+------------------------------------------+
 
+.. note:: If your radosgw ``ceph.conf`` sets the configuration option
+	  ``rgw swift account in url = true``, your ``object-store``
+	  endpoint URLs must be set to include the suffix
+	  ``/v1/AUTH_%(tenant_id)s`` (instead of just ``/v1``).
 
 The keystone URL is the Keystone admin RESTful API URL. The admin token is the
 token that is configured internally in Keystone for admin requests.
@@ -150,3 +154,43 @@ radosgw 的节点上安装 keystone 的 SSL 证书；另外， radosgw
 
 
 .. _Openstack keystone 文档: http://docs.openstack.org/developer/keystone/configuringservices.html#setting-up-projects-users-and-roles
+
+
+.. Cross Project(Tenant) Access
+
+跨 Project(Tenant) 访问
+-----------------------
+
+In order to let a project (earlier called a 'tenant') access buckets belonging to a different project, the following config option needs to be enabled::
+
+   rgw swift account in url = true
+
+The Keystone object-store endpoint must accordingly be configured to include the AUTH_%(project_id)s suffix::
+
+   openstack endpoint create --region RegionOne \
+       --publicurl   "http://radosgw.example.com:8080/swift/v1/AUTH_$(project_id)s" \
+       --adminurl    "http://radosgw.example.com:8080/swift/v1/AUTH_$(project_id)s" \
+       --internalurl "http://radosgw.example.com:8080/swift/v1/AUTH_$(project_id)s" \
+       swift
+  +--------------+--------------------------------------------------------------+
+  | Field        | Value                                                        |
+  +--------------+--------------------------------------------------------------+
+  | adminurl     | http://radosgw.example.com:8080/swift/v1/AUTH_$(project_id)s |
+  | id           | e4249d2b60e44743a67b5e5b38c18dd3                             |
+  | internalurl  | http://radosgw.example.com:8080/swift/v1/AUTH_$(project_id)s |
+  | publicurl    | http://radosgw.example.com:8080/swift/v1/AUTH_$(project_id)s |
+  | region       | RegionOne                                                    |
+  | service_id   | 37c4c0e79571404cb4644201a4a6e5ee                             |
+  | service_name | swift                                                        |
+  | service_type | object-store                                                 |
+  +--------------+--------------------------------------------------------------+
+
+.. Keystone integration with the S3 API
+
+Keystone 与 S3 API 对接
+-----------------------
+
+It is possible to use Keystone for authentication even when using the
+S3 API (with AWS-like access and secret keys), if the ``rgw s3 auth
+use keystone`` option is set. For details, see
+:doc:`s3/authentication`.

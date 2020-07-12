@@ -1,10 +1,12 @@
+.. _user-management:
+
 ==========
  用户管理
 ==========
 
-本文档叙述了 :term:`Ceph 客户端`\ 的用户身份，及其与 :term:`Ceph 存储集群`\ \
-的认证和授权。用户可以是个人或系统角色（像应用程序），它们用 Ceph 客户端和 \
-Ceph 服务器守护进程交互。
+本文档叙述了 :term:`Ceph 客户端`\ 的用户身份，及其与
+:term:`Ceph 存储集群`\ 的认证和授权。用户可以是个人或系统角色\
+（像应用程序），它们用 Ceph 客户端和 Ceph 服务器守护进程交互。
 
 .. ditaa::  +-----+
             | {o} |
@@ -40,6 +42,8 @@ For details on configuring the Ceph Storage Cluster to use authentication,
 see `Cephx 配置参考`_. For details on the architecture of Cephx, see
 `体系结构——高可用性认证`_.
 
+
+.. Background
 
 背景
 ====

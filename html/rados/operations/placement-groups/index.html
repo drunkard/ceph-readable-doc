@@ -117,6 +117,15 @@ administrator has specified that they expect this pool to consume.
 The system uses the larger of the actual ratio and the target ratio
 for its calculation.  If both target size bytes and ratio are specified, the
 ratio takes precedence.</p>
+<p><strong>EFFECTIVE RATIO</strong> is the target ratio after adjusting in two ways:</p>
+<ol class="arabic simple">
+<li><p>subtracting any capacity expected to be used by pools with target size set</p></li>
+<li><p>normalizing the target ratios among pools with target ratio set so
+they collectively target the rest of the space. For example, 4
+pools with target_ratio 1.0 would have an effective ratio of 0.25.</p></li>
+</ol>
+<p>The system uses the larger of the actual ratio and the effective ratio
+for its calculation.</p>
 <p><strong>PG_NUM</strong> is the current number of PGs for the pool (or the current
 number of PGs that the pool is working towards, if a <code class="docutils literal notranslate"><span class="pre">pg_num</span></code>
 change is in progress).  <strong>NEW PG_NUM</strong>, if present, is what the
@@ -172,14 +181,18 @@ space.  Alternatively,:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">mypool</span> <span class="n">target_size_ratio</span> <span class="o">.</span><span class="mi">9</span>
 </pre></div>
 </div>
-<p>will tell the system that <cite>mypool</cite> is expected to consume 90% of the
-total cluster capacity.</p>
+<p>will tell the system that <cite>mypool</cite> is expected to consume 1.0 relative
+to the other pools with <code class="docutils literal notranslate"><span class="pre">target_size_ratio</span></code> set. If <cite>mypool</cite> is the
+only pool in the cluster, this means an expected use of 100% of the
+total capacity. If there is a second pool with <code class="docutils literal notranslate"><span class="pre">target_size_ratio</span></code>
+1.0, both pools would expect to use 50% of the cluster capacity.</p>
 <p>You can also set the target size of a pool at creation time with the optional <code class="docutils literal notranslate"><span class="pre">--target-size-bytes</span> <span class="pre">&lt;bytes&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">--target-size-ratio</span> <span class="pre">&lt;ratio&gt;</span></code> arguments to the <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">create</span></code> command.</p>
 <p>Note that if impossible target size values are specified (for example,
-a capacity larger than the total cluster, or ratio(s) that sum to more
-than 1.0) then a health warning
-(<code class="docutils literal notranslate"><span class="pre">POOL_TARET_SIZE_RATIO_OVERCOMMITTED</span></code> or
-<code class="docutils literal notranslate"><span class="pre">POOL_TARGET_SIZE_BYTES_OVERCOMMITTED</span></code>) will be raised.</p>
+a capacity larger than the total cluster) then a health warning
+(<code class="docutils literal notranslate"><span class="pre">POOL_TARGET_SIZE_BYTES_OVERCOMMITTED</span></code>) will be raised.</p>
+<p>If both <code class="docutils literal notranslate"><span class="pre">target_size_ratio</span></code> and <code class="docutils literal notranslate"><span class="pre">target_size_bytes</span></code> are specified
+for a pool, only the ratio will be considered, and a health warning
+(<code class="docutils literal notranslate"><span class="pre">POOL_HAS_TARGET_SIZE_BYTES_AND_RATIO</span></code>) will be issued.</p>
 </div>
 <div class="section" id="id5">
 <h3>设置存储池的 PG 数量界限<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
@@ -200,22 +213,32 @@ the optional <code class="docutils literal notranslate"><span class="pre">--pg-n
 <div class="section" id="pg-num">
 <span id="preselection"></span><h2>预定义 pg_num<a class="headerlink" href="#pg-num" title="Permalink to this headline">¶</a></h2>
 <p>用此命令创建存储池时：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">create</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="n">pg_num</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">create</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">[</span><span class="n">pg_num</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>确定 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 取值是强制性的，因为不能自动计算。下面是几个常用的值：</p>
+<p>确定 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 取值是可选的。如果你不指定 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> ，集群（默认）会基于存储池内的数据量自动调整它（如前述
+<a class="reference internal" href="#pg-autoscaler"><span class="std std-ref">自伸缩归置组</span></a> ）。</p>
+<p>Alternatively, <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> can be explicitly provided.  However,
+whether you specify a <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> value or not does not affect whether
+the value is automatically tuned by the cluster after the fact.  To
+enable or disable auto-tuning,:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="n">pg_autoscale_mode</span> <span class="p">(</span><span class="n">on</span><span class="o">|</span><span class="n">off</span><span class="o">|</span><span class="n">warn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The “rule of thumb” for PGs per OSD has traditionally be 100.  With
+the additional of the balancer (which is also enabled by default), a
+value of more like 50 PGs per OSD is probably reasonable.  The
+challenge (which the autoscaler normally does for you), is to:</p>
 <ul class="simple">
-<li><p>少于 5 个 OSD 时可把 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 设置为 128</p></li>
-<li><p>OSD 数量在 5 到 10 个时，可把 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 设置为 512</p></li>
-<li><p>OSD 数量在 10 到 50 个时，可把 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 设置为 1024</p></li>
-<li><p>OSD 数量大于 50 时，你得理解权衡方法、以及如何自己计算 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 取值</p></li>
-<li><p>自己计算 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 取值时可借助 <a class="reference external" href="http://ceph.com/pgcalc/">pgcalc</a> 工具</p></li>
+<li><p>have the PGs per pool proportional to the data in the pool, and</p></li>
+<li><p>end up with 50-100 PGs per OSDs, after the replication or
+erasuring-coding fan-out of each PG across OSDs is taken into
+consideration</p></li>
 </ul>
-<p>随着 OSD 数量的增加，正确的 pg_num 取值变得更加重要，因为它显著地影响着集群的行为、以及出错时的数据持久性（即灾难性事件导致数据丢失的概率）。</p>
 </div>
 <div class="section" id="id6">
 <h2>归置组是如何使用的？<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
-<p>存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的位置及其元数据需要大量计算——即一个拥有数百万对象的系统，不可能在对象这一级追踪位置。</p>
+<p>存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的位置及其元数据的计算代价太大——即一个拥有数百万对象的系统，不可能在对象这一级追踪位置。</p>
 <p class="ditaa">
 <img src="../../../_images/ditaa-ed04edf277e7a91121edf8404565ef973813a9b4.png"/>
 </p>
@@ -310,8 +333,8 @@ populated with placement groups that were assigned to it. However
 there is no degradation of any object and it has no impact on the
 durability of the data contained in the Cluster.</p>
 </div>
-<div class="section" id="object-distribution-within-a-pool">
-<span id="object-distribution"></span><h3>Object distribution within a pool<a class="headerlink" href="#object-distribution-within-a-pool" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="object-distribution">
+<span id="id8"></span><h3>一个存储池内的对象分布<a class="headerlink" href="#object-distribution" title="Permalink to this headline">¶</a></h3>
 <p>Ideally objects are evenly distributed in each placement group. Since
 CRUSH computes the placement group for each object, but does not
 actually know how much data is stored in each OSD within this
@@ -325,26 +348,27 @@ objects are more likely to be evenly spread among them. CRUSH also
 makes every effort to evenly spread OSDs among all existing Placement
 Groups.</p>
 <p>As long as there are one or two orders of magnitude more Placement
-Groups than OSDs, the distribution should be even. For instance, 300
-placement groups for 3 OSDs, 1000 placement groups for 10 OSDs etc.</p>
+Groups than OSDs, the distribution should be even. For instance, 256
+placement groups for 3 OSDs, 512 or 1024 placement groups for 10 OSDs
+etc.</p>
 <p>Uneven data distribution can be caused by factors other than the ratio
 between OSDs and placement groups. Since CRUSH does not take into
 account the size of the objects, a few very large objects may create
 an imbalance. Let say one million 4K objects totaling 4GB are evenly
-spread among 1000 placement groups on 10 OSDs. They will use 4GB / 10
+spread among 1024 placement groups on 10 OSDs. They will use 4GB / 10
 = 400MB on each OSD. If one 400MB object is added to the pool, the
 three OSDs supporting the placement group in which the object has been
 placed will be filled with 400MB + 400MB = 800MB while the seven
 others will remain occupied with only 400MB.</p>
 </div>
 <div class="section" id="resource-usage">
-<span id="id8"></span><h3>内存、处理器和网络使用情况<a class="headerlink" href="#resource-usage" title="Permalink to this headline">¶</a></h3>
+<span id="id9"></span><h3>内存、处理器和网络使用情况<a class="headerlink" href="#resource-usage" title="Permalink to this headline">¶</a></h3>
 <p>各个归置组、 OSD 和监视器都一直需要内存、网络、处理器，在恢复期间需求更大。为消除过载而把对象聚集成簇是归置组存在的主要原因。</p>
 <p>最小化归置组数量可节省不少资源。</p>
 </div>
 </div>
 <div class="section" id="choosing-number-of-placement-groups">
-<span id="id9"></span><h2>确定归置组数量<a class="headerlink" href="#choosing-number-of-placement-groups" title="Permalink to this headline">¶</a></h2>
+<span id="id10"></span><h2>确定归置组数量<a class="headerlink" href="#choosing-number-of-placement-groups" title="Permalink to this headline">¶</a></h2>
 <p>If you have more than 50 OSDs, we recommend approximately 50-100
 placement groups per OSD to balance out resource usage, data
 durability and distribution. If you have less than 50 OSDs, chosing
@@ -361,7 +385,11 @@ osd erasure-code-profile get</strong>).</p>
 <p>You should then check if the result makes sense with the way you
 designed your Ceph cluster to maximize <a class="reference internal" href="#data-durability">data durability</a>,
 <a class="reference internal" href="#object-distribution">object distribution</a> and minimize <a class="reference internal" href="#resource-usage">resource usage</a>.</p>
-<p>其结果<strong>汇总后应该接近 2 的幂</strong>。汇总并非强制的，如果你想确保所有归置组内的对象数大致相等，最好检查下。</p>
+<p>其结果必须<strong>四舍五入到最接近的 2 的幂</strong>。</p>
+<p>Only a power of two will evenly balance the number of objects among
+placement groups. Other values will result in an uneven distribution of
+data across your OSDs. Their use should be limited to incrementally
+stepping from one power of two to another.</p>
 <p>比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样估算归置组数量：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="mi">200</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
 <span class="o">-----------</span> <span class="o">=</span> <span class="mf">6667.</span> <span class="n">Nearest</span> <span class="n">power</span> <span class="n">of</span> <span class="mi">2</span><span class="p">:</span> <span class="mi">8192</span>
@@ -375,7 +403,7 @@ designed your Ceph cluster to maximize <a class="reference internal" href="#data
 <p>你可以借助于 <a class="reference external" href="http://ceph.com/pgcalc/">PGCalc</a> 工具。</p>
 </div>
 <div class="section" id="setting-the-number-of-placement-groups">
-<span id="id10"></span><h2>设置归置组数量<a class="headerlink" href="#setting-the-number-of-placement-groups" title="Permalink to this headline">¶</a></h2>
+<span id="id11"></span><h2>设置归置组数量<a class="headerlink" href="#setting-the-number-of-placement-groups" title="Permalink to this headline">¶</a></h2>
 <p>要设置某存储池的归置组数量，你必须在创建它时就指定好，详情见<a class="reference external" href="../pools#createpool">创建存储池</a>。即使某一存储池已创建，你仍然可以用下面的命令更改归置组数量：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="n">pg_num</span> <span class="p">{</span><span class="n">pg_num</span><span class="p">}</span>
 </pre></div>
@@ -387,23 +415,23 @@ designed your Ceph cluster to maximize <a class="reference internal" href="#data
 </div>
 <p>减少归置组数量时，系统会自动调整 <code class="docutils literal notranslate"><span class="pre">pgp_num</span></code> 数值。</p>
 </div>
-<div class="section" id="id11">
-<h2>获取归置组数量<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id12">
+<h2>获取归置组数量<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
 <p>要获取一个存储池的归置组数量，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">get</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="n">pg_num</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id12">
-<h2>获取归置组统计信息<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id13">
+<h2>获取归置组统计信息<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
 <p>要获取集群里归置组的统计信息，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="n">dump</span> <span class="p">[</span><span class="o">--</span><span class="nb">format</span> <span class="p">{</span><span class="nb">format</span><span class="p">}]</span>
 </pre></div>
 </div>
 <p>可用格式有纯文本 <code class="docutils literal notranslate"><span class="pre">plain</span></code> （默认）和 <code class="docutils literal notranslate"><span class="pre">json</span></code> 。</p>
 </div>
-<div class="section" id="id13">
-<h2>获取卡住的归置组统计信息<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id14">
+<h2>获取卡住的归置组统计信息<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
 <p>要获取所有卡在某状态的归置组统计信息，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="n">dump_stuck</span> <span class="n">inactive</span><span class="o">|</span><span class="n">unclean</span><span class="o">|</span><span class="n">stale</span><span class="o">|</span><span class="n">undersized</span><span class="o">|</span><span class="n">degraded</span> <span class="p">[</span><span class="o">--</span><span class="nb">format</span> <span class="o">&lt;</span><span class="nb">format</span><span class="o">&gt;</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">t</span><span class="o">|--</span><span class="n">threshold</span> <span class="o">&lt;</span><span class="n">seconds</span><span class="o">&gt;</span><span class="p">]</span>
 </pre></div>
@@ -413,8 +441,8 @@ designed your Ceph cluster to maximize <a class="reference internal" href="#data
 <p><strong>Stale</strong> （不新鲜）归置组处于未知状态：存储它们的 OSD 有段时间没向监视器报告了（由  <code class="docutils literal notranslate"><span class="pre">mon_osd_report_timeout</span></code> 配置）。</p>
 <p>可用格式有 <code class="docutils literal notranslate"><span class="pre">plain</span></code> （默认）和 <code class="docutils literal notranslate"><span class="pre">json</span></code> 。阀值定义的是，归置组被认为卡住前等待的最小时间（默认 300 秒）。</p>
 </div>
-<div class="section" id="id14">
-<h2>获取一归置组运行图<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id15">
+<h2>获取一归置组运行图<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
 <p>要获取一个具体归置组的归置组图，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="nb">map</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span>
 </pre></div>
@@ -428,23 +456,23 @@ designed your Ceph cluster to maximize <a class="reference internal" href="#data
 </pre></div>
 </div>
 </div>
-<div class="section" id="id15">
-<h2>获取一 PG 的统计信息<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id16">
+<h2>获取一 PG 的统计信息<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h2>
 <p>要查看一个具体归置组的统计信息，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="n">query</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id16">
-<h2>洗刷归置组<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id17">
+<h2>洗刷归置组<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h2>
 <p>要洗刷一个归置组，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="n">scrub</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目录，然后再对比，确保没有对象丢失或不匹配，并且它们的内容一致。</p>
+<p>Ceph 检查主的和任何副本节点，生成归置组里所有对象的目录，然后再对比，确保没有对象丢失或不匹配，并且它们的内容一致。假设所有副本都匹配，最终的语义扫描可确保所有与快照相关的对象元数据是一致的。报错会出现在日志里。</p>
 </div>
-<div class="section" id="id17">
-<h2>改变归置组的回填/恢复优先级<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id18">
+<h2>改变归置组的回填/恢复优先级<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h2>
 <p>你可能会遇到这样的情形，有一大堆归置组需要恢复和/或回填，而其中有几个组内的数据比其它的更重要（例如，那些 PG 持有正在运行着的机器的映像数据，而其它 PG 上的数据是不太活跃的机器、或不相干的数据用着）。在那种情形下，你可能想更改那些归置组的恢复优先级，这样它们的性能和/或数据可用性就可以早些恢复。要达成这个目标（把特定归置组标记为在回填或恢复期间有高优先级），用此命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">pg</span> <span class="n">force</span><span class="o">-</span><span class="n">recovery</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="p">[{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span> <span class="c1">#2}] [{pg-id #3} ...]</span>
 <span class="n">ceph</span> <span class="n">pg</span> <span class="n">force</span><span class="o">-</span><span class="n">backfill</span> <span class="p">{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="p">[{</span><span class="n">pg</span><span class="o">-</span><span class="nb">id</span> <span class="c1">#2}] [{pg-id #3} ...]</span>
@@ -458,9 +486,33 @@ PG 尽快被处理。如果你改主意了，或者弄错了归置组，可以�
 </div>
 <p>这会删除那些 PG 的 force 标记，然后系统会按默认顺序处理它们。再次提醒，这操作不会影响当前正处理着的归置组，只影响还在队列里的那些。</p>
 <p>归置组恢复或回填完后， force 标记会被自动清除。</p>
+<p>Similarly, you may use the following commands to force Ceph to perform recovery
+or backfill on all placement groups from a specified pool first:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">force</span><span class="o">-</span><span class="n">recovery</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">force</span><span class="o">-</span><span class="n">backfill</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+</pre></div>
 </div>
-<div class="section" id="id18">
-<h2>恢复丢失的<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h2>
+<p>or:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">cancel</span><span class="o">-</span><span class="n">force</span><span class="o">-</span><span class="n">recovery</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">cancel</span><span class="o">-</span><span class="n">force</span><span class="o">-</span><span class="n">backfill</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>to restore to the default recovery or backfill priority if you change your mind.</p>
+<p>Note that these commands could possibly break the ordering of Ceph’s internal
+priority computations, so use them with caution!
+Especially, if you have multiple pools that are currently sharing the same
+underlying OSDs, and some particular pools hold data more important than others,
+we recommend you use the following command to re-arrange all pools’s
+recovery/backfill priority in a better order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="n">recovery_priority</span> <span class="p">{</span><span class="n">value</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For example, if you have 10 pools you could make the most important one priority 10,
+next 9, etc. Or you could leave most pools alone and have say 3 important pools
+all priority 1 or priorities 3, 2, 1 respectively.</p>
+</div>
+<div class="section" id="id19">
+<h2>恢复丢失的<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h2>
 <p>如果集群丢了一或多个对象，而且必须放弃搜索这些数据，你就要把未找到的对象标记为丢失（ <code class="docutils literal notranslate"><span class="pre">lost</span></code> ）。</p>
 <p>如果所有可能的位置都查询过了，而仍找不到这些对象，你也许得放弃它们了。这可能是罕见的失败组合导致的，集群在写入完成前，未能得知写入是否已执行。</p>
 <p>当前只支持 revert 选项，它使得回滚到对象的前一个版本（如果它是新对象）或完全忽略它。要把 unfound 对象标记为 lost ，执行命令：</p>
@@ -517,20 +569,20 @@ PG 尽快被处理。如果你改主意了，或者弄错了归置组，可以�
 <li class="toctree-l4"><a class="reference internal" href="#id6">归置组是如何使用的？</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#placement-groups-tradeoffs">Placement Groups Tradeoffs</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#data-durability">Data durability</a></li>
-<li class="toctree-l5"><a class="reference internal" href="#object-distribution-within-a-pool">Object distribution within a pool</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#object-distribution">一个存储池内的对象分布</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#resource-usage">内存、处理器和网络使用情况</a></li>
 </ul>
 </li>
 <li class="toctree-l4"><a class="reference internal" href="#choosing-number-of-placement-groups">确定归置组数量</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#setting-the-number-of-placement-groups">设置归置组数量</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id11">获取归置组数量</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id12">获取归置组统计信息</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id13">获取卡住的归置组统计信息</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id14">获取一归置组运行图</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id15">获取一 PG 的统计信息</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id16">洗刷归置组</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id17">改变归置组的回填/恢复优先级</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id18">恢复丢失的</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id12">获取归置组数量</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">获取归置组统计信息</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">获取卡住的归置组统计信息</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">获取一归置组运行图</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id16">获取一 PG 的统计信息</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id17">洗刷归置组</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id18">改变归置组的回填/恢复优先级</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id19">恢复丢失的</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="../pg-states/">归置组状态</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../pg-concepts/">归置组术语解释</a></li>
 </ul>

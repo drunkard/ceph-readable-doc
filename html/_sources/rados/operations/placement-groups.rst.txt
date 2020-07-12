@@ -70,6 +70,16 @@ The system uses the larger of the actual ratio and the target ratio
 for its calculation.  If both target size bytes and ratio are specified, the
 ratio takes precedence.
 
+**EFFECTIVE RATIO** is the target ratio after adjusting in two ways:
+
+1. subtracting any capacity expected to be used by pools with target size set
+2. normalizing the target ratios among pools with target ratio set so
+   they collectively target the rest of the space. For example, 4
+   pools with target_ratio 1.0 would have an effective ratio of 0.25.
+
+The system uses the larger of the actual ratio and the effective ratio
+for its calculation.
+
 **PG_NUM** is the current number of PGs for the pool (or the current
 number of PGs that the pool is working towards, if a ``pg_num``
 change is in progress).  **NEW PG_NUM**, if present, is what the
@@ -138,16 +148,21 @@ space.  Alternatively,::
 
   ceph osd pool set mypool target_size_ratio .9
 
-will tell the system that `mypool` is expected to consume 90% of the
-total cluster capacity.
+will tell the system that `mypool` is expected to consume 1.0 relative
+to the other pools with ``target_size_ratio`` set. If `mypool` is the
+only pool in the cluster, this means an expected use of 100% of the
+total capacity. If there is a second pool with ``target_size_ratio``
+1.0, both pools would expect to use 50% of the cluster capacity.
 
 You can also set the target size of a pool at creation time with the optional ``--target-size-bytes <bytes>`` or ``--target-size-ratio <ratio>`` arguments to the ``ceph osd pool create`` command.
 
 Note that if impossible target size values are specified (for example,
-a capacity larger than the total cluster, or ratio(s) that sum to more
-than 1.0) then a health warning
-(``POOL_TARET_SIZE_RATIO_OVERCOMMITTED`` or
-``POOL_TARGET_SIZE_BYTES_OVERCOMMITTED``) will be raised.
+a capacity larger than the total cluster) then a health warning
+(``POOL_TARGET_SIZE_BYTES_OVERCOMMITTED``) will be raised.
+
+If both ``target_size_ratio`` and ``target_size_bytes`` are specified
+for a pool, only the ratio will be considered, and a health warning
+(``POOL_HAS_TARGET_SIZE_BYTES_AND_RATIO``) will be issued.
 
 
 .. Specifying bounds on a pool's PGs
@@ -177,33 +192,38 @@ create`` command.
 
 用此命令创建存储池时： ::
 
-	ceph osd pool create {pool-name} pg_num
+        ceph osd pool create {pool-name} [pg_num]
 
-确定 ``pg_num`` 取值是强制性的，因为不能自动计算。下面是几个\
-常用的值：
+确定 ``pg_num`` 取值是可选的。如果你不指定 ``pg_num`` ，集群\
+（默认）会基于存储池内的数据量自动调整它（如前述
+:ref:`pg-autoscaler` ）。
 
-- 少于 5 个 OSD 时可把 ``pg_num`` 设置为 128
+Alternatively, ``pg_num`` can be explicitly provided.  However,
+whether you specify a ``pg_num`` value or not does not affect whether
+the value is automatically tuned by the cluster after the fact.  To
+enable or disable auto-tuning,::
 
-- OSD 数量在 5 到 10 个时，可把 ``pg_num`` 设置为 512
+  ceph osd pool set {pool-name} pg_autoscale_mode (on|off|warn)
 
-- OSD 数量在 10 到 50 个时，可把 ``pg_num`` 设置为 1024
+The "rule of thumb" for PGs per OSD has traditionally be 100.  With
+the additional of the balancer (which is also enabled by default), a
+value of more like 50 PGs per OSD is probably reasonable.  The
+challenge (which the autoscaler normally does for you), is to:
 
-- OSD 数量大于 50 时，你得理解权衡方法、以及如何自己计算 \
-  ``pg_num`` 取值
+- have the PGs per pool proportional to the data in the pool, and
+- end up with 50-100 PGs per OSDs, after the replication or
+  erasuring-coding fan-out of each PG across OSDs is taken into
+  consideration
 
-- 自己计算 ``pg_num`` 取值时可借助 `pgcalc`_ 工具
 
-随着 OSD 数量的增加，正确的 pg_num 取值变得更加重要，因为它\
-显著地影响着集群的行为、以及出错时的数据持久性（即灾难性事件\
-导致数据丢失的概率）。
-
+.. How are Placement Groups used ?
 
 归置组是如何使用的？
 ====================
 
-存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的位置\
-及其元数据需要大量计算——即一个拥有数百万对象的系统，不可能在对象这\
-一级追踪位置。
+存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的\
+位置及其元数据的计算代价太大——即一个拥有数百万对象的系统，\
+不可能在对象这一级追踪位置。
 
 .. ditaa::
            /-----\  /-----\  /-----\  /-----\  /-----\
@@ -367,10 +387,11 @@ there is no degradation of any object and it has no impact on the
 durability of the data contained in the Cluster.
 
 
+.. Object distribution within a pool
 .. _object distribution:
 
-Object distribution within a pool
----------------------------------
+一个存储池内的对象分布
+----------------------
 
 Ideally objects are evenly distributed in each placement group. Since
 CRUSH computes the placement group for each object, but does not
@@ -387,14 +408,15 @@ makes every effort to evenly spread OSDs among all existing Placement
 Groups.
 
 As long as there are one or two orders of magnitude more Placement
-Groups than OSDs, the distribution should be even. For instance, 300
-placement groups for 3 OSDs, 1000 placement groups for 10 OSDs etc.
+Groups than OSDs, the distribution should be even. For instance, 256
+placement groups for 3 OSDs, 512 or 1024 placement groups for 10 OSDs
+etc.
 
 Uneven data distribution can be caused by factors other than the ratio
 between OSDs and placement groups. Since CRUSH does not take into
 account the size of the objects, a few very large objects may create
 an imbalance. Let say one million 4K objects totaling 4GB are evenly
-spread among 1000 placement groups on 10 OSDs. They will use 4GB / 10
+spread among 1024 placement groups on 10 OSDs. They will use 4GB / 10
 = 400MB on each OSD. If one 400MB object is added to the pool, the
 three OSDs supporting the placement group in which the object has been
 placed will be filled with 400MB + 400MB = 800MB while the seven
@@ -442,8 +464,12 @@ You should then check if the result makes sense with the way you
 designed your Ceph cluster to maximize `data durability`_,
 `object distribution`_ and minimize `resource usage`_.
 
-其结果\ **汇总后应该接近 2 的幂**\ 。汇总并非强制的，如果你想\
-确保所有归置组内的对象数大致相等，最好检查下。
+其结果必须\ **四舍五入到最接近的 2 的幂**\ 。
+
+Only a power of two will evenly balance the number of objects among
+placement groups. Other values will result in an uneven distribution of
+data across your OSDs. Their use should be limited to incrementally
+stepping from one power of two to another.
 
 比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样\
 估算归置组数量： ::
@@ -501,6 +527,8 @@ designed your Ceph cluster to maximize `data durability`_,
         ceph osd pool get {pool-name} pg_num
 
 
+.. Get a Cluster's PG Statistics
+
 获取归置组统计信息
 ==================
 
@@ -510,6 +538,8 @@ designed your Ceph cluster to maximize `data durability`_,
 
 可用格式有纯文本 ``plain`` （默认）和 ``json`` 。
 
+
+.. Get Statistics for Stuck PGs
 
 获取卡住的归置组统计信息
 ========================
@@ -530,6 +560,8 @@ designed your Ceph cluster to maximize `data durability`_,
 最小时间（默认 300 秒）。
 
 
+.. Get a PG Map
+
 获取一归置组运行图
 ==================
 
@@ -545,6 +577,8 @@ Ceph 将返回归置组图、归置组、和 OSD 状态： ::
 
         osdmap e13 pg 1.6c (1.6c) -> up [1,0] acting [1,0]
 
+
+.. Get a PGs Statistics
 
 获取一 PG 的统计信息
 ====================
@@ -563,8 +597,10 @@ Ceph 将返回归置组图、归置组、和 OSD 状态： ::
 
         ceph pg scrub {pg-id}
 
-Ceph 检查原始的和任何复制节点，生成归置组里所有对象的目录，然后再对比，确保没有对象\
-丢失或不匹配，并且它们的内容一致。
+Ceph 检查主的和任何副本节点，生成归置组里所有对象的目录，然后\
+再对比，确保没有对象丢失或不匹配，并且它们的内容一致。假设\
+所有副本都匹配，最终的语义扫描可确保所有与快照相关的对象元数据\
+是一致的。报错会出现在日志里。
 
 
 .. Prioritize backfill/recovery of a Placement Group(s)
@@ -596,6 +632,32 @@ PG 尽快被处理。如果你改主意了，或者弄错了归置组，可以�
 里的那些。
 
 归置组恢复或回填完后， force 标记会被自动清除。
+
+Similarly, you may use the following commands to force Ceph to perform recovery
+or backfill on all placement groups from a specified pool first::
+
+        ceph osd pool force-recovery {pool-name}
+        ceph osd pool force-backfill {pool-name}
+
+or::
+
+        ceph osd pool cancel-force-recovery {pool-name}
+        ceph osd pool cancel-force-backfill {pool-name}
+
+to restore to the default recovery or backfill priority if you change your mind.
+
+Note that these commands could possibly break the ordering of Ceph's internal
+priority computations, so use them with caution!
+Especially, if you have multiple pools that are currently sharing the same
+underlying OSDs, and some particular pools hold data more important than others,
+we recommend you use the following command to re-arrange all pools's
+recovery/backfill priority in a better order::
+
+        ceph osd pool set {pool-name} recovery_priority {value}
+
+For example, if you have 10 pools you could make the most important one priority 10,
+next 9, etc. Or you could leave most pools alone and have say 3 important pools
+all priority 1 or priorities 3, 2, 1 respectively.
 
 
 .. Revert Lost

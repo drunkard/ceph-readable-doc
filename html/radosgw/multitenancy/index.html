@@ -140,26 +140,81 @@ a hostname. Hostnames cannot contain colons, or any other separators
 that are not already valid in bucket names. Using a period creates an
 ambiguous syntax. Therefore, the bucket-in-URL-path format has to be
 used.</p>
+<p>Due to the fact that the native S3 API does not deal with
+multi-tenancy and radosgw’s implementation does, things get a bit
+involved when dealing with signed URLs and public read ACLs.</p>
+<ul>
+<li><p>A <strong>signed URL</strong> does contain the <code class="docutils literal notranslate"><span class="pre">AWSAccessKeyId</span></code> query
+parameters, from which radosgw is able to discern the correct user
+and tenant owning the bucket. In other words, an application
+generating signed URLs should be able to take just the un-prefixed
+bucket name, and produce a signed URL that itself contains the
+bucket name without the tenant prefix. However, it is <em>possible</em> to
+include the prefix if you so choose.</p>
+<p>Thus, accessing a signed URL of an object <code class="docutils literal notranslate"><span class="pre">bar</span></code> in a container
+<code class="docutils literal notranslate"><span class="pre">foo</span></code> belonging to the tenant <code class="docutils literal notranslate"><span class="pre">7188e165c0ae4424ac68ae2e89a05c50</span></code>
+would be possible either via
+<code class="docutils literal notranslate"><span class="pre">http://&lt;host&gt;:&lt;port&gt;/foo/bar?AWSAccessKeyId=b200fb6634c547199e436a0f93c0c46e&amp;Expires=1542890806&amp;Signature=eok6CYQC%2FDwmQQmqvY5jTg6ehXU%3D</span></code>,
+or via
+<code class="docutils literal notranslate"><span class="pre">http://&lt;host&gt;:&lt;port&gt;/7188e165c0ae4424ac68ae2e89a05c50:foo/bar?AWSAccessKeyId=b200fb6634c547199e436a0f93c0c46e&amp;Expires=1542890806&amp;Signature=eok6CYQC%2FDwmQQmqvY5jTg6ehXU%3D</span></code>,
+depending on whether or not the tenant prefix was passed in on
+signature generation.</p>
+</li>
+<li><p>A bucket with a <strong>public read ACL</strong> is meant to be read by an HTTP
+client <em>without</em> including any query parameters that would allow
+radosgw to discern tenants. Thus, publicly readable objects must
+always be accessed using the bucket name with the tenant prefix.</p>
+<p>Thus, if you set a public read ACL on an object <code class="docutils literal notranslate"><span class="pre">bar</span></code> in a
+container <code class="docutils literal notranslate"><span class="pre">foo</span></code> belonging to the tenant
+<code class="docutils literal notranslate"><span class="pre">7188e165c0ae4424ac68ae2e89a05c50</span></code>, you would need to access that
+object via the public URL
+<code class="docutils literal notranslate"><span class="pre">http://&lt;host&gt;:&lt;port&gt;/7188e165c0ae4424ac68ae2e89a05c50:foo/bar</span></code>.</p>
+</li>
+</ul>
 </div>
 <div class="section" id="swift">
-<span id="swift-with-built-in-authenticator"></span><h3>用内置认证器的 Swift 接口<a class="headerlink" href="#swift" title="Permalink to this headline">¶</a></h3>
+<h3>用内置认证器的 Swift 接口<a class="headerlink" href="#swift" title="Permalink to this headline">¶</a></h3>
 <p>TBD – not in test_multen.py yet</p>
 </div>
 <div class="section" id="keystone-swift">
-<span id="swift-with-keystone"></span><h3>用 Keystone 认证的 Swift 接口<a class="headerlink" href="#keystone-swift" title="Permalink to this headline">¶</a></h3>
-<dl class="simple">
-<dt>TBD – don’t forget to explain the function of</dt><dd><p>rgw keystone implicit tenants = true
-in commit e9259486decab52a362443d3fd3dec33b0ec654f</p>
-</dd>
-</dl>
+<h3>用 Keystone 认证的 Swift 接口<a class="headerlink" href="#keystone-swift" title="Permalink to this headline">¶</a></h3>
+<p>In the default configuration, although native Swift has inherent
+multi-tenancy, radosgw does not enable multi-tenancy for the Swift
+API. This is to ensure that a setup with legacy buckets — that is,
+buckets that were created before radosgw supported multitenancy —,
+those buckets retain their dual-API capability to be queried and
+modified using either S3 or Swift.</p>
+<p>If you want to enable multitenancy for Swift, particularly if your
+users only ever authenticate against OpenStack Keystone, you should
+enable Keystone-based multitenancy with the following <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code>
+configuration option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">keystone</span> <span class="n">implicit</span> <span class="n">tenants</span> <span class="o">=</span> <span class="n">true</span>
+</pre></div>
 </div>
-<div class="section" id="notes-and-known-issues">
-<span id="id4"></span><h3>注意事项和已知问题<a class="headerlink" href="#notes-and-known-issues" title="Permalink to this headline">¶</a></h3>
+<p>Once you enable this option, any newly connecting user (whether they
+are using the Swift API, or Keystone-authenticated S3) will prompt
+radosgw to create a user named <code class="docutils literal notranslate"><span class="pre">&lt;tenant_id&gt;$&lt;tenant_id</span></code>, where
+<code class="docutils literal notranslate"><span class="pre">&lt;tenant_id&gt;</span></code> is a Keystone tenant (project) UUID — for example,
+<code class="docutils literal notranslate"><span class="pre">7188e165c0ae4424ac68ae2e89a05c50$7188e165c0ae4424ac68ae2e89a05c50</span></code>.</p>
+<p>Whenever that user then creates an Swift container, radosgw internally
+translates the given container name into
+<code class="docutils literal notranslate"><span class="pre">&lt;tenant_id&gt;/&lt;container_name&gt;</span></code>, such as
+<code class="docutils literal notranslate"><span class="pre">7188e165c0ae4424ac68ae2e89a05c50/foo</span></code>. This ensures that if there
+are two or more different tenants all creating a container named
+<code class="docutils literal notranslate"><span class="pre">foo</span></code>, radosgw is able to transparently discern them by their tenant
+prefix.</p>
+<p>It is also possible to limit the effects of implicit tenants
+to only apply to swift or s3, by setting <code class="docutils literal notranslate"><span class="pre">rgw</span> <span class="pre">keystone</span> <span class="pre">implicit</span> <span class="pre">tenants</span></code>
+to either <code class="docutils literal notranslate"><span class="pre">s3</span></code> or <code class="docutils literal notranslate"><span class="pre">swift</span></code>.  This will likely primarily
+be of use to users who had previously used implicit tenants
+with older versions of ceph, where implicit tenants
+only applied to the swift protocol.</p>
+</div>
+<div class="section" id="id4">
+<h3>注意事项和已知问题<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
 <p>Just to be clear, it is not possible to create buckets in other
 tenants at present. The owner of newly created bucket is extracted
 from authentication information.</p>
-<p>This document needs examples of administration of Keystone users.
-The keystone.rst may need to be updated.</p>
 </div>
 </div>
 </div>
@@ -208,7 +263,7 @@ The keystone.rst may need to be updated.</p>
 <li class="toctree-l4"><a class="reference internal" href="#s3">S3</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#swift">用内置认证器的 Swift 接口</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#keystone-swift">用 Keystone 认证的 Swift 接口</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#notes-and-known-issues">注意事项和已知问题</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">注意事项和已知问题</a></li>
 </ul>
 </li>
 </ul>

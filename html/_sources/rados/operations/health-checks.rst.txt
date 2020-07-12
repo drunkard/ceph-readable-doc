@@ -548,6 +548,23 @@ The PG count for existing pools can be increased or new pools can be created.
 Please refer to :ref:`choosing-number-of-placement-groups` for more
 information.
 
+POOL_PG_NUM_NOT_POWER_OF_TWO
+____________________________
+
+One or more pools has a ``pg_num`` value that is not a power of two.
+Although this is not strictly incorrect, it does lead to a less
+balanced distribution of data because some PGs have roughly twice as
+much data as others.
+
+This is easily corrected by setting the ``pg_num`` value for the
+affected pool(s) to a nearby power of two::
+
+  ceph osd pool set <pool-name> pg_num <value>
+
+This health warning can be disabled with::
+
+  ceph config set global mon_warn_on_pool_pg_num_not_power_of_two false
+
 POOL_TOO_FEW_PGS
 ________________
 
@@ -822,3 +839,137 @@ happen if they are misplaced or degraded (see *PG_AVAILABILITY* and
 You can manually initiate a scrub of a clean PG with::
 
   ceph pg deep-scrub <pgid>
+
+
+PG_SLOW_SNAP_TRIMMING
+_____________________
+
+The snapshot trim queue for one or more PGs has exceeded the
+configured warning threshold.  This indicates that either an extremely
+large number of snapshots were recently deleted, or that the OSDs are
+unable to trim snapshots quickly enough to keep up with the rate of
+new snapshot deletions.
+
+The warning threshold is controlled by the
+``mon_osd_snap_trim_queue_warn_on`` option (default: 32768).
+
+This warning may trigger if OSDs are under excessive load and unable
+to keep up with their background work, or if the OSDs' internal
+metadata database is heavily fragmented and unable to perform.  It may
+also indicate some other performance issue with the OSDs.
+
+The exact size of the snapshot trim queue is reported by the
+``snaptrimq_len`` field of ``ceph pg ls -f json-detail``.
+
+
+
+Miscellaneous
+-------------
+
+RECENT_CRASH
+____________
+
+One or more Ceph daemons has crashed recently, and the crash has not
+yet been archived (acknowledged) by the administrator.  This may
+indicate a software bug, a hardware problem (e.g., a failing disk), or
+some other problem.
+
+New crashes can be listed with::
+
+  ceph crash ls-new
+
+Information about a specific crash can be examined with::
+
+  ceph crash info <crash-id>
+
+This warning can be silenced by "archiving" the crash (perhaps after
+being examined by an administrator) so that it does not generate this
+warning::
+
+  ceph crash archive <crash-id>
+
+Similarly, all new crashes can be archived with::
+
+  ceph crash archive-all
+
+Archived crashes will still be visible via ``ceph crash ls`` but not
+``ceph crash ls-new``.
+
+The time period for what "recent" means is controlled by the option
+``mgr/crash/warn_recent_interval`` (default: two weeks).
+
+These warnings can be disabled entirely with::
+
+  ceph config set mgr/crash/warn_recent_interval 0
+
+TELEMETRY_CHANGED
+_________________
+
+Telemetry has been enabled, but the contents of the telemetry report
+have changed since that time, so telemetry reports will not be sent.
+
+The Ceph developers periodically revise the telemetry feature to
+include new and useful information, or to remove information found to
+be useless or sensitive.  If any new information is included in the
+report, Ceph will require the administrator to re-enable telemetry to
+ensure they have an opportunity to (re)review what information will be
+shared.
+
+To review the contents of the telemetry report,::
+
+  ceph telemetry show
+
+Note that the telemetry report consists of several optional channels
+that may be independently enabled or disabled.  For more information, see
+:ref:`telemetry`.
+
+To re-enable telemetry (and make this warning go away),::
+
+  ceph telemetry on
+
+To disable telemetry (and make this warning go away),::
+
+  ceph telemetry off
+
+AUTH_BAD_CAPS
+_____________
+
+One or more auth users has capabilities that cannot be parsed by the
+monitor.  This generally indicates that the user will not be
+authorized to perform any action with one or more daemon types.
+
+This error is mostly likely to occur after an upgrade if the
+capabilities were set with an older version of Ceph that did not
+properly validate their syntax, or if the syntax of the capabilities
+has changed.
+
+The user in question can be removed with::
+
+  ceph auth rm <entity-name>
+
+(This will resolve the health alert, but obviously clients will not be
+able to authenticate as that user.)
+
+Alternatively, the capabilities for the user can be updated with::
+
+  ceph auth <entity-name> <daemon-type> <caps> [<daemon-type> <caps> ...]
+
+For more information about auth capabilities, see :ref:`user-management`.
+
+
+OSD_NO_DOWN_OUT_INTERVAL
+________________________
+
+The ``mon_osd_down_out_interval`` option is set to zero, which means
+that the system will not automatically perform any repair or healing
+operations after an OSD fails.  Instead, an administrator (or some
+other external entity) will need to manually mark down OSDs as 'out'
+(i.e., via ``ceph osd out <osd-id>``) in order to trigger recovery.
+
+This option is normally set to five or ten minutes--enough time for a
+host to power-cycle or reboot.
+
+This warning can silenced by setting the
+``mon_warn_on_osd_down_out_interval_zero`` to false::
+
+  ceph config global mon mon_warn_on_osd_down_out_interval_zero false

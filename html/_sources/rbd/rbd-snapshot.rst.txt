@@ -12,13 +12,13 @@
 
 .. important:: 要使用 RBD 快照功能，你必须有个运行着的集群。
 
-.. note:: 如果快照是在映像内有 `I/O` 操作的情况下拍的，这个快\
-   照就不一定能囊括此映像的完整、或最新数据，另外这个快照可能\
-   被克隆为可挂载的新映像。故此，我们建议在拍快照前先停止这个\
-   映像上的 `I/O` 操作。如果这个映像包含文件系统，在拍快照前\
-   这个文件系统还必须处于一致状态；可以用 `fsfreeze` 命令中止
-   `I/O` ，命令细节请参考 `fsfreeze(8)` 手册页。对于虚拟机，
-   `qemu-guest-agent` 可在创建快照时自动冻结文件系统。
+.. note:: 因为 RBD 不关心文件系统，如果没有与挂载着的计算机\
+   协调的话，快照就是\ `崩溃一致（ crash-consistent）`\ 的。\
+   故此，我们建议在拍快照前先停止这个映像上的 `I/O` 操作。\
+   如果这个映像包含文件系统，在拍快照前这个文件系统还必须处于\
+   一致状态，否则你可能不得不用 `fsck` ；可以用 `fsfreeze`
+   命令中止 `I/O` ，命令细节请参考 `fsfreeze(8)` 手册页。对于\
+   虚拟机， `qemu-guest-agent` 可在创建快照时自动冻结文件系统。
 
 .. ditaa:: +------------+         +-------------+
            | {s}        |         | {s} c999    |
@@ -33,8 +33,9 @@
 Cephx 注意事项
 ==============
 
-启用了 `cephx`_ 时（默认的），你必须指定用户名或 ID 、及其密钥文件，详情见\ \
-`用户管理`_\ 。你也可以用 ``CEPH_ARGS`` 环境变量来避免重复输入下列参数。 ::
+启用了 `cephx`_ 时（默认的），你必须指定用户名或 ID 、及其\
+密钥环的路径，详情见\ :ref:`用户管理 <user-management>`\ 。你\
+也可以用 ``CEPH_ARGS`` 环境变量来避免重复输入下列参数。 ::
 
 	rbd --id {user-ID} --keyring=/path/to/secret [commands]
 	rbd --name {username} --keyring=/path/to/secret [commands]
@@ -44,7 +45,8 @@ Cephx 注意事项
 	rbd --id admin --keyring=/etc/ceph/ceph.keyring [commands]
 	rbd --name client.admin --keyring=/etc/ceph/ceph.keyring [commands]
 
-.. tip:: 把用户名和密钥写入 ``CEPH_ARGS`` 环境变量，省得每次手动输入。
+.. tip:: 把用户名和密钥写入 ``CEPH_ARGS`` 环境变量，省得每次\
+   手动输入。
 
 
 .. Snapshot Basics
@@ -310,7 +312,6 @@ Ceph 块设备的分层是个简单的过程。你必须有个映像、必须为
 
 
 .. _cephx: ../../rados/configuration/auth-config-ref/
-.. _用户管理: ../../operations/user-management
 .. _QEMU: ../qemu-rbd/
 .. _OpenStack: ../rbd-openstack/
 .. _CloudStack: ../rbd-cloudstack/
