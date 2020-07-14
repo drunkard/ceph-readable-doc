@@ -128,15 +128,12 @@ fork of Mongoose.
 :默认值: ``EMPTY``
 
 
-The following is an example of the ``/etc/ceph/ceph.conf`` file with some of these options set: ::
- 
- [client.rgw.gateway-node1]
- rgw_frontends = civetweb 
- request_timeout_ms = 30000 
- error_log_file = /var/log/radosgw/civetweb.error.log 
- access_log_file = /var/log/radosgw/civetweb.access.log
+下面是个配置了这些选项的 ``/etc/ceph/ceph.conf`` 配置文件实例： ::
 
-A complete list of supported options can be found in the `Civetweb User Manual`_.
+ [client.rgw.gateway-node1]
+ rgw_frontends = civetweb request_timeout_ms=30000 error_log_file=/var/log/radosgw/civetweb.error.log access_log_file=/var/log/radosgw/civetweb.access.log
+
+所有支持的选项可以在 `Civetweb 用户手册`_\ 里找到。
 
 
 .. Generic Options
@@ -156,4 +153,4 @@ A complete list of supported options can be found in the `Civetweb User Manual`_
 :默认值: None
 
 
-.. _Civetweb User Manual: https://civetweb.github.io/civetweb/UserManual.html
+.. _Civetweb 用户手册: https://civetweb.github.io/civetweb/UserManual.html
