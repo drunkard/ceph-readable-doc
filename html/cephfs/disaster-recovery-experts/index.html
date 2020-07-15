@@ -99,9 +99,11 @@ consult the ceph-users mailing list or the #ceph IRC channel.</p>
 <div class="section" id="id3">
 <h2>舍弃日志<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
 <p>如果日志损坏或因故 MDS 不能重放它，你可以这样裁截它：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="n">journal</span> <span class="n">reset</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="p">[</span><span class="o">--</span><span class="n">rank</span><span class="o">=</span><span class="n">N</span><span class="p">]</span> <span class="n">journal</span> <span class="n">reset</span>
 </pre></div>
 </div>
+<p>Specify the MDS rank using the <code class="docutils literal notranslate"><span class="pre">--rank</span></code> option when the file system has/had
+multiple active MDS.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>重置日志<em>会</em>导致元数据丢失，除非你已经用其它方法（如 <code class="docutils literal notranslate"><span class="pre">recover_dentries</span></code> ）提取过了。此操作很可能会在数据存储池中留下一些孤儿对象，并导致已写过的索引节点被重分配，以致权限规则被破坏。</p>
@@ -191,33 +193,81 @@ scan_inodes 命令就要花费<em>很长时间</em>。</p>
 <p class="admonition-title">Caution</p>
 <p>在此过程中，多个元数据存储池包含着指向同一数据存储池的元数据。在这种情况下，必须格外小心，以免更改数据存储池内容。一旦恢复结束，就应该删除损坏的元数据存储池。</p>
 </div>
-<p>开始前，先创建好新的元数据存储池，并用空文件系统数据结构初始化它。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">flag</span> <span class="nb">set</span> <span class="n">enable_multiple</span> <span class="n">true</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">create</span> <span class="n">recovery</span> <span class="o">&lt;</span><span class="n">pg</span><span class="o">-</span><span class="n">num</span><span class="o">&gt;</span> <span class="n">replicated</span> <span class="o">&lt;</span><span class="n">crush</span><span class="o">-</span><span class="n">rule</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
-<span class="n">ceph</span> <span class="n">fs</span> <span class="n">new</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span> <span class="n">recovery</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">dangerous</span><span class="o">-</span><span class="n">metadata</span><span class="o">-</span><span class="n">overlay</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">init</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">init</span> <span class="o">--</span><span class="n">filesystem</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">recovery</span>
-<span class="n">ceph</span> <span class="n">fs</span> <span class="n">reset</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">session</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">snap</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">inode</span>
+<p>To begin, the existing file system should be taken down, if not done already,
+to prevent further modification of the data pool. Unmount all clients and then
+mark the file system failed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">fail</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span>
 </pre></div>
 </div>
-<p>接下来，运行恢复工具集，加上 <code class="docutils literal notranslate"><span class="pre">--alternate-pool</span></code> 参数即可把结果输出到别的存储池：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">recovery</span> <span class="o">--</span><span class="n">filesystem</span> <span class="o">&lt;</span><span class="n">original</span> <span class="n">filesystem</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">original</span> <span class="n">data</span> <span class="n">pool</span> <span class="n">name</span><span class="o">&gt;</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">recovery</span> <span class="o">--</span><span class="n">filesystem</span> <span class="o">&lt;</span><span class="n">original</span> <span class="n">filesystem</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">corrupt</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">init</span> <span class="o">&lt;</span><span class="n">original</span> <span class="n">data</span> <span class="n">pool</span> <span class="n">name</span><span class="o">&gt;</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_links</span> <span class="o">--</span><span class="n">filesystem</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span>
+<p>Next, create a recovery file system in which we will populate a new metadata pool
+backed by the original data pool.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">flag</span> <span class="nb">set</span> <span class="n">enable_multiple</span> <span class="n">true</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
+<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">create</span> <span class="n">cephfs_recovery_meta</span>
+<span class="n">ceph</span> <span class="n">fs</span> <span class="n">new</span> <span class="n">cephfs_recovery</span> <span class="n">recovery</span> <span class="o">&lt;</span><span class="n">data_pool</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">dangerous</span><span class="o">-</span><span class="n">metadata</span><span class="o">-</span><span class="n">overlay</span>
 </pre></div>
+</div>
+<p>The recovery file system starts with an MDS rank that will initialize the new
+metadata pool with some metadata. This is necessary to bootstrap recovery.
+However, now we will take the MDS down as we do not want it interacting with
+the metadata pool further.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">fail</span> <span class="n">cephfs_recovery</span>
+</pre></div>
+</div>
+<p>Next, we will reset the initial metadata the MDS created:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">cephfs_recovery</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">session</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">cephfs_recovery</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">snap</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="n">cephfs_recovery</span><span class="p">:</span><span class="nb">all</span> <span class="n">reset</span> <span class="n">inode</span>
+</pre></div>
+</div>
+<p>Now perform the recovery of the metadata pool from the data pool:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">init</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">init</span> <span class="o">--</span><span class="n">filesystem</span> <span class="n">cephfs_recovery</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">cephfs_recovery_meta</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">cephfs_recovery_meta</span> <span class="o">--</span><span class="n">filesystem</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">data_pool</span><span class="o">&gt;</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">cephfs_recovery_meta</span> <span class="o">--</span><span class="n">filesystem</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">corrupt</span> <span class="o">&lt;</span><span class="n">data_pool</span><span class="o">&gt;</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_links</span> <span class="o">--</span><span class="n">filesystem</span> <span class="n">cephfs_recovery</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each scan procedure above goes through the entire data pool. This may take a
+significant amount of time. See the previous section on how to distribute
+this task among workers.</p>
 </div>
 <p>如果损坏的文件系统包含脏日志数据，随后可以用如下命令恢复：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span><span class="o">=&lt;</span><span class="n">original</span> <span class="n">filesystem</span> <span class="n">name</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">0</span> <span class="n">event</span> <span class="n">recover_dentries</span> <span class="nb">list</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">recovery</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span> <span class="n">recovery</span><span class="o">-</span><span class="n">fs</span><span class="p">:</span><span class="mi">0</span> <span class="n">journal</span> <span class="n">reset</span> <span class="o">--</span><span class="n">force</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span><span class="o">=&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">0</span> <span class="n">event</span> <span class="n">recover_dentries</span> <span class="nb">list</span> <span class="o">--</span><span class="n">alternate</span><span class="o">-</span><span class="n">pool</span> <span class="n">cephfs_recovery_meta</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span> <span class="n">cephfs_recovery</span><span class="p">:</span><span class="mi">0</span> <span class="n">journal</span> <span class="n">reset</span> <span class="o">--</span><span class="n">force</span>
 </pre></div>
 </div>
 <p>恢复完之后，有些恢复过来的目录其链接计数不对。首先确保
 <code class="docutils literal notranslate"><span class="pre">mds_debug_scatterstat</span></code> 参数为 <code class="docutils literal notranslate"><span class="pre">false</span></code> （默认值），以防 MDS
-检查链接计数，再运行正向洗刷以修复它们。确保有一个 MDS 在运行，然后执行命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">/</span> <span class="n">recursive</span> <span class="n">repair</span>
+检查链接计数：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="n">rm</span> <span class="n">mds</span> <span class="n">mds_verify_scatter</span>
+<span class="n">ceph</span> <span class="n">config</span> <span class="n">rm</span> <span class="n">mds</span> <span class="n">mds_debug_scatterstat</span>
 </pre></div>
+</div>
+<p>(Note, the config may also have been set globally or via a ceph.conf file.)
+Now, allow an MDS to join the recovery file system:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="n">cephfs_recovery</span> <span class="n">joinable</span> <span class="n">true</span>
+</pre></div>
+</div>
+<p>最后，运行正向<cite>洗刷 scrub &lt;/cephfs/scrub&gt;</cite> 以修复统计信息。确保有一个 MDS 在运行，然后执行命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">status</span> <span class="c1"># get active MDS</span>
+<span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.&lt;</span><span class="nb">id</span><span class="o">&gt;</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">/</span> <span class="n">recursive</span> <span class="n">repair</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Symbolic links are recovered as empty regular files. <a class="reference external" href="https://tracker.ceph.com/issues/46166">Symbolic link recovery</a> is scheduled to be supported in
+Pacific.</p>
+</div>
+<p>It is recommended to migrate any data from the recovery file system as soon as
+possible. Do not restore the old file system while the recovery file system is
+operational.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If the data pool is also corrupt, some files may not be restored because
+backtrace information is lost. If any data objects are missing (due to
+issues like lost Placement Groups on the data pool), the recovered files
+will contain holes in place of the missing data.</p>
 </div>
 </div>
 </div>

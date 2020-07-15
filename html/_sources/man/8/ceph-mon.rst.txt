@@ -46,22 +46,25 @@
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   启动时用 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf`` \
+   启动时用 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf``
    来确定启动时所需的监视器地址。
 
 .. option:: --mkfs
 
-   用种子信息初始化 ``mon data`` 目录，以形成并初始化 Ceph 文件系统或加入现\
-   有监视器集群。以下三个信息是必需的：
+   用种子信息初始化 ``mon data`` 目录，以形成并初始化
+   Ceph 文件系统或加入现有监视器集群。以下三个信息是必需的：
 
-   - 集群的 fsid 。可从 monmap （ ``--monmap <path>`` ）中获得或直接用 \
-     ``--fsid <uuid>`` 指定。
-   - 一连串监视器及其地址。这些监视器可来源于 monmap （ ``--monmap <path>`` \
-     ）、 ``mon host`` 配置（在 *ceph.conf* 里或通过 ``-m host1,host2,...`` \
-     ）或 *ceph.conf* 中的 ``mon addr`` 行。如果这个监视器将作为新 Ceph 集群\
-     监视器法定人数的一部分，还必须放进初始列表中。匹配地址时，可以用 \
-     ``public addr`` 或 ``public subnet`` 。
-   - 监视器私钥 ``mon.`` 。必须包含在 ``--keyring <path>`` 所提供的密钥环内。
+   - 集群的 fsid 。可从 monmap （ ``--monmap <path>`` ）中获得\
+     或直接用 ``--fsid <uuid>`` 指定。
+   - 一连串监视器及其地址。这些监视器可来源于 monmap （
+     ``--monmap <path>`` ）、 ``mon host`` 配置（在 *ceph.conf*
+     里或通过 ``-m host1,host2,...`` ）或 *ceph.conf* 中（为\
+     顾及向后兼容性）已废弃的 ``mon addr`` 行。如果这个监视器\
+     将作为新 Ceph 集群监视器法定人数的一部分，还必须放进初始\
+     列表中。匹配地址时，可以用 ``public addr`` 或
+     ``public subnet`` 。
+   - 监视器私钥 ``mon.`` 。必须包含在 ``--keyring <path>`` 所\
+     提供的密钥环内。
 
 .. option:: --keyring
 

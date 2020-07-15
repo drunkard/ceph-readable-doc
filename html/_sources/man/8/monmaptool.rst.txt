@@ -47,7 +47,8 @@ Ceph 监视器的默认端口是 6789 。
 
       #. ``--monmap filename`` 指定要载入的 monmap
       #. ``--mon-host 'host1,ip2'`` 指定一系列主机或 IP 地址
-      #. 配置文件中包含 ``mon addr`` 选项的 ``[mon.foo]`` 段落
+      #. 配置文件中包含 ``mon addr`` 选项的 ``[mon.foo]``
+         段落。请注意，不建议此方法、且将来的版本会删除此选项。
 
 .. option:: --filter-initial-members
 

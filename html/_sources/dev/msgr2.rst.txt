@@ -85,26 +85,150 @@ can disconnect.
 帧格式
 ------
 
-All further data sent or received is contained by a frame.  Each frame has
-the form::
+After the banners are exchanged, all further communication happens
+in frames.  The exact format of the frame depends on the connection
+mode (msgr2.0-crc, msgr2.0-secure, msgr2.1-crc or msgr2.1-secure).
+All connections start in crc mode (either msgr2.0-crc or msgr2.1-crc,
+depending on peer_supported_features from the banner).
 
-  frame_len (le32)
-  tag (TAG_* le32)
-  frame_header_checksum (le32)
-  payload
-  [payload padding -- only present after stream auth phase]
-  [signature -- only present after stream auth phase]
+Each frame has a 32-byte preamble::
 
-* The frame_header_checksum is over just the frame_len and tag values (8 bytes).
+  __u8 tag
+  __u8 number of segments
+  {
+    __le32 segment length
+    __le16 segment alignment
+  } * 4
+  reserved (2 bytes)
+  __le32 preamble crc
 
-* frame_len includes everything after the frame_len le32 up to the end of the
-  frame (all payloads, signatures, and padding).
+An empty frame has one empty segment.  A non-empty frame can have
+between one and four segments, all segments except the last may be
+empty.
 
-* The payload format and length is determined by the tag.
+If there are less than four segments, unused (trailing) segment
+length and segment alignment fields are zeroed.
 
-* The signature portion is only present if the authentication phase
-  has completed (TAG_AUTH_DONE has been sent) and signatures are
-  enabled.
+The reserved bytes are zeroed.
+
+The preamble checksum is CRC32-C.  It covers everything up to
+itself (28 bytes) and is calculated and verified irrespective of
+the connection mode (i.e. even if the frame is encrypted).
+
+### msgr2.0-crc mode
+
+A msgr2.0-crc frame has the form::
+
+  preamble (32 bytes)
+  {
+    segment payload
+  } * number of segments
+  epilogue (17 bytes)
+
+where epilogue is::
+
+  __u8 late_flags
+  {
+    __le32 segment crc
+  } * 4
+
+late_flags is used for frame abortion.  After transmitting the
+preamble and the first segment, the sender can fill the remaining
+segments with zeros and set a flag to indicate that the receiver must
+drop the frame.  This allows the sender to avoid extra buffering
+when a frame that is being put on the wire is revoked (i.e. yanked
+out of the messenger): payload buffers can be unpinned and handed
+back to the user immediately, without making a copy or blocking
+until the whole frame is transmitted.  Currently this is used only
+by the kernel client, see ceph_msg_revoke().
+
+The segment checksum is CRC32-C.  For "used" empty segments, it is
+set to (__le32)-1.  For unused (trailing) segments, it is zeroed.
+
+The crcs are calculated just to protect against bit errors.
+No authenticity guarantees are provided, unlike in msgr1 which
+attempted to provide some authenticity guarantee by optionally
+signing segment lengths and crcs with the session key.
+
+Issues:
+
+1. As part of introducing a structure for a generic frame with
+   variable number of segments suitable for both control and
+   message frames, msgr2.0 moved the crc of the first segment of
+   the message frame (ceph_msg_header2) into the epilogue.
+
+   As a result, ceph_msg_header2 can no longer be safely
+   interpreted before the whole frame is read off the wire.
+   This is a regression from msgr1, because in order to scatter
+   the payload directly into user-provided buffers and thus avoid
+   extra buffering and copying when receiving message frames,
+   ceph_msg_header2 must be available in advance -- it stores
+   the transaction id which the user buffers are keyed on.
+   The implementation has to choose between forgoing this
+   optimization or acting on an unverified segment.
+
+2. late_flags is not covered by any crc.  Since it stores the
+   abort flag, a single bit flip can result in a completed frame
+   being dropped (causing the sender to hang waiting for a reply)
+   or, worse, in an aborted frame with garbage segment payloads
+   being dispatched.
+
+   This was the case with msgr1 and got carried over to msgr2.0.
+
+### msgr2.1-crc mode
+
+Differences from msgr2.0-crc:
+
+1. The crc of the first segment is stored at the end of the
+   first segment, not in the epilogue.  The epilogue stores up to
+   three crcs, not up to four.
+
+   If the first segment is empty, (__le32)-1 crc is not generated.
+
+2. The epilogue is generated only if the frame has more than one
+   segment (i.e. at least one of second to fourth segments is not
+   empty).  Rationale: If the frame has only one segment, it cannot
+   be aborted and there are no crcs to store in the epilogue.
+
+3. Unchecksummed late_flags is replaced with late_status which
+   builds in bit error detection by using a 4-bit nibble per flag
+   and two code words that are Hamming Distance = 4 apart (and not
+   all zeros or ones).  This comes at the expense of having only
+   one reserved flag, of course.
+
+Some example frames:
+
+* A 0+0+0+0 frame (empty, no epilogue)::
+
+    preamble (32 bytes)
+
+* A 20+0+0+0 frame (no epilogue)::
+
+    preamble (32 bytes)
+    segment1 payload (20 bytes)
+    __le32 segment1 crc
+
+* A 0+70+0+0 frame::
+
+    preamble (32 bytes)
+    segment2 payload (70 bytes)
+    epilogue (13 bytes)
+
+* A 20+70+0+350 frame::
+
+    preamble (32 bytes)
+    segment1 payload (20 bytes)
+    __le32 segment1 crc
+    segment2 payload (70 bytes)
+    segment4 payload (350 bytes)
+    epilogue (13 bytes)
+
+where epilogue is::
+
+  __u8 late_status
+  {
+    __le32 segment crc
+  } * 3
 
 
 Hello

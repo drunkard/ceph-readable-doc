@@ -65,7 +65,10 @@
 
 如果日志损坏或因故 MDS 不能重放它，你可以这样裁截它： ::
 
-    cephfs-journal-tool journal reset
+    cephfs-journal-tool [--rank=N] journal reset
+
+Specify the MDS rank using the ``--rank`` option when the file system has/had
+multiple active MDS.
 
 .. warning::
 
@@ -201,33 +204,96 @@ scan_inodes 命令就要花费\ *很长时间*\ 。
    元数据。在这种情况下，必须格外小心，以免更改数据存储池\
    内容。一旦恢复结束，就应该删除损坏的元数据存储池。
 
-开始前，先创建好新的元数据存储池，并用空文件系统数据结构初始化\
-它。 ::
+To begin, the existing file system should be taken down, if not done already,
+to prevent further modification of the data pool. Unmount all clients and then
+mark the file system failed:
+
+::
+
+    ceph fs fail <fs_name>
+
+Next, create a recovery file system in which we will populate a new metadata pool
+backed by the original data pool.
+
+::
 
     ceph fs flag set enable_multiple true --yes-i-really-mean-it
-    ceph osd pool create recovery <pg-num> replicated <crush-rule-name>
-    ceph fs new recovery-fs recovery <data pool> --allow-dangerous-metadata-overlay
-    cephfs-data-scan init --force-init --filesystem recovery-fs --alternate-pool recovery
-    ceph fs reset recovery-fs --yes-i-really-mean-it
-    cephfs-table-tool recovery-fs:all reset session
-    cephfs-table-tool recovery-fs:all reset snap
-    cephfs-table-tool recovery-fs:all reset inode
+    ceph osd pool create cephfs_recovery_meta
+    ceph fs new cephfs_recovery recovery <data_pool> --allow-dangerous-metadata-overlay
 
-接下来，运行恢复工具集，加上 ``--alternate-pool`` 参数即可把结\
-果输出到别的存储池： ::
 
-    cephfs-data-scan scan_extents --alternate-pool recovery --filesystem <original filesystem name> <original data pool name>
-    cephfs-data-scan scan_inodes --alternate-pool recovery --filesystem <original filesystem name> --force-corrupt --force-init <original data pool name>
-    cephfs-data-scan scan_links --filesystem recovery-fs
+The recovery file system starts with an MDS rank that will initialize the new
+metadata pool with some metadata. This is necessary to bootstrap recovery.
+However, now we will take the MDS down as we do not want it interacting with
+the metadata pool further.
+
+::
+
+    ceph fs fail cephfs_recovery
+
+Next, we will reset the initial metadata the MDS created:
+
+::
+
+    cephfs-table-tool cephfs_recovery:all reset session
+    cephfs-table-tool cephfs_recovery:all reset snap
+    cephfs-table-tool cephfs_recovery:all reset inode
+
+Now perform the recovery of the metadata pool from the data pool:
+
+::
+
+    cephfs-data-scan init --force-init --filesystem cephfs_recovery --alternate-pool cephfs_recovery_meta
+    cephfs-data-scan scan_extents --alternate-pool cephfs_recovery_meta --filesystem <fs_name> <data_pool>
+    cephfs-data-scan scan_inodes --alternate-pool cephfs_recovery_meta --filesystem <fs_name> --force-corrupt <data_pool>
+    cephfs-data-scan scan_links --filesystem cephfs_recovery
+
+.. note::
+
+   Each scan procedure above goes through the entire data pool. This may take a
+   significant amount of time. See the previous section on how to distribute
+   this task among workers.
 
 如果损坏的文件系统包含脏日志数据，随后可以用如下命令恢复： ::
 
-    cephfs-journal-tool --rank=<original filesystem name>:0 event recover_dentries list --alternate-pool recovery
-    cephfs-journal-tool --rank recovery-fs:0 journal reset --force
+    cephfs-journal-tool --rank=<fs_name>:0 event recover_dentries list --alternate-pool cephfs_recovery_meta
+    cephfs-journal-tool --rank cephfs_recovery:0 journal reset --force
 
 恢复完之后，有些恢复过来的目录其链接计数不对。首先确保
 ``mds_debug_scatterstat`` 参数为 ``false`` （默认值），以防 MDS
-检查链接计数，再运行正向洗刷以修复它们。确保有一个 MDS 在运行，\
-然后执行命令： ::
+检查链接计数： ::
 
-    ceph tell mds.a scrub start / recursive repair
+    ceph config rm mds mds_verify_scatter
+    ceph config rm mds mds_debug_scatterstat
+
+(Note, the config may also have been set globally or via a ceph.conf file.)
+Now, allow an MDS to join the recovery file system:
+
+::
+
+    ceph fs set cephfs_recovery joinable true
+
+最后，运行正向\ `洗刷 scrub </cephfs/scrub>` 以修复统计信息。\
+确保有一个 MDS 在运行，然后执行命令： ::
+
+    ceph fs status # get active MDS
+    ceph tell mds.<id> scrub start / recursive repair
+
+.. note::
+
+   Symbolic links are recovered as empty regular files. `Symbolic link recovery
+   <https://tracker.ceph.com/issues/46166>`_ is scheduled to be supported in
+   Pacific.
+
+It is recommended to migrate any data from the recovery file system as soon as
+possible. Do not restore the old file system while the recovery file system is
+operational.
+
+.. note::
+
+    If the data pool is also corrupt, some files may not be restored because
+    backtrace information is lost. If any data objects are missing (due to
+    issues like lost Placement Groups on the data pool), the recovered files
+    will contain holes in place of the missing data.
+
+.. _Symbolic link recovery: https://tracker.ceph.com/issues/46166

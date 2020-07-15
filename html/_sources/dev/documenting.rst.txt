@@ -33,7 +33,7 @@ github 用户界面的 View 按钮；或者用 ``admin/build-doc`` 脚本\
 C 和 C++ 可以用 Doxygen_ 生成文档，我们用 Breathe_ 工具，它\
 支持 Doxygen 的部分功能。
 
-.. _Doxygen: http://www.stack.nl/~dimitri/doxygen/
+.. _Doxygen: http://www.doxygen.nl/
 .. _Breathe: https://github.com/michaeljones/breathe
 
 函数文档的统一格式为： ::

@@ -1,18 +1,27 @@
+.. Network Configuration Reference
+
 ==============
  网络配置参考
 ==============
 
-网络配置对构建高性能 :term:`Ceph 存储集群`\ 来说相当重要。 Ceph 存储集群不会代表 \
-:term:`Ceph 客户端`\ 执行请求路由或调度，相反， Ceph 客户端（如块设备、 CephFS 、 \
-REST 网关）直接向 OSD 请求，然后OSD为客户端执行数据复制，也就是说复制和其它因素会额\
+网络配置对构建高性能 :term:`Ceph 存储集群`\ 来说相当重要。
+Ceph 存储集群不会代表 :term:`Ceph 客户端`\ 执行请求路由或调度，\
+相反， Ceph 客户端（如块设备、 CephFS 、 REST 网关）直接向 OSD
+请求，然后OSD为客户端执行数据复制，也就是说复制和其它因素会额\
 外增加集群网的负载。
 
-我们的快速入门配置提供了一个简陋的 `Ceph 配置文件`_\ ，其中只设置了监视器 IP 地址和\
-守护进程所在的主机名。如果没有配置集群网，那么 Ceph 假设你只有一个“公共网”。只用一\
-个网可以运行 Ceph ，但是在大型集群里用单独的“集群”网可显著地提升性能。
+我们的快速入门配置提供了一个简陋的 `Ceph 配置文件`_\ ，其中\
+只设置了监视器 IP 地址和守护进程所在的主机名。如果没有配置\
+集群网，那么 Ceph 假设你只有一个“公共网”。只用一个网可以运行
+Ceph ，但是在大型集群里用单独的“集群”网可显著地提升性能。
 
-我们建议用两个网络运营 Ceph 存储集群：一个公共网（前端）和一个集群网（后端）。为\
-此，各\ :term:`节点`\ 得配备多个网卡，见\ `硬件推荐——网络`\ 。
+Ceph 存储集群可以运行在两个网络上：一个公共网（前端）和一个\
+集群网（后端）。然而，此方法把网络配置（硬件和软件都是）复杂化\
+了，而且通常对整体性能也没有太大的影响。故此，我们通常建议\
+双网卡系统或者配置同一网段的两个地址、或者做绑定。
+
+如果你不怕复杂，还想分两个网络，各 :term:`Ceph 节点`\ 就得配备\
+多个网卡，其余细节见\ `硬件推荐——网络`\ 。
 
 .. ditaa::
                                +-------------+
@@ -40,26 +49,13 @@ REST 网关）直接向 OSD 请求，然后OSD为客户端执行数据复制，�
  \---------------------------------------------------------------------------/
 
 
-运营两个独立网络的考量主要有：
-
-#. **性能：** OSD 为客户端处理数据复制，复制多份时 OSD 间的网络负载势必会影响到客户\
-   端和 Ceph 集群的通讯，包括延时增加、产生性能问题；恢复和重均衡也会显著增加公共网\
-   延时。关于 Ceph 如何复制参见\ `伸缩性和高可用性`_\ ；关于心跳流量参见\ \
-   `监视器与 OSD 的交互`_\ 。
-
-#. **安全：** 大多数人都是良民，很少的一撮人喜欢折腾拒绝服务攻击（ DoS ）。当 OSD \
-   间的流量失控时，归置组再也不能达到 ``active + clean`` 状态，这样用户就不能读写数\
-   据了。挫败此类攻击的一种好方法是维护一个完全独立的集群网，使之不能直连互联网；另\
-   外，请考虑用\ `消息签名`_\ 防止欺骗攻击。
-
-
 .. IP Tables
 
 防火墙
 ======
 
-守护进程默认会\ `绑定`_\ 到 ``6800:7300`` 间的端口，你可以更改\
-此范围。更改防火墙配置前先检查下 ``iptables`` 配置。 ::
+默认情况下，守护进程会\ `绑定`_\ 到 ``6800:7300`` 间的端口，\
+你可以更改此范围。更改防火墙配置前先检查下 ``iptables`` 配置。 ::
 
 	sudo iptables -L
 
@@ -86,8 +82,8 @@ IP 、 ``{netmask}`` 替换为公共网掩码。 ::
 
 .. MDS and Manager IP Tables
 
-MDS 防火墙
-----------
+MDS 和管理器防火墙
+------------------
 
 :term:`Ceph 元数据服务器`\ 或 :term:`Ceph 管理器`\  会监听\
 公共网 6800 以上的第一个可用端口。需要注意的是，这种行为是\
@@ -145,6 +141,8 @@ OSD 守护进程默认\ `绑定`_ 从 6800 起的第一个可用端口，需要�
    公共网配置。
 
 
+.. Ceph Networks
+
 Ceph 网络
 =========
 
@@ -159,9 +157,12 @@ OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址
 
 .. note:: Ceph 用 CIDR 法表示子网，如 ``10.0.0.0/24`` 。
 
-配置完几个网络后，可以重启集群或挨个重启守护进程。 Ceph 守护进程动态地绑定端口，所\
-以更改网络配置后无需重启整个集群。
+配置完几个网络后，可以重启集群或挨个重启守护进程。
+Ceph 守护进程动态地绑定端口，所以更改网络配置后无需重启整个\
+集群。
 
+
+.. Public Network
 
 公共网
 ------
@@ -175,11 +176,14 @@ OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址
 		public network = {public-network/netmask}
 
 
+.. Cluster Network
+
 集群网
 ------
 
-如果你声明了集群网， OSD 将把心跳、对象复制和恢复流量路由到集群网，与单个网络相比这\
-会提升性能。要配置集群网，把下列选项加进配置文件的 ``[global]`` 段。
+如果你声明了集群网， OSD 将把心跳、对象复制和恢复流量路由到\
+集群网，与单个网络相比这会提升性能。要配置集群网，把下列选项\
+加进配置文件的 ``[global]`` 段。
 
 .. code-block:: ini
 
@@ -190,40 +194,36 @@ OSD 心跳、对象复制、和恢复流量。不要混淆你配置的 IP 地址
 为安全起见，从公共网或互联网到集群网应该是\ **不可达**\ 的。
 
 
+.. Ceph Daemons
+
 Ceph 守护进程
 =============
 
-有一个网络配置是所有守护进程都要配的：各个守护进程都\ **必须**\ 指定 ``host`` ， \
-Ceph 也要求指定监视器 IP 地址及端口。
-
-.. important:: 一些部署工具（如 ``ceph-deploy`` 、 Chef ）会给你创建配置文件，如\
-   果它能胜任那就\ **别设置**\ 这些值。
-
-.. tip:: ``host`` 选项是主机的短名，不是全资域名 FQDN ，也\ **不是** IP 地址。在\
-   命令行下输入 ``hostname -s`` 获取主机名。
-
+The monitor daemons are each configured to bind to a specific IP address.  These addresses are normally configured by your deployment tool.  Other components in the Ceph system discover the monitors via the ``mon host`` configuration option, normally specified in the ``[global]`` section of the ``ceph.conf`` file.
 
 .. code-block:: ini
 
-	[mon.a]
+     [global]
+         mon host = 10.0.0.2, 10.0.0.3, 10.0.0.4
 
-		host = {hostname}
-		mon addr = {ip-address}:6789
+The ``mon host`` value can be a list of IP addresses or a name that is
+looked up via DNS.  In the case of a DNS name with multiple A or AAAA
+records, all records are probed in order to discover a monitor.  Once
+one monitor is reached, all other current monitors are discovered, so
+the ``mon host`` configuration option only needs to be sufficiently up
+to date such that a client can reach one monitor that is currently online.
 
-	[osd.0]
-		host = {hostname}
-
-
-并非一定要给守护进程设置 IP 地址。如果你有一个静态配置，且分离了公共网和集群网， \
-Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程设置静态 IP ，可把下列选项加\
-到 ``ceph.conf`` 。
+The MGR, OSD, and MDS daemons will bind to any available address and
+do not require any special configuration.  However, it is possible to
+specify a specific IP address for them to bind to with the ``public
+addr`` (and/or, in the case of OSD daemons, the ``cluster addr``)
+configuration option.  For example,
 
 .. code-block:: ini
 
 	[osd.0]
 		public addr = {host-public-ip-address}
 		cluster addr = {host-cluster-ip-address}
-
 
 .. topic:: 单网卡OSD、双网络集群
 
@@ -233,12 +233,16 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
    公共网和集群网必须互通，考虑到安全因素我们不建议这样做。
 
 
+.. Network Config Settings
+
 网络配置选项
 ============
 
 网络配置选项不是必需的， Ceph 假设所有主机都运行于公共网，除非\
 你特意配置了一个集群网。
 
+
+.. Public Network
 
 公共网
 ------
@@ -265,6 +269,8 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
 
 
 
+.. Cluster Network
+
 集群网
 ------
 
@@ -290,7 +296,7 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
 :默认值: N/A
 
 
-.. _Bind:
+.. Bind
 
 绑定
 ----
@@ -338,39 +344,6 @@ Ceph 允许你在配置文件里指定主机的 IP 地址。要给守护进程�
 :类型: IP 地址
 :是否必需: No
 :默认值: N/A
-
-
-
-主机
-----
-
-Ceph 配置文件里至少要写一个监视器、且每个监视器下都要配置
-``mon addr`` 选项；每个监视器、元数据服务器和 OSD 下都要配
-``host`` 选项。
-
-
-``mon addr``
-
-:描述: ``{hostname}:{port}`` 条目列表，用以让客户端连接
-       Ceph 监视器。如果未设置， Ceph 查找 ``[mon.*]`` 段。
-:类型: String
-:是否必需: No
-:默认值: N/A
-
-
-``host``
-
-:描述: 主机名。此选项用于特定守护进程，如 ``[osd.0]`` 。
-:类型: String
-:是否必需: Yes, for daemon instances.
-:默认值: ``localhost``
-
-.. tip:: 不要用 ``localhost`` 。在命令行下执行 ``hostname -s``
-   获取主机名（到第一个点，不是全资域名），并用于配置文件。
-
-.. important:: 用第三方部署工具时不要指定 ``host`` 选项，它会\
-   自行获取。
-
 
 
 TCP

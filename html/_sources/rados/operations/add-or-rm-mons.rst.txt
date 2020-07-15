@@ -105,11 +105,11 @@ for more than three exists.
 
 	sudo ceph-mon -i {mon-id} --mkfs --monmap {tmp}/{map-filename} --keyring {tmp}/{key-filename}
 
-#. 启动新监视器，它会自动加入机器。守护进程需知道绑定到哪个地址，\
-   通过 ``--public-addr {ip:port}`` 或在 ``ceph.conf`` 里的相应段\
-   设置 ``mon addr`` 可以指定。 ::
+#. 启动新监视器，它会自动加入集群。此守护进程需知道绑定到哪个\
+   地址，通过 ``--public-addr {ip:port}`` 或
+   ``--public-network {network}`` 参数指定，例如： ::
 
-	ceph-mon -i {mon-id} --public-addr {ip:port}
+        ceph-mon -i {mon-id} --public-addr {ip:port}
 
 
 .. Removing Monitors
