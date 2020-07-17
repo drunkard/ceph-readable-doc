@@ -536,7 +536,7 @@ RADOS 网关
 :描述: 允许记录 RGW 的带宽使用。
 :类型: Boolean
 :是否必需: No
-:默认值: ``true``
+:默认值: ``false``
 
 
 ``rgw usage log flush threshold``

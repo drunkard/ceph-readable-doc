@@ -125,25 +125,143 @@ can disconnect.</p>
 </div>
 <div class="section" id="id3">
 <h2>帧格式<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<p>All further data sent or received is contained by a frame.  Each frame has
-the form:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">frame_len</span> <span class="p">(</span><span class="n">le32</span><span class="p">)</span>
-<span class="n">tag</span> <span class="p">(</span><span class="n">TAG_</span><span class="o">*</span> <span class="n">le32</span><span class="p">)</span>
-<span class="n">frame_header_checksum</span> <span class="p">(</span><span class="n">le32</span><span class="p">)</span>
-<span class="n">payload</span>
-<span class="p">[</span><span class="n">payload</span> <span class="n">padding</span> <span class="o">--</span> <span class="n">only</span> <span class="n">present</span> <span class="n">after</span> <span class="n">stream</span> <span class="n">auth</span> <span class="n">phase</span><span class="p">]</span>
-<span class="p">[</span><span class="n">signature</span> <span class="o">--</span> <span class="n">only</span> <span class="n">present</span> <span class="n">after</span> <span class="n">stream</span> <span class="n">auth</span> <span class="n">phase</span><span class="p">]</span>
+<p>After the banners are exchanged, all further communication happens
+in frames.  The exact format of the frame depends on the connection
+mode (msgr2.0-crc, msgr2.0-secure, msgr2.1-crc or msgr2.1-secure).
+All connections start in crc mode (either msgr2.0-crc or msgr2.1-crc,
+depending on peer_supported_features from the banner).</p>
+<p>Each frame has a 32-byte preamble:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__u8</span> <span class="n">tag</span>
+<span class="n">__u8</span> <span class="n">number</span> <span class="n">of</span> <span class="n">segments</span>
+<span class="p">{</span>
+  <span class="n">__le32</span> <span class="n">segment</span> <span class="n">length</span>
+  <span class="n">__le16</span> <span class="n">segment</span> <span class="n">alignment</span>
+<span class="p">}</span> <span class="o">*</span> <span class="mi">4</span>
+<span class="n">reserved</span> <span class="p">(</span><span class="mi">2</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">__le32</span> <span class="n">preamble</span> <span class="n">crc</span>
 </pre></div>
 </div>
-<ul class="simple">
-<li><p>The frame_header_checksum is over just the frame_len and tag values (8 bytes).</p></li>
-<li><p>frame_len includes everything after the frame_len le32 up to the end of the
-frame (all payloads, signatures, and padding).</p></li>
-<li><p>The payload format and length is determined by the tag.</p></li>
-<li><p>The signature portion is only present if the authentication phase
-has completed (TAG_AUTH_DONE has been sent) and signatures are
-enabled.</p></li>
+<p>An empty frame has one empty segment.  A non-empty frame can have
+between one and four segments, all segments except the last may be
+empty.</p>
+<p>If there are less than four segments, unused (trailing) segment
+length and segment alignment fields are zeroed.</p>
+<p>The reserved bytes are zeroed.</p>
+<p>The preamble checksum is CRC32-C.  It covers everything up to
+itself (28 bytes) and is calculated and verified irrespective of
+the connection mode (i.e. even if the frame is encrypted).</p>
+<p>### msgr2.0-crc mode</p>
+<p>A msgr2.0-crc frame has the form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">segment</span> <span class="n">payload</span>
+<span class="p">}</span> <span class="o">*</span> <span class="n">number</span> <span class="n">of</span> <span class="n">segments</span>
+<span class="n">epilogue</span> <span class="p">(</span><span class="mi">17</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where epilogue is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__u8</span> <span class="n">late_flags</span>
+<span class="p">{</span>
+  <span class="n">__le32</span> <span class="n">segment</span> <span class="n">crc</span>
+<span class="p">}</span> <span class="o">*</span> <span class="mi">4</span>
+</pre></div>
+</div>
+<p>late_flags is used for frame abortion.  After transmitting the
+preamble and the first segment, the sender can fill the remaining
+segments with zeros and set a flag to indicate that the receiver must
+drop the frame.  This allows the sender to avoid extra buffering
+when a frame that is being put on the wire is revoked (i.e. yanked
+out of the messenger): payload buffers can be unpinned and handed
+back to the user immediately, without making a copy or blocking
+until the whole frame is transmitted.  Currently this is used only
+by the kernel client, see ceph_msg_revoke().</p>
+<p>The segment checksum is CRC32-C.  For “used” empty segments, it is
+set to (__le32)-1.  For unused (trailing) segments, it is zeroed.</p>
+<p>The crcs are calculated just to protect against bit errors.
+No authenticity guarantees are provided, unlike in msgr1 which
+attempted to provide some authenticity guarantee by optionally
+signing segment lengths and crcs with the session key.</p>
+<p>Issues:</p>
+<ol class="arabic">
+<li><p>As part of introducing a structure for a generic frame with
+variable number of segments suitable for both control and
+message frames, msgr2.0 moved the crc of the first segment of
+the message frame (ceph_msg_header2) into the epilogue.</p>
+<p>As a result, ceph_msg_header2 can no longer be safely
+interpreted before the whole frame is read off the wire.
+This is a regression from msgr1, because in order to scatter
+the payload directly into user-provided buffers and thus avoid
+extra buffering and copying when receiving message frames,
+ceph_msg_header2 must be available in advance – it stores
+the transaction id which the user buffers are keyed on.
+The implementation has to choose between forgoing this
+optimization or acting on an unverified segment.</p>
+</li>
+<li><p>late_flags is not covered by any crc.  Since it stores the
+abort flag, a single bit flip can result in a completed frame
+being dropped (causing the sender to hang waiting for a reply)
+or, worse, in an aborted frame with garbage segment payloads
+being dispatched.</p>
+<p>This was the case with msgr1 and got carried over to msgr2.0.</p>
+</li>
+</ol>
+<p>### msgr2.1-crc mode</p>
+<p>Differences from msgr2.0-crc:</p>
+<ol class="arabic">
+<li><p>The crc of the first segment is stored at the end of the
+first segment, not in the epilogue.  The epilogue stores up to
+three crcs, not up to four.</p>
+<p>If the first segment is empty, (__le32)-1 crc is not generated.</p>
+</li>
+<li><p>The epilogue is generated only if the frame has more than one
+segment (i.e. at least one of second to fourth segments is not
+empty).  Rationale: If the frame has only one segment, it cannot
+be aborted and there are no crcs to store in the epilogue.</p></li>
+<li><p>Unchecksummed late_flags is replaced with late_status which
+builds in bit error detection by using a 4-bit nibble per flag
+and two code words that are Hamming Distance = 4 apart (and not
+all zeros or ones).  This comes at the expense of having only
+one reserved flag, of course.</p></li>
+</ol>
+<p>Some example frames:</p>
+<ul>
+<li><p>A 0+0+0+0 frame (empty, no epilogue):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>A 20+0+0+0 frame (no epilogue):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">segment1</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">20</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">__le32</span> <span class="n">segment1</span> <span class="n">crc</span>
+</pre></div>
+</div>
+</li>
+<li><p>A 0+70+0+0 frame:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">segment2</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">70</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">epilogue</span> <span class="p">(</span><span class="mi">13</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>A 20+70+0+350 frame:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">segment1</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">20</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">__le32</span> <span class="n">segment1</span> <span class="n">crc</span>
+<span class="n">segment2</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">70</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">segment4</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">350</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="n">epilogue</span> <span class="p">(</span><span class="mi">13</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
 </ul>
+<p>where epilogue is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__u8</span> <span class="n">late_status</span>
+<span class="p">{</span>
+  <span class="n">__le32</span> <span class="n">segment</span> <span class="n">crc</span>
+<span class="p">}</span> <span class="o">*</span> <span class="mi">3</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="hello">
 <h2>Hello<a class="headerlink" href="#hello" title="Permalink to this headline">¶</a></h2>

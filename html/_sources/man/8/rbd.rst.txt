@@ -512,6 +512,18 @@
   With --verbose, also show additionally output status
   details for every mirroring image in the pool.
 
+:command:`mirror snapshot schedule add` [-p | --pool *pool*] [--namespace *namespace*] [--image *image*] *interval* [*start-time*]
+  Add mirror snapshot schedule.
+
+:command:`mirror snapshot schedule list` [-R | --recursive] [--format *format*] [--pretty-format] [-p | --pool *pool*] [--namespace *namespace*] [--image *image*]
+  List mirror snapshot schedule.
+
+:command:`mirror snapshot schedule remove` [-p | --pool *pool*] [--namespace *namespace*] [--image *image*] *interval* [*start-time*]
+  Remove mirror snapshot schedule.
+
+:command:`mirror snapshot schedule status` [-p | --pool *pool*] [--format *format*] [--pretty-format] [--namespace *namespace*] [--image *image*]
+  Show mirror snapshot schedule status.
+
 :command:`mv` *src-image-spec* *dest-image-spec*
   映像改名。注：不支持跨存储池。
 
@@ -606,6 +618,18 @@
 
 :command:`watch` *image-spec*
   盯着有关此映像的事件。
+
+:command:`trash purge schedule add` [-p | --pool *pool*] [--namespace *namespace*] *interval* [*start-time*]
+  Add trash purge schedule.
+
+:command:`trash purge schedule list` [-R | --recursive] [--format *format*] [--pretty-format] [-p | --pool *pool*] [--namespace *namespace*]
+  List trash purge schedule.
+
+:command:`trash purge schedule remove` [-p | --pool *pool*] [--namespace *namespace*] *interval* [*start-time*]
+  Remove trash purge schedule.
+
+:command:`trash purge schedule status` [-p | --pool *pool*] [--format *format*] [--pretty-format] [--namespace *namespace*]
+  Show trash purge schedule status.
 
 
 .. Image, snap, group and journal specs
@@ -737,6 +761,57 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
   （一般来说，硬盘是 64K 、 SSD 是 16K ）； filestore 用
   filestore_punch_hole = false 配置，推荐的配置是映像对象尺寸\
   （一般是 4M ）。
+
+* crush_location=x - Specify the location of the client in terms of CRUSH
+  hierarchy (since 5.8).  This is a set of key-value pairs separated from
+  each other by '|', with keys separated from values by ':'.  Note that '|'
+  may need to be quoted or escaped to avoid it being interpreted as a pipe
+  by the shell.  The key is the bucket type name (e.g. rack, datacenter or
+  region with default bucket types) and the value is the bucket name.  For
+  example, to indicate that the client is local to rack "myrack", data center
+  "mydc" and region "myregion"::
+
+    crush_location=rack:myrack|datacenter:mydc|region:myregion
+
+  Each key-value pair stands on its own: "myrack" doesn't need to reside in
+  "mydc", which in turn doesn't need to reside in "myregion".  The location
+  is not a path to the root of the hierarchy but rather a set of nodes that
+  are matched independently, owning to the fact that bucket names are unique
+  within a CRUSH map.  "Multipath" locations are supported, so it is possible
+  to indicate locality for multiple parallel hierarchies::
+
+    crush_location=rack:myrack1|rack:myrack2|datacenter:mydc
+
+* read_from_replica=no - Disable replica reads, always pick the primary OSD
+  (since 5.8, default).
+
+* read_from_replica=balance - When issued a read on a replicated pool, pick
+  a random OSD for serving it (since 5.8).
+
+  This mode is safe for general use only since Octopus (i.e. after "ceph osd
+  require-osd-release octopus").  Otherwise it should be limited to read-only
+  workloads such as images mapped read-only everywhere or snapshots.
+
+* read_from_replica=localize - When issued a read on a replicated pool, pick
+  the most local OSD for serving it (since 5.8).  The locality metric is
+  calculated against the location of the client given with crush_location;
+  a match with the lowest-valued bucket type wins.  For example, with default
+  bucket types, an OSD in a matching rack is closer than an OSD in a matching
+  data center, which in turn is closer than an OSD in a matching region.
+
+  This mode is safe for general use only since Octopus (i.e. after "ceph osd
+  require-osd-release octopus").  Otherwise it should be limited to read-only
+  workloads such as images mapped read-only everywhere or snapshots.
+
+* compression_hint=none - Don't set compression hints (since 5.8, default).
+
+* compression_hint=compressible - Hint to the underlying OSD object store
+  backend that the data is compressible, enabling compression in passive mode
+  (since 5.8).
+
+* compression_hint=incompressible - Hint to the underlying OSD object store
+  backend that the data is incompressible, disabling compression in aggressive
+  mode (since 5.8).
 
 `rbd device unmap` 选项：
 

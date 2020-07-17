@@ -158,6 +158,9 @@
     exclusive lock
         互斥锁
 
+    expirer
+        逾期管理器， swift 对象若设置了生命周期，在过期时将被 expirer 清除；
+
     export pin
         (CephFS) 导出销
 

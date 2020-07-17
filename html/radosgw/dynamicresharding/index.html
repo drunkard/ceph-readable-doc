@@ -69,22 +69,26 @@
 <p>A large bucket index can lead to performance problems. In order
 to address this problem we introduced bucket index sharding.
 Until Luminous, changing the number of bucket shards (resharding)
-needed to be done offline, from Luminous we support
+needed to be done offline. Starting with Luminous we support
 online bucket resharding.</p>
 <p>Each bucket index shard can handle its entries efficiently up until
-reaching a certain threshold of entries. If this threshold is exceeded the system
-could encounter performance issues.
-The dynamic resharding feature detects this situation and increases
-automatically the number of shards used by the bucket index,
-resulting in the reduction of the number of entries in each bucket index shard.
-This process is transparent to the user.</p>
-<p>The detection process runs:
-1. When new objects are added to the bucket
-2. In a background process that periodically scans all the buckets
-This is needed in order to deal with existing buckets in the system that are not being updated.
-A bucket that requires resharding is added to the <code class="docutils literal notranslate"><span class="pre">reshard_log</span></code> queue and will be
-scheduled to be resharded later.
-The reshard threads run in the background and execute the scheduled resharding, one at a time.</p>
+reaching a certain threshold number of entries. If this threshold is
+exceeded the system can encounter performance issues. The dynamic
+resharding feature detects this situation and automatically increases
+the number of shards used by the bucket index, resulting in the
+reduction of the number of entries in each bucket index shard. This
+process is transparent to the user.</p>
+<p>By default dynamic bucket index resharding can only increase the
+number of bucket index shards to 1999, although the upper-bound is a
+configuration parameter (see Configuration below). Furthermore, when
+possible, the process chooses a prime number of bucket index shards to
+help spread the number of bucket index entries across the bucket index
+shards more evenly.</p>
+<p>The detection process runs in a background process that periodically
+scans all the buckets. A bucket that requires resharding is added to
+the resharding queue and will be scheduled to be resharded later. The
+reshard thread runs in the background and execute the scheduled
+resharding tasks, one at a time.</p>
 <div class="section" id="id1">
 <h2>多站<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <p>动态重分片功能还不能在多站环境下使用。</p>
@@ -92,12 +96,17 @@ The reshard threads run in the background and execute the scheduled resharding, 
 <div class="section" id="id2">
 <h2>配置选项<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <p>启用、禁用动态的桶索引重分片功能：</p>
-<p>-<code class="docutils literal notranslate"><span class="pre">rgw_dynamic_resharding</span></code>:  true/false, default: true.</p>
-<p>Parameters to control the resharding process in Ceph configuration fie:</p>
-<p>-<code class="docutils literal notranslate"><span class="pre">rgw_reshard_num_logs</span></code>: number of shards for the resharding log, default: 16</p>
-<p>-<code class="docutils literal notranslate"><span class="pre">rgw_reshard_bucket_lock_duration</span></code>: duration of lock on bucket obj during resharding, default:  120 seconds.</p>
-<p>-<code class="docutils literal notranslate"><span class="pre">rgw_max_objs_per_shard</span></code>: maximum number of objects per bucket index shard, default: 100000 objects.</p>
-<p>-<code class="docutils literal notranslate"><span class="pre">rgw_reshard_thread_interval</span></code>: maximum time between rounds of reshard thread processing,  default: 600 seconds</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rgw_dynamic_resharding</span></code>:  true/false, default: true.</p></li>
+</ul>
+<p>Configuration options that control the resharding process:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rgw_max_objs_per_shard</span></code>: maximum number of objects per bucket index shard before resharding is triggered, default: 100000 objects</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rgw_max_dynamic_shards</span></code>: maximum number of shards that dynamic bucket index resharding can increase to, default: 1999</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rgw_reshard_bucket_lock_duration</span></code>: duration, in seconds, of lock on bucket obj during resharding, default: 360 seconds (i.e., 6 minutes)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rgw_reshard_thread_interval</span></code>: maximum time, in seconds, between rounds of resharding queue processing, default: 600 seconds (i.e., 10 minutes)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rgw_reshard_num_logs</span></code>: number of shards for the resharding queue, default: 16</p></li>
+</ul>
 </div>
 <div class="section" id="id3">
 <h2>管理命令<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
@@ -124,19 +133,123 @@ The reshard threads run in the background and execute the scheduled resharding, 
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin reshard status --bucket &lt;bucket_name&gt;</span>
 </pre></div>
 </div>
+<p>The output is a json array of 3 objects (reshard_status, new_bucket_instance_id, num_shards) per shard.</p>
+<p>For example, the output at different Dynamic Resharding stages is shown below:</p>
+<p><code class="docutils literal notranslate"><span class="pre">1.</span> <span class="pre">Before</span> <span class="pre">resharding</span> <span class="pre">occurred:</span></code></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
+  <span class="p">{</span>
+      <span class="s2">&quot;reshard_status&quot;</span><span class="p">:</span> <span class="s2">&quot;not-resharding&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;new_bucket_instance_id&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;num_shards&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">2.</span> <span class="pre">During</span> <span class="pre">resharding:</span></code></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
+  <span class="p">{</span>
+      <span class="s2">&quot;reshard_status&quot;</span><span class="p">:</span> <span class="s2">&quot;in-progress&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;new_bucket_instance_id&quot;</span><span class="p">:</span> <span class="s2">&quot;1179f470-2ebf-4630-8ec3-c9922da887fd.8652.1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;num_shards&quot;</span><span class="p">:</span> <span class="mi">2</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+      <span class="s2">&quot;reshard_status&quot;</span><span class="p">:</span> <span class="s2">&quot;in-progress&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;new_bucket_instance_id&quot;</span><span class="p">:</span> <span class="s2">&quot;1179f470-2ebf-4630-8ec3-c9922da887fd.8652.1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;num_shards&quot;</span><span class="p">:</span> <span class="mi">2</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">3,</span> <span class="pre">After</span> <span class="pre">resharding</span> <span class="pre">completed:</span></code></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
+  <span class="p">{</span>
+      <span class="s2">&quot;reshard_status&quot;</span><span class="p">:</span> <span class="s2">&quot;not-resharding&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;new_bucket_instance_id&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;num_shards&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+      <span class="s2">&quot;reshard_status&quot;</span><span class="p">:</span> <span class="s2">&quot;not-resharding&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;new_bucket_instance_id&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;num_shards&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="id8">
 <h3>取消挂着的桶重分片操作<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
-<p>正在进行着的桶重分片操作无法取消。</p>
+<p>注意：正在进行着的桶重分片操作无法取消。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin reshard cancel --bucket &lt;bucket_name&gt;</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="id9">
-<h3>手动执行桶重分片<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<h3>手动执行即时桶重分片<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin bucket reshard --bucket &lt;bucket_name&gt; --num-shards &lt;new number of shards&gt;</span>
 </pre></div>
 </div>
+<p>When choosing a number of shards, the administrator should keep a
+number of items in mind. Ideally the administrator is aiming for no
+more than 100000 entries per shard, now and through some future point
+in time.</p>
+<p>Additionally, bucket index shards that are prime numbers tend to work
+better in evenly distributing bucket index entries across the
+shards. For example, 7001 bucket index shards is better than 7000
+since the former is prime. A variety of web sites have lists of prime
+numbers; search for “list of prime numbers” withy your favorite web
+search engine to locate some web sites.</p>
+</div>
+</div>
+<div class="section" id="id10">
+<h2>故障排除<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
+<p>Clusters prior to Luminous 12.2.11 and Mimic 13.2.5 left behind stale bucket
+instance entries, which were not automatically cleaned up. The issue also affected
+LifeCycle policies, which were not applied to resharded buckets anymore. Both of
+these issues can be worked around using a couple of radosgw-admin commands.</p>
+<div class="section" id="id11">
+<h3>掉队例程管理<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<p>List the stale instances in a cluster that are ready to be cleaned up.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin reshard stale-instances list</span>
+</pre></div>
+</div>
+<p>Clean up the stale instances in a cluster. Note: cleanup of these
+instances should only be done on a single site cluster.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin reshard stale-instances rm</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id12">
+<h3>生命周期修复<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<p>For clusters that had resharded instances, it is highly likely that the old
+lifecycle processes would have flagged and deleted lifecycle processing as the
+bucket instance changed during a reshard. While this is fixed for newer clusters
+(from Mimic 13.2.6 and Luminous 12.2.12), older buckets that had lifecycle policies and
+that have undergone resharding will have to be manually fixed.</p>
+<p>The command to do so is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin lc reshard fix --bucket {bucketname}</span>
+</pre></div>
+</div>
+<p>As a convenience wrapper, if the <code class="docutils literal notranslate"><span class="pre">--bucket</span></code> argument is dropped then this
+command will try and fix lifecycle policies for all the buckets in the cluster.</p>
+</div>
+<div class="section" id="id13">
+<h3>对象逾期管理器修复<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<p>Objects subject to Swift object expiration on older clusters may have
+been dropped from the log pool and never deleted after the bucket was
+resharded. This would happen if their expiration time was before the
+cluster was upgraded, but if their expiration was after the upgrade
+the objects would be correctly handled. To manage these expire-stale
+objects, radosgw-admin provides two subcommands.</p>
+<p>罗列：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin objects expire-stale list --bucket {bucketname}</span>
+</pre></div>
+</div>
+<p>Displays a list of object names and expiration times in JSON format.</p>
+<p>删除：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin objects expire-stale rm --bucket {bucketname}</span>
+</pre></div>
+</div>
+<p>Initiates deletion of such objects, displaying a list of object names, expiration times, and deletion status in JSON format.</p>
 </div>
 </div>
 </div>
@@ -190,7 +303,13 @@ The reshard threads run in the background and execute the scheduled resharding, 
 <li class="toctree-l4"><a class="reference internal" href="#id6">处理、调度一次桶重分片</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id7">桶重分片状态</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id8">取消挂着的桶重分片操作</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id9">手动执行桶重分片</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">手动执行即时桶重分片</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">故障排除</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id11">掉队例程管理</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id12">生命周期修复</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">对象逾期管理器修复</a></li>
 </ul>
 </li>
 </ul>

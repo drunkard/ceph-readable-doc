@@ -221,6 +221,22 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 :默认值: ``24``
 
 
+``osd scrub begin week day``
+
+:描述: This restricts scrubbing to this day of the week or later.
+              0 or 7 = Sunday, 1 = Monday, etc.
+:类型: Integer in the range of 0 to 7
+:默认值: ``0``
+
+
+``osd scrub end week day``
+
+:描述: This restricts scrubbing to days of the week earlier than this.
+              0 or 7 = Sunday, 1 = Monday, etc.
+:类型: Integer in the range of 0 to 7
+:默认值: ``7``
+
+
 ``osd scrub during recovery``
 
 :描述: 在恢复期间允许洗刷。有正在进行的恢复，且这里为 ``false``
