@@ -1,7 +1,8 @@
+.. msgr2 protocol (msgr2.0 and msgr2.1)
 .. _msgr2-protocol:
 
-msgr2 协议
-==========
+msgr2 协议（ msgr2.0 和 msgr2.1 ）
+==================================
 
 老的 Ceph 底层协议是用 SimpleMessenger 实现的，这个协议是它的\
 修订版，解决了性能和安全问题。

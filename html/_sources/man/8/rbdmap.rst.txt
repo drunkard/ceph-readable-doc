@@ -45,6 +45,8 @@ ceph-common 软件包打包了 ``rbdmap.service`` ）触发。
     rbd map POOLNAME/IMAGENAME --PARAM1 VAL1 --PARAM2 VAL2 
 
 （ ``rbd`` 命令的可用选项请参考其手册页。）
+For parameters and values which contain commas or equality signs, a simple
+apostrophe can be used to prevent replacing them.
 
 运行 ``rbdmap map`` 时，此脚本先分析配置文件，对于每个配置了\
 的 RBD 映像，首先尝试映射它（用 ``rbd map`` 命令），然后，尝\
@@ -73,23 +75,26 @@ noauto （或者 nofail ）挂载选项。这样可防止 init 系统过早地\
 实例
 ====
 
-配置实例 ``/etc/ceph/rbdmap`` 内含两个 RBD 映像，分别名为
-bar1 和 bar2 ，都在 foopool 存储池内： ::
+配置实例 ``/etc/ceph/rbdmap`` 内含三个 RBD 映像，分别名为
+bar1 、 bar2 和 bar3 ，都在 foopool 存储池内： ::
 
     foopool/bar1    id=admin,keyring=/etc/ceph/ceph.client.admin.keyring
     foopool/bar2    id=admin,keyring=/etc/ceph/ceph.client.admin.keyring
+    foopool/bar3    id=admin,keyring=/etc/ceph/ceph.client.admin.keyring,options='lock_on_read,queue_depth=1024'
 
 此文件的每一行都有两种字符串：映像说明、和传递给 ``rbd map``
 的选项。这两行将被转换为如下的命令： ::
 
     rbd map foopool/bar1 --id admin --keyring /etc/ceph/ceph.client.admin.keyring
     rbd map foopool/bar2 --id admin --keyring /etc/ceph/ceph.client.admin.keyring
+    rbd map foopool/bar2 --id admin --keyring /etc/ceph/ceph.client.admin.keyring --options lock_on_read,queue_depth=1024
 
 假设这些映像上的文件系统为 XFS ，其对应的 ``/etc/fstab`` 配\
 置可能如下： ::
 
     /dev/rbd/foopool/bar1 /mnt/bar1 xfs noauto 0 0
     /dev/rbd/foopool/bar2 /mnt/bar2 xfs noauto 0 0
+    /dev/rbd/foopool/bar3 /mnt/bar3 xfs noauto 0 0
 
 创建好映像、并写好 ``/etc/ceph/rbdmap`` 配置文件后，只需启用\
 这个 unit 就可让映像在启动时自动映射和挂载： ::

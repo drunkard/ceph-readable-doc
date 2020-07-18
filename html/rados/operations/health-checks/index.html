@@ -117,6 +117,47 @@ port 6789 to continue to listen for v1 connections on 6789 and also
 listen for v2 connections on the new default 3300 port.</p>
 <p>If a monitor is configured to listen for v1 connections on a non-standard port (not 6789), then the monmap will need to be modified manually.</p>
 </div>
+<div class="section" id="mon-disk-low">
+<h4>MON_DISK_LOW<a class="headerlink" href="#mon-disk-low" title="Permalink to this headline">¶</a></h4>
+<p>One or more monitors is low on disk space.  This alert triggers if the
+available space on the file system storing the monitor database
+(normally <code class="docutils literal notranslate"><span class="pre">/var/lib/ceph/mon</span></code>), as a percentage, drops below
+<code class="docutils literal notranslate"><span class="pre">mon_data_avail_warn</span></code> (default: 30%).</p>
+<p>This may indicate that some other process or user on the system is
+filling up the same file system used by the monitor.  It may also
+indicate that the monitors database is large (see <code class="docutils literal notranslate"><span class="pre">MON_DISK_BIG</span></code>
+below).</p>
+<p>If space cannot be freed, the monitor’s data directory may need to be
+moved to another storage device or file system (while the monitor
+daemon is not running, of course).</p>
+</div>
+<div class="section" id="mon-disk-crit">
+<h4>MON_DISK_CRIT<a class="headerlink" href="#mon-disk-crit" title="Permalink to this headline">¶</a></h4>
+<p>One or more monitors is critically low on disk space.  This alert
+triggers if the available space on the file system storing the monitor
+database (normally <code class="docutils literal notranslate"><span class="pre">/var/lib/ceph/mon</span></code>), as a percentage, drops
+below <code class="docutils literal notranslate"><span class="pre">mon_data_avail_crit</span></code> (default: 5%).  See <code class="docutils literal notranslate"><span class="pre">MON_DISK_LOW</span></code>, above.</p>
+</div>
+<div class="section" id="mon-disk-big">
+<h4>MON_DISK_BIG<a class="headerlink" href="#mon-disk-big" title="Permalink to this headline">¶</a></h4>
+<p>The database size for one or more monitors is very large.  This alert
+triggers if the size of the monitor’s database is larger than
+<code class="docutils literal notranslate"><span class="pre">mon_data_size_warn</span></code> (default: 15 GiB).</p>
+<p>A large database is unusual, but may not necessarily indicate a
+problem.  Monitor databases may grow in size when there are placement
+groups that have not reached an <code class="docutils literal notranslate"><span class="pre">active+clean</span></code> state in a long time.</p>
+<p>This may also indicate that the monitor’s database is not properly
+compacting, which has been observed with some older versions of
+leveldb and rocksdb.  Forcing a compaction with <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">daemon</span> <span class="pre">mon.&lt;id&gt;</span>
+<span class="pre">compact</span></code> may shrink the on-disk size.</p>
+<p>This warning may also indicate that the monitor has a bug that is
+preventing it from pruning the cluster metadata it stores.  If the
+problem persists, please report a bug.</p>
+<p>The warning threshold may be adjusted with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="k">global</span> <span class="n">mon_data_size_warn</span> <span class="o">&lt;</span><span class="n">size</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
 </div>
 <div class="section" id="id5">
 <h3>管理器<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
@@ -158,8 +199,8 @@ daemon(s), or use <cite>ceph mgr fail</cite> on the active daemon to prompt
 a failover to another daemon.</p>
 </div>
 </div>
-<div class="section" id="osd">
-<h3>OSD<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="osds">
+<h3>OSDs<a class="headerlink" href="#osds" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="osd-down">
 <h4>OSD_DOWN<a class="headerlink" href="#osd-down" title="Permalink to this headline">¶</a></h4>
 <p>至少有一个 OSD 被标记成了 down 状态，其 ceph-osd 守护进程可能已经停掉了、或者是对端 OSD 与此 OSD 之间的网络不通。常见起因有守护进程停止或崩溃、主机挂了、或者网络中断。</p>
@@ -334,6 +375,171 @@ OSDs can start.  You can safely set the flag with:</p>
 </div>
 <p>or delete some existing data to reduce utilization.</p>
 </div>
+<div class="section" id="bluefs-spillover">
+<h4>BLUEFS_SPILLOVER<a class="headerlink" href="#bluefs-spillover" title="Permalink to this headline">¶</a></h4>
+<p>One or more OSDs that use the BlueStore backend have been allocated
+<cite>db</cite> partitions (storage space for metadata, normally on a faster
+device) but that space has filled, such that metadata has “spilled
+over” onto the normal slow device.  This isn’t necessarily an error
+condition or even unexpected, but if the administrator’s expectation
+was that all metadata would fit on the faster device, it indicates
+that not enough space was provided.</p>
+<p>This warning can be disabled on all OSDs with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">osd</span> <span class="n">bluestore_warn_on_bluefs_spillover</span> <span class="n">false</span>
+</pre></div>
+</div>
+<p>Alternatively, it can be disabled on a specific OSD with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">osd</span><span class="o">.</span><span class="mi">123</span> <span class="n">bluestore_warn_on_bluefs_spillover</span> <span class="n">false</span>
+</pre></div>
+</div>
+<p>To provide more metadata space, the OSD in question could be destroyed and
+reprovisioned.  This will involve data migration and recovery.</p>
+<p>It may also be possible to expand the LVM logical volume backing the
+<cite>db</cite> storage.  If the underlying LV has been expanded, the OSD daemon
+needs to be stopped and BlueFS informed of the device size change with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph-bluestore-tool bluefs-bdev-expand --path /var/lib/ceph/osd/ceph-$ID
+</pre></div>
+</div>
+</div>
+<div class="section" id="bluefs-available-space">
+<h4>BLUEFS_AVAILABLE_SPACE<a class="headerlink" href="#bluefs-available-space" title="Permalink to this headline">¶</a></h4>
+<p>To check how much space is free for BlueFS do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">osd</span><span class="o">.</span><span class="mi">123</span> <span class="n">bluestore</span> <span class="n">bluefs</span> <span class="n">available</span>
+</pre></div>
+</div>
+<p>This will output up to 3 values: <cite>BDEV_DB free</cite>, <cite>BDEV_SLOW free</cite> and
+<cite>available_from_bluestore</cite>. <cite>BDEV_DB</cite> and <cite>BDEV_SLOW</cite> report amount of space that
+has been acquired by BlueFS and is considered free. Value <cite>available_from_bluestore</cite>
+denotes ability of BlueStore to relinquish more space to BlueFS.
+It is normal that this value is different from amount of BlueStore free space, as
+BlueFS allocation unit is typically larger than BlueStore allocation unit.
+This means that only part of BlueStore free space will be acceptable for BlueFS.</p>
+</div>
+<div class="section" id="bluefs-low-space">
+<h4>BLUEFS_LOW_SPACE<a class="headerlink" href="#bluefs-low-space" title="Permalink to this headline">¶</a></h4>
+<p>If BlueFS is running low on available free space and there is little
+<cite>available_from_bluestore</cite> one can consider reducing BlueFS allocation unit size.
+To simulate available space when allocation unit is different do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">osd</span><span class="o">.</span><span class="mi">123</span> <span class="n">bluestore</span> <span class="n">bluefs</span> <span class="n">available</span> <span class="o">&lt;</span><span class="n">alloc</span><span class="o">-</span><span class="n">unit</span><span class="o">-</span><span class="n">size</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="bluestore-fragmentation">
+<h4>BLUESTORE_FRAGMENTATION<a class="headerlink" href="#bluestore-fragmentation" title="Permalink to this headline">¶</a></h4>
+<p>As BlueStore works free space on underlying storage will get fragmented.
+This is normal and unavoidable but excessive fragmentation will cause slowdown.
+To inspect BlueStore fragmentation one can do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">osd</span><span class="o">.</span><span class="mi">123</span> <span class="n">bluestore</span> <span class="n">allocator</span> <span class="n">score</span> <span class="n">block</span>
+</pre></div>
+</div>
+<p>Score is given in [0-1] range.
+[0.0 .. 0.4] tiny fragmentation
+[0.4 .. 0.7] small, acceptable fragmentation
+[0.7 .. 0.9] considerable, but safe fragmentation
+[0.9 .. 1.0] severe fragmentation, may impact BlueFS ability to get space from BlueStore</p>
+<p>If detailed report of free fragments is required do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">osd</span><span class="o">.</span><span class="mi">123</span> <span class="n">bluestore</span> <span class="n">allocator</span> <span class="n">dump</span> <span class="n">block</span>
+</pre></div>
+</div>
+<p>In case when handling OSD process that is not running fragmentation can be
+inspected with <cite>ceph-bluestore-tool</cite>.
+Get fragmentation score:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">bluestore</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">path</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">123</span> <span class="o">--</span><span class="n">allocator</span> <span class="n">block</span> <span class="n">free</span><span class="o">-</span><span class="n">score</span>
+</pre></div>
+</div>
+<p>And dump detailed free chunks:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">bluestore</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">path</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">123</span> <span class="o">--</span><span class="n">allocator</span> <span class="n">block</span> <span class="n">free</span><span class="o">-</span><span class="n">dump</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="bluestore-legacy-statfs">
+<h4>BLUESTORE_LEGACY_STATFS<a class="headerlink" href="#bluestore-legacy-statfs" title="Permalink to this headline">¶</a></h4>
+<p>In the Nautilus release, BlueStore tracks its internal usage
+statistics on a per-pool granular basis, and one or more OSDs have
+BlueStore volumes that were created prior to Nautilus.  If <em>all</em> OSDs
+are older than Nautilus, this just means that the per-pool metrics are
+not available.  However, if there is a mix of pre-Nautilus and
+post-Nautilus OSDs, the cluster usage statistics reported by <code class="docutils literal notranslate"><span class="pre">ceph</span>
+<span class="pre">df</span></code> will not be accurate.</p>
+<p>The old OSDs can be updated to use the new usage tracking scheme by stopping each OSD, running a repair operation, and the restarting it.  For example, if <code class="docutils literal notranslate"><span class="pre">osd.123</span></code> needed to be updated,:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systemctl</span> <span class="n">stop</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span><span class="o">@</span><span class="mi">123</span>
+<span class="n">ceph</span><span class="o">-</span><span class="n">bluestore</span><span class="o">-</span><span class="n">tool</span> <span class="n">repair</span> <span class="o">--</span><span class="n">path</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">123</span>
+<span class="n">systemctl</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span><span class="o">@</span><span class="mi">123</span>
+</pre></div>
+</div>
+<p>This warning can be disabled with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="k">global</span> <span class="n">bluestore_warn_on_legacy_statfs</span> <span class="n">false</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="bluestore-no-per-pool-omap">
+<h4>BLUESTORE_NO_PER_POOL_OMAP<a class="headerlink" href="#bluestore-no-per-pool-omap" title="Permalink to this headline">¶</a></h4>
+<p>Starting with the Octopus release, BlueStore tracks omap space utilization
+by pool, and one or more OSDs have volumes that were created prior to
+Octopus.  If all OSDs are not running BlueStore with the new tracking
+enabled, the cluster will report and approximate value for per-pool omap usage
+based on the most recent deep-scrub.</p>
+<p>The old OSDs can be updated to track by pool by stopping each OSD,
+running a repair operation, and the restarting it.  For example, if
+<code class="docutils literal notranslate"><span class="pre">osd.123</span></code> needed to be updated,:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systemctl</span> <span class="n">stop</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span><span class="o">@</span><span class="mi">123</span>
+<span class="n">ceph</span><span class="o">-</span><span class="n">bluestore</span><span class="o">-</span><span class="n">tool</span> <span class="n">repair</span> <span class="o">--</span><span class="n">path</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mi">123</span>
+<span class="n">systemctl</span> <span class="n">start</span> <span class="n">ceph</span><span class="o">-</span><span class="n">osd</span><span class="o">@</span><span class="mi">123</span>
+</pre></div>
+</div>
+<p>This warning can be disabled with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="k">global</span> <span class="n">bluestore_warn_on_no_per_pool_omap</span> <span class="n">false</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="bluestore-disk-size-mismatch">
+<h4>BLUESTORE_DISK_SIZE_MISMATCH<a class="headerlink" href="#bluestore-disk-size-mismatch" title="Permalink to this headline">¶</a></h4>
+<p>One or more OSDs using BlueStore has an internal inconsistency between the size
+of the physical device and the metadata tracking its size.  This can lead to
+the OSD crashing in the future.</p>
+<p>The OSDs in question should be destroyed and reprovisioned.  Care should be
+taken to do this one OSD at a time, and in a way that doesn’t put any data at
+risk.  For example, if osd <code class="docutils literal notranslate"><span class="pre">$N</span></code> has the error,:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph osd out osd.$N
+while ! ceph osd safe-to-destroy osd.$N ; do sleep 1m ; done
+ceph osd destroy osd.$N
+ceph-volume lvm zap /path/to/device
+ceph-volume lvm create --osd-id $N --data /path/to/device
+</pre></div>
+</div>
+</div>
+<div class="section" id="bluestore-no-compression">
+<h4>BLUESTORE_NO_COMPRESSION<a class="headerlink" href="#bluestore-no-compression" title="Permalink to this headline">¶</a></h4>
+<p>One or more OSDs is unable to load a BlueStore compression plugin.
+This can be caused by a broken installation, in which the <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code>
+binary does not match the compression plugins, or a recent upgrade
+that did not include a restart of the <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> daemon.</p>
+<p>Verify that the package(s) on the host running the OSD(s) in question
+are correctly installed and that the OSD daemon(s) have been
+restarted.  If the problem persists, check the OSD log for any clues
+as to the source of the problem.</p>
+</div>
+<div class="section" id="bluestore-spurious-read-errors">
+<h4>BLUESTORE_SPURIOUS_READ_ERRORS<a class="headerlink" href="#bluestore-spurious-read-errors" title="Permalink to this headline">¶</a></h4>
+<p>One or more OSDs using BlueStore detects spurious read errors at main device.
+BlueStore has recovered from these errors by retrying disk reads.
+Though this might show some issues with underlying hardware, I/O subsystem,
+etc.
+Which theoretically might cause permanent data corruption.
+Some observations on the root cause can be found at
+<a class="reference external" href="https://tracker.ceph.com/issues/22464">https://tracker.ceph.com/issues/22464</a></p>
+<p>This alert doesn’t require immediate response but corresponding host might need
+additional attention, e.g. upgrading to the latest OS/kernel versions and
+H/W resource utilization monitoring.</p>
+<p>This warning can be disabled on all OSDs with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">osd</span> <span class="n">bluestore_warn_on_spurious_read_errors</span> <span class="n">false</span>
+</pre></div>
+</div>
+<p>Alternatively, it can be disabled on a specific OSD with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">osd</span><span class="o">.</span><span class="mi">123</span> <span class="n">bluestore_warn_on_spurious_read_errors</span> <span class="n">false</span>
+</pre></div>
+</div>
+</div>
 </div>
 <div class="section" id="id6">
 <h3>设备健康<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
@@ -469,6 +675,15 @@ for such an inconsistency is currently in progress.</p>
 <p>近期的 OSD 洗刷出现了明显不一致的地方。这个错误一般和
 <em>PG_DAMAGED</em> （见上文）成对出现。</p>
 <p>详情见 <a class="reference internal" href="../pg-repair/"><span class="doc">修复 PG 不一致状态</span></a> 。</p>
+</div>
+<div class="section" id="osd-too-many-repairs">
+<h4>OSD_TOO_MANY_REPAIRS<a class="headerlink" href="#osd-too-many-repairs" title="Permalink to this headline">¶</a></h4>
+<p>When a read error occurs and another replica is available it is used to repair
+the error immediately, so that the client can get the object data.  Scrub
+handles errors for data at rest.  In order to identify possible failing disks
+that aren’t seeing scrub errors, a count of read repairs is maintained.  If
+it exceeds a config value threshold <em>mon_osd_warn_num_repaired</em> default 10,
+this health warning is generated.</p>
 </div>
 <div class="section" id="large-omap-objects">
 <h4>LARGE_OMAP_OBJECTS<a class="headerlink" href="#large-omap-objects" title="Permalink to this headline">¶</a></h4>
@@ -790,8 +1005,8 @@ also indicate some other performance issue with the OSDs.</p>
 <code class="docutils literal notranslate"><span class="pre">snaptrimq_len</span></code> field of <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">pg</span> <span class="pre">ls</span> <span class="pre">-f</span> <span class="pre">json-detail</span></code>.</p>
 </div>
 </div>
-<div class="section" id="miscellaneous">
-<h3>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id9">
+<h3>杂项<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="recent-crash">
 <h4>RECENT_CRASH<a class="headerlink" href="#recent-crash" title="Permalink to this headline">¶</a></h4>
 <p>One or more Ceph daemons has crashed recently, and the crash has not
@@ -918,6 +1133,9 @@ host to power-cycle or reboot.</p>
 <li class="toctree-l6"><a class="reference internal" href="#mon-down">MON_DOWN</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#mon-clock-skew">MON_CLOCK_SKEW</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#mon-msgr2-not-enabled">MON_MSGR2_NOT_ENABLED</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#mon-disk-low">MON_DISK_LOW</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#mon-disk-crit">MON_DISK_CRIT</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#mon-disk-big">MON_DISK_BIG</a></li>
 </ul>
 </li>
 <li class="toctree-l5"><a class="reference internal" href="#id5">管理器</a><ul>
@@ -926,7 +1144,7 @@ host to power-cycle or reboot.</p>
 <li class="toctree-l6"><a class="reference internal" href="#mgr-module-error">MGR_MODULE_ERROR</a></li>
 </ul>
 </li>
-<li class="toctree-l5"><a class="reference internal" href="#osd">OSD</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#osds">OSDs</a><ul>
 <li class="toctree-l6"><a class="reference internal" href="#osd-down">OSD_DOWN</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#osd-crush-type-down">OSD_&lt;crush type&gt;_DOWN</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#osd-orphan">OSD_ORPHAN</a></li>
@@ -941,6 +1159,15 @@ host to power-cycle or reboot.</p>
 <li class="toctree-l6"><a class="reference internal" href="#cache-pool-no-hit-set">CACHE_POOL_NO_HIT_SET</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#osd-no-sortbitwise">OSD_NO_SORTBITWISE</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#pool-full">POOL_FULL</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluefs-spillover">BLUEFS_SPILLOVER</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluefs-available-space">BLUEFS_AVAILABLE_SPACE</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluefs-low-space">BLUEFS_LOW_SPACE</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluestore-fragmentation">BLUESTORE_FRAGMENTATION</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluestore-legacy-statfs">BLUESTORE_LEGACY_STATFS</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluestore-no-per-pool-omap">BLUESTORE_NO_PER_POOL_OMAP</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluestore-disk-size-mismatch">BLUESTORE_DISK_SIZE_MISMATCH</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluestore-no-compression">BLUESTORE_NO_COMPRESSION</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#bluestore-spurious-read-errors">BLUESTORE_SPURIOUS_READ_ERRORS</a></li>
 </ul>
 </li>
 <li class="toctree-l5"><a class="reference internal" href="#id6">设备健康</a><ul>
@@ -956,6 +1183,7 @@ host to power-cycle or reboot.</p>
 <li class="toctree-l6"><a class="reference internal" href="#pg-backfill-full">PG_BACKFILL_FULL</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#pg-damaged">PG_DAMAGED</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#osd-scrub-errors">OSD_SCRUB_ERRORS</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#osd-too-many-repairs">OSD_TOO_MANY_REPAIRS</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#large-omap-objects">LARGE_OMAP_OBJECTS</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#cache-pool-near-full">CACHE_POOL_NEAR_FULL</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#too-few-pgs">TOO_FEW_PGS</a></li>
@@ -979,7 +1207,7 @@ host to power-cycle or reboot.</p>
 <li class="toctree-l6"><a class="reference internal" href="#pg-slow-snap-trimming">PG_SLOW_SNAP_TRIMMING</a></li>
 </ul>
 </li>
-<li class="toctree-l5"><a class="reference internal" href="#miscellaneous">Miscellaneous</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#id9">杂项</a><ul>
 <li class="toctree-l6"><a class="reference internal" href="#recent-crash">RECENT_CRASH</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#telemetry-changed">TELEMETRY_CHANGED</a></li>
 <li class="toctree-l6"><a class="reference internal" href="#auth-bad-caps">AUTH_BAD_CAPS</a></li>

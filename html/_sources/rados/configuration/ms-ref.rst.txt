@@ -2,6 +2,8 @@
  消息传递
 ==========
 
+.. General Settings
+
 常规选项
 ========
 
@@ -87,7 +89,7 @@
 :默认值: ``0``
 
 
-.. _Async messenger options:
+.. Async messenger options
 
 Async Messenger （异步信使）选项
 ================================
@@ -121,27 +123,6 @@ Async Messenger （异步信使）选项
 :类型: 64-bit Unsigned Integer
 :是否必需: No
 :默认值: ``5``
-
-
-``ms async set affinity``
-
-:描述: 设置为 true 时， Async Messenger 工作线程会绑到特定的
-       CPU 核心。
-:类型: Boolean
-:是否必需: No
-:默认值: ``true``
-
-
-``ms async affinity cores``
-
-:描述: ``ms async set affinity`` 为 true 时，此处的字符串可配置
-       Async Messenger 工作线程如何绑到 CPU 核心上。例如， "0,2"
-       表示把工作线程 #1 和 #2 分别绑到 CPU 核心 #0 和 #2 上。
-       **注意：** 手动设置亲和性时，千万别把工作线程绑到超线程\
-       或类似技术所虚拟出的 CPU 上，因为它们比一般 CPU 慢。
-:类型: String
-:是否必需: No
-:默认值: ``(empty)``
 
 
 ``ms async send inline``

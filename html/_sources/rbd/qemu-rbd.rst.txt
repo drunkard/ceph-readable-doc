@@ -127,9 +127,8 @@ qcow2 映像，可以这样转： ::
 .. _启用 RBD 缓存: ../rbd-config-ref/#rbd-cache-config-settings
 
 
+.. Enabling Discard/TRIM
 .. index:: Ceph Block Device; discard trim and libvirt
-
-.. _Enabling Discard/TRIM:
 
 启用 Discard/TRIM 功能
 ======================
@@ -152,7 +151,7 @@ qcow2 映像，可以这样转： ::
 域的子域。下例展示了如何用 ``qemu id=`` 为两个设备设置不同的
 ``discard_granularity`` 值。
 
-.. code-block:: guess
+.. code-block:: xml
 
 	<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
 		<qemu:commandline>
@@ -164,6 +163,7 @@ qcow2 映像，可以这样转： ::
 	</domain>
 
 
+.. QEMU Cache Options
 .. index:: Ceph Block Device; cache options
 
 QEMU 缓存选项

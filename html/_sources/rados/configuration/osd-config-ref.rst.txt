@@ -871,28 +871,14 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。
 
 :描述: 缓存的 OSD 图个数。
 :类型: 32-bit Integer
-:默认值: ``500``
-
-
-``osd map cache bl size``
-
-:描述: OSD 进程中，驻留内存的 OSD 图缓存尺寸。
-:类型: 32-bit Integer
 :默认值: ``50``
-
-
-``osd map cache bl inc size``
-
-:描述: OSD 进程中，驻留内存的 OSD 图缓存增量尺寸。
-:类型: 32-bit Integer
-:默认值: ``100``
 
 
 ``osd map message max``
 
 :描述: 每个  MOSDMap 图消息允许的最大条目数量。
 :类型: 32-bit Integer
-:默认值: ``100``
+:默认值: ``40``
 
 
 
