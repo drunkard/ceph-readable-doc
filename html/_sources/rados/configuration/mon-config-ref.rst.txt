@@ -907,7 +907,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :默认值: ``100ul << 20``
 
 
-.. _Pool settings:
+.. Pool settings
 
 存储池选项
 ==========
@@ -920,6 +920,16 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 ``mon allow pool delete``
 
 :描述: 监视器是否允许删除存储池。此选项可覆盖存储池标记值。
+:类型: Boolean
+:默认值: ``false``
+
+
+``osd pool default ec fast read``
+
+:描述: Whether to turn on fast read on the pool or not. It will be used as
+              the default setting of newly created erasure coded pools if ``fast_read``
+              is not specified at create time.
+
 :类型: Boolean
 :默认值: ``false``
 

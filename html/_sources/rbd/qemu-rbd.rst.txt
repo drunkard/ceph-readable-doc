@@ -184,8 +184,8 @@ QEMU 的缓存选项对应下列的 Ceph `RBD 缓存`_\ 选项。
 
 	rbd_cache = false
 
-QEMU 的缓存选项会覆盖 Ceph 的缓存配置（包括 Ceph 配置文件里明\
-确设置过的）。
+QEMU 的缓存选项会覆盖 Ceph 的缓存配置（包括 Ceph 配置文件里\
+明确设置过的）。
 
 .. note:: 在 QEMU v2.4.0 版以前，如果你在 Ceph 配置文件里明确\
    设置了 `RBD 缓存`_\ 选项，这些配置会覆盖 QEMU 的缓存选项。

@@ -167,16 +167,111 @@ compact
 	ceph compact
 
 
+config
+------
+
+Configure the cluster. By default, Ceph daemons and clients retrieve their
+configuration options from monitor when they start, and are updated if any of
+the tracked options is changed at run time. It uses following additional
+subcommand.
+
+Subcommand ``dump`` to dump all options for the cluster
+
+Usage::
+
+	ceph config dump
+
+Subcommand ``ls`` to list all option names for the cluster
+
+Usage::
+
+	ceph config ls
+
+Subcommand ``help`` to describe the specified configuration option
+
+Usage::
+
+    ceph config help <option>
+
+Subcommand ``get`` to dump the option(s) for the specified entity.
+
+Usage::
+
+    ceph config get <who> {<option>}
+
+Subcommand ``show`` to display the running configuration of the specified
+entity. Please note, unlike ``get``, which only shows the options managed
+by monitor, ``show`` displays all the configurations being actively used.
+These options are pulled from several sources, for instance, the compiled-in
+default value, the monitor's configuration database, ``ceph.conf`` file on
+the host. The options can even be overridden at runtime. So, there is chance
+that the configuration options in the output of ``show`` could be different
+from those in the output of ``get``.
+
+Usage::
+
+	ceph config show {<who>}
+
+Subcommand ``show-with-defaults`` to display the running configuration along with the compiled-in defaults of the specified entity
+
+Usage::
+
+	ceph config show {<who>}
+
+Subcommand ``set`` to set an option for one or more specified entities
+
+Usage::
+
+    ceph config set <who> <option> <value> {--force}
+
+Subcommand ``rm`` to clear an option for one or more entities
+
+Usage::
+
+    ceph config rm <who> <option>
+
+Subcommand ``log`` to show recent history of config changes. If `count` option
+is omitted it defeaults to 10.
+
+Usage::
+
+    ceph config log {<count>}
+
+Subcommand ``reset`` to revert configuration to the specified historical version
+
+Usage::
+
+    ceph config reset <version>
+
+
+Subcommand ``assimilate-conf`` to assimilate options from stdin, and return a
+new, minimal conf file
+
+Usage::
+
+    ceph config assimilate-conf -i <input-config-path> > <output-config-path>
+    ceph config assimilate-conf < <input-config-path>
+
+Subcommand ``generate-minimal-conf`` to generate a minimal ``ceph.conf`` file,
+which can be used for bootstrapping a daemon or a client.
+
+Usage::
+
+    ceph config generate-minimal-conf > <minimal-config-path>
+
+
 config-key
 ----------
 
-管理配置密钥。需额外指定子命令。
+管理配置密钥。 config-key 是监视器提供的一个通用键值服务，主要\
+是让 Ceph 工具和守护进程永久存储各种配置；其中， ceph-mgr 的\
+各模块也用它存储它们的选项。需额外指定子命令。
 
-子命令 ``del`` 用于删除配置密钥。
+子命令 ``rm`` 用于删除配置键名。
 
 用法： ::
 
-	ceph config-key del <key>
+	ceph config-key rm <key>
 
 子命令 ``exists`` 用于检查配置密钥是否存在。
 
@@ -190,7 +285,7 @@ config-key
 
 	ceph config-key get <key>
 
-子命令 ``list`` 罗列配置密钥。
+子命令 ``ls`` 罗列配置密钥。
 
 用法： ::
 
@@ -207,6 +302,30 @@ config-key
 用法： ::
 
 	ceph config-key set <key> {<val>}
+
+
+daemon
+------
+
+向 admin-socket 提交命令。
+
+用法： ::
+
+	ceph daemon {daemon_name|socket_path} {command} ...
+
+实例： ::
+
+	ceph daemon osd.0 help
+
+
+daemonperf
+----------
+
+盯着某一 Ceph 守护进程的性能计数器。
+
+用法： ::
+
+	ceph daemonperf {daemon_name|socket_path} [{interval} [{count}]]
 
 
 df
@@ -293,7 +412,22 @@ heap
 
 用法： ::
 
-	ceph heap dump|start_profiler|stop_profiler|release|stats
+	ceph tell <name (type.id)> heap dump|start_profiler|stop_profiler|stats
+
+Subcommand ``release`` to make TCMalloc to releases no-longer-used memory back to the kernel at once. 
+
+Usage::
+
+	ceph tell <name (type.id)> heap release
+
+Subcommand ``(get|set)_release_rate`` get or set the TCMalloc memory release rate. TCMalloc releases 
+no-longer-used memory back to the kernel gradually. the rate controls how quickly this happens. 
+Increase this setting to make TCMalloc to return unused memory more frequently. 0 means never return
+memory to system, 1 means wait for 1000 pages after releasing a page to system. It is ``1.0`` by default..
+
+Usage::
+
+	ceph tell <name (type.id)> heap get_release_rate|set_release_rate {<val>}
 
 
 injectargs
@@ -412,16 +546,6 @@ mon
 用法： ::
 
 	ceph mon stat
-
-
-mon_status
-----------
-
-报告监视器状态。
-
-用法： ::
-
-	ceph mon_status
 
 
 mgr
@@ -561,8 +685,8 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
         "crush_device_class": "myclass"
     }
 
-``crush_device_class`` 属性是可选的；指定后，它将是新 OSD 的初\
-始 CRUSH 设备类。
+``crush_device_class`` 属性是可选的；指定后，它将是新 OSD 的\
+初始 CRUSH 设备类。
 
 
 子命令 ``crush`` 用于 CRUSH 管理，需额外指定子命令。
@@ -917,6 +1041,10 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
 
 	ceph osd pool get <poolname> erasure_code_profile
 
+Use ``all`` to get all pool parameters that apply to the pool's type::
+
+	ceph osd pool get <poolname> all
+
 子命令 ``get-quota`` 获取存储池的对象或字节数限额。
 
 用法： ::
@@ -1220,7 +1348,8 @@ pg
 
 	ceph pg deep-scrub <pgid>
 
-子命令 ``dump`` 可显示归置组图的人类可读版本（显示为纯文本时只有 'all' 合法）。
+子命令 ``dump`` 可显示归置组图的人类可读版本（显示为纯文本时\
+只有 'all' 合法）。
 
 用法： ::
 
@@ -1309,11 +1438,6 @@ quorum
 
 用法： ::
 
-	ceph quorum enter|exit
-
-注：此命令只对 ``ceph`` 命令能连接上的监视器管用。如果你想让某\
-个具体的监视器加入或退出法定人数，可以用下面这个命令： ::
-
 	ceph tell mon.<id> quorum enter|exit
 
 
@@ -1331,21 +1455,10 @@ report
 ------
 
 报告集群的全部状态，标签字符串可选。
-Reports full status of cluster, optional title tag strings.
 
 用法： ::
 
 	ceph report {<tags> [<tags>...]}
-
-
-scrub
------
-
-洗刷监视器的存储。
-
-用法： ::
-
-	ceph scrub
 
 
 status
@@ -1356,16 +1469,6 @@ status
 用法： ::
 
 	ceph status
-
-
-sync force
-----------
-
-强制监视器进行同步、并清除存储。
-
-用法： ::
-
-	ceph sync force {--yes-i-really-mean-it} {--i-know-what-i-am-doing}
 
 
 tell
@@ -1408,6 +1511,16 @@ version
    把响应中监视器集群返回的载荷写入 outfile 文件。只有某些特定的监视器命令\
    （如 psd getmap ）会返回载荷。
 
+.. option:: --setuser user
+
+   will apply the appropriate user ownership to the file specified by
+   the option '-o'.
+
+.. option:: --setgroup group
+
+   will apply the appropriate group ownership to the file specified by
+   the option '-o'.
+
 .. option:: -c ceph.conf, --conf=ceph.conf
 
    用 ceph.conf 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定启动时所用\
@@ -1440,6 +1553,10 @@ version
 .. option:: -w, --watch
 
    盯着集群的实时状态变更。
+
+.. option:: -W, --watch-channel
+
+	Watch live cluster changes on any channel (cluster, audit, cephadm, or * for all)
 
 .. option:: --watch-debug
 
