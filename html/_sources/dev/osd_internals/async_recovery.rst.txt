@@ -1,6 +1,8 @@
-=====================
-Asynchronous Recovery
-=====================
+.. Asynchronous Recovery
+
+==========
+ 异步恢复
+==========
 
 PGs in Ceph maintain a log of writes to allow speedy recovery of data.
 Instead of scanning all of the objects to see what is missing on each

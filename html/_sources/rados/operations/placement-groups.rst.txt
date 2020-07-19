@@ -602,6 +602,10 @@ Ceph 检查主的和任何副本节点，生成归置组里所有对象的目录
 所有副本都匹配，最终的语义扫描可确保所有与快照相关的对象元数据\
 是一致的。报错会出现在日志里。
 
+To scrub all placement groups from a specific pool, execute the following::
+
+        ceph osd pool scrub {pool-name}
+
 
 .. Prioritize backfill/recovery of a Placement Group(s)
 

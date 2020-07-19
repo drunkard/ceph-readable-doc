@@ -105,9 +105,8 @@ follows:
   assign them a priority
 * The bugs with higher priority are worked on first
 
-各小组（ ``team`` ）分别负责一个项目，由\ `项目领导`_\ 管理。
-
-.. _项目领导: ../#leads
+各小组（ ``team`` ）分别负责一个项目，由\ :ref:`项目领导 <governance>`\
+管理。
 
 The ``developer`` assigned to an issue is responsible for it. The
 status of an open issue can be:

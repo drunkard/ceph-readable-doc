@@ -39,24 +39,6 @@ Ceph 配置文件至少要包含：
 	ceph-deploy new -h
 
 
-命名集群
---------
-
-Ceph 集群的默认名字为 ``ceph`` ，如果你想在同一套硬件上运行多\
-套集群可以指定其他名字。比如，如果想优化一个集群用于块设备，另\
-一个用作网关，你可以在同一套硬件上运行两个不同的集群，但是它们\
-要配置不同的 ``fsid`` 和集群名。
-
-	ceph-deploy --cluster {cluster-name} new {host [host], ...}
-
-例如： ::
-
-	ceph-deploy --cluster rbdcluster new ceph-mon1
-	ceph-deploy --cluster rbdcluster new ceph-mon{1,2,3}
-
-.. note:: 如果你运行多个集群，必须修改默认端口选项并为其打开端\
-   口，这样两个不同的集群网才不会相互冲突。
-
 
 .. _监视器配置参考: ../../configuration/mon-config-ref
 .. _Cephx 手册: ../../../dev/mon-bootstrap#secret-keys
