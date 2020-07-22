@@ -1,9 +1,9 @@
-.. Zabbix plugin
+.. Zabbix Module
 
-Zabbix 插件
+Zabbix 模块
 ===========
 
-Zabbix 插件可向 Zabbix 服务器持续发送信息，像这些：
+Zabbix 模块可向 Zabbix 服务器持续发送信息，像这些：
 
 - Ceph 状态
 - I/O 操作
@@ -16,7 +16,7 @@ Zabbix 插件可向 Zabbix 服务器持续发送信息，像这些：
 
 必需条件
 --------
-此插件要求 *zabbix_sender* 可执行文件在\ *所有*\ 运行 ceph-mgr
+此模块要求 *zabbix_sender* 可执行文件在\ *所有*\ 运行 ceph-mgr
 的主机上都存在。大多数发行版都可以用软件包管理器安装它。
 
 
@@ -98,8 +98,8 @@ Additional configuration keys which can be configured and their default values:
 
 模板
 ^^^^
-A `template <https://raw.githubusercontent.com/ceph/ceph/9c54334b615362e0a60442c2f41849ed630598ab/src/pybind/mgr/zabbix/zabbix_template.xml>`_. 
-(XML) to be used on the Zabbix server can be found in the source directory of the plugin.
+A `template <https://raw.githubusercontent.com/ceph/ceph/master/src/pybind/mgr/zabbix/zabbix_template.xml>`_. 
+(XML) to be used on the Zabbix server can be found in the source directory of the module.
 
 This template contains all items and a few triggers. You can customize the triggers afterwards to fit your needs.
 
@@ -150,6 +150,5 @@ manually, this can be done with this command:
     [mgr]
         debug mgr = 20
 
-With logging set to debug for the manager the plugin will print various logging
-lines prefixed with *mgr[zabbix]* for easy filtering.
-
+Should you want to debug the Zabbix module increase the logging level for
+ceph-mgr and check the logs.

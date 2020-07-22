@@ -192,6 +192,9 @@
     grace time
         宽限期；宽限时间；
 
+    immutable object
+        不可变对象
+
     individual bucket
         个人桶
 
@@ -354,6 +357,10 @@
     pool
         存储池
 
+    priority set
+        优先级组。
+        暂理解为优先级相同的一类配置放入了同一集合。
+
     promote (an image to primary)
     promote (zone)
         晋级...
@@ -476,6 +483,12 @@
 
     stopped set
         停止集。 MDS 术语。
+
+    storage class
+        存储类
+
+        https://aws.amazon.com/cn/s3/storage-classes/
+        按不同案例、访问频率、访问方式划分的？
 
     storage overhead
         存储开销

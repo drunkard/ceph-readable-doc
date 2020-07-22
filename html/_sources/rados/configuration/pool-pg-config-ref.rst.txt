@@ -1,4 +1,4 @@
-.. _Pool, PG and CRUSH Config Reference:
+.. Pool, PG and CRUSH Config Reference
 
 =================================
  存储池、归置组和 CRUSH 配置参考
@@ -53,14 +53,6 @@
        发出一个 ``HEALTH_WARN`` 。负数禁用此功能。
 :类型: Integer
 :默认值: ``30``
-
-
-``mon pg warn max per osd``
-
-:描述: 如果每个 OSD 上的 PG 数量平均值超过此数值，就向集群日志\
-       发出一个 ``HEALTH_WARN`` 。负数禁用此功能。
-:类型: Integer
-:默认值: ``300``
 
 
 ``mon pg warn min objects``
@@ -223,6 +215,15 @@
 :描述: 清理日志文件的时候保留的归置组日志量。
 :类型: 32-bit Int Unsigned
 :默认值: ``1000``
+
+
+``osd max pg log entries``
+
+:描述: The maximum number of placement group logs to maintain
+              when trimming log files.
+
+:类型: 32-bit Int Unsigned
+:默认值: ``10000``
 
 
 ``osd default data pool replay window``

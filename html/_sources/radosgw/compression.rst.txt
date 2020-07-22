@@ -1,4 +1,4 @@
-.. _Compression:
+.. Compression
 
 ======
  压缩
@@ -6,15 +6,16 @@
 
 .. versionadded:: Kraken
 
-Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已有的压\
-缩插件实现。
+Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已有的\
+压缩插件实现。
 
 
 配置
 ====
 
-压缩功能可在域的归置目标那里启用，执行 ``radosgw-admin zone placement modify``
-命令时加 ``--compression=<type>`` 选项即可。
+压缩功能可在 zone 的归置目标内的存储类上启用，执行
+``radosgw-admin zone placement modify`` 命令时加
+``--compression=<type>`` 选项即可。
 
 压缩类型 ``type`` 应该换成写入新对象数据时要用的压缩插件名。每\
 个压缩的对象都记录了使用的压缩插件，所以更改此配置不影响已有对\
@@ -25,7 +26,11 @@ Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已
 
 例如： ::
 
-  $ radosgw-admin zone placement modify --rgw-zone=default --placement-id=default-placement --compression=zlib
+  $ radosgw-admin zone placement modify \
+        --rgw-zone default \
+        --placement-id default-placement \
+        --storage-class STANDARD \
+        --compression zlib
   {
   ...
       "placement_pools": [
@@ -33,10 +38,14 @@ Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已
               "key": "default-placement",
               "val": {
                   "index_pool": "default.rgw.buckets.index",
-                  "data_pool": "default.rgw.buckets.data",
+                  "storage_classes": {
+                      "STANDARD": {
+                          "data_pool": "default.rgw.buckets.data",
+                          "compression_type": "zlib"
+                      }
+                  },
                   "data_extra_pool": "default.rgw.buckets.non-ec",
                   "index_type": 0,
-                  "compression": "zlib"
               }
           }
       ],

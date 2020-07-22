@@ -1,4 +1,6 @@
-rest 风格的模块
+.. Restful Module
+
+REST 风格的模块
 ===============
 
 REST 风格的模块提供了通过 SSL 加密连接访问集群状态的 REST 风格\

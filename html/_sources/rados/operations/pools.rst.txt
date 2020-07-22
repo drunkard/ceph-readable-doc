@@ -1,15 +1,16 @@
 ========
  存储池
 ========
+Pools are logical partitions for storing objects.
 
-如果你开始部署集群时没有创建存储池， Ceph 会用默认存储池存数\
-据。存储池提供的功能：
+如果你开始部署集群时没有创建存储池， Ceph 会用默认存储池存\
+数据。存储池提供的功能：
 
-- **自恢复力：** 你可以设置在不丢数据的前提下允许多少 OSD 失\
-  效，对多副本存储池来说，此值是一对象应达到的副本数。典型配置\
-  存储一个对象和它的一个副本（即 ``size = 2`` ），但你可以更改\
-  副本数；对\ `纠删编码的存储池`_\ 来说，此值是编码块数（即\
-  **纠删码配置**\ 里的 ``m=2`` ）。
+- **自恢复力：** 你可以设置在不丢数据的前提下允许多少 OSD
+  失效，对多副本存储池来说，此值是一对象应达到的副本数。\
+  典型配置存储一个对象和它的一个副本（即 ``size = 2`` ），但你\
+  可以更改副本数；对\ `纠删编码的存储池 <../erasure-code>`_\
+  来说，此值是编码块数（即\ **纠删码配置**\ 里的 ``m=2`` ）。
 
 - **归置组：** 你可以设置一个存储池的归置组数量。典型配置给每\
   个 OSD 分配大约 100 个归置组，这样，不用过多计算资源就能得到\
@@ -26,8 +27,6 @@
 
 要把数据组织到存储池里，你可以列出、创建、删除存储池，也可以查\
 看每个存储池的利用率。
-
-.. _纠删编码的存储池: ../erasure-code
 
 
 .. List Pools
@@ -60,10 +59,10 @@
 
 要创建一个存储池，执行： ::
 
-	ceph osd pool create {pool-name} {pg-num} [{pgp-num}] [replicated] \
-		[crush-crush-name] [expected-num-objects]
-	ceph osd pool create {pool-name} {pg-num}  {pgp-num}   erasure \
-		[erasure-code-profile] [crush-rule-name] [expected_num_objects]
+	ceph osd pool create {pool-name} [{pg-num} [{pgp-num}]] [replicated] \
+             [crush-rule-name] [expected-num-objects]
+	ceph osd pool create {pool-name} [{pg-num} [{pgp-num}]]   erasure \
+             [erasure-code-profile] [crush-rule-name] [expected_num_objects] [--autoscale-mode=<on,off,warn>]
 
 参数含义如下：
 
@@ -97,16 +96,15 @@
 
 ``{replicated|erasure}``
 
-:描述: 存储池类型，可以是\ **副本**\ （保存多份对象副本，以便从丢失的 OSD \
-       恢复）或\ **纠删**\ （获得类似 `RAID5`_ 的功能）。多副本存储池需更多\
-       原始存储空间，但已实现所有 Ceph 操作；\ **纠删**\ 存储池所需原始存储\
-       空间较少，但目前仅实现了部分 Ceph 操作。
-
+:描述: 存储池类型，可以是\ **replicated （多副本）**\ （保存\
+       多份对象副本，以便从丢失的 OSD 恢复）或\ **erasure （纠删）**\
+       （获得类似 `通用 RAID5 <../erasure-code>`_ 的恢复能力
+       ）。 **replicated** 存储池需更多原始存储空间，但已实现\
+       所有 Ceph 操作；\ **纠删**\ 存储池所需原始存储空间较少，\
+       但目前仅实现了部分 Ceph 操作。
 :类型: String
 :是否必需: No.
 :默认值: replicated
-
-.. _RAID5: ../erasure-code
 
 
 ``[crush-rule-name]``
@@ -126,18 +124,21 @@
 
 :描述: 仅用于\ **纠删**\ 存储池。指定\ `纠删码配置`_\ 框架，\
        此配置必须已由 ``osd erasure-code-profile set`` 定义。
-
 :类型: String
 :是否必需: No.
 
 .. _纠删码配置: ../erasure-code-profile
 
-创建存储池时，要设置一个合理的归置组数量（如 ``100`` ）。也要\
-考虑到每 OSD 的归置组总数，因为归置组很耗计算资源，所以很多\
-存储池和很多归置组（如 50 个存储池，各包含 100 归置组）会导致\
-性能下降。收益递减点取决于 OSD 主机的强大。
 
-如何为存储池计算合适的归置组数量请参见\ `归置组`_\ 。
+``--autoscale-mode=<on,off,warn>``
+
+:Description: Autoscale mode
+
+:Type: String
+:Required: No.
+:Default:  The default behavior is controlled by the ``osd pool default pg autoscale mode`` option.
+
+If you set the autoscale mode to ``on`` or ``warn``, you can let the system autotune or recommend changes to the number of placement groups in your pool based on actual usage.  If you leave it off, then you should refer to `Placement Groups`_ for more information.
 
 .. _归置组: ../placement-groups
 
@@ -833,6 +834,8 @@ true ，否则它会拒绝删除存储池。
 这确保数据存储池里任何副本数小于 ``min_size`` 的对象都不会收\
 到 I/O 了。
 
+
+.. Get the Number of Object Replicas
 
 获取对象副本数
 ==============

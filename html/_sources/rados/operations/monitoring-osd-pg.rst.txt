@@ -1,4 +1,4 @@
-.. _Monitoring OSDs and PGs:
+.. Monitoring OSDs and PGs
 
 ===================
  监控 OSD 和归置组
@@ -23,14 +23,16 @@ Ceph 通常能自己康复，然而如果故障持续存在，监控 OSD 和归�
 监控 OSD
 ========
 
-某 OSD 的状态可以是在集群内（ ``in`` ）或集群外（ ``out`` ）、也可以是活着且在运行\
-（ ``up`` ）或挂了且不在运行（ ``down`` ）。如果一个 OSD 活着，它也可以是 ``in`` \
-（你可以读写数据）或者 ``out`` 集群。如果它以前是 ``in`` 但最近 ``out`` 了， Ceph \
-会把其归置组迁移到其他 OSD 。如果一 OSD ``out`` 了， CRUSH 就不会再分配归置组给\
-它。如果它挂了（ ``down`` ）其状态也应该是 ``out`` 。
+某 OSD 的状态可以是在集群内（ ``in`` ）或集群外（ ``out`` ）、\
+也可以是活着且在运行（ ``up`` ）或挂了且不在运行（ ``down``
+）。如果一个 OSD 活着，它也可以是 ``in`` （你可以读写数据）或者
+``out`` 集群。如果它以前是 ``in`` 但最近 ``out`` 了， Ceph \
+会把其归置组迁移到其他 OSD 。如果一 OSD ``out`` 了， CRUSH
+就不会再分配归置组给它。如果它挂了（ ``down`` ）其状态也应该是
+``out`` 。
 
-.. note:: 如果一 OSD 状态为 ``down`` 且 ``in`` ，必定有问题，而且集群处于非健康状\
-   态。
+.. note:: 如果一 OSD 状态为 ``down`` 且 ``in`` ，必定有问题，\
+   而且集群处于非健康状态。
 
 .. ditaa:: +----------------+        +----------------+
            |                |        |                |
@@ -208,16 +210,16 @@ OSD 们也向监视器报告自己的状态，详情见\ `监视器与 OSD 交�
 
 .. topic:: 归置组唯一标识符
 
-   归置组 ID 由存储池号（不是存储池名字）、后面跟一个点（ . ）、然\
-   后是归置组 ID ，它是一个十六进制数字。用 ``ceph osd lspools`` \
-   可查看存储池号及其名字，例如，默认存储池 ``rbd`` 对应的存储池号\
-   是 0 。完整的归置组 ID 格式如下： ::
+   归置组 ID 由存储池号（不是存储池名字）、后面跟一个点（ . ）、\
+   然后是归置组 ID ，它是一个十六进制数字。用 ``ceph osd lspools``
+   可查看存储池号及其名字，例如，第一个创建的存储池对应于\
+   存储池号 1 。完整的归置组 ID 格式如下： ::
 
    	{pool-num}.{pg-id}
 
    典型长相： ::
 
-   	0.1f
+   	1.1f
 
 
 用下列命令获取归置组列表： ::
@@ -355,19 +357,24 @@ Ceph 提供了几个选项来均衡资源竞争，如新服务请求、恢复数
 务了。
 
 在回填运转期间，你可能见到以下几种状态之一： ``backfill_wait``
-表明一回填操作在等待时机，尚未开始； ``backfill`` 表明一回填操\
-作正在进行； ``backfill_too_full`` 表明需要进行回填，但是因存\
-储空间不足而不能完成。某归置组不能回填时，其状态应该是 \
+表明一回填操作在等待时机，尚未开始； ``backfilling`` 表明一\
+回填操作正在进行； ``backfill_too_full`` 表明需要进行回填，\
+但是因存储空间不足而不能完成。某归置组不能回填时，其状态应该是
 ``incomplete`` 。
 
+The ``backfill_toofull`` state may be transient.  It is possible that as PGs
+are moved around, space may become available.  The ``backfill_toofull`` is
+similar to ``backfill_wait`` in that as soon as conditions change
+backfill can proceed.
+
 Ceph 有多个选项可以解决重分配归置组给一 OSD （特别是新 OSD ）\
-时相关的负载问题。默认， ``osd_max_backfills`` 把双向的回填并\
-发量都设置为 10 ； ``backfill full ratio`` 可让一 OSD 在接近占\
-满率（默认 90% ）、并且用 ``ceph osd set-backfillfull-ratio`` \
-命令更改后拒绝回填请求，如果一 OSD 拒绝了回填请求，在间隔
-``osd backfill retry interval`` 时间之后将重试（默认 10 秒）；
-OSD 也能用 ``osd backfill scan min`` 和 ``osd backfill scan max``
-来管理扫描间隔（默认 64 和 512 ）。
+时相关的负载问题。默认情况下， ``osd_max_backfills`` 把双向的\
+回填并发量都设置为 1 ； ``backfill full ratio`` 可让一 OSD 在\
+快到占满率（默认 90% ）时拒绝回填请求，占满率可以用
+``ceph osd set-backfillfull-ratio`` 命令更改。如果一 OSD 拒绝\
+了回填请求，在间隔 ``osd backfill retry interval`` 时间之后将\
+重试（默认 30 秒）； OSD 也能用 ``osd backfill scan min`` 和
+``osd backfill scan max`` 来管理扫描间隔（默认 64 和 512 ）。
 
 
 .. Remapped
@@ -375,9 +382,10 @@ OSD 也能用 ``osd backfill scan min`` 和 ``osd backfill scan max``
 被重映射
 --------
 
-负责维护某一归置组的 Acting Set 变更时，数据要从旧集合迁移到新的。新的主 OSD 要花\
-费一些时间才能提供服务，所以老的主 OSD 还要持续提供服务、直到归置组迁移完。数据迁移\
-完后，运行图会包含新 acting set 里的主 OSD 。
+负责维护某一归置组的 Acting Set 变更时，数据要从旧集合迁移到\
+新的。新的主 OSD 要花费一些时间才能提供服务，所以老的主 OSD
+还要持续提供服务、直到归置组迁移完。数据迁移完后，运行图会包含\
+新 acting set 里的主 OSD 。
 
 
 .. Stale

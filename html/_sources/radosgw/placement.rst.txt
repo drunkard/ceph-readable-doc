@@ -1,9 +1,10 @@
-==================================
-Pool Placement and Storage Classes
-==================================
+.. Pool Placement and Storage Classes
+
+====================
+ 存储池归置和存储类
+====================
 
 .. contents::
-
 .. Placement Targets
 
 归置目标
@@ -23,10 +24,11 @@ placement information includes the ``index_pool`` name for the bucket index,
 the ``data_extra_pool`` name for metadata about incomplete multipart uploads,
 and a ``data_pool`` name for each storage class.
 
+.. Storage Classes
 .. _storage_classes:
 
-Storage Classes
-===============
+存储类
+======
 
 .. versionadded:: Nautilus
 
@@ -38,8 +40,10 @@ placement target lists its available storage classes with an initial class
 named ``STANDARD``. The zone configuration is responsible for providing a
 ``data_pool`` pool name for each of the zonegroup's storage classes.
 
-Zonegroup/Zone Configuration
-============================
+.. Zonegroup/Zone Configuration
+
+Zonegroup/Zone 配置
+===================
 
 Placement configuration is performed with ``radosgw-admin`` commands on
 the zonegroups and zones.
@@ -102,11 +106,11 @@ The zone placement configuration can be queried with:
           the zone/zonegroup changes will take effect once the changes are
           committed with ``radosgw-admin period update --commit``.
 
+
 .. Adding a Placement Target
 
 新增一个归置目标
 ----------------
-
 To create a new placement target named ``temporary``, start by adding it to
 the zonegroup:
 
@@ -127,9 +131,11 @@ Then provide the zone placement info for that target:
         --index-pool default.rgw.temporary.index \
         --data-extra-pool default.rgw.temporary.non-ec
 
-Adding a Storage Class
-----------------------
 
+.. Adding a Storage Class
+
+新增一个存储类
+--------------
 To add a new storage class named ``COLD`` to the ``default-placement`` target,
 start by adding it to the zonegroup:
 
@@ -190,14 +196,15 @@ to create buckets with that placement target unless their user info contains
 at least one matching tag in its ``placement_tags`` field. This can be useful
 to restrict access to certain types of storage.
 
-The ``radosgw-admin`` command cannot modify these fields directly, so the json
-format must be edited manually:
+The ``radosgw-admin`` command can modify these fields directly with:
 
 ::
 
-  $ radosgw-admin metadata get user:<user-id> > user.json
-  $ vi user.json
-  $ radosgw-admin metadata put user:<user-id> < user.json
+  $ radosgw-admin user modify \
+        --uid <user-id> \
+        --placement-id <default-placement-id> \
+        --storage-class <default-storage-class> \
+        --tags <tag1,tag2>
 
 .. _s3_bucket_placement:
 
@@ -241,6 +248,10 @@ To create an object in a non-default storage class, provide that storage class
 name in an HTTP header with the request. The S3 protocol uses the
 ``X-Amz-Storage-Class`` header, while the Swift protocol uses the
 ``X-Object-Storage-Class`` header.
+
+When using AWS S3 SDKs such as python boto3, it is important that the non-default
+storage class will be called as one on of the AWS S3 allowed storage classes, or else the SDK
+will drop the request and raise an exception.
 
 S3 Object Lifecycle Management can then be used to move object data between
 storage classes using ``Transition`` actions.

@@ -45,13 +45,16 @@ Looking op Monitors through DNS
 这些记录配置好后，我们用 *ceph-mon* 名字创建 SRV TCP 记录，分\
 别指向三个监视器。 ::
 
-    _ceph-mon._tcp.example.com. 60 IN SRV 10 60 6789 mon1.example.com.
-    _ceph-mon._tcp.example.com. 60 IN SRV 10 60 6789 mon2.example.com.
-    _ceph-mon._tcp.example.com. 60 IN SRV 10 60 6789 mon3.example.com.
+    _ceph-mon._tcp.example.com. 60 IN SRV 10 20 6789 mon1.example.com.
+    _ceph-mon._tcp.example.com. 60 IN SRV 10 30 6789 mon2.example.com.
+    _ceph-mon._tcp.example.com. 60 IN SRV 20 50 6789 mon3.example.com.
 
-这里，我们配置的监视器运行在 *6789* 端口上，它们的优先级都是
-*10* 、权重都是 *60* 。
+此时，所有监视器都运行在 *6789* 端口上，它们的优先级分别是
+10 、 10 、 20 ，权重分别是 20 、 30 、 50 。
 
-当前实现的客户端和守护进程还\ *只会*\ 遵守或理睬 SRV 记录中配\
-置的优先级，并且只会连接优先级最低的监视器；目标优先级相同时将\
-随机选择。
+Monitor clients choose monitor by referencing the SRV records. If a cluster has multiple Monitor SRV records
+with the same priority value, clients and daemons will load balance the connections to Monitors in proportion
+to the values of the SRV weight fields.
+
+For the above example, this will result in approximate 40% of the clients and daemons connecting to mon1,
+60% of them connecting to mon2. However, if neither of them is reachable, then mon3 will be reconsidered as a fallback.

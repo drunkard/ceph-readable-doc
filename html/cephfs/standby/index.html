@@ -72,6 +72,9 @@ CephFS 文件系统有一个人类可读的名字（用 <code class="docutils li
 rank ，只有在 ceph-mds 守护进程停止的时候才会释放 rank 。</p>
 <p>如果某个 rank 没有依附一个守护进程，那这个 rank 就<em>失效了（ failed ）</em>。分配给守护进程的 rank 才被当作<em>正常的（ up ）</em>。</p>
 <p>首次配置守护进程时，管理员需分配静态的<em>名字</em>，一般配置都会用守护进程所在的主机名作为其守护进程名字。</p>
+<p>A ceph-mds daemons can be assigned to a particular file system by
+setting the <cite>mds_join_fs</cite> configuration option to the file system
+name.</p>
 <p>守护进程每次启动时，还会被分配一个 <em>GID</em> ，对于这个守护进程的特定进程的生命周期来说它是唯一的。 GID 是整数。</p>
 <div class="admonition-todo admonition" id="id2">
 <p class="admonition-title">Todo</p>
@@ -120,6 +123,78 @@ standby-replay daemon will not be used as a replacement, even if no other
 standbys are available. For this reason, it is advised that if standby-replay
 is used then every active MDS should have a standby-replay daemon.</p>
 </div>
+<div class="section" id="mds-join-fs">
+<span id="id5"></span><h1>配置 MDS 与文件系统的亲和性<a class="headerlink" href="#mds-join-fs" title="Permalink to this headline">¶</a></h1>
+<p>You may want to have an MDS used for a particular file system. Or, perhaps you
+have larger MDSs on better hardware that should be preferred over a last-resort
+standby on lesser or over-provisioned hardware. To express this preference,
+CephFS provides a configuration option for MDS called <code class="docutils literal notranslate"><span class="pre">mds_join_fs</span></code> which
+enforces this <cite>affinity</cite>.</p>
+<p>As part of any failover, the Ceph monitors will prefer standby daemons with
+<code class="docutils literal notranslate"><span class="pre">mds_join_fs</span></code> equal to the file system name with the failed rank.  If no
+standby exists with <code class="docutils literal notranslate"><span class="pre">mds_join_fs</span></code> equal to the file system name, it will
+choose a <cite>vanilla</cite> standby (no setting for <code class="docutils literal notranslate"><span class="pre">mds_join_fs</span></code>) for the replacement
+or any other available standby as a last resort. Note, this does not change the
+behavior that <code class="docutils literal notranslate"><span class="pre">standby-replay</span></code> daemons are always selected before looking at
+other standbys.</p>
+<p>Even further, the monitors will regularly examine the CephFS file systems when
+stable to check if a standby with stronger affinity is available to replace an
+MDS with lower affinity. This process is also done for standby-replay daemons:
+if a regular standby has stronger affinity than the standby-replay MDS, it will
+replace the standby-replay MDS.</p>
+<p>For example, given this stable and healthy file system:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs dump
+dumped fsmap epoch 399
+...
+Filesystem &#39;cephfs&#39; (27)
+...
+e399
+max_mds 1
+in      0
+up      {0=20384}
+failed
+damaged
+stopped
+...
+[mds.a{0:20384} state up:active seq 239 addr [v2:127.0.0.1:6854/966242805,v1:127.0.0.1:6855/966242805]]
+
+Standby daemons:
+
+[mds.b{-1:10420} state up:standby seq 2 addr [v2:127.0.0.1:6856/2745199145,v1:127.0.0.1:6857/2745199145]]
+</pre></div>
+</div>
+<p>You may set <code class="docutils literal notranslate"><span class="pre">mds_join_fs</span></code> on the standby to enforce your preference:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph config set mds.b mds_join_fs cephfs
+</pre></div>
+</div>
+<p>after automatic failover:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs dump
+dumped fsmap epoch 405
+e405
+...
+Filesystem &#39;cephfs&#39; (27)
+...
+max_mds 1
+in      0
+up      {0=10420}
+failed
+damaged
+stopped
+...
+[mds.b{0:10420} state up:active seq 274 join_fscid=27 addr [v2:127.0.0.1:6856/2745199145,v1:127.0.0.1:6857/2745199145]]
+
+Standby daemons:
+
+[mds.a{-1:10720} state up:standby seq 2 addr [v2:127.0.0.1:6854/1340357658,v1:127.0.0.1:6855/1340357658]]
+</pre></div>
+</div>
+<p>Note in the above example that <code class="docutils literal notranslate"><span class="pre">mds.b</span></code> now has <code class="docutils literal notranslate"><span class="pre">join_fscid=27</span></code>. In this
+output, the file system name from <code class="docutils literal notranslate"><span class="pre">mds_join_fs</span></code> is changed to the file system
+identifier (27). If the file system is recreated with the same name, the
+standby will follow the new file system as expected.</p>
+<p>Finally, if the file system is degraded or undersized, no failover will occur
+to enforce <code class="docutils literal notranslate"><span class="pre">mds_join_fs</span></code>.</p>
+</div>
 
 
 
@@ -144,6 +219,7 @@ is used then every active MDS should have a standby-replay daemon.</p>
 <li class="toctree-l3"><a class="reference internal" href="#mds">MDS 守护进程的引用</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id3">故障切换的管理</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#mds-standby-replay">热备的配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mds-join-fs">配置 MDS 与文件系统的亲和性</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/">MDS 配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>

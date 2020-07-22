@@ -8,7 +8,7 @@
 .. contents::
 
 Ceph 对象网关支持两个嵌入式的 HTTP 前端库，可以用
-``rgw_frontends`` 配置。
+``rgw_frontends`` 配置。语法请参考\ `配置参考`_\ 。
 
 
 Beast
@@ -57,6 +57,28 @@ and the Boost.Asio library for asynchronous network i/o.
 :描述: 可选配置，私钥文件的路径，用于启用了 SSL 的终结点。如果\
        没配置此路径，就把 ``ssl_certificate`` 文件当作私钥用。
 :类型: String
+:默认值: None
+
+
+``tcp_nodelay``
+
+:描述: If set the socket option will disable Nagle's algorithm on 
+              the connection which means that packets will be sent as soon 
+              as possible instead of waiting for a full buffer or timeout to occur.
+
+              ``1`` Disable Nagel's algorithm for all sockets.
+
+              ``0`` Keep the default: Nagel's algorithm enabled.
+:类型: Integer (0 or 1)
+:默认值: 0
+
+
+``max_connection_backlog``
+
+:描述: Optional value to define the maximum size for the queue of
+              connections waiting to be accepted. If not configured, the value
+              from ``boost::asio::socket_base::max_connections`` will be used.
+:类型: Integer
 :默认值: None
 
 
@@ -154,3 +176,4 @@ fork of Mongoose.
 
 
 .. _Civetweb 用户手册: https://civetweb.github.io/civetweb/UserManual.html
+.. _配置参考: ../config-ref

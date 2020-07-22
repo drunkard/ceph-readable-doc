@@ -182,7 +182,8 @@ is the name of the  pool and ``pool_id`` is the ID of the pool you wish to use.
 
 	ioctx = cluster.open_ioctx('data')
 
-or
+
+或者
 
 .. code-block:: python
    :linenos:
@@ -260,9 +261,9 @@ For example:
 
 	object_iterator = ioctx.list_objects()
 
-	while True : 
+	while True :
 
-		try : 
+		try :
 			rados_object = object_iterator.next()
 			print "Object contents = " + rados_object.read()
 
@@ -342,6 +343,21 @@ exists,  and delete a pool.
 .. automethod:: Rados.create_pool(pool_name, crush_rule=None)
 .. automethod:: Rados.pool_exists()
 .. automethod:: Rados.delete_pool(pool_name)
+
+
+.. CLI Commands
+
+CLI 命令
+--------
+
+The Ceph CLI command is internally using the following librados Python binding methods.
+
+In order to send a command, choose the correct method and choose the correct target.
+
+.. automethod:: Rados.mon_command
+.. automethod:: Rados.osd_command
+.. automethod:: Rados.mgr_command
+.. automethod:: Rados.pg_command
 
 
 .. Input/Output Context API

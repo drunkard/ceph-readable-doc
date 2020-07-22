@@ -68,12 +68,12 @@
 <p>这是开发者文档，所述的 Ceph 内部机制仅供 ceph-mgr 模块开发者使用。</p>
 </div>
 <div class="section" id="id1">
-<h2>创建插件<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<h2>创建模块<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <p>在 pybind/mgr/ 目录下，创建一个 python 模块，在此模块内创建一个继承 <code class="docutils literal notranslate"><span class="pre">MgrModule</span></code> 的类。为了让 ceph-mgr 能探测到你的模块，你的目录必须包含一个名为 <cite>module.py</cite> 的文件。</p>
 <p>需要覆盖的、最重要的方法有：</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">serve</span></code> 成员函数，服务器类型的模块必须覆盖。此函数应该永远阻塞。</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">notify</span></code> 成员函数，如果你的模块想对新的集群数据有所动作。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">serve</span></code> 成员函数，用于服务器类型的模块，此函数应该永远阻塞；</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">notify</span></code> 成员函数，如果你的模块想对新的集群数据有所动作；</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">handle_command</span></code> 成员函数，如果你的模块要暴露 CLI 命令。</p></li>
 </ul>
 <p>Some modules interface with external orchestrators to deploy
@@ -83,7 +83,7 @@ additional methods to the base <code class="docutils literal notranslate"><span 
 creating these modules.</p>
 </div>
 <div class="section" id="id2">
-<h2>安装插件<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<h2>安装模块<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <p>你自己的模块放入 <code class="docutils literal notranslate"><span class="pre">mgr</span> <span class="pre">module</span> <span class="pre">path</span></code> 配置选项所指的路径后，可以用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">mgr</span> <span class="pre">module</span> <span class="pre">enable</span></code> 命令启用它：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">mgr</span> <span class="n">module</span> <span class="n">enable</span> <span class="n">mymodule</span>
 </pre></div>
@@ -92,22 +92,65 @@ creating these modules.</p>
 </div>
 <div class="section" id="id3">
 <h2>日志记录<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">MgrModule</span></code> instances have a <code class="docutils literal notranslate"><span class="pre">log</span></code> property which is a logger instance that
-sends log messages into the Ceph logging layer where they will be recorded
-in the mgr daemon’s log file.</p>
-<p>Use it the same way you would any other python logger.  The python
-log levels debug, info, warn, err are mapped into the Ceph
-severities 20, 4, 1 and 0 respectively.</p>
+<p>Logging in Ceph manager modules is done as in any other Python program. Just
+import the <code class="docutils literal notranslate"><span class="pre">logging</span></code> package and get a logger instance with the
+<code class="docutils literal notranslate"><span class="pre">logging.getLogger</span></code> function.</p>
+<p>Each module has a <code class="docutils literal notranslate"><span class="pre">log_level</span></code> option that specifies the current Python
+logging level of the module.
+To change or query the logging level of the module use the following Ceph
+commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="n">get</span> <span class="n">mgr</span> <span class="n">mgr</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span><span class="n">log_level</span>
+<span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">mgr</span> <span class="n">mgr</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span><span class="n">log_level</span> <span class="o">&lt;</span><span class="n">info</span><span class="o">|</span><span class="n">debug</span><span class="o">|</span><span class="n">critical</span><span class="o">|</span><span class="n">error</span><span class="o">|</span><span class="n">warning</span><span class="o">|&gt;</span>
+</pre></div>
+</div>
+<p>The logging level used upon the module’s start is determined by the current
+logging level of the mgr daemon, unless if the <code class="docutils literal notranslate"><span class="pre">log_level</span></code> option was
+previously set with the <code class="docutils literal notranslate"><span class="pre">config</span> <span class="pre">set</span> <span class="pre">...</span></code> command. The mgr daemon logging
+level is mapped to the module python logging level as follows:</p>
+<ul class="simple">
+<li><p>&lt;= 0 is CRITICAL</p></li>
+<li><p>&lt;= 1 is WARNING</p></li>
+<li><p>&lt;= 4 is INFO</p></li>
+<li><p>&lt;= +inf is DEBUG</p></li>
+</ul>
+<p>We can unset the module log level and fallback to the mgr daemon logging level
+by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">mgr</span> <span class="n">mgr</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span><span class="n">log_level</span> <span class="s1">&#39;&#39;</span>
+</pre></div>
+</div>
+<p>By default, modules’ logging messages are processed by the Ceph logging layer
+where they will be recorded in the mgr daemon’s log file.
+But it’s also possible to send a module’s logging message to it’s own file.</p>
+<p>The module’s log file will be located in the same directory as the mgr daemon’s
+log file with the following name pattern:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">mgr_daemon_log_file_name</span><span class="o">&gt;.&lt;</span><span class="n">module_name</span><span class="o">&gt;.</span><span class="n">log</span>
+</pre></div>
+</div>
+<p>To enable the file logging on a module use the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">mgr</span> <span class="n">mgr</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span><span class="n">log_to_file</span> <span class="n">true</span>
+</pre></div>
+</div>
+<p>When the module’s file logging is enabled, module’s logging messages stop
+being written to the mgr daemon’s log file and are only written to the
+module’s log file.</p>
+<p>It’s also possible to check the status and disable the file logging with the
+following commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="n">get</span> <span class="n">mgr</span> <span class="n">mgr</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span><span class="n">log_to_file</span>
+<span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">mgr</span> <span class="n">mgr</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span><span class="n">log_to_file</span> <span class="n">false</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="exposing-commands">
 <h2>Exposing commands<a class="headerlink" href="#exposing-commands" title="Permalink to this headline">¶</a></h2>
-<p>Set the <code class="docutils literal notranslate"><span class="pre">COMMANDS</span></code> class attribute of your plugin to a list of dicts
+<p>Set the <code class="docutils literal notranslate"><span class="pre">COMMANDS</span></code> class attribute of your module to a list of dicts
 like this:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">COMMANDS</span> <span class="o">=</span> <span class="p">[</span>
     <span class="p">{</span>
         <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;foobar name=myarg,type=CephString&quot;</span><span class="p">,</span>
         <span class="s2">&quot;desc&quot;</span><span class="p">:</span> <span class="s2">&quot;Do something awesome&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;perm&quot;</span><span class="p">:</span> <span class="s2">&quot;rw&quot;</span>
+        <span class="s2">&quot;perm&quot;</span><span class="p">:</span> <span class="s2">&quot;rw&quot;</span><span class="p">,</span>
+        <span class="c1"># optional:</span>
+        <span class="s2">&quot;poll&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span>
     <span class="p">}</span>
 <span class="p">]</span>
 </pre></div>
@@ -693,34 +736,21 @@ implementation may change to serialize arguments and return
 values.</p>
 </div>
 <div class="section" id="id13">
-<h2>日志记录<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
-<p>Use your module’s <code class="docutils literal notranslate"><span class="pre">log</span></code> attribute as your logger.  This is a logger
-configured to output via the ceph logging framework, to the local ceph-mgr
-log files.</p>
-<p>Python log severities are mapped to ceph severities as follows:</p>
-<ul class="simple">
-<li><p>DEBUG is 20</p></li>
-<li><p>INFO is 4</p></li>
-<li><p>WARN is 1</p></li>
-<li><p>ERR is 0</p></li>
-</ul>
-</div>
-<div class="section" id="id14">
-<h2>干净地关闭<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
+<h2>干净地关闭<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
 <p>If a module implements the <code class="docutils literal notranslate"><span class="pre">serve()</span></code> method, it should also implement
 the <code class="docutils literal notranslate"><span class="pre">shutdown()</span></code> method to shutdown cleanly: misbehaving modules
 may otherwise prevent clean shutdown of ceph-mgr.</p>
 </div>
-<div class="section" id="id15">
-<h2>局限性<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id14">
+<h2>局限性<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
 <p>It is not possible to call back into C++ code from a module’s
 <code class="docutils literal notranslate"><span class="pre">__init__()</span></code> method.  For example calling <code class="docutils literal notranslate"><span class="pre">self.get_module_option()</span></code> at
 this point will result in an assertion failure in ceph-mgr.  For modules
 that implement the <code class="docutils literal notranslate"><span class="pre">serve()</span></code> method, it usually makes sense to do most
 initialization inside that method instead.</p>
 </div>
-<div class="section" id="id16">
-<h2>还有未竟事宜否？<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id15">
+<h2>还有未竟事宜否？<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
 <p>The ceph-mgr python interface is not set in stone.  If you have a need
 that is not satisfied by the current interface, please bring it up
 on the ceph-devel mailing list.  While it is desired to avoid bloating
@@ -751,8 +781,8 @@ to the Python code when there is a good reason.</p>
 <li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 管理器守护进程</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../administrator/">安装和配置</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">模块编程</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">创建插件</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id2">安装插件</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">创建模块</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">安装模块</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id3">日志记录</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#exposing-commands">Exposing commands</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id4">配置选项</a></li>
@@ -766,10 +796,9 @@ to the Python code when there is a good reason.</p>
 <li class="toctree-l3"><a class="reference internal" href="#rados-cephfs">访问 RADOS 或 CephFS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id11">备用模式的实现</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id12">模块间通信</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id13">日志记录</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id14">干净地关闭</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id15">局限性</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id16">还有未竟事宜否？</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id13">干净地关闭</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id14">局限性</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id15">还有未竟事宜否？</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../orchestrator_modules/">编写 orchestrator 插件</a></li>

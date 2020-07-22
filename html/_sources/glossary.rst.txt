@@ -152,10 +152,12 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
 
 	Ceph Manager Dashboard
 	Ceph Dashboard
+	Dashboard Module
 	Dashboard Plugin
 	Dashboard
         Ceph 管理器仪表盘
         Ceph 仪表盘
+        仪表盘模块
         仪表盘插件
         仪表盘
                 一个内建的、基于网页的 Ceph 管理和监控应用程序，\
