@@ -1,3 +1,5 @@
+.. Admin Operations
+
 ==========
  管理操作
 ==========
@@ -9,7 +11,7 @@ The response entity type (XML or JSON) may be specified as the 'format' option i
 request and defaults to JSON if not specified.
 
 
-.. _Get Usage:
+.. Get Usage
 
 查看使用率
 ==========
@@ -543,7 +545,7 @@ If successful, the response contains the user information.
 :状态码: 400 Bad Request
 
 
-.. _Modify User:
+.. Modify User
 
 修改用户信息
 ============
@@ -561,8 +563,8 @@ Modify a user.
 	Host: {fqdn}
 
 
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+请求参数
+~~~~~~~~
 
 ``uid``
 
@@ -632,6 +634,13 @@ Request Parameters
 :描述: Specify whether the user should be suspended.
 :类型: Boolean
 :实例: False [False]
+:是否必需: No
+
+``op-mask``
+
+:描述: The op-mask of the user to be modified.
+:类型: String
+:实例: ``read, write, delete, *``
 :是否必需: No
 
 Response Entities

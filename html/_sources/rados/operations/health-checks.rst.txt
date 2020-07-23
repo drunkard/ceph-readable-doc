@@ -942,8 +942,8 @@ data in the cluster have too few PGs, and/or that other pools that do
 not contain as much data have too many PGs.  See the discussion of
 *TOO_MANY_PGS* above.
 
-The threshold can be raised to silence the health warning by adjusting
-the ``mon_pg_warn_max_object_skew`` config option on the monitors.
+在管理器上调高 ``mon_pg_warn_max_object_skew`` 配置选项的阈值\
+可以消除此健康告警。
 
 
 POOL_APP_NOT_ENABLED

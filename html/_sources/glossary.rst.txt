@@ -53,7 +53,7 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
 		The core set of storage software which stores the user's data (MON+OSD).
 
 	Ceph Cluster Map
-	cluster map
+	Cluster Map
         Ceph 集群运行图
         集群运行图
 		The set of maps comprising the monitor map, OSD map, PG map, MDS map and 

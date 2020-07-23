@@ -10,6 +10,12 @@
 .. note::
    路径限定和布局更改限定是 Ceph 从 Jewel 版起才具备的新功能。
 
+.. note::
+
+   Using Erasure Coded(EC) pools with CephFS is supported only with the
+   BlueStore Backend. They cannot be used as metadata pools and overwrites must
+   be enabled on the data pools.
+
 
 .. Path restriction
 

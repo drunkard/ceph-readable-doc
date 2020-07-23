@@ -1,3 +1,4 @@
+.. Ceph Dashboard
 .. _mgr-dashboard:
 
 Ceph 仪表盘

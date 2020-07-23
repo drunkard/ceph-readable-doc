@@ -89,9 +89,9 @@ Configuration options that control the resharding process:
    # radosgw-admin reshard list
 
 
-.. Process/Schedule a bucket resharding
+.. Process tasks on the resharding queue
 
-处理、调度一次桶重分片
+处理重分片队列里的任务
 ----------------------
 
 ::
