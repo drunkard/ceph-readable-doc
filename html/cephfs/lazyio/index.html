@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>目录分片的配置 &#8212; Ceph Documentation</title>
+    <title>LazyIO &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
@@ -18,8 +18,8 @@
     <link rel="shortcut icon" href="../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
-    <link rel="next" title="多活 MDS 守护进程的配置" href="../multimds/" />
-    <link rel="prev" title="升级 MDS 集群" href="../upgrading/" /> 
+    <link rel="next" title="FS volumes and subvolumes" href="../fs-volumes/" />
+    <link rel="prev" title="Ceph 文件系统洗刷" href="../scrub/" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -31,10 +31,10 @@
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../multimds/" title="多活 MDS 守护进程的配置"
+          <a href="../fs-volumes/" title="FS volumes and subvolumes"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../upgrading/" title="升级 MDS 集群"
+          <a href="../scrub/" title="Ceph 文件系统洗刷"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
@@ -57,81 +57,78 @@
   <p class="last">This document is for an unsupported version of Ceph.</p>
 </div>
   <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
-    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/dirfrags.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/lazyio.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
   </div>
 
   
-  <div class="section" id="id1">
-<h1>目录分片的配置<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
-<p>在 CephFS 中，目录变得非常大或非常繁忙时会被<em>分片</em>。也就是把元数据拆分开，分成多个对象置于元数据存储池内，以便由多个 MDS
-守护进程共同处理。</p>
-<p>在常规操作中，目录碎片对用户和管理员不可见，并且这里提到的所有配置选项都应该维持其默认值。</p>
-<p>While directory fragmentation enables CephFS to handle very large
-numbers of entries in a single directory, application programmers should
-remain conservative about creating very large directories, as they still
-have a resource cost in situations such as a CephFS client listing
-the directory, where all the fragments must be loaded at once.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>The root directory cannot be fragmented.</p>
+  <div class="section" id="lazyio">
+<h1>LazyIO<a class="headerlink" href="#lazyio" title="Permalink to this headline">¶</a></h1>
+<p>LazyIO relaxes POSIX semantics. Buffered reads/writes are allowed even when a
+file is opened by multiple applications on multiple clients. Applications are
+responsible for managing cache coherency themselves.</p>
+<p>Libcephfs supports LazyIO since nautilus release.</p>
+<div class="section" id="id1">
+<h2>启用 LazyIO<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>LazyIO can be enabled by following ways.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">client_force_lazyio</span></code> option enables LAZY_IO globally for libcephfs and
+ceph-fuse mount.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ceph_lazyio(...)</span></code> and <code class="docutils literal notranslate"><span class="pre">ceph_ll_lazyio(...)</span></code> enable LAZY_IO for file handle
+in libcephfs.</p></li>
+</ul>
 </div>
-<p>All directories are initially created as a single fragment.  This fragment
-may be <em>split</em> to divide up the directory into more fragments, and these
-fragments may be <em>merged</em> to reduce the number of fragments in the directory.</p>
 <div class="section" id="id2">
-<h2>拆分和合并<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<p>When an MDS identifies a directory fragment to be split, it does not
-do the split immediately.  Because splitting interrupts metadata IO,
-a short delay is used to allow short bursts of client IO to complete
-before the split begins.  This delay is configured with
-<code class="docutils literal notranslate"><span class="pre">mds_bal_fragment_interval</span></code>, which defaults to 5 seconds.</p>
-<p>When the split is done, the directory fragment is broken up into
-a power of two number of new fragments.  The number of new
-fragments is given by two to the power <code class="docutils literal notranslate"><span class="pre">mds_bal_split_bits</span></code>, i.e.
-if <code class="docutils literal notranslate"><span class="pre">mds_bal_split_bits</span></code> is 2, then four new fragments will be
-created.  The default setting is 3, i.e. splits create 8 new fragments.</p>
-<p>The criteria for initiating a split or a merge are described in the
-following sections.</p>
+<h2>使用 LazyIO<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>LazyIO includes two methods <code class="docutils literal notranslate"><span class="pre">lazyio_propagate()</span></code> and <code class="docutils literal notranslate"><span class="pre">lazyio_synchronize()</span></code>.
+With LazyIO enabled, writes may not be visble to other clients until
+<code class="docutils literal notranslate"><span class="pre">lazyio_propagate()</span></code> is called. Reads may come from local cache (irrespective of
+changes to the file by other clients) until <code class="docutils literal notranslate"><span class="pre">lazyio_synchronize()</span></code> is called.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lazyio_propagate(int</span> <span class="pre">fd,</span> <span class="pre">loff_t</span> <span class="pre">offset,</span> <span class="pre">size_t</span> <span class="pre">count)</span></code> - Ensures that any
+buffered writes of the client, in the specific region (offset to offset+count),
+has been propagated to the shared file. If offset and count are both 0, the
+operation is performed on the entire file. Currently only this is supported.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lazyio_synchronize(int</span> <span class="pre">fd,</span> <span class="pre">loff_t</span> <span class="pre">offset,</span> <span class="pre">size_t</span> <span class="pre">count)</span></code> - Ensures that the
+client is, in a subsequent read call, able to read the updated file with all
+the propagated writes of the other clients. In CephFS this is facilitated by
+invalidating the file caches pertaining to the inode and hence forces the
+client to refetch/recache the data from the updated file. Also if the write cache
+of the calling client is dirty (not propagated), lazyio_synchronize() flushes it as well.</p></li>
+</ul>
+<p>An example usage (utilizing libcephfs) is given below. This is a sample I/O loop for a
+particular client/file descriptor in a parallel application:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/*</span> <span class="n">Client</span> <span class="n">a</span> <span class="p">(</span><span class="n">ca</span><span class="p">)</span> <span class="n">opens</span> <span class="n">the</span> <span class="n">shared</span> <span class="n">file</span> <span class="n">file</span><span class="o">.</span><span class="n">txt</span> <span class="o">*/</span>
+<span class="nb">int</span> <span class="n">fda</span> <span class="o">=</span> <span class="n">ceph_open</span><span class="p">(</span><span class="n">ca</span><span class="p">,</span> <span class="s2">&quot;shared_file.txt&quot;</span><span class="p">,</span> <span class="n">O_CREAT</span><span class="o">|</span><span class="n">O_RDWR</span><span class="p">,</span> <span class="mi">0644</span><span class="p">);</span>
+
+<span class="o">/*</span> <span class="n">Enable</span> <span class="n">LazyIO</span> <span class="k">for</span> <span class="n">fda</span> <span class="o">*/</span>
+<span class="n">ceph_lazyio</span><span class="p">(</span><span class="n">ca</span><span class="p">,</span> <span class="n">fda</span><span class="p">,</span> <span class="mi">1</span><span class="p">));</span>
+
+<span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">num_iters</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">char</span> <span class="n">out_buf</span><span class="p">[]</span> <span class="o">=</span> <span class="s2">&quot;fooooooooo&quot;</span><span class="p">;</span>
+
+    <span class="n">ceph_write</span><span class="p">(</span><span class="n">ca</span><span class="p">,</span> <span class="n">fda</span><span class="p">,</span> <span class="n">out_buf</span><span class="p">,</span> <span class="n">sizeof</span><span class="p">(</span><span class="n">out_buf</span><span class="p">),</span> <span class="n">i</span><span class="p">);</span>
+    <span class="o">/*</span> <span class="n">Propagate</span> <span class="n">the</span> <span class="n">writes</span> <span class="n">associated</span> <span class="k">with</span> <span class="n">fda</span> <span class="n">to</span> <span class="n">the</span> <span class="n">backing</span> <span class="n">storage</span><span class="o">*/</span>
+    <span class="n">ceph_propagate</span><span class="p">(</span><span class="n">ca</span><span class="p">,</span> <span class="n">fda</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="o">/*</span> <span class="n">The</span> <span class="n">barrier</span> <span class="n">makes</span> <span class="n">sure</span> <span class="n">changes</span> <span class="n">associated</span> <span class="k">with</span> <span class="nb">all</span> <span class="n">file</span> <span class="n">descriptors</span>
+    <span class="n">are</span> <span class="n">propagated</span> <span class="n">so</span> <span class="n">that</span> <span class="n">there</span> <span class="ow">is</span> <span class="n">certainty</span> <span class="n">that</span> <span class="n">the</span> <span class="n">backing</span> <span class="n">file</span>
+    <span class="ow">is</span> <span class="n">upto</span> <span class="n">date</span> <span class="o">*/</span>
+    <span class="n">application_specific_barrier</span><span class="p">();</span>
+
+    <span class="n">char</span> <span class="n">in_buf</span><span class="p">[</span><span class="mi">40</span><span class="p">];</span>
+    <span class="o">/*</span> <span class="n">Calling</span> <span class="n">ceph_lazyio_synchronize</span> <span class="n">here</span> <span class="n">will</span> <span class="n">ascertain</span> <span class="n">that</span> <span class="n">ca</span> <span class="n">will</span>
+    <span class="n">read</span> <span class="n">the</span> <span class="n">updated</span> <span class="n">file</span> <span class="k">with</span> <span class="n">the</span> <span class="n">propagated</span> <span class="n">changes</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">read</span>
+    <span class="n">stale</span> <span class="n">cached</span> <span class="n">data</span> <span class="o">*/</span>
+    <span class="n">ceph_lazyio_synchronize</span><span class="p">(</span><span class="n">ca</span><span class="p">,</span> <span class="n">fda</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">ceph_read</span><span class="p">(</span><span class="n">ca</span><span class="p">,</span> <span class="n">fda</span><span class="p">,</span> <span class="n">in_buf</span><span class="p">,</span> <span class="n">sizeof</span><span class="p">(</span><span class="n">in_buf</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="o">/*</span> <span class="n">A</span> <span class="n">barrier</span> <span class="ow">is</span> <span class="n">required</span> <span class="n">here</span> <span class="n">before</span> <span class="n">returning</span> <span class="n">to</span> <span class="n">the</span> <span class="nb">next</span> <span class="n">write</span>
+    <span class="n">phase</span> <span class="n">so</span> <span class="k">as</span> <span class="n">to</span> <span class="n">avoid</span> <span class="n">overwriting</span> <span class="n">the</span> <span class="n">portion</span> <span class="n">of</span> <span class="n">the</span> <span class="n">shared</span> <span class="n">file</span> <span class="n">still</span>
+    <span class="n">being</span> <span class="n">read</span> <span class="n">by</span> <span class="n">another</span> <span class="n">file</span> <span class="n">descriptor</span> <span class="o">*/</span>
+    <span class="n">application_specific_barrier</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
 </div>
-<div class="section" id="id3">
-<h2>尺寸阈值<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<p>一个目录碎片的尺寸超过 <code class="docutils literal notranslate"><span class="pre">mds_bal_split_size</span></code> （默认 10000 ）时就达到分割的条件了。通常，此分割会被延迟
-<code class="docutils literal notranslate"><span class="pre">mds_bal_fragment_interval</span></code> 长的时间，但如果这个碎片尺寸超过分割尺寸的 <code class="docutils literal notranslate"><span class="pre">mds_bal_fragment_fast_factor</span></code> 倍数，分割就会立马开始（先拦截着所有客户端在此目录上的元数据 IO ）。</p>
-<p><code class="docutils literal notranslate"><span class="pre">mds_bal_fragment_size_max</span></code> is the hard limit on the size of
-directory fragments.  If it is reached, clients will receive
-ENOSPC errors if they try to create files in the fragment.  On
-a properly configured system, this limit should never be reached on
-ordinary directories, as they will have split long before.  By default,
-this is set to 10 times the split size, giving a dirfrag size limit of
-100000.  Increasing this limit may lead to oversized directory fragment
-objects in the metadata pool, which the OSDs may not be able to handle.</p>
-<p>A directory fragment is elegible for merging when its size is less
-than <code class="docutils literal notranslate"><span class="pre">mds_bal_merge_size</span></code>.  There is no merge equivalent of the
-“fast splitting” explained above: fast splitting exists to avoid
-creating oversized directory fragments, there is no equivalent issue
-to avoid when merging.  The default merge size is 50.</p>
-</div>
-<div class="section" id="id4">
-<h2>活跃度阈值<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
-<p>In addition to splitting fragments based
-on their size, the MDS may split directory fragments if their
-activity exceeds a threshold.</p>
-<p>The MDS maintains separate time-decaying load counters for read and write
-operations on directory fragments.  The decaying load counters have an
-exponential decay based on the <code class="docutils literal notranslate"><span class="pre">mds_decay_halflife</span></code> setting.</p>
-<p>On writes, the write counter is
-incremented, and compared with <code class="docutils literal notranslate"><span class="pre">mds_bal_split_wr</span></code>, triggering a
-split if the threshold is exceeded.  Write operations include metadata IO
-such as renames, unlinks and creations.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">mds_bal_split_rd</span></code> threshold is applied based on the read operation
-load counter, which tracks readdir operations.</p>
-<p>By the default, the read threshold is 25000 and the write threshold is
-10000, i.e. 2.5x as many reads as writes would be required to trigger
-a split.</p>
-<p>After fragments are split due to the activity thresholds, they are only
-merged based on the size threshold (<code class="docutils literal notranslate"><span class="pre">mds_bal_merge_size</span></code>), so
-a spike in activity may cause a directory to stay fragmented
-forever unless some entries are unlinked.</p>
 </div>
 </div>
 
@@ -190,17 +187,16 @@ forever unless some entries are unlinked.</p>
 <li class="toctree-l3"><a class="reference internal" href="../client-auth/">客户端认证</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../upgrading/">升级 MDS 集群</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../upgrading/#firefly-jewel">升级比 Firefly 老的文件系统，需过 Jewel 这个槛</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">目录分片的配置</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id2">拆分和合并</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id3">尺寸阈值</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id4">活跃度阈值</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="../dirfrags/">目录分片的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../multimds/">多活 MDS 的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../app-best-practices/">应用最佳实践</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../scrub/">洗刷</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../lazyio/">LazyIO</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">LazyIO</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">启用 LazyIO</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">使用 LazyIO</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../fs-volumes/">FS 卷和子卷</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../#id1">元数据修复</a></li>
 </ul>
@@ -252,10 +248,10 @@ forever unless some entries are unlinked.</p>
           <a href="../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../multimds/" title="多活 MDS 守护进程的配置"
+          <a href="../fs-volumes/" title="FS volumes and subvolumes"
              >next</a> |</li>
         <li class="right" >
-          <a href="../upgrading/" title="升级 MDS 集群"
+          <a href="../scrub/" title="Ceph 文件系统洗刷"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 

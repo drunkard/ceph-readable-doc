@@ -24,7 +24,7 @@ Ceph 对象网关可以与 Keystone 对接，它是 OpenStack 的鉴权服务。
 OpenStack Identity API ），与 OpenStack 服务的配置过程相似，这\
 样可避免在配置文件中设置共享密钥 ``rgw keystone admin token`` ，\
 因为这在生产环境下是不推进的配置方法。此处，服务的租户凭证应该\
-有管理员权限，详情见 `Openstack keystone 文档`_\ ，里面详细解\
+有管理员权限，详情见 `Openstack Keystone 文档`_\ ，里面详细解\
 释了机制。必需的配置选项有： ::
 
    rgw keystone admin user = {keystone service tenant user name}
@@ -52,23 +52,10 @@ never use implicit tenants.  Some older versions of ceph
 only supported implicit tenants with swift.
 
 
-.. Prior to Kilo
+.. Ocata (and later)
 
-Kilo 之前
----------
-
-Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置为\
-指向 Ceph 对象网关。 ::
-
-	keystone service-create --name swift --type object-store
-	keystone endpoint-create --service-id <id> \
-		--publicurl   http://radosgw.example.com/swift/v1 \
-		--internalurl http://radosgw.example.com/swift/v1 \
-		--adminurl    http://radosgw.example.com/swift/v1
-
-
-从 Kilo 起
-----------
+Ocata （及后续版本）
+--------------------
 
 Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置为\
 指向 Ceph 对象网关。 ::
@@ -124,36 +111,18 @@ Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置�
 	  endpoint URLs must be set to include the suffix
 	  ``/v1/AUTH_%(tenant_id)s`` (instead of just ``/v1``).
 
-The keystone URL is the Keystone admin RESTful API URL. The admin token is the
+The Keystone URL is the Keystone admin RESTful API URL. The admin token is the
 token that is configured internally in Keystone for admin requests.
 
-The Ceph Object Gateway will query Keystone periodically for a list of revoked
-tokens. These requests are encoded and signed. Also, Keystone may be configured
-to provide self-signed tokens, which are also encoded and signed. The gateway
-needs to be able to decode and verify these signed messages, and the process
-requires that the gateway be set up appropriately. Currently, the Ceph Object
-Gateway will only be able to perform the procedure if it was compiled with
-``--with-nss``. Configuring the Ceph Object Gateway to work with Keystone also
-requires converting the OpenSSL certificates that Keystone uses for creating the
-requests to the nss db format, for example::
-
-	mkdir /var/ceph/nss
-
-	openssl x509 -in /etc/keystone/ssl/certs/ca.pem -pubkey | \
-		certutil -d /var/ceph/nss -A -n ca -t "TCu,Cu,Tuw"
-	openssl x509 -in /etc/keystone/ssl/certs/signing_cert.pem -pubkey | \
-		certutil -A -d /var/ceph/nss -n signing_cert -t "P,P,P"
-
-
-OpenStack 的 keystone 组件也可以用自签名的 SSL 证书来终结，\
-要使 radosgw 有能力与这种 keystone 交互，你可以在运行
-radosgw 的节点上安装 keystone 的 SSL 证书；另外， radosgw
+OpenStack 的 Keystone 组件也可以用自签名的 SSL 证书来终结，\
+要使 radosgw 有能力与这样的 Keystone 交互，你可以在运行
+radosgw 的节点上安装 Keystone 的 SSL 证书；另外， radosgw
 也可以配置为根本不校验 SSL 证书（类似加了 ``--insecure``
-开关的 openstack 客户端请求），即把
+开关的 Openstack 客户端请求），即把
 ``rgw keystone verify ssl`` 配置为 ``false`` 。
 
 
-.. _Openstack keystone 文档: http://docs.openstack.org/developer/keystone/configuringservices.html#setting-up-projects-users-and-roles
+.. _Openstack Keystone 文档: http://docs.openstack.org/developer/keystone/configuringservices.html#setting-up-projects-users-and-roles
 
 
 .. Cross Project(Tenant) Access

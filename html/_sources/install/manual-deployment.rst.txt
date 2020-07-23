@@ -119,18 +119,18 @@
 
 #. 把初始监视器的 IP 地址写入 Ceph 配置文件、并保存。 ::
 
-	mon host = {ip-address}[,{ip-address}]
+        mon host = {ip-address}[,{ip-address}]
 
    例如： ::
 
-	mon host = 192.168.0.1
+        mon host = 192.168.0.1
 
    **注意：** 你可以用 IPv6 地址取代 IPv4 地址，但必须设置
    ``ms bind ipv6 = true`` 。详情见\ `网络配置参考`_\ 。
 
 #. 为此集群创建密钥环、并生成监视器密钥。 ::
 
-	ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
+	sudo ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
 #. 生成管理员密钥环，生成 ``client.admin`` 用户并加入密钥环。 ::
 
@@ -139,7 +139,7 @@
 #. 生成一个 bootstrap-osd 密钥环、生成一个
    ``client.bootstrap-osd`` 用户并把此用户加入密钥环。 ::
 
-	sudo ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
+        sudo ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
 
 #. 把生成的密钥加进 ``ceph.mon.keyring`` 。 ::
 
@@ -149,11 +149,11 @@
 #. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，\
    并保存为 ``/tmp/monmap`` 。 ::
 
-	monmaptool --create --add {hostname} {ip-address} --fsid {uuid} /tmp/monmap
+        monmaptool --create --add {hostname} {ip-address} --fsid {uuid} /tmp/monmap
 
    例如： ::
 
-	monmaptool --create --add node1 192.168.0.1 --fsid a7f64266-0894-4f1e-a635-d0aeaca0e993 /tmp/monmap
+        monmaptool --create --add node1 192.168.0.1 --fsid a7f64266-0894-4f1e-a635-d0aeaca0e993 /tmp/monmap
 
 #. 在监视器主机上分别创建数据目录。 ::
 

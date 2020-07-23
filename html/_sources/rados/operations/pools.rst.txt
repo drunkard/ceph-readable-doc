@@ -132,13 +132,13 @@ Pools are logical partitions for storing objects.
 
 ``--autoscale-mode=<on,off,warn>``
 
-:Description: Autoscale mode
+:描述: Autoscale mode
 
-:Type: String
-:Required: No.
-:Default:  The default behavior is controlled by the ``osd pool default pg autoscale mode`` option.
+:类型: String
+:是否必需: No.
+:默认值:  The default behavior is controlled by the ``osd pool default pg autoscale mode`` option.
 
-If you set the autoscale mode to ``on`` or ``warn``, you can let the system autotune or recommend changes to the number of placement groups in your pool based on actual usage.  If you leave it off, then you should refer to `Placement Groups`_ for more information.
+If you set the autoscale mode to ``on`` or ``warn``, you can let the system autotune or recommend changes to the number of placement groups in your pool based on actual usage.  If you leave it off, then you should refer to `归置组`_ for more information.
 
 .. _归置组: ../placement-groups
 
