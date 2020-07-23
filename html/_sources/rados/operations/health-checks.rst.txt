@@ -303,11 +303,11 @@ _________
 One or more OSDs or CRUSH {nodes,device classes} has a flag of interest set.
 These flags include:
 
-* *noup*: OSD is not allowed to start
-* *nodown*: failure reports for this OSD will be ignored
-* *noin*: if this OSD was previously marked `out` automatically
-  after a failure, it will not be marked in when it stats
-* *noout*: if this OSD is down it will not automatically be marked
+* *noup*: these OSDs are not allowed to start
+* *nodown*: failure reports for these OSDs will be ignored
+* *noin*: if these OSDs were previously marked `out` automatically
+  after a failure, they will not be marked in when they start
+* *noout*: if these OSDs are down they will not automatically be marked
   `out` after the configured interval
 
 这些标记可以这样批量设置和清除： ::

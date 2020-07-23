@@ -190,32 +190,54 @@ OSD 子系统
 	ceph osd pause
 	ceph osd unpause
 
-把 ``{osd-num}`` 的权重设置为 ``{weight}`` ，权重相同的两个
-OSD 大致会收到相同的 I/O 请求、并存储相同数量的数据。
-``ceph osd reweight`` 命令可给 OSD 设置一个增益权重，有效值在
-0 和 1 之间，它使得 CRUSH 重新归置一定数量的、本应该放到此处的\
-数据。它不会影响 crush 图里所分配的权重，在 CRUSH 分布算法没能\
-理想地执行时，它可作为一种纠正手段。比如，假设你的某个 OSD 使\
-用率达到了 90% ，但其它的大致都在 50% ，这时你就可以试着下调此\
-权重来补偿它。 ::
+把 ``{osd-num}`` 的覆盖权重（重设权重）设置为 ``{weight}`` ，\
+权重相同的两个 OSD 大致会收到相同的 I/O 请求、并存储相同数量\
+的数据。 ``ceph osd reweight`` 命令可给 OSD 设置一个增益权重，\
+有效值在 0 和 1 之间，它使得 CRUSH 重新归置一定数量的、本应该\
+放到此处的数据。它不会影响 crush 图里所分配的权重，在
+CRUSH 分布算法没能理想地执行时，它可作为一种纠正手段。比如，\
+假设你的某个 OSD 使用率达到了 90% ，但其它的大致都在 50% ，\
+这时你就可以下调此权重来补偿它。 ::
 
 	ceph osd reweight {osd-num} {weight}
 
-重设所有滥用 OSD 的权重，它默认会下调达到平均利用率 120% 的那\
-些 OSD ，除非你指定了阀值。 ::
+Balance OSD fullness by reducing the override weight of OSDs which are
+overly utilized.  Note that these override aka ``reweight`` values
+default to 1.00000 and are relative only to each other; they not absolute.
+It is crucial to distinguish them from CRUSH weights, which reflect the
+absolute capacity of a bucket in TiB.  By default this command adjusts
+override weight on OSDs which have + or - 20% of the average utilization,
+but if you include a ``threshold`` that percentage will be used instead. ::
 
-	ceph osd reweight-by-utilization [threshold]
+	ceph osd reweight-by-utilization [threshold [max_change [max_osds]]] [--no-increasing]
 
-描述 reweight-by-utilization 会干什么。 ::
+To limit the step by which any OSD's reweight will be changed, specify
+``max_change`` which defaults to 0.05.  To limit the number of OSDs that will
+be adjusted, specify ``max_osds`` as well; the default is 4.  Increasing these
+parameters can speed leveling of OSD utilization, at the potential cost of
+greater impact on client operations due to more data moving at once.
 
-	ceph osd test-reweight-by-utilization
+To determine which and how many PGs and OSDs will be affected by a given invocation
+you can test before executing. ::
 
-增加、删除黑名单里的地址。增加地址的时候可以指定有效期，否则有\
-效期为 1 小时。黑名单里的地址不允许连接任何 OSD ，此技术常用于\
-防止滞后的元数据服务器“错爱” OSD 上的数据。
+	ceph osd test-reweight-by-utilization [threshold [max_change max_osds]] [--no-increasing]
 
-这些命令大多只在故障测试时有用，因为黑名单是自动维护的，无需手\
-动干涉。 ::
+Adding ``--no-increasing`` to either command prevents increasing any
+override weights that are currently < 1.00000.  This can be useful when
+you are balancing in a hurry to remedy ``full`` or ``nearful`` OSDs or
+when some OSDs are being evacuated or slowly brought into service.
+
+Deployments utilizing Nautilus (or later revisions of Luminous and Mimic)
+that have no pre-Luminous cients may instead wish to instead enable the
+`balancer`` module for ``ceph-mgr``.
+
+增加、删除黑名单里的一个 IP 地址。增加地址的时候可以指定\
+屏蔽时长（单位为秒），否则默认为 1 小时。黑名单里的地址不允许\
+连接任何 OSD 。黑名单机制最常用于防止滞后的元数据服务器改错
+OSD 上的数据。
+
+这些命令大多只在故障测试时有用，因为黑名单是自动维护的，无需\
+手动干涉。 ::
 
 	ceph osd blacklist add ADDRESS[:source_port] [TIME]
 	ceph osd blacklist rm ADDRESS[:source_port]

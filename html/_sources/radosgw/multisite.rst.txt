@@ -77,6 +77,9 @@ Ceph 对象网关支持几种多站配置方案：
 
 为 Ceph 对象存储服务创建和调整存储池的文档请参考\ `存储池`_\ 。
 
+See `Sync Policy Config`_ for instructions on defining fine grained bucket sync
+policy rules.
+
 
 .. Configuring a Master Zone
 .. _master-zone-label:
@@ -404,7 +407,9 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 更新 period
 -----------
 
-更新完主域配置信息后，更新 period::
+更新完主域配置信息后，更新 period 。
+
+::
 
     # radosgw-admin period update --commit
 
@@ -529,13 +534,17 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
 如果主域失败，则切换到副域以作灾难恢复。
 
-#. 让副域成为默认的主域，例如： ::
+#. 让副域成为默认的主域，例如：
+
+   ::
 
        # radosgw-admin zone modify --rgw-zone={zone-name} --master --default
 
    默认情况下， Ceph 对象网关运行在多活模式下。如果集群被配置\
    成了主从模式，那么副域是个只读域，需要去除 ``--read-only``
-   状态，以允许这个域处理写操作。例如： ::
+   状态，以允许这个域处理写操作。例如：
+
+   ::
 
        # radosgw-admin zone modify --rgw-zone={zone-name} --master --default \
                                    --read-only=False
@@ -934,7 +943,9 @@ Ceph 对象网关例程的地理位置。
 查看域组
 ~~~~~~~~
 
-查看域组配置可以用命令： ::
+查看域组配置可以用命令：
+
+::
 
     radosgw-admin zonegroup get [--rgw-zonegroup=<zonegroup>]
 
@@ -1027,7 +1038,9 @@ Ceph 对象网关例程的地理位置。
    己的默认归置靶，设置在用户信息里。
 
 要配置域组，需创建一个包含必需字段的 JSON 对象，并存入文件（例\
-如 ``zonegroup.json`` ），然后执行下列命令： ::
+如 ``zonegroup.json`` ），然后执行下列命令：
+
+::
 
     # radosgw-admin zonegroup set --infile zonegroup.json
 
@@ -1041,6 +1054,8 @@ Ceph 对象网关例程的地理位置。
 最后，更新 period::
 
     # radosgw-admin period update --commit
+
+
 
 
 .. Set a Zone Group Map
@@ -1209,6 +1224,8 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
     # ceph osd pool rm <del-zone>.rgw.users.uid <del-zone>.rgw.users.uid --yes-i-really-really-mean-it
 
 
+
+
 .. Modify a Zone
 
 修改域配置
@@ -1231,6 +1248,8 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
     # radosgw-admin period update --commit
 
 
+
+
 .. List Zones
 
 罗列域
@@ -1239,6 +1258,8 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 以 ``root`` 身份罗列集群中的域： ::
 
     # radosgw-admin zone list
+
+
 
 
 .. Get a Zone
@@ -1274,6 +1295,8 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
       }
 
 
+
+
 .. Set a Zone
 
 配置域
@@ -1294,6 +1317,8 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 然后，以 ``root`` 用户身份更新 period::
 
     # radosgw-admin period update --commit
+
+
 
 
 .. Rename a Zone
@@ -1338,9 +1363,7 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 | ``rgw_default_zone_group_info_oid`` | 用于存储默认域组的 OID 。    | String  | ``default.zonegroup`` |
 |                                     | 我们不建更改此选项。         |         |                       |
 +-------------------------------------+------------------------------+---------+-----------------------+
-| ``rgw_num_zone_opstate_shards``     | 用于暂存域组之间同步进度的   | Integer | ``128``               |
-|                                     | 最大片段数。                 |         |                       |
-+-------------------------------------+------------------------------+---------+-----------------------+
 
 
 .. _`存储池`: ../pools
+.. _`Sync Policy Config`: ../multisite-sync-policy

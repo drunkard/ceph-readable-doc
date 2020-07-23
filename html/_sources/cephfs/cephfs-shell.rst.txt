@@ -4,18 +4,32 @@
 CephFS Shell
 =============
 
-文件系统（ FS ） shell 包含各种类似 shell 的命令，可以直接与
+CephFS Shell 包含各种类似 shell 的命令，可以直接与
 :term:`Ceph 文件系统`\ 交互。
 
-用法： ::
+This tool can be used in interactive mode as well as in non-interactive mode.
+In former mode, cephfs-shell opens a shell session and after the given command
+is finished, it prints the prompt string and waits indefinitely. When the
+shell session is finished, cephfs-shell quits with the return value of last
+executed command. In non-interactive mode, cephfs-shell issues a command and
+exits right after the command's execution is complete with the command's return
+value.
 
-    cephfs-shell [-options] -- [command, command,...]
+Behaviour of CephFS Shell can be tweaked using cephfs-shell.conf. CephFS Shell
+looks for it by default at the path provided in environment variable
+`CEPHFS_SHELL_CONF` and then in user's home directory
+(`~/.cephfs-shell.conf`).
+
+用法：
+
+    cephfs-shell [options] [command]
+    cephfs-shell [options] -- [command, command,...]
 
 选项：
 
-    -c, --config FILE     指定配置文件
-    -b, --batch FILE      运行这个批处理文件
-    -t, --test FILE       Test against transcript(s) in FILE
+    -c, --config FILE     配置文件 cephfs-shell.conf 的路径
+    -b, --batch FILE      批处理文件的路径
+    -t, --test FILE       Path to transcript(s) in FILE for testing
 
 
 .. note::
@@ -40,7 +54,7 @@ mkdir
 
 Create the directory(ies), if they do not already exist.
 
-用法： :: 
+用法：
         
     mkdir [-option] <directory>... 
 
@@ -55,7 +69,7 @@ put
 
 Copy a file/directory to Ceph File System from Local File System.
 
-用法： :: 
+用法：
     
         put [options] <source_path> [target_path]
 
@@ -439,7 +453,7 @@ listxattr
 
 List extended attribute names associated with the path
 
-用法： ::
+用法：
 
      listxattr [-h] <path>
 
@@ -447,3 +461,54 @@ List extended attribute names associated with the path
 
 选项：
   -h, --help   Shows the help message
+
+df
+--
+
+Display amount of available disk space
+
+Usage :
+
+    df [-h] [file [file ...]]
+
+* file - name of the file
+
+Options:
+  -h, --help   Shows the help message
+
+du
+--
+
+Show disk usage of a directory
+
+Usage :
+
+    du [-h] [-r] [paths [paths ...]]
+
+* paths - name of the directory
+
+Options:
+  -h, --help   Shows the help message
+
+  -r     Recursive Disk usage of all directories
+
+
+quota
+-----
+
+Quota management for a Directory
+
+Usage :
+
+    quota [-h] [--max_bytes [MAX_BYTES]] [--max_files [MAX_FILES]] {get,set} path
+
+* {get,set} - quota operation type.
+
+* path - name of the directory.
+
+Options :
+  -h, --help   Shows the help message
+
+  --max_bytes MAX_BYTES    Set max cumulative size of the data under this directory
+
+  --max_files MAX_FILES    Set total number of files under this directory tree

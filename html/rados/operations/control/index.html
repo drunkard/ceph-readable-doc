@@ -221,22 +221,40 @@ OSD 回来。</p>
 <span class="n">ceph</span> <span class="n">osd</span> <span class="n">unpause</span>
 </pre></div>
 </div>
-<p>把 <code class="docutils literal notranslate"><span class="pre">{osd-num}</span></code> 的权重设置为 <code class="docutils literal notranslate"><span class="pre">{weight}</span></code> ，权重相同的两个
-OSD 大致会收到相同的 I/O 请求、并存储相同数量的数据。
-<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">reweight</span></code> 命令可给 OSD 设置一个增益权重，有效值在
-0 和 1 之间，它使得 CRUSH 重新归置一定数量的、本应该放到此处的数据。它不会影响 crush 图里所分配的权重，在 CRUSH 分布算法没能理想地执行时，它可作为一种纠正手段。比如，假设你的某个 OSD 使用率达到了 90% ，但其它的大致都在 50% ，这时你就可以试着下调此权重来补偿它。</p>
+<p>把 <code class="docutils literal notranslate"><span class="pre">{osd-num}</span></code> 的覆盖权重（重设权重）设置为 <code class="docutils literal notranslate"><span class="pre">{weight}</span></code> ，权重相同的两个 OSD 大致会收到相同的 I/O 请求、并存储相同数量的数据。 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">reweight</span></code> 命令可给 OSD 设置一个增益权重，有效值在 0 和 1 之间，它使得 CRUSH 重新归置一定数量的、本应该放到此处的数据。它不会影响 crush 图里所分配的权重，在
+CRUSH 分布算法没能理想地执行时，它可作为一种纠正手段。比如，假设你的某个 OSD 使用率达到了 90% ，但其它的大致都在 50% ，这时你就可以下调此权重来补偿它。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">reweight</span> <span class="p">{</span><span class="n">osd</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="p">{</span><span class="n">weight</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>重设所有滥用 OSD 的权重，它默认会下调达到平均利用率 120% 的那些 OSD ，除非你指定了阀值。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">reweight</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">utilization</span> <span class="p">[</span><span class="n">threshold</span><span class="p">]</span>
+<p>Balance OSD fullness by reducing the override weight of OSDs which are
+overly utilized.  Note that these override aka <code class="docutils literal notranslate"><span class="pre">reweight</span></code> values
+default to 1.00000 and are relative only to each other; they not absolute.
+It is crucial to distinguish them from CRUSH weights, which reflect the
+absolute capacity of a bucket in TiB.  By default this command adjusts
+override weight on OSDs which have + or - 20% of the average utilization,
+but if you include a <code class="docutils literal notranslate"><span class="pre">threshold</span></code> that percentage will be used instead.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">reweight</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">utilization</span> <span class="p">[</span><span class="n">threshold</span> <span class="p">[</span><span class="n">max_change</span> <span class="p">[</span><span class="n">max_osds</span><span class="p">]]]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">increasing</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>描述 reweight-by-utilization 会干什么。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">test</span><span class="o">-</span><span class="n">reweight</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">utilization</span>
+<p>To limit the step by which any OSD’s reweight will be changed, specify
+<code class="docutils literal notranslate"><span class="pre">max_change</span></code> which defaults to 0.05.  To limit the number of OSDs that will
+be adjusted, specify <code class="docutils literal notranslate"><span class="pre">max_osds</span></code> as well; the default is 4.  Increasing these
+parameters can speed leveling of OSD utilization, at the potential cost of
+greater impact on client operations due to more data moving at once.</p>
+<p>To determine which and how many PGs and OSDs will be affected by a given invocation
+you can test before executing.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">test</span><span class="o">-</span><span class="n">reweight</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">utilization</span> <span class="p">[</span><span class="n">threshold</span> <span class="p">[</span><span class="n">max_change</span> <span class="n">max_osds</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">increasing</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>增加、删除黑名单里的地址。增加地址的时候可以指定有效期，否则有效期为 1 小时。黑名单里的地址不允许连接任何 OSD ，此技术常用于防止滞后的元数据服务器“错爱” OSD 上的数据。</p>
+<p>Adding <code class="docutils literal notranslate"><span class="pre">--no-increasing</span></code> to either command prevents increasing any
+override weights that are currently &lt; 1.00000.  This can be useful when
+you are balancing in a hurry to remedy <code class="docutils literal notranslate"><span class="pre">full</span></code> or <code class="docutils literal notranslate"><span class="pre">nearful</span></code> OSDs or
+when some OSDs are being evacuated or slowly brought into service.</p>
+<p>Deployments utilizing Nautilus (or later revisions of Luminous and Mimic)
+that have no pre-Luminous cients may instead wish to instead enable the
+<cite>balancer`</cite> module for <code class="docutils literal notranslate"><span class="pre">ceph-mgr</span></code>.</p>
+<p>增加、删除黑名单里的一个 IP 地址。增加地址的时候可以指定屏蔽时长（单位为秒），否则默认为 1 小时。黑名单里的地址不允许连接任何 OSD 。黑名单机制最常用于防止滞后的元数据服务器改错
+OSD 上的数据。</p>
 <p>这些命令大多只在故障测试时有用，因为黑名单是自动维护的，无需手动干涉。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">blacklist</span> <span class="n">add</span> <span class="n">ADDRESS</span><span class="p">[:</span><span class="n">source_port</span><span class="p">]</span> <span class="p">[</span><span class="n">TIME</span><span class="p">]</span>
 <span class="n">ceph</span> <span class="n">osd</span> <span class="n">blacklist</span> <span class="n">rm</span> <span class="n">ADDRESS</span><span class="p">[:</span><span class="n">source_port</span><span class="p">]</span>

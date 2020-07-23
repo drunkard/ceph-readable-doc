@@ -4,10 +4,13 @@ CephFS 管理命令
 ===============
 
 
-.. Filesystems
+.. File Systems
 
 文件系统管理
 ------------
+
+.. note:: The names of the file systems, metadata pools, and data pools can
+          only have characters in the set [a-zA-Z0-9\_-.].
 
 这些命令适用于 Ceph 集群的 CephFS 文件系统。注意，默认情况下，\
 只允许一个文件系统；执行 ``ceph fs flag set enable_multiple true``
@@ -98,8 +101,8 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 最大文件尺寸以及性能
 --------------------
 
-在追加到文件、或设置其尺寸时， CephFS 将确保不会超过最大文件尺\
-寸限量；但不会影响（数据）是怎样存储的。
+在追加到文件、或设置其尺寸时， CephFS 将确保不会超过最大文件\
+尺寸限量；但不会影响（数据）是怎样存储的。
 
 有用户创建了一个硕大的文件时（未必要写入什么数据），某些操作\
 （像删除）会让 MDS 不得不做大量操作，去检查此文件的尺寸范围内\
@@ -244,6 +247,97 @@ For example, to only allow Nautilus clients, use:
     fs set cephfs min_compat_client nautilus
 
 Clients running an older version will be automatically evicted.
+
+Enforcing minimum version of CephFS client is achieved by setting required
+client features. Commands to manipulate required client features of a file
+system:
+
+::
+
+    fs required_client_features <fs name> add reply_encoding
+    fs required_client_features <fs name> rm reply_encoding
+
+To list all CephFS features
+
+::
+
+    fs feature ls
+
+
+CephFS features and first release they came out.
+
++------------------+--------------+-----------------+
+| Feature          | Ceph release | Upstream Kernel |
++==================+==============+=================+
+| jewel            | jewel        | 4.5             |
++------------------+--------------+-----------------+
+| kraken           | kraken       | 4.13            |
++------------------+--------------+-----------------+
+| luminous         | luminous     | 4.13            |
++------------------+--------------+-----------------+
+| mimic            | mimic        | 4.19            |
++------------------+--------------+-----------------+
+| reply_encoding   | nautilus     | 5.1             |
++------------------+--------------+-----------------+
+| reclaim_client   | nautilus     | N/A             |
++------------------+--------------+-----------------+
+| lazy_caps_wanted | nautilus     | 5.1             |
++------------------+--------------+-----------------+
+| multi_reconnect  | nautilus     | 5.1             |
++------------------+--------------+-----------------+
+| deleg_ino        | octopus      | 5.6             |
++------------------+--------------+-----------------+
+| metric_collect   | pacific      | N/A             |
++------------------+--------------+-----------------+
+
+CephFS Feature Descriptions
+
+
+::
+
+    reply_encoding
+
+MDS encodes request reply in extensible format if client supports this feature.
+
+
+::
+
+    reclaim_client
+
+MDS allows new client to reclaim another (dead) client's states. This feature
+is used by NFS-Ganesha.
+
+
+::
+
+    lazy_caps_wanted
+
+When a stale client resumes, if the client supports this feature, mds only needs
+to re-issue caps that are explictly wanted.
+
+
+::
+
+    multi_reconnect
+
+When mds failover, client sends reconnect messages to mds, to reestablish cache
+states. If MDS supports this feature, client can split large reconnect message
+into multiple ones.
+
+
+::
+
+    deleg_ino
+
+MDS delegate inode numbers to client if client supports this feature. Having
+delegated inode numbers is a prerequisite for client to do async file creation.
+
+
+::
+
+    metric_collect
+
+Clients can send performance metric to MDS if MDS support this feature.
 
 
 .. Global settings

@@ -1,3 +1,5 @@
+.. Locally repairable erasure code plugin
+
 ======================
  局部自修复纠删码插件
 ======================
@@ -190,8 +192,8 @@
 最小测试
 --------
 
-此例其实等价于默认纠删码配置， *DD* 其实就是 *K=2* 、 *c* 就是 \
-*m=1* 并且默认使用 *jerasure* 插件。 ::
+此例其实完全等价于 *K=2* *M=1* 纠删码配置， *DD* 其实就是
+*K=2* 、 *c* 就是 *M=1* 并且默认使用 *jerasure* 插件。 ::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
