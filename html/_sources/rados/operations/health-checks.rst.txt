@@ -278,7 +278,7 @@ ____________
 
 One or more cluster flags of interest has been set.  These flags include:
 
-* *full* - the cluster is flagged as full and cannot service writes
+* *full* - the cluster is flagged as full and cannot serve writes
 * *pauserd*, *pausewr* - paused reads or writes
 * *noup* - OSDs are not allowed to start
 * *nodown* - OSD failure reports are being ignored, such that the

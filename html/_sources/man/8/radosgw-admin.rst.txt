@@ -73,7 +73,9 @@
   删除访问密钥。
 
 :command:`bucket list`
-  罗列所有桶。
+  罗列所有桶，或者，如果给桶加 --bucket=<bucket> 选项就罗列\
+  其内的对象；如果给桶加 --allow-unordered 选项、就不再排序，\
+  对于有海量对象的桶生成结果的速度可能快得多。
 
 :command:`bucket limit check`
   显示桶的分片统计信息。

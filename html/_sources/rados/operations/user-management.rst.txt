@@ -235,8 +235,11 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
 
 :描述: Gives a user permissions to manipulate RBD images. When used
               as a Monitor cap, it provides the minimal privileges required
-              by an RBD client application. When used as an OSD cap, it
-              provides read-write access to an RBD client application.
+              by an RBD client application; this includes the ability
+	      to blacklist other client users. When used as an OSD cap, it
+              provides read-write access to the specified pool to an
+	      RBD client application. The Manager cap supports optional
+              ``pool`` and ``namespace`` keyword arguments.
 
 
 ``profile rbd-mirror`` （仅用于监视器）

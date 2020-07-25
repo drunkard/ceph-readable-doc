@@ -519,7 +519,7 @@ S3 选项
 
 ``rgw s3 auth use ldap``
 
-:描述: Should S3 authentication use LDAP.
+:描述: S3 认证是否使用 LDAP 。
 :类型: Boolean
 :默认值: ``false``
 

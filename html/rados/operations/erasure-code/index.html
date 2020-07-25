@@ -73,25 +73,20 @@ instead to save space.</p>
 <h2>创建样板纠删码存储池<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <p>The simplest erasure coded pool is equivalent to <a class="reference external" href="https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_5">RAID5</a> and
 requires at least three hosts:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd pool create ecpool 12 12 erasure
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd pool create ecpool erasure
 pool &#39;ecpool&#39; created
 $ echo ABCDEFGHI | rados --pool ecpool put NYAN -
 $ rados --pool ecpool get NYAN -
 ABCDEFGHI
 </pre></div>
 </div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>the 12 in <em>pool create</em> stands for
-<a class="reference external" href="../pools">the number of placement groups</a>.</p>
-</div>
 </div>
 <div class="section" id="id3">
 <h2>纠删码配置<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<p>默认的纠删码配置可容忍单个 OSD 的损失，相当于副本数为二的副本存储池，但只需 1.5TB 的空间即可存储 1TB 数据，而无需 2TB 。默认配置可这样查看：</p>
+<p>默认的纠删码配置可容忍两个 OSD 的损失，相当于副本数为三的多副本存储池，但只需 2TB 的空间即可存储 1TB 数据，而无需 3TB 。默认配置可这样查看：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd erasure-code-profile get default
 k=2
-m=1
+m=2
 plugin=jerasure
 crush-failure-domain=host
 technique=reed_sol_van
@@ -118,8 +113,8 @@ CRUSH 规则可确保两个<em>校验块</em>不会存储在同一机架上。</
 </p>
 <p>More information can be found in the <a class="reference external" href="../erasure-code-profile">erasure code profiles</a> documentation.</p>
 </div>
-<div class="section" id="erasure-coding-with-overwrites">
-<span id="id4"></span><h2>在纠删码存储池上启用重写功能<a class="headerlink" href="#erasure-coding-with-overwrites" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id4">
+<h2>在纠删码存储池上启用重写功能<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
 <p>默认情况下，纠删码存储池只适用于像 RGW 这样进行完整对象写入和追加的场景。</p>
 <p>从 Luminous 起，在纠删码存储池里进行部分写入的功能可以在存储池配置里启用，这样 RBD 和 CephFS 就可以使用纠删码存储池存储数据了：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">ec_pool</span> <span class="n">allow_ec_overwrites</span> <span class="n">true</span>
@@ -148,7 +143,21 @@ $ ceph osd tier set-overlay ecpool hot-storage
 <p>更详细的文档请参阅<a class="reference external" href="../cache-tiering">分级缓存</a>。</p>
 </div>
 <div class="section" id="id9">
-<h2>术语<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<h2>纠删码存储池的恢复<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<p>If an erasure coded pool loses some shards, it must recover them from the others.
+This generally involves reading from the remaining shards, reconstructing the data, and
+writing it to the new peer.
+In Octopus, erasure coded pools can recover as long as there are at least <em>K</em> shards
+available. (With fewer than <em>K</em> shards, you have actually lost data!)</p>
+<p>Prior to Octopus, erasure coded pools required at least <em>min_size</em> shards to be
+available, even if <em>min_size</em> is greater than <em>K</em>. (We generally recommend min_size
+be <em>K+2</em> or more to prevent loss of writes and data.)
+This conservative decision was made out of an abundance of caution when designing the new pool
+mode but also meant pools with lost OSDs but no data loss were unable to recover and go active
+without manual intervention to change the <em>min_size</em>.</p>
+</div>
+<div class="section" id="id10">
+<h2>术语<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
 <dl class="simple">
 <dt><em>chunk</em></dt><dd><p>when the encoding function is called, it returns chunks of the same
 size. Data chunks which can be concatenated to reconstruct the original
@@ -164,8 +173,8 @@ it means 2 OSDs can be out without losing data.</p>
 </dd>
 </dl>
 </div>
-<div class="section" id="id10">
-<h2>内容列表<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id11">
+<h2>内容列表<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../erasure-code-profile/">纠删码配置</a></li>
@@ -209,10 +218,11 @@ it means 2 OSDs can be out without losing data.</p>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">纠删码</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id2">创建样板纠删码存储池</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id3">纠删码配置</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#erasure-coding-with-overwrites">在纠删码存储池上启用重写功能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">在纠删码存储池上启用重写功能</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id6">纠删码存储池与缓存分级</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id9">术语</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id10">内容列表</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id9">纠删码存储池的恢复</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">术语</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id11">内容列表</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="../erasure-code-profile/">纠删码配置</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../erasure-code-jerasure/">Jerasure 纠删码插件</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../erasure-code-isa/">ISA 纠删码插件</a></li>

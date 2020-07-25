@@ -13,6 +13,8 @@ meaning every object is copied on multiple disks. The `Erasure Code
 instead to save space.
 
 
+.. Creating a sample erasure coded pool
+
 创建样板纠删码存储池
 --------------------
 
@@ -20,14 +22,11 @@ The simplest erasure coded pool is equivalent to `RAID5
 <https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_5>`_ and
 requires at least three hosts::
 
-    $ ceph osd pool create ecpool 12 12 erasure
+    $ ceph osd pool create ecpool erasure
     pool 'ecpool' created
     $ echo ABCDEFGHI | rados --pool ecpool put NYAN -
     $ rados --pool ecpool get NYAN -
     ABCDEFGHI
-
-.. note:: the 12 in *pool create* stands for 
-          `the number of placement groups <../pools>`_.
 
 
 .. Erasure code profiles
@@ -35,13 +34,13 @@ requires at least three hosts::
 纠删码配置
 ----------
 
-默认的纠删码配置可容忍单个 OSD 的损失，相当于副本数为二的副本\
-存储池，但只需 1.5TB 的空间即可存储 1TB 数据，而无需 2TB 。默\
-认配置可这样查看： ::
+默认的纠删码配置可容忍两个 OSD 的损失，相当于副本数为三的\
+多副本存储池，但只需 2TB 的空间即可存储 1TB 数据，而无需 3TB 。\
+默认配置可这样查看： ::
 
     $ ceph osd erasure-code-profile get default
     k=2
-    m=1
+    m=2
     plugin=jerasure
     crush-failure-domain=host
     technique=reed_sol_van
@@ -118,7 +117,7 @@ More information can be found in the `erasure code profiles
 <../erasure-code-profile>`_ documentation.
 
 
-.. _Erasure Coding with Overwrites:
+.. Erasure Coding with Overwrites
 
 在纠删码存储池上启用重写功能
 ----------------------------
@@ -169,6 +168,24 @@ bluestore 上差得多。
 *hot-storage* ，而且还受益于其灵活性和速度。
 
 更详细的文档请参阅\ `分级缓存 <../cache-tiering>`_\ 。
+
+
+.. Erasure coded pool recovery
+
+纠删码存储池的恢复
+------------------
+If an erasure coded pool loses some shards, it must recover them from the others.
+This generally involves reading from the remaining shards, reconstructing the data, and
+writing it to the new peer.
+In Octopus, erasure coded pools can recover as long as there are at least *K* shards
+available. (With fewer than *K* shards, you have actually lost data!)
+
+Prior to Octopus, erasure coded pools required at least *min_size* shards to be
+available, even if *min_size* is greater than *K*. (We generally recommend min_size
+be *K+2* or more to prevent loss of writes and data.)
+This conservative decision was made out of an abundance of caution when designing the new pool
+mode but also meant pools with lost OSDs but no data loss were unable to recover and go active
+without manual intervention to change the *min_size*.
 
 
 .. Glossary

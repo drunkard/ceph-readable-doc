@@ -64,6 +64,9 @@
         为静态的图是不对的；尤其对大型集群来说，当机、硬件故障是常态。但是在\
         理解、分析时，提取的片段都可以当作静态的，就像拍下的照片。
 
+    complete filter
+        完整过滤器。 LDAP 术语，还有 partial filter
+
     config-key
         <不翻译>，来自代码的名词
 
@@ -302,6 +305,9 @@
 
     out
         <不翻译> => 出列、出局?
+
+    partial filter
+        局部过滤器，LDAP 术语
 
     peer
     peering

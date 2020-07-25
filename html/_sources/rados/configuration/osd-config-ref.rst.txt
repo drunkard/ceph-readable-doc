@@ -409,7 +409,8 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 
 ``osd recovery op priority``
 
-:描述: 恢复操作的优先级组，如果未配置 ``recovery_op_priority`` 就采用此配置。
+:描述: 恢复操作的优先级组，如果未配置 ``recovery_op_priority``
+       就采用此配置。
 :类型: 32-bit Integer
 :默认值: ``3``
 :有效范围: 1-63

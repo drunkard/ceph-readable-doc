@@ -33,8 +33,8 @@ Ceph 对象网关支持几种多站配置方案：
 .. image:: ../images/zone-sync2.png
    :align: center
 
-网关集群的配置细节请参考\ `产品级的 Ceph 对象网关
-<https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/2/html/ceph_object_gateway_for_production/>`__\ 。
+网关集群的配置细节请参考\ `生产级的 Ceph 对象网关
+<https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/3/html/ceph_object_gateway_for_production/index/>`__\ 。
 
 
 .. Functional Changes from Infernalis
@@ -560,10 +560,12 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
 如果前任主域恢复了，还原上述操作。
 
-#. 在已恢复的域里，从当前的主域拉取 period::
+#. 在已恢复的域里，从当前的主域拉取最新的 realm 配置：
 
-       # radosgw-admin period pull --url={url-to-master-zone-gateway} \
-                                   --access-key={access-key} --secret={secret}
+   ::
+
+       # radosgw-admin realm pull --url={url-to-master-zone-gateway} \
+                                  --access-key={access-key} --secret={secret}
 
 #. 让恢复的域成为默认的主域，例如： ::
 

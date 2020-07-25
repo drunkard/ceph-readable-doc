@@ -27,7 +27,8 @@ and the Boost.Asio library for asynchronous network i/o.
 
 ``port`` 和 ``ssl_port``
 
-:描述: 设置监听端口号。可以指定多次，如 ``port=80 port=8000`` 。
+:描述: 设置 IPv4 和 IPv6 的监听端口号。可以指定多次，如
+       ``port=80 port=8000`` 。
 :类型: Integer
 :默认值: ``80``
 
@@ -48,6 +49,8 @@ and the Boost.Asio library for asynchronous network i/o.
 ``ssl_certificate``
 
 :描述: SSL 证书文件的路径，用于启用了 SSL 的终结点。
+              If path is prefixed with ``config://``, the certificate will be
+              pulled from the ceph monitor ``config-key`` database.
 :类型: String
 :默认值: None
 
@@ -56,6 +59,8 @@ and the Boost.Asio library for asynchronous network i/o.
 
 :描述: 可选配置，私钥文件的路径，用于启用了 SSL 的终结点。如果\
        没配置此路径，就把 ``ssl_certificate`` 文件当作私钥用。
+       如果路径前缀是 ``config://`` ，证书将从 ceph 监视器的
+       ``config-key`` 数据库拉取。
 :类型: String
 :默认值: None
 

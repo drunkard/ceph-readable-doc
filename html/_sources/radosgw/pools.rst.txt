@@ -26,6 +26,7 @@ Ceph 对象网关要用多个存储池来满足多种存储需求，它们罗列
 
 
 .. Pool Namespaces
+.. _radosgw-pool-namespaces:
 
 存储池命名空间
 ==============
