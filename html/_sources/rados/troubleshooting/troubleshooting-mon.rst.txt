@@ -442,7 +442,7 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
   ms=/root/mon-store
   mkdir $ms
 
-  # 从 OSD 收集集群运行图
+  # 从已关停的 OSD 收集集群运行图
   for host in $hosts; do
     rsync -avz $ms/. user@$host:$ms.remote
     rm -rf $ms
