@@ -15,7 +15,7 @@ instead to save space.
 
 .. Creating a sample erasure coded pool
 
-创建样板纠删码存储池
+创建纠删码存储池样板
 --------------------
 
 The simplest erasure coded pool is equivalent to `RAID5

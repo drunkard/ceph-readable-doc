@@ -100,7 +100,7 @@ RPM
 .. Ceph Release Packages
 
 Ceph 正式版软件包
-=================
+-----------------
 
 发布库用 ``release.asc`` 公钥校验软件包。要通过 APT 或 YUM
 安装 Ceph 二进制包，必须先配置库。
@@ -236,7 +236,7 @@ There's no need to add another package repository manually.
 .. Ceph Development Packages
 
 Ceph 开发版软件包
-=================
+-----------------
 
 如果你在参与 Ceph 开发，想要部署并测试某个分支，确保先删除\
 主版本库的配置文件。
