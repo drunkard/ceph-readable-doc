@@ -73,7 +73,7 @@
   归置组正在排队，等候回填。
 
 *backfill_toofull*
-  一回填操作在等待，因为目标 OSD 使用率超过了占满率。
+  一回填操作在等待，因为目标 OSD 使用率超过了 backfillfull 比率。
 
 *backfill_unfound*
   由于有找不到的对象，回填已停止。

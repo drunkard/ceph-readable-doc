@@ -1,0 +1,323 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>去重 &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="CephFS delayed deletion" href="../delayed-delete/" />
+    <link rel="prev" title="C++17 and libstdc++ ABI" href="../cxx/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../delayed-delete/" title="CephFS delayed deletion"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../cxx/" title="C++17 and libstdc++ ABI"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" accesskey="U">Ceph 内幕</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/deduplication.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="id1">
+<h1>去重<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id2">
+<h2>介绍<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>Applying data deduplication on an existing software stack is not easy
+due to additional metadata management and original data processing
+procedure.</p>
+<p>In a typical deduplication system, the input source as a data
+object is split into multiple chunks by a chunking algorithm.
+The deduplication system then compares each chunk with
+the existing data chunks, stored in the storage previously.
+To this end, a fingerprint index that stores the hash value
+of each chunk is employed by the deduplication system
+in order to easily find the existing chunks by comparing
+hash value rather than searching all contents that reside in
+the underlying storage.</p>
+<p>There are many challenges in order to implement deduplication on top
+of Ceph. Among them, two issues are essential for deduplication.
+First is managing scalability of fingerprint index; Second is
+it is complex to ensure compatibility between newly applied
+deduplication metadata and existing metadata.</p>
+</div>
+<div class="section" id="key-idea">
+<h2>Key Idea<a class="headerlink" href="#key-idea" title="Permalink to this headline">¶</a></h2>
+<p>1. Content hashing (Double hashing): Each client can find an object data
+for an object ID using CRUSH. With CRUSH, a client knows object’s location
+in Base tier.
+By hashing object’s content at Base tier, a new OID (chunk ID) is generated.
+Chunk tier stores in the new OID that has a partial content of original object.</p>
+<blockquote>
+<div><p>Client 1 -&gt; OID=1 -&gt; HASH(1’s content)=K -&gt; OID=K -&gt;
+CRUSH(K) -&gt; chunk’s location</p>
+</div></blockquote>
+<p>2. Self-contained object: The external metadata design
+makes difficult for integration with storage feature support
+since existing storage features cannot recognize the
+additional external data structures. If we can design data
+deduplication system without any external component, the
+original storage features can be reused.</p>
+<p>More details in <a class="reference external" href="https://ieeexplore.ieee.org/document/8416369">https://ieeexplore.ieee.org/document/8416369</a></p>
+</div>
+<div class="section" id="design">
+<h2>Design<a class="headerlink" href="#design" title="Permalink to this headline">¶</a></h2>
+<p class="ditaa">
+<img src="../../_images/ditaa-aa0315e5892a5817b9d1e522e9479a1f9715014d.png"/>
+</p>
+<p>Pool-based object management:
+We define two pools.
+The metadata pool stores metadata objects and the chunk pool stores
+chunk objects. Since these two pools are divided based on
+the purpose and usage, each pool can be managed more
+efficiently according to its different characteristics. Base
+pool and the chunk pool can separately select a redundancy
+scheme between replication and erasure coding depending on
+its usage and each pool can be placed in a different storage
+location depending on the required performance.</p>
+<p>Regarding how to use, please see osd_internals/manifest.rst</p>
+</div>
+<div class="section" id="usage-patterns">
+<h2>Usage Patterns<a class="headerlink" href="#usage-patterns" title="Permalink to this headline">¶</a></h2>
+<p>The different ceph interface layers present potentially different oportunities
+and costs for deduplication and tiering in general.</p>
+<div class="section" id="radosgw">
+<h3>RadosGW<a class="headerlink" href="#radosgw" title="Permalink to this headline">¶</a></h3>
+<p>S3 big data workloads seem like a good opportunity for deduplication.  These
+objects tend to be write once, read mostly objects which don’t see partial
+overwrites.  As such, it makes sense to fingerprint and dedup up front.</p>
+<p>Unlike cephfs and rbd, radosgw has a system for storing
+explicit metadata in the head object of a logical s3 object for
+locating the remaining pieces.  As such, radosgw could use the
+refcounting machinery (osd_internals/refcount.rst) directly without
+needing direct support from rados for manifests.</p>
+</div>
+<div class="section" id="rbd-cephfs">
+<h3>RBD/Cephfs<a class="headerlink" href="#rbd-cephfs" title="Permalink to this headline">¶</a></h3>
+<p>RBD and CephFS both use deterministic naming schemes to partition
+block devices/file data over rados objects.  As such, the redirection
+metadata would need to be included as part of rados, presumably
+transparently.</p>
+<p>Moreover, unlike radosgw, rbd/cephfs rados objects can see overwrites.
+For those objects, we don’t really want to perform dedup, and we don’t
+want to pay a write latency penalty in the hot path to do so anyway.
+As such, performing tiering and dedup on cold objects in the background
+is likely to be preferred.</p>
+<p>One important wrinkle, however, is that both rbd and cephfs workloads
+often feature usage of snapshots.  This means that the rados manifest
+support needs robust support for snapshots.</p>
+</div>
+</div>
+<div class="section" id="rados-machinery">
+<h2>RADOS Machinery<a class="headerlink" href="#rados-machinery" title="Permalink to this headline">¶</a></h2>
+<p>For more information on rados redirect/chunk/dedup support, see osd_internals/manifest.rst.
+For more information on rados refcount support, see osd_internals/refcount.rst.</p>
+</div>
+<div class="section" id="status-and-future-work">
+<h2>Status and Future Work<a class="headerlink" href="#status-and-future-work" title="Permalink to this headline">¶</a></h2>
+<p>At the moment, there exists some preliminary support for manifest
+objects within the osd as well as a dedup tool.</p>
+<p>RadosGW data warehouse workloads probably represent the largest
+opportunity for this feature, so the first priority is probably to add
+direct support for fingerprinting and redirects into the refcount pool
+to radosgw.</p>
+<p>Aside from radosgw, completing work on manifest object support in the
+osd particularly as it relates to snapshots would be the next step for
+rbd and cephfs workloads.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_guide/">开发者指南</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../internals/">Ceph 内幕</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../blkin/">用 Blkin 追踪 Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bluestore/">BlueStore Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph_krb_auth/">如何配置好 Ceph Kerberos 认证的详细文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-reclaim/">CephFS Reclaim Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephfs-snapshots/">CephFS 快照</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx/">Cephx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cephx_protocol/">Cephx 认证协议详细阐述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config/">配置管理系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-key/">config-key layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../corpus/">资料库结构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpu-profiler/">Oprofile 的安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../crimson/">crimson</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cxx/">C++17 and libstdc++ ABI</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">去重</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">介绍</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#key-idea">Key Idea</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#design">Design</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#usage-patterns">Usage Patterns</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#radosgw">RadosGW</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rbd-cephfs">RBD/Cephfs</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#rados-machinery">RADOS Machinery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#status-and-future-work">Status and Future Work</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/">开发集群的部署</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dev_cluster_deployement/#id6">在同一机器上部署多套开发集群</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../development-workflow/">开发流程</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../documenting/">为 Ceph 写作文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encoding/">序列化（编码、解码）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../erasure-coded-pool/">纠删码存储池</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../freebsd/">FreeBSD Implementation details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generatedocs/">Ceph 文档的构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../iana/">IANA 号</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kernel-client-troubleshooting/">Kernel client troubleshooting (FS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kubernetes/">Hacking on Ceph in Kubernetes with Rook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logging/">集群日志的用法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logs/">调试日志</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../macos/">在 MacOS 上构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../messenger/">Messenger notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-on-disk-formats/">ON-DISK FORMAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mon-osdmap-prune/">FULL OSDMAP VERSION PRUNING</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../msgr2/">msgr2 协议（ msgr2.0 和 msgr2.1 ）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../network-protocol/">网络协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../object-store/">对象存储架构概述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../peering/">互联</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf/">Using perf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_counters/">性能计数器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../perf_histograms/">Perf histograms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement-group/">PG （归置组）说明</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quick_guide/">开发者指南（快速）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rados-client-protocol/">RADOS 客户端协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-diff/">RBD 增量备份</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-export/">RBD Export &amp; Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../seastore/">SeaStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sepia/">Sepia 社区测试实验室</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../testing/">测试笔记</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../osd_internals/">OSD 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mds_internals/">MDS 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../radosgw/">RADOS 网关开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ceph-volume/">ceph-volume 开发者文档</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../delayed-delete/" title="CephFS delayed deletion"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../cxx/" title="C++17 and libstdc++ ABI"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../internals/" >Ceph 内幕</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

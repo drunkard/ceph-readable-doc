@@ -547,7 +547,7 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
    ::
 
        # radosgw-admin zone modify --rgw-zone={zone-name} --master --default \
-                                   --read-only=False
+                                   --read-only=false
 
 #. 更新 period 以使变更生效。 ::
 

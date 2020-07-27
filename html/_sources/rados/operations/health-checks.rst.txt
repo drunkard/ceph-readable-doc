@@ -80,6 +80,7 @@ listen for v2 connections on the new default 3300 port.
 
 If a monitor is configured to listen for v1 connections on a non-standard port (not 6789), then the monmap will need to be modified manually.
 
+
 MON_DISK_LOW
 ____________
 
@@ -152,6 +153,7 @@ The down manager daemon should generally be restarted as soon as
 possible to ensure that the cluster can be monitored (e.g., so that
 the ``ceph -s`` information is up to date, and/or metrics can be
 scraped by Prometheus).
+
 
 MGR_MODULE_DEPENDENCY
 _____________________
@@ -679,17 +681,16 @@ The state of specific problematic PGs can be queried with::
   ceph tell <pgid> query
 
 
-PG_DEGRADED_FULL
+PG_RECOVERY_FULL
 ________________
 
 Data redundancy may be reduced or at risk for some data due to a lack
 of free space in the cluster.  Specifically, one or more PGs has the
-*backfill_toofull* or *recovery_toofull* flag set, meaning that the
+*recovery_toofull* flag set, meaning that the
 cluster is unable to migrate or recover data because one or more OSDs
-is above the *backfillfull* threshold.
+is above the *full* threshold.
 
-See the discussion for *OSD_BACKFILLFULL* or *OSD_FULL* above for
-steps to resolve this condition.
+See the discussion for *OSD_FULL* above for steps to resolve this condition.
 
 PG_BACKFILL_FULL
 ________________

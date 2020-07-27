@@ -886,9 +886,24 @@ OSD 们建立连接，这样才能正常工作。详情见\
 
 :描述: 每个 OSD 一次可以处理的活跃恢复请求数量，增大此值能加速\
        恢复，但它们会增大集群负载。
-
 :类型: 32-bit Integer
 :默认值: ``3``
+
+
+``osd recovery max active hdd``
+
+:描述: The number of active recovery requests per OSD at one time, if the
+	      primary device is rotational.
+:类型: 32-bit Integer
+:默认值: ``3``
+
+
+``osd recovery max active ssd``
+
+:描述: The number of active recovery requests per OSD at one time, if the
+	      primary device is non-rotational (i.e., an SSD).
+:类型: 32-bit Integer
+:默认值: ``10``
 
 
 ``osd recovery max chunk``
