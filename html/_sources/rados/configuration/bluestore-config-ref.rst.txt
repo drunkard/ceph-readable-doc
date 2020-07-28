@@ -247,12 +247,13 @@ The configured cache memory budget can be used in a few different ways:
 * BlueStore data (i.e., recently read or written object data)
 
 Cache memory usage is governed by the following options:
-``bluestore_cache_meta_ratio``, ``bluestore_cache_kv_ratio``, and
-``bluestore_cache_kv_max``.  The fraction of the cache devoted to data
-is 1.0 minus the meta and kv ratios.  The memory devoted to kv
-metadata (the RocksDB cache) is capped by ``bluestore_cache_kv_max``
-since our testing indicates there are diminishing returns beyond a
-certain point.
+``bluestore_cache_meta_ratio`` and ``bluestore_cache_kv_ratio``.
+The fraction of the cache devoted to data
+is governed by the effective bluestore cache size (depending on
+``bluestore_cache_size[_ssd|_hdd]`` settings and the device class of the primary
+device) as well as the meta and kv ratios.
+The data fraction can be calculated by
+``<effective_cache_size> * (1 - bluestore_cache_meta_ratio - bluestore_cache_kv_ratio)``
 
 ``bluestore_cache_size``
 
@@ -280,14 +281,14 @@ certain point.
 :描述: The ratio of cache devoted to metadata.
 :类型: Floating point
 :是否必需: Yes
-:默认值: ``.01``
+:默认值: ``.4``
 
 ``bluestore_cache_kv_ratio``
 
 :描述: The ratio of cache devoted to key/value data (rocksdb).
 :类型: Floating point
 :是否必需: Yes
-:默认值: ``.99``
+:默认值: ``.4``
 
 ``bluestore_cache_kv_max``
 

@@ -61,13 +61,9 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
 下面将详细指导你安装设置 Glance 、 Cinder 和 Nova ，虽然它们不一定一起用。你可以在\
 本地硬盘上运行 VM 、却把映像存储于 Ceph 块设备，反之亦可。
 
-.. important:: Ceph doesn’t support QCOW2 for hosting a virtual machine disk.
-   Thus if you want to boot virtual machines in Ceph (ephemeral backend or boot
-   from volume), the Glance image format must be ``RAW``.
-
-.. tip:: This document describes using Ceph Block Devices with OpenStack Havana.
-   For earlier versions of OpenStack see
-   `块设备与 OpenStack (Dumpling)`_.
+.. important:: Using QCOW2 for hosting a virtual machine disk is NOT recommended.
+   If you want to boot virtual machines in Ceph (ephemeral backend or boot
+   from volume), please use the ``raw`` image format within Glance.
 
 
 .. Create a Pool
@@ -188,47 +184,17 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
 .. _cephx 认证: ../../rados/configuration/auth-config-ref/#enabling-disabling-cephx
 
 
-.. _Configure OpenStack to use Ceph:
+.. Configure OpenStack to use Ceph
 
 让 OpenStack 使用 Ceph
 =======================
+
+.. Configuring Glance
 
 配置 Glance
 -----------
 
 Glance 可使用多种后端存储映像，要让它默认使用 Ceph 块设备，可以这样配置 Glance 。
-
-低于 Juno 的版本
-~~~~~~~~~~~~~~~~
-
-编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到
-``[DEFAULT]`` 段下： ::
-
-    default_store = rbd
-    rbd_store_user = glance
-    rbd_store_pool = images
-    rbd_store_chunk_size = 8
-
-
-Juno 版
-~~~~~~~
-
-编辑 ``/etc/glance/glance-api.conf`` 并把下列内容加到
-``[glance_store]`` 段下： ::
-
-    [DEFAULT]
-    ...
-    default_store = rbd
-    ...
-    [glance_store]
-    stores = rbd
-    rbd_store_pool = images
-    rbd_store_user = glance
-    rbd_store_ceph_conf = /etc/ceph/ceph.conf
-    rbd_store_chunk_size = 8
-
-.. important:: Glance 还没完全迁移到 'store' ，所以我们还得在
-   DEFAULT 段下配置 store 。
 
 
 Kilo 及更高版
@@ -248,7 +214,8 @@ Kilo 及更高版
 关于 Glance 的其它可用选项见 OpenStack Configuration Reference:
 http://docs.openstack.org/ 。
 
-.. _Enable copy-on-write cloning of images:
+
+.. Enable copy-on-write cloning of images
 
 让映像支持写时复制克隆功能
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -256,7 +223,8 @@ http://docs.openstack.org/ 。
 注意，这里通过 Glance 的 API 展示了后端位置，所以此选项启用时\
 的入口不能公开访问。
 
-.. _Any OpenStack version except Mitaka:
+
+.. Any OpenStack version except Mitaka
 
 除 Mitaka 以外的其它 OpenStack 版本
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -266,16 +234,8 @@ http://docs.openstack.org/ 。
 
     show_image_direct_url = True
 
-仅适用于 Mitaka
-^^^^^^^^^^^^^^^
 
-要启用映像的多位置、并利用写时复制克隆功能，把下列配置加入
-``[DEFAULT]`` 段： ::
-
-    show_multiple_locations = True
-    show_image_direct_url = True
-
-.. _Disable cache management (any OpenStack version):
+.. Disable cache management (any OpenStack version)
 
 禁用缓存管理（任意 OpenStack 版本）：
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -286,6 +246,8 @@ http://docs.openstack.org/ 。
     [paste_deploy]
     flavor = keystone
 
+
+.. Image properties
 
 映像属性
 ~~~~~~~~
@@ -299,6 +261,8 @@ http://docs.openstack.org/ 。
 - ``os_require_quiesce=yes``: 通过 QEMU guest agent 向外发送文件系统的 \
   freeze/thaw 调用
 
+
+.. Configuring Cinder
 
 配置 Cinder
 -----------
@@ -353,7 +317,7 @@ OpenStack Cinder Backup 需要专有守护进程，所以别忘了安装。\
     restore_discard_excess_bytes = true
 
 
-.. _Configuring Nova to attach Ceph RBD block device:
+.. Configuring Nova to attach Ceph RBD block device
 
 让 Nova 对接 Ceph RBD 块设备
 ----------------------------
@@ -403,85 +367,7 @@ Nova 的配置
 .. tip:: 如果你的虚拟机已经跑起来了，重启一下就能得到套接字。
 
 
-Havana and Icehouse
-~~~~~~~~~~~~~~~~~~~
-
-Havana and Icehouse require patches to implement copy-on-write cloning and fix
-bugs with image size and live migration of ephemeral disks on rbd. These are
-available in branches based on upstream Nova `stable/havana`_  and
-`stable/icehouse`_. Using them is not mandatory but **highly recommended** in
-order to take advantage of the copy-on-write clone functionality.
-
-On every Compute node, edit ``/etc/nova/nova.conf`` and add::
-
-    libvirt_images_type = rbd
-    libvirt_images_rbd_pool = vms
-    libvirt_images_rbd_ceph_conf = /etc/ceph/ceph.conf
-    disk_cachemodes="network=writeback"
-    rbd_user = cinder
-    rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
-
-It is also a good practice to disable file injection. While booting an
-instance, Nova usually attempts to open the rootfs of the virtual machine.
-Then, Nova injects values such as password, ssh keys etc. directly into the
-filesystem. However, it is better to rely on the metadata service and
-``cloud-init``.
-
-On every Compute node, edit ``/etc/nova/nova.conf`` and add::
-
-    libvirt_inject_password = false
-    libvirt_inject_key = false
-    libvirt_inject_partition = -2
-
-为确保在线迁移能顺利进行，要使用如下标志： ::
-
-    libvirt_live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"
-
-
-Juno
-~~~~
-
-In Juno, Ceph block device was moved under the ``[libvirt]`` section.
-On every Compute node, edit ``/etc/nova/nova.conf`` under the ``[libvirt]``
-section and add::
-
-    [libvirt]
-    images_type = rbd
-    images_rbd_pool = vms
-    images_rbd_ceph_conf = /etc/ceph/ceph.conf
-    rbd_user = cinder
-    rbd_secret_uuid = 457eb676-33da-42ec-9a8c-9293d545c337
-    disk_cachemodes="network=writeback"
-
-
-It is also a good practice to disable file injection. While booting an
-instance, Nova usually attempts to open the rootfs of the virtual machine.
-Then, Nova injects values such as password, ssh keys etc. directly into the
-filesystem. However, it is better to rely on the metadata service and
-``cloud-init``.
-
-On every Compute node, edit ``/etc/nova/nova.conf`` and add the following
-under the ``[libvirt]`` section::
-
-    inject_password = false
-    inject_key = false
-    inject_partition = -2
-
-为确保在线迁移能顺利进行，要使用如下标志（写到 ``[libvirt]`` 段下）： ::
-
-    live_migration_flag="VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"
-
-
-Kilo
-~~~~
-
-为虚拟机的 ephemeral 根磁盘启用 discard 功能： ::
-
-    [libvirt]
-    ...
-    ...
-    hw_disk_discard = unmap # 启用 discard 功能（注意性能）
-
+.. Restart OpenStack
 
 重启 OpenStack
 ==============
@@ -503,6 +389,8 @@ OpenStack 。在基于 Debian 的系统上需在对应节点上执行这些命�
 
 一旦 OpenStack 启动并运行正常，应该就可以创建卷宗并用它引导了。
 
+
+.. Booting from a Block Device
 
 从块设备引导
 ============
@@ -526,6 +414,3 @@ Glance 和 Cinder 都使用 Ceph 块设备时，此镜像又是个写时复制�
 
 
 .. _qemu-img: ../qemu-rbd/#running-qemu-with-rbd
-.. _块设备与 OpenStack (Dumpling): http://docs.ceph.com/docs/dumpling/rbd/rbd-openstack
-.. _stable/havana: https://github.com/jdurgin/nova/tree/havana-ephemeral-rbd
-.. _stable/icehouse: https://github.com/angdraug/nova/tree/rbd-ephemeral-clone-stable-icehouse

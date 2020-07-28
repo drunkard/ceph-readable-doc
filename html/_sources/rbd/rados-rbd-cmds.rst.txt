@@ -1,8 +1,8 @@
-.. Block Device Commands
+.. Basic Block Device Commands
 
-============
- 块设备命令
-============
+================
+ 块设备基础命令
+================
 
 .. index:: Ceph Block Device; image management
 
@@ -25,7 +25,7 @@
 
         rbd pool init <pool-name>
 
-.. note:: 没指定存储池名字时， ``rbd`` 工具会假设默认的为
+.. note:: 没指定存储池名字时， ``rbd`` 工具会假设默认的是
    rbd 。
 
 
@@ -137,6 +137,8 @@ the specified user, which can be written to ``/etc/ceph/ceph.client.{ID}.keyring
 	rbd info swimmingpool/bar
 
 
+.. Resizing a Block Device Image
+
 调整块设备映像尺寸
 ==================
 
@@ -148,6 +150,8 @@ the specified user, which can be written to ``/etc/ceph/ceph.client.{ID}.keyring
 	rbd resize --size 2048 foo (to increase)
 	rbd resize --size 2048 foo --allow-shrink (to decrease)
 
+
+.. Removing a Block Device Image
 
 删除块设备映像
 ==============

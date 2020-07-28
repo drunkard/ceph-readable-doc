@@ -46,14 +46,16 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
 
 
 .. toctree::
-        :maxdepth: 1
+    :maxdepth: 1
 
-	配备、增加、删除 MDS <add-remove-mds>
-        MDS 故障切换和灾备配置 <standby>
-        MDS 配置选项 <mds-config-ref>
-	客户端配置选项 <client-config-ref>
-        Journaler 配置 <journaler>
-        ceph-mds 手册页 <../../man/8/ceph-mds>
+    创建 CephFS 文件系统 <createfs>
+    管理命令 <administration>
+    配备、增加、删除 MDS <add-remove-mds>
+    MDS 故障切换和灾备配置 <standby>
+    MDS 配置选项 <mds-config-ref>
+    客户端配置选项 <client-config-ref>
+    Journaler 配置 <journaler>
+    ceph-mds 手册页 <../../man/8/ceph-mds>
 
 .. raw:: html
 
@@ -67,8 +69,7 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
    :maxdepth: 1
    :hidden:
 
-    创建 CephFS 文件系统 <createfs>
-    挂载 CephFS 文件系统 <kernel>
+    用内核驱动挂载 CephFS 文件系统 <kernel>
     把 CephFS 挂载为 FUSE <fuse>
     通过 fstab 挂载 CephFS <fstab>
     CephFS Shell 的用法 <cephfs-shell>
@@ -87,7 +88,6 @@ Ceph 文件系统要求 Ceph 存储集群内至少有一个 :term:`Ceph 元数�
     :hidden:
 
     最佳部署实践 <best-practices>
-    CephFS 管理命令 <administration>
     深入理解 MDS 的缓存尺寸限制 <cache-size-limits>
     MDS 的各种状态 <mds-states>
     POSIX 兼容性 <posix>

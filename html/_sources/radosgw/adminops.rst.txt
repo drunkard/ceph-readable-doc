@@ -162,7 +162,6 @@ radosgw 进程才能生效。
 
 特殊错误响应
 ~~~~~~~~~~~~
-
 TBD.
 
 
@@ -170,7 +169,6 @@ TBD.
 
 裁剪使用率日志
 ==============
-
 删除使用率信息。若未指定日期，会删除所有使用率信息。
 
 注意：此功能默认是禁用的，可以在 ceph.conf 里的适当段落加上
@@ -222,7 +220,6 @@ radosgw 进程才能生效。
 
 特殊错误响应
 ~~~~~~~~~~~~
-
 TBD.
 
 
@@ -230,7 +227,6 @@ TBD.
 
 查看用户信息
 ============
-
 查看用户信息。
 
 :caps: users=read
@@ -245,8 +241,8 @@ TBD.
 	Host: {fqdn}
 
 
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+请求参数
+~~~~~~~~
 
 ``uid``
 
@@ -316,7 +312,6 @@ Request Parameters
 
 特殊错误响应
 ~~~~~~~~~~~~
-
 None.
 
 
@@ -324,7 +319,6 @@ None.
 
 创建用户
 ========
-
 新建一个用户。默认情况下，会自动创建一个 S3 密钥对、并在响应时\
 返回。如果只提供了一个 ``access-key`` 或 ``secret-key`` ，缺失\
 的那个密钥会自动生成。默认情况下，生成的密钥会加进密钥环，而非\
@@ -437,9 +431,11 @@ None.
 :实例: tenant1
 :是否必需: No
 
-Response Entities
-~~~~~~~~~~~~~~~~~
 
+.. Response Entities
+
+响应内容解析
+~~~~~~~~~~~~
 If successful, the response contains the user information.
 
 ``user``
@@ -643,9 +639,9 @@ Modify a user.
 :实例: ``read, write, delete, *``
 :是否必需: No
 
-Response Entities
-~~~~~~~~~~~~~~~~~
 
+响应内容解析
+~~~~~~~~~~~~
 If successful, the response contains the user information.
 
 ``user``
@@ -742,11 +738,10 @@ If successful, the response contains the user information.
 :状态码: 400 Bad Request
 
 
-.. _Remove User:
+.. Remove User
 
 删除用户
 ========
-
 Remove an existing user.
 
 :caps: users=write
@@ -760,8 +755,8 @@ Remove an existing user.
 	Host: {fqdn}
 
 
-Request Parameters
-~~~~~~~~~~~~~~~~~~
+请求参数
+~~~~~~~~
 
 ``uid``
 
@@ -778,18 +773,18 @@ Request Parameters
 :实例: True
 :是否必需: No
 
-Response Entities
-~~~~~~~~~~~~~~~~~
 
+响应内容解析
+~~~~~~~~~~~~
 None
+
 
 特殊错误响应
 ~~~~~~~~~~~~
-
 None.
 
 
-.. _Create Subuser:
+.. Create Subuser
 
 创建子用户
 ==========
@@ -905,7 +900,7 @@ If successful, the response contains the subuser information.
 :状态码: 400 Bad Request
 
 
-.. _Modify Subuser:
+.. Modify Subuser
 
 修改子用户信息
 ==============
@@ -1013,7 +1008,7 @@ If successful, the response contains the subuser information.
 :状态码: 400 Bad Request
 
 
-.. _Remove Subuser:
+.. Remove Subuser
 
 删除子用户
 ==========
@@ -1067,7 +1062,7 @@ None.
 None.
 
 
-.. _Create Key:
+.. Create Key
 
 创建密钥
 ========
@@ -1196,7 +1191,7 @@ Response Entities
 :状态码: 409 Conflict
 
 
-.. _Remove Key:
+.. Remove Key
 
 删除密钥
 ========
@@ -1374,11 +1369,10 @@ the desired bucket information.
 :状态码: 409 Conflict
 
 
-.. _Check Bucket Index:
+.. Check Bucket Index
 
 检查桶索引
 ==========
-
 Check the index of an existing bucket. NOTE: to check multipart object
 accounting with ``check-objects``, ``fix`` must be set to True.
 
@@ -1434,11 +1428,10 @@ Response Entities
 :状态码: 409 Conflict
 
 
-.. _Remove Bucket:
+.. Remove Bucket
 
 删除桶
 ======
-
 Delete an existing bucket.
 
 :caps: buckets=write
@@ -1488,7 +1481,7 @@ None.
 :状态码: 409 Conflict
 
 
-.. _Unlink Bucket:
+.. Unlink Bucket
 
 解绑桶
 ======
@@ -1537,11 +1530,10 @@ None.
 :状态码: 409 Conflict
 
 
-.. _Link Bucket:
+.. Link Bucket
 
 链接桶
 ======
-
 把桶链接到指定用户，同时断开与之前用户的链接。
 
 :caps: buckets=write
@@ -1645,11 +1637,10 @@ Response Entities
 :状态码: 409 Conflict
 
 
-.. _Remove Object:
+.. Remove Object
 
 删除对象
 ========
-
 Remove an existing object. NOTE: Does not require owner to be non-suspended.
 
 :caps: buckets=write
@@ -1698,11 +1689,10 @@ None.
 :状态码: 409 Conflict
 
 
-.. _Get Bucket or Object Policy:
+.. Get Bucket or Object Policy
 
 查看桶或对象的策略
 ==================
-
 Read the policy of an object or bucket.
 
 :caps: buckets=read
@@ -1735,13 +1725,13 @@ Request Parameters
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
-
 If successful, returns the object or bucket policy
 
 ``policy``
 
 :描述: Access control policy.
 :类型: Container
+
 
 特殊错误响应
 ~~~~~~~~~~~~
@@ -1753,11 +1743,10 @@ If successful, returns the object or bucket policy
 :状态码: 400 Bad Request
 
 
-.. _Add A User Capability:
+.. Add A User Capability
 
 增加用户能力
 ============
-
 给指定用户增加管理能力。
 
 :caps: users=write
@@ -1789,7 +1778,6 @@ If successful, returns the object or bucket policy
 
 Response Entities
 ~~~~~~~~~~~~~~~~~
-
 If successful, the response contains the user's capabilities.
 
 ``user``
@@ -1819,8 +1807,8 @@ If successful, the response contains the user's capabilities.
 :描述: Attempt to grant invalid admin capability.
 :状态码: 400 Bad Request
 
-实例 Request
-~~~~~~~~~~~~~~~
+请求实例
+~~~~~~~~
 
 ::
 
@@ -1830,11 +1818,10 @@ If successful, the response contains the user's capabilities.
 	Authorization: {your-authorization-token}
 
 
-.. _Remove A User Capability:
+.. Remove A User Capability
 
 删除用户能力
 ============
-
 删除指定用户的管理能力。
 
 :caps: users=write
@@ -1902,7 +1889,7 @@ If successful, the response contains the user's capabilities.
 :状态码: 404 Not Found
 
 
-.. _Quotas:
+.. Quotas
 
 配额管理
 ========
@@ -1931,7 +1918,7 @@ If successful, the response contains the user's capabilities.
   以是 'True' 或 'False' 。
 
 
-.. _Get User Quota:
+.. Get User Quota
 
 查看用户配额
 ~~~~~~~~~~~~
@@ -1956,7 +1943,7 @@ The content must include a JSON representation of the quota settings
 as encoded in the corresponding read operation.
 
 
-.. _Get Bucket Quota:
+.. Get Bucket Quota
 
 查看桶配额
 ~~~~~~~~~~

@@ -1,4 +1,4 @@
-.. _Cache Tiering:
+.. Cache Tiering
 
 ==========
  分级缓存
@@ -42,22 +42,35 @@
 缓存层代理负责自动处理缓存层和后端存储之间的数据迁移。然而，\
 管理员仍可干预此迁移规则，主要有两种场景：
 
-- **回写模式：** 管理员把缓存层配置为 ``writeback`` 模式时，
-  Ceph 客户端们会把数据写入缓存层、并收到缓存层发来的 ACK ；\
-  随后，写入缓存层的数据会被迁移到存储层、然后从缓存层刷掉。\
-  直观地看，缓存层位于后端存储层的“前面”，当 Ceph 客户端要读\
-  取的数据位于存储层时，缓存层代理会把这些数据迁移到缓存层，\
-  然后再发往 Ceph 客户端。从此， Ceph 客户端将与缓存层进行
-  I/O 操作，直到数据不再被读写。此模式对于易变数据来说较理想\
-  （如照片/视频编辑、事务数据等）。
+- **writeback** （回写）模式：管理员把缓存层配置为 ``writeback``
+  模式时， Ceph 客户端们会把数据写入缓存层、并收到缓存层发来的
+  ACK ；随后，写入缓存层的数据会被迁移到存储层、然后从缓存层\
+  刷掉。直观地看，缓存层位于后端存储层的“前面”，当 Ceph 客户端\
+  要读取的数据位于存储层时，缓存层代理会把这些数据迁移到\
+  缓存层，然后再发往 Ceph 客户端。从此， Ceph 客户端将与\
+  缓存层进行 I/O 操作，直到数据不再被读写。此模式对于易变数据\
+  来说较理想（如照片/视频编辑、事务数据等）。
 
-- **读代理模式：** 在这个模式下，会直接用缓存层已有的对象，\
-  可某一对象没在缓存中时，这个请求会被代理到底下一层。这对于
-  ``writeback`` 模式的关闭很有用，因为它能保证在抽掉缓存层的\
-  同时还确保业务可以正常运转，而且不会新增对象到缓存层。
+- **readproxy** （读代理）模式：在这个模式下，会直接用缓存层\
+  已有的对象，可某一对象没在缓存中时，这个请求会被代理到\
+  底下一层。这对于 ``writeback`` 模式的关闭很有用，因为它能\
+  保证在抽掉缓存层的同时还确保业务可以正常运转，而且不会\
+  新增对象到缓存层。
+
+Other cache modes are:
+
+- **readonly** promotes objects to the cache on read operations only; write
+  operations are forwarded to the base tier. This mode is intended for
+  read-only workloads that do not require consistency to be enforced by the
+  storage system. (**Warning**: when objects are updated in the base tier,
+  Ceph makes **no** attempt to sync these updates to the corresponding objects
+  in the cache. Since this mode is considered experimental, a
+  ``--yes-i-really-mean-it`` option must be passed in order to enable it.)
+
+- **none** is used to completely disable caching.
 
 
-.. _A word of caution:
+.. A word of caution
 
 一些忠告
 ========
@@ -88,7 +101,7 @@
   遇到这个缺陷，如此一来你的系统风险更高。
 
 
-.. _Known Good Workloads:
+.. Known Good Workloads
 
 已知适用的场景
 --------------
@@ -99,7 +112,7 @@
   底层。
 
 
-.. _Known Bad Workloads:
+.. Known Bad Workloads
 
 已知不适用的场景
 ----------------
@@ -119,7 +132,7 @@
   分级缓存配置参数。
 
 
-.. _Setting Up Pools:
+.. Setting Up Pools
 
 配置存储池
 ==========
@@ -128,7 +141,7 @@
 缓存。
 
 
-.. _Setting Up a Backing Storage Pool:
+.. Setting Up a Backing Storage Pool
 
 配置后端存储池
 --------------
@@ -152,7 +165,7 @@
 在后续例子中，我们把 ``cold-storage`` 当作后端存储池。
 
 
-.. _Setting Up a Cache Pool:
+.. Setting Up a Cache Pool
 
 配置缓存池
 ----------
@@ -169,7 +182,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 `存储池——调整存储池`_\ 。
 
 
-.. _Creating a Cache Tier:
+.. Creating a Cache Tier
 
 创建缓存层
 ==========
@@ -200,7 +213,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 	ceph osd tier set-overlay cold-storage hot-storage
 
 
-.. _Configuring a Cache Tier:
+.. Configuring a Cache Tier
 
 配置缓存层
 ==========
@@ -212,7 +225,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 详情见\ `存储池——调整存储池`_\ 。
 
 
-.. _Target Size and Type:
+.. Target Size and Type
 
 目标尺寸和类型
 --------------
@@ -259,7 +272,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
    时所有 ``hit_set_count`` 个 HitSet 都载入了内存。
 
 
-.. _Cache Sizing:
+.. Cache Sizing
 
 缓存空间消长
 ------------
@@ -273,6 +286,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
   赶出缓存。
 
 
+.. Absolute Sizing
 .. _absolute-sizing:
 
 绝对空间消长
@@ -304,7 +318,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
    ``target_max_objects`` 阀值时，所有客户端的请求才会被阻塞。
 
 
-.. _Relative Sizing:
+.. Relative Sizing
 
 相对空间消长
 ~~~~~~~~~~~~
@@ -343,7 +357,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 	ceph osd pool set hot-storage cache_target_full_ratio 0.8
 
 
-.. _Cache Age:
+.. Cache Age
 
 缓存时长
 --------
@@ -367,7 +381,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 	ceph osd pool set hot-storage cache_min_evict_age 1800
 
 
-.. _Removing a Cache Tier:
+.. Removing a Cache Tier
 
 拆除缓存层
 ==========
@@ -375,7 +389,7 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 回写缓存和只读缓存的去除过程不太一样。
 
 
-.. _Removing a Read-Only Cache:
+.. Removing a Read-Only Cache
 
 拆除只读缓存
 ------------

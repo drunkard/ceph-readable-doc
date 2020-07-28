@@ -363,7 +363,7 @@ true ，否则它会拒绝删除存储池。
 ``crush_rule``
 
 :描述: 集群内映射对象归置时使用的规则。
-:类型: 整数
+:类型: String
 
 
 .. _allow_ec_overwrites:

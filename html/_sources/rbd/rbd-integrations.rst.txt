@@ -10,6 +10,7 @@
    内核模块 <rbd-ko>
    QEMU <qemu-rbd>
    libvirt <libvirt>
+   Kubernetes <rbd-kubernetes>
    OpenStack <rbd-openstack>
    CloudStack <rbd-cloudstack>
    LIO iSCSI Gateway <iscsi-overview>

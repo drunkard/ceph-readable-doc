@@ -146,7 +146,7 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 
 #. 用销毁前的 OSD id 来准备这个磁盘： ::
 
-     ceph-volume lvm  prepare --osd-id {id} --data /dev/sdX
+     ceph-volume lvm prepare --osd-id {id} --data /dev/sdX
 
 #. 然后激活此 OSD ： ::
 
@@ -154,7 +154,7 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 
 或者，不需要准备再激活，只需一个命令即可完成重建，如： ::
 
-    ceph-volume lvm create --osd-id {id} --data /dev/sdX
+     ceph-volume lvm create --osd-id {id} --data /dev/sdX
 
 
 .. Starting the OSD

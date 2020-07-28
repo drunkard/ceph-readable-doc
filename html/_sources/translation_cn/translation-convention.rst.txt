@@ -414,6 +414,9 @@
     reshard
         重分片
 
+    response entities
+        响应内容解析。 HTTP 响应。
+
     role
         角色。 AWS 术语？
 
@@ -535,6 +538,10 @@
 
     unlink bucket
         断开、切断桶链接、解绑桶，视具体语境采用。
+
+    writeback
+        不译。通常译作回写模式，但由于配置时也要写 writeback ，干脆不译，在\
+        首次出现时的旁边标注一下。
 
     zap
         擦净、删除；（快速摧毁）

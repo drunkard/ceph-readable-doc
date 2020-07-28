@@ -63,10 +63,22 @@
   
   <div class="section" id="id1">
 <h1>故障排除<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="slow-stuck-operations">
-<span id="id2"></span><h2>慢或卡住的操作<a class="headerlink" href="#slow-stuck-operations" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id2">
+<h2>慢或卡住的操作<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <p>如果遇到了明显的卡顿操作，首先要定位问题源头：是客户端、
 MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（参考下面的 <a class="reference internal" href="#slow-requests"><span class="std std-ref">慢请求（ MDS 端）</span></a> ），进而缩小范围。</p>
+<p>We can get hints about what’s going on by dumping the MDS cache</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">mds</span><span class="o">.&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">dump</span> <span class="n">cache</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">dump</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The file <cite>dump.txt</cite> is on the machine executing the MDS and for systemd
+controlled MDS services, this is in a tmpfs in the MDS container.
+Use <cite>nsenter(1)</cite> to locate <cite>dump.txt</cite> or specify another system-wide path.</p>
+</div>
+<p>If high logging levels are set on the MDS, that will almost certainly hold the
+information we need to diagnose and solve the issue.</p>
 </div>
 <div class="section" id="rados">
 <h2>RADOS 健康状况<a class="headerlink" href="#rados" title="Permalink to this headline">¶</a></h2>
@@ -103,10 +115,14 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <p>要想看到 ceph-fuse 的更多调试信息，试试在前台运行，让日志输出到控制台（ <code class="docutils literal notranslate"><span class="pre">-d</span></code> ）、打开客户端调试（ <code class="docutils literal notranslate"><span class="pre">--debug-client=20</span></code> ）、打印发送过的所有消息（ <code class="docutils literal notranslate"><span class="pre">--debug-ms=1</span></code> ）。</p>
 <p>如果你怀疑是监视器的问题，也可以打开监视器调试开关（
 <code class="docutils literal notranslate"><span class="pre">--debug-monc=20</span></code> ）。</p>
+<span class="target" id="kernel-mount-debugging"></span></div>
 </div>
-</div>
-<div class="section" id="kernel-mount-debugging">
-<span id="id5"></span><h2>内核挂载的调试<a class="headerlink" href="#kernel-mount-debugging" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id5">
+<h2>内核挂载的调试<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>If there is an issue with the kernel client, the most important thing is
+figuring out whether the problem is with the kernel client or the MDS. Generally,
+this is easy to work out. If the kernel client broke directly, there will be
+output in <code class="docutils literal notranslate"><span class="pre">dmesg</span></code>. Collect it and any inappropriate kernel state.</p>
 <div class="section" id="id6">
 <h3>慢请求<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
 <p>遗憾的是内核客户端不支持管理套接字，可是如果你的内核启用了（如果限制过） debugfs ，那么它就有相似的接口了。
@@ -129,8 +145,8 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <p>如果没有卡住的请求，却有毫无进展的文件 IO ，问题也许是……</p>
 </div>
 </div>
-<div class="section" id="disconnected-remounted-fs">
-<span id="id7"></span><h2>断线后又重新挂载的文件系统<a class="headerlink" href="#disconnected-remounted-fs" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<h2>断线后又重新挂载的文件系统<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
 <p>因为 CephFS 有个“一致性缓存”，如果你的网络连接中断时间较长，客户端就会被系统强制断开，此时，内核客户端仍然傻站着（ in a bind
 ）：它不能安全地写回脏数据，另外很多应用程序在 close() 时不能正确处理 IO 错误。这个时候，内核客户端会重新挂载这个文件系统，但是先前的文件系统 IO 也许能完成、也许不能，这些情况下，你也许得重启客户端系统。</p>
 <p>如果 dmesg 或者 kern.log 里出现了类似消息，说明你遇到的就是这种情况：</p>
@@ -166,6 +182,28 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <p>你也许得卸载、清理和删除 <code class="docutils literal notranslate"><span class="pre">ceph-common</span></code> ，然后再重新安装，以确保安装的是最新版。</p>
 </div>
 </div>
+<div class="section" id="id9">
+<h2>动态调试<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<p>You can enable dynamic debug against the CephFS module.</p>
+<p>Please see: <a class="reference external" href="https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh">https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh</a></p>
+</div>
+<div class="section" id="id10">
+<h2>报告问题<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
+<p>If you have identified a specific issue, please report it with as much
+information as possible. Especially important information:</p>
+<ul class="simple">
+<li><p>Ceph versions installed on client and server</p></li>
+<li><p>Whether you are using the kernel or fuse client</p></li>
+<li><p>If you are using the kernel client, what kernel version?</p></li>
+<li><p>How many clients are in play, doing what kind of workload?</p></li>
+<li><p>If a system is ‘stuck’, is that affecting all clients or just one?</p></li>
+<li><p>Any ceph health messages</p></li>
+<li><p>Any backtraces in the ceph logs from crashes</p></li>
+</ul>
+<p>If you are satisfied that you have found a bug, please file it on <cite>the bug
+tracker</cite>. For more general queries, please write to the <cite>ceph-users mailing
+list</cite>.</p>
+</div>
 </div>
 
 
@@ -186,6 +224,8 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="../#cephfs">CephFS 使用文档</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../createfs/">创建 CephFS 文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../administration/">管理命令</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../add-remove-mds/">配备、增加、删除 MDS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/">术语</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/#mds">MDS 守护进程的引用</a></li>
@@ -196,8 +236,7 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <li class="toctree-l3"><a class="reference internal" href="../client-config-ref/">客户端配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../journaler/">Journaler 配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/">ceph-mds 手册页</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../createfs/"> 创建 CephFS 文件系统</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../kernel/"> 挂载 CephFS 文件系统</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel/"> 用内核驱动挂载 CephFS 文件系统</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fuse/"> 把 CephFS 挂载为 FUSE</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fstab/"> 通过 fstab 挂载 CephFS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cephfs-shell/"> CephFS Shell 的用法</a></li>
@@ -206,7 +245,6 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/"> mount.ceph 手册页</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.fuse.ceph/"> mount.fuse.ceph 手册页</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../best-practices/">最佳部署实践</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../administration/">CephFS 管理命令</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/">深入理解 MDS 的缓存尺寸限制</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mds-states/">MDS 的各种状态</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../posix/">POSIX 兼容性</a></li>
@@ -219,7 +257,7 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <li class="toctree-l3"><a class="reference internal" href="../full/">文件系统占满的处理</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../health-messages/">健康消息</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">故障排除</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#slow-stuck-operations">慢或卡住的操作</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">慢或卡住的操作</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rados">RADOS 健康状况</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#mds">MDS 问题</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#slow-requests">慢请求（ MDS 端）</a></li>
@@ -229,16 +267,18 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <li class="toctree-l5"><a class="reference internal" href="#id4">调试输出</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#kernel-mount-debugging">内核挂载的调试</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id5">内核挂载的调试</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#id6">慢请求</a></li>
 </ul>
 </li>
-<li class="toctree-l4"><a class="reference internal" href="#disconnected-remounted-fs">断线后又重新挂载的文件系统</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">断线后又重新挂载的文件系统</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id8">挂载问题</a><ul>
 <li class="toctree-l5"><a class="reference internal" href="#mount-5-error">Mount 5 Error</a></li>
 <li class="toctree-l5"><a class="reference internal" href="#mount-12-error">Mount 12 Error</a></li>
 </ul>
 </li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">动态调试</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">报告问题</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/">灾难恢复</a></li>

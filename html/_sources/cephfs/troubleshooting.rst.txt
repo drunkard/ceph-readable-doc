@@ -2,7 +2,7 @@
  故障排除
 ==========
 
-.. _Slow/stuck operations:
+.. Slow/stuck operations
 
 慢或卡住的操作
 ==============
@@ -11,6 +11,20 @@
 MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（参考下面\
 的 :ref:`slow_requests` ），进而缩小范围。
 
+We can get hints about what's going on by dumping the MDS cache ::
+
+  ceph daemon mds.<name> dump cache /tmp/dump.txt
+
+.. note:: The file `dump.txt` is on the machine executing the MDS and for systemd
+	  controlled MDS services, this is in a tmpfs in the MDS container.
+	  Use `nsenter(1)` to locate `dump.txt` or specify another system-wide path.
+
+If high logging levels are set on the MDS, that will almost certainly hold the
+information we need to diagnose and solve the issue.
+
+
+.. RADOS Health
+
 RADOS 健康状况
 ==============
 
@@ -18,9 +32,11 @@ RADOS 健康状况
 不响应，很有可能是 RADOS 本身有问题，应该先解决这样的问题（
 :doc:`../../rados/troubleshooting/index` ）。
 
+
+.. The MDS
+
 MDS 问题
 ========
-
 如果某个操作卡在了 MDS 内部，类似 "slow requests are blocked"
 的消息最终会出现在 ``ceph health`` 里，也可能指出是客户端的问\
 题，如 "failing to respond" 或其它形式的异常行为。如果 MDS 认\
@@ -35,11 +51,11 @@ MDS 问题
 除此之外，你也许遇到了新的软件缺陷，应该报告给开发者！
 
 
+.. Slow requests (MDS)
 .. _slow_requests:
 
 慢请求（ MDS 端）
 -----------------
-
 通过管理套接字，你可以罗列当前正在运行的操作： ::
 
         ceph daemon mds.<name> dump_ops_in_flight
@@ -78,8 +94,15 @@ ceph-fuse 也支持 dump_ops_in_flight 命令，可以查看是否卡住、卡\
 
 .. _Kernel mount debugging:
 
+.. Kernel mount debugging
+
 内核挂载的调试
 ==============
+
+If there is an issue with the kernel client, the most important thing is
+figuring out whether the problem is with the kernel client or the MDS. Generally,
+this is easy to work out. If the kernel client broke directly, there will be
+output in ``dmesg``. Collect it and any inappropriate kernel state.
 
 慢请求
 ------
@@ -106,7 +129,8 @@ ceph-fuse 也支持 dump_ops_in_flight 命令，可以查看是否卡住、卡\
 
 如果没有卡住的请求，却有毫无进展的文件 IO ，问题也许是……
 
-.. _Disconnected+Remounted FS:
+
+.. Disconnected+Remounted FS
 
 断线后又重新挂载的文件系统
 ==========================
@@ -161,3 +185,35 @@ mount 12 错误显示 ``cannot allocate memory`` ，常见于
 
 你也许得卸载、清理和删除 ``ceph-common`` ，然后再重新安装，以\
 确保安装的是最新版。
+
+
+.. Dynamic Debugging
+
+动态调试
+========
+You can enable dynamic debug against the CephFS module.
+
+Please see: https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh
+
+
+.. Reporting Issues
+
+报告问题
+========
+If you have identified a specific issue, please report it with as much
+information as possible. Especially important information:
+
+* Ceph versions installed on client and server
+* Whether you are using the kernel or fuse client
+* If you are using the kernel client, what kernel version?
+* How many clients are in play, doing what kind of workload?
+* If a system is 'stuck', is that affecting all clients or just one?
+* Any ceph health messages
+* Any backtraces in the ceph logs from crashes
+
+If you are satisfied that you have found a bug, please file it on `the bug
+tracker`. For more general queries, please write to the `ceph-users mailing
+list`.
+
+.. _the bug tracker: http://tracker.ceph.com
+.. _ceph-users mailing list:  http://lists.ceph.com/listinfo.cgi/ceph-users-ceph.com/

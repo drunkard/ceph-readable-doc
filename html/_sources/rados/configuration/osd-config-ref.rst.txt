@@ -1052,6 +1052,39 @@ OSD 们建立连接，这样才能正常工作。详情见\
 :默认值: ``10*60``
 
 
+``osd delete sleep``
+
+:描述: Time in seconds to sleep before next removal transaction. This
+              helps to throttle the pg deletion process.
+:类型: Float
+:默认值: ``0``
+
+
+``osd delete sleep hdd``
+
+:描述: Time in seconds to sleep before next removal transaction
+              for HDDs.
+:类型: Float
+:默认值: ``5``
+
+
+``osd delete sleep ssd``
+
+:描述: Time in seconds to sleep before next removal transaction
+              for SSDs.
+:类型: Float
+:默认值: ``0``
+
+
+``osd delete sleep hybrid``
+
+:描述: Time in seconds to sleep before next removal transaction
+              when osd data is on HDD and osd journal is on SSD.
+
+:类型: Float
+:默认值: ``2``
+
+
 ``osd command max records``
 
 :描述: 限制返回的丢失对象数量。

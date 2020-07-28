@@ -170,20 +170,6 @@
 :默认值: ``30``
 
 
-``mds log max expiring``
-
-:描述: 可同时过期的片段数。
-:类型:  32-bit Integer
-:默认值: ``20``
-
-
-``mds log eopen size``
-
-:描述: 在一个 EOpon 事件中最大索引节点数。
-:类型:  32-bit Integer
-:默认值: ``100``
-
-
 ``mds bal sample interval``
 
 :描述: 对目录热度取样的频率（碎片粒度）。

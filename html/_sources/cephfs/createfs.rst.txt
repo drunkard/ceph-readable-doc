@@ -1,3 +1,5 @@
+.. Create a Ceph file system
+
 ====================
  创建 Ceph 文件系统
 ====================
@@ -34,12 +36,14 @@
 通常，元数据存储池最多也就有几个 GB 的数据，因此我们建议用较小\
 的 PG 数，在用的大型集群通常用 64 或 128 个。
 
+.. note:: The names of the file systems, metadata pools, and data pools can
+          only have characters in the set [a-zA-Z0-9\_-.].
+
 
 .. Creating a file system
 
 创建文件系统
 ============
-
 创建好存储池后，你就可以用 ``fs new`` 命令启用文件系统了：
 
 .. code:: bash

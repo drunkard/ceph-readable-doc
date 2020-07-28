@@ -33,6 +33,9 @@
 :command:`user info`
   显示用户信息，以及可能存在的子用户和密钥。
 
+:command:`user rename`
+  重命名一个用户。
+
 :command:`user rm`
   删除一个用户。
 
@@ -86,6 +89,10 @@
 :command:`bucket unlink`
   取消指定用户和桶的关联。
 
+:command:`bucket chown`
+  Link bucket to specified user and update object ACLs. 
+  Use --marker to resume if command gets interrupted.
+
 :command:`bucket stats`
   返回桶的统计信息。
 
@@ -97,6 +104,11 @@
 
 :command:`bucket rewrite`
   重写指定桶内的所有对象。
+
+:command:`bucket radoslist`
+  List the rados objects that contain the data for all objects is
+  the designated bucket, if --bucket=<bucket> is specified, or
+  otherwise all buckets.
 
 :command:`bucket reshard`
   对桶进行重分片。
@@ -388,18 +400,6 @@
 :command:`datalog status`
   读取数据日志状态。
 
-:command:`opstate list`
-  罗列含状态操作（需要 client_id 、 op_id 、对象）。
-
-:command:`opstate set`
-  设置条目状态（需指定 client_id 、 op_id 、对象、状态）。
-
-:command:`opstate renew`
-  更新某一条目的状态（需指定 client_id 、 op_id 、对象）。
-
-:command:`opstate rm`
-  删除条目（需指定 client_id 、 op_id 、对象）。
-
 :command:`orphans find`
   初始化、并开始检索遗漏的 RADOS 对象。
 
@@ -451,6 +451,27 @@
 :command:`reshard cancel`
   取消一个桶的重分片。
 
+:command:`topic list`
+  List bucket notifications/pubsub topics                                                   
+
+:command:`topic get`
+  Get a bucket notifications/pubsub topic                                                   
+  
+:command:`topic rm`
+  Remove a bucket notifications/pubsub topic                                                
+
+:command:`subscription get`
+  Get a pubsub subscription definition
+
+:command:`subscription rm`
+  Remove a pubsub subscription
+
+:command:`subscription pull`
+  Show events in a pubsub subscription
+             
+:command:`subscription ack`
+  Ack (remove) an events in a pubsub subscription
+
 
 选项
 ====
@@ -471,6 +492,10 @@
 .. option:: --uid=uid
 
    radosgw 用户的 ID 。
+
+.. option:: --new-uid=uid
+
+   ID of the new user. Used with 'user rename' command.
 
 .. option:: --subuser=<name>
 
@@ -725,6 +750,13 @@
 
    Remove the zones from list of zones to sync from.
 
+.. option:: --bucket-index-max-shards
+
+   Override a zone's or zonegroup's default number of bucket index shards. This
+   option is accepted by the 'zone create', 'zone modify', 'zonegroup add',
+   and 'zonegroup modify' commands, and applies to buckets that are created
+   after the zone/zonegroup changes take effect.
+
 .. option:: --fix
 
    除了检查桶索引，还修复它。
@@ -881,6 +913,23 @@
    用于过滤角色的路径前缀。
 
 
+.. Bucket Notifications/PubSub Options
+
+桶的通知、发布订阅（PubSub）选项
+================================
+.. option:: --topic                   
+
+   The bucket notifications/pubsub topic name.
+
+.. option:: --subscription
+
+   The pubsub subscription name.
+
+.. option:: --event-id
+
+   The event id in a pubsub subscription.
+
+
 实例
 ====
 
@@ -902,7 +951,11 @@
 删除一用户： ::
 
         $ radosgw-admin user rm --uid=johnny
-        
+
+重命名用户（改名）： ::
+
+        $ radosgw-admin user rename --uid=johny --new-uid=joe
+
 删除一个用户和与他相关的桶及内容： ::
 
         $ radosgw-admin user rm --uid=johnny --purge-data
@@ -918,6 +971,18 @@
 切断桶与指定用户的链接： ::
 
         $ radosgw-admin bucket unlink --bucket=foo --uid=johnny
+
+重命名一个桶： ::
+
+        $ radosgw-admin bucket link --bucket=foo --bucket-new-name=bar --uid=johnny
+
+把一个桶从原来的全局租户空间挪到指定租户： ::
+
+        $ radosgw-admin bucket link --bucket=/foo --uid=12345678$12345678'
+
+把桶链接到指定用户、并更改对象的 ACL ： ::
+
+        $ radosgw-admin bucket chown --bucket=/foo --uid=12345678$12345678'
 
 显示一个桶从 2012 年 4 月 1 日起的日志： ::
 
@@ -940,8 +1005,8 @@
 使用范围
 ========
 
-:program:`radosgw-admin` 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的\
-存储系统，更多信息参见 http://ceph.com/docs 。
+:program:`radosgw-admin` 是 Ceph 的一部分，这是个伸缩力强、\
+开源、分布式的存储系统，更多信息参见 http://ceph.com/docs 。
 
 
 参考

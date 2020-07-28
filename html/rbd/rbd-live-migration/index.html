@@ -1,0 +1,292 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>映像实时迁移 &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="RBD 永久缓存" href="../rbd-persistent-cache/" />
+    <link rel="prev" title="RBD 镜像" href="../rbd-mirroring/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rbd-persistent-cache/" title="RBD 永久缓存"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../rbd-mirroring/" title="RBD 镜像"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 块设备</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../rbd-operations/" accesskey="U">Ceph 块设备运维</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/rbd/rbd-live-migration.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="id1">
+<h1>映像实时迁移<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p id="index-0">RBD images can be live-migrated between different pools within the same cluster
+or between different image formats and layouts. When started, the source image
+will be deep-copied to the destination image, pulling all snapshot history and
+optionally keeping any link to the source image’s parent to help preserve
+sparseness.</p>
+<p>This copy process can safely run in the background while the new target image is
+in-use. There is currently a requirement to temporarily stop using the source
+image before preparing a migration. This helps to ensure that the client using
+the image is updated to point to the new target image.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Image live-migration requires the Ceph Nautilus release or later. The krbd
+kernel module does not support live-migration at this time.</p>
+</div>
+<p class="ditaa">
+<img src="../../_images/ditaa-859f3f097dc6673584cf18eef94e47f68a2c0aa8.png"/>
+</p>
+<p>The live-migration process is comprised of three steps:</p>
+<ol class="arabic simple">
+<li><p><strong>Prepare Migration:</strong> The initial step creates the new target image and
+cross-links the source and target images. Similar to <a class="reference external" href="../rbd-snapshot/#layering">layered images</a>,
+attempts to read uninitialized extents within the target image will
+internally redirect the read to the source image, and writes to
+uninitialized extents within the target will internally deep-copy the
+overlapping source image block to the target image.</p></li>
+<li><p><strong>Execute Migration:</strong> This is a background operation that deep-copies all
+initialized blocks from the source image to the target. This step can be
+run while clients are actively using the new target image.</p></li>
+<li><p><strong>Finish Migration:</strong> Once the background migration process has completed,
+the migration can be committed or aborted. Committing the migration will
+remove the cross-links between the source and target images, and will
+remove the source image. Aborting the migration will remove the cross-links,
+and will remove the target image.</p></li>
+</ol>
+<div class="section" id="id2">
+<h2>准备迁移<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>The live-migration process is initiated by running the <cite>rbd migration prepare</cite>
+command, providing the source and target images:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration prepare migration_source [migration_target]
+</pre></div>
+</div>
+<p>The <cite>rbd migration prepare</cite> command accepts all the same layout optionals as the
+<cite>rbd create</cite> command, which allows changes to the immutable image on-disk
+layout. The <cite>migration_target</cite> can be skipped if the goal is only to change the
+on-disk layout, keeping the original image name.</p>
+<p>All clients using the source image must be stopped prior to preparing a
+live-migration. The prepare step will fail if it finds any running clients with
+the image open in read/write mode. Once the prepare step is complete, the
+clients can be restarted using the new target image name. Attempting to restart
+the clients using the source image name will result in failure.</p>
+<p>The <cite>rbd status</cite> command will show the current state of the live-migration:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
+Watchers: none
+Migration:
+            source: rbd/migration_source (5e2cba2f62e)
+            destination: rbd/migration_target (5e2ed95ed806)
+            state: prepared
+</pre></div>
+</div>
+<p>Note that the source image will be moved to the RBD trash to avoid mistaken
+usage during the migration process:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd info migration_source
+rbd: error opening image migration_source: (2) No such file or directory
+$ rbd trash ls --all
+5e2cba2f62e migration_source
+</pre></div>
+</div>
+</div>
+<div class="section" id="id3">
+<h2>执行迁移<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>After preparing the live-migration, the image blocks from the source image
+must be copied to the target image. This is accomplished by running the
+<cite>rbd migration execute</cite> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration execute migration_target
+Image migration: 100% complete...done.
+</pre></div>
+</div>
+<p>The <cite>rbd status</cite> command will also provide feedback on the progress of the
+migration block deep-copy process:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
+Watchers:
+    watcher=1.2.3.4:0/3695551461 client.123 cookie=123
+Migration:
+            source: rbd/migration_source (5e2cba2f62e)
+            destination: rbd/migration_target (5e2ed95ed806)
+            state: executing (32% complete)
+</pre></div>
+</div>
+</div>
+<div class="section" id="id4">
+<h2>提交迁移<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>Once the live-migration has completed deep-copying all data blocks from the
+source image to the target, the migration can be committed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
+Watchers: none
+Migration:
+            source: rbd/migration_source (5e2cba2f62e)
+            destination: rbd/migration_target (5e2ed95ed806)
+            state: executed
+$ rbd migration commit migration_target
+Commit image migration: 100% complete...done.
+</pre></div>
+</div>
+<p>If the <cite>migration_source</cite> image is a parent of one or more clones, the <cite>–force</cite>
+option will need to be specified after ensuring all descendent clone images are
+not in use.</p>
+<p>Committing the live-migration will remove the cross-links between the source
+and target images, and will remove the source image:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd trash list --all
+</pre></div>
+</div>
+</div>
+<div class="section" id="id5">
+<h2>中止迁移<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>If you wish to revert the prepare or execute step, run the <cite>rbd migration abort</cite>
+command to revert the migration process:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration abort migration_target
+Abort image migration: 100% complete...done.
+</pre></div>
+</div>
+<p>Aborting the migration will result in the target image being deleted and access
+to the original source image being restored:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd ls
+migration_source
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 块设备</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../rados-rbd-cmds/">基本命令</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../rbd-operations/">运维</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../rbd-snapshot/">快照</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-mirroring/">镜像</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">实时迁移</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id2">准备迁移</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">执行迁移</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">提交迁移</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">中止迁移</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-persistent-cache/">永久缓存</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-config-ref/">配置选项 (librbd)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-replay/">RBD 重放</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-integrations/">对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rbd-persistent-cache/" title="RBD 永久缓存"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../rbd-mirroring/" title="RBD 镜像"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 块设备</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../rbd-operations/" >Ceph 块设备运维</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>
