@@ -1,0 +1,457 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>块设备与 Kubernetes &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="块设备与 OpenStack" href="../rbd-openstack/" />
+    <link rel="prev" title="通过 libvirt 使用 Ceph RBD" href="../libvirt/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rbd-openstack/" title="块设备与 OpenStack"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../libvirt/" title="通过 libvirt 使用 Ceph RBD"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 块设备</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../rbd-integrations/" accesskey="U">Ceph 块设备与第三方对接</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/rbd/rbd-kubernetes.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="kubernetes">
+<h1>块设备与 Kubernetes<a class="headerlink" href="#kubernetes" title="Permalink to this headline">¶</a></h1>
+<p>You may use Ceph Block Device images with Kubernetes v1.13 and later through
+<a class="reference external" href="https://github.com/ceph/ceph-csi/">ceph-csi</a>, which dynamically provisions RBD images to back Kubernetes
+<a class="reference external" href="https://kubernetes.io/docs/concepts/storage/volumes/">volumes</a> and maps these RBD images as block devices (optionally mounting
+a file system contained within the image) on worker nodes running
+<a class="reference external" href="https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/">pods</a> that reference an RBD-backed volume. Ceph stripes block device images as
+objects across the cluster, which means that large Ceph Block Device images have
+better performance than a standalone server!</p>
+<p>To use Ceph Block Devices with Kubernetes v1.13 and higher, you must install
+and configure <code class="docutils literal notranslate"><span class="pre">ceph-csi</span></code> within your Kubernetes environment. The following
+diagram depicts the Kubernetes/Ceph technology stack.</p>
+<p class="ditaa">
+<img src="../../_images/ditaa-41fa96269ec39896a8be891e923a9233a37987a1.png"/>
+</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-csi</span></code> uses the RBD kernel modules by default which may not support all
+Ceph <a class="reference external" href="../../rados/operations/crush-map/#tunables">CRUSH tunables</a> or <a class="reference external" href="../rbd-config-ref/#image-features">RBD image features</a>.</p>
+</div>
+<div class="section" id="create-a-pool">
+<h2>Create a Pool<a class="headerlink" href="#create-a-pool" title="Permalink to this headline">¶</a></h2>
+<p>By default, Ceph block devices use the <code class="docutils literal notranslate"><span class="pre">rbd</span></code> pool. Create a pool for
+Kubernetes volume storage. Ensure your Ceph cluster is running, then create
+the pool.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd pool create kubernetes
+</pre></div>
+</div>
+<p>See <a class="reference external" href="../../rados/operations/pools#createpool">Create a Pool</a> for details on specifying the number of placement groups
+for your pools, and <a class="reference external" href="../../rados/operations/placement-groups">Placement Groups</a> for details on the number of placement
+groups you should set for your pools.</p>
+<p>A newly created pool must be initialized prior to use. Use the <code class="docutils literal notranslate"><span class="pre">rbd</span></code> tool
+to initialize the pool:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd pool init kubernetes
+</pre></div>
+</div>
+</div>
+<div class="section" id="configure-ceph-csi">
+<h2>Configure ceph-csi<a class="headerlink" href="#configure-ceph-csi" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="setup-ceph-client-authentication">
+<h3>Setup Ceph Client Authentication<a class="headerlink" href="#setup-ceph-client-authentication" title="Permalink to this headline">¶</a></h3>
+<p>Create a new user for Kubernetes and <cite>ceph-csi</cite>. Execute the following and
+record the generated key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph auth get-or-create client.kubernetes mon &#39;profile rbd&#39; osd &#39;profile rbd pool=kubernetes&#39; mgr &#39;profile rbd pool=kubernetes&#39;
+[client.kubernetes]
+    key = AQD9o0Fd6hQRChAAt7fMaSZXduT3NWEqylNpmg==
+</pre></div>
+</div>
+</div>
+<div class="section" id="generate-ceph-csi-configmap">
+<h3>Generate <cite>ceph-csi</cite> <cite>ConfigMap</cite><a class="headerlink" href="#generate-ceph-csi-configmap" title="Permalink to this headline">¶</a></h3>
+<p>The <cite>ceph-csi</cite> requires a <cite>ConfigMap</cite> object stored in Kubernetes to define the
+the Ceph monitor addresses for the Ceph cluster. Collect both the Ceph cluster
+unique <cite>fsid</cite> and the monitor addresses:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph mon dump
+&lt;...&gt;
+fsid b9127830-b0cc-4e34-aa47-9d1a2e9949a8
+&lt;...&gt;
+0: [v2:192.168.1.1:3300/0,v1:192.168.1.1:6789/0] mon.a
+1: [v2:192.168.1.2:3300/0,v1:192.168.1.2:6789/0] mon.b
+2: [v2:192.168.1.3:3300/0,v1:192.168.1.3:6789/0] mon.c
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-csi</span></code> currently only supports the <a class="reference external" href="../../rados/configuration/msgr2/#address-formats">legacy V1 protocol</a>.</p>
+</div>
+<p>Generate a <cite>csi-config-map.yaml</cite> file similar to the example below, substituting
+the <cite>fsid</cite> for “clusterID”, and the monitor addresses for “monitors”:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; csi-config-map.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  config.json: |-
+    [
+      {
+        &quot;clusterID&quot;: &quot;b9127830-b0cc-4e34-aa47-9d1a2e9949a8&quot;,
+        &quot;monitors&quot;: [
+          &quot;192.168.1.1:6789&quot;,
+          &quot;192.168.1.2:6789&quot;,
+          &quot;192.168.1.3:6789&quot;
+        ]
+      }
+    ]
+metadata:
+  name: ceph-csi-config
+EOF
+</pre></div>
+</div>
+<p>Once generated, store the new <cite>ConfigMap</cite> object in Kubernetes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl apply -f csi-config-map.yaml
+</pre></div>
+</div>
+</div>
+<div class="section" id="generate-ceph-csi-cephx-secret">
+<h3>Generate <cite>ceph-csi</cite> cephx <cite>Secret</cite><a class="headerlink" href="#generate-ceph-csi-cephx-secret" title="Permalink to this headline">¶</a></h3>
+<p><cite>ceph-csi</cite> requires the cephx credentials for communicating with the Ceph
+cluster. Generate a <cite>csi-rbd-secret.yaml</cite> file similar to the example below,
+using the newly created Kubernetes user id and cephx key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; csi-rbd-secret.yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: csi-rbd-secret
+  namespace: default
+stringData:
+  userID: kubernetes
+  userKey: AQD9o0Fd6hQRChAAt7fMaSZXduT3NWEqylNpmg==
+EOF
+</pre></div>
+</div>
+<p>Once generated, store the new <cite>Secret</cite> object in Kubernetes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl apply -f csi-rbd-secret.yaml
+</pre></div>
+</div>
+</div>
+<div class="section" id="configure-ceph-csi-plugins">
+<h3>Configure <cite>ceph-csi</cite> Plugins<a class="headerlink" href="#configure-ceph-csi-plugins" title="Permalink to this headline">¶</a></h3>
+<p>Create the required <cite>ServiceAccount</cite> and RBAC <cite>ClusterRole</cite>/<cite>ClusterRoleBinding</cite>
+Kubernetes objects. These objects do not necessarily need to be customized for
+your Kubernetes environment and therefore can be used as-is from the <cite>ceph-csi</cite>
+deployment YAMLs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl apply -f https://raw.githubusercontent.com/ceph/ceph-csi/master/deploy/rbd/kubernetes/csi-provisioner-rbac.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/ceph/ceph-csi/master/deploy/rbd/kubernetes/csi-nodeplugin-rbac.yaml
+</pre></div>
+</div>
+<p>Finally, create the <cite>ceph-csi</cite> provisioner and node plugins. With the
+possible exception of the <cite>ceph-csi</cite> container release version, these objects do
+not necessarily need to be customized for your Kubernetes environment and
+therefore can be used as-is from the <cite>ceph-csi</cite> deployment YAMLs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://raw.githubusercontent.com/ceph/ceph-csi/master/deploy/rbd/kubernetes/csi-rbdplugin-provisioner.yaml
+$ kubectl apply -f csi-rbdplugin-provisioner.yaml
+$ wget https://raw.githubusercontent.com/ceph/ceph-csi/master/deploy/rbd/kubernetes/csi-rbdplugin.yaml
+$ kubectl apply -f csi-rbdplugin.yaml
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The provisioner and node plugin YAMLs will, by default, pull the development
+release of the <cite>ceph-csi</cite> container (quay.io/cephcsi/cephcsi:canary).
+The YAMLs should be updated to use a release version container for
+production workloads.</p>
+</div>
+</div>
+</div>
+<div class="section" id="using-ceph-block-devices">
+<h2>Using Ceph Block Devices<a class="headerlink" href="#using-ceph-block-devices" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="create-a-storageclass">
+<h3>Create a <cite>StorageClass</cite><a class="headerlink" href="#create-a-storageclass" title="Permalink to this headline">¶</a></h3>
+<p>The Kubernetes <cite>StorageClass</cite> defines a class of storage. Multiple <cite>StorageClass</cite>
+objects can be created to map to different quality-of-service levels (i.e. NVMe
+vs HDD-based pools) and features.</p>
+<p>For example, to create a <cite>ceph-csi</cite> <cite>StorageClass</cite> that maps to the <cite>kubernetes</cite>
+pool created above, the following YAML file can be used after ensuring that the
+“clusterID” property matches your Ceph cluster’s <cite>fsid</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; csi-rbd-sc.yaml
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: csi-rbd-sc
+provisioner: rbd.csi.ceph.com
+parameters:
+   clusterID: b9127830-b0cc-4e34-aa47-9d1a2e9949a8
+   pool: kubernetes
+   csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
+   csi.storage.k8s.io/provisioner-secret-namespace: default
+   csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
+   csi.storage.k8s.io/node-stage-secret-namespace: default
+reclaimPolicy: Delete
+mountOptions:
+   - discard
+EOF
+$ kubectl apply -f csi-rbd-sc.yaml
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-a-persistentvolumeclaim">
+<h3>Create a <cite>PersistentVolumeClaim</cite><a class="headerlink" href="#create-a-persistentvolumeclaim" title="Permalink to this headline">¶</a></h3>
+<p>A <cite>PersistentVolumeClaim</cite> is a request for abstract storage resources by a user.
+The <cite>PersistentVolumeClaim</cite> would then be associated to a <cite>Pod</cite> resource to
+provision a <cite>PersistentVolume</cite>, which would be backed by a Ceph block image.
+An optional <cite>volumeMode</cite> can be included to select between a mounted file system
+(default) or raw block device-based volume.</p>
+<p>Using <cite>ceph-csi</cite>, specifying <cite>Filesystem</cite> for <cite>volumeMode</cite> can support both
+<cite>ReadWriteOnce</cite> and <cite>ReadOnlyMany</cite> <cite>accessMode</cite> claims, and specifying <cite>Block</cite>
+for <cite>volumeMode</cite> can support <cite>ReadWriteOnce</cite>, <cite>ReadWriteMany</cite>, and
+<cite>ReadOnlyMany</cite> <cite>accessMode</cite> claims.</p>
+<p>For example, to create a block-based <cite>PersistentVolumeClaim</cite> that utilizes
+the <cite>ceph-csi</cite>-based <cite>StorageClass</cite> created above, the following YAML can be
+used to request raw block storage from the <cite>csi-rbd-sc</cite> <cite>StorageClass</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; raw-block-pvc.yaml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: raw-block-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Block
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-rbd-sc
+EOF
+$ kubectl apply -f raw-block-pvc.yaml
+</pre></div>
+</div>
+<p>The following demonstrates and example of binding the above
+<cite>PersistentVolumeClaim</cite> to a <cite>Pod</cite> resource as a raw block device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; raw-block-pod.yaml
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-raw-block-volume
+spec:
+  containers:
+    - name: fc-container
+      image: fedora:26
+      command: [&quot;/bin/sh&quot;, &quot;-c&quot;]
+      args: [&quot;tail -f /dev/null&quot;]
+      volumeDevices:
+        - name: data
+          devicePath: /dev/xvda
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: raw-block-pvc
+EOF
+$ kubectl apply -f raw-block-pod.yaml
+</pre></div>
+</div>
+<p>To create a file-system-based <cite>PersistentVolumeClaim</cite> that utilizes the
+<cite>ceph-csi</cite>-based <cite>StorageClass</cite> created above, the following YAML can be used to
+request a mounted file system (backed by an RBD image) from the <cite>csi-rbd-sc</cite>
+<cite>StorageClass</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; pvc.yaml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rbd-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-rbd-sc
+EOF
+$ kubectl apply -f pvc.yaml
+</pre></div>
+</div>
+<p>The following demonstrates and example of binding the above
+<cite>PersistentVolumeClaim</cite> to a <cite>Pod</cite> resource as a mounted file system:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; pod.yaml
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: csi-rbd-demo-pod
+spec:
+  containers:
+    - name: web-server
+      image: nginx
+      volumeMounts:
+        - name: mypvc
+          mountPath: /var/lib/www/html
+  volumes:
+    - name: mypvc
+      persistentVolumeClaim:
+        claimName: rbd-pvc
+        readOnly: false
+EOF
+$ kubectl apply -f pod.yaml
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 块设备</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../rados-rbd-cmds/">基本命令</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-operations/">运维</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../rbd-integrations/">对接</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../rbd-ko/">内核模块</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../qemu-rbd/">QEMU</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../libvirt/">libvirt</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Kubernetes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#create-a-pool">Create a Pool</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configure-ceph-csi">Configure ceph-csi</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#setup-ceph-client-authentication">Setup Ceph Client Authentication</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#generate-ceph-csi-configmap">Generate <cite>ceph-csi</cite> <cite>ConfigMap</cite></a></li>
+<li class="toctree-l5"><a class="reference internal" href="#generate-ceph-csi-cephx-secret">Generate <cite>ceph-csi</cite> cephx <cite>Secret</cite></a></li>
+<li class="toctree-l5"><a class="reference internal" href="#configure-ceph-csi-plugins">Configure <cite>ceph-csi</cite> Plugins</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#using-ceph-block-devices">Using Ceph Block Devices</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#create-a-storageclass">Create a <cite>StorageClass</cite></a></li>
+<li class="toctree-l5"><a class="reference internal" href="#create-a-persistentvolumeclaim">Create a <cite>PersistentVolumeClaim</cite></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-openstack/">OpenStack</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-cloudstack/">CloudStack</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../iscsi-overview/">LIO iSCSI Gateway</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rbd-openstack/" title="块设备与 OpenStack"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../libvirt/" title="通过 libvirt 使用 Ceph RBD"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 块设备</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../rbd-integrations/" >Ceph 块设备与第三方对接</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>
