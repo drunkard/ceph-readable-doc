@@ -1157,6 +1157,33 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :默认值: 300
 
 
+``mon osd cache size min``
+
+:描述: The minimum amount of bytes to be kept mapped in memory for osd
+               monitor caches.
+
+:类型: 64-bit Integer
+:默认值: ``134217728``
+
+
+``mon memory target``
+
+:描述: The amount of bytes pertaining to osd monitor caches and kv cache
+              to be kept mapped in memory with cache auto-tuning enabled.
+
+:类型: 64-bit Integer
+:默认值: ``2147483648``
+
+
+``mon memory autotune``
+
+:描述: Autotune the cache memory being used for osd monitors and kv
+              database.
+
+:类型: Boolean
+:默认值: ``True``
+
+
 .. _Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 .. _监视器密钥环: ../../../dev/mon-bootstrap#secret-keys
 .. _Ceph 配置文件: ../ceph-conf/#monitors
