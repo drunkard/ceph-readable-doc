@@ -1,4 +1,4 @@
-.. _OpenStack Barbican Integration:
+.. OpenStack Barbican Integration
 
 ============================
  与 OpenStack Barbican 对接
@@ -15,7 +15,7 @@
 #. `在 Barbican 里创建密钥`_
 
 
-.. _Configure Keystone:
+.. Configure Keystone
 
 配置 Keystone
 =============
@@ -25,7 +25,7 @@ Barbican 靠 Keystone 实现密钥的授权和访问控制。
 参考 `与 OpenStack Keystone 对接`_\ 。
 
 
-.. _Create a Keystone user:
+.. Create a Keystone user
 
 创建 Keystone 用户
 ==================
@@ -41,7 +41,7 @@ Barbican 靠 Keystone 实现密钥的授权和访问控制。
 关于\ `管理项目、用户和角色`_\ 请参考 OpenStack 文档。
 
 
-.. _Create a key in Barbican:
+.. Create a key in Barbican
 
 在 Barbican 里创建密钥
 ======================
@@ -101,13 +101,15 @@ Barbican 靠 Keystone 实现密钥的授权和访问控制。
    {"acl_ref": "http://barbican.example.com:9311/v1/secrets/d1e7ef3b-f841-4b7c-90b2-b7d90ca2d723/acl"}
 
 
-.. _Configure the Ceph Object Gateway:
+.. Configure the Ceph Object Gateway
 
 配置 Ceph 对象网关
 ==================
 
-编辑 Ceph 配置文件，加上 Barbican 服务器和 Keystone 用户信息： ::
+编辑 Ceph 配置文件，让 Barbican 作为 KMS 、并且加上
+Barbican 服务器和 Keystone 用户的信息： ::
 
+   rgw crypt s3 kms backend = barbican
    rgw barbican url = http://barbican.example.com:9311
    rgw keystone barbican user = rgwcrypt-user
    rgw keystone barbican password = rgwcrypt-password

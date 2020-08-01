@@ -148,4 +148,4 @@ SHEC 的第三个参数（ =c ）是一个持久性估值，它大致等于在�
 		plugin=shec \
 		k=8 m=4 c=3 \
 		crush-failure-domain=host
-	$ ceph osd pool create shecpool 256 256 erasure SHECprofile
+	$ ceph osd pool create shecpool erasure SHECprofile

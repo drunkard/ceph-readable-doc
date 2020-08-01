@@ -379,7 +379,7 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 
 :类型: String
 :可选值: prio, wpq, mclock_opclass, mclock_client
-:默认值: ``prio``
+:默认值: ``wpq``
 
 
 ``osd op queue cut off``
@@ -396,7 +396,7 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 
 :类型: String
 :可选值: low, high
-:默认值: ``low``
+:默认值: ``high``
 
 
 ``osd client op priority``

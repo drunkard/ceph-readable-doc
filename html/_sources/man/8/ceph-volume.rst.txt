@@ -81,6 +81,7 @@ OSD 。它会创建 OSD 正常运行所必需的卷组和逻辑卷。
 * [--dmcrypt]           为底层 OSD 设备启用加密功能
 * [--crush-device-class] 指定分配给这个 OSD 的 CRUSH 设备类
 * [--no-systemd]        不要启用或创建任何 systemd 单元
+* [--osds-per-device]   Provision more than 1 (the default) OSD per device
 * [--report]            报告当前输入可能产生的潜在结果（需要\
                         传入设备）
 * [--format]            报告时（和 --report 一起使用）的输出格\

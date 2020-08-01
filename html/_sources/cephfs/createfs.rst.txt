@@ -30,8 +30,8 @@
 
 .. code:: bash
 
-    $ ceph osd pool create cephfs_data <pg_num>
-    $ ceph osd pool create cephfs_metadata <pg_num>
+    $ ceph osd pool create cephfs_data
+    $ ceph osd pool create cephfs_metadata
 
 通常，元数据存储池最多也就有几个 GB 的数据，因此我们建议用较小\
 的 PG 数，在用的大型集群通常用 64 或 128 个。

@@ -321,7 +321,7 @@ OSD 。要定位对象，只需要对象名和存储池名字即可，例如： 
    对象名、一个有数据的测试文件路径、并指定存储池。例如： ::
 
      echo {Test-data} > testfile.txt
-     ceph osd pool create mytest 8
+     ceph osd pool create mytest
      rados put {object-name} {file-path} --pool=mytest
      rados put test-object-1 testfile.txt --pool=mytest
 

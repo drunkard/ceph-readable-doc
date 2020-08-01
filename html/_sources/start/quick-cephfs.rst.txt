@@ -30,8 +30,8 @@
 你虽然已创建元数据服务器（\ `存储集群入门`_\ ），但如果你没有创建存储池和文件\
 系统的话它是不会活动的，参见 :doc:`/cephfs/createfs` 。 ::
 
-    ceph osd pool create cephfs_data <pg_num>
-    ceph osd pool create cephfs_metadata <pg_num>
+    ceph osd pool create cephfs_data
+    ceph osd pool create cephfs_metadata
     ceph fs new <fs_name> cephfs_metadata cephfs_data
 
 

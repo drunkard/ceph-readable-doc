@@ -76,10 +76,10 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
 存储池。但我们建议分别为 Cinder 和 Glance 创建存储池。确保 Ceph
 集群在运行，然后创建存储池。 ::
 
-    ceph osd pool create volumes 128
-    ceph osd pool create images 128
-    ceph osd pool create backups 128
-    ceph osd pool create vms 128
+    ceph osd pool create volumes
+    ceph osd pool create images
+    ceph osd pool create backups
+    ceph osd pool create vms
 
 参考\ `创建存储池`_\ 为存储池指定归置组数量，参考\ `归置组`_\
 确定应该为存储池分配多少归置组。

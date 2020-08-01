@@ -1,0 +1,454 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>HashiCorp Vault Integration &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="与 Open Policy Agent 对接" href="../opa/" />
+    <link rel="prev" title="与 OpenStack Barbican 对接" href="../barbican/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../opa/" title="与 Open Policy Agent 对接"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../barbican/" title="与 OpenStack Barbican 对接"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 对象网关</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/radosgw/vault.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="hashicorp-vault-integration">
+<h1>HashiCorp Vault Integration<a class="headerlink" href="#hashicorp-vault-integration" title="Permalink to this headline">¶</a></h1>
+<p>HashiCorp <a class="reference external" href="https://www.vaultproject.io/docs/">Vault</a> can be used as a secure key management service for
+<a class="reference external" href="../encryption">Server-Side Encryption</a> (SSE-KMS).</p>
+<p class="ditaa">
+<img src="../../_images/ditaa-e9ca1bf687200e44b1aeea6083abb8cd67036a37.png"/>
+</p>
+<ol class="arabic simple">
+<li><p><a class="reference internal" href="#vault-secrets-engines">Vault secrets engines</a></p></li>
+<li><p><a class="reference internal" href="#vault-authentication">Vault authentication</a></p></li>
+<li><p><a class="reference internal" href="#vault-namespaces">Vault namespaces</a></p></li>
+<li><p><a class="reference internal" href="#create-a-key-in-vault">Create a key in Vault</a></p></li>
+<li><p><a class="reference internal" href="#configure-the-ceph-object-gateway">Configure the Ceph Object Gateway</a></p></li>
+<li><p><a class="reference internal" href="#upload-object">Upload object</a></p></li>
+</ol>
+<p>Some examples below use the Vault command line utility to interact with
+Vault. You may need to set the following environment variable with the correct
+address of your Vault server to use this utility:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">VAULT_ADDR</span><span class="o">=</span><span class="s1">&#39;http://vault-server:8200&#39;</span>
+</pre></div>
+</div>
+<div class="section" id="vault-secrets-engines">
+<h2>Vault secrets engines<a class="headerlink" href="#vault-secrets-engines" title="Permalink to this headline">¶</a></h2>
+<p>Vault provides several secrets engines, which can store, generate, and encrypt
+data. Currently, the Object Gateway supports:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://www.vaultproject.io/docs/secrets/kv/">KV secrets engine</a> version 2</p></li>
+<li><p><a class="reference external" href="https://www.vaultproject.io/docs/secrets/transit">Transit engine</a></p></li>
+</ul>
+<div class="section" id="kv-secrets-engine">
+<h3>KV secrets engine<a class="headerlink" href="#kv-secrets-engine" title="Permalink to this headline">¶</a></h3>
+<p>The KV secrets engine is used to store arbitrary key/value secrets in Vault. To
+enable the KV engine version 2 in Vault, use the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">secrets</span> <span class="n">enable</span> <span class="o">-</span><span class="n">path</span> <span class="n">secret</span> <span class="n">kv</span><span class="o">-</span><span class="n">v2</span>
+</pre></div>
+</div>
+<p>The Object Gateway can be configured to use the KV engine version 2 with the
+following setting:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">secret</span> <span class="n">engine</span> <span class="o">=</span> <span class="n">kv</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="transit-secrets-engine">
+<h3>Transit secrets engine<a class="headerlink" href="#transit-secrets-engine" title="Permalink to this headline">¶</a></h3>
+<p>The transit engine handles cryptographic functions on data in-transit. To enable
+it in Vault, use the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">secrets</span> <span class="n">enable</span> <span class="n">transit</span>
+</pre></div>
+</div>
+<p>The Object Gateway can be configured to use the transit engine with the
+following setting:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">secret</span> <span class="n">engine</span> <span class="o">=</span> <span class="n">transit</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="vault-authentication">
+<h2>Vault authentication<a class="headerlink" href="#vault-authentication" title="Permalink to this headline">¶</a></h2>
+<p>Vault supports several authentication mechanisms. Currently, the Object
+Gateway can be configured to authenticate to Vault using the
+<a class="reference external" href="https://www.vaultproject.io/docs/auth/token.html">Token authentication method</a> or a <a class="reference external" href="https://www.vaultproject.io/docs/agent/index.html">Vault agent</a>.</p>
+<div class="section" id="token-authentication">
+<h3>Token authentication<a class="headerlink" href="#token-authentication" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Token authentication is not recommended for production environments.</p>
+</div>
+<p>The token authentication method expects a Vault token to be present in a
+plaintext file. The Object Gateway can be configured to use token authentication
+with the following settings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">auth</span> <span class="o">=</span> <span class="n">token</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">token</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">vault</span><span class="o">.</span><span class="n">token</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vault</span><span class="o">-</span><span class="n">server</span><span class="p">:</span><span class="mi">8200</span>
+</pre></div>
+</div>
+<p>For security reasons, the token file must be readable by the Object Gateway
+only. Also, the Object Gateway should be given a Vault token with a restricted
+policy that allows it to fetch keyrings from a specific path only. Such a policy
+can be created in Vault using the command line utility as in the following
+examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">policy</span> <span class="n">write</span> <span class="n">rgw</span><span class="o">-</span><span class="n">kv</span><span class="o">-</span><span class="n">policy</span> <span class="o">-&lt;&lt;</span><span class="n">EOF</span>
+  <span class="n">path</span> <span class="s2">&quot;secret/data/*&quot;</span> <span class="p">{</span>
+    <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;read&quot;</span><span class="p">]</span>
+  <span class="p">}</span>
+<span class="n">EOF</span>
+
+<span class="n">vault</span> <span class="n">policy</span> <span class="n">write</span> <span class="n">rgw</span><span class="o">-</span><span class="n">transit</span><span class="o">-</span><span class="n">policy</span> <span class="o">-&lt;&lt;</span><span class="n">EOF</span>
+  <span class="n">path</span> <span class="s2">&quot;transit/export/encryption-key/*&quot;</span> <span class="p">{</span>
+    <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;read&quot;</span><span class="p">]</span>
+  <span class="p">}</span>
+<span class="n">EOF</span>
+</pre></div>
+</div>
+<p>Once the policy is created, a token can be generated by a Vault administrator:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">token</span> <span class="n">create</span> <span class="o">-</span><span class="n">policy</span><span class="o">=</span><span class="n">rgw</span><span class="o">-</span><span class="n">kv</span><span class="o">-</span><span class="n">policy</span>
+</pre></div>
+</div>
+<p>Sample output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Key</span>                  <span class="n">Value</span>
+<span class="o">---</span>                  <span class="o">-----</span>
+<span class="n">token</span>                <span class="n">s</span><span class="o">.</span><span class="mi">72</span><span class="n">KuPujbc065OdWB71poOmIq</span>
+<span class="n">token_accessor</span>       <span class="n">jv95ZYBUFv6Ss84x7SCSy6lZ</span>
+<span class="n">token_duration</span>       <span class="mi">768</span><span class="n">h</span>
+<span class="n">token_renewable</span>      <span class="n">true</span>
+<span class="n">token_policies</span>       <span class="p">[</span><span class="s2">&quot;default&quot;</span> <span class="s2">&quot;rgw-kv-policy&quot;</span><span class="p">]</span>
+<span class="n">identity_policies</span>    <span class="p">[]</span>
+<span class="n">policies</span>             <span class="p">[</span><span class="s2">&quot;default&quot;</span> <span class="s2">&quot;rgw-kv-policy&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The actual token, displayed in the <code class="docutils literal notranslate"><span class="pre">Value</span></code> column of the first line of the
+output, must be saved in a file as plaintext.</p>
+</div>
+<div class="section" id="vault-agent">
+<h3>Vault agent<a class="headerlink" href="#vault-agent" title="Permalink to this headline">¶</a></h3>
+<p>The Vault agent is a client daemon that provides authentication to Vault and
+manages token renewal and caching. It typically runs on the same host as the
+Object Gateway. With a Vault agent, it is possible to use other Vault
+authentication mechanism such as AppRole, AWS, Certs, JWT, and Azure.</p>
+<p>The Object Gateway can be configured to use a Vault agent with the following
+settings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">auth</span> <span class="o">=</span> <span class="n">agent</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">8100</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="vault-namespaces">
+<h2>Vault namespaces<a class="headerlink" href="#vault-namespaces" title="Permalink to this headline">¶</a></h2>
+<p>In the Enterprise version, Vault supports the concept of <a class="reference external" href="https://www.vaultproject.io/docs/enterprise/namespaces/index.html">namespaces</a>, which
+allows centralized management for teams within an organization while ensuring
+that those teams operate within isolated environments known as tenants.</p>
+<p>The Object Gateway can be configured to access Vault within a particular
+namespace using the following configuration setting:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">namespace</span> <span class="o">=</span> <span class="n">tenant1</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-a-key-in-vault">
+<h2>Create a key in Vault<a class="headerlink" href="#create-a-key-in-vault" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Keys for server-side encryption must be 256-bit long and base-64
+encoded.</p>
+</div>
+<div class="section" id="using-the-kv-engine">
+<h3>Using the KV engine<a class="headerlink" href="#using-the-kv-engine" title="Permalink to this headline">¶</a></h3>
+<p>A key for server-side encryption can be created in the KV version 2 engine using
+the command line utility, as in the following example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>vault kv put secret/myproject/mybucketkey key=$(openssl rand -base64 32)
+</pre></div>
+</div>
+<p>Sample output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">======</span> <span class="n">Metadata</span> <span class="o">======</span>
+<span class="n">Key</span>              <span class="n">Value</span>
+<span class="o">---</span>              <span class="o">-----</span>
+<span class="n">created_time</span>     <span class="mi">2019</span><span class="o">-</span><span class="mi">08</span><span class="o">-</span><span class="mi">29</span><span class="n">T17</span><span class="p">:</span><span class="mi">01</span><span class="p">:</span><span class="mf">09.095824999</span><span class="n">Z</span>
+<span class="n">deletion_time</span>    <span class="n">n</span><span class="o">/</span><span class="n">a</span>
+<span class="n">destroyed</span>        <span class="n">false</span>
+<span class="n">version</span>          <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Note that in the KV secrets engine, secrets are stored as key-value pairs, and
+the Gateway expects the key name to be <code class="docutils literal notranslate"><span class="pre">key</span></code>, i.e. the secret must be in the
+form <code class="docutils literal notranslate"><span class="pre">key=&lt;secret</span> <span class="pre">key&gt;</span></code>.</p>
+</div>
+<div class="section" id="using-the-transit-engine">
+<h3>Using the Transit engine<a class="headerlink" href="#using-the-transit-engine" title="Permalink to this headline">¶</a></h3>
+<p>Keys created with the Transit engine must be exportable in order to be used for
+server-side encryption with the Object Gateway. An exportable key can be created
+with the command line utility as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">write</span> <span class="o">-</span><span class="n">f</span> <span class="n">transit</span><span class="o">/</span><span class="n">keys</span><span class="o">/</span><span class="n">mybucketkey</span> <span class="n">exportable</span><span class="o">=</span><span class="n">true</span>
+</pre></div>
+</div>
+<p>The command above creates a keyring, which contains a key of type
+<code class="docutils literal notranslate"><span class="pre">aes256-gcm96</span></code> by default. To verify that the key was correctly created, use
+the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">transit</span><span class="o">/</span><span class="n">export</span><span class="o">/</span><span class="n">encryption</span><span class="o">-</span><span class="n">key</span><span class="o">/</span><span class="n">mybucketkey</span><span class="o">/</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>Sample output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Key</span>     <span class="n">Value</span>
+<span class="o">---</span>     <span class="o">-----</span>
+<span class="n">keys</span>    <span class="nb">map</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="n">gbTI9lNpqv</span><span class="o">/</span><span class="n">V</span><span class="o">/</span><span class="mi">2</span><span class="n">lDcmH2Nq1xKn6FPDWarCmFM2aNsQ</span><span class="o">=</span><span class="p">]</span>
+<span class="n">name</span>    <span class="n">mybucketkey</span>
+<span class="nb">type</span>    <span class="n">aes256</span><span class="o">-</span><span class="n">gcm96</span>
+</pre></div>
+</div>
+<p>Note that in order to read the key created with the Transit engine, the full
+path must be provided including the key version.</p>
+</div>
+</div>
+<div class="section" id="configure-the-ceph-object-gateway">
+<h2>Configure the Ceph Object Gateway<a class="headerlink" href="#configure-the-ceph-object-gateway" title="Permalink to this headline">¶</a></h2>
+<p>Edit the Ceph configuration file to enable Vault as a KMS backend for
+server-side encryption:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">s3</span> <span class="n">kms</span> <span class="n">backend</span> <span class="o">=</span> <span class="n">vault</span>
+</pre></div>
+</div>
+<p>Choose the Vault authentication method, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">auth</span> <span class="o">=</span> <span class="n">token</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">token</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">vault</span><span class="o">.</span><span class="n">token</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vault</span><span class="o">-</span><span class="n">server</span><span class="p">:</span><span class="mi">8200</span>
+</pre></div>
+</div>
+<p>Or:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">auth</span> <span class="o">=</span> <span class="n">agent</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">8100</span>
+</pre></div>
+</div>
+<p>Choose the secrets engine:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">secret</span> <span class="n">engine</span> <span class="o">=</span> <span class="n">kv</span>
+</pre></div>
+</div>
+<p>Or:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">secret</span> <span class="n">engine</span> <span class="o">=</span> <span class="n">transit</span>
+</pre></div>
+</div>
+<p>Optionally, set the Vault namespace where encryption keys will be fetched from:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">namespace</span> <span class="o">=</span> <span class="n">tenant1</span>
+</pre></div>
+</div>
+<p>Finally, the URLs where the Gateway will retrieve encryption keys from Vault can
+be restricted by setting a path prefix. For instance, the Gateway can be
+restricted to fetch KV keys as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">prefix</span> <span class="o">=</span> <span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">secret</span><span class="o">/</span><span class="n">data</span>
+</pre></div>
+</div>
+<p>Or, in the case of exportable transit keys:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">prefix</span> <span class="o">=</span> <span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">transit</span><span class="o">/</span><span class="n">export</span><span class="o">/</span><span class="n">encryption</span><span class="o">-</span><span class="n">key</span>
+</pre></div>
+</div>
+<p>In the example above, the Gateway would only fetch transit encryption keys under
+<code class="docutils literal notranslate"><span class="pre">http://vault-server:8200/v1/transit/export/encryption-key</span></code>.</p>
+</div>
+<div class="section" id="upload-object">
+<h2>Upload object<a class="headerlink" href="#upload-object" title="Permalink to this headline">¶</a></h2>
+<p>When uploading an object to the Gateway, provide the SSE key ID in the request.
+As an example, for the kv engine, using the AWS command-line client:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">radosgw</span><span class="p">:</span><span class="mi">8000</span> <span class="n">s3</span> <span class="n">cp</span> <span class="n">plaintext</span><span class="o">.</span><span class="n">txt</span> <span class="n">s3</span><span class="p">:</span><span class="o">//</span><span class="n">mybucket</span><span class="o">/</span><span class="n">encrypted</span><span class="o">.</span><span class="n">txt</span> <span class="o">--</span><span class="n">sse</span><span class="o">=</span><span class="n">aws</span><span class="p">:</span><span class="n">kms</span> <span class="o">--</span><span class="n">sse</span><span class="o">-</span><span class="n">kms</span><span class="o">-</span><span class="n">key</span><span class="o">-</span><span class="nb">id</span> <span class="n">myproject</span><span class="o">/</span><span class="n">mybucketkey</span>
+</pre></div>
+</div>
+<p>As an example, for the transit engine, using the AWS command-line client:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">radosgw</span><span class="p">:</span><span class="mi">8000</span> <span class="n">s3</span> <span class="n">cp</span> <span class="n">plaintext</span><span class="o">.</span><span class="n">txt</span> <span class="n">s3</span><span class="p">:</span><span class="o">//</span><span class="n">mybucket</span><span class="o">/</span><span class="n">encrypted</span><span class="o">.</span><span class="n">txt</span> <span class="o">--</span><span class="n">sse</span><span class="o">=</span><span class="n">aws</span><span class="p">:</span><span class="n">kms</span> <span class="o">--</span><span class="n">sse</span><span class="o">-</span><span class="n">kms</span><span class="o">-</span><span class="n">key</span><span class="o">-</span><span class="nb">id</span> <span class="n">mybucketkey</span><span class="o">/</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>The Object Gateway will fetch the key from Vault, encrypt the object and store
+it in the bucket. Any request to download the object will make the Gateway
+automatically retrieve the correspondent key from Vault and decrypt the object.</p>
+<p>Note that the secret will be fetched from Vault using a URL constructed by
+concatenating the base address (<code class="docutils literal notranslate"><span class="pre">rgw</span> <span class="pre">crypt</span> <span class="pre">vault</span> <span class="pre">addr</span></code>), the (optional)
+URL prefix (<code class="docutils literal notranslate"><span class="pre">rgw</span> <span class="pre">crypt</span> <span class="pre">vault</span> <span class="pre">prefix</span></code>), and finally the key ID.</p>
+<p>In the kv engine example above, the Gateway would fetch the secret from:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vaultserver</span><span class="p">:</span><span class="mi">8200</span><span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">secret</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">myproject</span><span class="o">/</span><span class="n">mybucketkey</span>
+</pre></div>
+</div>
+<p>In the transit engine example above, the Gateway would fetch the secret from:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vaultserver</span><span class="p">:</span><span class="mi">8200</span><span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">transit</span><span class="o">/</span><span class="n">export</span><span class="o">/</span><span class="n">encryption</span><span class="o">-</span><span class="n">key</span><span class="o">/</span><span class="n">mybucketkey</span><span class="o">/</span><span class="mi">1</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 对象网关</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">基于 Civetweb 手动安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../frontends/">HTTP 前端</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement/">存储池归置与存储类</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multisite/">多站配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pools/">存储池的配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">配置参考</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">管理操作 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">Python 接口</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../barbican/">与 OpenStack Barbican 对接</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">与 HashiCorp Vault 对接</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vault-secrets-engines">Vault secrets engines</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#kv-secrets-engine">KV secrets engine</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#transit-secrets-engine">Transit secrets engine</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#vault-authentication">Vault authentication</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#token-authentication">Token authentication</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vault-agent">Vault agent</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#vault-namespaces">Vault namespaces</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-a-key-in-vault">Create a key in Vault</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#using-the-kv-engine">Using the KV engine</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#using-the-transit-engine">Using the Transit engine</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#configure-the-ceph-object-gateway">Configure the Ceph Object Gateway</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#upload-object">Upload object</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../opa/">与 Open Policy Agent 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multitenancy/">多租户</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../compression/">压缩</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ldap-auth/">LDAP 认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encryption/">服务器端加密</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bucketpolicy/">桶策略</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dynamicresharding/">动态的桶索引重分片</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mfa/">多因子认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sync-modules/">同步模块</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notifications/">Bucket Notifications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../layout/">RADOS 中的数据布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../STSLite/">STS Lite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../role/">Role</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../qat-accel/">使用 QAT 为加密和压缩提速</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../opa/" title="与 Open Policy Agent 对接"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../barbican/" title="与 OpenStack Barbican 对接"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 对象网关</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

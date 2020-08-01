@@ -249,7 +249,7 @@ OSD 上的数据。
 
 创建/删除/重命名存储池。 ::
 
-	ceph osd pool create {pool-name} pg_num [pgp_num]
+	ceph osd pool create {pool-name} [pg_num [pgp_num]]
 	ceph osd pool delete {pool-name} [{pool-name} --yes-i-really-really-mean-it]
 	ceph osd pool rename {old-name} {new-name}
 

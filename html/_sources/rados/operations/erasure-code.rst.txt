@@ -58,7 +58,7 @@ requires at least three hosts::
        k=3 \
        m=2 \
        crush-failure-domain=rack
-    $ ceph osd pool create ecpool 12 12 erasure myprofile
+    $ ceph osd pool create ecpool erasure myprofile
     $ echo ABCDEFGHI | rados --pool ecpool put NYAN -
     $ rados --pool ecpool get NYAN -
     ABCDEFGHI

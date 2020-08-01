@@ -467,7 +467,7 @@ OSD 不够多
 纠删码存储池： ::
 
 	ceph osd erasure-code-profile set myprofile k=5 m=3
-	ceph osd pool create erasurepool 16 16 erasure myprofile
+	ceph osd pool create erasurepool erasure myprofile
 
 或者新增一个 OSD ，这个 PG 会自动用上的。
 
@@ -506,7 +506,7 @@ CRUSH 条件不能满足
 同一主机，命令如下： ::
 
 	ceph osd erasure-code-profile set myprofile crush-failure-domain=osd
-	ceph osd pool create erasurepool 16 16 erasure myprofile
+	ceph osd pool create erasurepool erasure myprofile
 
 
 .. CRUSH gives up too soon

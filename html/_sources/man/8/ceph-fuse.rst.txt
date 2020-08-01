@@ -50,6 +50,10 @@ ceph-fuse 识别不了的选项将传递给 libfuse 。
 
    连接到指定监视器，而不是从 ceph.conf 里找。
 
+.. option:: -n client.{cephx-username}
+
+   Pass the name of CephX user whose secret key is be to used for mounting.
+
 .. option:: -k <path-to-keyring>
 
    提供密钥环路径，在标准位置没有时就用的上了。

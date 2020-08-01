@@ -19,12 +19,20 @@
 分布式存储系统的一部分。
 
 
-选项
-====
+全局选项
+========
+
+.. option:: --object-locator object_locator
+
+   Set object_locator for operation.
 
 .. option:: -p pool, --pool pool
 
    操作指定的存储池。大多数命令都得指定此参数。
+
+.. option:: --target-pool pool
+
+   Select target pool by name.
 
 .. option:: --pgid
 
@@ -36,24 +44,28 @@
 
    指定要给对象用的 rados 命名空间。
 
+.. option:: --all
+
+   Use with ls to list objects in all namespaces.
+   Put in CEPH_ARGS environment variable to make this the default.
+
+.. option:: --default
+
+   Use with ls to list objects in default namespace.
+   Takes precedence over --all in case --all is in environment.
+
 .. option:: -s snap, --snap snap
 
    从指定的存储池快照读出。适用于所有与存储池相关的读操作。
+
+.. option:: --create
+
+   Create the pool or directory that was specified.
 
 .. option:: -i infile
 
    指定输入文件，其内容将作为此命令的载荷发送给监视器集群。仅\
    适用于部分监视器命令。
-
-.. option:: -o outfile
-
-   把监视器集群返回的载荷写入 outfile 。仅适用于某些会返回载荷\
-   的监视器命令（如 osd getmap ）。
-
-.. option:: -c ceph.conf, --conf=ceph.conf
-
-   用指定的 ceph.conf 配置文件而非默认的 /etc/ceph/ceph.conf
-   来确定监视器的初始地址。
 
 .. option:: -m monaddress[:port]
 
@@ -69,9 +81,153 @@
    get 、 put 、 append 、 truncate 、 rm 、 ls 以及所有与
    xattr 相关的操作。
 
-.. option:: -O object_size
+.. option:: -O object_size, --object-size object_size
 
    在做写入压力测试的时候，设置 put/get 操作的对象尺寸。
+
+.. option:: --max-objects
+
+   Set the max number of objects for write benchmarking.
+
+.. option:: --lock-cookie locker-cookie
+
+   Will set the lock cookie for acquiring advisory lock (lock get command).
+   If the cookie is not empty, this option must be passed to lock break command
+   to find the correct lock when releasing lock.
+
+.. option:: --target-locator
+
+   Use with cp to specify the locator of the new object.
+
+.. option:: --target-nspace
+
+   Use with cp to specify the namespace of the new object.
+
+
+.. Bench options
+
+压力测试选项
+============
+
+.. option:: -t N, --concurrent-ios=N
+
+   Set number of concurrent I/O operations.
+
+.. option:: --show-time
+
+   Prefix output with date/time.
+
+.. option:: --no-verify
+
+   Do not verify contents of read objects.
+
+.. option:: --write-object
+
+   Write contents to the objects.
+
+.. option:: --write-omap
+
+   Write contents to the omap.
+
+.. option:: --write-xattr
+
+   Write contents to the extended attributes.
+
+
+Load gen options
+================
+
+.. option:: --num-objects
+
+   Total number of objects.
+
+.. option:: --min-object-size
+
+  Min object size.
+
+.. option:: --max-object-size
+
+   Max object size.
+
+.. option:: --min-op-len
+
+   Min io size of operations.
+
+.. option:: --max-op-len
+
+   Max io size of operations.
+
+.. option:: --max-ops
+
+   Max number of operations.
+
+.. option:: --max-backlog
+
+   Max backlog size.
+
+.. option:: --read-percent
+
+   Percent of operations that are read.
+
+.. option:: --target-throughput
+
+   Target throughput (in bytes).
+
+.. option:: --run-length
+
+   Total time (in seconds).
+
+.. option:: --offset-align
+
+   At what boundary to align random op offsets.
+
+
+Cache pools options
+===================
+
+.. option:: --with-clones
+
+   Include clones when doing flush or evict.
+
+
+OMAP options
+============
+
+.. option:: --omap-key-file file
+
+   Read the omap key from a file.
+
+
+Generic options
+===============
+
+.. option:: -c FILE, --conf FILE
+
+   Read configuration from the given configuration file.
+
+.. option:: --id ID
+
+   Set ID portion of my name.
+
+.. option:: -n TYPE.ID, --name TYPE.ID
+
+   Set cephx user name.
+
+.. option:: --cluster NAME
+
+   Set cluster name (default: ceph).
+
+.. option:: --setuser USER
+
+   Set uid to user or uid (and gid to user's gid).
+
+.. option:: --setgroup GROUP
+
+   Set gid to group or gid.
+
+.. option:: --version
+
+   Show version and quit.
 
 
 全局命令
@@ -134,8 +290,8 @@
 :command:`bench` *seconds* *mode* [ -b *objsize* ] [ -t *threads* ]
   压力测试 *seconds* 秒。 *mode* 可以是 *write* 、 *seq* 或 \
   *rand* 。 *seq* 和 *rand* 分别是顺序读、随机读压力测试，要想\
-  做读压力测试，先得加 *--no-cleanup* 选项做一次写压力测试。默\
-  认对象尺寸是 4 MB ，默认的模拟线程数（并行写操作）为 16 。\
+  做读压力测试，先得加 *--no-cleanup* 选项做一次写压力测试。\
+  默认对象尺寸是 4 MB ，默认的模拟线程数（并行写操作）为 16 。\
   *--run-name <label>* 选项适用于多个客户端并行测试以评估最大\
   载荷。 *<label>* 表示任意对象名，默认为 \
   "benchmark_last_metadata" ，且作为“读”和“写”操作的底层对象名。
@@ -208,6 +364,10 @@
 
        rados -p foo ls -
 
+To get a list of objects in PG 0.6::
+
+       rados --pgid 0.6 ls
+
 写入一个对象： ::
 
        rados -p foo put myobject blah.txt
@@ -220,7 +380,7 @@
 
        rados -p foo rm myobject
 
-读取对象的快照内容： ::
+读取对象先前的快照版内容： ::
 
        rados -p foo -s mysnap get myobject blah.txt.old
 

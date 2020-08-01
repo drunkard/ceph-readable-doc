@@ -1,0 +1,322 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Preventing Stale Reads &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="关注通知" href="../watch_notify/" />
+    <link rel="prev" title="快照" href="../snaps/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../watch_notify/" title="关注通知"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../snaps/" title="快照"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" accesskey="U">OSD 开发者文档</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/osd_internals/stale_read.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="preventing-stale-reads">
+<h1>Preventing Stale Reads<a class="headerlink" href="#preventing-stale-reads" title="Permalink to this headline">¶</a></h1>
+<p>We write synchronously to all replicas before sending an ack to the
+client, which ensures that we do not introduce potential inconsistency
+in the write path.  However, we only read from one replica, and the
+client will use whatever OSDMap is has to identify which OSD to read
+from.  In most cases, this is fine: either the client map is correct,
+or the OSD that we think is the primary for the object knows that it
+is not the primary anymore, and can feed the client an updated map
+indicating a newer primary.</p>
+<p>They key is to ensure that this is <em>always</em> true.  In particular, we
+need to ensure that an OSD that is fenced off from its peers and has
+not learned about a map update does not continue to service read
+requests from similarly stale clients at any point after which a new
+primary may have been allowed to make a write.</p>
+<p>We accomplish this via a mechanism that works much like a read lease.
+Each pool may have a <code class="docutils literal notranslate"><span class="pre">read_lease_interval</span></code> property which defines
+how long this is, although by default we simply set it to
+<code class="docutils literal notranslate"><span class="pre">osd_pool_default_read_lease_ratio</span></code> (default: .8) times the
+<code class="docutils literal notranslate"><span class="pre">osd_heartbeat_grace</span></code>.  (This way the lease will generally have
+expired by the time we mark a failed OSD down.)</p>
+<div class="section" id="readable-until">
+<h2>readable_until<a class="headerlink" href="#readable-until" title="Permalink to this headline">¶</a></h2>
+<p>Primary and replica both track a couple of values:</p>
+<ul class="simple">
+<li><p><em>readable_until</em> is how long we are allowed to service (read)
+requests before <em>our</em> “lease” expires.</p></li>
+<li><p><em>readable_until_ub</em> is an upper bound on <em>readable_until</em> for any
+OSD in the acting set.</p></li>
+</ul>
+<p>The primary manages these two values by sending <em>pg_lease_t</em> messages
+to replicas that increase the upper bound.  Once all acting OSDs have
+acknowledged they’ve seen the higher bound, the primary increases its
+own <em>readable_until</em> and shares that (in a subsequent <em>pg_lease_t</em>
+message).  The resulting invariant is that any acting OSDs’
+<em>readable_until</em> is always &lt;= any acting OSDs’ <em>readable_until_ub</em>.</p>
+<p>In order to avoid any problems with clock skew, we use monotonic
+clocks (which are only accurate locally and unaffected by time
+adjustments) throughout to manage these leases.  Peer OSDs calculate
+upper and lower bounds on the deltas between OSD-local clocks,
+allowing the primary to share timestamps based on its local clock
+while replicas translate that to an appropriate bound in for their own
+local clocks.</p>
+</div>
+<div class="section" id="prior-intervals">
+<h2>Prior Intervals<a class="headerlink" href="#prior-intervals" title="Permalink to this headline">¶</a></h2>
+<p>Whenever there is an interval change, we need to have an upper bound
+on the <em>readable_until</em> values for any OSDs in the prior interval.
+All OSDs from that interval have this value (<em>readable_until_ub</em>), and
+share it as part of the pg_history_t during peering.</p>
+<p>Because peering may involve OSDs that were not already communicating
+before and may not have bounds on their clock deltas, the bound in
+<em>pg_history_t</em> is shared as a simple duration before the upper bound
+expires.  This means that the bound slips forward in time due to the
+transit time for the peering message, but that is generally quite
+short, and moving the bound later in time is safe since it is an
+<em>upper</em> bound.</p>
+</div>
+<div class="section" id="pg-laggy-state">
+<h2>PG “laggy” state<a class="headerlink" href="#pg-laggy-state" title="Permalink to this headline">¶</a></h2>
+<p>While the PG is active, <em>pg_lease_t</em> and <em>pg_lease_ack_t</em> messages are
+regularly exchanged.  However, if a client request comes in and the
+lease has expired (<em>readable_until</em> has passed), the PG will go into a
+<em>LAGGY</em> state and request will be blocked.  Once the lease is renewed,
+the request(s) will be requeued.</p>
+</div>
+<div class="section" id="pg-wait-state">
+<h2>PG “wait” state<a class="headerlink" href="#pg-wait-state" title="Permalink to this headline">¶</a></h2>
+<p>If peering completes but the prior interval’s OSDs may still be
+readable, the PG will go into the <em>WAIT</em> state until sufficient time
+has passed.  Any OSD requests will block during that period.  Recovery
+may proceed while in this state, since the logical, user-visible
+content of objects does not change.</p>
+</div>
+<div class="section" id="dead-osds">
+<h2>Dead OSDs<a class="headerlink" href="#dead-osds" title="Permalink to this headline">¶</a></h2>
+<p>Generally speaking, we need to wait until prior intervals’ OSDs <em>know</em>
+that they should no longer be readable.  If an OSD is known to have
+crashed (e.g., because the process is no longer running, which we may
+infer because we get a ECONNREFUSED error), then we can infer that it
+is not readable.</p>
+<p>Similarly, if an OSD is marked down, gets a map update telling it so,
+and then informs the monitor that it knows it was marked down, we can
+similarly infer that it is not still serving requests for a prior interval.</p>
+<p>When a PG is in the <em>WAIT</em> state, it will watch new maps for OSDs’
+<em>dead_epoch</em> value indicating they are aware of their dead-ness.  If
+all down OSDs from prior interval are so aware, we can exit the WAIT
+state early.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer_guide/">开发者指南</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../internals/">Ceph 内幕</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../blkin/">用 Blkin 追踪 Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../bluestore/">BlueStore Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ceph_krb_auth/">如何配置好 Ceph Kerberos 认证的详细文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephfs-reclaim/">CephFS Reclaim Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephfs-snapshots/">CephFS 快照</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephx/">Cephx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephx_protocol/">Cephx 认证协议详细阐述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../config/">配置管理系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../config-key/">config-key layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../corpus/">资料库结构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cpu-profiler/">Oprofile 的安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../crimson/">crimson</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cxx/">C++17 and libstdc++ ABI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deduplication/">去重</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/">开发集群的部署</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/#id6">在同一机器上部署多套开发集群</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../development-workflow/">开发流程</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../documenting/">为 Ceph 写作文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../encoding/">序列化（编码、解码）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../erasure-coded-pool/">纠删码存储池</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../freebsd/">FreeBSD Implementation details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generatedocs/">Ceph 文档的构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../iana/">IANA 号</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../kubernetes/">Hacking on Ceph in Kubernetes with Rook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../logging/">集群日志的用法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../logs/">调试日志</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../macos/">在 MacOS 上构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../messenger/">Messenger notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-on-disk-formats/">ON-DISK FORMAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-osdmap-prune/">FULL OSDMAP VERSION PRUNING</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../msgr2/">msgr2 协议（ msgr2.0 和 msgr2.1 ）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../network-protocol/">网络协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../object-store/">对象存储架构概述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../peering/">互联</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf/">Using perf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf_counters/">性能计数器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf_histograms/">Perf histograms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../placement-group/">PG （归置组）说明</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quick_guide/">开发者指南（快速）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rados-client-protocol/">RADOS 客户端协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-diff/">RBD 增量备份</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-export/">RBD Export &amp; Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../seastore/">SeaStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sepia/">Sepia 社区测试实验室</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../testing/">测试笔记</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">OSD 开发者文档</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../async_recovery/">异步恢复</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../backfill_reservation/">Backfill Reservation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../erasure_coding/">纠删码编码的归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../last_epoch_started/">last_epoch_started</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../log_based_pg/">Log Based PG</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../map_message_handling/">Map and PG Message handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../osd_overview/">OSD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../osd_throttles/">OSD 油门（ throttle ）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../partial_object_recovery/">Partial Object Recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pg/">PG</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pg_removal/">PG Removal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pgpool/">PGPool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../recovery_reservation/">Recovery Reservation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../scrub/">Scrub internals and diagnostics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../snaps/">快照</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Preventing Stale Reads</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#readable-until">readable_until</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#prior-intervals">Prior Intervals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pg-laggy-state">PG “laggy” state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pg-wait-state">PG “wait” state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dead-osds">Dead OSDs</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../watch_notify/">关注通知</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../wbthrottle/">回写抑制</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../mds_internals/">MDS 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../radosgw/">RADOS 网关开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ceph-volume/">ceph-volume 开发者文档</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../watch_notify/" title="关注通知"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../snaps/" title="快照"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" >OSD 开发者文档</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

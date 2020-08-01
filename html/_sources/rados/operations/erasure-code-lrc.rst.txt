@@ -32,7 +32,7 @@
              plugin=lrc \
              k=4 m=2 l=3 \
              crush-failure-domain=host
-        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+        $ ceph osd pool create lrcpool erasure LRCprofile
 
 
 .. Reduce recovery bandwidth between racks
@@ -48,7 +48,7 @@
              k=4 m=2 l=3 \
              crush-locality=rack \
              crush-failure-domain=host
-        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+        $ ceph osd pool create lrcpool erasure LRCprofile
 
 
 .. Create an lrc profile
@@ -199,7 +199,7 @@
              plugin=lrc \
              mapping=DD_ \
              layers='[ [ "DDc", "" ] ]'
-        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+        $ ceph osd pool create lrcpool erasure LRCprofile
 
 
 .. Reduce recovery bandwidth between hosts
@@ -219,7 +219,7 @@
                        [ "cDDD____", "" ],
                        [ "____cDDD", "" ],
                      ]'
-        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+        $ ceph osd pool create lrcpool erasure LRCprofile
 
 
 .. Reduce recovery bandwidth between racks
@@ -242,7 +242,7 @@
                              [ "choose", "rack", 2 ],
                              [ "chooseleaf", "host", 4 ],
                             ]'
-        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+        $ ceph osd pool create lrcpool erasure LRCprofile
 
 
 .. Testing with different Erasure Code backends
@@ -259,7 +259,7 @@ lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
              plugin=lrc \
              mapping=DD_ \
              layers='[ [ "DDc", "plugin=isa technique=cauchy" ] ]'
-        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+        $ ceph osd pool create lrcpool erasure LRCprofile
 
 你也可以为各级分别使用不同的纠删码配置。 ::
 
@@ -271,7 +271,7 @@ lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
                        [ "cDDD____", "plugin=isa" ],
                        [ "____cDDD", "plugin=jerasure" ],
                      ]'
-        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+        $ ceph osd pool create lrcpool erasure LRCprofile
 
 
 .. Erasure coding and decoding algorithm

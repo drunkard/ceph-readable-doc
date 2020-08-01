@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "CEPH" "1" "Aug 01, 2020" "dev" "Ceph"
+.TH "CEPH" "1" "Aug 02, 2020" "dev" "Ceph"
 .SH NAME
 ceph \- Ceph dev
 .
@@ -1310,6 +1310,8 @@ ceph\-volume lvm batch \-\-bluestore /dev/sda /dev/sdb /dev/sdc
 .IP \(bu 2
 [\-\-no\-systemd]        不要启用或创建任何 systemd 单元
 .IP \(bu 2
+[\-\-osds\-per\-device]   Provision more than 1 (the default) OSD per device
+.IP \(bu 2
 .INDENT 2.0
 .TP
 .B [\-\-report]            报告当前输入可能产生的潜在结果（需要
@@ -1841,6 +1843,11 @@ FUSE 调试（ \-o debug ）。
 .TP
 .B \-m monaddress[:port]
 连接到指定监视器，而不是从 ceph.conf 里找。
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-n client.{cephx\-username}
+Pass the name of CephX user whose secret key is be to used for mounting.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -4257,8 +4264,8 @@ ceph osd force\-create\-pg <pgid>
 .sp
 .nf
 .ft C
-ceph osd pool create <poolname> <int[0\-]> {<int[0\-]>} {replicated|erasure}
-{<erasure_code_profile>} {<rule>} {<int>}
+ceph osd pool create <poolname> {<int[0\-]>} {<int[0\-]>} {replicated|erasure}
+{<erasure_code_profile>} {<rule>} {<int>} {\-\-autoscale\-mode=<on,off,warn>}
 .ft P
 .fi
 .UNINDENT
@@ -4695,7 +4702,8 @@ ceph osd scrub <who>
 .UNINDENT
 .UNINDENT
 .sp
-子命令 \fBset\fP 设置关键字 <key> 。
+子命令 \fBset\fP 通过更新 OSD 运行图来设置集群范围的 <flag> 。\fBfull\fP 标记从 Mimic 版起已不再起作用，而 Octopus 版则不支持
+\fBceph osd set full\fP 了。
 .sp
 用法：
 .INDENT 0.0
@@ -4703,7 +4711,7 @@ ceph osd scrub <who>
 .sp
 .nf
 .ft C
-ceph osd set full|pause|noup|nodown|noout|noin|nobackfill|
+ceph osd set pause|noup|nodown|noout|noin|nobackfill|
 norebalance|norecover|noscrub|nodeep\-scrub|notieragent
 .ft P
 .fi
@@ -4885,7 +4893,7 @@ ceph osd unpause
 .UNINDENT
 .UNINDENT
 .sp
-子命令 \fBunset\fP 取消设置的关键字 <key> 。
+子命令 \fBunset\fP 通过更新 OSD 运行图来取消集群范围的 <flag> 。
 .sp
 用法：
 .INDENT 0.0
@@ -4893,7 +4901,7 @@ ceph osd unpause
 .sp
 .nf
 .ft C
-ceph osd unset full|pause|noup|nodown|noout|noin|nobackfill|
+ceph osd unset pause|noup|nodown|noout|noin|nobackfill|
 norebalance|norecover|noscrub|nodeep\-scrub|notieragent
 .ft P
 .fi
@@ -5880,13 +5888,14 @@ ceph(8),
 crushtool(8),
 .SH 提纲
 .nf
-\fBmount.ceph\fP \fImonaddr1\fP[,\fImonaddr2\fP,...]:/[\fIsubdir\fP] \fIdir\fP [
+\fBmount.ceph\fP [\fImon1_socket\fP,\fImon2_socket\fP,...]:/[\fIsubdir\fP] \fIdir\fP [
 \-o \fIoptions\fP ]
 .fi
 .sp
 .SH 描述
 .sp
-\fBmount.ceph\fP 是在 Linux 主机上挂载 Ceph 文件系统的简单助手。它只负责把监视器主机名解析为 IP 地址、从硬盘读取认证密钥，大多数实际工作由 Linux 内核客户端组件完成。事实上，无需认证的 Ceph 文件系统无需 mount.ceph 也能挂载，只要指定监视器 IP 地址即可：
+\fBmount.ceph\fP 是在 Linux 主机上挂载 Ceph 文件系统的辅助程序。它只负责把监视器主机名解析为 IP 地址、从硬盘读取认证密钥，大多数实际工作由 Linux 内核客户端组件完成。其实，不需要认证的
+Ceph 文件系统无需 mount.ceph 也能挂载，只要指定监视器 IP 地址即可：
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -5898,73 +5907,91 @@ mount \-t ceph 1.2.3.4:/ mountpoint
 .UNINDENT
 .UNINDENT
 .sp
-各监视器地址 monaddr 的格式为 host[:port] ，如果端口未指定，就用默认的 6789 。
+mount 命令的第一个参数是设备部分，它包括主机的套接字和 CephFS
+内要挂载到挂载点的路径。套接字，格式显然是 ip_address[:port] ，如果没指定端口，就假设是 Ceph 默认的 6789 。多个监视器地址用逗号分隔。要成功地挂载只需一个监视器即可，客户端将从某个能响应的监视器了解到其它的监视器。然而最好指定多个监视器，以免挂载时正好赶上那个监视器挂了。
 .sp
-多个监视器地址用逗号分隔。要成功地挂载只需一个监视器即可，客户端将从某个能响应的监视器获知其它监视器。然而最好指定多个监视器，以免挂载时正好赶上那个监视器挂了。
+If the host portion of the device is left blank, then \fBmount.ceph\fP will
+attempt to determine monitor addresses using local configuration files
+and/or DNS SRV records. In similar way, if authentication is enabled on Ceph
+cluster (which is done using CephX) and options \fBsecret\fP and \fBsecretfile\fP
+are not specified in the command, the mount helper will spawn a child process
+that will use the standard Ceph library routines to find a keyring and fetch
+the secret from it.
 .sp
-如果要挂载文件系统的一子集，可指定一个子目录 subdir 。
+A sub\-directory of the file system can be mounted by specifying the (absolute)
+path to the sub\-directory right after ":" after the socket in the device part
+of the mount command.
 .sp
-mount 助手程序的惯例是前两个选项分别为要挂载的设备和目标路径，其它选项必须位于这些固定参数之后。
+mount 辅助程序的惯例是前两个选项分别为要挂载的设备和目标路径，其它选项必须位于这些固定参数之后。
 .SH 选项
+.SS 基础的
 .INDENT 0.0
 .TP
-\fBwsize\fP
-整数（字节数），最大写尺寸。默认： 16777216 (16*1024*1024)
-（回写用较小的 wsize 和条带单元）
+\fBconf\fP
+Path to a ceph.conf file. This is used to initialize the Ceph context
+for autodiscovery of monitor addresses and auth secrets. The default is
+to use the standard search path for ceph.conf files.
+.UNINDENT
+.INDENT 0.0
 .TP
-\fBrsize\fP
-整数（字节数），最大读尺寸。默认： 16777216 (16*1024*1024)
+.B command
+\fIfs=<fs\-name>\fP
+Specify the non\-default file system to be mounted. Not passing this
+option mounts the default file system.
 .TP
-\fBrasize\fP
-整数（字节数），最大预读尺寸，默认： 8388608 (8192*1024)
-.TP
-\fBosdtimeout\fP
-整数（秒）。默认：60
-.TP
-\fBosdkeepalive\fP
-整数。默认：5
+.B command
+\fImds_namespace=<fs\-name>\fP
+A synonym of "fs=" and its use is deprecated.
+.UNINDENT
+.INDENT 0.0
 .TP
 \fBmount_timeout\fP
 整数（秒）。默认：60
-.TP
-\fBosd_idle_ttl\fP
-整数（秒）。默认：60
-.TP
-\fBcaps_wanted_delay_min\fP
-整数，能力释放延迟时间。默认：5
-.TP
-\fBcaps_wanted_delay_max\fP
-整数，能力释放延迟时间。默认：60
-.TP
-\fBcap_release_safety\fP
-整数。默认：自行计算
-.TP
-\fBreaddir_max_entries\fP
-整数。默认： 1024
-.TP
-\fBreaddir_max_bytes\fP
-整数。默认： 524288 （ 512*1024 ）
-.TP
-\fBwrite_congestion_kb\fP
-整数（ kb ），运行中的最大回写量，随可用内存变化。默认：根据可用内存计算
-.TP
-\fBsnapdirname\fP
-字符串，为快照的隐藏目录设置个名字。默认： .snap
 .TP
 \fBname\fP
 使用 cephx 认证时的 RADOS 用户名。默认： guest
 .TP
 \fBsecret\fP
+secret key for use with CephX. This option is insecure because it exposes
+the secret on the command line. To avoid this, use the secretfile option.
+.TP
+\fBsecret\fP
 用于 cephx 的密钥。这个选项不安全，因为它把密钥暴露在了命令行，用 secretfile 选项可避免此问题。
 .TP
 \fBsecretfile\fP
-用于 cephx 的密钥文件路径。
+path to file containing the secret key to use with CephX
 .TP
-\fBip\fP
-本机 IP
+\fBrecover_session=<no|clean>\fP
+Set auto reconnect mode in the case where the client is blacklisted. The
+available modes are \fBno\fP and \fBclean\fP\&. The default is \fBno\fP\&.
+.INDENT 7.0
+.IP \(bu 2
+.INDENT 2.0
 .TP
-\fBnoshare\fP
-创建新客户端例程，而不是和挂载同一集群的例程共享资源。
+.B \fBno\fP: never attempt to reconnect when client detects that it has been
+blacklisted. Blacklisted clients will not attempt to reconnect and
+their operations will fail too.
+.UNINDENT
+.IP \(bu 2
+\fBclean\fP: client reconnects to the Ceph cluster automatically when it
+detects that it has been blacklisted. During reconnect, client drops
+dirty data/metadata, invalidates page caches and writable file handles.
+After reconnect, file locks become stale because the MDS loses track of
+them. If an inode contains any stale file locks, read/write on the inode
+is not allowed until applications release all stale file locks.
+.UNINDENT
+.UNINDENT
+.SS 高级的
+.INDENT 0.0
+.TP
+\fBcap_release_safety\fP
+整数。默认：自行计算
+.TP
+\fBcaps_wanted_delay_max\fP
+整数，能力释放延迟时间。默认：60
+.TP
+\fBcaps_wanted_delay_min\fP
+整数，能力释放延迟时间。默认：5
 .TP
 \fBdirstat\fP
 用 \fIcat dirname\fP 读取文件信息。默认： off
@@ -5972,17 +5999,64 @@ mount 助手程序的惯例是前两个选项分别为要挂载的设备和目�
 \fBnodirstat\fP
 不用 \fIcat dirname\fP 读取文件信息
 .TP
+\fBip\fP
+本机 IP
+.TP
+\fBnoasyncreaddir\fP
+读目录时不经过 dcache
+.TP
+\fBnocrc\fP
+写入时不做 crc 校验
+.TP
+\fBnoshare\fP
+创建新客户端例程，而不是和挂载同一集群的例程共享资源。
+.TP
+\fBosdkeepalive\fP
+整数。默认：5
+.TP
+\fBosdtimeout\fP
+整数（秒）。默认：60
+.TP
+\fBosd_idle_ttl\fP
+整数（秒）。默认：60
+.TP
+\fBrasize\fP
+整数（字节数），最大预读尺寸，默认： 8388608 (8192*1024)
+.TP
 \fBrbytes\fP
 目录的 st_size 报告产生于目录内容的递归尺寸。默认： on
 .TP
 \fBnorbytes\fP
 目录的 st_size 无需通过递归目录内容来获取。
 .TP
-\fBnocrc\fP
-写入时不做 crc 校验
+\fBreaddir_max_bytes\fP
+整数。默认： 524288 （ 512*1024 ）
 .TP
-\fBnoasyncreaddir\fP
-读目录时不经过 dcache
+\fBreaddir_max_entries\fP
+整数。默认： 1024
+.TP
+\fBrsize\fP
+整数（字节数），最大读尺寸。默认： 16777216 (16*1024*1024)
+.TP
+\fBsnapdirname\fP
+字符串，为快照的隐藏目录设置个名字。默认： .snap
+.TP
+\fBwrite_congestion_kb\fP
+整数（ kb ），运行中的最大回写量，随可用内存变化。默认：根据可用内存计算
+.TP
+\fBwsize\fP
+整数（字节数），最大写尺寸。默认： 16777216 (16*1024*1024)
+（回写用较小的 wsize 和条带单元）
+.TP
+\fBwsync\fP
+Execute all namespace operations synchronously. This ensures that the
+namespace operation will only complete after receiving a reply from
+the MDS. This is the default.
+.TP
+\fBnowsync\fP
+Allow the client to do namespace operations asynchronously. When this
+option is enabled, a namespace operation may complete before the MDS
+replies, if it has sufficient capabilities to do so.
 .UNINDENT
 .SH 实例
 .sp
@@ -5992,55 +6066,113 @@ mount 助手程序的惯例是前两个选项分别为要挂载的设备和目�
 .sp
 .nf
 .ft C
-mount.ceph monhost:/ /mnt/foo
+mount.ceph :/ /mnt/mycephfs
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-如果有多个监视器：
+假设 mount.ceph 安装得没问题， mount(8) 应该能自动调用它：
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-mount.ceph monhost1,monhost2,monhost3:/ /mnt/foo
+mount \-t ceph :/ /mnt/mycephfs
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-如果 ceph\-mon(8) 运行于非默认端口：
+Mount only part of the namespace/file system:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-mount.ceph monhost1:7000,monhost2:7000,monhost3:7000:/ /mnt/foo
+mount.ceph :/some/directory/in/cephfs /mnt/mycephfs
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B Mount non\-default FS, in case cluster has multiple FSs::
+mount \-t ceph :/ /mnt/mycephfs2 \-o fs=mycephfs2
+.sp
+or
+.sp
+mount \-t ceph :/ /mnt/mycephfs2 \-o mds_namespace=mycephfs2 # This option name is deprecated.
+.UNINDENT
+.sp
+Pass the monitor host\(aqs IP address, optionally:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mount.ceph 192.168.0.1:/ /mnt/mycephfs
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-只挂载文件系统命名空间的一部分：
+Pass the port along with IP address if it\(aqs running on a non\-standard port:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-mount.ceph monhost1:/some/small/thing /mnt/thing
+mount.ceph 192.168.0.1:7000:/ /mnt/mycephfs
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-假设 mount.ceph(8) 安装正确， mount(8) 应该能自动调用它：
+If there are multiple monitors, passes addresses separated by a comma:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-mount \-t ceph monhost:/ /mnt/foo
+mount.ceph 192.168.0.1,192.168.0.2,192.168.0.3:/ /mnt/mycephfs
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+If authentication is enabled on Ceph cluster:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mount.ceph :/ /mnt/mycephfs \-o name=fs_username
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Pass secret key for CephX user optionally:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mount.ceph :/ /mnt/mycephfs \-o name=fs_username,secret=AQATSKdNGBnwLhAAnNDKnH65FmVKpXZJVasUeQ==
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Pass file containing secret key to avoid leaving secret key in shell\(aqs command
+history:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mount.ceph :/ /mnt/mycephfs \-o name=fs_username,secretfile=/etc/ceph/fs_username.secret
 .ft P
 .fi
 .UNINDENT
@@ -6048,6 +6180,10 @@ mount \-t ceph monhost:/ /mnt/foo
 .SH 使用范围
 .sp
 \fBmount.ceph\fP 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，更多信息参见 \fI\%http://ceph.com/docs\fP 。
+.SH 功能适用范围
+.sp
+The \fBrecover_session=\fP option was added to mainline Linux kernels in v5.4.
+\fBwsync\fP and \fBnowsync\fP were added in v5.7.
 .SH 参考
 .sp
 ceph\-fuse(8),
@@ -6314,11 +6450,21 @@ crushtool(8),
 .sp
 \fBrados\fP 工具可操纵 Ceph 对象存储集群（ RADOS ），是 Ceph
 分布式存储系统的一部分。
-.SH 选项
+.SH 全局选项
+.INDENT 0.0
+.TP
+.B \-\-object\-locator object_locator
+Set object_locator for operation.
+.UNINDENT
 .INDENT 0.0
 .TP
 .B \-p pool, \-\-pool pool
 操作指定的存储池。大多数命令都得指定此参数。
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-target\-pool pool
+Select target pool by name.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -6333,24 +6479,30 @@ crushtool(8),
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-all
+Use with ls to list objects in all namespaces.
+Put in CEPH_ARGS environment variable to make this the default.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-default
+Use with ls to list objects in default namespace.
+Takes precedence over \-\-all in case \-\-all is in environment.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-s snap, \-\-snap snap
 从指定的存储池快照读出。适用于所有与存储池相关的读操作。
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-create
+Create the pool or directory that was specified.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-i infile
 指定输入文件，其内容将作为此命令的载荷发送给监视器集群。仅适用于部分监视器命令。
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-o outfile
-把监视器集群返回的载荷写入 outfile 。仅适用于某些会返回载荷的监视器命令（如 osd getmap ）。
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-c ceph.conf, \-\-conf=ceph.conf
-用指定的 ceph.conf 配置文件而非默认的 /etc/ceph/ceph.conf
-来确定监视器的初始地址。
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -6371,8 +6523,165 @@ xattr 相关的操作。
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-O object_size
+.B \-O object_size, \-\-object\-size object_size
 在做写入压力测试的时候，设置 put/get 操作的对象尺寸。
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-objects
+Set the max number of objects for write benchmarking.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-lock\-cookie locker\-cookie
+Will set the lock cookie for acquiring advisory lock (lock get command).
+If the cookie is not empty, this option must be passed to lock break command
+to find the correct lock when releasing lock.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-target\-locator
+Use with cp to specify the locator of the new object.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-target\-nspace
+Use with cp to specify the namespace of the new object.
+.UNINDENT
+.SH 压力测试选项
+.INDENT 0.0
+.TP
+.B \-t N, \-\-concurrent\-ios=N
+Set number of concurrent I/O operations.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-show\-time
+Prefix output with date/time.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-verify
+Do not verify contents of read objects.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-write\-object
+Write contents to the objects.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-write\-omap
+Write contents to the omap.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-write\-xattr
+Write contents to the extended attributes.
+.UNINDENT
+.SH LOAD GEN OPTIONS
+.INDENT 0.0
+.TP
+.B \-\-num\-objects
+Total number of objects.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-min\-object\-size
+Min object size.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-object\-size
+Max object size.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-min\-op\-len
+Min io size of operations.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-op\-len
+Max io size of operations.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-ops
+Max number of operations.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-backlog
+Max backlog size.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-read\-percent
+Percent of operations that are read.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-target\-throughput
+Target throughput (in bytes).
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-run\-length
+Total time (in seconds).
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-offset\-align
+At what boundary to align random op offsets.
+.UNINDENT
+.SH CACHE POOLS OPTIONS
+.INDENT 0.0
+.TP
+.B \-\-with\-clones
+Include clones when doing flush or evict.
+.UNINDENT
+.SH OMAP OPTIONS
+.INDENT 0.0
+.TP
+.B \-\-omap\-key\-file file
+Read the omap key from a file.
+.UNINDENT
+.SH GENERIC OPTIONS
+.INDENT 0.0
+.TP
+.B \-c FILE, \-\-conf FILE
+Read configuration from the given configuration file.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-id ID
+Set ID portion of my name.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-n TYPE.ID, \-\-name TYPE.ID
+Set cephx user name.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-cluster NAME
+Set cluster name (default: ceph).
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-setuser USER
+Set uid to user or uid (and gid to user\(aqs gid).
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-setgroup GROUP
+Set gid to group or gid.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-version
+Show version and quit.
 .UNINDENT
 .SH 全局命令
 .INDENT 0.0
@@ -6510,6 +6819,18 @@ rados \-p foo ls \-
 .UNINDENT
 .UNINDENT
 .sp
+To get a list of objects in PG 0.6:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+rados \-\-pgid 0.6 ls
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
 写入一个对象：
 .INDENT 0.0
 .INDENT 3.5
@@ -6546,7 +6867,7 @@ rados \-p foo rm myobject
 .UNINDENT
 .UNINDENT
 .sp
-读取对象的快照内容：
+读取对象先前的快照版内容：
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -8039,8 +8360,8 @@ radosgw\-admin(8)
 \fBrbd\-fuse\fP 不建议用于任何生产环境或高性能载荷。
 .SH 描述
 .sp
-\fBrbd\-fuse\fP 是个 rbd 映像的用户空间文件系统（ FUSE ）客户端。给一个包含 rbd 映像的存储池，它就可以在用户空间把那些映像挂载到
-\fBmountpoint\fP 下，并显示为普通文件。
+\fBrbd\-fuse\fP 是个 RADOS 块设备（ rbd ）映像的 FUSE （
+用户空间文件系统）客户端。给一个包含 rbd 映像的存储池，它就可以在用户空间把那些映像挂载到 \fBmountpoint\fP 下，并显示为普通文件。
 .sp
 用下列命令卸载：
 .INDENT 0.0

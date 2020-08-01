@@ -5,6 +5,7 @@
 .. toctree::
    :maxdepth: 1
 
+   Mimic <mimic>
    Luminous <luminous>
    Kraken <kraken>
    Jewel <jewel>

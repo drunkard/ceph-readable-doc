@@ -60,7 +60,7 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 #. `创建一存储池`_\ 。本例用 ``libvirt-pool`` 作存储池名，配备\
    了 128 个归置组。 ::
 
-	ceph osd pool create libvirt-pool 128 128
+	ceph osd pool create libvirt-pool
 
    验证存储池是否存在。 ::
 

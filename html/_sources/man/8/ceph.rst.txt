@@ -1015,8 +1015,8 @@ JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下
 
 用法： ::
 
-	ceph osd pool create <poolname> <int[0-]> {<int[0-]>} {replicated|erasure}
-	{<erasure_code_profile>} {<rule>} {<int>}
+	ceph osd pool create <poolname> {<int[0-]>} {<int[0-]>} {replicated|erasure}
+	{<erasure_code_profile>} {<rule>} {<int>} {--autoscale-mode=<on,off,warn>}
 
 子命令 ``delete`` 删除存储池。
 
@@ -1230,11 +1230,13 @@ pair with the given application for the given pool.
 
 	ceph osd scrub <who>
 
-子命令 ``set`` 设置关键字 <key> 。
+子命令 ``set`` 通过更新 OSD 运行图来设置集群范围的 <flag> 。\
+``full`` 标记从 Mimic 版起已不再起作用，而 Octopus 版则不支持
+``ceph osd set full`` 了。
 
 用法： ::
 
-	ceph osd set full|pause|noup|nodown|noout|noin|nobackfill|
+	ceph osd set pause|noup|nodown|noout|noin|nobackfill|
 	norebalance|norecover|noscrub|nodeep-scrub|notieragent
 
 子命令 ``setcrushmap`` 把输入文件设置为 CRUSH 图。
@@ -1323,11 +1325,11 @@ pair with the given application for the given pool.
 
 	ceph osd unpause
 
-子命令 ``unset`` 取消设置的关键字 <key> 。
+子命令 ``unset`` 通过更新 OSD 运行图来取消集群范围的 <flag> 。
 
 用法： ::
 
-	ceph osd unset full|pause|noup|nodown|noout|noin|nobackfill|
+	ceph osd unset pause|noup|nodown|noout|noin|nobackfill|
 	norebalance|norecover|noscrub|nodeep-scrub|notieragent
 
 
