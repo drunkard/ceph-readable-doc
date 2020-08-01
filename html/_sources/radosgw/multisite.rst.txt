@@ -210,7 +210,7 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
     # radosgw-admin zonegroup remove --rgw-zonegroup=default --rgw-zone=default
     # radosgw-admin period update --commit
-    # radosgw-admin zone delete --rgw-zone=default
+    # radosgw-admin zone rm --rgw-zone=default
     # radosgw-admin period update --commit
     # radosgw-admin zonegroup delete --rgw-zonegroup=default
     # radosgw-admin period update --commit
@@ -371,7 +371,7 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
 如有必要，删除默认域： ::
 
-    # radosgw-admin zone delete --rgw-zone=default
+    # radosgw-admin zone rm --rgw-zone=default
 
 最后，删除 Ceph 存储集群内的默认存储池。 ::
 
@@ -1199,7 +1199,7 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 
 接下来删除域，用此命令： ::
 
-    # radosgw-admin zone delete --rgw-zone<name>
+    # radosgw-admin zone rm --rgw-zone<name>
 
 最后，更新 period::
 

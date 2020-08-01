@@ -316,7 +316,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 :描述: 监视器的数据量大于 15GB 时发一条 ``HEALTH_WARN``
        集群日志。
 :类型: Integer
-:默认值: 15*1024*1024*1024*
+:默认值: ``15*1024*1024*1024*``
 
 
 ``mon data avail warn``
@@ -324,7 +324,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 :描述: 监视器的数据存储磁盘可用空间小于或等于此百分比时发一条
        ``HEALTH_WARN`` 集群日志。
 :类型: Integer
-:默认值: 30
+:默认值: ``30``
 
 
 ``mon data avail crit``
@@ -332,7 +332,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 :描述: 监视器的数据存储磁盘可用空间小于或等于此百分比时发一条
        ``HEALTH_ERR`` 集群日志。
 :类型: Integer
-:默认值: 5
+:默认值: ``5``
 
 
 ``mon warn on cache pools without hit sets``
@@ -341,7 +341,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
        ``HEALTH_WARN`` 集群日志。详情见
        :ref:`hit_set_type <hit_set_type>` 。
 :类型: Boolean
-:默认值: True
+:默认值: ``True``
 
 
 ``mon warn on crush straw calc version zero``
@@ -350,7 +350,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
        ``HEALTH_WARN`` 集群日志。详情见
        :ref:`CRUSH 图的可调选项 <crush-map-tunables>`\ 。
 :类型: Boolean
-:默认值: True
+:默认值: ``True``
 
 
 ``mon warn on legacy crush tunables``
@@ -358,7 +358,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 :描述: 如果 CRUSH 可调选项太旧（比 ``mon_min_crush_required_version``
        旧），发出一条 ``HEALTH_WARN`` 集群日志。
 :类型: Boolean
-:默认值: True
+:默认值: ``True``
 
 
 ``mon crush min required version``
@@ -366,7 +366,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 :描述: 此集群要求的最低可调配置版本号，详情见
        :ref:`CRUSH 图的可调选项 <crush-map-tunables>`\ 。
 :类型: String
-:默认值: ``firefly``
+:默认值: ``hammer``
 
 
 ``mon warn on osd down out interval zero``
@@ -377,7 +377,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
        标记，而表现出的行为却一样时很难查出为什么，所以我们\
        对此情况发出警告。
 :类型: Boolean
-:默认值: True
+:默认值: ``True``
 
 
 ``mon warn on slow ping ratio``
@@ -419,7 +419,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 
 :描述: 是否周期性地向集群日志发送健康摘要。
 :类型: Boolean
-:默认值: True
+:默认值: ``True``
 
 
 ``mon health to clog tick interval``
@@ -437,7 +437,7 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
        表示禁用此功能。不管摘要有没有变化，监视器都会把摘要\
        发给集群日志。
 :类型: Integer
-:默认值: 3600
+:默认值: ``3600``
 
 
 
@@ -659,7 +659,7 @@ leader ）， provider 能终结和 requester 间的同步。
        当前这个选项会影响 ``mds`` 、 ``mon`` 、 ``auth`` 和
        ``mgr`` 的 PaxosService 。
 :类型: Integer
-:默认值: 25
+:默认值: ``25``
 
 
 ``paxos propose interval``
@@ -673,7 +673,7 @@ leader ）， provider 能终结和 requester 间的同步。
 
 :描述: 保留着的 paxos 状态的最小数量。
 :类型: Integer
-:默认值: 500
+:默认值: ``500``
 
 
 ``paxos min wait``
@@ -687,28 +687,28 @@ leader ）， provider 能终结和 requester 间的同步。
 
 :描述: 有多少多余的提议才能清理。
 :类型: Integer
-:默认值: 250
+:默认值: ``250``
 
 
 ``paxos trim max``
 
 :描述: 一次最多清理多少多余的提议。
 :类型: Integer
-:默认值: 500
+:默认值: ``500``
 
 
 ``paxos service trim min``
 
 :描述: 至少积攒多少个版本再触发清理机制（ 0 禁用此选项）。
 :类型: Integer
-:默认值: 250
+:默认值: ``250``
 
 
 ``paxos service trim max``
 
 :描述: 一次提议最多可以清理多少个版本（ 0 禁用此选项）。
 :类型: Integer
-:默认值: 500
+:默认值: ``500``
 
 
 ``mon mds force trim to``
@@ -716,7 +716,7 @@ leader ）， provider 能终结和 requester 间的同步。
 :描述: 强制让监视器把 mdsmap 裁截到这一点（ 0 禁用此选项）。非\
        常危险，慎用！
 :类型: Integer
-:默认值: 0
+:默认值: ``0``
 
 
 ``mon osd force trim to``
@@ -725,28 +725,28 @@ leader ）， provider 能终结和 requester 间的同步。
        仍有不干净的 PG 也在所不惜。 0 禁用此选项。非常危险，\
        慎用！
 :类型: Integer
-:默认值: 0
+:默认值: ``0``
 
 
 ``mon osd cache size``
 
 :描述: osdmap 缓存的尺寸，与底层存储的缓存无关。
 :类型: Integer
-:默认值: 10
+:默认值: ``500``
 
 
 ``mon election timeout``
 
 :描述: 等待大家确认选举提案的最大时长。单位为秒。
 :类型: Float
-:默认值: ``5``
+:默认值: ``5.00``
 
 
 ``mon lease``
 
 :描述: 监视器版本租期（秒）。
 :类型: Float
-:默认值: ``5``
+:默认值: ``5.00``
 
 
 ``mon lease renew interval factor``
@@ -967,7 +967,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 :描述: 为集群预分配的全局 ID 数量。
 :类型: 32-bit Integer
-:默认值: ``100``
+:默认值: ``10000``
 
 
 ``mon subscribe interval``
@@ -989,7 +989,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 :描述: 监视器自举无效，搜寻节点前等待的时间。
 :类型: Double
-:默认值: ``2.0``
+:默认值: ``2.00``
 
 
 ``mon daemon bytes``
@@ -1029,7 +1029,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :描述: 当某一先前状态为 out 的 OSD 回到集群、监视器在捡回 PGMap
        时尝试的最大时间，单位为秒。
 :类型: Float
-:默认: ``0.5``
+:默认: ``0.50``
 
 
 ``mon osd prime pg temp max time estimate``
@@ -1046,21 +1046,21 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
        如果 FSMap 健全性检查失败，监视器会终止，但我们可以让它\
        继续，启用此选项即可。
 :类型: Boolean
-:默认值: False
+:默认值: ``False``
 
 
 ``mon max mdsmap epochs``
 
 :描述: 一次提议最多可清理多少 mdsmap 时间结。
 :类型: Integer
-:默认值: 500
+:默认值: ``500``
 
 
 ``mon config key max entry size``
 
 :描述: config-key 条目的最大尺寸，单位为字节。
 :类型: Integer
-:默认值: 4096
+:默认值: ``65536``
 
 
 ``mon scrub interval``
@@ -1068,14 +1068,14 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :描述: 监视器洗刷（对比存储的与根据存储的键计算出的两个校验和）\
        其存储的频率，单位为秒。
 :类型: Integer
-:默认值: 3600*24
+:默认值: ``3600*24``
 
 
 ``mon scrub max keys``
 
 :描述: 每次最多洗刷多少个键。
 :类型: Integer
-:默认值: 100
+:默认值: ``100``
 
 
 ``mon compact on start``
@@ -1084,7 +1084,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
        压缩失效，手动压缩有助于缩小监视器的数据库、并提升其性\
        能。
 :类型: Boolean
-:默认值: False
+:默认值: ``False``
 
 
 ``mon compact on bootstrap``
@@ -1093,21 +1093,21 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
        后开始互相探测，以建立法定人数；如果加入法定人数超时，\
        它会从头开始自举引导。
 :类型: Boolean
-:默认值: False
+:默认值: ``False``
 
 
 ``mon compact on trim``
 
 :描述: 清理旧的状态存档时也压缩这个前缀（包括 paxos ）。
 :类型: Boolean
-:默认值: True
+:默认值: ``True``
 
 
 ``mon cpu threads``
 
 :描述: 监视器执行 CPU 密集型工作时使用的线程数。
 :类型: Boolean
-:默认值: True
+:默认值: ``True``
 
 
 ``mon osd mapping pgs per chunk``
@@ -1115,14 +1115,14 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :描述: 我们按块计算归置组到 OSD 的映射关系。这个选项指定了每个\
        块的归置组数量。
 :类型: Integer
-:默认值: 4096
+:默认值: ``4096``
 
 
 ``mon session timeout``
 
 :描述: 会话闲置时间超过此限制，监视器就会终结这个不活跃的会话。
 :类型: Integer
-:默认值: 300
+:默认值: ``300``
 
 
 ``mon osd cache size min``
