@@ -19,17 +19,17 @@
 
 
 .. index:: heartbeat interval
+.. OSDs Check Heartbeats
 
 OSD 验证心跳
 ============
 
-各 OSD 每 6 秒会与其他 OSD 守护进程进行心跳检查，用 ``[osd]``
-段下的 ``osd heartbeat interval`` 可更改此间隔、或运行时更改。\
-如果一个邻近的 OSD 在 20 秒的宽限期内都没有心跳，就把这个邻近
-OSD 的状态标记为 ``down`` 、并上报给监视器，它会更新 Ceph 集群\
-运行图。这个宽限期可以用 Ceph 配置文件的 ``[mon]`` 和 ``[osd]``
-段（同时配置）、或 ``[global]`` 段下的 ``osd heartbeat grace``
-选项更改、或者在运行时更改。
+各 OSD 每间隔 6 秒内的随机时间段会与其他 OSD 守护进程进行\
+心跳检查，如果一个邻近的 OSD 在 20 秒的宽限期内都没有心跳，\
+就把这个邻近 OSD 的状态标记为 ``down`` 、并上报给监视器，它会\
+更新 Ceph 集群运行图。这个宽限期可以用 Ceph 配置文件的 ``[mon]``
+和 ``[osd]`` 段（同时配置）、或 ``[global]`` 段下的
+``osd heartbeat grace`` 选项更改、或者在运行时更改。
 
 
 .. ditaa:: +---------+          +---------+

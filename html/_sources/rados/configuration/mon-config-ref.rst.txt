@@ -11,6 +11,7 @@
 `增加/删除监视器`_\ 和\ `增加/删除监视器（ ceph-deploy ）`_ 。
 
 
+
 .. index:: Ceph Monitor; Paxos
 .. Background
 
@@ -61,6 +62,7 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 并把运行图存储为文件。
 
 
+
 .. index:: Ceph Monitor; cluster map
 .. Cluster Maps
 
@@ -83,9 +85,9 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 `监控集群`_\ 和\ `监控 OSD 和归置组`_\ 。
 
 
-.. index:: high availability; quorum
 
-.. _Monitor Quorum:
+.. index:: high availability; quorum
+.. Monitor Quorum
 
 监视器法定人数
 --------------
@@ -107,69 +109,77 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 :默认值: ``False``
 
 
-.. index:: Ceph Monitor; consistency
 
-.. _Consistency:
+.. index:: Ceph Monitor; consistency
+.. Consistency
 
 一致性
 ------
 
-你把监视器加进 Ceph 配置文件时，得注意一些架构问题， Ceph 发现集群内的其他监视器时\
-对其有着\ **严格的一致性要求**\ 。尽管如此， Ceph 客户端和其他 Ceph 守护进程用配置\
-文件发现监视器，监视器却用监视器图（ monmap ）相互发现而非配置文件。
+你把监视器加进 Ceph 配置文件时，得注意一些架构问题， Ceph
+发现集群内的其他监视器时对其有着\ **严格的一致性要求**\ 。\
+尽管如此， Ceph 客户端和其他 Ceph 守护进程用配置文件发现\
+监视器，监视器却用监视器图（ monmap ）相互发现而非配置文件。
 
-一个监视器发现集群内的其他监视器时总是参考 monmap 的本地副本，用 monmap 而非 Ceph \
-配置文件避免了可能损坏集群的错误（如 ``ceph.conf`` 中指定地址或端口的拼写错误）。正\
-因为监视器把 monmap 用于发现、并共享于客户端和其他 Ceph 守护进程间， **monmap可严\
-格地保证监视器的一致性是可靠的**\ 。
+一个监视器发现集群内的其他监视器时总是参考 monmap 的本地副本，\
+用 monmap 而非 Ceph 配置文件避免了可能损坏集群的错误（如
+``ceph.conf`` 中指定地址或端口的拼写错误）。正因为监视器把
+monmap 用于发现、并共享于客户端和其他 Ceph 守护进程间，
+**monmap可严格地保证监视器的一致性是可靠的**\ 。
 
-严格的一致性也适用于 monmap 的更新，因为关于监视器的任何更新、关于 monmap 的变更都\
-是通过称为 `Paxos`_ 的分布式一致性算法传递的。监视器们必须就 monmap 的每次更新达成\
-一致，以确保法定人数里的每个监视器 monmap 版本相同，如增加、删除一个监视器。 \
-monmap 的更新是增量的，所以监视器们都有最新的一致版本，以及一系列之前版本。历史版本\
-的存在允许一个落后的监视器跟上集群当前状态。
+严格的一致性也适用于 monmap 的更新，因为关于监视器的任何更新、\
+关于 monmap 的变更都是通过称为 `Paxos`_ 的分布式一致性算法\
+传递的。监视器们必须就 monmap 的每次更新达成一致，以确保\
+法定人数里的每个监视器 monmap 版本相同，如增加、删除一个\
+监视器。 monmap 的更新是增量的，所以监视器们都有最新的\
+一致版本，以及一系列之前版本。历史版本的存在允许一个落后的\
+监视器跟上集群当前状态。
 
-如果监视器通过配置文件而非 monmap 相互发现，这会引进其他风险，因为 Ceph 配置文件不\
-是自动更新并分发的，监视器有可能不小心用了较老的配置文件，以致于不认识某监视器、放弃\
-法定人数、或者产生一种 `Paxos`_ 不能确定当前系统状态的情形。
+如果监视器通过配置文件而非 monmap 相互发现，这会引进其他风险，\
+因为 Ceph 配置文件不是自动更新并分发的，监视器有可能不小心\
+用了较老的配置文件，以致于不认识某监视器、放弃法定人数、或者\
+产生一种 `Paxos`_ 不能确定当前系统状态的情形。
+
 
 
 .. index:: Ceph Monitor; bootstrapping monitors
-
 .. Bootstrapping Monitors
 
 初始化监视器
 ------------
 
-在大多数配置和部署案例中，部署 Ceph 的工具可以帮你生成一个监视器图来初始化监视器\
-（如 ``ceph-deploy`` 等），一个监视器需要 4 个选项：
+在大多数配置和部署案例中，部署 Ceph 的工具可以帮你生成一个\
+监视器图来初始化监视器（如 ``ceph-deploy`` 等），一个监视器需要
+4 个选项：
 
-- **文件系统标识符：** ``fsid`` 是对象存储的唯一标识符。因为你可以在一套硬件上运行\
-  多个集群，所以在初始化监视器时必须指定对象存储的唯一标识符。部署工具通常可替你完\
-  成（如 ``ceph-deploy`` 会调用类似 ``uuidgen`` 的程序），但是你也可以手动指定 \
-  ``fsid`` 。
+- **文件系统标识符：** ``fsid`` 是对象存储的唯一标识符。因为\
+  你可以在一套硬件上运行多个集群，所以在初始化监视器时必须指定\
+  对象存储的唯一标识符。部署工具通常可替你完成（如
+  ``ceph-deploy`` 会调用类似 ``uuidgen`` 的程序），但是你\
+  也可以手动指定 ``fsid`` 。
 
-- **监视器标识符：** 监视器标识符是分配给集群内各监视器的唯一 ID ，它是一个字母数字\
-  组合，为方便起见，标识符通常以字母顺序结尾（如 ``a`` 、 ``b`` 等等），可以设置于 \
-  Ceph 配置文件（如 ``[mon.a]`` 、 ``[mon.b]`` 等等）、部署工具、或 ``ceph`` 命令\
-  行工具。
+- **监视器标识符：** 监视器标识符是分配给集群内各监视器的\
+  唯一 ID ，它是一个字母数字组合，为方便起见，标识符通常以\
+  字母顺序结尾（如 ``a`` 、 ``b`` 等等），可以设置于
+  Ceph 配置文件（如 ``[mon.a]`` 、 ``[mon.b]`` 等等）、\
+  部署工具、或 ``ceph`` 命令行工具。
 
-- **密钥：** 监视器必须有密钥。像 ``ceph-deploy`` 这样的部署工具通常会自动生成，也\
-  可以手动完成。见\ `监视器密钥环`_\ 。
+- **密钥：** 监视器必须有密钥。像 ``ceph-deploy`` 这样的\
+  部署工具通常会自动生成，也可以手动完成。见\ `监视器密钥环`_\ 。
 
 关于初始化的具体信息见\ `初始化监视器`_\ 。
 
 
-.. index:: Ceph Monitor; configuring monitors
 
+.. index:: Ceph Monitor; configuring monitors
 .. Configuring Monitors
 
 监视器的配置
 ============
 
-要把配置应用到整个集群，把它们放到 ``[global]`` 下；要用于所有监视器，置于 \
-``[mon]`` 下；要用于某监视器，指定监视器例程，如 ``[mon.a]`` ）。按惯例，监视器例\
-程用字母命名。
+要把配置应用到整个集群，把它们放到 ``[global]`` 下；要用于\
+所有监视器，置于 ``[mon]`` 下；要用于某监视器，指定监视器例程，\
+如 ``[mon.a]`` ）。按惯例，监视器例程用字母命名。
 
 .. code-block:: ini
 
@@ -184,13 +194,14 @@ monmap 的更新是增量的，所以监视器们都有最新的一致版本，�
 	[mon.c]
 
 
+
 .. Minimum Configuration
 
 最小配置
 --------
 
-Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这些配置可置于 ``[mon]`` 下或\
-某个监视器下。
+Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这些配置\
+可置于 ``[mon]`` 下或某个监视器下。
 
 .. code-block:: ini
 
@@ -210,21 +221,24 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 .. note:: 这里的监视器最简配置假设部署工具会自动给你生成
    ``fsid`` 和 ``mon.`` 密钥。
 
-一旦部署完 Ceph 集群，监视器 IP 地址就\ **不应该**\ 更改了。然\
-而，如果你决意要改，必须严格按照\ `更改监视器 IP 地址`_\ 来改。
+一旦部署完 Ceph 集群，监视器 IP 地址就\ **不应该**\ 更改了。\
+然而，如果你决意要改，必须严格按照\ `更改监视器 IP 地址`_\
+来改。
 
 也可以让客户端通过 DNS 的 SRV 记录发现监视器，详情见\
 `通过 DNS 查询监视器`_\ 。
 
 
-.. _Cluster ID:
+
+.. Cluster ID
 
 集群 ID
 -------
 
-每个 Ceph 存储集群都有一个唯一标识符（ ``fsid`` ）。如果指定了，它应该出现在配置文\
-件的 ``[global]`` 段下。部署工具通常会生成 ``fsid`` 并存于监视器图，所以不一定会写\
-入配置文件， ``fsid`` 使得在一套硬件上运行多个集群成为可能。
+每个 Ceph 存储集群都有一个唯一标识符（ ``fsid`` ）。如果\
+指定了，它应该出现在配置文件的 ``[global]`` 段下。部署工具\
+通常会生成 ``fsid`` 并存于监视器图，所以不一定会写入配置文件，\
+``fsid`` 使得在一套硬件上运行多个集群成为可能。
 
 
 ``fsid``
@@ -237,15 +251,16 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 .. note:: 如果你用部署工具就不能设置。
 
 
-.. index:: Ceph Monitor; initial members
 
+.. index:: Ceph Monitor; initial members
 .. Initial Members
 
 初始成员
 --------
 
-我们建议在生产环境下最少部署 3 个监视器，以确保高可用性。运行多个监视器时，你可以指\
-定为形成法定人数成员所需的初始监视器，这能减小集群上线时间。
+我们建议在生产环境下最少部署 3 个监视器，以确保高可用性。运行\
+多个监视器时，你可以指定为形成法定人数成员所需的初始监视器，\
+这能减小集群上线时间。
 
 .. code-block:: ini
 
@@ -257,7 +272,6 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 
 :描述: 集群启动时初始监视器的 ID ，若指定， Ceph 需要奇数个\
        监视器来确定最初法定人数（如 3 ）。
-
 :类型: String
 :默认值: None
 
@@ -265,29 +279,29 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
    你可以用此选项减小初始监视器数量来形成。
 
 
-.. index:: Ceph Monitor; data path
 
-.. _Data:
+.. index:: Ceph Monitor; data path
+.. Data
 
 数据
 ----
 
 Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群上，\
-我们建议在独立主机上运行 Ceph 监视器，不要与运行 Ceph OSD 守\
-护进程的主机混用。因为 leveldb 靠 ``mmap()`` 写数据， Ceph
-监视器会频繁地把数据从内存刷回磁盘，如果其数据与 OSD 守护进\
-程共用存储器，就会与 Ceph OSD 守护进程的载荷冲突。
+我们建议在独立主机上运行 Ceph 监视器，不要与运行 Ceph OSD
+守护进程的主机混用。因为 leveldb 靠 ``mmap()`` 写数据， Ceph
+监视器会频繁地把数据从内存刷回磁盘，如果其数据与 OSD
+守护进程共用存储器，就会与 Ceph OSD 守护进程的载荷冲突。
 
 在 Ceph 0.58 及更早版本中，监视器数据以文件保存，这样人们可以\
-用 ``ls`` 和 ``cat`` 这些普通工具检查监视器数据，然而它不能提\
-供健壮的一致性。
+用 ``ls`` 和 ``cat`` 这些普通工具检查监视器数据，然而它不能\
+提供健壮的一致性。
 
 在 Ceph 0.59 及后续版本中，监视器以键/值对存储数据。监视器需要
 `ACID`_ 事务，数据存储的使用可防止监视器用损坏的版本进行恢复，\
 除此之外，它允许在一个原子批量操作中进行多个修改操作。
 
-一般来说我们不建议更改默认数据位置，如果要改，我们建议所有监\
-视器统一配置，加到配置文件的 ``[mon]`` 下。
+一般来说我们不建议更改默认数据位置，如果要改，我们建议所有\
+监视器统一配置，加到配置文件的 ``[mon]`` 下。
 
 
 ``mon data``
@@ -299,8 +313,8 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 
 ``mon data size warn``
 
-:描述: 监视器的数据量大于 15GB 时发一条 ``HEALTH_WARN`` 集群日\
-       志。
+:描述: 监视器的数据量大于 15GB 时发一条 ``HEALTH_WARN``
+       集群日志。
 :类型: Integer
 :默认值: 15*1024*1024*1024*
 
@@ -359,11 +373,38 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 
 :描述: 如果 ``mon osd down out interval`` 是 0 ，发出一条
        ``HEALTH_WARN`` 集群日志。 Leader 上的这个选项设置为 0 \
-       时，结果类似 ``noout`` 标记。集群没有设置 ``noout`` 标\
-       记，而表现出的行为却一样时很难查出为什么，所以我们对此\
-       情况发出警告。
+       时，结果类似 ``noout`` 标记。集群没有设置 ``noout``
+       标记，而表现出的行为却一样时很难查出为什么，所以我们\
+       对此情况发出警告。
 :类型: Boolean
 :默认值: True
+
+
+``mon warn on slow ping ratio``
+
+:描述: Issue a ``HEALTH_WARN`` in cluster log if any heartbeat
+              between OSDs exceeds ``mon warn on slow ping ratio``
+              of ``osd heartbeat grace``.  The default is 5%.
+:类型: Float
+:默认值: ``0.05``
+
+
+``mon warn on slow ping time``
+
+:描述: Override ``mon warn on slow ping ratio`` with a specific value.
+              Issue a ``HEALTH_WARN`` in cluster log if any heartbeat
+              between OSDs exceeds ``mon warn on slow ping time``
+              milliseconds.  The default is 0 (disabled).
+:类型: Integer
+:默认值: ``0``
+
+
+``mon warn on pool no redundancy``
+
+:描述: Issue a ``HEALTH_WARN`` in cluster log if any pool is
+              configured with no replicas.
+:类型: Boolean
+:默认值: ``True``
 
 
 ``mon cache target full warn ratio``
@@ -372,14 +413,6 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
        的多大比例时发出警告。
 :类型: Float
 :默认值: ``0.66``
-
-
-``mon health data update interval``
-
-:描述: 法定人数里的监视器与它的互联点分享自己健康状态的频率，\
-       单位为秒。负数禁用此功能。
-:类型: Float
-:默认值: ``60``
 
 
 ``mon health to clog``
@@ -391,47 +424,52 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 
 ``mon health to clog tick interval``
 
-:描述: 监视器向集群日志发送健康摘要的频率，单位为秒。非正数禁\
-       用此功能。如果当前健康摘要为空或者与上次的相同，监视器\
-       就不会发给集群日志了。
-:类型: Integer
-:默认值: 3600
+:描述: 监视器向集群日志发送健康摘要的频率，单位为秒。非正数\
+       表示禁用此功能。如果当前健康摘要为空或者与上次的相同，\
+       监视器就不会发给集群日志了。
+:类型: Float
+:默认值: ``60.0``
 
 
 ``mon health to clog interval``
 
-:描述: 监视器向集群日志发送健康摘要的频率，单位为秒。非正数禁\
-       用此功能。不管摘要有没有变化，监视器都会把摘要发给集群\
-       日志。
+:描述: 监视器向集群日志发送健康摘要的频率，单位为秒。非正数\
+       表示禁用此功能。不管摘要有没有变化，监视器都会把摘要\
+       发给集群日志。
 :类型: Integer
-:默认值: 60
+:默认值: 3600
 
 
+
+.. Storage Capacity
 .. index:: Ceph Storage Cluster; capacity planning, Ceph Monitor; capacity planning
 
-.. _Storage Capacity:
 
 存储容量
 --------
 
-Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ），作为防止数据丢失\
-的安全措施，它会阻止你读写 OSD 。因此，让生产集群用满可不是好事，因为牺牲了高可用\
-性。 full ratio 默认值是 ``.95`` 或容量的 95% 。对小型测试集群来说这是非常激进的设\
-置。
+Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ），\
+作为防止数据丢失的安全措施，它会阻止你读写 OSD 。因此，让\
+生产集群用满可不是好事，因为牺牲了高可用性。 full ratio
+默认值是 ``.95`` 或容量的 95% 。对小型测试集群来说这是非常激进\
+的设置。
 
-.. tip:: 监控集群时，要警惕和 ``nearfull`` 相关的警告。这意味着一些 OSD 的失败会\
-   导致临时服务中断，应该增加一些 OSD 来扩展存储容量。
+.. tip:: 监控集群时，要警惕和 ``nearfull`` 相关的警告。这\
+   意味着一些 OSD 的失败会导致临时服务中断，应该增加一些 OSD
+   来扩展存储容量。
 
-在测试集群时，一个常见场景是：系统管理员从集群删除一个 OSD 、接着观察重均衡；然后继\
-续删除其他 OSD ，直到集群达到占满率并锁死。我们建议，即使在测试集群里也要规划一点空\
-闲容量用于保证高可用性。理想情况下，要做好这样的预案：一系列 OSD 失败后，短时间内不\
-更换它们仍能恢复到 ``active + clean`` 状态。你也可以在 ``active + degraded`` 状态\
-运行集群，但对正常使用来说并不好。
+在测试集群时，一个常见场景是：系统管理员从集群删除一个 OSD 、\
+接着观察重均衡；然后继续删除其他 OSD ，直到集群达到占满率并\
+锁死。我们建议，即使在测试集群里也要规划一点空闲容量用于保证\
+高可用性。理想情况下，要做好这样的预案：一系列 OSD 失败后，\
+短时间内不更换它们仍能恢复到 ``active + clean`` 状态。你也可以\
+在 ``active + degraded`` 状态运行集群，但对正常使用来说并不好。
 
-下图描述了一个简化的 Ceph 集群，它包含 33 个节点、每主机一个 OSD 、每 OSD 3TB 容\
-量，所以这个小白鼠集群有 99TB 的实际容量，其 ``mon osd full ratio`` 为 ``.95`` 。\
-如果它只剩余 5TB 容量，集群就不允许客户端再读写数据，所以它的运行容量是 95TB ，而\
-非 99TB 。
+下图描述了一个简化的 Ceph 集群，它包含 33 个节点、每主机一个
+OSD 、每 OSD 3TB 容量，所以这个小白鼠集群有 99TB 的实际容量，\
+其 ``mon osd full ratio`` 为 ``.95`` 。如果它只剩余 5TB 容量，\
+集群就不允许客户端再读写数据，所以它的运行容量是 95TB ，而非
+99TB 。
 
 .. ditaa::
 
@@ -512,6 +550,7 @@ OSD 及主机。如果集群利用率太高，在解决故障域期间也许不�
    ``ceph osd set-full-ratio``
 
 
+
 .. index:: heartbeat
 .. Heartbeat
 
@@ -523,27 +562,32 @@ Ceph 监视器要求各 OSD 向它报告、并接收 OSD 们的邻居状态报�
 然而你可以按需修改，详情见\ `监视器与 OSD 的交互`_\ 。
 
 
+
 .. index:: Ceph Monitor; leader, Ceph Monitor; provider, Ceph Monitor; requester, Ceph Monitor; synchronization
 .. Monitor Store Synchronization
 
 监视器存储同步
 --------------
 
-当你用多个监视器支撑一个生产集群时，各监视器都要检查邻居是否有集群运行图的最新版本\
-（如，邻居监视器的图有一或多个 epoch 版本高于当前监视器的最高版 epoch ），过一段时\
-间，集群里的某个监视器可能落后于其它监视器太多而不得不离开法定人数，然后同步到集群当\
-前状态，并重回法定人数。为了同步，监视器可能承担三种中的一种角色：
+当你用多个监视器支撑一个生产集群时，各监视器都要检查邻居是否有\
+集群运行图的最新版本（如，邻居监视器的图有一或多个 epoch 版本\
+高于当前监视器的最高版 epoch ），过一段时间，集群里的某个\
+监视器可能落后于其它监视器太多而不得不离开法定人数，然后同步到\
+集群当前状态，并重回法定人数。为了同步，监视器可能承担三种中的\
+一种角色：
 
 #. **Leader**: `Leader` 是实现最新 Paxos 版本的第一个监视器。
 
-#. **Provider**: `Provider` 有最新集群运行图的监视器，但不是第一个实现最新版。
+#. **Provider**: `Provider` 有最新集群运行图的监视器，但不是\
+   第一个实现最新版。
 
-#. **Requester:** `Requester` 落后于 leader ，重回法定人数前，必须同步以获取关于\
-   集群的最新信息。
+#. **Requester:** `Requester` 落后于 leader ，重回法定人数前，\
+   必须同步以获取关于集群的最新信息。
 
-有了这些角色区分， leader就 可以给 provider 委派同步任务，这会避免同步请求压垮 \
-leader 、影响性能。在下面的图示中， requester 已经知道它落后于其它监视器，然后向 \
-leader 请求同步， leader 让它去和 provider 同步。
+有了这些角色区分， leader就 可以给 provider 委派同步任务，\
+这会避免同步请求压垮 leader 、影响性能。在下面的图示中，
+requester 已经知道它落后于其它监视器，然后向 leader 请求同步，
+leader 让它去和 provider 同步。
 
 
 .. ditaa:: +-----------+          +---------+          +----------+
@@ -585,47 +629,12 @@ leader ）， provider 能终结和 requester 间的同步。
 ``active + clean`` 状态。
 
 
-``mon sync trim timeout``
-
-:描述:
-:类型: Double
-:默认值: ``30.0``
-
-
-``mon sync heartbeat timeout``
-
-:描述:
-:类型: Double
-:默认值: ``30.0``
-
-
-``mon sync heartbeat interval``
-
-:描述:
-:类型: Double
-:默认值: ``5.0``
-
-
-``mon sync backoff timeout``
-
-:描述:
-:类型: Double
-:默认值: ``30.0``
-
-
 ``mon sync timeout``
 
 :描述: 监视器与上家同步的时候，等待下一个更新消息的时长（单位\
        为秒），超时此时间就放弃然后从头再来。
 :类型: Double
 :默认值: ``60.0``
-
-
-``mon sync max retries``
-
-:描述:
-:类型: Integer
-:默认值: ``5``
 
 
 ``mon sync max payload size``
@@ -702,20 +711,6 @@ leader ）， provider 能终结和 requester 间的同步。
 :默认值: 500
 
 
-``mon max log epochs``
-
-:描述: 一次提议最多可以清理多少个日志时间结。
-:类型: Integer
-:默认值: 500
-
-
-``mon max pgmap epochs``
-
-:描述: 一次提议最多可以清理多少个 pgmap 时间结。
-:类型: Integer
-:默认值: 500
-
-
 ``mon mds force trim to``
 
 :描述: 强制让监视器把 mdsmap 裁截到这一点（ 0 禁用此选项）。非\
@@ -727,8 +722,8 @@ leader ）， provider 能终结和 requester 间的同步。
 ``mon osd force trim to``
 
 :描述: 强制让监视器把 osdmap 裁截到这一点，即使指定的时间结上\
-       仍有不干净的 PG 也在所不惜。 0 禁用此选项。非常危险，慎\
-       用！
+       仍有不干净的 PG 也在所不惜。 0 禁用此选项。非常危险，\
+       慎用！
 :类型: Integer
 :默认值: 0
 
@@ -756,9 +751,9 @@ leader ）， provider 能终结和 requester 间的同步。
 
 ``mon lease renew interval factor``
 
-:描述: ``mon lease`` \* ``mon lease renew interval factor`` 时\
-       长就是 Leader （头领）刷新其他监视器租期的间隔。此系数\
-       应该小于 ``1.0`` 。
+:描述: ``mon lease`` \* ``mon lease renew interval factor``
+       时长就是 Leader （头领）刷新其他监视器租期的间隔。此\
+       系数应该小于 ``1.0`` 。
 :类型: Float
 :默认值: ``0.6``
 
@@ -774,8 +769,8 @@ leader ）， provider 能终结和 requester 间的同步。
 ``mon accept timeout factor``
 
 :描述: Leader 会等着 Requester(s) 接收 Paxos 更新，时间不超过
-       ``mon lease`` \* ``mon accept timeout factor`` 。出于类\
-       似目的，在 Paxos 恢复阶段也会用到此配置。
+       ``mon lease`` \* ``mon accept timeout factor`` 。出于\
+       类似目的，在 Paxos 恢复阶段也会用到此配置。
 :类型: Float
 :默认值: ``2.0``
 
@@ -787,18 +782,12 @@ leader ）， provider 能终结和 requester 间的同步。
 :默认值: ``500``
 
 
-``mon max pgmap epochs``
-
-:描述: 监视器应该一直保存的 PG 图元素最大数量。
-:类型: 32-bit Integer
-:默认值: ``500``
-
-
 ``mon max log epochs``
 
 :描述: 监视器应该保留的最大日志数量。
 :类型: 32-bit Integer
 :默认值: ``500``
+
 
 
 .. index:: Ceph Monitor; clock
@@ -827,15 +816,6 @@ Ceph 的守护进程会相互传递关键消息，这些消息必须在达到超
 
 Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
-
-``clock offset``
-
-:描述: 时钟可以漂移多少，详情见 ``Clock.cc`` 。
-:类型: Double
-:默认值: ``0``
-
-
-.. deprecated:: 0.58
 
 ``mon tick interval``
 
@@ -873,6 +853,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :默认值: ``30.0``
 
 
+
 .. Client
 
 客户端
@@ -905,6 +886,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :描述: 内存中允许存留的客户端消息数量（字节数）。
 :类型: 64-bit Integer Unsigned
 :默认值: ``100ul << 20``
+
 
 
 .. Pool settings
@@ -965,6 +947,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 :默认值: ``false``
 
 关于存储池标记详情请看\ `存储池标记值`_\ 。
+
 
 
 .. Miscellaneous
@@ -1055,21 +1038,6 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
        捡回所有 PG 。
 :类型: Float
 :默认值: ``0.25``
-
-
-``mon osd allow primary affinity``
-
-:描述: 允许在 osdmap 里设置 ``primary_affinity`` 。
-:类型: Boolean
-:默认值: False
-
-
-``mon osd pool ec fast read``
-
-:描述: 是否打开存储池的速读功能。如果新建纠删码存储池时没有指定
-       ``fast_read`` ，此值将是默认配置。
-:类型: Boolean
-:默认值: False
 
 
 ``mon mds skip sanity``
@@ -1182,6 +1150,7 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
 :类型: Boolean
 :默认值: ``True``
+
 
 
 .. _Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)
