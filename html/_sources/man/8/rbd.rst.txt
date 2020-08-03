@@ -62,9 +62,10 @@
      格式兼容所有版本的 librbd 和内核模块，但是不支持较新的\
      功能，像克隆。
 
-   * format 2 - 使用第二版 rbd 格式， librbd 和 3.11 版以上\
-     内核模块才支持（除非是分拆的模块）。此格式增加了克隆支\
-     持，使得扩展更容易，还允许以后增加新功能。
+   * format 2 - 使用第二 rbd 格式， librbd 从 Bobtail 版起、\
+     内核版本在 3.10 以上（ fancy 条带化功能除外， 4.17 的内核\
+     才支持）的内核 rbd 模块才支持此格式。此格式增加了克隆\
+     支持，使得将来扩展新功能更容易。
 
 .. option:: -s size-in-M/G/T, --size size-in-M/G/T
 
@@ -684,8 +685,9 @@ RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存�
    寸。此时，我们继续写下一轮 [*stripe_count*] 个对象。
 
 默认情况下， [*stripe_unit*] 和对象尺寸相同、且
-[*stripe_count*] 为 1 ；另外指定 [*stripe_unit*] 需 STRIPINGV2
-功能（ Ceph 0.53 起加入）并使用 format 2 格式的映像。
+[*stripe_count*] 为 1 ；另外指定 [*stripe_unit*] 和/或
+[*stripe_count*] 通常出现在使用 fancy 条带化时、而且必须是
+format 2 格式的映像。
 
 
 .. Kernel rbd (krbd) options

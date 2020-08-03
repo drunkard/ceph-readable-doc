@@ -18,6 +18,7 @@
     consult the ceph-users mailing list or the #ceph IRC channel.
 
 
+
 .. Journal export
 
 导出日志
@@ -29,6 +30,7 @@
 
 需要注意的是，此命令在日志损坏严重时也许会失效，在这种情况下，\
 应该进行 RADOS 级的复制（ http://tracker.ceph.com/issues/9902 ）。
+
 
 
 .. Dentry recovery from journal
@@ -58,6 +60,7 @@
    恢复的给恢复之后，应该分别裁截日志。
 
 
+
 .. Journal truncation
 
 舍弃日志
@@ -78,6 +81,7 @@ multiple active MDS.
     重分配，以致权限规则被破坏。
 
 
+
 .. MDS table wipes
 
 擦除 MDS 表
@@ -95,6 +99,7 @@ SessionMap 、 SnapServer ）的内容变得不一致。
 
 会话表是最有可能需要重置的表，但是如果你知道你还需要重置其它\
 表，那就把 session 换成 snap 或者 inode 。
+
 
 
 .. MDS map reset
@@ -118,6 +123,7 @@ SessionMap 、 SnapServer ）的内容变得不一致。
 那样会覆盖所有根索引节点、并使所有文件变成孤儿；相反， reset
 命令会使 rank 0 处于 active 状态，这样下一个要认领此 rank 的
 MDS 守护进程会继续、并使用已存在于 RADOS 中的数据。
+
 
 
 .. Recovery from missing metadata objects
@@ -182,6 +188,7 @@ scan_inodes 命令就要花费\ *很长时间*\ 。
 元数据恢复完后，你可以清理掉恢复期间产生的辅助数据。 ::
 
     cephfs-data-scan cleanup <data pool>
+
 
 
 .. Using an alternate metadata pool for recovery
@@ -295,5 +302,7 @@ operational.
     backtrace information is lost. If any data objects are missing (due to
     issues like lost Placement Groups on the data pool), the recovered files
     will contain holes in place of the missing data.
+
+
 
 .. _Symbolic link recovery: https://tracker.ceph.com/issues/46166

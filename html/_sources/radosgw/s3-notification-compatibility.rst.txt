@@ -17,9 +17,9 @@ Ceph's `Bucket Notifications`_ and `PubSub Module`_ APIs follow `AWS S3 Bucket N
 ------------
 
 AWS supports: **SNS**, **SQS** and **Lambda** as possible destinations (AWS internal destinations). 
-Currently, we support: **HTTP/S** and **AMQP**. And also support pulling and acking of events stored in Ceph (as an intenal destination).
+Currently, we support: **HTTP/S**, **Kafka** and **AMQP**. And also support pulling and acking of events stored in Ceph (as an intrenal destination).
 
-We are using the **SNS** ARNs to represent the **HTTP/S** and **AMQP** destinations.
+We are using the **SNS** ARNs to represent the **HTTP/S**, **Kafka** and **AMQP** destinations.
 
 Notification Configuration XML
 ------------------------------
@@ -54,6 +54,8 @@ Ceph's bucket notification API has the following extensions:
   - Filtering based on metadata attributes attached to the object
 
   - Filtering based on object tags
+
+- Each one of the additional filters extends the S3 API and using it will require extension of the client SDK (unless you are using plain HTTP). 
 
 - Filtering overlapping is allowed, so that same event could be sent as different notification
 
@@ -130,3 +132,4 @@ We also have the following extensions to topic configuration:
 .. _Event Message Structure: https://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html
 .. _`PubSub Module`: ../pubsub-module
 .. _`Bucket Notifications`: ../notifications
+.. _`boto3 SDK filter extensions`: https://github.com/ceph/ceph/tree/master/examples/boto3

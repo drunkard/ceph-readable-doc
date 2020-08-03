@@ -111,6 +111,5 @@ and ecosystem.  It has no direct control over the technical direction
 of the Ceph open source project beyond offering feedback and input
 into the collaborative development process.
 
-For more information, see `https://ceph.com/foundation
-<https://ceph.com/foundation>`_.
+For more information, see :ref:`foundation`.
 

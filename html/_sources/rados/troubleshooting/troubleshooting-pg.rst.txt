@@ -7,8 +7,8 @@
 归置组总不整洁
 ==============
 
-When you create a cluster and your cluster remains in ``active``, 
-``active+remapped`` or ``active+degraded`` status and never achieve an 
+When you create a cluster and your cluster remains in ``active``,
+``active+remapped`` or ``active+degraded`` status and never achieves an
 ``active+clean`` status, you likely have a problem with your configuration.
 
 You may need to review settings in the `存储池、归置组和 CRUSH 配置参考`_

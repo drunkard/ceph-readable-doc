@@ -66,7 +66,7 @@ Graphviz
 你可以用 Graphviz_ ，其文档位于 `Graphviz 扩展文档`_\ 。
 
 .. _Graphviz: http://graphviz.org/
-.. _`Graphviz 扩展文档`: http://sphinx.pocoo.org/ext/graphviz.html
+.. _`Graphviz 扩展文档`: https://www.sphinx-doc.org/en/master/usage/extensions/graphviz.html
 
 .. graphviz::
 

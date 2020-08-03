@@ -1,9 +1,7 @@
-.. Client Config Reference
+.. Client Configuration
 
-================
- 客户端配置参考
-================
-
+客户端配置
+==========
 
 Updating Client Configuration
 -----------------------------
@@ -33,9 +31,9 @@ To check configured options use the `config get` command::
     global      advanced osd_pool_default_min_size 1            
     global      advanced osd_pool_default_size     3            
 
+
 Client Config Reference
 ------------------------
-
 
 ``client acl type``
 

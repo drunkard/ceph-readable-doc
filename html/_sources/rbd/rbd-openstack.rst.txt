@@ -4,14 +4,14 @@
 
 .. index:: Ceph Block Device; OpenStack
 
-通过 ``libvirt`` 你可以把 Ceph 块设备用于 OpenStack ，它配\
-置了 QEMU 到 ``librbd`` 的接口。 Ceph 把块设备分块为对象并\
-分布到集群中，这意味着大个的 Ceph 块设备映像其性能会比独立\
-服务器更好。
+通过 ``libvirt`` 你可以把 Ceph 块设备用于 OpenStack ，它配置了
+QEMU 到 ``librbd`` 的接口。 Ceph 把块设备分块为对象并\
+分布到集群中，这意味着大个的 Ceph 块设备映像其性能会比\
+独立服务器更好。
 
 要把 Ceph 块设备用于 OpenStack ，必须先安装 QEMU 、
-``libvirt`` 和 OpenStack 。我们建议用一台独立的物理主机安\
-装 OpenStack ，此主机最少需 8GB 内存和一个 4 核 CPU 。下面\
+``libvirt`` 和 OpenStack 。我们建议用一台独立的物理主机安装
+OpenStack ，此主机最少需 8GB 内存和一个 4 核 CPU 。下面\
 的图表描述了 OpenStack/Ceph 技术栈。
 
 
@@ -45,7 +45,7 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
   挂到运行着的虚拟机上。 OpenStack 用 Cinder 服务管理卷宗。
 
 - **Guest Disks**: Guest disks are guest operating system disks. By default,
-  when you boot a virtual machine, its disk appears as a file on the filesystem
+  when you boot a virtual machine, its disk appears as a file on the file system
   of the hypervisor (usually under ``/var/lib/nova/instances/<uuid>/``). Prior
   to OpenStack Havana, the only way to boot a VM in Ceph was to use the
   boot-from-volume functionality of Cinder. However, now it is possible to boot
@@ -53,13 +53,16 @@ OpenStack 里有三个地方和 Ceph 块设备结合：
   advantageous because it allows you to perform maintenance operations easily
   with the live-migration process. Additionally, if your hypervisor dies it is
   also convenient to trigger ``nova evacuate`` and  run the virtual machine
-  elsewhere almost seamlessly.
+  elsewhere almost seamlessly. In doing so,
+  :ref:`exclusive locks <rbd-exclusive-locks>` prevent multiple
+  compute nodes from concurrently accessing the guest disk.
 
-你可以用 OpenStack Glance 把映像存储到 Ceph 块设备中，还可以用 Cinder 来引导映像的\
-写时复制克隆品。
+你可以用 OpenStack Glance 把映像存储到 Ceph 块设备中，还可以用
+Cinder 来引导映像的写时复制克隆品。
 
-下面将详细指导你安装设置 Glance 、 Cinder 和 Nova ，虽然它们不一定一起用。你可以在\
-本地硬盘上运行 VM 、却把映像存储于 Ceph 块设备，反之亦可。
+下面将详细指导你安装设置 Glance 、 Cinder 和 Nova ，虽然它们\
+不一定一起用。你可以在本地硬盘上运行 VM 、却把映像存储于
+Ceph 块设备，反之亦可。
 
 .. important:: Using QCOW2 for hosting a virtual machine disk is NOT recommended.
    If you want to boot virtual machines in Ceph (ephemeral backend or boot

@@ -20,7 +20,9 @@ Ceph 块设备支持 QEMU/KVM ，所以你可以在 Ceph 块设备之上运行�
 QEMU 如何通过 ``librbd`` 使用 Ceph 块设备。
 
 
-.. ditaa::  +---------------------------------------------------+
+.. ditaa::
+
+            +---------------------------------------------------+
             |                     libvirt                       |
             +------------------------+--------------------------+
                                      |
@@ -30,6 +32,8 @@ QEMU 如何通过 ``librbd`` 使用 Ceph 块设备。
             |                       QEMU                        |
             +---------------------------------------------------+
             |                      librbd                       |
+            +---------------------------------------------------+
+            |                     librados                      |
             +------------------------+-+------------------------+
             |          OSDs          | |        Monitors        |
             +------------------------+ +------------------------+
@@ -161,7 +165,7 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 #. 改配置让它使用 Ceph 前停止 VM 。
 
 
-.. _Configuring the VM:
+.. Configuring the VM
 
 配置 VM
 =======
@@ -204,7 +208,7 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 		<source protocol='rbd' name='libvirt-pool/new-libvirt-image'>
 			<host name='{monitor-host}' port='6789'/>
 		</source>
-		<target dev='vda' bus='virtio'/>
+		<target dev='vdb' bus='virtio'/>
 	</disk>
 
    用你的主机名替换 ``{monitor-host}`` 、可能还有存储池、映像\
@@ -231,7 +235,7 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 #. 定义密钥。 ::
 
 	sudo virsh secret-define --file secret.xml
-	<uuid of secret is output here>
+	{uuid of secret}
 
 #. 获取 ``client.libvirt`` 密钥并把字符串保存于文件。 ::
 
@@ -252,7 +256,7 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 	...
 	</source>
 	<auth username='libvirt'>
-		<secret type='ceph' uuid='9ec59067-fdbc-a6c0-03ff-df165c0587b8'/>
+		<secret type='ceph' uuid='{uuid of secret}'/>
 	</auth>
 	<target ...
 
@@ -282,13 +286,12 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 #. 检查 VM 是否在和 Ceph 通讯，用你的 VM 域名字替换
    ``{vm-domain-name}`` ： ::
 
-	sudo virsh qemu-monitor-command --hmp {vm-domain-name} 'info block'
+        sudo virsh qemu-monitor-command --hmp {vm-domain-name} 'info block'
 
-#. 检查一下 ``<target dev='hdb' bus='ide'/>`` 定义的设备是否\
-   出现在 ``/dev`` 或 ``/proc/partitions`` 里。 ::
+#. 检查一下 ``<target dev='vdb' bus='virtio'/>`` 里的设备是否\
+   存在： ::
 
-	ls dev
-	cat proc/partitions
+       virsh domblklist {vm-domain-name} --details
 
 如果看起来一切正常，你就可以在虚拟机内使用 Ceph 块设备了。
 

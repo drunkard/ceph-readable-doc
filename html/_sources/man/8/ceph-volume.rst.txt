@@ -274,7 +274,7 @@ ceph-volume 激活和管理这个 OSD 。这个扫描命令会创建一个 JSON
 
 扫描所有运行着的 OSD ： ::
 
-    ceph-voume simple scan
+    ceph-volume simple scan
 
 扫描数据设备： ::
 

@@ -1,0 +1,226 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>RBD Exclusive Locks &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="RBD 镜像" href="../rbd-mirroring/" />
+    <link rel="prev" title="快照" href="../rbd-snapshot/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rbd-mirroring/" title="RBD 镜像"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../rbd-snapshot/" title="快照"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 块设备</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../rbd-operations/" accesskey="U">Ceph 块设备运维</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/rbd/rbd-exclusive-locks.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="rbd-exclusive-locks">
+<span id="id1"></span><h1>RBD Exclusive Locks<a class="headerlink" href="#rbd-exclusive-locks" title="Permalink to this headline">¶</a></h1>
+<p id="index-0">Exclusive locks are a mechanism designed to prevent multiple processes
+from accessing the same Rados Block Device (RBD) in an uncoordinated
+fashion. Exclusive locks are heavily used in virtualization (where
+they prevent VMs from clobbering each others’ writes), and also in RBD
+mirroring (where they are a prerequisite for journaling).</p>
+<p>Exclusive locks are enabled on newly created images by default, unless
+overridden via the <code class="docutils literal notranslate"><span class="pre">rbd_default_features</span></code> configuration option or
+the <code class="docutils literal notranslate"><span class="pre">--image-feature</span></code> flag for <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">create</span></code>.</p>
+<p>In order to ensure proper exclusive locking operations, any client
+using an RBD image whose <code class="docutils literal notranslate"><span class="pre">exclusive-lock</span></code> feature is enabled should
+be using a CephX identity whose capabilities include <code class="docutils literal notranslate"><span class="pre">profile</span> <span class="pre">rbd</span></code>.</p>
+<p>Exclusive locking is mostly transparent to the user.</p>
+<ol class="arabic simple">
+<li><p>Whenever any <code class="docutils literal notranslate"><span class="pre">librbd</span></code> client process or kernel RBD client
+starts using an RBD image on which exclusive locking has been
+enabled, it obtains an exclusive lock on the image before the first
+write.</p></li>
+<li><p>Whenever any such client process gracefully terminates, it
+automatically relinquishes the lock.</p></li>
+<li><p>This subsequently enables another process to acquire the lock, and
+write to the image.</p></li>
+</ol>
+<p>Note that it is perfectly possible for two or more concurrently
+running processes to merely open the image, and also to read from
+it. The client acquires the exclusive lock only when attempting to
+write to the image. To disable transparent lock transitions between
+multiple clients, it needs to acquire the lock specifically with
+<code class="docutils literal notranslate"><span class="pre">RBD_LOCK_MODE_EXCLUSIVE</span></code>.</p>
+<div class="section" id="blacklisting">
+<h2>Blacklisting<a class="headerlink" href="#blacklisting" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes, a client process (or, in case of a krbd client, a client
+node’s kernel thread) that previously held an exclusive lock on an
+image does not terminate gracefully, but dies abruptly. This may be
+due to having received a <code class="docutils literal notranslate"><span class="pre">KILL</span></code> or <code class="docutils literal notranslate"><span class="pre">ABRT</span></code> signal, for example, or
+a hard reboot or power failure of the client node. In that case, the
+exclusive lock is never gracefully released. Thus, when a new process
+starts and attempts to use the device, it needs a way to break the
+previously held exclusive lock.</p>
+<p>However, a process (or kernel thread) may also hang, or merely lose
+network connectivity to the Ceph cluster for some amount of time. In
+that case, simply breaking the lock would be potentially catastrophic:
+the hung process or connectivity issue may resolve itself, and the old
+process may then compete with one that has started in the interim,
+accessing RBD data in an uncoordinated and destructive manner.</p>
+<p>Thus, in the event that a lock cannot be acquired in the standard
+graceful manner, the overtaking process not only breaks the lock, but
+also blacklists the previous lock holder. This is negotiated between
+the new client process and the Ceph Mon: upon receiving the blacklist
+request,</p>
+<ul class="simple">
+<li><p>the Mon instructs the relevant OSDs to no longer serve requests from
+the old client process;</p></li>
+<li><p>once the associated OSD map update is complete, the Mon grants the
+lock to the new client;</p></li>
+<li><p>once the new client has acquired the lock, it can commence writing
+to the image.</p></li>
+</ul>
+<p>Blacklisting is thus a form of storage-level resource <a class="reference external" href="https://en.wikipedia.org/wiki/Fencing_(computing)">fencing</a>.</p>
+<p>In order for blacklisting to work, the client must have the <code class="docutils literal notranslate"><span class="pre">osd</span>
+<span class="pre">blacklist</span></code> capability. This capability is included in the <code class="docutils literal notranslate"><span class="pre">profile</span>
+<span class="pre">rbd</span></code> capability profile, which should generally be set on all Ceph
+<a class="reference internal" href="../../rados/operations/user-management/#user-management"><span class="std std-ref">client identities</span></a> using RBD.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 块设备</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../rados-rbd-cmds/">基本命令</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../rbd-operations/">运维</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../rbd-snapshot/">快照</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">互斥锁</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#blacklisting">Blacklisting</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-mirroring/">镜像</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-live-migration/">实时迁移</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-persistent-cache/">永久缓存</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-config-ref/">配置选项 (librbd)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-replay/">RBD 重放</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../rbd-integrations/">对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../man/">手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rbd-mirroring/" title="RBD 镜像"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../rbd-snapshot/" title="快照"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 块设备</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../rbd-operations/" >Ceph 块设备运维</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>
