@@ -179,8 +179,9 @@ disk 、 drive 、 storage 等等）： ::
 	type 6 pod
 	type 7 room
 	type 8 datacenter
-	type 9 region
-	type 10 root
+	type 9 zone
+	type 10 region
+	type 11 root
 
 
 
@@ -238,12 +239,12 @@ CRUSH 算法根据各设备的权重、大致统一的概率把数据对象分�
 还要考虑机框故障——比如，某一节点故障后需要拉出机框维修，这\
 会影响多个主机/节点和其内的 OSD 。
 
-声明一个桶例程时，你必须指定其类型、惟一名称（字符串）、惟\
-一负整数 ID （可选）、指定和各条目总容量/能力相关的权重、指\
-定桶算法（通常是 ``straw`` ）、和哈希（通常为 ``0`` ，表示\
+声明一个桶例程时，你必须指定其类型、惟一名称（字符串）、\
+惟一负整数 ID （可选）、指定和各条目总容量/能力相关的权重、\
+指定桶算法（通常是 ``straw2`` ）、和哈希（通常为 ``0`` ，表示\
 散列算法 ``rjenkins1`` ）。一个桶可以包含一到多条，这些条目\
-可以由节点桶或叶子组成，它们可以有个权重用来反映条目的相对\
-权重。
+可以由节点桶或叶子组成，它们可以有个权重用来反映条目的\
+相对权重。
 
 你可以按下列语法声明一个节点桶： ::
 
@@ -260,7 +261,7 @@ OSD 被声明为主机桶内的条目： ::
 
 	host node1 {
 		id -1
-		alg straw
+		alg straw2
 		hash 0
 		item osd.0 weight 1.00
 		item osd.1 weight 1.00
@@ -268,7 +269,7 @@ OSD 被声明为主机桶内的条目： ::
 
 	host node2 {
 		id -2
-		alg straw
+		alg straw2
 		hash 0
 		item osd.2 weight 1.00
 		item osd.3 weight 1.00
@@ -276,7 +277,7 @@ OSD 被声明为主机桶内的条目： ::
 
 	rack rack1 {
 		id -3
-		alg straw
+		alg straw2
 		hash 0
 		item node1 weight 2.00
 		item node2 weight 2.00
@@ -287,19 +288,19 @@ OSD 被声明为主机桶内的条目： ::
 
 .. topic:: 桶类型
 
-   Ceph 支持四种桶，每种都是性能和组织简易间的折衷。如果你\
-   不确定用哪种桶，我们建议 ``straw`` ，关于桶类型的详细讨\
+   Ceph 支持五种桶，每种都是性能和组织简易间的折衷。如果你\
+   不确定用哪种桶，我们建议 ``straw2`` ，关于桶类型的详细讨\
    论见 `CRUSH - 可控、可伸缩、分布式地归置多副本数据`_\ ，\
    特别是 **Section 3.4** 。支持的桶类型有：
 
-	#. **Uniform**: 这种桶用\ **完全**\ 相同的权重汇聚\
+	#. **uniform**: 这种桶用\ **完全**\ 相同的权重汇聚\
            设备。例如，公司采购或淘汰硬件时，一般都有相同的\
            物理配置（如批发）。当存储设备权重都相同时，你可以\
            用 ``uniform`` 桶类型，它允许 CRUSH 按常数把副本\
            映射到 uniform 桶。权重不统一时，你应该采用其它\
            算法。
 
-	#. **List**: 这种桶把它们的内容汇聚为链表。它基于 \
+	#. **list**: 这种桶把它们的内容汇聚为链表。它基于 \
 	   :abbr:`RUSH (Replication Under Scalable Hashing)` \
 	   :sub:`P` 算法，一个列表就是一个自然、直观的\ \
 	   **扩展集群**\ ：对象会按一定概率被重定位到最新的\
@@ -308,21 +309,21 @@ OSD 被声明为主机桶内的条目： ::
            的中间或末尾删除了一些条目，将会导致大量没必要的\
            挪动。所以这种桶适合\ **永不或极少缩减**\ 的场景。
 
-	#. **Tree**: 它用一种二进制搜索树，在桶包含大量条目时\
+	#. **tree**: 它用一种二进制搜索树，在桶包含大量条目时\
            比 list 桶更高效。它基于 \
 	   :abbr:`RUSH (Replication Under Scalable Hashing)` \
 	   :sub:`R` 算法， tree 桶把归置时间减少到了 \
 	   O(log :sub:`n`) ，这使得它们更适合管理更大规模的\
            设备或嵌套桶。
 
-	#. **Straw**: list 和 tree 桶用分而治之策略，给特定\
+	#. **straw**: list 和 tree 桶用分而治之策略，给特定\
            条目一定优先级（如位于链表开头的条目）、或避开对\
            整个子树上所有条目的考虑。这样提升了副本归置进程\
            的性能，但是也导致了重新组织时的次优结果，如增加、\
            拆除、或重设某条目的权重。 straw 桶类型允许所有\
            条目模拟拉稻草的过程公平地相互“竞争”副本归置。
 
-        #. **Straw2**: Straw2 桶是对 straw 的改进，在邻居权重\
+        #. **straw2**: straw2 桶是对 straw 的改进，在邻居权重\
            改变时可正确地避免条目间的数据迁移。
 
            例如，条目 A 的权重再次增大或完全删除，都仅会有数据\
@@ -583,7 +584,7 @@ There are three types of transformations possible:
      host node1 {
         id -2           # do not change unnecessarily
         # weight 109.152
-        alg straw
+        alg straw2
         hash 0  # rjenkins1
         item osd.0 weight 9.096
         item osd.1 weight 9.096
@@ -597,15 +598,15 @@ There are three types of transformations possible:
      host node1-ssd {
         id -10          # do not change unnecessarily
         # weight 2.000
-        alg straw
+        alg straw2
         hash 0  # rjenkins1
         item osd.80 weight 2.000
-	...
+        ...
      }
 
      root default {
         id -1           # do not change unnecessarily
-        alg straw
+        alg straw2
         hash 0  # rjenkins1
         item node1 weight 110.967
         ...
@@ -614,10 +615,10 @@ There are three types of transformations possible:
      root ssd {
         id -18          # do not change unnecessarily
         # weight 16.000
-        alg straw
+        alg straw2
         hash 0  # rjenkins1
         item node1-ssd weight 2.000
-	...
+        ...
      }
 
    This function will reclassify each bucket that matches a

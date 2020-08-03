@@ -1,3 +1,5 @@
+.. Developer Guide (Quick)
+
 ====================
  开发者指南（快速）
 ====================
@@ -14,6 +16,18 @@
 
 	$ ./run-make-check.sh
 
+Optionally if you want to work on a specific component of Ceph,
+install the dependencies and build Ceph in debug mode with required cmake flags.
+
+Example:
+
+.. code::
+
+    $ ./install-deps.sh
+    $ ./do_cmake.sh -DWITH_MANPAGE=OFF -DWITH_BABELTRACE=OFF -DWITH_MGR_DASHBOARD_FRONTEND=OFF
+
+
+.. Running a development deployment
 
 开发集群的部署
 --------------

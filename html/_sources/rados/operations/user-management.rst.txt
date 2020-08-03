@@ -123,9 +123,9 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
   ``profile {name}`` 。另外， OSD 能力还支持存储池和命名空间\
   的配置。 ::
 
-	osd 'allow {access-spec} [{match-spec}] [network {network/prefix}]'
+        osd 'allow {access-spec} [{match-spec}] [network {network/prefix}]'
 
-	osd 'profile {name} [pool={pool-name} [namespace={namespace-name}]] [network {network/prefix}]'
+        osd 'profile {name} [pool={pool-name} [namespace={namespace-name}]] [network {network/prefix}]'
 
   其中， ``{access-spec}`` 语法是下列之一： ::
 
@@ -142,6 +142,35 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
   可选的 ``{network/prefix}`` 是一个标准网络名、且前缀长度遵循
   CIDR 表示法（如 ``10.3.0.0/16`` ）。如果配置了，对此能力的\
   使用就仅限于从这个网络连入的客户端。
+
+- **Manager Caps:** Manager (``ceph-mgr``) capabilities include
+  ``r``, ``w``, ``x`` access settings or ``profile {name}``. For example: ::
+
+	mgr 'allow {access-spec} [network {network/prefix}]'
+
+	mgr 'profile {name} [{key1} {match-type} {value1} ...] [network {network/prefix}]'
+
+  Manager capabilities can also be specified for specific commands,
+  all commands exported by a built-in manager service, or all commands
+  exported by a specific add-on module. For example: ::
+
+        mgr 'allow command "{command-prefix}" [with {key1} {match-type} {value1} ...] [network {network/prefix}]'
+
+        mgr 'allow service {service-name} {access-spec} [network {network/prefix}]'
+
+        mgr 'allow module {module-name} [with {key1} {match-type} {value1} ...] {access-spec} [network {network/prefix}]'
+
+  The ``{access-spec}`` syntax is as follows: ::
+
+        * | all | [r][w][x]
+
+  The ``{service-name}`` is one of the following: ::
+
+        mgr | osd | pg | py
+
+  The ``{match-type}`` is one of the following: ::
+
+        = | prefix | regex
 
 - **元数据服务器能力：** 对于管理员，设置 ``allow *`` 。对于\
   其它的所有用户，如 CephFS 客户端，参考
@@ -231,7 +260,7 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
               an ``rbd-mirror`` daemon.
 
 
-``profile rbd`` （用于监视器和 OSD ）
+``profile rbd`` （用于管理器、监视器和 OSD ）
 
 :描述: Gives a user permissions to manipulate RBD images. When used
               as a Monitor cap, it provides the minimal privileges required
@@ -249,10 +278,10 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
               privileges required for the ``rbd-mirror`` daemon.
 
 
-``profile rbd-read-only`` （仅用于 OSD ）
+``profile rbd-read-only`` （管理器和 OSD ）
 
 :描述: 授予一个用户访问 RBD 映像的只读权限。 Manager 能力支持\
-       可选的 ``pool`` 和 ``namespace`` 关键字参数。
+       可选关键字参数 ``pool`` 和 ``namespace`` 。
 
 
 .. Pool
@@ -569,7 +598,7 @@ that you execute ``chown`` or ``chmod`` to establish appropriate keyring
 ownership and access.
 
 
-.. _Add a User to a Keyring:
+.. Add a User to a Keyring
 
 把用户加入密钥环
 ----------------
@@ -591,6 +620,8 @@ For example::
 
 	sudo ceph-authtool /etc/ceph/ceph.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 
+
+.. Create a User
 
 创建用户
 --------
@@ -615,6 +646,8 @@ the new user to the Ceph Storage Cluster. ::
 
 	sudo ceph auth add client.ringo -i /etc/ceph/ceph.keyring
 
+
+.. Modify a User
 
 修改用户属性
 ------------
@@ -682,27 +715,32 @@ Ceph 支持用户名和密钥的下列用法：
 局限性
 ======
 
-``cephx`` 协议提供 Ceph 客户端和服务器间的相互认证，并没打算认证人类用户或者应用程\
-序。如果有访问控制需求，那必须用另外一种机制，它对于前端用户访问 Ceph 对象存储可能\
-是特定的，其任务是确保只有此机器上可接受的用户和程序才能访问 Ceph 的对象存储。
+``cephx`` 协议提供 Ceph 客户端和服务器间的相互认证，并没打算\
+认证人类用户或者应用程序。如果有访问控制需求，那必须用另外一种\
+机制，它对于前端用户访问 Ceph 对象存储可能是特定的，其任务是\
+确保只有此机器上可接受的用户和程序才能访问 Ceph 的对象存储。
 
-用于认证 Ceph 客户端和服务器的密钥通常以纯文本存储在权限合适的文件里，并保存于可信\
-主机上。
+用于认证 Ceph 客户端和服务器的密钥通常以纯文本存储在权限合适的\
+文件里，并保存于可信主机上。
 
-.. important:: 密钥存储为纯文本文件有安全缺陷，但很难避免，它给了 Ceph 可用的基本\
-   认证方法，设置 Ceph 时应该注意这些缺陷。
+.. important:: 密钥存储为纯文本文件有安全缺陷，但很难避免，\
+   它给了 Ceph 可用的基本认证方法，设置 Ceph 时应该注意这些\
+   缺陷。
 
-尤其是任意用户、特别是移动机器不应该和 Ceph 直接交互，因为这种用法要求把明文认证密\
-钥存储在不安全的机器上，这些机器的丢失、或盗用将泄露可访问 Ceph 集群的密钥。
+尤其是任意用户、特别是移动机器不应该和 Ceph 直接交互，因为这种\
+用法要求把明文认证密钥存储在不安全的机器上，这些机器的丢失、\
+或盗用将泄露可访问 Ceph 集群的密钥。
 
-相比于允许潜在的欠安全机器直接访问 Ceph 对象存储，应该要求用户先登录安全有保障的可\
-信机器，这台可信机器会给人们存储明文密钥。未来的 Ceph 版本也许会更彻底地解决这些特\
-殊认证问题。
+相比于允许潜在的欠安全机器直接访问 Ceph 对象存储，应该要求\
+用户先登录安全有保障的可信机器，这台可信机器会给人们存储\
+明文密钥。未来的 Ceph 版本也许会更彻底地解决这些特殊认证问题。
 
-当前，没有任何 Ceph 认证协议保证传送中消息的私密性。所以，即使物理线路窃听者不能创\
-建用户或修改它们，但可以听到、并理解客户端和服务器间发送过的所有数据。此外， Ceph \
-没有可加密用户数据的选项，当然，用户可以手动加密、然后把它们存在对象库里，但 Ceph \
-没有自己加密对象的功能。在 Ceph 里存储敏感数据的用户应该考虑存入 Ceph 集群前先加密。
+当前，没有任何 Ceph 认证协议保证传送中消息的私密性。所以，\
+即使物理线路窃听者不能创建用户或修改它们，但可以听到、并理解\
+客户端和服务器间发送过的所有数据。此外， Ceph 没有可加密\
+用户数据的选项，当然，用户可以手动加密、然后把它们存在对象库\
+里，但 Ceph 没有自己加密对象的功能。在 Ceph 里存储敏感数据的\
+用户应该考虑存入 Ceph 集群前先加密。
 
 
 .. _体系结构——高可用性认证: ../../../architecture#high-availability-authentication

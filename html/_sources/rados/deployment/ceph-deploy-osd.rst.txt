@@ -32,8 +32,8 @@ OSD 时你可以用 ``--dm-crypt`` 参数告诉 ``ceph-deploy`` 你想用\
 
 用下列命令擦净（删除分区表）磁盘，以用于 Ceph ： ::
 
-	ceph-deploy disk zap {osd-server-name}:{disk-name}
-	ceph-deploy disk zap osdserver1:sdb
+	ceph-deploy disk zap {osd-server-name} {disk-name}
+	ceph-deploy disk zap osdserver1 /dev/sdb /dev/sdc
 
 .. important:: 这会删除所有数据。
 

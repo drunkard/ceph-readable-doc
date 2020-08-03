@@ -173,6 +173,8 @@ CRUSH 映射或随机放置（若设置了 **--simulate** ）。完成后可创�
           --set-choose-total-tries 500
 
 
+.. Building a map with --build
+
 用 ``--build`` 构建新图
 =======================
 
@@ -181,7 +183,7 @@ CRUSH 映射或随机放置（若设置了 **--simulate** ）。完成后可创�
 
 各层都由如下要素组成： ::
 
-       bucket ( uniform | list | tree | straw ) size
+       bucket ( uniform | list | tree | straw | straw2 ) size
 
 这里的 **bucket** 是本层桶的类型（如 "rack" ）。构建时各桶名
 **bucket** 后将追加一个惟一的数字（如 "rack0" 、 "rack1" ……）。

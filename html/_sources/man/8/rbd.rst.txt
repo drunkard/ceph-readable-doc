@@ -259,12 +259,14 @@
   输出的各行都包含起始偏移量（按字节）、数据块长度（按字节）、\
   还有 zero 或 data ，用来指示此范围以前是 0 还是其它数据。
 
-:command:`du` [-p | --pool *pool-name*] [*image-spec* | *snap-spec*]
+:command:`du` [-p | --pool *pool-name*] [*image-spec* | *snap-spec*] [--merge-snapshots]
   会计算指定存储池内所有映像及其相关快照的磁盘使用量，包括\
   分配的和实际使用的。此命令也可用于单个映像和快照。
 
   如果 RBD 映像的 fast-diff 特性没启用，本操作就需要向各个 OSD
   挨个查询此映像涉及的每个潜在对象。
+
+  --merge-snapshots 会把快照占用的空间算到它的父映像头上。
 
 :command:`export` [--export-format *format (1 or 2)*] (*image-spec* | *snap-spec*) [*dest-path*]
   把映像导出到目的路径，用 - （短线）输出到标准输出。

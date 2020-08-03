@@ -13,8 +13,10 @@ ceph-volume
 
 **命令行子命令**
 
-当前已经支持 ``lvm`` ，和普通硬盘（分区为 GPT ），它可能是用
+当前已经支持 ``lvm`` ，和普通硬盘（分区格式为 GPT ），它可能是用
 ``ceph-disk`` 部署的。
+
+``zfs`` support is available for running a FreeBSD cluster.
 
 * :ref:`ceph-volume-lvm`
 * :ref:`ceph-volume-simple`
@@ -68,6 +70,7 @@ Ceph 从 13.0.0 版起， ``ceph-disk`` 已弃用，弃用警告消息将链接\
    intro
    systemd
    inventory
+   drive-group
    lvm/index
    lvm/activate
    lvm/batch

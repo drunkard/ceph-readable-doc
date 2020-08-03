@@ -146,6 +146,10 @@
 	sudo ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 	sudo ceph-authtool /tmp/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
 
+#. Change the owner for ``ceph.mon.keyring``. ::
+
+	sudo chown ceph:ceph /tmp/ceph.mon.keyring
+
 #. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，\
    并保存为 ``/tmp/monmap`` 。 ::
 
