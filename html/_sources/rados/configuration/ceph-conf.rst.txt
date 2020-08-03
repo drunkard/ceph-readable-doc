@@ -150,7 +150,7 @@ These sections include:
 
 :描述: ``mds`` 下的配置影响 Ceph 存储集群里的所有 ``ceph-mds``
        守护进程，并且会覆盖 ``global`` 下的同一选项。
-:实例: ``mds_cache_size = 10G``
+:实例: ``mds_cache_memory_limit = 10G``
 
 
 ``client``

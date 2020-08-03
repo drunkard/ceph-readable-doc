@@ -219,15 +219,15 @@ CRUSH 图分级结构里的这个 OSD 可以用以下命令删除： ::
 OSD_OUT_OF_ORDER_FULL
 _____________________
 
-The utilization thresholds for `backfillfull`, `nearfull`, `full`,
+The utilization thresholds for `nearfull`, `backfillfull`, `full`,
 and/or `failsafe_full` are not ascending.  In particular, we expect
-`backfillfull < nearfull`, `nearfull < full`, and `full <
+`nearfull < backfillfull`, `backfillfull < full`, and `full <
 failsafe_full`.
 
 The thresholds can be adjusted with::
 
-  ceph osd set-backfillfull-ratio <ratio>
   ceph osd set-nearfull-ratio <ratio>
+  ceph osd set-backfillfull-ratio <ratio>
   ceph osd set-full-ratio <ratio>
 
 

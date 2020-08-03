@@ -60,7 +60,7 @@ instances or all radosgw-admin commands can be put into the ``[global]`` or the
 
 :描述: 域套接字的路径， ``FastCgiExternalServer`` 要使用此\
        套接字。若未指定， Ceph 对象网关就不会以外部服务器运行。\
-       这里的路径必须与 ``rgw.conf`` 里的路径相同。
+       这里配置的路径必须与 ``rgw.conf`` 里的路径相同。
 :类型: String
 :默认值: N/A
 

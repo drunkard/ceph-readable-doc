@@ -183,7 +183,7 @@
 :描述: 一个存储池的默认归置组数量，默认值即是 ``mkpool`` 的
        ``pg_num`` 参数。
 :类型: 32-bit Integer
-:默认值: ``8``
+:默认值: ``32``
 
 
 ``osd pool default pgp num``

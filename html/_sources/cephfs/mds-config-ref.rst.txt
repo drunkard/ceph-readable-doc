@@ -2,22 +2,11 @@
  MDS 配置参考
 ==============
 
-
-``mon force standby active``
-
-:描述: 如设为 ``true`` ，监视器会把 standby-replay 状态强设为
-       active 。设置于 ``[mon]`` 或 ``[global]`` 下。
-
-:类型: Boolean
-:默认值: ``true``
-
-
 ``mds cache memory limit``
 
-:描述: MDS 对其缓存内存的硬限制。管理员应该用
-       ``mds cache size`` 。
+:描述: MDS 对其缓存内存的硬限制。
 :类型:  64-bit Integer Unsigned
-:默认值: ``1073741824``
+:默认值: ``4G``
 
 
 ``mds cache reservation``
@@ -27,14 +16,6 @@
        也缩减到空出保留值。
 :类型:  Float
 :默认值: ``0.05``
-
-
-``mds cache size``
-
-:描述: 缓存的索引节点数。值为 0 表示不限制，我们建议使用
-       ``mds_cache_memory_limit`` 来限制 MDS 缓存使用的内存量。
-:类型:  32-bit Integer
-:默认值: ``0``
 
 
 ``mds cache mid``
@@ -136,17 +117,6 @@
 :描述: 用于哈希文件在目录中分布情况的函数。
 :类型:  32-bit Integer
 :默认值: ``2`` (i.e., rjenkins)
-
-
-``mds log``
-
-:描述: 默认为 ``true`` ， MDS 是否要记录元数据更新（只可在性能\
-       评测时禁用）。
-
-       译者注：上游文档已删除此选项，不建议普通用户使用，禁用\
-       会导致各种意外。见： http://tracker.ceph.com/issues/18816
-:类型:  Boolean
-:默认值: ``true``
 
 
 ``mds log skip corrupt events``
@@ -476,28 +446,6 @@
 :描述: 启动时要跳过的索引节点号数量（仅适合测试）。
 :类型:  32-bit Integer
 :默认值: ``0``
-
-
-``mds standby for name``
-
-:描述: 指定一 MDS 守护进程的名字，此进程将作为它的候补。
-:类型:  String
-:默认值: N/A
-
-
-``mds standby for rank``
-
-:描述: 此 MDS 将作为本机架上 MDS 守护进程的候补。
-:类型:  32-bit Integer
-:默认值: ``-1``
-
-
-``mds standby replay``
-
-:描述: 决定一 ``ceph-mds`` 守护进程是否应该滚动并重放活跃 MDS
-       的日志（热备）。
-:类型:  Boolean
-:默认值:  ``false``
 
 
 ``mds min caps per client``

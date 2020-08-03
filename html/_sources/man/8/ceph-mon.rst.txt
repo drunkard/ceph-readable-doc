@@ -15,12 +15,12 @@
 描述
 ====
 
-**ceph-mon** 是 Ceph 分布式存储集群的监视器守护进程。一或多个 **ceph-mon** \
-例程可形成 Paxos 兼职议员集群，它们能为集群成员、配置和状态提供非常可靠、坚\
-实的存储。
+**ceph-mon** 是 Ceph 分布式存储集群的监视器守护进程。一或多个
+**ceph-mon** 例程可形成 Paxos 兼职议员集群，它们能为集群成员、\
+配置和状态提供非常可靠、坚实的存储。
 
-*mondatapath* 是个本地文件系统上的目录，存储着监视器数据。通常可用配置文件中\
-的 ``mon data`` 选项指定。
+*mondatapath* 是个本地文件系统上的目录，存储着监视器数据。\
+通常可用配置文件中的 ``mon data`` 选项指定。
 
 
 选项
@@ -70,12 +70,18 @@
 
    指定 ``--mkfs`` 所需的密钥环。
 
+.. option:: --no-config-file
+
+    Signal that we don't want to rely on a *ceph.conf*, either user provided
+    or the default, to run the daemon.  This will entail providing all
+    necessary options to the daemon as arguments.
+
 
 使用范围
 ========
 
-**ceph-mon** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储\
-系统，更多信息参见 http://ceph.com/docs 。
+**ceph-mon** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式\
+的存储系统，更多信息参见 http://ceph.com/docs 。
 
 
 参考

@@ -49,6 +49,8 @@ Barbican 靠 Keystone 实现密钥的授权和访问控制。
 想知道\ `如何创建密钥`_\ 请参考 Barbican 文档。向 Barbican 发\
 起请求时， ``X-Auth-Token`` 头必须携带合法的 Keystone 令牌。
 
+.. note:: Server-side encryption keys must be 256-bit long and base64 encoded.
+
 请求实例： ::
 
    POST /v1/secrets HTTP/1.1
