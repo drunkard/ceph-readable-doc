@@ -325,7 +325,6 @@ true ，否则它会拒绝删除存储池。
 
 :描述: 设置存储池中的对象副本数，详情参见\ `设置对象副本数`_\ 。\
        仅适用于副本存储池。
-
 :类型: 整数
 
 
@@ -334,8 +333,11 @@ true ，否则它会拒绝删除存储池。
 ``min_size``
 
 :描述: 设置 I/O 需要的最小副本数，详情参见\ `设置对象副本数`_\ 。\
-       仅适用于副本存储池。
-
+              In the case of Erasure Coded pools this should be set to a value
+              greater than 'k' since if we allow IO at the value 'k' there is no
+              redundancy and data will be lost in the event of a permanent OSD
+              failure. For more information see `Erasure Code
+              <../erasure-code>`_
 :类型: 整数
 :适用版本: ``0.54`` 及以上。
 

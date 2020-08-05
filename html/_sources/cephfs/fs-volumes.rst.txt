@@ -348,4 +348,3 @@ On successful cancelation, the cloned subvolume is moved to `canceled` state::
 
 .. _manila: https://github.com/openstack/manila
 .. _CSI: https://github.com/ceph/ceph-csi
-

@@ -23,7 +23,7 @@ Ceph 对象网关支持部分 Amazon S3 桶策略语义。
     "Version": "2012-10-17",
     "Statement": [{
       "Effect": "Allow",
-      "Principal": {"AWS": ["arn:aws:iam::usfolks:user/fred"]},
+      "Principal": {"AWS": ["arn:aws:iam::usfolks:user/fred:subuser"]},
       "Action": "s3:PutObjectAcl",
       "Resource": [
         "arn:aws:s3:::happybucket/*"

@@ -171,7 +171,7 @@ In detail, orchestrators need to explicitly deal with different kinds of errors:
 
 4. Input validation errors
 
-   The ``orchestrator_cli`` module and other calling modules are supposed to
+   The ``orchestrator`` module and other calling modules are supposed to
    provide meaningful error messages.
 
    See :class:`OrchestratorValidationError`.

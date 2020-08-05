@@ -49,8 +49,8 @@ and the Boost.Asio library for asynchronous network i/o.
 ``ssl_certificate``
 
 :描述: SSL 证书文件的路径，用于启用了 SSL 的终结点。
-              If path is prefixed with ``config://``, the certificate will be
-              pulled from the ceph monitor ``config-key`` database.
+       如果路径前缀是 ``config://`` ，证书将从 ceph 监视器的
+       ``config-key`` 数据库拉取。
 :类型: String
 :默认值: None
 

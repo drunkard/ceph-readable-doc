@@ -15,7 +15,7 @@ trends.
 Channels
 --------
 
-The telemetry report is broken down into several "channels," each with
+The telemetry report is broken down into several "channels", each with
 a different type of information.  Assuming telemetry has been enabled,
 individual channels can be turned on and off.  (If telemetry is off,
 the per-channel setting has no effect.)
@@ -23,7 +23,7 @@ the per-channel setting has no effect.)
 * **basic** (default: on): Basic information about the cluster
 
     - capacity of the cluster
-    - number of monitors, managers, OSDs, MDSs, radosgws, or other daemons
+    - number of monitors, managers, OSDs, MDSs, object gateways, or other daemons
     - software version currently being used
     - number and types of RADOS pools and CephFS file systems
     - names of configuration options that have been changed from their
@@ -40,7 +40,7 @@ the per-channel setting has no effect.)
 
     - anonymized SMART metrics
 
-* **ident** (default: on): User-provided identifying information about
+* **ident** (default: off): User-provided identifying information about
   the cluster
 
     - cluster description
@@ -91,7 +91,7 @@ Individual channels can be enabled or disabled with::
 Enabling Telemetry
 ------------------
 
-To allow the *telemetry* module to start sharing data,::
+To allow the *telemetry* module to start sharing data::
 
   ceph telemetry on
 

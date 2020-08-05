@@ -93,7 +93,7 @@ for interactive access or scripting via the `cephfs-shell`_.
     FS 卷和子卷 <fs-volumes>
     CephFS 配额管理 <quota>
     健康消息 <health-messages>
-    旧文件系统的升级 <upgrading>
+    升级旧文件系统 <upgrading>
 
 .. raw:: html
 

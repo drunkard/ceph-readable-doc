@@ -238,14 +238,16 @@ peer cluster connection attributes when adding a mirroring peer, use the
 映像配置
 ========
 
-不像存储池配置方式，映像配置只需要操作单个镜像点 Ceph 集群就行。
+不像存储池配置方式，映像配置只需要操作单个镜像点 Ceph 集群\
+就行。
 
 被镜像的 RBD 映像需指定为主、或非主的，这是映像的属性、不是存\
 储池的。被指定为非主的映像不能被修改。
 
 某一映像的镜像功能被开启时，它会被自动晋级为主映像（在存储池\
-镜像模式为 **pool** 且映像开启了 journaling 映像功能时为隐式\
-的，也可以用 ``rbd`` 命令\ `显式地开启`_\ ）。
+镜像模式为 ``pool`` 且映像开启了 journaling 映像功能时为隐式\
+的；或者，如果存储池镜像模式为 ``image`` 时可以用 ``rbd`` 命令\
+`显式地开启`_\ ）。
 
 
 .. Enable Image Mirroring

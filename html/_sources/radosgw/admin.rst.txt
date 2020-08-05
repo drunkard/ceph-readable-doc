@@ -7,11 +7,10 @@ administer the service with user management, access controls, quotas
 and usage tracking among other features.
 
 
-.. _User Management:
+.. User Management:
 
 用户管理
 ========
-
 Ceph Object Storage user management refers to users of the Ceph Object Storage
 service (i.e., not the Ceph Object Gateway as a user of the Ceph Storage
 Cluster). You must create a user, access key and secret to enable end users to
@@ -40,11 +39,10 @@ to an S3 key type and subuser IDs correspond to a swift key type. Swift keys
 also have access levels of ``read``, ``write``, ``readwrite`` and ``full``.
 
 
-.. _Create a User:
+.. Create a User
 
 创建用户
 --------
-
 To create a user (S3 interface), execute the following::
 
 	radosgw-admin user create --uid={username} --display-name="{display-name}" [--email={email}]
@@ -52,7 +50,7 @@ To create a user (S3 interface), execute the following::
 For example:: 
 
   radosgw-admin user create --uid=johndoe --display-name="John Doe" --email=john@example.com
-  
+
 .. code-block:: javascript
   
   { "user_id": "johndoe",
@@ -60,7 +58,6 @@ For example::
     "email": "john@example.com",
     "suspended": 0,
     "max_buckets": 1000,
-    "auid": 0,
     "subusers": [],
     "keys": [
           { "user": "johndoe",
@@ -91,11 +88,10 @@ with any S3 API-compatible client.
    manually.
 
 
-.. _Create a Subuser:
+.. Create a Subuser
 
 创建子用户
 ----------
-
 要创建用户的子用户（ Swift 接口），必须指定用户 ID （
 ``--uid={username}`` ）、子用户 ID 和这个子用户的访问级别。 ::
 
@@ -115,7 +111,6 @@ with any S3 API-compatible client.
     "email": "john@example.com",
     "suspended": 0,
     "max_buckets": 1000,
-    "auid": 0,
     "subusers": [
           { "id": "johndoe:swift",
             "permissions": "full-control"}],
@@ -137,22 +132,20 @@ with any S3 API-compatible client.
     "temp_url_keys": []}
 
 
-.. _Get User Info:
+.. Get User Info
 
 获取用户信息
 ------------
-
 要获取某一用户的信息，可指定 ``user info`` 和用户 ID （
 ``--uid={username}`` ）。 ::
 
 	radosgw-admin user info --uid=johndoe
 
 
-.. _Modify User Info:
+.. Modify User Info
 
 修改用户信息
 ------------
-
 To modify information about a user, you must specify the user ID (``--uid={username}``)
 and the attributes you want to modify. Typical modifications are to keys and secrets,
 email addresses, display names and access levels. For example:: 
@@ -168,7 +161,6 @@ To modify subuser values, specify ``subuser modify``, user ID and the subuser ID
 
 用户的暂停、启用
 ----------------
-
 When you create a user, the user is enabled by default. However, you may suspend
 user  privileges and re-enable them at a later time. To suspend a user, specify
 ``user suspend`` and the user ID. ::
@@ -184,7 +176,6 @@ To re-enable a suspended user, specify ``user enable`` and the user ID. ::
 
 删除用户
 --------
-
 删除用户时，这个用户以及他的子用户都会被删除。当然，如果你愿意，\
 可以只删除子用户。要删除用户（及其子用户），可指定 ``user rm`` \
 和用户 ID ： ::
@@ -208,7 +199,6 @@ To re-enable a suspended user, specify ``user enable`` and the user ID. ::
 
 删除子用户
 ----------
-
 你删除子用户的同时，也失去了 Swift 接口的访问方式，但是这个用\
 户还在系统中存在。要删除子用户，可指定 ``subuser rm`` 及子用户
 ID ： ::
@@ -225,12 +215,11 @@ ID ： ::
 
 增加、删除密钥
 --------------
-
 用户和子用户都必须有密钥才能访问 S3 或 Swift 接口。用 S3 访问\
 时，用户需要一个由访问密钥和私钥组成的密钥对；而用 Swift 访问\
-时，通常只需要一个私钥（密码），并且要和相关的用户 ID 一起用才\
-行。你可以创建密钥，并指定或生成访问密钥和/或私钥；也可以删除\
-密钥。相关选项有：
+时，通常只需要一个私钥（密码），并且要和相关的用户 ID 一起用\
+才行。你可以创建密钥，并指定或生成访问密钥和/或私钥；也可以\
+删除密钥。相关选项有：
 
 - ``--key-type=<type>`` 指定密钥类型，选项有： s3 、 swift ；
 - ``--access-key=<key>`` 手动指定 S3 的访问密钥；
@@ -306,11 +295,10 @@ ID ： ::
 	radosgw-admin key rm -subuser=foo:bar --key-type=swift
 
 
-.. _Add / Remove Admin Capabilities:
+.. Add / Remove Admin Capabilities
 
 增加、删除管理能力
 ------------------
-
 Ceph 存储集群提供了一个管理 API ，用户可以通过 REST API 使用管\
 理功能。默认情况下，用户\ **无权**\ 访问这个 API ，给用户分配\
 管理能力后，他才能使用管理功能。
@@ -335,11 +323,10 @@ read 、 write 或 all 能力，例如： ::
 	radosgw-admin caps rm --uid=johndoe --caps={caps}
 
 
-.. _Quota Management:
+.. Quota Management:
 
 配额管理
 ========
-
 Ceph 对象网关允许你给用户及其拥有的桶设置配额，可设置的配额有\
 桶内的最大对象数、和桶可以存储的最大数据尺寸。
 
@@ -356,11 +343,10 @@ Ceph 对象网关允许你给用户及其拥有的桶设置配额，可设置的
   用户配额作用于用户。
 
 
-.. _Set User Quota:
+.. Set User Quota
 
 设置用户配额
 ------------
-
 启用配额前，必须先配置配额参数。例如： ::
 
 	radosgw-admin quota set --quota-scope=user --uid=<uid> [--max-objects=<num objects>] [--max-size=<max size>]
@@ -372,11 +358,11 @@ Ceph 对象网关允许你给用户及其拥有的桶设置配额，可设置的
 对象数和、或最大尺寸为负值时，表示不再检查这种配额属性。
 
 
-.. _Enable/Disable User Quota:
+
+.. Enable/Disable User Quota
 
 启用或禁用用户配额
 ------------------
-
 设置好用户配额后就可以启用了。例如： ::
 
 	radosgw-admin quota enable --quota-scope=user --uid=<uid>
@@ -386,11 +372,10 @@ Ceph 对象网关允许你给用户及其拥有的桶设置配额，可设置的
 	radosgw-admin quota disable --quota-scope=user --uid=<uid>
 
 
-.. _Set Bucket Quota:
+.. Set Bucket Quota
 
 设置桶配额
 ----------
-
 Bucket quotas apply to the buckets owned by the specified ``uid``. They are
 independent of the user. ::
 
@@ -400,11 +385,10 @@ A negative value for num objects and / or max size means that the
 specific quota attribute check is disabled.
 
 
-.. _Enable/Disable Bucket Quota:
+.. Enable/Disable Bucket Quota
 
 启用、禁用桶配额
 ----------------
-
 设置好桶配额后，你可以这样启用： ::
 
 	radosgw-admin quota enable --quota-scope=bucket --uid=<uid>
@@ -414,11 +398,10 @@ specific quota attribute check is disabled.
 	radosgw-admin quota disable --quota-scope=bucket --uid=<uid>
 
 
-.. _Get Quota Settings:
+.. Get Quota Settings:
 
 查看配额配置信息
 ----------------
-
 You may access each user's quota settings via the user information
 API. To read user quota setting information with the CLI interface,
 execute the following::
@@ -426,7 +409,7 @@ execute the following::
 	radosgw-admin user info --uid=<uid>
 
 
-.. _Update Quota Stats:
+.. Update Quota Stats
 
 更新配额统计信息
 ----------------
@@ -438,11 +421,11 @@ the latest quota stats. ::
 	radosgw-admin user stats --uid=<uid> --sync-stats
 
 
-.. _Get User Usage Stats:
+.. Get User Usage Stats
+.. _rgw_user_usage_stats:
 
 查看用户使用情况的统计信息
 --------------------------
-
 查看用户已经消耗了多少配额可以用下列命令： ::
 
 	radosgw-admin user stats --uid=<uid>
@@ -451,11 +434,10 @@ the latest quota stats. ::
    ``--sync-stats`` 选项来获取最新数据。
 
 
-.. _Default Quotas:
+.. Default Quotas
 
 默认配额
 --------
-
 你可以在配置文件里设置默认配额，新增用户会采用这些默认值，而已\
 经存在的用户不受影响。如果相关的默认配额是写在配置文件里的，那\
 么这些配额会分配给新用户，并对其启用配额管理功能。请参考
@@ -468,7 +450,6 @@ the latest quota stats. ::
 
 配额缓存
 --------
-
 配额统计信息缓存在各个 RGW 例程内。如果有多个例程，这些缓存就\
 会妨碍配额的完整施行，因为各例程将持有不同的配额信息。控制这些\
 的选项有 ``rgw bucket quota ttl`` 、
@@ -480,7 +461,7 @@ the latest quota stats. ::
 `Ceph 对象网关配置参考`_\ 。
 
 
-.. _Reading / Writing Global Quotas:
+.. Reading / Writing Global Quotas
 
 读取、写入全局配额
 ------------------
@@ -505,7 +486,6 @@ the latest quota stats. ::
 
 使用情况
 ========
-
 Ceph 对象网关会记录每个用户的使用情况，你可以查看某段时间内用\
 户的使用情况。
 
@@ -528,11 +508,10 @@ Ceph 对象网关会记录每个用户的使用情况，你可以查看某段时
    with 1 hour resolution.
 
 
-.. _Show Usage:
+.. Show Usage
 
 查看使用情况
 ------------
-
 To show usage statistics, specify the ``usage show``. To show usage for a
 particular user, you must specify a user ID. You may also specify a start date,
 end date, and whether or not to show log entries.::
@@ -544,11 +523,10 @@ You may also show a summary of usage information for all users by omitting a use
 	radosgw-admin usage show --show-log-entries=false
 
 
-.. _Trim Usage:
+.. Trim Usage
 
 清理统计日志
 ------------
-
 With heavy use, usage logs can begin to take up storage space. You can trim
 usage logs for all users and for specific users. You may also specify date
 ranges for trim operations. ::
