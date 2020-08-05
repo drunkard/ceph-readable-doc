@@ -1,0 +1,814 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Multisite Sync Policy &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="存储池" href="../pools/" />
+    <link rel="prev" title="多站" href="../multisite/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../pools/" title="存储池"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../multisite/" title="多站"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 对象网关</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/radosgw/multisite-sync-policy.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="multisite-sync-policy">
+<h1>Multisite Sync Policy<a class="headerlink" href="#multisite-sync-policy" title="Permalink to this headline">¶</a></h1>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version Octopus.</span></p>
+</div>
+<p>Multisite bucket-granularity sync policy provides fine grained control of data movement between buckets in different zones. It extends the zone sync mechanism. Previously buckets were being treated symmetrically, that is – each (data) zone holds a mirror of that bucket that should be the same as all the other zones. Whereas leveraging the bucket-granularity sync policy is possible for buckets to diverge, and a bucket can pull data from other buckets (ones that don’t share its name or its ID) in different zone.  The sync process was assuming therefore that the bucket sync source and the bucket sync destination were always referring to the same bucket, now that is not the case anymore.</p>
+<p>The sync policy supersedes the old zonegroup coarse configuration (sync_from*). The sync policy can be configured at the zonegroup level (and if it is configured it replaces the old style config), but it can also be configured at the bucket level.</p>
+<p>In the sync policy multiple groups that can contain lists of data-flow configurations can be defined, as well as lists of pipe configurations. The data-flow defines the flow of data between the different zones. It can define symmetrical data flow, in which multiple zones sync data from each other, and it can define directional data flow, in which the data moves in one way from one zone to another.</p>
+<p>A pipe defines the actual buckets that can use these data flows, and the properties that are associated with it (for example: source object prefix).</p>
+<p>A sync policy group can be in 3 states:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 41%" />
+<col style="width: 59%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Value</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code></p></td>
+<td><p>sync is allowed and enabled</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">allowed</span></code></p></td>
+<td><p>sync is allowed</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">forbidden</span></code></p></td>
+<td><p>sync (as defined by this group) is not
+allowed and can override other groups</p></td>
+</tr>
+</tbody>
+</table>
+<p>A policy can be defined at the bucket level. A bucket level sync policy inherits the data flow of the zonegroup policy, and can only define a subset of what the zonegroup allows.</p>
+<p>A wildcard zone, and a wildcard bucket parameter in the policy defines all relevant zones, or all relevant buckets. In the context of a bucket policy it means the current bucket instance.  A disaster recovery configuration where entire zones are mirrored doesn’t require configuring anything on the buckets. However, for a fine grained bucket sync it would be better to configure the pipes to be synced by allowing (status=allowed) them at the zonegroup level (e.g., using wildcards), but only enable the specific sync at the bucket level (status=enabled). If needed, the policy at the bucket level can limit the data movement to specific relevant zones.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Any changes to the zonegroup policy needs to be applied on the
+zonegroup master zone, and require period update and commit. Changes
+to the bucket policy needs to be applied on the zonegroup master
+zone. The changes are dynamically handled by rgw.</p>
+</div>
+<div class="section" id="s3-replication-api">
+<h2>S3 Replication API<a class="headerlink" href="#s3-replication-api" title="Permalink to this headline">¶</a></h2>
+<p>The S3 bucket replication api has also been implemented, and allows users to create replication rules between different buckets. Note though that while the AWS replication feature allows bucket replication within the same zone, rgw does not allow it at the moment.  However, the rgw api also added a new ‘Zone’ array that allows users to select to what zones the specific bucket will be synced.</p>
+<div class="section" id="sync-policy-control-reference">
+<h3>Sync Policy Control Reference<a class="headerlink" href="#sync-policy-control-reference" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="get-sync-policy">
+<h2>Get Sync Policy<a class="headerlink" href="#get-sync-policy" title="Permalink to this headline">¶</a></h2>
+<p>To retrieve the current zonegroup sync policy, or a specific bucket policy:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync policy get [--bucket=&lt;bucket&gt;]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-sync-policy-group">
+<h2>Create Sync Policy Group<a class="headerlink" href="#create-sync-policy-group" title="Permalink to this headline">¶</a></h2>
+<p>To create a sync policy group:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group create [--bucket=&lt;bucket&gt;]                      \</span>
+                                  <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>                    \
+                                  <span class="o">--</span><span class="n">status</span><span class="o">=&lt;</span><span class="n">enabled</span> <span class="o">|</span> <span class="n">allowed</span> <span class="o">|</span> <span class="n">forbidden</span><span class="o">&gt;</span> \
+</pre></div>
+</div>
+</div>
+<div class="section" id="modify-sync-policy-group">
+<h2>Modify Sync Policy Group<a class="headerlink" href="#modify-sync-policy-group" title="Permalink to this headline">¶</a></h2>
+<p>To modify a sync policy group:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group modify [--bucket=&lt;bucket&gt;]                      \</span>
+                                  <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>                    \
+                                  <span class="o">--</span><span class="n">status</span><span class="o">=&lt;</span><span class="n">enabled</span> <span class="o">|</span> <span class="n">allowed</span> <span class="o">|</span> <span class="n">forbidden</span><span class="o">&gt;</span> \
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>Modify Sync Policy Group<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>To show a sync policy group:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group get [--bucket=&lt;bucket&gt;]       \</span>
+                                  <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="remove-sync-policy-group">
+<h2>Remove Sync Policy Group<a class="headerlink" href="#remove-sync-policy-group" title="Permalink to this headline">¶</a></h2>
+<p>To remove a sync policy group:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group remove [--bucket=&lt;bucket&gt;]    \</span>
+                                  <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-sync-flow">
+<h2>Create Sync Flow<a class="headerlink" href="#create-sync-flow" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>To create or update directional sync flow:</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group flow create [--bucket=&lt;bucket&gt;]          \</span>
+                                       <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>        \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>          \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">type</span><span class="o">=</span><span class="n">directional</span>      \
+                                       <span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">zone</span><span class="o">=&lt;</span><span class="n">source_zone</span><span class="o">&gt;</span>  \
+                                       <span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">zone</span><span class="o">=&lt;</span><span class="n">dest_zone</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>To create or update symmetrical sync flow:</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group flow create [--bucket=&lt;bucket&gt;]          \</span>
+                                       <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>        \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>          \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">type</span><span class="o">=</span><span class="n">symmetrical</span>      \
+                                       <span class="o">--</span><span class="n">zones</span><span class="o">=&lt;</span><span class="n">zones</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Where zones are a comma separated list of all the zones that need to add to the flow.</p>
+</div>
+<div class="section" id="remove-sync-flow-zones">
+<h2>Remove Sync Flow Zones<a class="headerlink" href="#remove-sync-flow-zones" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>To remove directional sync flow:</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group flow remove [--bucket=&lt;bucket&gt;]          \</span>
+                                       <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>        \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>          \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">type</span><span class="o">=</span><span class="n">directional</span>      \
+                                       <span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">zone</span><span class="o">=&lt;</span><span class="n">source_zone</span><span class="o">&gt;</span>  \
+                                       <span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">zone</span><span class="o">=&lt;</span><span class="n">dest_zone</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>To remove specific zones from symmetrical sync flow:</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group flow remove [--bucket=&lt;bucket&gt;]          \</span>
+                                       <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>        \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>          \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">type</span><span class="o">=</span><span class="n">symmetrical</span>      \
+                                       <span class="o">--</span><span class="n">zones</span><span class="o">=&lt;</span><span class="n">zones</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Where zones are a comma separated list of all zones to remove from the flow.</p>
+<ul class="simple">
+<li><p>To remove symmetrical sync flow:</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group flow remove [--bucket=&lt;bucket&gt;]          \</span>
+                                       <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>        \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">flow</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>          \
+                                       <span class="o">--</span><span class="n">flow</span><span class="o">-</span><span class="nb">type</span><span class="o">=</span><span class="n">symmetrical</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-sync-pipe">
+<h2>Create Sync Pipe<a class="headerlink" href="#create-sync-pipe" title="Permalink to this headline">¶</a></h2>
+<p>To create sync group pipe, or update its parameters:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group pipe create [--bucket=&lt;bucket&gt;]                      \</span>
+                                       <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>                    \
+                                       <span class="o">--</span><span class="n">pipe</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">pipe</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>                      \
+                                       <span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">zones</span><span class="o">=&lt;</span><span class="n">source_zones</span><span class="o">&gt;</span>            \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">bucket</span><span class="o">=&lt;</span><span class="n">source_buckets</span><span class="o">&gt;</span><span class="p">]</span>       \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">bucket</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">source_bucket_id</span><span class="o">&gt;</span><span class="p">]</span>  \
+                                       <span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">zones</span><span class="o">=&lt;</span><span class="n">dest_zones</span><span class="o">&gt;</span>                \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">bucket</span><span class="o">=&lt;</span><span class="n">dest_buckets</span><span class="o">&gt;</span><span class="p">]</span>           \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">bucket</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">dest_bucket_id</span><span class="o">&gt;</span><span class="p">]</span>      \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">prefix</span><span class="o">=&lt;</span><span class="n">source_prefix</span><span class="o">&gt;</span><span class="p">]</span>               \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">prefix</span><span class="o">-</span><span class="n">rm</span><span class="p">]</span>                            \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">tags</span><span class="o">-</span><span class="n">add</span><span class="o">=&lt;</span><span class="n">tags</span><span class="o">&gt;</span><span class="p">]</span>                      \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">tags</span><span class="o">-</span><span class="n">rm</span><span class="o">=&lt;</span><span class="n">tags</span><span class="o">&gt;</span><span class="p">]</span>                       \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">owner</span><span class="o">=&lt;</span><span class="n">owner</span><span class="o">&gt;</span><span class="p">]</span>                   \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">storage</span><span class="o">-</span><span class="n">class</span><span class="o">=&lt;</span><span class="n">storage_class</span><span class="o">&gt;</span><span class="p">]</span>        \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">mode</span><span class="o">=&lt;</span><span class="n">system</span> <span class="o">|</span> <span class="n">user</span><span class="o">&gt;</span><span class="p">]</span>                 \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">uid</span><span class="o">=&lt;</span><span class="n">user_id</span><span class="o">&gt;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Zones are either a list of zones, or ‘*’ (wildcard). Wildcard zones mean any zone that matches the sync flow rules.
+Buckets are either a bucket name, or ‘*’ (wildcard). Wildcard bucket means the current bucket
+Prefix can be defined to filter source objects.
+Tags are passed by a comma separated list of ‘key=value’.
+Destination owner can be set to force a destination owner of the objects. If user mode is selected, only the destination bucket owner can be set.
+Destinatino storage class can also be condfigured.
+User id can be set for user mode, and will be the user under which the sync operation will be executed (for permissions validation).</p>
+</div>
+<div class="section" id="remove-sync-pipe">
+<h2>Remove Sync Pipe<a class="headerlink" href="#remove-sync-pipe" title="Permalink to this headline">¶</a></h2>
+<p>To remove specific sync group pipe params, or the entire pipe:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync group pipe remove [--bucket=&lt;bucket&gt;]                     \</span>
+                                       <span class="o">--</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">group</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>                   \
+                                       <span class="o">--</span><span class="n">pipe</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">pipe</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span>                     \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">zones</span><span class="o">=&lt;</span><span class="n">source_zones</span><span class="o">&gt;</span><span class="p">]</span>         \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">bucket</span><span class="o">=&lt;</span><span class="n">source_buckets</span><span class="o">&gt;</span><span class="p">]</span>      \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">bucket</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">source_bucket_id</span><span class="o">&gt;</span><span class="p">]</span> \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">zones</span><span class="o">=&lt;</span><span class="n">dest_zones</span><span class="o">&gt;</span><span class="p">]</span>             \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">bucket</span><span class="o">=&lt;</span><span class="n">dest_buckets</span><span class="o">&gt;</span><span class="p">]</span>          \
+                                       <span class="p">[</span><span class="o">--</span><span class="n">dest</span><span class="o">-</span><span class="n">bucket</span><span class="o">-</span><span class="nb">id</span><span class="o">=&lt;</span><span class="n">dest_bucket_id</span><span class="o">&gt;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="sync-info">
+<h2>Sync Info<a class="headerlink" href="#sync-info" title="Permalink to this headline">¶</a></h2>
+<p>To get information about the expected sync sources and targets (as defined by the sync policy):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># radosgw-admin sync info [--bucket=&lt;bucket&gt;]             \</span>
+                          <span class="p">[</span><span class="o">--</span><span class="n">effective</span><span class="o">-</span><span class="n">zone</span><span class="o">-</span><span class="n">name</span><span class="o">=&lt;</span><span class="n">zone</span><span class="o">&gt;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Since a bucket can define a policy that defines data movement from it towards a different bucket at a different zone, when the policy is created we also generate a list of bucket dependencies that are used as hints when a sync of any particular bucket happens. The fact that a bucket references another bucket does not mean it actually syncs to/from it, as the data flow might not permit it.</p>
+<div class="section" id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h3>
+<p>The system in these examples includes 3 zones: <code class="docutils literal notranslate"><span class="pre">us-east</span></code> (the master zone), <code class="docutils literal notranslate"><span class="pre">us-west</span></code>, <code class="docutils literal notranslate"><span class="pre">us-west-2</span></code>.</p>
+</div>
+</div>
+<div class="section" id="example-1-two-zones-complete-mirror">
+<h2>Example 1: Two Zones, Complete Mirror<a class="headerlink" href="#example-1-two-zones-complete-mirror" title="Permalink to this headline">¶</a></h2>
+<p>This is similar to older (pre <code class="docutils literal notranslate"><span class="pre">Octopus</span></code>) sync capabilities, but being done via the new sync policy engine. Note that changes to the zonegroup sync policy require a period update and commit.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group create --group-id=group1 --status=allowed
+[us-east] $ radosgw-admin sync group flow create --group-id=group1 \
+                          --flow-id=flow-mirror --flow-type=symmetrical \
+                          --zones=us-east,us-west
+[us-east] $ radosgw-admin sync group pipe create --group-id=group1 \
+                          --pipe-id=pipe1 --source-zones=&#39;*&#39; \
+                          --source-bucket=&#39;*&#39; --dest-zones=&#39;*&#39; \
+                          --dest-bucket=&#39;*&#39;
+[us-east] $ radosgw-admin sync group modify --group-id=group1 --status=enabled
+[us-east] $ radosgw-admin period update --commit
+
+$ radosgw-admin sync info --bucket=buck
+{
+    &quot;sources&quot;: [
+        {
+            &quot;id&quot;: &quot;pipe1&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-east&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;params&quot;: {
+...
+            }
+        }
+    ],
+    &quot;dests&quot;: [
+        {
+            &quot;id&quot;: &quot;pipe1&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-east&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+           ...
+        }
+    ],
+    ...
+    }
+}
+</pre></div>
+</div>
+<p>Note that the “id” field in the output above reflects the pipe rule
+that generated that entry, a single rule can generate multiple sync
+entries as can be seen in the example.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-west] $ radosgw-admin sync info --bucket=buck
+{
+    &quot;sources&quot;: [
+        {
+            &quot;id&quot;: &quot;pipe1&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-east&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            ...
+        }
+    ],
+    &quot;dests&quot;: [
+        {
+            &quot;id&quot;: &quot;pipe1&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-east&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+           ...
+        }
+    ],
+    ...
+}
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-2-directional-entire-zone-backup">
+<h2>Example 2: Directional, Entire Zone Backup<a class="headerlink" href="#example-2-directional-entire-zone-backup" title="Permalink to this headline">¶</a></h2>
+<p>Also similar to older sync capabilities. In here we add a third zone, <code class="docutils literal notranslate"><span class="pre">us-west-2</span></code> that will be a replica of <code class="docutils literal notranslate"><span class="pre">us-west</span></code>, but data will not be replicated back from it.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group flow create --group-id=group1 \
+                          --flow-id=us-west-backup --flow-type=directional \
+                          --source-zone=us-west --dest-zone=us-west-2
+[us-east] $ radosgw-admin period update --commit
+</pre></div>
+</div>
+<p>Note that us-west has two dests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-west] $ radosgw-admin sync info --bucket=buck
+{
+    &quot;sources&quot;: [
+        {
+            &quot;id&quot;: &quot;pipe1&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-east&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+           ...
+        }
+    ],
+    &quot;dests&quot;: [
+        {
+            &quot;id&quot;: &quot;pipe1&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-east&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+           ...
+        },
+        {
+            &quot;id&quot;: &quot;pipe1&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-west-2&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+           ...
+        }
+    ],
+    ...
+}
+</pre></div>
+</div>
+<p>Whereas us-west-2 has only source and no destinations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-west-2] $ radosgw-admin sync info --bucket=buck
+{
+    &quot;sources&quot;: [
+        {
+            &quot;id&quot;: &quot;pipe1&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-west-2&quot;,
+                &quot;bucket&quot;: &quot;buck:115b12b3-....4409.1&quot;
+            },
+           ...
+        }
+    ],
+    &quot;dests&quot;: [],
+    ...
+}
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-3-mirror-a-specific-bucket">
+<h2>Example 3: Mirror a Specific Bucket<a class="headerlink" href="#example-3-mirror-a-specific-bucket" title="Permalink to this headline">¶</a></h2>
+<p>Using the same group configuration, but this time switching it to <code class="docutils literal notranslate"><span class="pre">allowed</span></code> state, which means that sync is allowed but not enabled.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group modify --group-id=group1 --status=allowed
+[us-east] $ radosgw-admin period update --commit
+</pre></div>
+</div>
+<p>And we will create a bucket level policy rule for existing bucket <code class="docutils literal notranslate"><span class="pre">buck2</span></code>. Note that the bucket needs to exist before being able to set this policy, and admin commands that modify bucket policies need to run on the master zone, however, they do not require period update.  There is no need to change the data flow, as it is inherited from the zonegroup policy. A bucket policy flow will only be a subset of the flow defined in the zonegroup policy. Same goes for pipes, although a bucket policy can enable pipes that are not enabled (albeit not forbidden) at the zonegroup policy.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group create --bucket=buck2 \
+                          --group-id=buck2-default --status=enabled
+
+[us-east] $ radosgw-admin sync group pipe create --bucket=buck2 \
+                          --group-id=buck2-default --pipe-id=pipe1 \
+                          --source-zones=&#39;*&#39; --dest-zones=&#39;*&#39;
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-4-limit-bucket-sync-to-specific-zones">
+<h2>Example 4: Limit Bucket Sync To Specific Zones<a class="headerlink" href="#example-4-limit-bucket-sync-to-specific-zones" title="Permalink to this headline">¶</a></h2>
+<p>This will only sync <code class="docutils literal notranslate"><span class="pre">buck3</span></code> to <code class="docutils literal notranslate"><span class="pre">us-east</span></code> (from any zone that flow allows to sync into <code class="docutils literal notranslate"><span class="pre">us-east</span></code>).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group create --bucket=buck3 \
+                          --group-id=buck3-default --status=enabled
+
+[us-east] $ radosgw-admin sync group pipe create --bucket=buck3 \
+                          --group-id=buck3-default --pipe-id=pipe1 \
+                          --source-zones=&#39;*&#39; --dest-zones=us-east
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-5-sync-from-a-different-bucket">
+<h2>Example 5: Sync From a Different Bucket<a class="headerlink" href="#example-5-sync-from-a-different-bucket" title="Permalink to this headline">¶</a></h2>
+<p>Note that bucket sync only works (currently) across zones and not within the same zone.</p>
+<p>Set <code class="docutils literal notranslate"><span class="pre">buck4</span></code> to pull data from <code class="docutils literal notranslate"><span class="pre">buck5</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group create --bucket=buck4 &#39;
+                          --group-id=buck4-default --status=enabled
+
+[us-east] $ radosgw-admin sync group pipe create --bucket=buck4 \
+                          --group-id=buck4-default --pipe-id=pipe1 \
+                          --source-zones=&#39;*&#39; --source-bucket=buck5 \
+                          --dest-zones=&#39;*&#39;
+</pre></div>
+</div>
+<p>can also limit it to specific zones, for example the following will
+only sync data originated in us-west:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group pipe modify --bucket=buck4 \
+                          --group-id=buck4-default --pipe-id=pipe1 \
+                          --source-zones=us-west --source-bucket=buck5 \
+                          --dest-zones=&#39;*&#39;
+</pre></div>
+</div>
+<p>Checking the sync info for <code class="docutils literal notranslate"><span class="pre">buck5</span></code> on <code class="docutils literal notranslate"><span class="pre">us-west</span></code> is interesting:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-west] $ radosgw-admin sync info --bucket=buck5
+{
+    &quot;sources&quot;: [],
+    &quot;dests&quot;: [],
+    &quot;hints&quot;: {
+        &quot;sources&quot;: [],
+        &quot;dests&quot;: [
+            &quot;buck4:115b12b3-....14433.2&quot;
+        ]
+    },
+    &quot;resolved-hints-1&quot;: {
+        &quot;sources&quot;: [],
+        &quot;dests&quot;: [
+            {
+                &quot;id&quot;: &quot;pipe1&quot;,
+                &quot;source&quot;: {
+                    &quot;zone&quot;: &quot;us-west&quot;,
+                    &quot;bucket&quot;: &quot;buck5&quot;
+                },
+                &quot;dest&quot;: {
+                    &quot;zone&quot;: &quot;us-east&quot;,
+                    &quot;bucket&quot;: &quot;buck4:115b12b3-....14433.2&quot;
+                },
+                ...
+            },
+            {
+                &quot;id&quot;: &quot;pipe1&quot;,
+                &quot;source&quot;: {
+                    &quot;zone&quot;: &quot;us-west&quot;,
+                    &quot;bucket&quot;: &quot;buck5&quot;
+                },
+                &quot;dest&quot;: {
+                    &quot;zone&quot;: &quot;us-west-2&quot;,
+                    &quot;bucket&quot;: &quot;buck4:115b12b3-....14433.2&quot;
+                },
+                ...
+            }
+        ]
+    },
+    &quot;resolved-hints&quot;: {
+        &quot;sources&quot;: [],
+        &quot;dests&quot;: []
+    }
+}
+</pre></div>
+</div>
+<p>Note that there are resolved hints, which means that the bucket <code class="docutils literal notranslate"><span class="pre">buck5</span></code> found about <code class="docutils literal notranslate"><span class="pre">buck4</span></code> syncing from it indirectly, and not from its own policy (the policy for <code class="docutils literal notranslate"><span class="pre">buck5</span></code> itself is empty).</p>
+</div>
+<div class="section" id="example-6-sync-to-different-bucket">
+<h2>Example 6: Sync To Different Bucket<a class="headerlink" href="#example-6-sync-to-different-bucket" title="Permalink to this headline">¶</a></h2>
+<p>The same mechanism can work for configuring data to be synced to (vs.  synced from as in the previous example). Note that internally data is still pulled from the source at the destination zone:</p>
+<p>Set <code class="docutils literal notranslate"><span class="pre">buck6</span></code> to “push” data to <code class="docutils literal notranslate"><span class="pre">buck5</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group create --bucket=buck6 \
+                          --group-id=buck6-default --status=enabled
+
+[us-east] $ radosgw-admin sync group pipe create --bucket=buck6 \
+                          --group-id=buck6-default --pipe-id=pipe1 \
+                          --source-zones=&#39;*&#39; --source-bucket=&#39;*&#39; \
+                          --dest-zones=&#39;*&#39; --dest-bucket=buck5
+</pre></div>
+</div>
+<p>A wildcard bucket name means the current bucket in the context of bucket sync policy.</p>
+<p>Combined with the configuration in Example 5, we can now write data to <code class="docutils literal notranslate"><span class="pre">buck6</span></code> on <code class="docutils literal notranslate"><span class="pre">us-east</span></code>, data will sync to <code class="docutils literal notranslate"><span class="pre">buck5</span></code> on <code class="docutils literal notranslate"><span class="pre">us-west</span></code>, and from there it will be distributed to <code class="docutils literal notranslate"><span class="pre">buck4</span></code> on <code class="docutils literal notranslate"><span class="pre">us-east</span></code>, and on <code class="docutils literal notranslate"><span class="pre">us-west-2</span></code>.</p>
+</div>
+<div class="section" id="example-7-source-filters">
+<h2>Example 7: Source Filters<a class="headerlink" href="#example-7-source-filters" title="Permalink to this headline">¶</a></h2>
+<p>Sync from <code class="docutils literal notranslate"><span class="pre">buck8</span></code> to <code class="docutils literal notranslate"><span class="pre">buck9</span></code>, but only objects that start with <code class="docutils literal notranslate"><span class="pre">foo/</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group create --bucket=buck8 \
+                          --group-id=buck8-default --status=enabled
+
+[us-east] $ radosgw-admin sync group pipe create --bucket=buck8 \
+                          --group-id=buck8-default --pipe-id=pipe-prefix \
+                          --prefix=foo/ --source-zones=&#39;*&#39; --dest-zones=&#39;*&#39; \
+                          --dest-bucket=buck9
+</pre></div>
+</div>
+<p>Also sync from <code class="docutils literal notranslate"><span class="pre">buck8</span></code> to <code class="docutils literal notranslate"><span class="pre">buck9</span></code> any object that has the tags <code class="docutils literal notranslate"><span class="pre">color=blue</span></code> or <code class="docutils literal notranslate"><span class="pre">color=red</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group pipe create --bucket=buck8 \
+                          --group-id=buck8-default --pipe-id=pipe-tags \
+                          --tags-add=color=blue,color=red --source-zones=&#39;*&#39; \
+                          --dest-zones=&#39;*&#39; --dest-bucket=buck9
+</pre></div>
+</div>
+<p>And we can check the expected sync in <code class="docutils literal notranslate"><span class="pre">us-east</span></code> (for example):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync info --bucket=buck8
+{
+    &quot;sources&quot;: [],
+    &quot;dests&quot;: [
+        {
+            &quot;id&quot;: &quot;pipe-prefix&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-east&quot;,
+                &quot;bucket&quot;: &quot;buck8:115b12b3-....14433.5&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck9&quot;
+            },
+            &quot;params&quot;: {
+                &quot;source&quot;: {
+                    &quot;filter&quot;: {
+                        &quot;prefix&quot;: &quot;foo/&quot;,
+                        &quot;tags&quot;: []
+                    }
+                },
+                ...
+            }
+        },
+        {
+            &quot;id&quot;: &quot;pipe-tags&quot;,
+            &quot;source&quot;: {
+                &quot;zone&quot;: &quot;us-east&quot;,
+                &quot;bucket&quot;: &quot;buck8:115b12b3-....14433.5&quot;
+            },
+            &quot;dest&quot;: {
+                &quot;zone&quot;: &quot;us-west&quot;,
+                &quot;bucket&quot;: &quot;buck9&quot;
+            },
+            &quot;params&quot;: {
+                &quot;source&quot;: {
+                    &quot;filter&quot;: {
+                        &quot;tags&quot;: [
+                            {
+                                &quot;key&quot;: &quot;color&quot;,
+                                &quot;value&quot;: &quot;blue&quot;
+                            },
+                            {
+                                &quot;key&quot;: &quot;color&quot;,
+                                &quot;value&quot;: &quot;red&quot;
+                            }
+                        ]
+                    }
+                },
+                ...
+            }
+        }
+    ],
+    ...
+}
+</pre></div>
+</div>
+<p>Note that there aren’t any sources, only two different destinations (one for each configuration). When the sync process happens it will select the relevant rule for each object it syncs.</p>
+<p>Prefixes and tags can be combined, in which object will need to have both in order to be synced. The priority param can also be passed, and it can be used to determine when there are multiple different rules that are matched (and have the same source and destination), to determine which of the rules to be used.</p>
+</div>
+<div class="section" id="example-8-destination-params-storage-class">
+<h2>Example 8: Destination Params: Storage Class<a class="headerlink" href="#example-8-destination-params-storage-class" title="Permalink to this headline">¶</a></h2>
+<p>Storage class of the destination objects can be configured:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group create --bucket=buck10 \
+                          --group-id=buck10-default --status=enabled
+
+[us-east] $ radosgw-admin sync group pipe create --bucket=buck10 \
+                          --group-id=buck10-default \
+                          --pipe-id=pipe-storage-class \
+                          --source-zones=&#39;*&#39; --dest-zones=us-west-2 \
+                          --storage-class=CHEAP_AND_SLOW
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-9-destination-params-destination-owner-translation">
+<h2>Example 9: Destination Params: Destination Owner Translation<a class="headerlink" href="#example-9-destination-params-destination-owner-translation" title="Permalink to this headline">¶</a></h2>
+<p>Set the destination objects owner as the destination bucket owner.
+This requires specifying the uid of the destination bucket:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group create --bucket=buck11 \
+                          --group-id=buck11-default --status=enabled
+
+[us-east] $ radosgw-admin sync group pipe create --bucket=buck11 \
+                          --group-id=buck11-default --pipe-id=pipe-dest-owner \
+                          --source-zones=&#39;*&#39; --dest-zones=&#39;*&#39; \
+                          --dest-bucket=buck12 --dest-owner=joe
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-10-destination-params-user-mode">
+<h2>Example 10: Destination Params: User Mode<a class="headerlink" href="#example-10-destination-params-user-mode" title="Permalink to this headline">¶</a></h2>
+<p>User mode makes sure that the user has permissions to both read the objects, and write to the destination bucket. This requires that the uid of the user (which in its context the operation executes) is specified.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[us-east] $ radosgw-admin sync group pipe modify --bucket=buck11 \
+                          --group-id=buck11-default --pipe-id=pipe-dest-owner \
+                          --mode=user --uid=jenny
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 对象网关</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/install-ceph-gateway/">基于 Civetweb 手动安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../frontends/">HTTP 前端</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement/">存储池归置与存储类</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multisite/">多站配置</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">多站同步策略配置</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#s3-replication-api">S3 Replication API</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#sync-policy-control-reference">Sync Policy Control Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#get-sync-policy">Get Sync Policy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-sync-policy-group">Create Sync Policy Group</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#modify-sync-policy-group">Modify Sync Policy Group</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Modify Sync Policy Group</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-sync-policy-group">Remove Sync Policy Group</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-sync-flow">Create Sync Flow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-sync-flow-zones">Remove Sync Flow Zones</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-sync-pipe">Create Sync Pipe</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-sync-pipe">Remove Sync Pipe</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sync-info">Sync Info</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#example-1-two-zones-complete-mirror">Example 1: Two Zones, Complete Mirror</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-2-directional-entire-zone-backup">Example 2: Directional, Entire Zone Backup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-3-mirror-a-specific-bucket">Example 3: Mirror a Specific Bucket</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-4-limit-bucket-sync-to-specific-zones">Example 4: Limit Bucket Sync To Specific Zones</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-5-sync-from-a-different-bucket">Example 5: Sync From a Different Bucket</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-6-sync-to-different-bucket">Example 6: Sync To Different Bucket</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-7-source-filters">Example 7: Source Filters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-8-destination-params-storage-class">Example 8: Destination Params: Storage Class</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-9-destination-params-destination-owner-translation">Example 9: Destination Params: Destination Owner Translation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-10-destination-params-user-mode">Example 10: Destination Params: User Mode</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../pools/">存储池的配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">配置参考</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">管理操作 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">Python 接口</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../barbican/">与 OpenStack Barbican 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../vault/">与 HashiCorp Vault 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../opa/">与 Open Policy Agent 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multitenancy/">多租户</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../compression/">压缩</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ldap-auth/">LDAP 认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encryption/">服务器端加密</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bucketpolicy/">桶策略</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dynamicresharding/">动态的桶索引重分片</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mfa/">多因子认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sync-modules/">同步模块</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notifications/">Bucket Notifications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../layout/">RADOS 中的数据布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../STS/">STS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../STSLite/">STS Lite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keycloak/">Keycloak</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../role/">Role</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../oidc/">OpenID Connect Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../qat-accel/">使用 QAT 为加密和压缩提速</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../pools/" title="存储池"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../multisite/" title="多站"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 对象网关</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

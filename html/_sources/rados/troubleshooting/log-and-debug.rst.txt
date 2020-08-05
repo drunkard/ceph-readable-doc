@@ -438,7 +438,7 @@ OSD
 :描述: 归置组日志最小条数。
 :类型: 32-bit Unsigned Integer
 :是否必需: No
-:默认值: 1000
+:默认值: 250
 
 
 ``osd op log threshold``

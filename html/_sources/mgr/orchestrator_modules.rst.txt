@@ -12,7 +12,7 @@ ceph-mgr orchestrator 模块
 
 In this context, *orchestrator* refers to some external service that
 provides the ability to discover devices and create Ceph services.  This
-includes external projects such as ceph-ansible, DeepSea, and Rook.
+includes external projects such as Rook.
 
 An *orchestrator module* is a ceph-mgr module (:ref:`mgr-module-dev`)
 which implements common management operations using a particular

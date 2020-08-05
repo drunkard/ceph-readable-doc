@@ -41,10 +41,10 @@
 
         ceph fs authorize *file_system_name* client.*client_name* /*specified_directory* rw
 
-比如，要想把 ``foo`` 客户端限定为只能在 ``cephfs`` 文件系统的
+比如，要想把 ``foo`` 客户端限定为只能在 ``cephfs_a`` 文件系统的
 ``bar`` 目录下写，命令如下： ::
 
-        ceph fs authorize cephfs client.foo / r /bar rw
+        ceph fs authorize cephfs_a client.foo / r /bar rw
 
         results in:
 
@@ -52,7 +52,7 @@
           key: *key*
           caps: [mds] allow r, allow rw path=/bar
           caps  [mon] allow r
-          caps: [osd] allow rw tag cephfs data=cephfs_a
+          caps: [osd] allow rw tag cephfs_a data=cephfs_a
 
 要完全把此客户端限定在 ``bar`` 目录下，去掉根目录即可： ::
 

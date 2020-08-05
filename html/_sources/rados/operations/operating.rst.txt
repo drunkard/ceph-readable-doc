@@ -1,17 +1,15 @@
-.. _Operating a Cluster:
+.. Operating a Cluster
 
 ==========
  操纵集群
 ==========
 
-
 .. index:: systemd; operating a cluster
 
-.. _Running Ceph with systemd:
+.. Running Ceph with systemd
 
 用 systemd 控制 Ceph
 ====================
-
 现在，所有支持 systemd 的发行版（ CentOS 7 、 Fedora 、Debian
 Jessie 以及更高版、 SUSE ）都用原生的 systemd 文件来管理 ceph
 守护进程，不再使用原来的 sysvinit 脚本了。例如： ::
@@ -92,24 +90,11 @@ Jessie 以及更高版、 SUSE ）都用原生的 systemd 文件来管理 ceph
         sudo systemctl stop ceph-mds@ceph-server
 
 
-.. index:: Ceph service; Upstart; operating a cluster
-
-.. _Running Ceph with Upstart:
+.. index:: Upstart; operating a cluster
+.. Running Ceph with Upstart
 
 用 Upstart 控制 Ceph
 ====================
-
-用 ``ceph-deploy`` 在 Ubuntu Trusty 上部署 Ceph 后，你可以用基\
-于事件的 `Upstart`_ 来启动、停止某一 :term:`Ceph 节点`\ 上的
-Ceph 守护进程。 Upstart 不要求在 Ceph 配置文件里定义守护进程例\
-程。
-
-要罗列一个节点上 Ceph 的 Upstart 作业，用下列命令： ::
-
-        sudo initctl list | grep ceph
-
-详细了解请看 `initctl`_ 。
-
 
 启动所有守护进程
 ----------------
@@ -179,12 +164,11 @@ Ceph 守护进程。 Upstart 不要求在 Ceph 配置文件里定义守护进程
         sudo start ceph-mds id=ceph-server
 
 
-.. index:: Ceph service; sysvinit; operating a cluster
+.. index:: sysvinit; operating a cluster
+.. Running Ceph
 
-.. _Running Ceph:
-
-运行 Ceph
-=========
+用 sysvinit 运行 Ceph
+=====================
 
 每次用命令\ **启动**\ 、\ **重启**\ 、\ **停止** Ceph 守护进程\
 （或整个集群）时，你必须指定至少一个选项和一个命令，还可能要指\
@@ -239,5 +223,4 @@ Ceph 子命令包括：
 
 
 .. _Valgrind: http://www.valgrind.org/
-.. _Upstart: http://upstart.ubuntu.com/index.html
 .. _initctl: http://manpages.ubuntu.com/manpages/raring/en/man8/initctl.8.html

@@ -1,0 +1,286 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>用内核驱动挂载 CephFS &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="用 FUSE 挂载 CephFS" href="../mount-using-fuse/" />
+    <link rel="prev" title="挂载 CephFS ：先决条件" href="../mount-prerequisites/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../mount-using-fuse/" title="用 FUSE 挂载 CephFS"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../mount-prerequisites/" title="挂载 CephFS ：先决条件"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 文件系统</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/cephfs/mount-using-kernel-driver.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="cephfs">
+<h1>用内核驱动挂载 CephFS<a class="headerlink" href="#cephfs" title="Permalink to this headline">¶</a></h1>
+<p>The CephFS kernel driver is part of the Linux kernel. It allows mounting
+CephFS as a regular file system with native kernel performance. It is the
+client of choice for most use-cases.</p>
+<div class="section" id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="complete-general-prerequisites">
+<h3>Complete General Prerequisites<a class="headerlink" href="#complete-general-prerequisites" title="Permalink to this headline">¶</a></h3>
+<p>Go through the prerequisites required by both, kernel as well as FUSE mounts,
+in <a class="reference external" href="../mount-prerequisites">Mount CephFS: Prerequisites</a> page.</p>
+</div>
+<div class="section" id="is-mount-helper-is-present">
+<h3>Is mount helper is present?<a class="headerlink" href="#is-mount-helper-is-present" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">mount.ceph</span></code> helper is installed by Ceph packages. The helper passes the
+monitor address(es) and CephX user keyrings automatically saving the Ceph
+admin the effort to pass these details explicitly while mountng CephFS. In
+case the helper is not present on the client machine, CephFS can still be
+mounted using kernel but by passing these details explicitly to the <code class="docutils literal notranslate"><span class="pre">mount</span></code>
+command. To check whether it is present on your system, do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stat</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">mount</span><span class="o">.</span><span class="n">ceph</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h3>哪个内核版本？<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>由于内核客户端是作为 Linux 内核的一部分发布的（不是随打包的
+Ceph 二进制包发布），所以你得考虑客户端节点用哪个内核版本。已知比较老的内核所带的 Ceph 客户端有诸多缺陷，而且不一定支持近期
+Ceph 集群所支持的功能。</p>
+<p>需要注意的是， Linux 发行版的稳定分支里的“最新”内核可能会比最新的上游 Linux 内核晚好几年，而 Ceph 的开发是与上游内核同步的（包括缺陷修订）。</p>
+<p>粗略地算，从 Ceph 10.x (Jewel) 起，你最好用 4.x 以上的内核。如果不得不用更老的内核，那你应该用 fuse 客户端，不要用内核客户端。</p>
+<p>如果你的 Linux 发行版提供额外的 CephFS 技术支持，那就另当别论了，这时候发行者会负责把修订补丁移植到他们的稳定版内核：请与厂商核实。</p>
+</div>
+</div>
+<div class="section" id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
+<p>In general, the command to mount CephFS via kernel driver looks like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">ceph</span> <span class="p">{</span><span class="n">device</span><span class="o">-</span><span class="n">string</span><span class="p">}:{</span><span class="n">path</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">mounted</span><span class="p">}</span> <span class="p">{</span><span class="n">mount</span><span class="o">-</span><span class="n">point</span><span class="p">}</span> <span class="o">-</span><span class="n">o</span> <span class="p">{</span><span class="n">key</span><span class="o">-</span><span class="n">value</span><span class="o">-</span><span class="n">args</span><span class="p">}</span> <span class="p">{</span><span class="n">other</span><span class="o">-</span><span class="n">args</span><span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="mounting-cephfs">
+<h2>Mounting CephFS<a class="headerlink" href="#mounting-cephfs" title="Permalink to this headline">¶</a></h2>
+<p>On Ceph clusters, CephX is enabled by default. Use <code class="docutils literal notranslate"><span class="pre">mount</span></code> command to
+mount CephFS with the kernel driver:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span>
+<span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">ceph</span> <span class="p">:</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span> <span class="o">-</span><span class="n">o</span> <span class="n">name</span><span class="o">=</span><span class="n">foo</span>
+</pre></div>
+</div>
+<p>The key-value argument right after option <code class="docutils literal notranslate"><span class="pre">-o</span></code> is CephX credential;
+<code class="docutils literal notranslate"><span class="pre">name</span></code> is the username of the CephX user we are using to mount CephFS. The
+default value for <code class="docutils literal notranslate"><span class="pre">name</span></code> is <code class="docutils literal notranslate"><span class="pre">guest</span></code>.</p>
+<p>The kernel driver also requires MON’s socket and the secret key for the CephX
+user. In case of the above command, <code class="docutils literal notranslate"><span class="pre">mount.ceph</span></code> helper figures out these
+details automatically by finding and reading Ceph conf file and keyring. In
+case you don’t have these files on the host where you’re running mount
+command, you can pass these details yourself too:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">ceph</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">6789</span><span class="p">,</span><span class="mf">192.168</span><span class="o">.</span><span class="mf">0.2</span><span class="p">:</span><span class="mi">6789</span><span class="p">:</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span> <span class="o">-</span><span class="n">o</span> <span class="n">name</span><span class="o">=</span><span class="n">foo</span><span class="p">,</span><span class="n">secret</span><span class="o">=</span><span class="n">AQATSKdNGBnwLhAAnNDKnH65FmVKpXZJVasUeQ</span><span class="o">==</span>
+</pre></div>
+</div>
+<p>Passing a single MON socket in above command works too. A potential problem
+with the command above is that the secret key is left in your shell’s command
+history. To prevent that you can copy the secret key inside a file and pass
+the file by using the option <code class="docutils literal notranslate"><span class="pre">secretfile</span></code> instead of <code class="docutils literal notranslate"><span class="pre">secret</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">ceph</span> <span class="p">:</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span> <span class="o">-</span><span class="n">o</span> <span class="n">name</span><span class="o">=</span><span class="n">foo</span><span class="p">,</span><span class="n">secretfile</span><span class="o">=/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">foo</span><span class="o">.</span><span class="n">secret</span>
+</pre></div>
+</div>
+<p>Ensure the permissions on the secret key file are appropriate (preferably,
+<code class="docutils literal notranslate"><span class="pre">600</span></code>).</p>
+<p>In case CephX is disabled, you can omit <code class="docutils literal notranslate"><span class="pre">-o</span></code> and the list of key-value
+arguments that follow it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">ceph</span> <span class="p">:</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span>
+</pre></div>
+</div>
+<p>To mount a subtree of the CephFS root, append the path to the device string:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">ceph</span> <span class="p">:</span><span class="o">/</span><span class="n">subvolume</span><span class="o">/</span><span class="n">dir1</span><span class="o">/</span><span class="n">dir2</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span> <span class="o">-</span><span class="n">o</span> <span class="n">name</span><span class="o">=</span><span class="n">fs</span>
+</pre></div>
+</div>
+<p>If you have more than one file system on your Ceph cluster, you can mount the
+non-default FS as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">ceph</span> <span class="p">:</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs2</span> <span class="o">-</span><span class="n">o</span> <span class="n">name</span><span class="o">=</span><span class="n">fs</span><span class="p">,</span><span class="n">fs</span><span class="o">=</span><span class="n">mycephfs2</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="unmounting-cephfs">
+<h2>Unmounting CephFS<a class="headerlink" href="#unmounting-cephfs" title="Permalink to this headline">¶</a></h2>
+<p>To unmount the Ceph file system, use the <code class="docutils literal notranslate"><span class="pre">umount</span></code> command as usual::
+要卸载 Ceph 文件系统，和平时用 <code class="docutils literal notranslate"><span class="pre">unmount</span></code> 命令一样：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">umount</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span>
+</pre></div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>执行此命令前确保你不在此文件系统目录下。</p>
+</div>
+</div>
+<div class="section" id="id2">
+<h2>永久挂载<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>To mount CephFS in your file systems table as a kernel driver, add the
+following to <code class="docutils literal notranslate"><span class="pre">/etc/fstab</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[{</span><span class="n">ipaddress</span><span class="p">}:{</span><span class="n">port</span><span class="p">}]:</span><span class="o">/</span> <span class="p">{</span><span class="n">mount</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">mountpoint</span><span class="p">}</span> <span class="n">ceph</span> <span class="p">[</span><span class="n">name</span><span class="o">=</span><span class="n">username</span><span class="p">,</span><span class="n">secret</span><span class="o">=</span><span class="n">secretkey</span><span class="o">|</span><span class="n">secretfile</span><span class="o">=/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">secretfile</span><span class="p">],[{</span><span class="n">mount</span><span class="o">.</span><span class="n">options</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">:</span><span class="o">/</span>     <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">ceph</span>    <span class="n">ceph</span>    <span class="n">name</span><span class="o">=</span><span class="n">admin</span><span class="p">,</span><span class="n">noatime</span><span class="p">,</span><span class="n">_netdev</span>    <span class="mi">0</span>       <span class="mi">2</span>
+</pre></div>
+</div>
+<p>The default for the <code class="docutils literal notranslate"><span class="pre">name=</span></code> parameter is <code class="docutils literal notranslate"><span class="pre">guest</span></code>. If the <code class="docutils literal notranslate"><span class="pre">secret</span></code> or
+<code class="docutils literal notranslate"><span class="pre">secretfile</span></code> options are not specified then the mount helper will attempt to
+find a secret for the given <code class="docutils literal notranslate"><span class="pre">name</span></code> in one of the configured keyrings.</p>
+<p>See <a class="reference external" href="../../rados/operations/user-management/">User Management</a> for details on CephX user management and <a class="reference external" href="../../man/8/mount.ceph/">mount.ceph</a>
+manual for more options it can take. For troubleshooting, see
+<span class="xref std std-ref">kernel_mount_debugging</span>.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 文件系统</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../#cephfs">CephFS 入门</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#id1">管理</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../#id2">挂载 CephFS</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../client-config-ref/"> 客户端配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../client-auth/"> 客户端认证</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mount-prerequisites/"> Mount CephFS: Prerequisites</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#"> 用内核驱动挂载 CephFS 文件系统</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#prerequisites">Prerequisites</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#complete-general-prerequisites">Complete General Prerequisites</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#is-mount-helper-is-present">Is mount helper is present?</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#id1">哪个内核版本？</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#synopsis">Synopsis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mounting-cephfs">Mounting CephFS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#unmounting-cephfs">Unmounting CephFS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">永久挂载</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../mount-using-fuse/"> 用 FUSE 挂载 CephFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-shell/"> CephFS Shell 的用法</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../kernel-features/"> 内核驱动支持的功能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/"> ceph-fuse 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/"> mount.ceph 手册页</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.fuse.ceph/"> mount.fuse.ceph 手册页</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../#id3">CephFS 内幕</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#id4">故障排除和灾难恢复</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../#id6">更多细节</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../mount-using-fuse/" title="用 FUSE 挂载 CephFS"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../mount-prerequisites/" title="挂载 CephFS ：先决条件"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 文件系统</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>
