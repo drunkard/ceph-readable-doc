@@ -62,6 +62,7 @@ daemon or process startup will proceed.
 
 
 .. Bootstrap options
+.. _bootstrap-options:
 
 自举引导选项
 ------------

@@ -1,0 +1,392 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>在云端运行测试 &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="Ceph 内幕" href="../../internals/" />
+    <link rel="prev" title="Running Integration Tests using Teuthology" href="../running-tests-using-teuth/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../internals/" title="Ceph 内幕"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../running-tests-using-teuth/" title="Running Integration Tests using Teuthology"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">向 Ceph 贡献：开发者指南</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/developer_guide/running-tests-in-cloud.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="id1">
+<h1>在云端运行测试<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>In this chapter, we will explain in detail how use an OpenStack
+tenant as an environment for Ceph <a class="reference external" href="../tests-integration-tests">integration testing</a>.</p>
+<div class="section" id="id2">
+<h2>先决条件和注意事项<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>我们假设：</p>
+<ol class="arabic simple">
+<li><p>you are the only person using the tenant</p></li>
+<li><p>you have the credentials</p></li>
+<li><p>the tenant supports the <code class="docutils literal notranslate"><span class="pre">nova</span></code> and <code class="docutils literal notranslate"><span class="pre">cinder</span></code> APIs</p></li>
+</ol>
+<p>Caveat: be aware that, as of this writing (July 2016), testing in
+OpenStack clouds is a new feature. Things may not work as advertised.
+If you run into trouble, ask for help on <a class="reference external" href="../essentials/#irc">IRC</a> or the <a class="reference external" href="../essentials/#mailing-list">Mailing list</a>, or
+open a bug report at the <a class="reference external" href="http://ceph-workbench.dachary.org/root/ceph-workbench/issues">ceph-workbench bug tracker</a>.</p>
+</div>
+<div class="section" id="tenant">
+<h2>准备 tenant<a class="headerlink" href="#tenant" title="Permalink to this headline">¶</a></h2>
+<p>If you have not tried to use <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span></code> with this tenant before,
+proceed to the next step.</p>
+<p>To start with a clean slate, login to your tenant via the Horizon dashboard
+and:</p>
+<ul class="simple">
+<li><p>terminate the <code class="docutils literal notranslate"><span class="pre">teuthology</span></code> and <code class="docutils literal notranslate"><span class="pre">packages-repository</span></code> instances, if any</p></li>
+<li><p>delete the <code class="docutils literal notranslate"><span class="pre">teuthology</span></code> and <code class="docutils literal notranslate"><span class="pre">teuthology-worker</span></code> security groups, if any</p></li>
+<li><p>delete the <code class="docutils literal notranslate"><span class="pre">teuthology</span></code> and <code class="docutils literal notranslate"><span class="pre">teuthology-myself</span></code> key pairs, if any</p></li>
+</ul>
+<p>Also do the above if you ever get key-related errors (“invalid key”, etc.)
+when trying to schedule suites.</p>
+</div>
+<div class="section" id="ceph-workbench">
+<h2>安装 ceph-workbench<a class="headerlink" href="#ceph-workbench" title="Permalink to this headline">¶</a></h2>
+<p>Since testing in the cloud is done using the <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code>
+tool, you will need to install that first. It is designed
+to be installed via Docker, so if you don’t have Docker running on your
+development machine, take care of that first. You can follow <a class="reference external" href="https://docs.docker.com/engine/installation/">the official
+tutorial</a> to install if
+you have not installed yet.</p>
+<p>Once Docker is up and running, install <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span></code> by following the
+<a class="reference external" href="http://ceph-workbench.readthedocs.io/en/latest/#installation">Installation instructions in the ceph-workbench documentation</a>.</p>
+</div>
+<div class="section" id="linking-ceph-workbench-with-your-openstack-tenant">
+<h2>Linking ceph-workbench with your OpenStack tenant<a class="headerlink" href="#linking-ceph-workbench-with-your-openstack-tenant" title="Permalink to this headline">¶</a></h2>
+<p>Before you can trigger your first teuthology suite, you will need to link
+<code class="docutils literal notranslate"><span class="pre">ceph-workbench</span></code> with your OpenStack account.</p>
+<p>First, download a <code class="docutils literal notranslate"><span class="pre">openrc.sh</span></code> file by clicking on the “Download OpenStack
+RC File” button, which can be found in the “API Access” tab of the “Access
+&amp; Security” dialog of the OpenStack Horizon dashboard.</p>
+<p>Second, create a <code class="docutils literal notranslate"><span class="pre">~/.ceph-workbench</span></code> directory, set its permissions to
+700, and move the <code class="docutils literal notranslate"><span class="pre">openrc.sh</span></code> file into it. Make sure that the filename
+is exactly <code class="docutils literal notranslate"><span class="pre">~/.ceph-workbench/openrc.sh</span></code>.</p>
+<p>Third, edit the file so it does not ask for your OpenStack password
+interactively. Comment out the relevant lines and replace them with
+something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">OS_PASSWORD</span><span class="o">=</span><span class="s2">&quot;aiVeth0aejee3eep8rogho3eep7Pha6ek&quot;</span>
+</pre></div>
+</div>
+<p>When <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code> connects to your OpenStack tenant for
+the first time, it will generate two keypairs: <code class="docutils literal notranslate"><span class="pre">teuthology-myself</span></code> and
+<code class="docutils literal notranslate"><span class="pre">teuthology</span></code>.</p>
+</div>
+<div class="section" id="run-the-dummy-suite">
+<h2>Run the dummy suite<a class="headerlink" href="#run-the-dummy-suite" title="Permalink to this headline">¶</a></h2>
+<p>You are now ready to take your OpenStack teuthology setup for a test
+drive:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-workbench ceph-qa-suite --suite dummy
+</pre></div>
+</div>
+<p>Be forewarned that the first run of <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code> on a
+pristine tenant will take a long time to complete because it downloads a VM
+image and during this time the command may not produce any output.</p>
+<p>The images are cached in OpenStack, so they are only downloaded once.
+Subsequent runs of the same command will complete faster.</p>
+<p>Although <code class="docutils literal notranslate"><span class="pre">dummy</span></code> suite does not run any tests, in all other respects it
+behaves just like a teuthology suite and produces some of the same
+artifacts.</p>
+<p>The last bit of output should look something like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pulpito</span> <span class="n">web</span> <span class="n">interface</span><span class="p">:</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">149.202</span><span class="o">.</span><span class="mf">168.201</span><span class="p">:</span><span class="mi">8081</span><span class="o">/</span>
+<span class="n">ssh</span> <span class="n">access</span>           <span class="p">:</span> <span class="n">ssh</span> <span class="o">-</span><span class="n">i</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">smithfarm</span><span class="o">/.</span><span class="n">ceph</span><span class="o">-</span><span class="n">workbench</span><span class="o">/</span><span class="n">teuthology</span><span class="o">-</span><span class="n">myself</span><span class="o">.</span><span class="n">pem</span> <span class="n">ubuntu</span><span class="o">@</span><span class="mf">149.202</span><span class="o">.</span><span class="mf">168.201</span> <span class="c1"># logs in /usr/share/nginx/html</span>
+</pre></div>
+</div>
+<p>What this means is that <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code> triggered the test
+suite run. It does not mean that the suite run has completed. To monitor
+progress of the run, check the Pulpito web interface URL periodically, or
+if you are impatient, ssh to the teuthology machine using the ssh command
+shown and do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tail -f /var/log/teuthology.*
+</pre></div>
+</div>
+<p>The <cite>/usr/share/nginx/html</cite> directory contains the complete logs of the
+test suite. If we had provided the <code class="docutils literal notranslate"><span class="pre">--upload</span></code> option to the
+<code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code> command, these logs would have been
+uploaded to <a class="reference external" href="http://teuthology-logs.public.ceph.com">http://teuthology-logs.public.ceph.com</a>.</p>
+</div>
+<div class="section" id="run-a-standalone-test">
+<h2>Run a standalone test<a class="headerlink" href="#run-a-standalone-test" title="Permalink to this headline">¶</a></h2>
+<p>The standalone test explained in <a class="reference external" href="../testing-integration-tests/#reading-a-standalone-test">Reading a standalone test</a> can be run
+with the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-workbench ceph-qa-suite --suite rados/singleton/all/admin-socket.yaml
+</pre></div>
+</div>
+<p>This will run the suite shown on the current <code class="docutils literal notranslate"><span class="pre">master</span></code> branch of
+<code class="docutils literal notranslate"><span class="pre">ceph/ceph.git</span></code>. You can specify a different branch with the <code class="docutils literal notranslate"><span class="pre">--ceph</span></code>
+option, and even a different git repo with the <code class="docutils literal notranslate"><span class="pre">--ceph-git-url</span></code> option. (Run
+<code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span> <span class="pre">--help</span></code> for an up-to-date list of available
+options.)</p>
+<p>The first run of a suite will also take a long time, because ceph packages
+have to be built, first. Again, the packages so built are cached and
+<code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code> will not build identical packages a second
+time.</p>
+</div>
+<div class="section" id="interrupt-a-running-suite">
+<h2>Interrupt a running suite<a class="headerlink" href="#interrupt-a-running-suite" title="Permalink to this headline">¶</a></h2>
+<p>Teuthology suites take time to run. From time to time one may wish to
+interrupt a running suite. One obvious way to do this is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">workbench</span> <span class="n">ceph</span><span class="o">-</span><span class="n">qa</span><span class="o">-</span><span class="n">suite</span> <span class="o">--</span><span class="n">teardown</span>
+</pre></div>
+</div>
+<p>This destroys all VMs created by <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code> and
+returns the OpenStack tenant to a “clean slate”.</p>
+<p>Sometimes you may wish to interrupt the running suite, but keep the logs,
+the teuthology VM, the packages-repository VM, etc. To do this, you can
+<code class="docutils literal notranslate"><span class="pre">ssh</span></code> to the teuthology VM (using the <code class="docutils literal notranslate"><span class="pre">ssh</span> <span class="pre">access</span></code> command reported
+when you triggered the suite – see <a class="reference internal" href="#run-the-dummy-suite">Run the dummy suite</a>) and, once
+there:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">teuthology</span> <span class="n">restart</span>
+</pre></div>
+</div>
+<p>This will keep the teuthology machine, the logs and the packages-repository
+instance but nuke everything else.</p>
+</div>
+<div class="section" id="upload-logs-to-archive-server">
+<h2>Upload logs to archive server<a class="headerlink" href="#upload-logs-to-archive-server" title="Permalink to this headline">¶</a></h2>
+<p>Since the teuthology instance in OpenStack is only semi-permanent, with
+limited space for storing logs, <code class="docutils literal notranslate"><span class="pre">teuthology-openstack</span></code> provides an
+<code class="docutils literal notranslate"><span class="pre">--upload</span></code> option which, if included in the <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code>
+command, will cause logs from all failed jobs to be uploaded to the log
+archive server maintained by the Ceph project. The logs will appear at the
+URL:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>http://teuthology-logs.public.ceph.com/$RUN
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">$RUN</span></code> is the name of the run. It will be a string like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ubuntu</span><span class="o">-</span><span class="mi">2016</span><span class="o">-</span><span class="mi">07</span><span class="o">-</span><span class="mi">23_16</span><span class="p">:</span><span class="mi">08</span><span class="p">:</span><span class="mi">12</span><span class="o">-</span><span class="n">rados</span><span class="o">-</span><span class="n">hammer</span><span class="o">-</span><span class="n">backports</span><span class="o">---</span><span class="n">basic</span><span class="o">-</span><span class="n">openstack</span>
+</pre></div>
+</div>
+<p>Even if you don’t providing the <code class="docutils literal notranslate"><span class="pre">--upload</span></code> option, however, all the logs can
+still be found on the teuthology machine in the directory
+<code class="docutils literal notranslate"><span class="pre">/usr/share/nginx/html</span></code>.</p>
+</div>
+<div class="section" id="provision-vms-ad-hoc">
+<h2>Provision VMs ad hoc<a class="headerlink" href="#provision-vms-ad-hoc" title="Permalink to this headline">¶</a></h2>
+<p>From the teuthology VM, it is possible to provision machines on an “ad hoc”
+basis, to use however you like. The magic incantation is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>teuthology-lock --lock-many $NUMBER_OF_MACHINES \
+    --os-type $OPERATING_SYSTEM \
+    --os-version $OS_VERSION \
+    --machine-type openstack \
+    --owner $EMAIL_ADDRESS
+</pre></div>
+</div>
+<p>The command must be issued from the <code class="docutils literal notranslate"><span class="pre">~/teuthology</span></code> directory. The possible
+values for <code class="docutils literal notranslate"><span class="pre">OPERATING_SYSTEM</span></code> AND <code class="docutils literal notranslate"><span class="pre">OS_VERSION</span></code> can be found by examining
+the contents of the directory <code class="docutils literal notranslate"><span class="pre">teuthology/openstack/</span></code>. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">teuthology</span><span class="o">-</span><span class="n">lock</span> <span class="o">--</span><span class="n">lock</span><span class="o">-</span><span class="n">many</span> <span class="mi">1</span> <span class="o">--</span><span class="n">os</span><span class="o">-</span><span class="nb">type</span> <span class="n">ubuntu</span> <span class="o">--</span><span class="n">os</span><span class="o">-</span><span class="n">version</span> <span class="mf">16.04</span> \
+    <span class="o">--</span><span class="n">machine</span><span class="o">-</span><span class="nb">type</span> <span class="n">openstack</span> <span class="o">--</span><span class="n">owner</span> <span class="n">foo</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span>
+</pre></div>
+</div>
+<p>When you are finished with the machine, find it in the list of machines:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">openstack</span> <span class="n">server</span> <span class="nb">list</span>
+</pre></div>
+</div>
+<p>to determine the name or ID, and then terminate it with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>openstack server delete $NAME_OR_ID
+</pre></div>
+</div>
+</div>
+<div class="section" id="deploy-a-cluster-for-manual-testing">
+<h2>Deploy a cluster for manual testing<a class="headerlink" href="#deploy-a-cluster-for-manual-testing" title="Permalink to this headline">¶</a></h2>
+<p>The <a class="reference external" href="https://github.com/ceph/teuthology">teuthology framework</a> and <code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code> are
+versatile tools that automatically provision Ceph clusters in the cloud and
+run various tests on them in an automated fashion. This enables a single
+engineer, in a matter of hours, to perform thousands of tests that would
+keep dozens of human testers occupied for days or weeks if conducted
+manually.</p>
+<p>However, there are times when the automated tests do not cover a particular
+scenario and manual testing is desired. It turns out that it is simple to
+adapt a test to stop and wait after the Ceph installation phase, and the
+engineer can then ssh into the running cluster. Simply add the following
+snippet in the desired place within the test YAML and schedule a run with the
+test:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tasks</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">exec</span><span class="p">:</span>
+    <span class="n">client</span><span class="o">.</span><span class="mi">0</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">sleep</span> <span class="mi">1000000000</span> <span class="c1"># forever</span>
+</pre></div>
+</div>
+<p>(Make sure you have a <code class="docutils literal notranslate"><span class="pre">client.0</span></code> defined in your <code class="docutils literal notranslate"><span class="pre">roles</span></code> stanza or adapt
+accordingly.)</p>
+<p>The same effect can be achieved using the <code class="docutils literal notranslate"><span class="pre">interactive</span></code> task:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tasks</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">interactive</span>
+</pre></div>
+</div>
+<p>By following the test log, you can determine when the test cluster has entered
+the “sleep forever” condition. At that point, you can ssh to the teuthology
+machine and from there to one of the target VMs (OpenStack) or teuthology
+worker machines machine (Sepia) where the test cluster is running.</p>
+<p>The VMs (or “instances” in OpenStack terminology) created by
+<code class="docutils literal notranslate"><span class="pre">ceph-workbench</span> <span class="pre">ceph-qa-suite</span></code> are named as follows:</p>
+<p><code class="docutils literal notranslate"><span class="pre">teuthology</span></code> - the teuthology machine</p>
+<p><code class="docutils literal notranslate"><span class="pre">packages-repository</span></code> - VM where packages are stored</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-*</span></code> - VM where packages are built</p>
+<p><code class="docutils literal notranslate"><span class="pre">target*</span></code> - machines where tests are run</p>
+<p>The VMs named <code class="docutils literal notranslate"><span class="pre">target*</span></code> are used by tests. If you are monitoring the
+teuthology log for a given test, the hostnames of these target machines can
+be found out by searching for the string <code class="docutils literal notranslate"><span class="pre">Locked</span> <span class="pre">targets</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">2016</span><span class="o">-</span><span class="mi">03</span><span class="o">-</span><span class="mi">20</span><span class="n">T11</span><span class="p">:</span><span class="mi">39</span><span class="p">:</span><span class="mf">06.166</span> <span class="n">INFO</span><span class="p">:</span><span class="n">teuthology</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">internal</span><span class="p">:</span><span class="n">Locked</span> <span class="n">targets</span><span class="p">:</span>
+  <span class="n">target149202171058</span><span class="o">.</span><span class="n">teuthology</span><span class="p">:</span> <span class="n">null</span>
+  <span class="n">target149202171059</span><span class="o">.</span><span class="n">teuthology</span><span class="p">:</span> <span class="n">null</span>
+</pre></div>
+</div>
+<p>The IP addresses of the target machines can be found by running <code class="docutils literal notranslate"><span class="pre">openstack</span>
+<span class="pre">server</span> <span class="pre">list</span></code> on the teuthology machine, but the target VM hostnames (e.g.
+<code class="docutils literal notranslate"><span class="pre">target149202171058.teuthology</span></code>) are resolvable within the teuthology
+cluster.</p>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">开发者指南</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../intro/">简介</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../essentials/">必备知识</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../merging/">何时、合并了什么</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../issue-tracker/">问题追踪器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../basic-workflow/">基本工作流</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tests-unit-tests/">测试：单元测试</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tests-integration-tests/">测试：集成测试</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../running-tests-locally/">在本地运行测试</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../running-tests-using-teuth/">用 Teuthology 运行集成测试</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">在云端运行测试</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">先决条件和注意事项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tenant">准备 tenant</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ceph-workbench">安装 ceph-workbench</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linking-ceph-workbench-with-your-openstack-tenant">Linking ceph-workbench with your OpenStack tenant</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run-the-dummy-suite">Run the dummy suite</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run-a-standalone-test">Run a standalone test</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#interrupt-a-running-suite">Interrupt a running suite</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#upload-logs-to-archive-server">Upload logs to archive server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#provision-vms-ad-hoc">Provision VMs ad hoc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#deploy-a-cluster-for-manual-testing">Deploy a cluster for manual testing</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../internals/" title="Ceph 内幕"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../running-tests-using-teuth/" title="Running Integration Tests using Teuthology"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >向 Ceph 贡献：开发者指南</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

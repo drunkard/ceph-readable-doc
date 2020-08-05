@@ -36,6 +36,10 @@
     backfill
         回填
 
+    balancer
+        均衡器；
+        active balancer 动态均衡器；
+
     bitrot
         位翻转
 

@@ -51,7 +51,7 @@
 
 :command:`bluefs-export`
 
-   把 BlueFS 内容（即 rocksdb 文件）导出到一个输出目录。
+   把 BlueFS 内容（即 RocksDB 文件）导出到一个输出目录。
 
 :command:`bluefs-bdev-sizes` --path *osd path*
 

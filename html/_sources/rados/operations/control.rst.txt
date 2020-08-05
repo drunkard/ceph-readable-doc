@@ -67,14 +67,16 @@
 
 	ceph pg dump [--format {format}]
 
-可用输出格式有 ``plain`` （默认）和 ``json`` 。
+可用输出格式有 ``plain`` （默认）、 ``json`` 、
+``json-pretty`` 、 ``xml`` 和 ``xml-pretty`` 。
 
 要显示卡在某状态的所有归置组，执行下列命令： ::
 
 	ceph pg dump_stuck inactive|unclean|stale|undersized|degraded [--format {format}] [-t|--threshold {seconds}]
 
 
-``--format`` 可以是 ``plain`` （默认）或 ``json``
+``--format`` 可以是 ``plain`` （默认）、 ``json`` 、
+``json-pretty`` 、 ``xml`` 或 ``xml-pretty`` 。
 
 ``--threshold`` 定义了多久算“卡住了”（默认 300 秒）
 
@@ -110,13 +112,14 @@ OSD 子系统
 
 	ceph osd getcrushmap -o file
 
-前述功能等价于： ::
+这个命令所做的事相当于： ::
 
 	ceph osd getmap -o /tmp/osdmap
 	osdmaptool /tmp/osdmap --export-crush file
 
-转储 OSD 运行图， ``-f`` 的可用格式有 ``plain`` 和 ``json`` ，\
-如未指定 ``--format`` 则转储为纯文本。 ::
+转储 OSD 运行图， ``-f`` 的可用格式有 ``plain`` 、 ``json`` 、
+``json-pretty`` 、 ``xml`` 和 ``xml-pretty`` ，如未指定
+``--format`` 则转储为纯文本。 ::
 
 	ceph osd dump [--format {format}]
 

@@ -2,9 +2,9 @@
  认证
 ======
 
-需要认证的 Swift API 请求必须在请求头里带上 ``X-Storage-Token`` 认证令牌。\
-此令牌可以从 RADOS 网关、或别的认证器获取，要从 RADOS 网关获取的话需创建用\
-户，例如： ::
+需要认证的 Swift API 请求必须在请求头里带上 ``X-Storage-Token``
+认证令牌。此令牌可以从 RADOS 网关、或别的认证器获取，要从
+RADOS 网关获取的话需创建用户，例如： ::
 
     sudo radosgw-admin user create --subuser="{username}:{subusername}" --uid="{username}"
     --display-name="{Display Name}" --key-type=swift --secret="{password}" --access=full
@@ -12,6 +12,12 @@
 For details on RADOS Gateway administration, see `radosgw-admin`_. 
 
 .. _radosgw-admin: ../../../man/8/radosgw-admin/ 
+
+.. note::
+  For those used to the Swift API this is implementing the Swift auth v1.0 API, as such
+  `{username}` above is generally equivalent to a Swift `account` and `{subusername}`
+  is a user under that account.
+
 
 Auth Get
 --------

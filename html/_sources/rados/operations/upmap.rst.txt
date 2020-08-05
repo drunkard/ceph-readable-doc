@@ -1,4 +1,5 @@
 .. Using the pg-upmap
+.. _upmap:
 
 使用 pg-upmap
 =============
@@ -10,11 +11,17 @@
 这个新机制的关键点是，它需要所有客户端都能理解 OSDMap 里新增的
 *pg-upmap* 数据结构。
 
+
 启用此功能
 ----------
 
-To allow use of the feature, you must tell the cluster that it only
-needs to support luminous (and newer) clients with::
+New clusters will have this module on by default. The cluster must only
+have luminous (and newer) clients. You can the turn the balancer off with::
+
+  ceph balancer off
+
+To allow use of the feature on existing clusters, you must tell the
+cluster that it only needs to support luminous (and newer) clients with::
 
   ceph osd set-require-min-compat-client luminous
 
@@ -25,12 +32,10 @@ use with::
   ceph features
 
 
-一句忠告
---------
-这是一个新功能，而且不太友好。写下此文档时，我们正致力于
-ceph-mgr 的 `balancer` 新模块，它有可能让这一切实现自动化。
-
-到那时，
+均衡器模块
+----------
+ceph-mgr 的 `balancer` 模块会自动均衡各 OSD 的 PG 数量。见
+``Balancer``
 
 
 .. Offline optimization
@@ -46,7 +51,9 @@ Upmap entries are updated with an offline optimizer built into ``osdmaptool``.
 
 #. Run the optimizer::
 
-     osdmaptool om --upmap out.txt [--upmap-pool <pool>] [--upmap-max <max-count>] [--upmap-deviation <max-deviation>]
+     osdmaptool om --upmap out.txt [--upmap-pool <pool>]
+              [--upmap-max <max-optimizations>] [--upmap-deviation <max-deviation>]
+              [--upmap-active]
 
    It is highly recommended that optimization be done for each pool
    individually, or for sets of similarly-utilized pools.  You can
@@ -55,24 +62,34 @@ Upmap entries are updated with an offline optimizer built into ``osdmaptool``.
    kind of data (e.g., RBD image pools, yes; RGW index pool and RGW
    data pool, no).
 
-   The ``max-count`` value is the maximum number of upmap entries to
-   identify in the run.  The default is 100, but you may want to make
-   this a smaller number so that the tool completes more quickly (but
-   does less work).  If it cannot find any additional changes to make
-   it will stop early (i.e., when the pool distribution is perfect).
+   The ``max-optimizations`` value is the maximum number of upmap entries to
+   identify in the run.  The default is `10` like the ceph-mgr balancer module,
+   but you should use a larger number if you are doing offline optimization.
+   If it cannot find any additional changes to make it will stop early
+   (i.e., when the pool distribution is perfect).
 
-   The ``max-deviation`` value defaults to `.01` (i.e., 1%).  If an OSD
-   utilization varies from the average by less than this amount it
-   will be considered perfect.
+   The ``max-deviation`` value defaults to `5`.  If an OSD PG count
+   varies from the computed target number by less than or equal
+   to this amount it will be considered perfect.
 
-#. The proposed changes are written to the output file ``out.txt`` in
-   the example above.  These are normal ceph CLI commands that can be
-   run to apply the changes to the cluster.  This can be done with::
+   The ``--upmap-active`` option simulates the behavior of the active
+   balancer in upmap mode.  It keeps cycling until the OSDs are balanced
+   and reports how many rounds and how long each round is taking.  The
+   elapsed time for rounds indicates the CPU load ceph-mgr will be
+   consuming when it tries to compute the next optimization plan.
+
+#. Apply the changes::
 
      source out.txt
+
+   The proposed changes are written to the output file ``out.txt`` in
+   the example above.  These are normal ceph CLI commands that can be
+   run to apply the changes to the cluster.
+
 
 The above steps can be repeated as many times as necessary to achieve
 a perfect distribution of PGs for each set of pools.
 
 You can see some (gory) details about what the tool is doing by
-passing ``--debug-osd 10`` to ``osdmaptool``.
+passing ``--debug-osd 10`` and even more with ``--debug-crush 10``
+to ``osdmaptool``.
