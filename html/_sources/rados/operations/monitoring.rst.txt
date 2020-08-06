@@ -17,20 +17,18 @@
 
 交互模式
 --------
-
 要在交互模式下运行 ``ceph`` ，不要带参数运行 ``ceph`` ，例如： ::
 
 	ceph
 	ceph> health
 	ceph> status
 	ceph> quorum_status
-	ceph> mon_status
+	ceph> mon stat
 
 .. Non-default paths
 
 非默认的路径
 ------------
-
 如果你的配置文件或密钥环不在默认位置内，可以手动指定其位置： ::
 
    ceph -c /path/to/conf -k /path/to/keyring health
@@ -40,7 +38,6 @@
 
 检查集群的状态
 ==============
-
 启动集群后、读写数据前，先检查下集群的健康状态。
 
 可以用下面的命令检查集群状态： ::

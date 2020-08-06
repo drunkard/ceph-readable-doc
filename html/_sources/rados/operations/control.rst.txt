@@ -34,14 +34,17 @@
 
 	ceph -w
 
-下列命令显示监视器法定人数状态，包括哪些监视器参与着、哪个是首\
-领。 ::
+下列命令显示监视器法定人数状态，包括哪些监视器参与着、哪个是\
+首领。 ::
 
+	ceph mon stat
 	ceph quorum_status
 
 下列命令查询单个监视器状态，包括是否在法定人数里。 ::
 
-	ceph [-m monhost] mon_status
+	ceph tell mon.[id] mon_status
+
+where the value of ``[id]`` can be determined, e.g., from ``ceph -s``.
 
 
 .. Authentication Subsystem

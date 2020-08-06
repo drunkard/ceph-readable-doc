@@ -85,4 +85,4 @@ ceph-fuse 识别不了的选项将传递给 libfuse 。
 fusermount(8),
 :doc:`ceph <ceph>`\(8)
 
-.. _用 FUSE 挂载 CephFS: ../../../cephfs/fuse/
+.. _用 FUSE 挂载 CephFS: ../../../cephfs/mount-using-fuse/

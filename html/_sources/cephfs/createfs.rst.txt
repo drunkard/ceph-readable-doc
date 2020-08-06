@@ -72,8 +72,8 @@
 	- `挂载 CephFS 文件系统`_
 	- `把 CephFS 挂载为用户空间文件系统`_
 
-.. _挂载 CephFS 文件系统: ../../cephfs/kernel
-.. _把 CephFS 挂载为用户空间文件系统: ../../cephfs/fuse
+.. _挂载 CephFS 文件系统: ../../cephfs/mount-using-kernel-driver
+.. _把 CephFS 挂载为用户空间文件系统: ../../cephfs/mount-using-fuse
 
 如果你创建了不止一个文件系统，而且客户端在挂载时还不指定哪个\
 文件系统，这时你可以用 `ceph fs set-default` 命令来决定他们\
