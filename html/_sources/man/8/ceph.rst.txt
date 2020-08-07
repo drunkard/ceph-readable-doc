@@ -1290,8 +1290,7 @@ pair with the given application for the given pool.
 
 用法： ::
 
-	ceph osd tier cache-mode <poolname> none|writeback|forward|readonly|
-	readforward|readproxy
+	ceph osd tier cache-mode <poolname> writeback|readproxy|readonly|none
 
 子命令 ``remove`` 删掉基础存储池 <pool> （第一个）的马甲存储池
 <tierpool> （第二个）。
