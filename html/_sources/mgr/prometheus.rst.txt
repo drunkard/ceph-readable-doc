@@ -20,7 +20,6 @@ for all reporting entities are returned in text exposition format.
 
 启用 prometheus 输出
 ====================
-
 *prometheus* 模块可这样启用： ::
 
   ceph mgr module enable prometheus

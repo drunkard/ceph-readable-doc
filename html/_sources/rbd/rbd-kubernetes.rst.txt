@@ -17,6 +17,7 @@ and configure ``ceph-csi`` within your Kubernetes environment. The following
 diagram depicts the Kubernetes/Ceph technology stack.
 
 .. ditaa::
+
             +---------------------------------------------------+
             |                   Kubernetes                      |
             +---------------------------------------------------+

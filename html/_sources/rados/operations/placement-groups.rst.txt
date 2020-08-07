@@ -226,6 +226,7 @@ challenge (which the autoscaler normally does for you), is to:
 不可能在对象这一级追踪位置。
 
 .. ditaa::
+
            /-----\  /-----\  /-----\  /-----\  /-----\
            | obj |  | obj |  | obj |  | obj |  | obj |
            \-----/  \-----/  \-----/  \-----/  \-----/

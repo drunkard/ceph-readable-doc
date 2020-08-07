@@ -17,7 +17,6 @@ instead to save space.
 
 创建纠删码存储池样板
 --------------------
-
 The simplest erasure coded pool is equivalent to `RAID5
 <https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_5>`_ and
 requires at least three hosts::
@@ -69,6 +68,7 @@ requires at least three hosts::
 CRUSH 规则可确保两个\ *校验块*\ 不会存储在同一机架上。
 
 .. ditaa::
+
                             +-------------------+
                        name |       NYAN        |
                             +-------------------+

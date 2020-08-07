@@ -69,7 +69,9 @@ features are defined or required, so this will be "ceph 0 0\n".
 If the remote party advertises required features we don't support, we
 can disconnect.
 
-.. ditaa:: +---------+        +--------+
+.. ditaa::
+
+           +---------+        +--------+
            | Client  |        | Server |
            +---------+        +--------+
                 | send banner     |

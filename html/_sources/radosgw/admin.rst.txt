@@ -23,7 +23,9 @@ There are two user types:
 - **Subuser:** The term 'subuser' reflects a user of the Swift interface. A subuser
   is associated to a user .
   
-.. ditaa:: +---------+
+.. ditaa::
+
+           +---------+
            |   User  |
            +----+----+  
                 |     

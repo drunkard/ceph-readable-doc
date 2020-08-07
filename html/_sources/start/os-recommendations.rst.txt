@@ -24,7 +24,7 @@ Linux 内核
   - 4.19.z
   - 4.14.z
 
-  对于 CephFS ，选择内核版本时可参考\ `CephFS 最佳实践`_\ 。
+  对于 CephFS ，选择内核版本时可参考\ `用内核驱动挂载 CephFS`_\ 。
 
   较老的内核客户端可能不支持你的 `CRUSH 可调值`_\ 配置、或
   Ceph 集群其它比较新的功能，这样的话，就得关闭存储集群上的\
@@ -59,6 +59,8 @@ Octopus (15.2.z)
 | Ubuntu   | 18.04    | Bionic Beaver      | linux-4.15   | 4       | B, I, C    |
 +----------+----------+--------------------+--------------+---------+------------+
 | openSUSE | 15.2     | Leap               | linux-5.3    | 6       |            |
++----------+----------+--------------------+--------------+---------+------------+
+| openSUSE |          | Tumbleweed         |              |         |            |
 +----------+----------+--------------------+--------------+---------+------------+
 
 
@@ -148,4 +150,4 @@ Luminous (12.2.z)
 
 
 .. _CRUSH 可调值: ../../rados/operations/crush-map#tunables
-.. _CephFS 最佳实践: ../../cephfs/best-practices
+.. _用内核驱动挂载 CephFS: ../../cephfs/mount-using-kernel-driver#which-kernel-version

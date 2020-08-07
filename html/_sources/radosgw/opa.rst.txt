@@ -54,6 +54,7 @@ decision which is sent back to the RGW which enforces the decision.
    {
        "input": {
            "method": "GET",
+           "subuser": "subuser",
            "user_info": {
                "user_id": "john",
                "display_name": "John"  

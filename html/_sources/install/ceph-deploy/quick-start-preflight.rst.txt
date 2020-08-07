@@ -342,9 +342,9 @@ SELinux 设置为 ``Permissive`` ： ::
 
 
 .. _存储集群快速入门: ../quick-ceph-deploy
-.. _操作系统推荐: ../os-recommendations
-.. _网络配置参考: ../../rados/configuration/network-config-ref
-.. _时钟: ../../rados/configuration/mon-config-ref#clock
+.. _操作系统推荐: ../../../start/os-recommendations
+.. _网络配置参考: ../../../rados/configuration/network-config-ref
+.. _时钟: ../../../rados/configuration/mon-config-ref#clock
 .. _NTP: http://www.ntp.org/
-.. _Infernalis 版: ../../release-notes/#v9-1-0-infernalis-release-candidate
+.. _Infernalis 版: ../../../release-notes/#v9-1-0-infernalis-release-candidate
 .. _EPEL 百科: https://fedoraproject.org/wiki/EPEL

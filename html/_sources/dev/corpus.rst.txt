@@ -11,7 +11,7 @@ You can also mark known or deliberate incompatibilities between versions with::
 	archive/$version/forward_incompat/$type
 
 The presence of a file indicates that new versions of code cannot
-decode old objects across that $version (this is normally the case).
+decode old objects across that ``$version`` (this is normally the case).
 
 
 .. How to generate an object corpus

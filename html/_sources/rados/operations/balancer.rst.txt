@@ -22,18 +22,15 @@ The current status of the balancer can be checked at any time with::
 
 自动均衡
 --------
-
-The automatic balancing can be enabled, using the default settings, with::
-
-  ceph balancer on
-
-The balancer can be turned back off again with::
+The automatic balancing feature is enabled by default in ``upmap``
+mode. Please refer to :ref:`upmap` for more details. The balancer can be
+turned off with::
 
   ceph balancer off
 
-This will use the ``crush-compat`` mode, which is backward compatible
-with older clients, and will make small changes to the data
-distribution over time to ensure that OSDs are equally utilized.
+The balancer mode can be changed to ``crush-compat`` mode, which is
+backward compatible with older clients, and will make small changes to
+the data distribution over time to ensure that OSDs are equally utilized.
 
 
 .. Throttling
@@ -94,19 +91,15 @@ There are currently two supported balancer modes:
 
    Note that using upmap requires that all clients be Luminous or newer.
 
-The default mode is ``crush-compat``.  The mode can be adjusted with::
-
-  ceph balancer mode upmap
-
-or::
+The default mode is ``upmap``.  The mode can be adjusted with::
 
   ceph balancer mode crush-compat
+
 
 .. Supervised optimization
 
 受控的优化
 ----------
-
 The balancer operation is broken into a few distinct phases:
 
 #. building a *plan*

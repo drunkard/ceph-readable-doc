@@ -1,0 +1,824 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Manifest &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="Map and PG Message handling" href="../map_message_handling/" />
+    <link rel="prev" title="Log Based PG" href="../log_based_pg/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../map_message_handling/" title="Map and PG Message handling"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../log_based_pg/" title="Log Based PG"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" accesskey="U">OSD 开发者文档</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/osd_internals/manifest.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="manifest">
+<h1>Manifest<a class="headerlink" href="#manifest" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>As described in ../deduplication.rst, adding transparent redirect
+machinery to RADOS would enable a more capable tiering solution
+than RADOS currently has with “cache/tiering”.</p>
+<p>See ../deduplication.rst</p>
+<p>At a high level, each object has a piece of metadata embedded in
+the object_info_t which can map subsets of the object data payload
+to (refcounted) objects in other pools.</p>
+<p>This document exists to detail:</p>
+<ol class="arabic simple">
+<li><p>Manifest data structures</p></li>
+<li><p>Rados operations for manipulating manifests.</p></li>
+<li><p>Status and Plans</p></li>
+</ol>
+</div>
+<div class="section" id="intended-usage-model">
+<h2>Intended Usage Model<a class="headerlink" href="#intended-usage-model" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="rbd">
+<h3>RBD<a class="headerlink" href="#rbd" title="Permalink to this headline">¶</a></h3>
+<p>For RBD, the primary goal is for either an osd-internal agent or a
+cluster-external agent to be able to transparently shift portions
+of the consituent 4MB extents between a dedup pool and a hot base
+pool.</p>
+<p>As such, rbd operations (including class operations and snapshots)
+must have the same observable results regardless of the current
+status of the object.</p>
+<p>Moreover, tiering/dedup operations must interleave with rbd operations
+without changing the result.</p>
+<p>Thus, here is a sketch of how I’d expect a tiering agent to perform
+basic operations:</p>
+<ul>
+<li><p>Demote cold rbd chunk to slow pool:</p>
+<ol class="arabic simple">
+<li><p>Read object, noting current user_version.</p></li>
+<li><p>In memory, run CDC implementation to fingerprint object.</p></li>
+<li><p>Write out each resulting extent to an object in the cold pool
+using the CAS class.</p></li>
+<li><p>Submit operation to base pool:</p>
+<ul class="simple">
+<li><p>ASSERT_VER with the user version from the read to fail if the
+object has been mutated since the read.</p></li>
+<li><p>SET_CHUNK for each of the extents to the corresponding object
+in the base pool.</p></li>
+<li><p>EVICT_CHUNK for each extent to free up space in the base pool.
+Results in each chunk being marked MISSING.</p></li>
+</ul>
+</li>
+</ol>
+<p>RBD users should then either see the state prior to the demotion or
+subsequent to it.</p>
+<p>Note that between 3 and 4, we potentially leak references, so a
+periodic scrub would be needed to validate refcounts.</p>
+</li>
+<li><p>Promote cold rbd chunk to fast pool.</p>
+<ol class="arabic simple">
+<li><p>Submit TIER_PROMOTE</p></li>
+</ol>
+</li>
+</ul>
+<p>For clones, all of the above would be identical except that the
+initial read would need a LIST_SNAPS to determine which clones exist
+and the PROMOTE or SET_CHUNK/EVICT operations would need to include
+the cloneid.</p>
+</div>
+<div class="section" id="radosgw">
+<h3>RadosGW<a class="headerlink" href="#radosgw" title="Permalink to this headline">¶</a></h3>
+<p>For reads, RadosGW could operate as RBD above relying on the manifest
+machinery in the OSD to hide the distinction between the object being
+dedup’d or present in the base pool</p>
+<p>For writes, RadosGW could operate as RBD does above, but it could
+optionally have the freedom to fingerprint prior to doing the write.
+In that case, it could immediately write out the target objects to the
+CAS pool and then atomically write an object with the corresponding
+chunks set.</p>
+</div>
+</div>
+<div class="section" id="status-and-future-work">
+<h2>Status and Future Work<a class="headerlink" href="#status-and-future-work" title="Permalink to this headline">¶</a></h2>
+<p>At the moment, initial versions of a manifest data structure along
+with IO path support and rados control operations exist.  This section
+is meant to outline next steps.</p>
+<p>At a high level, our future work plan is:</p>
+<ul class="simple">
+<li><p>Cleanups: Address immediate inconsistencies and shortcomings outlined
+in the next section.</p></li>
+<li><p>Testing: Rados relies heavily on teuthology failure testing to validate
+features like cache/tiering.  We’ll need corresponding tests for
+manifest operations.</p></li>
+<li><p>Snapshots: We want to be able to deduplicate portions of clones
+below the level of the rados snapshot system.  As such, the
+rados operations below need to be extended to work correctly on
+clones (e.g.: we should be able to call SET_CHUNK on a clone, clear the
+corresponding extent in the base pool, and correctly maintain osd metadata).</p></li>
+<li><p>Cache/tiering: Ultimately, we’d like to be able to deprecate the existing
+cache/tiering implementation, but to do that we need to ensure that we
+can address the same use cases.</p></li>
+</ul>
+<div class="section" id="cleanups">
+<h3>Cleanups<a class="headerlink" href="#cleanups" title="Permalink to this headline">¶</a></h3>
+<p>The existing implementation has some things that need to be cleaned up:</p>
+<ul>
+<li><p>SET_REDIRECT: Should create the object if it doesn’t exist, otherwise
+one couldn’t create an object atomically as a redirect.</p></li>
+<li><p>SET_CHUNK:</p>
+<ul>
+<li><p>Appears to trigger a new clone as user_modify gets set in
+do_osd_ops.  This probably isn’t desirable, see Snapshots section
+below for some options on how generally to mix these operations
+with snapshots.  At a minimum, SET_CHUNK probably shouldn’t set
+user_modify.</p></li>
+<li><p>Appears to assume that the corresponding section of the object
+does not exist (sets FLAG_MISSING) but does not check whether the
+corresponding extent exists already in the object.  Should always
+leave the extent clean.</p></li>
+<li><p>Appears to clear the manifest unconditionally if not chunked,
+that’s probably wrong.  We should return an error if it’s a
+REDIRECT</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">case</span> <span class="n">CEPH_OSD_OP_SET_CHUNK</span><span class="p">:</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">oi</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">is_redirect</span><span class="p">())</span> <span class="p">{</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="o">-</span><span class="n">EINVAL</span><span class="p">;</span>
+    <span class="n">goto</span> <span class="n">fail</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p>TIER_PROMOTE:</p>
+<ul class="simple">
+<li><p>SET_REDIRECT clears the contents of the object.  PROMOTE appears
+to copy them back in, but does not unset the redirect or clear the
+reference. This violates the invariant that a redirect object
+should be empty in the base pool.  In particular, as long as the
+redirect is set, it appears that all operations will be proxied
+even after the promote defeating the purpose.  We do want PROMOTE
+to be able to atomically replace a redirect with the actual
+object, so the solution is to clear the redirect at the end of the
+promote.</p></li>
+<li><p>For a chunked manifest, we appear to flush prior to promoting.
+Promotion will often be used to prepare an object for low latency
+reads and writes, accordingly, the only effect should be to read
+any MISSING extents into the base pool.  No flushing should be done.</p></li>
+</ul>
+</li>
+<li><p>High Level:</p>
+<ul class="simple">
+<li><p>It appears that FLAG_DIRTY should never be used for an extent pointing
+at a dedup extent.  Writing the mutated extent back to the dedup pool
+requires writing a new object since the previous one cannot be mutated,
+just as it would if it hadn’t been dedup’d yet.  Thus, we should always
+drop the reference and remove the manifest pointer.</p></li>
+<li><p>There isn’t currently a way to “evict” an object region.  With the above
+change to SET_CHUNK to always retain the existing object region, we
+need an EVICT_CHUNK operation to then remove the extent.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<p>We rely really heavily on randomized failure testing.  As such, we need
+to extend that testing to include dedup/manifest support as well.  Here’s
+a short list of the touchpoints:</p>
+<ul>
+<li><p>Thrasher tests like qa/suites/rados/thrash/workloads/cache-snaps.yaml</p>
+<p>That test, of course, tests the existing cache/tiering machinery.  Add
+additional files to that directory that instead setup a dedup pool.  Add
+support to ceph_test_rados (src/test/osd/TestRados*).</p>
+</li>
+<li><p>RBD tests</p>
+<p>Add a test that runs an rbd workload concurrently with blind
+promote/evict operations.</p>
+</li>
+<li><p>RadosGW</p>
+<p>Add a test that runs a rgw workload concurrently with blind
+promote/evict operations.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="snapshots">
+<h3>Snapshots<a class="headerlink" href="#snapshots" title="Permalink to this headline">¶</a></h3>
+<p>Fundamentally, I think we need to be able to manipulate the manifest
+status of clones because we want to be able to dynamically promote,
+flush (if the state was dirty when the clone was created), and evict
+extents from clones.</p>
+<p>As such, the plan is to allow the object_manifest_t for each clone
+to be independent.  Here’s an incomplete list of the high level
+tasks:</p>
+<ul class="simple">
+<li><p>Modify the op processing pipeline to permit SET_CHUNK, EVICT_CHUNK
+to operation directly on clones.</p></li>
+<li><p>Ensure that recovery checks the object_manifest prior to trying to
+use the overlaps in clone_range.  ReplicatedBackend::calc_*_subsets
+are the two methods that would likely need to be modified.</p></li>
+</ul>
+<p>See snaps.rst for a rundown of the librados snapshot system and osd
+support details.  I’d like to call out one particular data structure
+we may want to exploit.</p>
+<p>The dedup-tool needs to be updated to use LIST_SNAPS to discover
+clones as part of leak detection.</p>
+<p>An important question is how we deal with the fact that many clones
+will frequently have references to the same backing chunks at the same
+offset.  In particular, make_writeable will generally create a clone
+that shares the same object_manifest_t references with the exception
+of any extents modified in that transaction.  The metadata that
+commits as part of that transaction must therefore map onto the same
+refcount as before because otherwise we’d have to first increment
+refcounts on backing objects (or risk a reference to a dead object)
+Thus, we introduce a simple convention: consecutive clones which
+share a reference at the same offset share the same refcount.  This
+means that a write that invokes make_writeable may decrease refcounts,
+but not increase them.  This has some conquences for removing clones.
+Consider the following sequence</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>write foo [0, 1024)
+flush foo -&gt;
+  head: [0, 512) aaa, [512, 1024) bbb
+  refcount(aaa)=1, refcount(bbb)=1
+snapshot 10
+write foo [0, 512) -&gt;
+  head:               [512, 1024) bbb
+  10  : [0, 512) aaa, [512, 1024) bbb
+  refcount(aaa)=1, refcount(bbb)=1
+flush foo -&gt;
+  head: [0, 512) ccc, [512, 1024) bbb
+  10  : [0, 512) aaa, [512, 1024) bbb
+  refcount(aaa)=1, refcount(bbb)=1, refcount(ccc)=1
+snapshot 20
+write foo [0, 512) (same contents as the original write)
+  head:               [512, 1024) bbb
+  20  : [0, 512) ccc, [512, 1024) bbb
+  10  : [0, 512) aaa, [512, 1024) bbb
+  refcount(aaa)=?, refcount(bbb)=1
+flush foo
+  head: [0, 512) aaa, [512, 1024) bbb
+  20  : [0, 512) ccc, [512, 1024) bbb
+  10  : [0, 512) aaa, [512, 1024) bbb
+  refcount(aaa)=?, refcount(bbb)=1, refcount(ccc)=1
+</pre></div>
+</div>
+<p>What should be the refcount for aaa be at the end?  By our
+above rule, it should be two since the two aaa refs are not
+contiguous.  However, consider removing clone 20</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>initial:
+  head: [0, 512) aaa, [512, 1024) bbb
+  20  : [0, 512) ccc, [512, 1024) bbb
+  10  : [0, 512) aaa, [512, 1024) bbb
+  refcount(aaa)=2, refcount(bbb)=1, refcount(ccc)=1
+trim 20
+  head: [0, 512) aaa, [512, 1024) bbb
+  10  : [0, 512) aaa, [512, 1024) bbb
+  refcount(aaa)=?, refcount(bbb)=1, refcount(ccc)=0
+</pre></div>
+</div>
+<p>At this point, our rule dictates that refcount(aaa) is 1.
+This means that removing 20 needs to check for refs held by
+the clones on either side which will then match.</p>
+<p>See osd_types.h:object_manifest_t::calc_refs_to_drop_on_removal
+for the logic implementing this rule.</p>
+<p>This seems complicated, but it gets us two valuable properties:</p>
+<ol class="arabic simple">
+<li><p>The refcount change from make_writeable will not block on
+incrementing a ref</p></li>
+<li><p>We don’t need to load the object_manifest_t for every clone
+to determine how to handle removing one – just the ones
+immediately preceeding and suceeding it.</p></li>
+</ol>
+<p>All clone operations will need to consider adjacent chunk_maps
+when adding or removing references.</p>
+</div>
+<div class="section" id="cache-tiering">
+<h3>Cache/Tiering<a class="headerlink" href="#cache-tiering" title="Permalink to this headline">¶</a></h3>
+<p>There already exists a cache/tiering mechanism based on whiteouts.
+One goal here should ultimately be for this manifest machinery to
+provide a complete replacement.</p>
+<p>See cache-pool.rst</p>
+<p>The manifest machinery already shares some code paths with the
+existing cache/tiering code, mainly stat_flush.</p>
+<p>In no particular order, here’s in incomplete list of things that need
+to be wired up to provide feature parity:</p>
+<ul class="simple">
+<li><p>Online object access information: The osd already has pool configs
+for maintaining bloom filters which provide estimates of access
+recency for objects.  We probably need to modify this to permit
+hitset maintenance for a normal pool – there are already
+CEPH_OSD_OP_PG_HITSET* interfaces for querying them.</p></li>
+<li><p>Tiering agent: The osd already has a background tiering agent which
+would need to be modified to instead flush and evict using
+manifests.</p></li>
+<li><p>Use exiting existing features regarding the cache flush policy such as
+histset, age, ratio.
+- hitset
+- age, ratio, bytes</p></li>
+<li><p>Add tiering-mode to manifest-tiering.
+- Writeback
+- Read-only</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="data-structures">
+<h2>Data Structures<a class="headerlink" href="#data-structures" title="Permalink to this headline">¶</a></h2>
+<p>Each object contains an object_manifest_t embedded within the
+object_info_t (see osd_types.h):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">object_manifest_t</span> <span class="p">{</span>
+        <span class="n">enum</span> <span class="p">{</span>
+                <span class="n">TYPE_NONE</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="n">TYPE_REDIRECT</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">TYPE_CHUNKED</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="p">};</span>
+        <span class="n">uint8_t</span> <span class="nb">type</span><span class="p">;</span>  <span class="o">//</span> <span class="n">redirect</span><span class="p">,</span> <span class="n">chunked</span><span class="p">,</span> <span class="o">...</span>
+        <span class="n">hobject_t</span> <span class="n">redirect_target</span><span class="p">;</span>
+        <span class="n">std</span><span class="p">::</span><span class="nb">map</span><span class="o">&lt;</span><span class="n">uint64_t</span><span class="p">,</span> <span class="n">chunk_info_t</span><span class="o">&gt;</span> <span class="n">chunk_map</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The type enum reflects three possible states an object can be in:</p>
+<ol class="arabic simple">
+<li><p>TYPE_NONE: normal rados object</p></li>
+<li><p>TYPE_REDIRECT: object payload is backed by a single object
+specified by redirect_target</p></li>
+<li><p>TYPE_CHUNKED: object payload is distributed among objects with
+size and offset specified by the chunk_map. chunk_map maps
+the offset of the chunk to a chunk_info_t shown below further
+specifying the length, target oid, and flags.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">chunk_info_t</span> <span class="p">{</span>
+  <span class="n">typedef</span> <span class="n">enum</span> <span class="p">{</span>
+    <span class="n">FLAG_DIRTY</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">FLAG_MISSING</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">FLAG_HAS_REFERENCE</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">FLAG_HAS_FINGERPRINT</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+  <span class="p">}</span> <span class="n">cflag_t</span><span class="p">;</span>
+  <span class="n">uint32_t</span> <span class="n">offset</span><span class="p">;</span>
+  <span class="n">uint32_t</span> <span class="n">length</span><span class="p">;</span>
+  <span class="n">hobject_t</span> <span class="n">oid</span><span class="p">;</span>
+  <span class="n">cflag_t</span> <span class="n">flags</span><span class="p">;</span>   <span class="o">//</span> <span class="n">FLAG_</span><span class="o">*</span>
+</pre></div>
+</div>
+<p>FLAG_DIRTY at this time can happen if an extent with a fingerprint
+is written.  This should be changed to drop the fingerprint instead.</p>
+</div>
+<div class="section" id="request-handling">
+<h2>Request Handling<a class="headerlink" href="#request-handling" title="Permalink to this headline">¶</a></h2>
+<p>Similarly to cache/tiering, the initial touchpoint is
+maybe_handle_manifest_detail.</p>
+<p>For manifest operations listed below, we return NOOP and continue onto
+dedicated handling within do_osd_ops.</p>
+<p>For redirect objects which haven’t been promoted (apparently oi.size &gt;
+0 indicates that it’s present?) we proxy reads and writes.</p>
+<p>For reads on TYPE_CHUNKED, if can_proxy_chunked_read (basically, all
+of the ops are reads of extents in the object_manifest_t chunk_map),
+we proxy requests to those objects.</p>
+</div>
+<div class="section" id="rados-interface">
+<h2>RADOS Interface<a class="headerlink" href="#rados-interface" title="Permalink to this headline">¶</a></h2>
+<p>To set up deduplication pools, you must have two pools. One will act as the
+base pool and the other will act as the chunk pool. The base pool need to be
+configured with fingerprint_algorithm option as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph osd pool set $BASE_POOL fingerprint_algorithm sha1|sha256|sha512
+--yes-i-really-mean-it
+</pre></div>
+</div>
+<ol class="arabic">
+<li><p>Create objects</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="n">base_pool</span> <span class="n">put</span> <span class="n">foo</span> <span class="o">./</span><span class="n">foo</span>
+
+<span class="o">-</span> <span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="n">chunk_pool</span> <span class="n">put</span> <span class="n">foo</span><span class="o">-</span><span class="n">chunk</span> <span class="o">./</span><span class="n">foo</span><span class="o">-</span><span class="n">chunk</span>
+</pre></div>
+</div>
+</li>
+<li><p>Make a manifest object</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>- rados -p base_pool set-chunk foo $START_OFFSET $END_OFFSET --target-pool
+chunk_pool foo-chunk $START_OFFSET --with-reference
+</pre></div>
+</div>
+</li>
+</ol>
+<p>Operations:</p>
+<ul>
+<li><p>set-redirect</p>
+<p>set a redirection between a base_object in the base_pool and a target_object
+in the target_pool.
+A redirected object will forward all operations from the client to the
+target_object.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">set_redirect</span><span class="p">(</span><span class="n">const</span> <span class="n">std</span><span class="p">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">tgt_obj</span><span class="p">,</span> <span class="n">const</span> <span class="n">IoCtx</span><span class="o">&amp;</span> <span class="n">tgt_ioctx</span><span class="p">,</span>
+              <span class="n">uint64_t</span> <span class="n">tgt_version</span><span class="p">,</span> <span class="nb">int</span> <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="n">base_pool</span> <span class="nb">set</span><span class="o">-</span><span class="n">redirect</span> <span class="o">&lt;</span><span class="n">base_object</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="n">pool</span> <span class="o">&lt;</span><span class="n">target_pool</span><span class="o">&gt;</span>
+ <span class="o">&lt;</span><span class="n">target_object</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Returns ENOENT if the object does not exist (TODO: why?)
+Returns EINVAL if the object already is a redirect.</p>
+<p>Takes a reference to target as part of operation, can possibly leak a ref
+if the acting set resets and the client dies between taking the ref and
+recording the redirect.</p>
+<p>Truncates object, clears omap, and clears xattrs as a side effect.</p>
+<p>At the top of do_osd_ops, does not set user_modify.</p>
+<p>This operation is not a user mutation and does not trigger a clone to be created.</p>
+<p>The purpose of set_redirect is two.</p>
+<ol class="arabic simple">
+<li><p>Redirect all operation to the target object (like proxy)</p></li>
+<li><p>Cache when tier_promote is called (redirect will be cleared at this time).</p></li>
+</ol>
+</li>
+<li><p>set-chunk</p>
+<p>set the chunk-offset in a source_object to make a link between it and a
+target_object.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">set_chunk</span><span class="p">(</span><span class="n">uint64_t</span> <span class="n">src_offset</span><span class="p">,</span> <span class="n">uint64_t</span> <span class="n">src_length</span><span class="p">,</span> <span class="n">const</span> <span class="n">IoCtx</span><span class="o">&amp;</span> <span class="n">tgt_ioctx</span><span class="p">,</span>
+           <span class="n">std</span><span class="p">::</span><span class="n">string</span> <span class="n">tgt_oid</span><span class="p">,</span> <span class="n">uint64_t</span> <span class="n">tgt_offset</span><span class="p">,</span> <span class="nb">int</span> <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="n">base_pool</span> <span class="nb">set</span><span class="o">-</span><span class="n">chunk</span> <span class="o">&lt;</span><span class="n">source_object</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">offset</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">length</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="n">pool</span>
+ <span class="o">&lt;</span><span class="n">caspool</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">target_object</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">target</span><span class="o">-</span><span class="n">offset</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Returns ENOENT if the object does not exist (TODO: why?)
+Returns EINVAL if the object already is a redirect.
+Returns EINVAL if on ill-formed parameter buffer.
+Returns ENOTSUPP if existing mapped chunks overlap with new chunk mapping.</p>
+<p>Takes references to targets as part of operation, can possibly leak refs
+if the acting set resets and the client dies between taking the ref and
+recording the redirect.</p>
+<p>Truncates object, clears omap, and clears xattrs as a side effect.</p>
+<p>This operation is not a user mutation and does not trigger a clone to be created.</p>
+<p>TODO: SET_CHUNK appears to clear the manifest unconditionally if it’s not chunked.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>if (!oi.manifest.is_chunked()) {
+  oi.manifest.clear();
+}
+</pre></div>
+</div>
+</li>
+<li><p>evict-chunk</p>
+<p>Clears an extent from an object leaving only the manifest link between
+it and the target_object.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">evict_chunk</span><span class="p">(</span>
+  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">,</span> <span class="n">uint64_t</span> <span class="n">length</span><span class="p">,</span> <span class="nb">int</span> <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="n">base_pool</span> <span class="n">evict</span><span class="o">-</span><span class="n">chunk</span> <span class="o">&lt;</span><span class="n">offset</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">length</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="nb">object</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Returns EINVAL if the extent is not present in the manifest.</p>
+<p>Note: this does not exist yet.</p>
+</li>
+<li><p>tier-promote</p>
+<p>promotes the object ensuring that subsequent reads and writes will be local</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">tier_promote</span><span class="p">();</span>
+
+<span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="n">base_pool</span> <span class="n">tier</span><span class="o">-</span><span class="n">promote</span> <span class="o">&lt;</span><span class="n">obj</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Returns ENOENT if the object does not exist</p>
+<p>For a redirect manifest, copies data to head.</p>
+<p>TODO: Promote on a redirect object needs to clear the redirect.</p>
+<p>For a chunked manifest, reads all MISSING extents into the base pool,
+subsequent reads and writes will be served from the base pool.</p>
+<p>Implementation Note: For a chunked manifest, calls start_copy on itself.  The
+resulting copy_get operation will issue reads which will then be redirected by
+the normal manifest read machinery.</p>
+<p>Does not set the user_modify flag.</p>
+<p>Future work will involve adding support for specifying a clone_id.</p>
+</li>
+<li><p>unset-manifest</p>
+<p>unset the manifest info in the object that has manifest.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">unset_manifest</span><span class="p">();</span>
+
+<span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="n">base_pool</span> <span class="n">unset</span><span class="o">-</span><span class="n">manifest</span> <span class="o">&lt;</span><span class="n">obj</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Clears manifest chunks or redirect.  Lazily releases references, may
+leak.</p>
+<p>do_osd_ops seems not to include it in the user_modify=false whitelist,
+and so will trigger a snapshot.  Note, this will be true even for a
+redirect though SET_REDIRECT does not flip user_modify.  This should
+be fixed – unset-manifest should not be a user_modify.</p>
+</li>
+<li><p>tier-flush</p>
+<p>flush the object which has chunks to the chunk pool.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">tier_flush</span><span class="p">();</span>
+
+<span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="n">base_pool</span> <span class="n">tier</span><span class="o">-</span><span class="n">flush</span> <span class="o">&lt;</span><span class="n">obj</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Included in the user_modify=false whitelist, does not trigger a clone.</p>
+<p>Does not evict the extents.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="dedup-tool">
+<h2>Dedup tool<a class="headerlink" href="#dedup-tool" title="Permalink to this headline">¶</a></h2>
+<p>Dedup tool has two features: finding an optimal chunk offset for dedup chunking
+and fixing the reference count (see ./refcount.rst).</p>
+<ul>
+<li><p>find an optimal chunk offset</p>
+<ol class="loweralpha simple">
+<li><p>fixed chunk</p></li>
+</ol>
+<blockquote>
+<div><p>To find out a fixed chunk length, you need to run the following command many
+times while changing the chunk_size.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph-dedup-tool --op estimate --pool $POOL --chunk-size chunk_size
+  --chunk-algorithm fixed --fingerprint-algorithm sha1|sha256|sha512
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="loweralpha simple" start="2">
+<li><p>rabin chunk(Rabin-karp algorithm)</p></li>
+</ol>
+<blockquote>
+<div><p>As you know, Rabin-karp algorithm is string-searching algorithm based
+on a rolling-hash. But rolling-hash is not enough to do deduplication because
+we don’t know the chunk boundary. So, we need content-based slicing using
+a rolling hash for content-defined chunking.
+The current implementation uses the simplest approach: look for chunk boundaries
+by inspecting the rolling hash for pattern(like the
+lower N bits are all zeroes).</p>
+<ul>
+<li><p>Usage</p>
+<p>Users who want to use deduplication need to find an ideal chunk offset.
+To find out ideal chunk offset, Users should discover
+the optimal configuration for their data workload via ceph-dedup-tool.
+And then, this chunking information will be used for object chunking through
+set-chunk api.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph-dedup-tool --op estimate --pool $POOL --min-chunk min_size
+  --chunk-algorithm rabin --fingerprint-algorithm rabin
+</pre></div>
+</div>
+<p>ceph-dedup-tool has many options to utilize rabin chunk.
+These are options for rabin chunk.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">mod</span><span class="o">-</span><span class="n">prime</span> <span class="o">&lt;</span><span class="n">uint64_t</span><span class="o">&gt;</span>
+<span class="o">--</span><span class="n">rabin</span><span class="o">-</span><span class="n">prime</span> <span class="o">&lt;</span><span class="n">uint64_t</span><span class="o">&gt;</span>
+<span class="o">--</span><span class="nb">pow</span> <span class="o">&lt;</span><span class="n">uint64_t</span><span class="o">&gt;</span>
+<span class="o">--</span><span class="n">chunk</span><span class="o">-</span><span class="n">mask</span><span class="o">-</span><span class="n">bit</span> <span class="o">&lt;</span><span class="n">uint32_t</span><span class="o">&gt;</span>
+<span class="o">--</span><span class="n">window</span><span class="o">-</span><span class="n">size</span> <span class="o">&lt;</span><span class="n">uint32_t</span><span class="o">&gt;</span>
+<span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">chunk</span> <span class="o">&lt;</span><span class="n">uint32_t</span><span class="o">&gt;</span>
+<span class="o">--</span><span class="nb">max</span><span class="o">-</span><span class="n">chunk</span> <span class="o">&lt;</span><span class="n">uint64_t</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Users need to refer following equation to use above options for rabin chunk.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rabin_hash</span> <span class="o">=</span>
+  <span class="p">(</span><span class="n">rabin_hash</span> <span class="o">*</span> <span class="n">rabin_prime</span> <span class="o">+</span> <span class="n">new_byte</span> <span class="o">-</span> <span class="n">old_byte</span> <span class="o">*</span> <span class="nb">pow</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="n">mod_prime</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+<ol class="loweralpha simple" start="3">
+<li><p>Fixed chunk vs content-defined chunk</p></li>
+</ol>
+<blockquote>
+<div><p>Content-defined chunking may or not be optimal solution.
+For example,</p>
+<p>Data chunk A : abcdefgabcdefgabcdefg</p>
+<p>Let’s think about Data chunk A’s deduplication. Ideal chunk offset is
+from 1 to 7 (abcdefg). So, if we use fixed chunk, 7 is optimal chunk length.
+But, in the case of content-based slicing, the optimal chunk length
+could not be found (dedup ratio will not be 100%).
+Because we need to find optimal parameter such
+as boundary bit, window size and prime value. This is as easy as fixed chunk.
+But, content defined chunking is very effective in the following case.</p>
+<p>Data chunk B : abcdefgabcdefgabcdefg</p>
+<p>Data chunk C : Tabcdefgabcdefgabcdefg</p>
+</div></blockquote>
+</li>
+<li><p>fix reference count</p>
+<p>The key idea behind of reference counting for dedup is false-positive, which means
+(manifest object (no ref), chunk object(has ref)) happen instead of
+(manifest object (has ref), chunk 1(no ref)).
+To fix such inconsistency, ceph-dedup-tool supports chunk_scrub.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph-dedup-tool --op chunk_scrub --chunk_pool $CHUNK_POOL
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../">
+              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../radosgw/">Ceph 对象网关</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer_guide/">开发者指南</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../internals/">Ceph 内幕</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../blkin/">用 Blkin 追踪 Ceph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../bluestore/">BlueStore Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cache-pool/">Cache pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ceph_krb_auth/">如何配置好 Ceph Kerberos 认证的详细文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephadm/">Developing with cephadm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephfs-reclaim/">CephFS Reclaim Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephfs-snapshots/">CephFS 快照</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephx/">Cephx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephx_protocol/">Cephx 认证协议详细阐述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../config/">配置管理系统</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../config-key/">config-key layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../context/">CephContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../corpus/">资料库结构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cpu-profiler/">Oprofile 的安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../crimson/">crimson</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cxx/">C++17 and libstdc++ ABI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../deduplication/">去重</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../delayed-delete/">CephFS delayed deletion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/">开发集群的部署</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/#id6">在同一机器上部署多套开发集群</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../development-workflow/">开发流程</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../documenting/">为 Ceph 写作文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../encoding/">序列化（编码、解码）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../erasure-coded-pool/">纠删码存储池</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../file-striping/">File striping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../freebsd/">FreeBSD Implementation details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generatedocs/">Ceph 文档的构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../iana/">IANA 号</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../kubernetes/">Hacking on Ceph in Kubernetes with Rook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../libs/">Library architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../logging/">集群日志的用法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../logs/">调试日志</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../macos/">在 MacOS 上构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../messenger/">Messenger notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-bootstrap/">Monitor bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-on-disk-formats/">ON-DISK FORMAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../mon-osdmap-prune/">FULL OSDMAP VERSION PRUNING</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../msgr2/">msgr2 协议（ msgr2.0 和 msgr2.1 ）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../network-encoding/">Network Encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../network-protocol/">网络协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../object-store/">对象存储架构概述</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../osd-class-path/">OSD class path issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../peering/">互联</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf/">Using perf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf_counters/">性能计数器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../perf_histograms/">Perf histograms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../placement-group/">PG （归置组）说明</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quick_guide/">开发者指南（快速）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rados-client-protocol/">RADOS 客户端协议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-diff/">RBD 增量备份</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-export/">RBD Export &amp; Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../rbd-layering/">RBD Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../release-checklists/">Release checklists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../release-process/">Ceph Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../seastore/">SeaStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sepia/">Sepia 社区测试实验室</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../testing/">测试笔记</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../versions/">Public OSD Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../wireshark/">Wireshark Dissector</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../">OSD 开发者文档</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../async_recovery/">异步恢复</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../backfill_reservation/">Backfill Reservation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../erasure_coding/">纠删码编码的归置组</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../last_epoch_started/">last_epoch_started</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../log_based_pg/">Log Based PG</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Manifest</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#intended-usage-model">Intended Usage Model</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#rbd">RBD</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#radosgw">RadosGW</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#status-and-future-work">Status and Future Work</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#cleanups">Cleanups</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#testing">Testing</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#snapshots">Snapshots</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#cache-tiering">Cache/Tiering</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#data-structures">Data Structures</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#request-handling">Request Handling</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rados-interface">RADOS Interface</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dedup-tool">Dedup tool</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../map_message_handling/">Map and PG Message handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../osd_overview/">OSD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../osd_throttles/">OSD 油门（ throttle ）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../partial_object_recovery/">Partial Object Recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pg/">PG</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pg_removal/">PG Removal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pgpool/">PGPool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../recovery_reservation/">Recovery Reservation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../scrub/">Scrub internals and diagnostics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../snaps/">快照</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stale_read/">Preventing Stale Reads</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../watch_notify/">关注通知</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../wbthrottle/">回写抑制</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../mds_internals/">MDS 开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../radosgw/">RADOS 网关开发者文档</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ceph-volume/">ceph-volume 开发者文档</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../map_message_handling/" title="Map and PG Message handling"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../log_based_pg/" title="Log Based PG"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../" >OSD 开发者文档</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

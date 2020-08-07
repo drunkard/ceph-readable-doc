@@ -136,7 +136,7 @@ Then provide the zone placement info for that target:
 
 新增一个存储类
 --------------
-To add a new storage class named ``COLD`` to the ``default-placement`` target,
+To add a new storage class named ``GLACIER`` to the ``default-placement`` target,
 start by adding it to the zonegroup:
 
 ::
@@ -144,7 +144,7 @@ start by adding it to the zonegroup:
   $ radosgw-admin zonegroup placement add \
         --rgw-zonegroup default \
         --placement-id default-placement \
-        --storage-class COLD
+        --storage-class GLACIER
 
 Then provide the zone placement info for that storage class:
 
@@ -153,8 +153,8 @@ Then provide the zone placement info for that storage class:
   $ radosgw-admin zone placement add \
         --rgw-zone default \
         --placement-id default-placement \
-        --storage-class COLD \
-        --data-pool default.rgw.cold.data \
+        --storage-class GLACIER \
+        --data-pool default.rgw.glacier.data \
         --compression lz4
 
 Customizing Placement

@@ -18,6 +18,7 @@ infrastructure with all the features and benefits of a conventional Storage Area
 Network (SAN).
 
 .. ditaa::
+
                   Cluster Network
                  +-------------------------------------------+
                  |             |               |             |

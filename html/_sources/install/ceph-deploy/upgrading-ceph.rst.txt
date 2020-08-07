@@ -224,7 +224,7 @@ ceph-deploy 工具
 如果不是最新版，你也许得卸载、清理掉依赖、然后重新安装。
 
 
-.. _用你发行版自带的包管理器: ../install-storage-cluster/
-.. _操纵集群: ../../rados/operations/operating
-.. _监控集群: ../../rados/operations/monitoring
-.. _此版本的发布摘要: ../../releases
+.. _用你发行版自带的包管理器: ../../install-storage-cluster/
+.. _操纵集群: ../../../rados/operations/operating
+.. _监控集群: ../../../rados/operations/monitoring
+.. _此版本的发布摘要: ../../../releases

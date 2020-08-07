@@ -26,6 +26,8 @@ Ceph 分布式系统中定义了几个固定的地址，其他所有守护进程
 Ceph 监视器 v1 版信使协议的端口是 6789 ，而 v2 版协议的端口是
 3300 。
 
+Multiple actions can be performed per invocation.
+
 
 选项
 ====
@@ -48,6 +50,8 @@ Ceph 监视器 v1 版信使协议的端口是 6789 ，而 v2 版协议的端口�
 
    更改时允许 monmaptool 覆盖 mapfilename 。
 
+   Only useful when *--create* is used.
+
 .. option:: --generate
 
    基于命令行参数或配置文件中的配置生成新 monmap ，配置来源优先级如下：
@@ -62,12 +66,16 @@ Ceph 监视器 v1 版信使协议的端口是 6789 ，而 v2 版协议的端口�
    用 ``mon initial members`` 选项的设置过滤初始 monmap ，不在此列表内的监视\
    器将被删除、没在图内的初始成员将用假地址加入。
 
-.. option:: --add name ip:port
+.. option:: --add name ip[:port]
 
    把指定 ip:port 的监视器加入图中。
 
    If the *nautilus* feature is set, and the port is not, the monitor
    will be added for both messenger protocols.
+
+.. option:: --addv name [protocol:ip:port[,...]]
+
+   add a monitor with the specified version:ip:port to the map.
 
 .. option:: --rm name
 
@@ -97,7 +105,7 @@ Ceph 监视器 v1 版信使协议的端口是 6789 ，而 v2 版协议的端口�
 实例
 ====
 
-新建一个有三个监视器的新图（为新的 Ceph 文件系统）： ::
+新建一个有三个监视器的新图（为新的 Ceph 集群）： ::
 
         monmaptool --create --add nodeA 192.168.0.10 --add nodeB 192.168.0.11 \
           --add nodeC 192.168.0.12 --enable-all-features --clobber monmap

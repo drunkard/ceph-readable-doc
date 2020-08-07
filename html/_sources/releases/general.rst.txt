@@ -19,7 +19,6 @@
 
 理解发布周期
 ------------
-
 从 Nautilus 版（ 14.2.0 ）之后，每年是一个新的稳定版发布周期。\
 各系列的稳定版都会取个名字（如 Mimic ）、和一个主版本号（如
 Mimic 的是 13 ，因为 M 是字母表的第十三个）。
@@ -41,7 +40,6 @@ name, since the latin names are harder to remember or pronounce).
 
 开发版（ x.0.z ）
 ^^^^^^^^^^^^^^^^^
-
 主开发分支冻结后形成开发版（ x.0.z ）、而且发布前还要进行\
 `集成和升级测试
 <https://github.com/ceph/ceph/tree/master/qa/suites/>`_\ 。\
@@ -61,7 +59,6 @@ name, since the latin names are harder to remember or pronounce).
 
 候选发布版（ x.1.z ）
 ^^^^^^^^^^^^^^^^^^^^^
-
 从起初计划的稳定版起，差不多每 6 周就有一个功能版，之后的工作\
 重心将转移，仅限于稳定性和缺陷修正。
 
@@ -72,7 +69,6 @@ name, since the latin names are harder to remember or pronounce).
 
 稳定版（ x.2.z ）
 ^^^^^^^^^^^^^^^^^
-
 一旦初始稳定版确定（ x.2.0 ），之后会有不定时的修正版，包含了\
 缺陷修正和（偶尔的）小功能移植。缺陷修正会暂存起来，并包含在下\
 一个小版本中。
@@ -102,7 +98,6 @@ name, since the latin names are harder to remember or pronounce).
 
 稳定版的生命周期
 ----------------
-
 The lifetime of a stable release series is calculated to be approximately 24
 months (i.e., two 12 month release cycles) after the month of the first release.
 For example, Mimic (13.2.z) will reach end of life (EOL) shortly after Octopus
@@ -128,7 +123,7 @@ Detailed information on all releases, past and present, can be found at :ref:`ce
 发布时间表
 ----------
 
-.. ceph_timeline:: releases.yml development nautilus mimic luminous kraken jewel infernalis hammer giant firefly emperor
+.. ceph_timeline:: releases.yml development octopus nautilus mimic luminous kraken jewel infernalis hammer giant firefly
 
 .. _Octopus: ../octopus
 .. _15.2.4: ../octopus#v15-2-4-octopus
