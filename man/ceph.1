@@ -2013,7 +2013,7 @@ ceph\-osd(8)
 .SH 提纲
 .nf
 \fBceph\-osd\fP \-i \fIosdnum\fP [ \-\-osd\-data \fIdatapath\fP ] [ \-\-osd\-journal
-\fIjournal\fP ] [ \-\-mkfs ] [ \-\-mkjournal ] [\-\-flush\-journal] [\-\-check\-allows\-journal] [\-\-check\-wants\-journal] [\-\-check\-needs\-journal] [ \-\-mkkey ]
+\fIjournal\fP ] [ \-\-mkfs ] [ \-\-mkjournal ] [\-\-flush\-journal] [\-\-check\-allows\-journal] [\-\-check\-wants\-journal] [\-\-check\-needs\-journal] [ \-\-mkkey ] [ \-\-osdspec\-affinity ]
 .fi
 .sp
 .SH 描述
@@ -2113,6 +2113,12 @@ UID 及其 GID ，同时设置 GID ，除非还指定了 \-\-setgroup 选项。
 .TP
 .B \-m monaddress[:port]
 连接到指定监视器（而非到 \fBceph.conf\fP 里找）。
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-osdspec\-affinity
+Set an affinity to a certain OSDSpec.
+This option can only be used in conjunction with \-\-mkfs.
 .UNINDENT
 .SH 使用范围
 .sp
@@ -8091,12 +8097,15 @@ otherwise all buckets.
 .TP
 \fBorphans find\fP
 初始化、并开始检索遗漏的 RADOS 对象。
+\fB已废弃\fP，改用 rgw\-orphan\-list 工具吧。
 .TP
 \fBorphans finish\fP
 清理遗漏 RADOS 对象的检索结果。
+\fB已废弃\fP，改用 rgw\-orphan\-list 工具吧。
 .TP
 \fBorphans list\-jobs\fP
 罗列当前正在进行的遗漏对象检索作业号。
+\fB已废弃\fP，改用 rgw\-orphan\-list 工具吧。
 .TP
 \fBrole create\fP
 新建一个用于 STS 的 AWS 角色。
@@ -10714,6 +10723,64 @@ systemctl enable rbdmap.service
 .SH 参考
 .sp
 rbd(8),
+.SH SYNOPSIS
+.nf
+\fBrgw\-orphan\-list\fP
+.fi
+.sp
+.SH DESCRIPTION
+.sp
+\fBrgw\-orphan\-list\fP is an \fIEXPERIMENTAL\fP RADOS gateway user
+administration utility. It produces a listing of rados objects that
+are not directly or indirectly referenced through the bucket indexes
+on a pool. It places the results and intermediate files on the local
+filesystem rather than on the ceph cluster itself, and therefore will
+not itself consume additional cluster storage.
+.sp
+In theory orphans should not exist. However because ceph evolves
+rapidly, bugs do crop up, and they may result in orphans that are left
+behind.
+.sp
+In its current form this utility does not take any command\-line
+arguments or options. It will list the available pools and prompt the
+user to enter the pool they would like to list orphans for.
+.sp
+Behind the scenes it runs \fIrados ls\fP and \fIradosgw\-admin bucket
+radoslist ...\fP and produces a list of those entries that appear in the
+former but not the latter. Those entries are presumed to be the
+orphans.
+.SH WARNINGS
+.sp
+This utility is currently considered \fIEXPERIMENTAL\fP\&.
+.sp
+This utility will produce false orphan entries for unindexed buckets
+since such buckets have no bucket indices that can provide the
+starting point for tracing.
+.SH OPTIONS
+.sp
+At present there are no options.
+.SH EXAMPLES
+.sp
+Launch the tool:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ rgw\-orphan\-list
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH AVAILABILITY
+.sp
+\fBradosgw\-admin\fP is part of Ceph, a massively scalable, open\-source,
+distributed storage system.  Please refer to the Ceph documentation at
+\fI\%http://ceph.com/docs\fP for more information.
+.SH SEE ALSO
+.sp
+radosgw\-admin(8)
+ceph\-diff\-sorted(8)
 .SH 提纲
 .nf
 \fBceph\-immutable\-object\-cache\fP
@@ -10778,6 +10845,76 @@ more information.
 .SH 参考
 .sp
 rbd(8)
+.SH SYNOPSIS
+.nf
+\fBceph\-diff\-sorted\fP \fIfile1\fP \fIfile2\fP
+.fi
+.sp
+.SH DESCRIPTION
+.sp
+\fBceph\-diff\-sorted\fP is a simplifed \fIdiff\fP utility optimized
+for comparing two files with lines that are lexically sorted.
+.sp
+The output is simplified in comparison to that of the standard \fIdiff\fP
+tool available in POSIX systems. Angle brackets (\(aq<\(aq and \(aq>\(aq) are used
+to show lines that appear in one file but not the other. The output is
+not compatible with the \fIpatch\fP tool.
+.sp
+This tool was created in order to perform diffs of large files (e.g.,
+containing billions of lines) that the standard \fIdiff\fP tool cannot
+handle efficiently. Knowing that the lines are sorted allows this to
+be done efficiently with minimal memory overhead.
+.sp
+The sorting of each file needs to be done lexcially. Most POSIX
+systems use the \fILANG\fP environment variable to determine the \fIsort\fP
+tool\(aqs sorting order. To sort lexically we would need something such
+as:
+.INDENT 0.0
+.INDENT 3.5
+$ LANG=C sort some\-file.txt >some\-file\-sorted.txt
+.UNINDENT
+.UNINDENT
+.SH EXAMPLES
+.sp
+Compare two files:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ ceph\-diff\-sorted fileA.txt fileB.txt
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH EXIT STATUS
+.sp
+When complete, the exit status will be set to one of the following:
+.INDENT 0.0
+.TP
+.B 0
+files same
+.TP
+.B 1
+files different
+.TP
+.B 2
+usage problem (e.g., wrong number of command\-line arguments)
+.TP
+.B 3
+problem opening input file
+.TP
+.B 4
+bad file content (e.g., unsorted order or empty lines)
+.UNINDENT
+.SH AVAILABILITY
+.sp
+\fBceph\-diff\-sorted\fP is part of Ceph, a massively scalable,
+open\-source, distributed storage system.  Please refer to the Ceph
+documentation at \fI\%http://ceph.com/docs\fP for more information.
+.SH SEE ALSO
+.sp
+rgw\-orphan\-list(8)
 .SH AUTHOR
 unknown
 .SH COPYRIGHT

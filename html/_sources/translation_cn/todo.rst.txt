@@ -1,13 +1,15 @@
 TODO for Chinese
 ================
 
-Test ditaa 0.11.0
 术语上方标注原文词语，用 HTML5 的 ruby + rt TAG 实现，但是rst现在还没有原生支持。
-github 上 README 内的链接无效
+github 上 README.rst 内的链接无效
+开户： https://readthedocs.org/
 
 
 TODO for raw doc (English version)
 ==================================
+
+make ditaa optional in admin/build-doc
 
 Cache Tier modes, do compare in table, include these column at least:
 	cache-mode

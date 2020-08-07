@@ -402,12 +402,15 @@
 
 :command:`orphans find`
   初始化、并开始检索遗漏的 RADOS 对象。
+  **已废弃**\ ，改用 rgw-orphan-list 工具吧。
 
 :command:`orphans finish`
   清理遗漏 RADOS 对象的检索结果。
+  **已废弃**\ ，改用 rgw-orphan-list 工具吧。
 
 :command:`orphans list-jobs`
   罗列当前正在进行的遗漏对象检索作业号。
+  **已废弃**\ ，改用 rgw-orphan-list 工具吧。
 
 :command:`role create`
   新建一个用于 STS 的 AWS 角色。

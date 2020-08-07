@@ -10,7 +10,7 @@
 ====
 
 | **ceph-osd** -i *osdnum* [ --osd-data *datapath* ] [ --osd-journal
-  *journal* ] [ --mkfs ] [ --mkjournal ] [--flush-journal] [--check-allows-journal] [--check-wants-journal] [--check-needs-journal] [ --mkkey ]
+  *journal* ] [ --mkfs ] [ --mkjournal ] [--flush-journal] [--check-allows-journal] [--check-wants-journal] [--check-needs-journal] [ --mkkey ] [ --osdspec-affinity ]
 
 
 描述
@@ -104,6 +104,11 @@ NVRAM ）时才会达到最佳性能。
 .. option:: -m monaddress[:port]
 
    连接到指定监视器（而非到 ``ceph.conf`` 里找）。
+
+.. option:: --osdspec-affinity
+
+   Set an affinity to a certain OSDSpec.
+   This option can only be used in conjunction with --mkfs.
 
 
 使用范围

@@ -107,13 +107,14 @@ Ceph 块设备，详情见 `libvirt 虚拟化 API`_ 。
 	log file = /var/log/ceph/qemu-guest-$pid.log
 	admin socket = /var/run/ceph/$cluster-$type.$id.$pid.$cctid.asok
 
-   ``client.libvirt`` 段名应该与上面创建的 cephx 用户一致。另\
-   外，如果在用 SELinux 或 AppArmor ，它们可能会阻止客户端进程\
-   （ qemu 调用 libvirt ）的日志或管理套接字的写入操作（
-   ``/var/log/ceph`` 或 ``/var/run/ceph`` ）。
+   ``client.libvirt`` 段名应该与上面创建的 cephx 用户一致。
+   如果启用了 SELinux 或 AppArmor ，它们可能会阻止客户端进程\
+   （ qemu 调用 libvirt ）的某些操作，比如写入日志、操作映像\
+   或管理套接字（ ``/var/log/ceph`` 或 ``/var/run/ceph`` ）。\
+   另外，确保 libvirt 和 qemu 用户们有合适的权限访问指定目录。
 
 
-.. _Preparing the VM Manager:
+.. Preparing the VM Manager
 
 准备虚拟机管理器
 ================
