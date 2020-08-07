@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>Scrub internals and diagnostics &#8212; Ceph Documentation</title>
+    <title>Refcount &#8212; Ceph Documentation</title>
     <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
@@ -18,8 +18,8 @@
     <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../../../genindex/" />
     <link rel="search" title="Search" href="../../../search/" />
-    <link rel="next" title="快照" href="../snaps/" />
-    <link rel="prev" title="Refcount" href="../refcount/" /> 
+    <link rel="next" title="Scrub internals and diagnostics" href="../scrub/" />
+    <link rel="prev" title="Recovery Reservation" href="../recovery_reservation/" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -31,10 +31,10 @@
           <a href="../../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../snaps/" title="快照"
+          <a href="../scrub/" title="Scrub internals and diagnostics"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../refcount/" title="Refcount"
+          <a href="../recovery_reservation/" title="Recovery Reservation"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
@@ -58,85 +58,50 @@
   <p class="last">This document is for an unsupported version of Ceph.</p>
 </div>
   <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
-    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/osd_internals/scrub.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/osd_internals/refcount.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
   </div>
 
   
-  <div class="section" id="scrub-internals-and-diagnostics">
-<h1>Scrub internals and diagnostics<a class="headerlink" href="#scrub-internals-and-diagnostics" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="scrubbing-behavior-table">
-<h2>Scrubbing Behavior Table<a class="headerlink" href="#scrubbing-behavior-table" title="Permalink to this headline">¶</a></h2>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 46%" />
-<col style="width: 9%" />
-<col style="width: 10%" />
-<col style="width: 14%" />
-<col style="width: 21%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Flags</p></th>
-<th class="head"><p>none</p></th>
-<th class="head"><p>noscrub</p></th>
-<th class="head"><p>nodeep_scrub</p></th>
-<th class="head"><p>noscrub/nodeep_scrub</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Periodic tick</p></td>
-<td><p>S</p></td>
-<td><p>X</p></td>
-<td><p>S</p></td>
-<td><p>X</p></td>
-</tr>
-<tr class="row-odd"><td><p>Periodic tick after osd_deep_scrub_interval</p></td>
-<td><p>D</p></td>
-<td><p>D</p></td>
-<td><p>S</p></td>
-<td><p>X</p></td>
-</tr>
-<tr class="row-even"><td><p>Initiated scrub</p></td>
-<td><p>S</p></td>
-<td><p>S</p></td>
-<td><p>S</p></td>
-<td><p>S</p></td>
-</tr>
-<tr class="row-odd"><td><p>Initiated scrub after osd_deep_scrub_interval</p></td>
-<td><p>D</p></td>
-<td><p>D</p></td>
-<td><p>S</p></td>
-<td><p>S</p></td>
-</tr>
-<tr class="row-even"><td><p>Initiated deep scrub</p></td>
-<td><p>D</p></td>
-<td><p>D</p></td>
-<td><p>D</p></td>
-<td><p>D</p></td>
-</tr>
-</tbody>
-</table>
-<ul class="simple">
-<li><p>X = Do nothing</p></li>
-<li><p>S = Do regular scrub</p></li>
-<li><p>D = Do deep scrub</p></li>
-</ul>
+  <div class="section" id="refcount">
+<h1>Refcount<a class="headerlink" href="#refcount" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Dedupliation, as described in ../deduplication.rst, needs a way to
+maintain a target pool of deduplicated chunks with atomic ref
+refcounting.  To that end, there exists an osd object class
+refcount responsible for using the object class machinery to
+maintain refcounts on deduped chunks and ultimately remove them
+as the refcount hits 0.</p>
 </div>
-<div class="section" id="state-variables">
-<h2>State variables<a class="headerlink" href="#state-variables" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li><p>Periodic tick state is !must_scrub &amp;&amp; !must_deep_scrub &amp;&amp; !time_for_deep</p></li>
-<li><p>Periodic tick after osd_deep_scrub_interval state is !must_scrub &amp;&amp; !must_deep_scrub &amp;&amp; time_for_deep</p></li>
-<li><p>Initiated scrub state is  must_scrub &amp;&amp; !must_deep_scrub &amp;&amp; !time_for_deep</p></li>
-<li><p>Initiated scrub after osd_deep_scrub_interval state is must scrub &amp;&amp; !must_deep_scrub &amp;&amp; time_for_deep</p></li>
-<li><p>Initiated deep scrub state is  must_scrub &amp;&amp; must_deep_scrub</p></li>
-</ul>
-</div>
-<div class="section" id="scrub-reservations">
-<h2>Scrub Reservations<a class="headerlink" href="#scrub-reservations" title="Permalink to this headline">¶</a></h2>
-<p>An OSD daemon command dumps total local and remote reservations:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">osd</span><span class="o">.&lt;</span><span class="nb">id</span><span class="o">&gt;</span> <span class="n">dump_scrub_reservations</span>
+<div class="section" id="class-interface">
+<h2>Class Interface<a class="headerlink" href="#class-interface" title="Permalink to this headline">¶</a></h2>
+<p>See cls/refcount/cls_refcount_client*</p>
+<ul>
+<li><p>cls_refcount_get</p>
+<p>Atomically increments the refcount with specified tag</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">cls_refcount_get</span><span class="p">(</span><span class="n">librados</span><span class="p">::</span><span class="n">ObjectWriteOperation</span><span class="o">&amp;</span> <span class="n">op</span><span class="p">,</span> <span class="n">const</span> <span class="n">string</span><span class="o">&amp;</span> <span class="n">tag</span><span class="p">,</span> <span class="nb">bool</span> <span class="n">implicit_ref</span> <span class="o">=</span> <span class="n">false</span><span class="p">);</span>
 </pre></div>
 </div>
+</li>
+<li><p>cls_refcount_put</p>
+<p>Atomically decrements the refcount specified by passed tag</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">cls_refcount_put</span><span class="p">(</span><span class="n">librados</span><span class="p">::</span><span class="n">ObjectWriteOperation</span><span class="o">&amp;</span> <span class="n">op</span><span class="p">,</span> <span class="n">const</span> <span class="n">string</span><span class="o">&amp;</span> <span class="n">tag</span><span class="p">,</span> <span class="nb">bool</span> <span class="n">implicit_ref</span> <span class="o">=</span> <span class="n">false</span><span class="p">);</span>
+</pre></div>
+</div>
+</li>
+<li><p>cls_refcount_Set</p>
+<p>Atomically sets the set of refcounts with passed list of tags</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">void</span> <span class="n">cls_refcount_set</span><span class="p">(</span><span class="n">librados</span><span class="p">::</span><span class="n">ObjectWriteOperation</span><span class="o">&amp;</span> <span class="n">op</span><span class="p">,</span> <span class="nb">list</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;&amp;</span> <span class="n">refs</span><span class="p">);</span>
+</pre></div>
+</div>
+</li>
+<li><p>cls_refcount_read</p>
+<p>Dumps the current set of ref tags for the object</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">int</span> <span class="n">cls_refcount_read</span><span class="p">(</span><span class="n">librados</span><span class="p">::</span><span class="n">IoCtx</span><span class="o">&amp;</span> <span class="n">io_ctx</span><span class="p">,</span> <span class="n">string</span><span class="o">&amp;</span> <span class="n">oid</span><span class="p">,</span> <span class="nb">list</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span> <span class="o">*</span><span class="n">refs</span><span class="p">,</span> <span class="nb">bool</span> <span class="n">implicit_ref</span> <span class="o">=</span> <span class="n">false</span><span class="p">);</span>
+</pre></div>
+</div>
+</li>
+</ul>
 </div>
 </div>
 
@@ -241,13 +206,12 @@
 <li class="toctree-l3"><a class="reference internal" href="../pg_removal/">PG Removal</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../pgpool/">PGPool</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../recovery_reservation/">Recovery Reservation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../refcount/">Refcount</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Scrub internals and diagnostics</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#scrubbing-behavior-table">Scrubbing Behavior Table</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#state-variables">State variables</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#scrub-reservations">Scrub Reservations</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Refcount</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#class-interface">Class Interface</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../scrub/">Scrub internals and diagnostics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../snaps/">快照</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stale_read/">Preventing Stale Reads</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../watch_notify/">关注通知</a></li>
@@ -295,10 +259,10 @@
           <a href="../../../py-modindex/" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../snaps/" title="快照"
+          <a href="../scrub/" title="Scrub internals and diagnostics"
              >next</a> |</li>
         <li class="right" >
-          <a href="../refcount/" title="Refcount"
+          <a href="../recovery_reservation/" title="Recovery Reservation"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>

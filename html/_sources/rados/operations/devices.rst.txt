@@ -29,6 +29,29 @@ location and how it is being consumed with::
   ceph device info <devid>
 
 
+Identifying physical devices
+----------------------------
+
+You can blink the drive LEDs on hardware enclosures to make the replacement of
+failed disks easy and less error-prone.  Use the following command::
+
+  device light on|off <devid> [ident|fault] [--force]
+
+The ``<devid>`` parameter is the device identification. You can obtain this
+information using the following command::
+
+  ceph device ls
+
+The ``[ident|fault]`` parameter is used to set the kind of light to blink.
+By default, the `identification` light is used.
+
+.. note::
+   This command needs the Cephadm or the Rook `orchestrator <https://docs.ceph.com/docs/master/mgr/orchestrator/#orchestrator-cli-module>`_ module enabled.
+   The orchestrator module enabled is shown by executing the following command::
+
+     ceph orch status
+
+
 .. Enabling monitoring
 
 打开监控
@@ -53,7 +76,8 @@ or::
 
 Scraping
 --------
-如果打开了监控，指标会定期自动 scrape 。这个间隔时间可以这样配置： ::
+如果打开了监控，指标会定期自动 scrape 。这个间隔时间可以这样\
+配置： ::
 
   ceph config set mgr mgr/devicehealth/scrape_frequency <seconds>
 

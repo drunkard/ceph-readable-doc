@@ -41,7 +41,8 @@ Debian/Ubuntu
 	sudo apt-get install ceph-deploy
 
 .. note:: 你也可以从欧洲镜像 eu.ceph.com 下载软件包，只需把 \
-   ``http://ceph.com/`` 替换成 ``http://eu.ceph.com/`` 即可。
+   ``https://download.ceph.com/`` 替换成 ``http://eu.ceph.com/``
+   即可。
 
 
 RHEL/CentOS
@@ -80,7 +81,8 @@ RHEL/CentOS
 	sudo yum update && sudo yum install ceph-deploy
 
 .. note:: 你也可以从欧洲镜像 eu.ceph.com 下载软件包，只需把 \
-   ``http://ceph.com/`` 替换成 ``http://eu.ceph.com/`` 即可。
+   ``https://download.ceph.com/`` 替换成 ``http://eu.ceph.com/``
+   即可。
 
 
 openSUSE

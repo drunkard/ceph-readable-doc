@@ -294,7 +294,7 @@ ID ： ::
 
 删除 swift 私钥。 ::
 
-	radosgw-admin key rm -subuser=foo:bar --key-type=swift
+	radosgw-admin key rm --subuser=foo:bar --key-type=swift
 
 
 .. Add / Remove Admin Capabilities
