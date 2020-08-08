@@ -70,7 +70,9 @@ MDS 活跃集群的扩容
 减少 rank 数量
 ~~~~~~~~~~~~~~
 
-减少 rank 数量和减少 ``max_mds`` 一样简单： ::
+减少 rank 数量和减少 ``max_mds`` 一样简单：
+
+::
 
     # fsmap e9: 2/2/2 up {0=a=up:active,1=c=up:active}, 1 up:standby
     ceph fs set <fs_name> max_mds 1
@@ -101,15 +103,17 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
 手动将目录树插入特定的 rank
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-在多活元数据服务器配置中，均衡器负责在集群内均匀地散布元数据负\
-荷。此设计对大多数用户来说都够用了，但是，有时人们想要跳过动态\
-均衡器，手动把某些元数据映射到特定的 rank ；这样一来，管理员或\
-用户就可以均匀地散布应用负荷、或者限制用户的元数据请求，以防他\
-影响整个集群。
+在多活元数据服务器配置中，均衡器负责在集群内均匀地散布元数据\
+负荷。此设计对大多数用户来说都够用了，但是，有时人们想要跳过\
+动态均衡器，手动把某些元数据映射到特定的 rank ；这样一来，\
+管理员或用户就可以均匀地散布应用负荷、或者限制用户的\
+元数据请求，以防他影响整个集群。
 
 为实现此目的，引入了一个机制，名为 ``export pin`` （导出销），\
-是目录的一个扩展属性，名为 ``ceph.dir.pin`` 。用户可以用标准命\
-令配置此属性： ::
+是目录的一个扩展属性，名为 ``ceph.dir.pin`` 。用户可以用\
+标准命令配置此属性：
+
+::
 
     setfattr -n ceph.dir.pin -v 2 path/to/dir
 
@@ -118,7 +122,9 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
 
 一个目录的导出销是从最近的、配置了导出销的父目录继承的；同理，\
 在一个目录上配置导出销会影响它的所有子目录。然而，设置子目录的\
-导出销可以覆盖从父目录继承来的销子，例如： ::
+导出销可以覆盖从父目录继承来的销子，例如：
+
+::
 
     mkdir -p a/b
     # "a" and "a/b" both start without an export pin set
@@ -126,3 +132,103 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
     # a and b are now pinned to rank 1
     setfattr -n ceph.dir.pin -v 0 a/b
     # a/b is now pinned to rank 0 and a/ and the rest of its children are still pinned to rank 1
+
+
+Setting subtree partitioning policies
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is also possible to setup **automatic** static partitioning of subtrees via
+a set of **policies**. In CephFS, this automatic static partitioning is
+referred to as **ephemeral pinning**. Any directory (inode) which is
+ephemerally pinned will be automatically assigned to a particular rank
+according to a consistent hash of its inode number. The set of all
+ephemerally pinned directories should be uniformly distributed across all
+ranks.
+
+Ephemerally pinned directories are so named because the pin may not persist
+once the directory inode is dropped from cache. However, an MDS failover does
+not affect the ephemeral nature of the pinned directory. The MDS records what
+subtrees are ephemerally pinned in its journal so MDS failovers do not drop
+this information.
+
+A directory is either ephemerally pinned or not. Which rank it is pinned to is
+derived from its inode number and a consistent hash. This means that
+ephemerally pinned directories are somewhat evenly spread across the MDS
+cluster. The **consistent hash** also minimizes redistribution when the MDS
+cluster grows or shrinks. So, growing an MDS cluster may automatically increase
+your metadata throughput with no other administrative intervention.
+
+Presently, there are two types of ephemeral pinning:
+
+**Distributed Ephemeral Pins**: This policy indicates that **all** of a
+directory's immediate children should be ephemerally pinned. The canonical
+example would be the ``/home`` directory: we want every user's home directory
+to be spread across the entire MDS cluster. This can be set via:
+
+::
+
+    setfattr -n ceph.dir.pin.distributed -v 1 /cephfs/home
+
+
+**Random Ephemeral Pins**: This policy indicates any descendent sub-directory
+may be ephemerally pinned. This is set through the extended attribute
+``ceph.dir.pin.random`` with the value set to the percentage of directories
+that should be pinned. For example:
+
+::
+
+    setfattr -n ceph.dir.pin.random -v 0.5 /cephfs/tmp
+
+Would cause any directory loaded into cache or created under ``/tmp`` to be
+ephemerally pinned 50 percent of the time.
+
+It is recomended to only set this to small values, like ``.001`` or ``0.1%``.
+Having too many subtrees may degrade performance. For this reason, the config
+``mds_export_ephemeral_random_max`` enforces a cap on the maximum of this
+percentage (default: ``.01``). The MDS returns ``EINVAL`` when attempting to
+set a value beyond this config.
+
+Both random and distributed ephemeral pin policies are off by default in
+Octopus. The features may be enabled via the
+``mds_export_ephemeral_random`` and ``mds_export_ephemeral_distributed``
+configuration options.
+
+Ephemeral pins may override parent export pins and vice versa. What determines
+which policy is followed is the rule of the closest parent: if a closer parent
+directory has a conflicting policy, use that one instead. For example:
+
+::
+
+    mkdir -p foo/bar1/baz foo/bar2
+    setfattr -n ceph.dir.pin -v 0 foo
+    setfattr -n ceph.dir.pin.distributed -v 1 foo/bar1
+
+The ``foo/bar1/baz`` directory will be ephemerally pinned because the
+``foo/bar1`` policy overrides the export pin on ``foo``. The ``foo/bar2``
+directory will obey the pin on ``foo`` normally.
+
+For the reverse situation:
+
+::
+
+    mkdir -p home/{patrick,john}
+    setfattr -n ceph.dir.pin.distributed -v 1 home
+    setfattr -n ceph.dir.pin -v 2 home/patrick
+
+The ``home/patrick`` directory and its children will be pinned to rank 2
+because its export pin overrides the policy on ``home``.
+
+If a directory has an export pin and an ephemeral pin policy, the export pin
+applies to the directory itself and the policy to its children. So:
+
+::
+
+    mkdir -p home/{patrick,john}
+    setfattr -n ceph.dir.pin -v 0 home
+    setfattr -n ceph.dir.pin.distributed -v 1 home
+
+The home directory inode (and all of its directory fragments) will always be
+located on rank 0. All children including ``home/patrick`` and ``home/john``
+will be ephemerally pinned according to the distributed policy. This may only
+matter for some obscure performance advantages. All the same, it's mentioned
+here so the override policy is clear.

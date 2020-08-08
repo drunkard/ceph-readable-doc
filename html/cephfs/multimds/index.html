@@ -131,6 +131,84 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
 </pre></div>
 </div>
 </div>
+<div class="section" id="setting-subtree-partitioning-policies">
+<h2>Setting subtree partitioning policies<a class="headerlink" href="#setting-subtree-partitioning-policies" title="Permalink to this headline">¶</a></h2>
+<p>It is also possible to setup <strong>automatic</strong> static partitioning of subtrees via
+a set of <strong>policies</strong>. In CephFS, this automatic static partitioning is
+referred to as <strong>ephemeral pinning</strong>. Any directory (inode) which is
+ephemerally pinned will be automatically assigned to a particular rank
+according to a consistent hash of its inode number. The set of all
+ephemerally pinned directories should be uniformly distributed across all
+ranks.</p>
+<p>Ephemerally pinned directories are so named because the pin may not persist
+once the directory inode is dropped from cache. However, an MDS failover does
+not affect the ephemeral nature of the pinned directory. The MDS records what
+subtrees are ephemerally pinned in its journal so MDS failovers do not drop
+this information.</p>
+<p>A directory is either ephemerally pinned or not. Which rank it is pinned to is
+derived from its inode number and a consistent hash. This means that
+ephemerally pinned directories are somewhat evenly spread across the MDS
+cluster. The <strong>consistent hash</strong> also minimizes redistribution when the MDS
+cluster grows or shrinks. So, growing an MDS cluster may automatically increase
+your metadata throughput with no other administrative intervention.</p>
+<p>Presently, there are two types of ephemeral pinning:</p>
+<p><strong>Distributed Ephemeral Pins</strong>: This policy indicates that <strong>all</strong> of a
+directory’s immediate children should be ephemerally pinned. The canonical
+example would be the <code class="docutils literal notranslate"><span class="pre">/home</span></code> directory: we want every user’s home directory
+to be spread across the entire MDS cluster. This can be set via:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="o">/</span><span class="n">cephfs</span><span class="o">/</span><span class="n">home</span>
+</pre></div>
+</div>
+<p><strong>Random Ephemeral Pins</strong>: This policy indicates any descendent sub-directory
+may be ephemerally pinned. This is set through the extended attribute
+<code class="docutils literal notranslate"><span class="pre">ceph.dir.pin.random</span></code> with the value set to the percentage of directories
+that should be pinned. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">random</span> <span class="o">-</span><span class="n">v</span> <span class="mf">0.5</span> <span class="o">/</span><span class="n">cephfs</span><span class="o">/</span><span class="n">tmp</span>
+</pre></div>
+</div>
+<p>Would cause any directory loaded into cache or created under <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> to be
+ephemerally pinned 50 percent of the time.</p>
+<p>It is recomended to only set this to small values, like <code class="docutils literal notranslate"><span class="pre">.001</span></code> or <code class="docutils literal notranslate"><span class="pre">0.1%</span></code>.
+Having too many subtrees may degrade performance. For this reason, the config
+<code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_random_max</span></code> enforces a cap on the maximum of this
+percentage (default: <code class="docutils literal notranslate"><span class="pre">.01</span></code>). The MDS returns <code class="docutils literal notranslate"><span class="pre">EINVAL</span></code> when attempting to
+set a value beyond this config.</p>
+<p>Both random and distributed ephemeral pin policies are off by default in
+Octopus. The features may be enabled via the
+<code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_random</span></code> and <code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_distributed</span></code>
+configuration options.</p>
+<p>Ephemeral pins may override parent export pins and vice versa. What determines
+which policy is followed is the rule of the closest parent: if a closer parent
+directory has a conflicting policy, use that one instead. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar1</span><span class="o">/</span><span class="n">baz</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar2</span>
+<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">0</span> <span class="n">foo</span>
+<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar1</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">foo/bar1/baz</span></code> directory will be ephemerally pinned because the
+<code class="docutils literal notranslate"><span class="pre">foo/bar1</span></code> policy overrides the export pin on <code class="docutils literal notranslate"><span class="pre">foo</span></code>. The <code class="docutils literal notranslate"><span class="pre">foo/bar2</span></code>
+directory will obey the pin on <code class="docutils literal notranslate"><span class="pre">foo</span></code> normally.</p>
+<p>For the reverse situation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">home</span><span class="o">/</span><span class="p">{</span><span class="n">patrick</span><span class="p">,</span><span class="n">john</span><span class="p">}</span>
+<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="n">home</span>
+<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">2</span> <span class="n">home</span><span class="o">/</span><span class="n">patrick</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">home/patrick</span></code> directory and its children will be pinned to rank 2
+because its export pin overrides the policy on <code class="docutils literal notranslate"><span class="pre">home</span></code>.</p>
+<p>If a directory has an export pin and an ephemeral pin policy, the export pin
+applies to the directory itself and the policy to its children. So:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">home</span><span class="o">/</span><span class="p">{</span><span class="n">patrick</span><span class="p">,</span><span class="n">john</span><span class="p">}</span>
+<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">0</span> <span class="n">home</span>
+<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="n">home</span>
+</pre></div>
+</div>
+<p>The home directory inode (and all of its directory fragments) will always be
+located on rank 0. All children including <code class="docutils literal notranslate"><span class="pre">home/patrick</span></code> and <code class="docutils literal notranslate"><span class="pre">home/john</span></code>
+will be ephemerally pinned according to the distributed policy. This may only
+matter for some obscure performance advantages. All the same, it’s mentioned
+here so the override policy is clear.</p>
+</div>
 </div>
 
 
@@ -169,6 +247,7 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
 <li class="toctree-l4"><a class="reference internal" href="#id3">灾备守护进程</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rank">减少 rank 数量</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id4">手动将目录树插入特定的 rank</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#setting-subtree-partitioning-policies">Setting subtree partitioning policies</a></li>
 </ul>
 </li>
 </ul>

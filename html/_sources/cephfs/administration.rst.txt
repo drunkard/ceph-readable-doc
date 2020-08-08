@@ -14,9 +14,7 @@ CephFS 管理命令
 
 这些命令适用于 Ceph 集群的 CephFS 文件系统。注意，默认情况下，\
 只允许一个文件系统；执行 ``ceph fs flag set enable_multiple true``
-后才允许创建多个文件系统。
-
-::
+后才允许创建多个文件系统。 ::
 
     fs new <filesystem name> <metadata pool name> <data pool name>
 
@@ -100,7 +98,6 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 
 最大文件尺寸以及性能
 --------------------
-
 在追加到文件、或设置其尺寸时， CephFS 将确保不会超过最大文件\
 尺寸限量；但不会影响（数据）是怎样存储的。
 
@@ -117,7 +114,6 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 
 关闭集群
 --------
-
 Taking a CephFS cluster down is done by setting the down flag:
  
 :: 

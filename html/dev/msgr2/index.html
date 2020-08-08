@@ -76,7 +76,7 @@ that were not required.</p></li>
 (e.g., padding) that keep computation and memory copies out of the
 fast path where possible.</p></li>
 <li><p><em>Signing</em>.  We will allow for traffic to be signed (but not
-necessarily encrypted).  This may not be implemented in the initial version.</p></li>
+necessarily encrypted).  This is not implemented.</p></li>
 </ul>
 </div>
 <div class="section" id="id2">
@@ -112,11 +112,20 @@ determines the structure of the payload.</p></li>
 <div class="section" id="banner">
 <h2>Banner<a class="headerlink" href="#banner" title="Permalink to this headline">¶</a></h2>
 <p>Both the client and server, upon connecting, send a banner:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;ceph </span><span class="si">%x</span><span class="s2"> </span><span class="si">%x</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">protocol_features_suppored</span><span class="p">,</span> <span class="n">protocol_features_required</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;ceph v2</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="n">__le16</span> <span class="n">banner</span> <span class="n">payload</span> <span class="n">length</span>
+<span class="n">banner</span> <span class="n">payload</span>
 </pre></div>
 </div>
-<p>The protocol features are a new, distinct namespace.  Initially no
-features are defined or required, so this will be “ceph 0 0n”.</p>
+<p>A banner payload has the form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__le64</span> <span class="n">peer_supported_features</span>
+<span class="n">__le64</span> <span class="n">peer_required_features</span>
+</pre></div>
+</div>
+<p>This is a new, distinct feature bit namespace (CEPH_MSGR2_*).
+Currently, only CEPH_MSGR2_FEATURE_REVISION_1 is defined. It is
+supported but not required, so that msgr2.0 and msgr2.1 peers
+can talk to each other.</p>
 <p>If the remote party advertises required features we don’t support, we
 can disconnect.</p>
 <img alt="../../_images/b420ffeb3611a894ca699b51e980bf5035b37dd95d14871a58547c3775e513e0.png" class="align-center" src="../../_images/b420ffeb3611a894ca699b51e980bf5035b37dd95d14871a58547c3775e513e0.png" />
@@ -335,50 +344,191 @@ authentication method as the first attempt:</p>
 </div>
 <div class="section" id="post-auth-frame-format">
 <h2>Post-auth frame format<a class="headerlink" href="#post-auth-frame-format" title="Permalink to this headline">¶</a></h2>
-<p>The frame format is fixed (see above), but can take three different
-forms, depending on the AUTH_DONE flags:</p>
+<p>Depending on the negotiated connection mode from TAG_AUTH_DONE, the
+connection either stays in crc mode or switches to the corresponding
+secure mode (msgr2.0-secure or msgr2.1-secure).</p>
+<p>### msgr2.0-secure mode</p>
+<p>A msgr2.0-secure frame has the form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">segment</span> <span class="n">payload</span>
+    <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="n">out</span> <span class="n">to</span> <span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="p">}</span> <span class="o">*</span> <span class="n">number</span> <span class="n">of</span> <span class="n">segments</span>
+  <span class="n">epilogue</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where epilogue is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__u8</span> <span class="n">late_flags</span>
+<span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">15</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>late_flags has the same meaning as in msgr2.0-crc mode.</p>
+<p>Each segment and the epilogue are zero padded out to 16 bytes.
+Technically, GCM doesn’t require any padding because Counter mode
+(the C in GCM) essentially turns a block cipher into a stream cipher.
+But, if the overall input length is not a multiple of 16 bytes, some
+implicit zero padding would occur internally because GHASH function
+used by GCM for generating auth tags only works on 16-byte blocks.</p>
+<p>Issues:</p>
+<ol class="arabic">
+<li><p>The sender encrypts the whole frame using a single nonce
+and generating a single auth tag.  Because segment lengths are
+stored in the preamble, the receiver has no choice but to decrypt
+and interpret the preamble without verifying the auth tag – it
+can’t even tell how much to read off the wire to get the auth tag
+otherwise!  This creates a decryption oracle, which, in conjunction
+with Counter mode malleability, could lead to recovery of sensitive
+information.</p>
+<p>This issue extends to the first segment of the message frame as
+well.  As in msgr2.0-crc mode, ceph_msg_header2 cannot be safely
+interpreted before the whole frame is read off the wire.</p>
+</li>
+<li><p>Deterministic nonce construction with a 4-byte counter field
+followed by an 8-byte fixed field is used.  The initial values are
+taken from the connection secret – a random byte string generated
+during the authentication phase.  Because the counter field is
+only four bytes long, it can wrap and then repeat in under a day,
+leading to GCM nonce reuse and therefore a potential complete
+loss of both authenticity and confidentiality for the connection.
+This was addressed by disconnecting before the counter repeats
+(CVE-2020-1759).</p></li>
+</ol>
+<p>### msgr2.1-secure mode</p>
+<p>Differences from msgr2.0-secure:</p>
+<ol class="arabic">
+<li><p>The preamble, the first segment and the rest of the frame are
+encrypted separately, using separate nonces and generating
+separate auth tags.  This gets rid of unverified plaintext use
+and keeps msgr2.1-secure mode close to msgr2.1-crc mode, allowing
+the implementation to receive message frames in a similar fashion
+(little to no buffering, same scatter/gather logic, etc).</p>
+<p>In order to reduce the number of en/decryption operations per
+frame, the preamble is grown by a fixed size inline buffer (48
+bytes) that the first segment is inlined into, either fully or
+partially.  The preamble auth tag covers both the preamble and the
+inline buffer, so if the first segment is small enough to be fully
+inlined, it becomes available after a single decryption operation.</p>
+</li>
+<li><p>As in msgr2.1-crc mode, the epilogue is generated only if the
+frame has more than one segment.  The rationale is even stronger,
+as it would require an extra en/decryption operation.</p></li>
+<li><p>For consistency with msgr2.1-crc mode, late_flags is replaced
+with late_status (the built-in bit error detection isn’t really
+needed in secure mode).</p></li>
+<li><p>In accordance with <a class="reference external" href="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf">NIST Recommendation for GCM</a>, deterministic
+nonce construction with a 4-byte fixed field followed by an 8-byte
+counter field is used.  An 8-byte counter field should never repeat
+but the nonce reuse protection put in place for msgr2.0-secure mode
+is still there.</p>
+<p>The initial values are the same as in msgr2.0-secure mode.</p>
+</li>
+</ol>
+<p>As in msgr2.0-secure mode, each segment is zero padded out to
+16 bytes.  If the first segment is fully inlined, its padding goes
+to the inline buffer.  Otherwise, the padding is on the remainder.
+The corollary to this is that the inline buffer is consumed in
+16-byte chunks.</p>
+<p>The unused portion of the inline buffer is zeroed.</p>
+<p>Some example frames:</p>
 <ul>
-<li><p>If neither FLAG_SIGNED or FLAG_ENCRYPTED is specified, things are simple:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">frame_len</span>
-<span class="n">tag</span>
-<span class="n">payload</span>
-<span class="n">payload_padding</span> <span class="p">(</span><span class="n">out</span> <span class="n">to</span> <span class="n">auth</span> <span class="n">block_size</span><span class="p">)</span>
+<li><p>A 0+0+0+0 frame (empty, nothing to inline, no epilogue):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">48</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
 </pre></div>
 </div>
-<ul class="simple">
-<li><p>The padding is some number of bytes &lt; the auth block_size that
-brings the total length of the payload + payload_padding to a
-multiple of block_size.  It does not include the frame_len or tag.  Padding
-content can be zeros or (better) random bytes.</p></li>
-</ul>
 </li>
-<li><p>If FLAG_SIGNED has been specified:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">frame_len</span>
-<span class="n">tag</span>
-<span class="n">payload</span>
-<span class="n">payload_padding</span> <span class="p">(</span><span class="n">out</span> <span class="n">to</span> <span class="n">auth</span> <span class="n">block_size</span><span class="p">)</span>
-<span class="n">signature</span> <span class="p">(</span><span class="n">sig_size</span> <span class="nb">bytes</span><span class="p">)</span>
+<li><p>A 20+0+0+0 frame (first segment fully inlined, no epilogue):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">segment1</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">20</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">28</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Here the padding just makes life easier for the signature.  It can be
-random data to add additional confounder.  Note also that the
-signature input must include some state from the session key and the
-previous message.</p>
 </li>
-<li><p>If FLAG_ENCRYPTED has been specified:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">frame_len</span>
-<span class="n">tag</span>
+<li><p>A 0+70+0+0 frame (nothing to inline):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">48</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="n">payload</span>
-  <span class="n">payload_padding</span> <span class="p">(</span><span class="n">out</span> <span class="n">to</span> <span class="n">auth</span> <span class="n">block_size</span><span class="p">)</span>
-<span class="p">}</span> <span class="o">^</span> <span class="n">stream</span> <span class="n">cipher</span>
+  <span class="n">segment2</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">70</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">10</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">epilogue</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Note that the padding ensures that the total frame is a multiple of
-the auth method’s block_size so that the message can be sent out over
-the wire without waiting for the next frame in the stream.</p>
+</li>
+<li><p>A 20+70+0+350 frame (first segment fully inlined):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">segment1</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">20</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">28</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">segment2</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">70</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">10</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">segment4</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">350</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">2</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">epilogue</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>A 105+0+0+0 frame (first segment partially inlined, no epilogue):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">segment1</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">48</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">segment1</span> <span class="n">payload</span> <span class="n">remainder</span> <span class="p">(</span><span class="mi">57</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">7</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>A 105+70+0+350 frame (first segment partially inlined):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="n">preamble</span> <span class="p">(</span><span class="mi">32</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">segment1</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">48</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">segment1</span> <span class="n">payload</span> <span class="n">remainder</span> <span class="p">(</span><span class="mi">57</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">7</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">segment2</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">70</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">10</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">segment4</span> <span class="n">payload</span> <span class="p">(</span><span class="mi">350</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">2</span> <span class="nb">bytes</span><span class="p">)</span>
+  <span class="n">epilogue</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+<span class="p">}</span> <span class="o">^</span> <span class="n">AES</span><span class="o">-</span><span class="mi">128</span><span class="o">-</span><span class="n">GCM</span> <span class="n">cipher</span>
+<span class="n">auth</span> <span class="n">tag</span> <span class="p">(</span><span class="mi">16</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
 </li>
 </ul>
+<p>where epilogue is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__u8</span> <span class="n">late_status</span>
+<span class="n">zero</span> <span class="n">padding</span> <span class="p">(</span><span class="mi">15</span> <span class="nb">bytes</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>late_status has the same meaning as in msgr2.1-crc mode.</p>
 </div>
 <div class="section" id="message-flow-handshake">
 <h2>Message flow handshake<a class="headerlink" href="#message-flow-handshake" title="Permalink to this headline">¶</a></h2>

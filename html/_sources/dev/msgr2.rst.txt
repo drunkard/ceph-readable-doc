@@ -22,7 +22,7 @@ msgr2 协议（ msgr2.0 和 msgr2.1 ）
   (e.g., padding) that keep computation and memory copies out of the
   fast path where possible.
 * *Signing*.  We will allow for traffic to be signed (but not
-  necessarily encrypted).  This may not be implemented in the initial version.
+  necessarily encrypted).  This is not implemented.
 
 
 .. Definitions
@@ -61,10 +61,19 @@ Banner
 
 Both the client and server, upon connecting, send a banner::
 
-  "ceph %x %x\n", protocol_features_suppored, protocol_features_required
+  "ceph v2\n"
+  __le16 banner payload length
+  banner payload
 
-The protocol features are a new, distinct namespace.  Initially no
-features are defined or required, so this will be "ceph 0 0\n".
+A banner payload has the form::
+
+  __le64 peer_supported_features
+  __le64 peer_required_features
+
+This is a new, distinct feature bit namespace (CEPH_MSGR2_*).
+Currently, only CEPH_MSGR2_FEATURE_REVISION_1 is defined. It is
+supported but not required, so that msgr2.0 and msgr2.1 peers
+can talk to each other.
 
 If the remote party advertises required features we don't support, we
 can disconnect.
@@ -87,7 +96,6 @@ can disconnect.
 
 帧格式
 ------
-
 After the banners are exchanged, all further communication happens
 in frames.  The exact format of the frame depends on the connection
 mode (msgr2.0-crc, msgr2.0-secure, msgr2.1-crc or msgr2.1-secure).
@@ -233,7 +241,6 @@ where epilogue is::
     __le32 segment crc
   } * 3
 
-
 Hello
 -----
 
@@ -335,47 +342,197 @@ authentication method as the first attempt:
 Post-auth frame format
 ----------------------
 
-The frame format is fixed (see above), but can take three different
-forms, depending on the AUTH_DONE flags:
+Depending on the negotiated connection mode from TAG_AUTH_DONE, the
+connection either stays in crc mode or switches to the corresponding
+secure mode (msgr2.0-secure or msgr2.1-secure).
 
-* If neither FLAG_SIGNED or FLAG_ENCRYPTED is specified, things are simple::
+### msgr2.0-secure mode
 
-    frame_len
-    tag
-    payload
-    payload_padding (out to auth block_size)
+A msgr2.0-secure frame has the form::
 
-  - The padding is some number of bytes < the auth block_size that
-    brings the total length of the payload + payload_padding to a
-    multiple of block_size.  It does not include the frame_len or tag.  Padding
-    content can be zeros or (better) random bytes.
-
-* If FLAG_SIGNED has been specified::
-
-    frame_len
-    tag
-    payload
-    payload_padding (out to auth block_size)
-    signature (sig_size bytes)
-
-  Here the padding just makes life easier for the signature.  It can be
-  random data to add additional confounder.  Note also that the
-  signature input must include some state from the session key and the
-  previous message.
-
-* If FLAG_ENCRYPTED has been specified::
-
-    frame_len
-    tag
+  {
+    preamble (32 bytes)
     {
-      payload
-      payload_padding (out to auth block_size)
-    } ^ stream cipher
+      segment payload
+      zero padding (out to 16 bytes)
+    } * number of segments
+    epilogue (16 bytes)
+  } ^ AES-128-GCM cipher
+  auth tag (16 bytes)
 
-  Note that the padding ensures that the total frame is a multiple of
-  the auth method's block_size so that the message can be sent out over
-  the wire without waiting for the next frame in the stream.
+where epilogue is::
 
+    __u8 late_flags
+    zero padding (15 bytes)
+
+late_flags has the same meaning as in msgr2.0-crc mode.
+
+Each segment and the epilogue are zero padded out to 16 bytes.
+Technically, GCM doesn't require any padding because Counter mode
+(the C in GCM) essentially turns a block cipher into a stream cipher.
+But, if the overall input length is not a multiple of 16 bytes, some
+implicit zero padding would occur internally because GHASH function
+used by GCM for generating auth tags only works on 16-byte blocks.
+
+Issues:
+
+1. The sender encrypts the whole frame using a single nonce
+   and generating a single auth tag.  Because segment lengths are
+   stored in the preamble, the receiver has no choice but to decrypt
+   and interpret the preamble without verifying the auth tag -- it
+   can't even tell how much to read off the wire to get the auth tag
+   otherwise!  This creates a decryption oracle, which, in conjunction
+   with Counter mode malleability, could lead to recovery of sensitive
+   information.
+
+   This issue extends to the first segment of the message frame as
+   well.  As in msgr2.0-crc mode, ceph_msg_header2 cannot be safely
+   interpreted before the whole frame is read off the wire.
+
+2. Deterministic nonce construction with a 4-byte counter field
+   followed by an 8-byte fixed field is used.  The initial values are
+   taken from the connection secret -- a random byte string generated
+   during the authentication phase.  Because the counter field is
+   only four bytes long, it can wrap and then repeat in under a day,
+   leading to GCM nonce reuse and therefore a potential complete
+   loss of both authenticity and confidentiality for the connection.
+   This was addressed by disconnecting before the counter repeats
+   (CVE-2020-1759).
+
+### msgr2.1-secure mode
+
+Differences from msgr2.0-secure:
+
+1. The preamble, the first segment and the rest of the frame are
+   encrypted separately, using separate nonces and generating
+   separate auth tags.  This gets rid of unverified plaintext use
+   and keeps msgr2.1-secure mode close to msgr2.1-crc mode, allowing
+   the implementation to receive message frames in a similar fashion
+   (little to no buffering, same scatter/gather logic, etc).
+
+   In order to reduce the number of en/decryption operations per
+   frame, the preamble is grown by a fixed size inline buffer (48
+   bytes) that the first segment is inlined into, either fully or
+   partially.  The preamble auth tag covers both the preamble and the
+   inline buffer, so if the first segment is small enough to be fully
+   inlined, it becomes available after a single decryption operation.
+
+2. As in msgr2.1-crc mode, the epilogue is generated only if the
+   frame has more than one segment.  The rationale is even stronger,
+   as it would require an extra en/decryption operation.
+
+3. For consistency with msgr2.1-crc mode, late_flags is replaced
+   with late_status (the built-in bit error detection isn't really
+   needed in secure mode).
+
+4. In accordance with `NIST Recommendation for GCM`_, deterministic
+   nonce construction with a 4-byte fixed field followed by an 8-byte
+   counter field is used.  An 8-byte counter field should never repeat
+   but the nonce reuse protection put in place for msgr2.0-secure mode
+   is still there.
+
+   The initial values are the same as in msgr2.0-secure mode.
+
+   .. _`NIST Recommendation for GCM`: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
+
+As in msgr2.0-secure mode, each segment is zero padded out to
+16 bytes.  If the first segment is fully inlined, its padding goes
+to the inline buffer.  Otherwise, the padding is on the remainder.
+The corollary to this is that the inline buffer is consumed in
+16-byte chunks.
+
+The unused portion of the inline buffer is zeroed.
+
+Some example frames:
+
+* A 0+0+0+0 frame (empty, nothing to inline, no epilogue)::
+
+    {
+      preamble (32 bytes)
+      zero padding (48 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+
+* A 20+0+0+0 frame (first segment fully inlined, no epilogue)::
+
+    {
+      preamble (32 bytes)
+      segment1 payload (20 bytes)
+      zero padding (28 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+
+* A 0+70+0+0 frame (nothing to inline)::
+
+    {
+      preamble (32 bytes)
+      zero padding (48 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+    {
+      segment2 payload (70 bytes)
+      zero padding (10 bytes)
+      epilogue (16 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+
+* A 20+70+0+350 frame (first segment fully inlined)::
+
+    {
+      preamble (32 bytes)
+      segment1 payload (20 bytes)
+      zero padding (28 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+    {
+      segment2 payload (70 bytes)
+      zero padding (10 bytes)
+      segment4 payload (350 bytes)
+      zero padding (2 bytes)
+      epilogue (16 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+
+* A 105+0+0+0 frame (first segment partially inlined, no epilogue)::
+
+    {
+      preamble (32 bytes)
+      segment1 payload (48 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+    {
+      segment1 payload remainder (57 bytes)
+      zero padding (7 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+
+* A 105+70+0+350 frame (first segment partially inlined)::
+
+    {
+      preamble (32 bytes)
+      segment1 payload (48 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+    {
+      segment1 payload remainder (57 bytes)
+      zero padding (7 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+    {
+      segment2 payload (70 bytes)
+      zero padding (10 bytes)
+      segment4 payload (350 bytes)
+      zero padding (2 bytes)
+      epilogue (16 bytes)
+    } ^ AES-128-GCM cipher
+    auth tag (16 bytes)
+
+where epilogue is::
+
+    __u8 late_status
+    zero padding (15 bytes)
+
+late_status has the same meaning as in msgr2.1-crc mode.
 
 Message flow handshake
 ----------------------
@@ -685,4 +842,5 @@ _____________________________________
                 |<------------------|
                 |         auth done |
                 |                   |
+
 

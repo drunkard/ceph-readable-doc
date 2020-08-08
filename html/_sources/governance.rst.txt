@@ -10,7 +10,6 @@ Ceph 开源社区由几个不同的团体引导着。
 
 项目负责人
 ----------
-
 The Ceph project is currently led by Sage Weil <sage@redhat.com>.  The
 project leader is responsible for guiding the overall direction of the
 project and ensuring that the developer and user communities are
@@ -21,7 +20,6 @@ healthy.
 
 提交者
 ------
-
 Committers are project contributors who have write access to the central
 Ceph code repositories, currently hosted on GitHub.  This group of developers
 is collectively empowered to make changes to the Ceph source code.
@@ -42,7 +40,6 @@ quality and engagement in the project over time.
 
 Ceph 领导团队
 -------------
-
 The Ceph Leadership Team (CLT) is a collection of component leads and
 other core developers who collectively make technical decisions for
 the project.  These decisions are generally made by consensus,
@@ -64,12 +61,13 @@ Current CLT members are:
  * Haomai Wang <haomai@xsky.com>
  * Jason Dillaman <dillaman@redhat.com>
  * Josh Durgin <jdurgin@redhat.com>
- * Joao Eduardo Luis <joao@suse.de>
+ * João Eduardo Luis <joao@suse.de>
  * Ken Dreyer <kdreyer@redhat.com>
  * Lenz Grimmer <lgrimmer@suse.com>
  * Matt Benjamin <mbenjami@redhat.com>
  * Myoungwon Oh <omwmw@sk.com>
  * Neha Ojha <nojha@redhat.com>
+ * Patrick Donnelly <pdonnell@redhat.com>
  * Sage Weil <sage@redhat.com>
  * Sebastian Wagner <swagner@suse.com>
  * Xie Xingguo <xie.xingguo@zte.com.cn>

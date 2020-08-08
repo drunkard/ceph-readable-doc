@@ -1,0 +1,611 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ceph s3 select &#8212; Ceph Documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/ceph.js"></script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Ceph 管理器守护进程" href="../../mgr/" />
+    <link rel="prev" title="使用 QAT 为加密和压缩提速" href="../qat-accel/" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../mgr/" title="Ceph 管理器守护进程"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../qat-accel/" title="使用 QAT 为加密和压缩提速"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" accesskey="U">Ceph 对象网关</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+
+<div id="dev-warning" class="admonition note" style="display:none;">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
+</div>
+
+<div id="eol-warning" class="admonition warning" style="display:none;">
+  <p class="first admonition-title">Warning</p>
+  <p class="last">This document is for an unsupported version of Ceph.</p>
+</div>
+  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
+    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/radosgw/s3select.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="ceph-s3-select">
+<h1><a class="toc-backref" href="#id1">Ceph s3 select</a><a class="headerlink" href="#ceph-s3-select" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title">Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#ceph-s3-select" id="id1">Ceph s3 select</a></p>
+<ul>
+<li><p><a class="reference internal" href="#overview" id="id2">Overview</a></p></li>
+<li><p><a class="reference internal" href="#basic-workflow" id="id3">Basic workflow</a></p>
+<ul>
+<li><p><a class="reference internal" href="#basic-functionalities" id="id4">Basic functionalities</a></p></li>
+<li><p><a class="reference internal" href="#error-handling" id="id5">Error Handling</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#features-support" id="id6">Features Support</a></p></li>
+<li><p><a class="reference internal" href="#s3-select-function-interfaces" id="id7">s3-select function interfaces</a></p>
+<ul>
+<li><p><a class="reference internal" href="#timestamp-functions" id="id8">Timestamp functions</a></p></li>
+<li><p><a class="reference internal" href="#aggregation-functions" id="id9">Aggregation functions</a></p></li>
+<li><p><a class="reference internal" href="#string-functions" id="id10">String functions</a></p></li>
+<li><p><a class="reference internal" href="#alias" id="id11">Alias</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#sending-query-to-rgw" id="id12">Sending Query to RGW</a></p>
+<ul>
+<li><p><a class="reference internal" href="#syntax" id="id13">Syntax</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#csv-parsing-behavior" id="id14">CSV parsing behavior</a></p></li>
+<li><p><a class="reference internal" href="#boto3" id="id15">BOTO3</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id2">Overview</a><a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">The purpose of the <strong>s3 select</strong> engine is to create an efficient pipe between user client and storage nodes (the engine should be close as possible to storage).</div>
+<div class="line">It enables selection of a restricted subset of (structured) data stored in an S3 object using an SQL-like syntax.</div>
+<div class="line">It also enables for higher level analytic-applications (such as SPARK-SQL) , using that feature to improve their latency and throughput.</div>
+</div>
+<div class="line-block">
+<div class="line">For example, a s3-object of several GB (CSV file), a user needs to extract a single column which filtered by another column.</div>
+<div class="line">As the following query:</div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">select</span> <span class="pre">customer-id</span> <span class="pre">from</span> <span class="pre">s3Object</span> <span class="pre">where</span> <span class="pre">age&gt;30</span> <span class="pre">and</span> <span class="pre">age&lt;65;</span></code></div>
+</div>
+<div class="line-block">
+<div class="line">Currently the whole s3-object must retrieve from OSD via RGW before filtering and extracting data.</div>
+<div class="line">By “pushing down” the query into OSD , it’s possible to save a lot of network and CPU(serialization / deserialization).</div>
+</div>
+<div class="line-block">
+<div class="line"><strong>The bigger the object, and the more accurate the query, the better the performance</strong>.</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="basic-workflow">
+<h2><a class="toc-backref" href="#id3">Basic workflow</a><a class="headerlink" href="#basic-workflow" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">S3-select query is sent to RGW via <a class="reference external" href="https://docs.aws.amazon.com/cli/latest/reference/s3api/select-object-content.html">AWS-CLI</a></div>
+</div>
+<div class="line-block">
+<div class="line">It passes the authentication and permission process as an incoming message (POST).</div>
+<div class="line"><strong>RGWSelectObj_ObjStore_S3::send_response_data</strong> is the “entry point”, it handles each fetched chunk according to input object-key.</div>
+<div class="line"><strong>send_response_data</strong> is first handling the input query, it extracts the query and other CLI parameters.</div>
+</div>
+<div class="line-block">
+<div class="line">Per each new fetched chunk (~4m), RGW executes s3-select query on it.</div>
+<div class="line">The current implementation supports CSV objects and since chunks are randomly “cutting” the CSV rows in the middle, those broken-lines (first or last per chunk) are skipped while processing the query.</div>
+<div class="line">Those “broken” lines are stored and later merged with the next broken-line (belong to the next chunk), and finally processed.</div>
+</div>
+<div class="line-block">
+<div class="line">Per each processed chunk an output message is formatted according to <a class="reference external" href="https://docs.aws.amazon.com/AmazonS3/latest/API/archive-RESTObjectSELECTContent.html#archive-RESTObjectSELECTContent-responses">AWS specification</a> and sent back to the client.</div>
+<div class="line">RGW supports the following response: <code class="docutils literal notranslate"><span class="pre">{:event-type,records}</span> <span class="pre">{:content-type,application/octet-stream}</span> <span class="pre">{:message-type,event}</span></code>.</div>
+<div class="line">For aggregation queries the last chunk should be identified as the end of input, following that the s3-select-engine initiates end-of-process and produces an aggregate result.</div>
+</div>
+</div></blockquote>
+<div class="section" id="basic-functionalities">
+<h3><a class="toc-backref" href="#id4">Basic functionalities</a><a class="headerlink" href="#basic-functionalities" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line"><strong>S3select</strong> has a definite set of functionalities that should be implemented (if we wish to stay compliant with AWS), currently only a portion of it is implemented.</div>
+</div>
+<div class="line-block">
+<div class="line">The implemented software architecture supports basic arithmetic expressions, logical and compare expressions, including nested function calls and casting operators, that alone enables the user reasonable flexibility.</div>
+<div class="line">review the bellow <a class="reference internal" href="#feature-table">feature-table</a>.</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="error-handling">
+<h3><a class="toc-backref" href="#id5">Error Handling</a><a class="headerlink" href="#error-handling" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Any error occurs while the input query processing, i.e. parsing phase or execution phase, is returned to client as response error message.</div>
+</div>
+<div class="line-block">
+<div class="line">Fatal severity (attached to the exception) will end query execution immediately, other error severity are counted, upon reaching 100, it ends query execution with an error message.</div>
+</div>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="features-support">
+<h2><a class="toc-backref" href="#id6">Features Support</a><a class="headerlink" href="#features-support" title="Permalink to this headline">¶</a></h2>
+<blockquote id="feature-table">
+<div><div class="line-block">
+<div class="line">Currently only part of <a class="reference external" href="https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html">AWS select command</a> is implemented, table bellow describes what is currently supported.</div>
+<div class="line">The following table describes the current implementation for s3-select functionalities:</div>
+</div>
+</div></blockquote>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 14%" />
+<col style="width: 59%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Feature</p></th>
+<th class="head"><p>Detailed</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Arithmetic operators</p></td>
+<td><p>^ * / + - ( )</p></td>
+<td><p>select (int(_1)+int(_2))*int(_9) from stdin;</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>select ((1+2)*3.14) ^ 2 from stdin;</p></td>
+</tr>
+<tr class="row-even"><td><p>Compare operators</p></td>
+<td><p>&gt; &lt; &gt;= &lt;= == !=</p></td>
+<td><p>select _1,_2 from stdin where (int(1)+int(_3))&gt;int(_5);</p></td>
+</tr>
+<tr class="row-odd"><td><p>logical operator</p></td>
+<td><p>AND OR</p></td>
+<td><p>select count(*) from stdin where int(1)&gt;123 and int(_5)&lt;200;</p></td>
+</tr>
+<tr class="row-even"><td><p>casting operator</p></td>
+<td><p>int(expression)</p></td>
+<td><p>select int(_1),int( 1.2 + 3.4) from stdin;</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td><p>float(expression)</p></td>
+<td><p>select float(1.2) from stdin;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td><p>timestamp(…)</p></td>
+<td><p>select timestamp(“1999:10:10-12:23:44”) from stdin;</p></td>
+</tr>
+<tr class="row-odd"><td><p>Aggregation Function</p></td>
+<td><p>sum</p></td>
+<td><p>select sum(int(_1)) from stdin;</p></td>
+</tr>
+<tr class="row-even"><td><p>Aggregation Function</p></td>
+<td><p>min</p></td>
+<td><p>select min( int(_1) * int(_5) ) from stdin;</p></td>
+</tr>
+<tr class="row-odd"><td><p>Aggregation Function</p></td>
+<td><p>max</p></td>
+<td><p>select max(float(_1)),min(int(_5)) from stdin;</p></td>
+</tr>
+<tr class="row-even"><td><p>Aggregation Function</p></td>
+<td><p>count</p></td>
+<td><p>select count(*) from stdin where (int(1)+int(_3))&gt;int(_5);</p></td>
+</tr>
+<tr class="row-odd"><td><p>Timestamp Functions</p></td>
+<td><p>extract</p></td>
+<td><p>select count(*) from stdin where
+extract(“year”,timestamp(_2)) &gt; 1950
+and extract(“year”,timestamp(_1)) &lt; 1960;</p></td>
+</tr>
+<tr class="row-even"><td><p>Timestamp Functions</p></td>
+<td><p>dateadd</p></td>
+<td><p>select count(0) from stdin where
+datediff(“year”,timestamp(_1),dateadd(“day”,366,timestamp(_1))) == 1;</p></td>
+</tr>
+<tr class="row-odd"><td><p>Timestamp Functions</p></td>
+<td><p>datediff</p></td>
+<td><p>select count(0) from stdin where
+datediff(“month”,timestamp(_1),timestamp(_2))) == 2;</p></td>
+</tr>
+<tr class="row-even"><td><p>Timestamp Functions</p></td>
+<td><p>utcnow</p></td>
+<td><p>select count(0) from stdin where
+datediff(“hours”,utcnow(),dateadd(“day”,1,utcnow())) == 24 ;</p></td>
+</tr>
+<tr class="row-odd"><td><p>String Functions</p></td>
+<td><p>substr</p></td>
+<td><p>select count(0) from stdin where
+int(substr(_1,1,4))&gt;1950 and int(substr(_1,1,4))&lt;1960;</p></td>
+</tr>
+<tr class="row-even"><td><p>alias support</p></td>
+<td></td>
+<td><p>select int(_1) as a1, int(_2) as a2 , (a1+a2) as a3
+from stdin where a3&gt;100 and a3&lt;300;</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="s3-select-function-interfaces">
+<h2><a class="toc-backref" href="#id7">s3-select function interfaces</a><a class="headerlink" href="#s3-select-function-interfaces" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="timestamp-functions">
+<h3><a class="toc-backref" href="#id8">Timestamp functions</a><a class="headerlink" href="#timestamp-functions" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line">The <a class="reference external" href="https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-date.html">timestamp functionalities</a> is partially implemented.</div>
+<div class="line">the casting operator( <code class="docutils literal notranslate"><span class="pre">timestamp(</span> <span class="pre">string</span> <span class="pre">)</span></code> ), converts string to timestamp basic type.</div>
+<div class="line">Currently it can convert the following pattern <code class="docutils literal notranslate"><span class="pre">yyyy:mm:dd</span> <span class="pre">hh:mi:dd</span></code></div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">extract(</span> <span class="pre">date-part</span> <span class="pre">,</span> <span class="pre">timestamp)</span></code> : function return integer according to date-part extract from input timestamp.</div>
+<div class="line">supported date-part : year,month,week,day.</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">dateadd(date-part</span> <span class="pre">,</span> <span class="pre">integer,timestamp)</span></code> : function return timestamp, a calculation results of input timestamp and date-part.</div>
+<div class="line">supported data-part : year,month,day.</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">datediff(date-part,timestamp,timestamp)</span></code> : function return an integer, a calculated result for difference between 2 timestamps according to date-part.</div>
+<div class="line">supported date-part : year,month,day,hours.</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">utcnow()</span></code> : return timestamp of current time.</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="aggregation-functions">
+<h3><a class="toc-backref" href="#id9">Aggregation functions</a><a class="headerlink" href="#aggregation-functions" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">count()</span></code> : return integer according to number of rows matching condition(if such exist).</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">sum(expression)</span></code> : return a summary of expression per all rows matching condition(if such exist).</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">max(expression)</span></code> : return the maximal result for all expressions matching condition(if such exist).</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">min(expression)</span></code> : return the minimal result for all expressions matching condition(if such exist).</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="string-functions">
+<h3><a class="toc-backref" href="#id10">String functions</a><a class="headerlink" href="#string-functions" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">substr(string,from,to)</span></code> : return a string extract from input string according to from,to inputs.</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="alias">
+<h3><a class="toc-backref" href="#id11">Alias</a><a class="headerlink" href="#alias" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line"><strong>Alias</strong> programming-construct is an essential part of s3-select language, it enables much better programming especially with objects containing many columns or in the case of complex queries.</div>
+</div>
+<div class="line-block">
+<div class="line">Upon parsing the statement containing alias construct, it replaces alias with reference to correct projection column, on query execution time the reference is evaluated as any other expression.</div>
+</div>
+<div class="line-block">
+<div class="line">There is a risk that self(or cyclic) reference may occur causing stack-overflow(endless-loop), for that concern upon evaluating an alias, it is validated for cyclic reference.</div>
+</div>
+<div class="line-block">
+<div class="line">Alias also maintains result-cache, meaning upon using the same alias more than once, it’s not evaluating the same expression again(it will return the same result),instead it uses the result from cache.</div>
+</div>
+<div class="line-block">
+<div class="line">Of Course, per each new row the cache is invalidated.</div>
+</div>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="sending-query-to-rgw">
+<h2><a class="toc-backref" href="#id12">Sending Query to RGW</a><a class="headerlink" href="#sending-query-to-rgw" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Any http-client can send s3-select request to RGW, it must be compliant with <a class="reference external" href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_SelectObjectContent.html#API_SelectObjectContent_RequestSyntax">AWS Request syntax</a>.</div>
+</div>
+<div class="line-block">
+<div class="line">Sending s3-select request to RGW using AWS cli, should follow <a class="reference external" href="https://docs.aws.amazon.com/cli/latest/reference/s3api/select-object-content.html">AWS command reference</a>.</div>
+<div class="line">bellow is an example for it.</div>
+</div>
+</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">-</span><span class="n">url</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">8000</span> <span class="n">s3api</span> <span class="n">select</span><span class="o">-</span><span class="nb">object</span><span class="o">-</span><span class="n">content</span>
+ <span class="o">--</span><span class="n">bucket</span> <span class="p">{</span><span class="n">BUCKET</span><span class="o">-</span><span class="n">NAME</span><span class="p">}</span>
+ <span class="o">--</span><span class="n">expression</span><span class="o">-</span><span class="nb">type</span> <span class="s1">&#39;SQL&#39;</span>
+ <span class="o">--</span><span class="nb">input</span><span class="o">-</span><span class="n">serialization</span>
+ <span class="s1">&#39;{&quot;CSV&quot;: {&quot;FieldDelimiter&quot;: &quot;,&quot; , &quot;QuoteCharacter&quot;: &quot;</span><span class="se">\&quot;</span><span class="s1">&quot; , &quot;RecordDelimiter&quot; : &quot;</span><span class="se">\n</span><span class="s1">&quot; , &quot;QuoteEscapeCharacter&quot; : &quot;</span><span class="se">\\</span><span class="s1">&quot; , &quot;FileHeaderInfo&quot;: &quot;USE&quot; }, &quot;CompressionType&quot;: &quot;NONE&quot;}&#39;</span>
+ <span class="o">--</span><span class="n">output</span><span class="o">-</span><span class="n">serialization</span> <span class="s1">&#39;{&quot;CSV&quot;: </span><span class="si">{}</span><span class="s1">}&#39;</span>
+ <span class="o">--</span><span class="n">key</span> <span class="p">{</span><span class="n">OBJECT</span><span class="o">-</span><span class="n">NAME</span><span class="p">}</span>
+ <span class="o">--</span><span class="n">expression</span> <span class="s2">&quot;select count(0) from stdin where int(_1)&lt;10;&quot;</span> <span class="n">output</span><span class="o">.</span><span class="n">csv</span>
+</pre></div>
+</div>
+<div class="section" id="syntax">
+<h3><a class="toc-backref" href="#id13">Syntax</a><a class="headerlink" href="#syntax" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line"><strong>Input serialization</strong> (Implemented), it let the user define the CSV definitions; the default values are {\n} for row-delimiter {,} for field delimiter, {“} for quote, {\} for escape characters.</div>
+<div class="line">it handle the <strong>csv-header-info</strong>, the first row in input object containing the schema.</div>
+<div class="line"><strong>Output serialization</strong> is currently not implemented, the same for <strong>compression-type</strong>.</div>
+</div>
+<div class="line-block">
+<div class="line">s3-select engine contain a CSV parser, which parse s3-objects as follows.</div>
+<div class="line">- each row ends with row-delimiter.</div>
+<div class="line">- field-separator separates between adjacent columns, successive field separator define NULL column.</div>
+<div class="line">- quote-character overrides field separator, meaning , field separator become as any character between quotes.</div>
+<div class="line">- escape character disables any special characters, except for row delimiter.</div>
+</div>
+<div class="line-block">
+<div class="line">Below are examples for CSV parsing rules.</div>
+</div>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="csv-parsing-behavior">
+<h2><a class="toc-backref" href="#id14">CSV parsing behavior</a><a class="headerlink" href="#csv-parsing-behavior" title="Permalink to this headline">¶</a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 14%" />
+<col style="width: 59%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Feature</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>input ==&gt; tokens</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>NULL</p></td>
+<td><p>successive
+field delimiter</p></td>
+<td><p>,,1,,2,    ==&gt; {null}{null}{1}{null}{2}{null}</p></td>
+</tr>
+<tr class="row-odd"><td><p>QUOTE</p></td>
+<td><p>quote character
+overrides
+field delimiter</p></td>
+<td><p>11,22,”a,b,c,d”,last ==&gt; {11}{22}{“a,b,c,d”}{last}</p></td>
+</tr>
+<tr class="row-even"><td><p>Escape</p></td>
+<td><p>escape char
+overrides
+meta-character.
+escape removed</p></td>
+<td><p>11,22,str=&quot;abcd&quot;\,str2=&quot;123&quot;,last
+==&gt; {11}{22}{str=”abcd”,str2=”123”}{last}</p></td>
+</tr>
+<tr class="row-odd"><td><p>row delimiter</p></td>
+<td><p>no close quote,
+row delimiter is
+closing line</p></td>
+<td><p>11,22,a=”str,44,55,66
+==&gt; {11}{22}{a=”str,44,55,66}</p></td>
+</tr>
+<tr class="row-even"><td><p>csv header info</p></td>
+<td><p>FileHeaderInfo
+tag</p></td>
+<td><p>“<strong>USE</strong>” value means each token on first line is column-name,
+“<strong>IGNORE</strong>” value means to skip the first line</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="boto3">
+<h2><a class="toc-backref" href="#id15">BOTO3</a><a class="headerlink" href="#boto3" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">using BOTO3 is “natural” and easy due to AWS-cli support.</div>
+</div>
+</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">run_s3select</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span><span class="n">key</span><span class="p">,</span><span class="n">query</span><span class="p">,</span><span class="n">column_delim</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span><span class="n">row_delim</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="n">quot_char</span><span class="o">=</span><span class="s1">&#39;&quot;&#39;</span><span class="p">,</span><span class="n">esc_char</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">csv_header_info</span><span class="o">=</span><span class="s2">&quot;NONE&quot;</span><span class="p">):</span>
+   <span class="n">s3</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span>
+       <span class="n">endpoint_url</span><span class="o">=</span><span class="n">endpoint</span><span class="p">,</span>
+       <span class="n">aws_access_key_id</span><span class="o">=</span><span class="n">access_key</span><span class="p">,</span>
+       <span class="n">region_name</span><span class="o">=</span><span class="n">region_name</span><span class="p">,</span>
+       <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="n">secret_key</span><span class="p">)</span>
+
+
+
+   <span class="n">r</span> <span class="o">=</span> <span class="n">s3</span><span class="o">.</span><span class="n">select_object_content</span><span class="p">(</span>
+       <span class="n">Bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">,</span>
+       <span class="n">Key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+       <span class="n">ExpressionType</span><span class="o">=</span><span class="s1">&#39;SQL&#39;</span><span class="p">,</span>
+       <span class="n">InputSerialization</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;CSV&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;RecordDelimiter&quot;</span> <span class="p">:</span> <span class="n">row_delim</span><span class="p">,</span> <span class="s2">&quot;FieldDelimiter&quot;</span> <span class="p">:</span> <span class="n">column_delim</span><span class="p">,</span><span class="s2">&quot;QuoteEscapeCharacter&quot;</span><span class="p">:</span> <span class="n">esc_char</span><span class="p">,</span> <span class="s2">&quot;QuoteCharacter&quot;</span><span class="p">:</span> <span class="n">quot_char</span><span class="p">,</span> <span class="s2">&quot;FileHeaderInfo&quot;</span><span class="p">:</span> <span class="n">csv_header_info</span><span class="p">},</span> <span class="s2">&quot;CompressionType&quot;</span><span class="p">:</span> <span class="s2">&quot;NONE&quot;</span><span class="p">},</span>
+       <span class="n">OutputSerialization</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;CSV&quot;</span><span class="p">:</span> <span class="p">{}},</span>
+       <span class="n">Expression</span><span class="o">=</span><span class="n">query</span><span class="p">,)</span>
+
+   <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+   <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;Payload&#39;</span><span class="p">]:</span>
+       <span class="k">if</span> <span class="s1">&#39;Records&#39;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
+           <span class="n">records</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;Records&#39;</span><span class="p">][</span><span class="s1">&#39;Payload&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+           <span class="n">result</span> <span class="o">+=</span> <span class="n">records</span>
+
+   <span class="k">return</span> <span class="n">result</span>
+
+
+
+
+ <span class="n">run_s3select</span><span class="p">(</span>
+ <span class="s2">&quot;my_bucket&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;my_csv_object&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;select int(_1) as a1, int(_2) as a2 , (a1+a2) as a3 from stdin where a3&gt;100 and a3&lt;300;&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../">
+              <img class="logo" src="../../_static/logo.png" alt="Logo"/>
+            </a></p>
+<h3><a href="../../">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../start/intro/">Ceph 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install/">安装 Ceph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephadm/">Cephadm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rados/">Ceph 存储集群</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cephfs/">Ceph 文件系统</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rbd/">Ceph 块设备</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Ceph 对象网关</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../install/ceph-deploy/install-ceph-gateway/">基于 Civetweb 手动安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../frontends/">HTTP 前端</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../placement/">存储池归置与存储类</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multisite/">多站配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multisite-sync-policy/">多站同步策略配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pools/">存储池的配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config-ref/">配置参考</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../s3/">S3 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rgw-cache/">Data caching and CDN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../adminops/">管理操作 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/">Python 接口</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../nfs/">通过 NFS 导出</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keystone/">与 OpenStack Keystone 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../barbican/">与 OpenStack Barbican 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../vault/">与 HashiCorp Vault 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../opa/">与 Open Policy Agent 对接</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multitenancy/">多租户</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../compression/">压缩</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ldap-auth/">LDAP 认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encryption/">服务器端加密</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bucketpolicy/">桶策略</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dynamicresharding/">动态的桶索引重分片</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mfa/">多因子认证</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sync-modules/">同步模块</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notifications/">Bucket Notifications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../layout/">RADOS 中的数据布局</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../STS/">STS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../STSLite/">STS Lite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../keycloak/">Keycloak</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../role/">Role</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../orphans/">Orphan List and Associated Tooliing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../oidc/">OpenID Connect Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">故障排除</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw/">radosgw 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../man/8/radosgw-admin/">radosgw-admin 手册页</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../qat-accel/">使用 QAT 为加密和压缩提速</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">S3-select</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#basic-workflow">Basic workflow</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#basic-functionalities">Basic functionalities</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#error-handling">Error Handling</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#features-support">Features Support</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#s3-select-function-interfaces">s3-select function interfaces</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#timestamp-functions">Timestamp functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#aggregation-functions">Aggregation functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#string-functions">String functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#alias">Alias</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#sending-query-to-rgw">Sending Query to RGW</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#syntax">Syntax</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#csv-parsing-behavior">CSV parsing behavior</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#boto3">BOTO3</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mgr/dashboard/">Ceph 仪表盘</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/">API 文档</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/">体系结构</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/developer_guide/">开发者指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/internals/">Ceph 内幕</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../governance/">项目管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../foundation/">Ceph 基金会</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
+</ul>
+
+
+<!-- ugly kludge to make genindex look like it's part of the toc -->
+<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../genindex/">Index</a></li></ul>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex/" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex/" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../mgr/" title="Ceph 管理器守护进程"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../qat-accel/" title="使用 QAT 为加密和压缩提速"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../">Ceph Documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../" >Ceph 对象网关</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+    </div>
+  </body>
+</html>

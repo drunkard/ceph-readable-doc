@@ -1094,6 +1094,7 @@ A log entry may look like this::
 
   2018-10-22 15:27:01.302514 mgr.x [INF] [DASHBOARD] from='https://[::ffff:127.0.0.1]:37022' path='/api/rgw/user/klaus' method='PUT' user='admin' params='{"max_buckets": "1000", "display_name": "Klaus Mustermann", "uid": "klaus", "suspended": "0", "email": "klaus.mustermann@ceph.com"}'
 
+.. NFS-Ganesha Management
 .. _dashboard-nfs-ganesha-management:
 
 NFS-Ganesha 的管理
@@ -1150,7 +1151,7 @@ configuration objects and we can start manage the exports through the Web UI.
     pool.
 
 
-.. Support for multiple NFS-Ganesha clusters
+.. Support for Multiple NFS-Ganesha Clusters
 
 多个 NFS-Ganesha 集群的支持情况
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

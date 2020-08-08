@@ -51,7 +51,7 @@ Ceph 监视器守护进程会产生健康消息。
        置， ``count`` 配置为 0 时禁用此功能。
 
 
-.. _Daemon-reported health checks:
+.. Daemon-reported health checks
 
 守护进程报告的健康检查
 ======================
@@ -63,24 +63,23 @@ MDS 守护进程能定位各种各样不该出现的状况，并通过 ``ceph st
 :消息: "Behind on trimming..."
 :代码: MDS_HEALTH_TRIM
 :描述: CephFS 维护着的元数据日志是切成\
-       *日志片段（ log segment ）*\ 的。日志的长度（按片段数量\
-       算）是用 ``mds_log_max_segments`` 选项控制的，当片段数\
-       量超过配置时， MDS 就开始写回元数据，以便删除（裁剪、
-       trim ）最老的片段。如果回写得太慢，或者软件缺陷妨碍了裁\
-       剪，这样的健康消息就可能出现。此消息出现的阈值是片段数\
-       量达到 ``mds_log_max_segments`` 的两倍。
+       *日志片段（ log segment ）*\ 的。日志的长度（按\
+       片段数量算）是用 ``mds_log_max_segments`` 选项控制的，\
+       当片段数量超过配置时， MDS 就开始写回元数据，以便删除（\
+       裁剪、 trim ）最老的片段。如果回写得太慢，或者软件缺陷\
+       妨碍了裁剪，这样的健康消息就可能出现。此消息出现的阈值\
+       是由配置选项 ``mds_log_warn_factor`` 控制的，默认是 2.0 。
 
 ------
 
 :消息: "Client *name* failing to respond to capability release"
 :代码: MDS_HEALTH_CLIENT_LATE_RELEASE, MDS_HEALTH_CLIENT_LATE_RELEASE_MANY
 :描述: CephFS 客户端收到了 MDS 发出的\
-       *能力（ capabilities ）* ，它就像锁。有时候，比如一个客\
-       户端需要访问权， MDS 就会让别的客户端释放它们的能力，如\
-       果有客户端没响应、或者有缺陷，它就有可能没及时释放、或\
-       者根本不释放。如果某个客户端的响应时间超过了
-       ``session_timeout`` （默认为 60s ），这条消息就\
-       会出现。
+       *能力（ capabilities ）* ，它就像锁。有时候，比如一个\
+       客户端需要访问权， MDS 就会让别的客户端释放它们的能力，\
+       如果有客户端没响应、或者有缺陷，它就有可能没及时释放、\
+       或者根本不释放。如果某个客户端的响应时间超过了
+       ``session_timeout`` （默认为 60s ），这条消息就会出现。
 
 ------
 

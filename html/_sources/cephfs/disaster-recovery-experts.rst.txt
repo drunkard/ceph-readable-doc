@@ -200,16 +200,16 @@ scan_inodes 命令就要花费\ *很长时间*\ 。
 
    这个方法尚未全面地测试过，下手时要格外小心。
 
-如果一个在用的文件系统损坏了、且无法使用，可以试着创建一个新的\
-元数据存储池、并尝试把文件系统元数据重构进这个新存储池，旧的\
-元数据仍原地保留。这是一种比较安全的恢复方法，因为不会覆盖已有\
-的元数据存储池。
+如果一个在用的文件系统损坏了、且无法使用，可以创建一个新的\
+元数据存储池、并尝试把此文件系统的元数据重构进这个新存储池，\
+旧的元数据仍原地保留。这是一种比较安全的恢复方法，因为不会更改\
+现有的元数据存储池。
 
 .. caution::
 
    在此过程中，多个元数据存储池包含着指向同一数据存储池的\
    元数据。在这种情况下，必须格外小心，以免更改数据存储池\
-   内容。一旦恢复结束，就应该删除损坏的元数据存储池。
+   内容。一旦恢复结束，就应该归档或删除损坏的元数据存储池。
 
 To begin, the existing file system should be taken down, if not done already,
 to prevent further modification of the data pool. Unmount all clients and then
@@ -261,14 +261,18 @@ Now perform the recovery of the metadata pool from the data pool:
    significant amount of time. See the previous section on how to distribute
    this task among workers.
 
-如果损坏的文件系统包含脏日志数据，随后可以用如下命令恢复： ::
+如果损坏的文件系统包含脏日志数据，随后可以用如下命令恢复：
+
+::
 
     cephfs-journal-tool --rank=<fs_name>:0 event recover_dentries list --alternate-pool cephfs_recovery_meta
     cephfs-journal-tool --rank cephfs_recovery:0 journal reset --force
 
 恢复完之后，有些恢复过来的目录其链接计数不对。首先确保
 ``mds_debug_scatterstat`` 参数为 ``false`` （默认值），以防 MDS
-检查链接计数： ::
+检查链接计数：
+
+::
 
     ceph config rm mds mds_verify_scatter
     ceph config rm mds mds_debug_scatterstat
@@ -281,7 +285,9 @@ Now, allow an MDS to join the recovery file system:
     ceph fs set cephfs_recovery joinable true
 
 最后，运行正向\ `洗刷 scrub </cephfs/scrub>` 以修复统计信息。\
-确保有一个 MDS 在运行，然后执行命令： ::
+确保有一个 MDS 在运行，然后执行命令：
+
+::
 
     ceph fs status # get active MDS
     ceph tell mds.<id> scrub start / recursive repair
