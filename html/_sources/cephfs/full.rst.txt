@@ -37,7 +37,7 @@ ENOSPC 错误：
 被取消。各个客户端取消操作并释放文件能力时会更新
 ``osd_epoch_barrier`` ，以确保这些取消的操作不会妨碍 MDS 或\
 其它客户端对这些数据对象的访问。要了解元图屏蔽机制，请参考 \
-:ref:`background_blacklisting_and_osd_epoch_barrier` 。
+:ref:`background_blocklisting_and_osd_epoch_barrier` 。
 
 
 .. Legacy (pre-hammer) behavior

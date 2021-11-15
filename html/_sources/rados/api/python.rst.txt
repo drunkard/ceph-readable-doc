@@ -96,26 +96,25 @@ information about the cluster.
 	import rados, sys
 
 	cluster = rados.Rados(conffile='ceph.conf')
-	print "\nlibrados version: " + str(cluster.version())
-	print "Will attempt to connect to: " + str(cluster.conf_get('mon initial members'))
+	print("\nlibrados version: {}".format(str(cluster.version())))
+	print("Will attempt to connect to: {}".format(str(cluster.conf_get('mon host'))))
 
 	cluster.connect()
-	print "\nCluster ID: " + cluster.get_fsid()
+	print("\nCluster ID: {}".format(cluster.get_fsid()))
 
-	print "\n\nCluster Statistics"
-	print "=================="
+	print("\n\nCluster Statistics")
+	print("==================")
 	cluster_stats = cluster.get_cluster_stats()
 
-	for key, value in cluster_stats.iteritems():
-		print key, value
+	for key, value in cluster_stats.items():
+		print(key, value)
 
 
 By default, Ceph authentication is ``on``. Your application will need to know
 the location of the keyring. The ``python-ceph`` module doesn't have the default
 location, so you need to specify the keyring path. The easiest way to specify
 the keyring is to add it to the Ceph configuration file. The following Ceph
-configuration file example uses the ``client.admin`` keyring you generated with
-``ceph-deploy``.
+configuration file example uses the ``client.admin`` keyring.
 
 .. code-block:: ini
    :linenos:

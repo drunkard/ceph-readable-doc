@@ -28,7 +28,7 @@ minimal settings for each instance of monitor daemons. For example:
    the command line to retrieve the name of the node. Do not use ``host``
    settings for anything other than initial monitors unless you are deploying
    Ceph manually. You **MUST NOT** specify ``host`` under individual daemons
-   when using deployment tools like ``chef`` or ``ceph-deploy``, as those tools
+   when using deployment tools like ``chef`` or ``cephadm``, as those tools
    will enter the appropriate values for you in the cluster map.
 
 
@@ -63,7 +63,7 @@ following path::
 
 	/var/lib/ceph/mon/$cluster-$id
 
-You or a deployment tool (e.g., ``ceph-deploy``) must create the corresponding
+You or a deployment tool (e.g., ``cephadm``) must create the corresponding
 directory. With metavariables fully  expressed and a cluster named "ceph", the
 foregoing directory would evaluate to::
 
@@ -83,17 +83,15 @@ For additional details, see the `Monitor Config Reference`_.
 .. versionadded:: Bobtail 0.56
 
 For Bobtail (v 0.56) and beyond, you should expressly enable or disable
-authentication in the ``[global]`` section of your Ceph configuration file. ::
+authentication in the ``[global]`` section of your Ceph configuration file.
 
-	auth cluster required = cephx
-	auth service required = cephx
-	auth client required = cephx
+.. code-block:: ini
+
+	auth_cluster_required = cephx
+	auth_service_required = cephx
+	auth_client_required = cephx
 
 Additionally, you should enable message signing. See `Cephx Config Reference`_ for details.
-
-.. important:: When upgrading, we recommend expressly disabling authentication
-   first, then perform the upgrade. Once the upgrade is complete, re-enable
-   authentication.
 
 .. _Cephx Config Reference: ../auth-config-ref
 
@@ -117,21 +115,21 @@ deployment specifies a journal size. For example:
 	host = {hostname} #manual deployments only.
 
 
-By default, Ceph expects that you will store a Ceph OSD Daemon's data with the
+By default, Ceph expects to store a Ceph OSD Daemon's data at the
 following path::
 
 	/var/lib/ceph/osd/$cluster-$id
 
-You or a deployment tool (e.g., ``ceph-deploy``) must create the corresponding
-directory. With metavariables fully  expressed and a cluster named "ceph", the
-foregoing directory would evaluate to::
+You or a deployment tool (e.g., ``cephadm``) must create the corresponding
+directory. With metavariables fully expressed and a cluster named "ceph", this
+example would evaluate to::
 
 	/var/lib/ceph/osd/ceph-0
 
 You may override this path using the ``osd data`` setting. We don't recommend
 changing the default location. Create the default directory on your OSD host.
 
-::
+.. prompt:: bash $
 
 	ssh {osd-host}
 	sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
@@ -139,7 +137,9 @@ changing the default location. Create the default directory on your OSD host.
 The ``osd data`` path ideally leads to a mount point with a hard disk that is
 separate from the hard disk storing and running the operating system and
 daemons. If the OSD is for a disk other than the OS disk, prepare it for
-use with Ceph, and mount it to the directory you just created::
+use with Ceph, and mount it to the directory you just created
+
+.. prompt:: bash $
 
 	ssh {new-osd-host}
 	sudo mkfs -t {fstype} /dev/{disk}
@@ -189,21 +189,29 @@ ceph.conf 实例
 .. _ceph-runtime-config:
 
 
-.. Running Multiple Clusters (DEPRECATED)
+.. Naming Clusters (deprecated)
 
 跑多个集群（已废弃）
 ====================
 
-Some Ceph CLI commands take a ``-c`` (cluster name) option. This option is
-present purely for backward compatibility. You should not attempt to deploy
-or run multiple clusters on the same hardware, and it is recommended to always
-leave the cluster name as the default ("ceph").
+Each Ceph cluster has an internal name that is used as part of configuration
+and log file names as well as directory and mountpoint names.  This name
+defaults to "ceph".  Previous releases of Ceph allowed one to specify a custom
+name instead, for example "ceph2".  This was intended to faciliate running
+multiple logical clusters on the same physical hardware, but in practice this
+was rarely exploited and should no longer be attempted.  Prior documentation
+could also be misinterpreted as requiring unique cluster names in order to
+use ``rbd-mirror``.
 
-If you need to allow multiple clusters to exist on the same host, please use
+Custom cluster names are now considered deprecated and the ability to deploy
+them has already been removed from some tools, though existing custom name
+deployments continue to operate.  The ability to run and manage clusters with
+custom names may be progressively removed by future Ceph releases, so it is
+strongly recommended to deploy all new clusters with the default name "ceph".
+
+Some Ceph CLI commands accept an optional ``--cluster`` (cluster name) option. This
+option is present purely for backward compatibility and need not be accomodated
+by new tools and deployments.
+
+If you do need to allow multiple clusters to exist on the same host, please use
 :ref:`cephadm`, which uses containers to fully isolate each cluster.
-
-
-.. _Hardware Recommendations: ../../../start/hardware-recommendations
-.. _Network Configuration Reference: ../network-config-ref
-.. _OSD Config Reference: ../osd-config-ref
-.. _Configuring Monitor/OSD Interaction: ../mon-osd-interaction

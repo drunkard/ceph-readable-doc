@@ -138,10 +138,10 @@ out again.
 
 硬链接
 ------
-Inode with multiple hard links is moved to a dummy global SnapRealm. The
-dummy SnapRealm covers all snapshots in the file system. The inode's data
-will be preserved for any new snapshot. These preserved data will cover
-snapshots on any linkage of the inode.
+有多个硬链接的 inode 会被挪进一个虚拟的全局 SnapRealms ，这个\
+虚拟 SnapRealms 统管文件系统内的所有快照。这个 inode 的数据会\
+保留给所有新快照，这些保留的数据会覆盖所有与此 inode 相关的\
+快照内链接。
 
 .. Multi-FS
 

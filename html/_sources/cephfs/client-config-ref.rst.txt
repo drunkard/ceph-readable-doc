@@ -3,9 +3,10 @@
 客户端配置
 ==========
 
-Updating Client Configuration
------------------------------
+.. Updating Client Configuration
 
+更新客户端配置
+--------------
 Certain client configurations can be applied at runtime. To check if a configuration option can be applied (taken into affect by a client) at runtime, use the `config help` command::
 
    ceph config help debug_client
@@ -32,8 +33,10 @@ To check configured options use the `config get` command::
     global      advanced osd_pool_default_size     3            
 
 
-Client Config Reference
-------------------------
+.. Client Config Reference
+
+客户端配置参考
+--------------
 
 ``client acl type``
 

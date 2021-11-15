@@ -1102,6 +1102,38 @@ Command Flags:
 
 
 
+cephadm registry-login
+^^^^^^^^^^^^^^^^^^^^^^
+
+Set custom registry login info by providing url, username and password
+or json file with login info (-i <file>)
+
+Example command:
+
+.. code-block:: bash
+
+    ceph cephadm registry-login my_url my_username my_password
+
+Parameters:
+
+* **url**: (string)
+* **username**: (string)
+* **password**: (string)
+
+Ceph Module:
+
+* *mgr*
+
+Required Permissions:
+
+* *r*
+
+Command Flags:
+
+* *mgr*
+
+
+
 cephadm set-priv-key
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -1170,6 +1202,36 @@ Ceph Module:
 Required Permissions:
 
 * *rw*
+
+Command Flags:
+
+* *mgr*
+
+
+
+cephadm set-user
+^^^^^^^^^^^^^^^^
+
+Set user for SSHing to cluster hosts, passwordless sudo will be needed
+for non-root users
+
+Example command:
+
+.. code-block:: bash
+
+    ceph cephadm set-user my_user
+
+Parameters:
+
+* **user**: (string)
+
+Ceph Module:
+
+* *mgr*
+
+Required Permissions:
+
+* *r*
 
 Command Flags:
 
@@ -5181,8 +5243,7 @@ device light
 ^^^^^^^^^^^^
 
 Enable or disable the device light. Default type is `ident`
-Usage:
-device light (on|off) <devid> [ident|fault] [--force]
+Usage: device light (on|off) <devid> [ident|fault] [--force]
 
 Example command:
 
@@ -5853,6 +5914,28 @@ Required Permissions:
 
 
 
+fs feature ls
+^^^^^^^^^^^^^
+
+list available cephfs features to be set/unset
+
+Example command:
+
+.. code-block:: bash
+
+    ceph fs feature ls
+
+Ceph Module:
+
+* *mds*
+
+Required Permissions:
+
+* *r*
+
+
+
+
 fs flag set
 ^^^^^^^^^^^
 
@@ -5951,6 +6034,34 @@ Parameters:
 Ceph Module:
 
 * *fs*
+
+Required Permissions:
+
+* *rw*
+
+
+
+
+fs required_client_features
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+add/remove required features of clients
+
+Example command:
+
+.. code-block:: bash
+
+    ceph fs required_client_features my_fs_name add my_val
+
+Parameters:
+
+* **fs_name**: (string)
+* **subop**: CephChoices  strings=(add rm)
+* **val**: (string)
+
+Ceph Module:
+
+* *mds*
 
 Required Permissions:
 
@@ -6360,13 +6471,14 @@ fs subvolume rm
 ^^^^^^^^^^^^^^^
 
 Delete a CephFS subvolume in a volume, and optionally, in a specific
-subvolume group
+subvolume group, force deleting a cancelled or failed clone, and
+retaining existing subvolume snapshots
 
 Example command:
 
 .. code-block:: bash
 
-    ceph fs subvolume rm --vol_name=string --sub_name=string --group_name=string --force
+    ceph fs subvolume rm --vol_name=string --sub_name=string --group_name=string --force --retain_snapshots
 
 Parameters:
 
@@ -6374,6 +6486,7 @@ Parameters:
 * **sub_name**: (string)
 * **group_name**: (string)
 * **force**: CephBool
+* **retain_snapshots**: CephBool
 
 Ceph Module:
 
@@ -6524,8 +6637,8 @@ Command Flags:
 fs subvolume snapshot protect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Protect snapshot of a CephFS subvolume in a volume, and optionally, in
-a specific subvolume group
+(deprecated) Protect snapshot of a CephFS subvolume in a volume, and
+optionally, in a specific subvolume group
 
 Example command:
 
@@ -6591,8 +6704,8 @@ Command Flags:
 fs subvolume snapshot unprotect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Unprotect a snapshot of a CephFS subvolume in a volume, and
-optionally, in a specific subvolume group
+(deprecated) Unprotect a snapshot of a CephFS subvolume in a volume,
+and optionally, in a specific subvolume group
 
 Example command:
 
@@ -7379,8 +7492,7 @@ k8sevents set-access
 
 Set kubernetes access credentials. <key> must be cacrt or token and
 use -i <filename> syntax.
-e.g. ceph k8sevents set-access cacrt -i
-/root/ca.crt
+e.g. ceph k8sevents set-access cacrt -i /root/ca.crt
 
 Example command:
 
@@ -9241,6 +9353,35 @@ Command Flags:
 
 
 
+nfs cluster info
+^^^^^^^^^^^^^^^^
+
+Displays NFS Cluster info
+
+Example command:
+
+.. code-block:: bash
+
+    ceph nfs cluster info my_clusterid
+
+Parameters:
+
+* **clusterid**: (string)
+
+Ceph Module:
+
+* *mgr*
+
+Required Permissions:
+
+* *r*
+
+Command Flags:
+
+* *mgr*
+
+
+
 nfs cluster ls
 ^^^^^^^^^^^^^^
 
@@ -9305,12 +9446,12 @@ Example command:
 
 .. code-block:: bash
 
-    ceph nfs export create cephfs --fsname=string --attach=string --binding=string --readonly --path=string
+    ceph nfs export create cephfs --fsname=string --clusterid=string --binding=string --readonly --path=string
 
 Parameters:
 
 * **fsname**: (string)
-* **attach**: (string)
+* **clusterid**: (string)
 * **binding**: (string)
 * **readonly**: CephBool
 * **path**: (string)
@@ -9338,11 +9479,11 @@ Example command:
 
 .. code-block:: bash
 
-    ceph nfs export delete my_attach my_binding
+    ceph nfs export delete my_clusterid my_binding
 
 Parameters:
 
-* **attach**: (string)
+* **clusterid**: (string)
 * **binding**: (string)
 
 Ceph Module:
@@ -9507,13 +9648,15 @@ Example command:
 
 .. code-block:: bash
 
-    ceph orch apply mon my_placement --unmanaged
+    ceph orch apply --service_type=mon --placement=string --dry_run --format=plain --unmanaged
 
 Parameters:
 
 * **service_type**: CephChoices  strings=(mon mgr rbd-mirror crash alertmanager grafana
   node-exporter prometheus)
 * **placement**: (string)
+* **dry_run**: CephBool
+* **format**: CephChoices  strings=(plain json json-pretty yaml)
 * **unmanaged**: CephBool
 
 Ceph Module:
@@ -9539,7 +9682,7 @@ Example command:
 
 .. code-block:: bash
 
-    ceph orch apply iscsi --pool=string --api_user=string --api_password=string --trusted_ip_list=string --placement=string --unmanaged
+    ceph orch apply iscsi --pool=string --api_user=string --api_password=string --trusted_ip_list=string --placement=string --dry_run --format=plain --unmanaged
 
 Parameters:
 
@@ -9548,6 +9691,8 @@ Parameters:
 * **api_password**: (string)
 * **trusted_ip_list**: (string)
 * **placement**: (string)
+* **dry_run**: CephBool
+* **format**: CephChoices  strings=(plain json json-pretty yaml)
 * **unmanaged**: CephBool
 
 Ceph Module:
@@ -9573,13 +9718,15 @@ Example command:
 
 .. code-block:: bash
 
-    ceph orch apply mds my_fs_name my_placement --unmanaged
+    ceph orch apply mds --fs_name=string --placement=string --dry_run --unmanaged --format=plain
 
 Parameters:
 
 * **fs_name**: (string)
 * **placement**: (string)
+* **dry_run**: CephBool
 * **unmanaged**: CephBool
+* **format**: CephChoices  strings=(plain json json-pretty yaml)
 
 Ceph Module:
 
@@ -9604,7 +9751,7 @@ Example command:
 
 .. code-block:: bash
 
-    ceph orch apply nfs --svc_id=string --pool=string --namespace=string --placement=string --unmanaged
+    ceph orch apply nfs --svc_id=string --pool=string --namespace=string --placement=string --dry_run --format=plain --unmanaged
 
 Parameters:
 
@@ -9612,6 +9759,8 @@ Parameters:
 * **pool**: (string)
 * **namespace**: (string)
 * **placement**: (string)
+* **dry_run**: CephBool
+* **format**: CephChoices  strings=(plain json json-pretty yaml)
 * **unmanaged**: CephBool
 
 Ceph Module:
@@ -9637,11 +9786,12 @@ Example command:
 
 .. code-block:: bash
 
-    ceph orch apply osd --all_available_devices --unmanaged plain
+    ceph orch apply osd --all_available_devices --dry_run --unmanaged --format=plain
 
 Parameters:
 
 * **all_available_devices**: CephBool
+* **dry_run**: CephBool
 * **unmanaged**: CephBool
 * **format**: CephChoices  strings=(plain json json-pretty yaml)
 
@@ -9668,7 +9818,7 @@ Example command:
 
 .. code-block:: bash
 
-    ceph orch apply rgw --realm_name=string --zone_name=string --subcluster=string --port=1 --ssl --placement=string --unmanaged
+    ceph orch apply rgw --realm_name=string --zone_name=string --subcluster=string --port=1 --ssl --placement=string --dry_run --format=plain --unmanaged
 
 Parameters:
 
@@ -9678,6 +9828,8 @@ Parameters:
 * **port**: CephInt
 * **ssl**: CephBool
 * **placement**: (string)
+* **dry_run**: CephBool
+* **format**: CephChoices  strings=(plain json json-pretty yaml)
 * **unmanaged**: CephBool
 
 Ceph Module:
@@ -9722,7 +9874,7 @@ Command Flags:
 orch daemon
 ^^^^^^^^^^^
 
-Start, stop, restart, redeploy, or reconfig a specific daemon
+Start, stop, restart, (redeploy,) or reconfig a specific daemon
 
 Example command:
 
@@ -9732,7 +9884,7 @@ Example command:
 
 Parameters:
 
-* **action**: CephChoices  strings=(start stop restart redeploy reconfig)
+* **action**: CephChoices  strings=(start stop restart reconfig)
 * **name**: (string)
 
 Ceph Module:
@@ -9923,6 +10075,36 @@ Parameters:
 * **port**: CephInt
 * **ssl**: CephBool
 * **placement**: (string)
+
+Ceph Module:
+
+* *mgr*
+
+Required Permissions:
+
+* *rw*
+
+Command Flags:
+
+* *mgr*
+
+
+
+orch daemon redeploy
+^^^^^^^^^^^^^^^^^^^^
+
+Redeploy a daemon (with a specifc image)
+
+Example command:
+
+.. code-block:: bash
+
+    ceph orch daemon redeploy my_name my_image
+
+Parameters:
+
+* **name**: (string)
+* **image**: (string)
 
 Ceph Module:
 
@@ -10150,6 +10332,36 @@ Command Flags:
 
 
 
+orch host ok-to-stop
+^^^^^^^^^^^^^^^^^^^^
+
+Check if the specified host can be safely stopped without reducing
+availability
+
+Example command:
+
+.. code-block:: bash
+
+    ceph orch host ok-to-stop my_hostname
+
+Parameters:
+
+* **hostname**: (string)
+
+Ceph Module:
+
+* *mgr*
+
+Required Permissions:
+
+* *rw*
+
+Command Flags:
+
+* *mgr*
+
+
+
 orch host rm
 ^^^^^^^^^^^^
 
@@ -10282,7 +10494,40 @@ Example command:
 
 .. code-block:: bash
 
-    ceph orch osd rm status
+    ceph orch osd rm status plain
+
+Parameters:
+
+* **format**: CephChoices  strings=(plain json json-pretty yaml)
+
+Ceph Module:
+
+* *mgr*
+
+Required Permissions:
+
+* *rw*
+
+Command Flags:
+
+* *mgr*
+
+
+
+orch osd rm stop
+^^^^^^^^^^^^^^^^
+
+Remove OSD services
+
+Example command:
+
+.. code-block:: bash
+
+    ceph orch osd rm stop --svc_id=string
+
+Parameters:
+
+* **svc_id**: (can be repeated)
 
 Ceph Module:
 
@@ -10483,7 +10728,11 @@ Example command:
 
 .. code-block:: bash
 
-    ceph orch status
+    ceph orch status plain
+
+Parameters:
+
+* **format**: CephChoices  strings=(plain json json-pretty yaml)
 
 Ceph Module:
 
@@ -12295,89 +12544,6 @@ Required Permissions:
 
 * *rw*
 
-
-
-
-osd drain
-^^^^^^^^^
-
-drain osd ids
-
-Example command:
-
-.. code-block:: bash
-
-    ceph osd drain --osd_ids=1
-
-Parameters:
-
-* **osd_ids**: CephInt  (can be repeated)
-
-Ceph Module:
-
-* *mgr*
-
-Required Permissions:
-
-* *r*
-
-Command Flags:
-
-* *mgr*
-
-
-
-osd drain status
-^^^^^^^^^^^^^^^^
-
-show status
-
-Example command:
-
-.. code-block:: bash
-
-    ceph osd drain status
-
-Ceph Module:
-
-* *mgr*
-
-Required Permissions:
-
-* *r*
-
-Command Flags:
-
-* *mgr*
-
-
-
-osd drain stop
-^^^^^^^^^^^^^^
-
-show status for osds. Stopping all if osd_ids are omitted
-
-Example command:
-
-.. code-block:: bash
-
-    ceph osd drain stop --osd_ids=1
-
-Parameters:
-
-* **osd_ids**: CephInt  (can be repeated)
-
-Ceph Module:
-
-* *mgr*
-
-Required Permissions:
-
-* *r*
-
-Command Flags:
-
-* *mgr*
 
 
 

@@ -1,10 +1,11 @@
-.. What is Merged Where and When?
+.. Commit merging:  scope and cadence
+.. _merging:
 
-何时、何处、并入了什么？
-========================
-Commits are merged into branches according to criteria that change
-during the lifecycle of a Ceph release. This chapter is the inventory
-of what can be merged in which branch at a given point in time.
+合并提交：范围和节奏
+====================
+
+Commits are merged into branches according to criteria specific to each phase
+of the Ceph release lifecycle. This chapter codifies these criteria.
 
 
 .. Development releases (i.e. x.0.z)

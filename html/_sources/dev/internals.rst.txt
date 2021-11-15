@@ -1,5 +1,3 @@
-.. Ceph Internals
-
 ===========
  Ceph 内幕
 ===========
@@ -13,8 +11,6 @@ You can start a development mode Ceph cluster, after compiling the source, with:
 	OSD=3 MON=3 MGR=3 ../src/vstart.sh -n -x
 	# check that it's there
 	bin/ceph health
-
-.. _mailing-list:
 
 .. rubric:: Mailing list
 

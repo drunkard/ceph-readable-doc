@@ -201,8 +201,8 @@ SSD 用于对象存储太昂贵了，但是把 OSD 的日志存到 SSD 、把\
 提升 CephFS 文件系统性能的一种方法是从 CephFS 文件内容里分离出\
 元数据。 Ceph 提供了默认的 ``metadata`` 存储池来存储
 CephFS 元数据，所以你不需要给 CephFS 元数据创建存储池，但是\
-可以给它创建一个仅指向某主机 SSD 的 CRUSH 运行图。详情见\
-`给存储池指定 OSD`_ 。
+可以给它创建一个仅指向某主机 SSD 的 CRUSH 运行图。详情见
+:ref:`CRUSH 设备类<crush-map-device-class>`\ 。
 
 
 .. Controllers

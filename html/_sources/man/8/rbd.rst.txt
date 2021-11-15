@@ -819,11 +819,43 @@ format 2 格式的映像。
   backend that the data is incompressible, disabling compression in aggressive
   mode (since 5.8).
 
+* ms_mode=legacy - Use msgr1 on-the-wire protocol (since 5.11, default).
+
+* ms_mode=crc - Use msgr2.1 on-the-wire protocol, select 'crc' mode, also
+  referred to as plain mode (since 5.11).  If the daemon denies 'crc' mode,
+  fail the connection.
+
+* ms_mode=secure - Use msgr2.1 on-the-wire protocol, select 'secure' mode
+  (since 5.11).  'secure' mode provides full in-transit encryption ensuring
+  both confidentiality and authenticity.  If the daemon denies 'secure' mode,
+  fail the connection.
+
+* ms_mode=prefer-crc - Use msgr2.1 on-the-wire protocol, select 'crc'
+  mode (since 5.11).  If the daemon denies 'crc' mode in favor of 'secure'
+  mode, agree to 'secure' mode.
+
+* ms_mode=prefer-secure - Use msgr2.1 on-the-wire protocol, select 'secure'
+  mode (since 5.11).  If the daemon denies 'secure' mode in favor of 'crc'
+  mode, agree to 'crc' mode.
+
+* udev - Wait for udev device manager to finish executing all matching
+  "add" rules and release the device before exiting (default).  This option
+  is not passed to the kernel.
+
+* noudev - Don't wait for udev device manager.  When enabled, the device may
+  not be fully usable immediately on exit.
+
 `rbd device unmap` 选项：
 
 * force - 让某一已打开的块设备强制取消映射（从 4.9 起支持）。\
   其驱动会等待当前的请求完成之后再 unmap ；在 unmap 初始化之后\
   再发给驱动的请求会失败。
+
+* udev - Wait for udev device manager to finish executing all matching
+  "remove" rules and clean up after the device before exiting (default).
+  This option is not passed to the kernel.
+
+* noudev - Don't wait for udev device manager.
 
 
 实例

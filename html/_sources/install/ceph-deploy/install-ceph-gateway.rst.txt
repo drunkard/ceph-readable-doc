@@ -3,7 +3,6 @@
 ====================
  安装 Ceph 对象网关
 ====================
-
 从 `firefly` (v0.80) 起， Ceph 对象网关开始运行在 Civetweb
 （嵌入进了 ``ceph-radosgw`` 守护进程）之上，不再依赖 Apache
 和 FastCGI 。基于 Civetweb 的用法简化了 Ceph 对象网关的安装\
@@ -152,6 +151,7 @@ Civetweb 默认使用 ``7480`` 端口。要改变默认端口（如改成 ``80``
 
 
 .. Using SSL with Civetweb
+.. _Using SSL with Civetweb:
 
 在 Civetweb 上使用 SSL
 ----------------------

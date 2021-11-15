@@ -60,12 +60,12 @@
 :默认值: ``15``
 
 
-``mds blacklist interval``
+``mds blocklist interval``
 
 :描述: OSD 运行图里的 MDS 失败后，把它留在黑名单里的时间。\
        注意，此选项控制着失败的 OSD 在 OSDMap 黑名单里呆多长\
        时间，它对管理员手动加进黑名单的东西没影响。例如，
-       ``ceph osd blacklist add`` 仍将遵循默认的黑名单时间。
+       ``ceph osd blocklist add`` 仍将遵循默认的黑名单时间。
 :类型:  Float
 :默认值: ``24.0*60.0``
 

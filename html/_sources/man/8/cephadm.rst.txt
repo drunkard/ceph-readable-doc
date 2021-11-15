@@ -12,7 +12,7 @@ Synopsis
 | **cephadm**** [-h] [--image IMAGE] [--docker] [--data-dir DATA_DIR]
 |               [--log-dir LOG_DIR] [--logrotate-dir LOGROTATE_DIR]
 |               [--unit-dir UNIT_DIR] [--verbose] [--timeout TIMEOUT]
-|               [--retry RETRY]
+|               [--retry RETRY] [--no-container-init]
 |               {version,pull,inspect-image,ls,list-networks,adopt,rm-daemon,rm-cluster,run,shell,enter,ceph-volume,unit,logs,bootstrap,deploy,check-host,prepare-host,add-repo,rm-repo,install}
 |               ...
 
@@ -21,7 +21,7 @@ Synopsis
 
 | **cephadm** **inspect-image**
 
-| **cephadm** **ls**
+| **cephadm** **ls** [-h] [--no-detail] [--legacy-dir LEGACY_DIR]
 
 | **cephadm** **list-networks**
 
@@ -37,7 +37,7 @@ Synopsis
 | **cephadm** **run** [-h] --name NAME --fsid FSID
 
 | **cephadm** **shell** [-h] [--fsid FSID] [--name NAME] [--config CONFIG]
-                        [--keyring KEYRING] [--mount MOUNT] [--env ENV]
+                        [--keyring KEYRING] --mount [MOUNT [MOUNT ...]] [--env ENV]
                         [--] [command [command ...]]
 
 | **cephadm** **enter** [-h] [--fsid FSID] --name NAME [command [command ...]]
@@ -53,6 +53,7 @@ Synopsis
 | **cephadm** **bootstrap** [-h] [--config CONFIG] [--mon-id MON_ID]
 |                           [--mon-addrv MON_ADDRV] [--mon-ip MON_IP]
 |                           [--mgr-id MGR_ID] [--fsid FSID]
+|                           [--log-to-file] [--single-host-defaults]
 |                           [--output-dir OUTPUT_DIR]
 |                           [--output-keyring OUTPUT_KEYRING]
 |                           [--output-config OUTPUT_CONFIG]
@@ -60,6 +61,7 @@ Synopsis
 |                           [--skip-ssh]
 |                           [--initial-dashboard-user INITIAL_DASHBOARD_USER]
 |                           [--initial-dashboard-password INITIAL_DASHBOARD_PASSWORD]
+|                           [--ssl-dashboard-port SSL_DASHBOARD_PORT]
 |                           [--dashboard-key DASHBOARD_KEY]
 |                           [--dashboard-crt DASHBOARD_CRT]
 |                           [--ssh-config SSH_CONFIG]
@@ -82,7 +84,7 @@ Synopsis
 | **cephadm** **deploy** [-h] --name NAME --fsid FSID [--config CONFIG]
 |                        [--config-json CONFIG_JSON] [--keyring KEYRING]
 |                        [--key KEY] [--osd-fsid OSD_FSID] [--skip-firewalld]
-|                        [--reconfig] [--allow-ptrace]
+|                        [--tcp-ports TCP_PORTS] [--reconfig] [--allow-ptrace]
 
 | **cephadm** **check-host** [-h] [--expect-hostname EXPECT_HOSTNAME]
 
@@ -125,13 +127,14 @@ Options
 .. option:: --docker
 
    use docker instead of podman (default: False)
-.. option::data-dir DATA_DIR
 
-   base directory for daemon data (default:/var/lib/ceph)
+.. option:: --data-dir DATA_DIR
+
+   base directory for daemon data (default: /var/lib/ceph)
 
 .. option:: --log-dir LOG_DIR
 
-   base directory for daemon logs (default:.. option:: /var/log/ceph)
+   base directory for daemon logs (default: /var/log/ceph)
 
 .. option:: --logrotate-dir LOGROTATE_DIR
 
@@ -152,6 +155,10 @@ Options
 .. option:: --retry RETRY
 
    max number of retries (default: 10)
+
+.. option:: --no-container-init
+
+   do not run podman/docker with `--init` (default: False)
 
 
 Commands
@@ -203,6 +210,8 @@ Arguments:
 * [--mon-ip MON_IP]               mon IP
 * [--mgr-id MGR_ID]               mgr id (default: randomly generated)
 * [--fsid FSID]                   cluster FSID
+* [--log-to-file]                 configure cluster to log to traditional log files
+* [--single-host-defaults]        configure cluster to run on a single host
 * [--output-dir OUTPUT_DIR]       directory to write config, keyring, and pub key files
 * [--output-keyring OUTPUT_KEYRING] location to write keyring file with new cluster admin and mon keys
 * [--output-config OUTPUT_CONFIG] location to write conf file to connect to new cluster
@@ -210,6 +219,7 @@ Arguments:
 * [--skip-ssh                     skip setup of ssh key on local host
 * [--initial-dashboard-user INITIAL_DASHBOARD_USER] Initial user for the dashboard
 * [--initial-dashboard-password INITIAL_DASHBOARD_PASSWORD] Initial password for the initial dashboard user
+* [--ssl-dashboard-port SSL_DASHBOARD_PORT] Port number used to connect with dashboard using SSL
 * [--dashboard-key DASHBOARD_KEY] Dashboard key
 * [--dashboard-crt DASHBOARD_CRT] Dashboard certificate
 * [--ssh-config SSH_CONFIG] SSH config
@@ -233,6 +243,7 @@ Arguments:
 * [--registry-username REGISTRY_USERNAME] username of account to login to on custom registry
 * [--registry-password REGISTRY_PASSWORD] password of account to login to on custom registry
 * [--registry-json REGISTRY_JSON] JSON file containing registry login info (see registry-login command documentation)
+
 
 ceph-volume
 -----------
@@ -279,6 +290,7 @@ Arguments:
 * [--key KEY]                 key for new daemon
 * [--osd-fsid OSD_FSID]       OSD uuid, if creating an OSD container
 * [--skip-firewalld]          Do not configure firewalld
+* [--tcp-ports                List of tcp ports to open in the host firewall
 * [--reconfig]                Reconfigure a previously deployed daemon
 * [--allow-ptrace]            Allow SYS_PTRACE on daemon container
 
@@ -343,6 +355,11 @@ list daemon instances known to cephadm on **this** host::
         },
     ...
 
+Arguments:
+
+* [--no-detail]             Do not include daemon status
+* [--legacy-dir LEGACY_DIR] Base directory for legacy daemon data
+
 logs
 ----
 
@@ -353,6 +370,21 @@ print journald logs for a daemon container::
 This is similar to::
 
     journalctl -u mgr.myhost.ysubfo
+
+Can also specify additional journal arguments::
+
+    cephadm logs --name mgr.myhost.ysubfo -- -n 20 # last 20 lines
+    cephadm logs --name mgr.myhost.ysubfo -- -f # follow the log
+
+
+Positional arguments:
+
+* [command]               command (optional)
+
+Arguments:
+
+* [--fsid FSID]           cluster FSID
+* [--name NAME, -n NAME]  daemon name (type.id)
 
 
 prepare-host

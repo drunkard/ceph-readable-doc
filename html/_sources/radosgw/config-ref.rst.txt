@@ -11,8 +11,8 @@
 Configuration variables set under the ``[client.radosgw.{instance-name}]``
 section will not apply to rgw or radosgw-admin commands without an instance-name
 specified in the command. Thus variables meant to be applied to all RGW
-instances or all radosgw-admin commands can be put into the ``[global]`` or the
-``[client]`` section to avoid specifying instance-name.
+instances or all radosgw-admin options can be put into the ``[global]`` or the
+``[client]`` section to avoid specifying ``instance-name``.
 
 
 ``rgw frontends``
@@ -358,6 +358,32 @@ instances or all radosgw-admin commands can be put into the ``[global]`` or the
 :默认值: ``true``
 
 
+Lifecycle Settings
+==================
+
+Bucket Lifecycle configuration can be used to manage your objects so they are stored
+effectively throughout their lifetime. In past releases Lifecycle processing was rate-limited
+by single threaded processing. With the Nautilus release this has been addressed and the
+Ceph Object Gateway now allows for parallel thread processing of bucket lifecycles across
+additional Ceph Object Gateway instances and replaces the in-order
+index shard enumeration with a random ordered sequence.
+
+There are two options in particular to look at when looking to increase the
+aggressiveness of lifecycle processing:
+
+.. confval:: rgw_lc_max_worker
+.. confval:: rgw_lc_max_wp_worker
+
+These values can be tuned based upon your specific workload to further increase the
+aggressiveness of lifecycle processing. For a workload with a larger number of buckets (thousands)
+you would look at increasing the :confval:`rgw_lc_max_worker` value from the default value of 3 whereas for a
+workload with a smaller number of buckets but higher number of objects (hundreds of thousands)
+per bucket you would consider decreasing :confval:`rgw_lc_max_wp_worker` from the default value of 3.
+
+.. note:: When looking to tune either of these specific values please validate the
+       current Cluster performance and Ceph Object Gateway utilization before increasing.
+
+
 .. Garbage Collection Settings
 
 垃圾回收选项
@@ -370,11 +396,13 @@ objects in the Ceph Storage cluster some time after the gateway deletes the
 objects from the bucket index. The process of purging the deleted object data 
 from the Ceph Storage cluster is known as Garbage Collection or GC.
 
-To view the queue of objects awaiting garbage collection, execute the following::
+To view the queue of objects awaiting garbage collection, execute the following
 
-  $ radosgw-admin gc list 
+.. prompt:: bash $
 
-  Note: specify --include-all to list all entries, including unexpired
+   radosgw-admin gc list
+
+.. note:: specify ``--include-all`` to list all entries, including unexpired
   
 Garbage collection is a background activity that may
 execute continuously or during times of low loads, depending upon how the
@@ -426,6 +454,17 @@ configuration parameters.
               collection thread will use when purging old data.
 :类型: Integer
 :默认值: ``10``
+
+:Tuning Garbage Collection for Delete Heavy Workloads:
+
+As an initial step towards tuning Ceph Garbage Collection to be more aggressive the following options are suggested to be increased from their default configuration values::
+
+  rgw_gc_max_concurrent_io = 20
+  rgw_gc_max_trim_chunk = 64
+
+.. note:: Modifying these values requires a restart of the RGW service.
+
+Once these values have been increased from default please monitor for performance of the cluster during Garbage Collection to verify no adverse performance issues due to the increased values.
 
 
 .. Multisite Settings
@@ -1026,45 +1065,20 @@ implementation of *dmclock_client* op queue divides RGW Ops on admin, auth
 (swift auth, sts) metadata & data requests.
 
 
-``rgw max concurrent requests``
-
-:描述: Maximum number of concurrent HTTP requests that the beast frontend
-              will process. Tuning this can help to limit memory usage under
-              heavy load.
-:类型: Integer
-:默认值: 1024
-
-
-``rgw scheduler type``
-
-:描述: The type of RGW Scheduler to use. Valid values are throttler,
-              dmclock. Currently defaults to throttler which throttles beast
-              frontend requests. dmclock is *experimental* and will need the
-              experimental flag set
-
-
-The options below are to tune the experimental dmclock scheduler. For some
-further reading on dmclock, see :ref:`dmclock-qos`. `op_class` for the flags below is
-one of admin, auth, metadata or data.
-
-``rgw_dmclock_<op_class>_res``
-
-:描述: The mclock reservation for `op_class` requests
-:类型: float
-:默认值: 100.0
-
-``rgw_dmclock_<op_class>_wgt``
-
-:描述: The mclock weight for `op_class` requests
-:类型: float
-:默认值: 1.0
-
-``rgw_dmclock_<op_class>_lim``
-
-:描述: The mclock limit for `op_class` requests
-:类型: float
-:默认值: 0.0
-
+.. confval:: rgw_max_concurrent_requests
+.. confval:: rgw_scheduler_type
+.. confval:: rgw_dmclock_auth_res
+.. confval:: rgw_dmclock_auth_wgt
+.. confval:: rgw_dmclock_auth_lim
+.. confval:: rgw_dmclock_admin_res
+.. confval:: rgw_dmclock_admin_wgt
+.. confval:: rgw_dmclock_admin_lim
+.. confval:: rgw_dmclock_data_res
+.. confval:: rgw_dmclock_data_wgt
+.. confval:: rgw_dmclock_data_lim
+.. confval:: rgw_dmclock_metadata_res
+.. confval:: rgw_dmclock_metadata_wgt
+.. confval:: rgw_dmclock_metadata_lim
 
 
 .. _体系结构: ../../architecture#data-striping

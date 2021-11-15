@@ -4,9 +4,8 @@
  块设备入门
 ============
 
-要实践本手册，你必须先完成\ `存储集群入门`_ ，并确保
-:term:`Ceph 存储集群`\ 处于 ``active + clean`` 状态，这样才能\
-使用 :term:`Ceph 块设备`\ 。
+开始用 :term:`Ceph 块设备`\ 之前，先确认 :term:`Ceph 存储集群`\
+处于 ``active + clean`` 状态。
 
 .. note:: Ceph 块设备也叫 :term:`RBD` 或 :term:`RADOS` 块设备。
 
@@ -70,7 +69,6 @@
 详情见\ `块设备`_ 。
 
 
-.. _存储集群入门: ../quick-ceph-deploy
 .. _创建一个存储池: ../../rados/operations/pools/#create-a-pool
 .. _块设备: ../../rbd
 .. _FAQ: http://wiki.ceph.com/How_Can_I_Give_Ceph_a_Try

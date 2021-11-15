@@ -41,10 +41,9 @@ In the ceph source directory, checkout next branch (for point releases use the {
 
     git checkout next
 
-检出子模块： ::
+Checkout the submodules::
 
     git submodule update --force --init --recursive
-
 
 4.  Update Build version numbers
 ================================
@@ -97,8 +96,8 @@ Copy the rpms to the destination repo::
        mkdir /tmp/rpm-repo
        ../ceph-build/push_to_rpm_repo.sh /tmp/release /tmp/rpm-repo 0.xx
 
-Next add any additional rpms to the repo that are needed such as leveldb and
-and ceph-deploy.  See RPM Backports section
+Next add any additional rpms to the repo that are needed such as leveldb.
+See RPM Backports section
 
 Finally, sign the rpms and build the repo indexes::
 
@@ -115,8 +114,8 @@ The key-id used below is the id of the ceph release key from step 2::
 	../ceph-build/push_to_deb_repo.sh /tmp/release /tmp/debian-repo 0.xx main
 
 
-Next add any addition debian packages that are needed such as leveldb and
-ceph-deploy.  See the Debian Backports section below.
+Next add any addition debian packages that are needed such as leveldb.
+See the Debian Backports section below.
 
 Debian packages are signed when added to the repo, so no further action is
 needed.

@@ -45,9 +45,28 @@ Create a volume using::
 
     $ ceph fs volume create <vol_name> [<placement>]
 
-This creates a CephFS file system and its data and metadata pools. It also tries
-to create MDSes for the filesystem using the enabled ceph-mgr orchestrator
-module  (see :doc:`/mgr/orchestrator`) , e.g., rook.
+This creates a CephFS file system and its data and metadata pools. It can also
+try to create MDSes for the filesystem using the enabled ceph-mgr orchestrator
+module (see :doc:`/mgr/orchestrator`), e.g. rook.
+
+<vol_name> is the volume name (an arbitrary string), and
+
+<placement> is an optional string signifying which hosts should have NFS Ganesha
+daemon containers running on them and, optionally, the total number of NFS
+Ganesha daemons the cluster (should you want to have more than one NFS Ganesha
+daemon running per node). For example, the following placement string means
+"deploy NFS Ganesha daemons on nodes host1 and host2 (one daemon per host):
+
+    "host1,host2"
+
+and this placement specification says to deploy two NFS Ganesha daemons each
+on nodes host1 and host2 (for a total of four NFS Ganesha daemons in the
+cluster):
+
+    "4 host1,host2"
+
+For more details on placement specification refer to the :ref:`orchestrator-cli-service-spec`,
+but keep in mind that specifying the placement via a YAML file is not supported.
 
 Remove a volume using::
 
@@ -91,12 +110,8 @@ List subvolume groups using::
 
     $ ceph fs subvolumegroup ls <vol_name>
 
-Create a snapshot (see :doc:`/cephfs/experimental-features`) of a
-subvolume group using::
-
-    $ ceph fs subvolumegroup snapshot create <vol_name> <group_name> <snap_name>
-
-This implicitly snapshots all the subvolumes under the subvolume group.
+.. note:: Subvolume group snapshot feature is no longer supported in mainline CephFS (existing group
+          snapshots can still be listed and deleted)
 
 Remove a snapshot of a subvolume group using::
 
@@ -156,6 +171,24 @@ The command resizes the subvolume quota using the size specified by 'new_size'.
 '--no_shrink' flag prevents the subvolume to shrink below the current used size of the subvolume.
 
 The subvolume can be resized to an infinite size by passing 'inf' or 'infinite' as the new_size.
+
+Authorize cephx auth IDs, the read/read-write access to fs subvolumes::
+
+    $ ceph fs subvolume authorize <vol_name> <sub_name> <auth_id> [--group_name=<group_name>] [--access_level=<access_level>]
+
+The 'access_level' takes 'r' or 'rw' as value.
+
+Deauthorize cephx auth IDs, the read/read-write access to fs subvolumes::
+
+    $ ceph fs subvolume deauthorize <vol_name> <sub_name> <auth_id> [--group_name=<group_name>]
+
+List cephx auth IDs authorized to access fs subvolume::
+
+    $ ceph fs subvolume authorized_list <vol_name> <sub_name> [--group_name=<group_name>]
+
+Evict fs clients based on auth ID and subvolume mounted::
+
+    $ ceph fs subvolume evict <vol_name> <sub_name> <auth_id> [--group_name=<group_name>]
 
 Fetch the absolute path of a subvolume using::
 
@@ -275,6 +308,10 @@ Similar to specifying a pool layout when creating a subvolume, pool layout can b
 
   $ ceph fs subvolume snapshot clone <vol_name> <subvol_name> <snap_name> <target_subvol_name> --pool_layout <pool_layout>
 
+Configure maximum number of concurrent clones. The default is set to 4::
+
+  $ ceph config set mgr mgr/volumes/max_concurrent_clones <value>
+
 To check the status of a clone operation use::
 
   $ ceph fs clone status <vol_name> <clone_name> [--group_name <group_name>]
@@ -345,6 +382,40 @@ On successful cancelation, the cloned subvolume is moved to `canceled` state::
   }
 
 .. note:: The canceled cloned can be deleted by using --force option in `fs subvolume rm` command.
+
+
+.. _subvol-pinning:
+
+Pinning Subvolumes and Subvolume Groups
+---------------------------------------
+
+
+Subvolumes and subvolume groups can be automatically pinned to ranks according
+to policies. This can help distribute load across MDS ranks in predictable and
+stable ways.  Review :ref:`cephfs-pinning` and :ref:`cephfs-ephemeral-pinning`
+for details on how pinning works.
+
+Pinning is configured by::
+
+  $ ceph fs subvolumegroup pin <vol_name> <group_name> <pin_type> <pin_setting>
+
+or for subvolumes::
+
+  $ ceph fs subvolume pin <vol_name> <group_name> <pin_type> <pin_setting>
+
+Typically you will want to set subvolume group pins. The ``pin_type`` may be
+one of ``export``, ``distributed``, or ``random``. The ``pin_setting``
+corresponds to the extended attributed "value" as in the pinning documentation
+referenced above.
+
+So, for example, setting a distributed pinning strategy on a subvolume group::
+
+  $ ceph fs subvolumegroup pin cephfilesystem-a csi distributed 1
+
+Will enable distributed subtree partitioning policy for the "csi" subvolume
+group.  This will cause every subvolume within the group to be automatically
+pinned to one of the available ranks on the file system.
+
 
 .. _manila: https://github.com/openstack/manila
 .. _CSI: https://github.com/ceph/ceph-csi

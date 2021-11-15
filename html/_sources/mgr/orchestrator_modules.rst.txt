@@ -92,16 +92,13 @@ Placement
 
 The underlying orchestrator remains the source of truth for information
 about whether a service is running, what is running where, which
-nodes are available, etc.  Orchestrator modules should avoid taking
+hosts are available, etc.  Orchestrator modules should avoid taking
 any internal copies of this information, and read it directly from
 the orchestrator backend as much as possible.
 
-Bootstrapping nodes and adding them to the underlying orchestration
+Bootstrapping hosts and adding them to the underlying orchestration
 system is outside the scope of Ceph's orchestrator interface.  Ceph
-can only work on nodes when the orchestrator is already aware of them.
-
-Calls to orchestrator modules are all asynchronous, and return *completion*
-objects (see below) rather than returning values immediately.
+can only work on hosts when the orchestrator is already aware of them.
 
 Where possible, placement of stateless services should be left up to the
 orchestrator.
@@ -110,11 +107,7 @@ Completions and batching
 ------------------------
 
 All methods that read or modify the state of the system can potentially
-be long running.  To handle that, all such methods return a *Completion*
-object.  Orchestrator modules
-must implement the *process* method: this takes a list of completions, and
-is responsible for checking if they're finished, and advancing the underlying
-operations as needed.
+be long running. Therefore the module needs to schedule those operations.
 
 Each orchestrator module implements its own underlying mechanisms
 for completions.  This might involve running the underlying operations
@@ -122,19 +115,6 @@ in threads, or batching the operations up before later executing
 in one go in the background.  If implementing such a batching pattern, the
 module would do no work on any operation until it appeared in a list
 of completions passed into *process*.
-
-Some operations need to show a progress. Those operations need to add
-a *ProgressReference* to the completion. At some point, the progress reference
-becomes *effective*, meaning that the operation has really happened
-(e.g. a service has actually been started).
-
-.. automethod:: Orchestrator.process
-
-.. autoclass:: Completion
-   :members:
-
-.. autoclass:: ProgressReference
-   :members:
 
 
 .. Error Handling
@@ -266,6 +246,9 @@ specify a location when creating a stateless service.
 .. py:currentmodule:: ceph.deployment.service_spec
 
 .. autoclass:: ServiceSpec
+  :members:
+  :private-members:
+  :noindex:
 
 .. py:currentmodule:: orchestrator
 
@@ -319,33 +302,24 @@ Phase two is a call to  :meth:`Orchestrator.create_osds` with a Drive Group with
 
 .. py:currentmodule:: orchestrator
 
-.. Monitors
+.. Services
 
-监视器
-------
-
-.. automethod:: Orchestrator.add_mon
-.. automethod:: Orchestrator.apply_mon
-
-.. Stateless Services
-
-无状态服务
+可用的服务
 ----------
 
-.. automethod:: Orchestrator.add_mgr
+.. automethod:: Orchestrator.add_daemon
+.. automethod:: Orchestrator.apply_mon
 .. automethod:: Orchestrator.apply_mgr
-.. automethod:: Orchestrator.add_mds
 .. automethod:: Orchestrator.apply_mds
-.. automethod:: Orchestrator.add_rbd_mirror
 .. automethod:: Orchestrator.apply_rbd_mirror
 
 .. py:currentmodule:: ceph.deployment.service_spec
 
 .. autoclass:: RGWSpec
+  :noindex:
 
 .. py:currentmodule:: orchestrator
 
-.. automethod:: Orchestrator.add_rgw
 .. automethod:: Orchestrator.apply_rgw
 
 .. py:currentmodule:: ceph.deployment.service_spec
@@ -354,7 +328,6 @@ Phase two is a call to  :meth:`Orchestrator.create_osds` with a Drive Group with
 
 .. py:currentmodule:: orchestrator
 
-.. automethod:: Orchestrator.add_nfs
 .. automethod:: Orchestrator.apply_nfs
 
 .. Upgrades

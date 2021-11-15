@@ -174,7 +174,8 @@ Other cache modes are:
 缓存存储池的设置步骤大致与标准存储情景相同，但仍有不同：缓存层\
 所用的驱动器通常都是高性能的、且安装在专用服务器上、有自己的
 CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器的主机、\
-并忽略没有的主机。详情见\ `给存储池指定 OSD`_ 。
+并忽略没有的主机。详情见
+:ref:`CRUSH 设备类<crush-map-device-class>`_ 。
 
 在后续例子中， ``hot-storage`` 作为缓存存储池、 ``cold-storage``
 作为后端存储池。
@@ -462,6 +463,5 @@ CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器�
 
 .. _创建存储池: ../pools#create-a-pool
 .. _存储池——调整存储池: ../pools#set-pool-values
-.. _给存储池指定 OSD: ../crush-map-edits/#placing-different-pools-on-different-osds
 .. _Bloom 过滤器: https://en.wikipedia.org/wiki/Bloom_filter
 .. _CRUSH 图: ../crush-map

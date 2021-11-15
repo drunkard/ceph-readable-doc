@@ -200,8 +200,8 @@ Minimum parts size to use when syncing objects using multipart upload.
 
 如何配置
 ~~~~~~~~
-关于多站配置请看\ `多站配置`_\ 。云同步模块要求新建一个域，其
-tier type 必须是 ``cloud`` ：
+关于多站配置请看\ :ref:`多站配置`_\ 。云同步模块要求新建一个
+zone ，其 tier type 必须是 ``cloud`` ：
 
 ::
 
@@ -246,6 +246,3 @@ For example, creating a new profile for buckets starting with {prefix}:
 
 
 An entry can be removed by using ``--tier-config-rm={key}``.
-
-
-.. _多站配置: ./multisite

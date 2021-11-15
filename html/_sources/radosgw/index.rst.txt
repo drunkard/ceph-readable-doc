@@ -40,7 +40,6 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
 .. toctree::
    :maxdepth: 1
 
-   基于 Civetweb 手动安装 <../../install/ceph-deploy/install-ceph-gateway>
    HTTP 前端 <frontends>
    存储池归置与存储类 <placement>
    多站配置 <multisite>
@@ -57,6 +56,7 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    与 OpenStack Keystone 对接 <keystone>
    与 OpenStack Barbican 对接 <barbican>
    与 HashiCorp Vault 对接 <vault>
+   KMIP Integration <kmip>
    与 Open Policy Agent 对接 <opa>
    多租户 <multitenancy>
    压缩 <compression>
@@ -72,6 +72,7 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    STS Lite <STSLite>
    Keycloak <keycloak>
    Role <role>
+   Session Tags <session-tags>
    Orphan List and Associated Tooliing <orphans>
    OpenID Connect Provider <oidc>
    troubleshooting
@@ -79,3 +80,5 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    radosgw-admin 手册页 <../../man/8/radosgw-admin>
    使用 QAT 为加密和压缩提速 <qat-accel>
    S3-select <s3select>
+   Lua Scripting <lua-scripting>
+   D3N Data Cache <d3n_datacache>

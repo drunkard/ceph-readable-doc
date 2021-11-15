@@ -1,149 +1,140 @@
 
-<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta charset="utf-8" />
-    <title>Recovery Reservation &#8212; Ceph Documentation</title>
-    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
-    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
-    <script src="../../../_static/jquery.js"></script>
-    <script src="../../../_static/underscore.js"></script>
-    <script src="../../../_static/doctools.js"></script>
-    <script src="../../../_static/language_data.js"></script>
-    <script src="../../../_static/js/ceph.js"></script>
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Recovery Reservation &mdash; Ceph Documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../../_static/ceph.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/graphviz.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/css/custom.css" type="text/css" />
+
+  
+  
     <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../../../genindex/" />
     <link rel="search" title="Search" href="../../../search/" />
     <link rel="next" title="Refcount" href="../refcount/" />
     <link rel="prev" title="PGPool" href="../pgpool/" /> 
-  </head><body>
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="../../../genindex/" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../../../py-modindex/" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
-          <a href="../refcount/" title="Refcount"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="../pgpool/" title="PGPool"
-             accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="../" accesskey="U">OSD 开发者文档</a> &#187;</li> 
-      </ul>
-    </div>  
+</head>
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
-            
+<body class="wy-body-for-nav">
 
-<div id="dev-warning" class="admonition note" style="display:none;">
-  <p class="first admonition-title">Notice</p>
-  <p class="last">This document is for a development version of Ceph.</p>
-</div>
+   
+  <header class="top-bar">
+    
 
-<div id="eol-warning" class="admonition warning" style="display:none;">
-  <p class="first admonition-title">Warning</p>
-  <p class="last">This document is for an unsupported version of Ceph.</p>
-</div>
-  <div id="docubetter" align="right" style="display:none; padding: 15px; font-weight: bold;">
-    <a id="edit-on-github" href="https://github.com/ceph/ceph/edit/master/doc/dev/osd_internals/recovery_reservation.rst" rel="nofollow">Edit on GitHub</a> | <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
-  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../../internals/">Ceph 内幕</a> &raquo;</li>
+        
+          <li><a href="../">OSD 开发者文档</a> &raquo;</li>
+        
+      <li>Recovery Reservation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../../../_sources/dev/osd_internals/recovery_reservation.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
 
   
-  <div class="section" id="recovery-reservation">
-<h1>Recovery Reservation<a class="headerlink" href="#recovery-reservation" title="Permalink to this headline">¶</a></h1>
-<p>Recovery reservation extends and subsumes backfill reservation. The
-reservation system from backfill recovery is used for local and remote
-reservations.</p>
-<p>When a PG goes active, first it determines what type of recovery is
-necessary, if any. It may need log-based recovery, backfill recovery,
-both, or neither.</p>
-<p>In log-based recovery, the primary first acquires a local reservation
-from the OSDService’s local_reserver. Then a MRemoteReservationRequest
-message is sent to each replica in order of OSD number. These requests
-will always be granted (i.e., cannot be rejected), but they may take
-some time to be granted if the remotes have already granted all their
-remote reservation slots.</p>
-<p>After all reservations are acquired, log-based recovery proceeds as it
-would without the reservation system.</p>
-<p>After log-based recovery completes, the primary releases all remote
-reservations. The local reservation remains held. The primary then
-determines whether backfill is necessary. If it is not necessary, the
-primary releases its local reservation and waits in the Recovered state
-for all OSDs to indicate that they are clean.</p>
-<p>If backfill recovery occurs after log-based recovery, the local
-reservation does not need to be reacquired since it is still held from
-before. If it occurs immediately after activation (log-based recovery
-not possible/necessary), the local reservation is acquired according to
-the typical process.</p>
-<p>Once the primary has its local reservation, it requests a remote
-reservation from the backfill target. This reservation CAN be rejected,
-for instance if the OSD is too full (backfillfull_ratio osd setting).
-If the reservation is rejected, the primary drops its local
-reservation, waits (osd_backfill_retry_interval), and then retries. It
-will retry indefinitely.</p>
-<p>Once the primary has the local and remote reservations, backfill
-proceeds as usual. After backfill completes the remote reservation is
-dropped.</p>
-<p>Finally, after backfill (or log-based recovery if backfill was not
-necessary), the primary drops the local reservation and enters the
-Recovered state. Once all the PGs have reported they are clean, the
-primary enters the Clean state and marks itself active+clean.</p>
-<div class="section" id="dump-reservations">
-<h2>Dump Reservations<a class="headerlink" href="#dump-reservations" title="Permalink to this headline">¶</a></h2>
-<p>An OSD daemon command dumps total local and remote reservations:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">osd</span><span class="o">.&lt;</span><span class="nb">id</span><span class="o">&gt;</span> <span class="n">dump_recovery_reservations</span>
-</pre></div>
+  <hr/>
 </div>
-</div>
-<div class="section" id="things-to-note">
-<h2>Things to Note<a class="headerlink" href="#things-to-note" title="Permalink to this headline">¶</a></h2>
-<p>We always grab the local reservation first, to prevent a circular
-dependency. We grab remote reservations in order of OSD number for the
-same reason.</p>
-<p>The recovery reservation state chart controls the PG state as reported
-to the monitor. The state chart can set:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>recovery_wait: waiting for local/remote reservations</p></li>
-<li><p>recovering: recovering</p></li>
-<li><p>recovery_toofull: recovery stopped, OSD(s) above full ratio</p></li>
-<li><p>backfill_wait: waiting for remote backfill reservations</p></li>
-<li><p>backfilling: backfilling</p></li>
-<li><p>backfill_toofull: backfill stopped, OSD(s) above backfillfull ratio</p></li>
-</ul>
-</div></blockquote>
-</div>
-<div class="section" id="see-also">
-<h2>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h2>
-<p>The Active substate of the automatically generated OSD state diagram.</p>
-</div>
+  </header>
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #eee" >
+          
+
+          
+            <a href="../../../">
+          
+
+          
+            
+            <img src="../../../_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search/" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
 </div>
 
-
-
-          </div>
+          
         </div>
-      </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="../../../">
-              <img class="logo" src="../../../_static/logo.png" alt="Logo"/>
-            </a></p>
-<h3><a href="../../../">Table Of Contents</a></h3>
-<ul class="current">
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../../start/intro/">Ceph 简介</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../install/">安装 Ceph</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../cephadm/">Cephadm</a></li>
@@ -162,6 +153,7 @@ to the monitor. The state chart can set:</p>
 <li class="toctree-l2"><a class="reference internal" href="../../cache-pool/">Cache pool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../ceph_krb_auth/">如何配置好 Ceph Kerberos 认证的详细文档</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cephadm/">Developing with cephadm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cephfs-mirroring/">CephFS Mirroring</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cephfs-reclaim/">CephFS Reclaim Interface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cephfs-snapshots/">CephFS 快照</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cephx/">Cephx</a></li>
@@ -171,12 +163,11 @@ to the monitor. The state chart can set:</p>
 <li class="toctree-l2"><a class="reference internal" href="../../context/">CephContext</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../corpus/">资料库结构</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpu-profiler/">Oprofile 的安装</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../crimson/">crimson</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cxx/">C++17 and libstdc++ ABI</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../deduplication/">去重</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../delayed-delete/">CephFS delayed deletion</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/">开发集群的部署</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/#id6">在同一机器上部署多套开发集群</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../dev_cluster_deployement/#id5">在同一机器上部署多套开发集群</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../development-workflow/">开发流程</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../documenting/">为 Ceph 写作文档</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../encoding/">序列化（编码、解码）</a></li>
@@ -260,45 +251,149 @@ to the monitor. The state chart can set:</p>
 <li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
 </ul>
 
+            
+          
+        </div>
+        
+      </div>
+    </nav>
 
-<!-- ugly kludge to make genindex look like it's part of the toc -->
-<ul style="margin-top: -10px"><li class="toctree-l1"><a class="reference internal" href="../../../genindex/">Index</a></li></ul>
-<div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="../../../search/" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
-    </form>
-    </div>
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../">Ceph</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+<div id="dev-warning" class="admonition note">
+  <p class="first admonition-title">Notice</p>
+  <p class="last">This document is for a development version of Ceph.</p>
 </div>
-<script>$('#searchbox').show(0);</script>
+  <div id="docubetter" align="right" style="padding: 5px; font-weight: bold;">
+    <a href="https://pad.ceph.com/p/Report_Documentation_Bugs">Report a Documentation Bug</a>
+  </div>
+
+  
+  <div class="section" id="recovery-reservation">
+<h1>Recovery Reservation<a class="headerlink" href="#recovery-reservation" title="Permalink to this headline">¶</a></h1>
+<p>Recovery reservation extends and subsumes backfill reservation. The
+reservation system from backfill recovery is used for local and remote
+reservations.</p>
+<p>When a PG goes active, first it determines what type of recovery is
+necessary, if any. It may need log-based recovery, backfill recovery,
+both, or neither.</p>
+<p>In log-based recovery, the primary first acquires a local reservation
+from the OSDService’s local_reserver. Then a MRemoteReservationRequest
+message is sent to each replica in order of OSD number. These requests
+will always be granted (i.e., cannot be rejected), but they may take
+some time to be granted if the remotes have already granted all their
+remote reservation slots.</p>
+<p>After all reservations are acquired, log-based recovery proceeds as it
+would without the reservation system.</p>
+<p>After log-based recovery completes, the primary releases all remote
+reservations. The local reservation remains held. The primary then
+determines whether backfill is necessary. If it is not necessary, the
+primary releases its local reservation and waits in the Recovered state
+for all OSDs to indicate that they are clean.</p>
+<p>If backfill recovery occurs after log-based recovery, the local
+reservation does not need to be reacquired since it is still held from
+before. If it occurs immediately after activation (log-based recovery
+not possible/necessary), the local reservation is acquired according to
+the typical process.</p>
+<p>Once the primary has its local reservation, it requests a remote
+reservation from the backfill target. This reservation CAN be rejected,
+for instance if the OSD is too full (backfillfull_ratio osd setting).
+If the reservation is rejected, the primary drops its local
+reservation, waits (osd_backfill_retry_interval), and then retries. It
+will retry indefinitely.</p>
+<p>Once the primary has the local and remote reservations, backfill
+proceeds as usual. After backfill completes the remote reservation is
+dropped.</p>
+<p>Finally, after backfill (or log-based recovery if backfill was not
+necessary), the primary drops the local reservation and enters the
+Recovered state. Once all the PGs have reported they are clean, the
+primary enters the Clean state and marks itself active+clean.</p>
+<div class="section" id="dump-reservations">
+<h2>Dump Reservations<a class="headerlink" href="#dump-reservations" title="Permalink to this headline">¶</a></h2>
+<p>An OSD daemon command dumps total local and remote reservations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">osd</span><span class="o">.&lt;</span><span class="nb">id</span><span class="o">&gt;</span> <span class="n">dump_recovery_reservations</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="things-to-note">
+<h2>Things to Note<a class="headerlink" href="#things-to-note" title="Permalink to this headline">¶</a></h2>
+<p>We always grab the local reservation first, to prevent a circular
+dependency. We grab remote reservations in order of OSD number for the
+same reason.</p>
+<p>The recovery reservation state chart controls the PG state as reported
+to the monitor. The state chart can set:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>recovery_wait: waiting for local/remote reservations</p></li>
+<li><p>recovering: recovering</p></li>
+<li><p>recovery_toofull: recovery stopped, OSD(s) above full ratio</p></li>
+<li><p>backfill_wait: waiting for remote backfill reservations</p></li>
+<li><p>backfilling: backfilling</p></li>
+<li><p>backfill_toofull: backfill stopped, OSD(s) above backfillfull ratio</p></li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h2>
+<p>The Active substate of the automatically generated OSD state diagram.</p>
+</div>
+</div>
+
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../refcount/" class="btn btn-neutral float-right" title="Refcount" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../pgpool/" class="btn btn-neutral float-left" title="PGPool" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
+
+    </p>
+  </div> 
+
+</footer>
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="../../../genindex/" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="../../../py-modindex/" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
-          <a href="../refcount/" title="Refcount"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="../pgpool/" title="PGPool"
-             >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../">Ceph Documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../internals/" >Ceph 内幕</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="../" >OSD 开发者文档</a> &#187;</li> 
-      </ul>
-    </div>
-    <div class="footer" role="contentinfo">
-        &#169; Copyright 2016, Ceph authors and contributors. Licensed under Creative Commons Attribution Share Alike 3.0 (CC-BY-SA-3.0).
-    </div>
-  </body>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
 </html>

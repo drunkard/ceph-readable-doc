@@ -120,6 +120,14 @@
 
    mark an osd as out (but do not persist)
 
+.. option:: --mark-up <osdid>
+
+   mark an osd as up (but do not persist)
+
+.. option:: --mark-in <osdid>
+
+   mark an osd as in (but do not persist)
+
 .. option:: --tree
 
    Displays a hierarchical tree of the map.
@@ -127,6 +135,10 @@
 .. option:: --clear-temp
 
    clears pg_temp and primary_temp variables.
+
+.. option:: --clean-temps
+
+   clean pg_temps.
 
 .. option:: --health
 
@@ -156,13 +168,17 @@
 
    restrict upmap balancing to 1 pool or the option can be repeated for multiple pools
 
-.. option:: --upmap-save
-
-   write modified OSDMap with upmap changes
-
 .. option:: --upmap-active
 
    Act like an active balancer, keep applying changes until balanced
+
+.. option:: --adjust-crush-weight <osdid:weight>[,<osdid:weight>,<...>]
+
+   Change CRUSH weight of <osdid>
+
+.. option:: --upmap-save
+
+   write modified OSDMap with upmap changes
 
 
 实例

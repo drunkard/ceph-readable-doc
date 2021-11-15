@@ -1,4 +1,4 @@
-.. Issue Tracker
+.. _issue-tracker:
 
 问题跟踪
 ========

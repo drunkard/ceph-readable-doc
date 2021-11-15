@@ -451,11 +451,9 @@ If you have more than 50 OSDs, we recommend approximately 50-100
 placement groups per OSD to balance out resource usage, data
 durability and distribution. If you have less than 50 OSDs, chosing
 among the `preselection`_ above is best. For a single pool of objects,
-you can use the following formula to get a baseline::
+you can use the following formula to get a baseline:
 
-                (OSDs * 100)
-   Total PGs =  ------------
-                 pool size
+  Total PGs = :math:`\frac{OSDs \times 100}{pool \: size}`
 
 Where **pool size** is either the number of replicas for replicated
 pools or the K+M sum for erasure coded pools (as returned by **ceph
@@ -473,11 +471,9 @@ data across your OSDs. Their use should be limited to incrementally
 stepping from one power of two to another.
 
 比如，一个配置了 200 个 OSD 且副本数为 3 的集群，你可以这样\
-估算归置组数量： ::
+估算归置组数量：
 
-   (200 * 100)
-   ----------- = 6667. Nearest power of 2: 8192
-        3
+  :math:`\frac{200 \times 100}{3} = 6667`. 与2的幂最接近的: 8192
 
 当用了多个数据存储池来存储数据时，你得确保均衡每个存储池的归置\
 组数量、且归置组数量分摊到每个 OSD ，这样才能达到较合理的归置\

@@ -327,8 +327,86 @@ like
     [global]
     secret = "i love \# and \["
 
+Every configuration option is typed with one of the types below:
+
+.. describe:: int
+
+   64-bit signed integer, Some SI prefixes are supported, like "K", "M", "G",
+   "T", "P", "E", meaning, respectively, 10\ :sup:`3`, 10\ :sup:`6`,
+   10\ :sup:`9`, etc.  And "B" is the only supported unit. So, "1K", "1M", "128B" and "-1" are all valid
+   option values. Some times, a negative value implies "unlimited" when it comes to
+   an option for threshold or limit.
+
+   :example: ``42``, ``-1``
+
+.. describe:: uint
+
+   It is almost identical to ``integer``. But a negative value will be rejected.
+
+   :example: ``256``, ``0``
+
+.. describe:: str
+
+   Free style strings encoded in UTF-8, but some characters are not allowed. Please
+   reference the above notes for the details.
+
+   :example: ``"hello world"``, ``"i love \#"``, ``yet-another-name``
+
+.. describe:: boolean
+
+   one of the two values ``true`` or ``false``. But an integer is also accepted,
+   where "0" implies ``false``, and any non-zero values imply ``true``.
+
+   :example: ``true``, ``false``, ``1``, ``0``
+
+.. describe:: addr
+
+   a single address optionally prefixed with ``v1``, ``v2`` or ``any`` for the messenger
+   protocol. If the prefix is not specified, ``v2`` protocol is used. Please see
+   :ref:`address_formats` for more details.
+
+   :example: ``v1:1.2.3.4:567``, ``v2:1.2.3.4:567``, ``1.2.3.4:567``, ``2409:8a1e:8fb6:aa20:1260:4bff:fe92:18f5::567``, ``[::1]:6789``
+
+.. describe:: addrvec
+
+   a set of addresses separated by ",". The addresses can be optionally quoted with ``[`` and ``]``.
+
+   :example: ``[v1:1.2.3.4:567,v2:1.2.3.4:568]``, ``v1:1.2.3.4:567,v1:1.2.3.14:567``  ``[2409:8a1e:8fb6:aa20:1260:4bff:fe92:18f5::567], [2409:8a1e:8fb6:aa20:1260:4bff:fe92:18f5::568]``
+
+.. describe:: uuid
+
+   the string format of a uuid defined by `RFC4122 <https://www.ietf.org/rfc/rfc4122.txt>`_.
+   And some variants are also supported, for more details, see
+   `Boost document <https://www.boost.org/doc/libs/1_74_0/libs/uuid/doc/uuid.html#String%20Generator>`_.
+
+   :example: ``f81d4fae-7dec-11d0-a765-00a0c91e6bf6``
+
+.. describe:: size
+
+   denotes a 64-bit unsigned integer. Both SI prefixes and IEC prefixes are
+   supported. And "B" is the only supported unit. A negative value will be
+   rejected.
+
+   :example: ``1Ki``, ``1K``, ``1KiB`` and ``1B``.
+
+.. describe:: secs
+
+   denotes a duration of time. By default the unit is second if not specified.
+   Following units of time are supported:
+
+              * second: "s", "sec", "second", "seconds"
+              * minute: "m", "min", "minute", "minutes"
+              * hour: "hs", "hr", "hour", "hours"
+              * day: "d", "day", "days"
+              * week: "w", "wk", "week", "weeks"
+              * month: "mo", "month", "months"
+              * year: "y", "yr", "year", "years"
+
+   :example: ``1 m``, ``1m`` and ``1 week``
+
 
 .. Monitor configuration database
+.. _ceph-conf-database:
 
 监视器配置数据库
 ================
@@ -549,27 +627,32 @@ will report the value of a single option.
 nautilus 以来的变化
 ===================
 
-We changed the way the configuration file is parsed in Octopus. The changes are
-listed as follows:
+With the Octopus release We changed the way the configuration file is parsed.
+These changes are as follows:
 
-- repeated configuration options are allowed, and no warnings will be printed.
-  The value of the last one wins. Before this change, we would print out warning
-  messages at seeing lines with duplicated values, like::
+- Repeated configuration options are allowed, and no warnings will be printed.
+  The value of the last one is used, which means that the setting last in the file
+  is the one that takes effect. Before this change, we would print warning messages
+  when lines with duplicated options were encountered, like::
 
     warning line 42: 'foo' in section 'bar' redefined
-- invalid UTF-8 options are ignored with warning messages. But since Octopus,
+
+- Invalid UTF-8 options were ignored with warning messages. But since Octopus,
   they are treated as fatal errors.
-- backslash ``\`` is used as the line continuation marker to combine the next
-  line with current one. Before Octopus, it was required to follow backslash with
-  non-empty line. But in Octopus, empty line following backslash is now allowed.
+
+- Backslash ``\`` is used as the line continuation marker to combine the next
+  line with current one. Before Octopus, it was required to follow a backslash with
+  a non-empty line. But in Octopus, an empty line following a backslash is now allowed.
+
 - In the configuration file, each line specifies an individual configuration
-  option. The option's name and its value are separated with ``=``. And the
-  value can be quoted using single or double quotes. But if an invalid
+  option. The option's name and its value are separated with ``=``, and the
+  value may be quoted using single or double quotes. If an invalid
   configuration is specified, we will treat it as an invalid configuration
   file ::
 
     bad option ==== bad value
+
 - Before Octopus, if no section name was specified in the configuration file,
-  all options would be grouped into the section of ``global``. But this is
-  discouraged now. Since Octopus, only a single option is allowed for
+  all options would be set as though they were within the :confsec:`global` section. This is
+  now discouraged. Since Octopus, only a single option is allowed for
   configuration files without a section name.

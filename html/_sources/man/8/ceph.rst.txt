@@ -37,7 +37,7 @@
 
 | **ceph** **mon** [ *add* \| *dump* \| *getmap* \| *remove* \| *stat* ] ...
 
-| **ceph** **osd** [ *blacklist* \| *blocked-by* \| *create* \| *new* \| *deep-scrub* \| *df* \| *down* \| *dump* \| *erasure-code-profile* \| *find* \| *getcrushmap* \| *getmap* \| *getmaxosd* \| *in* \| *ls* \| *lspools* \| *map* \| *metadata* \| *ok-to-stop* \| *out* \| *pause* \| *perf* \| *pg-temp* \| *force-create-pg* \| *primary-affinity* \| *primary-temp* \| *repair* \| *reweight* \| *reweight-by-pg* \| *rm* \| *destroy* \| *purge* \| *safe-to-destroy* \| *scrub* \| *set* \| *setcrushmap* \| *setmaxosd*  \| *stat* \| *tree* \| *unpause* \| *unset* ] ...
+| **ceph** **osd** [ *blocklist* \| *blocked-by* \| *create* \| *new* \| *deep-scrub* \| *df* \| *down* \| *dump* \| *erasure-code-profile* \| *find* \| *getcrushmap* \| *getmap* \| *getmaxosd* \| *in* \| *ls* \| *lspools* \| *map* \| *metadata* \| *ok-to-stop* \| *out* \| *pause* \| *perf* \| *pg-temp* \| *force-create-pg* \| *primary-affinity* \| *primary-temp* \| *repair* \| *reweight* \| *reweight-by-pg* \| *rm* \| *destroy* \| *purge* \| *safe-to-destroy* \| *scrub* \| *set* \| *setcrushmap* \| *setmaxosd*  \| *stat* \| *tree* \| *unpause* \| *unset* ] ...
 
 | **ceph** **osd** **crush** [ *add* \| *add-bucket* \| *create-or-move* \| *dump* \| *get-tunable* \| *link* \| *move* \| *remove* \| *rename-bucket* \| *reweight* \| *reweight-all* \| *reweight-subtree* \| *rm* \| *rule* \| *set* \| *set-tunable* \| *show-tunables* \| *tunables* \| *unlink* ] ...
 
@@ -613,25 +613,25 @@ osd
 
 用于配置和管理 OSD ，需额外指定子命令。
 
-子命令 ``blacklist`` 用于管理客户端黑名单，需额外加子命令。
+子命令 ``blocklist`` 用于管理客户端黑名单，需额外加子命令。
 
 子命令 ``add`` 用于把 <addr> 加入黑名单（可指定时间，从现在起 <expire> 秒）。
 
 用法： ::
 
-	ceph osd blacklist add <EntityAddr> {<float[0.0-]>}
+	ceph osd blocklist add <EntityAddr> {<float[0.0-]>}
 
 子命令 ``ls`` 列出进黑名单的客户端。
 
 用法： ::
 
-	ceph osd blacklist ls
+	ceph osd blocklist ls
 
 子命令 ``rm`` 从黑名单里删除 <addr> 。
 
 用法： ::
 
-	ceph osd blacklist rm <EntityAddr>
+	ceph osd blocklist rm <EntityAddr>
 
 子命令 ``blocked-by`` 用于罗列哪些 OSD 在阻塞互联。
 

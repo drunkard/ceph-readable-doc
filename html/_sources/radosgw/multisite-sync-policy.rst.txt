@@ -78,9 +78,8 @@ To modify a sync policy group:
                                         --group-id=<group-id>                    \
                                         --status=<enabled | allowed | forbidden> \
 
-
-Modify Sync Policy Group
-~~~~~~~~~~~~~~~~~~~~~~~~
+Show Sync Policy Group
+~~~~~~~~~~~~~~~~~~~~~~
 
 To show a sync policy group:
 

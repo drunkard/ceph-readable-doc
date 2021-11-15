@@ -1,4 +1,5 @@
 .. Troubleshooting Monitors
+.. _rados-troubleshooting-mon:
 
 ================
  监视器故障排除
@@ -7,11 +8,11 @@
 .. index:: monitor, high availability
 
 When a cluster encounters monitor-related troubles there's a tendency to
-panic, and some times with good reason. You should keep in mind that losing
-a monitor, or a bunch of them, don't necessarily mean that your cluster is
-down, as long as a majority is up, running and with a formed quorum.
+panic, and sometimes with good reason. Losing one or more monitors doesn't
+necessarily mean that your cluster is down, so long as a majority are up,
+running, and form a quorum.
 Regardless of how bad the situation is, the first thing you should do is to
-calm down, take a breath and try answering our initial troubleshooting script.
+calm down, take a breath, and step through the below troubleshooting steps.
 
 
 .. Initial Troubleshooting
@@ -22,29 +23,34 @@ calm down, take a breath and try answering our initial troubleshooting script.
 
 **监视器在运行吗？**
 
-  First of all, we need to make sure the monitors are running. You would be
-  amazed by how often people forget to run the monitors, or restart them after
-  an upgrade. There's no shame in that, but let's try not losing a couple of
-  hours chasing an issue that is not there.
+  First of all, we need to make sure the monitor (*mon*) daemon processes
+  (``ceph-mon``) are running.  You would be amazed by how often Ceph admins
+  forget to start the mons, or to restart them after an upgrade. There's no
+  shame, but try to not lose a couple of hours looking for a deeper problem.
+  When running Kraken or later releases also ensure that the manager
+  daemons (``ceph-mgr``) are running, usually alongside each ``ceph-mon``.
+ 
 
-**能连接到监视器所在服务器么？**
+**到各个监视器节点是否可达？**
 
-  Doesn't happen often, but sometimes people do have ``iptables`` rules that
-  block accesses to monitor servers or monitor ports. Usually leftovers from
-  monitor stress-testing that were forgotten at some point. Try ssh'ing into
-  the server and, if that succeeds, try connecting to the monitor's port
-  using you tool of choice (telnet, nc,...).
+  Doesn't happen often, but sometimes there are ``iptables`` rules that
+  block accesse to mon nodes or TCP ports. These may be leftovers from
+  prior stress-testing or rule development. Try SSHing into
+  the server and, if that succeeds, try connecting to the monitor's ports
+  (``tcp/3300`` and ``tcp/6789``) using a ``telnet``, ``nc``, or similar tools.
 
 **ceph -s 是否能运行并收到集群回复？**
 
-  如果答案是肯定的，那么你的集群已启动并运行着。你可以想当然地认为如果已经\
-  形成法定人数，监视器们就只会响应 ``status`` 请求。
+  如果答案是肯定的，那么你的集群已启动并运行着。可以向你保证\
+  的是，监视器们必须形成法定人数之后才会响应 ``status`` 请求。
+  还必须确定能联系到至少一个 ``mgr`` 守护进程，最好是全部都在。
 
-  If ``ceph -s`` blocked however, without obtaining a reply from the cluster
-  or showing a lot of ``fault`` messages, then it is likely that your monitors
-  are either down completely or just a portion is up -- a portion that is not
-  enough to form a quorum (keep in mind that a quorum if formed by a majority
-  of monitors).
+  If ``ceph -s`` hangs without obtaining a reply from the cluster
+  or showing ``fault`` messages, then it is likely that your monitors
+  are either down completely or just a fraction are up -- a fraction
+  insufficient to form a majority quorum.  This check will connect to an
+  arbitrary mon; in rare cases it may be illuminating to bind to specific
+  mons in sequence by adding e.g. ``-m mymon1`` to the command.
 
 **ceph -s 没完成是什么情况？**
 
@@ -55,10 +61,8 @@ calm down, take a breath and try answering our initial troubleshooting script.
   标识符，它是针对集群内单个监视器的命令。在\
   `理解 mon_status`_ 小节中，我们将会解读此命令的输出。
 
-  至于其余没有紧跟前沿的人，就得 ssh 登录到那台服务器然后用\
-  监视器的管理套接字查询。请参看\ `使用监视器的管理套接字`_\ 。
-
-要是还有其他特殊问题，继续往下看。
+  你还可以 ssh 登录到各监视器节点、并查看其守护进程的
+  admin socket （管理套接字）。
 
 
 .. Using the monitor's admin socket
@@ -106,7 +110,7 @@ you can even do this yourself::
 output a multitude of information about the monitor, including the same output
 you would get with ``quorum_status``.
 
-Take the following example of ``mon_status``::
+Take the following example output of ``ceph tell mon.c mon_status``::
 
   
   { "name": "c",
@@ -178,10 +182,10 @@ How to troubleshoot this?
 
   First, make sure ``mon.a`` is running.
 
-  Second, make sure you are able to connect to ``mon.a``'s server from the
-  other monitors' servers. Check the ports as well. Check ``iptables`` on
-  all your monitor nodes and make sure you're not dropping/rejecting
-  connections.
+  Second, make sure you are able to connect to ``mon.a``'s node from the
+  other mon nodes. Check the TCP ports as well. Check ``iptables`` and
+  ``nf_conntrack`` on all nodes and ensure that you are not
+  dropping/rejecting connections.
 
   If this initial troubleshooting doesn't solve your problems, then it's
   time to go deeper.
@@ -190,7 +194,7 @@ How to troubleshoot this?
   socket as explained in `使用监视器的管理套接字`_ and
   `理解 mon_status`_.
 
-  Considering the monitor is out of the quorum, its state should be one of
+  If the monitor is out of the quorum, its state should be one of
   ``probing``, ``electing`` or ``synchronizing``. If it happens to be either
   ``leader`` or ``peon``, then the monitor believes to be in quorum, while
   the remaining cluster is sure it is not; or maybe it got into the quorum
@@ -226,14 +230,16 @@ What if the state is ``probing``?
 
 What if state is ``electing``?
 
-  This means the monitor is in the middle of an election. These should be
-  fast to complete, but at times the monitors can get stuck electing. This
-  is usually a sign of a clock skew among the monitor nodes; jump to
-  `时钟偏移`_ for more infos on that. If all your clocks are properly
-  synchronized, it is best if you prepare some logs and reach out to the
-  community. This is not a state that is likely to persist and aside from
+  This means the monitor is in the middle of an election. With recent Ceph
+  releases these typically complete quickly, but at times the monitors can
+  get stuck in what is known as an *election storm*. This can indicate
+  clock skew among the monitor nodes; jump to
+  `时钟偏移`_ for more information. If all your clocks are properly
+  synchronized, you should search the mailing lists and tracker.
+  This is not a state that is likely to persist and aside from
   (*really*) old bugs there is not an obvious reason besides clock skews on
-  why this would happen.
+  why this would happen.  Worst case, if there are enough surviving mons,
+  down the problematic one while you investigate.
 
 What if state is ``synchronizing``?
 
@@ -264,7 +270,7 @@ What if state is ``leader`` or ``peon``?
 修复监视器损坏的 monmap
 -----------------------
 
-This is how a ``monmap`` usually looks like, depending on the number of
+This is how a ``monmap`` usually looks, depending on the number of
 monitors::
 
 
@@ -277,19 +283,20 @@ monitors::
       2: 127.0.0.1:6795/0 mon.c
       
 This may not be what you have however. For instance, in some versions of
-early Cuttlefish there was this one bug that could cause your ``monmap``
+early Cuttlefish there was a bug that could cause your ``monmap``
 to be nullified.  Completely filled with zeros. This means that not even
-``monmaptool`` would be able to read it because it would find it hard to
-make sense of only-zeros. Some other times, you may end up with a monitor
-with a severely outdated monmap, thus being unable to find the remaining
+``monmaptool`` would be able to make sense of cold, hard, inscrutable zeros.
+It's also possible to end up with a monitor with a severely outdated monmap,
+notably if the node has been down for months while you fight with your vendor's
+TAC.  The subject ``ceph-mon`` daemon might be unable to find the surviving
 monitors (e.g., say ``mon.c`` is down; you add a new monitor ``mon.d``,
 then remove ``mon.a``, then add a new monitor ``mon.e`` and remove
 ``mon.b``; you will end up with a totally different monmap from the one
 ``mon.c`` knows).
 
-In this sort of situations, you have two possible solutions:
+In this situation you have two possible solutions:
 
-Scrap the monitor and create a new one
+Scrap the monitor and redeploy
 
   You should only take this route if you are positive that you won't
   lose the information kept by that monitor; that you have other monitors
@@ -333,37 +340,59 @@ Inject a monmap into the monitor
 时钟偏移
 --------
 
-Monitors can be severely affected by significant clock skews across the
-monitor nodes. This usually translates into weird behavior with no obvious
-cause. To avoid such issues, you should run a clock synchronization tool
-on your monitor nodes.
+Monitor operation can be severely affected by clock skew among the quorum's
+mons, as the PAXOS consensus algorithm requires tight time alignment.
+Skew can result in weird behavior with no obvious
+cause. To avoid such issues, you must run a clock synchronization tool
+on your monitor nodes:  ``Chrony`` or the legacy ``ntpd``.  Be sure to
+configure the mon nodes with the `iburst` option and multiple peers:
+
+* Each other
+* Internal ``NTP`` servers
+* Multiple external, public pool servers
+
+For good measure, *all* nodes in your cluster should also sync against
+internal and external servers, and perhaps even your mons.  ``NTP`` servers
+should run on bare metal; VM virtualized clocks are not suitable for steady
+timekeeping.  Visit `https://www.ntp.org <https://www.ntp.org>`_ for more info.  Your
+organization may already have quality internal ``NTP`` servers you can use.  
+Sources for ``NTP`` server appliances include:
+
+* Microsemi (formerly Symmetricom) `https://microsemi.com <https://www.microsemi.com/product-directory/3425-timing-synchronization>`_
+* EndRun `https://endruntechnologies.com <https://endruntechnologies.com/products/ntp-time-servers>`_
+* Netburner `https://www.netburner.com <https://www.netburner.com/products/network-time-server/pk70-ex-ntp-network-time-server>`_
 
 
 What's the maximum tolerated clock skew?
 
-  By default the monitors will allow clocks to drift up to ``0.05 seconds``.
+  By default the monitors will allow clocks to drift up to 0.05 seconds (50 ms).
 
 
 Can I increase the maximum tolerated clock skew?
 
-  This value is configurable via the ``mon-clock-drift-allowed`` option, and
-  although you *CAN* it doesn't mean you *SHOULD*. The clock skew mechanism
-  is in place because clock skewed monitor may not properly behave. We, as
-  developers and QA afficcionados, are comfortable with the current default
+  The maximum tolerated clock skew is configurable via the
+  ``mon-clock-drift-allowed`` option, and
+  although you *CAN* you almost certainly *SHOULDN'T*. The clock skew mechanism
+  is in place because clock-skewed monitors are liely to misbehave. We, as
+  developers and QA aficionados, are comfortable with the current default
   value, as it will alert the user before the monitors get out hand. Changing
-  this value without testing it first may cause unforeseen effects on the
-  stability of the monitors and overall cluster healthiness, although there is
-  no risk of dataloss.
-
+  this value may cause unforeseen effects on the
+  stability of the monitors and overall cluster health.
 
 How do I know there's a clock skew?
 
-  The monitors will warn you in the form of a ``HEALTH_WARN``. ``ceph health
-  detail`` should show something in the form of::
+  The monitors will warn you via the cluster status ``HEALTH_WARN``. ``ceph health
+  detail`` or ``ceph status`` should show something like::
 
       mon.c addr 10.10.0.1:6789/0 clock skew 0.08235s > max 0.05s (latency 0.0045s)
 
   That means that ``mon.c`` has been flagged as suffering from a clock skew.
+
+  On releases beginning with Luminous you can issue the
+  ``ceph time-sync-status`` command to check status.  Note that the lead mon
+  is typically the one with the numerically lowest IP address.  It will always
+  show ``0``: the reported offsets of other mons are relative to
+  the lead mon, not to any external reference source.
 
 
 What should I do if there's a clock skew?
@@ -424,6 +453,7 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
 
 
 .. Recovery using OSDs
+.. _mon-store-recovery-using-osds:
 
 用 OSD 恢复
 -----------
@@ -432,7 +462,9 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
 内至少部署三个监视器（最好是五个），所以同时失效的可能性\
 非常低。但是，计划外的数据中心掉电、加上配置不当的磁盘和\
 文件系统可能致使底层文件系统损坏，并因此损坏所有监视器。在\
-这种情况下，我们可以用存储在 OSD 上的信息恢复监视器存储。 ::
+这种情况下，我们可以用存储在 OSD 上的信息恢复监视器存储。
+
+.. code-block:: bash
 
   ms=/root/mon-store
   mkdir $ms
@@ -471,6 +503,10 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
   
   # 备份一下损坏的 store.db 以防万一！所有监视器上都要备份一下。
   mv /var/lib/ceph/mon/mon.foo/store.db /var/lib/ceph/mon/mon.foo/store.db.corrupted
+
+  # move rebuild store.db into place.  repeat for all monitors.
+  mv $ms/store.db /var/lib/ceph/mon/mon.foo/store.db
+  chown -R ceph:ceph /var/lib/ceph/mon/mon.foo/store.db
 
 上面的步骤
 

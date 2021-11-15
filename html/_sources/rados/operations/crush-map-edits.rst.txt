@@ -119,10 +119,12 @@ CRUSH 图有 6 个主要段落。
 CRUSH 图之设备
 --------------
 
-Devices are individual ``ceph-osd`` daemons that can store data.  You
-will normally have one defined here for each OSD daemon in your
-cluster.  Devices are identified by an id (a non-negative integer) and
-a name, normally ``osd.N`` where ``N`` is the device id.
+Devices are individual OSDs that store data.  Usually one is defined here for each
+OSD daemon in your
+cluster.  Devices are identified by an ``id`` (a non-negative integer) and
+a ``name``, normally ``osd.N`` where ``N`` is the device id.
+
+.. _crush-map-device-class:
 
 设备也可以与一个 *device class* （如 ``hdd`` 或者 ``ssd`` ）\
 关联，这样就可以让 crush 规则方便地引用。
@@ -295,34 +297,34 @@ OSD 被声明为主机桶内的条目： ::
    特别是 **Section 3.4** 。支持的桶类型有：
 
 	#. **uniform**: 这种桶用\ **完全**\ 相同的权重汇聚\
-           设备。例如，公司采购或淘汰硬件时，一般都有相同的\
-           物理配置（如批发）。当存储设备权重都相同时，你可以\
-           用 ``uniform`` 桶类型，它允许 CRUSH 按常数把副本\
-           映射到 uniform 桶。权重不统一时，你应该采用其它\
-           算法。
+       设备。例如，公司采购或淘汰硬件时，一般都有相同的\
+       物理配置（如批发）。当存储设备权重都相同时，你可以\
+       用 ``uniform`` 桶类型，它允许 CRUSH 按常数把副本\
+       映射到 uniform 桶。权重不统一时，你应该采用其它\
+       算法。
 
 	#. **list**: 这种桶把它们的内容汇聚为链表。它基于 \
 	   :abbr:`RUSH (Replication Under Scalable Hashing)` \
 	   :sub:`P` 算法，一个列表就是一个自然、直观的\ \
 	   **扩展集群**\ ：对象会按一定概率被重定位到最新的\
-           设备、或者像从前一样仍保留在较老的设备上。结果是\
-           优化了新条目加入桶时的数据迁移。然而，如果从链表\
-           的中间或末尾删除了一些条目，将会导致大量没必要的\
-           挪动。所以这种桶适合\ **永不或极少缩减**\ 的场景。
+       设备、或者像从前一样仍保留在较老的设备上。结果是\
+       优化了新条目加入桶时的数据迁移。然而，如果从链表\
+       的中间或末尾删除了一些条目，将会导致大量没必要的\
+       挪动。所以这种桶适合\ **永不或极少缩减**\ 的场景。
 
 	#. **tree**: 它用一种二进制搜索树，在桶包含大量条目时\
-           比 list 桶更高效。它基于 \
+       比 list 桶更高效。它基于 \
 	   :abbr:`RUSH (Replication Under Scalable Hashing)` \
 	   :sub:`R` 算法， tree 桶把归置时间减少到了 \
 	   O(log :sub:`n`) ，这使得它们更适合管理更大规模的\
-           设备或嵌套桶。
+       设备或嵌套桶。
 
 	#. **straw**: list 和 tree 桶用分而治之策略，给特定\
-           条目一定优先级（如位于链表开头的条目）、或避开对\
-           整个子树上所有条目的考虑。这样提升了副本归置进程\
-           的性能，但是也导致了重新组织时的次优结果，如增加、\
-           拆除、或重设某条目的权重。 straw 桶类型允许所有\
-           条目模拟拉稻草的过程公平地相互“竞争”副本归置。
+       条目一定优先级（如位于链表开头的条目）、或避开对\
+       整个子树上所有条目的考虑。这样提升了副本归置进程\
+       的性能，但是也导致了重新组织时的次优结果，如增加、\
+       拆除、或重设某条目的权重。 straw 桶类型允许所有\
+       条目模拟拉稻草的过程公平地相互“竞争”副本归置。
 
         #. **straw2**: straw2 桶是对 straw 的改进，在邻居权重\
            改变时可正确地避免条目间的数据迁移。
@@ -539,11 +541,9 @@ There are three types of transformations possible:
 
    For example, imagine you have an existing rule like::
 
-     rule replicated_ruleset {
+     rule replicated_rule {
         id 0
         type replicated
-        min_size 1
-        max_size 10
         step take default
         step chooseleaf firstn 0 type rack
         step emit
@@ -552,11 +552,9 @@ There are three types of transformations possible:
    If you reclassify the root `default` as class `hdd`, the rule will
    become::
 
-     rule replicated_ruleset {
+     rule replicated_rule {
         id 0
         type replicated
-        min_size 1
-        max_size 10
         step take default class hdd
         step chooseleaf firstn 0 type rack
         step emit
@@ -580,7 +578,7 @@ There are three types of transformations possible:
 
 #. ``--reclassify-bucket <match-pattern> <device-class> <default-parent>``
 
-   This will allow you to merge a parallel type-specific hiearchy with the normal hierarchy.  For example, many users have maps like::
+   This will allow you to merge a parallel type-specific hierarchy with the normal hierarchy.  For example, many users have maps like::
 
      host node1 {
         id -2           # do not change unnecessarily

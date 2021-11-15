@@ -4,7 +4,7 @@
 
 *isa* 插件封装了 `ISA
 <https://01.org/intel%C2%AE-storage-acceleration-library-open-source-version/>`_
-库。它只能运行在 Intel 处理器上。
+库。
 
 
 创建 isa 配置

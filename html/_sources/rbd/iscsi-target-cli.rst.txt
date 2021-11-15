@@ -4,10 +4,13 @@
  用命令行配置 iSCSI Target
 ===========================
 
-The Ceph iSCSI gateway is the iSCSI target node and also a Ceph client
-node. The Ceph iSCSI gateway can be a standalone node or be colocated on
-a Ceph Object Store Disk (OSD) node. Completing the following steps will
-install, and configure the Ceph iSCSI gateway for basic operation.
+The Ceph iSCSI gateway is both an iSCSI target  and a Ceph client;
+think of it as a "translator" between Ceph's RBD interface
+and the iSCSI standard. The Ceph iSCSI gateway can run on a
+standalone node or be colocated with other daemons eg. on
+a Ceph Object Store Disk (OSD) node.  When co-locating, ensure
+that sufficient CPU and memory are available to share.
+The following steps install and configure the Ceph iSCSI gateway for basic operation.
 
 **必备条件：**
 
@@ -38,8 +41,7 @@ to the *Installing* section:
    The Ceph configuration files must exist on the iSCSI gateway node
    under ``/etc/ceph/``.
 
-#. Install and configure the `Ceph Command-line
-   Interface <http://docs.ceph.com/docs/master/start/quick-rbd/#install-ceph>`_
+#. Install and configure the `Ceph Command-line Interface`_
 
 #. If needed, open TCP ports 3260 and 5000 on the firewall.
 
@@ -67,16 +69,16 @@ For rpm based instructions execute the following commands:
 #. As ``root``, on all iSCSI gateway nodes, install the
    ``ceph-iscsi`` package:
 
-   ::
+   .. prompt:: bash #
 
-       # yum install ceph-iscsi
+      yum install ceph-iscsi
 
 #. As ``root``, on all iSCSI gateway nodes, install the ``tcmu-runner``
    package:
 
-   ::
+   .. prompt:: bash #
 
-       # yum install tcmu-runner
+      yum install tcmu-runner
 
 **配置得跑起来：**
 
@@ -84,9 +86,9 @@ For rpm based instructions execute the following commands:
    like the iSCSI configuration. To check if this pool has been created
    run:
 
-   ::
+   .. prompt:: bash #
 
-       # ceph osd lspools
+      ceph osd lspools
 
    If it does not exist instructions for creating pools can be found on the
    `RADOS pool operations page
@@ -95,13 +97,13 @@ For rpm based instructions execute the following commands:
 #. As ``root``, on a iSCSI gateway node, create a file named
    ``iscsi-gateway.cfg`` in the ``/etc/ceph/`` directory:
 
-   ::
+   .. prompt:: bash #
 
-       # touch /etc/ceph/iscsi-gateway.cfg
+      touch /etc/ceph/iscsi-gateway.cfg
 
    #. Edit the ``iscsi-gateway.cfg`` file and add the following lines:
 
-      ::
+      .. code-block:: ini
 
           [config]
           # Name of the Ceph storage cluster. A suitable Ceph configuration file allowing
@@ -148,18 +150,18 @@ For rpm based instructions execute the following commands:
 #. As ``root``, on all iSCSI gateway nodes, enable and start the API
    service:
 
-   ::
+   .. prompt:: bash #
 
-       # systemctl daemon-reload
+      systemctl daemon-reload
        
-       # systemctl enable rbd-target-gw
-       # systemctl start rbd-target-gw
+      systemctl enable rbd-target-gw
+      systemctl start rbd-target-gw
 
-       # systemctl enable rbd-target-api
-       # systemctl start rbd-target-api
+      systemctl enable rbd-target-api
+      systemctl start rbd-target-api
 
 
-**后续配置：**
+**Configuring:**
 
 gwcli will create and configure the iSCSI target and RBD images and copy the
 configuration across the gateways setup in the last section. Lower level
@@ -170,24 +172,24 @@ to create a iSCSI target and export a RBD image as LUN 0.
 #. As ``root``, on a iSCSI gateway node, start the iSCSI gateway
    command-line interface:
 
-   ::
+   .. prompt:: bash #
 
-       # gwcli
+      gwcli
 
 #. Go to iscsi-targets and create a target with the name
    iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw:
 
-   ::
+   .. code-block:: console
 
-       > /> cd /iscsi-target
-       > /iscsi-target>  create iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw
+       > /> cd /iscsi-targets
+       > /iscsi-targets>  create iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw
 
 #. Create the iSCSI gateways. The IPs used below are the ones that will be
    used for iSCSI data like READ and WRITE commands. They can be the
    same IPs used for management operations listed in trusted_ip_list,
    but it is recommended that different IPs are used.
 
-   ::
+   .. code-block:: console
 
        > /iscsi-target> cd iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/gateways
        > /iscsi-target...-igw/gateways>  create ceph-gw-1 10.172.19.21
@@ -197,7 +199,7 @@ to create a iSCSI target and export a RBD image as LUN 0.
    the skipchecks=true argument must be used. This will avoid the Red Hat kernel
    and rpm checks:
 
-   ::
+   .. code-block:: console
 
        > /iscsi-target> cd iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/gateways
        > /iscsi-target...-igw/gateways>  create ceph-gw-1 10.172.19.21 skipchecks=true
@@ -205,14 +207,14 @@ to create a iSCSI target and export a RBD image as LUN 0.
 
 #. Add a RBD image with the name disk_1 in the pool rbd:
 
-   ::
+   .. code-block:: console
 
        > /iscsi-target...-igw/gateways> cd /disks
        > /disks> create pool=rbd image=disk_1 size=90G
 
 #. Create a client with the initiator name iqn.1994-05.com.redhat:rh7-client:
 
-   ::
+   .. code-block:: console
 
        > /disks> cd /iscsi-target/iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/hosts
        > /iscsi-target...eph-igw/hosts>  create iqn.1994-05.com.redhat:rh7-client
@@ -220,7 +222,7 @@ to create a iSCSI target and export a RBD image as LUN 0.
 #. Set the client's CHAP username to myiscsiusername and password to
    myiscsipassword:
 
-   ::
+   .. code-block:: console
 
        > /iscsi-target...at:rh7-client>  auth username=myiscsiusername password=myiscsipassword
 
@@ -230,8 +232,15 @@ to create a iSCSI target and export a RBD image as LUN 0.
 
 #. Add the disk to the client:
 
-   ::
+   .. code-block:: console
 
        > /iscsi-target...at:rh7-client> disk add rbd/disk_1
 
 The next step is to configure the iSCSI initiators.
+
+.. _`Ceph Command-line Interface`: ../../start/quick-rbd/#install-ceph
+
+.. toctree::
+   :hidden:
+
+   ../../start/quick-rbd

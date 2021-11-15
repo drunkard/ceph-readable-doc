@@ -1,12 +1,10 @@
 cephfs-journal-tool
 ===================
 
-
 .. Purpose
 
 目的
 ----
-
 如果 CephFS 的日志损坏了，就需要专家介入，把文件系统恢复到\
 工作状态。
 
@@ -24,7 +22,6 @@ cephfs-journal-tool
 
 语法
 ----
-
 ::
 
     cephfs-journal-tool journal <inspect|import|export|reset>
@@ -39,7 +36,6 @@ cephfs-journal-tool
 
 Journal 模式
 ------------
-
 这应该是你访问日志状态的起点。
 
 * ``inspect`` 报告日志的健康状况，它将鉴定存储日志中丢失或被\
@@ -57,7 +53,6 @@ Journal 模式
 
 实例： journal inspect
 ~~~~~~~~~~~~~~~~~~~~~~
-
 ::
 
     # cephfs-journal-tool journal inspect
@@ -72,7 +67,6 @@ Journal 模式
 
 实例：日志的导入和导出
 ~~~~~~~~~~~~~~~~~~~~~~
-
 ::
 
     # cephfs-journal-tool journal export myjournal.bin
@@ -93,9 +87,8 @@ Journal 模式
     done.
 
 .. note::
-
-    明智的做法是，在开始修改前先用 ``journal export <backup file>``
-    命令备份日志。
+   明智的做法是，在开始修改前先用 ``journal export <backup file>``
+   命令备份日志。
 
 
 .. Header mode
@@ -113,7 +106,6 @@ Journal 模式
 
 实例： header get/set
 ~~~~~~~~~~~~~~~~~~~~~
-
 ::
 
     # cephfs-journal-tool header get
@@ -137,14 +129,11 @@ Journal 模式
 
 事件模式
 --------
-
 事件模式下可对日志内容进行详细的检查和操作。事件模式可操作日志\
 中的所有或过滤出的事件。
 
 ``cephfs-journal-tool event`` 的参数由动作、可选过滤器参数、和\
-输出模式组成。
-
-::
+输出模式组成。 ::
 
     cephfs-journal-tool event <action> [filter] <output>
 

@@ -48,8 +48,8 @@ Docs      Zac Dover        zdover23
 --------
 Ceph 是自由软件。
 
-除非另有声明， Ceph 的源代码会以 LGPL2.1 或 LGPL3.0 许可证发布。其完整内容在
-源码树顶极目录下的 `COPYING`_ 文件内。
+除非另有声明， Ceph 的源代码会以 LGPL2.1 或 LGPL3.0 许可证\
+发布。其完整内容在源码树顶极目录下的 `COPYING`_ 文件内。
 
 .. _`COPYING`:
    https://github.com/ceph/ceph/blob/master/COPYING
@@ -99,45 +99,46 @@ sufficient to open new issues and comment on existing ones.
 .. _`New issue`: http://tracker.ceph.com/projects/ceph/issues/new
 
 
-.. Mailing list
+.. _mailing-list:
 
 邮件列表
 --------
+
+Ceph Development Mailing List
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The ``dev@ceph.io`` list is for discussion about the development of Ceph,
 its interoperability with other technology, and the operations of the
 project itself.
 
 The email discussion list for Ceph development is open to all. Subscribe by
 sending a message to ``dev-request@ceph.io`` with the following line in the
-body of the message: ::
+body of the message::
 
     subscribe ceph-devel
 
+
+Ceph Client Patch Review Mailing List
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The ``ceph-devel@vger.kernel.org`` list is for discussion and patch review
 for the Linux kernel Ceph client component. Note that this list used to
-be an all-encompassing list for developers. So when searching the archives, 
-remember that this list contains the generic devel-ceph archives pre mid-2018.
+be an all-encompassing list for developers. When searching the archives, 
+remember that this list contains the generic devel-ceph archives before mid-2018.
 
-Subscription works in the same way, by sending a message to
-``majordomo@vger.kernel.org`` with the line: ::
-
-    subscribe ceph-devel
-
-in the body of the message.
-
-
-Ceph development email discussions the list is open to all. Subscribe by
-sending a message to ``dev-request@ceph.io`` with the line: ::
+Subscribe to the list covering the Linux kernel Ceph client component by sending
+a message to ``majordomo@vger.kernel.org`` with the following line in the body
+of the message::
 
     subscribe ceph-devel
 
-要作为邮件正文发出。
 
-Subscribing to the
+Other Ceph Mailing Lists
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-还有\ `其他与 Ceph 相关的邮件列表`_\ 。
+There are also `other Ceph-related mailing lists`_.
 
 .. _`其他与 Ceph 相关的邮件列表`: https://ceph.com/irc/
+
+.. _irc:
 
 
 IRC
@@ -148,14 +149,49 @@ time using `Internet Relay Chat`_.
 
 .. _`Internet Relay Chat`: http://www.irchelp.org/
 
-这里 ``https://ceph.com/irc/`` 介绍了如何配置 IRC 客户端、还有\
-一堆频道。
+The Ceph community gathers in the #ceph channel of the Open and Free Technology
+Community (OFTC) IRC network.
+
+Created in 1988, Internet Relay Chat (IRC) is a relay-based, real-time chat
+protocol. It is mainly designed for group (many-to-many) communication in
+discussion forums called channels, but also allows one-to-one communication via
+private message. On IRC you can talk to many other members using Ceph, on
+topics ranging from idle chit-chat to support questions. Though a channel might
+have many people in it at any one time, they might not always be at their
+keyboard; so if no-one responds, just wait around and someone will hopefully
+answer soon enough.
+
+Registration
+~~~~~~~~~~~~
+
+If you intend to use the IRC service on a continued basis, you are advised to
+register an account. Registering gives you a unique IRC identity and allows you
+to access channels where unregistered users have been locked out for technical
+reasons.
 
 
-.. Submitting patches
+Channels
+~~~~~~~~
+
+To connect to the OFTC IRC network, download an IRC client and configure it to
+connect to ``irc.oftc.net``. Then join one or more of the channels. Discussions
+inside #ceph are logged and archives are available online.
+
+Here are the real-time discussion channels for the Ceph community:
+
+  -  #ceph
+  -  #ceph-devel
+  -  #cephfs
+  -  #ceph-dashboard
+  -  #ceph-orchestrators
+  -  #sepia
+
+
+.. _submitting-patches:
 
 补丁的提交
 ----------
+
 The canonical instructions for submitting patches are contained in the
 file `CONTRIBUTING.rst`_ in the top-level directory of the source-code
 tree. There may be some overlap between this guide and that file.
@@ -177,39 +213,58 @@ All newcomers are encouraged to read that file carefully.
 
 用 ccache 加速本地构建
 ----------------------
+`ccache`_ can make the process of rebuilding the ceph source tree faster. 
 
-Rebuilds of the ceph source tree can benefit significantly from use of
-`ccache`_.
+Before you use `ccache`_ to speed up your rebuilds of the ceph source tree,
+make sure that your source tree is clean and will produce no build failures.
+When you have a clean source tree, you can confidently use `ccache`_, secure in
+the knowledge that you're not using a dirty tree.
 
-Many a times while switching branches and such, one might see build failures
-for certain older branches mostly due to older build artifacts. These rebuilds
-can significantly benefit the use of ccache. For a full clean source tree, one
-could do ::
+Old build artifacts can cause build failures. You might introduce these
+artifacts unknowingly when switching from one branch to another. If you see
+build errors when you attempt a local build, follow the procedure below to
+clean your source tree.
 
-  $ make clean
+Cleaning the Source Tree
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-  # note the following will nuke everything in the source tree that
-  # isn't tracked by git, so make sure to backup any log files /conf options
+.. prompt:: bash $
 
-  $ git clean -fdx; git submodule foreach git clean -fdx
+  ninja clean
+  
+.. note:: The following commands will remove everything in the source tree 
+          that isn't tracked by git. Make sure to back up your log files 
+          and configuration options before running these commands.
 
-ccache is available as a package in most distros. To build ceph with ccache
-one can::
+.. prompt:: bash $
 
-  $ cmake -DWITH_CCACHE=ON ..
+   git clean -fdx; git submodule foreach git clean -fdx
 
-ccache can also be used for speeding up all builds in the system. for more
-details refer to the `run modes`_ of the ccache manual. The default settings
-of ``ccache`` can be displayed with ``ccache -s``.
+Building Ceph with ccache
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note:: It is recommended to override the ``max_size``, which is the size of
-   cache, defaulting to 10G, to a larger size like 25G or so. Refer to the
-   `configuration`_ section of ccache manual.
+``ccache`` is available as a package in most distros. To build ceph with
+ccache, run the following command.
+
+.. prompt:: bash $
+
+  cmake -DWITH_CCACHE=ON ..
+
+Using ccache to Speed Up Build Times
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``ccache`` can be used for speeding up all builds of the system. For more
+details, refer to the `run modes`_ section of the ccache manual. The default
+settings of ``ccache`` can be displayed with the ``ccache -s`` command.
+
+.. note:: We recommend overriding the ``max_size``. The default is 10G.
+          Use a larger value, like 25G. Refer to the `configuration`_ section
+          of the ccache manual for more information.
 
 To further increase the cache hit rate and reduce compile times in a
-development environment, it is possible to set version information and build
-timestamps to fixed values, which avoids frequent rebuilds of binaries that
-contain this information.
+development environment, set the version information and build timestamps to
+fixed values. This makes it unnecessary to rebuild the binaries that contain
+this information.
 
 This can be achieved by adding the following settings to the ``ccache``
 configuration file ``ccache.conf``::
@@ -219,10 +274,12 @@ configuration file ``ccache.conf``::
 
 Now, set the environment variable ``SOURCE_DATE_EPOCH`` to a fixed value (a
 UNIX timestamp) and set ``ENABLE_GIT_VERSION`` to ``OFF`` when running
-``cmake``::
+``cmake``:
 
-  $ export SOURCE_DATE_EPOCH=946684800
-  $ cmake -DWITH_CCACHE=ON -DENABLE_GIT_VERSION=OFF ..
+.. prompt:: bash $
+
+  export SOURCE_DATE_EPOCH=946684800
+  cmake -DWITH_CCACHE=ON -DENABLE_GIT_VERSION=OFF ..
 
 .. note:: Binaries produced with these build options are not suitable for
   production or debugging purposes, as they do not contain the correct build
@@ -247,7 +304,7 @@ Kubernetes/Rook 开发集群
 参考 :ref:`kubernetes-dev`
 
 
-.. Backporting
+.. _backporting:
 
 补丁移植（ Backporting ）
 -------------------------

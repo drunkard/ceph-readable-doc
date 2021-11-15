@@ -16,7 +16,7 @@ Ceph 从 12.x (*luminous*) 版起，日常操作也离不开 ceph-mgr
 健康告警，并且 `ceph status` 输出里的某些信息会缺失或过时，除非
 mgr 启动。
 
-用你常用的部署工具，如 ceph-ansible 或 ceph-deploy ，在各\
+用你常用的部署工具，如 ceph-ansible 或 cephadm ，在各\
 监视器节点上配置好 ceph-mgr 守护进程。把 mgr 和监视器部署到\
 同一节点不是强制的，但差不多是最合理的。
 
@@ -28,6 +28,7 @@ mgr 启动。
     模块编程 <modules>
     编写 orchestrator 插件 <orchestrator_modules>
     仪表盘模块 <dashboard>
+    Ceph RESTful API <ceph_api/index>
     Alerts 模块 <alerts>
     DiskPrediction 模块 <diskprediction>
     localpool 模块 <localpool>
@@ -43,3 +44,6 @@ mgr 启动。
     Insights 模块 <insights>
     Orchestrator 模块 <orchestrator>
     Rook 模块 <rook>
+    MDS Autoscaler 模块 <mds_autoscaler>
+    NFS 模块 <nfs>
+    Progress 模块 <progress>

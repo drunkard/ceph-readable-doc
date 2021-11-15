@@ -245,8 +245,8 @@ OSD 上的数据。
 这些命令大多只在故障测试时有用，因为黑名单是自动维护的，无需\
 手动干涉。 ::
 
-	ceph osd blacklist add ADDRESS[:source_port] [TIME]
-	ceph osd blacklist rm ADDRESS[:source_port]
+	ceph osd blocklist add ADDRESS[:source_port] [TIME]
+	ceph osd blocklist rm ADDRESS[:source_port]
 
 创建/删除存储池快照。 ::
 

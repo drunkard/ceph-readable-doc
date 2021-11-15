@@ -27,10 +27,13 @@
 用 cephadm 安装软件包
 =====================
 
-#. Download the cephadm script::
+#. Download the cephadm script
 
-    curl --silent --remote-name --location https://github.com/ceph/ceph/raw/octopus/src/cephadm/cephadm
-    chmod +x cephadm
+.. prompt:: bash $
+   :substitutions:
+
+   curl --silent --remote-name --location https://github.com/ceph/ceph/raw/|stable-release|/src/cephadm/cephadm
+   chmod +x cephadm
 
 #. Configure the Ceph repository based on the release name::
 
@@ -135,28 +138,40 @@ Debian 二进制包
 
 把 Ceph 库加入系统级 APT 源列表。在较新版本的 Debian/Ubuntu
 上，用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换\
-下列命令里的 ``{codename}`` 。 ::
+下列命令里的 ``{codename}`` 。
 
-	sudo apt-add-repository 'deb https://download.ceph.com/debian-luminous/ {codename} main'
+.. prompt:: bash $
+   :substitutions:
 
-对于早期 Linux 发行版，你可以执行下列命令： ::
+   sudo apt-add-repository 'deb https://download.ceph.com/debian-|stable-release|/ {codename} main'
 
-	echo deb https://download.ceph.com/debian-luminous/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+对于早期 Linux 发行版，你可以执行下列命令：
+
+.. prompt:: bash $
+   :substitutions:
+
+   echo deb https://download.ceph.com/debian-|stable-release|/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 对于早期 Ceph 发布，可用 Ceph 发布名替换 ``{release-name}`` 。\
 用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换下列\
-命令里的 ``{codename}`` 。 ::
+命令里的 ``{codename}`` 。
 
-	sudo apt-add-repository 'deb https://download.ceph.com/debian-{release-name}/ {codename} main'
+.. prompt:: bash $
 
-对较老的 Linux 发行版，用发布名替换 ``{release-name}`` 。 ::
+   sudo apt-add-repository 'deb https://download.ceph.com/debian-{release-name}/ {codename} main'
+
+对较老的 Linux 发行版，用发布名替换 ``{release-name}`` 。
+
+.. prompt:: bash $
 
 	echo deb https://download.ceph.com/debian-{release-name}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 对于开发版，把我们的软件库加入 APT 源。这里 \
-`Debian 测试版软件库`_ 是已支持的 Debian/Ubuntu 列表。 ::
+`Debian 测试版软件库`_ 是已支持的 Debian/Ubuntu 列表。
 
-	echo deb https://download.ceph.com/debian-testing/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+.. prompt:: bash $
+
+   echo deb https://download.ceph.com/debian-testing/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
 .. tip:: 对不在美国的用户来说，你也许可以从比较近的镜像下载
    Ceph 。请参考 `Ceph 镜像`_\ 。
@@ -176,7 +191,9 @@ Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
 ``{ceph-release}`` 、用 Linux 发行版名（ ``el7`` 等等）替换
 ``{distro}`` 。你可以到 https://download.ceph.com/rpm-{ceph-release}/
 看看 Ceph 支持哪些发行版。有些 Ceph 包（如 EPEL ）必须优先于\
-标准包，所以你必须确保设置了 ``priority=2`` 。 ::
+标准包，所以你必须确保设置了 ``priority=2`` 。
+
+.. code-block:: ini
 
 	[ceph]
 	name=Ceph packages for $basearch
@@ -208,11 +225,15 @@ Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
 
 软件库包会把软件库的具体配置安装到本机，以便 ``yum`` 使用。把
 ``{distro}`` 替换成你的 Linux 发行版名字，把 ``{release}`` 换\
-成 Ceph 的某个发布名。 ::
+成 Ceph 的某个发布名。
 
-	su -c 'rpm -Uvh https://download.ceph.com/rpms/{distro}/x86_64/ceph-{release}.el7.noarch.rpm'
+.. prompt:: bash $
 
-你可以从这个地址直接下载 RPM ： ::
+    su -c 'rpm -Uvh https://download.ceph.com/rpms/{distro}/x86_64/ceph-{release}.el8.noarch.rpm'
+
+你可以从这个地址直接下载 RPM ：
+
+.. code-block:: none
 
 	https://download.ceph.com/rpm-testing
 
@@ -222,7 +243,9 @@ Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
 
 openSUSE Leap 15.1
 ~~~~~~~~~~~~~~~~~~
-You need to add the Ceph package repository to your list of zypper sources. This can be done with the following command ::
+You need to add the Ceph package repository to your list of zypper sources. This can be done with the following command
+
+.. code-block:: bash
 
     zypper ar https://download.opensuse.org/repositories/filesystems:/ceph/openSUSE_Leap_15.1/filesystems:ceph.repo
 
@@ -252,7 +275,9 @@ DEB 二进制包
 
 把此仓库加进你的 APT 源，用你要测试的分支名（如 wip-hack 、 \
 master ）替换 ``{BRANCH}`` 。我们所构建发布的完整列表在 \
-`shaman 网页`\ 。 ::
+`shaman 网页`\ 。
+
+.. prompt:: bash $
 
     curl -L https://shaman.ceph.com/api/repos/ceph/{BRANCH}/latest/ubuntu/$(lsb_release -sc)/repo/ | sudo tee /etc/apt/sources.list.d/shaman.list
 
@@ -261,6 +286,8 @@ master ）替换 ``{BRANCH}`` 。我们所构建发布的完整列表在 \
 上面 URL 里用了 ``latest`` ，它用来指示本次构建的最后一个\
 提交。另外，还能指定某个特定的 sha1 号码。要给 Ubuntu Xenial
 构建 Ceph 的 master 分支，命令如下： ::
+
+.. prompt:: bash $
 
     curl -L https://shaman.ceph.com/api/repos/ceph/master/53e772a45fdf2d211c0c383106a66e1feedec8fd/ubuntu/xenial/repo/ | sudo tee /etc/apt/sources.list.d/shaman.list
 
@@ -274,15 +301,19 @@ RPM 二进制包
 
 对于当前开发分支，你可以在 ``/etc/yum.repos.d/`` 目录下创建 \
 Ceph 条目。你可以从 `shaman 网页`\ 获取软件库文件的所有细节，\
-可以通过 HTTP 请求获取，例如： ::
+可以通过 HTTP 请求获取，例如：
 
-    curl -L https://shaman.ceph.com/api/repos/ceph/{BRANCH}/latest/centos/7/repo/ | sudo tee /etc/yum.repos.d/shaman.repo
+.. prompt:: bash $
+
+    curl -L https://shaman.ceph.com/api/repos/ceph/{BRANCH}/latest/centos/8/repo/ | sudo tee /etc/yum.repos.d/shaman.repo
 
 上面 URL 里用了 ``latest`` ，它用来指示本次构建的最后一个\
 提交。另外，还能指定某个特定的 sha1 号码。要给 CentOS 7
-构建 Ceph 的 master 分支，命令如下： ::
+构建 Ceph 的 master 分支，命令如下：
 
-    curl -L https://shaman.ceph.com/api/repos/ceph/master/53e772a45fdf2d211c0c383106a66e1feedec8fd/centos/7/repo/ | sudo tee /etc/apt/sources.list.d/shaman.list
+.. prompt:: bash $
+
+    curl -L https://shaman.ceph.com/api/repos/ceph/master/488e6be0edff7eb18343fd5c7e2d7ed56435888f/centos/8/repo/ | sudo tee /etc/apt/sources.list.d/shaman.list
 
 .. warning:: 两周后开发库就不再可用了。
 
@@ -295,7 +326,7 @@ Ceph 条目。你可以从 `shaman 网页`\ 获取软件库文件的所有细节
 --------------
 
 如果你位于防火墙之内，不能访问互联网，那你必须先下载齐所需\
-软件包（镜像所有依赖）。
+软件包（镜像所有依赖）才能开始安装。
 
 
 .. Debian Packages
@@ -303,20 +334,12 @@ Ceph 条目。你可以从 `shaman 网页`\ 获取软件库文件的所有细节
 Debian 二进制包
 ~~~~~~~~~~~~~~~
 
-Ceph 依赖这些第三方库。
-
-- libaio1
-- libsnappy1
-- libcurl3
-- curl
-- libgoogle-perftools4
-- google-perftools
-- libleveldb1
-
 这个软件库包会装好所需的 ``apt`` 软件库的配置文件。需用最新 Ceph \
 发布替换掉 ``{release}`` 、用最新 Ceph 版本号替换 ``{version}`` 、\
 用自己的 Linux 发行版代号替换 ``{distro}`` 、用自己的 CPU 架构替\
-换 ``{arch}`` 。 ::
+换 ``{arch}`` 。
+
+.. prompt:: bash $
 
 	wget -q https://download.ceph.com/debian-{release}/pool/main/c/ceph/ceph_{version}{distro}_{arch}.deb
 
@@ -326,35 +349,40 @@ Ceph 依赖这些第三方库。
 RPM 二进制包
 ~~~~~~~~~~~~
 
-Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库： ::
+Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库：
 
-        sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+.. prompt:: bash $
 
-Ceph 依赖下列包：
+   sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 
-- snappy
-- leveldb
-- gdisk
-- python-argparse
-- gperftools-libs
-
-当前，我们为 RHEL/CentOS7 （ ``el7`` ）平台构建二进制包，\
+当前，我们为 RHEL/CentOS8 （ ``el8`` ）平台构建二进制包，\
 软件库包会在本地系统上安装 Ceph 库配置文件，这样 ``yum`` 就\
 可以使用这些配置文件自动安装了。用你自己的发行版名字替换
-``{distro}`` 。 ::
+``{distro}`` 。
 
-    su -c 'rpm -Uvh https://download.ceph.com/rpm-luminous/{distro}/noarch/ceph-{version}.{distro}.noarch.rpm'
+.. prompt:: bash $
+   :substitutions:
 
-例如，对于 CentOS 7 （ ``el7`` ）： ::
+   su -c 'rpm -Uvh https://download.ceph.com/rpm-|stable-release|/{distro}/noarch/ceph-{version}.{distro}.noarch.rpm'
 
-    su -c 'rpm -Uvh https://download.ceph.com/rpm-luminous/el7/noarch/ceph-release-1-0.el7.noarch.rpm'
+例如，对于 CentOS 8 （ ``el8`` ）：
 
-你可以从这里直接下载RPM包： ::
+.. prompt:: bash $
+   :substitutions:
 
-    https://download.ceph.com/rpm-luminous
+   su -c 'rpm -Uvh https://download.ceph.com/rpm-|stable-release|/el8/noarch/ceph-release-1-0.el8.noarch.rpm'
+
+你可以从这里直接下载RPM包：
+
+.. code-block:: none
+   :substitutions:
+
+   https://download.ceph.com/rpm-|stable-release|
 
 对较老的 Ceph 发布，用 Ceph 发布名替换 ``{release-name}`` ，你\
-可以执行 ``lsb_release -sc`` 命令获取发行版代号。 ::
+可以执行 ``lsb_release -sc`` 命令获取发行版代号。
+
+.. prompt:: bash $
 
 	su -c 'rpm -Uvh https://download.ceph.com/rpm-{release-name}/{distro}/noarch/ceph-{version}.{distro}.noarch.rpm'
 

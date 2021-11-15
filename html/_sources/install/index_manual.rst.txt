@@ -33,15 +33,15 @@
 ========
 
 获取到（或者软件库里有） Ceph 软件包之后，安装很简单。要在集群\
-内的各\ :term:`Ceph 节点`\ 安装，你可以用 ``ceph-deploy`` 、\
-或者包管理工具。如果你想安装 Ceph 对象网关、或 QEMU ，那么对于\
-使用 ``yum`` 的发行版，你应该设置软件库优先级。
+内的各\ :term:`Ceph 节点`\ 安装，你可以用包管理工具。如果你\
+想安装 Ceph 对象网关、或 QEMU ，那么对于 RHEL/CentOS 以及\
+其它使用 ``yum`` 的发行版，你应该安装 Yum Priorities
+（以支持仓库优先级功能）。
 
 .. toctree::
    :maxdepth: 1
 
-	安装 ceph-deploy <install-ceph-deploy>
-    	安装 Ceph 存储集群 <install-storage-cluster>
+    安装 Ceph 存储集群 <install-storage-cluster>
 	Install Virtualization for Block <install-vm-cloud>
 
 
