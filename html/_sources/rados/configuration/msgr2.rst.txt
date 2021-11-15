@@ -25,7 +25,7 @@ By default, monitors now bind to the new IANA-assigned port ``3300``
 old default port ``6789`` for the legacy v1 protocol.
 
 
-.. Address formats
+.. _address_formats:
 
 地址格式
 --------

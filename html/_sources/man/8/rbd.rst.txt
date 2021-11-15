@@ -711,15 +711,19 @@ format 2 格式的映像。
 
 * noshare - 禁止与其它映射共享客户端例程。
 
-* crc - 启用在写入数据时计算 CRC32C 校验值（默认）。
+* crc - 对 msgr1 线上协议来说，启用 CRC32C 校验和（默认）；
+  对 msgr2.1 协议来说，会忽略此选项： crc 模式下总是完全开启\
+  校验和、 secure 模式下总是关闭。
 
-* nocrc - 在写入数据时不计算 CRC32C 校验值。
+* nocrc - 对 msgr1 线上协议禁用 CRC32C 校验。注意，只是禁用了\
+  载荷校验，头校验一直开启。 msgr2.1 协议忽略此选项。
 
-* cephx_require_signatures - 要求对 cephx 消息签名（从 3.19 起\
-  默认开启）。
+* cephx_require_signatures - 要求对 msgr1 消息签名（从 3.19 起\
+  默认开启）。此选项已废弃，且未来会删除，因为此功能从
+  Bobtail 版起就支持了。
 
-* nocephx_require_signatures - 不要求对 cephx 消息签名（从 3.19 \
-  起）。
+* nocephx_require_signatures - 不要求对 msgr1 消息签名（从 3.19 \
+  起）。此选项已废弃，且未来会删除，
 
 * tcp_nodelay - 在客户端禁用 Nagle's 算法（从 4.0 起默认开启）。
 
@@ -739,7 +743,7 @@ format 2 格式的映像。
 
 每个映射（块设备）的 `rbd device map` 选项：
 
-* rw - 以读写方式映射映像（默认）。
+* rw - 以读写方式映射映像（默认）。会被 --read-only 覆盖。
 
 * ro - 以只读方式映射映像，等价于 --read-only 。
 
@@ -749,6 +753,7 @@ format 2 格式的映像。
   （从 4.9 起）。
 
 * exclusive - 禁止自动转换互斥锁（从 4.12 起）。
+  等价于 --exclusive 。
 
 * lock_timeout=x - 获取互斥锁的超时时长（ 4.17 起支持，默认是
   0 秒，意味着没有超时）。

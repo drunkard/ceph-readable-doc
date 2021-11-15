@@ -216,27 +216,54 @@ in your CRUSH map.
 
 .. code-block:: javascript
 
- { "offset": { "oid": "",
-      "key": "",
-      "snapid": 0,
-      "hash": 0,
-      "max": 0},
-  "num_missing": 0,
-  "num_unfound": 0,
-  "objects": [
-     { "oid": "object 1",
-       "key": "",
-       "hash": 0,
-       "max": 0 },
-     ...
-  ],
-  "more": 0}
+  {
+    "num_missing": 1,
+    "num_unfound": 1,
+    "objects": [
+        {
+            "oid": {
+                "oid": "object",
+                "key": "",
+                "snapid": -2,
+                "hash": 2249616407,
+                "max": 0,
+                "pool": 2,
+                "namespace": ""
+            },
+            "need": "43'251",
+            "have": "0'0",
+            "flags": "none",
+            "clean_regions": "clean_offsets: [], clean_omap: 0, new_object: 1",
+            "locations": [
+                "0(3)",
+                "4(2)"
+            ]
+        }
+    ],
+    "state": "NotRecovering",
+    "available_might_have_unfound": true,
+    "might_have_unfound": [
+        {
+            "osd": "2(4)",
+            "status": "osd is down"
+        }
+    ],
+    "more": false
+  }
 
 如果在一次查询里列出的对象太多， ``more`` 这个字段将为
 ``true`` ，因此你可以查询更多。（命令行工具可能隐藏了，但这里\
 没有）
 
-其次，你可以找出哪些 OSD 上探测到、或可能包含数据： ::
+其次，你可以找出哪些 OSD 上探测到、或可能包含数据。
+
+At the end of the listing (before ``more`` is false), ``might_have_unfound`` is provided
+when ``available_might_have_unfound`` is true.  This is equivalent to the output
+of ``ceph pg #.# query``.  This eliminates the need to use ``query`` directly.
+The ``might_have_unfound`` information given behaves the same way as described below for ``query``.
+The only difference is that OSDs that have ``already probed`` status are ignored.
+
+Use of ``query``::
 
 	ceph pg 2.4 query
 

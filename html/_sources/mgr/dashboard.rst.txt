@@ -294,7 +294,7 @@ wanted or required. See :ref:`dashboard-proxy-configuration` for more details.
     $ ceph mgr module enable dashboard
 
 
-.. Host name and port
+.. Host Name and Port
 .. _dashboard-host-name-and-port:
 
 主机名和端口

@@ -1,4 +1,4 @@
-.. Admin Operations
+.. _radosgw admin ops:
 
 ==========
  管理操作

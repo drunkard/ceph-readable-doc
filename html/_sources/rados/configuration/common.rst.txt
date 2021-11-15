@@ -215,3 +215,12 @@ by new tools and deployments.
 
 If you do need to allow multiple clusters to exist on the same host, please use
 :ref:`cephadm`, which uses containers to fully isolate each cluster.
+
+
+
+
+
+.. _Hardware Recommendations: ../../../start/hardware-recommendations
+.. _Network Configuration Reference: ../network-config-ref
+.. _OSD Config Reference: ../osd-config-ref
+.. _Configuring Monitor/OSD Interaction: ../mon-osd-interaction

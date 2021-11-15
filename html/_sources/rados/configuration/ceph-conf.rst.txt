@@ -17,7 +17,10 @@
 ``radosgw`` ）。
 
 各个守护进程都有一系列配置选项，各选项都有其默认值。你可以更改\
-这些配置选项，以调整系统行为。
+这些配置选项，以调整系统行为。覆盖默认值前应该深入理解可能\
+产生的后果，因为有可能显著降低集群的性能和稳定性。还要注意\
+后续版本的默认值可能会变，所以，最好回顾一下与你的 Ceph 版本\
+相对应的文档。
 
 
 .. Option names
@@ -34,7 +37,9 @@ When option names are specified on the command line, either underscore
 ``--mon-host`` is equivalent to ``--mon_host``).
 
 When option names appear in configuration files, spaces can also be
-used in place of underscore or dash.
+used in place of underscore or dash.  We suggest, though, that for
+clarity and convenience you consistently use underscores, as we do
+throughout this documentation.
 
 
 .. Config sources
@@ -61,33 +66,33 @@ cluster.  Once a complete view of the configuration is available, the
 daemon or process startup will proceed.
 
 
-.. Bootstrap options
 .. _bootstrap-options:
 
 自举引导选项
 ------------
 
-Because some configuration options affect the process's ability to
-contact the monitors, authenticate, and retrieve the cluster-stored
-configuration, they may need to be stored locally on the node and set
-in a local configuration file.  These options include:
+Some configuration options affect the process's ability to contact the
+monitors, to authenticate, and to retrieve the cluster-stored configuration.
+For this reason, these options might need to be stored locally on the node, and
+set by means of a local configuration file. These options include the
+following:
 
-  - ``mon_host``, the list of monitors for the cluster
-  - ``mon_dns_serv_name`` (default: `ceph-mon`), the name of the DNS
-    SRV record to check to identify the cluster monitors via DNS
-  - ``mon_data``, ``osd_data``, ``mds_data``, ``mgr_data``, and
-    similar options that define which local directory the daemon
-    stores its data in.
-  - ``keyring``, ``keyfile``, and/or ``key``, which can be used to
-    specify the authentication credential to use to authenticate with
-    the monitor.  Note that in most cases the default keyring location
-    is in the data directory specified above.
+.. confval:: mon_host
+.. confval:: mon_host_override
 
-In the vast majority of cases the default values of these are
-appropriate, with the exception of the ``mon_host`` option that
-identifies the addresses of the cluster's monitors.  When DNS is used
-to identify monitors a local ceph configuration file can be avoided
-entirely.
+- :confval:`mon_dns_srv_name`
+- ``mon_data``, ``osd_data``, ``mds_data``, ``mgr_data``, and
+  similar options that define which local directory the daemon
+  stores its data in.
+- :confval:`keyring`, :confval:`keyfile`, and/or :confval:`key`, which can be used to
+  specify the authentication credential to use to authenticate with
+  the monitor.  Note that in most cases the default keyring location
+  is in the data directory specified above.
+
+In most cases, the default values of these options are suitable. There is one
+exception to this: the :confval:`mon_host` option that identifies the addresses
+of the cluster's monitors.  When DNS is used to identify monitors, a local Ceph
+configuration file can be avoided entirely.
 
 
 .. Skipping monitor config
@@ -95,11 +100,11 @@ entirely.
 跳过监视器配置
 --------------
 
-Any process may be passed the option ``--no-mon-config`` to skip the
-step that retrieves configuration from the cluster monitors.  This is
-useful in cases where configuration is managed entirely via
-configuration files or where the monitor cluster is currently down but
-some maintenance activity needs to be done.
+Pass the option ``--no-mon-config`` to any process to skip the step that
+retrieves configuration information from the cluster monitors. This is useful
+in cases where configuration is managed entirely via configuration files, or
+when the monitor cluster is down and some maintenance activity needs to be
+done.
 
 
 .. Configuration sections
@@ -118,48 +123,54 @@ they apply to.
 These sections include:
 
 
-``global``
+.. confsec:: global
 
-:描述: ``global`` 下的配置影响 Ceph 存储集群里的所有守护进程和\
-       客户端。
-:实例: ``log_file = /var/log/ceph/$cluster-$type.$id.log``
+   ``global`` 下的配置选项影响 Ceph 存储集群里的所有守护进程和\
+   客户端。
+
+   :example: ``log_file = /var/log/ceph/$cluster-$type.$id.log``
 
 
-``mon``
+.. confsec:: mon
 
-:描述: ``mon`` 下的配置影响 Ceph 集群里的所有 ``ceph-mon``
+   ``mon`` 下的配置影响 Ceph 集群里的所有 ``ceph-mon``
        守护进程，并且会覆盖 ``global`` 下的同一选项。
-:实例: ``mon_cluster_log_to_syslog = true``
+
+   :example: ``mon_cluster_log_to_syslog = true``
 
 
-``mgr``
+.. confsec:: mgr
 
-:描述: Settings in the ``mgr`` section affect all ``ceph-mgr`` daemons in
-              the Ceph Storage Cluster, and override the same setting in 
-              ``global``.
-:实例: ``mgr_stats_period = 10``
+   Settings in the ``mgr`` section affect all ``ceph-mgr`` daemons in
+   the Ceph Storage Cluster, and override the same setting in
+   ``global``.
 
-
-``osd``
-
-:描述: ``osd`` 下的配置影响 Ceph 存储集群里的所有 ``ceph-osd``
-         守护进程，并且会覆盖 ``global`` 下的同一选项。
-:实例: ``osd_op_queue = wpq``
+   :example: ``mgr_stats_period = 10``
 
 
-``mds``
+.. confsec:: osd
 
-:描述: ``mds`` 下的配置影响 Ceph 存储集群里的所有 ``ceph-mds``
-       守护进程，并且会覆盖 ``global`` 下的同一选项。
-:实例: ``mds_cache_memory_limit = 10G``
+   ``osd`` 下的配置影响 Ceph 存储集群里的所有 ``ceph-osd``
+   守护进程，并且会覆盖 ``global`` 下的同一选项。
+
+   :example: ``osd_op_queue = wpq``
 
 
-``client``
+.. confsec:: mds
 
-:描述: ``[client]`` 下的配置影响所有 Ceph 客户端（如挂载的 Ceph
+   ``mds`` 下的配置影响 Ceph 存储集群里的所有 ``ceph-mds``
+   守护进程，并且会覆盖 ``global`` 下的同一选项。
+
+   :example: ``mds_cache_memory_limit = 10G``
+
+
+.. confsec:: client
+
+   ``[client]`` 下的配置影响所有 Ceph 客户端（如挂载的 Ceph
        文件系统、挂载的块设备等等）、也影响 Rados 网关（ RGW ）\
        守护进程。
-:实例: ``objecter_inflight_ops = 512``
+
+   :example: ``objecter_inflight_ops = 512``
 
 Sections may also specify an individual daemon or client name.  For example,
 ``mon.foo``, ``osd.123``, and ``client.smith`` are all valid section names.
@@ -193,42 +204,47 @@ Ceph 会在使用此配置值时把相应的元变量展开为具体值。Ceph �
 Ceph 支持下列元变量：
 
 
-``$cluster``
+.. describe:: $cluster
 
-:描述: 展开为存储集群名字，在同一套硬件上运行多个集群时有用。
-:实例: ``/etc/ceph/$cluster.keyring``
-:默认值: ``ceph``
+   展开为存储集群名字，在同一套硬件上运行多个集群时有用。
 
-
-``$type``
-
-:描述: 可展开为 ``mds`` 、 ``osd`` 、 ``mon`` 中的一个，有赖于\
-       当前守护进程的类型。
-:实例: ``/var/lib/ceph/$type``
+   :example:``/etc/ceph/$cluster.keyring``
+   :default:``ceph``
 
 
-``$id``
+.. describe:: $type
 
-:描述: 展开为守护进程标识符； ``osd.0`` 应为 ``0`` ， ``mds.a``
-       是 ``a`` 。
-:实例: ``/var/lib/ceph/$type/$cluster-$id``
+   可展开为 ``mds`` 、 ``osd`` 、 ``mon`` 中的一个，有赖于\
+   当前守护进程的类型。
 
-
-``$host``
-
-:描述: 展开为当前守护进程的主机名。
+   :example:``/var/lib/ceph/$type``
 
 
-``$name``
+.. describe:: $id
 
-:描述: 展开为 ``$type.$id`` 。
-:实例: ``/var/run/ceph/$cluster-$name.asok``
+   展开为守护进程标识符； ``osd.0`` 应为 ``0`` ， ``mds.a``
+   是 ``a`` 。
+
+   :example:``/var/lib/ceph/$type/$cluster-$id``
 
 
-``$pid``
+.. describe:: $host
 
-:描述: 展开为守护进程的 pid 。
-:实例: ``/var/run/ceph/$cluster-$name-$pid.asok``
+   展开为当前守护进程的主机名。
+
+
+.. describe:: $name
+
+   展开为 ``$type.$id`` 。
+
+   :example:``/var/run/ceph/$cluster-$name.asok``
+
+
+.. describe:: $pid
+
+   展开为守护进程的 pid 。
+
+   :example:``/var/run/ceph/$cluster-$name-$pid.asok``
 
 
 .. The Configuration File

@@ -1,4 +1,4 @@
-.. Cluster Operations
+.. _rados-operations:
 
 ==========
  集群运维

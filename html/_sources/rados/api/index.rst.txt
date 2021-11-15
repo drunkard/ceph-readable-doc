@@ -1,4 +1,4 @@
-.. _Ceph Storage Cluster APIs:
+.. _rados api:
 
 ===================
  Ceph 存储集群 API
@@ -20,4 +20,5 @@
    librados (C) <librados>
    librados (C++) <libradospp>
    librados (Python) <python>
+   libcephsqlite (SQLite) <libcephsqlite>
    object class <objclass-sdk>

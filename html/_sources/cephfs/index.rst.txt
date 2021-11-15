@@ -82,18 +82,21 @@ for interactive access or scripting via the `cephfs-shell`_.
 
     创建 CephFS 文件系统 <createfs>
     管理命令 <administration>
+    Creating Multiple File Systems <multifs>
     配备、增加、删除 MDS <add-remove-mds>
     MDS 故障切换和灾备配置 <standby>
-    MDS 缓存尺寸的限制 <cache-size-limits>
+    MDS Cache Configuration <cache-configuration>
     MDS 配置选项 <mds-config-ref>
     ceph-mds 手册页 <../../man/8/ceph-mds>
     通过 NFS 导出 <nfs>
-    Export over NFS with volume nfs interface <fs-nfs-exports>
     应用最佳实践 <app-best-practices>
     FS 卷和子卷 <fs-volumes>
     CephFS 配额管理 <quota>
     健康消息 <health-messages>
     升级旧文件系统 <upgrading>
+    CephFS Top Utility <cephfs-top>
+    Scheduled Snapshots <snap-schedule>
+    CephFS Snapshot Mirroring <cephfs-mirroring>
 
 .. raw:: html
 
@@ -117,7 +120,8 @@ for interactive access or scripting via the `cephfs-shell`_.
     Mount CephFS: Prerequisites <mount-prerequisites>
     用内核驱动挂载 CephFS 文件系统 <mount-using-kernel-driver>
     用 FUSE 挂载 CephFS <mount-using-fuse>
-    CephFS Shell 的用法 <cephfs-shell>
+    Mount CephFS on Windows <ceph-dokan>
+    Use the CephFS Shell <../../man/8/cephfs-shell>
     内核驱动支持的功能 <kernel-features>
     ceph-fuse 手册页 <../../man/8/ceph-fuse>
     mount.ceph 手册页 <../../man/8/mount.ceph>
@@ -175,6 +179,7 @@ CephFS 内幕
     故障排除 <troubleshooting>
     灾难恢复 <disaster-recovery>
     cephfs-journal-tool <cephfs-journal-tool>
+    Recovering file system after monitor store loss <recover-fs-after-mon-store-loss>
 
 
 .. raw:: html

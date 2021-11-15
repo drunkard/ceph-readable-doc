@@ -5,74 +5,72 @@
 Ceph 独一无二地在一个统一的系统中同时提供了\
 **对象、块、和文件存储功能**\ 。
 
-.. raw:: html
+.. container:: columns-3
 
-	<style type="text/css">div.body h3{margin:5px 0px 0px 0px;}</style>
-	<table cellpadding="10"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><tbody valign="top"><tr><td><h3>CEPH 对象存储</h3>
+   .. container:: column
 
-- REST 风格的接口
-- 与 S3 和 Swift 兼容的 API
-- S3 风格的子域
-- 统一的 S3/Swift 命名空间
-- 用户管理
-- 利用率跟踪
-- 条带化对象
-- 云解决方案集成
-- 多站点部署
-- 多站点复制
+      .. raw:: html
 
-.. raw:: html 
+          <h3>Ceph 对象存储</h3>
 
-	</td><td><h3>Ceph 块设备</h3>
+      - REST 风格的接口
+      - 与 S3 和 Swift 兼容的 API
+      - S3 风格的子域
+      - 统一的 S3/Swift 命名空间
+      - 用户管理
+      - 利用率跟踪
+      - 条带化对象
+      - 云解决方案集成
+      - 多站点部署
+      - 多站点复制
 
+   .. container:: column
 
-- 瘦接口支持
-- 映像尺寸最大 16EB
-- 条带化可定制
-- 内存缓存
-- 快照
-- 写时复制克隆
-- 支持内核级驱动
-- 支持 KVM 和 libvirt
-- 可作为云解决方案的后端
-- 增量备份
-- 灾难恢复（多站点异步复制）
+      .. raw:: html
 
-.. raw:: html 
+          <h3>Ceph Block Device</h3>
 
-	</td><td><h3>Ceph 文件系统</h3>
+      - 瘦接口支持
+      - 映像尺寸最大 16EB
+      - 条带化可定制
+      - 内存缓存
+      - 快照
+      - 写时复制克隆
+      - 支持内核级驱动
+      - 支持 KVM 和 libvirt
+      - 可作为云解决方案的后端
+      - 增量备份
+      - 灾难恢复（多站点异步复制）
 
-- 与 POSIX 兼容的语义
-- 元数据独立于数据
-- 动态重均衡
-- 子目录快照
-- 可配置的条带化
-- 有内核驱动支持
-- 有用户空间驱动支持
-- 可作为 NFS/CIFS 部署
-- 可用于 Hadoop （取代 HDFS ）
+   .. container:: column
 
-.. raw:: html
+      .. raw:: html
 
-	</td></tr><tr><td>
+          <h3>Ceph 文件系统</h3>
 
-详情见 `Ceph 对象存储`_\ 。
+      - 与 POSIX 兼容的语义
+      - 元数据独立于数据
+      - 动态重均衡
+      - 子目录快照
+      - 可配置的条带化
+      - 有内核驱动支持
+      - 有用户空间驱动支持
+      - 可作为 NFS/CIFS 部署
+      - 可用于 Hadoop （取代 HDFS ）
 
-.. raw:: html
+.. container:: columns-3
 
-	</td><td>
+   .. container:: column
 
-详情见 `Ceph 块设备`_\ 。
+      详情见 `Ceph 对象存储`_\ 。
 
-.. raw:: html
+   .. container:: column
 
-	</td><td>
+      详情见 `Ceph 块设备`_\ 。
 
-详情见 `Ceph 文件系统`_\ 。
+   .. container:: column
 
-.. raw::	html 
-
-	</td></tr></tbody></table>
+      详情见 `Ceph 文件系统`_\ 。
 
 它可靠性高、管理简单，并且是开源软件。 Ceph 的强大可以改变您\
 公司的 IT 基础架构和海量数据管理能力。想试试 Ceph 的话看\
@@ -107,5 +105,7 @@ Ceph 独一无二地在一个统一的系统中同时提供了\
    ceph-volume/index
    releases/general
    releases/index
+   security/index
    Ceph 术语 <glossary>
+   Tracing <jaegertracing/index>
    中文版翻译资源 <translation_cn/index>

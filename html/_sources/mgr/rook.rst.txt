@@ -1,7 +1,9 @@
 
-=============================
-与 Rook orchestrator 工具对接
-=============================
+.. _mgr-rook:
+
+====
+Rook
+====
 
 Rook (https://rook.io/) 是个编排工具，可在 Kubernetes 集群内\
 运行 Ceph 。

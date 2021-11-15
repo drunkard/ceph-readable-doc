@@ -142,7 +142,7 @@ for more than three exists.
 #. 删除 ``ceph.conf`` 对应条目。
 
 
-.. Removing Monitors from an Unhealthy Cluster
+.. _rados-mon-remove-from-unhealthy: 
 
 从不健康集群删除监视器
 ----------------------

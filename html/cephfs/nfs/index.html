@@ -42,7 +42,7 @@
     
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
-    <link rel="next" title="CephFS Exports over NFS" href="../fs-nfs-exports/" />
+    <link rel="next" title="分布式文件系统之上的应用程序最佳实践" href="../app-best-practices/" />
     <link rel="prev" title="ceph-mds – Ceph 元数据服务器守护进程" href="../../man/8/ceph-mds/" /> 
 </head>
 
@@ -142,30 +142,30 @@
 <li class="toctree-l2 current"><a class="reference internal" href="../#id1">管理</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../createfs/"> 创建 CephFS 文件系统</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../administration/"> 管理命令</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multifs/"> Creating Multiple File Systems</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../add-remove-mds/"> 配备、增加、删除 MDS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/">术语</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/#mds">MDS 守护进程的引用</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/#id3">故障切换的管理</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/#mds-standby-replay">热备的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/#mds-join-fs">配置 MDS 与文件系统的亲和性</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cache-size-limits/"> MDS 缓存尺寸的限制</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/"> MDS 配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/"> ceph-mds 手册页</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#"> 通过 NFS 导出</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id1">必要条件</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#nfs-ganesha-cephfs">配置 NFS-Ganesha 来导出 CephFS</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#nfsv4">用 NFSv4 客户端挂载</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id2">当前限制</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#exporting-over-nfs-clusters-deployed-using-rook">Exporting over NFS clusters deployed using rook</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../fs-nfs-exports/"> Export over NFS with volume nfs interface</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../app-best-practices/"> 应用最佳实践</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fs-volumes/"> FS 卷和子卷</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quota/"> CephFS 配额管理</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../health-messages/"> 健康消息</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../upgrading/">升级 MDS 集群</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../upgrading/#firefly-jewel">升级比 Firefly 老的文件系统，需过 Jewel 这个槛</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-top/"> CephFS Top Utility</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../snap-schedule/"> Scheduled Snapshots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-mirroring/"> CephFS Snapshot Mirroring</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../#id2">挂载 CephFS</a></li>
@@ -187,7 +187,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../security/">Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../jaegertracing/">Tracing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
 </ul>
 
@@ -226,60 +228,63 @@
 
   
   <div class="section" id="nfs">
-<h1>NFS<a class="headerlink" href="#nfs" title="Permalink to this headline">¶</a></h1>
-<p>CephFS namespaces can be exported over NFS protocol using the
-<a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/wiki">NFS-Ganesha NFS server</a>.</p>
+<span id="cephfs-nfs"></span><h1>NFS<a class="headerlink" href="#nfs" title="Permalink to this headline">¶</a></h1>
+<p>CephFS namespaces can be exported over NFS protocol using the <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/wiki">NFS-Ganesha NFS
+server</a>.  This document provides information on configuring NFS-Ganesha
+clusters manually.  The simplest and preferred way of managing NFS-Ganesha
+clusters and CephFS exports is using <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">nfs</span> <span class="pre">...</span></code> commands. See
+<a class="reference internal" href="../../mgr/nfs/"><span class="doc">CephFS &amp; RGW Exports over NFS</span></a> for more details. As the deployment is done using cephadm or
+rook.</p>
 <div class="section" id="id1">
 <h2>必要条件<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><p>Ceph file system (preferably latest stable luminous or higher versions)</p></li>
-<li><p>In the NFS server host machine, ‘libcephfs2’ (preferably latest stable
-luminous or higher), ‘nfs-ganesha’ and ‘nfs-ganesha-ceph’ packages (latest
-ganesha v2.5 stable or higher versions)</p></li>
+<li><p>Ceph file system</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">libcephfs2</span></code>, <code class="docutils literal notranslate"><span class="pre">nfs-ganesha</span></code> and <code class="docutils literal notranslate"><span class="pre">nfs-ganesha-ceph</span></code> packages on NFS
+server host machine.</p></li>
 <li><p>NFS-Ganesha server host connected to the Ceph public network</p></li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It is recommended to use 3.5 or later stable version of NFS-Ganesha
+packages with pacific (16.2.x) or later stable version of Ceph packages.</p>
+</div>
 </div>
 <div class="section" id="nfs-ganesha-cephfs">
 <h2>配置 NFS-Ganesha 来导出 CephFS<a class="headerlink" href="#nfs-ganesha-cephfs" title="Permalink to this headline">¶</a></h2>
-<p>NFS-Ganesha provides a File System Abstraction Layer (FSAL) to plug in different
-storage backends. <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a>
-is the plugin FSAL for CephFS. For each NFS-Ganesha export, FSAL_CEPH uses a
-libcephfs client, user-space CephFS client, to mount the CephFS path that
-NFS-Ganesha exports.</p>
-<p>Setting up NFS-Ganesha with CephFS, involves setting up NFS-Ganesha’s
-configuration file, and also setting up a Ceph configuration file and cephx
-access credentials for the Ceph clients created by NFS-Ganesha to access
-CephFS.</p>
+<p>NFS-Ganesha provides a File System Abstraction Layer (FSAL) to plug in
+different storage backends. <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a> is the plugin FSAL for CephFS. For
+each NFS-Ganesha export, <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a> uses a libcephfs client to mount the
+CephFS path that NFS-Ganesha exports.</p>
+<p>Setting up NFS-Ganesha with CephFS, involves setting up NFS-Ganesha’s and
+Ceph’s configuration file and CephX access credentials for the Ceph clients
+created by NFS-Ganesha to access CephFS.</p>
 <div class="section" id="nfs-ganesha">
 <h3>NFS-Ganesha 配置<a class="headerlink" href="#nfs-ganesha" title="Permalink to this headline">¶</a></h3>
-<p>A sample ganesha.conf configured with FSAL_CEPH can be found here,
-<a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ceph.conf">https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ceph.conf</a>.
-It is suitable for a standalone NFS-Ganesha server, or an active/passive
-configuration of NFS-Ganesha servers managed by some sort of clustering
-software (e.g., Pacemaker). Important details about the options are
-added as comments in the sample conf. There are options to do the following:</p>
+<p>Here’s a <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ceph.conf">sample ganesha.conf</a> configured with <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a>. It is suitable
+for a standalone NFS-Ganesha server, or an active/passive configuration of
+NFS-Ganesha servers, to be managed by some sort of clustering software
+(e.g., Pacemaker). Important details about the options are added as comments
+in the sample conf. There are options to do the following:</p>
 <ul class="simple">
 <li><p>minimize Ganesha caching wherever possible since the libcephfs clients
-(of FSAL_CEPH) also cache aggressively</p></li>
+(of <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a>) also cache aggressively</p></li>
 <li><p>read from Ganesha config files stored in RADOS objects</p></li>
 <li><p>store client recovery data in RADOS OMAP key-value interface</p></li>
 <li><p>mandate NFSv4.1+ access</p></li>
-<li><p>enable read delegations (need at least v13.0.1 ‘libcephfs2’ package
-and v2.6.0 stable ‘nfs-ganesha’ and ‘nfs-ganesha-ceph’ packages)</p></li>
+<li><p>enable read delegations (need at least v13.0.1 <code class="docutils literal notranslate"><span class="pre">libcephfs2</span></code> package
+and v2.6.0 stable <code class="docutils literal notranslate"><span class="pre">nfs-ganesha</span></code> and <code class="docutils literal notranslate"><span class="pre">nfs-ganesha-ceph</span></code> packages)</p></li>
 </ul>
 </div>
 <div class="section" id="libcephfs">
 <h3>给 libcephfs 客户端的配置<a class="headerlink" href="#libcephfs" title="Permalink to this headline">¶</a></h3>
-<p>libcephfs 客户端所需的 ceph.conf 配置包括：</p>
-<ul>
-<li><p>a [client] section with <code class="docutils literal notranslate"><span class="pre">mon_host</span></code> option set to let the clients connect
-to the Ceph cluster’s monitors, usually generated via <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span> <span class="pre">generate-minimal-conf</span></code>, e.g.,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="k">global</span><span class="p">]</span>
+<p><code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> for libcephfs clients includes a <code class="docutils literal notranslate"><span class="pre">[client]</span></code> section with
+<code class="docutils literal notranslate"><span class="pre">mon_host</span></code> option set to let the clients connect to the Ceph cluster’s
+monitors, usually generated via <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span> <span class="pre">generate-minimal-conf</span></code>.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="p">]</span>
         <span class="n">mon</span> <span class="n">host</span> <span class="o">=</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168.1.7</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168.1.7</span><span class="p">:</span><span class="mi">6789</span><span class="p">],</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168.1.8</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168.1.8</span><span class="p">:</span><span class="mi">6789</span><span class="p">],</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168.1.9</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168.1.9</span><span class="p">:</span><span class="mi">6789</span><span class="p">]</span>
 </pre></div>
 </div>
-</li>
-</ul>
 </div>
 </div>
 <div class="section" id="nfsv4">
@@ -288,219 +293,8 @@ to the Ceph cluster’s monitors, usually generated via <code class="docutils li
 to get the benefit of sessions.</p>
 <p>Conventions for mounting NFS resources are platform-specific. The
 following conventions work on Linux and some Unix platforms:</p>
-<p>From the command line:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">nfs</span> <span class="o">-</span><span class="n">o</span> <span class="n">nfsvers</span><span class="o">=</span><span class="mf">4.1</span><span class="p">,</span><span class="n">proto</span><span class="o">=</span><span class="n">tcp</span> <span class="o">&lt;</span><span class="n">ganesha</span><span class="o">-</span><span class="n">host</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">ganesha</span><span class="o">-</span><span class="n">pseudo</span><span class="o">-</span><span class="n">path</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">mount</span><span class="o">-</span><span class="n">point</span><span class="o">&gt;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mount -t nfs -o <span class="nv">nfsvers</span><span class="o">=</span><span class="m">4</span>.1,proto<span class="o">=</span>tcp &lt;ganesha-host-name&gt;:&lt;ganesha-pseudo-path&gt; &lt;mount-point&gt;
 </pre></div>
-</div>
-</div>
-<div class="section" id="id2">
-<h2>当前限制<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li><p>Per running ganesha daemon, FSAL_CEPH can only export one Ceph file system
-although multiple directories in a Ceph file system may be exported.</p></li>
-</ul>
-</div>
-<div class="section" id="exporting-over-nfs-clusters-deployed-using-rook">
-<h2>Exporting over NFS clusters deployed using rook<a class="headerlink" href="#exporting-over-nfs-clusters-deployed-using-rook" title="Permalink to this headline">¶</a></h2>
-<p>This tutorial assumes you have a kubernetes cluster deployed. If not <a class="reference external" href="https://kubernetes.io/docs/setup/learning-environment/minikube/">minikube</a> can be used
-to setup a single node cluster. In this tutorial minikube is used.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Configuration of this tutorial should not be used in a a real
-production cluster. For the purpose of simplification, the security
-aspects of Ceph are overlooked in this setup.</p>
-</div>
-<div class="section" id="rook-setup-and-cluster-deployment">
-<h3><a class="reference external" href="https://rook.io/docs/rook/master/ceph-quickstart.html">Rook</a> Setup And Cluster Deployment<a class="headerlink" href="#rook-setup-and-cluster-deployment" title="Permalink to this headline">¶</a></h3>
-<p>Clone the rook repository:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">rook</span><span class="o">/</span><span class="n">rook</span><span class="o">.</span><span class="n">git</span>
-</pre></div>
-</div>
-<p>Deploy the rook operator:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">cluster</span><span class="o">/</span><span class="n">examples</span><span class="o">/</span><span class="n">kubernetes</span><span class="o">/</span><span class="n">ceph</span>
-<span class="n">kubectl</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="n">common</span><span class="o">.</span><span class="n">yaml</span>
-<span class="n">kubectl</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="n">operator</span><span class="o">.</span><span class="n">yaml</span>
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Nautilus release or latest Ceph image should be used.</p>
-</div>
-<p>Before proceding check if the pods are running:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="n">get</span> <span class="n">pod</span>
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>For troubleshooting on any pod use:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="n">describe</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="n">pod</span> <span class="o">&lt;</span><span class="n">pod</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-</div>
-<p>If using minikube cluster change the <strong>dataDirHostPath</strong> to <strong>/data/rook</strong> in
-cluster-test.yaml file. This is to make sure data persists across reboots.</p>
-<p>Deploy the ceph cluster:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="n">cluster</span><span class="o">-</span><span class="n">test</span><span class="o">.</span><span class="n">yaml</span>
-</pre></div>
-</div>
-<p>To interact with Ceph Daemons, let’s deploy toolbox:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="o">./</span><span class="n">toolbox</span><span class="o">.</span><span class="n">yaml</span>
-</pre></div>
-</div>
-<p>Exec into the rook-ceph-tools pod:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l &quot;app=rook-ceph-tools&quot; -o jsonpath=&#39;{.items[0].metadata.name}&#39;) bash
-</pre></div>
-</div>
-<p>Check if you have one Ceph monitor, manager, OSD running and cluster is healthy:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph -s</span>
-   <span class="n">cluster</span><span class="p">:</span>
-        <span class="nb">id</span><span class="p">:</span>     <span class="mi">3</span><span class="n">a30f44c</span><span class="o">-</span><span class="n">a9ce</span><span class="o">-</span><span class="mi">4</span><span class="n">c26</span><span class="o">-</span><span class="mi">9</span><span class="n">f25</span><span class="o">-</span><span class="n">cc6fd23128d0</span>
-        <span class="n">health</span><span class="p">:</span> <span class="n">HEALTH_OK</span>
-
-   <span class="n">services</span><span class="p">:</span>
-        <span class="n">mon</span><span class="p">:</span> <span class="mi">1</span> <span class="n">daemons</span><span class="p">,</span> <span class="n">quorum</span> <span class="n">a</span> <span class="p">(</span><span class="n">age</span> <span class="mi">14</span><span class="n">m</span><span class="p">)</span>
-        <span class="n">mgr</span><span class="p">:</span> <span class="n">a</span><span class="p">(</span><span class="n">active</span><span class="p">,</span> <span class="n">since</span> <span class="mi">13</span><span class="n">m</span><span class="p">)</span>
-        <span class="n">osd</span><span class="p">:</span> <span class="mi">1</span> <span class="n">osds</span><span class="p">:</span> <span class="mi">1</span> <span class="n">up</span> <span class="p">(</span><span class="n">since</span> <span class="mi">13</span><span class="n">m</span><span class="p">),</span> <span class="mi">1</span> <span class="ow">in</span> <span class="p">(</span><span class="n">since</span> <span class="mi">13</span><span class="n">m</span><span class="p">)</span>
-
-   <span class="n">data</span><span class="p">:</span>
-        <span class="n">pools</span><span class="p">:</span>   <span class="mi">0</span> <span class="n">pools</span><span class="p">,</span> <span class="mi">0</span> <span class="n">pgs</span>
-        <span class="n">objects</span><span class="p">:</span> <span class="mi">0</span> <span class="n">objects</span><span class="p">,</span> <span class="mi">0</span> <span class="n">B</span>
-        <span class="n">usage</span><span class="p">:</span>   <span class="mf">5.0</span> <span class="n">GiB</span> <span class="n">used</span><span class="p">,</span> <span class="mi">11</span> <span class="n">GiB</span> <span class="o">/</span> <span class="mi">16</span> <span class="n">GiB</span> <span class="n">avail</span>
-        <span class="n">pgs</span><span class="p">:</span>
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Single monitor should never be used in real production deployment. As
-it can cause single point of failure.</p>
-</div>
-</div>
-<div class="section" id="create-a-ceph-file-system">
-<h3>Create a Ceph File System<a class="headerlink" href="#create-a-ceph-file-system" title="Permalink to this headline">¶</a></h3>
-<p>Using ceph-mgr volumes module, we will create a ceph file system:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph fs volume create myfs</span>
-</pre></div>
-</div>
-<p>By default replicated size for OSD is 3. Since we are using only one OSD. It can cause error. Let’s fix this up by setting replicated size to 1.:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph osd pool set cephfs.myfs.meta size 1</span>
-<span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph osd pool set cephfs.myfs.data size 1</span>
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The replicated size should never be less than 3 in real production deployment.</p>
-</div>
-<p>Check Cluster status again:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph -s</span>
-  <span class="n">cluster</span><span class="p">:</span>
-    <span class="nb">id</span><span class="p">:</span>     <span class="mi">3</span><span class="n">a30f44c</span><span class="o">-</span><span class="n">a9ce</span><span class="o">-</span><span class="mi">4</span><span class="n">c26</span><span class="o">-</span><span class="mi">9</span><span class="n">f25</span><span class="o">-</span><span class="n">cc6fd23128d0</span>
-    <span class="n">health</span><span class="p">:</span> <span class="n">HEALTH_OK</span>
-
-  <span class="n">services</span><span class="p">:</span>
-    <span class="n">mon</span><span class="p">:</span> <span class="mi">1</span> <span class="n">daemons</span><span class="p">,</span> <span class="n">quorum</span> <span class="n">a</span> <span class="p">(</span><span class="n">age</span> <span class="mi">27</span><span class="n">m</span><span class="p">)</span>
-    <span class="n">mgr</span><span class="p">:</span> <span class="n">a</span><span class="p">(</span><span class="n">active</span><span class="p">,</span> <span class="n">since</span> <span class="mi">27</span><span class="n">m</span><span class="p">)</span>
-    <span class="n">mds</span><span class="p">:</span> <span class="n">myfs</span><span class="p">:</span><span class="mi">1</span> <span class="p">{</span><span class="mi">0</span><span class="o">=</span><span class="n">myfs</span><span class="o">-</span><span class="n">a</span><span class="o">=</span><span class="n">up</span><span class="p">:</span><span class="n">active</span><span class="p">}</span> <span class="mi">1</span> <span class="n">up</span><span class="p">:</span><span class="n">standby</span><span class="o">-</span><span class="n">replay</span>
-    <span class="n">osd</span><span class="p">:</span> <span class="mi">1</span> <span class="n">osds</span><span class="p">:</span> <span class="mi">1</span> <span class="n">up</span> <span class="p">(</span><span class="n">since</span> <span class="mi">56</span><span class="n">m</span><span class="p">),</span> <span class="mi">1</span> <span class="ow">in</span> <span class="p">(</span><span class="n">since</span> <span class="mi">56</span><span class="n">m</span><span class="p">)</span>
-
-  <span class="n">data</span><span class="p">:</span>
-    <span class="n">pools</span><span class="p">:</span>   <span class="mi">2</span> <span class="n">pools</span><span class="p">,</span> <span class="mi">24</span> <span class="n">pgs</span>
-    <span class="n">objects</span><span class="p">:</span> <span class="mi">22</span> <span class="n">objects</span><span class="p">,</span> <span class="mf">2.2</span> <span class="n">KiB</span>
-    <span class="n">usage</span><span class="p">:</span>   <span class="mf">5.1</span> <span class="n">GiB</span> <span class="n">used</span><span class="p">,</span> <span class="mi">11</span> <span class="n">GiB</span> <span class="o">/</span> <span class="mi">16</span> <span class="n">GiB</span> <span class="n">avail</span>
-    <span class="n">pgs</span><span class="p">:</span>     <span class="mi">24</span> <span class="n">active</span><span class="o">+</span><span class="n">clean</span>
-
-  <span class="n">io</span><span class="p">:</span>
-    <span class="n">client</span><span class="p">:</span>   <span class="mi">639</span> <span class="n">B</span><span class="o">/</span><span class="n">s</span> <span class="n">rd</span><span class="p">,</span> <span class="mi">1</span> <span class="n">op</span><span class="o">/</span><span class="n">s</span> <span class="n">rd</span><span class="p">,</span> <span class="mi">0</span> <span class="n">op</span><span class="o">/</span><span class="n">s</span> <span class="n">wr</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="create-a-nfs-ganesha-server-cluster">
-<h3>Create a NFS-Ganesha Server Cluster<a class="headerlink" href="#create-a-nfs-ganesha-server-cluster" title="Permalink to this headline">¶</a></h3>
-<p>Add Storage for NFS-Ganesha Servers to prevent recovery conflicts:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph osd pool create nfs-ganesha 64</span>
-<span class="n">pool</span> <span class="s1">&#39;nfs-ganesha&#39;</span> <span class="n">created</span>
-<span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph osd pool set nfs-ganesha size 1</span>
-<span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph orch nfs add mynfs nfs-ganesha ganesha</span>
-</pre></div>
-</div>
-<p>Here we have created a NFS-Ganesha cluster called “mynfs” in “ganesha”
-namespace with “nfs-ganesha” OSD pool.</p>
-<p>Scale out NFS-Ganesha cluster:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">root</span><span class="nd">@minikube</span> <span class="o">/</span><span class="p">]</span><span class="c1"># ceph orch nfs update mynfs 2</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="configure-nfs-ganesha-exports">
-<h3>Configure NFS-Ganesha Exports<a class="headerlink" href="#configure-nfs-ganesha-exports" title="Permalink to this headline">¶</a></h3>
-<p>Initially rook creates ClusterIP service for the dashboard. With this service
-type, only the pods in same kubernetes cluster can access it.</p>
-<p>Expose Ceph Dashboard port:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="n">patch</span> <span class="n">service</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="o">-</span><span class="n">p</span> <span class="s1">&#39;{&quot;spec&quot;:{&quot;type&quot;: &quot;NodePort&quot;}}&#39;</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">mgr</span><span class="o">-</span><span class="n">dashboard</span>
-<span class="n">kubectl</span> <span class="n">get</span> <span class="n">service</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">mgr</span><span class="o">-</span><span class="n">dashboard</span>
-<span class="n">NAME</span>                      <span class="n">TYPE</span>       <span class="n">CLUSTER</span><span class="o">-</span><span class="n">IP</span>       <span class="n">EXTERNAL</span><span class="o">-</span><span class="n">IP</span>   <span class="n">PORT</span><span class="p">(</span><span class="n">S</span><span class="p">)</span>          <span class="n">AGE</span>
-<span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">mgr</span><span class="o">-</span><span class="n">dashboard</span>   <span class="n">NodePort</span>   <span class="mf">10.108.183.148</span>   <span class="o">&lt;</span><span class="n">none</span><span class="o">&gt;</span>        <span class="mi">8443</span><span class="p">:</span><span class="mi">31727</span><span class="o">/</span><span class="n">TCP</span>   <span class="mi">117</span><span class="n">m</span>
-</pre></div>
-</div>
-<p>This makes the dashboard reachable outside kubernetes cluster and the service
-type is changed to NodePort service.</p>
-<p>Create JSON file for dashboard:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat ~/export.json
-{
-      &quot;cluster_id&quot;: &quot;mynfs&quot;,
-      &quot;path&quot;: &quot;/&quot;,
-      &quot;fsal&quot;: {&quot;name&quot;: &quot;CEPH&quot;, &quot;user_id&quot;:&quot;admin&quot;, &quot;fs_name&quot;: &quot;myfs&quot;, &quot;sec_label_xattr&quot;: null},
-      &quot;pseudo&quot;: &quot;/cephfs&quot;,
-      &quot;tag&quot;: null,
-      &quot;access_type&quot;: &quot;RW&quot;,
-      &quot;squash&quot;: &quot;no_root_squash&quot;,
-      &quot;protocols&quot;: [4],
-      &quot;transports&quot;: [&quot;TCP&quot;],
-      &quot;security_label&quot;: true,
-      &quot;daemons&quot;: [&quot;mynfs.a&quot;, &quot;mynfs.b&quot;],
-      &quot;clients&quot;: []
-}
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Don’t use this JSON file for real production deployment. As here the
-ganesha servers are given client-admin access rights.</p>
-</div>
-<p>We need to download and run this <a class="reference external" href="https://raw.githubusercontent.com/ceph/ceph/master/src/pybind/mgr/dashboard/run-backend-rook-api-request.sh">script</a>
-to pass the JSON file contents. Dashboard creates NFS-Ganesha export file
-based on this JSON file.:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">run</span><span class="o">-</span><span class="n">backend</span><span class="o">-</span><span class="n">rook</span><span class="o">-</span><span class="n">api</span><span class="o">-</span><span class="n">request</span><span class="o">.</span><span class="n">sh</span> <span class="n">POST</span> <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">nfs</span><span class="o">-</span><span class="n">ganesha</span><span class="o">/</span><span class="n">export</span> <span class="s2">&quot;$(cat &lt;json-file-path&gt;)&quot;</span>
-</pre></div>
-</div>
-<p>Expose the NFS Servers:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kubectl</span> <span class="n">patch</span> <span class="n">service</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="o">-</span><span class="n">p</span> <span class="s1">&#39;{&quot;spec&quot;:{&quot;type&quot;: &quot;NodePort&quot;}}&#39;</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">nfs</span><span class="o">-</span><span class="n">mynfs</span><span class="o">-</span><span class="n">a</span>
-<span class="n">kubectl</span> <span class="n">patch</span> <span class="n">service</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="o">-</span><span class="n">p</span> <span class="s1">&#39;{&quot;spec&quot;:{&quot;type&quot;: &quot;NodePort&quot;}}&#39;</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">nfs</span><span class="o">-</span><span class="n">mynfs</span><span class="o">-</span><span class="n">b</span>
-<span class="n">kubectl</span> <span class="n">get</span> <span class="n">services</span> <span class="o">-</span><span class="n">n</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">nfs</span><span class="o">-</span><span class="n">mynfs</span><span class="o">-</span><span class="n">a</span> <span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">nfs</span><span class="o">-</span><span class="n">mynfs</span><span class="o">-</span><span class="n">b</span>
-<span class="n">NAME</span>                    <span class="n">TYPE</span>       <span class="n">CLUSTER</span><span class="o">-</span><span class="n">IP</span>       <span class="n">EXTERNAL</span><span class="o">-</span><span class="n">IP</span>   <span class="n">PORT</span><span class="p">(</span><span class="n">S</span><span class="p">)</span>          <span class="n">AGE</span>
-<span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">nfs</span><span class="o">-</span><span class="n">mynfs</span><span class="o">-</span><span class="n">a</span>   <span class="n">NodePort</span>   <span class="mf">10.101.186.111</span>   <span class="o">&lt;</span><span class="n">none</span><span class="o">&gt;</span>        <span class="mi">2049</span><span class="p">:</span><span class="mi">31013</span><span class="o">/</span><span class="n">TCP</span>   <span class="mi">72</span><span class="n">m</span>
-<span class="n">rook</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">nfs</span><span class="o">-</span><span class="n">mynfs</span><span class="o">-</span><span class="n">b</span>   <span class="n">NodePort</span>   <span class="mf">10.99.216.92</span>     <span class="o">&lt;</span><span class="n">none</span><span class="o">&gt;</span>        <span class="mi">2049</span><span class="p">:</span><span class="mi">31587</span><span class="o">/</span><span class="n">TCP</span>   <span class="mi">63</span><span class="n">m</span>
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Ports are chosen at random by Kubernetes from a certain range.
-Specific port number can be added to nodePort field in spec.</p>
-</div>
-</div>
-<div class="section" id="testing-access-to-nfs-servers">
-<h3>Testing access to NFS Servers<a class="headerlink" href="#testing-access-to-nfs-servers" title="Permalink to this headline">¶</a></h3>
-<p>Open a root shell on the host and mount one of the NFS servers:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mkdir -p /mnt/rook
-mount -t nfs -o port=31013 $(minikube ip):/cephfs /mnt/rook
-</pre></div>
-</div>
-<p>Normal file operations can be performed on /mnt/rook if the mount is successful.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>If minikube is used then VM host is the only client for the servers.
-In a real kubernetes cluster, multiple hosts can be used as clients,
-only when kubernetes cluster node IP addresses are accessible to
-them.</p>
-</div>
 </div>
 </div>
 </div>
@@ -512,7 +306,7 @@ them.</p>
           </div>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="../fs-nfs-exports/" class="btn btn-neutral float-right" title="CephFS Exports over NFS" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../app-best-practices/" class="btn btn-neutral float-right" title="分布式文件系统之上的应用程序最佳实践" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
         <a href="../../man/8/ceph-mds/" class="btn btn-neutral float-left" title="ceph-mds – Ceph 元数据服务器守护进程" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 

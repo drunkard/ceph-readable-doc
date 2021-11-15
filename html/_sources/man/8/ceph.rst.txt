@@ -23,7 +23,7 @@
 
 | **ceph** **df** *{detail}*
 
-| **ceph** **fs** [ *ls* \| *new* \| *reset* \| *rm* ] ...
+| **ceph** **fs** [ *ls* \| *new* \| *reset* \| *rm* \| *authorize* ] ...
 
 | **ceph** **fsid**
 
@@ -383,6 +383,14 @@ fs
 用法： ::
 
 	ceph fs rm <fs_name> {--yes-i-really-mean-it}
+
+Subcommand ``authorize`` creates a new client that will be authorized for the
+given path in ``<fs_name>``. Pass ``/`` to authorize for the entire FS.
+``<perms>`` below can be ``r``, ``rw`` or ``rwp``.
+
+Usage::
+
+    ceph fs authorize <fs_name> client.<client_id> <path> <perms> [<path> <perms>...]
 
 
 fsid
@@ -1176,12 +1184,15 @@ pair with the given application for the given pool.
 	ceph osd reweight-by-pg {<int[100-]>} {<poolname> [<poolname...]}
 	{--no-increasing}
 
-子命令 ``reweight-by-utilization`` 按利用率调整 OSD 的权重，还需考虑负载比\
-率，默认 120 。
+子命令 ``reweight-by-utilization`` 按利用率调整 OSD 的权重。\
+它只调整利用率超过平均值的那些 OSD 们，例如，默认情况下，给\
+那些超过平均值 20% 的 OSD 们最多调整 120% 。
+[overload-threshold, 默认值 120 [max_weight_change, 默认值 0.05
+[max_osds_to_adjust, 默认值 4]]] 
 
 用法： ::
 
-	ceph osd reweight-by-utilization {<int[100-]>}
+	ceph osd reweight-by-utilization {<int[100-]> {<float[0.0-]> {<int[0-]>}}}
 	{--no-increasing}
 
 子命令 ``rm`` 删除 OSD 运行图中的 OSD ，其编号为 <id> [<id>...] 。

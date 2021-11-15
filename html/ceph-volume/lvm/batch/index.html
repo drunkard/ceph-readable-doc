@@ -165,6 +165,8 @@
 <li class="toctree-l4"><a class="reference internal" href="../activate/"><code class="docutils literal notranslate"><span class="pre">activate</span></code></a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">batch</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ceph-volume-lvm-batch-report">报表</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sizing">Sizing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#idempotency-and-disk-replacements">Idempotency and disk replacements</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../encryption/">加密</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../prepare/"><code class="docutils literal notranslate"><span class="pre">prepare</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../create/"><code class="docutils literal notranslate"><span class="pre">create</span></code></a></li>
@@ -186,7 +188,9 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/general/">Ceph 版本（总目录）</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../security/">Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../jaegertracing/">Tracing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
 </ul>
 
@@ -226,25 +230,26 @@
   
   <div class="section" id="batch">
 <span id="ceph-volume-lvm-batch"></span><h1><code class="docutils literal notranslate"><span class="pre">batch</span></code><a class="headerlink" href="#batch" title="Permalink to this headline">¶</a></h1>
-<p>This subcommand allows for multiple OSDs to be created at the same time given
-an input of devices. Depending on the device type (spinning drive, or solid
-state), the internal engine will decide the best approach to create the OSDs.</p>
-<p>This decision abstracts away the many nuances when creating an OSD: how large
-should a <code class="docutils literal notranslate"><span class="pre">block.db</span></code> be? How can one mix a solid state device with spinning
-devices in an efficient way?</p>
-<p>The process is similar to <a class="reference internal" href="../create/#ceph-volume-lvm-create"><span class="std std-ref">create</span></a>, and will do the
-preparation and activation at once, following the same workflow for each OSD.
-However, If the <code class="docutils literal notranslate"><span class="pre">--prepare</span></code> flag is passed then only the prepare step is taken
-and the OSDs are not activated.</p>
+<p>The subcommand allows to create multiple OSDs at the same time given
+an input of devices. The <code class="docutils literal notranslate"><span class="pre">batch</span></code> subcommand is closely related to
+drive-groups. One individual drive group specification translates to a single
+<code class="docutils literal notranslate"><span class="pre">batch</span></code> invocation.</p>
+<p>The subcommand is based to <a class="reference internal" href="../create/#ceph-volume-lvm-create"><span class="std std-ref">create</span></a>, and will use the very
+same code path. All <code class="docutils literal notranslate"><span class="pre">batch</span></code> does is to calculate the appropriate sizes of all
+volumes and skip over already created volumes.</p>
 <p>All the features that <code class="docutils literal notranslate"><span class="pre">ceph-volume</span> <span class="pre">lvm</span> <span class="pre">create</span></code> supports, like <code class="docutils literal notranslate"><span class="pre">dmcrypt</span></code>,
 avoiding <code class="docutils literal notranslate"><span class="pre">systemd</span></code> units from starting, defining bluestore or filestore,
-are supported. Any fine-grained option that may affect a single OSD is not
-supported, for example: specifying where journals should be placed.</p>
-<div class="section" id="bluestore">
-<span id="ceph-volume-lvm-batch-bluestore"></span><h2><code class="docutils literal notranslate"><span class="pre">bluestore</span></code><a class="headerlink" href="#bluestore" title="Permalink to this headline">¶</a></h2>
-<p>The <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a> objectstore (the default) is used when creating multiple OSDs
-with the <code class="docutils literal notranslate"><span class="pre">batch</span></code> sub-command. It allows a few different scenarios depending
-on the input of devices:</p>
+are supported.</p>
+<div class="section" id="automatic-sorting-of-disks">
+<span id="ceph-volume-lvm-batch-bluestore"></span><h2>Automatic sorting of disks<a class="headerlink" href="#automatic-sorting-of-disks" title="Permalink to this headline">¶</a></h2>
+<p>If <code class="docutils literal notranslate"><span class="pre">batch</span></code> receives only a single list of data devices and other options are
+passed , <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> will auto-sort disks by its rotational
+property and use non-rotating disks for <code class="docutils literal notranslate"><span class="pre">block.db</span></code> or <code class="docutils literal notranslate"><span class="pre">journal</span></code> depending
+on the objectstore used. If all devices are to be used for standalone OSDs,
+no matter if rotating or solid state, pass <code class="docutils literal notranslate"><span class="pre">--no-auto</span></code>.
+For example assuming <a class="reference internal" href="../../../glossary/#term-bluestore"><span class="xref std std-term">bluestore</span></a> is used and <code class="docutils literal notranslate"><span class="pre">--no-auto</span></code> is not passed,
+the deprecated behavior would deploy the following, depending on the devices
+passed:</p>
 <ol class="arabic simple">
 <li><p>Devices are all spinning HDDs: 1 OSD is created per device</p></li>
 <li><p>Devices are all SSDs: 2 OSDs are created per device</p></li>
@@ -254,100 +259,138 @@ the <code class="docutils literal notranslate"><span class="pre">block.db</span>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Although operations in <code class="docutils literal notranslate"><span class="pre">ceph-volume</span> <span class="pre">lvm</span> <span class="pre">create</span></code> allow usage of
-<code class="docutils literal notranslate"><span class="pre">block.wal</span></code> it isn’t supported with the <code class="docutils literal notranslate"><span class="pre">batch</span></code> sub-command</p>
+<code class="docutils literal notranslate"><span class="pre">block.wal</span></code> it isn’t supported with the <code class="docutils literal notranslate"><span class="pre">auto</span></code> behavior.</p>
 </div>
-</div>
-<div class="section" id="filestore">
-<span id="ceph-volume-lvm-batch-filestore"></span><h2><code class="docutils literal notranslate"><span class="pre">filestore</span></code><a class="headerlink" href="#filestore" title="Permalink to this headline">¶</a></h2>
-<p>The <a class="reference internal" href="../../../glossary/#term-filestore"><span class="xref std std-term">filestore</span></a> objectstore can be used when creating multiple OSDs
-with the <code class="docutils literal notranslate"><span class="pre">batch</span></code> sub-command. It allows two different scenarios depending
-on the input of devices:</p>
-<ol class="arabic simple">
-<li><p>Devices are all the same type (for example all spinning HDD or all SSDs):
-1 OSD is created per device, collocating the journal in the same HDD.</p></li>
-<li><p>Devices are a mix of HDDs and SSDs: data is placed on the spinning device,
-while the journal is created on the SSD using the sizing options from
-ceph.conf and falling back to the default journal size of 5GB.</p></li>
-</ol>
-<p>When a mix of solid and spinning devices are used, <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> will try to
-detect existing volume groups on the solid devices. If a VG is found, it will
-try to create the logical volume from there, otherwise raising an error if
-space is insufficient.</p>
-<p>If a raw solid device is used along with a device that has a volume group in
-addition to some spinning devices, <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> will try to extend the
-existing volume group and then create a logical volume.</p>
+<p>This default auto-sorting behavior is now DEPRECATED and will be changed in future releases.
+Instead devices are not automatically sorted unless the <code class="docutils literal notranslate"><span class="pre">--auto</span></code> option is passed</p>
+<dl class="simple">
+<dt>It is recommended to make use of the explicit device lists for <code class="docutils literal notranslate"><span class="pre">block.db</span></code>,</dt><dd><p><code class="docutils literal notranslate"><span class="pre">block.wal</span></code> and <code class="docutils literal notranslate"><span class="pre">journal</span></code>.</p>
+</dd>
+</dl>
 </div>
 </div>
 <div class="section" id="ceph-volume-lvm-batch-report">
 <span id="id1"></span><h1>报表<a class="headerlink" href="#ceph-volume-lvm-batch-report" title="Permalink to this headline">¶</a></h1>
-<p>When a call is received to create OSDs, the tool will prompt the user to
-continue if the pre-computed output is acceptable. This output is useful to
-understand the outcome of the received devices. Once confirmation is accepted,
-the process continues.</p>
-<p>Although prompts are good to understand outcomes, it is incredibly useful to
-try different inputs to find the best product possible. With the <code class="docutils literal notranslate"><span class="pre">--report</span></code>
-flag, one can prevent any actual operations and just verify outcomes from
-inputs.</p>
+<p>By default <code class="docutils literal notranslate"><span class="pre">batch</span></code> will print a report of the computed OSD layout and ask the
+user to confirm. This can be overridden by passing <code class="docutils literal notranslate"><span class="pre">--yes</span></code>.</p>
+<p>If one wants to try out several invocations with being asked to deploy
+<code class="docutils literal notranslate"><span class="pre">--report</span></code> can be passed. <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> will exit after printing the report.</p>
+<p>Consider the following invocation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm batch --report /dev/sdb /dev/sdc /dev/sdd --db-devices /dev/nvme0n1
+</pre></div>
+</div>
+<p>This will deploy three OSDs with external <code class="docutils literal notranslate"><span class="pre">db</span></code> and <code class="docutils literal notranslate"><span class="pre">wal</span></code> volumes on
+an NVME device.</p>
 <p><strong>易读的报表</strong>
-For two spinning devices, this is how the <code class="docutils literal notranslate"><span class="pre">pretty</span></code> report (the default) would
-look:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm batch --report /dev/sdb /dev/sdc
+The <code class="docutils literal notranslate"><span class="pre">pretty</span></code> report format (the default) would
+look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm batch --report /dev/sdb /dev/sdc /dev/sdd --db-devices /dev/nvme0n1
+--&gt; passed data devices: 3 physical, 0 LVM
+--&gt; relative data size: 1.0
+--&gt; passed block_db devices: 1 physical, 0 LVM
 
-Total OSDs: 2
+Total OSDs: 3
 
-  Type            Path                      LV Size         % of device
---------------------------------------------------------------------------------
-  [data]          /dev/sdb                  10.74 GB        100%
---------------------------------------------------------------------------------
-  [data]          /dev/sdc                  10.74 GB        100%
+  Type            Path                                                    LV Size         % of device
+----------------------------------------------------------------------------------------------------
+  data            /dev/sdb                                              300.00 GB         100.00%
+  block_db        /dev/nvme0n1                                           66.67 GB         33.33%
+----------------------------------------------------------------------------------------------------
+  data            /dev/sdc                                              300.00 GB         100.00%
+  block_db        /dev/nvme0n1                                           66.67 GB         33.33%
+----------------------------------------------------------------------------------------------------
+  data            /dev/sdd                                              300.00 GB         100.00%
+  block_db        /dev/nvme0n1                                           66.67 GB         33.33%
 </pre></div>
 </div>
 <p><strong>JSON 格式的报表</strong>
-Reporting can produce a richer output with <code class="docutils literal notranslate"><span class="pre">JSON</span></code>, which gives a few more
-hints on sizing. This feature might be better for other tooling to consume
-information that will need to be transformed.</p>
-<p>For two spinning devices, this is how the <code class="docutils literal notranslate"><span class="pre">JSON</span></code> report would look:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm batch --report --format=json /dev/sdb /dev/sdc
-{
-    &quot;osds&quot;: [
-        {
-            &quot;block.db&quot;: {},
-            &quot;data&quot;: {
-                &quot;human_readable_size&quot;: &quot;10.74 GB&quot;,
-                &quot;parts&quot;: 1,
-                &quot;path&quot;: &quot;/dev/sdb&quot;,
-                &quot;percentage&quot;: 100,
-                &quot;size&quot;: 11534336000.0
-            }
-        },
-        {
-            &quot;block.db&quot;: {},
-            &quot;data&quot;: {
-                &quot;human_readable_size&quot;: &quot;10.74 GB&quot;,
-                &quot;parts&quot;: 1,
-                &quot;path&quot;: &quot;/dev/sdc&quot;,
-                &quot;percentage&quot;: 100,
-                &quot;size&quot;: 11534336000.0
-            }
-        }
-    ],
-    &quot;vgs&quot;: [
-        {
-            &quot;devices&quot;: [
-                &quot;/dev/sdb&quot;
-            ],
-            &quot;parts&quot;: 1
-        },
-        {
-            &quot;devices&quot;: [
-                &quot;/dev/sdc&quot;
-            ],
-            &quot;parts&quot;: 1
-        }
-    ]
-}
+Reporting can produce a structured output with <code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">json</span></code> or
+<code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">json-pretty</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm batch --report --format json-pretty /dev/sdb /dev/sdc /dev/sdd --db-devices /dev/nvme0n1
+--&gt; passed data devices: 3 physical, 0 LVM
+--&gt; relative data size: 1.0
+--&gt; passed block_db devices: 1 physical, 0 LVM
+[
+    {
+        &quot;block_db&quot;: &quot;/dev/nvme0n1&quot;,
+        &quot;block_db_size&quot;: &quot;66.67 GB&quot;,
+        &quot;data&quot;: &quot;/dev/sdb&quot;,
+        &quot;data_size&quot;: &quot;300.00 GB&quot;,
+        &quot;encryption&quot;: &quot;None&quot;
+    },
+    {
+        &quot;block_db&quot;: &quot;/dev/nvme0n1&quot;,
+        &quot;block_db_size&quot;: &quot;66.67 GB&quot;,
+        &quot;data&quot;: &quot;/dev/sdc&quot;,
+        &quot;data_size&quot;: &quot;300.00 GB&quot;,
+        &quot;encryption&quot;: &quot;None&quot;
+    },
+    {
+        &quot;block_db&quot;: &quot;/dev/nvme0n1&quot;,
+        &quot;block_db_size&quot;: &quot;66.67 GB&quot;,
+        &quot;data&quot;: &quot;/dev/sdd&quot;,
+        &quot;data_size&quot;: &quot;300.00 GB&quot;,
+        &quot;encryption&quot;: &quot;None&quot;
+    }
+]
 </pre></div>
 </div>
+</div>
+<div class="section" id="sizing">
+<h1>Sizing<a class="headerlink" href="#sizing" title="Permalink to this headline">¶</a></h1>
+<p>When no sizing arguments are passed, <cite>ceph-volume</cite> will derive the sizing from
+the passed device lists (or the sorted lists when using the automatic sorting).
+<cite>ceph-volume batch</cite> will attempt to fully utilize a device’s available capacity.
+Relying on automatic sizing is recommended.</p>
+<p>If one requires a different sizing policy for wal, db or journal devices,
+<cite>ceph-volume</cite> offers implicit and explicit sizing rules.</p>
+<div class="section" id="implicit-sizing">
+<h2>Implicit sizing<a class="headerlink" href="#implicit-sizing" title="Permalink to this headline">¶</a></h2>
+<p>Scenarios in which either devices are under-comitted or not all data devices are
+currently ready for use (due to a broken disk for example), one can still rely
+on <cite>ceph-volume</cite> automatic sizing.
+Users can provide hints to <cite>ceph-volume</cite> as to how many data devices should have
+their external volumes on a set of fast devices. These options are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--block-db-slots</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--block-wal-slots</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--journal-slots</span></code></p></li>
+</ul>
+<p>For example, consider an OSD host that is supposed to contain 5 data devices and
+one device for wal/db volumes. However, one data device is currently broken and
+is being replaced. Instead of calculating the explicit sizes for the wal/db
+volume, one can simply call:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm batch --report /dev/sdb /dev/sdc /dev/sdd /dev/sde --db-devices /dev/nvme0n1 --block-db-slots 5
+</pre></div>
+</div>
+</div>
+<div class="section" id="explicit-sizing">
+<h2>Explicit sizing<a class="headerlink" href="#explicit-sizing" title="Permalink to this headline">¶</a></h2>
+<p>It is also possible to provide explicit sizes to <cite>ceph-volume</cite> via the arguments</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--block-db-size</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--block-wal-size</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--journal-size</span></code></p></li>
+</ul>
+<p><cite>ceph-volume</cite> will try to satisfy the requested sizes given the passed disks. If
+this is not possible, no OSDs will be deployed.</p>
+</div>
+</div>
+<div class="section" id="idempotency-and-disk-replacements">
+<h1>Idempotency and disk replacements<a class="headerlink" href="#idempotency-and-disk-replacements" title="Permalink to this headline">¶</a></h1>
+<p><cite>ceph-volume lvm batch</cite> intends to be idempotent, i.e. calling the same command
+repeatedly must result in the same outcome. For example calling:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm batch --report /dev/sdb /dev/sdc /dev/sdd --db-devices /dev/nvme0n1
+</pre></div>
+</div>
+<p>will result in three deployed OSDs (if all disks were available). Calling this
+command again, you will still end up with three OSDs and ceph-volume will exit
+with return code 0.</p>
+<p>Suppose /dev/sdc goes bad and needs to be replaced. After destroying the OSD and
+replacing the hardware, you can again call the same command and <cite>ceph-volume</cite>
+will detect that only two out of the three wanted OSDs are setup and re-create
+the missing OSD.</p>
+<p>This idempotency notion is tightly coupled to and extensively used by <a class="reference internal" href="../../../cephadm/services/osd/#drivegroups"><span class="std std-ref">Advanced OSD Service Specifications</span></a>.</p>
 </div>
 
 

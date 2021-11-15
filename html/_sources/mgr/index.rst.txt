@@ -32,7 +32,7 @@ mgr 启动。
     Alerts 模块 <alerts>
     DiskPrediction 模块 <diskprediction>
     localpool 模块 <localpool>
-    REST 风格模块 <restful>
+    RESTful 模块 <restful>
     Zabbix 模块 <zabbix>
     Prometheus 模块 <prometheus>
     Influx 模块 <influx>

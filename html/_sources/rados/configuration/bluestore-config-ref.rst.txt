@@ -133,19 +133,32 @@ drive.
 调整尺寸
 ========
 When using a :ref:`mixed spinning and solid drive setup
-<bluestore-mixed-device-config>` it is important to make a large-enough
-``block.db`` logical volume for Bluestore. Generally, ``block.db`` should have
+<bluestore-mixed-device-config>` it is important to make a large enough
+``block.db`` logical volume for BlueStore. Generally, ``block.db`` should have
 *as large as possible* logical volumes.
 
 The general recommendation is to have ``block.db`` size in between 1% to 4%
 of ``block`` size. For RGW workloads, it is recommended that the ``block.db``
-size isn't smaller than 4% of ``block``, because RGW heavily uses it to store its
-metadata. For example, if the ``block`` size is 1TB, then ``block.db`` shouldn't
+size isn't smaller than 4% of ``block``, because RGW heavily uses it to store
+metadata (omap keys). For example, if the ``block`` size is 1TB, then ``block.db`` shouldn't
 be less than 40GB. For RBD workloads, 1% to 2% of ``block`` size is usually enough.
 
-If *not* using a mix of fast and slow devices, it isn't required to create
-separate logical volumes for ``block.db`` (or ``block.wal``). Bluestore will
-automatically manage these within the space of ``block``.
+In older releases, internal level sizes mean that the DB can fully utilize only
+specific partition / LV sizes that correspond to sums of L0, L0+L1, L1+L2,
+etc. sizes, which with default settings means roughly 3 GB, 30 GB, 300 GB, and
+so forth.  Most deployments will not substantially benefit from sizing to
+accomodate L3 and higher, though DB compaction can be facilitated by doubling
+these figures to 6GB, 60GB, and 600GB.
+
+Improvements in releases beginning with Nautilus 14.2.12 and Octopus 15.2.6
+enable better utilization of arbitrary DB device sizes, and the Pacific
+release brings experimental dynamic level support.  Users of older releases may
+thus wish to plan ahead by provisioning larger DB devices today so that their
+benefits may be realized with future upgrades.
+
+When *not* using a mix of fast and slow devices, it isn't required to create
+separate logical volumes for ``block.db`` (or ``block.wal``). BlueStore will
+automatically colocate these within the space of ``block``.
 
 
 .. Automatic Cache Sizing
@@ -153,72 +166,24 @@ automatically manage these within the space of ``block``.
 自动调整缓存尺寸
 ================
 
-Bluestore can be configured to automatically resize it's caches when TCMalloc
+BlueStore can be configured to automatically resize its caches when TCMalloc
 is configured as the memory allocator and the ``bluestore_cache_autotune``
-setting is enabled.  This option is currently enabled by default.  Bluestore
+setting is enabled.  This option is currently enabled by default.  BlueStore
 will attempt to keep OSD heap memory usage under a designated target size via
 the ``osd_memory_target`` configuration option.  This is a best effort
 algorithm and caches will not shrink smaller than the amount specified by
 ``osd_memory_cache_min``.  Cache ratios will be chosen based on a hierarchy
-of priorities.  If priority information is not availabe, the
+of priorities.  If priority information is not available, the
 ``bluestore_cache_meta_ratio`` and ``bluestore_cache_kv_ratio`` options are
 used as fallbacks.
 
-``bluestore_cache_autotune``
-
-:描述: Automatically tune the ratios assigned to different bluestore caches while respecting minimum values.
-:类型: Boolean
-:Requered: Yes
-:默认值: ``True``
-
-``osd_memory_target``
-
-:描述: When tcmalloc is available and cache autotuning is enabled, try to keep this many bytes mapped in memory. Note: This may not exactly match the RSS memory usage of the process.  While the total amount of heap memory mapped by the process should generally stay close to this target, there is no guarantee that the kernel will actually reclaim  memory that has been unmapped.  During initial developement, it was found that some kernels result in the OSD's RSS Memory exceeding the mapped memory by up to 20%.  It is hypothesised however, that the kernel generally may be more aggressive about reclaiming unmapped memory when there is a high amount of memory pressure.  Your mileage may vary.
-:类型: Unsigned Integer
-:Requered: Yes
-:默认值: ``4294967296``
-
-``bluestore_cache_autotune_chunk_size``
-
-:描述: The chunk size in bytes to allocate to caches when cache autotune is enabled.  When the autotuner assigns memory to different caches, it will allocate memory in chunks.  This is done to avoid evictions when there are minor fluctuations in the heap size or autotuned cache ratios.
-:类型: Unsigned Integer
-:Requered: No
-:默认值: ``33554432``
-
-``bluestore_cache_autotune_interval``
-
-:描述: The number of seconds to wait between rebalances when cache autotune is enabled.  This setting changes how quickly the ratios of the difference caches are recomputed.  Note:  Setting the interval too small can result in high CPU usage and lower performance.
-:类型: Float
-:Requered: No
-:默认值: ``5``
-
-``osd_memory_base``
-
-:描述: When tcmalloc and cache autotuning is enabled, estimate the minimum amount of memory in bytes the OSD will need.  This is used to help the autotuner estimate the expected aggregate memory consumption of the caches.
-:类型: Unsigned Interger
-:是否必需: No
-:默认值: ``805306368``
-
-``osd_memory_expected_fragmentation``
-
-:描述: When tcmalloc and cache autotuning is enabled, estimate the percent of memory fragmentation.  This is used to help the autotuner estimate the expected aggregate memory consumption of the caches.
-:类型: Float
-:是否必需: No
-:默认值: ``0.15``
-
-``osd_memory_cache_min``
-
-:描述: When tcmalloc and cache autotuning is enabled, set the minimum amount of memory used for caches. Note: Setting this value too low can result in significant cache thrashing.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``134217728``
-
-``osd_memory_cache_resize_interval``
-
-:描述: When tcmalloc and cache autotuning is enabled, wait this many seconds between resizing caches.  This setting changes the total amount of memory available for bluestore to use for caching.  Note: Setting the interval too small can result in memory allocator thrashing and lower performance.
-:类型: Float
-:是否必需: No
-:默认值: ``1``
+.. confval:: bluestore_cache_autotune
+.. confval:: osd_memory_target
+.. confval:: bluestore_cache_autotune_interval
+.. confval:: osd_memory_base
+.. confval:: osd_memory_expected_fragmentation
+.. confval:: osd_memory_cache_min
+.. confval:: osd_memory_cache_resize_interval
 
 
 .. Manual Cache Sizing
@@ -255,47 +220,11 @@ device) as well as the meta and kv ratios.
 The data fraction can be calculated by
 ``<effective_cache_size> * (1 - bluestore_cache_meta_ratio - bluestore_cache_kv_ratio)``
 
-``bluestore_cache_size``
-
-:描述: The amount of memory BlueStore will use for its cache.  If zero, ``bluestore_cache_size_hdd`` or ``bluestore_cache_size_ssd`` will be used instead.
-:类型: Unsigned Integer
-:是否必需: Yes
-:默认值: ``0``
-
-``bluestore_cache_size_hdd``
-
-:描述: The default amount of memory BlueStore will use for its cache when backed by an HDD.
-:类型: Unsigned Integer
-:是否必需: Yes
-:默认值: ``1 * 1024 * 1024 * 1024`` (1 GB)
-
-``bluestore_cache_size_ssd``
-
-:描述: The default amount of memory BlueStore will use for its cache when backed by an SSD.
-:类型: Unsigned Integer
-:是否必需: Yes
-:默认值: ``3 * 1024 * 1024 * 1024`` (3 GB)
-
-``bluestore_cache_meta_ratio``
-
-:描述: The ratio of cache devoted to metadata.
-:类型: Floating point
-:是否必需: Yes
-:默认值: ``.4``
-
-``bluestore_cache_kv_ratio``
-
-:描述: The ratio of cache devoted to key/value data (rocksdb).
-:类型: Floating point
-:是否必需: Yes
-:默认值: ``.4``
-
-``bluestore_cache_kv_max``
-
-:描述: The maximum amount of cache devoted to key/value data (rocksdb).
-:类型: Unsigned Integer
-:是否必需: Yes
-:默认值: ``512 * 1024*1024`` (512 MB)
+.. confval:: bluestore_cache_size
+.. confval:: bluestore_cache_size_hdd
+.. confval:: bluestore_cache_size_ssd
+.. confval:: bluestore_cache_meta_ratio
+.. confval:: bluestore_cache_kv_ratio
 
 
 .. Checksums
@@ -329,13 +258,7 @@ The *checksum algorithm* can be set either via a per-pool
 
   ceph osd pool set <pool-name> csum_type <algorithm>
 
-``bluestore_csum_type``
-
-:描述: The default checksum algorithm to use.
-:类型: String
-:是否必需: Yes
-:有效范围: ``none``, ``crc32c``, ``crc32c_16``, ``crc32c_8``, ``xxhash32``, ``xxhash64``
-:默认值: ``crc32c``
+.. confval:: bluestore_csum_type
 
 
 .. Inline Compression
@@ -377,33 +300,15 @@ set with::
   ceph osd pool set <pool-name> compression_min_blob_size <size>
   ceph osd pool set <pool-name> compression_max_blob_size <size>
 
-
-``bluestore compression algorithm``
-
-:描述: The default compressor to use (if any) if the per-pool property
-              ``compression_algorithm`` is not set. Note that zstd is *not*
-              recommended for bluestore due to high CPU overhead when
-              compressing small amounts of data.
-:类型: String
-:是否必需: No
-:有效范围: ``lz4``, ``snappy``, ``zlib``, ``zstd``
-:默认值: ``snappy``
-
-``bluestore compression mode``
-
-:描述: The default policy for using compression if the per-pool property
-              ``compression_mode`` is not set. ``none`` means never use
-              compression. ``passive`` means use compression when
-              :c:func:`clients hint <rados_set_alloc_hint>` that data is
-              compressible.  ``aggressive`` means use compression unless
-              clients hint that data is not compressible.  ``force`` means use
-              compression under all circumstances even if the clients hint that
-              the data is not compressible.
-:类型: String
-:是否必需: No
-:有效范围: ``none``, ``passive``, ``aggressive``, ``force``
-:默认值: ``none``
-
+.. confval:: bluestore_compression_algorithm
+.. confval:: bluestore_compression_mode
+.. confval:: bluestore_compression_required_ratio
+.. confval:: bluestore_compression_min_blob_size
+.. confval:: bluestore_compression_min_blob_size_hdd
+.. confval:: bluestore_compression_min_blob_size_ssd
+.. confval:: bluestore_compression_max_blob_size
+.. confval:: bluestore_compression_max_blob_size_hdd
+.. confval:: bluestore_compression_max_blob_size_ssd
 
 ``bluestore compression required ratio``
 
@@ -414,54 +319,6 @@ set with::
 :是否必需: No
 :默认值: .875
 
-``bluestore compression min blob size``
-
-:描述: Chunks smaller than this are never compressed.
-              The per-pool property ``compression_min_blob_size`` overrides
-              this setting.
-
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: 0
-
-``bluestore compression min blob size hdd``
-
-:描述: Default value of ``bluestore compression min blob size``
-              for rotational media.
-
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: 128K
-
-``bluestore compression min blob size ssd``
-
-:描述: Default value of ``bluestore compression min blob size``
-              for non-rotational (solid state) media.
-
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: 8K
-
-``bluestore compression max blob size``
-
-:描述: Chunks larger than this are broken into smaller blobs sizing
-              ``bluestore compression max blob size`` before being compressed.
-              The per-pool property ``compression_max_blob_size`` overrides
-              this setting.
-
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: 0
-
-``bluestore compression max blob size hdd``
-
-:描述: Default value of ``bluestore compression max blob size``
-              for rotational media.
-
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: 512K
-
 ``bluestore compression max blob size ssd``
 
 :描述: 用非旋转（固态）媒体时
@@ -470,6 +327,46 @@ set with::
 :类型: Unsigned Integer
 :是否必需: No
 :默认值: 64K
+
+.. _bluestore-rocksdb-sharding:
+
+RocksDB Sharding
+================
+
+Internally BlueStore uses multiple types of key-value data,
+stored in RocksDB.  Each data type in BlueStore is assigned a
+unique prefix. Until Pacific all key-value data was stored in
+single RocksDB column family: 'default'.  Since Pacific,
+BlueStore can divide this data into multiple RocksDB column
+families. When keys have similar access frequency, modification
+frequency and lifetime, BlueStore benefits from better caching
+and more precise compaction. This improves performance, and also
+requires less disk space during compaction, since each column
+family is smaller and can compact independent of others.
+
+OSDs deployed in Pacific or later use RocksDB sharding by default.
+If Ceph is upgraded to Pacific from a previous version, sharding is off.
+
+To enable sharding and apply the Pacific defaults, stop an OSD and run
+
+    .. prompt:: bash #
+
+      ceph-bluestore-tool \
+        --path <data path> \
+        --sharding="m(3) p(3,0-12) O(3,0-13)=block_cache={type=binned_lru} L P" \
+        reshard
+
+.. confval:: bluestore_rocksdb_cf
+.. confval:: bluestore_rocksdb_cfs
+
+Throttling
+==========
+
+.. confval:: bluestore_throttle_bytes
+.. confval:: bluestore_throttle_deferred_bytes
+.. confval:: bluestore_throttle_cost_per_io
+.. confval:: bluestore_throttle_cost_per_io_hdd
+.. confval:: bluestore_throttle_cost_per_io_ssd
 
 
 .. SPDK Usage

@@ -99,6 +99,7 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
 
 
 .. Manually pinning directory trees to a particular rank
+.. _cephfs-pinning:
 
 手动将目录树插入特定的 rank
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,6 +134,8 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
     setfattr -n ceph.dir.pin -v 0 a/b
     # a/b is now pinned to rank 0 and a/ and the rest of its children are still pinned to rank 1
 
+
+.. _cephfs-ephemeral-pinning:
 
 Setting subtree partitioning policies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

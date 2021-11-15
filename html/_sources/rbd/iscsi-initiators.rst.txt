@@ -1,4 +1,4 @@
-.. Configuring the iSCSI Initiators
+.. _configuring-the-iscsi-initiators:
 
 -------------------------
  iSCSI Initiators 的配置

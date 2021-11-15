@@ -19,7 +19,8 @@
    问题追踪器 <issue-tracker>
    基本工作流 <basic-workflow>
    测试：单元测试 <tests-unit-tests>
-   测试：集成测试 <tests-integration-tests>
-   在本地运行测试 <running-tests-locally>
-   用 Teuthology 运行集成测试 <running-tests-using-teuth>
-   在云端运行测试 <running-tests-in-cloud>
+   测试：集成测试(Teuthology) <testing_integration_tests/index>
+   测试：在本地运行测试 <running-tests-locally>
+   Ceph Dashboard 开发者文档 (之前是 HACKING.rst) <dash-devel>
+   Tracing 开发者文档 <jaegertracing>
+   Cephadm 开发者文档 <../cephadm/index>

@@ -147,12 +147,15 @@
 <li class="toctree-l4"><a class="reference internal" href="#p">布局和配额限定（ p 标记）</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#s">快照限定（ s 标记）</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id5">网络限定</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#file-system-information-restriction">File system Information Restriction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mds-communication-restriction">MDS communication restriction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#root-squash">Root squash</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../mount-prerequisites/"> Mount CephFS: Prerequisites</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mount-using-kernel-driver/"> 用内核驱动挂载 CephFS 文件系统</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mount-using-fuse/"> 用 FUSE 挂载 CephFS</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cephfs-shell/"> CephFS Shell 的用法</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ceph-dokan/"> Mount CephFS on Windows</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../kernel-features/"> 内核驱动支持的功能</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-fuse/"> ceph-fuse 手册页</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../man/8/mount.ceph/"> mount.ceph 手册页</a></li>
@@ -177,7 +180,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../ceph-volume/">ceph-volume</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../releases/general/">Ceph 版本（总目录）</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../security/">Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../jaegertracing/">Tracing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../translation_cn/">中文版翻译资源</a></li>
 </ul>
 
@@ -230,12 +235,12 @@ be enabled on the data pools.</p>
 </div>
 <div class="section" id="id1">
 <h2>路径限定<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>默认情况下，客户端不会被限定在它们被允许挂载的路径下；而且，当客户端挂载了一个子目录后，如 /home/user ， MDS 默认情况下也不会检查后续操作都“锁定”在那个目录里面。</p>
+<p>默认情况下，客户端不会被限制只能挂载某些目录；而且，当客户端挂载了一个子目录后，如 <code class="docutils literal notranslate"><span class="pre">/home/user</span></code> ， MDS 默认情况下也不会检查后续操作都“锁定”在那个目录里面。</p>
 <p>要把客户端限定为只能挂载某个特定目录、且只能在其内工作，可以用基于路径的 MDS 鉴权能力实现。</p>
 <div class="section" id="id2">
 <h3>语法<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
 <p>如果只想授予指定目录读写（ rw ）权限，我们在给这个客户端创建密钥时就要提及这个目录，语法如下：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">authorize</span> <span class="o">*</span><span class="n">file_system_name</span><span class="o">*</span> <span class="n">client</span><span class="o">.*</span><span class="n">client_name</span><span class="o">*</span> <span class="o">/*</span><span class="n">specified_directory</span><span class="o">*</span> <span class="n">rw</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">authorize</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">client</span><span class="o">.&lt;</span><span class="n">client_id</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">-</span><span class="ow">in</span><span class="o">-</span><span class="n">cephfs</span><span class="o">&gt;</span> <span class="n">rw</span>
 </pre></div>
 </div>
 <p>比如，要想把 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 客户端限定为只能在 <code class="docutils literal notranslate"><span class="pre">cephfs_a</span></code> 文件系统的
@@ -297,11 +302,12 @@ be enabled on the data pools.</p>
 </div>
 <div class="section" id="s">
 <h2>快照限定（ s 标记）<a class="headerlink" href="#s" title="Permalink to this headline">¶</a></h2>
-<p>To create or delete snapshots, clients require the ‘s’ flag in addition to ‘rw’.
-Note that when capability string also contains the ‘p’ flag, the ‘s’ flag must
-appear after it (all flags except ‘rw’ must be specified in alphabetical order).</p>
+<p>To create or delete snapshots, clients require the ‘s’ flag in addition to
+‘rw’. Note that when capability string also contains the ‘p’ flag, the ‘s’
+flag must appear after it (all flags except ‘rw’ must be specified in
+alphabetical order).</p>
 <p>For example, in the following snippet client.0 can create or delete snapshots
-in the <code class="docutils literal notranslate"><span class="pre">bar</span></code> directory of file system <code class="docutils literal notranslate"><span class="pre">cephfs_a</span></code>.</p>
+in the <code class="docutils literal notranslate"><span class="pre">bar</span></code> directory of file system <code class="docutils literal notranslate"><span class="pre">cephfs_a</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span><span class="mf">.0</span>
     <span class="n">key</span><span class="p">:</span> <span class="n">AQAz7EVWygILFRAAdIcuJ12opU</span><span class="o">/</span><span class="n">JKyfFmxhuaw</span><span class="o">==</span>
     <span class="n">caps</span><span class="p">:</span> <span class="p">[</span><span class="n">mds</span><span class="p">]</span> <span class="n">allow</span> <span class="n">rw</span><span class="p">,</span> <span class="n">allow</span> <span class="n">rws</span> <span class="n">path</span><span class="o">=/</span><span class="n">bar</span>
@@ -323,6 +329,102 @@ in the <code class="docutils literal notranslate"><span class="pre">bar</span></
 prefix length in CIDR notation (e.g., <code class="docutils literal notranslate"><span class="pre">10.3.0.0/16</span></code>).  If present,
 the use of this capability is restricted to clients connecting from
 this network.</p>
+</div>
+<div class="section" id="file-system-information-restriction">
+<span id="fs-authorize-multifs"></span><h2>File system Information Restriction<a class="headerlink" href="#file-system-information-restriction" title="Permalink to this headline">¶</a></h2>
+<p>If desired, the monitor cluster can present a limited view of the file systems
+available. In this case, the monitor cluster will only inform clients about
+file systems specified by the administrator. Other file systems will not be
+reported and commands affecting them will fail as if the file systems do
+not exist.</p>
+<p>Consider following example. The Ceph cluster has 2 FSs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs ls
+name: cephfs, metadata pool: cephfs_metadata, data pools: [cephfs_data ]
+name: cephfs2, metadata pool: cephfs2_metadata, data pools: [cephfs2_data ]
+</pre></div>
+</div>
+<p>But we authorize client <code class="docutils literal notranslate"><span class="pre">someuser</span></code> for only one FS:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs authorize cephfs client.someuser / rw
+[client.someuser]
+    key = AQAmthpf89M+JhAAiHDYQkMiCq3x+J0n9e8REQ==
+$ cat ceph.client.someuser.keyring
+[client.someuser]
+    key = AQAmthpf89M+JhAAiHDYQkMiCq3x+J0n9e8REQ==
+    caps mds = &quot;allow rw fsname=cephfs&quot;
+    caps mon = &quot;allow r fsname=cephfs&quot;
+    caps osd = &quot;allow rw tag cephfs data=cephfs&quot;
+</pre></div>
+</div>
+<p>And the client can only see the FS that it has authorization for:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs ls -n client.someuser -k ceph.client.someuser.keyring
+name: cephfs, metadata pool: cephfs_metadata, data pools: [cephfs_data ]
+</pre></div>
+</div>
+<p>Standby MDS daemons will always be displayed. Note that the information about
+restricted MDS daemons and file systems may become available by other means,
+such as <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">health</span> <span class="pre">detail</span></code>.</p>
+</div>
+<div class="section" id="mds-communication-restriction">
+<h2>MDS communication restriction<a class="headerlink" href="#mds-communication-restriction" title="Permalink to this headline">¶</a></h2>
+<p>By default, user applications may communicate with any MDS, whether or not
+they are allowed to modify data on an associated file system (see
+<cite>Path restriction</cite> above). Client’s communication can be restricted to MDS
+daemons associated with particular file system(s) by adding MDS caps for that
+particular file system. Consider the following example where the Ceph cluster
+has 2 FSs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs ls
+name: cephfs, metadata pool: cephfs_metadata, data pools: [cephfs_data ]
+name: cephfs2, metadata pool: cephfs2_metadata, data pools: [cephfs2_data ]
+</pre></div>
+</div>
+<p>Client <code class="docutils literal notranslate"><span class="pre">someuser</span></code> is authorized only for one FS:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs authorize cephfs client.someuser / rw
+[client.someuser]
+    key = AQBPSARfg8hCJRAAEegIxjlm7VkHuiuntm6wsA==
+$ ceph auth get client.someuser &gt; ceph.client.someuser.keyring
+exported keyring for client.someuser
+$ cat ceph.client.someuser.keyring
+[client.someuser]
+    key = AQBPSARfg8hCJRAAEegIxjlm7VkHuiuntm6wsA==
+    caps mds = &quot;allow rw fsname=cephfs&quot;
+    caps mon = &quot;allow r&quot;
+    caps osd = &quot;allow rw tag cephfs data=cephfs&quot;
+</pre></div>
+</div>
+<p>Mounting <code class="docutils literal notranslate"><span class="pre">cephfs1</span></code> with <code class="docutils literal notranslate"><span class="pre">someuser</span></code> works:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo ceph-fuse /mnt/cephfs1 -n client.someuser -k ceph.client.someuser.keyring --client-fs=cephfs
+ceph-fuse[96634]: starting ceph client
+ceph-fuse[96634]: starting fuse
+$ mount | grep ceph-fuse
+ceph-fuse on /mnt/cephfs1 type fuse.ceph-fuse (rw,nosuid,nodev,relatime,user_id=0,group_id=0,allow_other)
+</pre></div>
+</div>
+<p>But mounting <code class="docutils literal notranslate"><span class="pre">cephfs2</span></code> does not:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo ceph-fuse /mnt/cephfs2 -n client.someuser -k ceph.client.someuser.keyring --client-fs=cephfs2
+ceph-fuse[96599]: starting ceph client
+ceph-fuse[96599]: ceph mount failed with (1) Operation not permitted
+</pre></div>
+</div>
+</div>
+<div class="section" id="root-squash">
+<h2>Root squash<a class="headerlink" href="#root-squash" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">root</span> <span class="pre">squash</span></code> feature is implemented as a safety measure to prevent
+scenarios such as accidental <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">rm</span> <span class="pre">-rf</span> <span class="pre">/path</span></code>. You can enable
+<code class="docutils literal notranslate"><span class="pre">root_squash</span></code> mode in MDS caps to disallow clients with uid=0 or gid=0 to
+perform write access operations – e.g., rm, rmdir, rmsnap, mkdir, mksnap.
+However, the mode allows the read operations of a root client unlike in
+other file systems.</p>
+<p>Following is an example of enabling root_squash in a filesystem except within
+‘/volumes’ directory tree in the filesystem:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs authorize a client.test_a / rw root_squash /volumes rw
+$ ceph auth get client.test_a
+[client.test_a]
+    key = AQBZcDpfEbEUKxAADk14VflBXt71rL9D966mYA==
+    caps mds = &quot;allow rw fsname=a root_squash, allow rw fsname=a path=/volumes&quot;
+    caps mon = &quot;allow r fsname=a&quot;
+    caps osd = &quot;allow rw tag cephfs data=a&quot;
+</pre></div>
+</div>
 </div>
 </div>
 

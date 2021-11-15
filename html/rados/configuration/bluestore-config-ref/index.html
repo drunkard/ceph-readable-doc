@@ -165,6 +165,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#id5">手动调整缓存尺寸</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id6">校验和</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id7">内联压缩</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rocksdb-sharding">RocksDB Sharding</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#throttling">Throttling</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#spdk">SPDK 用法</a></li>
 </ul>
 </li>
@@ -195,7 +197,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../ceph-volume/">ceph-volume</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/general/">Ceph 版本（总目录）</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本（索引）</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../security/">Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Ceph 术语</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../jaegertracing/">Tracing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../translation_cn/">中文版翻译资源</a></li>
 </ul>
 
@@ -345,150 +349,208 @@ drive.</p>
 </div>
 <div class="section" id="id3">
 <h2>调整尺寸<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<p>When using a <a class="reference internal" href="#bluestore-mixed-device-config"><span class="std std-ref">mixed spinning and solid drive setup</span></a> it is important to make a large-enough
-<code class="docutils literal notranslate"><span class="pre">block.db</span></code> logical volume for Bluestore. Generally, <code class="docutils literal notranslate"><span class="pre">block.db</span></code> should have
+<p>When using a <a class="reference internal" href="#bluestore-mixed-device-config"><span class="std std-ref">mixed spinning and solid drive setup</span></a> it is important to make a large enough
+<code class="docutils literal notranslate"><span class="pre">block.db</span></code> logical volume for BlueStore. Generally, <code class="docutils literal notranslate"><span class="pre">block.db</span></code> should have
 <em>as large as possible</em> logical volumes.</p>
 <p>The general recommendation is to have <code class="docutils literal notranslate"><span class="pre">block.db</span></code> size in between 1% to 4%
 of <code class="docutils literal notranslate"><span class="pre">block</span></code> size. For RGW workloads, it is recommended that the <code class="docutils literal notranslate"><span class="pre">block.db</span></code>
-size isn’t smaller than 4% of <code class="docutils literal notranslate"><span class="pre">block</span></code>, because RGW heavily uses it to store its
-metadata. For example, if the <code class="docutils literal notranslate"><span class="pre">block</span></code> size is 1TB, then <code class="docutils literal notranslate"><span class="pre">block.db</span></code> shouldn’t
+size isn’t smaller than 4% of <code class="docutils literal notranslate"><span class="pre">block</span></code>, because RGW heavily uses it to store
+metadata (omap keys). For example, if the <code class="docutils literal notranslate"><span class="pre">block</span></code> size is 1TB, then <code class="docutils literal notranslate"><span class="pre">block.db</span></code> shouldn’t
 be less than 40GB. For RBD workloads, 1% to 2% of <code class="docutils literal notranslate"><span class="pre">block</span></code> size is usually enough.</p>
-<p>If <em>not</em> using a mix of fast and slow devices, it isn’t required to create
-separate logical volumes for <code class="docutils literal notranslate"><span class="pre">block.db</span></code> (or <code class="docutils literal notranslate"><span class="pre">block.wal</span></code>). Bluestore will
-automatically manage these within the space of <code class="docutils literal notranslate"><span class="pre">block</span></code>.</p>
+<p>In older releases, internal level sizes mean that the DB can fully utilize only
+specific partition / LV sizes that correspond to sums of L0, L0+L1, L1+L2,
+etc. sizes, which with default settings means roughly 3 GB, 30 GB, 300 GB, and
+so forth.  Most deployments will not substantially benefit from sizing to
+accomodate L3 and higher, though DB compaction can be facilitated by doubling
+these figures to 6GB, 60GB, and 600GB.</p>
+<p>Improvements in releases beginning with Nautilus 14.2.12 and Octopus 15.2.6
+enable better utilization of arbitrary DB device sizes, and the Pacific
+release brings experimental dynamic level support.  Users of older releases may
+thus wish to plan ahead by provisioning larger DB devices today so that their
+benefits may be realized with future upgrades.</p>
+<p>When <em>not</em> using a mix of fast and slow devices, it isn’t required to create
+separate logical volumes for <code class="docutils literal notranslate"><span class="pre">block.db</span></code> (or <code class="docutils literal notranslate"><span class="pre">block.wal</span></code>). BlueStore will
+automatically colocate these within the space of <code class="docutils literal notranslate"><span class="pre">block</span></code>.</p>
 </div>
 <div class="section" id="id4">
 <h2>自动调整缓存尺寸<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
-<p>Bluestore can be configured to automatically resize it’s caches when TCMalloc
+<p>BlueStore can be configured to automatically resize its caches when TCMalloc
 is configured as the memory allocator and the <code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code>
-setting is enabled.  This option is currently enabled by default.  Bluestore
+setting is enabled.  This option is currently enabled by default.  BlueStore
 will attempt to keep OSD heap memory usage under a designated target size via
 the <code class="docutils literal notranslate"><span class="pre">osd_memory_target</span></code> configuration option.  This is a best effort
 algorithm and caches will not shrink smaller than the amount specified by
 <code class="docutils literal notranslate"><span class="pre">osd_memory_cache_min</span></code>.  Cache ratios will be chosen based on a hierarchy
-of priorities.  If priority information is not availabe, the
+of priorities.  If priority information is not available, the
 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code> and <code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code> options are
 used as fallbacks.</p>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code></p>
+<dl class="std confval">
+<dt id="confval-bluestore_cache_autotune">
+<code class="sig-name descname"><span class="pre">bluestore_cache_autotune</span></code><a class="headerlink" href="#confval-bluestore_cache_autotune" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Automatically tune the space ratios assigned to various BlueStore
+caches while respecting minimum values.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Automatically tune the ratios assigned to different bluestore caches while respecting minimum values.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Boolean</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p>
 </dd>
-<dt class="field-odd">Requered</dt>
-<dd class="field-odd"><p>Yes</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_cache_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code></a>, <a class="reference internal" href="#confval-bluestore_cache_meta_ratio"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code></a></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">osd_memory_target</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-osd_memory_target">
+<code class="sig-name descname"><span class="pre">osd_memory_target</span></code><a class="headerlink" href="#confval-osd_memory_target" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>When TCMalloc is available and cache autotuning is enabled, try to
+keep this many bytes mapped in memory. Note: This may not exactly
+match the RSS memory usage of the process.  While the total amount
+of heap memory mapped by the process should usually be close
+to this target, there is no guarantee that the kernel will actually
+reclaim  memory that has been unmapped.  During initial development,
+it was found that some kernels result in the OSD’s RSS memory
+exceeding the mapped memory by up to 20%.  It is hypothesised
+however, that the kernel generally may be more aggressive about
+reclaiming unmapped memory when there is a high amount of memory
+pressure.  Your mileage may vary.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>When tcmalloc is available and cache autotuning is enabled, try to keep this many bytes mapped in memory. Note: This may not exactly match the RSS memory usage of the process.  While the total amount of heap memory mapped by the process should generally stay close to this target, there is no guarantee that the kernel will actually reclaim  memory that has been unmapped.  During initial developement, it was found that some kernels result in the OSD’s RSS Memory exceeding the mapped memory by up to 20%.  It is hypothesised however, that the kernel generally may be more aggressive about reclaiming unmapped memory when there is a high amount of memory pressure.  Your mileage may vary.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">4Gi</span></code></p>
 </dd>
-<dt class="field-odd">Requered</dt>
-<dd class="field-odd"><p>Yes</p>
+<dt class="field-odd">min</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">896_M</span></code></p>
 </dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">4294967296</span></code></p>
+<dt class="field-even">see also</dt>
+<dd class="field-even"><p><a class="reference internal" href="#confval-bluestore_cache_autotune"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code></a>, <a class="reference internal" href="#confval-osd_memory_cache_min"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_cache_min</span></code></a>, <a class="reference internal" href="#confval-osd_memory_base"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_base</span></code></a>, <code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_target_autotune</span></code></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune_chunk_size</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_cache_autotune_interval">
+<code class="sig-name descname"><span class="pre">bluestore_cache_autotune_interval</span></code><a class="headerlink" href="#confval-bluestore_cache_autotune_interval" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>The number of seconds to wait between rebalances when cache autotune
+is enabled.  This setting changes how quickly the allocation ratios of
+various caches are recomputed.  Note:  Setting this interval too small
+can result in high CPU usage and lower performance.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The chunk size in bytes to allocate to caches when cache autotune is enabled.  When the autotuner assigns memory to different caches, it will allocate memory in chunks.  This is done to avoid evictions when there are minor fluctuations in the heap size or autotuned cache ratios.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">5.0</span></code></p>
 </dd>
-<dt class="field-odd">Requered</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">33554432</span></code></p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_cache_autotune"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code></a></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune_interval</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-osd_memory_base">
+<code class="sig-name descname"><span class="pre">osd_memory_base</span></code><a class="headerlink" href="#confval-osd_memory_base" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>When TCMalloc and cache autotuning are enabled, estimate the minimum
+amount of memory in bytes the OSD will need.  This is used to help the
+autotuner estimate the expected aggregate memory consumption of the
+caches.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The number of seconds to wait between rebalances when cache autotune is enabled.  This setting changes how quickly the ratios of the difference caches are recomputed.  Note:  Setting the interval too small can result in high CPU usage and lower performance.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Float</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">768Mi</span></code></p>
 </dd>
-<dt class="field-odd">Requered</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">5</span></code></p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_cache_autotune"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code></a></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">osd_memory_base</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-osd_memory_expected_fragmentation">
+<code class="sig-name descname"><span class="pre">osd_memory_expected_fragmentation</span></code><a class="headerlink" href="#confval-osd_memory_expected_fragmentation" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>When TCMalloc and cache autotuning is enabled, estimate the percentage
+of memory fragmentation.  This is used to help the autotuner estimate
+the expected aggregate memory consumption of the caches.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>When tcmalloc and cache autotuning is enabled, estimate the minimum amount of memory in bytes the OSD will need.  This is used to help the autotuner estimate the expected aggregate memory consumption of the caches.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Interger</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">805306368</span></code></p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">osd_memory_expected_fragmentation</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>When tcmalloc and cache autotuning is enabled, estimate the percent of memory fragmentation.  This is used to help the autotuner estimate the expected aggregate memory consumption of the caches.</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Float</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
+<dt class="field-even">default</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.15</span></code></p>
 </dd>
+<dt class="field-odd">allowed range</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code></p>
+</dd>
+<dt class="field-even">see also</dt>
+<dd class="field-even"><p><a class="reference internal" href="#confval-bluestore_cache_autotune"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code></a></p>
+</dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">osd_memory_cache_min</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-osd_memory_cache_min">
+<code class="sig-name descname"><span class="pre">osd_memory_cache_min</span></code><a class="headerlink" href="#confval-osd_memory_cache_min" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>When TCMalloc and cache autotuning are enabled, set the minimum
+amount of memory used for caches. Note: Setting this value too
+low can result in significant cache thrashing.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>When tcmalloc and cache autotuning is enabled, set the minimum amount of memory used for caches. Note: Setting this value too low can result in significant cache thrashing.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">128Mi</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
+<dt class="field-odd">min</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">128_M</span></code></p>
 </dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">134217728</span></code></p>
+<dt class="field-even">see also</dt>
+<dd class="field-even"><p><a class="reference internal" href="#confval-bluestore_cache_autotune"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code></a></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">osd_memory_cache_resize_interval</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-osd_memory_cache_resize_interval">
+<code class="sig-name descname"><span class="pre">osd_memory_cache_resize_interval</span></code><a class="headerlink" href="#confval-osd_memory_cache_resize_interval" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>When TCMalloc and cache autotuning are enabled, wait this many seconds
+between resizing caches.  This setting changes the total amount of
+memory available for BlueStore to use for caching.  Note that setting
+this interval too small can result in memory allocator thrashing and
+lower performance.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>When tcmalloc and cache autotuning is enabled, wait this many seconds between resizing caches.  This setting changes the total amount of memory available for bluestore to use for caching.  Note: Setting the interval too small can result in memory allocator thrashing and lower performance.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Float</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_cache_autotune"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code></a></p>
 </dd>
 </dl>
+</div></blockquote>
+</dd></dl>
+
 </div>
 <div class="section" id="id5">
 <h2>手动调整缓存尺寸<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
@@ -518,96 +580,102 @@ is governed by the effective bluestore cache size (depending on
 device) as well as the meta and kv ratios.
 The data fraction can be calculated by
 <code class="docutils literal notranslate"><span class="pre">&lt;effective_cache_size&gt;</span> <span class="pre">*</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">bluestore_cache_meta_ratio</span> <span class="pre">-</span> <span class="pre">bluestore_cache_kv_ratio)</span></code></p>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code></p>
+<dl class="std confval">
+<dt id="confval-bluestore_cache_size">
+<code class="sig-name descname"><span class="pre">bluestore_cache_size</span></code><a class="headerlink" href="#confval-bluestore_cache_size" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>The amount of memory BlueStore will use for its cache.  If zero,
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> or <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> will be
+used instead.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The amount of memory BlueStore will use for its cache.  If zero, <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> or <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> will be used instead.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>Yes</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0B</span></code></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_cache_size_hdd">
+<code class="sig-name descname"><span class="pre">bluestore_cache_size_hdd</span></code><a class="headerlink" href="#confval-bluestore_cache_size_hdd" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>The default amount of memory BlueStore will use for its cache when
+backed by an HDD.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The default amount of memory BlueStore will use for its cache when backed by an HDD.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1Gi</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>Yes</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span></code> (1 GB)</p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_cache_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code></a></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_cache_size_ssd">
+<code class="sig-name descname"><span class="pre">bluestore_cache_size_ssd</span></code><a class="headerlink" href="#confval-bluestore_cache_size_ssd" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>The default amount of memory BlueStore will use for its cache when
+backed by an SSD.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The default amount of memory BlueStore will use for its cache when backed by an SSD.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">3Gi</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>Yes</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">3</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span></code> (3 GB)</p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_cache_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code></a></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_cache_meta_ratio">
+<code class="sig-name descname"><span class="pre">bluestore_cache_meta_ratio</span></code><a class="headerlink" href="#confval-bluestore_cache_meta_ratio" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Ratio of bluestore cache to devote to metadata</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The ratio of cache devoted to metadata.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Floating point</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.45</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>Yes</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">.4</span></code></p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_cache_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code></a></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_cache_kv_ratio">
+<code class="sig-name descname"><span class="pre">bluestore_cache_kv_ratio</span></code><a class="headerlink" href="#confval-bluestore_cache_kv_ratio" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Ratio of bluestore cache to devote to key/value database (RocksDB)</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The ratio of cache devoted to key/value data (rocksdb).</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Floating point</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.45</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>Yes</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">.4</span></code></p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_cache_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code></a></p>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_max</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The maximum amount of cache devoted to key/value data (rocksdb).</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>Yes</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">512</span> <span class="pre">*</span> <span class="pre">1024*1024</span></code> (512 MB)</p>
-</dd>
-</dl>
+</div></blockquote>
+</dd></dl>
+
 </div>
 <div class="section" id="id6">
 <h2>校验和<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
@@ -634,24 +702,32 @@ The smaller checksum values can be used by selecting <cite>crc32c_16</cite> or
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">csum_type</span> <span class="o">&lt;</span><span class="n">algorithm</span><span class="o">&gt;</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore_csum_type</span></code></p>
+<dl class="std confval">
+<dt id="confval-bluestore_csum_type">
+<code class="sig-name descname"><span class="pre">bluestore_csum_type</span></code><a class="headerlink" href="#confval-bluestore_csum_type" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>The default checksum algorithm to use.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The default checksum algorithm to use.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">crc32c</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>Yes</p>
-</dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">none</span></code>, <code class="docutils literal notranslate"><span class="pre">crc32c</span></code>, <code class="docutils literal notranslate"><span class="pre">crc32c_16</span></code>, <code class="docutils literal notranslate"><span class="pre">crc32c_8</span></code>, <code class="docutils literal notranslate"><span class="pre">xxhash32</span></code>, <code class="docutils literal notranslate"><span class="pre">xxhash64</span></code></p>
-</dd>
-<dt class="field-odd">默认值</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">crc32c</span></code></p>
+<dt class="field-odd">valid choices</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">crc32c</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">crc32c_16</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">crc32c_8</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xxhash32</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xxhash64</span></code></p></li>
+</ul>
 </dd>
 </dl>
+</div></blockquote>
+</dd></dl>
+
 </div>
 <div class="section" id="id7">
 <h2>内联压缩<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
@@ -686,52 +762,197 @@ set with:</p>
 <span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_max_blob_size</span> <span class="o">&lt;</span><span class="n">size</span><span class="o">&gt;</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">algorithm</span></code></p>
+<dl class="std confval">
+<dt id="confval-bluestore_compression_algorithm">
+<code class="sig-name descname"><span class="pre">bluestore_compression_algorithm</span></code><a class="headerlink" href="#confval-bluestore_compression_algorithm" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>The default compressor to use (if any) if the per-pool property
+<code class="docutils literal notranslate"><span class="pre">compression_algorithm</span></code> is not set. Note that <code class="docutils literal notranslate"><span class="pre">zstd</span></code> is <em>not</em>
+recommended for BlueStore due to high CPU overhead when compressing
+small amounts of data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The default compressor to use (if any) if the per-pool property
-<code class="docutils literal notranslate"><span class="pre">compression_algorithm</span></code> is not set. Note that zstd is <em>not</em>
-recommended for bluestore due to high CPU overhead when
-compressing small amounts of data.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">snappy</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">lz4</span></code>, <code class="docutils literal notranslate"><span class="pre">snappy</span></code>, <code class="docutils literal notranslate"><span class="pre">zlib</span></code>, <code class="docutils literal notranslate"><span class="pre">zstd</span></code></p>
-</dd>
-<dt class="field-odd">默认值</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">snappy</span></code></p>
+<dt class="field-odd">valid choices</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p>&lt;empty string&gt;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">snappy</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">zlib</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">zstd</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lz4</span></code></p></li>
+</ul>
 </dd>
 </dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">mode</span></code></p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_compression_mode">
+<code class="sig-name descname"><span class="pre">bluestore_compression_mode</span></code><a class="headerlink" href="#confval-bluestore_compression_mode" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>The default policy for using compression if the per-pool property
+<code class="docutils literal notranslate"><span class="pre">compression_mode</span></code> is not set. <code class="docutils literal notranslate"><span class="pre">none</span></code> means never use compression.
+<code class="docutils literal notranslate"><span class="pre">passive</span></code> means use compression when <a class="reference internal" href="../../api/librados/#c.rados_set_alloc_hint" title="rados_set_alloc_hint"><code class="xref c c-func docutils literal notranslate"><span class="pre">clients</span> <span class="pre">hint</span></code></a> that data is compressible.  <code class="docutils literal notranslate"><span class="pre">aggressive</span></code>
+means use compression unless clients hint that data is not
+compressible.  <code class="docutils literal notranslate"><span class="pre">force</span></code> means use compression under all circumstances
+even if the clients hint that the data is not compressible.</p>
 <dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>The default policy for using compression if the per-pool property
-<code class="docutils literal notranslate"><span class="pre">compression_mode</span></code> is not set. <code class="docutils literal notranslate"><span class="pre">none</span></code> means never use
-compression. <code class="docutils literal notranslate"><span class="pre">passive</span></code> means use compression when
-<a class="reference internal" href="../../api/librados/#c.rados_set_alloc_hint" title="rados_set_alloc_hint"><code class="xref c c-func docutils literal notranslate"><span class="pre">clients</span> <span class="pre">hint</span></code></a> that data is
-compressible.  <code class="docutils literal notranslate"><span class="pre">aggressive</span></code> means use compression unless
-clients hint that data is not compressible.  <code class="docutils literal notranslate"><span class="pre">force</span></code> means use
-compression under all circumstances even if the clients hint that
-the data is not compressible.</p>
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p>
 </dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">none</span></code>, <code class="docutils literal notranslate"><span class="pre">passive</span></code>, <code class="docutils literal notranslate"><span class="pre">aggressive</span></code>, <code class="docutils literal notranslate"><span class="pre">force</span></code></p>
-</dd>
-<dt class="field-odd">默认值</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p>
+<dt class="field-odd">valid choices</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">passive</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">aggressive</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">force</span></code></p></li>
+</ul>
 </dd>
 </dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_compression_required_ratio">
+<code class="sig-name descname"><span class="pre">bluestore_compression_required_ratio</span></code><a class="headerlink" href="#confval-bluestore_compression_required_ratio" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>The ratio of the size of the data chunk after compression relative to
+the original size must be at least this small in order to store the
+compressed version.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.875</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_compression_min_blob_size">
+<code class="sig-name descname"><span class="pre">bluestore_compression_min_blob_size</span></code><a class="headerlink" href="#confval-bluestore_compression_min_blob_size" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Chunks smaller than this are never compressed. The per-pool property
+<code class="docutils literal notranslate"><span class="pre">compression_min_blob_size</span></code> overrides this setting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0B</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_compression_min_blob_size_hdd">
+<code class="sig-name descname"><span class="pre">bluestore_compression_min_blob_size_hdd</span></code><a class="headerlink" href="#confval-bluestore_compression_min_blob_size_hdd" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code> for
+rotational media.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">8Ki</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_compression_min_blob_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_min_blob_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_compression_min_blob_size_ssd">
+<code class="sig-name descname"><span class="pre">bluestore_compression_min_blob_size_ssd</span></code><a class="headerlink" href="#confval-bluestore_compression_min_blob_size_ssd" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code> for non-
+rotational (solid state) media.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">8Ki</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_compression_min_blob_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_min_blob_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_compression_max_blob_size">
+<code class="sig-name descname"><span class="pre">bluestore_compression_max_blob_size</span></code><a class="headerlink" href="#confval-bluestore_compression_max_blob_size" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Chunks larger than this value are broken into smaller blobs of at most
+<code class="docutils literal notranslate"><span class="pre">bluestore_compression_max_blob_size</span></code> bytes before being compressed.
+The per-pool property <code class="docutils literal notranslate"><span class="pre">compression_max_blob_size</span></code> overrides this
+setting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0B</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_compression_max_blob_size_hdd">
+<code class="sig-name descname"><span class="pre">bluestore_compression_max_blob_size_hdd</span></code><a class="headerlink" href="#confval-bluestore_compression_max_blob_size_hdd" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code> for
+rotational media.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">64Ki</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_compression_max_blob_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_max_blob_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_compression_max_blob_size_ssd">
+<code class="sig-name descname"><span class="pre">bluestore_compression_max_blob_size_ssd</span></code><a class="headerlink" href="#confval-bluestore_compression_max_blob_size_ssd" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code> for non-
+rotational (SSD, NVMe) media.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">64Ki</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_compression_max_blob_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_max_blob_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
 <p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">required</span> <span class="pre">ratio</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
@@ -745,89 +966,6 @@ the data is not compressible.</p>
 </dd>
 <dt class="field-even">默认值</dt>
 <dd class="field-even"><p>.875</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Chunks smaller than this are never compressed.
-The per-pool property <code class="docutils literal notranslate"><span class="pre">compression_min_blob_size</span></code> overrides
-this setting.</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p>0</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span> <span class="pre">hdd</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code>
-for rotational media.</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p>128K</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span> <span class="pre">ssd</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code>
-for non-rotational (solid state) media.</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p>8K</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Chunks larger than this are broken into smaller blobs sizing
-<code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code> before being compressed.
-The per-pool property <code class="docutils literal notranslate"><span class="pre">compression_max_blob_size</span></code> overrides
-this setting.</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p>0</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span> <span class="pre">hdd</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code>
-for rotational media.</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Unsigned Integer</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p>512K</p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span> <span class="pre">ssd</span></code></p>
@@ -846,6 +984,159 @@ for rotational media.</p>
 <dd class="field-even"><p>64K</p>
 </dd>
 </dl>
+</div>
+<div class="section" id="rocksdb-sharding">
+<span id="bluestore-rocksdb-sharding"></span><h2>RocksDB Sharding<a class="headerlink" href="#rocksdb-sharding" title="Permalink to this headline">¶</a></h2>
+<p>Internally BlueStore uses multiple types of key-value data,
+stored in RocksDB.  Each data type in BlueStore is assigned a
+unique prefix. Until Pacific all key-value data was stored in
+single RocksDB column family: ‘default’.  Since Pacific,
+BlueStore can divide this data into multiple RocksDB column
+families. When keys have similar access frequency, modification
+frequency and lifetime, BlueStore benefits from better caching
+and more precise compaction. This improves performance, and also
+requires less disk space during compaction, since each column
+family is smaller and can compact independent of others.</p>
+<p>OSDs deployed in Pacific or later use RocksDB sharding by default.
+If Ceph is upgraded to Pacific from a previous version, sharding is off.</p>
+<p>To enable sharding and apply the Pacific defaults, stop an OSD and run</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "# ";
+}
+</style><span class="prompt1">ceph-bluestore-tool <span class="se">\</span>
+  --path &lt;data path&gt; <span class="se">\</span>
+  --sharding<span class="o">=</span><span class="s2">&quot;m(3) p(3,0-12) O(3,0-13)=block_cache={type=binned_lru} L P&quot;</span> <span class="se">\</span>
+  reshard</span>
+</pre></div></div></div></blockquote>
+<dl class="std confval">
+<dt id="confval-bluestore_rocksdb_cf">
+<code class="sig-name descname"><span class="pre">bluestore_rocksdb_cf</span></code><a class="headerlink" href="#confval-bluestore_rocksdb_cf" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Enables sharding of BlueStore’s RocksDB. When <code class="docutils literal notranslate"><span class="pre">true</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bluestore_rocksdb_cfs</span></code> is used. Only applied when OSD is doing
+<code class="docutils literal notranslate"><span class="pre">--mkfs</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_rocksdb_cfs">
+<code class="sig-name descname"><span class="pre">bluestore_rocksdb_cfs</span></code><a class="headerlink" href="#confval-bluestore_rocksdb_cfs" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Definition of BlueStore’s RocksDB sharding. The optimal value depends
+on multiple factors, and modification is invadvisable. This setting is
+used only when OSD is doing <code class="docutils literal notranslate"><span class="pre">--mkfs</span></code>. Next runs of OSD retrieve
+sharding from disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">m(3)</span> <span class="pre">p(3,0-12)</span> <span class="pre">O(3,0-13)=block_cache={type=binned_lru}</span> <span class="pre">L</span> <span class="pre">P</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</div>
+<div class="section" id="throttling">
+<h2>Throttling<a class="headerlink" href="#throttling" title="Permalink to this headline">¶</a></h2>
+<dl class="std confval">
+<dt id="confval-bluestore_throttle_bytes">
+<code class="sig-name descname"><span class="pre">bluestore_throttle_bytes</span></code><a class="headerlink" href="#confval-bluestore_throttle_bytes" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Maximum bytes in flight before we throttle IO submission</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">64Mi</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_throttle_deferred_bytes">
+<code class="sig-name descname"><span class="pre">bluestore_throttle_deferred_bytes</span></code><a class="headerlink" href="#confval-bluestore_throttle_deferred_bytes" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Maximum bytes for deferred writes before we throttle IO submission</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">128Mi</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_throttle_cost_per_io">
+<code class="sig-name descname"><span class="pre">bluestore_throttle_cost_per_io</span></code><a class="headerlink" href="#confval-bluestore_throttle_cost_per_io" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Overhead added to transaction cost (in bytes) for each IO</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0B</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_throttle_cost_per_io_hdd">
+<code class="sig-name descname"><span class="pre">bluestore_throttle_cost_per_io_hdd</span></code><a class="headerlink" href="#confval-bluestore_throttle_cost_per_io_hdd" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Default bluestore_throttle_cost_per_io for rotational media</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">670000</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_throttle_cost_per_io"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_throttle_cost_per_io</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-bluestore_throttle_cost_per_io_ssd">
+<code class="sig-name descname"><span class="pre">bluestore_throttle_cost_per_io_ssd</span></code><a class="headerlink" href="#confval-bluestore_throttle_cost_per_io_ssd" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Default bluestore_throttle_cost_per_io for non-rotation (solid state)
+media</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">4000</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_throttle_cost_per_io"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_throttle_cost_per_io</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
 </div>
 <div class="section" id="spdk">
 <h2>SPDK 用法<a class="headerlink" href="#spdk" title="Permalink to this headline">¶</a></h2>

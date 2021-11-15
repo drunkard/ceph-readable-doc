@@ -222,12 +222,12 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
         Ceph uses to compute object storage locations.
 
     CRUSH rule
-        CRUSH 规则
+    CRUSH 规则
         The CRUSH data placement rule that applies to a particular pool(s).
 
     Pool
     Pools
-        存储池
+    存储池
         池是对象存储的逻辑部分。
 
     systemd oneshot
