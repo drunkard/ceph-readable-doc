@@ -532,12 +532,12 @@ Ceph 对 mClock 的应用仍处于实验阶段，应当以探索心态试用。
 核心概念
 ````````
 
-The QoS support of Ceph is implemented using a queueing scheduler
+Ceph's QoS support is implemented using a queueing scheduler
 based on `the dmClock algorithm`_. This algorithm allocates the I/O
 resources of the Ceph cluster in proportion to weights, and enforces
 the constraints of minimum reservation and maximum limitation, so that
 the services can compete for the resources fairly. Currently the
-*mclock_opclass* operation queue divides Ceph services involving I/O
+*mclock_scheduler* operation queue divides Ceph services involving I/O
 resources into following buckets:
 
 - client op: the iops issued by client
@@ -576,16 +576,9 @@ competitor "1". In the case of client ops, it is not clamped by the
 limit setting, so it can make use of all the resources if there is no
 recovery ongoing.
 
-Along with *mclock_opclass* another mclock operation queue named
-*mclock_client* is available. It divides operations based on category
-but also divides them based on the client making the request. This
-helps not only manage the distribution of resources spent on different
-classes of operations but also tries to insure fairness among clients.
-
-CURRENT IMPLEMENTATION NOTE: the current experimental implementation
-does not enforce the limit values. As a first approximation we decided
-not to prevent operations that would otherwise enter the operation
-sequencer from doing so.
+CURRENT IMPLEMENTATION NOTE: the current implementation enforces the limit
+values. Therefore, if a service crosses the enforced limit, the op remains
+in the operation queue until the limit is restored.
 
 
 .. Subtleties of mClock
@@ -623,8 +616,8 @@ queues within Ceph. First, requests to an OSD are sharded by their
 placement group identifier. Each shard has its own mClock queue and
 these queues neither interact nor share information among them. The
 number of shards can be controlled with the configuration options
-``osd_op_num_shards``, ``osd_op_num_shards_hdd``, and
-``osd_op_num_shards_ssd``. A lower number of shards will increase the
+:confval:`osd_op_num_shards`, :confval:`osd_op_num_shards_hdd`, and
+:confval:`osd_op_num_shards_ssd`. A lower number of shards will increase the
 impact of the mClock queues, but may have other deleterious effects.
 
 Second, requests are transferred from the operation queue to the
@@ -641,11 +634,11 @@ the impact of mClock, we want to keep as few operations in the
 operation sequencer as possible. So we have an inherent tension.
 
 The configuration options that influence the number of operations in
-the operation sequencer are ``bluestore_throttle_bytes``,
-``bluestore_throttle_deferred_bytes``,
-``bluestore_throttle_cost_per_io``,
-``bluestore_throttle_cost_per_io_hdd``, and
-``bluestore_throttle_cost_per_io_ssd``.
+the operation sequencer are :confval:`bluestore_throttle_bytes`,
+:confval:`bluestore_throttle_deferred_bytes`,
+:confval:`bluestore_throttle_cost_per_io`,
+:confval:`bluestore_throttle_cost_per_io_hdd`, and
+:confval:`bluestore_throttle_cost_per_io_ssd`.
 
 A third factor that affects the impact of the mClock algorithm is that
 we're using a distributed system, where requests are made to multiple
@@ -656,125 +649,19 @@ the distributed version of mClock).
 Various organizations and individuals are currently experimenting with
 mClock as it exists in this code base along with their modifications
 to the code base. We hope you'll share you're experiences with your
-mClock and dmClock experiments in the ceph-devel mailing list.
+mClock and dmClock experiments on the ``ceph-devel`` mailing list.
 
-
-``osd push per object cost``
-
-:描述: 一个推送操作允许的开销。
-:类型: Unsigned Integer
-:默认值: 1000
-
-``osd recovery max chunk``
-
-:描述: 一个恢复操作可携带数据块的最大尺寸。
-:类型: Unsigned Integer
-:默认值: 8 MiB
-
-
-``osd op queue mclock client op res``
-
-:描述: 为客户端操作预留的值。
-:类型: Float
-:默认值: 1000.0
-
-
-``osd op queue mclock client op wgt``
-
-:描述: 客户端操作的权重。
-:类型: Float
-:默认值: 500.0
-
-
-``osd op queue mclock client op lim``
-
-:描述: 客户端操作的上限。
-:类型: Float
-:默认值: 1000.0
-
-
-``osd op queue mclock osd subop res``
-
-:描述: 为 OSD 子操作预留的值。
-:类型: Float
-:默认值: 1000.0
-
-
-``osd op queue mclock osd subop wgt``
-
-:描述: OSD 子操作的权重。
-:类型: Float
-:默认值: 500.0
-
-
-``osd op queue mclock osd subop lim``
-
-:描述: OSD 子操作的上限。
-:类型: Float
-:默认值: 0.0
-
-
-``osd op queue mclock snap res``
-
-:描述: 为快照修剪操作预留的值。
-:类型: Float
-:默认值: 0.0
-
-
-``osd op queue mclock snap wgt``
-
-:描述: 快照修剪操作的权重。
-:类型: Float
-:默认值: 1.0
-
-
-``osd op queue mclock snap lim``
-
-:描述: 快照修剪操作的上限。
-:类型: Float
-:默认值: 0.001
-
-
-``osd op queue mclock recov res``
-
-:描述: 为恢复预留的值。
-:类型: Float
-:默认值: 0.0
-
-
-``osd op queue mclock recov wgt``
-
-:描述: 恢复操作的权重。
-:类型: Float
-:默认值: 1.0
-
-
-``osd op queue mclock recov lim``
-
-:描述: 恢复操作的上限。
-:类型: Float
-:默认值: 0.001
-
-
-``osd op queue mclock scrub res``
-
-:描述: 为洗刷作业预留的值。
-:类型: Float
-:默认值: 0.0
-
-
-``osd op queue mclock scrub wgt``
-
-:描述: 洗刷作业的权重。
-:类型: Float
-:默认值: 1.0
-
-
-``osd op queue mclock scrub lim``
-
-:描述: 洗刷作业的上限。
-:类型: Float
-:默认值: 0.001
+.. confval:: osd_async_recovery_min_cost
+.. confval:: osd_push_per_object_cost
+.. confval:: osd_mclock_scheduler_client_res
+.. confval:: osd_mclock_scheduler_client_wgt
+.. confval:: osd_mclock_scheduler_client_lim
+.. confval:: osd_mclock_scheduler_background_recovery_res
+.. confval:: osd_mclock_scheduler_background_recovery_wgt
+.. confval:: osd_mclock_scheduler_background_recovery_lim
+.. confval:: osd_mclock_scheduler_background_best_effort_res
+.. confval:: osd_mclock_scheduler_background_best_effort_wgt
+.. confval:: osd_mclock_scheduler_background_best_effort_lim
 
 .. _the dmClock algorithm: https://www.usenix.org/legacy/event/osdi10/tech/full_papers/Gulati.pdf
 

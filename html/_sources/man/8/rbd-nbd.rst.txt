@@ -9,9 +9,11 @@
 提纲
 ====
 
-| **rbd-nbd** [-c conf] [--read-only] [--device *nbd device*] [--nbds_max *limit*] [--max_part *limit*] [--exclusive] [--timeout *seconds*] map *image-spec* | *snap-spec*
-| **rbd-nbd** unmap *nbd device*
+| **rbd-nbd** [-c conf] [--read-only] [--device *nbd device*] [--nbds_max *limit*] [--max_part *limit*] [--exclusive] [--notrim] [--encryption-format *format*] [--encryption-passphrase-file *passphrase-file*] [--io-timeout *seconds*] [--reattach-timeout *seconds*] map *image-spec* | *snap-spec*
+| **rbd-nbd** unmap *nbd device* | *image-spec* | *snap-spec*
 | **rbd-nbd** list-mapped
+| **rbd-nbd** attach --device *nbd device* *image-spec* | *snap-spec*
+| **rbd-nbd** detach *nbd device* | *image-spec* | *snap-spec*
 
 
 描述
@@ -46,10 +48,29 @@
 
    禁止其它客户端写入。
 
-.. option:: --timeout *seconds*
+.. option:: --notrim
+
+   Turn off trim/discard.
+
+.. option:: --encryption-format
+
+   Image encryption format.
+   Possible values: *luks1*, *luks2*
+
+.. option:: --encryption-passphrase-file
+
+   Path of file containing a passphrase for unlocking image encryption.
+
+.. option:: --io-timeout *seconds*
 
    会覆盖设备超时值。 Linux 内核请求的默认超时时间是 30 秒。\
    这个可选参数允许你另外指定超时时长。
+
+.. option:: --reattach-timeout *seconds*
+
+   Specify timeout for the kernel to wait for a new rbd-nbd process is
+   attached after the old process is detached. The default is 30
+   second.
 
 
 .. Image and snap specs

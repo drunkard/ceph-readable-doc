@@ -200,7 +200,7 @@ Minimum parts size to use when syncing objects using multipart upload.
 
 如何配置
 ~~~~~~~~
-关于多站配置请看\ :ref:`多站配置`_\ 。云同步模块要求新建一个
+关于多站配置请看\ :ref:`multisite`\ 。云同步模块要求新建一个
 zone ，其 tier type 必须是 ``cloud`` ：
 
 ::

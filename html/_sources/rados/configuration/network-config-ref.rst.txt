@@ -201,6 +201,29 @@ Ceph 守护进程动态地绑定端口，所以更改网络配置后无需重启
 为安全起见，从公共网或互联网到集群网应该是\ **不可达**\ 的。
 
 
+IPv4/IPv6 Dual Stack Mode
+-------------------------
+
+If you want to run in an IPv4/IPv6 dual stack mode and want to define your public and/or
+cluster networks, then you need to specify both your IPv4 and IPv6 networks for each:
+
+.. code-block:: ini
+
+	[global]
+		# ... elided configuration
+		public_network = {IPv4 public-network/netmask}, {IPv6 public-network/netmask}
+
+This is so that Ceph can find a valid IP address for both address families.
+
+If you want just an IPv4 or an IPv6 stack environment, then make sure you set the `ms bind`
+options correctly.
+
+.. note::
+   Binding to IPv4 is enabled by default, so if you just add the option to bind to IPv6
+   you'll actually put yourself into dual stack mode. If you want just IPv6, then disable IPv4 and
+   enable IPv6. See `绑定`_ below.
+
+
 .. Ceph Daemons
 
 Ceph 守护进程
@@ -312,6 +335,12 @@ configuration option.  For example,
 ``6800:7300`` 。确保\ `防火墙`_\ 开放了对应端口范围。
 
 你也可以让 Ceph 守护进程绑定到 IPv6 地址而非 IPv4 地址。
+
+.. confval:: ms_bind_port_min
+.. confval:: ms_bind_port_max
+.. confval:: ms_bind_ipv4
+.. confval:: ms_bind_ipv6
+.. confval:: public_bind_addr
 
 
 ``ms bind port min``

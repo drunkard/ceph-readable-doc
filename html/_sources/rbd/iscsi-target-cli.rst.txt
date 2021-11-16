@@ -12,7 +12,7 @@ a Ceph Object Store Disk (OSD) node.  When co-locating, ensure
 that sufficient CPU and memory are available to share.
 The following steps install and configure the Ceph iSCSI gateway for basic operation.
 
-**必备条件：**
+**Requirements:**
 
 -  A running Ceph Luminous or later storage cluster
 
@@ -52,7 +52,7 @@ to the *Installing* section:
 
 #. Create a new or use an existing RADOS Block Device (RBD).
 
-**安装：**
+**Installing:**
 
 If you are using the upstream ceph-iscsi package follow the
 `manual install instructions`_.
@@ -80,7 +80,7 @@ For rpm based instructions execute the following commands:
 
       yum install tcmu-runner
 
-**配置得跑起来：**
+**Setup:**
 
 #. gwcli requires a pool with the name ``rbd``, so it can store metadata
    like the iSCSI configuration. To check if this pool has been created
@@ -92,7 +92,7 @@ For rpm based instructions execute the following commands:
 
    If it does not exist instructions for creating pools can be found on the
    `RADOS pool operations page
-   <http://docs.ceph.com/docs/master/rados/operations/pools/>`_.
+   <http://docs.ceph.com/en/latest/rados/operations/pools/>`_.
 
 #. As ``root``, on a iSCSI gateway node, create a file named
    ``iscsi-gateway.cfg`` in the ``/etc/ceph/`` directory:
@@ -125,7 +125,7 @@ For rpm based instructions execute the following commands:
           # on *each* gateway node. With the SSL files in place, you can use 'api_secure = true'
           # to switch to https mode.
 
-          # To support the API, the bear minimum settings are:
+          # To support the API, the bare minimum settings are:
           api_secure = false
 
           # Additional API configuration options are as follows, defaults shown.
@@ -135,8 +135,8 @@ For rpm based instructions execute the following commands:
           # trusted_ip_list = 192.168.0.10,192.168.0.11
 
       .. note::
-        trusted_ip_list is a list of IP addresses on each iscsi gateway that
-        will be used for management operations like target creation, lun
+        trusted_ip_list is a list of IP addresses on each iSCSI gateway that
+        will be used for management operations like target creation, LUN
         exporting, etc. The IP can be the same that will be used for iSCSI
         data, like READ/WRITE commands to/from the RBD image, but using
         separate IPs is recommended.
@@ -165,7 +165,7 @@ For rpm based instructions execute the following commands:
 
 gwcli will create and configure the iSCSI target and RBD images and copy the
 configuration across the gateways setup in the last section. Lower level
-tools, like targetcli and rbd, can be used to query the local configuration,
+tools including targetcli and rbd can be used to query the local configuration,
 but should not be used to modify it. This next section will demonstrate how
 to create a iSCSI target and export a RBD image as LUN 0.
 
@@ -191,7 +191,7 @@ to create a iSCSI target and export a RBD image as LUN 0.
 
    .. code-block:: console
 
-       > /iscsi-target> cd iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/gateways
+       > /iscsi-targets> cd iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/gateways
        > /iscsi-target...-igw/gateways>  create ceph-gw-1 10.172.19.21
        > /iscsi-target...-igw/gateways>  create ceph-gw-2 10.172.19.22
 
@@ -201,7 +201,7 @@ to create a iSCSI target and export a RBD image as LUN 0.
 
    .. code-block:: console
 
-       > /iscsi-target> cd iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/gateways
+       > /iscsi-targets> cd iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/gateways
        > /iscsi-target...-igw/gateways>  create ceph-gw-1 10.172.19.21 skipchecks=true
        > /iscsi-target...-igw/gateways>  create ceph-gw-2 10.172.19.22 skipchecks=true
 
@@ -216,7 +216,7 @@ to create a iSCSI target and export a RBD image as LUN 0.
 
    .. code-block:: console
 
-       > /disks> cd /iscsi-target/iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/hosts
+       > /disks> cd /iscsi-targets/iqn.2003-01.com.redhat.iscsi-gw:iscsi-igw/hosts
        > /iscsi-target...eph-igw/hosts>  create iqn.1994-05.com.redhat:rh7-client
 
 #. Set the client's CHAP username to myiscsiusername and password to

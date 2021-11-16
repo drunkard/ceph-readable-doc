@@ -339,7 +339,7 @@ by discussions on :ref:`irc` and the :ref:`mailing-list`.
 修订你的 PR
 -----------
 
-While your PR is going through testing and `Code Review`_, you can
+While your PR is going through testing and `源码审核`_, you can
 modify it at any time by editing files in your local branch.
 
 After updates are committed locally (to the ``fix_1`` branch in our

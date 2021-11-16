@@ -1,4 +1,3 @@
-.. Hardware Recommendations
 .. _hardware-recommendations:
 
 ==========
@@ -37,6 +36,13 @@ RAM 内存
 ========
 
 一般来说，内存越多越好。
+Monitor / manager nodes for a modest cluster
+might do fine with 64GB; for a larger cluster with hundreds of OSDs 128GB
+is a reasonable target.  There is a memory target for BlueStore OSDs that
+defaults to 4GB.  Factor in a prudent margin for the operating system and
+administrative tasks (like monitoring and metrics) as well as increased
+consumption during recovery:  provisioning ~8GB per BlueStore OSD
+is advised.
 
 
 .. Monitors and managers (ceph-mon and ceph-mgr)
@@ -45,10 +51,13 @@ RAM 内存
 ----------------------------------------
 
 Monitor and manager daemon memory usage generally scales with the size of the
-cluster.  For small clusters, 1-2 GB is generally sufficient.  For
-large clusters, you should provide more (5-10 GB).  You may also want
-to consider tuning settings like ``mon_osd_cache_size`` or
-``rocksdb_cache_size``.
+cluster.  Note that at boot-time and during topology changes and recovery these
+daemons will need more RAM than they do during steady-state operation, so plan
+for peak usage.  For very small clusters, 32 GB suffices.  For
+clusters of up to, say, 300 OSDs go with 64GB.  For clusters built with (or
+which will grow to) even more OSDS you should provision
+128GB.  You may also want to consider tuning settings like ``mon_osd_cache_size``
+or ``rocksdb_cache_size`` after careful research.
 
 
 .. Metadata servers (ceph-mds)
@@ -298,7 +307,7 @@ Ceph 可以运行在廉价的普通硬件上，小型生产集群和开发集群
 |              |                | * ARM processors specifically may       |
 |              |                |   require additional cores.             |
 |              |                | * Actual performance depends on many    |
-|              |                |   factors including disk, network, and  |
+|              |                |   factors including drives, net, and    |
 |              |                |   client throughput and latency.        |
 |              |                |   Benchmarking is highly recommended.   |
 |              +----------------+-----------------------------------------+
@@ -312,15 +321,15 @@ Ceph 可以运行在廉价的普通硬件上，小型生产集群和开发集群
 |              +----------------+-----------------------------------------+
 |              | Network        |  1x 1GbE+ NICs (10GbE+ recommended)     |
 +--------------+----------------+-----------------------------------------+
-| ``ceph-mon`` | Processor      | - 1 core minimum                        |
+| ``ceph-mon`` | Processor      | - 2 cores minimum                       |
 |              +----------------+-----------------------------------------+
-|              | RAM            |  2GB+ per daemon                        |
+|              | RAM            |  2-4GB+ per daemon                      |
 |              +----------------+-----------------------------------------+
-|              | Disk Space     |  10 GB per daemon                       |
+|              | Disk Space     |  60 GB per daemon                       |
 |              +----------------+-----------------------------------------+
 |              | Network        |  1x 1GbE+ NICs                          |
 +--------------+----------------+-----------------------------------------+
-| ``ceph-mds`` | Processor      | - 1 core minimum                        |
+| ``ceph-mds`` | Processor      | - 2 cores minimum                       |
 |              +----------------+-----------------------------------------+
 |              | RAM            |  2GB+ per daemon                        |
 |              +----------------+-----------------------------------------+

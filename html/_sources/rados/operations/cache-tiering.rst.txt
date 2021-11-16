@@ -175,7 +175,7 @@ Other cache modes are:
 所用的驱动器通常都是高性能的、且安装在专用服务器上、有自己的
 CRUSH 规则。制定这样的规则时，要考虑到装有高性能驱动器的主机、\
 并忽略没有的主机。详情见
-:ref:`CRUSH 设备类<crush-map-device-class>`_ 。
+:ref:`CRUSH 设备类 <crush-map-device-class>` 。
 
 在后续例子中， ``hot-storage`` 作为缓存存储池、 ``cold-storage``
 作为后端存储池。

@@ -11,5 +11,5 @@ CEPHADM Developer Documentation
    developing-cephadm
    host-maintenance
    compliance-check
-   Storage devices and OSDs management <./design/storage_devices_and_osds>
+   存储设备和 OSD 管理 <./design/storage_devices_and_osds>
    scalability-notes

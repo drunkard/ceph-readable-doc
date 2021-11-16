@@ -9,8 +9,8 @@
 简介
 ----
 
-Swift 提供了名为容器（ container ）的东西，在这里它等价于桶\
-（ bucket ）概念。也可以说 RGW 用桶实现了 Swift 的容器功能。
+Swift 提供了名为 *容器* （ container ）的东西，在这里它等价于桶\
+（ bucket ）概念。也可以说 RGW 用桶实现了 Swift 容器的功能。
 
 本文档没有考虑 RGW 如何操作这些数据结构，比如说，为了序列化怎\
 样使用 encode() 和 decode() 方法、等等。

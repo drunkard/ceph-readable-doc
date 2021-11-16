@@ -32,6 +32,12 @@ List all file systems by name.
 
 ::
 
+    fs lsflags <file system name>
+
+List all the flags set on a file system.
+
+::
+
     fs dump [epoch]
 
 This dumps the FSMap at the given epoch (default: current) which includes all
@@ -75,6 +81,16 @@ This command removes the specified pool from the list of data pools for the
 file system.  If any files have layouts for the removed data pool, the file
 data will become unavailable. The default data pool (when creating the file
 system) cannot be removed.
+
+::
+
+    fs rename <file system name> <new file system name> [--yes-i-really-mean-it]
+
+Rename a Ceph file system. This also changes the application tags on the data
+pools and metadata pool of the file system to the new file system name.
+The CephX IDs authorized to the old file system name need to be reauthorized
+to the new name. Any on-going operations of the clients using these IDs may be
+disrupted. Mirroring is expected to be disabled on the file system.
 
 
 .. Settings
@@ -176,7 +192,9 @@ To bring the cluster back up, simply set the joinable flag:
 ------------
 
 大多数可操纵 MDS 的命令都需要一个 ``<role>`` 参数，它必须是以\
-下三种格式之一： ::
+下三种格式之一：
+
+::
 
     <fs_name>:<rank>
     <fs_id>:<rank>
@@ -221,32 +239,15 @@ To bring the cluster back up, simply set the joinable flag:
 不会更改 MDS ，它操纵的是先前被标记为已损坏的文件系统 rank 。
 
 
-.. Minimum Client Version
+Required Client Features
+------------------------
 
-客户端最低版本限制
-------------------
+It is sometimes desirable to set features that clients must support to talk to
+CephFS. Clients without those features may disrupt other clients or behave in
+surprising ways. Or, you may want to require newer features to prevent older
+and possibly buggy clients from connecting.
 
-It is sometimes desirable to set the minimum version of Ceph that a client must be
-running to connect to a CephFS cluster. Older clients may sometimes still be
-running with bugs that can cause locking issues between clients (due to
-capability release). CephFS provides a mechanism to set the minimum
-client version:
-
-::
-
-    fs set <fs name> min_compat_client <release>
-
-For example, to only allow Nautilus clients, use:
-
-::
-
-    fs set cephfs min_compat_client nautilus
-
-Clients running an older version will be automatically evicted.
-
-Enforcing minimum version of CephFS client is achieved by setting required
-client features. Commands to manipulate required client features of a file
-system:
+Commands to manipulate required client features of a file system:
 
 ::
 
@@ -259,8 +260,9 @@ To list all CephFS features
 
     fs feature ls
 
+Clients that are missing newly added features will be evicted automatically.
 
-CephFS features and first release they came out.
+Here are the current CephFS features and first release they came out:
 
 +------------------+--------------+-----------------+
 | Feature          | Ceph release | Upstream Kernel |
@@ -284,6 +286,8 @@ CephFS features and first release they came out.
 | deleg_ino        | octopus      | 5.6             |
 +------------------+--------------+-----------------+
 | metric_collect   | pacific      | N/A             |
++------------------+--------------+-----------------+
+| alternate_name   | pacific      | PLANNED         |
 +------------------+--------------+-----------------+
 
 CephFS Feature Descriptions
@@ -335,6 +339,13 @@ delegated inode numbers is a prerequisite for client to do async file creation.
 
 Clients can send performance metric to MDS if MDS support this feature.
 
+::
+
+    alternate_name
+
+Clients can set and understand "alternate names" for directory entries. This is
+to be used for encrypted file name support.
+
 
 .. Global settings
 
@@ -355,30 +366,13 @@ Clients can send performance metric to MDS if MDS support this feature.
 
 
 .. Advanced
+.. _advanced-cephfs-admin-settings:
 
 高级选项
 --------
 
 以下这些命令在常规操作中用不到，在遇到异常时才需要。这些命令若\
 使用不当会产生严重问题，甚至会导致文件系统无法访问。
-
-::
-
-    mds compat rm_compat
-
-删除一个兼容性功能标记。
-
-::
-
-    mds compat rm_incompat
-
-删除一个不兼容性功能标记。
-
-::
-
-    mds compat show
-
-展示 MDS 的兼容性标记。
 
 ::
 
@@ -392,3 +386,13 @@ Clients can send performance metric to MDS if MDS support this feature.
 
 此命令可把文件系统状态（除名字和存储池以外的）重置为默认值。\
 所有非 0 rank 都会保存在停止集里面。
+
+::
+
+    fs new <file system name> <metadata pool name> <data pool name> --fscid <fscid> --force
+
+This command creates a file system with a specific **fscid** (file system cluster ID).
+You may want to do this when an application expects the file system's ID to be
+stable after it has been recovered, e.g., after monitor databases are lost and
+rebuilt. Consequently, file system IDs don't always keep increasing with newer
+file systems.

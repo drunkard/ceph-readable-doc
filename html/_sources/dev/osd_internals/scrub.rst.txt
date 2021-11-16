@@ -26,12 +26,11 @@ Scrubbing Behavior Table
 State variables
 ---------------
 
-- Periodic tick state is !must_scrub && !must_deep_scrub && !time_for_deep 
-- Periodic tick after osd_deep_scrub_interval state is !must_scrub && !must_deep_scrub && time_for_deep 
-- Initiated scrub state is  must_scrub && !must_deep_scrub && !time_for_deep
-- Initiated scrub after osd_deep_scrub_interval state is must scrub && !must_deep_scrub && time_for_deep
-- Initiated deep scrub state is  must_scrub && must_deep_scrub
-
+- Periodic tick state is ``!must_scrub && !must_deep_scrub && !time_for_deep``
+- Periodic tick after ``osd_deep_scrub_interval state is !must_scrub && !must_deep_scrub && time_for_deep``
+- Initiated scrub state is ``must_scrub && !must_deep_scrub && !time_for_deep``
+- Initiated scrub after ``osd_deep_scrub_interval`` state is ``must_scrub && !must_deep_scrub && time_for_deep``
+- Initiated deep scrub state is ``must_scrub && must_deep_scrub``
 
 Scrub Reservations
 ------------------
@@ -39,3 +38,4 @@ Scrub Reservations
 An OSD daemon command dumps total local and remote reservations::
 
   ceph daemon osd.<id> dump_scrub_reservations
+

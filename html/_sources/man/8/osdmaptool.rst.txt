@@ -17,8 +17,8 @@
 | **osdmaptool** *mapfilename* [--export-crush *crushmap*]
 | **osdmaptool** *mapfilename* [--upmap *file*] [--upmap-max *max-optimizations*]
   [--upmap-deviation *max-deviation*] [--upmap-pool *poolname*]
-  [--upmap-save *file*] [--upmap-save *newosdmap*] [--upmap-active]
-| **osdmaptool** *mapfilename* [--upmap-cleanup] [--upmap-save *newosdmap*]
+  [--save] [--upmap-active]
+| **osdmaptool** *mapfilename* [--upmap-cleanup] [--upmap *file*]
 
 
 描述
@@ -176,9 +176,9 @@
 
    Change CRUSH weight of <osdid>
 
-.. option:: --upmap-save
+.. option:: --save
 
-   write modified OSDMap with upmap changes
+   write modified osdmap with upmap or crush-adjust changes
 
 
 实例

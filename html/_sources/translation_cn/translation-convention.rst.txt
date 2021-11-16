@@ -30,6 +30,10 @@
     assume role
         <暂未翻译>，AWS 术语。
 
+    attach
+        捆绑、绑
+        rbd -> qemu
+
     auxiliary device
         辅助设备。 BlueStore 术语，相对于 main device 。
 

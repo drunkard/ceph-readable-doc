@@ -148,9 +148,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#id4">关闭集群</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id5">快速关闭集群以进行反删除或灾难恢复</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id6">守护进程管理</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">客户端最低版本限制</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id8">全局配置选项</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id9">高级选项</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#required-client-features">Required Client Features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">全局配置选项</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#advanced-cephfs-admin-settings">高级选项</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../multifs/"> Creating Multiple File Systems</a></li>
@@ -160,6 +160,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../standby/#id3">故障切换的管理</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/#mds-standby-replay">热备的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../standby/#mds-join-fs">配置 MDS 与文件系统的亲和性</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cache-configuration/"> MDS Cache Configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mds-config-ref/"> MDS 配置选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../man/8/ceph-mds/"> ceph-mds 手册页</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../nfs/"> 通过 NFS 导出</a></li>
@@ -256,6 +257,10 @@ to accommodate the new file system.</p>
 </pre></div>
 </div>
 <p>List all file systems by name.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="n">lsflags</span> <span class="o">&lt;</span><span class="n">file</span> <span class="n">system</span> <span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>List all the flags set on a file system.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="n">dump</span> <span class="p">[</span><span class="n">epoch</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -290,6 +295,14 @@ as an alternate location to store file data.</p>
 file system.  If any files have layouts for the removed data pool, the file
 data will become unavailable. The default data pool (when creating the file
 system) cannot be removed.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="n">rename</span> <span class="o">&lt;</span><span class="n">file</span> <span class="n">system</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">new</span> <span class="n">file</span> <span class="n">system</span> <span class="n">name</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Rename a Ceph file system. This also changes the application tags on the data
+pools and metadata pool of the file system to the new file system name.
+The CephX IDs authorized to the old file system name need to be reauthorized
+to the new name. Any on-going operations of the clients using these IDs may be
+disrupted. Mirroring is expected to be disabled on the file system.</p>
 </div>
 <div class="section" id="id2">
 <h2>可配置选项<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
@@ -374,24 +387,13 @@ this state for other purposes (perhaps disaster recovery).</p>
 </div>
 <p>把文件系统 rank 标记为已修复。这里不像名字说明的那样，这个命令不会更改 MDS ，它操纵的是先前被标记为已损坏的文件系统 rank 。</p>
 </div>
-<div class="section" id="id7">
-<h2>客户端最低版本限制<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
-<p>It is sometimes desirable to set the minimum version of Ceph that a client must be
-running to connect to a CephFS cluster. Older clients may sometimes still be
-running with bugs that can cause locking issues between clients (due to
-capability release). CephFS provides a mechanism to set the minimum
-client version:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs</span> <span class="n">name</span><span class="o">&gt;</span> <span class="n">min_compat_client</span> <span class="o">&lt;</span><span class="n">release</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p>For example, to only allow Nautilus clients, use:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="nb">set</span> <span class="n">cephfs</span> <span class="n">min_compat_client</span> <span class="n">nautilus</span>
-</pre></div>
-</div>
-<p>Clients running an older version will be automatically evicted.</p>
-<p>Enforcing minimum version of CephFS client is achieved by setting required
-client features. Commands to manipulate required client features of a file
-system:</p>
+<div class="section" id="required-client-features">
+<h2>Required Client Features<a class="headerlink" href="#required-client-features" title="Permalink to this headline">¶</a></h2>
+<p>It is sometimes desirable to set features that clients must support to talk to
+CephFS. Clients without those features may disrupt other clients or behave in
+surprising ways. Or, you may want to require newer features to prevent older
+and possibly buggy clients from connecting.</p>
+<p>Commands to manipulate required client features of a file system:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="n">required_client_features</span> <span class="o">&lt;</span><span class="n">fs</span> <span class="n">name</span><span class="o">&gt;</span> <span class="n">add</span> <span class="n">reply_encoding</span>
 <span class="n">fs</span> <span class="n">required_client_features</span> <span class="o">&lt;</span><span class="n">fs</span> <span class="n">name</span><span class="o">&gt;</span> <span class="n">rm</span> <span class="n">reply_encoding</span>
 </pre></div>
@@ -400,7 +402,8 @@ system:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="n">feature</span> <span class="n">ls</span>
 </pre></div>
 </div>
-<p>CephFS features and first release they came out.</p>
+<p>Clients that are missing newly added features will be evicted automatically.</p>
+<p>Here are the current CephFS features and first release they came out:</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 37%" />
@@ -454,6 +457,10 @@ system:</p>
 <td><p>pacific</p></td>
 <td><p>N/A</p></td>
 </tr>
+<tr class="row-even"><td><p>alternate_name</p></td>
+<td><p>pacific</p></td>
+<td><p>PLANNED</p></td>
+</tr>
 </tbody>
 </table>
 <p>CephFS Feature Descriptions</p>
@@ -486,9 +493,14 @@ delegated inode numbers is a prerequisite for client to do async file creation.<
 </pre></div>
 </div>
 <p>Clients can send performance metric to MDS if MDS support this feature.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">alternate_name</span>
+</pre></div>
 </div>
-<div class="section" id="id8">
-<h2>全局配置选项<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<p>Clients can set and understand “alternate names” for directory entries. This is
+to be used for encrypted file name support.</p>
+</div>
+<div class="section" id="id7">
+<h2>全局配置选项<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="n">flag</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">flag</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">flag</span> <span class="n">val</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">&lt;</span><span class="n">confirmation</span> <span class="n">string</span><span class="o">&gt;</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -496,21 +508,9 @@ delegated inode numbers is a prerequisite for client to do async file creation.<
 文件系统。</p>
 <p>有些标志会强迫你用 <code class="docutils literal notranslate"><span class="pre">--yes-i-really-mean-it</span></code> 或者类似的语句（执行时会提示）来确认你的意图。运行这类命令时要三思而后行，它们通常用于提示非常危险的动作。</p>
 </div>
-<div class="section" id="id9">
-<h2>高级选项<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="advanced-cephfs-admin-settings">
+<span id="id8"></span><h2>高级选项<a class="headerlink" href="#advanced-cephfs-admin-settings" title="Permalink to this headline">¶</a></h2>
 <p>以下这些命令在常规操作中用不到，在遇到异常时才需要。这些命令若使用不当会产生严重问题，甚至会导致文件系统无法访问。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mds</span> <span class="n">compat</span> <span class="n">rm_compat</span>
-</pre></div>
-</div>
-<p>删除一个兼容性功能标记。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mds</span> <span class="n">compat</span> <span class="n">rm_incompat</span>
-</pre></div>
-</div>
-<p>删除一个不兼容性功能标记。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mds</span> <span class="n">compat</span> <span class="n">show</span>
-</pre></div>
-</div>
-<p>展示 MDS 的兼容性标记。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mds</span> <span class="n">rmfailed</span>
 </pre></div>
 </div>
@@ -519,6 +519,14 @@ delegated inode numbers is a prerequisite for client to do async file creation.<
 </pre></div>
 </div>
 <p>此命令可把文件系统状态（除名字和存储池以外的）重置为默认值。所有非 0 rank 都会保存在停止集里面。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fs</span> <span class="n">new</span> <span class="o">&lt;</span><span class="n">file</span> <span class="n">system</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">metadata</span> <span class="n">pool</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">fscid</span> <span class="o">&lt;</span><span class="n">fscid</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">force</span>
+</pre></div>
+</div>
+<p>This command creates a file system with a specific <strong>fscid</strong> (file system cluster ID).
+You may want to do this when an application expects the file system’s ID to be
+stable after it has been recovered, e.g., after monitor databases are lost and
+rebuilt. Consequently, file system IDs don’t always keep increasing with newer
+file systems.</p>
 </div>
 </div>
 

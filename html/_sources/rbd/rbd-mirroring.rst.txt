@@ -12,14 +12,14 @@ RBD 映像可在两个 Ceph 集群间异步地镜像。此能力有两种模式�
   actual image. The remote cluster will read from this associated journal and
   replay the updates to its local copy of the image. Since each write to the
   RBD image will result in two writes to the Ceph cluster, expect write
-  latencies to nearly double when using the RBD journaling image feature.
+  latencies to nearly double while using the RBD journaling image feature.
 
 * **Snapshot-based**: This mode uses periodically scheduled or manually
   created RBD image mirror-snapshots to replicate crash-consistent RBD images
   between clusters. The remote cluster will determine any data or metadata
   updates between two mirror-snapshots and copy the deltas to its local copy of
-  the image. With the help of the RBD fast-diff image feature, updated data
-  blocks can be quickly computed without the need to scan the full RBD image.
+  the image. With the help of the RBD ``fast-diff`` image feature, updated data
+  blocks can be quickly determined without the need to scan the full RBD image.
   Since this mode is not as fine-grained as journaling, the complete delta 
   between two snapshots will need to be synced prior to use during a failover
   scenario. Any partially applied set of deltas will be rolled back at moment
@@ -29,10 +29,10 @@ RBD 映像可在两个 Ceph 集群间异步地镜像。此能力有两种模式�
    snapshot-based mirroring requires the Ceph Octopus release or later.
 
 Mirroring is configured on a per-pool basis within peer clusters and can be
-configured on a specific subset of images within the pool or configured to
-automatically mirror all images within a pool when using journal-based
-mirroring only. Mirroring is configured using the ``rbd`` command. The
-``rbd-mirror`` daemon is responsible for pulling image updates from the remote,
+configured on a specific subset of images within the pool.  You can also mirror
+all images within a given pool when using journal-based
+mirroring. Mirroring is configured using the ``rbd`` command. The
+``rbd-mirror`` daemon is responsible for pulling image updates from the remote
 peer cluster and applying them to the image within the local cluster.
 
 Depending on the desired needs for replication, RBD mirroring can be configured
@@ -66,9 +66,13 @@ for either one- or two-way replication:
 
 关于如何连接到不同的 Ceph 集群，请参考 `rbd`_ 手册页。
 
-.. note:: 以下实例中的集群名对应着同名的 Ceph 配置文件（如
-   ``/etc/ceph/site-b.conf`` ）。如何配置多个集群请参考
-   `ceph-conf`_ 文档。
+.. note:: 以下实例中的集群名对应着同名的 Ceph 配置文件（
+   如 ``/etc/ceph/site-b.conf`` ）。如何配置多个集群请参考
+   `ceph-conf`_ 文档。注意， ``rbd-mirror`` **不要求**
+   源和目的集群有唯一的内部名称，都可以、而且都应该叫
+   ``ceph`` 。 ``rbd-mirror`` 需要的配置 `files` 所指的\
+   本地和远程集群可以任意命名，另外，把守护进程容器化也是\
+   一个在 ``/etc/ceph`` 之外运营集群以避免混淆的策略。
 
 
 .. Enable Mirroring
@@ -77,21 +81,29 @@ for either one- or two-way replication:
 ------------
 
 要用 ``rbd`` 命令启用存储池的镜像功能，可指定
-``mirror pool enable`` 命令、存储池名字、和镜像模式： ::
+``mirror pool enable`` 命令、存储池名字、镜像模式、和\
+一个可选的站点名（用于描述本地集群）::
 
-        rbd mirror pool enable {pool-name} {mode}
+        rbd mirror pool enable [--site-name {local-site-name}] {pool-name} {mode}
 
 其中，镜像模式可以是 ``image`` 或 ``pool`` ：
 
 * **image**: 配置为 ``image`` 模式时，需\ `显式地开启`_\ 各个\
   镜像的镜像功能。
-* **pool**: 配置为 ``pool`` 模式时，存储池内所有启用了
-  journaling 功能的映像都会被镜像。
+* **pool** （默认的）: 配置为 ``pool`` 模式时，存储池内\
+  所有启用了 journaling 功能的映像都会被镜像。
 
-例如： ::
+例如::
 
-        $ rbd --cluster site-a mirror pool enable image-pool image
-        $ rbd --cluster site-b mirror pool enable image-pool image
+        $ rbd --cluster site-a mirror pool enable --site-name site-a image-pool image
+        $ rbd --cluster site-b mirror pool enable --site-name site-b image-pool image
+
+The site name can also be specified when creating or importing a new
+`bootstrap token`_.
+
+The site name can be changed later using the same ``mirror pool enable``
+subcommand but note that the local site name and the corresponding site name
+used by the remote cluster generally must match.
 
 
 .. Disable Mirroring
@@ -117,13 +129,13 @@ Bootstrap Peers
 ---------------
 
 In order for the ``rbd-mirror`` daemon to discover its peer cluster, the peer
-needs to be registered to the pool and a user account needs to be created.
+must be registered and a user account must be created.
 This process can be automated with ``rbd`` and the
 ``mirror pool peer bootstrap create`` and ``mirror pool peer bootstrap import``
 commands.
 
-To manually create a new bootstrap token with ``rbd``, specify the
-``mirror pool peer bootstrap create`` command, a pool name, along with an
+To manually create a new bootstrap token with ``rbd``, issue the
+``mirror pool peer bootstrap create`` subcommand, a pool name, and an
 optional friendly site name to describe the local cluster::
 
         rbd mirror pool peer bootstrap create [--site-name {local-site-name}] {pool-name}
@@ -165,7 +177,7 @@ perform mirroring. A new local Ceph user should be created for the remote
 daemon to use. To `创建一个 Ceph 用户`_, with ``ceph`` specify the
 ``auth get-or-create`` command, user name, monitor caps, and OSD caps::
 
-        ceph auth get-or-create client.rbd-mirror-peer mon 'profile rbd' osd 'profile rbd'
+        $ ceph auth get-or-create client.rbd-mirror-peer mon 'profile rbd-mirror-peer' osd 'profile rbd'
 
 The resulting keyring should be copied to the other cluster's ``rbd-mirror``
 daemon hosts if not using the Ceph monitor ``config-key`` store described below.
@@ -307,6 +319,16 @@ RBD 映像日志功能，映像才能被镜像到对点集群。此功能可在�
 
 .. tip:: 你可以让所有新映像默认启用日志功能，把
    ``rbd default features = 125`` 写入配置文件即可。
+
+.. tip:: ``rbd-mirror`` tunables are set by default to values suitable for
+   mirroring an entire pool.  When using ``rbd-mirror`` to migrate single
+   volumes been clusters you may achieve substantial performance gains
+   by setting ``rbd_mirror_journal_max_fetch_bytes=33554432`` and
+   ``rbd_journal_max_payload_bytes=8388608`` within the ``[client]`` config
+   section of the local or centralized configuration.  Note that these
+   settings may allow ``rbd-mirror`` to present a substantial write workload
+   to the destination cluster:  monitor cluster performance closely during
+   migrations and test carefully before running multiple migrations in parallel.
 
 
 Create Image Mirror-Snapshots
@@ -543,6 +565,7 @@ rbd-mirror 守护进程
 .. _rbd: ../../man/8/rbd
 .. _ceph-conf: ../../rados/configuration/ceph-conf/#running-multiple-clusters
 .. _显式地开启: #enable-image-mirroring
+.. _bootstrap token: #bootstrap-peers
 .. _强制重新同步命令: #force-image-resync
 .. _降级此映像: #image-promotion-and-demotion
 .. _创建一个 Ceph 用户: ../../rados/operations/user-management#add-a-user

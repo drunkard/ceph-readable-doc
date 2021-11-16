@@ -134,12 +134,12 @@ of the message::
 Other Ceph Mailing Lists
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-There are also `other Ceph-related mailing lists`_.
+还有\ `其他与 Ceph 相关的邮件列表`_\ 。
 
 .. _`其他与 Ceph 相关的邮件列表`: https://ceph.com/irc/
 
-.. _irc:
 
+.. _irc:
 
 IRC
 ---

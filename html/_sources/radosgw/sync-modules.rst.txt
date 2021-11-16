@@ -4,7 +4,7 @@
 
 .. versionadded:: Kraken
 
-The :ref:`multisite`_ functionality of RGW introduced in Jewel allowed the ability to
+The :ref:`multisite` functionality of RGW introduced in Jewel allowed the ability to
 create multiple zones and mirror data and metadata between them. ``Sync Modules``
 are built atop of the multisite framework that allows for forwarding data and
 metadata to a different external tier. A sync module allows for a set of actions
@@ -40,7 +40,7 @@ for configuring any sync plugin
 需求和假设
 ----------
 
-Let us assume a simple multisite configuration as described in the :ref:`multisite`_
+Let us assume a simple multisite configuration as described in the :ref:`multisite`
 docs, of 2 zones ``us-east`` and ``us-west``, let's add a third zone
 ``us-east-es`` which is a zone that only processes metadata from the other
 sites. This zone can be in the same or a different ceph cluster as ``us-east``.
@@ -53,7 +53,7 @@ will not serve any end user requests directly.
 同步模块的配置
 --------------
 
-Create the third zone similar to the :ref:`multisite`_ docs, for example
+Create the third zone similar to the :ref:`multisite` docs, for example
 
 ::
 

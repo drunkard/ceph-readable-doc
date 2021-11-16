@@ -52,7 +52,7 @@ calm down, take a breath, and step through the below troubleshooting steps.
   arbitrary mon; in rare cases it may be illuminating to bind to specific
   mons in sequence by adding e.g. ``-m mymon1`` to the command.
 
-**ceph -s 没完成是什么情况？**
+**ceph -s 没返回是什么情况？**
 
   如果你还没跑通所有步骤，先回头做完。
 
