@@ -107,6 +107,7 @@ https://github.com/drunkard/ceph-readable-doc
 
 	cd /git/ceph
 	./admin/zh_build-doc
+	./admin/zh_build-doc linkcheck	# 检查链接是否有效，耗时很长
 
 #. 启动文档服务器，这样就可以通过 http://localhost:9080/ 阅读文档了。 ::
 

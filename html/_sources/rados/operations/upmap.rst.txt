@@ -1,8 +1,8 @@
-.. Using the pg-upmap
 .. _upmap:
 
 使用 pg-upmap
 =============
+.. Using the pg-upmap
 
 从 Luminous v12.2.z 版起， OSDMap 里有一张新的 *pg-upmap* 例外\
 表，以支持指定 PG 映射到指定的 OSD 。这样可以让集群可以更好地\
@@ -35,13 +35,12 @@ use with::
 均衡器模块
 ----------
 ceph-mgr 的 `balancer` 模块会自动均衡各 OSD 的 PG 数量。见
-``Balancer``
+:ref:`balancer`
 
-
-.. Offline optimization
 
 离线优化
 --------
+.. Offline optimization
 
 Upmap entries are updated with an offline optimizer built into ``osdmaptool``.
 

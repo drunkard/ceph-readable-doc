@@ -6,6 +6,7 @@
 
 .. program:: rbd
 
+
 提纲
 ====
 
@@ -223,8 +224,9 @@
   Remove a pool-level configuration override.
 
 :command:`cp` (*src-image-spec* | *src-snap-spec*) *dest-image-spec*
-  把源映像内容复制进新建的目标映像，目标映像和源映像将有相同\
-  的尺寸、对象尺寸和格式。
+  把源映像内容复制进新建的目标映像，目标映像和源映像\
+  将有相同的尺寸、对象尺寸和映像格式。
+  注意：它的快照没有复制，用 `deep cp` 命令包含快照。
 
 :command:`create` (-s | --size *size-in-M/G/T*) [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--thick-provision] [--no-progress] [--image-feature *feature-name*]... [--image-shared] *image-spec*
   新建一个 rbd 映像。还必须用 --size 指定尺寸。 --strip-unit 和
@@ -255,6 +257,22 @@
   --options 参数是个逗号分隔的特定于某类型设备的一系列选项（
   opt1,opt2=val,... ）。
 
+:command:`device attach` [-t | --device-type *device-type*] --device *device-path* [--cookie *device-cookie*] [--show-cookie] [--read-only] [--exclusive] [--force] [-o | --options *device-options*] *image-spec* | *snap-spec*
+  Attach the specified image to the specified block device (currently only
+  `nbd` on Linux). This operation is unsafe and should not be normally used.
+  In particular, specifying the wrong image or the wrong block device may
+  lead to data corruption as no validation is performed by `nbd` kernel driver.
+
+  The --options argument is a comma separated list of device type
+  specific options (opt1,opt2=val,...).
+
+:command:`device detach` [-t | --device-type *device-type*] [-o | --options *device-options*] *image-spec* | *snap-spec* | *device-path*
+  Detach the block device that was mapped or attached (currently only `nbd`
+  on Linux). This operation is unsafe and should not be normally used.
+
+  The --options argument is a comma separated list of device type
+  specific options (opt1,opt2=val,...).
+
 :command:`diff` [--from-snap *snap-name*] [--whole-object] *image-spec* | *snap-spec*
   打印出从指定快照点起、或从映像创建点起，映像内的变动区域。\
   输出的各行都包含起始偏移量（按字节）、数据块长度（按字节）、\
@@ -268,6 +286,13 @@
   挨个查询此映像涉及的每个潜在对象。
 
   --merge-snapshots 会把快照占用的空间算到它的父映像头上。
+
+:command:`encryption format` *image-spec* *format* *passphrase-file* [--cipher-alg *alg*]
+  Formats image to an encrypted format.
+  All data previously written to the image will become unreadable.
+  A cloned image cannot be formatted, although encrypted images can be cloned.
+  Supported formats: *luks1*, *luks2*.
+  Supported cipher algorithms: *aes-128*, *aes-256* (default).
 
 :command:`export` [--export-format *format (1 or 2)*] (*image-spec* | *snap-spec*) [*dest-path*]
   把映像导出到目的路径，用 - （短线）输出到标准输出。
@@ -394,19 +419,16 @@
   会改变此行为。注意，加锁操作本身不影响除加锁之外的任何操作，\
   也不会保护对象、防止它被删除。
 
-:command:`lock list` *image-spec*
+:command:`lock ls` *image-spec*
   显示锁着映像的锁，第一列是 `lock remove` 可以使用的锁名。
 
-:command:`lock remove` *image-spec* *lock-id* *locker*
+:command:`lock rm` *image-spec* *lock-id* *locker*
   释放映像上的锁。锁标识和其持有者来自 lock ls 。
 
 :command:`ls` [-l | --long] [*pool-name*]
-  列出 rbd_directory 对象中的所有 rbd 映像。加 -l 选项后也显示\
-  快照，并用长格式输出，包括大小、父映像（若是克隆品）、格式等\
-  等。
-
-  如果 RBD 映像的 fast-diff 功能没启用，那么这个操作需向多个
-  OSD 查询此映像涉及的每个对象。
+  列出 rbd_directory 对象中的所有 rbd 映像。\
+  加 -l 选项后也会列出快照，并用长格式输出，包括大小、\
+  父映像（若是克隆品）、格式等等。
 
 :command:`merge-diff` *first-diff-path* *second-diff-path* *merged-diff-path*
   把两个连续的增量差异合并为单个差异。前一个差异的末尾快照必须\
@@ -430,7 +452,7 @@
   Execute image migration. This step is run after a successful migration
   prepare step and copies image data to the destination.
 
-:command:`migration prepare` [--order *order*] [--object-size *object-size*] [--image-feature *image-feature*] [--image-shared] [--stripe-unit *stripe-unit*] [--stripe-count *stripe-count*] [--data-pool *data-pool*] *src-image-spec* [*dest-image-spec*]
+:command:`migration prepare` [--order *order*] [--object-size *object-size*] [--image-feature *image-feature*] [--image-shared] [--stripe-unit *stripe-unit*] [--stripe-count *stripe-count*] [--data-pool *data-pool*] [--import-only] [--source-spec *json*] [--source-spec-path *path*] *src-image-spec* [*dest-image-spec*]
   Prepare image migration. This is the first step when migrating an
   image, i.e. changing the image location, format or other
   parameters that can't be changed dynamically. The destination can
@@ -438,6 +460,11 @@
   After this step the source image is set as a parent of the
   destination image, and the image is accessible in copy-on-write mode
   by its destination spec.
+
+  An image can also be migrated from a read-only import source by adding the
+  *--import-only* optional and providing a JSON-encoded *--source-spec* or a
+  path to a JSON-encoded source-spec file using the *--source-spec-path*
+  optionals.
 
 :command:`mirror image demote` *image-spec*
   把 RBD 映像中的主映像降级成非主映像。
@@ -555,7 +582,8 @@
   rbd 大小调整。尺寸参数必须指定； --allow-shrink 选项允许缩小。
 
 :command:`rm` *image-spec*
-  删除一 rbd 映像，包括所有数据块。如果映像有快照，此命令会失效。
+  删除一 rbd 映像，包括所有数据块。如果此映像有快照，\
+  此命令会失效，什么也不会删除。
 
 :command:`snap create` *snap-spec*
   新建一快照。需指定快照名。
@@ -621,9 +649,6 @@
   从垃圾桶删除一个映像。如果映像的延期时间尚未满，那就不能\
   删除，除非强删。但是正被克隆件引用的、或还有快照的删不掉。
 
-:command:`watch` *image-spec*
-  盯着有关此映像的事件。
-
 :command:`trash purge schedule add` [-p | --pool *pool*] [--namespace *namespace*] *interval* [*start-time*]
   Add trash purge schedule.
 
@@ -636,14 +661,17 @@
 :command:`trash purge schedule status` [-p | --pool *pool*] [--format *format*] [--pretty-format] [--namespace *namespace*]
   Show trash purge schedule status.
 
+:command:`watch` *image-spec*
+  盯着有关此映像的事件。
+
 
 .. Image, snap, group and journal specs
 
 映像、快照、组和日志的名称规范
 ==============================
 
-| *image-spec* is [*pool-name*]/*image-name*
-| *snap-spec*  is [*pool-name*]/*image-name*\ @\ *snap-name*
+| *image-spec*      is [*pool-name*/[*namespace-name*/]]\ *image-name*
+| *snap-spec*       is [*pool-name*/[*namespace-name*/]]\ *image-name*\ @\ *snap-name*
 | *group-spec*      is [*pool-name*/[*namespace-name*/]]\ *group-name*
 | *group-snap-spec* is [*pool-name*/[*namespace-name*/]]\ *group-name*\ @\ *snap-name*
 | *journal-spec*    is [*pool-name*/[*namespace-name*/]]\ *journal-name*
@@ -663,10 +691,10 @@
 条带化
 ======
 
-RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存储\
-（ RADOS ）集群中。因此，到此映像的读和写请求会被分布到集群\
-内的很多节点，也因此避免了映像巨大或繁忙时可能出现的单节点\
-瓶颈。
+RBD 映像被条带化到很多对象，然后存储到
+Ceph 分布式对象存储（ RADOS ）集群中。因此，\
+到此映像的读和写请求会被分布到集群内的很多节点，\
+也因此避免了映像巨大或繁忙时可能出现的单节点瓶颈。
 
 条带化由三个参数控制：
 
@@ -917,7 +945,8 @@ format 2 格式的映像。
 
 	rbd create mypool/myimage --size 102400 --stripe-unit 65536B --stripe-count 16
 
-更改一映像的格式，先导出、再导入为期望格式： ::
+要改变某一映像的格式，\
+先导出它、然后再导入成期望的映像格式::
 
 	rbd export mypool/myimage@snap /tmp/img
 	rbd import --image-format 2 /tmp/img mypool/myimage2

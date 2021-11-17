@@ -3,10 +3,9 @@
 Messenger v2
 ============
 
-.. What is it
-
 这是什么
 --------
+.. What is it
 
 The messenger v2 protocol, or msgr2, is the second major revision on
 Ceph's on-wire protocol.  It brings with it several key features:
@@ -40,8 +39,8 @@ Starting with nautilus, we now have three different address types:
 * **v1**: ``v1:1.2.3.4:578/89012`` identifies a daemon binding to a
   port speaking the legacy v1 protocol.  Any address that was
   previously shown with any prefix is now shown as a ``v1:`` address.
-* **TYPE_ANY** addresses identify a client that can speak either
-  version of the protocol.  Prior to nautilus, clients would appear as
+* **TYPE_ANY** ``any:1.2.3.4:578/89012`` identifies a client that can
+  speak either version of the protocol. Prior to nautilus, clients would appear as
   ``1.2.3.4:0/123456``, where the port of 0 indicates they are clients
   and do not accept incoming connections.  Starting with Nautilus,
   these clients are now internally represented by a **TYPE_ANY**

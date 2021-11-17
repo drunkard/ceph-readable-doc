@@ -74,16 +74,11 @@ involved at all.
 -------------------
 By making use of :term:`LVM tags`, the :ref:`ceph-volume-lvm` sub-command is
 able to store and later re-discover and query devices associated with OSDs so
-that they can later activated. This includes support for lvm-based technologies
-like dm-cache as well.
-
-对 ``ceph-volume`` 来说， dm-cache 的使用是透明的，对这个工具\
-来说没什么不一样的地方，它把 dm-cache 当作一般的逻辑卷。
+that they can later be activated.
 
 LVM performance penalty
 -----------------------
 In short: we haven't been able to notice any significant performance penalties
 associated with the change to LVM. By being able to work closely with LVM, the
-ability to work with other device mapper technologies (for example ``dmcache``)
-was a given: there is no technical difficulty in working with anything that can
-sit below a Logical Volume.
+ability to work with other device mapper technologies was a given: there is no
+technical difficulty in working with anything that can sit below a Logical Volume.

@@ -25,8 +25,9 @@
 
 	</td><td><h3>数据归置</h3>
 
-你的集群开始运行后，就可以尝试数据归置了。 Ceph 是 PB 级数据\
-存储集群，它用 CRUSH 算法、靠存储池和归置组在集群内分布数据。
+你把集群鼓捣好并开始运行后，就可以尝试数据归置了。
+Ceph 可以支撑 PB 级的数据存储集群，它用 CRUSH 算法、\
+靠存储池和归置组在集群内分布数据。
 
 .. toctree::
 	:maxdepth: 1
@@ -40,6 +41,8 @@
 	upmap
 	crush-map
 	crush-map-edits
+	stretch-mode
+	change-mon-elections
 
 
 
@@ -54,11 +57,11 @@
 .. toctree::
 	:maxdepth: 1
 
-	add-or-rm-osds
-	add-or-rm-mons
-	devices
-        bluestore-migration
-	命令参考 <control>
+    add-or-rm-osds
+    add-or-rm-mons
+    devices
+    bluestore-migration
+    命令参考 <control>
 
 
 

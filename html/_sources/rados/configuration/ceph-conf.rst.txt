@@ -420,12 +420,11 @@ Every configuration option is typed with one of the types below:
 
    :example: ``1 m``, ``1m`` and ``1 week``
 
-
-.. Monitor configuration database
 .. _ceph-conf-database:
 
 监视器配置数据库
 ================
+.. Monitor configuration database
 
 The monitor cluster manages a database of configuration options that
 can be consumed by the entire cluster, enabling streamlined central
@@ -566,11 +565,9 @@ Note that if the same option is also customized in a local
 configuration file, the monitor setting will be ignored (it has a
 lower priority than the local config file).
 
-
-.. Override values
-
 覆盖值
 ------
+.. Override values
 
 You can also temporarily set an option using the `tell` or `daemon`
 interfaces on the Ceph CLI.  These *override* values are ephemeral in
@@ -606,10 +603,9 @@ Note that in the ``ceph config show`` command output these temporary
 values will be shown with a source of ``override``.
 
 
-.. Viewing runtime settings
-
 查看运行时配置
 ==============
+.. Viewing runtime settings
 
 You can see the current options set for a running daemon with the ``ceph config show`` command.  For example,::
 
@@ -638,10 +634,9 @@ will show only non-default settings (as well as where the value came from: a con
 will report the value of a single option.
 
 
-.. Changes since nautilus
-
 nautilus 以来的变化
 ===================
+.. Changes since nautilus
 
 With the Octopus release We changed the way the configuration file is parsed.
 These changes are as follows:

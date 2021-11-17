@@ -34,6 +34,18 @@ that are defined by ceph-mgr python modules.
 监视器
 ------
 
+DAEMON_OLD_VERSION
+__________________
+
+Warn if old version(s) of Ceph are running on any daemons.
+It will generate a health error if multiple versions are detected.
+This condition must exist for over mon_warn_older_version_delay (set to 1 week by default) in order for the
+health condition to be triggered.  This allows most upgrades to proceed
+without falsely seeing the warning.  If upgrade is paused for an extended
+time period, health mute can be used like this
+"ceph health mute DAEMON_OLD_VERSION --sticky".  In this case after
+upgrade has finished use "ceph health unmute DAEMON_OLD_VERSION".
+
 MON_DOWN
 ________
 
@@ -131,11 +143,77 @@ The warning threshold may be adjusted with::
 
   ceph config set global mon_data_size_warn <size>
 
+AUTH_INSECURE_GLOBAL_ID_RECLAIM
+_______________________________
 
-.. Manager
+One or more clients or daemons are connected to the cluster that are
+not securely reclaiming their global_id (a unique number identifying
+each entity in the cluster) when reconnecting to a monitor.  The
+client is being permitted to connect anyway because the
+``auth_allow_insecure_global_id_reclaim`` option is set to true (which may
+be necessary until all ceph clients have been upgraded), and the
+``auth_expose_insecure_global_id_reclaim`` option set to ``true`` (which
+allows monitors to detect clients with insecure reclaim early by forcing them to
+reconnect right after they first authenticate).
+
+You can identify which client(s) are using unpatched ceph client code with::
+
+  ceph health detail
+
+Clients global_id reclaim rehavior can also seen in the
+``global_id_status`` field in the dump of clients connected to an
+individual monitor (``reclaim_insecure`` means the client is
+unpatched and is contributing to this health alert)::
+
+  ceph tell mon.\* sessions
+
+We strongly recommend that all clients in the system are upgraded to a
+newer version of Ceph that correctly reclaims global_id values.  Once
+all clients have been updated, you can stop allowing insecure reconnections
+with::
+
+  ceph config set mon auth_allow_insecure_global_id_reclaim false
+
+If it is impractical to upgrade all clients immediately, you can silence
+this warning temporarily with::
+
+  ceph health mute AUTH_INSECURE_GLOBAL_ID_RECLAIM 1w   # 1 week
+
+Although we do NOT recommend doing so, you can also disable this warning indefinitely
+with::
+
+  ceph config set mon mon_warn_on_insecure_global_id_reclaim false
+
+AUTH_INSECURE_GLOBAL_ID_RECLAIM_ALLOWED
+_______________________________________
+
+Ceph is currently configured to allow clients to reconnect to monitors using
+an insecure process to reclaim their previous global_id because the setting
+``auth_allow_insecure_global_id_reclaim`` is set to ``true``.  It may be necessary to
+leave this setting enabled while existing Ceph clients are upgraded to newer
+versions of Ceph that correctly and securely reclaim their global_id.
+
+If the ``AUTH_INSECURE_GLOBAL_ID_RECLAIM`` health alert has not also been raised and
+the ``auth_expose_insecure_global_id_reclaim`` setting has not been disabled (it is
+on by default), then there are currently no clients connected that need to be
+upgraded, and it is safe to disallow insecure global_id reclaim with::
+
+  ceph config set mon auth_allow_insecure_global_id_reclaim false
+
+If there are still clients that need to be upgraded, then this alert can be
+silenced temporarily with::
+
+  ceph health mute AUTH_INSECURE_GLOBAL_ID_RECLAIM_ALLOWED 1w   # 1 week
+
+Although we do NOT recommend doing so, you can also disable this warning indefinitely
+with::
+
+  ceph config set mon mon_warn_on_insecure_global_id_reclaim_allowed false
+
 
 管理器
 ------
+.. Manager
 
 MGR_DOWN
 ________
@@ -508,6 +586,24 @@ This warning can be disabled with::
 
   ceph config set global bluestore_warn_on_no_per_pool_omap false
 
+BLUESTORE_NO_PER_PG_OMAP
+__________________________
+
+Starting with the Pacific release, BlueStore tracks omap space utilization
+by PG, and one or more OSDs have volumes that were created prior to
+Pacific.  Per-PG omap enables faster PG removal when PGs migrate.
+
+The older OSDs can be updated to track by PG by stopping each OSD,
+running a repair operation, and the restarting it.  For example, if
+``osd.123`` needed to be updated,::
+
+  systemctl stop ceph-osd@123
+  ceph-bluestore-tool repair --path /var/lib/ceph/osd/ceph-123
+  systemctl start ceph-osd@123
+
+This warning can be disabled with::
+
+  ceph config set global bluestore_warn_on_no_per_pg_omap false
 
 BLUESTORE_DISK_SIZE_MISMATCH
 ____________________________
@@ -563,10 +659,9 @@ Alternatively, it can be disabled on a specific OSD with::
   ceph config set osd.123 bluestore_warn_on_spurious_read_errors false
 
 
-.. Device health
-
 设备健康
 --------
+.. Device health
 
 DEVICE_HEALTH
 _____________
@@ -631,10 +726,9 @@ but be warned that this will increase the likelihood of unrecoverable
 data loss in the cluster.
 
 
-.. Data health (pools & placement groups)
-
 数据健康（存储池和归置组们）
 ----------------------------
+.. Data health (pools & placement groups)
 
 PG_AVAILABILITY
 _______________
@@ -982,8 +1076,9 @@ Setting the quota value to 0 will disable the quota.
 POOL_NEAR_FULL
 ______________
 
-One or more pools is approaching is quota.  The threshold to trigger
-this warning condition is controlled by the
+One or more pools is approaching a configured fullness threshold.
+
+One threshold that can trigger this warning condition is the
 ``mon_pool_quota_warn_threshold`` configuration option.
 
 Pool quotas can be adjusted up or down (or removed) with::
@@ -992,6 +1087,11 @@ Pool quotas can be adjusted up or down (or removed) with::
   ceph osd pool set-quota <pool> max_objects <objects>
 
 Setting the quota value to 0 will disable the quota.
+
+Other thresholds that can trigger the above two warning conditions are
+``mon_osd_nearfull_ratio`` and ``mon_osd_full_ratio``.  Visit the
+:ref:`storage-capacity` and :ref:`no-free-drive-space` documents for details
+and resolution.
 
 OBJECT_MISPLACED
 ________________
@@ -1028,12 +1128,12 @@ told to roll back to a previous version of the object. See
 SLOW_OPS
 ________
 
-One or more OSD requests is taking a long time to process.  This can
+One or more OSD or monitor requests is taking a long time to process.  This can
 be an indication of extreme load, a slow storage device, or a software
 bug.
 
-The request queue on the OSD(s) in question can be queried with the
-following command, executed from the OSD host::
+The request queue for the daemon in question can be queried with the
+following command, executed from the daemon's host::
 
   ceph daemon osd.<id> ops
 
@@ -1048,10 +1148,13 @@ OSD 的位置可用此命令找到： ::
 PG_NOT_SCRUBBED
 _______________
 
-One or more PGs has not been scrubbed recently.  PGs are normally
-scrubbed every ``mon_scrub_interval`` seconds, and this warning
-triggers when ``mon_warn_pg_not_scrubbed_ratio`` percentage of interval has elapsed
-without a scrub since it was due.
+One or more PGs has not been scrubbed recently.  PGs are normally scrubbed
+within every configured interval specified by
+:confval:`osd_scrub_max_interval` globally. This
+interval can be overriden on per-pool basis with
+:confval:`scrub_max_interval`. The warning triggers when
+``mon_warn_pg_not_scrubbed_ratio`` percentage of interval has elapsed without a
+scrub since it was due.
 
 PGs will not scrub if they are not flagged as *clean*, which may
 happen if they are misplaced or degraded (see *PG_AVAILABILITY* and
@@ -1065,7 +1168,7 @@ PG_NOT_DEEP_SCRUBBED
 ____________________
 
 One or more PGs has not been deep scrubbed recently.  PGs are normally
-scrubbed every ``osd_deep_scrub_interval`` seconds, and this warning
+scrubbed every :confval:`osd_deep_scrub_interval` seconds, and this warning
 triggers when ``mon_warn_pg_not_deep_scrubbed_ratio`` percentage of interval has elapsed
 without a scrub since it was due.
 
@@ -1099,10 +1202,9 @@ The exact size of the snapshot trim queue is reported by the
 ``snaptrimq_len`` field of ``ceph pg ls -f json-detail``.
 
 
-.. Miscellaneous
-
 杂项
 ----
+.. Miscellaneous
 
 RECENT_CRASH
 ____________
@@ -1119,6 +1221,40 @@ New crashes can be listed with::
 Information about a specific crash can be examined with::
 
   ceph crash info <crash-id>
+
+This warning can be silenced by "archiving" the crash (perhaps after
+being examined by an administrator) so that it does not generate this
+warning::
+
+  ceph crash archive <crash-id>
+
+Similarly, all new crashes can be archived with::
+
+  ceph crash archive-all
+
+Archived crashes will still be visible via ``ceph crash ls`` but not
+``ceph crash ls-new``.
+
+The time period for what "recent" means is controlled by the option
+``mgr/crash/warn_recent_interval`` (default: two weeks).
+
+These warnings can be disabled entirely with::
+
+  ceph config set mgr/crash/warn_recent_interval 0
+
+RECENT_MGR_MODULE_CRASH
+_______________________
+
+One or more ceph-mgr modules has crashed recently, and the crash as
+not yet been archived (acknowledged) by the administrator.  This
+generally indicates a software bug in one of the software modules run
+inside the ceph-mgr daemon.  Although the module that experienced the
+problem maybe be disabled as a result, the function of other modules
+is normally unaffected.
+
+As with the *RECENT_CRASH* health alert, the crash can be inspected with::
+
+    ceph crash info <crash-id>
 
 This warning can be silenced by "archiving" the crash (perhaps after
 being examined by an administrator) so that it does not generate this
@@ -1194,7 +1330,6 @@ Alternatively, the capabilities for the user can be updated with::
 
 For more information about auth capabilities, see :ref:`user-management`.
 
-
 OSD_NO_DOWN_OUT_INTERVAL
 ________________________
 
@@ -1211,3 +1346,16 @@ This warning can silenced by setting the
 ``mon_warn_on_osd_down_out_interval_zero`` to false::
 
   ceph config global mon mon_warn_on_osd_down_out_interval_zero false
+
+DASHBOARD_DEBUG
+_______________
+
+The Dashboard debug mode is enabled. This means, if there is an error
+while processing a REST API request, the HTTP error response contains
+a Python traceback. This behaviour should be disabled in production
+environments because such a traceback might contain and expose sensible
+information.
+
+The debug mode can be disabled with::
+
+  ceph dashboard debug disable

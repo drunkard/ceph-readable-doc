@@ -442,13 +442,13 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 :默认值: ``3600``
 
 
-
-.. Storage Capacity
 .. index:: Ceph Storage Cluster; capacity planning, Ceph Monitor; capacity planning
 
+.. _storage-capacity:
 
 存储容量
 --------
+.. Storage Capacity
 
 Ceph 存储集群利用率接近最大容量时（即 ``mon osd full ratio`` ），\
 作为防止数据丢失的安全措施，它会阻止你读写 OSD 。因此，让\
