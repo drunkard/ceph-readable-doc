@@ -1,8 +1,7 @@
-.. Architecture
-
 ==========
  体系结构
 ==========
+.. Architecture
 
 Ceph 独一无二地用统一的系统提供了\ **对象、块、和文件存储**\
 功能，它可靠性高、管理简便、并且是自由软件。 Ceph 的强大足以\
@@ -25,16 +24,18 @@ Ceph 提供了一个可无限伸缩的 :term:`Ceph 存储集群`\ ，它基于 \
 见论文 \
 `RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters`_ 。
 
-Ceph 存储集群包含两种类型的守护进程：
+Ceph 存储集群包含多种类型的守护进程：
 
 - :term:`Ceph 监视器`
 - :term:`Ceph 对象存储守护进程`
+- :term:`Ceph 管理器`
+- :term:`Ceph 元数据服务器`
 
 .. ditaa::
 
-            +---------------+ +---------------+
-            |      OSDs     | |    Monitors   |
-            +---------------+ +---------------+
+            +---------------+ +---------------+ +---------------+ +---------------+ 
+            |      OSDs     | |    Monitors   | |    Managers   | |      MDS      |
+            +---------------+ +---------------+ +---------------+ +---------------+ 
 
 Ceph 监视器维护着集群运行图的主副本。一个监视器集群确保了当\
 某个监视器失效时的高可用性。存储集群客户端向 Ceph 监视器索取\
@@ -43,22 +44,30 @@ Ceph 监视器维护着集群运行图的主副本。一个监视器集群确保
 Ceph OSD 守护进程检查自身状态、以及其它 OSD 的状态，并报告给\
 监视器们。
 
+A Ceph Manager acts as an endpoint for monitoring, orchestration, and plug-in
+modules.
+
+A Ceph Metadata Server (MDS) manages file metadata when CephFS is used to
+provide file services.
+
 存储集群的客户端和各个 :term:`Ceph OSD 守护进程`\ 使用
 CRUSH 算法高效地计算数据位置，而不是查询某个表。它的高级功能\
 包括：基于 ``librados`` 的原生存储接口、和多种基于 ``librados``
 的服务接口。
 
 
-.. Storing Data
-
 数据的存储
 ----------
+.. Storing Data
+
 Ceph 存储集群从 :term:`Ceph 客户端`\ 接收数据——不管是来自
 :term:`Ceph 块设备`\ 、 :term:`Ceph 对象存储`\ 、
-:term:`Ceph 文件系统`\ 、还是基于 ``librados`` 的自定义实现\
-——并存储为对象。对象是相应文件系统中的文件，但它是作为\
-:term:`对象存储设备`\ 使用的，这些读/写操作是 OSD 守护进程\
-处理的。
+:term:`Ceph 文件系统`\ 、还是基于 ``librados`` 自己实现的\
+——并存储为 RADOS 对象。 Ceph OSD 守护进程负责在存储驱动器上\
+处理读、写、还有复制操作。在比较老的 Filestore 后端上，\
+每个 RADOS 对象都是在传统文件系统（通常是 XFS ）上\
+存储的一个独立文件；在新的、默认的 BlueStore 后端上，\
+对象以类似单体数据库的方式存储。
 
 .. ditaa::
 
@@ -66,13 +75,13 @@ Ceph 存储集群从 :term:`Ceph 客户端`\ 接收数据——不管是来自
            | obj |------>| {d} |------>| {s} |
            \-----/       +-----+       +-----+
    
-            Object         File         Disk
+            Object         OSD          Drive
 
-OSD 在扁平的命名空间内把所有数据存储为对象（也就是没有\
-目录层次）。对象包含一个标识符、二进制数据、和由名字/值\
-配对组成的元数据，语义完全取决于 :term:`Ceph 客户端`\ 。例如，
-CephFS 用元数据存储文件属性，如文件所有者、创建日期、\
-最后修改日期等等。
+OSD 在一个扁平命名空间内把数据存储为对象\
+（也就是没有目录层次）。对象包含一个标识符、二进制数据、\
+和由名字/值配对组成的元数据，其语义完全取决于
+:term:`Ceph 客户端`\ 。例如， CephFS 用元数据存储文件属性，\
+如文件所有者、创建日期、最后修改日期等等。
 
 
 .. ditaa::
@@ -90,10 +99,10 @@ CephFS 用元数据存储文件属性，如文件所有者、创建日期、\
 
 
 .. index:: architecture; high availability, scalability
-.. Scalability and High Availability
 
 伸缩性和高可用性
 ----------------
+.. Scalability and High Availability
 
 在传统架构里，客户端沟通中央化的组件（如网关、中间件、 API 、\
 前端等等），它作为一个复杂子系统的单接触点，它引入单故障点\
@@ -107,10 +116,10 @@ OSD 守护进程自动在其它 Ceph 节点上创建对象复制品来确保数�
 
 
 .. index:: CRUSH; architecture
-.. CRUSH Introduction
 
 CRUSH 简介
 ~~~~~~~~~~
+.. CRUSH Introduction
 
 Ceph 客户端和 OSD 守护进程都用 \
 :abbr:`CRUSH (Controlled Replication Under Scalable Hashing)` \
@@ -123,10 +132,10 @@ CRUSH 用智能数据复制确保弹性，更能适应超大规模存储。下�
 
 
 .. index:: architecture; cluster map
-.. Cluster Map
 
 集群运行图
 ~~~~~~~~~~
+.. Cluster Map
 
 Ceph 依赖于 Ceph 客户端和 OSD ，因为它们知道集群的拓扑，这个\
 拓扑由 5 张图共同描述，统称为“集群运行图”：
@@ -163,10 +172,10 @@ Ceph 存储集群的整体健康状况。
 
 
 .. index:: high availability; monitor architecture
-.. High Availability Monitors
 
 高可用监视器
 ~~~~~~~~~~~~
+.. High Availability Monitors
 
 Ceph 客户端读或写数据前必须先连接到某个 Ceph 监视器、获得\
 最新的集群运行图副本。一个 Ceph 存储集群只需要单个监视器就能\
@@ -183,10 +192,10 @@ Ceph 总是使用大多数监视器（如： 1 、 2:3 、 3:5 、 4:6 等等）
 
 
 .. index:: architecture; high availability authentication
-.. High Availability Authentication
 
 高可用性认证
 ~~~~~~~~~~~~
+.. High Availability Authentication
 
 为辨明用户并防止中间人攻击， Ceph 用 ``cephx`` 认证系统来\
 认证用户和守护进程。
@@ -330,10 +339,10 @@ Ceph 认证就不管用了，它不会影响到用户主机和客户端主机间
 
 
 .. index:: architecture; smart daemons and scalability
-.. Smart Daemons Enable Hyperscale
 
 智能程序支撑超大规模
 ~~~~~~~~~~~~~~~~~~~~
+.. Smart Daemons Enable Hyperscale
 
 在很多集群化体系结构中，集群成员的主要目的都相似，集中式接口\
 知道它能访问哪些节点，然后此中央接口通过一个两级调度把服务\
@@ -421,10 +430,9 @@ OSD 可以利用本地节点的 CPU 和内存执行那些有可能拖垮中央�
 
 
 
-.. Dynamic Cluster Management
-
 动态集群管理
 ------------
+.. Dynamic Cluster Management
 
 在\ `伸缩性和高可用性`_\ 一节，我们解释了 Ceph 如何用 CRUSH 、\
 集群感知性和智能 OSD 守护进程来扩展和维护高可靠性。 Ceph 的\
@@ -435,10 +443,10 @@ CRUSH 如何运作，现代云存储基础设施如何动态地放置数据、�
 
 
 .. index:: architecture; pools
-.. About Pools
 
 关于存储池
 ~~~~~~~~~~
+.. About Pools
 
 Ceph 存储系统支持“池”概念，它是存储对象的逻辑分区。
 
@@ -475,10 +483,10 @@ Ceph 客户端从监视器获取一张\ `集群运行图`_\ ，并把对象写�
 
 
 .. index: architecture; placement group mapping
-.. Mapping PGs to OSDs
 
 PG 映射到 OSD
 ~~~~~~~~~~~~~
+.. Mapping PGs to OSDs
 
 各归置组都有很多归置组， CRUSH 动态的把它们映射到 OSD 。
 Ceph 客户端要存对象时， CRUSH 将把各对象映射到某个归置组。
@@ -523,10 +531,10 @@ CRUSH 算法把一堆对象映射到一归置组、然后再把各归置组映�
 
 
 .. index:: architecture; calculating PG IDs
-.. Calculating PG IDs
 
 计算 PG ID
 ~~~~~~~~~~
+.. Calculating PG IDs
 
 Ceph 客户端绑定到某监视器时，会索取最新的\ `集群运行图`_\
 副本，有了此图，客户端就能知道集群内的所有监视器、 OSD 、和\
@@ -558,10 +566,10 @@ paul 、 george 、 ringo 等等）时，它用对象名计算归置组\
 
 
 .. index:: architecture; PG Peering
-.. Peering and Sets
 
 互联和子集
 ~~~~~~~~~~
+.. Peering and Sets
 
 在前面的章节中，我们注意到 OSD 守护进程相互检查心跳并回馈给\
 监视器；它们的另一行为叫“互联（ peering ）”，这是一种\
@@ -602,10 +610,10 @@ OSD 守护进程作为 *acting set* 的一部分，不一定总在
 
 
 .. index:: architecture; Rebalancing
-.. Rebalancing
 
 重均衡
 ~~~~~~
+.. Rebalancing
 
 你向 Ceph 存储集群新增一 OSD 守护进程时，集群运行图就要用\
 新增的 OSD 更新。回想\ `计算 PG ID`_ ，这个动作会更改\
@@ -642,17 +650,18 @@ CRUSH 都是稳定的，很多归置组仍维持最初的配置，且各 OSD 都
 
 
 .. index:: architecture; Data Scrubbing
-.. Data Consistency
 
 数据一致性
 ~~~~~~~~~~
+.. Data Consistency
 
-作为维护数据一致和清洁的一部分， OSD 也能洗刷归置组内的对象，\
-也就是说， OSD 会比较归置组内位于不同 OSD 的各对象副本的\
-元数据。洗刷（通常每天执行）是为捕获 OSD 缺陷和文件系统错误，
-OSD 也能执行深度洗刷：按位比较对象内的数据；深度洗刷\
-（通常每周执行）是为捕捉磁盘上的坏扇区，在轻度洗刷时不可能\
-发现此问题。
+作为维护数据一致性和清洁度的一种职能，
+OSD 也会洗刷归置组内的对象，也就是说，
+OSD 会比较归置组内位于不同 OSD 上同一对象副本的元数据。\
+洗刷（通常每天执行）是为捕获 OSD 缺陷和文件系统错误，\
+通常能反映出硬件问题；OSD 也会进行深度洗刷：\
+按位比较对象内的数据；深度洗刷（通常每周执行）是为了\
+捕捉在轻度洗刷时没有出现的、驱动器上的坏块。
 
 关于数据洗刷的配置见\ `数据洗刷`_\ 。
 
@@ -661,25 +670,24 @@ OSD 也能执行深度洗刷：按位比较对象内的数据；深度洗刷\
 
 
 .. index:: erasure coding
-.. Erasure Coding
 
 纠删编码
 --------
+.. Erasure Coding
 
 纠删码存储池把各对象存储为 ``K+M`` 个数据块，其中有 ``K`` 个\
 数据块和 ``M`` 个编码块。此存储池的尺寸为 ``K+M`` ，这样各块\
 被存储到位于 acting set 中的 OSD ，块的位置也作为对象属性\
 保存下来了。
 
-比如一纠删码存储池创建时分配了五个 OSD （ ``K+M = 5`` ）并\
-容忍其中两个丢失（ ``M = 2`` ）。
+比如，可以创建一个使用 5 个 OSD 的纠删码存储池\
+（ ``K+M = 5`` ）并能容忍其中两个丢失（ ``M = 2`` ）。
 
 
-
-.. Reading and Writing Encoded Chunks
 
 读出和写入编码块
 ~~~~~~~~~~~~~~~~
+.. Reading and Writing Encoded Chunks
 
 当包含 ``ABCDEFGHI`` 的对象 **NYAN** 被写入存储池时，\
 纠删编码功能把内容分割为三个数据块，只是简单地切割为三份：\
@@ -796,10 +804,11 @@ acting set 中的 OSD 内。这些块以相同的名字（ **NYAN** ）\
 
 
 
-.. Interrupted Full Writes
+
 
 被中断的完全重写
 ~~~~~~~~~~~~~~~~
+.. Interrupted Full Writes
 
 在纠删码存储池中， up set 中的主 OSD 接受所有写操作，它负责把\
 载荷编码为 ``K+M`` 个块并发送给其它 OSD 。它也负责维护\
@@ -846,18 +855,20 @@ acting set 中的 OSD 内。这些块以相同的名字（ **NYAN** ）\
 
 
 **OSD 1** 是主的，它从客户端收到了 **WRITE FULL** 请求，\
-这意味着净载荷将会完全取代此对象，而非部分覆盖。此对象的\
-版本 2 （ v2 ）将被创建以取代版本 1 （ v1 ）。 **OSD 1** 把\
-净载荷编码为三块： ``D1v2`` （即数据块号 1 、版本 2 ）将存入
-**OSD 1** 、 ``D2v2`` 在 **OSD 2** 上、 ``C1v2`` （即\
-编码块号 1 版本 2 ）在 **OSD 3** 上，各块分别被发往目标 OSD ，\
-包括主 OSD ，它除了存储块还负责处理写操作和维护归置组日志的\
-权威版本。当某个 OSD 收到写入块的指令消息后，它也会新建一条\
-归置组日志来反映变更，比如在 **OSD 3** 存储 ``C1v2`` 时它也会\
-把 ``1,2`` （即 epoch 为 1 、版本为 2 ）写入它自己的日志。因为
-OSD 们是异步工作的，当某些块还“飞着”时（像 ``D2v2`` ），其它的\
-可能已经被确认存在磁盘上了（像 ``C1v1`` 和 ``D1v1`` ）。
-
+这意味着净载荷将会完全取代此对象，而非部分覆盖。\
+此对象的版本 2 （ v2 ）将被创建以取代版本 1 （ v1 ）。
+**OSD 1** 把净载荷编码为三块： ``D1v2`` （即数据块号 1 、版本 2 ）将存入 **OSD 1** 、
+``D2v2`` 在 **OSD 2** 上、
+``C1v2`` （即编码块号 1 版本 2 ）在 **OSD 3** 上，\
+各块分别被发往目标 OSD ，包括主 OSD ，\
+它除了存储块还负责处理写操作和维护归置组日志的权威版本。\
+当某个 OSD 收到写入块的指令消息后，\
+它也会新建一条归置组日志来反映变更，比如，\
+在 **OSD 3** 存储 ``C1v2`` 时它也会把 ``1,2``
+（即 epoch 为 1 、版本为 2 ）写入它自己的日志。\
+因为 OSD 们是异步工作的，当某些块还“飞着”时（像 ``D2v2`` ），\
+其它的可能已经被确认并持久化到驱动器上了\
+（像 ``C1v1`` 和 ``D1v1`` ）。
 
 .. ditaa::
 
@@ -1073,10 +1084,10 @@ OSD 上、且可用）是 ``1,1`` 那么它将是新权威日志的头条。
 
 
 
-.. Cache Tiering
 
 缓存分级
 --------
+.. Cache Tiering
 
 对于后端存储层上的部分热点数据，缓存层能向 Ceph 客户端提供\
 更好的 IO 性能。缓存分层包括创建由相对高速、昂贵的存储设备\
@@ -1115,15 +1126,17 @@ OSD 上、且可用）是 ``1,1`` 那么它将是新权威日志的头条。
                                  Slower I/O
 
 
-详情见\ `缓存分级`_\ 。
+详情见\ `缓存分级`_\ 。请注意，分级缓存需要一定的技巧，\
+现在还不建议采用。
+
 
 
 
 .. index:: Extensibility, Ceph Classes
-.. Extending Ceph
 
 扩展 Ceph
 ---------
+.. Extending Ceph
 
 你可以用 'Ceph Classes' 共享对象类来扩展 Ceph 功能， Ceph 会\
 动态地载入位于 ``osd class dir`` 目录下的 ``.so`` 类文件\
@@ -1151,10 +1164,10 @@ OSD 上、且可用）是 ``1,1`` 那么它将是新权威日志的头条。
 
 
 
-.. Summary
 
 小结
 ----
+.. Summary
 
 Ceph 存储集群是动态的——像个生物体。尽管很多存储应用不能\
 完全利用一台普通服务器上的 CPU 和 RAM 资源，但是 Ceph 能。\
@@ -1166,10 +1179,11 @@ Ceph 存储集群是动态的——像个生物体。尽管很多存储应用不
 
 
 .. index:: Ceph Protocol, librados
-.. Ceph Protocol
 
 Ceph 协议
 =========
+.. Ceph Protocol
+
 Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进了
 ``librados`` 库，这样你就能创建自己的定制客户端了，下图描述了\
 基本架构。
@@ -1185,10 +1199,11 @@ Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进
             +---------------+ +---------------+
 
 
-.. Native Protocol and ``librados``
+
 
 原生协议和 ``librados``
 -----------------------
+.. Native Protocol and ``librados``
 
 现代程序都需要可异步通讯的简单对象存储接口。 Ceph 存储集群\
 提供了一个有异步通讯能力的简单对象存储接口，此接口提供了\
@@ -1206,11 +1221,12 @@ Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进
 - 对象类。
 
 
+
 .. index:: architecture; watch/notify
-.. Object Watch/Notify
 
 对象关注/通知
 -------------
+.. Object Watch/Notify
 
 客户端可以注册对某个对象的持续兴趣，并使到主 OSD 的会话保持\
 活跃。客户端可以发送一通知消息和载荷给所有关注者、并可收集\
@@ -1264,11 +1280,12 @@ Ceph 客户端用原生协议和存储集群交互， Ceph 把此功能封装进
                  |                     Complete
 
 
+
 .. index:: architecture; Striping
-.. Data Striping
 
 数据条带化
 ----------
+.. Data Striping
 
 存储设备都有吞吐量限制，它会影响性能和伸缩性，所以存储系统\
 一般都支持\ `条带化`_\ （把连续的信息分段存储于多个设备）\
@@ -1327,17 +1344,18 @@ Ceph 存储集群的对象。
                  \-----------/    \-----------/
 
 
-如果要处理大尺寸图像、大个 S3 或 Swift 对象（如视频）、或\
-大个的 CephFS 目录，你就能看到条带化到多个对象能带来显著的\
-读/写性能提升。当客户端能把条带单元并行地写入相应对象时，\
-才会有明显的写性能，因为对象映射到了不同的归置组、并对应\
-不同 OSD ，可以分别以最大速度写入。到磁盘的写入受限于磁头移动\
-（即 6ms 寻道时间）、存储设备带宽， Ceph 把写入分布到多个对象\
-（它们映射到了不同归置组和 OSD ），这样可减少每设备寻道次数、\
-联合多个驱动器的吞吐量，以达到更高的写（或读）速度。
+如果要处理大尺寸图像、大个 S3 或 Swift 对象（如视频）、\
+或大个的 CephFS 目录，你就能看到条带化到多个对象能\
+带来显著的读/写性能提升；当客户端能把条带单元并行地写入相应对象时，\
+才会有优越的写性能。因为对象映射到了很多不同的归置组、\
+然后对应不同 OSD ，每个写入操作都可以并行地以最大速度执行。\
+到驱动器的写入受限于磁头移动（如每次寻道要 6ms ）、\
+单个存储驱动器的带宽（如 100MB/s ）， Ceph 把写入散布到多个对象\
+（它们映射到了不同归置组和 OSD ），这样可减少每个驱动器的寻道次数、\
+并联合多个驱动器的吞吐量，以达到更高的写（或读）速度。
 
-.. note:: 条带化独立于对象复制。因为 CRUSH 会在 OSD 间\
-   复制对象，数据条带是自动被复制的。
+.. note:: 条带化独立于对象复制。因为 CRUSH 会\
+   在 OSD 间复制对象，数据条带是自动被复制的。
 
 在下图中，客户端数据条带化到一个对象集（下图中的
 ``object set 1`` ），它包含 4 个对象，其中，第一个条带单元是
@@ -1436,10 +1454,10 @@ Ceph 客户端把数据等分为条带单元并映射到对象后，用 CRUSH �
 
 
 .. index:: architecture; Ceph Clients
-.. Ceph Clients
 
 Ceph 客户端
 ===========
+.. Ceph Clients
 
 Ceph 客户端包括数种服务接口，有：
 
@@ -1482,10 +1500,10 @@ Ceph 能额外运行多个 OSD 、 MDS 、和监视器来保证伸缩性和\
 
 
 .. index:: architecture; Ceph Object Storage
-.. Ceph Object Storage
 
 Ceph 对象存储
 -------------
+.. Ceph Object Storage
 
 Ceph 对象存储守护进程是 ``radosgw`` ，它是一个 FastCGI 服务，\
 提供了 `REST 风格`_ HTTP API 用于存储对象和元数据。它坐落于
@@ -1508,10 +1526,10 @@ Amazon S3 兼容的 API ；例如，你可以用一个程序通过 S3 兼容 API
 
 
 .. index:: Ceph Block Device; block device; RBD; Rados Block Device
-.. Ceph Block Device
 
 Ceph 块设备
 -----------
+.. Ceph Block Device
 
 Ceph 块设备把一个设备映像条带化到集群内的多个对象，其中各对象\
 映射到一个归置组并分布出去，这些归置组会散播到整个集群的某些
@@ -1535,11 +1553,11 @@ Ceph 块设备内核对象，用命令行工具 ``rbd`` 实现。
 
 .. index:: CephFS; Ceph Filesystem; libcephfs; MDS; metadata server; ceph-mds
 
-.. Ceph Filesystem
 .. _arch-cephfs:
 
 Ceph 文件系统
 -------------
+.. Ceph Filesystem
 
 Ceph 文件系统（ CephFS ）是与 POSIX 兼容的文件系统服务，\
 坐落于基于对象的 Ceph 存储集群之上，其内的文件被映射到

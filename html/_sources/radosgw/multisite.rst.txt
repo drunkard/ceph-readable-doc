@@ -1299,14 +1299,14 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 
 
 
-.. Set a Zone
-
 配置域
 ~~~~~~
+.. Set a Zone
 
-配置域时需指定一系列 Ceph 对象网关例程的存储池，我们建议用域的\
-名字作为存储池前缀，存储池配置细节见\ `存储池 \
-<http://docs.ceph.com/docs/master/rados/operations/pools/#pools>`__\ 。
+配置域时需指定一系列 Ceph 对象网关例程的存储池，\
+我们建议用域的名字作为存储池前缀。\
+存储池如何配置见\
+`存储池 http://docs.ceph.com/en/latest/rados/operations/pools/#pools>`__\ 。
 
 要配置域，需创建一个包含存储池的 JSON 对象，并存入一个文件（如
 ``zone.json`` ），然后执行下列命令（把 ``{zone-name}`` 替换为\

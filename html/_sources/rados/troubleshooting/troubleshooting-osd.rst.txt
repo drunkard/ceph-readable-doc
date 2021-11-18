@@ -1,8 +1,7 @@
-.. Troubleshooting OSDs
-
 ==============
  OSD 故障排除
 ==============
+.. Troubleshooting OSDs
 
 对 OSD 排障前，先检查一下各监视器和网络。如果命令行 ``ceph health``
 或 ``ceph -s`` 返回的是 ``HEALTH_OK`` ，这意味着监视器们形成了\
@@ -126,7 +125,8 @@ Or an entire CRUSH bucket at a time.  Say you're going to take down
 .. note:: 在定位同一故障域内的问题时，停机 OSD 内的归置组状态\
    会变为 ``degraded`` 。
 
-维护结束后，重启 OSD 和其它守护进程。如果维护期间重启过主机，\
+维护结束后，重启 OSD 和其它守护进程们。\
+如果维护期间重启过主机，\
 无需干预它们应该就会自己回归。 ::
 
 	sudo systemctl start ceph.target
@@ -145,14 +145,14 @@ to issue equivalent ``service`` or ``start``/``stop`` commands.
 
 OSD 没运行
 ==========
+.. OSD Not Running
 
 通常情况下，简单地重启 ``ceph-osd`` 进程就可以重回集群并恢复。
 
 
-.. An OSD Won't Start
-
 OSD 起不来
 ----------
+.. An OSD Won't Start
 
 如果你启动集群时，其中一个 OSD 起不来，依次检查：
 
@@ -249,11 +249,11 @@ OSD 失败
 `ceph-devel`_ 邮件列表。
 
 
-.. No Free Drive Space
 .. _no-free-drive-space:
 
 硬盘没剩余空间
 --------------
+.. No Free Drive Space
 
 Ceph 不允许你向满的 OSD 写入数据，以免丢失数据。在运营着的集群\
 中， OSD 们和存储池接近 full ratio 时你应该会收到警告。 ``mon osd full ratio``
@@ -324,23 +324,22 @@ OSD 的 ``full ratio`` 、 ``backfillfull ratio`` 和
 详情见\ `监视器配置参考`_\ 。
 
 
-.. OSDs are Slow/Unresponsive
-
 OSD 龟速或无响应
 ================
+.. OSDs are Slow/Unresponsive
 
-一个反复出现的问题是龟速或无响应。在深入性能问题前，你应该先确\
-保不是其他故障。例如，确保你的网络运行正常、且 OSD 在运行，还\
-要检查 OSD 是否被恢复流量拖住了。
+一个常见的问题是 OSD 龟速或无响应。在深入性能问题前，\
+你应该先确保排除了其他故障的可能性。\
+例如，确保你的网络运行正常、且 OSD 在运行，\
+还要检查 OSD 是否被恢复流量拖住了。
 
 .. tip:: 较新版本的 Ceph 能更好地处理恢复，可防止恢复进程耗尽\
    系统资源而导致 ``up`` 且 ``in`` 的 OSD 不可用或响应慢。
 
 
-.. Networking Issues
-
 网络问题
 --------
+.. Networking Issues
 
 Ceph 是一个分布式存储系统，所以它靠网络实现 OSD 互联、复制、\
 故障恢复、和心律传递。网络问题会导致 OSD 延时和状态抖动，

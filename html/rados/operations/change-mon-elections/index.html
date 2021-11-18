@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>纠删码配置 &mdash; Ceph Documentation</title>
+  <title>Configure Monitor Election Strategies &mdash; Ceph Documentation</title>
   
 
   
@@ -42,8 +42,8 @@
     
     <link rel="index" title="Index" href="../../../genindex/" />
     <link rel="search" title="Search" href="../../../search/" />
-    <link rel="next" title="Jerasure 纠删码插件" href="../erasure-code-jerasure/" />
-    <link rel="prev" title="纠删码" href="../erasure-code/" /> 
+    <link rel="next" title="增加/删除 OSD" href="../add-or-rm-osds/" />
+    <link rel="prev" title="Stretch Clusters" href="../stretch-mode/" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -78,15 +78,13 @@
         
           <li><a href="../">集群运维</a> &raquo;</li>
         
-          <li><a href="../erasure-code/">纠删码</a> &raquo;</li>
-        
-      <li>纠删码配置</li>
+      <li>Configure Monitor Election Strategies</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
           
-            <a href="../../../_sources/rados/operations/erasure-code-profile.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../../../_sources/rados/operations/change-mon-elections.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -151,16 +149,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../pg-repair/">修复 PG 不一致状态</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../data-placement/">数据归置概览</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../pools/">存储池</a></li>
-<li class="toctree-l3 current"><a class="reference internal" href="../erasure-code/">纠删码</a><ul class="current">
-<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id2">创建纠删码存储池样板</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id3">纠删码配置</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id4">在纠删码存储池上启用重写功能</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id6">纠删码存储池与缓存分级</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id9">纠删码存储池的恢复</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../erasure-code/#id10">术语</a></li>
-<li class="toctree-l4 current"><a class="reference internal" href="../erasure-code/#id11">内容列表</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="../erasure-code/">纠删码</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cache-tiering/">分级缓存</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../balancer/">均衡器</a></li>
@@ -168,7 +157,13 @@
 <li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../crush-map-edits/">手动编辑一个 CRUSH 图</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stretch-mode/">Stretch Clusters</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../change-mon-elections/">Configure Monitor Election Strategies</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Configure Monitor Election Strategies</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#choosing-a-mode">Choosing a mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#the-disallow-mode">The disallow Mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#the-connectivity-mode">The connectivity Mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#examining-connectivity-scores">Examining connectivity scores</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../add-or-rm-osds/">增加/删除 OSD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../devices/">设备管理</a></li>
@@ -242,124 +237,78 @@
   </div>
 
   
-  <div class="section" id="erasure-code-profiles">
-<span id="id1"></span><h1>纠删码配置<a class="headerlink" href="#erasure-code-profiles" title="Permalink to this headline">¶</a></h1>
-<p>纠删码由<strong>配置</strong>定义，在创建纠删码存储池及其相关的 CRUSH 规则时用到。</p>
-<p>名为 <strong>default</strong> 的纠删码配置（ Ceph 集群初始化时创建的）会把数据等分为 2 块、还有两个相同尺寸的奇偶校验块。它在集群内占用的空间和 2 副本存储池一样，却能容许 4 个数据块丢 2 块。这样的配置就是 <strong>k=2</strong> 且 <strong>m=4</strong> ，意思是信息分布在四个 OSD
-（ k+m=4 ）且容许其中两个丢失。</p>
-<p>为了在不增加原始存储空间需求的前提下提升冗余性，你可以新建配置。例如，一个 <strong>k=10</strong> 且 <strong>m=4</strong> 的配置可容忍 4 个 OSD
-失效，它会把一对象分布到 14 个（ k+m=14 ） OSD 上。此对象先被分割为 <strong>10</strong> 块（若对象为 10MB ，那每块就是 1MB ）、并计算出 <strong>4</strong> 个用于恢复的编码块（各编码块尺寸等于数据块，即
-1MB ）；这样，原始空间仅多占用 10% 就可容许 4 个 OSD 同时失效、且不丢失数据。</p>
-<div class="toctree-wrapper compound" id="id2">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../erasure-code-jerasure/">Jerasure 纠删码插件</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../erasure-code-isa/">ISA 纠删码插件</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../erasure-code-lrc/">局部自修复纠删码插件</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../erasure-code-shec/">SHEC 纠删码插件</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../erasure-code-clay/">CLAY 码插件</a></li>
+  <div class="section" id="configure-monitor-election-strategies">
+<span id="changing-monitor-elections"></span><h1>Configure Monitor Election Strategies<a class="headerlink" href="#configure-monitor-election-strategies" title="Permalink to this headline">¶</a></h1>
+<p>By default, the monitors will use the <code class="docutils literal notranslate"><span class="pre">classic</span></code> mode. We
+recommend that you stay in this mode unless you have a very specific reason.</p>
+<p>If you want to switch modes BEFORE constructing the cluster, change
+the <code class="docutils literal notranslate"><span class="pre">mon</span> <span class="pre">election</span> <span class="pre">default</span> <span class="pre">strategy</span></code> option. This option is an integer value:</p>
+<ul class="simple">
+<li><p>1 for “classic”</p></li>
+<li><p>2 for “disallow”</p></li>
+<li><p>3 for “connectivity”</p></li>
 </ul>
-</div>
-<div class="section" id="osd-erasure-code-profile-set">
-<h2>osd erasure-code-profile set<a class="headerlink" href="#osd-erasure-code-profile-set" title="Permalink to this headline">¶</a></h2>
-<p>要新建纠删码配置：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span> <span class="nb">set</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span> \
-     <span class="p">[{</span><span class="n">directory</span><span class="o">=</span><span class="n">directory</span><span class="p">}]</span> \
-     <span class="p">[{</span><span class="n">plugin</span><span class="o">=</span><span class="n">plugin</span><span class="p">}]</span> \
-     <span class="p">[{</span><span class="n">stripe_unit</span><span class="o">=</span><span class="n">stripe_unit</span><span class="p">}]</span> \
-     <span class="p">[{</span><span class="n">key</span><span class="o">=</span><span class="n">value</span><span class="p">}</span> <span class="o">...</span><span class="p">]</span> \
-     <span class="p">[</span><span class="o">--</span><span class="n">force</span><span class="p">]</span>
+<p>Once your cluster is running, you can change strategies by running</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph mon set election_strategy {classic|disallow|connectivity}
 </pre></div>
 </div>
-<p>其中：</p>
-<p><code class="docutils literal notranslate"><span class="pre">{directory=directory}</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>设置纠删码插件的路径，需是<strong>目录</strong>。</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No.</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p>/usr/lib/ceph/erasure-code</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">{plugin=plugin}</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>指定纠删码<strong>插件</strong>来计算编码块、及恢复丢失块。详见<a class="reference internal" href="#id2">可用插件列表</a>。</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No.</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p>jerasure</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">{stripe_unit=stripe_unit}</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>每一个条带中、一个数据块的数据量。例如，在一个配置中，数据块为 2 且 stripe_unit=4K ，数据进来时会把 0-4K 放入块 0 ， 4K-8K 放入块 1 ；然后 8K-12K 又是块 0 。为实现最佳性能，这里应该设置成 4K 的倍数。默认值是在存储池创建时从监视器配置选项 <code class="docutils literal notranslate"><span class="pre">osd_pool_erasure_code_stripe_unit</span></code>
-获取的。一个使用着这个配置的存储池，其 stripe_width 值（条带宽度）就是数据块的数量乘以这里的 stripe_unit 值。</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No.</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">{key=value}</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>纠删码插件所定义的键/值对含义。</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No.</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">--force</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>覆盖同名配置，还能设置没有按 4K 对齐的 stripe_unit 。</p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
-</dd>
-<dt class="field-odd">是否必需</dt>
-<dd class="field-odd"><p>No.</p>
-</dd>
-</dl>
+<div class="section" id="choosing-a-mode">
+<h2>Choosing a mode<a class="headerlink" href="#choosing-a-mode" title="Permalink to this headline">¶</a></h2>
+<p>The modes other than classic provide different features. We recommend
+you stay in classic mode if you don’t need the extra features as it is
+the simplest mode.</p>
 </div>
-<div class="section" id="osd-erasure-code-profile-rm">
-<h2>osd erasure-code-profile rm<a class="headerlink" href="#osd-erasure-code-profile-rm" title="Permalink to this headline">¶</a></h2>
-<p>要删除纠删码配置：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span> <span class="n">rm</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span>
+<div class="section" id="the-disallow-mode">
+<h2>The disallow Mode<a class="headerlink" href="#the-disallow-mode" title="Permalink to this headline">¶</a></h2>
+<p>This mode lets you mark monitors as disallowd, in which case they will
+participate in the quorum and serve clients, but cannot be elected leader. You
+may wish to use this if you have some monitors which are known to be far away
+from clients.
+You can disallow a leader by running</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph mon add disallowed_leader {name}
 </pre></div>
 </div>
-<p>若此配置还被某个存储池使用着，则删除会失败。</p>
+<p>You can remove a monitor from the disallowed list, and allow it to become
+a leader again, by running</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph mon rm disallowed_leader {name}
+</pre></div>
 </div>
-<div class="section" id="osd-erasure-code-profile-get">
-<h2>osd erasure-code-profile get<a class="headerlink" href="#osd-erasure-code-profile-get" title="Permalink to this headline">¶</a></h2>
-<p>要查看一纠删码配置：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span> <span class="n">get</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span>
+<p>The list of disallowed_leaders is included when you run</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph mon dump
 </pre></div>
 </div>
 </div>
-<div class="section" id="osd-erasure-code-profile-ls">
-<h2>osd erasure-code-profile ls<a class="headerlink" href="#osd-erasure-code-profile-ls" title="Permalink to this headline">¶</a></h2>
-<p>列出所有纠删码配置：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span> <span class="n">ls</span>
+<div class="section" id="the-connectivity-mode">
+<h2>The connectivity Mode<a class="headerlink" href="#the-connectivity-mode" title="Permalink to this headline">¶</a></h2>
+<p>This mode evaluates connection scores provided by each monitor for its
+peers and elects the monitor with the highest score. This mode is designed
+to handle network partitioning or <em>net-splits</em>, which may happen if your cluster
+is stretched across multiple data centers or otherwise has a non-uniform
+or unbalanced network topology.</p>
+<p>This mode also supports disallowing monitors from being the leader
+using the same commands as above in disallow.</p>
+</div>
+<div class="section" id="examining-connectivity-scores">
+<h2>Examining connectivity scores<a class="headerlink" href="#examining-connectivity-scores" title="Permalink to this headline">¶</a></h2>
+<p>The monitors maintain connection scores even if they aren’t in
+the connectivity election mode. You can examine the scores a monitor
+has by running</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">mon</span><span class="o">.</span><span class="p">{</span><span class="n">name</span><span class="p">}</span> <span class="n">connection</span> <span class="n">scores</span> <span class="n">dump</span>
 </pre></div>
 </div>
+<p>Scores for individual connections range from 0-1 inclusive, and also
+include whether the connection is considered alive or dead (determined by
+whether it returned its latest ping within the timeout).</p>
+<p>While this would be an unexpected occurrence, if for some reason you experience
+problems and troubleshooting makes you think your scores have become invalid,
+you can forget history and reset them by running</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">mon</span><span class="o">.</span><span class="p">{</span><span class="n">name</span><span class="p">}</span> <span class="n">connection</span> <span class="n">scores</span> <span class="n">reset</span>
+</pre></div>
+</div>
+<p>While resetting scores has low risk (monitors will still quickly determine
+if a connection is alive or dead, and trend back to the previous scores if they
+were accurate!), it should also not be needed and is not recommended unless
+requested by your support team or a developer.</p>
 </div>
 </div>
 
@@ -370,8 +319,8 @@
           </div>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="../erasure-code-jerasure/" class="btn btn-neutral float-right" title="Jerasure 纠删码插件" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-        <a href="../erasure-code/" class="btn btn-neutral float-left" title="纠删码" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../add-or-rm-osds/" class="btn btn-neutral float-right" title="增加/删除 OSD" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../stretch-mode/" class="btn btn-neutral float-left" title="Stretch Clusters" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

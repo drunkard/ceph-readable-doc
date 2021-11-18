@@ -4,9 +4,10 @@
  用户管理
 ==========
 
-本文档叙述了 :term:`Ceph 客户端`\ 的用户身份，及其与
-:term:`Ceph 存储集群`\ 的认证和授权。用户可以是个人或系统角色\
-（像应用程序），它们用 Ceph 客户端和 Ceph 服务器守护进程交互。
+本文档叙述了 :term:`Ceph 客户端`\ 的用户身份，\
+及其与 :term:`Ceph 存储集群`\ 的认证和授权。\
+用户可以是个人或系统角色（像应用程序），\
+它们用 Ceph 客户端和 Ceph 存储集群的守护进程们交互。
 
 .. ditaa::
 
@@ -38,17 +39,17 @@ Ceph interprets the command like this::
 
 	ceph -n client.admin --keyring=/etc/ceph/ceph.client.admin.keyring health
 
-另外你也可以用 ``CEPH_ARGS`` 环境变量来避免多次输入用户名和密钥。
+另外，你也可以用 ``CEPH_ARGS`` 环境变量来避免\
+多次输入用户名和密钥。
 
 For details on configuring the Ceph Storage Cluster to use authentication,
 see `Cephx 配置参考`_. For details on the architecture of Cephx, see
 `体系结构——高可用性认证`_.
 
 
-.. Background
-
 背景
 ====
+.. Background
 
 Irrespective of the type of Ceph client (e.g., Block Device, Object Storage,
 Filesystem, native API, etc.), Ceph stores all data as objects within `pools`_.
@@ -285,11 +286,42 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
 :描述: 授予一个用户访问 RBD 映像的只读权限。 Manager 能力支持\
        可选关键字参数 ``pool`` 和 ``namespace`` 。
 
+``profile simple-rados-client`` (Monitor only)
 
-.. Pool
+:Description: Gives a user read-only permissions for monitor, OSD, and PG data.
+              Intended for use by direct librados client applications.
+
+``profile simple-rados-client-with-blocklist`` (Monitor only)
+
+:Description: Gives a user read-only permissions for monitor, OSD, and PG data.
+              Intended for use by direct librados client applications. Also
+              includes permission to add blocklist entries to build HA
+              applications.
+
+``profile fs-client`` (Monitor only)
+
+:Description: Gives a user read-only permissions for monitor, OSD, PG, and MDS
+              data.  Intended for CephFS clients.
+
+``profile role-definer`` (Monitor and Auth)
+
+:Description: Gives a user **all** permissions for the auth subsystem, read-only
+              access to monitors, and nothing else.  Useful for automation
+              tools.  Do not assign this unless you really, **really** know what
+              you're doing as the security ramifications are substantial and
+              pervasive.
+
+``profile crash`` (Monitor and MGR)
+
+:Description: Gives a user read-only access to monitors, used in conjunction
+              with the manager ``crash`` module to upload daemon crash
+              dumps into monitor storage for later analysis.
+
+
 
 存储池
 ------
+.. Pool
 
 存储池是用户存储数据的逻辑分区。在 Ceph 部署中，经常创建存储池作\
 为逻辑分区、用以归类相似的数据。例如，用 Ceph 作为 OpenStack 的\

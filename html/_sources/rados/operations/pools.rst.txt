@@ -271,11 +271,11 @@ true ，否则它会拒绝删除存储池。
 	ceph osd pool rmsnap {pool-name} {snap-name}
 
 
-.. Set Pool Values
 .. _setpoolvalues:
 
 调整存储池选项值
 ================
+.. Set Pool Values
 
 要设置一个存储池的选项值，执行命令： ::
 

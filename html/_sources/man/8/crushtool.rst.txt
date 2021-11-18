@@ -235,21 +235,19 @@ CRUSH 映射或随机放置（若设置了 **--simulate** ）。完成后可创�
        crushtool -c map.txt -o crushmap
 
 
-.. Reclassify
-
 重新划类
 ========
+.. Reclassify
 
 *reclassify* 功能便于用户把较老的图（维护着不同类型 OSD 的\
 并行层次结构）转换为最新的 CRUSH 图，这样才能用得上
 *device class* 功能。更多信息见
-http://docs.ceph.com/docs/master/rados/operations/crush-map-edits/#migrating-from-a-legacy-ssd-rule-to-device-classes 。
+https://docs.ceph.com/en/latest/rados/operations/crush-map-edits/#migrating-from-a-legacy-ssd-rule-to-device-classes.
 
-
-.. Example output from --test
 
 ``--test`` 的输出实例
 =====================
+.. Example output from --test
 
 请到 https://github.com/ceph/ceph/blob/master/src/test/cli/crushtool/set-choose.t
 查看 ``crushtool --test`` 命令实例，及其输出。

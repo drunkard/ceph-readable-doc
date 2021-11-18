@@ -1,8 +1,8 @@
-.. Ceph Dashboard
 .. _mgr-dashboard:
 
 Ceph 仪表盘
 ===========
+.. Ceph Dashboard
 
 概述
 ----
@@ -35,10 +35,10 @@ application that visualizes information and statistics about the Ceph cluster
 using a web server hosted by ``ceph-mgr``.
 
 
-.. Feature Overview
-
 功能概述
 ^^^^^^^^
+.. Feature Overview
+
 The dashboard provides the following features:
 
 * **Multi-User and Role Management**: The dashboard supports multiple user

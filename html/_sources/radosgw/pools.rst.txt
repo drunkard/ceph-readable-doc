@@ -1,8 +1,7 @@
-.. Pools
-
 ========
  存储池
 ========
+.. Pools
 
 Ceph 对象网关要用多个存储池来满足多种存储需求，它们罗列在 Zone
 对象内（见 ``radosgw-admin zone get`` ）。系统会自动创建名为
@@ -10,26 +9,26 @@ Ceph 对象网关要用多个存储池来满足多种存储需求，它们罗列
 头；然而\ `多站配置`_\ 会有多个域。
 
 
-.. Tuning
-
 调整
 ====
+.. Tuning
 
-``radosgw`` 的首次操作涉及一个不存在的域存储池时，它会用
-``osd pool default pg num`` 和 ``osd pool default pgp num`` 的\
-默认值创建那个存储池。这些默认值对于某些存储池来说足够了，但是\
-其它的（特别是 ``placement_pools`` 内罗列的、用于桶索引和数据\
-的存储池）就需要额外调整了。我们建议用
-`Ceph 归置组的单存储池计算器 <http://ceph.com/pgcalc/>`__\ 给\
-这些存储池计算个合适的归置组数量。存储池创建细节请参考\ `存储池
-<http://docs.ceph.com/docs/master/rados/operations/pools/#pools>`__\ 。
+``radosgw`` 的首次操作涉及一个不存在的域存储池时，\
+它会用 ``osd pool default pg num`` 和 ``osd pool default pgp num``
+的默认值创建那个存储池。这些默认值对于某些存储池来说足够了，\
+但是其它的（特别是 ``placement_pools`` 内罗列的、\
+用于桶索引和数据的存储池）就需要额外调整了。\
+我们建议用 `Ceph 归置组的单存储池计算器 <http://ceph.com/pgcalc/>`__\
+给这些存储池计算个合适的归置组数量。\
+存储池创建细节请参考\
+`存储池 <http://docs.ceph.com/en/latest/rados/operations/pools/#pools>`__\ 。
 
 
-.. Pool Namespaces
 .. _radosgw-pool-namespaces:
 
 存储池命名空间
 ==============
+.. Pool Namespaces
 
 .. versionadded:: Luminous
 

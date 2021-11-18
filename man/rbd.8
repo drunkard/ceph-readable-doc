@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "RBD" "8" "Nov 16, 2021" "dev" "Ceph"
+.TH "RBD" "8" "Nov 18, 2021" "dev" "Ceph"
 .SH NAME
 rbd \- manage rados block device (RBD) images
 .
@@ -245,7 +245,8 @@ Set a pool\-level configuration override.
 Remove a pool\-level configuration override.
 .TP
 \fBcp\fP (\fIsrc\-image\-spec\fP | \fIsrc\-snap\-spec\fP) \fIdest\-image\-spec\fP
-把源映像内容复制进新建的目标映像，目标映像和源映像将有相同的尺寸、对象尺寸和格式。
+把源映像内容复制进新建的目标映像，目标映像和源映像将有相同的尺寸、对象尺寸和映像格式。
+注意：它的快照没有复制，用 \fIdeep cp\fP 命令包含快照。
 .TP
 \fBcreate\fP (\-s | \-\-size \fIsize\-in\-M/G/T\fP) [\-\-image\-format \fIformat\-id\fP] [\-\-object\-size \fIsize\-in\-B/K/M\fP] [\-\-stripe\-unit \fIsize\-in\-B/K/M\fP \-\-stripe\-count \fInum\fP] [\-\-thick\-provision] [\-\-no\-progress] [\-\-image\-feature \fIfeature\-name\fP]... [\-\-image\-shared] \fIimage\-spec\fP
 新建一个 rbd 映像。还必须用 \-\-size 指定尺寸。 \-\-strip\-unit 和
@@ -272,6 +273,22 @@ opt1,opt2=val,... ）。
 \-\-options 参数是个逗号分隔的特定于某类型设备的一系列选项（
 opt1,opt2=val,... ）。
 .TP
+\fBdevice attach\fP [\-t | \-\-device\-type \fIdevice\-type\fP] \-\-device \fIdevice\-path\fP [\-\-cookie \fIdevice\-cookie\fP] [\-\-show\-cookie] [\-\-read\-only] [\-\-exclusive] [\-\-force] [\-o | \-\-options \fIdevice\-options\fP] \fIimage\-spec\fP | \fIsnap\-spec\fP
+Attach the specified image to the specified block device (currently only
+\fInbd\fP on Linux). This operation is unsafe and should not be normally used.
+In particular, specifying the wrong image or the wrong block device may
+lead to data corruption as no validation is performed by \fInbd\fP kernel driver.
+.sp
+The \-\-options argument is a comma separated list of device type
+specific options (opt1,opt2=val,...).
+.TP
+\fBdevice detach\fP [\-t | \-\-device\-type \fIdevice\-type\fP] [\-o | \-\-options \fIdevice\-options\fP] \fIimage\-spec\fP | \fIsnap\-spec\fP | \fIdevice\-path\fP
+Detach the block device that was mapped or attached (currently only \fInbd\fP
+on Linux). This operation is unsafe and should not be normally used.
+.sp
+The \-\-options argument is a comma separated list of device type
+specific options (opt1,opt2=val,...).
+.TP
 \fBdiff\fP [\-\-from\-snap \fIsnap\-name\fP] [\-\-whole\-object] \fIimage\-spec\fP | \fIsnap\-spec\fP
 打印出从指定快照点起、或从映像创建点起，映像内的变动区域。输出的各行都包含起始偏移量（按字节）、数据块长度（按字节）、还有 zero 或 data ，用来指示此范围以前是 0 还是其它数据。
 .TP
@@ -282,6 +299,13 @@ opt1,opt2=val,... ）。
 挨个查询此映像涉及的每个潜在对象。
 .sp
 \-\-merge\-snapshots 会把快照占用的空间算到它的父映像头上。
+.TP
+\fBencryption format\fP \fIimage\-spec\fP \fIformat\fP \fIpassphrase\-file\fP [\-\-cipher\-alg \fIalg\fP]
+Formats image to an encrypted format.
+All data previously written to the image will become unreadable.
+A cloned image cannot be formatted, although encrypted images can be cloned.
+Supported formats: \fIluks1\fP, \fIluks2\fP\&.
+Supported cipher algorithms: \fIaes\-128\fP, \fIaes\-256\fP (default).
 .TP
 \fBexport\fP [\-\-export\-format \fIformat (1 or 2)\fP] (\fIimage\-spec\fP | \fIsnap\-spec\fP) [\fIdest\-path\fP]
 把映像导出到目的路径，用 \- （短线）输出到标准输出。
@@ -388,17 +412,14 @@ opt1,opt2=val,... ）。
 \fBlock add\fP [\-\-shared \fIlock\-tag\fP] \fIimage\-spec\fP \fIlock\-id\fP
 为映像加锁，锁标识是用户一己所好的任意名字。默认加的是互斥锁，也就是说如果已经加过锁的话此命令会失败； \-\-shared 选项会改变此行为。注意，加锁操作本身不影响除加锁之外的任何操作，也不会保护对象、防止它被删除。
 .TP
-\fBlock list\fP \fIimage\-spec\fP
+\fBlock ls\fP \fIimage\-spec\fP
 显示锁着映像的锁，第一列是 \fIlock remove\fP 可以使用的锁名。
 .TP
-\fBlock remove\fP \fIimage\-spec\fP \fIlock\-id\fP \fIlocker\fP
+\fBlock rm\fP \fIimage\-spec\fP \fIlock\-id\fP \fIlocker\fP
 释放映像上的锁。锁标识和其持有者来自 lock ls 。
 .TP
 \fBls\fP [\-l | \-\-long] [\fIpool\-name\fP]
-列出 rbd_directory 对象中的所有 rbd 映像。加 \-l 选项后也显示快照，并用长格式输出，包括大小、父映像（若是克隆品）、格式等等。
-.sp
-如果 RBD 映像的 fast\-diff 功能没启用，那么这个操作需向多个
-OSD 查询此映像涉及的每个对象。
+列出 rbd_directory 对象中的所有 rbd 映像。加 \-l 选项后也会列出快照，并用长格式输出，包括大小、父映像（若是克隆品）、格式等等。
 .TP
 \fBmerge\-diff\fP \fIfirst\-diff\-path\fP \fIsecond\-diff\-path\fP \fImerged\-diff\-path\fP
 把两个连续的增量差异合并为单个差异。前一个差异的末尾快照必须与后一个差异的起始快照相同。前一个差异可以是标准输入 \- ，合并后的差异可以是标准输出 \- ；这样就可以合并多个差异文件，像这样： \(aqrbd merge\-diff first second \- | rbd merge\-diff \- third result\(aq 。注意，当前此命令只支持 stripe_count == 1 这样的源增量差异。
@@ -417,7 +438,7 @@ prepare and migration execute steps and removes the source image data.
 Execute image migration. This step is run after a successful migration
 prepare step and copies image data to the destination.
 .TP
-\fBmigration prepare\fP [\-\-order \fIorder\fP] [\-\-object\-size \fIobject\-size\fP] [\-\-image\-feature \fIimage\-feature\fP] [\-\-image\-shared] [\-\-stripe\-unit \fIstripe\-unit\fP] [\-\-stripe\-count \fIstripe\-count\fP] [\-\-data\-pool \fIdata\-pool\fP] \fIsrc\-image\-spec\fP [\fIdest\-image\-spec\fP]
+\fBmigration prepare\fP [\-\-order \fIorder\fP] [\-\-object\-size \fIobject\-size\fP] [\-\-image\-feature \fIimage\-feature\fP] [\-\-image\-shared] [\-\-stripe\-unit \fIstripe\-unit\fP] [\-\-stripe\-count \fIstripe\-count\fP] [\-\-data\-pool \fIdata\-pool\fP] [\-\-import\-only] [\-\-source\-spec \fIjson\fP] [\-\-source\-spec\-path \fIpath\fP] \fIsrc\-image\-spec\fP [\fIdest\-image\-spec\fP]
 Prepare image migration. This is the first step when migrating an
 image, i.e. changing the image location, format or other
 parameters that can\(aqt be changed dynamically. The destination can
@@ -425,6 +446,11 @@ match the source, and in this case \fIdest\-image\-spec\fP can be omitted.
 After this step the source image is set as a parent of the
 destination image, and the image is accessible in copy\-on\-write mode
 by its destination spec.
+.sp
+An image can also be migrated from a read\-only import source by adding the
+\fI\-\-import\-only\fP optional and providing a JSON\-encoded \fI\-\-source\-spec\fP or a
+path to a JSON\-encoded source\-spec file using the \fI\-\-source\-spec\-path\fP
+optionals.
 .TP
 \fBmirror image demote\fP \fIimage\-spec\fP
 把 RBD 映像中的主映像降级成非主映像。
@@ -541,7 +567,7 @@ Show mirror snapshot schedule status.
 rbd 大小调整。尺寸参数必须指定； \-\-allow\-shrink 选项允许缩小。
 .TP
 \fBrm\fP \fIimage\-spec\fP
-删除一 rbd 映像，包括所有数据块。如果映像有快照，此命令会失效。
+删除一 rbd 映像，包括所有数据块。如果此映像有快照，此命令会失效，什么也不会删除。
 .TP
 \fBsnap create\fP \fIsnap\-spec\fP
 新建一快照。需指定快照名。
@@ -599,9 +625,6 @@ rbd 大小调整。尺寸参数必须指定； \-\-allow\-shrink 选项允许缩
 \fBtrash rm\fP \fIimage\-id\fP
 从垃圾桶删除一个映像。如果映像的延期时间尚未满，那就不能删除，除非强删。但是正被克隆件引用的、或还有快照的删不掉。
 .TP
-\fBwatch\fP \fIimage\-spec\fP
-盯着有关此映像的事件。
-.TP
 \fBtrash purge schedule add\fP [\-p | \-\-pool \fIpool\fP] [\-\-namespace \fInamespace\fP] \fIinterval\fP [\fIstart\-time\fP]
 Add trash purge schedule.
 .TP
@@ -613,11 +636,14 @@ Remove trash purge schedule.
 .TP
 \fBtrash purge schedule status\fP [\-p | \-\-pool \fIpool\fP] [\-\-format \fIformat\fP] [\-\-pretty\-format] [\-\-namespace \fInamespace\fP]
 Show trash purge schedule status.
+.TP
+\fBwatch\fP \fIimage\-spec\fP
+盯着有关此映像的事件。
 .UNINDENT
 .SH 映像、快照、组和日志的名称规范
 .nf
-\fIimage\-spec\fP is [\fIpool\-name\fP]/\fIimage\-name\fP
-\fIsnap\-spec\fP  is [\fIpool\-name\fP]/\fIimage\-name\fP@\fIsnap\-name\fP
+\fIimage\-spec\fP      is [\fIpool\-name\fP/[\fInamespace\-name\fP/]]\fIimage\-name\fP
+\fIsnap\-spec\fP       is [\fIpool\-name\fP/[\fInamespace\-name\fP/]]\fIimage\-name\fP@\fIsnap\-name\fP
 \fIgroup\-spec\fP      is [\fIpool\-name\fP/[\fInamespace\-name\fP/]]\fIgroup\-name\fP
 \fIgroup\-snap\-spec\fP is [\fIpool\-name\fP/[\fInamespace\-name\fP/]]\fIgroup\-name\fP@\fIsnap\-name\fP
 \fIjournal\-spec\fP    is [\fIpool\-name\fP/[\fInamespace\-name\fP/]]\fIjournal\-name\fP
@@ -632,7 +658,8 @@ Show trash purge schedule status.
 你可以用 \-\-pool 、 \-\-namespace 、 \-\-image 和 \-\-snap 选项分别指定各个名字，但是不鼓励这样用，大家还是倾向于上面的规范语法。
 .SH 条带化
 .sp
-RBD 映像被条带化为很多对象，然后存储到 Ceph 分布式对象存储（ RADOS ）集群中。因此，到此映像的读和写请求会被分布到集群内的很多节点，也因此避免了映像巨大或繁忙时可能出现的单节点瓶颈。
+RBD 映像被条带化到很多对象，然后存储到
+Ceph 分布式对象存储（ RADOS ）集群中。因此，到此映像的读和写请求会被分布到集群内的很多节点，也因此避免了映像巨大或繁忙时可能出现的单节点瓶颈。
 .sp
 条带化由三个参数控制：
 .INDENT 0.0
@@ -978,7 +1005,7 @@ rbd create mypool/myimage \-\-size 102400 \-\-stripe\-unit 65536B \-\-stripe\-co
 .UNINDENT
 .UNINDENT
 .sp
-更改一映像的格式，先导出、再导入为期望格式：
+要改变某一映像的格式，先导出它、然后再导入成期望的映像格式:
 .INDENT 0.0
 .INDENT 3.5
 .sp

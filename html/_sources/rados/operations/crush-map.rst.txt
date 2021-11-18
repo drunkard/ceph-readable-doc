@@ -942,27 +942,112 @@ jewel 版的可调配置能够提升 CRUSH 的整体行为，这样，在 OSD
 
 	ceph osd crush tunables {PROFILE}
 
-要注意，这可能产生一些数据迁移。
-
-
-.. Primary Affinity
-
-主亲和性
-========
-
-一 Ceph 客户端读写数据时，总是连接 acting set 里的主 OSD （如
-``[2, 3, 4]`` 中， ``osd.2`` 是主的）。有时候某个 OSD 与其它\
-的相比并不适合做主 OSD （比如其硬盘慢、或控制器慢），最大化\
-硬件利用率时为防止性能瓶颈（特别是读操作），你可以调整 OSD 的\
-主亲和性，这样 CRUSH 就尽量不把它用作 acting set 里的主 OSD
-了。 ::
-
-	ceph osd primary-affinity <osd-id> <weight>
-
-主亲和性默认为 ``1`` （\ **就是说**\ 此 OSD 可作为主 OSD ）。\
-此值合法范围为 ``0-1`` ，其中 ``0`` 意为此 OSD 不能用作主的，
-``1`` 意为 OSD 可用作主的；此权重小于 ``1`` 时， CRUSH 选择\
-主 OSD 时选中它的可能性低。
+要注意，这可能产生数据迁移，可能还不少。\
+在运行着的集群上更改此配置前，请仔细研究发布说明和文档，\
+并试着压制一下恢复、回填参数，以降低一大波回填造成的影响。
 
 
 .. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf
+
+
+主亲和性
+========
+.. Primary Affinity
+
+一个 Ceph 客户端读取或写入数据时，它首先连接相关 PG 的
+acting set 里的主 OSD 。默认情况下，acting set 里的第一个 OSD 是主的。\
+比如，在 acting set ``[2, 3, 4]`` 中， ``osd.2`` 位列第一，\
+所以它就是是主 OSD （又名 lead ）。\
+有时候我们知道某个 OSD 作为 lead 时不如其余的\
+（比如它的硬盘慢、或控制器慢），\
+为了防止出现性能瓶颈（特别是读操作），同时又能最大化地利用硬件，\
+你可以调整 OSD 的主亲和性参数值、\
+或定制一条 CRUSH 规则优先选择喜欢的的 OSD 们，以此来影响主 OSD 的选举。
+
+Tuning primary OSD selection is mainly useful for replicated pools, because
+by default read operations are served from the primary OSD for each PG.
+For erasure coded (EC) pools, a way to speed up read operations is to enable
+**fast read** as described in :ref:`pool-settings`.
+
+A common scenario for primary affinity is when a cluster contains
+a mix of drive sizes, for example older racks with 1.9 TB SATA SSDS and newer racks with
+3.84TB SATA SSDs.  On average the latter will be assigned double the number of
+PGs and thus will serve double the number of write and read operations, thus
+they'll be busier than the former.  A rough assignment of primary affinity
+inversely proportional to OSD size won't be 100% optimal, but it can readily
+achieve a 15% improvement in overall read throughput by utilizing SATA
+interface bandwidth and CPU cycles more evenly.
+
+By default, all ceph OSDs have primary affinity of ``1``, which indicates that
+any OSD may act as a primary with equal probability.
+
+You can reduce a Ceph OSD's primary affinity so that CRUSH is less likely to choose
+the OSD as primary in a PG's acting set.::
+
+	ceph osd primary-affinity <osd-id> <weight>
+
+你可以把某一 OSD 的主亲和性设置为 ``[0-1]`` 范围内的实数，\
+其中， ``0`` 表示此 OSD **不能** 用作主的，\
+而 ``1`` 表示这个 OSD 可以用作主的。这个权重介于二者之间时，
+CRUSH 把那个 OSD 选为主 OSD 的可能性较低。\
+选中一个 lead OSD 的过程不仅仅是个简单的、\
+基于相对亲和值的概率问题，\
+而是一系列可测量的结果，进而取得期望值的一阶近似值。
+
+
+Custom CRUSH Rules
+------------------
+
+There are occasional clusters that balance cost and performance by mixing SSDs
+and HDDs in the same replicated pool. By setting the primary affinity of HDD
+OSDs to ``0`` one can direct operations to the SSD in each acting set. An
+alternative is to define a CRUSH rule that always selects an SSD OSD as the
+first OSD, then selects HDDs for the remaining OSDs. Thus, each PG's acting
+set will contain exactly one SSD OSD as the primary with the balance on HDDs.
+
+For example, the CRUSH rule below::
+
+	rule mixed_replicated_rule {
+	        id 11
+	        type replicated
+	        min_size 1
+	        max_size 10
+	        step take default class ssd
+	        step chooseleaf firstn 1 type host
+	        step emit
+	        step take default class hdd
+	        step chooseleaf firstn 0 type host
+	        step emit
+	}
+
+chooses an SSD as the first OSD.  Note that for an ``N``-times replicated pool
+this rule selects ``N+1`` OSDs to guarantee that ``N`` copies are on different
+hosts, because the first SSD OSD might be co-located with any of the ``N`` HDD
+OSDs.
+
+This extra storage requirement can be avoided by placing SSDs and HDDs in
+different hosts with the tradeoff that hosts with SSDs will receive all client
+requests.  You may thus consider faster CPU(s) for SSD hosts and more modest
+ones for HDD nodes, since the latter will normally only service recovery
+operations.  Here the CRUSH roots ``ssd_hosts`` and ``hdd_hosts`` strictly
+must not contain the same servers::
+
+        rule mixed_replicated_rule_two {
+               id 1
+               type replicated
+               min_size 1
+               max_size 10
+               step take ssd_hosts class ssd
+               step chooseleaf firstn 1 type host
+               step emit
+               step take hdd_hosts class hdd
+               step chooseleaf firstn -1 type host
+               step emit
+        }
+
+
+
+Note also that on failure of an SSD, requests to a PG will be served temporarily
+from a (slower) HDD OSD until the PG's data has been replicated onto the replacement
+primary SSD OSD.
+
