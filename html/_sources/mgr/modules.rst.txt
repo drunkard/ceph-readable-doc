@@ -8,10 +8,9 @@ ceph-mgr 模块开发指南
    这是开发者文档，所述的 Ceph 内部机制仅供 ceph-mgr 模块\
    开发者使用。
 
-.. Creating a module
-
 创建模块
 --------
+.. Creating a module
 
 在 pybind/mgr/ 目录下，创建一个 python 模块，在此模块内创建\
 一个继承 ``MgrModule`` 的类。为了让 ceph-mgr 能探测到你的\
@@ -30,10 +29,9 @@ additional methods to the base ``MgrModule`` class.  See
 creating these modules.
 
 
-.. Installing a module
-
 安装模块
 --------
+.. Installing a module
 
 你自己的模块放入 ``mgr module path`` 配置选项所指的路径后，\
 可以用 ``ceph mgr module enable`` 命令启用它： ::
@@ -44,10 +42,9 @@ creating these modules.
 较新或较低版本的 Ceph 时可能很容易崩溃。
 
 
-.. Logging
-
 日志记录
 --------
+.. Logging
 
 Logging in Ceph manager modules is done as in any other Python program. Just
 import the ``logging`` package and get a logger instance with the
@@ -100,11 +97,70 @@ following commands::
    ceph config set mgr mgr/<module_name>/log_to_file false
 
 
+
+.. _mgr-module-exposing-commands:
+
 Exposing commands
 -----------------
 
-Set the ``COMMANDS`` class attribute of your module to a list of dicts
-like this::
+There are two approaches for exposing a command. The first one is to
+use the ``@CLICommand`` decorator to decorate the method which handles
+the command. like this
+
+.. code:: python
+
+   @CLICommand('antigravity send to blackhole',
+               perm='rw')
+   def send_to_blackhole(self, oid: str, blackhole: Optional[str] = None, inbuf: Optional[str] = None):
+       '''
+       Send the specified object to black hole
+       '''
+       obj = self.find_object(oid)
+       if obj is None:
+           return HandleCommandResult(-errno.ENOENT, stderr=f"object '{oid}' not found")
+       if blackhole is not None and inbuf is not None:
+           try:
+               location = self.decrypt(blackhole, passphrase=inbuf)
+           except ValueError:
+               return HandleCommandResult(-errno.EINVAL, stderr='unable to decrypt location')
+       else:
+           location = blackhole
+       self.send_object_to(obj, location)
+       return HandleCommandResult(stdout=f'the black hole swallowed '{oid}'")
+
+The first parameter passed to ``CLICommand`` is the "name" of the command.
+Since there are lots of commands in Ceph, we tend to group related commands
+with a common prefix. In this case, "antigravity" is used for this purpose.
+As the author is probably designing a module which is also able to launch
+rockets into the deep space.
+
+The `type annotations <https://www.python.org/dev/peps/pep-0484/>`_ for the
+method parameters are mandatory here, so the usage of the command can be
+properly reported to the ``ceph`` CLI, and the manager daemon can convert
+the serialized command parameters sent by the clients to the expected type
+before passing them to the handler method. With properly implemented types,
+one can also perform some sanity checks against the parameters!
+
+The names of the parameters are part of the command interface, so please
+try to take the backward compatibility into consideration when changing
+them. But you **cannot** change name of ``inbuf`` parameter, it is used
+to pass the content of the file specified by ``ceph --in-file`` option.
+
+The docstring of the method is used for the description of the command.
+
+The manager daemon cooks the usage of the command from these ingredients,
+like::
+
+  antigravity send to blackhole <oid> [<blackhole>]  Send the specified object to black hole
+
+as part of the output of ``ceph --help``.
+
+In addition to ``@CLICommand``, you could also use ``@CLIReadCommand`` or
+``@CLIWriteCommand`` if your command only requires read permissions or
+write permissions respectively.
+
+The second one is to set the ``COMMANDS`` class attribute of your module to
+a list of dicts like this::
 
     COMMANDS = [
         {
@@ -136,10 +192,9 @@ when they are sent:
 .. automethod:: MgrModule.handle_command
 
 
-.. Configuration options
-
 配置选项
 --------
+.. Configuration options
 
 Modules can load and store configuration options using the
 ``set_module_option`` and ``get_module_option`` methods.

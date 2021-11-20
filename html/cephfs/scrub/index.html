@@ -228,10 +228,21 @@ file system pools and maps it back to the file system hierarchy.</p></li>
 </ol>
 <p>This document details commands to initiate and control forward scrub (referred as
 scrub thereafter).</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>CephFS forward scrubs are started and manipulated on rank 0. All scrub
+commands must be directed at rank 0.</p>
+</div>
 <div class="section" id="id1">
 <h2>初始化文件系统洗刷<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>To start a scrub operation for a directory tree use the following command</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">/</span> <span class="n">recursive</span>
+<p>To start a scrub operation for a directory tree use the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.&lt;</span><span class="n">fsname</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">0</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">scrubopts</span><span class="p">]</span> <span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">scrubopts</span></code> is a comma delimited list of <code class="docutils literal notranslate"><span class="pre">recursive</span></code>, <code class="docutils literal notranslate"><span class="pre">force</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">repair</span></code> and <code class="docutils literal notranslate"><span class="pre">tag</span></code> is an optional custom string tag (the default is a generated
+UUID). An example command is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">cephfs</span><span class="p">:</span><span class="mi">0</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">/</span> <span class="n">recursive</span>
 <span class="p">{</span>
     <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
     <span class="s2">&quot;scrub_tag&quot;</span><span class="p">:</span> <span class="s2">&quot;6f0d204c-6cfd-4300-9e02-73f382fd23c1&quot;</span><span class="p">,</span>
@@ -239,27 +250,23 @@ scrub thereafter).</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Recursive scrub is asynchronous (as hinted by <cite>mode</cite> in the output above). Scrub tag is
-a random string that can used to monitor the progress of the scrub operation (explained
-further in this document).</p>
-<p>Custom tag can also be specified when initiating the scrub operation. Custom tags get
-persisted in the metadata object for every inode in the file system tree that is being
-scrubbed.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">start</span> <span class="o">/</span><span class="n">a</span><span class="o">/</span><span class="n">b</span><span class="o">/</span><span class="n">c</span> <span class="n">recursive</span> <span class="n">tag0</span>
-<span class="p">{</span>
-    <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="s2">&quot;scrub_tag&quot;</span><span class="p">:</span> <span class="s2">&quot;tag0&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;asynchronous&quot;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
+<p>Recursive scrub is asynchronous (as hinted by <cite>mode</cite> in the output above).
+Asynchronous scrubs must be polled using <code class="docutils literal notranslate"><span class="pre">scrub</span> <span class="pre">status</span></code> to determine the
+status.</p>
+<p>The scrub tag is used to differentiate scrubs and also to mark each inode’s
+first data object in the default data pool (where the backtrace information is
+stored) with a <code class="docutils literal notranslate"><span class="pre">scrub_tag</span></code> extended attribute with the value of the tag. You
+can verify an inode was scrubbed by looking at the extended attribute using the
+RADOS utilities.</p>
+<p>Scrubs work for multiple active MDS (multiple ranks). The scrub is managed by
+rank 0 and distributed across MDS as appropriate.</p>
 </div>
 <div class="section" id="monitor-ongoing-file-system-scrubs">
 <h2>Monitor (ongoing) File System Scrubs<a class="headerlink" href="#monitor-ongoing-file-system-scrubs" title="Permalink to this headline">¶</a></h2>
-<p>Status of ongoing scrubs can be monitored using in <cite>scrub status</cite> command. This commands
-lists out ongoing scrubs (identified by the tag) along with the path and options used to
-initiate the scrub.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">status</span>
+<p>Status of ongoing scrubs can be monitored and polled using in <cite>scrub status</cite>
+command. This commands lists out ongoing scrubs (identified by the tag) along
+with the path and options used to initiate the scrub:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">cephfs</span><span class="p">:</span><span class="mi">0</span> <span class="n">scrub</span> <span class="n">status</span>
 <span class="p">{</span>
     <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;scrub active (85 inodes in the stack)&quot;</span><span class="p">,</span>
     <span class="s2">&quot;scrubs&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -274,7 +281,7 @@ initiate the scrub.</p>
 <p><cite>status</cite> shows the number of inodes that are scheduled to be scrubbed at any point in time,
 hence, can change on subsequent <cite>scrub status</cite> invocations. Also, a high level summary of
 scrub operation (which includes the operation state and paths on which scrub is triggered)
-gets displayed in <cite>ceph status</cite>.</p>
+gets displayed in <cite>ceph status</cite>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">status</span>
 <span class="p">[</span><span class="o">...</span><span class="p">]</span>
 
@@ -285,23 +292,25 @@ gets displayed in <cite>ceph status</cite>.</p>
 <span class="p">[</span><span class="o">...</span><span class="p">]</span>
 </pre></div>
 </div>
+<p>A scrub is complete when it no longer shows up in this list (although that may
+change in future releases). Any damage will be reported via cluster health warnings.</p>
 </div>
 <div class="section" id="control-ongoing-file-system-scrubs">
 <h2>Control (ongoing) File System Scrubs<a class="headerlink" href="#control-ongoing-file-system-scrubs" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
+<ul>
 <li><p>Pause: Pausing ongoing scrub operations results in no new or pending inodes being
 scrubbed after in-flight RADOS ops (for the inodes that are currently being scrubbed)
-finish.</p></li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">pause</span>
+finish:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">cephfs</span><span class="p">:</span><span class="mi">0</span> <span class="n">scrub</span> <span class="n">pause</span>
 <span class="p">{</span>
     <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p><cite>scrub status</cite> after pausing reflects the paused state. At this point, initiating new scrub
-operations (via <cite>scrub start</cite>) would just queue the inode for scrub.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">scrub</span> <span class="n">status</span>
+<p>The <code class="docutils literal notranslate"><span class="pre">scrub</span> <span class="pre">status</span></code> after pausing reflects the paused state. At this point,
+initiating new scrub operations (via <code class="docutils literal notranslate"><span class="pre">scrub</span> <span class="pre">start</span></code>) would just queue the
+inode for scrub:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">cephfs</span><span class="p">:</span><span class="mi">0</span> <span class="n">scrub</span> <span class="n">status</span>
 <span class="p">{</span>
     <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;PAUSED (66 inodes in the stack)&quot;</span><span class="p">,</span>
     <span class="s2">&quot;scrubs&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -313,26 +322,26 @@ operations (via <cite>scrub start</cite>) would just queue the inode for scrub.<
 <span class="p">}</span>
 </pre></div>
 </div>
-<ul class="simple">
-<li><p>Resume: Resuming kick starts a paused scrub operation.</p></li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span><span class="o">.</span> <span class="n">scrub</span> <span class="n">resume</span>
+</li>
+<li><p>Resume: Resuming kick starts a paused scrub operation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">cephfs</span><span class="p">:</span><span class="mi">0</span> <span class="n">scrub</span> <span class="n">resume</span>
 <span class="p">{</span>
     <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<ul class="simple">
+</li>
 <li><p>Abort: Aborting ongoing scrub operations removes pending inodes from the scrub
 queue (thereby aborting the scrub) after in-flight RADOS ops (for the inodes that
-are currently being scrubbed) finish.</p></li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span><span class="o">.</span> <span class="n">scrub</span> <span class="n">abort</span>
+are currently being scrubbed) finish:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">cephfs</span><span class="p">:</span><span class="mi">0</span> <span class="n">scrub</span> <span class="n">abort</span>
 <span class="p">{</span>
     <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="mi">0</span>
 <span class="p">}</span>
 </pre></div>
 </div>
+</li>
+</ul>
 </div>
 </div>
 

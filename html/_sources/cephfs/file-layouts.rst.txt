@@ -16,10 +16,9 @@
     软件包通常是 ``attr`` 。
 
 
-.. Layout fields
-
 布局字段
 --------
+.. Layout fields
 
 pool
     字符串，可指定 ID 或名字，其字符必须出自 [a-zA-Z0-9\_-.]
@@ -51,10 +50,9 @@ object_size
    寸限量超过默认值。
 
 
-.. Reading layouts with ``getfattr``
-
 用 ``getfattr`` 读取布局
 ------------------------
+.. Reading layouts with ``getfattr``
 
 读出的布局信息表示为单个字符串：
 
@@ -101,10 +99,9 @@ object_size
     ceph.dir.layout="stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data"
 
 
-.. Writing layouts with ``setfattr``
-
 用 ``setfattr`` 设置布局
 ------------------------
+.. Writing layouts with ``setfattr``
 
 布局字段可用 ``setfattr`` 修改：
 
@@ -138,10 +135,9 @@ object_size
     setfattr: file1: Directory not empty
 
 
-.. Clearing layouts
-
 清除布局
 --------
+.. Clearing layouts
 
 如果你想删除某一目录的布局，还继承上级的布局，可以这样：
 
@@ -166,10 +162,9 @@ object_size
     ceph.dir.layout="stripe_unit=4194304 stripe_count=1 object_size=4194304 pool=cephfs_data_a"
 
 
-.. Inheritance of layouts
-
 布局的继承
 ----------
+.. Inheritance of layouts
 
 文件会在创建时继承其父目录的布局，然而之后对父目录布局的更改不会影响其子孙。
 
@@ -216,10 +211,11 @@ object_size
     ceph.file.layout="stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data"
 
 
-.. Adding a data pool to the MDS
+.. _adding-data-pool-to-file-system:
 
-把数据存储池加入 MDS
---------------------
+把数据存储池加入文件系统
+------------------------
+.. Adding a data pool to the File System 
 
 要通过 CephFS 使用一个存储池，你必须把它加入元数据服务器。
 

@@ -1,8 +1,14 @@
 TODO for Chinese
 ================
 
+原文档采用了 confval 来解释选项含义，所以：
+    尚未完全迁移，还没准备好迁移手段；
+    \*.yaml.in 文件的配置路径在 conf.py -> ceph_confval_imports ，需要改成 doc-zh/zh_confval/
+
 术语上方标注原文词语，用 HTML5 的 ruby + rt TAG 实现，但是rst现在还没有原生支持。
+
 github 上 README.rst 内的链接无效
+
 开户： https://readthedocs.org/
 
 

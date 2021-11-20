@@ -1,8 +1,7 @@
-.. Manual Deployment
-
 ==========
  手动部署
 ==========
+.. Manual Deployment
 
 所有 Ceph 集群都需要至少一个监视器、且 OSD 数量不小于副本数。\
 自举引导初始监视器是部署 Ceph 存储集群的第一步，监视器的部署\
@@ -458,7 +457,7 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 
 #. 导入密钥环并设置能力： ::
 
-	ceph auth add mds.{id} osd "allow rwx" mds "allow" mon "allow profile mds" -i /var/lib/ceph/mds/{cluster}-{id}/keyring
+	ceph auth add mds.{id} osd "allow rwx" mds "allow *" mon "allow profile mds" -i /var/lib/ceph/mds/{cluster}-{id}/keyring
 
 #. 写进 ceph.conf ： ::
 

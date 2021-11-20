@@ -1,8 +1,7 @@
-.. Configuring Monitor/OSD Interaction
-
 =========================
  监视器与 OSD 交互的配置
 =========================
+.. Configuring Monitor/OSD Interaction
 
 .. index:: heartbeat
 
@@ -19,10 +18,10 @@
 
 
 .. index:: heartbeat interval
-.. OSDs Check Heartbeats
 
 OSD 验证心跳
 ============
+.. OSDs Check Heartbeats
 
 各 OSD 每间隔 6 秒内的随机时间段会与其他 OSD 守护进程进行\
 心跳检查，如果一个邻近的 OSD 在 20 秒的宽限期内都没有心跳，\
@@ -67,10 +66,10 @@ OSD 验证心跳
 
 
 .. index:: OSD down report
-.. OSDs Report Down OSDs
 
 OSD 报告死亡 OSD
 ================
+.. OSDs Report Down OSDs
 
 在默认配置下，必须有两个来自不同主机的 Ceph OSD 守护进程向\
 监视器报告了另一个 OSD 守护进程倒下（ ``down`` ）的消息，此时\
@@ -111,10 +110,9 @@ OSD 报告死亡 OSD
 
 .. index:: peering failure
 
-.. OSDs Report Peering Failure
-
 OSD 报告互联失败
 ================
+.. OSDs Report Peering Failure
 
 如果一 OSD 守护进程不能和配置文件中定义的任何 OSD 建立连接，\
 它会每 30 秒向监视器索要一次最新集群运行图，你可以在 ``[osd]``
@@ -149,10 +147,9 @@ OSD 报告互联失败
 
 .. index:: OSD status
 
-.. OSDs Report Their Status
-
 OSD 报告自己的状态
 ==================
+.. OSDs Report Their Status
 
 如果一 OSD 在 ``mon osd report timeout`` 时间内没向监视器报告\
 过，监视器就认为它 ``down`` 了。在 OSD 守护进程会向监视器报告\
@@ -204,19 +201,18 @@ OSD 报告自己的状态
 
 
 
-.. Configuration Settings
-
 配置选项
 ========
+.. Configuration Settings
 
 心跳选项应该置于配置文件的 ``[global]`` 段下。
 
 
 .. index:: monitor heartbeat
-.. Monitor Settings
 
 监视器选项
 ----------
+.. Monitor Settings
 
 ``mon osd min up ratio``
 
@@ -335,10 +331,10 @@ OSD 报告自己的状态
 
 
 .. index:: OSD hearbeat
-.. OSD Settings
 
 OSD 选项
 --------
+.. OSD Settings
 
 ``osd heartbeat address``
 

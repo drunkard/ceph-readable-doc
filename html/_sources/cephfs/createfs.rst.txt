@@ -1,13 +1,11 @@
-.. Create a Ceph file system
-
 ====================
  创建 Ceph 文件系统
 ====================
-
-.. Creating pools
+.. Create a Ceph file system
 
 创建存储池
 ==========
+.. Creating pools
 
 一个 Ceph 文件系统需要至少两个 RADOS 存储池，一个用于数据、一\
 个用于元数据。配置这些存储池时需考虑：
@@ -40,10 +38,10 @@
           only have characters in the set [a-zA-Z0-9\_-.].
 
 
-.. Creating a file system
-
 创建文件系统
 ============
+.. Creating a file system
+
 创建好存储池后，你就可以用 ``fs new`` 命令启用文件系统了：
 
 .. code:: bash
@@ -80,10 +78,15 @@
 能看到的文件系统。
 
 
-.. Using Erasure Coded pools with CephFS
+Adding a Data Pool to the File System 
+-------------------------------------
+
+见 :ref:`adding-data-pool-to-file-system` 。
+
 
 在 CephFS 中使用纠删码存储池
 ============================
+.. Using Erasure Coded pools with CephFS
 
 纠删码存储池在启用覆写功能后可以用作 CephFS 的数据存储池，\
 这样启用：

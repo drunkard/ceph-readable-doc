@@ -78,7 +78,7 @@ https://github.com/drunkard/ceph-readable-doc
 #. Java 虚拟机应该用 oracle-jdk-bin-1.8 或 oracle-jdk-bin-1.7 ， jre \
    缺少必要的库文件。
 
-#. Sphinx 文档编译系统是基于 python 的，建议使用 python 3.6 ；
+#. Sphinx 文档编译系统是基于 python 的，我现在用的是 python 3.9 ；
 
 #. ditaa 图还不能翻译为中文，因为渲染时的字体问题还未解决；
 

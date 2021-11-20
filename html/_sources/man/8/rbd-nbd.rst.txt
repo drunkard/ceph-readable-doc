@@ -38,11 +38,12 @@
 
 .. option:: --nbds_max *limit*
 
-   载入 NBD 内核模块时覆盖其参数，用于限制 nbd 设备数量。
+   modprobe 载入 NBD 内核模块时覆盖其 nbds_max 参数，\
+   用于限制 nbd 设备数量。
 
 .. option:: --max_part *limit*
 
-   覆盖（内核的）模块参数 nbds_max 。
+   覆盖（内核的）模块参数 max_part 。
 
 .. option:: --exclusive
 
@@ -73,10 +74,9 @@
    second.
 
 
-.. Image and snap specs
-
 映像名和快照名规则
 ==================
+.. Image and snap specs
 
 | *image-spec* is [*pool-name*]/*image-name*
 | *snap-spec*  is [*pool-name*]/*image-name*\ @\ *snap-name*

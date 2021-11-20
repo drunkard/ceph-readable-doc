@@ -1,8 +1,7 @@
-.. Contributing to Ceph: A Guide for Developers
-
 ==========================
  向 Ceph 贡献：开发者指南
 ==========================
+.. Contributing to Ceph: A Guide for Developers
 
 :作者: Loic Dachary
 :作者: Nathan Cutler

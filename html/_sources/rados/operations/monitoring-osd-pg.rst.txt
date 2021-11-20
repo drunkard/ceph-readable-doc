@@ -1,8 +1,7 @@
-.. Monitoring OSDs and PGs
-
 ===================
  监控 OSD 和归置组
 ===================
+.. Monitoring OSDs and PGs
 
 高可用性和高可靠性要求容错方法来管理软硬件。 Ceph 没有\
 单故障点，并且能在“降级”模式下继续提供服务。其\ `数据归置`_\
@@ -18,10 +17,9 @@ Ceph 通常能自己康复，然而如果故障持续存在，监控 OSD 和归�
 有助于找出问题所在。
 
 
-.. Monitoring OSDs
-
 监控 OSD
 ========
+.. Monitoring OSDs
 
 某 OSD 的状态可以是在集群内（ ``in`` ）或集群外（ ``out`` ）、\
 也可以是活着且在运行（ ``up`` ）或挂了且不在运行（ ``down``
@@ -95,32 +93,42 @@ OSD 监控的一个重要事情是，当集群启动并运行时，所有 OSD �
 和 OSD 没运行或不启动相关的问题请看 `OSD 没运行`_\ 。
 
 
-.. _PG Sets:
-
 归置组集
 ========
+.. PG Sets
 
 CRUSH 要把归置组分配到 OSD 时，它先查询这个存储池的副本数设置，\
-再把归置组分配到 OSD ，这样就把各副本分配到了不同 OSD 。比如，\
-如果存储池要求归置组有 3 个副本， CRUSH 可能把它们分别分配到 \
-``osd.1`` 、 ``osd.2`` 、 ``osd.3`` 。考虑到你设置于 \
-`CRUSH 运行图`_\ 中的失败域，实际上 CRUSH 找出的是伪随机位置，\
-所以在大型集群中，你很少能看到归置组被分配到了相邻的 OSD 。我\
-们把涉及某个特定归置组副本的一组 OSD 称为 **acting set** 。在\
-一些情况下，位于 acting set 中的一个 OSD ``down`` 了或者不能为\
-归置组内的对象提供服务，这些情形发生时无需惊慌，常见原因如下：
-
-- 你增加或拆除了一 OSD 。然后 CRUSH 把那个归置组分配到了其他 OSD ，\
-  因此改变了 Acting Set 的构成、并且用 backfill 进程启动了数据迁移；
-- 一 OSD ``down`` 了、重启了、而现在正恢复（ ``recovering`` ）；
-- acting set 中的一个 OSD 挂了，不能提供服务，另一个 OSD 临时接替\
-  其工作。
+再把归置组分配到 OSD ，这样就把归置组的各副本分配到了不同 OSD 。\
+比如，如果存储池要求归置组有 3 个副本，
+CRUSH 可能把它们分别分配到
+``osd.1`` 、 ``osd.2`` 、 ``osd.3`` 。\
+考虑到你设置于 `CRUSH 运行图`_\ 中的失败域，\
+实际上 CRUSH 找出的是伪随机位置，所以在大型集群中，\
+你很少能看到归置组被分配到了相邻的 OSD 。
 
 Ceph 靠 **up set** 处理客户端请求，它们是最终处理请求的一系列 \
-OSD 。大多数情况下 up set 和 acting set 本质上相同，如果不同，\
-说明可能 Ceph 在迁移数据、某 OSD 在恢复、或者哪里有问题。这种情\
-况下， Ceph 通常表现为 HEALTH WARN 状态，还有 "stuck stale" 消\
-息。
+OSD 。
+Ceph processes a client request using the **Acting Set**, which is the set of
+OSDs that will actually handle the requests since they have a full and working
+version of a placement group shard. The set of OSDs that should contain a shard
+of a particular placement group as the **Up Set**, i.e. where data is
+moved/copied to (or planned to be).
+
+在某些情形下，位于 acting set 中的一个 OSD ``down`` 了\
+或者不能为归置组内的对象提供服务，这些情形发生时无需惊慌，\
+常见原因如下：
+
+- 你增加或拆除了一个 OSD 。然后 CRUSH 把那个归置组分配到了\
+  其他 OSD ，因此改变了 Acting Set 的构成、\
+  并且用 backfill 进程启动了数据迁移；
+- 一 OSD ``down`` 了、重启了、而现在正恢复（ ``recovering`` ）；
+- acting set 中的一个 OSD 挂了，不能提供服务，\
+  另一个 OSD 临时接替其工作。
+
+大多数情况下 up set 和 acting set 是相同的，如果不同，\
+说明可能 Ceph 在迁移 PG （它被重映射了）、某个 OSD 在恢复、\
+或者哪里有问题。这种情况下， Ceph 通常表现为 HEALTH WARN 状态，\
+还有 "stuck stale" 消息。
 
 用下列命令获取归置组列表： ::
 
@@ -141,10 +149,9 @@ Up Set 内的 OSD （ up[] ）、和 Acting Set 内的 OSD （ acting[] \
    在重均衡或者有潜在问题。
 
 
-.. Peering
-
 节点互联
 ========
+.. Peering
 
 写入数据前，归置组必须处于 ``active`` 、而且\ **应该**\ 是 ``clean`` 状态。假设一\
 存储池的归置组有 3 个副本，为让 Ceph 确定归置组的当前状态，一归置组的主 OSD （即 \
@@ -174,10 +181,9 @@ OSD 们也向监视器报告自己的状态，详情见\ `监视器与 OSD 交�
 立问题，参见\ `互联失败`_\ 。
 
 
-.. Monitoring Placement Group States
-
 监控归置组状态
 ==============
+.. Monitoring Placement Group States
 
 如果你执行过 ``ceph health`` 、 ``ceph -s`` 、或 ``ceph -w`` 命令，你也许注意到了\
 集群并非总返回 ``HEALTH OK`` 。检查完 OSD 是否在运行后，你还应该检查归置组状态。你\
@@ -243,10 +249,9 @@ Ceph 会输出成 JSON 格式。
 后续子章节详述了常见的 pg 状态。
 
 
-.. Creating
-
 存储池在建中
 ------------
+.. Creating
 
 创建存储池时，它会创建指定数量的归置组。 Ceph 在创建一或多个归\
 置组时会显示 ``creating`` ；创建完后，在其归置组的 Acting Set
@@ -260,10 +265,9 @@ Ceph 会输出成 JSON 格式。
        \-----------/       \-----------/       \-----------/
 
 
-.. Peering
-
 互联建立中
 ----------
+.. Peering
 
 Ceph 为归置组建立互联时，会让存储归置组副本的 OSD 之间就其中的\
 对象和元数据状态\ **达成一致**\ 。 Ceph 完成了互联，也就意味着\
@@ -281,29 +285,26 @@ Ceph 为归置组建立互联时，会让存储归置组副本的 OSD 之间就�
    就能把一个 OSD 的归置组副本更新到最新。
 
 
-.. Active
-
 活跃
 ----
+.. Active
 
 Ceph 完成互联后，一归置组状态会变为 ``active`` 。 ``active`` \
 状态意味着数据已完好地保存到了主归置组和副本归置组。
 
 
-.. Clean
-
 整洁
 ----
+.. Clean
 
 某一归置组处于 ``clean`` 状态时，主 OSD 和副本 OSD 已成功互联，\
 并且没有偏离的归置组。 Ceph 已把归置组中的所有对象复制了规定份\
 数。
 
 
-.. _Degraded:
-
 已降级
 ------
+.. Degraded
 
 当客户端向主 OSD 写入数据时，由主 OSD 负责把数据副本写入其余副\
 本 OSD 。主 OSD 把对象写入存储器后，在副本 OSD 创建完对象副本\
@@ -326,10 +327,9 @@ Ceph 完成互联后，一归置组状态会变为 ``active`` 。 ``active`` \
 访问位于降级归置组中的其它对象。
 
 
-.. _Recovering:
-
 恢复中
 ------
+.. Recovering
 
 Ceph 被设计为可容错，可抵御一定规模的软、硬件问题。当某 OSD 挂\
 了（ ``down`` ）时，其内的归置组会落后于别的归置组副本；此 OSD
@@ -350,10 +350,9 @@ Ceph 提供了几个选项来均衡资源竞争，如新服务请求、恢复数
 络拥塞。
 
 
-.. Back Filling
-
 回填中
 ------
+.. Back Filling
 
 有新 OSD 加入集群时， CRUSH 会把现有集群内的部分归置组重分配给\
 它。强制新 OSD 立即接受重分配的归置组会使之过载，用归置组回填\
@@ -381,10 +380,9 @@ Ceph 有多个选项可以解决重分配归置组给一 OSD （特别是新 OSD
 ``osd backfill scan max`` 来管理扫描间隔（默认 64 和 512 ）。
 
 
-.. Remapped
-
 被重映射
 --------
+.. Remapped
 
 负责维护某一归置组的 Acting Set 变更时，数据要从旧集合迁移到\
 新的。新的主 OSD 要花费一些时间才能提供服务，所以老的主 OSD
@@ -392,10 +390,9 @@ Ceph 有多个选项可以解决重分配归置组给一 OSD （特别是新 OSD
 新 acting set 里的主 OSD 。
 
 
-.. Stale
-
 发蔫
 ----
+.. Stale
 
 虽然 Ceph 用心跳来保证主机和守护进程在运行，但是 ``ceph-osd`` 仍有可能进入 \
 ``stuck`` 状态，它们没有按时报告其状态（如网络瞬断）。默认， OSD 守护进程每半秒\
@@ -408,10 +405,9 @@ Ceph 有多个选项可以解决重分配归置组给一 OSD （特别是新 OSD
 视器报告统计信息。
 
 
-.. Identifying Troubled PGs
-
 找出故障归置组
 ==============
+.. Identifying Troubled PGs
 
 如前所述，一个归置组状态不是 ``active+clean`` 时未必有问题。一般来说，归置组卡住时 \
 Ceph 的自修复功能往往无能为力，卡住的状态细分为：
@@ -429,10 +425,9 @@ Ceph 的自修复功能往往无能为力，卡住的状态细分为：
 详情见\ `归置组子系统`_\ ，关于排除卡住的归置组见\ `排除归置组错误`_\ 。
 
 
-.. Finding an Object Location
-
 定位对象
 ========
+.. Finding an Object Location
 
 要把对象数据存入 Ceph 对象存储，一 Ceph 客户端必须：
 

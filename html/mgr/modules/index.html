@@ -316,9 +316,57 @@ following commands:</p>
 </div>
 </div>
 <div class="section" id="exposing-commands">
-<h2>Exposing commands<a class="headerlink" href="#exposing-commands" title="Permalink to this headline">¶</a></h2>
-<p>Set the <code class="docutils literal notranslate"><span class="pre">COMMANDS</span></code> class attribute of your module to a list of dicts
-like this:</p>
+<span id="mgr-module-exposing-commands"></span><h2>Exposing commands<a class="headerlink" href="#exposing-commands" title="Permalink to this headline">¶</a></h2>
+<p>There are two approaches for exposing a command. The first one is to
+use the <code class="docutils literal notranslate"><span class="pre">&#64;CLICommand</span></code> decorator to decorate the method which handles
+the command. like this</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLICommand</span><span class="p">(</span><span class="s1">&#39;antigravity send to blackhole&#39;</span><span class="p">,</span>
+            <span class="n">perm</span><span class="o">=</span><span class="s1">&#39;rw&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">send_to_blackhole</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oid</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">blackhole</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">inbuf</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Send the specified object to black hole</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_object</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">HandleCommandResult</span><span class="p">(</span><span class="o">-</span><span class="n">errno</span><span class="o">.</span><span class="n">ENOENT</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;object &#39;</span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s2">&#39; not found&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">blackhole</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">inbuf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">blackhole</span><span class="p">,</span> <span class="n">passphrase</span><span class="o">=</span><span class="n">inbuf</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">HandleCommandResult</span><span class="p">(</span><span class="o">-</span><span class="n">errno</span><span class="o">.</span><span class="n">EINVAL</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="s1">&#39;unable to decrypt location&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="n">blackhole</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_object_to</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">location</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">HandleCommandResult</span><span class="p">(</span><span class="n">stdout</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;the black hole swallowed &#39;</span><span class="p">{</span><span class="n">oid</span><span class="p">}</span><span class="s1">&#39;&quot;)</span>
+</pre></div>
+</div>
+<p>The first parameter passed to <code class="docutils literal notranslate"><span class="pre">CLICommand</span></code> is the “name” of the command.
+Since there are lots of commands in Ceph, we tend to group related commands
+with a common prefix. In this case, “antigravity” is used for this purpose.
+As the author is probably designing a module which is also able to launch
+rockets into the deep space.</p>
+<p>The <a class="reference external" href="https://www.python.org/dev/peps/pep-0484/">type annotations</a> for the
+method parameters are mandatory here, so the usage of the command can be
+properly reported to the <code class="docutils literal notranslate"><span class="pre">ceph</span></code> CLI, and the manager daemon can convert
+the serialized command parameters sent by the clients to the expected type
+before passing them to the handler method. With properly implemented types,
+one can also perform some sanity checks against the parameters!</p>
+<p>The names of the parameters are part of the command interface, so please
+try to take the backward compatibility into consideration when changing
+them. But you <strong>cannot</strong> change name of <code class="docutils literal notranslate"><span class="pre">inbuf</span></code> parameter, it is used
+to pass the content of the file specified by <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">--in-file</span></code> option.</p>
+<p>The docstring of the method is used for the description of the command.</p>
+<p>The manager daemon cooks the usage of the command from these ingredients,
+like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">antigravity</span> <span class="n">send</span> <span class="n">to</span> <span class="n">blackhole</span> <span class="o">&lt;</span><span class="n">oid</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">&lt;</span><span class="n">blackhole</span><span class="o">&gt;</span><span class="p">]</span>  <span class="n">Send</span> <span class="n">the</span> <span class="n">specified</span> <span class="nb">object</span> <span class="n">to</span> <span class="n">black</span> <span class="n">hole</span>
+</pre></div>
+</div>
+<p>as part of the output of <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">--help</span></code>.</p>
+<p>In addition to <code class="docutils literal notranslate"><span class="pre">&#64;CLICommand</span></code>, you could also use <code class="docutils literal notranslate"><span class="pre">&#64;CLIReadCommand</span></code> or
+<code class="docutils literal notranslate"><span class="pre">&#64;CLIWriteCommand</span></code> if your command only requires read permissions or
+write permissions respectively.</p>
+<p>The second one is to set the <code class="docutils literal notranslate"><span class="pre">COMMANDS</span></code> class attribute of your module to
+a list of dicts like this:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">COMMANDS</span> <span class="o">=</span> <span class="p">[</span>
     <span class="p">{</span>
         <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;foobar name=myarg,type=CephString&quot;</span><span class="p">,</span>

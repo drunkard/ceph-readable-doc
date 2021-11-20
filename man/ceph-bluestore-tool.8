@@ -34,11 +34,15 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 \fBceph\-bluestore\-tool\fP \fIcommand\fP
 [ \-\-dev \fIdevice\fP ... ]
+[ \-i \fIosd_id\fP ]
 [ \-\-path \fIosd path\fP ]
 [ \-\-out\-dir \fIdir\fP ]
 [ \-\-log\-file | \-l \fIfilename\fP ]
 [ \-\-deep ]
 \fBceph\-bluestore\-tool\fP fsck|repair \-\-path \fIosd path\fP [ \-\-deep ]
+\fBceph\-bluestore\-tool\fP qfsck       \-\-path \fIosd path\fP
+\fBceph\-bluestore\-tool\fP allocmap    \-\-path \fIosd path\fP
+\fBceph\-bluestore\-tool\fP restore_cfb \-\-path \fIosd path\fP
 \fBceph\-bluestore\-tool\fP show\-label \-\-dev \fIdevice\fP ...
 \fBceph\-bluestore\-tool\fP prime\-osd\-dir \-\-dev \fIdevice\fP \-\-path \fIosd path\fP
 \fBceph\-bluestore\-tool\fP bluefs\-export \-\-path \fIosd path\fP \-\-out\-dir \fIdir\fP
@@ -47,6 +51,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 \fBceph\-bluestore\-tool\fP bluefs\-bdev\-migrate \-\-path \fIosd path\fP \-\-dev\-target \fInew\-device\fP \-\-devs\-source \fIdevice1\fP [\-\-devs\-source \fIdevice2\fP]
 \fBceph\-bluestore\-tool\fP free\-dump|free\-score \-\-path \fIosd path\fP [ \-\-allocator block/bluefs\-wal/bluefs\-db/bluefs\-slow ]
 \fBceph\-bluestore\-tool\fP reshard \-\-path \fIosd path\fP \-\-sharding \fInew sharding\fP [ \-\-sharding\-ctrl \fIcontrol string\fP ]
+\fBceph\-bluestore\-tool\fP show\-sharding \-\-path \fIosd path\fP
 .fi
 .sp
 .SH 描述
@@ -72,6 +77,27 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .INDENT 0.0
 .INDENT 3.5
 运行一致性检查，\fI并且\fP修复所有可修复的错误。
+.UNINDENT
+.UNINDENT
+.sp
+\fBqfsck\fP
+.INDENT 0.0
+.INDENT 3.5
+run consistency check on BlueStore metadata comparing allocator data (from RocksDB CFB when exists and if not uses allocation\-file) with ONodes state.
+.UNINDENT
+.UNINDENT
+.sp
+\fBallocmap\fP
+.INDENT 0.0
+.INDENT 3.5
+performs the same check done by qfsck and then stores a new allocation\-file (command is disabled by default and requires a special build)
+.UNINDENT
+.UNINDENT
+.sp
+\fBrestore_cfb\fP
+.INDENT 0.0
+.INDENT 3.5
+Reverses changes done by the new NCB code (either through ceph restart or when running allocmap command) and restores RocksDB B Column\-Family (allocator\-map).
 .UNINDENT
 .UNINDENT
 .sp
@@ -160,11 +186,24 @@ RocksDB 列族基础之上。此选项方便你测试 \fInew sharding\fP 的性�
 \fB\-\-resharding\-ctrl\fP 选项便于你对重分片过程进行性能控制。中断重分片会妨碍 OSD 的正常运行；中断重分片不会损坏数据；而且随时可以继续之前的重分片，或者选用其它分片方案，包括回退到最初的那个。
 .UNINDENT
 .UNINDENT
+.sp
+\fBshow\-sharding\fP \-\-path \fIosd path\fP
+.INDENT 0.0
+.INDENT 3.5
+Show sharding that is currently applied to BlueStore\(aqs RocksDB.
+.UNINDENT
+.UNINDENT
 .SH 选项
 .INDENT 0.0
 .TP
 .B \-\-dev *device*
 把设备 \fIdevice\fP 加进涉及到的设备列表中。
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-i *osd_id*
+Operate as OSD \fIosd_id\fP\&. Connect to monitor for OSD specific options.
+If monitor is unavailable, add \-\-no\-mon\-config to read from ceph.conf instead.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -216,6 +255,10 @@ bluefs\-export 的输出目录。
 <iterator_refresh_bytes>/<iterator_refresh_keys>/<batch_commit_bytes>/<batch_commit_keys>
 默认值： 10000000/10000/1000000/1000
 .UNINDENT
+.SH ADDITIONAL CEPH.CONF OPTIONS
+.sp
+Any configuration option that is accepted by OSD can be also passed to \fBceph\-bluestore\-tool\fP\&.
+Useful to provide necessary configuration options when access to monitor/ceph.conf is impossible and \-i option cannot be used.
 .SH 设备标签
 .sp
 每个 BlueStore 块设备都有一个单独的块标签，位于设备起始处。你可以用此命令查看标签内容：
@@ -246,6 +289,21 @@ ceph\-bluestore\-tool prime\-osd\-dir \-\-dev *main device* \-\-path /var/lib/ce
 .fi
 .UNINDENT
 .UNINDENT
+.SH BLUEFS LOG RESCUE
+.sp
+Some versions of BlueStore were susceptible to BlueFS log growing extremaly large \-
+beyond the point of making booting OSD impossible. This state is indicated by
+booting that takes very long and fails in _replay function.
+.INDENT 0.0
+.TP
+.B This can be fixed by::
+ceph\-bluestore\-tool fsck \-\-path \fIosd path\fP \-\-bluefs_replay_recovery=true
+.TP
+.B It is advised to first check if rescue process would be successfull::
+ceph\-bluestore\-tool fsck \-\-path \fIosd path\fP \-\-bluefs_replay_recovery=true \-\-bluefs_replay_recovery_disable_compact=true
+.UNINDENT
+.sp
+If above fsck is successful fix procedure can be applied.
 .SH 使用范围
 .sp
 \fBceph\-bluestore\-tool\fP 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，更多信息参见 \fI\%http://ceph.com/docs\fP 。

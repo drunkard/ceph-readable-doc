@@ -69,12 +69,22 @@ mount 辅助程序的惯例是前两个选项分别为要挂载的设备和目�
 :command:`mount_timeout`
     整数（秒）。默认：60
 
+:command:`ms_mode=<legacy|crc|secure|prefer-crc|prefer-secure>`
+    Set the connection mode that the client uses for transport. The available
+    modes are:
+
+    - ``legacy``: use messenger v1 protocol to talk to the cluster
+
+    - ``crc``: use messenger v2, without on-the-wire encryption
+
+    - ``secure``: use messenger v2, with on-the-wire encryption
+
+    - ``prefer-crc``: crc mode, if denied agree to secure mode
+
+    - ``prefer-secure``: secure mode, if denied agree to crc mode
+
 :command:`name`
     使用 cephx 认证时的 RADOS 用户名。默认： guest
-
-:command:`secret`
-    secret key for use with CephX. This option is insecure because it exposes
-    the secret on the command line. To avoid this, use the secretfile option.
 
 :command:`secret`
     用于 cephx 的密钥。这个选项不安全，因为它把密钥暴露在了命令行，用 \
@@ -99,10 +109,10 @@ mount 辅助程序的惯例是前两个选项分别为要挂载的设备和目�
       is not allowed until applications release all stale file locks.
 
 
-.. Advanced
-
 高级的
 ------
+.. Advanced
+
 :command:`cap_release_safety`
     整数。默认：自行计算
 
@@ -161,7 +171,8 @@ mount 辅助程序的惯例是前两个选项分别为要挂载的设备和目�
     字符串，为快照的隐藏目录设置个名字。默认： .snap
 
 :command:`write_congestion_kb`
-    整数（ kb ），运行中的最大回写量，随可用内存变化。默认：根据可用内存计算
+    整数（ kb ），运行中的最大回写量，随可用内存变化。\
+    默认：根据可用内存计算
 
 :command:`wsize`
     整数（字节数），最大写尺寸。默认： 16777216 (16*1024*1024)
@@ -194,6 +205,7 @@ Mount only part of the namespace/file system::
     mount.ceph :/some/directory/in/cephfs /mnt/mycephfs
 
 Mount non-default FS, in case cluster has multiple FSs::
+
     mount -t ceph :/ /mnt/mycephfs2 -o fs=mycephfs2
     
     or
@@ -233,10 +245,9 @@ history::
 分布式的存储系统，更多信息参见 http://ceph.com/docs 。
 
 
-.. Feature Availability
-
 功能适用范围
 ============
+.. Feature Availability
 
 The ``recover_session=`` option was added to mainline Linux kernels in v5.4.
 ``wsync`` and ``nowsync`` were added in v5.7.

@@ -11,11 +11,15 @@
 
 | **ceph-bluestore-tool** *command*
   [ --dev *device* ... ]
+  [ -i *osd_id* ]
   [ --path *osd path* ]
   [ --out-dir *dir* ]
   [ --log-file | -l *filename* ]
   [ --deep ]
 | **ceph-bluestore-tool** fsck|repair --path *osd path* [ --deep ]
+| **ceph-bluestore-tool** qfsck       --path *osd path*
+| **ceph-bluestore-tool** allocmap    --path *osd path*
+| **ceph-bluestore-tool** restore_cfb --path *osd path*
 | **ceph-bluestore-tool** show-label --dev *device* ...
 | **ceph-bluestore-tool** prime-osd-dir --dev *device* --path *osd path*
 | **ceph-bluestore-tool** bluefs-export --path *osd path* --out-dir *dir*
@@ -24,13 +28,14 @@
 | **ceph-bluestore-tool** bluefs-bdev-migrate --path *osd path* --dev-target *new-device* --devs-source *device1* [--devs-source *device2*]
 | **ceph-bluestore-tool** free-dump|free-score --path *osd path* [ --allocator block/bluefs-wal/bluefs-db/bluefs-slow ]
 | **ceph-bluestore-tool** reshard --path *osd path* --sharding *new sharding* [ --sharding-ctrl *control string* ]
+| **ceph-bluestore-tool** show-sharding --path *osd path*
 
 
 描述
 ====
 
-**ceph-bluestore-tool** 工具可在 BlueStore 例程上执行底层\
-管理操作。
+**ceph-bluestore-tool** 工具可在 BlueStore 例程上执行\
+底层管理操作。
 
 
 命令
@@ -48,6 +53,18 @@
 :command:`repair`
 
    运行一致性检查，\ *并且*\ 修复所有可修复的错误。
+
+:command:`qfsck`
+
+   run consistency check on BlueStore metadata comparing allocator data (from RocksDB CFB when exists and if not uses allocation-file) with ONodes state.
+
+:command:`allocmap`
+
+   performs the same check done by qfsck and then stores a new allocation-file (command is disabled by default and requires a special build)
+
+:command:`restore_cfb`
+
+   Reverses changes done by the new NCB code (either through ceph restart or when running allocmap command) and restores RocksDB B Column-Family (allocator-map).
 
 :command:`bluefs-export`
 
@@ -111,6 +128,10 @@
    而且随时可以继续之前的重分片，或者选用其它分片方案，包括\
    回退到最初的那个。
 
+:command:`show-sharding` --path *osd path*
+
+   Show sharding that is currently applied to BlueStore's RocksDB.
+
 
 选项
 ====
@@ -118,6 +139,11 @@
 .. option:: --dev *device*
 
    把设备 *device* 加进涉及到的设备列表中。
+
+.. option:: -i *osd_id*
+
+   Operate as OSD *osd_id*. Connect to monitor for OSD specific options.
+   If monitor is unavailable, add --no-mon-config to read from ceph.conf instead.
 
 .. option:: --devs-source *device*
 
@@ -163,6 +189,13 @@
    默认值： 10000000/10000/1000000/1000
 
 
+Additional ceph.conf options
+============================
+
+Any configuration option that is accepted by OSD can be also passed to **ceph-bluestore-tool**.
+Useful to provide necessary configuration options when access to monitor/ceph.conf is impossible and -i option cannot be used.
+
+
 设备标签
 ========
 
@@ -176,15 +209,31 @@
 OSD UUID 、尺寸、设备类型、创建时间）。
 
 
-.. OSD directory priming
-
 OSD 目录启动
 ============
+.. OSD directory priming
 
 你可以给一个 OSD 数据目录生成些数据，才能用 *prime-osd-dir*
 启动 BlueStore OSD ： ::
 
   ceph-bluestore-tool prime-osd-dir --dev *main device* --path /var/lib/ceph/osd/ceph-*id*
+
+
+BlueFS log rescue
+=====================
+
+Some versions of BlueStore were susceptible to BlueFS log growing extremaly large -
+beyond the point of making booting OSD impossible. This state is indicated by
+booting that takes very long and fails in _replay function.
+
+This can be fixed by::
+  ceph-bluestore-tool fsck --path *osd path* --bluefs_replay_recovery=true
+
+It is advised to first check if rescue process would be successfull::
+  ceph-bluestore-tool fsck --path *osd path* \
+  --bluefs_replay_recovery=true --bluefs_replay_recovery_disable_compact=true
+
+If above fsck is successful fix procedure can be applied.
 
 
 使用范围

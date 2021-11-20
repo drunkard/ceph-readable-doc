@@ -1,8 +1,7 @@
-.. Deploying a new Ceph cluster
-
 ========================
  部署个全新的 Ceph 集群
 ========================
+.. Deploying a new Ceph cluster
 
 Cephadm creates a new Ceph cluster by "bootstrapping" on a single
 host, expanding the cluster to encompass any additional hosts, and
@@ -11,11 +10,11 @@ then deploying the needed services.
 .. highlight:: console
 
 
-.. Requirements
 .. _cephadm-host-requirements:
 
 准备事项
 ========
+.. Requirements
 
 - Python 3
 - Systemd
@@ -33,11 +32,11 @@ Ceph.
 
 
 
-.. Install cephadm
 .. _get-cephadm:
 
 安装 cephadm
 ============
+.. Install cephadm
 
 The ``cephadm`` command can 
 

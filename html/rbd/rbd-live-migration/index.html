@@ -147,10 +147,11 @@
 <li class="toctree-l3"><a class="reference internal" href="../rbd-exclusive-locks/">互斥锁</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../rbd-mirroring/">镜像</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">实时迁移</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id2">准备迁移</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id3">执行迁移</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id4">提交迁移</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id5">中止迁移</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#prepare-migration">Prepare Migration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#prepare-import-only-migration">Prepare Import-Only Migration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#execute-migration">Execute Migration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#commit-migration">Commit Migration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#abort-migration">Abort Migration</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../rbd-persistent-read-only-cache/">永久只读缓存</a></li>
@@ -219,41 +220,56 @@
   
   <div class="section" id="id1">
 <h1>映像实时迁移<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
-<p id="index-0">RBD images can be live-migrated between different pools within the same cluster
-or between different image formats and layouts. When started, the source image
-will be deep-copied to the destination image, pulling all snapshot history and
-optionally keeping any link to the source image’s parent to help preserve
-sparseness.</p>
-<p>This copy process can safely run in the background while the new target image is
-in-use. There is currently a requirement to temporarily stop using the source
-image before preparing a migration. This helps to ensure that the client using
-the image is updated to point to the new target image.</p>
+<p id="index-0">RBD images can be live-migrated between different pools within the same cluster;
+between different image formats and layouts; or from external data sources.
+When started, the source will be deep-copied to the destination image, pulling
+all snapshot history while preserving the sparse allocation of data where
+possible.</p>
+<p>By default, when live-migrating RBD images within the same Ceph cluster, the
+source image will be marked read-only and all clients will instead redirect
+IOs to the new target image. In addition, this mode can optionally preserve the
+link to the source image’s parent to preserve sparseness, or it can flatten the
+image during the migration to remove the dependency on the source image’s
+parent.</p>
+<p>The live-migration process can also be used in an import-only mode where the
+source image remains unmodified and the target image can be linked to an
+external data source such as a backing file, HTTP(s) file, or S3 object.</p>
+<p>The live-migration copy process can safely run in the background while the new
+target image is in use. There is currently a requirement to temporarily stop
+using the source image before preparing a migration when not using the
+import-only mode of operation. This helps to ensure that the client using the
+image is updated to point to the new target image.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Image live-migration requires the Ceph Nautilus release or later. The krbd
-kernel module does not support live-migration at this time.</p>
+<p>Image live-migration requires the Ceph Nautilus release or later. Support for
+external data sources requires the Ceph Pacific release of later. The
+<code class="docutils literal notranslate"><span class="pre">krbd</span></code> kernel module does not support live-migration at this time.</p>
 </div>
 <p>The live-migration process is comprised of three steps:</p>
-<ol class="arabic simple">
+<ol class="arabic">
 <li><p><strong>Prepare Migration:</strong> The initial step creates the new target image and
-cross-links the source and target images. Similar to <a class="reference external" href="../rbd-snapshot/#layering">layered images</a>,
-attempts to read uninitialized extents within the target image will
-internally redirect the read to the source image, and writes to
-uninitialized extents within the target will internally deep-copy the
-overlapping source image block to the target image.</p></li>
+links the target image to the source. When not configured in the import-only
+mode, the source image will also be linked to the target image and marked
+read-only.</p>
+<p>Similar to <a class="reference external" href="../rbd-snapshot/#layering">layered images</a>, attempts to read uninitialized data extents
+within the target image will internally redirect the read to the source
+image, and writes to uninitialized extents within the target will internally
+deep-copy the overlapping source image block to the target image.</p>
+</li>
 <li><p><strong>Execute Migration:</strong> This is a background operation that deep-copies all
 initialized blocks from the source image to the target. This step can be
 run while clients are actively using the new target image.</p></li>
 <li><p><strong>Finish Migration:</strong> Once the background migration process has completed,
 the migration can be committed or aborted. Committing the migration will
 remove the cross-links between the source and target images, and will
-remove the source image. Aborting the migration will remove the cross-links,
-and will remove the target image.</p></li>
+remove the source image if not configured in the import-only mode. Aborting
+the migration will remove the cross-links, and will remove the target image.</p></li>
 </ol>
-<div class="section" id="id2">
-<h2>准备迁移<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<p>The live-migration process is initiated by running the <cite>rbd migration prepare</cite>
-command, providing the source and target images:</p>
+<div class="section" id="prepare-migration">
+<h2>Prepare Migration<a class="headerlink" href="#prepare-migration" title="Permalink to this headline">¶</a></h2>
+<p>The default live-migration process for images within the same Ceph cluster is
+initiated by running the <cite>rbd migration prepare</cite> command, providing the source
+and target images:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration prepare migration_source [migration_target]
 </pre></div>
 </div>
@@ -284,8 +300,198 @@ $ rbd trash ls --all
 </pre></div>
 </div>
 </div>
-<div class="section" id="id3">
-<h2>执行迁移<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="prepare-import-only-migration">
+<h2>Prepare Import-Only Migration<a class="headerlink" href="#prepare-import-only-migration" title="Permalink to this headline">¶</a></h2>
+<p>The import-only live-migration process is initiated by running the same
+<cite>rbd migration prepare</cite> command, but adding the <cite>–import-only</cite> optional
+and providing a JSON-encoded <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> to describe how to access
+the source image data. This <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> can either be passed
+directly via the <cite>–source-spec</cite> optional, or via a file or STDIN via the
+<cite>–source-spec-path</cite> optional:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration prepare --import-only --source-spec &quot;&lt;JSON&gt;&quot; migration_target
+</pre></div>
+</div>
+<p>The <cite>rbd migration prepare</cite> command accepts all the same layout optionals as the
+<cite>rbd create</cite> command.</p>
+<p>The <cite>rbd status</cite> command will show the current state of the live-migration:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
+Watchers: none
+Migration:
+        source: {&quot;stream&quot;:{&quot;file_path&quot;:&quot;/mnt/image.raw&quot;,&quot;type&quot;:&quot;file&quot;},&quot;type&quot;:&quot;raw&quot;}
+        destination: rbd/migration_target (ac69113dc1d7)
+        state: prepared
+</pre></div>
+</div>
+<p>The general format for the <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;format-type&gt;&quot;</span><span class="p">,</span>
+    <span class="o">&lt;</span><span class="nb">format</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;stream-type&gt;&quot;</span><span class="p">,</span>
+        <span class="o">&lt;</span><span class="n">stream</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The following formats are currently supported: <code class="docutils literal notranslate"><span class="pre">native</span></code>, <code class="docutils literal notranslate"><span class="pre">qcow</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">raw</span></code>. The following streams are currently supported: <code class="docutils literal notranslate"><span class="pre">file</span></code>, <code class="docutils literal notranslate"><span class="pre">http</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">s3</span></code>.</p>
+<div class="section" id="formats">
+<h3>Formats<a class="headerlink" href="#formats" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">native</span></code> format can be used to describe a native RBD image within a
+Ceph cluster as the source image. Its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded
+as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;native&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pool_name&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;pool-name&gt;&quot;</span><span class="p">,</span>
+    <span class="p">[</span><span class="s2">&quot;pool_id&quot;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span><span class="p">,]</span> <span class="p">(</span><span class="n">optional</span> <span class="n">alternative</span> <span class="n">to</span> <span class="s2">&quot;pool_name&quot;</span><span class="p">)</span>
+    <span class="p">[</span><span class="s2">&quot;pool_namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;pool-namespace&quot;</span><span class="p">,]</span> <span class="p">(</span><span class="n">optional</span><span class="p">)</span>
+    <span class="s2">&quot;image_name&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;image-name&gt;&quot;</span><span class="p">,</span>
+    <span class="p">[</span><span class="s2">&quot;image_id&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;image-id&gt;&quot;</span><span class="p">,]</span> <span class="p">(</span><span class="n">optional</span> <span class="k">if</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">trash</span><span class="p">)</span>
+    <span class="s2">&quot;snap_name&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;snap-name&gt;&quot;</span><span class="p">,</span>
+    <span class="p">[</span><span class="s2">&quot;snap_id&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;snap-id&gt;&quot;</span><span class="p">,]</span> <span class="p">(</span><span class="n">optional</span> <span class="n">alternative</span> <span class="n">to</span> <span class="s2">&quot;snap_name&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Note that the <code class="docutils literal notranslate"><span class="pre">native</span></code> format does not include the <code class="docutils literal notranslate"><span class="pre">stream</span></code> object since
+it utilizes native Ceph operations. For example, to import from the image
+<code class="docutils literal notranslate"><span class="pre">rbd/ns1/image1&#64;snap1</span></code>, the <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> could be encoded as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;native&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pool_name&quot;</span><span class="p">:</span> <span class="s2">&quot;rbd&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pool_namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;ns1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;image_name&quot;</span><span class="p">:</span> <span class="s2">&quot;image1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;snap_name&quot;</span><span class="p">:</span> <span class="s2">&quot;snap1&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">qcow</span></code> format can be used to describe a QCOW (QEMU copy-on-write) block
+device. Both the QCOW (v1) and QCOW2 formats are currently supported with the
+exception of advanced features such as compression, encryption, backing
+files, and external data files. Support for these missing features may be added
+in a future release. The <code class="docutils literal notranslate"><span class="pre">qcow</span></code> format data can be linked to any supported
+stream source described below. For example, its base <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is
+encoded as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;qcow&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">stream</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">raw</span></code> format can be used to describe a thick-provisioned, raw block device
+export (i.e. <cite>rbd export –export-format 1 &lt;snap-spec&gt;</cite>). The <code class="docutils literal notranslate"><span class="pre">raw</span></code> format
+data can be linked to any supported stream source described below. For example,
+its base <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">stream</span> <span class="n">unique</span> <span class="n">parameters</span> <span class="k">for</span> <span class="n">HEAD</span><span class="p">,</span> <span class="n">non</span><span class="o">-</span><span class="n">snapshot</span> <span class="n">revision</span><span class="o">&gt;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;snapshots&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;snapshot-name&gt;&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="o">&lt;</span><span class="n">stream</span> <span class="n">unique</span> <span class="n">parameters</span> <span class="k">for</span> <span class="n">snapshot</span><span class="o">&gt;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+    <span class="p">]</span> <span class="p">(</span><span class="n">optional</span> <span class="n">oldest</span> <span class="n">to</span> <span class="n">newest</span> <span class="n">ordering</span> <span class="n">of</span> <span class="n">snapshots</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The inclusion of the <code class="docutils literal notranslate"><span class="pre">snapshots</span></code> array is optional and currently only supports
+thick-provisioned <code class="docutils literal notranslate"><span class="pre">raw</span></code> snapshot exports.</p>
+<p>Additional formats such as RBD export-format v2 and RBD export-diff
+snapshots will be added in a future release.</p>
+</div>
+<div class="section" id="streams">
+<h3>Streams<a class="headerlink" href="#streams" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">file</span></code> stream can be used to import from a locally accessible POSIX file
+source. Its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="o">&lt;</span><span class="nb">format</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;file_path&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;file-path&gt;&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For example, to import a raw-format image from a file located at
+“/mnt/image.raw”, its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;file_path&quot;</span><span class="p">:</span> <span class="s2">&quot;/mnt/image.raw&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">http</span></code> stream can be used to import from a remote HTTP or HTTPS web
+server. Its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="o">&lt;</span><span class="nb">format</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;http&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;url-path&gt;&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For example, to import a raw-format image from a file located at
+<code class="docutils literal notranslate"><span class="pre">http://download.ceph.com/image.raw</span></code>, its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded
+as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;http&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;http://download.ceph.com/image.raw&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">s3</span></code> stream can be used to import from a remote S3 bucket. Its
+<code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="o">&lt;</span><span class="nb">format</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;s3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;url-path&gt;&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;access-key&gt;&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;secret-key&gt;&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For example, to import a raw-format image from a file located at
+<cite>http://s3.ceph.com/bucket/image.raw</cite>, its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded
+as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;s3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;http://s3.ceph.com/bucket/image.raw&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;access_key&quot;</span><span class="p">:</span> <span class="s2">&quot;NX5QOQKC6BH2IDN8HC7A&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;secret_key&quot;</span><span class="p">:</span> <span class="s2">&quot;LnEsqNNqZIpkzauboDcLXLcYaWwLQ3Kop0zAnKIn&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">access_key</span></code> and <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> parameters support storing the keys in
+the MON config-key store by prefixing the key values with <code class="docutils literal notranslate"><span class="pre">config://</span></code>
+followed by the path in the MON config-key store to the value. Values can be
+stored in the config-key store via <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config-key</span> <span class="pre">set</span> <span class="pre">&lt;key-path&gt;</span> <span class="pre">&lt;value&gt;</span></code>
+(e.g. <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config-key</span> <span class="pre">set</span> <span class="pre">rbd/s3/access_key</span> <span class="pre">NX5QOQKC6BH2IDN8HC7A</span></code>).</p>
+</div>
+</div>
+</div>
+<div class="section" id="execute-migration">
+<h2>Execute Migration<a class="headerlink" href="#execute-migration" title="Permalink to this headline">¶</a></h2>
 <p>After preparing the live-migration, the image blocks from the source image
 must be copied to the target image. This is accomplished by running the
 <cite>rbd migration execute</cite> command:</p>
@@ -305,8 +511,8 @@ Migration:
 </pre></div>
 </div>
 </div>
-<div class="section" id="id4">
-<h2>提交迁移<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="commit-migration">
+<h2>Commit Migration<a class="headerlink" href="#commit-migration" title="Permalink to this headline">¶</a></h2>
 <p>Once the live-migration has completed deep-copying all data blocks from the
 source image to the target, the migration can be committed:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
@@ -328,8 +534,8 @@ and target images, and will remove the source image:</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id5">
-<h2>中止迁移<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="abort-migration">
+<h2>Abort Migration<a class="headerlink" href="#abort-migration" title="Permalink to this headline">¶</a></h2>
 <p>If you wish to revert the prepare or execute step, run the <cite>rbd migration abort</cite>
 command to revert the migration process:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration abort migration_target
