@@ -969,7 +969,7 @@ OSD 们建立连接，这样才能正常工作。详情见\
               when osd data is on HDD and osd journal is on SSD.
 
 :类型: Float
-:默认值: ``2``
+:默认值: ``1``
 
 
 ``osd command max records``

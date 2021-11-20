@@ -78,6 +78,13 @@ Ceph 程序一样，你可以用 ``-c`` 选项指定 Ceph 配置文件。
    指定要搜寻段落的 Ceph 名字（默认为 client.admin ）。例如指定 \
    ``--name osd.0`` 的话，将搜寻 [osd.0] 、 [osd] 、 [global] 。
 
+.. option:: --pid *pid*
+
+   override the ``$pid`` when expanding options. For example, if an option is
+   configured like ``/var/log/$name.$pid.log``, the ``$pid`` portion in its
+   value will be substituded using the PID of **ceph-conf** instead of the
+   PID of the process specfied using the ``--name`` option.
+
 .. option:: -r, --resolve-search
 
    从生成的、逗号分隔的搜索列表中找出第一个存在、并可以打开的文件。

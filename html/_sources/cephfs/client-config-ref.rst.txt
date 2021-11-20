@@ -1,12 +1,11 @@
-.. Client Configuration
-
 客户端配置
 ==========
-
-.. Updating Client Configuration
+.. Client Configuration
 
 更新客户端配置
 --------------
+.. Updating Client Configuration
+
 Certain client configurations can be applied at runtime. To check if a configuration option can be applied (taken into affect by a client) at runtime, use the `config help` command::
 
    ceph config help debug_client
@@ -33,12 +32,11 @@ To check configured options use the `config get` command::
     global      advanced osd_pool_default_size     3            
 
 
-.. Client Config Reference
-
 客户端配置参考
 --------------
+.. Client Config Reference
 
-``client acl type``
+``client_acl_type``
 
 :描述: 设置 ACL 类型。现在还只能设置为 ``"posix_acl"`` 表示启用
        POSIX ACL ，或者可设置为空字符串。此选项只有在
@@ -47,7 +45,7 @@ To check configured options use the `config get` command::
 :默认值: ``""`` (no ACL enforcement)
 
 
-``client cache mid``
+``client_cache_mid``
 
 :描述: 设置客户端缓存中点。此中点把最近用过的列表分割为热列表\
        和暖列表。
@@ -55,7 +53,7 @@ To check configured options use the `config get` command::
 :默认值: ``0.75``
 
 
-``client cache size``
+``client_cache_size``
 
 :描述: 设置客户端可保留在元数据缓存中的索引节点数量。
 :类型: Integer

@@ -36,10 +36,9 @@ other storage interfaces to form a modern unified storage system: RBD (Ceph
 Block Devices) and RGW (Ceph Object Storage Gateway).
 
 
-.. Getting Started with CephFS
-
 CephFS 入门
 ^^^^^^^^^^^
+.. Getting Started with CephFS
 
 For most deployments of Ceph, setting up a CephFS file system is as simple as:
 
@@ -67,10 +66,9 @@ for interactive access or scripting via the `cephfs-shell`_.
 
    <!---
 
-.. Administration
-
 管理
 ^^^^
+.. Administration
 
 .. raw:: html
 

@@ -166,7 +166,7 @@
 :默认值: ``3``
 
 
-``osd pool default min size``
+``osd_pool_default_min_size``
 
 :描述: 设置存储池中已写副本的最小数量，以向客户端确认写操作。\
        如果未达到配置的最小值， Ceph 就不会向客户端反馈已写\

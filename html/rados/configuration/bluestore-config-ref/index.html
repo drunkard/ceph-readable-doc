@@ -250,7 +250,7 @@ by a <code class="docutils literal notranslate"><span class="pre">block</span></
 when <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> activates it) with all the common OSD files that hold
 information about the OSD, like: its identifier, which cluster it belongs to,
 and its private keyring.</p>
-<p>It is also possible to deploy BlueStore across two additional devices:</p>
+<p>It is also possible to deploy BlueStore across one or two additional devices:</p>
 <ul class="simple">
 <li><p>A <em>write-ahead log (WAL) device</em> (identified as <code class="docutils literal notranslate"><span class="pre">block.wal</span></code> in the data directory) can be
 used for BlueStore’s internal journal or write-ahead log. It is only useful
@@ -270,8 +270,10 @@ more, provisioning a DB device makes more sense.  The BlueStore
 journal will always be placed on the fastest device available, so
 using a DB device will provide the same benefit that the WAL device
 would while <em>also</em> allowing additional metadata to be stored there (if
-it will fit).</p>
-<p>A single-device BlueStore OSD can be provisioned with:</p>
+it will fit).  This means that if a DB device is specified but an explicit
+WAL device is not, the WAL will be implicitly colocated with the DB on the faster
+device.</p>
+<p>A single-device (colocated) BlueStore OSD can be provisioned with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">prepare</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">device</span><span class="o">&gt;</span>
 </pre></div>
 </div>
@@ -281,22 +283,23 @@ it will fit).</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>–data 可以是以 vg/lv 方式表达的逻辑卷。其他设备可以是现有的逻辑卷或 GPT 分区。</p>
+<p>–data 可以是以 <em>vg/lv</em> 方式表达的逻辑卷。其他设备可以是现有的逻辑卷或 GPT 分区。</p>
 </div>
 <div class="section" id="id2">
 <h3>存储配置策略<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>虽然有多种途径部署后端为 BlueStore 的 OSD （不像 Filestore 只有一种），但是这里的两种常见用法有助于澄清初步的部署策略。</p>
+<p>虽然有多种途径部署后端为 BlueStore 的 OSD （不像 Filestore
+只有一种），但是这里的两种常见用法有助于澄清部署策略。</p>
 <div class="section" id="block-data-only">
 <span id="bluestore-single-type-device-config"></span><h4><strong>block (data) only</strong><a class="headerlink" href="#block-data-only" title="Permalink to this headline">¶</a></h4>
-<p>If all the devices are the same type, for example all are spinning drives, and
-there are no fast devices to combine these, it makes sense to just deploy with
-block only and not try to separate <code class="docutils literal notranslate"><span class="pre">block.db</span></code> or <code class="docutils literal notranslate"><span class="pre">block.wal</span></code>. The
-<a class="reference internal" href="../../../ceph-volume/lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> call for a single <code class="docutils literal notranslate"><span class="pre">/dev/sda</span></code> device would look like:</p>
+<p>If all devices are the same type, for example all rotational drives, and
+there are no fast devices to use for metadata, it makes sense to specifiy the
+block device only and to not separate <code class="docutils literal notranslate"><span class="pre">block.db</span></code> or <code class="docutils literal notranslate"><span class="pre">block.wal</span></code>. The
+<a class="reference internal" href="../../../ceph-volume/lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> command for a single <code class="docutils literal notranslate"><span class="pre">/dev/sda</span></code> device looks like:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">create</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sda</span>
 </pre></div>
 </div>
-<p>If logical volumes have already been created for each device (1 LV using 100%
-of the device), then the <a class="reference internal" href="../../../ceph-volume/lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> call for an lv named
+<p>If logical volumes have already been created for each device, (a single LV
+using 100% of the device), then the <a class="reference internal" href="../../../ceph-volume/lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> call for an LV named
 <code class="docutils literal notranslate"><span class="pre">ceph-vg/block-lv</span></code> would look like:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">create</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="n">ceph</span><span class="o">-</span><span class="n">vg</span><span class="o">/</span><span class="n">block</span><span class="o">-</span><span class="n">lv</span>
 </pre></div>
@@ -304,14 +307,13 @@ of the device), then the <a class="reference internal" href="../../../ceph-volum
 </div>
 <div class="section" id="block-and-block-db">
 <span id="bluestore-mixed-device-config"></span><h4><strong>block and block.db</strong><a class="headerlink" href="#block-and-block-db" title="Permalink to this headline">¶</a></h4>
-<p>If there is a mix of fast and slow devices (spinning and solid state),
+<p>If you have a mix of fast and slow devices (SSD / NVMe and rotational),
 it is recommended to place <code class="docutils literal notranslate"><span class="pre">block.db</span></code> on the faster device while <code class="docutils literal notranslate"><span class="pre">block</span></code>
-(data) lives on the slower (spinning drive). Sizing for <code class="docutils literal notranslate"><span class="pre">block.db</span></code> should be
-as large as possible to avoid performance penalties otherwise. The
-<code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> tool is currently not able to create these automatically, so
-the volume groups and logical volumes need to be created manually.</p>
-<p>For the below example, lets assume 4 spinning drives (sda, sdb, sdc, and sdd)
-and 1 solid state drive (sdx). First create the volume groups:</p>
+(data) lives on the slower (spinning drive).</p>
+<p>You must create these volume groups and logical volumes manually as
+the <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> tool is currently not able to do so automatically.</p>
+<p>For the below example, let us assume four rotational (<code class="docutils literal notranslate"><span class="pre">sda</span></code>, <code class="docutils literal notranslate"><span class="pre">sdb</span></code>, <code class="docutils literal notranslate"><span class="pre">sdc</span></code>, and <code class="docutils literal notranslate"><span class="pre">sdd</span></code>)
+and one (fast) solid state drive (<code class="docutils literal notranslate"><span class="pre">sdx</span></code>). First create the volume groups:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ vgcreate ceph-block-0 /dev/sda
 $ vgcreate ceph-block-1 /dev/sdb
 $ vgcreate ceph-block-2 /dev/sdc
@@ -341,8 +343,8 @@ $ ceph-volume lvm create --bluestore --data ceph-block-2/block-2 --block.db ceph
 $ ceph-volume lvm create --bluestore --data ceph-block-3/block-3 --block.db ceph-db-0/db-3
 </pre></div>
 </div>
-<p>These operations should end up creating 4 OSDs, with <code class="docutils literal notranslate"><span class="pre">block</span></code> on the slower
-spinning drives and a 50GB logical volume for each coming from the solid state
+<p>These operations should end up creating four OSDs, with <code class="docutils literal notranslate"><span class="pre">block</span></code> on the slower
+rotational drives with a 50 GB logical volume (DB) for each on the solid state
 drive.</p>
 </div>
 </div>
@@ -554,17 +556,17 @@ lower performance.</p>
 </div>
 <div class="section" id="id5">
 <h2>手动调整缓存尺寸<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
-<p>The amount of memory consumed by each OSD for BlueStore’s cache is
+<p>The amount of memory consumed by each OSD for BlueStore caches is
 determined by the <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code> configuration option.  If
 that config option is not set (i.e., remains at 0), there is a
 different default value that is used depending on whether an HDD or
 SSD is used for the primary device (set by the
 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> and <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> config
 options).</p>
-<p>BlueStore and the rest of the Ceph OSD does the best it can currently
-to stick to the budgeted memory.  Note that on top of the configured
+<p>BlueStore and the rest of the Ceph OSD daemon do the best they can
+to work within this memory budget.  Note that on top of the configured
 cache size, there is also memory consumed by the OSD itself, and
-generally some overhead due to memory fragmentation and other
+some additional utilization due to memory fragmentation and other
 allocator overhead.</p>
 <p>The configured cache memory budget can be used in a few different ways:</p>
 <ul class="simple">

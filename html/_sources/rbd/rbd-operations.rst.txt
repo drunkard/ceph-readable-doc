@@ -1,8 +1,7 @@
-.. Ceph Block Device Operations
-
 =================
  Ceph 块设备运维 
 =================
+.. Ceph Block Device Operations
 
 .. toctree::
    :maxdepth: 1
@@ -11,6 +10,8 @@
    互斥锁 <rbd-exclusive-locks>
    镜像 <rbd-mirroring>
    实时迁移 <rbd-live-migration>
-   永久缓存 <rbd-persistent-cache>
+   永久只读缓存 <rbd-persistent-read-only-cache>
+   永久回写缓存 <rbd-persistent-write-back-cache>
+   加密 <rbd-encryption>
    配置选项 (librbd) <rbd-config-ref/>
    RBD 重放 <rbd-replay>

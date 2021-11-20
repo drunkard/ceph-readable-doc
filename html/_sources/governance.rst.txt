@@ -6,20 +6,20 @@
 
 Ceph 开源社区由几个不同的团体引导着。
 
-.. Project Leader
-
 项目负责人
 ----------
+.. Project Leader
+
 The Ceph project is currently led by Sage Weil <sage@redhat.com>.  The
 project leader is responsible for guiding the overall direction of the
 project and ensuring that the developer and user communities are
 healthy.
 
 
-.. Committers
-
 提交者
 ------
+.. Committers
+
 Committers are project contributors who have write access to the central
 Ceph code repositories, currently hosted on GitHub.  This group of developers
 is collectively empowered to make changes to the Ceph source code.
@@ -35,11 +35,12 @@ The criteria for becoming a contributor include a consistent level of
 quality and engagement in the project over time.
 
 
-.. Ceph Leadership Team
 .. _clt:
 
 Ceph 领导团队
 -------------
+.. Ceph Leadership Team
+
 The Ceph Leadership Team (CLT) is a collection of component leads and
 other core developers who collectively make technical decisions for
 the project.  These decisions are generally made by consensus,
@@ -54,31 +55,37 @@ the CLT itself.
 
 Current CLT members are:
 
- * Abhishek Lekshmanan <abhishek@suse.com>
- * Alfredo Deza <adeza@redhat.com>
  * Casey Bodley <cbodley@redhat.com>
+ * Dan van der Ster <daniel.vanderster@cern.ch>
+ * David Galloway <dgallowa@redhat.com>
+ * David Orman <ormandj@iland.com>
+ * Ernesto Puerta <epuerta@redhat.com>
  * Gregory Farnum <gfarnum@redhat.com>
  * Haomai Wang <haomai@xsky.com>
- * Jason Dillaman <dillaman@redhat.com>
+ * Ilya Dryomov <idryomov@redhat.com>
+ * Igor Fedotov <igor.fedotov@croit.io>
+ * Jeff Layton <jlayton@redhat.com>
  * Josh Durgin <jdurgin@redhat.com>
  * João Eduardo Luis <joao@suse.de>
  * Ken Dreyer <kdreyer@redhat.com>
- * Lenz Grimmer <lgrimmer@suse.com>
+ * Mark Nelson <mnelson@redhat.com>
  * Matt Benjamin <mbenjami@redhat.com>
- * Myoungwon Oh <omwmw@sk.com>
+ * Mike Perez <miperez@redhat.com>
+ * Myoungwon Oh <myoungwon.oh@samsung.com>
  * Neha Ojha <nojha@redhat.com>
  * Patrick Donnelly <pdonnell@redhat.com>
  * Sage Weil <sage@redhat.com>
- * Sebastian Wagner <swagner@suse.com>
+ * Sam Just <sjust@redhat.com>
+ * Sebastian Wagner <sewagner@redhat.com>
  * Xie Xingguo <xie.xingguo@zte.com.cn>
  * Yehuda Sadeh <yehuda@redhat.com>
- * Zack Cerza <zcerza@redhat.com>
+ * Yuri Weinstein <yweinste@redhat.com>
+ * Zac Dover <zac.dover@gmail.com>
 
-
-.. Component Leads
 
 组件负责人
 ----------
+.. Component Leads
 
 Each major subcomponent of the Ceph project has a lead engineer who is
 responsible for guiding and coordinating development.  The leads are
@@ -98,10 +105,9 @@ and to help facilitate any cross-component coordination of
 development.
 
 
-.. The Ceph Foundation
-
 Ceph 基金会
 -----------
+.. The Ceph Foundation
 
 The Ceph Foundation is organized as a directed fund under the Linux
 Foundation and is tasked with supporting the Ceph project community

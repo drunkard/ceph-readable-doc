@@ -1,13 +1,11 @@
-.. BlueStore Config Reference
-
 ====================
  BlueStore 配置参考
 ====================
-
-.. Devices
+.. BlueStore Config Reference
 
 设备
 ====
+.. Devices
 
 BlueStore 可管理一个、两个、或（某些情况下）三个存储设备。
 
@@ -21,7 +19,7 @@ when ``ceph-volume`` activates it) with all the common OSD files that hold
 information about the OSD, like: its identifier, which cluster it belongs to,
 and its private keyring.
 
-It is also possible to deploy BlueStore across two additional devices:
+It is also possible to deploy BlueStore across one or two additional devices:
 
 * A *write-ahead log (WAL) device* (identified as ``block.wal`` in the data directory) can be
   used for BlueStore's internal journal or write-ahead log. It is only useful
@@ -41,9 +39,11 @@ more, provisioning a DB device makes more sense.  The BlueStore
 journal will always be placed on the fastest device available, so
 using a DB device will provide the same benefit that the WAL device
 would while *also* allowing additional metadata to be stored there (if
-it will fit).
+it will fit).  This means that if a DB device is specified but an explicit
+WAL device is not, the WAL will be implicitly colocated with the DB on the faster
+device.
 
-A single-device BlueStore OSD can be provisioned with::
+A single-device (colocated) BlueStore OSD can be provisioned with::
 
   ceph-volume lvm prepare --bluestore --data <device>
 
@@ -51,49 +51,46 @@ To specify a WAL device and/or DB device, ::
 
   ceph-volume lvm prepare --bluestore --data <device> --block.wal <wal-device> --block.db <db-device>
 
-.. note:: --data 可以是以 vg/lv 方式表达的逻辑卷。其他设备\
+.. note:: --data 可以是以 *vg/lv* 方式表达的逻辑卷。其他设备\
    可以是现有的逻辑卷或 GPT 分区。
-
-
-.. Provisioning strategies
 
 存储配置策略
 ------------
-虽然有多种途径部署后端为 BlueStore 的 OSD （不像 Filestore 只\
-有一种），但是这里的两种常见用法有助于澄清初步的部署策略。
+.. Provisioning strategies
 
+虽然有多种途径部署后端为 BlueStore 的 OSD （不像 Filestore
+只有一种），但是这里的两种常见用法有助于澄清部署策略。
 
 .. _bluestore-single-type-device-config:
 
 **block (data) only**
 ^^^^^^^^^^^^^^^^^^^^^
-If all the devices are the same type, for example all are spinning drives, and
-there are no fast devices to combine these, it makes sense to just deploy with
-block only and not try to separate ``block.db`` or ``block.wal``. The
-:ref:`ceph-volume-lvm` call for a single ``/dev/sda`` device would look like::
+If all devices are the same type, for example all rotational drives, and
+there are no fast devices to use for metadata, it makes sense to specifiy the
+block device only and to not separate ``block.db`` or ``block.wal``. The
+:ref:`ceph-volume-lvm` command for a single ``/dev/sda`` device looks like::
 
     ceph-volume lvm create --bluestore --data /dev/sda
 
-If logical volumes have already been created for each device (1 LV using 100%
-of the device), then the :ref:`ceph-volume-lvm` call for an lv named
+If logical volumes have already been created for each device, (a single LV
+using 100% of the device), then the :ref:`ceph-volume-lvm` call for an LV named
 ``ceph-vg/block-lv`` would look like::
 
     ceph-volume lvm create --bluestore --data ceph-vg/block-lv
-
 
 .. _bluestore-mixed-device-config:
 
 **block and block.db**
 ^^^^^^^^^^^^^^^^^^^^^^
-If there is a mix of fast and slow devices (spinning and solid state),
+If you have a mix of fast and slow devices (SSD / NVMe and rotational),
 it is recommended to place ``block.db`` on the faster device while ``block``
-(data) lives on the slower (spinning drive). Sizing for ``block.db`` should be
-as large as possible to avoid performance penalties otherwise. The
-``ceph-volume`` tool is currently not able to create these automatically, so
-the volume groups and logical volumes need to be created manually.
+(data) lives on the slower (spinning drive).
 
-For the below example, lets assume 4 spinning drives (sda, sdb, sdc, and sdd)
-and 1 solid state drive (sdx). First create the volume groups::
+You must create these volume groups and logical volumes manually as 
+the ``ceph-volume`` tool is currently not able to do so automatically.
+
+For the below example, let us assume four rotational (``sda``, ``sdb``, ``sdc``, and ``sdd``)
+and one (fast) solid state drive (``sdx``). First create the volume groups::
 
     $ vgcreate ceph-block-0 /dev/sda
     $ vgcreate ceph-block-1 /dev/sdb
@@ -123,15 +120,14 @@ Finally, create the 4 OSDs with ``ceph-volume``::
     $ ceph-volume lvm create --bluestore --data ceph-block-2/block-2 --block.db ceph-db-0/db-2
     $ ceph-volume lvm create --bluestore --data ceph-block-3/block-3 --block.db ceph-db-0/db-3
 
-These operations should end up creating 4 OSDs, with ``block`` on the slower
-spinning drives and a 50GB logical volume for each coming from the solid state
+These operations should end up creating four OSDs, with ``block`` on the slower
+rotational drives with a 50 GB logical volume (DB) for each on the solid state
 drive.
-
-
-.. Sizing
 
 调整尺寸
 ========
+.. Sizing
+
 When using a :ref:`mixed spinning and solid drive setup
 <bluestore-mixed-device-config>` it is important to make a large enough
 ``block.db`` logical volume for BlueStore. Generally, ``block.db`` should have
@@ -161,10 +157,9 @@ separate logical volumes for ``block.db`` (or ``block.wal``). BlueStore will
 automatically colocate these within the space of ``block``.
 
 
-.. Automatic Cache Sizing
-
 自动调整缓存尺寸
 ================
+.. Automatic Cache Sizing
 
 BlueStore can be configured to automatically resize its caches when TCMalloc
 is configured as the memory allocator and the ``bluestore_cache_autotune``
@@ -186,12 +181,11 @@ used as fallbacks.
 .. confval:: osd_memory_cache_resize_interval
 
 
-.. Manual Cache Sizing
-
 手动调整缓存尺寸
 ================
+.. Manual Cache Sizing
 
-The amount of memory consumed by each OSD for BlueStore's cache is
+The amount of memory consumed by each OSD for BlueStore caches is
 determined by the ``bluestore_cache_size`` configuration option.  If
 that config option is not set (i.e., remains at 0), there is a
 different default value that is used depending on whether an HDD or
@@ -199,10 +193,10 @@ SSD is used for the primary device (set by the
 ``bluestore_cache_size_ssd`` and ``bluestore_cache_size_hdd`` config
 options).
 
-BlueStore and the rest of the Ceph OSD does the best it can currently
-to stick to the budgeted memory.  Note that on top of the configured
+BlueStore and the rest of the Ceph OSD daemon do the best they can
+to work within this memory budget.  Note that on top of the configured
 cache size, there is also memory consumed by the OSD itself, and
-generally some overhead due to memory fragmentation and other
+some additional utilization due to memory fragmentation and other
 allocator overhead.
 
 The configured cache memory budget can be used in a few different ways:
@@ -227,10 +221,9 @@ The data fraction can be calculated by
 .. confval:: bluestore_cache_kv_ratio
 
 
-.. Checksums
-
 校验和
 ======
+.. Checksums
 
 BlueStore checksums all metadata and data written to disk.  Metadata
 checksumming is handled by RocksDB and uses `crc32c`. Data
@@ -261,10 +254,9 @@ The *checksum algorithm* can be set either via a per-pool
 .. confval:: bluestore_csum_type
 
 
-.. Inline Compression
-
 内联压缩
 ========
+.. Inline Compression
 
 BlueStore 支持内联压缩，可用 `snappy` 、 `zlib` 或 `lz4`
 压缩算法。请注意， `lz4` 压缩插件不在官方发布内。
@@ -369,10 +361,9 @@ Throttling
 .. confval:: bluestore_throttle_cost_per_io_ssd
 
 
-.. SPDK Usage
-
 SPDK 用法
 =========
+.. SPDK Usage
 
 如果你想让 NVMe SSD 使用 SPDK 驱动，你得先配置好系统。详情见
 `SPDK 文档`_\ 。

@@ -1,8 +1,7 @@
-.. CephFS Client Capabilities
-
 ===================
  CephFS 客户端能力
 ===================
+.. CephFS Client Capabilities
 
 通过 Ceph 鉴权能力，你可以把文件系统客户端所需权限限制到尽可能\
 低的水平。
@@ -15,10 +14,9 @@
    be enabled on the data pools.
 
 
-.. Path restriction
-
 路径限定
 ========
+.. Path restriction
 
 默认情况下，客户端不会被限制只能挂载某些目录；而且，当客户端\
 挂载了一个子目录后，如 ``/home/user`` ， MDS 默认情况下也\
@@ -27,11 +25,9 @@
 要把客户端限定为只能挂载某个特定目录、且只能在其内工作，可以\
 用基于路径的 MDS 鉴权能力实现。
 
-
-.. Syntax
-
 语法
 ----
+.. Syntax
 
 如果只想授予指定目录读写（ rw ）权限，我们在给这个客户端创建\
 密钥时就要提及这个目录，语法如下： ::

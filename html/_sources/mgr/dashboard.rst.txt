@@ -945,11 +945,9 @@ We provide a set of CLI commands to manage user accounts:
 
   $ ceph dashboard ac-user-enable <username>
 
-
-.. User Roles and Permissions
-
 用户角色和权限
 ^^^^^^^^^^^^^^
+.. User Roles and Permissions
 
 User accounts are associated with a set of roles that define which
 dashboard functionality can be accessed.
@@ -1071,7 +1069,7 @@ view and create Ceph pools, and have read-only access to any other scopes.
 
 1. *Create the user*::
 
-   $ ceph dashboard ac-user-create bob mypassword
+   $ ceph dashboard ac-user-create bob -i <file-containing-password>
 
 2. *Create role and specify scope permissions*::
 
