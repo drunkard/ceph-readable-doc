@@ -260,16 +260,26 @@
   
   <div class="section" id="osd-class-path-issues">
 <h1>OSD class path issues<a class="headerlink" href="#osd-class-path-issues" title="Permalink to this headline">¶</a></h1>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">2011</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">05</span> <span class="mi">17</span><span class="p">:</span><span class="mi">41</span><span class="p">:</span><span class="mf">00.994075</span> <span class="mi">7</span><span class="n">ffe8b5c3760</span> <span class="n">librbd</span><span class="p">:</span> <span class="n">failed</span> <span class="n">to</span> <span class="n">assign</span> <span class="n">a</span> <span class="n">block</span> <span class="n">name</span> <span class="k">for</span> <span class="n">image</span>
-<span class="n">create</span> <span class="n">error</span><span class="p">:</span> <span class="n">error</span> <span class="mi">5</span><span class="p">:</span> <span class="n">Input</span><span class="o">/</span><span class="n">output</span> <span class="n">error</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd create rbd/test --size 100M
+2021-03-16 01:26:59.012 7fe41426f080 -1 librbd::PoolMetadata: list: failed listing metadata: (95) Operation not supported
+2021-03-16 01:26:59.012 7fe41426f080 -1 librbd::Config: apply_pool_overrides: failed to read pool config overrides: (95) Operation not supported
+2021-03-16 01:26:59.012 7fe400ff9640 -1 librbd::image::CreateRequest: 0x55d62341bb30 handle_add_image_to_directory: error adding image to directory: (95) Operation not supported
+rbd: create error: (95) Operation not supported
 </pre></div>
 </div>
-<p>This usually happens because your OSDs can’t find <code class="docutils literal notranslate"><span class="pre">cls_rbd.so</span></code>. They
-search for it in <code class="docutils literal notranslate"><span class="pre">osd_class_dir</span></code>, which may not be set correctly by
-default (<a class="reference external" href="http://tracker.ceph.com/issues/1722">http://tracker.ceph.com/issues/1722</a>).</p>
-<p>Most likely it’s looking in <code class="docutils literal notranslate"><span class="pre">/usr/lib/rados-classes</span></code> instead of
-<code class="docutils literal notranslate"><span class="pre">/usr/lib64/rados-classes</span></code> - change <code class="docutils literal notranslate"><span class="pre">osd_class_dir</span></code> in your
-<code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> and restart the OSDs to fix it.</p>
+<p>After adding <code class="docutils literal notranslate"><span class="pre">--debug-ms=1</span></code>, you can see which OSD is contacted.
+In the contacted OSD’s log, you’ll find the reason why this happens,
+and usually it is because the “rados classes” can’t be loaded at runtime with <code class="docutils literal notranslate"><span class="pre">dlopen</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>2021-03-16 01:26:59.013 7f6c6dff3640 10 _load_class rbd from /usr/local/lib64/rados-classes/libcls_rbd.so
+2021-03-16 01:26:59.013 7f6c6dff3640  0 _load_class could not stat class /usr/local/lib64/rados-classes/libcls_rbd.so: (2) No such file or directory
+2021-03-16 01:26:59.013 7f6c6dff3640 -1 osd.3 112 class rbd open got (2) No such file or directory
+2021-03-16 01:26:59.013 7f6c6dff3640  1 -- [...] --&gt; [...] -- osd_op_reply(5 rbd_directory [call rbd.dir_add_image] v0&#39;0 uv0 ondisk = -95 ((95) Operation not supported)) v8 -- 0x7f6c6800fed0 con 0x7f6cb80100c0
+</pre></div>
+</div>
+<p>This means the OSD could not find <code class="docutils literal notranslate"><span class="pre">libcls_rbd.so</span></code>.
+You can customize the load path of these modules in <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> with <code class="docutils literal notranslate"><span class="pre">osd_class_dir</span></code>.
+By default, this is <code class="docutils literal notranslate"><span class="pre">$libdir/rados-classes</span></code>, so when developing, you likely have to adjust the path.</p>
+<p>These class libraries are used for extending RADOS, see <a class="reference internal" href="../../rados/api/objclass-sdk/#rados-objclass-api-sdk"><span class="std std-ref">SDK for Ceph Object Classes</span></a>.</p>
 </div>
 
 

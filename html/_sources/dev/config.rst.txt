@@ -1,8 +1,7 @@
-.. Configuration Management System
-
 ==============
  配置管理系统
 ==============
+.. Configuration Management System
 
 The configuration management system exists to provide every daemon with the
 proper configuration information. The configuration can be viewed as a set of
@@ -11,20 +10,22 @@ key-value pairs.
 How can the configuration be set? Well, there are several sources:
  - the ceph configuration file, usually named ceph.conf
  - command line arguments::
+
     --debug-ms=1
     --debug-pg=10
-    etc.
+
+   etc.
  - 在运行时用 injectargs 或 config set 注入的参数
 
 
-.. The Configuration File
-
 配置文件
 ========
+.. The Configuration File
 
 Most configuration settings originate in the Ceph configuration file.
 
 How do we find the configuration file? Well, in order, we check:
+
  - the default locations
  - the environment variable CEPH_CONF
  - the command line argument -c
@@ -50,6 +51,7 @@ substituted into another value using the ``$varname`` syntax, similar
 to how bash shell expansion works.
 
 A few additional special metavariables are also defined:
+
  - $host: expands to the current hostname
  - $type: expands to one of "mds", "osd", "mon", or "client"
  - $id: expands to the daemon identifier. For ``osd.0``, this would be ``0``; for ``mds.a``, it would be ``a``; for ``client.admin``, it would be ``admin``.
@@ -73,6 +75,7 @@ and is invoked only when one of the relevant keys changes.
 The interface to implement is found in common/config_obs.h.
 
 The observer method should be preferred in new code because
+
  - It is more flexible, allowing the code to do whatever reinitialization needs
    to be done to implement the new configuration value.
  - It is the only way to create a std::string configuration variable that can
@@ -85,10 +88,9 @@ For these reasons, reading directly from g_conf should be considered deprecated
 and not done in new code.  Do not ever alter g_conf.
 
 
-.. Changing configuration values
-
 更改配置值
 ==========
+.. Changing configuration values
 
 Configuration values can be changed by calling ``g_conf()->set_val``. After changing
 the configuration, you should call ``g_conf()->apply_changes`` to re-run all the
@@ -101,10 +103,9 @@ the configuration. Just like with set_val, you should call apply_changes after
 calling these functions to make sure your changes get applied.
 
 
-.. Defining config options
-
 定义配置选项
 ============
+.. Defining config options
 
 新风格的配置选项定义在 common/options.cc 内。所有新配置选项都\
 应该放这里（而不是 legacy_config_opts.h ）。
@@ -119,10 +120,9 @@ The Option constructor takes a "level" value:
 * *LEVEL_DEV* is for options in place for use by developers only, either for testing purposes, or to describe constants that no user should adjust but we prefer not to compile into the code.
 
 
-.. Description and long description
-
 描述和详细描述
 --------------
+.. Description and long description
 
 Short description of the option. Sentence fragment. e.g.::
 
@@ -134,28 +134,25 @@ paragraphs, and may include other detailed information or notes.::
   .set_long_description("crc32c, xxhash32, and xxhash64 are available.  The _16 and _8 variants use only a subset of the bits for more compact (but less reliable) checksumming.")
 
 
-.. Default values
-
 默认值
 ------
+.. Default values
 
 There is a default value for every config option. In some cases, there may
 also be a *daemon default* that only applies to code that declares itself
 as a daemon (in this case, the regular default only applies to non-daemons).
 
-.. Safety
-
 安全性
 ------
+.. Safety
 
 If an option can be safely changed at runtime::
 
   .set_safe()
 
-.. Service
-
 服务
 ----
+.. Service
 
 Service is a component name, like "common", "osd", "rgw", "mds", etc. It may
 be a list of components, like::
@@ -164,29 +161,26 @@ be a list of components, like::
 
 For example, the rocksdb options affect both the osd and mon.
 
-.. Tags
-
 标签
 ----
+.. Tags
 
 Tags identify options across services that relate in some way. Example include;
 
   - network -- options affecting network configuration
   - mkfs -- options that only matter at mkfs time
 
-.. Enums
-
 枚举值
 ------
+.. Enums
 
 For options with a defined set of allowed values::
 
   .set_enum_allowed({"none", "crc32c", "crc32c_16", "crc32c_8", "xxhash32", "xxhash64"})
 
-.. Flags
-
 标记
 ----
+.. Flags
 
 * **RUNTIME**: the value can be updated at runtime
 * **NO_MON_UPDATE**: Daemons/clients do not pull this value from the monitor config database.  We disallow setting this option via 'ceph config set ...'.  This option should be configured via ceph.conf or via the command line.

@@ -224,58 +224,51 @@
 
   
   <div class="section" id="mds">
-<h1>升级 MDS 集群<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h1>
+<span id="upgrade-mds-cluster"></span><h1>升级 MDS 集群<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h1>
 <p>Currently the MDS cluster does not have built-in versioning or file system
 flags to support seamless upgrades of the MDSs without potentially causing
 assertions or other faults due to incompatible messages or other functional
 differences. For this reason, it’s necessary during any cluster upgrade to
 reduce the number of active MDS for a file system to one first so that two
-active MDS do not communicate with different versions.  Further, it’s also
-necessary to take standbys offline as any new CompatSet flags will propagate
-via the MDSMap to all MDS and cause older MDS to suicide.</p>
+active MDS do not communicate with different versions.</p>
 <p>The proper sequence for upgrading the MDS cluster is:</p>
 <ol class="arabic simple">
-<li><p>Reduce the number of ranks to 1:</p></li>
+<li><p>For each file system, disable and stop standby-replay daemons.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">allow_standby_replay</span> <span class="n">false</span>
+</pre></div>
+</div>
+<p>In Pacific, the standby-replay daemons are stopped for you after running this
+command. Older versions of Ceph require you to stop these daemons manually.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">dump</span> <span class="c1"># find standby-replay daemons</span>
+<span class="n">ceph</span> <span class="n">mds</span> <span class="n">fail</span> <span class="n">mds</span><span class="o">.&lt;</span><span class="n">X</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>For each file system, reduce the number of ranks to 1:</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">max_mds</span> <span class="mi">1</span>
 </pre></div>
 </div>
-<ol class="arabic simple" start="2">
+<ol class="arabic simple" start="3">
 <li><p>Wait for cluster to stop non-zero ranks where only rank 0 is active and the rest are standbys.</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">status</span> <span class="c1"># wait for MDS to finish stopping</span>
 </pre></div>
 </div>
-<ol class="arabic simple" start="3">
-<li><p>Take all standbys offline, e.g. using systemctl:</p></li>
-</ol>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systemctl</span> <span class="n">stop</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mds</span><span class="o">.</span><span class="n">target</span>
-</pre></div>
-</div>
 <ol class="arabic simple" start="4">
-<li><p>Confirm only one MDS is online and is rank 0 for your FS:</p></li>
+<li><p>For each MDS, upgrade packages and restart. Note: to reduce failovers, it is
+recommended – but not strictly necessary – to first upgrade standby daemons.</p></li>
 </ol>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">status</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># use package manager to update cluster</span>
+<span class="n">systemctl</span> <span class="n">restart</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mds</span><span class="o">.</span><span class="n">target</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="5">
-<li><p>Upgrade the single active MDS, e.g. using systemctl:</p></li>
-</ol>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># use package manager to update cluster</span>
-<span class="n">systemctl</span> <span class="n">restart</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mds</span><span class="o">.</span><span class="n">target</span>
-</pre></div>
-</div>
-<ol class="arabic simple" start="6">
-<li><p>Upgrade/start the standby daemons.</p></li>
-</ol>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># use package manager to update cluster</span>
-<span class="n">systemctl</span> <span class="n">restart</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mds</span><span class="o">.</span><span class="n">target</span>
-</pre></div>
-</div>
-<ol class="arabic simple" start="7">
-<li><p>Restore the previous max_mds for your cluster:</p></li>
+<li><p>For each file system, restore the previous max_mds and allow_standby_replay settings for your cluster:</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">max_mds</span> <span class="o">&lt;</span><span class="n">old_max_mds</span><span class="o">&gt;</span>
+<span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">allow_standby_replay</span> <span class="o">&lt;</span><span class="n">old_allow_standby_replay</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 </div>

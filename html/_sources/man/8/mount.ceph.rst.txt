@@ -98,8 +98,8 @@ mount 辅助程序的惯例是前两个选项分别为要挂载的设备和目�
     available modes are ``no`` and ``clean``. The default is ``no``.
 
     - ``no``: never attempt to reconnect when client detects that it has been
-       blocklisted. Blacklisted clients will not attempt to reconnect and
-       their operations will fail too.
+      blocklisted. Blocklisted clients will not attempt to reconnect and
+      their operations will fail too.
 
     - ``clean``: client reconnects to the Ceph cluster automatically when it
       detects that it has been blocklisted. During reconnect, client drops

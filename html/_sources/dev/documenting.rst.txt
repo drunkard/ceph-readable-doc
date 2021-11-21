@@ -2,10 +2,9 @@
  为 Ceph 写作文档
 ==================
 
-.. User documentation
-
 用户文档
 ========
+.. User documentation
 
 docs.ceph.com 上的文档是从 Ceph 的 git 源码库内 ``/doc/`` 目录\
 下的 restructuredText 源码生成的。
@@ -24,10 +23,9 @@ github 用户界面的 View 按钮；或者用 ``admin/build-doc`` 脚本\
 :doc:`/start/documenting-ceph` 。
 
 
-.. Code Documentation
-
 代码文档
 ========
+.. Code Documentation
 
 C 和 C++ 可以用 Doxygen_ 生成文档，我们用 Breathe_ 工具，它\
 支持 Doxygen 的部分功能。
@@ -35,7 +33,9 @@ C 和 C++ 可以用 Doxygen_ 生成文档，我们用 Breathe_ 工具，它\
 .. _Doxygen: http://www.doxygen.nl/
 .. _Breathe: https://github.com/michaeljones/breathe
 
-函数文档的统一格式为： ::
+函数文档的统一格式为：
+
+.. code-block:: c
 
   /**
    * Short description

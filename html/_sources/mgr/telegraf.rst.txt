@@ -1,5 +1,5 @@
 ===============
- Telegraf 模块
+Telegraf Module 
 ===============
 The Telegraf module collects and sends statistics series to a Telegraf agent.
 
@@ -63,8 +63,9 @@ Socket Listener
 The module only supports sending data to Telegraf through the socket listener
 of the Telegraf module using the Influx data format.
 
-A typical Telegraf configuration might be:
+A typical Telegraf configuration might be
 
+::
 
     [[inputs.socket_listener]]
     # service_address = "tcp://:8094"
@@ -81,6 +82,8 @@ A typical Telegraf configuration might be:
 
 In this case the `address` configuration option for the module would need to be set
 to:
+
+::
 
   udp://:8094
 

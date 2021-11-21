@@ -91,10 +91,9 @@ wherever possible.
    with the Ceph Filesystem is not the same as a Ceph Storage Cluster user.
 
 
-.. Authorization (Capabilities)
-
 授权（能力）
 ------------
+.. Authorization (Capabilities)
 
 Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
 的授权，这样才能使用监视器、 OSD 、和元数据服务器的功能。能力\

@@ -7,7 +7,6 @@
 There are several different ways to install Ceph.  Choose the
 method that best suits your needs.
 
-
 建议的方法
 ~~~~~~~~~~
 .. Recommended methods
@@ -33,7 +32,6 @@ Kubernetes or to connect an existing Ceph storage cluster to Kubernetes.
   cluster.
 * Rook supports the new orchestrator API. New management features
   in the CLI and dashboard are fully supported.
-
 
 其他方法
 ~~~~~~~~
@@ -67,7 +65,6 @@ Ceph can also be :ref:`installed manually <install-manual>`.
    :hidden:
 
    index_manual
-
 
 Windows
 ~~~~~~~

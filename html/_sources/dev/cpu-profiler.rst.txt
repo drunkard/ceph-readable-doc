@@ -7,10 +7,9 @@ system-wide profiler.
 
 .. _oprofile: http://oprofile.sourceforge.net/about/
 
-.. Installation
-
 安装
 ====
+.. Installation
 
 If you are using a Debian/Ubuntu distribution, you can install ``oprofile`` by
 executing the following::
@@ -18,35 +17,25 @@ executing the following::
 	sudo apt-get install oprofile oprofile-gui
 
 
-.. Compiling Ceph for Profiling
-
 编译用于剖析的 Ceph
 ===================
+.. Compiling Ceph for Profiling
 
-To compile Ceph for profiling, first clean everything. :: 
+To compile Ceph for profiling, first clean everything. ::
 
-	make distclean
+    git clean -dfx
+	
+Finally, compile Ceph. ::
 
-Then, export the following settings so that you can see callgraph output. :: 
+	./do-cmake.sh -DCMAKE_CXX_FLAGS="-fno-omit-frame-pointer -O2 -g"
+    cd build
+    cmake --build .
 
-	export CFLAGS="-fno-omit-frame-pointer -O2 -g"
-
-Finally, compile Ceph. :: 
-
-	./autogen.sh
-	./configure
-	make
-
-You can use ``make -j`` to execute multiple jobs depending upon your system. For
-example::
-
-	make -j4
-
-
-.. Ceph Configuration
+In this command, ``CMAKE_CXX_FLAGS`` is specified. This provides callgraph output.
 
 Ceph 配置
 =========
+.. Ceph Configuration
 
 Ensure that you disable ``lockdep``. Consider setting logging to 
 levels appropriate for a production cluster. See `Ceph Logging and Debugging`_ 

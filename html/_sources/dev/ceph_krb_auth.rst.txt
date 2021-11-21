@@ -1,8 +1,7 @@
-.. A Detailed Documentation on How to Set up Ceph Kerberos Authentication
-
 =========================================
  如何配置好 Ceph Kerberos 认证的详细文档
 =========================================
+.. A Detailed Documentation on How to Set up Ceph Kerberos Authentication
 
 This document provides details on the Kerberos authorization protocol. This is
 the 1st draft and we will try to keep it updated along with code changes that
@@ -20,10 +19,9 @@ Please, provide feedback to Daniel Oliveira (doliveira@suse.com)
 
 |
 
-.. Background
-
 背景知识
 --------
+.. Background
 
 Before we get into *Kerberos details*, let us define a few terms so we can
 understand what to expect from it, *what it can and can't do*:
@@ -246,10 +244,9 @@ Simple and Protected GSSAPI Negotiation Mechanism (SPNEGO)
 
 |
 
-.. Before We Start
-
 开工之前
 --------
+.. Before We Start
 
 We assume the environment already has some external services up and running
 properly:
@@ -385,10 +382,9 @@ Also, the following *Kerberos terminology* is important:
 
 |
 
-.. The 'Ceph side' of the things
-
 Ceph 这边的配置
 ---------------
+.. The 'Ceph side' of the things
 
 In order to configure connections (from Ceph nodes) to the KDC:
 
@@ -646,10 +642,9 @@ In order to configure connections (from Ceph nodes) to the KDC:
 |
 |
 
-.. ** *For Ceph Developers Only* **
-
 ** *仅适用于 Ceph 开发者* **
 ============================
+.. ** *For Ceph Developers Only* **
 
 We certainly could have used straight native ``KRB5 APIs`` (instead of
 ``GSSAPIs``), but we wanted a more portable option as regards network security,
@@ -657,7 +652,9 @@ which is the hallmark of the ``GSS`` *(Generic Security Standard)* ``-API``.
 It does not actually provide security services itself.
 
 Rather, it is a framework that provides security services to callers in a
-generic way.  ::
+generic way.
+
+.. ditaa::
 
     +---------------------------------+
     |        Application              |
@@ -835,10 +832,9 @@ These are the basic steps in using the GSS-API:
 
 |
 
-.. ** *Kerberos Server Setup* **
-
 ** *Kerberos 服务器配置* **
 ---------------------------
+.. ** *Kerberos Server Setup* **
 
 First and foremost, ``this is not a recommendation for a production
 environment``. We are not covering ``Master/Slave replication cluster`` or
