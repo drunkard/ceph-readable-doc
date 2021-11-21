@@ -423,18 +423,18 @@ into exceptions.
 	try:
 		cluster = rados.Rados(conffile='')
 	except TypeError as e:
-		print 'Argument validation error: ', e
+		print('Argument validation error: {}'.format(e))
 		raise e
-
-	print "Created cluster handle."
+		
+	print("Created cluster handle.")
 
 	try:
 		cluster.connect()
 	except Exception as e:
-		print "connection error: ", e
+		print("connection error: {}".format(e))
 		raise e
 	finally:
-		print "Connected to the cluster."
+		print("Connected to the cluster.")
 
 
 Execute the example to verify that it connects to your cluster. ::
@@ -840,43 +840,101 @@ Python Example
 
 .. code-block:: python
 
-	print "\n\nI/O Context and Object Operations"
-	print "================================="
-
-	print "\nCreating a context for the 'data' pool"
+	print("\n\nI/O Context and Object Operations")
+	print("=================================")
+	
+	print("\nCreating a context for the 'data' pool")
 	if not cluster.pool_exists('data'):
 		raise RuntimeError('No data pool exists')
 	ioctx = cluster.open_ioctx('data')
-
-	print "\nWriting object 'hw' with contents 'Hello World!' to pool 'data'."
-	ioctx.write("hw", "Hello World!")
-	print "Writing XATTR 'lang' with value 'en_US' to object 'hw'"
-	ioctx.set_xattr("hw", "lang", "en_US")
-
-
-	print "\nWriting object 'bm' with contents 'Bonjour tout le monde!' to pool 'data'."
-	ioctx.write("bm", "Bonjour tout le monde!")
-	print "Writing XATTR 'lang' with value 'fr_FR' to object 'bm'"
-	ioctx.set_xattr("bm", "lang", "fr_FR")
-
-	print "\nContents of object 'hw'\n------------------------"
-	print ioctx.read("hw")
-
-	print "\n\nGetting XATTR 'lang' from object 'hw'"
-	print ioctx.get_xattr("hw", "lang")
-
-	print "\nContents of object 'bm'\n------------------------"
-	print ioctx.read("bm")
-
-	print "Getting XATTR 'lang' from object 'bm'"
-	print ioctx.get_xattr("bm", "lang")
-
-
-	print "\nRemoving object 'hw'"
+	
+	print("\nWriting object 'hw' with contents 'Hello World!' to pool 'data'.")
+	ioctx.write("hw", b"Hello World!")
+	print("Writing XATTR 'lang' with value 'en_US' to object 'hw'")
+	ioctx.set_xattr("hw", "lang", b"en_US")
+	
+	
+	print("\nWriting object 'bm' with contents 'Bonjour tout le monde!' to pool
+	'data'.")
+	ioctx.write("bm", b"Bonjour tout le monde!")
+	print("Writing XATTR 'lang' with value 'fr_FR' to object 'bm'")
+	ioctx.set_xattr("bm", "lang", b"fr_FR")
+	
+	print("\nContents of object 'hw'\n------------------------")
+	print(ioctx.read("hw"))
+	
+	print("\n\nGetting XATTR 'lang' from object 'hw'")
+	print(ioctx.get_xattr("hw", "lang"))
+	
+	print("\nContents of object 'bm'\n------------------------")
+	print(ioctx.read("bm"))
+	
+	print("\n\nGetting XATTR 'lang' from object 'bm'")
+	print(ioctx.get_xattr("bm", "lang"))
+	
+	
+	print("\nRemoving object 'hw'")
 	ioctx.remove_object("hw")
-
-	print "Removing object 'bm'"
+	
+	print("Removing object 'bm'")
 	ioctx.remove_object("bm")
+
+
+Java-Example
+------------
+
+.. code-block:: java
+
+	import com.ceph.rados.Rados;
+	import com.ceph.rados.RadosException;
+
+	import java.io.File;
+	import com.ceph.rados.IoCTX;
+
+	public class CephClient {
+        	public static void main (String args[]){
+
+                	try {
+				Rados cluster = new Rados("admin");
+				System.out.println("Created cluster handle.");
+
+                        	File f = new File("/etc/ceph/ceph.conf");
+                        	cluster.confReadFile(f);
+                        	System.out.println("Read the configuration file.");
+
+                        	cluster.connect();
+                        	System.out.println("Connected to the cluster.");
+
+				IoCTX io = cluster.ioCtxCreate("data");
+
+				String oidone = "hw";
+				String contentone = "Hello World!";
+				io.write(oidone, contentone); 
+
+				String oidtwo = "bm";
+				String contenttwo = "Bonjour tout le monde!";
+				io.write(oidtwo, contenttwo); 
+
+				String[] objects = io.listObjects();
+                       		for (String object: objects)
+					System.out.println(object);
+
+				io.remove(oidone);
+				io.remove(oidtwo);
+
+				cluster.ioCtxDestroy(io);
+
+                	} catch (RadosException e) {
+                        	System.out.println(e.getMessage() + ": " + e.getReturnValue());
+                	}
+        	}
+	}
+
+
+PHP Example
+-----------
+
+.. code-block:: php
 
 
 Java-Example
@@ -982,10 +1040,10 @@ Python Example
 
 .. code-block:: python
 
-	print "\nClosing the connection."
+	print("\nClosing the connection.")
 	ioctx.close()
-
-	print "Shutting down the handle."
+	
+	print("Shutting down the handle.")
 	cluster.shutdown()
 
 

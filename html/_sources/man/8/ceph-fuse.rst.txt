@@ -36,11 +36,6 @@ ceph-fuse 识别不了的选项将传递给 libfuse 。
 
    挂载选项。
 
-.. option:: -d
-
-   在前台运行，把所有日志输出发送到标准错误 stderr 、并打开
-   FUSE 调试（ -o debug ）。
-
 .. option:: -c ceph.conf, --conf=ceph.conf
 
    用指定的 *ceph.conf* 而非默认的 ``/etc/ceph/ceph.conf`` 来\
@@ -54,22 +49,37 @@ ceph-fuse 识别不了的选项将传递给 libfuse 。
 
    Pass the name of CephX user whose secret key is be to used for mounting.
 
+.. option:: --id <client-id>
+
+   Pass the name of CephX user whose secret key is be to used for mounting.
+   ``--id`` takes just the ID of the client in contrast to ``-n``. For
+   example, ``--id 0`` for using ``client.0``.
+
 .. option:: -k <path-to-keyring>
 
    提供密钥环路径，在标准位置没有时就用的上了。
 
 .. option:: --client_mountpoint/-r root_directory
 
-   把文件系统内的 root_directory 作为根挂载，而不是整个
-   Ceph 文件系统树。
+   把文件系统内的 root_directory 作为根挂载，而不是整个 Ceph 文件系统树。
 
 .. option:: -f
 
    前台：启动后不要退居后台（在前台运行）。不要生成 PID 文件。
 
+.. option:: -d
+
+   在前台运行，把所有日志输出发送到标准错误 stderr 、\
+   并打开 FUSE 调试（ -o debug ）。
+
 .. option:: -s
 
    禁止多线程运行。
+
+.. option:: --client_fs
+
+   Pass the name of Ceph FS to be mounted. Not passing this option mounts the
+   default Ceph FS on the Ceph cluster.
 
 
 使用范围

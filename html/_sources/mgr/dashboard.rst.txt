@@ -186,11 +186,10 @@ Performance
 * **Recovery throughput**: Displays rate of cluster healing and balancing operations.
 * **Scrubbing**: Displays light and deep scrub status.
 
-
-.. Supported Browsers
-
 支持的浏览器
 ^^^^^^^^^^^^
+.. Supported Browsers
+
 Ceph Dashboard is primarily tested and developed using the following web
 browsers:
 
@@ -208,11 +207,10 @@ browsers:
 While Ceph Dashboard might work in older browsers, we cannot guarantee it and
 recommend you to update your browser to the latest version.
 
-
-.. Enabling
-
 如何启用
 --------
+.. Enabling
+
 If you have installed ``ceph-mgr-dashboard`` from distribution packages, the
 package management system should have taken care of installing all the required
 dependencies.
@@ -225,17 +223,16 @@ Within a running Ceph cluster, the Ceph Manager Dashboard is enabled with::
 
   $ ceph mgr module enable dashboard
 
-
-.. Configuration
-
 配置
 ----
+.. Configuration
 
-.. SSL/TLS Support
 .. _dashboard-ssl-tls-support:
 
 SSL/TLS 支持
 ^^^^^^^^^^^^
+.. SSL/TLS Support
+
 All HTTP connections to the dashboard are secured with SSL/TLS by default.
 
 To get the dashboard up and running quickly, you can generate and install a
@@ -293,12 +290,11 @@ wanted or required. See :ref:`dashboard-proxy-configuration` for more details.
     $ ceph mgr module disable dashboard
     $ ceph mgr module enable dashboard
 
-
-.. Host Name and Port
 .. _dashboard-host-name-and-port:
 
 主机名和端口
 ^^^^^^^^^^^^
+.. Host Name and Port
 
 Like most web applications, dashboard binds to a TCP/IP address and TCP port.
 
@@ -332,11 +328,10 @@ app.
   currently configured. Look for the ``dashboard`` key to obtain the URL for
   accessing the dashboard.
 
-
-.. Username and password
-
 用户名和密码
 ^^^^^^^^^^^^
+.. Username and password
+
 为了能登录进去，你需要创建用户帐户并给他关联至少一个角色。我们\
 预定义了一系列\ *系统角色*\ ，可以直接使用。更多细节请参考\
 `用户和角色管理`_\ 一节。
@@ -373,25 +368,22 @@ command::
 
   $ ceph dashboard ac-user-enable <username>
 
-
-.. Accessing the Dashboard
-
 访问仪表盘
 ^^^^^^^^^^
+.. Accessing the Dashboard
 
 You can now access the dashboard using your (JavaScript-enabled) web browser, by
 pointing it to any of the host names or IP addresses and the selected TCP port
 where a manager instance is running: e.g., ``http(s)://<$IP>:<$PORT>/``.
 
-You should then be greeted by the dashboard login page, requesting your
-previously defined username and password.
+The dashboard page displays and requests a previously defined username and
+password.
 
-
-.. Enabling the Object Gateway management frontend
 .. _dashboard-enabling-object-gateway:
 
 启用对象网关管理前端
 ^^^^^^^^^^^^^^^^^^^^
+.. Enabling the Object Gateway management frontend
 
 When RGW is deployed with cephadm, the RGW credentials used by the
 dashboard will be automatically configured. You can also manually force the
@@ -420,12 +412,12 @@ into timeouts, you can set the timeout value to your needs::
 
 The default value is 45 seconds.
 
-
-.. Enabling iSCSI Management
 .. _dashboard-iscsi-management:
 
 启用 iSCSI 的管理
 ^^^^^^^^^^^^^^^^^
+.. Enabling iSCSI Management
+
 The Ceph Dashboard can manage iSCSI targets using the REST API provided by the
 ``rbd-target-api`` service of the :ref:`ceph-iscsi`. Please make sure that it is
 installed and enabled on the iSCSI gateways.
@@ -452,12 +444,11 @@ The available iSCSI gateways must be defined using the following commands::
   $ ceph dashboard iscsi-gateway-add -i <file-containing-gateway-url> [<gateway_name>]
   $ ceph dashboard iscsi-gateway-rm <gateway_name>
 
-
-.. Enabling the Embedding of Grafana Dashboards
 .. _dashboard-grafana:
 
 允许嵌入 Grafana 仪表盘
 ^^^^^^^^^^^^^^^^^^^^^^^
+.. Enabling the Embedding of Grafana Dashboards
 
 `Grafana`_ pulls data from `Prometheus <https://prometheus.io/>`_. Although
 Grafana can use other data sources, the Grafana dashboards we provide contain
@@ -589,12 +580,9 @@ performance. For more information please see :ref:`prometheus-rbd-io-statistics`
 When disabled, the overview and details dashboards will be empty in Grafana and
 metrics will not be visible in Prometheus.
 
-
-
-.. Configuring Dashboard
-
 仪表盘的配置
 """"""""""""
+.. Configuring Dashboard
 
 After you have set up Grafana and Prometheus, you will need to configure the
 connection information that the Ceph Dashboard will use to access Grafana.
@@ -664,12 +652,11 @@ If no value is set for that option, it will simply fall back to the value of the
 GRAFANA_API_URL option. If set, it will instruct the browser to use this URL to
 access Grafana.
 
-
-.. Enabling Single Sign-On (SSO)
 .. _dashboard-sso-support:
 
 启用单点登录（ Single Sign-On, SSO ）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. Enabling Single Sign-On (SSO)
 
 The Ceph Dashboard supports external authentication of users via the
 `SAML 2.0 <https://en.wikipedia.org/wiki/SAML_2.0>`_ protocol. You need to
@@ -720,12 +707,11 @@ To enable SSO::
 
   $ ceph dashboard sso enable saml2
 
-
-.. Enabling Prometheus alerting
 .. _dashboard-alerting:
 
 启用 Prometheus 报警
 ^^^^^^^^^^^^^^^^^^^^
+.. Enabling Prometheus alerting
 
 To use Prometheus for alerting you must define `alerting rules
 <https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules>`_.
@@ -835,16 +821,16 @@ an unknown CA or that do not match the host name.
 
   $ ceph dashboard set-alertmanager-api-ssl-verify False
 
-
-.. User and Role Management
 .. _dashboard-user-role-management:
 
 用户和角色管理
 --------------
-.. Password Policy
+.. User and Role Management
 
 密码策略
 ^^^^^^^^
+.. Password Policy
+
 密码策略功能默认就是启用的，要检查这些：
 
 - Is the password longer than N characters?
@@ -890,10 +876,10 @@ policy.
   $ ceph dashboard set-pwd-policy-exclusion-list <word>[,...]
 
 
-.. User Accounts
-
 用户帐户
 ^^^^^^^^
+.. User Accounts
+
 Ceph Dashboard supports managing multiple user accounts. Each user account
 consists of a username, a password (stored in encrypted form using ``bcrypt``),
 an optional name, and an optional email address.
@@ -1057,11 +1043,9 @@ To assign roles to users, the following commands are available:
   $ ceph dashboard ac-user-del-roles <username> <rolename> [<rolename>...]
 
 
-
-.. Example of user and custom role creation
-
 用户和定制角色创建实例
 ^^^^^^^^^^^^^^^^^^^^^^
+.. Example of user and custom role creation
 
 In this section we show a full example of the commands that need to be used
 in order to create a user account, that should be able to manage RBD images,
@@ -1081,12 +1065,12 @@ view and create Ceph pools, and have read-only access to any other scopes.
 
    $ ceph dashboard ac-user-set-roles bob rbd/pool-manager read-only
 
-
-.. Proxy Configuration
 .. _dashboard-proxy-configuration:
 
 代理配置
 --------
+.. Proxy Configuration
+
 In a Ceph cluster with multiple ceph-mgr instances, only the dashboard running
 on the currently active ceph-mgr daemon will serve incoming requests. Accessing
 the dashboard's TCP port on any of the other ceph-mgr instances that are
@@ -1099,24 +1083,24 @@ to allow direct connections to the manager nodes, you could set up a proxy that
 automatically forwards incoming requests to the currently active ceph-mgr
 instance.
 
-
-.. Configuring a URL Prefix
-
 配置一个 URL 前缀
 ^^^^^^^^^^^^^^^^^
+.. Configuring a URL Prefix
+
 如果要通过一个反向代理访问仪表盘，你可能想把它放到一个
 URL 前缀之下。要让仪表盘使用内含自定义 URL 前缀的超链接，你\
-可以设置 ``url_prefix`` 选项： ::
+可以设置 ``url_prefix`` 选项：
+
+::
 
   ceph config set mgr mgr/dashboard/url_prefix $PREFIX
 
 这样你就能在 ``http://$IP:$PORT/$PREFIX/`` 访问面板了。
 
-
-.. Disable the redirection
-
 禁用重定向
 ^^^^^^^^^^
+.. Disable the redirection
+
 If the dashboard is behind a load-balancing proxy like `HAProxy <https://www.haproxy.org/>`_
 you might want to disable the redirection behaviour to prevent situations that
 internal (unresolvable) URL's are published to the frontend client. Use the
@@ -1129,21 +1113,19 @@ To reset the setting to the default redirection behaviour, use the following com
 
   $ ceph config set mgr mgr/dashboard/standby_behaviour "redirect"
 
-
-.. Configure the error status code
-
 配置错误状态码
 ^^^^^^^^^^^^^^
+.. Configure the error status code
+
 When redirection is disabled, you may want to customize the HTTP status
 code of standby dashboards. To do so you need to run the command::
 
   $ ceph config set mgr mgr/dashboard/standby_error_status_code 503
 
-
-.. HAProxy example configuration
-
 HAProxy 配置实例
 ^^^^^^^^^^^^^^^^
+.. HAProxy example configuration
+
 Below you will find an example configuration for SSL/TLS pass through using
 `HAProxy <https://www.haproxy.org/>`_.
 
@@ -1184,12 +1166,12 @@ the redirection behaviour on standby nodes.
     server y <HOST>:<PORT> check-ssl check verify none
     server z <HOST>:<PORT> check-ssl check verify none
 
-
-.. Auditing API Requests
 .. _dashboard-auditing:
 
 审计 API 请求
 -------------
+.. Auditing API Requests
+
 REST API 可以把 PUT 、 POST 、和 DELETE 请求记录到审计日志。\
 此功能默认是禁用的，可以用下列命令启用： ::
 
@@ -1211,11 +1193,11 @@ A log entry may look like this::
 
   2018-10-22 15:27:01.302514 mgr.x [INF] [DASHBOARD] from='https://[::ffff:127.0.0.1]:37022' path='/api/rgw/user/klaus' method='PUT' user='admin' params='{"max_buckets": "1000", "display_name": "Klaus Mustermann", "uid": "klaus", "suspended": "0", "email": "klaus.mustermann@ceph.com"}'
 
-.. NFS-Ganesha Management
 .. _dashboard-nfs-ganesha-management:
 
 NFS-Ganesha 的管理
 ------------------
+.. NFS-Ganesha Management
 
 The dashboard requires enabling the NFS module which will be used to manage
 NFS clusters and NFS exports. For more information check :ref:`mgr-nfs`.
@@ -1233,15 +1215,14 @@ and loosely coupled fashion.
 .. include:: dashboard_plugins/motd.inc.rst
 
 
-.. Troubleshooting the Dashboard
-
 仪表盘排障
 ----------
-
-.. Locating the Dashboard
+.. Troubleshooting the Dashboard
 
 定位仪表盘
 ^^^^^^^^^^
+.. Locating the Dashboard
+
 If you are unsure of the location of the Ceph Dashboard, run the following command::
 
     $ ceph mgr services | jq .dashboard
@@ -1255,10 +1236,9 @@ The command returns the URL where the Ceph Dashboard is located: ``https://<host
    命令行的 JSON 处理工具。
 
 
-.. Accessing the Dashboard
-
 访问仪表盘
 ^^^^^^^^^^
+.. Accessing the Dashboard
 
 If you are unable to access the Ceph Dashboard, run the following
 commands:
@@ -1314,11 +1294,10 @@ commands:
        $ ceph dashboard create-self-signed-cert
 
 
-
-.. Trouble Logging into the Dashboard
-
 从仪表盘看不到日志
 ^^^^^^^^^^^^^^^^^^
+.. Trouble Logging into the Dashboard
+
 If you are unable to log into the Ceph Dashboard and you receive the following
 error, run through the procedural checks below:
 
@@ -1353,10 +1332,10 @@ error, run through the procedural checks below:
 Please see :ref:`dashboard-user-role-management` for more information.
 
 
-.. A Dashboard Feature is Not Working
-
 仪表盘的某个功能失效
 ^^^^^^^^^^^^^^^^^^^^
+.. A Dashboard Feature is Not Working
+
 When an error occurs on the backend, you will usually receive an error
 notification on the frontend. Run through the following scenarios to debug.
 
@@ -1367,15 +1346,14 @@ notification on the frontend. Run through the following scenarios to debug.
 #. Check your web browser's Javascript Console for any errors.
 
 
-.. Ceph Dashboard Logs
-
 Ceph 仪表盘的日志
 ^^^^^^^^^^^^^^^^^
-
-.. Dashboard Debug Flag
+.. Ceph Dashboard Logs
 
 仪表盘调试标志
 """"""""""""""
+.. Dashboard Debug Flag
+
 With this flag enabled, traceback of errors are included in backend responses.
 
 To enable this flag via the Ceph Dashboard, navigate from *Cluster* to *Manager
@@ -1387,10 +1365,10 @@ To enable it via the CLI, run the following command::
     $ ceph dashboard debug enable
 
 
-.. Setting Logging Level of Dashboard Module
-
 配置仪表盘模块的日志级别
 """"""""""""""""""""""""
+.. Setting Logging Level of Dashboard Module
+
 把日志级别设置为 debug 可使日志更详尽，有助于调试。
 
 #. Increase the logging level of manager daemons::

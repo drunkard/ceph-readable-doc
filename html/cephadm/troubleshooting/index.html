@@ -165,6 +165,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#calling-miscellaneous-ceph-tools">Calling miscellaneous ceph tools</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#restoring-the-mon-quorum">Restoring the MON quorum</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#manually-deploying-a-mgr-daemon">Manually deploying a MGR daemon</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#analyzing-core-dumps">Analyzing core dumps</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../dev/cephadm/">Cephadm Feature Planning</a></li>
@@ -526,6 +527,31 @@ the daemon:</p>
 </div>
 <p>Deploy the daemon:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephadm</span> <span class="o">--</span><span class="n">image</span> <span class="o">&lt;</span><span class="n">container</span><span class="o">-</span><span class="n">image</span><span class="o">&gt;</span> <span class="n">deploy</span> <span class="o">--</span><span class="n">fsid</span> <span class="o">&lt;</span><span class="n">fsid</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">name</span> <span class="n">mgr</span><span class="o">.</span><span class="n">hostname</span><span class="o">.</span><span class="n">smfvfd</span> <span class="o">--</span><span class="n">config</span><span class="o">-</span><span class="n">json</span> <span class="n">config</span><span class="o">-</span><span class="n">json</span><span class="o">.</span><span class="n">json</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="analyzing-core-dumps">
+<h2>Analyzing core dumps<a class="headerlink" href="#analyzing-core-dumps" title="Permalink to this headline">¶</a></h2>
+<p>In case a Ceph daemon crashes, cephadm supports analyzing core dumps. To enable core dumps, run</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1"><span class="nb">ulimit</span> -c unlimited</span>
+</pre></div></div><p>core dumps will now be written to <code class="docutils literal notranslate"><span class="pre">/var/lib/systemd/coredump</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>core dumps are not namespaced by the kernel, which means
+they will be written to <code class="docutils literal notranslate"><span class="pre">/var/lib/systemd/coredump</span></code> on
+the container host.</p>
+</div>
+<p>Now, wait for the crash to happen again. (To simulate the crash of a daemon, run e.g. <code class="docutils literal notranslate"><span class="pre">killall</span> <span class="pre">-3</span> <span class="pre">ceph-mon</span></code>)</p>
+<p>Install debug packages by entering the cephadm shell and install <code class="docutils literal notranslate"><span class="pre">ceph-debuginfo</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cephadm shell --mount /var/lib/systemd/coredump</span>
+<span class="p">[</span><span class="n">ceph</span><span class="p">:</span> <span class="n">root</span><span class="nd">@host1</span> <span class="o">/</span><span class="p">]</span><span class="c1"># dnf install ceph-debuginfo gdb zstd</span>
+<span class="p">[</span><span class="n">ceph</span><span class="p">:</span> <span class="n">root</span><span class="nd">@host1</span> <span class="o">/</span><span class="p">]</span><span class="c1"># unzstd /mnt/coredump/core.ceph-*.zst</span>
+<span class="p">[</span><span class="n">ceph</span><span class="p">:</span> <span class="n">root</span><span class="nd">@host1</span> <span class="o">/</span><span class="p">]</span><span class="c1"># gdb /usr/bin/ceph-mon /mnt/coredump/core.ceph-...</span>
+<span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="n">bt</span>
+<span class="c1">#0  0x00007fa9117383fc in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0</span>
+<span class="c1">#1  0x00007fa910d7f8f0 in std::condition_variable::wait(std::unique_lock&lt;std::mutex&gt;&amp;) () from /lib64/libstdc++.so.6</span>
+<span class="c1">#2  0x00007fa913d3f48f in AsyncMessenger::wait() () from /usr/lib64/ceph/libceph-common.so.2</span>
+<span class="c1">#3  0x0000563085ca3d7e in main ()</span>
 </pre></div>
 </div>
 </div>

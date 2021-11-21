@@ -1,50 +1,59 @@
-.. Adding/Removing Monitors
 .. _adding-and-removing-monitors:
 
 =================
  增加/删除监视器
 =================
+.. Adding/Removing Monitors
 
 你的集群启动并运行后，可以在运行时增加、或删除监视器。请参考\
 `手动部署`_\ 或\ `监视器自举启动`_\ 完成初始设置。
 
-.. Adding Monitors
 .. _adding-monitors:
 
 增加监视器
 ==========
+.. Adding Monitors
 
-Ceph 监视器是轻量级进程，它维护着集群运行图的主副本。一个集群可以只有一个监视器，我\
-们推荐生产环境至少 3 个监视器。 Ceph 使用 `Paxos`_ 算法的一个变种对各种图、以及其它\
-对集群来说至关重要的信息达成共识。由于 Paxos 算法天生要求大部分监视器在运行，以形成\
-法定人数（并因此达成共识）。
+Ceph 监视器是轻量级进程，它维护着集群运行图的主副本。\
+一个集群可以只有一个监视器，我们推荐生产环境至少 3 个监视器。\
+Ceph 使用 `Paxos`_ 算法的一个变种对各种图、\
+以及其它对集群来说至关重要的信息达成共识。\
+由于 Paxos 算法的天性， Ceph 要求大部分监视器在运行，\
+以形成法定人数（并因此达成共识）。
 
-It is advisable to run an odd-number of monitors but not mandatory. An
-odd-number of monitors has a higher resiliency to failures than an
-even-number of monitors. For instance, on a 2 monitor deployment, no
-failures can be tolerated in order to maintain a quorum; with 3 monitors,
-one failure can be tolerated; in a 4 monitor deployment, one failure can
-be tolerated; with 5 monitors, two failures can be tolerated.  This is
-why an odd-number is advisable. Summarizing, Ceph needs a majority of
-monitors to be running (and able to communicate with each other), but that
+It is advisable to run an odd number of monitors. An
+odd number of monitors is more resilient than an
+even number. For instance, with a two monitor deployment, no
+failures can be tolerated and still maintain a quorum; with three monitors,
+one failure can be tolerated; in a four monitor deployment, one failure can
+be tolerated; with five monitors, two failures can be tolerated.  This avoids
+the dreaded *split brain* phenomenon, and is why an odd number is best.
+In short, Ceph needs a majority of
+monitors to be active (and able to communicate with each other), but that
 majority can be achieved using a single monitor, or 2 out of 2 monitors,
 2 out of 3, 3 out of 4, etc.
 
-For an initial deployment of a multi-node Ceph cluster, it is advisable to
-deploy three monitors, increasing the number two at a time if a valid need
-for more than three exists.
+For small or non-critical deployments of multi-node Ceph clusters, it is
+advisable to deploy three monitors, and to increase the number of monitors
+to five for larger clusters or to survive a double failure.  There is rarely
+justification for seven or more.
 
-正因为监视器是轻量级的，所以有可能在作为 OSD 的主机上同时运行它；然而，我们推荐运行\
-于单独主机，因为与内核的 fsync 问题会影响性能。
+正因为监视器是轻量级的，所以有可能在作为 OSD 的主机上同时运行它；\
+然而，我们建议在独立的主机上运行它们，\
+因为与内核的 `fsync` 问题会影响性能。\
+专用的监视器节点们也能最小化停机时间，\
+因为某一个节点崩溃或关机维护时，监视器和 OSD 守护进程不会同时失活。
+
+专用的监视器节点还能使维护工作干净利落，\
+避免了在节点重启、离线或崩溃时造成 OSD 和监视器同时离线。
 
 .. note:: 这里的\ *大多数*\ 监视器之间必须能互通，这样才能形成\
    法定人数。
 
 
-.. Deploy your Hardware
-
 部署硬件
 --------
+.. Deploy your Hardware
 
 如果你增加新监视器时要新增一台主机，关于其最低硬件配置请参见\
 `硬件推荐`_\ 。要增加一个监视器主机，首先要安装最新版的 Linux
@@ -55,10 +64,9 @@ for more than three exists.
 .. _硬件推荐: ../../../start/hardware-recommendations
 
 
-.. Install the Required Software
-
 安装必要软件
 ------------
+.. Install the Required Software
 
 手动部署的集群， Ceph 软件包必须手动装，详情参见\
 `安装软件包`_\ 。应该配置一个用户，使之可以无密码登录 SSH 、\
@@ -112,24 +120,26 @@ for more than three exists.
         ceph-mon -i {mon-id} --public-addr {ip:port}
 
 
-.. Removing Monitors
 .. _removing-monitors:
 
 删除监视器
 ==========
+.. Removing Monitors
 
-从集群删除监视器时，必须认识到， Ceph 监视器用 PASOX 算法关于主集群运行图达成共识。\
+从集群删除监视器时，必须认识到，
+Ceph 监视器们用 PASOX 算法关于主集群运行图达成共识。\
 必须有足够多的监视器才能对集群运行图达成共识。
 
 
-.. Removing a Monitor (Manual)
 .. _删除监视器（手动）:
 
 删除监视器（手动）
 ------------------
+.. Removing a Monitor (Manual)
 
-本步骤从集群删除 ``ceph-mon`` 守护进程，如果此步骤导致只剩 2 个监视器了，你得增加或\
-删除一个监视器，直到凑足法定人数所必需的 ``ceph-mon`` 数。
+本步骤从集群删除 ``ceph-mon`` 守护进程，\
+如果此步骤导致只剩 2 个监视器了，你得增加或删除一个监视器，\
+直到凑足法定人数所必需的 ``ceph-mon`` 数。
 
 #. 停止监视器。 ::
 
@@ -152,7 +162,7 @@ for more than three exists.
 #. 停止所有监视器主机上的所有 ``ceph-mon`` 守护进程。 ::
 
 	ssh {mon-host}
-	service ceph stop mon || stop ceph-mon-all
+	systemctl stop ceph-mon.target
 	# 要在所有监视器主机上执行
 
 #. 找出一个活着的监视器并登录其所在主机。 ::
@@ -188,11 +198,11 @@ for more than three exists.
    如果您对其余监视器很有信心、或者有足够的冗余，也可以删除。
 
 
-.. Changing a Monitor's IP Address
 .. _更改监视器的 IP 地址:
 
 更改监视器的 IP 地址
 ====================
+.. Changing a Monitor's IP Address
 
 .. important:: 现有监视器不应该更改其 IP 地址。
 
@@ -206,10 +216,9 @@ Ceph 客户端及其它 Ceph 守护进程用 ``ceph.conf`` 发现监视器，然
 全方法。
 
 
-.. Consistency Requirements
-
 一致性要求
 ----------
+.. Consistency Requirements
 
 监视器发现集群内的其它监视器时总是参照 monmap 的本地副本，用 monmap 而非 \
 ``ceph.conf`` 可避免因配置错误（例如在 ``ceph.conf`` 指定监视器地址或端口时拼写错\
@@ -228,10 +237,9 @@ monmap 的监视器赶上集群当前的状态。
 改现有监视器的 IP 地址必须慎之又慎。
 
 
-.. Changing a Monitor's IP address (The Right Way)
-
 更改监视器 IP 地址（正确方法）
 ------------------------------
+.. Changing a Monitor's IP address (The Right Way)
 
 仅仅在 ``ceph.conf`` 里更改监视器的 IP 不足以让集群内的其它监视器接受更新。要更改\
 一个监视器的 IP 地址，你必须以先以想用的 IP 地址增加一个监视器（见\ `增加监视器（手\
@@ -256,10 +264,9 @@ monmap 的监视器赶上集群当前的状态。
 要更改的话，每次都要重复一次。
 
 
-.. Changing a Monitor's IP address (The Messy Way)
-
 更改监视器 IP 地址（凌乱方法）
 ------------------------------
+.. Changing a Monitor's IP address (The Messy Way)
 
 可能有时候监视器不得不挪到不同的网络、数据中心的不同位置、甚至不同的数据中心，这是可\
 能的，但过程有点惊险。

@@ -49,34 +49,33 @@ OSD 守护进程持有归置组，正因为有了 CRUSH 算法， Ceph 存储集
 
 .. _REST API: ../../mgr/restful
 
+.. container:: columns-2
 
-.. raw:: html
+   .. container:: column
 
-	<style type="text/css">div.body h3{margin:5px 0px 0px 0px;}</style>
-	<table cellpadding="10"><colgroup><col width="50%"><col width="50%"></colgroup><tbody valign="top"><tr><td><h3>建议</h3>
+      .. raw:: html
 
-开始把 Ceph 用于生产环境前，您应该看看我们的硬件建议和操作系统\
-建议。
+          <h3>推荐</h3>
 
-.. toctree::
-   :maxdepth: 2
+      开始把 Ceph 用于生产环境前，您应该看看\
+      我们的硬件建议和操作系统建议。
 
-   硬件推荐 <hardware-recommendations>
-   操作系统推荐 <os-recommendations>
+      .. toctree::
+         :maxdepth: 2
 
+         硬件推荐 <hardware-recommendations>
+         操作系统推荐 <os-recommendations>
 
-.. raw:: html
+   .. container:: column
 
-	</td><td><h3>参与</h3>
+      .. raw:: html
 
-   欢迎您加入社区，贡献文档、代码，或发现软件缺陷。
+          <h3>参与</h3>
 
-.. toctree::
-   :maxdepth: 2
+      欢迎您加入社区，贡献文档、代码，或发现软件缺陷。
 
-   get-involved
-   documenting-ceph
+      .. toctree::
+         :maxdepth: 2
 
-.. raw:: html
-
-	</td></tr></tbody></table>
+         get-involved
+         documenting-ceph

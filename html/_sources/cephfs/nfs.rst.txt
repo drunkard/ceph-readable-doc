@@ -12,10 +12,9 @@ clusters and CephFS exports is using ``ceph nfs ...`` commands. See
 rook.
 
 
-.. Requirements
-
 必要条件
 ========
+.. Requirements
 
 -  Ceph file system
 -  ``libcephfs2``, ``nfs-ganesha`` and ``nfs-ganesha-ceph`` packages on NFS
@@ -27,10 +26,9 @@ rook.
    packages with pacific (16.2.x) or later stable version of Ceph packages.
 
 
-.. Configuring NFS-Ganesha to export CephFS
-
 配置 NFS-Ganesha 来导出 CephFS
 ==============================
+.. Configuring NFS-Ganesha to export CephFS
 
 NFS-Ganesha provides a File System Abstraction Layer (FSAL) to plug in
 different storage backends. FSAL_CEPH_ is the plugin FSAL for CephFS. For
@@ -42,10 +40,9 @@ Ceph's configuration file and CephX access credentials for the Ceph clients
 created by NFS-Ganesha to access CephFS.
 
 
-.. NFS-Ganesha configuration
-
 NFS-Ganesha 配置
 ----------------
+.. NFS-Ganesha configuration
 
 Here's a `sample ganesha.conf`_ configured with FSAL_CEPH_. It is suitable
 for a standalone NFS-Ganesha server, or an active/passive configuration of
@@ -66,10 +63,9 @@ in the sample conf. There are options to do the following:
   and v2.6.0 stable ``nfs-ganesha`` and ``nfs-ganesha-ceph`` packages)
 
 
-.. Configuration for libcephfs clients
-
 给 libcephfs 客户端的配置
 -------------------------
+.. Configuration for libcephfs clients
 
 ``ceph.conf`` for libcephfs clients includes a ``[client]`` section with
 ``mon_host`` option set to let the clients connect to the Ceph cluster's
@@ -80,10 +76,9 @@ For example::
             mon host = [v2:192.168.1.7:3300,v1:192.168.1.7:6789], [v2:192.168.1.8:3300,v1:192.168.1.8:6789], [v2:192.168.1.9:3300,v1:192.168.1.9:6789]
 
 
-.. Mount using NFSv4 clients
-
 用 NFSv4 客户端挂载
 ===================
+.. Mount using NFSv4 clients
 
 It is preferred to mount the NFS-Ganesha exports using NFSv4.1+ protocols
 to get the benefit of sessions.

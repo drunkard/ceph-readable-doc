@@ -56,80 +56,298 @@ Error Handling
 
 
 
-
 .. _s3-select-feature-table:
 
 Features Support
 ----------------
 
-  | Currently only part of `AWS select command <https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html>`_ is implemented, table bellow describes what is currently supported.
+  | Currently only part of `AWS select command <https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html>`_ is implemented, table below describes what is currently supported.
   | The following table describes the current implementation for s3-select functionalities:
 
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Feature                         | Detailed        | Example                                                               |
+| Feature                         | Detailed        | Example  / Description                                                |
 +=================================+=================+=======================================================================+
-| Arithmetic operators            | ^ * / + - ( )   | select (int(_1)+int(_2))*int(_9) from stdin;                          |
+| Arithmetic operators            | ^ * % / + - ( ) | select (int(_1)+int(_2))*int(_9) from s3object;                       |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-|                                 |                 | select ((1+2)*3.14) ^ 2 from stdin;                                   |
+|                                 | ``%`` modulo    | select count(*) from s3object where cast(_1 as int)%2 = 0;            |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Compare operators               | > < >= <= == != | select _1,_2 from stdin where (int(1)+int(_3))>int(_5);               |
+|                                 | ``^`` power-of  | select cast(2^10 as int) from s3object;                               |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| logical operator                | AND OR          | select count(*) from stdin where int(1)>123 and int(_5)<200;          |
+| Compare operators               | > < >= <= = !=  | select _1,_2 from s3object where (int(_1)+int(_3))>int(_5);           |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| casting operator                | int(expression) | select int(_1),int( 1.2 + 3.4) from stdin;                            |
+| logical operator                | AND OR NOT      | select count(*) from s3object where not (int(_1)>123 and int(_5)<200);|
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-|                                 |float(expression)| select float(1.2) from stdin;                                         |
+| logical operator                | is null         | return true/false for null indication in expression                   |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-|                                 | timestamp(...)  | select timestamp("1999:10:10-12:23:44") from stdin;                   |
+| logical operator                | is not null     | return true/false for null indication in expression                   |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Aggregation Function            | sum             | select sum(int(_1)) from stdin;                                       |
+| logical operator and NULL       | unknown state   | review null-handle_ observe how logical operator result with null.    |
+|                                 |                 | the following query return **0**.                                     |
+|                                 |                 |                                                                       |
+|                                 |                 | select count(*) from s3object where null and (3>2);                   |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Aggregation Function            | min             | select min( int(_1) * int(_5) ) from stdin;                           |
+| Arithmetic operator with NULL   | unknown state   | review null-handle_ observe the results of binary operations with NULL|
+|                                 |                 | the following query return **0**.                                     |
+|                                 |                 |                                                                       |
+|                                 |                 | select count(*) from s3object where (null+1) and (3>2);               |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Aggregation Function            | max             | select max(float(_1)),min(int(_5)) from stdin;                        |
+| compare with NULL               | unknown state   | review null-handle_ observe results of compare operations with NULL   | 
+|                                 |                 | the following query return **0**.                                     |
+|                                 |                 |                                                                       |
+|                                 |                 | select count(*) from s3object where (null*1.5) != 3;                  |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Aggregation Function            | count           | select count(*) from stdin where (int(1)+int(_3))>int(_5);            |
+| missing column                  | unknown state   | select count(*) from s3object where _1 is null;                       |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Timestamp Functions             | extract         | select count(*) from stdin where                                      |
-|                                 |                 | extract("year",timestamp(_2)) > 1950                                  |    
-|                                 |                 | and extract("year",timestamp(_1)) < 1960;                             |
+| query is filtering rows where predicate           | select count(*) from s3object where (_1 > 12 and _2 = 0) is not null; |
+| is returning non null results.                    |                                                                       |
+| this predicate will return null                   |                                                                       |
+| upon _1 or _2 is null                             |                                                                       |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Timestamp Functions             | dateadd         | select count(0) from stdin where                                      |
-|                                 |                 | datediff("year",timestamp(_1),dateadd("day",366,timestamp(_1))) == 1; |  
+| projection column               | similar to      | select case                                                           | 
+|                                 | switch/case     | cast(_1 as int) + 1                                                   |
+|                                 | default         | when 2 then "a"                                                       |
+|                                 |                 | when 3  then "b"                                                      |
+|                                 |                 | else "c" end from s3object;                                           |
+|                                 |                 |                                                                       | 
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Timestamp Functions             | datediff        | select count(0) from stdin where                                      |  
-|                                 |                 | datediff("month",timestamp(_1),timestamp(_2))) == 2;                  | 
+| projection column               | similar to      | select case                                                           | 
+|                                 | if/then/else    | when (1+1=(2+1)*3) then 'case_1'                                      |
+|                                 |                 | when ((4*3)=(12)) then 'case_2'                                       |
+|                                 |                 | else 'case_else' end,                                                 |
+|                                 |                 | age*2 from s3object;                                                  | 
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| Timestamp Functions             | utcnow          | select count(0) from stdin where                                      |
-|                                 |                 | datediff("hours",utcnow(),dateadd("day",1,utcnow())) == 24 ;          |
+| logical operator                | ``coalesce {expression,expression ...} :: return first non-null argument``              |
+|                                 |                                                                                         |
+|                                 | select coalesce(nullif(5,5),nullif(1,1.0),age+12) from s3object;                        |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
-| String Functions                | substr          | select count(0) from stdin where                                      |
-|                                 |                 | int(substr(_1,1,4))>1950 and int(substr(_1,1,4))<1960;                |
+| logical operator                | ``nullif {expr1,expr2} ::return null in case both arguments are equal,``                |
+|                                 | ``or else the first one``                                                               |
+|                                 |                                                                                         |
+|                                 | select nullif(cast(_1 as int),cast(_2 as int)) from s3object;                           |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| logical operator                | ``{expression} in ( .. {expression} ..)``                                               |
+|                                 |                                                                                         |
+|                                 | select count(*) from s3object                                                           | 
+|                                 | where 'ben' in (trim(_5),substring(_1,char_length(_1)-3,3),last_name);                  |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| logical operator                | ``{expression} between {expression} and {expression}``                                  | 
+|                                 |                                                                                         |
+|                                 | select count(*) from s3object                                                           | 
+|                                 | where substring(_3,char_length(_3),1) between "x" and trim(_1)                          |
+|                                 | and substring(_3,char_length(_3)-1,1) = ":";                                            |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| logical operator                | ``{expression} like {match-pattern}``                                                   |
+|                                 |                                                                                         |
+|                                 | select count(*) from s3object where first_name like '%de_';                             |
+|                                 |                                                                                         |
+|                                 | select count(*) from s3object where _1 like \"%a[r-s]\;                                 |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+|                                 | ``{expression} like {match-pattern} escape {char}``                                     |
+|                                 |                                                                                         |
+| logical operator                | select count(*) from s3object where  "jok_ai" like "%#_ai" escape "#";                  |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| true / false                    | select (cast(_1 as int)>123 = true) from s3object                                       |
+| predicate as a projection       | where address like '%new-york%';                                                        |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| an alias to                     | select (_1 like "_3_") as *likealias*,_1 from s3object                                  |
+| predicate as a prjection        | where *likealias* = true and cast(_1 as int) between 800 and 900;                       |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| casting operator                | select cast(123 as int)%2 from s3object;                                                |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| casting operator                | select cast(123.456 as float)%2 from s3object;                                          |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| casting operator                | select cast('ABC0-9' as string),cast(substr('ab12cd',3,2) as int)*4  from s3object;     |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| casting operator                | select cast(5 as bool) from s3object;                                                   |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| casting operator                | select cast(substring('publish on 2007-01-01',12,10) as timestamp) from s3object;       |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| non AWS casting operator        | select int(_1),int( 1.2 + 3.4) from s3object;                                           |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| non AWS casting operator        | select float(1.2) from s3object;                                                        |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| not AWS casting operator        | select to_timestamp('1999-10-10T12:23:44Z') from s3object;                              |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Aggregation Function            | sum             | select sum(int(_1)) from s3object;                                    |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Aggregation Function            | avg             | select avg(cast(_1 a float) + cast(_2 as int)) from s3object;         |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Aggregation Function            | min             | select min( int(_1) * int(_5) ) from s3object;                        |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Aggregation Function            | max             | select max(float(_1)),min(int(_5)) from s3object;                     |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Aggregation Function            | count           | select count(*) from s3object where (int(_1)+int(_3))>int(_5);        |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Timestamp Functions             | extract         | select count(*) from s3object where                                   |
+|                                 |                 | extract(year from to_timestamp(_2)) > 1950                            |
+|                                 |                 | and extract(year from to_timestamp(_1)) < 1960;                       |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Timestamp Functions             | date_add        | select count(0) from s3object where                                   |
+|                                 |                 | date_diff(year,to_timestamp(_1),date_add(day,366,                     |
+|                                 |                 | to_timestamp(_1))) = 1;                                               |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Timestamp Functions             | date_diff       | select count(0) from s3object where                                   |
+|                                 |                 | date_diff(month,to_timestamp(_1),to_timestamp(_2))) = 2;              |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Timestamp Functions             | utcnow          | select count(0) from s3object where                                   |
+|                                 |                 | date_diff(hours,utcnow(),date_add(day,1,utcnow())) = 24;              |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Timestamp Functions             | to_string       | select to_string(                                                     |
+|                                 |                 | to_timestamp("2009-09-17T17:56:06.234567Z"),                          |
+|                                 |                 | "yyyyMMdd-H:m:s") from s3object;                                      |
+|                                 |                 |                                                                       |
+|                                 |                 | ``result: "20090917-17:56:6"``                                        |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| String Functions                | substring       | select count(0) from s3object where                                   |
+|                                 |                 | int(substring(_1,1,4))>1950 and int(substring(_1,1,4))<1960;          |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| substring with ``from`` negative number is valid  | select substring("123456789" from -4) from s3object;                  |
+| considered as first                               |                                                                       |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| substring with ``from`` zero ``for`` out-of-bound |  select substring("123456789" from 0 for 100) from s3object;          |
+| number is valid just as (first,last)              |                                                                       |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| String Functions                | trim            | select trim('   foobar   ') from s3object;                            |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| String Functions                | trim            | select trim(trailing from '   foobar   ') from s3object;              |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| String Functions                | trim            | select trim(leading from '   foobar   ') from s3object;               |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| String Functions                | trim            | select trim(both '12' from  '1112211foobar22211122') from s3objects;  |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| String Functions                | lower/upper     | select lower('ABcD12#$e') from s3object;                              |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| String Functions                | char_length     | select count(*) from s3object where char_length(_3)=3;                |
+|                                 | character_length|                                                                       |
++---------------------------------+-----------------+-----------------------------------------------------------------------+
+| Complex queries                 | select sum(cast(_1 as int)),                                                            |
+|                                 | max(cast(_3 as int)),                                                                   |
+|                                 | substring('abcdefghijklm',(2-1)*3+sum(cast(_1 as int))/sum(cast(_1 as int))+1,          |
+|                                 | (count() + count(0))/count(0)) from s3object;                                           |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
 | alias support                   |                 |  select int(_1) as a1, int(_2) as a2 , (a1+a2) as a3                  | 
-|                                 |                 |  from stdin where a3>100 and a3<300;                                  |
+|                                 |                 |  from s3object where a3>100 and a3<300;                               |
 +---------------------------------+-----------------+-----------------------------------------------------------------------+
+
+.. _null-handle:
+
+NULL
+~~~~
+| NULL is a legit value in ceph-s3select systems similar to other DB systems, i.e. systems needs to handle the case where a value is NULL.
+| The definition of NULL in our context, is missing/unknown, in that sense **NULL can not produce a value on ANY arithmetic operations** ( a + NULL will produce NULL value).
+| The Same is with arithmetic comaprision, **any comparison to NULL is NULL**, i.e. unknown.
+| Below is a truth table contains the NULL use-case.
+
++---------------------------------+-----------------------------+
+| A is NULL                       | Result (NULL=UNKNOWN)       |
++=================================+=============================+
+| NOT A                           |  NULL                       |
++---------------------------------+-----------------------------+
+| A OR False                      |  NULL                       |
++---------------------------------+-----------------------------+
+| A OR True                       |  True                       |
++---------------------------------+-----------------------------+
+| A OR A                          |  NULL                       |
++---------------------------------+-----------------------------+
+| A AND False                     |  False                      |
++---------------------------------+-----------------------------+
+| A AND True                      |  NULL                       | 
++---------------------------------+-----------------------------+
+| A and A                         |  NULL                       |
++---------------------------------+-----------------------------+
 
 s3-select function interfaces
 -----------------------------
 
 Timestamp functions
 ~~~~~~~~~~~~~~~~~~~
-    | The `timestamp functionalities <https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-date.html>`_ is partially implemented.
-    | the casting operator( ``timestamp( string )`` ), converts string to timestamp basic type.
-    | Currently it can convert the following pattern ``yyyy:mm:dd hh:mi:dd``
+    | The timestamp functionalities as described in `AWS-specs <https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-date.html>`_  is fully implemented.
 
-    | ``extract( date-part , timestamp)`` : function return integer according to date-part extract from input timestamp.
-    | supported date-part : year,month,week,day.
+    | ``to_timestamp( string )`` : The casting operator converts string to timestamp basic type.
+    | to_timestamp operator is able to convert the following ``YYYY-MM-DDTHH:mm:ss.SSSSSS+/-HH:mm`` , ``YYYY-MM-DDTHH:mm:ss.SSSSSSZ`` , ``YYYY-MM-DDTHH:mm:ss+/-HH:mm`` , ``YYYY-MM-DDTHH:mm:ssZ`` , ``YYYY-MM-DDTHH:mm+/-HH:mm`` , ``YYYY-MM-DDTHH:mmZ`` , ``YYYY-MM-DDT`` or ``YYYYT`` string formats into timestamp.
+    | Where time (or part of it) is missing in the string format, zero's are replacing the missing parts. And for missing month and day, 1 is default value for them.
+    | Timezone part is in format ``+/-HH:mm`` or ``Z`` , where the letter "Z" indicates Coordinated Universal Time (UTC). Value of timezone can range between -12:00 and +14:00.
 
-    | ``dateadd(date-part , integer,timestamp)`` : function return timestamp, a calculation results of input timestamp and date-part.
-    | supported data-part : year,month,day.
+    | ``extract(date-part from timestamp)`` : The function extracts date-part from input timestamp and returns it as integer.
+    | Supported date-part : year, month, week, day, hour, minute, second, timezone_hour, timezone_minute.
 
-    | ``datediff(date-part,timestamp,timestamp)`` : function return an integer, a calculated result for difference between 2 timestamps according to date-part.
-    | supported date-part : year,month,day,hours.  
+    | ``date_add(date-part, quantity, timestamp)`` : The function adds quantity (integer) to date-part of timestamp and returns result as timestamp. It also includes timezone in calculation.
+    | Supported data-part : year, month, day, hour, minute, second.
 
+    | ``date_diff(date-part, timestamp, timestamp)`` : The function returns an integer, a calculated result for difference between 2 timestamps according to date-part. It includes timezone in calculation.
+    | supported date-part : year, month, day, hour, minute, second.
 
     | ``utcnow()`` : return timestamp of current time.
+
+    | ``to_string(timestamp, format_pattern)`` : returns a string representation of the input timestamp in the given input string format.
+
+to_string parameters
+~~~~~~~~~~~~~~~~~~~~
+
++--------------+-----------------+-----------------------------------------------------------------------------------+
+| Format       | Example         | Description                                                                       |
++==============+=================+===================================================================================+
+|    yy        | 69              |  2-digit year                                                                     |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    y         | 1969            |  4-digit year                                                                     |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    yyyy      | 1969            |  Zero-padded 4-digit year                                                         |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    M         | 1               |  Month of year                                                                    |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    MM        | 01              |  Zero-padded month of year                                                        |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    MMM       | Jan             |  Abbreviated month year name                                                      |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    MMMM      | January         |  Full month of year name                                                          |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    MMMMM     | J               |  Month of year first letter (NOTE: not valid for use with to_timestamp function)  |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    d         | 2               |  Day of month (1-31)                                                              |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    dd        | 02              |  Zero-padded day of month (01-31)                                                 |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    a         | AM              |  AM or PM of day                                                                  |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    h         | 3               |  Hour of day (1-12)                                                               |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    hh        | 03              |  Zero-padded hour of day (01-12)                                                  |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    H         | 3               |  Hour of day (0-23)                                                               |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    HH        | 03              |  Zero-padded hour of day (00-23)                                                  |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    m         | 4               |  Minute of hour (0-59)                                                            |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    mm        | 04              |  Zero-padded minute of hour (00-59)                                               |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    s         | 5               |  Second of minute (0-59)                                                          |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    ss        | 05              |  Zero-padded second of minute (00-59)                                             |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    S         | 0               |  Fraction of second (precision: 0.1, range: 0.0-0.9)                              |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    SS        | 6               |  Fraction of second (precision: 0.01, range: 0.0-0.99)                            |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    SSS       | 60              |  Fraction of second (precision: 0.001, range: 0.0-0.999)                          |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    SSSSSS    | 60000000        |  Fraction of second (maximum precision: 1 nanosecond, range: 0.0-0999999999)      |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    n         | 60000000        |  Nano of second                                                                   |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    X         | +07 or Z        |  Offset in hours or "Z" if the offset is 0                                        |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+|    XX or XXXX| +0700 or Z      |  Offset in hours and minutes or "Z" if the offset is 0                            |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+| XXX or XXXXX | +07:00 or Z     |  Offset in hours and minutes or "Z" if the offset is 0                            |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+| X            | 7               |  Offset in hours                                                                  |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+| xx or xxxx   | 700             |  Offset in hours and minutes                                                      |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+| xxx or xxxxx | +07:00          |  Offset in hours and minutes                                                      |
++--------------+-----------------+-----------------------------------------------------------------------------------+
+
 
 Aggregation functions
 ~~~~~~~~~~~~~~~~~~~~~
@@ -138,6 +356,8 @@ Aggregation functions
 
     | ``sum(expression)`` : return a summary of expression per all rows matching condition(if such exist).
 
+    | ``avg(expression)`` : return a average  of expression per all rows matching condition(if such exist).
+
     | ``max(expression)`` : return the maximal result for all expressions matching condition(if such exist).
 
     | ``min(expression)`` : return the minimal result for all expressions matching condition(if such exist).
@@ -145,7 +365,17 @@ Aggregation functions
 String functions
 ~~~~~~~~~~~~~~~~
 
-    | ``substr(string,from,to)`` : return a string extract from input string according to from,to inputs.
+    | ``substring(string,from,to)`` : substring( string ``from`` start [ ``for`` length ] )
+    | return a string extract from input string according to from,to inputs.
+    | ``substring(string from )`` 
+    | ``substring(string from for)`` 
+
+    | ``char_length`` : return a number of characters in string (``character_length`` does the same).
+
+    | ``trim`` : trim ( [[``leading`` | ``trailing`` | ``both`` remove_chars] ``from``] string )
+    | trims leading/trailing(or both) characters from target string, the default is blank character.
+
+    | ``upper\lower`` : converts characters into lowercase/uppercase.
 
 
 Alias
@@ -160,6 +390,27 @@ Alias
 
     | Of Course, per each new row the cache is invalidated.
 
+Testing
+~~~~~~~
+    
+    | s3select contains several testing frameworks which provide a large coverage for its functionalities.
+
+    | (1) tests comparison against trusted engine, meaning,  C/C++ compiler is a trusted expression evaluator, 
+    | since the syntax for arithmetical and logical expressions are identical (s3select compare to C) 
+    | the framework runs equal expressions and validates their results.
+    | A dedicated expression generator produces different sets of expressions per each new test session. 
+
+    | (2) compare results of queries whose syntax is different but semantically they are equal.
+    | this kind of test validates that different runtime flows produce identical result, 
+    | on each run with different dataset(random).
+
+    | For one example, on a dataset which contains a random numbers(1-1000)
+    | the following queries will produce identical results.
+    | ``select count(*) from s3object where char_length(_3)=3;``
+    | ``select count(*) from s3object where cast(_3 as int)>99 and cast(_3 as int)<1000;``
+
+    | (3) constant dataset, the conventional way of testing. A query is processing a constant dataset, its result is validated against constant results.   
+
 Sending Query to RGW
 --------------------
 
@@ -168,7 +419,7 @@ Sending Query to RGW
 
 
    | Sending s3-select request to RGW using AWS cli, should follow `AWS command reference <https://docs.aws.amazon.com/cli/latest/reference/s3api/select-object-content.html>`_.
-   | bellow is an example for it.
+   | below is an example for it.
 
 ::
 
@@ -179,7 +430,7 @@ Sending Query to RGW
   '{"CSV": {"FieldDelimiter": "," , "QuoteCharacter": "\"" , "RecordDelimiter" : "\n" , "QuoteEscapeCharacter" : "\\" , "FileHeaderInfo": "USE" }, "CompressionType": "NONE"}' 
   --output-serialization '{"CSV": {}}' 
   --key {OBJECT-NAME} 
-  --expression "select count(0) from stdin where int(_1)<10;" output.csv
+  --expression "select count(0) from s3object where int(_1)<10;" output.csv
 
 Syntax
 ~~~~~~
@@ -263,5 +514,5 @@ BOTO3
   run_s3select(
   "my_bucket",
   "my_csv_object",
-  "select int(_1) as a1, int(_2) as a2 , (a1+a2) as a3 from stdin where a3>100 and a3<300;")
+  "select int(_1) as a1, int(_2) as a2 , (a1+a2) as a3 from s3object where a3>100 and a3<300;")
 

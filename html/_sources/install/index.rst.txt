@@ -8,10 +8,9 @@ There are several different ways to install Ceph.  Choose the
 method that best suits your needs.
 
 
-.. Recommended methods
-
 建议的方法
 ~~~~~~~~~~
+.. Recommended methods
 
 :ref:`Cephadm <cephadm>` installs and manages a Ceph cluster using containers and
 systemd, with tight integration with the CLI and dashboard GUI.
@@ -36,10 +35,9 @@ Kubernetes or to connect an existing Ceph storage cluster to Kubernetes.
   in the CLI and dashboard are fully supported.
 
 
-.. Other methods
-
 其他方法
 ~~~~~~~~
+.. Other methods
 
 `ceph-ansible <https://docs.ceph.com/ceph-ansible/>`_ 使用
 Ansible 来部署和管理 Ceph 集群。

@@ -1,15 +1,14 @@
-.. Essentials (tl;dr)
-
 必备知识
 ========
+.. Essentials (tl;dr)
 
 本章包含必要信息，每个 Ceph 开发者都应该知道。
 
 
-.. Leads
-
 项目领导
 --------
+.. Leads
+
 Ceph 项目是由 Sage Weil 领导的。另外，各主要项目组件有自己的领\
 导，下面的表格罗列了所有领导、以及他们在 `GitHub`_ 上的昵称。
 
@@ -33,19 +32,19 @@ Docs      Zac Dover        zdover23
 上述表格里的 Ceph 专有缩写在 :doc:`/architecture` 里面有解释。
 
 
-.. History
-
 历史
 ----
+.. History
+
 请翻阅 `Wikipedia 的 History 这章`_\ 。
 
 .. _`Wikipedia 的 History 这章`: https://en.wikipedia.org/wiki/Ceph_%28software%29#History
 
 
-.. Licensing
-
 软件许可
 --------
+.. Licensing
+
 Ceph 是自由软件。
 
 除非另有声明， Ceph 的源代码会以 LGPL2.1 或 LGPL3.0 许可证\
@@ -55,10 +54,10 @@ Ceph 是自由软件。
    https://github.com/ceph/ceph/blob/master/COPYING
 
 
-.. Source code repositories
-
 源代码仓库
 ----------
+.. Source code repositories
+
 The source code of Ceph lives on `GitHub`_ in a number of repositories below
 the `Ceph "organization"`_.
 
@@ -73,10 +72,10 @@ Although the `Ceph "organization"`_ includes several software repositories,
 this document covers only one: https://github.com/ceph/ceph.
 
 
-.. Redmine issue tracker
-
 Redmine 问题跟踪器
 ------------------
+.. Redmine issue tracker
+
 Although `GitHub`_ is used for code, Ceph-related issues (Bugs, Features,
 Backports, Documentation, etc.) are tracked at http://tracker.ceph.com,
 which is powered by `Redmine`_.
@@ -202,17 +201,17 @@ tree. There may be some overlap between this guide and that file.
 All newcomers are encouraged to read that file carefully.
 
 
-.. Building from source
-
 从源码构建
 ----------
+.. Building from source
+
 请参考 :doc:`/install/build-ceph` 。
 
 
-.. Using ccache to speed up local builds
-
 用 ccache 加速本地构建
 ----------------------
+.. Using ccache to speed up local builds
+
 `ccache`_ can make the process of rebuilding the ceph source tree faster. 
 
 Before you use `ccache`_ to speed up your rebuilds of the ceph source tree,
@@ -290,17 +289,17 @@ UNIX timestamp) and set ``ENABLE_GIT_VERSION`` to ``OFF`` when running
 .. _`configuration`: https://ccache.samba.org/manual.html#_configuration
 
 
-.. Development-mode cluster
-
 开发模式的集群
 --------------
+.. Development-mode cluster
+
 参考 :doc:`/dev/quick_guide` 。
 
 
-.. Kubernetes/Rook development cluster
-
 Kubernetes/Rook 开发集群
 ------------------------
+.. Kubernetes/Rook development cluster
+
 参考 :ref:`kubernetes-dev`
 
 

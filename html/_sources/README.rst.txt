@@ -4,8 +4,17 @@
  Ceph 文档中文翻译说明
 =======================
 
+This is Chinese translation of Ceph distributed storage system documents
+(mainly ``doc`` and ``src/common/options/*yaml.in``, from https://github.com/ceph/ceph),
+the translation tooling suits for any language, maybe :-D, you are allowed to
+reuse them for your translation, just let me known,
+email me <gongfan193@gmail.com>
+
+----
+
 这里是 Ceph 文档中文版的源码，编译好的位于：
-https://github.com/drunkard/ceph-readable-doc
+https://github.com/drunkard/ceph-readable-doc ，可以克隆到本地，启动HTTP服务，
+直接飞速浏览。
 
 
 中文版文档风格

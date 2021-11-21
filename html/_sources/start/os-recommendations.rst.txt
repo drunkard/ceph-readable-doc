@@ -31,14 +31,13 @@ Linux 内核
   这些功能。
 
 
-.. Platforms
-
 系统平台
 ========
+.. Platforms
 
-下面的表格展示了 Ceph 对各种 Linux 发行版的依赖对应关系。一般\
-来说， Ceph 对内核和系统初始化软件包（如 sysvinit 、 upstart 、
-systemd ）的依赖很少。
+下面的表格展示了 Ceph 对各种 Linux 发行版的依赖对应关系。\
+一般来说， Ceph 对具体发行版的依赖很少，\
+只是与内核、系统初始化软件包（即 sysvinit 、 systemd ）有关。
 
 Octopus (15.2.z)
 -----------------
@@ -108,11 +107,9 @@ Luminous (12.2.z)
 | Ubuntu   | 16.04    | Xenial Xerus       | linux-4.4.0  | 3       | B, I, C    |
 +----------+----------+--------------------+--------------+---------+------------+
 
-
-.. Notes
-
 附注
 ----
+.. Notes
 
 - **1**: 默认内核的 ``btrfs`` 版本较老，不推荐用于 ``ceph-osd``
   存储节点；从 Mimic 版起我们建议用 ``bluestore`` ，之前的建议\
@@ -132,14 +129,12 @@ Luminous (12.2.z)
 
 - **6**: Building packages are built regularly, but not distributed by Ceph.
 
-
-.. Testing
-
 测试版
 ------
+.. Testing
 
-- **B**: 我们会为此平台构建发布包。对其中的某些平台，可能也会\
-  持续地编译所有分支、做基本单元测试。
+- **B**: 我们会为此平台构建发布包。对其中的某些平台，\
+  可能也会持续地编译所有分支、做基本单元测试。
 
 - **I**: 我们在这个平台上做基本的安装和功能测试。
 

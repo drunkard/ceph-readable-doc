@@ -1,9 +1,9 @@
-.. Troubleshooting Monitors
 .. _rados-troubleshooting-mon:
 
 ================
  监视器故障排除
 ================
+.. Troubleshooting Monitors
 
 .. index:: monitor, high availability
 
@@ -15,10 +15,9 @@ Regardless of how bad the situation is, the first thing you should do is to
 calm down, take a breath, and step through the below troubleshooting steps.
 
 
-.. Initial Troubleshooting
-
 开始排障
 ========
+.. Initial Troubleshooting
 
 
 **监视器在运行吗？**
@@ -65,10 +64,9 @@ calm down, take a breath, and step through the below troubleshooting steps.
   admin socket （管理套接字）。
 
 
-.. Using the monitor's admin socket
-
 使用监视器的管理套接字
 ======================
+.. Using the monitor's admin socket
 
 通过管理套接字，你可以用 Unix 套接字文件直接与指定守护进程交互。\
 这个文件位于你监视器的 ``run`` 目录下，默认配置时它位于 \
@@ -101,10 +99,9 @@ you can even do this yourself::
 和 ``quorum_status`` 命令，在排除监视器故障时它们能给你些启发。
 
 
-.. Understanding mon_status
-
 理解 mon_status
 ===============
+.. Understanding mon_status
 
 ``mon_status`` can always be obtained via the admin socket. This command will
 output a multitude of information about the monitor, including the same output
@@ -161,15 +158,13 @@ By the way, how are ranks established?
   the remaining ``IP:PORT`` combinations, ``mon.a`` has rank 0.
 
 
-.. Most Common Monitor Issues
-
 最常见的监视器问题
 ==================
-
-.. Have Quorum but at least one Monitor is down
+.. Most Common Monitor Issues
 
 存在法定人数但是挂了不止一个监视器
 ----------------------------------
+.. Have Quorum but at least one Monitor is down
 
 When this happens, depending on the version of Ceph you are running,
 you should be seeing something similar to::
@@ -265,10 +260,9 @@ What if state is ``leader`` or ``peon``?
   `收集所需日志`_) and reach out to us.
 
 
-.. Recovering a Monitor's Broken monmap
-
 修复监视器损坏的 monmap
 -----------------------
+.. Recovering a Monitor's Broken monmap
 
 This is how a ``monmap`` usually looks, depending on the number of
 monitors::
@@ -335,10 +329,9 @@ Inject a monmap into the monitor
   overwrite the latest, existing monmap kept by the monitor.
 
 
-.. Clock Skews
-
 时钟偏移
 --------
+.. Clock Skews
 
 Monitor operation can be severely affected by clock skew among the quorum's
 mons, as the PAXOS consensus algorithm requires tight time alignment.
@@ -404,10 +397,10 @@ What should I do if there's a clock skew?
   monitor clock skews.
 
 
-.. Client Can't Connect or Mount
-
 客户端不能连接或挂载
 --------------------
+.. Client Can't Connect or Mount
+
 检查防火墙配置。有些系统安装工具把 ``REJECT`` 规则加入了
 ``iptables`` ，它会拒绝除 ``ssh`` 以外的所有入栈连接。如果你的\
 监视器主机有这样的 ``REJECT`` 规则，别的客户端进来的连接将遇到\
@@ -423,15 +416,14 @@ What should I do if there's a clock skew?
 	iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:7300 -j ACCEPT
 
 
-.. Monitor Store Failures
-
 监视器存储故障
 ==============
-
-.. Symptoms of store corruption
+.. Monitor Store Failures
 
 存储损坏的症状
 --------------
+.. Symptoms of store corruption
+
 Ceph 监视器把\ :term:`集群运行图`\ 存储在键值数据库里，像
 LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日志里\
 可能出现如下错误消息： ::
@@ -443,20 +435,20 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
   Corruption: 1 missing files; e.g.: /var/lib/ceph/mon/mon.foo/store.db/1234567.ldb
 
 
-.. Recovery using healthy monitor(s)
-
 用健康的监视器恢复
 ------------------
+.. Recovery using healthy monitor(s)
+
 只要有幸存的，我们就可以用新的\ :ref:`替换掉 <adding-and-removing-monitors>`\
 损坏的；而且新加入的监视器启动后会与健康节点同步，完全同步后就\
 可以服务于客户端了。
 
 
-.. Recovery using OSDs
 .. _mon-store-recovery-using-osds:
 
 用 OSD 恢复
 -----------
+.. Recovery using OSDs
 
 但是，所有监视器同时失效怎么办呢？我们建议用户在一个 Ceph 集群\
 内至少部署三个监视器（最好是五个），所以同时失效的可能性\
@@ -494,13 +486,16 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
   # deployed
   ceph-authtool /path/to/admin.keyring --add-key 'AQDN8kBe9PLWARAAZwxXMr+n85SBYbSlLcZnMA==' -n mgr.x \
     --cap mon 'allow profile mgr' --cap osd 'allow *' --cap mds 'allow *'
-  # if your monitors' ids are not single characters like 'a', 'b', 'c', please
+  # If your monitors' ids are not sorted by ip address, please specify them in order.
+  # For example. if mon 'a' is 10.0.0.3, mon 'b' is 10.0.0.2, and mon 'c' is  10.0.0.4,
+  # please passing "--mon-ids b a c".
+  # In addition, if your monitors' ids are not single characters like 'a', 'b', 'c', please
   # specify them in the command line by passing them as arguments of the "--mon-ids"
   # option. if you are not sure, please check your ceph.conf to see if there is any
   # sections named like '[mon.foo]'. don't pass the "--mon-ids" option, if you are
   # using DNS SRV for looking up monitors.
   ceph-monstore-tool $ms rebuild -- --keyring /path/to/admin.keyring --mon-ids alpha beta gamma
-  
+
   # 备份一下损坏的 store.db 以防万一！所有监视器上都要备份一下。
   mv /var/lib/ceph/mon/mon.foo/store.db /var/lib/ceph/mon/mon.foo/store.db.corrupted
 
@@ -516,10 +511,9 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
 #. 用恢复好的副本替换 ``mon.foo`` 上损坏的存储。
 
 
-.. Known limitations
-
 已知的局限性
 ~~~~~~~~~~~~
+.. Known limitations
 
 通过上面的步骤无法恢复以下信息：
 
@@ -533,15 +527,13 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
 - **MDS 映射图**\ ： MDS 的各种映射图会丢失。
 
 
-.. Everything Failed! Now What?
-
 所有尝试都失败了，怎么办？
 ==========================
-
-.. Reaching out for help
+.. Everything Failed! Now What?
 
 到外面寻求帮助
 --------------
+.. Reaching out for help
 
 You can find us on IRC at #ceph and #ceph-devel at OFTC (server irc.oftc.net)
 and on ``ceph-devel@vger.kernel.org`` and ``ceph-users@lists.ceph.com``. Make
@@ -550,10 +542,9 @@ the interaction and lower the latency in response, the better chances everyone's
 time is optimized.
 
 
-.. Preparing your logs
-
 收集所需日志
 ------------
+.. Preparing your logs
 
 Monitor logs are, by default, kept in ``/var/log/ceph/ceph-mon.FOO.log*``. We
 may want them. However, your logs may not have the necessary information. If
@@ -586,10 +577,9 @@ from -- but at least we started off with some useful information, instead
 of a massively empty log without much to go on with.
 
 
-.. Do I need to restart a monitor to adjust debug levels?
-
 我需要重启监视器来更改调试级别吗？
 ----------------------------------
+.. Do I need to restart a monitor to adjust debug levels?
 
 No. You may do it in one of two ways:
 
@@ -622,10 +612,9 @@ or::
       ceph daemon mon.FOO config get 'OPTION_NAME'
 
 
-.. Reproduced the problem with appropriate debug levels. Now what?
-
 在某个调试级别下重现了问题，然后呢？
 ------------------------------------
+.. Reproduced the problem with appropriate debug levels. Now what?
 
 Ideally you would send us only the relevant portions of your logs.
 We realise that figuring out the corresponding portion may not be the

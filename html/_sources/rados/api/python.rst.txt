@@ -80,10 +80,9 @@ you may add something like the following line to you Ceph configuration file::
 通过 Python 修改配置的额外细节见\  `配置`_\ 。
 
 
-.. Connect to the Cluster
-
 连接到集群
 ----------
+.. Connect to the Cluster
 
 Once you have a cluster handle configured, you may connect to the cluster. 
 With a connection to the cluster, you may execute methods that return
@@ -137,39 +136,37 @@ pool.
    :linenos:
    :emphasize-lines: 6, 13, 18, 25
 
-	print "\n\nPool Operations"
-	print "==============="
+	print("\n\nPool Operations")
+	print("===============")
 
-	print "\nAvailable Pools"
-	print "----------------"
+	print("\nAvailable Pools")
+	print("----------------")
 	pools = cluster.list_pools()
 
 	for pool in pools:
-		print pool
+		print(pool)
 
-	print "\nCreate 'test' Pool"
-	print "------------------"
+	print("\nCreate 'test' Pool")
+	print("------------------")
 	cluster.create_pool('test')
 
-	print "\nPool named 'test' exists: " + str(cluster.pool_exists('test'))
-	print "\nVerify 'test' Pool Exists"
-	print "-------------------------"
+	print("\nPool named 'test' exists: {}".format(str(cluster.pool_exists('test'))))
+	print("\nVerify 'test' Pool Exists")
+	print("-------------------------")
 	pools = cluster.list_pools()
 
 	for pool in pools:
-		print pool
+		print(pool)
 
-	print "\nDelete 'test' Pool"
-	print "------------------"
+	print("\nDelete 'test' Pool")
+	print("------------------")
 	cluster.delete_pool('test')
-	print "\nPool named 'test' exists: " + str(cluster.pool_exists('test'))
+	print("\nPool named 'test' exists: {}".format(str(cluster.pool_exists('test'))))
 
-
-
-.. Input/Output Context
 
 输入/输出上下文
 ---------------
+.. Input/Output Context
 
 Reading from and writing to the Ceph Storage Cluster requires an input/output
 context (ioctx). You can create an ioctx with the ``open_ioctx()`` or
@@ -197,7 +194,7 @@ that you close the connection. For example:
 .. code-block:: python
    :linenos:
 
-	print "\nClosing the connection."
+	print("\nClosing the connection.")
 	ioctx.close()
 
 
@@ -216,20 +213,19 @@ from the cluster. You may also remove objects from the cluster. For example:
 	:linenos:
 	:emphasize-lines: 2, 5, 8
 
-	print "\nWriting object 'hw' with contents 'Hello World!' to pool 'data'."
+	print("\nWriting object 'hw' with contents 'Hello World!' to pool 'data'.")
 	ioctx.write_full("hw", "Hello World!")
 
-	print "\n\nContents of object 'hw'\n------------------------\n"
-	print ioctx.read("hw")
+	print("\n\nContents of object 'hw'\n------------------------\n")
+	print(ioctx.read("hw"))
 
-	print "\nRemoving object 'hw'"
+	print("\nRemoving object 'hw'")
 	ioctx.remove_object("hw")
 
 
-.. Writing and Reading XATTRS
-
 XATTRS 的读取和写入
 -------------------
+.. Writing and Reading XATTRS
 
 Once you create an object, you can write extended attributes (XATTRs) to
 the object and read XATTRs from the object. For example: 
@@ -238,17 +234,16 @@ the object and read XATTRs from the object. For example:
 	:linenos:
 	:emphasize-lines: 2, 5
 
-	print "\n\nWriting XATTR 'lang' with value 'en_US' to object 'hw'"
+	print("\n\nWriting XATTR 'lang' with value 'en_US' to object 'hw'")
 	ioctx.set_xattr("hw", "lang", "en_US")
 
-	print "\n\nGetting XATTR 'lang' from object 'hw'\n"
-	print ioctx.get_xattr("hw", "lang")
+	print("\n\nGetting XATTR 'lang' from object 'hw'\n")
+	print(ioctx.get_xattr("hw", "lang"))
 
-
-.. Listing Objects
 
 罗列对象
 --------
+.. Listing Objects
 
 If you want to examine the list of objects in a pool, you may 
 retrieve the list of objects and iterate over them with the object iterator.
@@ -263,29 +258,30 @@ For example:
 	while True :
 
 		try :
-			rados_object = object_iterator.next()
-			print "Object contents = " + rados_object.read()
+			rados_object = object_iterator.__next__()
+			print("Object contents = {}".format(rados_object.read()))
 
 		except StopIteration :
 			break
+
+	# Or alternatively
+	[print("Object contents = {}".format(obj.read())) for obj in ioctx.list_objects()]
 
 The ``Object`` class provides a file-like interface to an object, allowing
 you to read and write content and extended attributes. Object operations using
 the I/O context provide additional functionality and asynchronous capabilities.
 
 
-.. Cluster Handle API
-
 集群句柄 API
 ============
+.. Cluster Handle API
 
 The ``Rados`` class provides an interface into the Ceph Storage Daemon.
 
 
-.. Configuration
-
 配置
 ----
+.. Configuration
 
 The ``Rados`` class provides methods for getting and setting configuration
 values, reading the Ceph configuration file, and parsing arguments. You 
@@ -300,16 +296,14 @@ methods. See `Storage Cluster Configuration`_ for details on settings.
 .. automethod:: Rados.version()   
 
 
-.. Connection Management
-
 连接管理
 --------
+.. Connection Management
 
 Once you configure your cluster handle, you may connect to the cluster, check
 the cluster ``fsid``, retrieve cluster statistics, and disconnect (shutdown)
 from the cluster. You may also assert that the cluster handle is in a particular
 state (e.g., "configuring", "connecting", etc.).
-
 
 .. automethod:: Rados.connect(timeout=0)
 .. automethod:: Rados.shutdown()
@@ -329,10 +323,9 @@ state (e.g., "configuring", "connecting", etc.).
       :raises: :class:`RadosStateError`
 
 
-.. Pool Operations
-
 存储池操作
 ----------
+.. Pool Operations
 
 To use pool operation methods, you must connect to the Ceph Storage Cluster
 first.  You may list the available pools, create a pool, check to see if a pool
@@ -344,10 +337,9 @@ exists,  and delete a pool.
 .. automethod:: Rados.delete_pool(pool_name)
 
 
-.. CLI Commands
-
 CLI 命令
 --------
+.. CLI Commands
 
 The Ceph CLI command is internally using the following librados Python binding methods.
 
@@ -359,10 +351,9 @@ In order to send a command, choose the correct method and choose the correct tar
 .. automethod:: Rados.pg_command
 
 
-.. Input/Output Context API
-
 输入/输出上下文 API
 ===================
+.. Input/Output Context API
 
 To write data to and read data from the Ceph Object Store, you must create
 an Input/Output context (ioctx). The `Rados` class provides `open_ioctx()`
@@ -414,10 +405,9 @@ has a name (or key) and data.
 .. automethod:: Ioctx.remove_object(key)
 
 
-.. Object Extended Attributes
-
 对象的扩展属性
 --------------
+.. Object Extended Attributes
 
 You may set extended attributes (XATTRs) on an object. You can retrieve a list
 of objects or XATTRs and iterate over them.

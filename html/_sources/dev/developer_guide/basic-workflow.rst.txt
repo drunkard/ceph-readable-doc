@@ -1,7 +1,6 @@
-.. Basic Workflow
-
 基本工作流
 ==========
+.. Basic Workflow
 
 The following chart illustrates basic development workflow:
 
@@ -36,10 +35,9 @@ Ceph Development <https://www.youtube.com/watch?v=t5UIehZ1oLs>`_ video for a
 practical summary of this workflow.
 
 
-.. Update the tracker
-
 更新追踪器
 ----------
+.. Update the tracker
 
 Before you start, you should know the :ref:`issue-tracker` (Redmine) number
 of the bug you intend to fix. If there is no tracker issue, now is the time to

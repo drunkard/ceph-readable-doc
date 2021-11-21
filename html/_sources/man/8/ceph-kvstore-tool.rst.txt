@@ -15,9 +15,8 @@
 描述
 ====
 
-:program:`ceph-kvstore-tool` 是个 kvstore （键值存储）\
-操作工具，可以用来离线操作 leveldb/rocksdb 的数据（比如 OSD 的
-omap ）。
+:program:`ceph-kvstore-tool` 是个 kvstore （键值存储）操作工具，\
+可以用来离线操作 leveldb/rocksdb 的数据（比如 OSD 的 omap ）。
 
 
 命令
@@ -85,6 +84,9 @@ omap ）。
     Prints statistics from underlying key-value database. This is only for informative purposes.
     Format and information content may vary between releases. For RocksDB information includes
     compactions stats, performance counters, memory usage and internal RocksDB stats. 
+
+:command:`histogram`
+    Presents key-value sizes distribution statistics from the underlying KV database.
 
 
 使用范围

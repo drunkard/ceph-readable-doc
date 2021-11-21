@@ -1,8 +1,7 @@
-.. Ceph Object Gateway Config Reference
-
 =======================
  Ceph 对象网关配置参考
 =======================
+.. Ceph Object Gateway Config Reference
 
 下列的选项可加入 Ceph 配置文件（一般是 ``ceph.conf`` ）的
 ``[client.radosgw.{instance-name}]`` 段下，很多选项都有\
@@ -39,7 +38,7 @@ instances or all radosgw-admin options can be put into the ``[global]`` or the
        .. note:: 在\ `多站 <../multisite>`_\ 配置中，任何要\
                  参与的 radosgw 例程都必须启用 ``s3`` API 。
 :类型: String
-:默认值: 所有 API ： ``s3, swift, swift_auth, admin`` 。
+:默认值: 所有 API ： ``s3, s3website, swift, swift_auth, admin, sts, iam, notifications`` 。
 
 
 ``rgw cache enabled``

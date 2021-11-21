@@ -1,16 +1,13 @@
-.. Adding/Removing OSDs
-
 ===============
  增加/删除 OSD
 ===============
+.. Adding/Removing OSDs
 
 如果您的集群已经在运行，你可以在运行时添加或删除 OSD 。
 
-
-.. Adding OSDs
-
 增加 OSD
 ========
+.. Adding OSDs
 
 你迟早要扩容集群， Ceph 允许在运行时增加 OSD 。在 Ceph 里，一个
 OSD 一般是一个 ``ceph-osd`` 守护进程，它运行在硬盘之上，如果你\
@@ -23,16 +20,19 @@ OSD 一般是一个 ``ceph-osd`` 守护进程，它运行在硬盘之上，如�
    ``near full`` 比率后， OSD 失败可能导致集群空间占满。
 
 
-.. Deploy your Hardware
-
 部署硬件
 --------
+.. Deploy your Hardware
 
-如果你通过增加主机来增加 OSD ，关于 OSD 服务器硬件的配置请参见\ `硬件推荐`_\ 。要\
-把一台 OSD 主机加入到集群，首先要安装最新版的 Linux ，而且存储硬盘要做好必要的准\
-备，详情参见\ `文件系统推荐`_\ 。
+如果你通过增加主机来增加 OSD ，\
+关于 OSD 服务器硬件的配置请参见\ `硬件推荐`_\ 。\
+要把一台 OSD 主机加入到集群，首先要安装最新版的 Linux ，\
+而且存储硬盘要做好必要的准备，\
+详情参见\ `文件系统推荐`_\ 。
 
-把 OSD 主机添加到集群机架上，连接好网络、确保网络通畅。详情见\ `网络配置参考`_\ 。
+把 OSD 主机安装到集群机架上，\
+连接好网络、确保网络通畅。\
+详情见\ `网络配置参考`_\ 。
 
 .. _硬件推荐: ../../../start/hardware-recommendations
 .. _文件系统推荐: ../../configuration/filesystem-recommendations
@@ -42,16 +42,16 @@ OSD 一般是一个 ``ceph-osd`` 守护进程，它运行在硬盘之上，如�
 安装必要软件
 ------------
 
-在手动部署的集群里，你必须手动安装 Ceph 软件包，详情见\ `安装 Ceph （手动）`_\ 。\
+在手动部署的集群里，你必须手动安装 Ceph 软件包，\
+详情见\ `安装 Ceph （手动）`_\ 。\
 你应该配置一个无密码登录 SSH 的用户，且他有 root 权限。
 
 .. _安装 Ceph （手动）: ../../../install
 
 
-.. Adding an OSD (Manual)
-
 增加 OSD （手动）
 -----------------
+.. Adding an OSD (Manual)
 
 此过程要设置一个 ``ceph-osd`` 守护进程，让它使用一个硬盘，且\
 让集群把数据发布到 OSD 。如果一台主机有多个硬盘，可以重复此\
@@ -157,30 +157,23 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
      ceph-volume lvm create --osd-id {id} --data /dev/sdX
 
 
-.. Starting the OSD
-
 启动 OSD
 --------
+.. Starting the OSD
 
-把 OSD 加入 Ceph 后， OSD 就在配置里了。然而它还没运行，它现在\
-的状态为 ``down`` 且 ``out`` 。你必须先启动 OSD 它才能收数据。\
-可以用管理主机上的 ``service ceph`` 、或从 OSD 所在主机启动。
-
-在 Ubuntu Trusty 上用 Upstart。 ::
-
-	sudo start ceph-osd id={osd-num}
-
-在使用 systemd 的发行版上： ::
+把 OSD 加入 Ceph 后， OSD 就在配置里了。\
+然而它还没运行，它现在的状态为 ``down`` 且 ``in`` 。\
+你必须先启动 OSD 它才能收数据。\
+可以用管理主机上的 ``service ceph`` 、或从 OSD 所在主机启动::
 
 	sudo systemctl start ceph-osd@{osd-num}
 
 一旦你启动了 OSD ，其状态就变成了 ``up`` 且 ``in`` 。
 
 
-.. Observe the Data Migration
-
 观察数据迁移
 ------------
+.. Observe the Data Migration
 
 把新 OSD 加入 CRUSH 图后， Ceph 会重新均衡服务器，一些归置组会\
 迁移到新 OSD 里，你可以用 `ceph`_ 命令观察此过程。 ::
@@ -196,10 +189,9 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 .. _ceph: ../monitoring
 
 
-.. Removing OSDs (Manual)
-
 删除 OSD （手动）
 =================
+.. Removing OSDs (Manual)
 
 要想缩减集群尺寸或替换硬件，可在运行时删除 OSD 。在 Ceph 里，\
 一个 OSD 通常是一台主机上的一个 ``ceph-osd`` 守护进程、它运行\
@@ -211,10 +203,9 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
    OSD 可能导致集群达到或超过 ``full ratio`` 值。
 
 
-.. Take the OSD out of the Cluster
-
 把 OSD 踢出集群
 ---------------
+.. Take the OSD out of the Cluster
 
 删除 OSD 前，它通常是 ``up`` 且 ``in`` 的，要先把它踢出集群，\
 以使 Ceph 启动重新均衡、把数据拷贝到其他 OSD 。 ::
@@ -222,10 +213,9 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 	ceph osd out {osd-num}
 
 
-.. Observe the Data Migration
-
 观察数据迁移
 ------------
+.. Observe the Data Migration
 
 一旦把 OSD 踢出（ ``out`` ）集群， Ceph 就会开始重新均衡集群、\
 把归置组迁出将删除的 OSD 。你可以用 `ceph`_ 工具观察此过程。 ::
@@ -255,10 +245,9 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
    的权重）。某些情况下， reweight 命令更适合“小”集群。
 
 
-.. Stopping the OSD
-
 停止 OSD
 --------
+.. Stopping the OSD
 
 把 OSD 踢出集群后，它可能仍在运行，就是说其状态为 ``up`` 且
 ``out`` 。删除前要先停止 OSD 进程。 ::
@@ -269,10 +258,9 @@ FileStore 切换到 BlueStore ，这时候就需要更换 OSD 。不像\
 停止 OSD 后，状态变为 ``down`` 。
 
 
-.. Removing the OSD
-
 删除 OSD
 --------
+.. Removing the OSD
 
 此步骤依次把一个 OSD 移出集群运行图、删除认证密钥、删除
 OSD 运行图条目、删除 ``ceph.conf`` 条目。如果主机有多个硬盘，\

@@ -1,8 +1,7 @@
-..  Manual Deployment on FreeBSD
-
 =======================
  在 FreeBSD 上手动部署
 =======================
+..  Manual Deployment on FreeBSD
 
 This a largely a copy of the regular Manual Deployment with FreeBSD specifics.
 The difference lies in two parts: The underlying diskformat, and the way to use
@@ -44,10 +43,9 @@ We will set up a cluster with ``node1`` as  the monitor node, and ``node2`` and
 
 
 
-.. Disklayout on FreeBSD
-
 FreeBSD 上的磁盘布局
 ====================
+.. Disklayout on FreeBSD
 
 当前的实现支持 ZFS 存储池。
 
@@ -75,10 +73,9 @@ FreeBSD 上的磁盘布局
 * 注意： *UFS2 不支持大量 xattribs*
 
 
-.. Configuration
-
 配置文件
 --------
+.. Configuration
 
 As per FreeBSD default parts of extra software go into ``/usr/local/``. Which
 means that for ``/etc/ceph.conf`` the default location is
@@ -93,10 +90,9 @@ linking it to ``/etc/ceph/ceph.conf`` will help with any scripts that are found
 in extra tools, scripts, and/or discussionlists.
 
 
-.. Monitor Bootstrapping
-
 监视器自举启动
 ==============
+.. Monitor Bootstrapping
 
 Bootstrapping a monitor (a Ceph Storage Cluster, in theory) requires
 a number of things:
@@ -308,23 +304,6 @@ The procedure is as follows:
 
 #. Start the monitor(s).
 
-   For Ubuntu, use Upstart::
-
-	sudo start ceph-mon id=node1 [cluster={cluster-name}]
-
-   In this case, to allow the start of the daemon at each reboot you
-   must create two empty files like this::
-
-	sudo touch /var/lib/ceph/mon/{cluster-name}-{hostname}/upstart
-
-   For example::
-
-	sudo touch /var/lib/ceph/mon/ceph-node1/upstart
-
-   For Debian/CentOS/RHEL, use sysvinit::
-
-	sudo /etc/init.d/ceph start mon.node1
-
    For FreeBSD we use the rc.d init scripts (called bsdrc in Ceph)::
 
 	sudo service ceph start start mon.node1
@@ -363,11 +342,11 @@ The procedure is as follows:
    should disappear. See the next section for details.
 
 
-.. Adding OSDs
 .. _freebsd_adding_osds:
 
 添加 OSD
 ========
+.. Adding OSDs
 
 Once you have your initial monitor(s) running, you should add OSDs. Your cluster
 cannot reach an ``active + clean`` state until you have enough OSDs to handle the
@@ -377,10 +356,9 @@ CRUSH map; however, the CRUSH map doesn't have any Ceph OSD Daemons mapped to
 a Ceph Node.
 
 
-.. Long Form
-
 详细步骤
 --------
+.. Long Form
 
 Without the benefit of any helper utilities, create an OSD and add it to the
 cluster and CRUSH map with the following procedure. To create the first two
@@ -462,36 +440,6 @@ OSDs with the long form procedure, execute the following on ``node2`` and
    it is not yet running. The OSD is ``down`` and ``in``. You must start
    your new OSD before it can begin receiving data.
 
-   For Ubuntu, use Upstart::
-
-	sudo start ceph-osd id={osd-num} [cluster={cluster-name}]
-
-   For example::
-
-	sudo start ceph-osd id=0
-	sudo start ceph-osd id=1
-
-   For Debian/CentOS/RHEL, use sysvinit::
-
-	sudo /etc/init.d/ceph start osd.{osd-num} [--cluster {cluster-name}]
-
-   For example::
-
-	sudo /etc/init.d/ceph start osd.0
-	sudo /etc/init.d/ceph start osd.1
-
-   In this case, to allow the start of the daemon at each reboot you
-   must create an empty file like this::
-
-	sudo touch /var/lib/ceph/osd/{cluster-name}-{osd-num}/sysvinit
-
-   For example::
-
-	sudo touch /var/lib/ceph/osd/ceph-0/sysvinit
-	sudo touch /var/lib/ceph/osd/ceph-1/sysvinit
-
-   Once you start your OSD, it is ``up`` and ``in``.
-
    For FreeBSD using rc.d init.
 
    After adding the OSD to ``ceph.conf``::
@@ -516,10 +464,9 @@ OSDs with the long form procedure, execute the following on ``node2`` and
    Once you start your OSD, it is ``up`` and ``in``.
 
 
-.. Adding MDS
-
 添加 MDS
 ========
+.. Adding MDS
 
 In the below instructions, ``{id}`` is an arbitrary name, such as the hostname of the machine.
 
@@ -557,10 +504,9 @@ In the below instructions, ``{id}`` is an arbitrary name, such as the hostname o
 #. Now you are ready to `create a Ceph filesystem`_.
 
 
-.. Summary
-
 总结
 ====
+.. Summary
 
 Once you have your monitor and two OSDs up and running, you can watch the
 placement groups peer by executing the following::
