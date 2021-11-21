@@ -1,8 +1,7 @@
-.. OSD Config Reference
-
 ==============
  OSD 配置参考
 ==============
+.. OSD Config Reference
 
 .. index:: OSD; configuration
 
@@ -33,10 +32,10 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 
 
 .. index:: OSD; config settings
-.. General Settings
 
 常规配置
 ========
+.. General Settings
 
 下列选项可配置一 OSD 的唯一标识符、以及数据和日志的路径。 Ceph
 部署脚本通常会自动生成 UUID 。
@@ -94,10 +93,10 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 
 
 .. index:: OSD; file system
-.. File System Settings
 
 文件系统选项
 ============
+.. File System Settings
 
 Ceph 可自动创建并挂载所需的文件系统。
 
@@ -121,10 +120,10 @@ Ceph 可自动创建并挂载所需的文件系统。
 
 
 .. index:: OSD; journal settings
-.. Journal Settings
 
 日志选项
 ========
+.. Journal Settings
 
 默认情况下， Ceph 觉得你会把 OSD 日志存储于下列路径： ::
 
@@ -163,28 +162,26 @@ larger, in which case it will need to be set in the ``ceph.conf`` file::
 详情见\ `日志配置参考`_\ 。
 
 
-.. Monitor OSD Interaction
-
 监视器和 OSD 的交互
 ===================
+.. Monitor OSD Interaction
 
 OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可满足多数情况，但是如果你的\
 网络延时大，就得用较长间隔。关于心跳的讨论参见\ `监视器与 OSD 交互的配置`_\ 。
 
 
-.. Data Placement
-
 数据归置
 ========
+.. Data Placement
 
 详情见\ `存储池和归置组配置参考`_\ 。
 
 
 .. index:: OSD; scrubbing
-.. Scrubbing
 
 洗刷
 ====
+.. Scrubbing
 
 除了为对象复制多个副本外， Ceph 还要洗刷归置组以确保数据完整\
 性。这种洗刷类似对象存储层的 ``fsck`` ，对每个归置组， Ceph \
@@ -354,10 +351,10 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 
 
 .. index:: OSD; operations settings
-.. Operations
 
 操作数
 ======
+.. Operations
 
 
 ``osd op queue``
@@ -518,19 +515,18 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 :默认值: ``5``
 
 
-.. QoS Based on mClock
 .. _dmclock-qos:
 
 基于 mClock 的 QoS
 ------------------
+.. QoS Based on mClock
 
-Ceph 对 mClock 的应用仍处于实验阶段，应当以探索心态试用。
-
-
-.. Core Concepts
+现在， Ceph 对 mClock 的应用更精致了，\
+可以按照 `mClock 配置参考`_ 里的步骤使用。
 
 核心概念
 ````````
+.. Core Concepts
 
 Ceph's QoS support is implemented using a queueing scheduler
 based on `the dmClock algorithm`_. This algorithm allocates the I/O
@@ -554,7 +550,7 @@ words, the share of each type of service is controlled by three tags:
 #. weight: the proportional share of capacity if extra capacity or system
    oversubscribed.
 
-In Ceph operations are graded with "cost". And the resources allocated
+In Ceph, operations are graded with "cost". And the resources allocated
 for serving various services are consumed by these "costs". So, for
 example, the more reservation a services has, the more resource it is
 guaranteed to possess, as long as it requires. Assuming there are 2
@@ -580,11 +576,9 @@ CURRENT IMPLEMENTATION NOTE: the current implementation enforces the limit
 values. Therefore, if a service crosses the enforced limit, the op remains
 in the operation queue until the limit is restored.
 
-
-.. Subtleties of mClock
-
 mClock 的精妙之处
 `````````````````
+.. Subtleties of mClock
 
 The reservation and limit values have a unit of requests per
 second. The weight, however, does not technically have a unit and the
@@ -603,13 +597,11 @@ means if *W* is sufficiently large and therefore *1/W* is sufficiently
 small, the calculated tag may never be assigned as it will get a value
 of the current time. The ultimate lesson is that values for weight
 should not be too large. They should be under the number of requests
-one expects to ve serviced each second.
-
-
-.. Caveats
+one expects to be serviced each second.
 
 注意事项
 ````````
+.. Caveats
 
 There are some factors that can reduce the impact of the mClock op
 queues within Ceph. First, requests to an OSD are sharded by their
@@ -666,11 +658,11 @@ mClock and dmClock experiments on the ``ceph-devel`` mailing list.
 .. _the dmClock algorithm: https://www.usenix.org/legacy/event/osdi10/tech/full_papers/Gulati.pdf
 
 
-.. Backfilling
 .. index:: OSD; backfilling
 
 回填
 ====
+.. Backfilling
 
 当集群新增或移除 OSD 时，按照 CRUSH 算法应该重新均衡集群，它会\
 把一些归置组移出或移入多个 OSD 以回到均衡状态。归置组和对象的\
@@ -709,10 +701,10 @@ backfilling 来执行此迁移，它可以使得 Ceph 的回填操作优先级�
 
 
 .. index:: OSD; osdmap
-.. OSD Map
 
 OSD 运行图
 ==========
+.. OSD Map
 
 OSD 运行图反映集群中运行的 OSD 守护进程，斗转星移，图元增加。
 Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。
@@ -741,10 +733,10 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。
 
 
 .. index:: OSD; recovery
-.. Recovery
 
 恢复
 ====
+.. Recovery
 
 当集群启动、或某 OSD 守护进程崩溃后重启时，此 OSD 开始与其它 \
 OSD 们建立连接，这样才能正常工作。详情见\
@@ -865,11 +857,9 @@ OSD 们建立连接，这样才能正常工作。详情见\
 :默认值: ``5``
 
 
-.. Tiering
-
 分级缓存选项
 ============
-
+.. Tiering
 
 ``osd agent max ops``
 
@@ -891,11 +881,9 @@ OSD 们建立连接，这样才能正常工作。详情见\
 `cache target dirty high ratio`_ 选项。
 
 
-.. Miscellaneous
-
 杂项
 ====
-
+.. Miscellaneous
 
 ``osd snap trim thread timeout``
 
@@ -995,3 +983,4 @@ OSD 们建立连接，这样才能正常工作。详情见\
 .. _存储池和归置组配置参考: ../pool-pg-config-ref
 .. _日志配置参考: ../journal-ref
 .. _cache target dirty high ratio: ../../operations/pools#cache-target-dirty-high-ratio
+.. _mClock 配置参考: ../mclock-config-ref

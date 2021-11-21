@@ -2,21 +2,21 @@
  Cephx 配置参考
 ================
 
-``cephx`` 协议已默认开启。加密认证要耗费一定计算资源，但通常\
-很低。如果您的客户端和服务器网络环境相当安全，而且认证的\
-负面效应更大，你可以关闭它，\ **通常不推荐您这么做**\ 。
+``cephx`` 协议已默认开启。\
+加密认证要耗费一定计算资源，但通常很低。\
+如果您的客户端和服务器网络环境相当安全，\
+而且认证的负面效应更大，你可以关闭它，\ **通常不推荐您这么做**\ 。
 
-.. note:: 如果禁用了认证，就会有篡改客户端/服务器消息这样的\
-   中间人攻击风险，这会导致灾难性后果。
+.. note:: 如果禁用了认证，就会有篡改客户端/服务器消息\
+   这样的中间人攻击风险，这会导致灾难性后果。
 
-关于创建用户请参考\ `用户管理`_\ ；关于 Cephx 的体系结构请参考\
-`体系结构——高可用性认证`_\ 。
+关于创建用户请参考\ `用户管理`_\ ；\
+关于 Cephx 的体系结构请参考\ `体系结构——高可用性认证`_\ 。
 
-
-.. Deployment Scenarios
 
 部署场景
 ========
+.. Deployment Scenarios
 
 There are two main scenarios for deploying a Ceph cluster, which impact
 how you initially configure Cephx. Most first time Ceph users use
@@ -26,10 +26,9 @@ to use the manual procedures or configure your deployment tool to
 bootstrap your monitor(s).
 
 
-.. Manual Deployment
-
 手动部署
 --------
+.. Manual Deployment
 
 When you deploy a cluster manually, you have to bootstrap the monitor manually
 and create the ``client.admin`` user and keyring. To bootstrap monitors, follow
@@ -38,20 +37,18 @@ the logical steps you must perform when using third party deployment tools like
 Chef, Puppet,  Juju, etc.
 
 
-.. Enabling/Disabling Cephx
-
 启用和禁用 Cephx
 ================
+.. Enabling/Disabling Cephx
 
 Enabling Cephx requires that you have deployed keys for your monitors,
 OSDs and metadata servers. If you are simply toggling Cephx on / off, 
 you do not have to repeat the bootstrapping procedures.
 
 
-.. Enabling Cephx
-
 启用 Cephx
 ----------
+.. Enabling Cephx
 
 启用 ``cephx`` 后， Ceph 将在默认搜索路径（包括
 ``/etc/ceph/ceph.$name.keyring`` ）里查找密钥环。你可以在
@@ -136,16 +133,13 @@ you do not have to repeat the bootstrapping procedures.
 #. 启动或重启 Ceph 集群，具体参考\ `操纵集群`_\ 。
 
 
-.. Configuration Settings
-
 配置选项
 ========
-
-
-.. Enablement
+.. Configuration Settings
 
 启用事项
 --------
+.. Enablement
 
 ``auth cluster required``
 
@@ -176,10 +170,10 @@ you do not have to repeat the bootstrapping procedures.
 
 
 .. index:: keys; keyring
-.. Keys
 
 密钥
 ----
+.. Keys
 
 如果你的集群启用了认证， ``ceph`` 管理命令和客户端得有密钥\
 才能访问集群。
@@ -229,61 +223,11 @@ you do not have to repeat the bootstrapping procedures.
 :默认值: None
 
 
-.. Daemon Keyrings
-
-守护进程密钥环
---------------
-
-管理用户们或各种部署工具（如 ``cephadm`` ）生成\
-守护进程密钥环与生成用户密钥环的方法一样。默认情况下，守护进程\
-把密钥环保存在各自的数据目录下，默认密钥环位置、和守护进程发挥\
-作用必需的能力展示如下：
-
-``ceph-mon``
-
-:位置: ``$mon_data/keyring``
-:能力: ``mon 'allow *'``
-
-``ceph-osd``
-
-:位置: ``$osd_data/keyring``
-:能力: ``mgr 'allow profile osd' mon 'allow profile osd' osd 'allow *'``
-
-``ceph-mds``
-
-:位置: ``$mds_data/keyring``
-:能力: ``mds 'allow' mgr 'allow profile mds' mon 'allow profile mds' osd 'allow rwx'``
-
-``ceph-mgr``
-
-:位置: ``$mgr_data/keyring``
-:能力: ``mon 'allow profile mgr' mds 'allow *' osd 'allow *'``
-
-``radosgw``
-
-:位置: ``$rgw_data/keyring``
-:能力: ``mon 'allow rwx' osd 'allow rwx'``
-
-
-.. note:: 监视器密钥环（即 ``mon.`` ）包含一个密钥，但没有\
-   能力，且不是集群 ``auth`` 数据库的一部分。
-
-守护进程数据目录位置默认格式如下： ::
-
-	/var/lib/ceph/$type/$cluster-$id
-
-例如， ``osd.12`` 的目录会是： ::
-
-	/var/lib/ceph/osd/ceph-12
-
-你可以覆盖这些位置，但不推荐。
-
-
 .. index:: signatures
-.. Signatures
 
 签名
 ----
+.. Signatures
 
 Ceph 施行的签名检查可以为消息提供一些有限的保护，以防消息被\
 在线篡改（比如被“中间人”攻击篡改）。
@@ -333,10 +277,9 @@ Ceph 施行的签名检查可以为消息提供一些有限的保护，以防消
 :默认值: ``true``
 
 
-.. Time to Live
-
 生存期
 ------
+.. Time to Live
 
 ``auth service ticket ttl``
 

@@ -1,15 +1,14 @@
-.. Control Commands
 .. index:: control, commands
 
 ==========
  控制命令
 ==========
+.. Control Commands
 
-
-.. Monitor Commands
 
 监视器命令
 ==========
+.. Monitor Commands
 
 监视器命令用 ``ceph`` 工具发出： ::
 
@@ -20,10 +19,9 @@
 	ceph {subsystem} {command}
 
 
-.. System Commands
-
 系统命令
 ========
+.. System Commands
 
 下列命令显示集群状态： ::
 
@@ -47,10 +45,9 @@
 where the value of ``[id]`` can be determined, e.g., from ``ceph -s``.
 
 
-.. Authentication Subsystem
-
 认证子系统
 ==========
+.. Authentication Subsystem
 
 要添加一个 OSD 的密钥环，执行下列命令： ::
 
@@ -61,10 +58,9 @@ where the value of ``[id]`` can be determined, e.g., from ``ceph -s``.
 	ceph auth ls
 
 
-.. Placement Group Subsystem
-
 归置组子系统
 ============
+.. Placement Group Subsystem
 
 要显示所有归置组的统计信息，执行下列命令： ::
 
@@ -97,10 +93,11 @@ OSD 回来。
 	ceph pg {pgid} mark_unfound_lost revert|delete
 
 
-.. OSD Subsystem
+.. _osd-subsystem:
 
 OSD 子系统
 ==========
+.. OSD Subsystem
 
 查询 OSD 子系统状态： ::
 
@@ -305,10 +302,9 @@ OSD 上的数据。
 	ceph tell osd.N cache status
 
 
-.. MDS Subsystem
-
 MDS 子系统
 ==========
+.. MDS Subsystem
 
 更改在运行 mds 的参数： ::
 
@@ -331,10 +327,9 @@ MDS 子系统
 .. todo:: ``ceph mds`` 子命令缺少文档：set, dump, getmap, stop, setmap
 
 
-.. Mon Subsystem
-
 监视器子系统
 ============
+.. Mon Subsystem
 
 查看监视器状态： ::
 

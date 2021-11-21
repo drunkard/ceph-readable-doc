@@ -40,10 +40,9 @@ Finally, build ceph:
 Omit ``--target...`` if you want to do a full build.
 
 
-.. Running a development deployment
-
 开发集群的部署
 --------------
+.. Running a development deployment
 
 Ceph 包含一个名为 ``vstart.sh`` 的脚本（还有\ \
 :doc:`/dev/dev_cluster_deployement`\ ），可以让开发者们在开发\
@@ -117,11 +116,9 @@ Most logs from the cluster can be found in ``build/out``.
 
    ../src/stop.sh
 
-
-.. Resetting your vstart environment
-
 vstart 环境的重置
 -----------------
+.. Resetting your vstart environment
 
 vstart 脚本会创建 out/ 和 dev/ 目录，集群的状态就保存在里面。\
 如果你想快速重置环境，也许可以这样：
@@ -132,11 +129,9 @@ vstart 脚本会创建 out/ 和 dev/ 目录，集群的状态就保存在里面�
    rm -rf out dev
    env MDS=1 MON=1 OSD=3 ../src/vstart.sh -n -d
 
-
-.. Running a RadosGW development environment
-
 部署 RadosGW 开发环境
 ---------------------
+.. Running a RadosGW development environment
 
 运行 vstart.sh 时设置 ``RGW`` 变量即可启用 RadosGW 。
 

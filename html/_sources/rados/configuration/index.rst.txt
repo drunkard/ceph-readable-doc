@@ -2,10 +2,11 @@
  配置
 ======
 
-各个 Ceph 进程、守护进程或工具都是在启动时从几个来源获取其\
-配置，包括本地配置、监视器、命令行、或环境变量。配置选项可以\
-设置为全局的，如此一来它们就可应用于所有守护进程、某种类型的\
-所有守护进程或服务、或仅适用于某个守护进程、进程或客户端。
+各个 Ceph 进程、守护进程或工具都是在启动时从几个来源获取其配置，\
+包括本地配置、监视器、命令行、或环境变量。\
+配置选项可以设置为全局的，如此一来它们就可应用于所有守护进程、\
+某种类型的所有守护进程或服务、\
+或仅适用于某个守护进程、进程或客户端。
 
 .. raw:: html
 
@@ -37,11 +38,11 @@
    mon-lookup-dns
    心跳选项 <mon-osd-interaction>
    OSD 选项 <osd-config-ref>
+   DmClock Settings <mclock-config-ref>
    BlueStore 配置 <bluestore-config-ref>
    FileStore 配置 <filestore-config-ref>
    日志选项 <journal-ref>
    存储池、归置组和 CRUSH 选项 <pool-pg-config-ref.rst>
-   消息传递选项 <ms-ref>
    常规选项 <general-config-ref>
 
    

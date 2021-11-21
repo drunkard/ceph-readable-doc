@@ -315,10 +315,9 @@ configuration option.  For example,
 :默认值: N/A
 
 
-.. Bind
-
 绑定
 ----
+.. Bind
 
 绑定选项用于设置 OSD 和 MDS 默认使用的端口范围，默认范围是
 ``6800:7300`` 。确保\ `防火墙`_\ 开放了对应端口范围。
@@ -393,6 +392,17 @@ Ceph 默认禁用 TCP 缓冲。
 :类型: 32-bit Integer
 :是否必需: No
 :默认值: ``0``
+
+General Settings
+----------------
+
+.. confval:: ms_type
+.. confval:: ms_async_op_threads
+.. confval:: ms_initial_backoff
+.. confval:: ms_max_backoff
+.. confval:: ms_die_on_bad_msg
+.. confval:: ms_dispatch_throttle_bytes
+.. confval:: ms_inject_socket_failures
 
 
 .. _伸缩性和高可用性: ../../../architecture#scalability-and-high-availability

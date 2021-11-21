@@ -23,10 +23,9 @@
 相对应的文档。
 
 
-.. Option names
-
 选项名
 ======
+.. Option names
 
 All Ceph configuration options have a unique name consisting of words
 formed with lower-case characters and connected with underscore
@@ -42,10 +41,9 @@ clarity and convenience you consistently use underscores, as we do
 throughout this documentation.
 
 
-.. Config sources
-
 配置来源
 ========
+.. Config sources
 
 Each Ceph daemon, process, and library will pull its configuration
 from several sources, listed below.  Sources later in the list will
@@ -95,10 +93,9 @@ of the cluster's monitors.  When DNS is used to identify monitors, a local Ceph
 configuration file can be avoided entirely.
 
 
-.. Skipping monitor config
-
 跳过监视器配置
 --------------
+.. Skipping monitor config
 
 Pass the option ``--no-mon-config`` to any process to skip the step that
 retrieves configuration information from the cluster monitors. This is useful
@@ -107,11 +104,11 @@ when the monitor cluster is down and some maintenance activity needs to be
 done.
 
 
-.. Configuration sections
 .. _ceph-conf-file:
 
 配置段落
 ========
+.. Configuration sections
 
 Any given process or daemon has a single value for each configuration
 option.  However, values for an option may vary across different
@@ -121,7 +118,6 @@ files are grouped into sections to indicate which daemons or clients
 they apply to.
 
 These sections include:
-
 
 .. confsec:: global
 
@@ -191,18 +187,17 @@ precedence over values from the monitor configuration database,
 regardless of which section they appear in.
 
 
-.. Metavariables
 .. _ceph-metavariables:
 
 元变量
 ======
+.. Metavariables
 
 元变量大大简化了 Ceph 集群配置。如果在配置值里设置了元变量，
 Ceph 会在使用此配置值时把相应的元变量展开为具体值。Ceph 元变量\
 类似于 Bash shell 的变量展开。
 
 Ceph 支持下列元变量：
-
 
 .. describe:: $cluster
 
@@ -247,10 +242,9 @@ Ceph 支持下列元变量：
    :example:``/var/run/ceph/$cluster-$name-$pid.asok``
 
 
-.. The Configuration File
-
 配置文件
 ========
+.. The Configuration File
 
 启动时， Ceph 的各进程会依次到下列位置搜索配置文件：
 
@@ -275,11 +269,11 @@ Ceph 配置文件使用 *ini* 风格的语法，以分号 (;) 和井号 (#) 开�
 	# We recommend that you provide comments in your configuration file(s).
 
 
-.. Config file section names
 .. _ceph-conf-settings:
 
 配置文件段落
 ============
+.. Config file section names
 
 The configuration file is divided into sections. Each section must begin with a
 valid configuration section name (see `配置段落`_, above)

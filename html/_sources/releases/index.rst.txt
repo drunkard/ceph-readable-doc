@@ -26,10 +26,9 @@ security fixes.
 .. ceph_releases:: releases.yml current
 
 
-.. Archived Releases
-
 归档版本
 ~~~~~~~~
+.. Archived Releases
 
 The following older Ceph releases are no longer maintained (do not
 receive bug fixes or backports).

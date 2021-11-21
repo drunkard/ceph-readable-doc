@@ -1,8 +1,7 @@
-.. Monitor Config Reference
-
 ================
  监视器配置参考
 ================
+.. Monitor Config Reference
 
 理解如何配置 :term:`Ceph 监视器`\ 是构建可靠的
 :term:`Ceph 存储集群`\ 的重要方面，\
@@ -11,12 +10,11 @@
 `增加/删除监视器`_\ 。
 
 
-
 .. index:: Ceph Monitor; Paxos
-.. Background
 
 背景
 ====
+.. Background
 
 Ceph 监视器们维护着\ :term:`集群运行图`\ 的“主副本”，就是说，
 :term:`Ceph 客户端`\ 只要连到一个 Ceph 监视器并获取一份当前的\
@@ -66,10 +64,10 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 
 
 .. index:: Ceph Monitor; cluster map
-.. Cluster Maps
 
 集群运行图
 ----------
+.. Cluster Maps
 
 集群运行图是多个图的组合，包括监视器图、 OSD 图、归置组图和\
 元数据服务器图。集群运行图追踪几个重要事件：哪些进程在集群里\
@@ -89,10 +87,10 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 
 
 .. index:: high availability; quorum
-.. Monitor Quorum
 
 监视器法定人数
 --------------
+.. Monitor Quorum
 
 本文配置部分提供了一个简陋的 `Ceph 配置文件`_\ ，它提供了一个\
 监视器用于测试。只用一个监视器集群可以良好地运行，然而\
@@ -113,10 +111,10 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 
 
 .. index:: Ceph Monitor; consistency
-.. Consistency
 
 一致性
 ------
+.. Consistency
 
 你把监视器加进 Ceph 配置文件时，得注意一些架构问题， Ceph
 发现集群内的其他监视器时对其有着\ **严格的一致性要求**\ 。\
@@ -145,10 +143,10 @@ monmap 用于发现、并共享于客户端和其他 Ceph 守护进程间，
 
 
 .. index:: Ceph Monitor; bootstrapping monitors
-.. Bootstrapping Monitors
 
 初始化监视器
 ------------
+.. Bootstrapping Monitors
 
 在大多数配置和部署案例中，部署 Ceph 的工具可以帮你生成一个\
 监视器图来初始化监视器（如 ``cephadm`` 等），一个监视器需要
@@ -174,10 +172,10 @@ monmap 用于发现、并共享于客户端和其他 Ceph 守护进程间，
 
 
 .. index:: Ceph Monitor; configuring monitors
-.. Configuring Monitors
 
 监视器的配置
 ============
+.. Configuring Monitors
 
 要把配置应用到整个集群，把它们放到 ``[global]`` 下；要用于\
 所有监视器，置于 ``[mon]`` 下；要用于某监视器，指定监视器例程，\
@@ -197,10 +195,9 @@ monmap 用于发现、并共享于客户端和其他 Ceph 守护进程间，
 
 
 
-.. Minimum Configuration
-
 最小配置
 --------
+.. Minimum Configuration
 
 Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这些配置\
 可置于 ``[mon]`` 下或某个监视器下。
@@ -231,11 +228,9 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 `通过 DNS 查询监视器`_\ 。
 
 
-
-.. Cluster ID
-
 集群 ID
 -------
+.. Cluster ID
 
 每个 Ceph 存储集群都有一个唯一标识符（ ``fsid`` ）。如果\
 指定了，它应该出现在配置文件的 ``[global]`` 段下。部署工具\
@@ -253,12 +248,11 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 .. note:: 如果你用部署工具就不能设置。
 
 
-
 .. index:: Ceph Monitor; initial members
-.. Initial Members
 
 初始成员
 --------
+.. Initial Members
 
 我们建议在生产环境下最少部署 3 个监视器，以确保高可用性。运行\
 多个监视器时，你可以指定为形成法定人数成员所需的初始监视器，\
@@ -281,12 +275,11 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
    你可以用此选项减小初始监视器数量来形成。
 
 
-
 .. index:: Ceph Monitor; data path
-.. Data
 
 数据
 ----
+.. Data
 
 Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群上，\
 我们建议在独立主机上运行 Ceph 监视器，不要与运行 Ceph OSD
@@ -552,24 +545,22 @@ OSD 及主机。如果集群利用率太高，在解决故障域期间也许不�
    ``ceph osd set-full-ratio``
 
 
-
 .. index:: heartbeat
-.. Heartbeat
 
 心跳
 ----
+.. Heartbeat
 
 Ceph 监视器要求各 OSD 向它报告、并接收 OSD 们的邻居状态报告，\
 以此来掌握集群。 Ceph 提供了监视器与 OSD 交互的合理默认值，\
 然而你可以按需修改，详情见\ `监视器与 OSD 的交互`_\ 。
 
 
-
 .. index:: Ceph Monitor; leader, Ceph Monitor; provider, Ceph Monitor; requester, Ceph Monitor; synchronization
-.. Monitor Store Synchronization
 
 监视器存储同步
 --------------
+.. Monitor Store Synchronization
 
 当你用多个监视器支撑一个生产集群时，各监视器都要检查邻居是否有\
 集群运行图的最新版本（如，邻居监视器的图有一或多个 epoch 版本\

@@ -3,18 +3,18 @@
 CephFS 管理命令
 ===============
 
-
-.. File Systems
-
 文件系统管理
 ------------
+.. File Systems
 
 .. note:: The names of the file systems, metadata pools, and data pools can
           only have characters in the set [a-zA-Z0-9\_-.].
 
 这些命令适用于 Ceph 集群的 CephFS 文件系统。注意，默认情况下，\
 只允许一个文件系统；执行 ``ceph fs flag set enable_multiple true``
-后才允许创建多个文件系统。 ::
+后才允许创建多个文件系统。
+
+::
 
     fs new <filesystem name> <metadata pool name> <data pool name>
 
@@ -93,10 +93,9 @@ to the new name. Any on-going operations of the clients using these IDs may be
 disrupted. Mirroring is expected to be disabled on the file system.
 
 
-.. Settings
-
 可配置选项
 ----------
+.. Settings
 
 ::
 
@@ -110,10 +109,10 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 客户端创建空文件。
 
 
-.. Maximum file sizes and performance
-
 最大文件尺寸以及性能
 --------------------
+.. Maximum file sizes and performance
+
 在追加到文件、或设置其尺寸时， CephFS 将确保不会超过最大文件\
 尺寸限量；但不会影响（数据）是怎样存储的。
 
@@ -126,10 +125,10 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 导致在遇到类似查询状态或删除操作时产生无谓的 MDS 负载。
 
 
-.. Taking the cluster down
-
 关闭集群
 --------
+.. Taking the cluster down
+
 Taking a CephFS cluster down is done by setting the down flag:
  
 :: 
@@ -147,10 +146,9 @@ down in a way such that journals are flushed to the metadata pool and all
 client I/O is stopped.
 
 
-.. Taking the cluster down rapidly for deletion or disaster recovery
-
 快速关闭集群以进行反删除或灾难恢复
 ----------------------------------
+.. Taking the cluster down rapidly for deletion or disaster recovery
 
 To allow rapidly deleting a file system (for testing) or to quickly bring the
 file system and MDS daemons down, use the ``fs fail`` command:
@@ -186,10 +184,9 @@ To bring the cluster back up, simply set the joinable flag:
     fs set <fs_name> joinable true
 
 
-.. Daemons
-
 守护进程管理
 ------------
+.. Daemons
 
 大多数可操纵 MDS 的命令都需要一个 ``<role>`` 参数，它必须是以\
 下三种格式之一：
@@ -347,10 +344,9 @@ Clients can set and understand "alternate names" for directory entries. This is
 to be used for encrypted file name support.
 
 
-.. Global settings
-
 全局配置选项
 ------------
+.. Global settings
 
 ::
 
@@ -365,11 +361,11 @@ to be used for encrypted file name support.
 通常用于提示非常危险的动作。
 
 
-.. Advanced
 .. _advanced-cephfs-admin-settings:
 
 高级选项
 --------
+.. Advanced
 
 以下这些命令在常规操作中用不到，在遇到异常时才需要。这些命令若\
 使用不当会产生严重问题，甚至会导致文件系统无法访问。

@@ -1,5 +1,3 @@
-.. Configuring the iSCSI Target using the Command Line Interface
-
 ===========================
  用命令行配置 iSCSI Target
 ===========================

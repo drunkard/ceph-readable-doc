@@ -681,13 +681,13 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 ~~~~~~~~~~
 .. Delete a Realm
 
-删除 realm 可用 ``realm delete`` 并加上其名字。 ::
+删除 realm 可用 ``realm rm`` 并加上其名字。 ::
 
-    # radosgw-admin realm delete --rgw-realm={realm-name}
+    # radosgw-admin realm rm --rgw-realm={realm-name}
 
 例如： ::
 
-    # radosgw-admin realm delete --rgw-realm=movies
+    # radosgw-admin realm rm --rgw-realm=movies
 
 
 查看 realm

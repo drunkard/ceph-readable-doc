@@ -5,6 +5,10 @@
 .. index:: journal; journal configuration
 
 Ceph 的 OSD 使用日志的原因有二：速度和一致性。
+ Note
+that since Luminous, the BlueStore OSD back end has been preferred and default.
+This information is provided for pre-existing OSDs and for rare situations where
+Filestore is preferred for new deployments.
 
 - **速度：** 日志使得 OSD 可以快速地提交小块数据的写入， Ceph 把小片、随机 IO 依次\
   写入日志，这样，后端文件系统就有可能归并写入动作，并最终提升并发承载力。因此，使\
