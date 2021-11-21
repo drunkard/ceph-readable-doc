@@ -24,10 +24,9 @@ API
 	Ruby <swift/ruby>
 
 
-.. Features Support
-
 功能支持
 --------
+.. Features Support
 
 下面的表格描述了对当前 Swift 功能的支持情况：
 

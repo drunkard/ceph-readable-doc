@@ -58,7 +58,7 @@ ceph-create-keys -- ceph 密钥环生成工具
 ========
 
 :program:`ceph-create-keys` 是 Ceph 的一部分，这是个伸缩力强、\
-开源、分布式的存储系统，更多信息参见 http://ceph.com/docs 。
+开源、分布式的存储系统，更多信息参见 https://docs.ceph.com 。
 
 
 参考

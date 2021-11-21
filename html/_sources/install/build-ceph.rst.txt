@@ -5,13 +5,19 @@
 你可以下载 Ceph 源码并自行构建。首先，你得准备开发环境、编译
 Ceph 、然后安装到用户区或者构建二进制包并安装。
 
-
-.. Build Prerequisites
-
 构建依赖
 ========
+.. Build Prerequisites
 
 .. tip:: 对照本段检查下你的 Linux/Unix 发行版是否满足这些依赖。
+
+A debug build of Ceph may take around 40 gigabytes. If you want to build Ceph in
+a virtual machine (VM) please make sure total disk space on the VM is at least
+60 gigabytes.
+
+Please also be aware that some distributions of Linux, like CentOS, use Linux
+Volume Manager (LVM) for the default installation. LVM may reserve a large
+portion of disk space of a typical sized virtual disk for the operating system.
 
 构建 Ceph 源码前，你得先安装几个库和工具： ::
 
@@ -21,10 +27,9 @@ Ceph 、然后安装到用户区或者构建二进制包并安装。
    此（如 ``libgoogle-perftools4`` ）。
 
 
-.. Build Ceph
-
 构建 Ceph
 =========
+.. Build Ceph
 
 Ceph 是用 cmake 构建的，构建时，先进入刚克隆的 Ceph 源码库，\
 然后执行下面的： ::
@@ -32,25 +37,15 @@ Ceph 是用 cmake 构建的，构建时，先进入刚克隆的 Ceph 源码库�
     cd ceph
     ./do_cmake.sh
     cd build
-    make
+    ninja
 
-.. note:: By default do_cmake.sh will build a debug version of ceph that may
-   perform up to 5 times slower with certain workloads. Pass 
-   '-DCMAKE_BUILD_TYPE=RelWithDebInfo' to do_cmake.sh if you would like to
-   build a release version of the ceph executables instead.
+参考\ `安装自构建软件`_\ 把构建好的软件安装到用户区，\
+构建细节请看 `Ceph README.md`_ 。
 
-.. topic:: 超线程
-
-   你可以根据自己的硬件配置情况用 ``make -j`` 并行编译，比如在\
-   双核处理器上用 ``make -j4`` 可能会编译得快些。
-
-参考\ `安装自构建软件`_\ 把构建好的软件安装到用户区。
-
-
-.. Build Ceph Packages
 
 构建 Ceph 安装包
 ================
+.. Build Ceph Packages
 
 要构建安装包，你必须克隆 `Ceph`_ 源码库。用 ``dpkg-buildpackage`` 基于最新代码为 \
 Debian/Ubuntu 创建安装包；用 ``rpmbuild`` 为 RPM 包管理器创建安装包。
@@ -106,3 +101,4 @@ RPM 包管理器
 
 .. _Ceph: ../clone-source
 .. _安装自构建软件: ../install-storage-cluster#installing-a-build
+.. _Ceph README.md: https://github.com/ceph/ceph#building-ceph

@@ -257,7 +257,7 @@ https://docs.ceph.com/en/latest/rados/operations/crush-map-edits/#migrating-from
 ========
 
 **crushtool** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的\
-存储系统，更多信息参见 http://ceph.com/docs 。
+存储系统，更多信息参见 https://docs.ceph.com 。
 
 
 参考

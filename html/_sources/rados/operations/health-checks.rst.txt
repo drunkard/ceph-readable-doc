@@ -1,14 +1,13 @@
-.. Health checks
 .. _health-checks:
 
 ==========
  健康检查
 ==========
-
-.. Overview
+.. Health checks
 
 概览
 ====
+.. Overview
 
 Ceph 集群可能产生的健康消息是有限的——它们通通被定义为\
 *健康检查*\ ，都有唯一标识符。
@@ -23,16 +22,13 @@ from MDS daemons (see :ref:`cephfs-health-messages`), and health checks
 that are defined by ceph-mgr python modules.
 
 
-.. Definitions
-
 状态定义
 ========
-
-
-.. Monitor
+.. Definitions
 
 监视器
 ------
+.. Monitor
 
 DAEMON_OLD_VERSION
 __________________

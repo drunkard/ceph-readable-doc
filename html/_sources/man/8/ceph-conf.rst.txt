@@ -131,7 +131,7 @@ Ceph 程序一样，你可以用 ``-c`` 选项指定 Ceph 配置文件。
 ========
 
 **ceph-conf** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式\
-的存储系统，更多信息参见 http://ceph.com/docs 。
+的存储系统，更多信息参见 https://docs.ceph.com 。
 
 
 参考

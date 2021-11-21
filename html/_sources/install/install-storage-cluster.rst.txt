@@ -74,11 +74,11 @@
 
 如果你是从源码构建的 Ceph ，可以用下面的命令安装到用户区： ::
 
-	sudo make install
+	sudo ninja install
 
-如果你是本地安装的， ``make`` 会把可执行文件放到 ``usr/local/bin`` \
-里面。你可以把 Ceph 配置文件放到 ``usr/local/bin`` 目录下，这样就\
-能从这个目录运行 Ceph 了。
+如果你是本地安装的， ``ninja`` 会把可执行文件放到 ``usr/local/bin`` 里面。\
+你可以把 Ceph 配置文件放到 ``usr/local/bin`` 目录下，\
+这样，用这一个目录就能运行 Ceph 了。
 
 
 .. _获取软件包: ../get-packages

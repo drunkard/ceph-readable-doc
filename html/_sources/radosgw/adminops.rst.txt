@@ -11,10 +11,9 @@ The response entity type (XML or JSON) may be specified as the 'format' option i
 request and defaults to JSON if not specified.
 
 
-.. Get Usage
-
 查看使用率
 ==========
+.. Get Usage
 
 请求带宽利用率信息。
 
@@ -165,10 +164,10 @@ radosgw 进程才能生效。
 TBD.
 
 
-.. Trim Usage
-
 裁剪使用率日志
 ==============
+.. Trim Usage
+
 删除使用率信息。若未指定日期，会删除所有使用率信息。
 
 注意：此功能默认是禁用的，可以在 ceph.conf 里的适当段落加上
@@ -223,10 +222,10 @@ radosgw 进程才能生效。
 TBD.
 
 
-.. Get User Info
-
 查看用户信息
 ============
+.. Get User Info
+
 查看用户信息。
 
 :caps: users=read
@@ -315,10 +314,10 @@ TBD.
 None.
 
 
-.. Create User
-
 创建用户
 ========
+.. Create User
+
 新建一个用户。默认情况下，会自动创建一个 S3 密钥对、并在响应时\
 返回。如果只提供了一个 ``access-key`` 或 ``secret-key`` ，缺失\
 的那个密钥会自动生成。默认情况下，生成的密钥会加进密钥环，而非\
@@ -340,10 +339,9 @@ None.
 	PUT /{admin}/user?format=json HTTP/1.1
 	Host: {fqdn}
 
-.. Request Parameters
-
 请求参数
 ~~~~~~~~
+.. Request Parameters
 
 ``uid``
 
@@ -432,10 +430,10 @@ None.
 :是否必需: No
 
 
-.. Response Entities
-
 响应内容解析
 ~~~~~~~~~~~~
+.. Response Entities
+
 If successful, the response contains the user information.
 
 ``user``
@@ -541,10 +539,9 @@ If successful, the response contains the user information.
 :状态码: 400 Bad Request
 
 
-.. Modify User
-
 修改用户信息
 ============
+.. Modify User
 
 Modify a user.
 
@@ -738,10 +735,10 @@ If successful, the response contains the user information.
 :状态码: 400 Bad Request
 
 
-.. Remove User
-
 删除用户
 ========
+.. Remove User
+
 Remove an existing user.
 
 :caps: users=write
@@ -784,10 +781,9 @@ None
 None.
 
 
-.. Create Subuser
-
 创建子用户
 ==========
+.. Create Subuser
 
 新建一个子用户（使用 Swift API 的客户端需要）。提醒一下，要创\
 建可正常使用的子用户，必须用 ``access`` 授予权限；创建子用户\
@@ -900,10 +896,9 @@ If successful, the response contains the subuser information.
 :状态码: 400 Bad Request
 
 
-.. Modify Subuser
-
 修改子用户信息
 ==============
+.. Modify Subuser
 
 Modify an existing subuser
 
@@ -1008,10 +1003,9 @@ If successful, the response contains the subuser information.
 :状态码: 400 Bad Request
 
 
-.. Remove Subuser
-
 删除子用户
 ==========
+.. Remove Subuser
 
 Remove an existing subuser
 
@@ -1062,10 +1056,9 @@ None.
 None.
 
 
-.. Create Key
-
 创建密钥
 ========
+.. Create Key
 
 Create a new key. If a ``subuser`` is specified then by default created keys
 will be swift type. If only one of ``access-key`` or ``secret-key`` is provided the
@@ -1191,10 +1184,9 @@ Response Entities
 :状态码: 409 Conflict
 
 
-.. Remove Key
-
 删除密钥
 ========
+.. Remove Key
 
 Remove an existing key.
 
@@ -1252,10 +1244,9 @@ Response Entities
 None.
 
 
-.. Get Bucket Info
-
 查看桶信息
 ==========
+.. Get Bucket Info
 
 获取一部分已有桶的相关信息。如果指定了 ``uid`` 却没有
 ``bucket`` ，就会得到属于此用户的所有桶；如果还指定了
@@ -1369,10 +1360,10 @@ the desired bucket information.
 :状态码: 409 Conflict
 
 
-.. Check Bucket Index
-
 检查桶索引
 ==========
+.. Check Bucket Index
+
 Check the index of an existing bucket. NOTE: to check multipart object
 accounting with ``check-objects``, ``fix`` must be set to True.
 
@@ -1428,10 +1419,10 @@ Response Entities
 :状态码: 409 Conflict
 
 
-.. Remove Bucket
-
 删除桶
 ======
+.. Remove Bucket
+
 Delete an existing bucket.
 
 :caps: buckets=write
@@ -1481,10 +1472,9 @@ None.
 :状态码: 409 Conflict
 
 
-.. Unlink Bucket
-
 解绑桶
 ======
+.. Unlink Bucket
 
 解绑桶和用户，主要用于更改桶的所有者。
 
@@ -1530,10 +1520,10 @@ None.
 :状态码: 409 Conflict
 
 
-.. Link Bucket
-
 链接桶
 ======
+.. Link Bucket
+
 把桶链接到指定用户，同时断开与之前用户的链接。
 
 :caps: buckets=write
@@ -1637,10 +1627,10 @@ Response Entities
 :状态码: 409 Conflict
 
 
-.. Remove Object
-
 删除对象
 ========
+.. Remove Object
+
 Remove an existing object. NOTE: Does not require owner to be non-suspended.
 
 :caps: buckets=write
@@ -1689,10 +1679,10 @@ None.
 :状态码: 409 Conflict
 
 
-.. Get Bucket or Object Policy
-
 查看桶或对象的策略
 ==================
+.. Get Bucket or Object Policy
+
 Read the policy of an object or bucket.
 
 :caps: buckets=read
@@ -1743,10 +1733,10 @@ If successful, returns the object or bucket policy
 :状态码: 400 Bad Request
 
 
-.. Add A User Capability
-
 增加用户能力
 ============
+.. Add A User Capability
+
 给指定用户增加管理能力。
 
 :caps: users=write
@@ -1818,10 +1808,10 @@ If successful, the response contains the user's capabilities.
 	Authorization: {your-authorization-token}
 
 
-.. Remove A User Capability
-
 删除用户能力
 ============
+.. Remove A User Capability
+
 删除指定用户的管理能力。
 
 :caps: users=write
@@ -1889,10 +1879,9 @@ If successful, the response contains the user's capabilities.
 :状态码: 404 Not Found
 
 
-.. Quotas
-
 配额管理
 ========
+.. Quotas
 
 你可以用管理操作 API 给用户和用户拥有的桶设置配额，设置细节见\
 `配额管理`_\ 。可设置的配额包括桶内对象的最大数量、和最大尺寸\
@@ -1918,10 +1907,9 @@ If successful, the response contains the user's capabilities.
   以是 'True' 或 'False' 。
 
 
-.. Get User Quota
-
 查看用户配额
 ~~~~~~~~~~~~
+.. Get User Quota
 
 To get a quota, the user must have ``users`` capability set with ``read`` 
 permission. ::
@@ -1929,10 +1917,9 @@ permission. ::
 	GET /admin/user?quota&uid=<uid>&quota-type=user
 
 
-.. Set User Quota
-
 设置用户配额
 ~~~~~~~~~~~~
+.. Set User Quota
 
 To set a quota, the user must have ``users`` capability set with ``write`` 
 permission. ::
@@ -1943,10 +1930,9 @@ The content must include a JSON representation of the quota settings
 as encoded in the corresponding read operation.
 
 
-.. Get Bucket Quota
-
 查看桶配额
 ~~~~~~~~~~
+.. Get Bucket Quota
 
 To get a quota, the user must have ``users`` capability set with ``read`` 
 permission. ::
@@ -1954,10 +1940,9 @@ permission. ::
 	GET /admin/user?quota&uid=<uid>&quota-type=bucket
 
 
-.. Set Bucket Quota
-
 设置桶配额
 ~~~~~~~~~~
+.. Set Bucket Quota
 
 To set a quota, the user must have ``users`` capability set with ``write`` 
 permission. ::
@@ -1968,23 +1953,22 @@ The content must include a JSON representation of the quota settings
 as encoded in the corresponding read operation.
 
 
-.. Set Quota for an Individual Bucket
-
 设置个人桶的配额
 ~~~~~~~~~~~~~~~~
-要设置配额，此用户必须有设置了 ``write`` 权限的 ``buckets``
-能力。 ::
+.. Set Quota for an Individual Bucket
 
-	PUT /admin/bucket?quota&uid=<uid>&bucket=<bucket-name>&quota
+要设置配额，此用户必须有设置了 ``write`` 权限的
+``buckets`` 能力。 ::
+
+	PUT /admin/bucket?quota&uid=<uid>&bucket=<bucket-name>
 
 其内容必须包含一个以 JSON 格式表达的配额配置，如前面\
 `设置桶配额`_\ 一节所述。
 
 
-.. Standard Error Responses
-
 标准错误响应
 ============
+.. Standard Error Responses
 
 ``AccessDenied``
 
@@ -2012,10 +1996,9 @@ as encoded in the corresponding read operation.
 :状态码: 404 Not Found
 
 
-.. Binding libraries
-
 绑定库
 ======
+.. Binding libraries
 
 ``Golang``
 
