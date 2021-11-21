@@ -330,19 +330,18 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
 ``client.cinder`` 等）。
 
 
-.. Application Tags
-
 应用程序标签
 ------------
+.. Application Tags
+
 可以将访问限定于指定存储池，正如其应用程序元数据所定义的那样。\
 通配符 ``*`` 可以用于 ``key`` 参数、 ``value`` 参数、或二者。
 ``all`` 与 ``*`` 同义。
 
 
-.. Namespace
-
 命名空间
 --------
+.. Namespace
 
 Objects within a pool can be associated to a namespace--a logical group of
 objects within the pool. A user's access to a pool can be associated with a
@@ -369,10 +368,9 @@ use a namespace. **Note:** Only available using ``librados`` at this time.
 那就把访问权限授予所有以所提供参数打头的命名空间。
 
 
-.. Managing Users
-
 用户的管理
 ==========
+.. Managing Users
 
 用户管理功能赋予 Ceph 存储集群管理员直接从 Ceph 存储集群创建、\
 更新和删除用户的能力。

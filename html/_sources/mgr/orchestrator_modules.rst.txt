@@ -58,10 +58,9 @@ destroy OSDs, and run MDS and RGW services.
 A tutorial is not included here: for full and concrete examples, see
 the existing implemented orchestrator modules in the Ceph source tree.
 
-.. Glossary
-
 术语
 ----
+.. Glossary
 
 Stateful service
   a daemon that uses local storage, such as OSD or mon.
@@ -85,10 +84,9 @@ Drive group
 Placement
   choice of which node is used to run a service.
 
-.. Key Concepts
-
 关键概念
 --------
+.. Key Concepts
 
 The underlying orchestrator remains the source of truth for information
 about whether a service is running, what is running where, which
@@ -116,11 +114,9 @@ in one go in the background.  If implementing such a batching pattern, the
 module would do no work on any operation until it appeared in a list
 of completions passed into *process*.
 
-
-.. Error Handling
-
 错误处理
 --------
+.. Error Handling
 
 The main goal of error handling within orchestrator modules is to provide debug information to
 assist users when dealing with deployment errors.
@@ -171,10 +167,9 @@ logged into the mgr log file. If there is a completion object at that point,
 :func:`_Completion.result` may contain an error message.
 
 
-.. Excluded functionality
-
 排除的功能
 ----------
+.. Excluded functionality
 
 - Ceph's orchestrator interface is not a general purpose framework for
   managing linux servers -- it is deliberately constrained to manage
@@ -183,10 +178,9 @@ logged into the mgr log file. If there is a completion object at that point,
   Ceph clusters).  Each drive is assumed to be visible only on
   a single node.
 
-.. Host management
-
 主机管理
 --------
+.. Host management
 
 .. automethod:: Orchestrator.add_host
 .. automethod:: Orchestrator.remove_host
@@ -197,10 +191,9 @@ logged into the mgr log file. If there is a completion object at that point,
 
 .. autoclass:: HostSpec
 
-.. Devices
-
 设备
 ----
+.. Devices
 
 .. automethod:: Orchestrator.get_inventory
 .. autoclass:: InventoryFilter
@@ -235,11 +228,10 @@ specify a location when creating a stateless service.
 
 .. py:currentmodule:: orchestrator
 
-   
-.. Services
 
 服务
 ----
+.. Services
 
 .. autoclass:: ServiceDescription
 
@@ -258,20 +250,18 @@ specify a location when creating a stateless service.
 .. automethod:: Orchestrator.remove_service
 
 
-.. Daemons
-
 守护进程
 --------
+.. Daemons
 
 .. automethod:: Orchestrator.list_daemons
 .. automethod:: Orchestrator.remove_daemons
 .. automethod:: Orchestrator.daemon_action
 
 
-.. OSD management
-
 OSD 管理
 --------
+.. OSD management
 
 .. automethod:: Orchestrator.create_osds
 
@@ -279,11 +269,11 @@ OSD 管理
 .. autoclass:: DeviceLightLoc
 
 
-.. OSD Replacement
 .. _orchestrator-osd-replace:
 
 OSD 替换
 ^^^^^^^^
+.. OSD Replacement
 
 See :ref:`rados-replacing-an-osd` for the underlying process.
 
@@ -302,10 +292,9 @@ Phase two is a call to  :meth:`Orchestrator.create_osds` with a Drive Group with
 
 .. py:currentmodule:: orchestrator
 
-.. Services
-
 可用的服务
 ----------
+.. Services
 
 .. automethod:: Orchestrator.add_daemon
 .. automethod:: Orchestrator.apply_mon
@@ -330,28 +319,25 @@ Phase two is a call to  :meth:`Orchestrator.create_osds` with a Drive Group with
 
 .. automethod:: Orchestrator.apply_nfs
 
-.. Upgrades
-
 升级
 ----
+.. Upgrades
 
 .. automethod:: Orchestrator.upgrade_available
 .. automethod:: Orchestrator.upgrade_start
 .. automethod:: Orchestrator.upgrade_status
 .. autoclass:: UpgradeStatusSpec
 
-.. Utility
-
 工具
 ----
+.. Utility
 
 .. automethod:: Orchestrator.available
 .. automethod:: Orchestrator.get_feature_set
 
-.. Client Modules
-
 客户端模块
 ----------
+.. Client Modules
 
 .. autoclass:: OrchestratorClientMixin
    :members:

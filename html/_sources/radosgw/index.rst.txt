@@ -1,9 +1,9 @@
-.. Ceph Object Gateway
 .. _object-gateway:
 
 ===============
  Ceph 对象网关
 ===============
+.. Ceph Object Gateway
 
 :term:`Ceph 对象网关`\ 是个对象存储接口，在 ``librados`` 之上\
 为应用程序构建了一个 RESTful 风格的 Ceph 存储集群网关。
@@ -82,3 +82,4 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    S3-select <s3select>
    Lua Scripting <lua-scripting>
    D3N Data Cache <d3n_datacache>
+   Cloud Transition <cloud-transition>

@@ -100,10 +100,9 @@ for interactive access or scripting via the `cephfs-shell`_.
 
    <!---
 
-.. Mounting CephFS
-
 挂载 CephFS
 ^^^^^^^^^^^
+.. Mounting CephFS
 
 .. raw:: html
 
@@ -115,10 +114,10 @@ for interactive access or scripting via the `cephfs-shell`_.
 
     客户端配置选项 <client-config-ref>
     客户端认证 <client-auth>
-    Mount CephFS: Prerequisites <mount-prerequisites>
+    挂载 CephFS: 前提条件 <mount-prerequisites>
     用内核驱动挂载 CephFS 文件系统 <mount-using-kernel-driver>
     用 FUSE 挂载 CephFS <mount-using-fuse>
-    Mount CephFS on Windows <ceph-dokan>
+    在 Windows 上挂载 CephFS <ceph-dokan>
     Use the CephFS Shell <../../man/8/cephfs-shell>
     内核驱动支持的功能 <kernel-features>
     ceph-fuse 手册页 <../../man/8/ceph-fuse>
@@ -129,10 +128,9 @@ for interactive access or scripting via the `cephfs-shell`_.
 
    <!---
 
-.. CephFS Concepts
-
 CephFS 内幕
 ^^^^^^^^^^^
+.. CephFS Concepts
 
 .. raw:: html
 
@@ -158,10 +156,9 @@ CephFS 内幕
 
    <!---
 
-.. Troubleshooting and Disaster Recovery
-
 故障排除和灾难恢复
 ^^^^^^^^^^^^^^^^^^
+.. Troubleshooting and Disaster Recovery
 
 .. raw:: html
 
@@ -184,10 +181,9 @@ CephFS 内幕
 
    <!---
 
-.. Developer Guides
-
 开发者指南
 ==========
+.. Developer Guides
 
 .. raw:: html
 
@@ -207,11 +203,9 @@ CephFS 内幕
 
    <!---
 
-
-.. Additional Details
-
 更多细节
 ^^^^^^^^
+.. Additional Details
 
 .. raw:: html
 

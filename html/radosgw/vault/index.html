@@ -162,6 +162,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#vault-authentication">Vault authentication</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#token-policies-for-the-object-gateway">Token policies for the object gateway</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#token-authentication">Token authentication</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#vault-agent">Vault agent</a></li>
 </ul>
@@ -172,7 +173,10 @@
 <li class="toctree-l4"><a class="reference internal" href="#using-the-transit-engine">Using the Transit engine</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#configure-the-ceph-object-gateway">Configure the Ceph Object Gateway</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configure-the-ceph-object-gateway">Configure the Ceph Object Gateway</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#transit-engine-compatibility-support">Transit engine compatibility support</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#upload-object">Upload object</a></li>
 </ul>
 </li>
@@ -202,6 +206,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../s3select/">S3-select</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../lua-scripting/">Lua Scripting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../d3n_datacache/">D3N Data Cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cloud-transition/">Cloud Transition</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
@@ -270,7 +275,7 @@
 <p>Some examples below use the Vault command line utility to interact with
 Vault. You may need to set the following environment variable with the correct
 address of your Vault server to use this utility:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">VAULT_ADDR</span><span class="o">=</span><span class="s1">&#39;http://vault-server:8200&#39;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">VAULT_ADDR</span><span class="o">=</span><span class="s1">&#39;https://vault-server-fqdn:8200&#39;</span>
 </pre></div>
 </div>
 <div class="section" id="vault-secrets-engines">
@@ -313,56 +318,132 @@ following setting:</p>
 <p>Vault supports several authentication mechanisms. Currently, the Object
 Gateway can be configured to authenticate to Vault using the
 <a class="reference external" href="https://www.vaultproject.io/docs/auth/token.html">Token authentication method</a> or a <a class="reference external" href="https://www.vaultproject.io/docs/agent/index.html">Vault agent</a>.</p>
-<div class="section" id="token-authentication">
-<h3>Token authentication<a class="headerlink" href="#token-authentication" title="Permalink to this headline">¶</a></h3>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Token authentication is not recommended for production environments.</p>
-</div>
-<p>The token authentication method expects a Vault token to be present in a
-plaintext file. The Object Gateway can be configured to use token authentication
-with the following settings:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">auth</span> <span class="o">=</span> <span class="n">token</span>
-<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">token</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">vault</span><span class="o">.</span><span class="n">token</span>
-<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vault</span><span class="o">-</span><span class="n">server</span><span class="p">:</span><span class="mi">8200</span>
-</pre></div>
-</div>
-<p>For security reasons, the token file must be readable by the Object Gateway
-only. Also, the Object Gateway should be given a Vault token with a restricted
-policy that allows it to fetch keyrings from a specific path only. Such a policy
-can be created in Vault using the command line utility as in the following
-examples:</p>
+<p>Most tokens in Vault have limited lifetimes and powers.  The only
+sort of Vault token that does not have a lifetime are root tokens.
+For all other tokens, it is necessary to periodically refresh them,
+either by performing initial authentication, or by renewing the token.
+Ceph does not have any logic to perform either operation.
+The simplest best way to use Vault tokens with ceph is to
+also run the Vault agent and have it refresh the token file.
+When the Vault agent is used in this mode, file system permissions
+can be used to restrict who has the use of tokens.</p>
+<p>Instead of having Vault agent refresh a token file, it can be told
+to act as a proxy server.  In this mode, Vault will add a token when
+necessary and add it to requests passed to it before forwarding them on
+to the real server.  Vault agent will still handle token renewal just
+as it would when storing a token in the filesystem.  In this mode, it
+is necessary to properly secure the network path rgw uses to reach the
+Vault agent, such as having the Vault agent listen only to localhost.</p>
+<div class="section" id="token-policies-for-the-object-gateway">
+<h3>Token policies for the object gateway<a class="headerlink" href="#token-policies-for-the-object-gateway" title="Permalink to this headline">¶</a></h3>
+<p>All Vault tokens have powers as specified by the polices attached
+to that token.  Multiple policies may be associated with one
+token.  You should only use the policy necessary for your
+configuration.</p>
+<p>When using the kv secret engine with the object gateway:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">policy</span> <span class="n">write</span> <span class="n">rgw</span><span class="o">-</span><span class="n">kv</span><span class="o">-</span><span class="n">policy</span> <span class="o">-&lt;&lt;</span><span class="n">EOF</span>
   <span class="n">path</span> <span class="s2">&quot;secret/data/*&quot;</span> <span class="p">{</span>
     <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;read&quot;</span><span class="p">]</span>
   <span class="p">}</span>
 <span class="n">EOF</span>
+</pre></div>
+</div>
+<p>When using the transit secret engine with the object gateway:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">policy</span> <span class="n">write</span> <span class="n">rgw</span><span class="o">-</span><span class="n">transit</span><span class="o">-</span><span class="n">policy</span> <span class="o">-&lt;&lt;</span><span class="n">EOF</span>
+  <span class="n">path</span> <span class="s2">&quot;transit/keys/*&quot;</span> <span class="p">{</span>
+    <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;create&quot;</span><span class="p">,</span> <span class="s2">&quot;update&quot;</span> <span class="p">]</span>
+    <span class="n">denied_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;exportable&quot;</span> <span class="o">=</span> <span class="p">[],</span> <span class="s2">&quot;allow_plaintext_backup&quot;</span> <span class="o">=</span> <span class="p">[]</span> <span class="p">}</span>
+  <span class="p">}</span>
 
-<span class="n">vault</span> <span class="n">policy</span> <span class="n">write</span> <span class="n">rgw</span><span class="o">-</span><span class="n">transit</span><span class="o">-</span><span class="n">policy</span> <span class="o">-&lt;&lt;</span><span class="n">EOF</span>
+  <span class="n">path</span> <span class="s2">&quot;transit/keys/*&quot;</span> <span class="p">{</span>
+    <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;read&quot;</span><span class="p">,</span> <span class="s2">&quot;delete&quot;</span><span class="p">]</span>
+  <span class="p">}</span>
+
+  <span class="n">path</span> <span class="s2">&quot;transit/keys/&quot;</span> <span class="p">{</span>
+    <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;list&quot;</span><span class="p">]</span>
+  <span class="p">}</span>
+
+  <span class="n">path</span> <span class="s2">&quot;transit/keys/+/rotate&quot;</span> <span class="p">{</span>
+    <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;update&quot;</span> <span class="p">]</span>
+  <span class="p">}</span>
+
+  <span class="n">path</span> <span class="s2">&quot;transit/*&quot;</span> <span class="p">{</span>
+    <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;update&quot;</span> <span class="p">]</span>
+  <span class="p">}</span>
+<span class="n">EOF</span>
+</pre></div>
+</div>
+<p>If you had previously used an older version of ceph with the
+transit secret engine, you might need the following policy:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">policy</span> <span class="n">write</span> <span class="n">old</span><span class="o">-</span><span class="n">rgw</span><span class="o">-</span><span class="n">transit</span><span class="o">-</span><span class="n">policy</span> <span class="o">-&lt;&lt;</span><span class="n">EOF</span>
   <span class="n">path</span> <span class="s2">&quot;transit/export/encryption-key/*&quot;</span> <span class="p">{</span>
     <span class="n">capabilities</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;read&quot;</span><span class="p">]</span>
   <span class="p">}</span>
 <span class="n">EOF</span>
 </pre></div>
 </div>
-<p>Once the policy is created, a token can be generated by a Vault administrator:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">token</span> <span class="n">create</span> <span class="o">-</span><span class="n">policy</span><span class="o">=</span><span class="n">rgw</span><span class="o">-</span><span class="n">kv</span><span class="o">-</span><span class="n">policy</span>
+</div>
+<div class="section" id="token-authentication">
+<h3>Token authentication<a class="headerlink" href="#token-authentication" title="Permalink to this headline">¶</a></h3>
+<p>The token authentication method expects a Vault token to be present in a
+plaintext file. The Object Gateway can be configured to use token authentication
+with the following settings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">auth</span> <span class="o">=</span> <span class="n">token</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">token</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">run</span><span class="o">/.</span><span class="n">rgw</span><span class="o">-</span><span class="n">vault</span><span class="o">-</span><span class="n">token</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">vault</span><span class="o">-</span><span class="n">server</span><span class="o">-</span><span class="n">fqdn</span><span class="p">:</span><span class="mi">8200</span>
 </pre></div>
 </div>
-<p>Sample output:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Key</span>                  <span class="n">Value</span>
-<span class="o">---</span>                  <span class="o">-----</span>
-<span class="n">token</span>                <span class="n">s</span><span class="mf">.72</span><span class="n">KuPujbc065OdWB71poOmIq</span>
-<span class="n">token_accessor</span>       <span class="n">jv95ZYBUFv6Ss84x7SCSy6lZ</span>
-<span class="n">token_duration</span>       <span class="mi">768</span><span class="n">h</span>
-<span class="n">token_renewable</span>      <span class="n">true</span>
-<span class="n">token_policies</span>       <span class="p">[</span><span class="s2">&quot;default&quot;</span> <span class="s2">&quot;rgw-kv-policy&quot;</span><span class="p">]</span>
-<span class="n">identity_policies</span>    <span class="p">[]</span>
-<span class="n">policies</span>             <span class="p">[</span><span class="s2">&quot;default&quot;</span> <span class="s2">&quot;rgw-kv-policy&quot;</span><span class="p">]</span>
+<p>Adjust these settings to match your configuration.
+For security reasons, the token file must be readable by the Object Gateway
+only.</p>
+<p>You might set up vault agent as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">write</span> <span class="n">auth</span><span class="o">/</span><span class="n">approle</span><span class="o">/</span><span class="n">role</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">ap</span> \
+  <span class="n">token_policies</span><span class="o">=</span><span class="n">rgw</span><span class="o">-</span><span class="n">transit</span><span class="o">-</span><span class="n">policy</span><span class="p">,</span><span class="n">default</span> \
+  <span class="n">token_max_ttl</span><span class="o">=</span><span class="mi">60</span><span class="n">m</span>
 </pre></div>
 </div>
-<p>The actual token, displayed in the <code class="docutils literal notranslate"><span class="pre">Value</span></code> column of the first line of the
-output, must be saved in a file as plaintext.</p>
+<p>Change the policy here to match your configuration.</p>
+<p>Get the role-id:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">auth</span><span class="o">/</span><span class="n">approle</span><span class="o">/</span><span class="n">role</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">ap</span><span class="o">/</span><span class="n">role</span><span class="o">-</span><span class="nb">id</span> <span class="o">-</span><span class="nb">format</span><span class="o">=</span><span class="n">json</span> <span class="o">|</span> \
+  <span class="n">jq</span> <span class="o">-</span><span class="n">r</span> <span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">role_id</span>
+</pre></div>
+</div>
+<p>Store the output in some file, such as /usr/local/etc/vault/.rgw-ap-role-id</p>
+<p>Get the secret-id:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">auth</span><span class="o">/</span><span class="n">approle</span><span class="o">/</span><span class="n">role</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">ap</span><span class="o">/</span><span class="n">role</span><span class="o">-</span><span class="nb">id</span> <span class="o">-</span><span class="nb">format</span><span class="o">=</span><span class="n">json</span> <span class="o">|</span> \
+  <span class="n">jq</span> <span class="o">-</span><span class="n">r</span> <span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">role_id</span>
+</pre></div>
+</div>
+<p>Store the output in some file, such as /usr/local/etc/vault/.rgw-ap-secret-id</p>
+<p>Create configuration for the Vault agent, such as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pid_file</span> <span class="o">=</span> <span class="s2">&quot;/run/rgw-vault-agent-pid&quot;</span>
+<span class="n">auto_auth</span> <span class="p">{</span>
+  <span class="n">method</span> <span class="s2">&quot;AppRole&quot;</span> <span class="p">{</span>
+    <span class="n">mount_path</span> <span class="o">=</span> <span class="s2">&quot;auth/approle&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="n">role_id_file_path</span> <span class="o">=</span><span class="s2">&quot;/usr/local/etc/vault/.rgw-ap-role-id&quot;</span>
+      <span class="n">secret_id_file_path</span> <span class="o">=</span><span class="s2">&quot;/usr/local/etc/vault/.rgw-ap-secret-id&quot;</span>
+      <span class="n">remove_secret_id_file_after_reading</span> <span class="o">=</span><span class="s2">&quot;false&quot;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="n">sink</span> <span class="s2">&quot;file&quot;</span> <span class="p">{</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/run/.rgw-vault-token&quot;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">vault</span> <span class="p">{</span>
+  <span class="n">address</span> <span class="o">=</span> <span class="s2">&quot;https://vault-server-fqdn:8200&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then use systemctl or another method of your choice to run
+a persistent daemon with the following arguments:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">vault</span> <span class="n">agent</span> <span class="o">-</span><span class="n">config</span><span class="o">=/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">vault</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">agent</span><span class="o">.</span><span class="n">hcl</span>
+</pre></div>
+</div>
+<p>Once the vault agent is running, the token file should be populated
+with a valid token.</p>
 </div>
 <div class="section" id="vault-agent">
 <h3>Vault agent<a class="headerlink" href="#vault-agent" title="Permalink to this headline">¶</a></h3>
@@ -373,9 +454,64 @@ authentication mechanism such as AppRole, AWS, Certs, JWT, and Azure.</p>
 <p>The Object Gateway can be configured to use a Vault agent with the following
 settings:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">auth</span> <span class="o">=</span> <span class="n">agent</span>
-<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">8100</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">127.0.0.1</span><span class="p">:</span><span class="mi">8100</span>
 </pre></div>
 </div>
+<p>You might set up vault agent as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">write</span> <span class="n">auth</span><span class="o">/</span><span class="n">approle</span><span class="o">/</span><span class="n">role</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">ap</span> \
+  <span class="n">token_policies</span><span class="o">=</span><span class="n">rgw</span><span class="o">-</span><span class="n">transit</span><span class="o">-</span><span class="n">policy</span><span class="p">,</span><span class="n">default</span> \
+  <span class="n">token_max_ttl</span><span class="o">=</span><span class="mi">60</span><span class="n">m</span>
+</pre></div>
+</div>
+<p>Change the policy here to match your configuration.</p>
+<dl class="simple">
+<dt>Get the role-id:</dt><dd><dl class="simple">
+<dt>vault read auth/approle/role/rgw-ap/role-id -format=json | </dt><dd><p>jq -r .data.role_id</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>Store the output in some file, such as /usr/local/etc/vault/.rgw-ap-role-id</p>
+<dl class="simple">
+<dt>Get the secret-id:</dt><dd><dl class="simple">
+<dt>vault read auth/approle/role/rgw-ap/role-id -format=json | </dt><dd><p>jq -r .data.role_id</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>Store the output in some file, such as /usr/local/etc/vault/.rgw-ap-secret-id</p>
+<p>Create configuration for the Vault agent, such as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pid_file</span> <span class="o">=</span> <span class="s2">&quot;/run/rgw-vault-agent-pid&quot;</span>
+<span class="n">auto_auth</span> <span class="p">{</span>
+  <span class="n">method</span> <span class="s2">&quot;AppRole&quot;</span> <span class="p">{</span>
+    <span class="n">mount_path</span> <span class="o">=</span> <span class="s2">&quot;auth/approle&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="n">role_id_file_path</span> <span class="o">=</span><span class="s2">&quot;/usr/local/etc/vault/.rgw-ap-role-id&quot;</span>
+      <span class="n">secret_id_file_path</span> <span class="o">=</span><span class="s2">&quot;/usr/local/etc/vault/.rgw-ap-secret-id&quot;</span>
+      <span class="n">remove_secret_id_file_after_reading</span> <span class="o">=</span><span class="s2">&quot;false&quot;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">cache</span> <span class="p">{</span>
+  <span class="n">use_auto_auth_token</span> <span class="o">=</span> <span class="n">true</span>
+<span class="p">}</span>
+<span class="n">listener</span> <span class="s2">&quot;tcp&quot;</span> <span class="p">{</span>
+  <span class="n">address</span> <span class="o">=</span> <span class="s2">&quot;127.0.0.1:8100&quot;</span>
+  <span class="n">tls_disable</span> <span class="o">=</span> <span class="n">true</span>
+<span class="p">}</span>
+<span class="n">vault</span> <span class="p">{</span>
+  <span class="n">address</span> <span class="o">=</span> <span class="s2">&quot;https://vault-server-fqdn:8200&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then use systemctl or another method of your choice to run
+a persistent daemon with the following arguments:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">vault</span> <span class="n">agent</span> <span class="o">-</span><span class="n">config</span><span class="o">=/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">vault</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">agent</span><span class="o">.</span><span class="n">hcl</span>
+</pre></div>
+</div>
+<p>Once the vault agent is running, you should find it listening
+to port 8100 on localhost, and you should be able to interact
+with it using the vault command.</p>
 </div>
 </div>
 <div class="section" id="vault-namespaces">
@@ -419,28 +555,26 @@ form <code class="docutils literal notranslate"><span class="pre">key=&lt;secret
 </div>
 <div class="section" id="using-the-transit-engine">
 <h3>Using the Transit engine<a class="headerlink" href="#using-the-transit-engine" title="Permalink to this headline">¶</a></h3>
-<p>Keys created with the Transit engine must be exportable in order to be used for
-server-side encryption with the Object Gateway. An exportable key can be created
-with the command line utility as follows:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">write</span> <span class="o">-</span><span class="n">f</span> <span class="n">transit</span><span class="o">/</span><span class="n">keys</span><span class="o">/</span><span class="n">mybucketkey</span> <span class="n">exportable</span><span class="o">=</span><span class="n">true</span>
+<p>Keys created for use with the Transit engine should no longer be marked
+exportable.  They can be created with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">write</span> <span class="o">-</span><span class="n">f</span> <span class="n">transit</span><span class="o">/</span><span class="n">keys</span><span class="o">/</span><span class="n">mybucketkey</span>
 </pre></div>
 </div>
 <p>The command above creates a keyring, which contains a key of type
 <code class="docutils literal notranslate"><span class="pre">aes256-gcm96</span></code> by default. To verify that the key was correctly created, use
 the following command:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">transit</span><span class="o">/</span><span class="n">export</span><span class="o">/</span><span class="n">encryption</span><span class="o">-</span><span class="n">key</span><span class="o">/</span><span class="n">mybucketkey</span><span class="o">/</span><span class="mi">1</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">transit</span><span class="o">/</span><span class="n">mybucketkey</span>
 </pre></div>
 </div>
 <p>Sample output:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Key</span>     <span class="n">Value</span>
 <span class="o">---</span>     <span class="o">-----</span>
-<span class="n">keys</span>    <span class="nb">map</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="n">gbTI9lNpqv</span><span class="o">/</span><span class="n">V</span><span class="o">/</span><span class="mi">2</span><span class="n">lDcmH2Nq1xKn6FPDWarCmFM2aNsQ</span><span class="o">=</span><span class="p">]</span>
-<span class="n">name</span>    <span class="n">mybucketkey</span>
-<span class="nb">type</span>    <span class="n">aes256</span><span class="o">-</span><span class="n">gcm96</span>
+<span class="n">derived</span>                   <span class="n">false</span>
+<span class="n">exportable</span>                <span class="n">false</span>
+<span class="n">name</span>                      <span class="n">mybucketkey</span>
+<span class="nb">type</span>                      <span class="n">aes256</span><span class="o">-</span><span class="n">gcm96</span>
 </pre></div>
 </div>
-<p>Note that in order to read the key created with the Transit engine, the full
-path must be provided including the key version.</p>
 </div>
 </div>
 <div class="section" id="configure-the-ceph-object-gateway">
@@ -452,8 +586,8 @@ server-side encryption:</p>
 </div>
 <p>Choose the Vault authentication method, e.g.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">auth</span> <span class="o">=</span> <span class="n">token</span>
-<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">token</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">vault</span><span class="o">.</span><span class="n">token</span>
-<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vault</span><span class="o">-</span><span class="n">server</span><span class="p">:</span><span class="mi">8200</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">token</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">run</span><span class="o">/.</span><span class="n">rgw</span><span class="o">-</span><span class="n">vault</span><span class="o">-</span><span class="n">token</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">vault</span><span class="o">-</span><span class="n">server</span><span class="o">-</span><span class="n">fqdn</span><span class="p">:</span><span class="mi">8200</span>
 </pre></div>
 </div>
 <p>Or:</p>
@@ -479,12 +613,52 @@ restricted to fetch KV keys as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">prefix</span> <span class="o">=</span> <span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">secret</span><span class="o">/</span><span class="n">data</span>
 </pre></div>
 </div>
-<p>Or, in the case of exportable transit keys:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">prefix</span> <span class="o">=</span> <span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">transit</span><span class="o">/</span><span class="n">export</span><span class="o">/</span><span class="n">encryption</span><span class="o">-</span><span class="n">key</span>
+<p>Or, when using the transit secret engine:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">prefix</span> <span class="o">=</span> <span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">transit</span>
 </pre></div>
 </div>
 <p>In the example above, the Gateway would only fetch transit encryption keys under
-<code class="docutils literal notranslate"><span class="pre">http://vault-server:8200/v1/transit/export/encryption-key</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">https://vault-server:8200/v1/transit</span></code>.</p>
+<p>You can use custom ssl certs to authenticate with vault with help of
+following options:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">verify</span> <span class="n">ssl</span> <span class="o">=</span> <span class="n">true</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">ssl</span> <span class="n">cacert</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">vault</span><span class="o">.</span><span class="n">ca</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">ssl</span> <span class="n">clientcert</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">vault</span><span class="o">.</span><span class="n">crt</span>
+<span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">ssl</span> <span class="n">clientkey</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">vault</span><span class="o">.</span><span class="n">key</span>
+</pre></div>
+</div>
+<p>where vault.ca is CA certificate and vault.key/vault.crt are private key and ssl
+certificate generated for RGW to access the vault server. It highly recommended to
+set this option true, setting false is very dangerous and need to avoid since this
+runs in very secured environments.</p>
+<div class="section" id="transit-engine-compatibility-support">
+<h3>Transit engine compatibility support<a class="headerlink" href="#transit-engine-compatibility-support" title="Permalink to this headline">¶</a></h3>
+<p>The transit engine has compatibility support for previous
+versions of ceph, which used the transit engine as a simple key store.</p>
+<p>There is a “compat” option which can be given to the transit
+engine to configure the compatibility support,</p>
+<p>To entirely disable backwards support, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">secret</span> <span class="n">engine</span> <span class="o">=</span> <span class="n">transit</span> <span class="n">compat</span><span class="o">=</span><span class="mi">0</span>
+</pre></div>
+</div>
+<p>This will be the default in future versions. and is safe to use
+for new installs using the current version.</p>
+<p>This is the normal default with the current version:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">secret</span> <span class="n">engine</span> <span class="o">=</span> <span class="n">transit</span> <span class="n">compat</span><span class="o">=</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>This enables the new engine for newly created objects,
+but still allows the old engine to be used for old objects.
+In order to access old and new objects, the vault token given
+to ceph must have both the old and new transit policies.</p>
+<p>To force use of only the old engine, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rgw</span> <span class="n">crypt</span> <span class="n">vault</span> <span class="n">secret</span> <span class="n">engine</span> <span class="o">=</span> <span class="n">transit</span> <span class="n">compat</span><span class="o">=</span><span class="mi">2</span>
+</pre></div>
+</div>
+<p>This mode is automatically selected if the vault prefix
+ends in export/encryption-key, which was the previously
+documented setting.</p>
+</div>
 </div>
 <div class="section" id="upload-object">
 <h2>Upload object<a class="headerlink" href="#upload-object" title="Permalink to this headline">¶</a></h2>
@@ -493,8 +667,8 @@ As an example, for the kv engine, using the AWS command-line client:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">radosgw</span><span class="p">:</span><span class="mi">8000</span> <span class="n">s3</span> <span class="n">cp</span> <span class="n">plaintext</span><span class="o">.</span><span class="n">txt</span> <span class="n">s3</span><span class="p">:</span><span class="o">//</span><span class="n">mybucket</span><span class="o">/</span><span class="n">encrypted</span><span class="o">.</span><span class="n">txt</span> <span class="o">--</span><span class="n">sse</span><span class="o">=</span><span class="n">aws</span><span class="p">:</span><span class="n">kms</span> <span class="o">--</span><span class="n">sse</span><span class="o">-</span><span class="n">kms</span><span class="o">-</span><span class="n">key</span><span class="o">-</span><span class="nb">id</span> <span class="n">myproject</span><span class="o">/</span><span class="n">mybucketkey</span>
 </pre></div>
 </div>
-<p>As an example, for the transit engine, using the AWS command-line client:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">radosgw</span><span class="p">:</span><span class="mi">8000</span> <span class="n">s3</span> <span class="n">cp</span> <span class="n">plaintext</span><span class="o">.</span><span class="n">txt</span> <span class="n">s3</span><span class="p">:</span><span class="o">//</span><span class="n">mybucket</span><span class="o">/</span><span class="n">encrypted</span><span class="o">.</span><span class="n">txt</span> <span class="o">--</span><span class="n">sse</span><span class="o">=</span><span class="n">aws</span><span class="p">:</span><span class="n">kms</span> <span class="o">--</span><span class="n">sse</span><span class="o">-</span><span class="n">kms</span><span class="o">-</span><span class="n">key</span><span class="o">-</span><span class="nb">id</span> <span class="n">mybucketkey</span><span class="o">/</span><span class="mi">1</span>
+<p>As an example, for the transit engine (new flavor), using the AWS command-line client:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">radosgw</span><span class="p">:</span><span class="mi">8000</span> <span class="n">s3</span> <span class="n">cp</span> <span class="n">plaintext</span><span class="o">.</span><span class="n">txt</span> <span class="n">s3</span><span class="p">:</span><span class="o">//</span><span class="n">mybucket</span><span class="o">/</span><span class="n">encrypted</span><span class="o">.</span><span class="n">txt</span> <span class="o">--</span><span class="n">sse</span><span class="o">=</span><span class="n">aws</span><span class="p">:</span><span class="n">kms</span> <span class="o">--</span><span class="n">sse</span><span class="o">-</span><span class="n">kms</span><span class="o">-</span><span class="n">key</span><span class="o">-</span><span class="nb">id</span> <span class="n">mybucketkey</span>
 </pre></div>
 </div>
 <p>The Object Gateway will fetch the key from Vault, encrypt the object and store
@@ -507,8 +681,8 @@ URL prefix (<code class="docutils literal notranslate"><span class="pre">rgw</sp
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vaultserver</span><span class="p">:</span><span class="mi">8200</span><span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">secret</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">myproject</span><span class="o">/</span><span class="n">mybucketkey</span>
 </pre></div>
 </div>
-<p>In the transit engine example above, the Gateway would fetch the secret from:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vaultserver</span><span class="p">:</span><span class="mi">8200</span><span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">transit</span><span class="o">/</span><span class="n">export</span><span class="o">/</span><span class="n">encryption</span><span class="o">-</span><span class="n">key</span><span class="o">/</span><span class="n">mybucketkey</span><span class="o">/</span><span class="mi">1</span>
+<p>In the transit engine example above, the Gateway would encrypt the secret using this key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">vaultserver</span><span class="p">:</span><span class="mi">8200</span><span class="o">/</span><span class="n">v1</span><span class="o">/</span><span class="n">transit</span><span class="o">/</span><span class="n">mybucketkey</span>
 </pre></div>
 </div>
 </div>

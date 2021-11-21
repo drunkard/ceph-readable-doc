@@ -1,14 +1,13 @@
-.. Pool Placement and Storage Classes
-
 ====================
  存储池归置和存储类
 ====================
+.. Pool Placement and Storage Classes
 
 .. contents::
-.. Placement Targets
 
 归置目标
 ========
+.. Placement Targets
 
 .. versionadded:: Jewel
 
@@ -24,11 +23,11 @@ placement information includes the ``index_pool`` name for the bucket index,
 the ``data_extra_pool`` name for metadata about incomplete multipart uploads,
 and a ``data_pool`` name for each storage class.
 
-.. Storage Classes
 .. _storage_classes:
 
 存储类
 ======
+.. Storage Classes
 
 .. versionadded:: Nautilus
 
@@ -40,10 +39,9 @@ placement target lists its available storage classes with an initial class
 named ``STANDARD``. The zone configuration is responsible for providing a
 ``data_pool`` pool name for each of the zonegroup's storage classes.
 
-.. Zonegroup/Zone Configuration
-
 Zonegroup/Zone 配置
 ===================
+.. Zonegroup/Zone Configuration
 
 Placement configuration is performed with ``radosgw-admin`` commands on
 the zonegroups and zones.
@@ -106,11 +104,10 @@ The zone placement configuration can be queried with:
           the zone/zonegroup changes will take effect once the changes are
           committed with ``radosgw-admin period update --commit``.
 
-
-.. Adding a Placement Target
-
 新增一个归置目标
 ----------------
+.. Adding a Placement Target
+
 To create a new placement target named ``temporary``, start by adding it to
 the zonegroup:
 
@@ -131,11 +128,12 @@ Then provide the zone placement info for that target:
         --index-pool default.rgw.temporary.index \
         --data-extra-pool default.rgw.temporary.non-ec
 
-
-.. Adding a Storage Class
+.. _adding_a_storage_class:
 
 新增一个存储类
 --------------
+.. Adding a Storage Class
+
 To add a new storage class named ``GLACIER`` to the ``default-placement`` target,
 start by adding it to the zonegroup:
 

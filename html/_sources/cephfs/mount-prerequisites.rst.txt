@@ -1,24 +1,25 @@
-.. Mount CephFS: Prerequisites
-
 挂载 CephFS ：先决条件
 ======================
+.. Mount CephFS: Prerequisites
 
 You can use CephFS by mounting it to your local filesystem or by using
-`cephfs-shell`_. CephFS can be mounted `using kernel`_ as well as `using
-FUSE`_. Both have their own advantages. Read the following section to
-understand more about both of these ways to mount CephFS.
+`cephfs-shell`_. Mounting CephFS requires superuser privileges to trim
+dentries by issuing a remount of itself. CephFS can be mounted
+`using kernel`_ as well as `using FUSE`_. Both have their own
+advantages. Read the following section to understand more about both of
+these ways to mount CephFS.
 
-
-.. Which CephFS Client?
+For Windows CephFS mounts, please check the `ceph-dokan`_ page.
 
 用哪个 CephFS 客户端？
 ----------------------
+.. Which CephFS Client?
+
 FUSE 客户端是最简便、也最容易升级到与存储集群一致的 Ceph 版本，\
 但是内核客户端的性能通常更好。
 
 遇到缺陷或性能问题时，最好试试另一个客户端，以甄别此缺陷是否特\
 定于客户端（然后报告给开发者）。
-
 
 General Pre-requisite for Mounting CephFS
 -----------------------------------------
@@ -71,3 +72,4 @@ Ceph MON resides.
 .. _cephfs-shell: ../cephfs-shell
 .. _using kernel: ../mount-using-kernel-driver
 .. _using FUSE: ../mount-using-fuse
+.. _ceph-dokan: ../ceph-dokan
