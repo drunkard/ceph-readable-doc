@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>块设备与 Kubernetes &mdash; Ceph Documentation</title>
+  <title>Block Devices and Kubernetes &mdash; Ceph Documentation</title>
   
 
   
@@ -78,7 +78,7 @@
         
           <li><a href="../rbd-integrations/">Ceph 块设备与第三方对接</a> &raquo;</li>
         
-      <li>块设备与 Kubernetes</li>
+      <li>Block Devices and Kubernetes</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -216,8 +216,8 @@
   </div>
 
   
-  <div class="section" id="kubernetes">
-<h1>块设备与 Kubernetes<a class="headerlink" href="#kubernetes" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="block-devices-and-kubernetes">
+<h1>Block Devices and Kubernetes<a class="headerlink" href="#block-devices-and-kubernetes" title="Permalink to this headline">¶</a></h1>
 <p>You may use Ceph Block Device images with Kubernetes v1.13 and later through
 <a class="reference external" href="https://github.com/ceph/ceph-csi/">ceph-csi</a>, which dynamically provisions RBD images to back Kubernetes
 <a class="reference external" href="https://kubernetes.io/docs/concepts/storage/volumes/">volumes</a> and maps these RBD images as block devices (optionally mounting
@@ -307,6 +307,49 @@ EOF
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl apply -f csi-config-map.yaml
 </pre></div>
 </div>
+<p>Recent versions of <cite>ceph-csi</cite> also require an additional <cite>ConfigMap</cite> object to
+define Key Management Service (KMS) provider details.  If KMS isn’t set up, put
+an empty configuration in a <cite>csi-kms-config-map.yaml</cite> file or refer to examples
+at <a class="reference external" href="https://github.com/ceph/ceph-csi/tree/master/examples/kms">https://github.com/ceph/ceph-csi/tree/master/examples/kms</a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; csi-kms-config-map.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  config.json: |-
+    {}
+metadata:
+  name: ceph-csi-encryption-kms-config
+EOF
+</pre></div>
+</div>
+<p>Once generated, store the new <cite>ConfigMap</cite> object in Kubernetes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl apply -f csi-kms-config-map.yaml
+</pre></div>
+</div>
+<p>Recent versions of <cite>ceph-csi</cite> also require yet another <cite>ConfigMap</cite> object
+to define Ceph configuration to add to ceph.conf file inside CSI containers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;&lt;EOF &gt; ceph-config-map.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  ceph.conf: |
+    [global]
+    auth_cluster_required = cephx
+    auth_service_required = cephx
+    auth_client_required = cephx
+  # keyring is a required key and its value should be empty
+  keyring: |
+metadata:
+  name: ceph-config
+EOF
+</pre></div>
+</div>
+<p>Once generated, store the new <cite>ConfigMap</cite> object in Kubernetes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kubectl apply -f ceph-config-map.yaml
+</pre></div>
+</div>
 </div>
 <div class="section" id="generate-ceph-csi-cephx-secret">
 <h3>Generate <cite>ceph-csi</cite> cephx <cite>Secret</cite><a class="headerlink" href="#generate-ceph-csi-cephx-secret" title="Permalink to this headline">¶</a></h3>
@@ -380,17 +423,23 @@ provisioner: rbd.csi.ceph.com
 parameters:
    clusterID: b9127830-b0cc-4e34-aa47-9d1a2e9949a8
    pool: kubernetes
+   imageFeatures: layering
    csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
    csi.storage.k8s.io/provisioner-secret-namespace: default
+   csi.storage.k8s.io/controller-expand-secret-name: csi-rbd-secret
+   csi.storage.k8s.io/controller-expand-secret-namespace: default
    csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
    csi.storage.k8s.io/node-stage-secret-namespace: default
 reclaimPolicy: Delete
+allowVolumeExpansion: true
 mountOptions:
    - discard
 EOF
 $ kubectl apply -f csi-rbd-sc.yaml
 </pre></div>
 </div>
+<p>Note that in Kubernetes v1.14 and v1.15 volume expansion feature was in alpha
+status and required enabling <cite>ExpandCSIVolumes</cite> feature gate.</p>
 </div>
 <div class="section" id="create-a-persistentvolumeclaim">
 <h3>Create a <cite>PersistentVolumeClaim</cite><a class="headerlink" href="#create-a-persistentvolumeclaim" title="Permalink to this headline">¶</a></h3>

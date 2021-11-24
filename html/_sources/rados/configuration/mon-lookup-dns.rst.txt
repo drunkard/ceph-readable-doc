@@ -1,8 +1,7 @@
-.. Looking up Monitors through DNS
-
 =====================
  通过 DNS 查询监视器
 =====================
+.. Looking up Monitors through DNS
 
 从 11.0.0 版起， RADOS 支持通过 DNS 查询监视器。
 
@@ -17,12 +16,7 @@
 默认情况下，客户端和守护进程会查询名为 *ceph-mon* （可通过
 *mon_dns_srv_name* 配置）的 TCP 服务。
 
-
-``mon dns srv name``
-
-:描述: 查询监视器主机、地址时，要向 DNS 查询的服务名称。
-:类型: String
-:默认值: ``ceph-mon``
+.. confval:: mon_dns_srv_name
 
 
 实例

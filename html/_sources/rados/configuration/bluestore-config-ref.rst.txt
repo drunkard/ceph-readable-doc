@@ -302,23 +302,6 @@ set with::
 .. confval:: bluestore_compression_max_blob_size_hdd
 .. confval:: bluestore_compression_max_blob_size_ssd
 
-``bluestore compression required ratio``
-
-:描述: 为了存得下压缩后的版本，压缩后的数据块尺寸与原始尺寸的\
-       比率必须小于此数值。
-
-:类型: Floating point
-:是否必需: No
-:默认值: .875
-
-``bluestore compression max blob size ssd``
-
-:描述: 用非旋转（固态）媒体时
-       ``bluestore compression max blob size`` 的默认值。
-
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: 64K
 
 .. _bluestore-rocksdb-sharding:
 

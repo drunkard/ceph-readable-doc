@@ -73,7 +73,7 @@ order for monitor cluster to function properly.
 MON_MSGR2_NOT_ENABLED
 _____________________
 
-The ``ms_bind_msgr2`` option is enabled but one or more monitors is
+The :confval:`ms_bind_msgr2` option is enabled but one or more monitors is
 not configured to bind to a v2 port in the cluster's monmap.  This
 means that features specific to the msgr2 protocol (e.g., encryption)
 are not available on some or all connections.

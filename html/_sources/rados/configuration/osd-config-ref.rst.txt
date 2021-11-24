@@ -40,56 +40,20 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 下列选项可配置一 OSD 的唯一标识符、以及数据和日志的路径。 Ceph
 部署脚本通常会自动生成 UUID 。
 
-.. warning:: 我们\ **不建议**\ 更改数据和日志的默认路径，因为\
-   这样会增加后续的排障难度。
+.. warning:: **不要**\ 更改数据和日志的默认路径，\
+   因为这样会增加后续的排障难度。
 
 日志尺寸应该大于期望的驱动器速度和 ``filestore max sync interval``
 之乘积的两倍；最常见的方法是为日志驱动器（通常是 SSD ）分区并\
 挂载好，这样 Ceph 就可以用整个分区做日志。
 
-
-``osd uuid``
-
-:描述: OSD 的全局唯一标识符（ UUID ）。
-:类型: UUID
-:默认值: The UUID.
-:备注: ``osd uuid`` 适用于单个 OSD ， ``fsid`` 适用于整个集群。
-
-
-``osd data``
-
-:描述: OSD 数据存储位置，你得创建并把数据盘挂载到其下。我们\
-       不推荐更改默认值。
-:类型: String
-:默认值: ``/var/lib/ceph/osd/$cluster-$id``
-
-
-``osd max write size``
-
-:描述: 一次写入的最大尺寸，MB。
-:类型: 32-bit Integer
-:默认值: ``90``
-
-
-``osd max object size``
-
-:描述: 单个 RADOS 对象的最大尺寸，单位为字节。
-:类型: 32-bit Unsigned Integer
-:默认值: 128MB
-
-
-``osd client message size cap``
-
-:描述: 内存里允许的最大客户端数据消息。
-:类型: 64-bit Unsigned Integer
-:默认值: 默认为 500MB 。 ``500*1024L*1024L``
-
-
-``osd class dir``
-
-:描述: RADOS 类插件的路径。
-:类型: String
-:默认值: ``$libdir/rados-classes``
+.. confval:: osd_uuid
+.. confval:: osd_data
+.. confval:: osd_max_write_size
+.. confval:: osd_max_object_size
+.. confval:: osd_client_message_size_cap
+.. confval:: osd_class_dir
+   :default: $libdir/rados-classes
 
 
 .. index:: OSD; file system
@@ -101,22 +65,28 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 Ceph 可自动创建并挂载所需的文件系统。
 
 
-``osd mkfs options {fs-type}``
+``osd_mkfs_options {fs-type}``
 
 :描述: 为 OSD 新建 {fs-type} 类型的文件系统时使用的选项。
 :类型: String
 :xfs 默认值: ``-f -i 2048``
 :其余文件系统默认值: {empty string}
-:实例: ``osd mkfs options xfs = -f -d agcount=24``
+
+例如::
+
+  ``osd_mkfs_options_xfs = -f -d agcount=24``
 
 
-``osd mount options {fs-type}``
+``osd_mount_options {fs-type}``
 
 :描述: 挂载 {fs-type} 类型的文件系统作为 OSD 数据目录时所用的选项。
 :类型: String
 :xfs 默认值: ``rw,noatime,inode64``
 :其余文件系统默认值: ``rw, noatime``
-:实例: ``osd mount options xfs = rw, noatime, inode64, logbufs=8``
+
+例如::
+
+    ``osd_mount_options_xfs = rw, noatime, inode64, logbufs=8``
 
 
 .. index:: OSD; journal settings
@@ -125,7 +95,11 @@ Ceph 可自动创建并挂载所需的文件系统。
 ========
 .. Journal Settings
 
-默认情况下， Ceph 觉得你会把 OSD 日志存储于下列路径： ::
+This section applies only to the older Filestore OSD back end.  Since Luminous
+BlueStore has been default and preferred.
+
+默认情况下， Ceph 希望你把 OSD 守护进程的日志放到如下路径，\
+它通常是到一个设备或分区的符号链接::
 
 	/var/lib/ceph/osd/$cluster-$id/journal
 
@@ -143,21 +117,8 @@ larger, in which case it will need to be set in the ``ceph.conf`` file::
 	osd journal size = 10240
 
 
-``osd journal``
-
-:描述: OSD 日志路径，可以是一个文件或块设备（ SSD 的一个分区）的路径。如果是\
-       文件，要先创建相应目录。我们建议用 ``osd data`` 以外的独立驱动器。
-
-:类型: String
-:默认值: ``/var/lib/ceph/osd/$cluster-$id/journal``
-
-
-``osd journal size``
-
-:描述: 日志尺寸（ MB ）。
-:类型: 32-bit Integer
-:默认值: ``5120``
-
+.. confval:: osd_journal
+.. confval:: osd_journal_size
 
 详情见\ `日志配置参考`_\ 。
 
@@ -183,171 +144,34 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 ====
 .. Scrubbing
 
-除了为对象复制多个副本外， Ceph 还要洗刷归置组以确保数据完整\
-性。这种洗刷类似对象存储层的 ``fsck`` ，对每个归置组， Ceph \
-生成一个所有对象的目录，并比对每个主对象及其副本以确保没有对\
-象丢失或错配。轻微洗刷（每天）检查对象尺寸和属性，深层洗刷（\
-每周）会读出数据并用校验和方法确认数据完整性。
+除了为对象复制多个副本外，
+Ceph 还要洗刷归置组以确保数据完整性。
+这种洗刷类似对象存储层的 ``fsck`` ，对每个归置组，
+Ceph 生成一个所有对象的目录，并比对每个主对象及其副本以确保没有对象丢失或错配。
+轻微洗刷（每天）检查对象尺寸和属性，
+深层洗刷（每周）会读出数据并用校验和方法确认数据完整性。
 
-洗刷对维护数据完整性很重要，但会影响性能；你可以用下列选项来\
-增加或减少洗刷操作。
+洗刷对维护数据完整性很重要，
+但会导致性能下降；
+你可以用下列选项来增加或减少洗刷操作。
 
-
-``osd max scrubs``
-
-:描述: 一 OSD 的最大并发洗刷操作数。
-:类型: 32-bit Int
-:默认值: ``1``
-
-
-``osd scrub begin hour``
-
-:描述: 被调度的洗刷操作在一天中可以运行的时间下限。
-:类型: 0 到 24 之间的整数
-:默认值: ``0``
-
-
-``osd scrub end hour``
-
-:描述: 被调度的洗刷操作在一天中可以运行的时间上限。本选项与 \
-       ``osd scrub begin hour`` 一起定义了一个时间窗口，在此\
-       期间可以进行洗刷操作。但是，在某个归置组的洗刷间隔超过 \
-       ``osd scrub max interval`` 时，不管这个时间窗口是否合\
-       适都会执行。
-:类型: 0 到 24 之间的整数
-:默认值: ``24``
-
-
-``osd scrub begin week day``
-
-:描述: This restricts scrubbing to this day of the week or later.
-              0 or 7 = Sunday, 1 = Monday, etc.
-:类型: Integer in the range of 0 to 7
-:默认值: ``0``
-
-
-``osd scrub end week day``
-
-:描述: This restricts scrubbing to days of the week earlier than this.
-              0 or 7 = Sunday, 1 = Monday, etc.
-:类型: Integer in the range of 0 to 7
-:默认值: ``7``
-
-
-``osd scrub during recovery``
-
-:描述: 在恢复期间允许洗刷。有正在进行的恢复，且这里为 ``false``
-       时，就会禁止调度新的洗刷（和深层洗刷）。已经在运行的洗\
-       刷不受影响。对繁忙的集群来说，这样做可降低负载。
-:类型: Boolean
-:默认值: ``false``
-
-
-``osd scrub thread timeout``
-
-:描述: 洗刷线程最大死亡时值。
-:类型: 32-bit Integer
-:默认值: ``60``
-
-
-``osd scrub finalize thread timeout``
-
-:描述: 洗刷终结线程最大超时值。
-:类型: 32-bit Integer
-:默认值: ``60*10``
-
-
-``osd scrub load threshold``
-
-:描述: 标准的最大负载，当前系统负载（ ``getloadavg() / 在线 CPU 数量``
-       所定义的）高于此值时 Ceph 不会洗刷。默认 ``0.5`` 。
-
-:类型: Float
-:默认值: ``0.5``
-
-
-``osd scrub min interval``
-
-:描述: 集群负载低的时候，洗刷的最小间隔时间，秒。
-:类型: Float
-:默认值: 每天一次。 ``60*60*24``
-
-
-``osd scrub max interval``
-
-:描述: 不论集群负载如何，都要进行洗刷的时间间隔。
-:类型: Float
-:默认值: 每周一次。 ``7*60*60*24``
-
-
-``osd scrub chunk min``
-
-:描述: 单个操作可洗刷的最小对象块数。数据块在洗刷期间， Ceph \
-       会阻塞别人向它写入。
-:类型: 32-bit Integer
-:默认值: 5
-
-
-``osd scrub chunk max``
-
-:描述: 单个操作可洗刷的最大对象块数。
-:类型: 32-bit Integer
-:默认值: 25
-
-
-``osd scrub sleep``
-
-:描述: 洗刷下一组数据块前等待的时间。增加此值会拖慢整个洗刷进\
-       度，但对客户端操作没什么影响。
-
-:类型: Float
-:默认值: 0
-
-
-``osd deep scrub interval``
-
-:描述: 深层洗刷的间隔（完整地读所有数据）。
-       ``osd scrub load threshold`` 不会影响此选项。
-
-:类型: Float
-:默认值: 每周一次。 ``60*60*24*7``
-
-
-``osd scrub interval randomize ratio``
-
-:描述: 在给某一归置组调度下一个洗刷作业时，给 \
-       ``osd scrub min interval`` 增加个随机延时，这个延时是个\
-       小于 ``osd scrub min interval`` \* \
-       ``osd scrub interval randomized ratio`` 的随机值。所以\
-       在实践中，这个默认设置会把洗刷操作随机地散布到允许的时\
-       间窗口内，即 ``[1, 1.5]`` \*
-       ``osd scrub min interval`` 。
-
-:类型: Float
-:默认值: ``0.5``
-
-
-``osd deep scrub stride``
-
-:描述: 深层洗刷时的读取尺寸。
-:类型: 32-bit Integer
-:默认值: 512 KB. ``524288``
-
-
-``osd scrub auto repair``
-
-:描述: Setting this to ``true`` will enable automatic pg repair when errors
-              are found in scrub or deep-scrub.  However, if more than
-              ``osd scrub auto repair num errors`` errors are found a repair is NOT performed.
-:类型: Boolean
-:默认值: ``false``
-
-
-``osd scrub auto repair num errors``
-
-:描述: Auto repair will not occur if more than this many errors are found.
-:类型: 32-bit Integer
-:默认值: ``5``
+.. confval:: osd_max_scrubs
+.. confval:: osd_scrub_begin_hour
+.. confval:: osd_scrub_end_hour
+.. confval:: osd_scrub_begin_week_day
+.. confval:: osd_scrub_end_week_day
+.. confval:: osd_scrub_during_recovery
+.. confval:: osd_scrub_load_threshold
+.. confval:: osd_scrub_min_interval
+.. confval:: osd_scrub_max_interval
+.. confval:: osd_scrub_chunk_min
+.. confval:: osd_scrub_chunk_max
+.. confval:: osd_scrub_sleep
+.. confval:: osd_deep_scrub_interval
+.. confval:: osd_scrub_interval_randomize_ratio
+.. confval:: osd_deep_scrub_stride
+.. confval:: osd_scrub_auto_repair
+.. confval:: osd_scrub_auto_repair_num_errors
 
 
 .. index:: OSD; operations settings
@@ -356,163 +180,25 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 ======
 .. Operations
 
-
-``osd op queue``
-
-:描述: 本选项用于配置 OSD 内各种操作（ ops ）的优先顺序。两\
-       种队列都实现了严格子队列，出常规队列之前要先出子队列，\
-       它与常规队列的实现机制不同。最初的 PrioritizedQueue
-       (``prio``) 使用令牌桶系统，在令牌足够多时它会先处理\
-       优先级高的队列；在令牌不够多时，则按优先级从低到高依\
-       次处理。 WeightedPriorityQueue (``wpq``) 会根据\
-       其优先级处理所有队列，以避免出现饥饿队列。在一部分
-       OSD 负载高于其它的时， WPQ 应该有优势。
-       新的、基于 mClock 的 OpClassQueue (``mclock_opclass``)\
-       可针对它们所属的类（ recovery 、 scrub 、 snaptrim 、
-       client op 、 osd subop ）来划分优先级。还有，基于 mClock
-       的 ClientQueue (``mclock_client``) 还能结合客户端标识符\
-       来增进各客户端之间的公平性。见\
-       `基于 mClock 的 QoS`_\ 。此配置更改后需重启。
-
-:类型: String
-:可选值: prio, wpq, mclock_opclass, mclock_client
-:默认值: ``wpq``
-
-
-``osd op queue cut off``
-
-:描述: 本选项用于配置把哪个优先级的操作放入严格队列、还是常\
-       规队列。 ``low`` 这个选项会把所有复制操作以及优先级更\
-       高的放入严格队列；而 ``high`` 选项只会把复制的确认反\
-       馈操作以及优先级更高的发往严格队列。此选项设置为
-       ``high`` 时，应该有助于缓解集群内某些 OSD 特别繁忙的\
-       情形，尤其是配合 ``osd op queue`` 设置为 ``wpq`` 使用\
-       时效果更佳。忙于处理副本流量的 OSD 们，如果没有这些配\
-       置，它们的主副本（ primary client ）客户端往往比较空\
-       闲。此配置更改后需重启。
-
-:类型: String
-:可选值: low, high
-:默认值: ``high``
-
-
-``osd client op priority``
-
-:描述: 客户端操作的优先级组。
-:类型: 32-bit Integer
-:默认值: ``63``
-:有效范围: 1-63
-
-
-``osd recovery op priority``
-
-:描述: 恢复操作的优先级组，如果未配置 ``recovery_op_priority``
-       就采用此配置。
-:类型: 32-bit Integer
-:默认值: ``3``
-:有效范围: 1-63
-
-
-``osd scrub priority``
-
-:描述: The default priority set for a scheduled scrub work queue when the
-              pool doesn't specify a value of ``scrub_priority``.  This can be
-              boosted to the value of ``osd client op priority`` when scrub is
-              blocking client operations.
-:类型: 32-bit Integer
-:默认值: ``5``
-:有效范围: 1-63
-
-
-``osd requested scrub priority``
-
-:描述: The priority set for user requested scrub on the work queue.  If
-              this value were to be smaller than ``osd client op priority`` it
-              can be boosted to the value of ``osd client op priority`` when
-              scrub is blocking client operations.
-
-:类型: 32-bit Integer
-:默认值: ``120``
-
-
-``osd snap trim priority``
-
-:描述: 快照修建工作队列的的优先级组。
-:类型: 32-bit Integer
-:默认值: ``5``
-:有效范围: 1-63
-
-
-``osd snap trim sleep``
-
-:描述: Time in seconds to sleep before next snap trim op.
-              Increasing this value will slow down snap trimming.
-              This option overrides backend specific variants.
-
-:类型: Float
-:默认值: ``0``
-
-
-``osd snap trim sleep hdd``
-
-:描述: Time in seconds to sleep before next snap trim op
-              for HDDs.
-
-:类型: Float
-:默认值: ``5``
-
-
-``osd snap trim sleep ssd``
-
-:描述: Time in seconds to sleep before next snap trim op
-              for SSDs.
-
-:类型: Float
-:默认值: ``0``
-
-
-``osd snap trim sleep hybrid``
-
-:描述: Time in seconds to sleep before next snap trim op
-              when osd data is on HDD and osd journal is on SSD.
-
-:类型: Float
-:默认值: ``2``
-
-
-``osd op thread timeout``
-
-:描述: OSD 线程超时秒数。
-:类型: 32-bit Integer
-:默认值: ``15``
-
-
-``osd op complaint time``
-
-:描述: 一个操作进行多久后开始抱怨。
-:类型: Float
-:默认值: ``30``
-
-
-``osd op history size``
-
-:描述: 要跟踪的最大已完成操作数量。
-:类型: 32-bit Unsigned Integer
-:默认值: ``20``
-
-
-``osd op history duration``
-
-:描述: 要跟踪的最老已完成操作。
-:类型: 32-bit Unsigned Integer
-:默认值: ``600``
-
-
-``osd op log threshold``
-
-:描述: 一次显示多少操作日志。
-:类型: 32-bit Integer
-:默认值: ``5``
+.. confval:: osd_op_num_shards
+.. confval:: osd_op_num_shards_hdd
+.. confval:: osd_op_num_shards_ssd
+.. confval:: osd_op_queue
+.. confval:: osd_op_queue_cut_off
+.. confval:: osd_client_op_priority
+.. confval:: osd_recovery_op_priority
+.. confval:: osd_scrub_priority
+.. confval:: osd_requested_scrub_priority
+.. confval:: osd_snap_trim_priority
+.. confval:: osd_snap_trim_sleep
+.. confval:: osd_snap_trim_sleep_hdd
+.. confval:: osd_snap_trim_sleep_ssd
+.. confval:: osd_snap_trim_sleep_hybrid
+.. confval:: osd_op_thread_timeout
+.. confval:: osd_op_complaint_time
+.. confval:: osd_op_history_size
+.. confval:: osd_op_history_duration
+.. confval:: osd_op_log_threshold
 
 
 .. _dmclock-qos:
@@ -671,33 +357,10 @@ backfilling 来执行此迁移，它可以使得 Ceph 的回填操作优先级�
 用户读写请求。
 
 
-``osd max backfills``
-
-:描述: 单个 OSD 允许的最大回填操作数。
-:类型: 64-bit Unsigned Integer
-:默认值: ``1``
-
-
-``osd backfill scan min``
-
-:描述: 集群负载低时，回填操作时扫描间隔。
-:类型: 32-bit Integer
-:默认值: ``64``
-
-
-``osd backfill scan max``
-
-:描述: 回填操作时最大扫描间隔。
-:类型: 32-bit Integer
-:默认值: ``512``
-
-
-``osd backfill retry interval``
-
-:描述: 重试回填请求前等待秒数。
-:类型: Double
-:默认值: ``10.0``
-
+.. confval:: osd_max_backfills
+.. confval:: osd_backfill_scan_min
+.. confval:: osd_backfill_scan_max
+.. confval:: osd_backfill_retry_interval
 
 
 .. index:: OSD; osdmap
@@ -709,27 +372,9 @@ OSD 运行图
 OSD 运行图反映集群中运行的 OSD 守护进程，斗转星移，图元增加。
 Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。
 
-
-``osd map dedup``
-
-:描述: 允许删除 OSD 图里的重复项。
-:类型: Boolean
-:默认值: ``true``
-
-
-``osd map cache size``
-
-:描述: 缓存的 OSD 图个数。
-:类型: 32-bit Integer
-:默认值: ``50``
-
-
-``osd map message max``
-
-:描述: 每个  MOSDMap 图消息允许的最大条目数量。
-:类型: 32-bit Integer
-:默认值: ``40``
-
+.. confval:: osd_map_dedup
+.. confval:: osd_map_cache_size
+.. confval:: osd_map_message_max
 
 
 .. index:: OSD; recovery
@@ -751,131 +396,26 @@ OSD 们建立连接，这样才能正常工作。详情见\
 为保持运营性能， Ceph 进行恢复时会限制恢复请求数、线程数、对象\
 块尺寸，这样在降级状态下也能保持良好的性能。
 
-
-``osd recovery delay start``
-
-:描述: 对等关系建立完毕后， Ceph 开始对象恢复前等待的时间\
-       （秒）。
-
-:类型: Float
-:默认值: ``0``
-
-
-``osd recovery max active``
-
-:描述: 每个 OSD 一次可以处理的活跃恢复请求数量，增大此值能加速\
-       恢复，但它们会增大集群负载。
-:类型: 32-bit Integer
-:默认值: ``3``
-
-
-``osd recovery max active hdd``
-
-:描述: The number of active recovery requests per OSD at one time, if the
-	      primary device is rotational.
-:类型: 32-bit Integer
-:默认值: ``3``
-
-
-``osd recovery max active ssd``
-
-:描述: The number of active recovery requests per OSD at one time, if the
-	      primary device is non-rotational (i.e., an SSD).
-:类型: 32-bit Integer
-:默认值: ``10``
-
-
-``osd recovery max chunk``
-
-:描述: 一次推送的数据块的最大尺寸。
-:类型: 64-bit Unsigned Integer
-:默认值: ``8 << 20``
-
-
-``osd recovery max single start``
-
-:描述: 某个 OSD 恢复时，各 OSD 即将新开的最大恢复操作数量。
-:类型: 64-bit Unsigned Integer
-:默认值: ``1``
-
-
-``osd recovery thread timeout``
-
-:描述: 恢复线程最大死亡时值。
-:类型: 32-bit Integer
-:默认值: ``30``
-
-
-``osd recover clone overlap``
-
-:描述: 在数据恢复期间保留重叠副本。应该总是 ``true`` 。
-:类型: Boolean
-:默认值: ``true``
-
-
-``osd recovery sleep``
-
-:描述: 下一轮恢复或回填操作前睡眠的时间，单位为秒。增大此值会\
-       减慢恢复操作，同时客户端操作受到的影响也小些了。
-
-:类型: Float
-:默认值: ``0``
-
-
-``osd recovery sleep hdd``
-
-:描述: 对于机械硬盘，下一轮恢复或回填操作前睡眠的时间，单位为\
-       秒。
-
-:类型: Float
-:默认值: ``0.1``
-
-
-``osd recovery sleep ssd``
-
-:描述: 对于固态硬盘，下一轮恢复或回填操作前睡眠的时间，单位为\
-       秒。
-
-:类型: Float
-:默认值: ``0``
-
-
-``osd recovery sleep hybrid``
-
-:描述: OSD 数据在机械硬盘上而 OSD 日志在固态硬盘上时，下一轮\
-       恢复或回填操作前睡眠的时间，单位为秒。
-:类型: Float
-:默认值: ``0.025``
-
-
-``osd recovery priority``
-
-:描述: The default priority set for recovery work queue.  Not
-              related to a pool's ``recovery_priority``.
-
-:类型: 32-bit Integer
-:默认值: ``5``
+.. confval:: osd_recovery_delay_start
+.. confval:: osd_recovery_max_active
+.. confval:: osd_recovery_max_active_hdd
+.. confval:: osd_recovery_max_active_ssd
+.. confval:: osd_recovery_max_chunk
+.. confval:: osd_recovery_max_single_start
+.. confval:: osd_recover_clone_overlap
+.. confval:: osd_recovery_sleep
+.. confval:: osd_recovery_sleep_hdd
+.. confval:: osd_recovery_sleep_ssd
+.. confval:: osd_recovery_sleep_hybrid
+.. confval:: osd_recovery_priority
 
 
 分级缓存选项
 ============
 .. Tiering
 
-``osd agent max ops``
-
-:描述: 在高速模式下，每个分级缓存代理同时执行刷回操作的最大数\
-       量。
-
-:类型: 32-bit Integer
-:默认值: ``4``
-
-
-``osd agent max low ops``
-
-:描述: 在低速模式下，每个分级缓存代理同时执行刷回操作的最大数\
-       量。
-:类型: 32-bit Integer
-:默认值: ``2``
+.. confval:: osd_agent_max_ops
+.. confval:: osd_agent_max_low_ops
 
 关于在高速模式下，分级缓存代理何时刷回脏对象，见
 `cache target dirty high ratio`_ 选项。
@@ -885,96 +425,14 @@ OSD 们建立连接，这样才能正常工作。详情见\
 ====
 .. Miscellaneous
 
-``osd snap trim thread timeout``
-
-:描述: 快照修复线程最大死亡时值。
-:类型: 32-bit Integer
-:默认值: ``60*60*1``
-
-
-``osd backlog thread timeout``
-
-:描述: 积压线程最大死亡时值。
-:类型: 32-bit Integer
-:默认值: ``60*60*1``
-
-
-``osd default notify timeout``
-
-:描述: OSD 默认通告超时，秒。
-:类型: 32-bit Unsigned Integer
-:默认值: ``30``
-
-
-``osd check for log corruption``
-
-:描述: 根据日志文件查找数据损坏，会耗费大量计算时间。
-:类型: Boolean
-:默认值: ``false``
-
-
-``osd remove thread timeout``
-
-:描述: OSD 删除线程的最大死亡时值。
-:类型: 32-bit Integer
-:默认值: ``60*60``
-
-
-``osd command thread timeout``
-
-:描述: 命令线程最大超时值。
-:类型: 32-bit Integer
-:默认值: ``10*60``
-
-
-``osd delete sleep``
-
-:描述: Time in seconds to sleep before next removal transaction. This
-              helps to throttle the pg deletion process.
-:类型: Float
-:默认值: ``0``
-
-
-``osd delete sleep hdd``
-
-:描述: Time in seconds to sleep before next removal transaction
-              for HDDs.
-:类型: Float
-:默认值: ``5``
-
-
-``osd delete sleep ssd``
-
-:描述: Time in seconds to sleep before next removal transaction
-              for SSDs.
-:类型: Float
-:默认值: ``0``
-
-
-``osd delete sleep hybrid``
-
-:描述: Time in seconds to sleep before next removal transaction
-              when osd data is on HDD and osd journal is on SSD.
-
-:类型: Float
-:默认值: ``1``
-
-
-``osd command max records``
-
-:描述: 限制返回的丢失对象数量。
-:类型: 32-bit Integer
-:默认值: ``256``
-
-
-``osd fast fail on connection refused``
-
-:描述: 如果启用此选项，崩溃的 OSD 会即刻被已互联的 OSD 和监视\
-       器们标记为 down （假设已崩溃 OSD 所在主机还活着）。禁用\
-       此选项即可恢复原来的行为，代价是 I/O 操作中途若有 OSD \
-       崩溃可能会导致较长时间的 I/O 停顿。
-:类型: Boolean
-:默认值: ``true``
+.. confval:: osd_default_notify_timeout
+.. confval:: osd_check_for_log_corruption
+.. confval:: osd_delete_sleep
+.. confval:: osd_delete_sleep_hdd
+.. confval:: osd_delete_sleep_ssd
+.. confval:: osd_delete_sleep_hybrid
+.. confval:: osd_command_max_records
+.. confval:: osd_fast_fail_on_connection_refused
 
 
 .. _pool: ../../operations/pools

@@ -69,6 +69,19 @@ https://github.com/drunkard/ceph-readable-doc ，可以克隆到本地，启动H
     +                                              'src/common/options',
                                                    '*.yaml.in'))
 
+desc
+````
+yaml.in 文件里同时有 fmt_desc|long_desc|desc 时，优先级为
+fmt_desc > long_desc > desc ，见 _ext/ceph_confval.py 里：
+
+.. code:: python
+
+	desc = opt.get('fmt_desc') or opt.get('long_desc') or opt.get('desc')
+
+字段名
+``````
+TODO: 翻译字段名，位于 _ext/ceph_confval.py -> TEMPLATE
+
 
 更新步骤
 ========

@@ -62,7 +62,6 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 并把运行图存储为文件。
 
 
-
 .. index:: Ceph Monitor; cluster map
 
 集群运行图
@@ -85,7 +84,6 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 `监控集群`_\ 和\ `监控 OSD 和归置组`_\ 。
 
 
-
 .. index:: high availability; quorum
 
 监视器法定人数
@@ -101,13 +99,7 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 主集群运行图达成一致，这里的一致要求大多数监视器都在运行且够\
 成法定人数（如 1 个、 3 之 2 在运行、 5 之 3 、 6 之 4 等等）。
 
-
-``mon force quorum join``
-
-:描述: 强制监视器加入法定人数，即使它曾被踢出运行图。
-:类型: Boolean
-:默认值: ``False``
-
+.. confval:: mon_force_quorum_join
 
 
 .. index:: Ceph Monitor; consistency
@@ -170,7 +162,6 @@ monmap 用于发现、并共享于客户端和其他 Ceph 守护进程间，
 关于初始化的具体信息见\ `初始化监视器`_\ 。
 
 
-
 .. index:: Ceph Monitor; configuring monitors
 
 监视器的配置
@@ -221,8 +212,8 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
    ``fsid`` 和 ``mon.`` 密钥。
 
 一旦部署完 Ceph 集群，监视器 IP 地址就\ **不应该**\ 更改了。\
-然而，如果你决意要改，必须严格按照\ `更改监视器 IP 地址`_\
-来改。
+然而，如果你决意要改，必须严格遵循特定的步骤，
+详情见\ :ref:`更改监视器的 IP 地址`\ 。
 
 也可以让客户端通过 DNS 的 SRV 记录发现监视器，详情见\
 `通过 DNS 查询监视器`_\ 。
@@ -237,15 +228,7 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 通常会生成 ``fsid`` 并存于监视器图，所以不一定会写入配置文件，\
 ``fsid`` 使得在一套硬件上运行多个集群成为可能。
 
-
-``fsid``
-
-:描述: 集群 ID ，一集群一个。
-:类型: UUID
-:是否必需: Yes.
-:默认值: 无。若未指定，部署工具会生成。
-
-.. note:: 如果你用部署工具就不能设置。
+.. confval:: fsid
 
 
 .. index:: Ceph Monitor; initial members
@@ -261,18 +244,9 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，这
 .. code-block:: ini
 
 	[mon]
-		mon initial members = a,b,c
+		mon_initial_members = a,b,c
 
-
-``mon initial members``
-
-:描述: 集群启动时初始监视器的 ID ，若指定， Ceph 需要奇数个\
-       监视器来确定最初法定人数（如 3 ）。
-:类型: String
-:默认值: None
-
-.. note:: 集群内的\ *大多数*\ 监视器必须能互通以建立法定人数，\
-   你可以用此选项减小初始监视器数量来形成。
+.. confval:: mon_initial_members
 
 
 .. index:: Ceph Monitor; data path
@@ -298,141 +272,22 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 一般来说我们不建议更改默认数据位置，如果要改，我们建议所有\
 监视器统一配置，加到配置文件的 ``[mon]`` 下。
 
-
-``mon data``
-
-:描述: 监视器的数据位置。
-:类型: String
-:默认值: ``/var/lib/ceph/mon/$cluster-$id``
-
-
-``mon data size warn``
-
-:描述: 监视器的数据量大于 15GB 时发一条 ``HEALTH_WARN``
-       集群日志。
-:类型: Integer
-:默认值: ``15*1024*1024*1024*``
-
-
-``mon data avail warn``
-
-:描述: 监视器的数据存储磁盘可用空间小于或等于此百分比时发一条
-       ``HEALTH_WARN`` 集群日志。
-:类型: Integer
-:默认值: ``30``
-
-
-``mon data avail crit``
-
-:描述: 监视器的数据存储磁盘可用空间小于或等于此百分比时发一条
-       ``HEALTH_ERR`` 集群日志。
-:类型: Integer
-:默认值: ``5``
-
-
-``mon warn on cache pools without hit sets``
-
-:描述: 如果某个缓存存储池没配置 ``hit_set_type`` ，发出一条
-       ``HEALTH_WARN`` 集群日志。详情见
-       :ref:`hit_set_type <hit_set_type>` 。
-:类型: Boolean
-:默认值: ``True``
-
-
-``mon warn on crush straw calc version zero``
-
-:描述: 如果 CRUSH 的 ``straw_calc_version`` 值为 0 ，发出一条
-       ``HEALTH_WARN`` 集群日志。详情见
-       :ref:`CRUSH 图的可调选项 <crush-map-tunables>`\ 。
-:类型: Boolean
-:默认值: ``True``
-
-
-``mon warn on legacy crush tunables``
-
-:描述: 如果 CRUSH 可调选项太旧（比 ``mon_min_crush_required_version``
-       旧），发出一条 ``HEALTH_WARN`` 集群日志。
-:类型: Boolean
-:默认值: ``True``
-
-
-``mon crush min required version``
-
-:描述: 此集群要求的最低可调配置版本号，详情见
-       :ref:`CRUSH 图的可调选项 <crush-map-tunables>`\ 。
-:类型: String
-:默认值: ``hammer``
-
-
-``mon warn on osd down out interval zero``
-
-:描述: 如果 ``mon osd down out interval`` 是 0 ，发出一条
-       ``HEALTH_WARN`` 集群日志。 Leader 上的这个选项设置为 0 \
-       时，结果类似 ``noout`` 标记。集群没有设置 ``noout``
-       标记，而表现出的行为却一样时很难查出为什么，所以我们\
-       对此情况发出警告。
-:类型: Boolean
-:默认值: ``True``
-
-
-``mon warn on slow ping ratio``
-
-:描述: Issue a ``HEALTH_WARN`` in cluster log if any heartbeat
-              between OSDs exceeds ``mon warn on slow ping ratio``
-              of ``osd heartbeat grace``.  The default is 5%.
-:类型: Float
-:默认值: ``0.05``
-
-
-``mon warn on slow ping time``
-
-:描述: Override ``mon warn on slow ping ratio`` with a specific value.
-              Issue a ``HEALTH_WARN`` in cluster log if any heartbeat
-              between OSDs exceeds ``mon warn on slow ping time``
-              milliseconds.  The default is 0 (disabled).
-:类型: Integer
-:默认值: ``0``
-
-
-``mon warn on pool no redundancy``
-
-:描述: Issue a ``HEALTH_WARN`` in cluster log if any pool is
-              configured with no replicas.
-:类型: Boolean
-:默认值: ``True``
-
-
-``mon cache target full warn ratio``
-
-:描述: 存储池使用率达到 ``cache_target_full`` 和 ``target_max_object``
-       的多大比例时发出警告。
-:类型: Float
-:默认值: ``0.66``
-
-
-``mon health to clog``
-
-:描述: 是否周期性地向集群日志发送健康摘要。
-:类型: Boolean
-:默认值: ``True``
-
-
-``mon health to clog tick interval``
-
-:描述: 监视器向集群日志发送健康摘要的频率，单位为秒。非正数\
-       表示禁用此功能。如果当前健康摘要为空或者与上次的相同，\
-       监视器就不会发给集群日志了。
-:类型: Float
-:默认值: ``60.0``
-
-
-``mon health to clog interval``
-
-:描述: 监视器向集群日志发送健康摘要的频率，单位为秒。非正数\
-       表示禁用此功能。不管摘要有没有变化，监视器都会把摘要\
-       发给集群日志。
-:类型: Integer
-:默认值: ``3600``
+.. confval:: mon_data
+.. confval:: mon_data_size_warn
+.. confval:: mon_data_avail_warn
+.. confval:: mon_data_avail_crit
+.. confval:: mon_warn_on_cache_pools_without_hit_sets
+.. confval:: mon_warn_on_crush_straw_calc_version_zero
+.. confval:: mon_warn_on_legacy_crush_tunables
+.. confval:: mon_crush_min_required_version
+.. confval:: mon_warn_on_osd_down_out_interval_zero
+.. confval:: mon_warn_on_slow_ping_ratio
+.. confval:: mon_warn_on_slow_ping_time
+.. confval:: mon_warn_on_pool_no_redundancy
+.. confval:: mon_cache_target_full_warn_ratio
+.. confval:: mon_health_to_clog
+.. confval:: mon_health_to_clog_tick_interval
+.. confval:: mon_health_to_clog_interval
 
 
 .. index:: Ceph Storage Cluster; capacity planning, Ceph Monitor; capacity planning
@@ -510,19 +365,19 @@ OSD 及主机。如果集群利用率太高，在解决故障域期间也许不�
 
 	[global]
 
-		mon osd full ratio = .80
-		mon osd backfillfull ratio = .75
-		mon osd nearfull ratio = .70
+		mon_osd_full_ratio = .80
+		mon_osd_backfillfull_ratio = .75
+		mon_osd_nearfull_ratio = .70
 
 
-``mon osd full ratio``
+``mon_osd_full_ratio``
 
 :描述: OSD 硬盘使用率达到多少就认为它 ``full`` 。
 :类型: Float
 :默认值: ``.95``
 
 
-``mon osd backfillfull ratio``
+``mon_osd_backfillfull_ratio``
 
 :描述: OSD 磁盘空间利用率达到多少就认为它太满了，不能再接受\
        回填。
@@ -530,7 +385,7 @@ OSD 及主机。如果集群利用率太高，在解决故障域期间也许不�
 :默认值: ``.90``
 
 
-``mon osd nearfull ratio``
+``mon_osd_nearfull_ratio``
 
 :描述: OSD 硬盘使用率达到多少就认为它 ``nearfull`` 。
 :类型: Float
@@ -623,166 +478,28 @@ leader ）， provider 能终结和 requester 间的同步。
 一旦同步完成， Ceph 需要修复整个集群，使归置组回到
 ``active + clean`` 状态。
 
-
-``mon sync timeout``
-
-:描述: 监视器与上家同步的时候，等待下一个更新消息的时长（单位\
-       为秒），超时此时间就放弃然后从头再来。
-:类型: Double
-:默认值: ``60.0``
-
-
-``mon sync max payload size``
-
-:描述: 同步载荷的最大尺寸（单位为字节）。
-:类型: 32-bit Integer
-:默认值: ``1045676``
-
-
-``paxos max join drift``
-
-:描述: 允许的最大 Paxos 迭代量，超过此值必须先同步监视器数据。\
-       当某个监视器发现别的互联点比它领先太多的时候，它得先同\
-       步数据才能继续工作。
-:类型: Integer
-:默认值: ``10``
-
-
-``paxos stash full interval``
-
-:描述: 多久（按提交数量计算）存储一份完整的 PaxosService 状态。\
-       当前这个选项会影响 ``mds`` 、 ``mon`` 、 ``auth`` 和
-       ``mgr`` 的 PaxosService 。
-:类型: Integer
-:默认值: ``25``
-
-
-``paxos propose interval``
-
-:描述: 提议更新之前收集本时间段的更新。
-:类型: Double
-:默认值: ``1.0``
-
-
-``paxos min``
-
-:描述: 保留着的 paxos 状态的最小数量。
-:类型: Integer
-:默认值: ``500``
-
-
-``paxos min wait``
-
-:描述: 经过一段不活跃时间后，收集更新的最小等待时间。
-:类型: Double
-:默认值: ``0.05``
-
-
-``paxos trim min``
-
-:描述: 有多少多余的提议才能清理。
-:类型: Integer
-:默认值: ``250``
-
-
-``paxos trim max``
-
-:描述: 一次最多清理多少多余的提议。
-:类型: Integer
-:默认值: ``500``
-
-
-``paxos service trim min``
-
-:描述: 至少积攒多少个版本再触发清理机制（ 0 禁用此选项）。
-:类型: Integer
-:默认值: ``250``
-
-
-``paxos service trim max``
-
-:描述: 一次提议最多可以清理多少个版本（ 0 禁用此选项）。
-:类型: Integer
-:默认值: ``500``
-
-
-``mon mds force trim to``
-
-:描述: 强制让监视器把 mdsmap 裁截到这一点（ 0 禁用此选项）。非\
-       常危险，慎用！
-:类型: Integer
-:默认值: ``0``
-
-
-``mon osd force trim to``
-
-:描述: 强制让监视器把 osdmap 裁截到这一点，即使指定的时间结上\
-       仍有不干净的 PG 也在所不惜。 0 禁用此选项。非常危险，\
-       慎用！
-:类型: Integer
-:默认值: ``0``
-
-
-``mon osd cache size``
-
-:描述: osdmap 缓存的尺寸，与底层存储的缓存无关。
-:类型: Integer
-:默认值: ``500``
-
-
-``mon election timeout``
-
-:描述: 等待大家确认选举提案的最大时长。单位为秒。
-:类型: Float
-:默认值: ``5.00``
-
-
-``mon lease``
-
-:描述: 监视器版本租期（秒）。
-:类型: Float
-:默认值: ``5.00``
-
-
-``mon lease renew interval factor``
-
-:描述: ``mon lease`` \* ``mon lease renew interval factor``
-       时长就是 Leader （头领）刷新其他监视器租期的间隔。此\
-       系数应该小于 ``1.0`` 。
-:类型: Float
-:默认值: ``0.6``
-
-
-``mon lease ack timeout factor``
-
-:描述: Leader 会等着各 Provider 确认租期延续，时间不超过
-       ``mon lease`` \* ``mon lease ack timeout factor`` 。
-:类型: Float
-:默认值: ``2.0``
-
-
-``mon accept timeout factor``
-
-:描述: Leader 会等着 Requester(s) 接收 Paxos 更新，时间不超过
-       ``mon lease`` \* ``mon accept timeout factor`` 。出于\
-       类似目的，在 Paxos 恢复阶段也会用到此配置。
-:类型: Float
-:默认值: ``2.0``
-
-
-``mon min osdmap epochs``
-
-:描述: 一直保存的 OSD 图元素最小数量。
-:类型: 32-bit Integer
-:默认值: ``500``
-
-
-``mon max log epochs``
-
-:描述: 监视器应该保留的最大日志数量。
-:类型: 32-bit Integer
-:默认值: ``500``
-
+.. confval:: mon_sync_timeout
+.. confval:: mon_sync_max_payload_size
+.. confval:: paxos_max_join_drift
+.. confval:: paxos_stash_full_interval
+.. confval:: paxos_propose_interval
+.. confval:: paxos_min
+.. confval:: paxos_min_wait
+.. confval:: paxos_trim_min
+.. confval:: paxos_trim_max
+.. confval:: paxos_service_trim_min
+.. confval:: paxos_service_trim_max
+.. confval:: paxos_service_trim_max_multiplier
+.. confval:: mon_mds_force_trim_to
+.. confval:: mon_osd_force_trim_to
+.. confval:: mon_osd_cache_size
+.. confval:: mon_election_timeout
+.. confval:: mon_lease
+.. confval:: mon_lease_renew_interval_factor
+.. confval:: mon_lease_ack_timeout_factor
+.. confval:: mon_accept_timeout_factor
+.. confval:: mon_min_osdmap_epochs
+.. confval:: mon_max_log_epochs
 
 
 .. index:: Ceph Monitor; clock
@@ -799,7 +516,6 @@ Ceph 的守护进程会相互传递关键消息，这些消息必须在达到超
 
 详情见\ `监视器存储同步`_\ 。
 
-
 .. tip:: 你\ **应该**\ 在所有监视器主机上安装 NTP 以确保监视器\
    集群的时钟同步。
 
@@ -811,76 +527,21 @@ Ceph 的守护进程会相互传递关键消息，这些消息必须在达到超
 
 Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 
+.. confval:: mon_tick_interval
+.. confval:: mon_clock_drift_allowed
+.. confval:: mon_clock_drift_warn_backoff
+.. confval:: mon_timecheck_interval
+.. confval:: mon_timecheck_skew_interval
 
-``mon tick interval``
-
-:描述: 监视器的心跳间隔，单位为秒。
-:类型: 32-bit Integer
-:默认值: ``5``
-
-
-``mon clock drift allowed``
-
-:描述: 监视器间允许的时钟漂移量
-:类型: Float
-:默认值: ``.050``
-
-
-``mon clock drift warn backoff``
-
-:描述: 时钟偏移警告的退避指数。
-:类型: Float
-:默认值: ``5``
-
-
-``mon timecheck interval``
-
-:描述: 和 Leader 的时间偏移检查（时钟漂移检查）。单位为秒。
-:类型: Float
-:默认值: ``300.0``
-
-
-``mon timecheck skew interval``
-
-:描述: 时间检查间隔（时钟漂移检查），单位为秒。出现时间偏差时，
-       Leader 间隔多久检查一次。
-:类型: Float
-:默认值: ``30.0``
-
-
-
-.. Client
 
 客户端
 ------
+.. Client
 
-
-``mon client hunt interval``
-
-:描述: 客户端每 ``N`` 秒尝试一个新监视器，直到它建立连接。
-:类型: Double
-:默认值: ``3.0``
-
-
-``mon client ping interval``
-
-:描述: 客户端每 ``N`` 秒 ping 一次监视器。
-:类型: Double
-:默认值: ``10.0``
-
-
-``mon client max log entries per message``
-
-:描述: 某监视器为每客户端生成的最大日志条数。
-:类型: Integer
-:默认值: ``1000``
-
-
-``mon client bytes``
-
-:描述: 内存中允许存留的客户端消息数量（字节数）。
-:类型: 64-bit Integer Unsigned
-:默认值: ``100ul << 20``
+.. confval:: mon_client_hunt_interval
+.. confval:: mon_client_ping_interval
+.. confval:: mon_client_max_log_entries_per_message
+.. confval:: mon_client_bytes
 
 
 .. _pool-settings:
@@ -893,56 +554,14 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 如果配置得当，监视器也可以禁止存储池的删除。\
 这种防护方式虽有不便，和它防止的存储池（还有数据）误删比起来就差远了。
 
+.. confval:: mon_allow_pool_delete
+.. confval:: osd_pool_default_ec_fast_read
+.. confval:: osd_pool_default_flag_hashpspool
+.. confval:: osd_pool_default_flag_nodelete
+.. confval:: osd_pool_default_flag_nopgchange
+.. confval:: osd_pool_default_flag_nosizechange
 
-``mon allow pool delete``
-
-:描述: 监视器是否允许删除存储池。此选项可覆盖存储池标记值。
-:类型: Boolean
-:默认值: ``false``
-
-
-``osd pool default ec fast read``
-
-:描述: Whether to turn on fast read on the pool or not. It will be used as
-              the default setting of newly created erasure coded pools if ``fast_read``
-              is not specified at create time.
-
-:类型: Boolean
-:默认值: ``false``
-
-
-``osd pool default flag hashpspool``
-
-:描述: 设置新存储池的 hashpspool 标记。
-:类型: Boolean
-:默认值: ``true``
-
-
-``osd pool default flag nodelete``
-
-:描述: 设置新存储池的 nodelete 标记。此标记可防止存储池以任何\
-       方式被删除。
-:类型: Boolean
-:默认值: ``false``
-
-
-``osd pool default flag nopgchange``
-
-:描述: 设置新存储池的 nopgchange 标记。不允许更改此存储池的 PG
-       数量。
-:类型: Boolean
-:默认值: ``false``
-
-
-``osd pool default flag nosizechange``
-
-:描述: 设置新存储池的 nosizechange 标记。不允许更改此存储池的\
-       副本数。
-:类型: Boolean
-:默认值: ``false``
-
-关于存储池标记详情请看\ `存储池标记值`_\ 。
-
+关于存储池标记详情请看\ :ref:`存储池标记值 <setpoolvalues>`\ 。
 
 
 .. Miscellaneous
@@ -950,202 +569,30 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 杂项
 ====
 
-
-``mon max osd``
-
-:描述: 集群允许的最大 OSD 数量。
-:类型: 32-bit Integer
-:默认值: ``10000``
-
-
-``mon globalid prealloc``
-
-:描述: 为集群预分配的全局 ID 数量。
-:类型: 32-bit Integer
-:默认值: ``10000``
-
-
-``mon subscribe interval``
-
-:描述: 同步的刷新间隔（秒），同步机制允许获取集群运行图和日志\
-       信息。
-:类型: Double
-:默认值: ``86400.00``
-
-
-``mon stat smooth intervals``
-
-:描述: Ceph 将平滑最后 ``N`` 个归置组图的统计信息。
-:类型: Integer
-:默认值: ``2``
-
-
-``mon probe timeout``
-
-:描述: 监视器自举无效，搜寻节点前等待的时间。
-:类型: Double
-:默认值: ``2.00``
-
-
-``mon daemon bytes``
-
-:描述: 给元数据服务器和 OSD 的消息使用的内存空间（字节）。
-:类型: 64-bit Integer Unsigned
-:默认值: ``400ul << 20``
-
-
-``mon max log entries per event``
-
-:描述: 每个事件允许的最大日志条数。
-:类型: Integer
-:默认值: ``4096``
-
-
-``mon osd prime pg temp``
-
-:描述: 当一个先前处于 out 状态的 OSD 回到集群时，捡回（prime ）\
-       还是不捡回包含先前各 OSD 的 PGMap 。设置为 ``true`` 时，\
-       客户端们会继续使用先前的 OSD 们，直到新增了 OSD ，因为\
-       原来的 PG 照旧互联。
-
-       .. note::
-          译者注：原文的 priming 翻译为“捡回”。因为此字意为：\
-          底漆、启动、起爆剂、点火装置等，我的理解是，旧版的
-          PGMap 已经一层层盖着压箱底了，新的本应从当前运行的\
-          集群里汇总，可这里启用了旧的，相当于扒了一层底漆、\
-          或者点燃了装填好的弹药，故译为捡回。
-
-:类型: Boolean
-:默认: ``true``
-
-
-``mon osd prime pg temp max time``
-
-:描述: 当某一先前状态为 out 的 OSD 回到集群、监视器在捡回 PGMap
-       时尝试的最大时间，单位为秒。
-:类型: Float
-:默认: ``0.50``
-
-
-``mon osd prime pg temp max time estimate``
-
-:描述: 在每个 PG 上所花费时间的最大估值，超过此值我们就并行地\
-       捡回所有 PG 。
-:类型: Float
-:默认值: ``0.25``
-
-
-``mon mds skip sanity``
-
-:描述: 跳过 FSMap 的安全性检查确认（遇到软件缺陷时还想继续）。\
-       如果 FSMap 健全性检查失败，监视器会终止，但我们可以让它\
-       继续，启用此选项即可。
-:类型: Boolean
-:默认值: ``False``
-
-
-``mon max mdsmap epochs``
-
-:描述: 一次提议最多可清理多少 mdsmap 时间结。
-:类型: Integer
-:默认值: ``500``
-
-
-``mon config key max entry size``
-
-:描述: config-key 条目的最大尺寸，单位为字节。
-:类型: Integer
-:默认值: ``65536``
-
-
-``mon scrub interval``
-
-:描述: 监视器洗刷（对比存储的与根据存储的键计算出的两个校验和）\
-       其存储的频率，单位为秒。
-:类型: Integer
-:默认值: ``3600*24``
-
-
-``mon scrub max keys``
-
-:描述: 每次最多洗刷多少个键。
-:类型: Integer
-:默认值: ``100``
-
-
-``mon compact on start``
-
-:描述: ``ceph-mon`` 启动时压缩监视器存储所用的数据库。如果日常\
-       压缩失效，手动压缩有助于缩小监视器的数据库、并提升其性\
-       能。
-:类型: Boolean
-:默认值: ``False``
-
-
-``mon compact on bootstrap``
-
-:描述: 自举引导期间压缩监视器所用的数据库。监视器完成自举引导\
-       后开始互相探测，以建立法定人数；如果加入法定人数超时，\
-       它会从头开始自举引导。
-:类型: Boolean
-:默认值: ``False``
-
-
-``mon compact on trim``
-
-:描述: 清理旧的状态存档时也压缩这个前缀（包括 paxos ）。
-:类型: Boolean
-:默认值: ``True``
-
-
-``mon cpu threads``
-
-:描述: 监视器执行 CPU 密集型工作时使用的线程数。
-:类型: Boolean
-:默认值: ``True``
-
-
-``mon osd mapping pgs per chunk``
-
-:描述: 我们按块计算归置组到 OSD 的映射关系。这个选项指定了每个\
-       块的归置组数量。
-:类型: Integer
-:默认值: ``4096``
-
-
-``mon session timeout``
-
-:描述: 会话闲置时间超过此限制，监视器就会终结这个不活跃的会话。
-:类型: Integer
-:默认值: ``300``
-
-
-``mon osd cache size min``
-
-:描述: The minimum amount of bytes to be kept mapped in memory for osd
-               monitor caches.
-
-:类型: 64-bit Integer
-:默认值: ``134217728``
-
-
-``mon memory target``
-
-:描述: The amount of bytes pertaining to osd monitor caches and kv cache
-              to be kept mapped in memory with cache auto-tuning enabled.
-
-:类型: 64-bit Integer
-:默认值: ``2147483648``
-
-
-``mon memory autotune``
-
-:描述: Autotune the cache memory being used for osd monitors and kv
-              database.
-
-:类型: Boolean
-:默认值: ``True``
-
+.. confval:: mon_max_osd
+.. confval:: mon_globalid_prealloc
+.. confval:: mon_subscribe_interval
+.. confval:: mon_stat_smooth_intervals
+.. confval:: mon_probe_timeout
+.. confval:: mon_daemon_bytes
+.. confval:: mon_max_log_entries_per_event
+.. confval:: mon_osd_prime_pg_temp
+.. confval:: mon_osd_prime_pg_temp_max_time
+.. confval:: mon_osd_prime_pg_temp_max_estimate
+.. confval:: mon_mds_skip_sanity
+.. confval:: mon_max_mdsmap_epochs
+.. confval:: mon_config_key_max_entry_size
+.. confval:: mon_scrub_interval
+.. confval:: mon_scrub_max_keys
+.. confval:: mon_compact_on_start
+.. confval:: mon_compact_on_bootstrap
+.. confval:: mon_compact_on_trim
+.. confval:: mon_cpu_threads
+.. confval:: mon_osd_mapping_pgs_per_chunk
+.. confval:: mon_session_timeout
+.. confval:: mon_osd_cache_size_min
+.. confval:: mon_memory_target
+.. confval:: mon_memory_autotune
 
 
 .. _Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)
@@ -1158,7 +605,5 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 .. _监控集群: ../../operations/monitoring
 .. _监控 OSD 和归置组: ../../operations/monitoring-osd-pg
 .. _初始化监视器: ../../../dev/mon-bootstrap
-.. _更改监视器 IP 地址: ../../operations/add-or-rm-mons#changing-a-monitor-s-ip-address
 .. _监视器与 OSD 的交互: ../mon-osd-interaction
 .. _伸缩性和高可用性: ../../../architecture#scalability-and-high-availability
-.. _存储池标记值: ../../operations/pools/#set-pool-values

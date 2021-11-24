@@ -171,11 +171,10 @@ These sections include:
 Sections may also specify an individual daemon or client name.  For example,
 ``mon.foo``, ``osd.123``, and ``client.smith`` are all valid section names.
 
-
 Any given daemon will draw its settings from the global section, the
 daemon or client type section, and the section sharing its name.
 Settings in the most-specific section take precedence, so for example
-if the same option is specified in both ``global``, ``mon``, and
+if the same option is specified in both :confsec:`global`, :confsec:`mon`, and
 ``mon.foo`` on the same source (i.e., in the same configurationfile),
 the ``mon.foo`` value will be used.
 
