@@ -36,7 +36,7 @@
    认证选项 <auth-config-ref>
    监视器选项 <mon-config-ref>
    mon-lookup-dns
-   心跳选项 <mon-osd-interaction>
+   心跳选项（监视器与 OSD 的的交互） <mon-osd-interaction>
    OSD 选项 <osd-config-ref>
    DmClock Settings <mclock-config-ref>
    BlueStore 配置 <bluestore-config-ref>

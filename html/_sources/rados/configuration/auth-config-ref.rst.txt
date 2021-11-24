@@ -141,32 +141,9 @@ you do not have to repeat the bootstrapping procedures.
 --------
 .. Enablement
 
-``auth cluster required``
-
-:描述: 如果启用了， Ceph 存储集群守护进程（如 ``ceph-mon`` 、
-       ``ceph-osd`` 、 ``ceph-mds`` 和 ``ceph-mgr`` ）间必须\
-       相互认证。可用选项有 ``cephx`` 或 ``none`` 。
-:类型: String
-:是否必需: No
-:默认值: ``cephx``.
-
-
-``auth service required``
-
-:描述: 如果启用，客户端要访问 Ceph 服务的话，集群守护进程会要求它和集群认\
-       证。可用选项为 ``cephx`` 或 ``none`` 。
-:类型: String
-:是否必需: No
-:默认值: ``cephx``.
-
-
-``auth client required``
-
-:描述: 如果启用，客户端会要求 Ceph 集群和它认证。可用选项为 ``cephx`` 或 \
-       ``none`` 。
-:类型: String
-:是否必需: No
-:默认值: ``cephx``.
+.. confval:: auth_cluster_required
+.. confval:: auth_service_required
+.. confval:: auth_client_required
 
 
 .. index:: keys; keyring
@@ -198,29 +175,10 @@ you do not have to repeat the bootstrapping procedures.
 你可以用 ``key`` 选项把密钥写在配置文件里（别这样），或者用
 ``keyfile`` 选项指定个路径。
 
-
-``keyring``
-
-:描述: 密钥环文件的路径。
-:类型: String
-:是否必需: No
-:默认值: ``/etc/ceph/$cluster.$name.keyring,/etc/ceph/$cluster.keyring,/etc/ceph/keyring,/etc/ceph/keyring.bin``
-
-
-``keyfile``
-
-:描述: 到密钥文件的路径，如一个只包含密钥的文件。
-:类型: String
-:是否必需: No
-:默认值: None
-
-
-``key``
-
-:描述: 密钥（密钥文本），最好别这样做。
-:类型: String
-:是否必需: No
-:默认值: None
+.. confval:: keyring
+   :default: /etc/ceph/$cluster.$name.keyring,/etc/ceph/$cluster.keyring,/etc/ceph/keyring,/etc/ceph/keyring.bin
+.. confval:: keyfile
+.. confval:: key
 
 
 .. index:: signatures
@@ -237,56 +195,17 @@ Ceph 施行的签名检查可以为消息提供一些有限的保护，以防消
 
 注意，即便启用了签名，数据也没在线加密。
 
-
-``cephx require signatures``
-
-:描述: 若设置为 ``true`` ， Ceph 会要求对所有消息流量签名，\
-       包括 Ceph 客户端与 Ceph 存储集群间的、和构成 Ceph
-       存储集群的各守护进程之间。
-
-       Ceph Argonaut 和版本号小于 3.19 的 Linux 内核不支持\
-       签名，如果在用这样的客户端，可以关闭此选项，以允许它们\
-       连接。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``cephx cluster require signatures``
-
-:描述: 若设置为 ``true`` ， Ceph 要求集群内所有守护进程签名\
-       相互之间的消息。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``cephx service require signatures``
-
-:描述: 若设置为 ``true`` ， Ceph 要求签名所有客户端和集群间的消息。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``cephx sign messages``
-
-:描述: 如果 Ceph 版本支持对消息签名， Ceph 会签名所有消息以使\
-       欺骗更困难。
-:类型: Boolean
-:默认值: ``true``
+.. confval:: cephx_require_signatures
+.. confval:: cephx_cluster_require_signatures
+.. confval:: cephx_service_require_signatures
+.. confval:: cephx_sign_messages
 
 
 生存期
 ------
 .. Time to Live
 
-``auth service ticket ttl``
-
-:描述: Ceph 存储集群发给客户端一个用于认证的票据时分配给这个\
-       票据的生存期。
-:类型: Double
-:默认值: ``60*60``
+.. confval:: auth_service_ticket_ttl
 
 
 .. _监视器的自举引导: ../../../install/manual-deployment#monitor-bootstrapping

@@ -5,8 +5,7 @@
 .. index:: journal; journal configuration
 
 Ceph 的 OSD 使用日志的原因有二：速度和一致性。
- Note
-that since Luminous, the BlueStore OSD back end has been preferred and default.
+Note that since Luminous, the BlueStore OSD back end has been preferred and default.
 This information is provided for pre-existing OSDs and for rare situations where
 Filestore is preferred for new deployments.
 
@@ -23,76 +22,10 @@ Filestore is preferred for new deployments.
 
 OSD 守护进程支持下面的日志选项：
 
-
-``journal dio``
-
-:描述: 对日志启用径直 IO ，需要  ``journal block align`` 设置为 ``true`` 。
-:类型: Boolean
-:是否必需: 用 ``aio`` 时自动启用。
-:默认值: ``true``
-
-
-``journal aio``
-
-.. versionchanged:: 0.61 Cuttlefish
-
-:描述: 异步写入日志时用 ``libaio`` 库，需要  ``journal dio`` 设为 ``true`` 。
-:类型: Boolean
-:是否必需: No.
-:默认值: 0.61 版之后为 ``true`` ， 0.60 及之前为 ``false`` 。
-
-
-``journal block align``
-
-:描述: 块对齐写， ``dio`` 和 ``aio`` 需要。
-:类型: Boolean
-:是否必需: 用 ``dio`` 和 ``aio`` 时自动启用。
-:默认值: ``true``
-
-
-``journal max write bytes``
-
-:描述: 一次写入日志的最大尺寸。
-:类型: Integer
-:是否必需: No
-:默认值: ``10 << 20``
-
-
-``journal max write entries``
-
-:描述: 一次写入日志的最大数量。
-:类型: Integer
-:是否必需: No
-:默认值: ``100``
-
-
-``journal queue max ops``
-
-:描述: 队列里一次允许的最大操作数量。
-:类型: Integer
-:是否必需: No
-:默认值: ``500``
-
-
-``journal queue max bytes``
-
-:描述: 队列里一次允许的最大字节数。
-:类型: Integer
-:是否必需: No
-:默认值: ``10 << 20``
-
-
-``journal align min size``
-
-:描述: 对齐大于指定最小值的数据有效载荷。
-:类型: Integer
-:是否必需: No
-:默认值: ``64 << 10``
-
-
-``journal zero on create``
-
-:描述: 在创建文件系统（ ``mkfs`` ）期间用 ``0`` 填充整个日志。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
+.. confval:: journal_dio
+.. confval:: journal_aio
+.. confval:: journal_block_align
+.. confval:: journal_max_write_bytes
+.. confval:: journal_max_write_entries
+.. confval:: journal_align_min_size
+.. confval:: journal_zero_on_create

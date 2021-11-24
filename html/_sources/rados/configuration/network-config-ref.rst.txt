@@ -270,23 +270,8 @@ configuration option.  For example,
 公共网配置用于明确地为公共网定义 IP 地址和子网。你可以分配\
 静态 IP 或用 ``public addr`` 覆盖 ``public network`` 选项。
 
-
-``public network``
-
-:描述: 公共网（前端）的 IP 地址和掩码（如 ``192.168.0.0/24``
-       ），置于 ``[global]`` 下。多个子网用逗号分隔。
-:类型: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
-:是否必需: No
-:默认值: N/A
-
-
-``public addr``
-
-:描述: 用于公共网（前端）的 IP 地址。适用于各守护进程。
-:类型: IP 地址
-:是否必需: No
-:默认值: N/A
-
+.. confval:: public_network
+.. confval:: public_addr
 
 
 集群网
@@ -297,22 +282,8 @@ configuration option.  For example,
 你可以配置静态 IP 或为某 OSD 守护进程配置 ``cluster addr`` 以\
 覆盖 ``cluster network`` 选项。
 
-
-``cluster network``
-
-:描述: 集群网（后端）的 IP 地址及掩码（如 ``10.0.0.0/24`` ），\
-       置于 ``[global]`` 下。多个子网用逗号分隔。
-:类型: ``{ip-address}/{netmask} [, {ip-address}/{netmask}]``
-:是否必需: No
-:默认值: N/A
-
-
-``cluster addr``
-
-:描述: 集群网（后端） IP 地址。置于各守护进程下。
-:类型: Address
-:是否必需: No
-:默认值: N/A
+.. confval:: cluster_network
+.. confval:: cluster_addr
 
 
 绑定
@@ -331,70 +302,18 @@ configuration option.  For example,
 .. confval:: public_bind_addr
 
 
-``ms bind port min``
-
-:描述: OSD 或 MDS 可绑定的最小端口号。
-:类型: 32-bit Integer
-:默认值: ``6800``
-:是否必需: No
-
-
-``ms bind port max``
-
-:描述: OSD 或 MDS 可绑定的最大端口号。
-:类型: 32-bit Integer
-:默认值: ``7300``
-:是否必需: No.
-
-
-``ms bind ipv6``
-
-:描述: 允许 Ceph 守护进程绑定 IPv6 地址。当前，信使对于 IPv4 \
-       或者 IPv6 地址\ *只能二选一*\ ，不能同时使用。
-:类型: Boolean
-:默认值: ``false``
-:是否必需: No
-
-
-``public bind addr``
-
-:描述: 在某些动态部署中， ``ceph-mon`` 守护进程可能会监听
-       ``public addr`` （已广播到了网内的其它节点）以外的本地
-       IP 地址，所以必须确保路由规则正确无误。如果配置了
-       ``public bind addr`` ， ``ceph-mon`` 守护进程就只会监听\
-       它，并且在监视器运行图（ monmap ）里使用 ``public addr``
-       地址、并向其余节点广播其地址。此行为仅限于监视器\
-       守护进程。
-:类型: IP 地址
-:是否必需: No
-:默认值: N/A
-
-
 TCP
 ---
 
 Ceph 默认禁用 TCP 缓冲。
 
-
-``ms tcp nodelay``
-
-:描述: Ceph 用 ``ms tcp nodelay`` 使系统尽快（不缓冲）发送每个\
-       请求。禁用 `Nagle 算法`_\ 可增加吞吐量，但会引进延时。\
-       如果你遇到大量小包，可以禁用 ``ms tcp nodelay`` 试试。
-:类型: Boolean
-:是否必需: No
-:默认值: ``true``
+.. confval:: ms_tcp_nodelay
+.. confval:: ms_tcp_rcvbuf
 
 
-``ms tcp rcvbuf``
-
-:描述: 网络套接字接收缓冲尺寸，默认禁用。
-:类型: 32-bit Integer
-:是否必需: No
-:默认值: ``0``
-
-General Settings
-----------------
+常规选项
+--------
+.. General Settings
 
 .. confval:: ms_type
 .. confval:: ms_async_op_threads

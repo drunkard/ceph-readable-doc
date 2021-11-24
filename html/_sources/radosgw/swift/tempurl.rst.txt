@@ -18,10 +18,9 @@ radosgw 末端的 swift 也支持临时 URL 功能。要用此功能，需设置
 	  (instead of just ``/v1``).
 
 
-.. POST Temp-URL Keys
-
 POST Temp-URL 密钥
 ==================
+.. POST Temp-URL Keys
 
 向 swift 帐户发送一个带有所需 Key 的 ``POST`` 请求，就能给此\
 帐户设置临时 URL 私钥，这样就可向其他帐户提供临时 URL 访问了。\
@@ -97,7 +96,7 @@ POST Temp-URL 密钥
 	sig = hmac.new(key, hmac_body, sha1).hexdigest()
 	rest_uri = "{host}{path}?temp_url_sig={sig}&temp_url_expires={expires}".format(
 		host=host, path=path, sig=sig, expires=expires)
-	print rest_uri
+	print(rest_uri)
 
 	# Example Output
 	# https://objectstore.example.com/swift/v1/your-bucket/your-object?temp_url_sig=ff4657876227fc6025f04fcf1e82818266d022c6&temp_url_expires=1423200992

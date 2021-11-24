@@ -4,7 +4,6 @@
 Python Swift 实例
 =================
 
-
 新建连接
 ========
 
@@ -55,7 +54,7 @@ Python Swift 实例
 .. code-block:: python
 
 	for container in conn.get_account()[1]:
-		print container['name']
+		print(container['name'])
 
 其输出大致如此： ::
 
@@ -72,7 +71,7 @@ Python Swift 实例
 .. code-block:: python
 
 	for data in conn.get_container(container_name)[1]:
-		print '{0}\t{1}\t{2}'.format(data['name'], data['bytes'], data['last_modified'])
+		print('{0}\t{1}\t{2}'.format(data['name'], data['bytes'], data['last_modified']))
 
 其输出大致如此： ::
 

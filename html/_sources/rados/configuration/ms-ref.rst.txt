@@ -8,7 +8,7 @@
 ========
 
 
-``ms tcp nodelay``
+``ms_tcp_nodelay``
 
 :描述: 在信差的 TCP 会话上禁用 nagle 算法。
 :类型: Boolean
@@ -16,7 +16,7 @@
 :默认值: ``true``
 
 
-``ms initial backoff``
+``ms_initial_backoff``
 
 :描述: 出错时重连的初始等待时间。
 :类型: Double
@@ -24,7 +24,7 @@
 :默认值: ``.2``
 
 
-``ms max backoff``
+``ms_max_backoff``
 
 :描述: 出错重连时等待的最大时间。
 :类型: Double
@@ -32,7 +32,7 @@
 :默认值: ``15.0``
 
 
-``ms nocrc``
+``ms_nocrc``
 
 :描述: 禁用网络消息的 crc 校验， CPU 不足时可提升性能。
 :类型: Boolean
@@ -40,7 +40,7 @@
 :默认值: ``false``
 
 
-``ms die on bad msg``
+``ms_die_on_bad_msg``
 
 :描述: 调试选项，不要配置。
 :类型: Boolean
@@ -48,7 +48,7 @@
 :默认值: ``false``
 
 
-``ms dispatch throttle bytes``
+``ms_dispatch_throttle_bytes``
 
 :描述: 等着传送的消息尺寸阀值。
 :类型: 64-bit Unsigned Integer
@@ -56,7 +56,7 @@
 :默认值: ``100 << 20``
 
 
-``ms bind ipv6``
+``ms_bind_ipv6``
 
 :描述: 如果想让守护进程绑定到 IPv6 地址而非 IPv4 就得启用（如\
        果你指定了守护进程或集群 IP 就不必要了）
@@ -65,7 +65,7 @@
 :默认值: ``false``
 
 
-``ms rwthread stack bytes``
+``ms_rwthread_stack_bytes``
 
 :描述: 堆栈尺寸调试选项，不要配置。
 :类型: 64-bit Unsigned Integer
@@ -73,7 +73,7 @@
 :默认值: ``1024 << 10``
 
 
-``ms tcp read timeout``
+``ms_tcp_read_timeout``
 
 :描述: 控制信差关闭空闲连接前的等待秒数。
 :类型: 64-bit Unsigned Integer
@@ -81,7 +81,7 @@
 :默认值: ``900``
 
 
-``ms inject socket failures``
+``ms_inject_socket_failures``
 
 :描述: 调试选项，别配置。
 :类型: 64-bit Unsigned Integer
@@ -95,7 +95,7 @@ Async Messenger （异步信使）选项
 ================================
 
 
-``ms async transport type``
+``ms_async_transport_type``
 
 :描述: Async Messenger 所用的传输类型，可以是 ``posix`` 、
        ``dpdk`` 或者 ``rdma`` 。 POSIX 用标准 TCP/IP 网络，是\
@@ -105,7 +105,7 @@ Async Messenger （异步信使）选项
 :默认值: ``posix``
 
 
-``ms async op threads``
+``ms_async_op_threads``
 
 :描述: 各 Async Messenger 例程所用工作线程的初始数量。至少也得\
        等于副本数的最大值，但是，如果 CPU 核心数比较少、或者单\
@@ -115,7 +115,7 @@ Async Messenger （异步信使）选项
 :默认值: ``3``
 
 
-``ms async max op threads``
+``ms_async_max_op_threads``
 
 :描述: 各 Async Messenger 例程所用工作线程的最大数量。 CPU 核\
        心数少时可以设置得小些， CPU 利用率低时可以大些（也就是\
@@ -125,7 +125,7 @@ Async Messenger （异步信使）选项
 :默认值: ``5``
 
 
-``ms async send inline``
+``ms_async_send_inline``
 
 :描述: 让生成这些消息的线程直接发送出去，而不是放入队列、再让
        Async Messenger 线程发送。现已知晓，在 CPU 核心很多的系\
