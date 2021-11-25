@@ -44,6 +44,10 @@
         均衡器；
         active balancer 动态均衡器；
 
+    beacon message
+        信标消息
+        MDS 和监视器之间发送的；
+
     bitrot
         位翻转
 

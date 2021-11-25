@@ -1,12 +1,15 @@
+.. _归置组:
+
 ========
  归置组
 ========
 
-.. Autoscaling placement groups
 .. _pg-autoscaler:
 
 自伸缩归置组
 ============
+.. Autoscaling placement groups
+
 归置组（ PG ）是 Ceph 如何散布数据的一个内部实现细节。启用
 *pg-autoscaling* 后，你可以基于集群的用法让集群做出推荐或者\
 自动调整 PG 数。
@@ -33,10 +36,10 @@
   ceph config set global osd_pool_default_pg_autoscale_mode <mode>
 
 
-.. Viewing PG scaling recommendations
-
 查看 PG 伸缩建议
 ----------------
+.. Viewing PG scaling recommendations
+
 用此命令可以查看各个存储池、其相对利用率、以及 PG 数建议的\
 更改数值： ::
 
@@ -91,10 +94,9 @@ The final column, **AUTOSCALE**, is the pool ``pg_autoscale_mode``,
 and will be either ``on``, ``off``, or ``warn``.
 
 
-.. Automated scaling
-
 自动化的伸缩
 ------------
+.. Automated scaling
 
 Allowing the cluster to automatically scale PGs based on usage is the
 simplest approach.  Ceph will look at the total available storage and
@@ -119,11 +121,11 @@ to OSDs of class `hdd` will each have optimal PG counts that depend on
 the number of those respective device types.
 
 
-.. Specifying expected pool size
 .. _specifying_pool_target_size:
 
 配置期望的存储池尺寸
 --------------------
+.. Specifying expected pool size
 
 When a cluster or pool is first created, it will consume a small
 fraction of the total cluster capacity and will appear to the system
@@ -165,10 +167,10 @@ for a pool, only the ratio will be considered, and a health warning
 (``POOL_HAS_TARGET_SIZE_BYTES_AND_RATIO``) will be issued.
 
 
-.. Specifying bounds on a pool's PGs
-
 设置存储池的 PG 数量界限
 ------------------------
+.. Specifying bounds on a pool's PGs
+
 It is also possible to specify a minimum number of PGs for a pool.
 This is useful for establishing a lower bound on the amount of
 parallelism client will see when doing IO, even when a pool is mostly
@@ -184,11 +186,11 @@ the optional ``--pg-num-min <num>`` argument to the ``ceph osd pool
 create`` command.
 
 
-.. A preselection of pg_num
 .. _preselection:
 
 预定义 pg_num
 =============
+.. A preselection of pg_num
 
 用此命令创建存储池时： ::
 
@@ -216,10 +218,9 @@ challenge (which the autoscaler normally does for you), is to:
   consideration
 
 
-.. How are Placement Groups used ?
-
 归置组是如何使用的？
 ====================
+.. How are Placement Groups used ?
 
 存储池内的归置组（ PG ）把对象汇聚在一起，因为跟踪每一个对象的\
 位置及其元数据的计算代价太大——即一个拥有数百万对象的系统，\
@@ -388,11 +389,11 @@ there is no degradation of any object and it has no impact on the
 durability of the data contained in the Cluster.
 
 
-.. Object distribution within a pool
 .. _object distribution:
 
 一个存储池内的对象分布
 ----------------------
+.. Object distribution within a pool
 
 Ideally objects are evenly distributed in each placement group. Since
 CRUSH computes the placement group for each object, but does not
@@ -424,11 +425,11 @@ placed will be filled with 400MB + 400MB = 800MB while the seven
 others will remain occupied with only 400MB.
 
 
-.. Memory, CPU and network usage
 .. _resource usage:
 
 内存、处理器和网络使用情况
 --------------------------
+.. Memory, CPU and network usage
 
 各个归置组、 OSD 和监视器都一直需要内存、网络、处理器，在\
 恢复期间需求更大。为消除过载而把对象聚集成簇是归置组存在的\
@@ -437,13 +438,13 @@ others will remain occupied with only 400MB.
 最小化归置组数量可节省不少资源。
 
 
-.. Choosing the number of Placement Groups
 .. _choosing-number-of-placement-groups:
 
 确定归置组数量
 ==============
+.. Choosing the number of Placement Groups
 
-.. note: 极少有必要手动计算。相反，用 ``ceph osd pool autoscale-status``
+.. note:: 极少有必要手动计算。相反，用 ``ceph osd pool autoscale-status``
    命令，加上 ``target_size_bytes`` 或 ``target_size_ratio``
    存储池属性即可。详情见 :ref:`pg-autoscaler` 。
 
@@ -490,11 +491,11 @@ stepping from one power of two to another.
 你可以借助于 `PGCalc`_ 工具。
 
 
-.. Set the Number of Placement Groups
 .. _setting the number of placement groups:
 
 设置归置组数量
 ==============
+.. Set the Number of Placement Groups
 
 要设置某存储池的归置组数量，你必须在创建它时就指定好，详情见\
 `创建存储池`_\ 。即使某一存储池已创建，你仍然可以用下面的命令\
@@ -514,20 +515,18 @@ stepping from one power of two to another.
 减少归置组数量时，系统会自动调整 ``pgp_num`` 数值。
 
 
-.. Get the Number of Placement Groups
-
 获取归置组数量
 ==============
+.. Get the Number of Placement Groups
 
 要获取一个存储池的归置组数量，执行命令： ::
 
         ceph osd pool get {pool-name} pg_num
 
 
-.. Get a Cluster's PG Statistics
-
 获取归置组统计信息
 ==================
+.. Get a Cluster's PG Statistics
 
 要获取集群里归置组的统计信息，执行命令： ::
 
@@ -536,10 +535,9 @@ stepping from one power of two to another.
 可用格式有纯文本 ``plain`` （默认）和 ``json`` 。
 
 
-.. Get Statistics for Stuck PGs
-
 获取卡住的归置组统计信息
 ========================
+.. Get Statistics for Stuck PGs
 
 要获取所有卡在某状态的归置组统计信息，执行命令： ::
 
@@ -557,10 +555,9 @@ stepping from one power of two to another.
 最小时间（默认 300 秒）。
 
 
-.. Get a PG Map
-
 获取一归置组运行图
 ==================
+.. Get a PG Map
 
 要获取一个具体归置组的归置组图，执行命令： ::
 
@@ -575,20 +572,18 @@ Ceph 将返回归置组图、归置组、和 OSD 状态： ::
         osdmap e13 pg 1.6c (1.6c) -> up [1,0] acting [1,0]
 
 
-.. Get a PGs Statistics
-
 获取一 PG 的统计信息
 ====================
+.. Get a PGs Statistics
 
 要查看一个具体归置组的统计信息，执行命令： ::
 
         ceph pg {pg-id} query
 
 
-.. Scrub a Placement Group
-
 洗刷归置组
 ==========
+.. Scrub a Placement Group
 
 要洗刷一个归置组，执行命令： ::
 
@@ -604,10 +599,9 @@ To scrub all placement groups from a specific pool, execute the following::
         ceph osd pool scrub {pool-name}
 
 
-.. Prioritize backfill/recovery of a Placement Group(s)
-
 改变归置组的回填/恢复优先级
 ===========================
+.. Prioritize backfill/recovery of a Placement Group(s)
 
 你可能会遇到这样的情形，有一大堆归置组需要恢复和/或回填，而\
 其中有几个组内的数据比其它的更重要（例如，那些 PG 持有正在\
@@ -661,10 +655,9 @@ next 9, etc. Or you could leave most pools alone and have say 3 important pools
 all priority 1 or priorities 3, 2, 1 respectively.
 
 
-.. Revert Lost
-
 恢复丢失的
 ==========
+.. Revert Lost
 
 如果集群丢了一或多个对象，而且必须放弃搜索这些数据，你就要把\
 未找到的对象标记为丢失（ ``lost`` ）。

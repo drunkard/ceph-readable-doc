@@ -32,20 +32,19 @@ minimal settings for each instance of monitor daemons. For example:
    will enter the appropriate values for you in the cluster map.
 
 
-.. Networks
 .. _ceph-network-config:
 
 网络
 ====
+.. Networks
 
 See the `Network Configuration Reference`_ for a detailed discussion about
 configuring a network for use with Ceph.
 
 
-.. Monitors
-
 监视器
 ======
+.. Monitors
 
 Ceph production clusters typically deploy with a minimum 3 :term:`Ceph Monitor`
 daemons to ensure high availability should a monitor instance crash. At least
@@ -74,11 +73,11 @@ For additional details, see the `Monitor Config Reference`_.
 .. _Monitor Config Reference: ../mon-config-ref
 
 
-.. Authentication
 .. _ceph-osd-config:
 
 认证
 ====
+.. Authentication
 
 .. versionadded:: Bobtail 0.56
 
@@ -152,10 +151,9 @@ longer tested.)
 See the `OSD Config Reference`_ for additional configuration details.
 
 
-.. Heartbeats
-
 心跳
 ====
+.. Heartbeats
 
 During runtime operations, Ceph OSD Daemons check up on other Ceph OSD Daemons
 and report their  findings to the Ceph Monitor. You do not have to provide any
@@ -165,11 +163,11 @@ the settings.
 See `Configuring Monitor/OSD Interaction`_ for additional details.
 
 
-.. Logs / Debugging
 .. _ceph-logging-and-debugging:
 
 日志记录、调试
 ==============
+.. Logs / Debugging
 
 Sometimes you may encounter issues with Ceph that require
 modifying logging output and using Ceph's debugging. See `Debugging and
@@ -178,10 +176,9 @@ Logging`_ for details on log rotation.
 .. _Debugging and Logging: ../../troubleshooting/log-and-debug
 
 
-.. Example ceph.conf
-
 ceph.conf 实例
 ==============
+.. Example ceph.conf
 
 .. literalinclude:: demo-ceph.conf
    :language: ini
@@ -189,10 +186,9 @@ ceph.conf 实例
 .. _ceph-runtime-config:
 
 
-.. Naming Clusters (deprecated)
-
 跑多个集群（已废弃）
 ====================
+.. Naming Clusters (deprecated)
 
 Each Ceph cluster has an internal name that is used as part of configuration
 and log file names as well as directory and mountpoint names.  This name
