@@ -28,11 +28,16 @@ Pools are logical partitions for storing objects.
 要把数据组织到存储池里，你可以列出、创建、删除存储池，也可以查\
 看每个存储池的利用率。
 
+Pool Names
+==========
 
-.. List Pools
+Pool names beginning with ``.`` are reserved for use by Ceph's internal
+operations. Please do not create or manipulate pools with these names.
+
 
 列出存储池
 ==========
+.. List Pools
 
 要列出集群的存储池，命令如下： ::
 

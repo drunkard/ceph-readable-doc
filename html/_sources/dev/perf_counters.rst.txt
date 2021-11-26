@@ -1,28 +1,30 @@
-.. Perf counters
-
 ============
  性能计数器
 ============
+.. Perf counters
 
-The perf counters provide generic internal infrastructure for gauges and counters.  The counted values can be both integer and float.  There is also an "average" type (normally float) that combines a sum and num counter which can be divided to provide an average.
+The perf counters provide generic internal infrastructure for gauges and counters.  The counted values can be both integer and float. There is also an "average" type (normally float) that combines a sum and num counter which can be divided to provide an average.
 
-The intention is that this data will be collected and aggregated by a tool like ``collectd`` or ``statsd`` and fed into a tool like ``graphite`` for graphing and analysis.  Also, note the :doc:`../mgr/prometheus`.
+The intention is that this data will be collected and aggregated by a tool like ``collectd`` or ``statsd`` and fed into a tool like ``graphite`` for graphing and analysis.  Also, note the :doc:`../mgr/prometheus` and the :doc:`../mgr/telemetry`.
 
+Users and developers can also access perf counter data locally to check a cluster's overall health, identify workload patterns, monitor cluster performance by daemon types, and troubleshoot issues with latency, throttling, memory management, etc. (see :ref:`Access`)
 
-.. Access
+.. _Access:
 
 如何访问
 --------
+.. Access
+
 性能计数器可以通过管理套接字访问，例如： ::
 
    ceph daemon osd.0 perf schema
    ceph daemon osd.0 perf dump
 
 
-.. Collections
-
 数据集
 ------
+.. Collections
+
 数值被分组并命名为不同的集，通常表示一个子系统或者一个\
 子系统例程。例如，内部的 ``throttle`` 机制会报告它如何节流，\
 其各例程的命名类似如下： ::
@@ -67,8 +69,10 @@ lifetime average value.  Normally these are used to measure latencies
 for the previous interval is what is interesting.
 
 Instead of interpreting the bit fields, the ``metric type`` has a
-value of either ``guage`` or ``counter``, and the ``value type``
+value of either ``gauge`` or ``counter``, and the ``value type``
 property will be one of ``real``, ``integer``, ``real-integer-pair``
+(for a sum + real count pair), or ``integer-integer-pair`` (for a
+sum + integer count pair).
 
 Here is an example of the schema output::
 

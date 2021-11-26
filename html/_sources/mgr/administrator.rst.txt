@@ -14,9 +14,9 @@ ceph-mgr 管理员指南
 
     ceph auth get-or-create mgr.$name mon 'allow profile mgr' osd 'allow *' mds 'allow *'
 
-把创建的密钥放入 ``mgr data`` 所指向的路径，对于名为 ceph 的\
-集群、 mgr 的 $name 为 foo 的路径可能是
-``/var/lib/ceph/mgr/ceph-foo`` 。
+把创建的密钥放入 ``mgr data`` 所指路径的 ``keyring`` 文件内，
+对于名为 ceph 的集群、 mgr 的 $name 为 foo 的路径应该是
+``/var/lib/ceph/mgr/ceph-foo`` 内的文件 ``/var/lib/ceph/mgr/ceph-foo/keyring`` 。
 
 启动 ceph-mgr 守护进程： ::
 
@@ -121,7 +121,7 @@ this to your ``ceph.conf``:
 .. code-block:: ini
 
     [mon]
-        mgr initial modules = dashboard balancer
+        mgr_initial_modules = dashboard balancer
 
 Module Pool
 -----------

@@ -34,10 +34,9 @@
                                         \----------------/
 
 
-.. Monitor Bootstrapping
-
 监视器的自举引导
 ================
+.. Monitor Bootstrapping
 
 自举引导监视器（理论上是 Ceph 存储集群）需要以下几个条件：
 
@@ -94,10 +93,11 @@
 
 	ls /etc/ceph   
 
-#. 创建 Ceph 配置文件， Ceph 默认使用 ``ceph.conf`` ，其中的
-   ``ceph`` 是集群名字。 ::
+#. 创建 Ceph 配置文件， Ceph 默认使用 ``ceph.conf`` ，
+   其中的 ``ceph`` 是集群名字。
+   在配置文件里加这一行 [global] ::
 
-	sudo vim /etc/ceph/ceph.conf
+    sudo vim /etc/ceph/ceph.conf
 
 #. 给集群分配惟一 ID （即 ``fsid`` ）。 ::
 

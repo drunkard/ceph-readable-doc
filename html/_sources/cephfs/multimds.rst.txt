@@ -1,8 +1,8 @@
-.. Configuring multiple active MDS daemons
 .. _cephfs-multimds:
 
 多活 MDS 守护进程的配置
 -----------------------
+.. Configuring multiple active MDS daemons
 
 *也叫： multi-mds 、 active-active MDS*
 
@@ -10,11 +10,9 @@
 在大型系统中，为了扩展元数据性能你可以配置多个活跃的 MDS 守护\
 进程，它们会共同承担元数据负载。
 
-
-.. When should I use multiple active MDS daemons?
-
 什么情况下我需要多个活跃的 MDS 守护进程？
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. When should I use multiple active MDS daemons?
 
 当元数据默认的单个 MDS 成为瓶颈时，你应该配置多个活跃的 MDS 守\
 护进程。
@@ -26,11 +24,9 @@
 通常，有很多客户端（操作着很多不同的目录时更好）时，大量活跃的
 MDS 守护进程有利于性能提升。
 
-
-.. Increasing the MDS active cluster size
-
 MDS 活跃集群的扩容
 ~~~~~~~~~~~~~~~~~~
+.. Increasing the MDS active cluster size
 
 每一个 CephFS 文件系统都有自己的 *max_mds* 配置，它控制着会创\
 建多少 rank 。有空闲守护进程可接管新 rank 时，文件系统 rank 的\
@@ -49,11 +45,9 @@ MDS 活跃集群的扩容
 
 新创建的 rank (1) 会从 creating 状态过渡到 active 状态。
 
-
-.. Standby daemons
-
 灾备守护进程
 ~~~~~~~~~~~~
+.. Standby daemons
 
 即使拥有多活 MDS 守护进程，一个高可用系统\ *仍然需要灾备守护进\
 程*\ 来顶替失效的活跃守护进程。
@@ -64,11 +58,9 @@ MDS 活跃集群的扩容
 为了在多个服务器失效时仍能保持可用，需增加系统中的灾备守护进\
 程，以弥补你能承受的服务器失效数量。
 
-
-.. Decreasing the number of ranks
-
 减少 rank 数量
 ~~~~~~~~~~~~~~
+.. Decreasing the number of ranks
 
 减少 rank 数量和减少 ``max_mds`` 一样简单：
 
@@ -98,11 +90,11 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
 守护进程完成 stopping 状态后，它会自己重生并成为灾备。
 
 
-.. Manually pinning directory trees to a particular rank
 .. _cephfs-pinning:
 
 手动将目录树插入特定的 rank
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. Manually pinning directory trees to a particular rank
 
 在多活元数据服务器配置中，均衡器负责在集群内均匀地散布元数据\
 负荷。此设计对大多数用户来说都够用了，但是，有时人们想要跳过\
@@ -163,10 +155,12 @@ your metadata throughput with no other administrative intervention.
 
 Presently, there are two types of ephemeral pinning:
 
-**Distributed Ephemeral Pins**: This policy indicates that **all** of a
-directory's immediate children should be ephemerally pinned. The canonical
-example would be the ``/home`` directory: we want every user's home directory
-to be spread across the entire MDS cluster. This can be set via:
+**Distributed Ephemeral Pins**: This policy causes a directory to fragment
+(even well below the normal fragmentation thresholds) and distribute its
+fragments as ephemerally pinned subtrees. This has the effect of distributing
+immediate children across a range of MDS ranks.  The canonical example use-case
+would be the ``/home`` directory: we want every user's home directory to be
+spread across the entire MDS cluster. This can be set via:
 
 ::
 
@@ -220,18 +214,3 @@ For the reverse situation:
 
 The ``home/patrick`` directory and its children will be pinned to rank 2
 because its export pin overrides the policy on ``home``.
-
-If a directory has an export pin and an ephemeral pin policy, the export pin
-applies to the directory itself and the policy to its children. So:
-
-::
-
-    mkdir -p home/{patrick,john}
-    setfattr -n ceph.dir.pin -v 0 home
-    setfattr -n ceph.dir.pin.distributed -v 1 home
-
-The home directory inode (and all of its directory fragments) will always be
-located on rank 0. All children including ``home/patrick`` and ``home/john``
-will be ephemerally pinned according to the distributed policy. This may only
-matter for some obscure performance advantages. All the same, it's mentioned
-here so the override policy is clear.

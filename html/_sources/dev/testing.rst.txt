@@ -1,7 +1,6 @@
-.. Testing notes
-
 测试笔记
 ========
+.. Testing notes
 
 
 build-integration-branch
@@ -34,7 +33,7 @@ build-integration-branch
 
 #. Smoke test::
 
-     make && ctest -j12
+     ./run-make-check.sh
 
 #. Push to ceph-ci::
 

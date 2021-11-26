@@ -45,6 +45,8 @@ creating these modules.
 较新或较低版本的 Ceph 时可能很容易崩溃。
 
 
+.. _mgr module dev logging:
+
 日志记录
 --------
 .. Logging
@@ -191,9 +193,9 @@ error explanation output.  Either or both of the two strings may be empty.
 Implement the ``handle_command`` function to respond to the commands
 when they are sent:
 
+
 .. py:currentmodule:: mgr_module
 .. automethod:: MgrModule.handle_command
-
 
 配置选项
 --------
@@ -285,10 +287,9 @@ a particular prefix (i.e. all keys starting with a particular substring).
 .. automethod:: MgrModule.get_store_prefix
 
 
-.. Accessing cluster data
-
 访问集群数据
 ------------
+.. Accessing cluster data
 
 Modules have access to the in-memory copies of the Ceph cluster's
 state that the mgr maintains.  Accessor functions as exposed
@@ -318,10 +319,9 @@ function. This will result in a circular locking exception.
 .. automethod:: MgrModule.get_mgr_id
 
 
-.. Exposing health checks
-
 暴露给健康检查
 --------------
+.. Exposing health checks
 
 Modules can raise first class Ceph health checks, which will be reported
 in the output of ``ceph status`` and in other places that report on the
@@ -333,11 +333,9 @@ goes away.
 
 .. automethod:: MgrModule.set_health_checks
 
-
-.. What if the mons are down?
-
 监视器挂了怎么办？
 ------------------
+.. What if the mons are down?
 
 The manager daemon gets much of its state (such as the cluster maps)
 from the monitor.  If the monitor cluster is inaccessible, whichever
@@ -353,11 +351,9 @@ the monitor cluster, use this function:
 
 .. automethod:: MgrModule.have_mon_connection
 
-
-.. Reporting if your module cannot run
-
 在模块不可运行时报告
 --------------------
+.. Reporting if your module cannot run
 
 If your module cannot be run for any reason (such as a missing dependency),
 then you can report that by implementing the ``can_run`` function.
@@ -369,22 +365,18 @@ if you are importing a dependency that may be absent, then do it in a
 try/except block so that your module can be loaded far enough to use
 ``can_run`` even if the dependency is absent.
 
-
-.. Sending commands
-
 发出命令
 --------
+.. Sending commands
 
 A non-blocking facility is provided for sending monitor commands
 to the cluster.
 
 .. automethod:: MgrModule.send_command
 
-
-.. Receiving notifications
-
 接收通知
 --------
+.. Receiving notifications
 
 The manager daemon calls the ``notify`` function on all active modules
 when certain important pieces of cluster state are updated, such as the
@@ -397,11 +389,9 @@ simply return from this function without doing anything.
 
 .. automethod:: MgrModule.notify
 
-
-.. Accessing RADOS or CephFS
-
 访问 RADOS 或 CephFS
 --------------------
+.. Accessing RADOS or CephFS
 
 If you want to use the librados python API to access data stored in
 the Ceph cluster, you can access the ``rados`` attribute of your
@@ -421,10 +411,9 @@ are down: do not assume that librados or libcephfs calls will return
 promptly -- consider whether to use timeouts or to block if the rest of
 the cluster is not fully available.
 
-.. Implementing standby mode
-
 备用模式的实现
 --------------
+.. Implementing standby mode
 
 For some modules, it is useful to run on standby manager daemons as well
 as on the active daemon.  For example, an HTTP server can usefully
@@ -449,10 +438,9 @@ in the Ceph source code for the full list of methods.
 For an example of how to use this interface, look at the source code
 of the ``dashboard`` module.
 
-.. Communicating between modules
-
 模块间通信
 ----------
+.. Communicating between modules
 
 Modules can invoke member functions of other modules.
 
@@ -475,20 +463,17 @@ implementation may change to serialize arguments and return
 values.
 
 
-.. Shutting down cleanly
-
 干净地关闭
 ----------
+.. Shutting down cleanly
 
 If a module implements the ``serve()`` method, it should also implement
 the ``shutdown()`` method to shutdown cleanly: misbehaving modules
 may otherwise prevent clean shutdown of ceph-mgr.
 
-
-.. Limitations
-
 局限性
 ------
+.. Limitations
 
 It is not possible to call back into C++ code from a module's
 ``__init__()`` method.  For example calling ``self.get_module_option()`` at
@@ -496,11 +481,71 @@ this point will result in an assertion failure in ceph-mgr.  For modules
 that implement the ``serve()`` method, it usually makes sense to do most
 initialization inside that method instead.
 
+Debugging
+---------
 
-.. Is something missing?
+Apparently, we can always use the :ref:`mgr module dev logging` facility
+for debugging a ceph-mgr module. But some of us might miss `PDB`_ and the
+interactive Python interpreter. Yes, we can have them as well when developing
+ceph-mgr modules! ``ceph_mgr_repl.py`` can drop you into an interactive shell
+talking to ``selftest`` module. With this tool, one can peek and poke the
+ceph-mgr module, and use all the exposed facilities in quite the same way
+how we use the Python command line interpreter. For using ``ceph_mgr_repl.py``,
+we need to
+
+#. ready a Ceph cluster
+#. enable the ``selftest`` module
+#. setup the necessary environment variables
+#. launch the tool
+
+.. _PDB: https://docs.python.org/3/library/pdb.html
+
+Following is a sample session, in which the Ceph version is queried by
+inputting ``print(mgr.version)`` at the prompt. And later
+``timeit`` module is imported to measure the execution time of
+`mgr.get_mgr_id()`.
+
+.. code-block:: console
+
+   $ cd build
+   $ MDS=0 MGR=1 OSD=3 MON=1 ../src/vstart.sh -n -x
+   $ bin/ceph mgr module enable selftest
+   $ ../src/pybind/ceph_mgr_repl.py --show-env
+      $ export PYTHONPATH=/home/me/ceph/src/pybind:/home/me/ceph/build/lib/cython_modules/lib.3:/home/me/ceph/src/python-common:$PYTHONPATH
+      $ export LD_LIBRARY_PATH=/home/me/ceph/build/lib:$LD_LIBRARY_PATH
+   $ export PYTHONPATH=/home/me/ceph/src/pybind:/home/me/ceph/build/lib/cython_modules/lib.3:/home/me/ceph/src/python-common:$PYTHONPATH
+   $ export LD_LIBRARY_PATH=/home/me/ceph/build/lib:$LD_LIBRARY_PATH
+   $ ../src/pybind/ceph_mgr_repl.py
+   $ ../src/pybind/ceph_mgr_repl.py
+   Python 3.9.2 (default, Feb 28 2021, 17:03:44)
+   [GCC 10.2.1 20210110] on linux
+   Type "help", "copyright", "credits" or "license" for more information.
+   (MgrModuleInteractiveConsole)
+   [mgr self-test eval] >>> print(mgr.version)
+   ceph version Development (no_version) quincy (dev)
+   [mgr self-test eval] >>> from timeit import timeit
+   [mgr self-test eval] >>> timeit(mgr.get_mgr_id)
+   0.16303414600042743
+   [mgr self-test eval] >>>
+
+If you want to "talk" to a ceph-mgr module other than ``selftest`` using
+this tool, you can either add a command to the module you want to debug
+exactly like how ``mgr self-test eval`` command was added to ``selftest``. Or
+we can make this simpler by promoting the ``eval()`` method to a dedicated
+`Mixin`_ class and inherit your ``MgrModule`` subclass from it. And define
+a command with it. Assuming the prefix of the command is ``mgr my-module eval``,
+one can just put
+
+.. prompt:: bash $
+
+   ../src/pybind/ceph_mgr_repl.py --prefix "mgr my-module eval"
+
+
+.. _Mixin: _https://en.wikipedia.org/wiki/Mixin
 
 还有未竟事宜否？
 ----------------
+.. Is something missing?
 
 The ceph-mgr python interface is not set in stone.  If you have a need
 that is not satisfied by the current interface, please bring it up

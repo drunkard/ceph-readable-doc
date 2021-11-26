@@ -30,10 +30,9 @@ Ceph 进程保留了足够的处理能力，所以我们推荐在其他机器上
 CPU 密集型任务。
 
 
-.. RAM
-
 RAM 内存
 ========
+.. RAM
 
 一般来说，内存越多越好。
 Monitor / manager nodes for a modest cluster
@@ -45,10 +44,9 @@ consumption during recovery:  provisioning ~8GB per BlueStore OSD
 is advised.
 
 
-.. Monitors and managers (ceph-mon and ceph-mgr)
-
 监视器和管理器（ ceph-mon 和 ceph-mgr ）
 ----------------------------------------
+.. Monitors and managers (ceph-mon and ceph-mgr)
 
 Monitor and manager daemon memory usage generally scales with the size of the
 cluster.  Note that at boot-time and during topology changes and recovery these
@@ -60,10 +58,9 @@ which will grow to) even more OSDS you should provision
 or ``rocksdb_cache_size`` after careful research.
 
 
-.. Metadata servers (ceph-mds)
-
 元数据服务器（ ceph-mds ）
 --------------------------
+.. Metadata servers (ceph-mds)
 
 The metadata daemon memory utilization depends on how much memory its cache is
 configured to consume.  We recommend 1 GB as a minimum for most systems.  See
@@ -73,10 +70,9 @@ configured to consume.  We recommend 1 GB as a minimum for most systems.  See
 OSDs (ceph-osd)
 ---------------
 
-.. Memory
-
 内存
 ====
+.. Memory
 
 Bluestore uses its own memory to cache data rather than relying on the
 operating system page cache.  In bluestore you can adjust the amount of memory
@@ -116,10 +112,9 @@ data, so no tuning is normally needed, and the OSD memory consumption is
 generally related to the number of PGs per daemon in the system.
 
 
-.. Data Storage
-
 数据存储
 ========
+.. Data Storage
 
 要谨慎地规划数据存储配置，因为其间涉及明显的成本和性能折衷。\
 来自操作系统的并行操作和到单个硬盘的多个守护进程并发读、写请\
@@ -129,10 +124,9 @@ generally related to the number of PGs per daemon in the system.
    至少对 xfs 来说是），因此均衡日志和 OSD 性能相当重要。
 
 
-.. Hard Disk Drives
-
 硬盘驱动器
 ----------
+.. Hard Disk Drives
 
 OSD 应该有足够的空间用于存储对象数据。考虑到大硬盘的每 GB 成\
 本，我们建议用容量大于 1TB 的硬盘。建议用 GB 数除以硬盘价格来\
@@ -166,10 +160,9 @@ Ceph 最佳实践指示，你应该分别在单独的硬盘运行操作系统、
 数据和 OSD 日志。
 
 
-.. Solid State Drives
-
 固态硬盘
 --------
+.. Solid State Drives
 
 一种提升性能的方法是使用固态硬盘（ SSD ）来降低随机访问时间和\
 读延时，同时增加吞吐量。 SSD 和硬盘相比每 GB 成本通常要高
@@ -214,10 +207,9 @@ CephFS 元数据，所以你不需要给 CephFS 元数据创建存储池，但�
 :ref:`CRUSH 设备类<crush-map-device-class>`\ 。
 
 
-.. Controllers
-
 控制器
 ------
+.. Controllers
 
 硬盘控制器对写吞吐量也有显著影响，要谨慎地选择，以免产生\
 性能瓶颈。
@@ -228,10 +220,9 @@ CephFS 元数据，所以你不需要给 CephFS 元数据创建存储池，但�
 
 
 
-.. Additional Considerations
-
 其他注意事项
 ------------
+.. Additional Considerations
 
 你可以在同一主机上运行多个 OSD ，但要确保 OSD 硬盘总吞吐量\
 不超过为客户端提供读写服务所需的网络带宽；还要考虑集群在每台\
@@ -246,10 +237,9 @@ Ceph 中止运作以防数据丢失。
 
 
 
-.. Networks
-
 网络
 ====
+.. Networks
 
 建议每台机器最少两个千兆网卡，现在大多数机械硬盘都能达到大概 100MB/s 的吞吐\
 量，网卡应该能处理所有 OSD 硬盘总吞吐量，所以推荐最少两个千兆网卡，分别用于\
@@ -274,10 +264,9 @@ VLAN 来处理集群和计算栈（如 OpenStack 、 CloudStack 等等）之间�
 虑的潜能力、吞吐量、性能瓶颈。
 
 
-.. Failure Domains
-
 故障域
 ======
+.. Failure Domains
 
 故障域指任何导致不能访问一个或多个 OSD 的故障，可以是主机上停止的进程、硬盘故\
 障、操作系统崩溃、有问题的网卡、损坏的电源、断网、断电等等。规划硬件需求时，\
@@ -285,10 +274,9 @@ VLAN 来处理集群和计算栈（如 OpenStack 、 CloudStack 等等）之间�
 在故障域增加的成本。
 
 
-.. Minimum Hardware Recommendations
-
 最低硬件推荐
 ============
+.. Minimum Hardware Recommendations
 
 Ceph 可以运行在廉价的普通硬件上，小型生产集群和开发集群可以在\
 一般的硬件上。
