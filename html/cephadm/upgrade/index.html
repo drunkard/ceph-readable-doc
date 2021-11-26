@@ -143,7 +143,11 @@
 <li class="toctree-l2"><a class="reference internal" href="../services/">Service Management</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Upgrading Ceph</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#starting-the-upgrade">Starting the upgrade</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#monitoring-the-upgrade">Monitoring the upgrade</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#monitoring-the-upgrade">Monitoring the upgrade</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#watching-the-progress-bar-during-a-ceph-upgrade">Watching the progress bar during a Ceph upgrade</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#watching-the-cephadm-log-during-an-upgrade">Watching the cephadm log during an upgrade</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#canceling-an-upgrade">Canceling an upgrade</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#potential-problems">Potential problems</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#upgrade-no-standby-mgr">UPGRADE_NO_STANDBY_MGR</a></li>
@@ -216,106 +220,135 @@
   
   <div class="section" id="upgrading-ceph">
 <h1>Upgrading Ceph<a class="headerlink" href="#upgrading-ceph" title="Permalink to this headline">¶</a></h1>
-<p>Cephadm is capable of safely upgrading Ceph from one bugfix release to
-another.  For example, you can upgrade from v15.2.0 (the first Octopus
-release) to the next point release v15.2.1.</p>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>DATE: 01 NOV 2021.</p>
+<p>DO NOT UPGRADE TO CEPH PACIFIC FROM AN OLDER VERSION.</p>
+<p>A recently-discovered bug (<a class="reference external" href="https://tracker.ceph.com/issues/53062">https://tracker.ceph.com/issues/53062</a>) can cause
+data corruption. This bug occurs during OMAP format conversion for
+clusters that are updated to Pacific. New clusters are not affected by this
+bug.</p>
+<p>The trigger for this bug is BlueStore’s repair/quick-fix functionality. This
+bug can be triggered in two known ways:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>manually via the ceph-bluestore-tool, or</p></li>
+<li><p>automatically, by OSD if <code class="docutils literal notranslate"><span class="pre">bluestore_fsck_quick_fix_on_mount</span></code> is set
+to true.</p></li>
+</ol>
+</div></blockquote>
+<p>The fix for this bug is expected to be available in Ceph v16.2.7.</p>
+<p>DO NOT set <code class="docutils literal notranslate"><span class="pre">bluestore_quick_fix_on_mount</span></code> to true. If it is currently
+set to true in your configuration, immediately set it to false.</p>
+<p>DO NOT run <code class="docutils literal notranslate"><span class="pre">ceph-bluestore-tool</span></code>’s repair/quick-fix commands.</p>
+</div>
+<p>Cephadm can safely upgrade Ceph from one bugfix release to the next.  For
+example, you can upgrade from v15.2.0 (the first Octopus release) to the next
+point release, v15.2.1.</p>
 <p>The automated upgrade process follows Ceph best practices.  For example:</p>
 <ul class="simple">
 <li><p>The upgrade order starts with managers, monitors, then other daemons.</p></li>
 <li><p>Each daemon is restarted only after Ceph indicates that the cluster
 will remain available.</p></li>
 </ul>
-<p>Keep in mind that the Ceph cluster health status is likely to switch to
-<cite>HEALTH_WARNING</cite> during the upgrade.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The Ceph cluster health status is likely to switch to
+<code class="docutils literal notranslate"><span class="pre">HEALTH_WARNING</span></code> during the upgrade.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In case a host of the cluster is offline, the upgrade is paused.</p>
+</div>
 <div class="section" id="starting-the-upgrade">
 <h2>Starting the upgrade<a class="headerlink" href="#starting-the-upgrade" title="Permalink to this headline">¶</a></h2>
-<p>Before you start, you should verify that all hosts are currently online
-and your cluster is healthy.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph -s</span>
-</pre></div>
+<p>Before you use cephadm to upgrade Ceph, verify that all hosts are currently online and that your cluster is healthy by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "# ";
+}
+</style><span class="prompt1">ceph -s</span>
+</pre></div></div><p>To upgrade (or downgrade) to a specific release, run the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch upgrade start --ceph-version &lt;version&gt;</span>
+</pre></div></div><p>For example, to upgrade to v16.2.6, run the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch upgrade start --ceph-version <span class="m">15</span>.2.1</span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>From version v16.2.6 the Docker Hub registry is no longer used, so if you use Docker you have to point it to the image in the quay.io registry:</p>
 </div>
-<p>To upgrade (or downgrade) to a specific release:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch upgrade start --ceph-version &lt;version&gt;</span>
-</pre></div>
-</div>
-<p>For example, to upgrade to v15.2.1:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch upgrade start --ceph-version 15.2.1</span>
-</pre></div>
-</div>
-</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch upgrade start --image quay.io/ceph/ceph:v16.2.6</span>
+</pre></div></div></div>
 <div class="section" id="monitoring-the-upgrade">
 <h2>Monitoring the upgrade<a class="headerlink" href="#monitoring-the-upgrade" title="Permalink to this headline">¶</a></h2>
-<p>Determine whether an upgrade is in process and what version the cluster is
-upgrading to with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch upgrade status</span>
+<p>Determine (1) whether an upgrade is in progress and (2) which version the
+cluster is upgrading to by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch upgrade status</span>
+</pre></div></div><div class="section" id="watching-the-progress-bar-during-a-ceph-upgrade">
+<h3>Watching the progress bar during a Ceph upgrade<a class="headerlink" href="#watching-the-progress-bar-during-a-ceph-upgrade" title="Permalink to this headline">¶</a></h3>
+<p>During the upgrade, a progress bar is visible in the ceph status output. It
+looks like this:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span>ceph -s
+
+<span class="go">[...]</span>
+<span class="go">  progress:</span>
+<span class="go">    Upgrade to docker.io/ceph/ceph:v15.2.1 (00h 20m 12s)</span>
+<span class="go">      [=======.....................] (time remaining: 01h 43m 31s)</span>
 </pre></div>
 </div>
-<p>While the upgrade is underway, you will see a progress bar in the ceph
-status output.  For example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph -s</span>
-<span class="p">[</span><span class="o">...</span><span class="p">]</span>
-  <span class="n">progress</span><span class="p">:</span>
-    <span class="n">Upgrade</span> <span class="n">to</span> <span class="n">docker</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="p">:</span><span class="n">v15</span><span class="mf">.2.1</span> <span class="p">(</span><span class="mi">00</span><span class="n">h</span> <span class="mi">20</span><span class="n">m</span> <span class="mi">12</span><span class="n">s</span><span class="p">)</span>
-      <span class="p">[</span><span class="o">=======.....................</span><span class="p">]</span> <span class="p">(</span><span class="n">time</span> <span class="n">remaining</span><span class="p">:</span> <span class="mi">01</span><span class="n">h</span> <span class="mi">43</span><span class="n">m</span> <span class="mi">31</span><span class="n">s</span><span class="p">)</span>
-</pre></div>
 </div>
-<p>You can also watch the cephadm log with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph -W cephadm</span>
-</pre></div>
-</div>
+<div class="section" id="watching-the-cephadm-log-during-an-upgrade">
+<h3>Watching the cephadm log during an upgrade<a class="headerlink" href="#watching-the-cephadm-log-during-an-upgrade" title="Permalink to this headline">¶</a></h3>
+<p>Watch the cephadm log by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph -W cephadm</span>
+</pre></div></div></div>
 </div>
 <div class="section" id="canceling-an-upgrade">
 <h2>Canceling an upgrade<a class="headerlink" href="#canceling-an-upgrade" title="Permalink to this headline">¶</a></h2>
-<p>You can stop the upgrade process at any time with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch upgrade stop</span>
-</pre></div>
-</div>
-</div>
+<p>You can stop the upgrade process at any time by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch upgrade stop</span>
+</pre></div></div></div>
 <div class="section" id="potential-problems">
 <h2>Potential problems<a class="headerlink" href="#potential-problems" title="Permalink to this headline">¶</a></h2>
 <p>There are a few health alerts that can arise during the upgrade process.</p>
 <div class="section" id="upgrade-no-standby-mgr">
 <h3>UPGRADE_NO_STANDBY_MGR<a class="headerlink" href="#upgrade-no-standby-mgr" title="Permalink to this headline">¶</a></h3>
-<p>Ceph requires an active and standby manager daemon in order to proceed, but
-there is currently no standby.</p>
-<p>You can ensure that Cephadm is configured to run 2 (or more) managers with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch apply mgr 2  # or more</span>
-</pre></div>
-</div>
-<p>You can check the status of existing mgr daemons with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch ps --daemon-type mgr</span>
-</pre></div>
-</div>
-<p>If an existing mgr daemon has stopped, you can try restarting it with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch daemon restart &lt;name&gt;</span>
-</pre></div>
-</div>
-</div>
+<p>This alert (<code class="docutils literal notranslate"><span class="pre">UPGRADE_NO_STANDBY_MGR</span></code>) means that Ceph does not detect an
+active standby manager daemon. In order to proceed with the upgrade, Ceph
+requires an active standby manager daemon (which you can think of in this
+context as “a second manager”).</p>
+<p>You can ensure that Cephadm is configured to run 2 (or more) managers by
+running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch apply mgr <span class="m">2</span>  <span class="c1"># or more</span></span>
+</pre></div></div><p>You can check the status of existing mgr daemons by running the following
+command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch ps --daemon-type mgr</span>
+</pre></div></div><p>If an existing mgr daemon has stopped, you can try to restart it by running the
+following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch daemon restart &lt;name&gt;</span>
+</pre></div></div></div>
 <div class="section" id="upgrade-failed-pull">
 <h3>UPGRADE_FAILED_PULL<a class="headerlink" href="#upgrade-failed-pull" title="Permalink to this headline">¶</a></h3>
-<p>Ceph was unable to pull the container image for the target version.
-This can happen if you specify an version or container image that does
-not exist (e.g., 1.2.3), or if the container registry is not reachable from
-one or more hosts in the cluster.</p>
-<p>You can cancel the existing upgrade and specify a different target version with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch upgrade stop</span>
-<span class="c1"># ceph orch upgrade start --ceph-version &lt;version&gt;</span>
-</pre></div>
-</div>
-</div>
+<p>This alert (<code class="docutils literal notranslate"><span class="pre">UPGRADE_FAILED_PULL</span></code>) means that Ceph was unable to pull the
+container image for the target version. This can happen if you specify a
+version or container image that does not exist (e.g. “1.2.3”), or if the
+container registry can not be reached by one or more hosts in the cluster.</p>
+<p>To cancel the existing upgrade and to specify a different target version, run
+the following commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch upgrade stop</span>
+<span class="prompt1">ceph orch upgrade start --ceph-version &lt;version&gt;</span>
+</pre></div></div></div>
 </div>
 <div class="section" id="using-customized-container-images">
 <h2>Using customized container images<a class="headerlink" href="#using-customized-container-images" title="Permalink to this headline">¶</a></h2>
-<p>For most users, simplify specifying the Ceph version is sufficient.
-Cephadm will locate the specific Ceph container image to use by
-combining the <code class="docutils literal notranslate"><span class="pre">container_image_base</span></code> configuration option (default:
-<code class="docutils literal notranslate"><span class="pre">docker.io/ceph/ceph</span></code>) with a tag of <code class="docutils literal notranslate"><span class="pre">vX.Y.Z</span></code>.</p>
-<p>You can also upgrade to an arbitrary container image.  For example, to
-upgrade to a development build:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ceph orch upgrade start --image quay.io/ceph-ci/ceph:recent-git-branch-name</span>
-</pre></div>
-</div>
-<p>For more information about available container images, see <a class="reference internal" href="../../install/containers/#containers"><span class="std std-ref">Ceph 容器映像</span></a>.</p>
+<p>For most users, upgrading requires nothing more complicated than specifying the
+Ceph version number to upgrade to.  In such cases, cephadm locates the specific
+Ceph container image to use by combining the <code class="docutils literal notranslate"><span class="pre">container_image_base</span></code>
+configuration option (default: <code class="docutils literal notranslate"><span class="pre">docker.io/ceph/ceph</span></code>) with a tag of
+<code class="docutils literal notranslate"><span class="pre">vX.Y.Z</span></code>.</p>
+<p>But it is possible to upgrade to an arbitrary container image, if that’s what
+you need. For example, the following command upgrades to a development build:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph orch upgrade start --image quay.io/ceph-ci/ceph:recent-git-branch-name</span>
+</pre></div></div><p>For more information about available container images, see <a class="reference internal" href="../../install/containers/#containers"><span class="std std-ref">Ceph 容器映像</span></a>.</p>
 </div>
 </div>
 

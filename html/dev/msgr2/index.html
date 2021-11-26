@@ -191,6 +191,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#hello">Hello</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#authentication">Authentication</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#post-auth-frame-format">Post-auth frame format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compression">Compression</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#post-compression-frame-format">Post-compression frame format</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#message-flow-handshake">Message flow handshake</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#message-exchange">Message exchange</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#example-of-protocol-interaction-wip">Example of protocol interaction (WIP)</a></li>
@@ -364,6 +366,12 @@ between one and four segments, all segments except the last may be
 empty.</p>
 <p>If there are less than four segments, unused (trailing) segment
 length and segment alignment fields are zeroed.</p>
+<p>### Currently supported flags</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>FRAME_EARLY_DATA_COMPRESSED (see <a class="reference internal" href="#msgr-post-compression"><span class="std std-ref">Post-compression frame format</span></a>)</p></li>
+</ol>
+</div></blockquote>
 <p>The reserved bytes are zeroed.</p>
 <p>The preamble checksum is CRC32-C.  It covers everything up to
 itself (28 bytes) and is calculated and verified irrespective of
@@ -739,6 +747,50 @@ The corollary to this is that the inline buffer is consumed in
 </div>
 <p>late_status has the same meaning as in msgr2.1-crc mode.</p>
 </div>
+<div class="section" id="compression">
+<h2>Compression<a class="headerlink" href="#compression" title="Permalink to this headline">¶</a></h2>
+<p>Compression handshake is implemented using msgr2 feature-based handshaking.
+In this phase, the client will indicate the server if on-wire-compression can be used for message transmitting,
+in addition to the list of supported compression methods. If on-wire-compression is enabled for both client and server,
+the server will choose a compression method based on client’s request and its’ own preferences.
+Once the handshake is completed, both peers have setup their compression handlers (if desired).</p>
+<ul>
+<li><p>TAG_COMPRESSION_REQUEST (client-&gt;server): declares compression capabilities and requirements:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">bool</span>  <span class="n">is_compress</span>
+<span class="n">std</span><span class="p">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">uint32_t</span><span class="o">&gt;</span> <span class="n">preferred_methods</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>if the client identifies that both peers support compression feature, it initiates the handshake.</p></li>
+<li><p>is_compress flag indicates whether the client’s configuration is to use compression.</p></li>
+<li><p>preferred_methods is a list of compression algorithms that are supported by the client.</p></li>
+</ul>
+</li>
+<li><p>TAG_COMPRESSION_DONE (server-&gt;client) : determines on compression settings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">bool</span> <span class="n">is_compress</span>
+<span class="n">uint32_t</span>  <span class="n">method</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>the server determines whether compression is possible according to its’ configuration.</p></li>
+<li><p>if it is possible, it will pick its’ most prioritizied compression method that is also supprorted by the client.</p></li>
+<li><p>if none exists, it will determine that session between the peers will be handled without compression.</p></li>
+</ul>
+</li>
+</ul>
+<p># msgr2.x-secure mode</p>
+<p>Combining compression with encryption introduces security implications.
+Compression will not be possible when using secure mode, unless configured specifically by an admin.</p>
+</div>
+<div class="section" id="post-compression-frame-format">
+<span id="msgr-post-compression"></span><h2>Post-compression frame format<a class="headerlink" href="#post-compression-frame-format" title="Permalink to this headline">¶</a></h2>
+<p>Depending on the negotiated connection mode from TAG_COMPRESSION_DONE, the connection is able to acccept/send compressed frames or process all frames as decompressed.</p>
+<p># msgr2.x-force mode</p>
+<p>All subsequent frames that will be sent via the connection will be compressed if compression requirements are met (e.g, the frames size).</p>
+<p>For compressed frames, the sending peer will enable the FRAME_EARLY_DATA_COMPRESSED flag, thus allowing the accepting peer to detect it and decompress the frame.</p>
+<p># msgr2.x-none mode</p>
+<p>FRAME_EARLY_DATA_COMPRESSED flag will be disabled in preamble.</p>
+</div>
 <div class="section" id="message-flow-handshake">
 <h2>Message flow handshake<a class="headerlink" href="#message-flow-handshake" title="Permalink to this headline">¶</a></h2>
 <p>In this phase the peers identify each other and (if desired) reconnect to
@@ -921,6 +973,60 @@ TCP connection.</p>
 </ul>
 <div class="section" id="example-of-protocol-interaction-wip">
 <h3>Example of protocol interaction (WIP)<a class="headerlink" href="#example-of-protocol-interaction-wip" title="Permalink to this headline">¶</a></h3>
+<div class="figure align-default" id="id4">
+<div class="graphviz"><object data="../../_images/graphviz-af2346b5954267e401fc4b31534f82f22e1a4f7d.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph lossy_client {
+  node [shape = doublecircle]; &quot;start_connect&quot; &quot;closed&quot;;
+  node [shape = oval];
+  start_connect -&gt; banner_connecting [label = &quot;&lt;connected&gt;&quot;];
+  subgraph hello_banner {
+    banner_connecting -&gt; hello_connecting [label = &quot;banner exchange&quot;];
+    hello_connecting -&gt; banner_connecting [label = &quot;hello exchange&quot;];
+    label = &quot;hello banner exchange&quot;;
+    color = blue;
+  }
+  banner_connecting -&gt; auth_connecting [label = &quot;&lt;exchange done&gt;&quot;];
+  auth_connecting -&gt; auth_connecting [label = &quot;auth reply more&quot;];
+  auth_connecting -&gt; auth_connecting [label = &quot;auth bad method&quot;];
+  auth_connecting -&gt; auth_connecting_sign [label = &quot;auth done&quot;];
+  auth_connecting_sign -&gt; session_connecting [label = &quot;auth signature&quot;];
+  session_connecting -&gt; wait [label = &quot;wait&quot;];
+  wait -&gt; start_connect [label = &quot;&lt;backoff&gt;&quot;];
+  session_connecting -&gt; closed [label = &quot;ident missing features&quot;];
+  session_connecting -&gt; ready [label = &quot;server ident&quot;, tooltip = &quot;set peer_name, peer_addr and connection features&quot;];
+  ready -&gt; ready [label = &quot;keep alive&quot;];
+}</p></object></div>
+<p class="caption"><span class="caption-text">client side state machine</span><a class="headerlink" href="#id4" title="Permalink to this image">¶</a></p>
+</div>
+<div class="figure align-default" id="id5">
+<div class="graphviz"><object data="../../_images/graphviz-822d1cb646f63b322697accf66a35dce9a89c810.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph lossy_server {
+  node [shape = doublecircle]; &quot;start_accept&quot; &quot;closed&quot;;
+  node [shape = oval];
+  start_accept -&gt; banner_accepting [label = &quot;&lt;accepted&gt;&quot;];
+  subgraph hello_banner {
+    banner_accepting -&gt; hello_accepting [label = &quot;banner exchange&quot;];
+    hello_accepting -&gt; banner_accepting [label = &quot;hello exchange&quot;];
+    label = &quot;hello banner exchange&quot;;
+    color = blue;
+  };
+  banner_accepting -&gt; auth_accepting [label = &quot;&lt;exchange done&gt;&quot;];
+  auth_accepting -&gt; auth_accepting_more [label = &quot;auth_request =&gt; 0&quot;];
+  auth_accepting -&gt; auth_accepting_sign [label = &quot;auth_request =&gt; 1&quot;];
+  auth_accepting_more -&gt; auth_accepting_more [label = &quot;auth_request =&gt; 0&quot;];
+  auth_accepting_more -&gt; auth_accepting_sign [label = &quot;auth_request =&gt; 1&quot;];
+  auth_accepting_more -&gt; standby [label = &quot;auth_request =&gt; EBUSY&quot;];
+  auth_accepting_more -&gt; auth_accepting_more [label = &quot;auth_request =&gt; *&quot;];
+  auth_accepting -&gt; standby [label = &quot;auth_request =&gt; EBUSY&quot;];
+  auth_accepting -&gt; auth_accepting [label = &quot;send &lt;auth bad method&gt;&quot;];
+  auth_accepting_sign -&gt; session_accepting [label = &quot;auth signature&quot;];
+  session_accepting -&gt; session_accepting [label = &quot;reconnect&quot;];
+  session_accepting -&gt; closed [label = &quot;ident missing features&quot;];
+  session_accepting -&gt; ready [label = &quot;client ident&quot;, tooltip = &quot;set connection features&quot;];
+  ready -&gt; ready [label = &quot;keep alive&quot;];
+}</p></object></div>
+<p class="caption"><span class="caption-text">server side state machine</span><a class="headerlink" href="#id5" title="Permalink to this image">¶</a></p>
+</div>
 </div>
 </div>
 </div>

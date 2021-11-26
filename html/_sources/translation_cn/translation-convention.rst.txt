@@ -292,6 +292,10 @@
     main device
         主设备。 BlueStore 术语，相对的是 auxiliary device 。
 
+    manifest
+        载荷清单 ?
+        还没准确理解含义，暂不翻译。
+
     manpage
         手册页
 

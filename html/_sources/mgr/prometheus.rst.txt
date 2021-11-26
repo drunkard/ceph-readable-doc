@@ -15,7 +15,6 @@ The HTTP path and query parameters are ignored; all extant counters
 for all reporting entities are returned in text exposition format.
 (See the Prometheus `documentation <https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details>`_.)
 
-
 启用 prometheus 输出
 ====================
 .. Enabling prometheus output
@@ -33,6 +32,17 @@ for all reporting entities are returned in text exposition format.
 
     The Prometheus manager module needs to be restarted for configuration changes to be applied.
 
+.. mgr_module:: prometheus
+.. confval:: server_addr
+.. confval:: server_port
+.. confval:: scrape_interval
+.. confval:: cache
+.. confval:: stale_cache_strategy
+.. confval:: rbd_stats_pools
+.. confval:: rbd_stats_pools_refresh_interval
+.. confval:: standby_behaviour
+.. confval:: standby_error_status_code
+
 By default the module will accept HTTP requests on port ``9283`` on all IPv4
 and IPv6 addresses on the host.  The port and listen address are both
 configurable with ``ceph config set``, with keys
@@ -47,7 +57,7 @@ is registered with Prometheus's `registry
 
 .. warning::
 
-    The ``scrape_interval`` of this module should always be set to match
+    The :confval:`mgr/prometheus/scrape_interval` of this module should always be set to match
     Prometheus' scrape interval to work properly and not cause any issues.
 
 The scrape interval in the module is used for caching purposes

@@ -3,11 +3,9 @@
 ceph-mgr 管理员指南
 ===================
 
-
-.. Manual setup
-
 手动设置
 --------
+.. Manual setup
 
 平时，你可以用 ceph-ansible 之类的工具配置 ceph-mgr 守护进程。\
 下面说明了如何手动配置好一个 ceph-mgr 守护进程。
@@ -29,11 +27,9 @@ ceph-mgr 管理员指南
 
     mgr active: $name
 
-
-.. Client authentication
-
 客户端认证
 ----------
+.. Client authentication
 
 管理器是一种新的守护进程，需要新的 CephX 能力。如果你是从旧版
 Ceph 升级集群、或者使用默认的安装/部署工具，那么管理客户端应该\
@@ -42,29 +38,26 @@ Ceph 升级集群、或者使用默认的安装/部署工具，那么管理客�
 `更改用户能力`_\ ，在客户端的 cephx 能力里加上 ``mgr allow \*``
 声明。
 
-
-.. High availability
-
 高可用性
 --------
+.. High availability
 
 通常来说，你应该在每台运行 ceph-mon 守护进程的主机上都配置一个
 ceph-mgr ，以实现相同级别的可用性。
 
-默认情况下，监视器会把任意一个最先启动的 ceph-mgr 例程当作活跃\
-的，其它的作为备用。 ceph-mgr 守护进程无需形成法定人数。
+默认情况下，监视器会把任意一个最先启动的
+ceph-mgr 例程当作活跃的，其它的作为备用。
+ceph-mgr 守护进程无需形成法定人数。
 
-如果活跃的守护进程在 ``mon mgr beacon grace`` （默认 30s ）这\
-么长的时间内都没向监视器们发送信标，那它就会被备用顶替。
+如果活跃的守护进程在 :confval:`mon_mgr_beacon_grace` 这么长的时间内\
+都没向监视器们发送信标，那它就会被备用顶替。
 
 如果你想提前做故障切换，可以用 ``ceph mgr fail <mgr name>`` 把
 ceph-mgr 明确地标记为已失效。
 
-
-.. Using modules
-
 模块的使用
 ----------
+.. Using modules
 
 用 ``ceph mgr module ls`` 命令可查看有哪些模块可用、哪些是当前\
 已经启用的。启用或禁用模块分别使用命令 ``ceph mgr module enable <module>``
@@ -86,7 +79,7 @@ information about what functionality each module provides.
 
 Here is an example of enabling the :term:`Dashboard` module:
 
-::
+.. code-block:: console
 
 	$ ceph mgr module ls
 	{
@@ -118,23 +111,36 @@ Here is an example of enabling the :term:`Dashboard` module:
 	}
 
 
-The first time the cluster starts, it uses the ``mgr_initial_modules``
+The first time the cluster starts, it uses the :confval:`mgr_initial_modules`
 setting to override which modules to enable.  However, this setting
 is ignored through the rest of the lifetime of the cluster: only
 use it for bootstrapping.  For example, before starting your
 monitor daemons for the first time, you might add a section like
 this to your ``ceph.conf``:
 
-::
+.. code-block:: ini
 
     [mon]
         mgr initial modules = dashboard balancer
 
+Module Pool
+-----------
 
-.. Calling module commands
+The manager creates a pool for use by its module to store state. The name of
+this pool is ``.mgr`` (with the leading ``.`` indicating a reserved pool
+name).
+
+.. note::
+
+   Prior to Quincy, the ``devicehealth`` module created a
+   ``device_health_metrics`` pool to store device SMART statistics. With
+   Quincy, this pool is automatically renamed to be the common manager module
+   pool.
+
 
 调用模块命令
 ------------
+.. Calling module commands
 
 对于实现了命令行钩子的模块，其实现的命令可以像一般的 Ceph 命令\
 那样调用。 Ceph 会自动把模块命令整合进标准 CLI 接口，并正确地\
@@ -142,39 +148,17 @@ this to your ``ceph.conf``:
 
     ceph <command | help>
 
-
-.. Configuration
-
 配置选项
 --------
+.. Configuration
 
-``mgr module path``
-
-:描述: 从这个路径载人模块
-:类型: String
-:默认值: ``"<library dir>/mgr"``
-
-
-``mgr data``
-
-:描述: 从这个路径载人守护进程数据（如密钥环）
-:类型: String
-:默认值: ``"/var/lib/ceph/mgr/$cluster-$id"``
-
-
-``mgr tick period``
-
-:描述: mgr 向监视器发送信标、以及其它周期性检查的时间间隔，\
-       单位为秒。
-:类型: Integer
-:默认值: ``5``
-
-
-``mon mgr beacon grace``
-
-:描述: 上一个信标收到后过多久没反应就当它失败了。
-:类型: Integer
-:默认值: ``30``
+.. confval:: mgr_module_path
+.. confval:: mgr_initial_modules
+.. confval:: mgr_disabled_modules
+.. confval:: mgr_standby_modules
+.. confval:: mgr_data
+.. confval:: mgr_tick_period
+.. confval:: mon_mgr_beacon_grace
 
 
 .. _更改用户能力: ../../rados/operations/user-management/#modify-user-capabilities

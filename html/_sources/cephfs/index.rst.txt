@@ -118,7 +118,7 @@ for interactive access or scripting via the `cephfs-shell`_.
     用内核驱动挂载 CephFS 文件系统 <mount-using-kernel-driver>
     用 FUSE 挂载 CephFS <mount-using-fuse>
     在 Windows 上挂载 CephFS <ceph-dokan>
-    Use the CephFS Shell <../../man/8/cephfs-shell>
+    CephFS Shell 的用法 <../../man/8/cephfs-shell>
     内核驱动支持的功能 <kernel-features>
     ceph-fuse 手册页 <../../man/8/ceph-fuse>
     mount.ceph 手册页 <../../man/8/mount.ceph>

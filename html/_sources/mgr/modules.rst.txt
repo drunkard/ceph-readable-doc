@@ -18,9 +18,12 @@ ceph-mgr 模块开发指南
 
 需要覆盖的、最重要的方法有：
 
-* ``serve`` 成员函数，用于服务器类型的模块，此函数应该永远阻塞；
+* ``serve`` 成员函数，用于服务器类型的模块，
+  此函数应该永远阻塞；
 * ``notify`` 成员函数，如果你的模块想对新的集群数据有所动作；
 * ``handle_command`` 成员函数，如果你的模块要暴露 CLI 命令。
+  但是，这个暴露命令的方法废弃了。
+  更多详情见 :ref:`mgr-module-exposing-commands` 。
 
 Some modules interface with external orchestrators to deploy
 Ceph services.  These also inherit from ``Orchestrator``, which adds
@@ -207,12 +210,10 @@ Modules can load and store configuration options using the
 You must declare your available configuration options in the
 ``MODULE_OPTIONS`` class attribute, like this:
 
-::
+.. code-block:: python
 
     MODULE_OPTIONS = [
-        {
-            "name": "my_option"
-        }
+        Option(name="my_option")
     ]
 
 If you try to use set_module_option or get_module_option on options not declared

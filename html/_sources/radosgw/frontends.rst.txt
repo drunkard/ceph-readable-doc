@@ -1,15 +1,14 @@
-.. HTTP Frontends
 .. _rgw_frontends:
 
 ===========
  HTTP 前端
 ===========
+.. HTTP Frontends
 
 .. contents::
 
 Ceph 对象网关支持两个嵌入式的 HTTP 前端库，可以用
 ``rgw_frontends`` 配置。语法请参考\ `配置参考`_\ 。
-
 
 Beast
 =====
@@ -20,10 +19,9 @@ The ``beast`` frontend uses the Boost.Beast library for HTTP parsing
 and the Boost.Asio library for asynchronous network i/o.
 
 
-.. Options
-
 选项
 ----
+.. Options
 
 ``port`` 和 ``ssl_port``
 
@@ -65,6 +63,40 @@ and the Boost.Asio library for asynchronous network i/o.
 :默认值: None
 
 
+``ssl_options``
+
+:描述: Optional colon separated list of ssl context options:
+
+              ``default_workarounds`` Implement various bug workarounds.
+
+              ``no_compression`` Disable compression.
+
+              ``no_sslv2`` Disable SSL v2.
+
+              ``no_sslv3`` Disable SSL v3.
+
+              ``no_tlsv1`` Disable TLS v1.
+
+              ``no_tlsv1_1`` Disable TLS v1.1.
+
+              ``no_tlsv1_2`` Disable TLS v1.2.
+
+              ``single_dh_use`` Always create a new key when using tmp_dh parameters.
+
+:Type: String
+:Default: ``no_sslv2:no_sslv3:no_tlsv1:no_tlsv1_1``
+
+
+``ssl_ciphers``
+
+:Description: Optional list of one or more cipher strings separated by colons.
+              The format of the string is described in openssl's ciphers(1)
+              manual.
+
+:Type: String
+:Default: None
+
+
 ``tcp_nodelay``
 
 :描述: If set the socket option will disable Nagle's algorithm on 
@@ -87,86 +119,19 @@ and the Boost.Asio library for asynchronous network i/o.
 :默认值: None
 
 
-Civetweb
-========
-
-.. versionadded:: Firefly
-
-The ``civetweb`` frontend uses the Civetweb HTTP library, which is a
-fork of Mongoose.
-
-
-选项
-----
-
-``port``
-
-:描述: 设置监听端口号。对于启用了 SSL 的端口，加个 ``s``
-       后缀，如 ``443s`` 。要绑定某个特定的 IPv4 或 IPv6
-       地址，按照 ``address:port`` 格式；多个终结点可以用 ``+``
-       分隔（如 ``127.0.0.1:8000+443s`` ）或写多个选项（如
-       ``port=8000 port=443s`` ）。
-:类型: String
-:默认值: ``7480``
-
-
-``num_threads``
-
-:描述: Sets the number of threads spawned by Civetweb to handle
-              incoming HTTP connections. This effectively limits the number
-              of concurrent connections that the frontend can service.
-
-:类型: Integer
-:默认值: ``rgw_thread_pool_size``
-
-
 ``request_timeout_ms``
 
-:描述: The amount of time in milliseconds that Civetweb will wait
-              for more incoming data before giving up.
+:Description: The amount of time in milliseconds that Beast will wait
+              for more incoming data or outgoing data before giving up.
+              Setting this value to 0 will disable timeout.
 
-:类型: Integer
-:默认值: ``30000``
+:Type: Integer
+:Default: ``65000``
 
-
-``ssl_certificate``
-
-:描述: Path to the SSL certificate file used for SSL-enabled ports.
-
-:类型: String
-:默认值: None
-
-``access_log_file``
-
-:描述: 访问日志的文件路径。可以是完整路径、或当前工作目录的\
-       相对路径。如果未设置（默认的），就不会记录访问日志。
-
-:类型: String
-:默认值: ``EMPTY``
-
-
-``error_log_file``
-
-:描述: Path to a file for error logs. Either full path, or relative
-			  to the current working directory. If absent (default), then
-			  errors are not logged.
-
-:类型: String
-:默认值: ``EMPTY``
-
-
-下面是个配置了这些选项的 ``/etc/ceph/ceph.conf`` 配置文件实例： ::
-
- [client.rgw.gateway-node1]
- rgw_frontends = civetweb request_timeout_ms=30000 error_log_file=/var/log/radosgw/civetweb.error.log access_log_file=/var/log/radosgw/civetweb.access.log
-
-所有支持的选项可以在 `Civetweb 用户手册`_\ 里找到。
-
-
-.. Generic Options
 
 通用选项
 ========
+.. Generic Options
 
 有些前端选项是通用的，所有前端都支持：
 
@@ -180,5 +145,4 @@ fork of Mongoose.
 :默认值: None
 
 
-.. _Civetweb 用户手册: https://civetweb.github.io/civetweb/UserManual.html
 .. _配置参考: ../config-ref

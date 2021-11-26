@@ -1,37 +1,21 @@
-.. Config Settings
-
 ==========
  配置选项
 ==========
+.. Config Settings
 
 详情见\ `块设备`_\ 。
 
-.. Generic IO Settings
-
 通用 IO 选项
 ============
+.. Generic IO Settings
 
-``rbd compression hint``
+.. confval:: rbd_compression_hint
+.. confval:: rbd_read_from_replica_policy
 
-:描述: Hint to send to the OSDs on write operations. If set to `compressible` and the OSD `bluestore compression mode` setting is `passive`, the OSD will attempt to compress the data. If set to `incompressible` and the OSD compression setting is `aggressive`, the OSD will not attempt to compress the data.
-:类型: Enum
-:是否必需: No
-:默认值: ``none``
-:Values: ``none``, ``compressible``, ``incompressible``
-
-``rbd read from replica policy``
-
-:描述: policy for determining which OSD will receive read operations. If set to `default`, the primary OSD will always be used for read operations. If set to `balance`, read operations will be sent to a randomly selected OSD within the replica set. If set to `localize`, read operations will be sent to the closest OSD as determined by the CRUSH map. Note: this feature requires the cluster to be configured with a minimum compatible OSD release of Octopus.
-:类型: Enum
-:是否必需: No
-:默认值: ``default``
-:Values: ``default``, ``balance``, ``localize``
-
-
-.. Cache Settings
 
 缓存选项
 ========
+.. Cache Settings
 
 .. sidebar:: 内核缓存
 
@@ -72,117 +56,34 @@ is on disk on all replicas.
 RBD 选项应该位于 ``ceph.conf`` 配置文件的 ``[client]`` 段下，\
 可用选项有：
 
-
-``rbd cache``
-
-:描述: 允许为 RADOS 块设备提供缓存。
-:类型: Boolean
-:是否必需: No
-:默认值: ``true``
-
-
-``rbd cache policy``
-
-:描述: Select the caching policy for librbd.
-:类型: Enum
-:是否必需: No
-:默认值: ``writearound``
-:Values: ``writearound``, ``writeback``, ``writethrough``
-
-
-``rbd cache writethrough until flush``
-
-:描述: 开始进入 write-through 模式，并且在首个 flush 请求收到\
-       后切回 write-back 模式。启用它保守但安全，以防 rbd 之上\
-       的虚拟机内核太老、不能发送 flush ，像 2.6.32 之前的
-       virtio 驱动。
-:类型: Boolean
-:是否必需: No
-:默认值: ``true``
-
-
-``rbd cache size``
-
-:描述: RBD 缓存尺寸，字节。
-:类型: 64-bit Integer
-:是否必需: No
-:默认值: ``32 MiB``
-:适用策略: write-back and write-through
-
-
-``rbd cache max dirty``
-
-:描述: 使缓存触发写回的 ``dirty`` 临界点，若为 ``0`` ，直接\
-       使用写透缓存。
-:类型: 64-bit Integer
-:是否必需: No
-:约束条件: 必须小于 ``rbd cache size`` 。
-:默认值: ``24 MiB``
-:适用策略: write-around and write-back
-
-
-``rbd cache target dirty``
-
-:描述: 缓存开始写回数据的目的地 ``dirty target`` ，不会阻塞到\
-       缓存的写动作。
-:类型: 64-bit Integer
-:是否必需: No
-:约束条件: 必须小于 ``rbd cache max dirty``.
-:默认值: ``16 MiB``
-:适用策略: write-back
-
-
-``rbd cache max dirty age``
-
-:描述: 写回开始前，脏数据在缓存中的暂存时间。
-:类型: Float
-:是否必需: No
-:默认值: ``1.0``
-:适用策略: write-back
+.. confval:: rbd_cache
+.. confval:: rbd_cache_policy
+.. confval:: rbd_cache_writethrough_until_flush
+.. confval:: rbd_cache_size
+.. confval:: rbd_cache_max_dirty
+.. confval:: rbd_cache_target_dirty
+.. confval:: rbd_cache_max_dirty_age
 
 .. _块设备: ../../rbd
 
 
-.. Read-ahead Settings
-
 预读选项
 ========
+.. Read-ahead Settings
 
 librbd 支持预读或预取功能，以此优化小块的顺序读。此功能通常\
 应该由访客操作系统（是虚拟机）处理，但是引导加载程序还不能进行\
 高效的读。如果缓存功能停用、或策略为 write-around ，预读就会\
 自动被禁用。
 
+.. confval:: rbd_readahead_trigger_requests
+.. confval:: rbd_readahead_max_bytes
+.. confval:: rbd_readahead_disable_after_bytes
 
-``rbd readahead trigger requests``
-
-:描述: 触发预读的顺序读请求数量。
-:类型: Integer
-:是否必需: No
-:默认值: ``10``
-
-
-``rbd readahead max bytes``
-
-:描述: 预读请求最大尺寸，零为禁用预读。
-:类型: 64-bit Integer
-:是否必需: No
-:默认值: ``512 KiB``
-
-
-``rbd readahead disable after bytes``
-
-:描述: 从 RBD 映像读取这么多字节后，预读功能将被禁用，直到关闭。这样访客操作\
-       系统启动后就可以接管预读了，设为 0 时则仍开启预读。
-:类型: 64-bit Integer
-:是否必需: No
-:默认值: ``50 MiB``
-
-
-.. Image Features
 
 映像功能
 ========
+.. Image Features
 
 RBD supports advanced features which can be specified via the command line when creating images or the default features can be specified via Ceph config file via 'rbd_default_features = <sum of feature numeric values>' or 'rbd_default_features = <comma-delimited list of CLI values>'
 
@@ -290,162 +191,29 @@ RBD supports advanced features which can be specified via the command line when 
 :KRBD 支持情况: no
 
 
-.. QOS Settings
-
 QOS 选项
 ========
+.. QOS Settings
 
 librbd supports limiting per image IO, controlled by the following
 settings.
 
-
-``rbd qos iops limit``
-
-:描述: The desired limit of IO operations per second.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos bps limit``
-
-:描述: The desired limit of IO bytes per second.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos read iops limit``
-
-:描述: The desired limit of read operations per second.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos write iops limit``
-
-:描述: The desired limit of write operations per second.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos read bps limit``
-
-:描述: The desired limit of read bytes per second.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos write bps limit``
-
-:描述: The desired limit of write bytes per second.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos iops burst``
-
-:描述: The desired burst limit of IO operations.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos bps burst``
-
-:描述: The desired burst limit of IO bytes.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos read iops burst``
-
-:描述: The desired burst limit of read operations.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos write iops burst``
-
-:描述: The desired burst limit of write operations.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos read bps burst``
-
-:描述: The desired burst limit of read bytes.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos write bps burst``
-
-:描述: The desired burst limit of write bytes.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``0``
-
-
-``rbd qos iops burst seconds``
-
-:描述: The desired burst duration in seconds of IO operations.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``1``
-
-
-``rbd qos bps burst seconds``
-
-:描述: The desired burst duration in seconds of IO bytes.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``1``
-
-
-``rbd qos read iops burst seconds``
-
-:描述: The desired burst duration in seconds of read operations.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``1``
-
-
-``rbd qos write iops burst seconds``
-
-:描述: The desired burst duration in seconds of write operations.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``1``
-
-
-``rbd qos read bps burst seconds``
-
-:描述: The desired burst duration in seconds of read bytes.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``1``
-
-
-``rbd qos write bps burst seconds``
-
-:描述: The desired burst duration in seconds of write bytes.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``1``
-
-
-``rbd qos schedule tick min``
-
-:描述: The minimum schedule tick (in milliseconds) for QoS.
-:类型: Unsigned Integer
-:是否必需: No
-:默认值: ``50``
+.. confval:: rbd_qos_iops_limit
+.. confval:: rbd_qos_bps_limit
+.. confval:: rbd_qos_read_iops_limit
+.. confval:: rbd_qos_write_iops_limit
+.. confval:: rbd_qos_read_bps_limit
+.. confval:: rbd_qos_write_bps_limit
+.. confval:: rbd_qos_iops_burst
+.. confval:: rbd_qos_bps_burst
+.. confval:: rbd_qos_read_iops_burst
+.. confval:: rbd_qos_write_iops_burst
+.. confval:: rbd_qos_read_bps_burst
+.. confval:: rbd_qos_write_bps_burst
+.. confval:: rbd_qos_iops_burst_seconds
+.. confval:: rbd_qos_bps_burst_seconds
+.. confval:: rbd_qos_read_iops_burst_seconds
+.. confval:: rbd_qos_write_iops_burst_seconds
+.. confval:: rbd_qos_read_bps_burst_seconds
+.. confval:: rbd_qos_write_bps_burst_seconds
+.. confval:: rbd_qos_schedule_tick_min

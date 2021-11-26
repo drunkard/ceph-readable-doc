@@ -1,23 +1,19 @@
-.. MDS States
-
 MDS 的各种状态
 ==============
+.. MDS States
 
 The Metadata Server (MDS) goes through several states during normal operation
 in CephFS. For example, some states indicate that the MDS is recovering from a
 failover by a previous instance of the MDS. Here we'll document all of these
 states and include a state diagram to visualize the transitions.
 
-
-.. State Descriptions
-
 状态描述
 --------
-
-.. Common states
+.. State Descriptions
 
 常见状态
 ~~~~~~~~
+.. Common states
 
 ::
 
@@ -47,10 +43,9 @@ standby replay MDSs is that they are not available to takeover for any other
 MDS that fails, only the MDS they follow.
 
 
-.. Less common or transitory states
-
 不太常见的或过渡状态
 ~~~~~~~~~~~~~~~~~~~~
+.. Less common or transitory states
 
 ::
 
@@ -140,10 +135,9 @@ Clients resend these requests during ``up:reconnect`` and the requests are
 replayed once again. The MDS enters ``up:active`` after completing replay.
 
 
-.. Failed states
-
 失败状态
 ~~~~~~~~
+.. Failed states
 
 ::
 
@@ -206,17 +200,15 @@ No MDS actually holds this state. Instead, it is applied to the rank in the file
 
 The rank has been stopped by reducing ``max_mds`` (see also :ref:`cephfs-multimds`).
 
-.. State Diagram
-
 状态图
 ------
+.. State Diagram
 
 这张状态图展示了 MDS/rank 可能的状态转变，图例如下：
 
-.. Color
-
 颜色
 ~~~~
+.. Color
 
 - Green: MDS is active.
 - Orange: MDS is in transient state trying to become active.
@@ -224,19 +216,17 @@ The rank has been stopped by reducing ``max_mds`` (see also :ref:`cephfs-multimd
 - Purple: MDS and rank is stopping.
 - Black: MDS is indicating a state that causes the rank to be marked damaged.
 
-.. Shape
-
 形状
 ~~~~
+.. Shape
 
 - Circle: an MDS holds this state.
 - Hexagon: no MDS holds this state (it is applied to the rank).
 
-.. Lines
-
 线
 ~~
+.. Lines
 
 - A double-lined shape indicates the rank is "in".
 
-.. image:: mds-state-diagram.svg
+.. graphviz:: mds-state-diagram.dot

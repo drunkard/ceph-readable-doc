@@ -35,17 +35,17 @@ reshard thread runs in the background and execute the scheduled
 resharding tasks, one at a time.
 
 
-.. Multisite
-
 多站
 ====
+.. Multisite
+
 动态重分片功能还不能在多站环境下使用。
 
 
-.. Configuration
-
 配置选项
 ========
+.. Configuration
+
 启用、禁用动态的桶索引重分片功能：
 
 - ``rgw_dynamic_resharding``:  true/false, default: true.
@@ -63,46 +63,40 @@ Configuration options that control the resharding process:
 - ``rgw_reshard_num_logs``: number of shards for the resharding queue, default: 16
 
 
-.. Admin commands
-
 管理命令
 ========
-
-
-.. Add a bucket to the resharding queue
+.. Admin commands
 
 把一个桶加进重分片队列
 ----------------------
+.. Add a bucket to the resharding queue
 
 ::
 
    # radosgw-admin reshard add --bucket <bucket_name> --num-shards <new number of shards>
 
 
-.. List resharding queue
-
 罗列重分片队列
 --------------
+.. List resharding queue
 
 ::
 
    # radosgw-admin reshard list
 
 
-.. Process tasks on the resharding queue
-
 处理重分片队列里的任务
 ----------------------
+.. Process tasks on the resharding queue
 
 ::
 
    # radosgw-admin reshard process
 
 
-.. Bucket resharding status
-
 桶重分片状态
 ------------
+.. Bucket resharding status
 
 ::
 
@@ -156,20 +150,18 @@ For example, the output at different Dynamic Resharding stages is shown below:
   ]
 
 
-.. Cancel pending bucket resharding
-
 取消挂着的桶重分片操作
 ----------------------
+.. Cancel pending bucket resharding
 
 注意：正在进行着的桶重分片操作无法取消。 ::
 
    # radosgw-admin reshard cancel --bucket <bucket_name>
 
 
-.. Manual immediate bucket resharding
-
 手动执行即时桶重分片
 --------------------
+.. Manual immediate bucket resharding
 
 ::
 
@@ -188,10 +180,9 @@ numbers; search for "list of prime numbers" withy your favorite web
 search engine to locate some web sites.
 
 
-.. Troubleshooting
-
 故障排除
 ========
+.. Troubleshooting
 
 Clusters prior to Luminous 12.2.11 and Mimic 13.2.5 left behind stale bucket
 instance entries, which were not automatically cleaned up. The issue also affected
@@ -199,10 +190,9 @@ LifeCycle policies, which were not applied to resharded buckets anymore. Both of
 these issues can be worked around using a couple of radosgw-admin commands.
 
 
-.. Stale instance management
-
 掉队例程管理
 ------------
+.. Stale instance management
 
 List the stale instances in a cluster that are ready to be cleaned up.
 
@@ -218,10 +208,9 @@ instances should only be done on a single site cluster.
    # radosgw-admin reshard stale-instances rm
 
 
-.. Lifecycle fixes
-
 生命周期修复
 ------------
+.. Lifecycle fixes
 
 For clusters that had resharded instances, it is highly likely that the old
 lifecycle processes would have flagged and deleted lifecycle processing as the
@@ -240,10 +229,9 @@ As a convenience wrapper, if the ``--bucket`` argument is dropped then this
 command will try and fix lifecycle policies for all the buckets in the cluster.
 
 
-.. Object Expirer fixes
-
 对象逾期管理器修复
 ------------------
+.. Object Expirer fixes
 
 Objects subject to Swift object expiration on older clusters may have
 been dropped from the log pool and never deleted after the bucket was

@@ -1,41 +1,42 @@
-.. Local Pool Module
-
 本地存储池模块
 ==============
+.. Local Pool Module
+
+.. mgr_module:: localpool
 
 The *localpool* module can automatically create RADOS pools that are
 localized to a subset of the overall cluster.  For example, by default, it will
-create a pool for each distinct rack in the cluster.  This can be useful for some
-deployments that want to distribute some data locally as well as globally across the cluster .
-
-.. Enabling
+create a pool for each distinct ``rack`` in the cluster.  This can be useful for
+deployments where it is desirable to distribute some data locally and other data
+globally across the cluster.  One use-case is measuring performance and testing
+behavior of specific drive, NIC, or chassis models in isolation.
 
 启用
 ----
+.. Enabling
 
 *localpool* 模块用此命令启用： ::
 
   ceph mgr module enable localpool
 
-.. Configuring
-
 配置
 ----
+.. Configuring
 
 *localpool* 模块支持以下选项：
 
-* **subtree** (default: `rack`): which CRUSH subtree type the module
-  should create a pool for.
-* **failure_domain** (default: `host`): what failure domain we should
-  separate data replicas across.
-* **pg_num** (default: `128`): number of PGs to create for each pool
-* **num_rep** (default: `3`): number of replicas for each pool.
-  (Currently, pools are always replicated.)
-* **min_size** (default: none): value to set min_size to (unchanged from Ceph's default if this option is not set)
-* **prefix** (default: `by-$subtreetype-`): prefix for the pool name.
+.. confval:: subtree
+.. confval:: failure_domain
+.. confval:: pg_num
+.. confval:: num_rep
+.. confval:: min_size
+.. confval:: prefix
+   :default: by-$subtreetype-
 
 These options are set via the config-key interface.  For example, to
 change the replication level to 2x with only 64 PGs, ::
 
   ceph config set mgr mgr/localpool/num_rep 2
   ceph config set mgr mgr/localpool/pg_num 64
+
+.. mgr_module:: None

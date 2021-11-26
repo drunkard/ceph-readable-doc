@@ -130,14 +130,14 @@ CephFS 里存储大文件，也许得把这个限量设置得高些。它是个 
 .. Taking the cluster down
 
 Taking a CephFS cluster down is done by setting the down flag:
- 
-:: 
- 
+
+::
+
     fs set <fs_name> down true
- 
+
 To bring the cluster back online:
- 
-:: 
+
+::
 
     fs set <fs_name> down false
 

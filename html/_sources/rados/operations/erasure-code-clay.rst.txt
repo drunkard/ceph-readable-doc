@@ -35,10 +35,9 @@ where *S* is the amount of data stored on a single OSD undergoing repair. In the
 used the largest possible value of *d* as this will result in the smallest amount of data download needed
 to achieve recovery from an OSD failure.
 
-.. Erasure-code profile examples
-
 纠删码配置实例
 ==============
+.. Erasure-code profile examples
 
 An example configuration that can be used to observe reduced bandwidth usage::
 
@@ -49,10 +48,9 @@ An example configuration that can be used to observe reduced bandwidth usage::
         $ ceph osd pool create claypool erasure CLAYprofile
 
 
-.. Creating a clay profile
-
 新建一个 clay 配置
 ==================
+.. Creating a clay profile
 
 To create a new clay code profile::
 
@@ -64,6 +62,7 @@ To create a new clay code profile::
              [scalar_mds={plugin-name}] \
              [technique={technique-name}] \
              [crush-failure-domain={bucket-type}] \
+             [crush-device-class={device-class}] \
              [directory={directory}] \
              [--force]
 
@@ -170,10 +169,9 @@ Where:
 :Required: No.
 
 
-.. Notion of sub-chunks
-
 子块概念
 ========
+.. Notion of sub-chunks
 
 The Clay code is able to save in terms of disk IO, network bandwidth as it
 is a vector code and it is able to view and manipulate data within a chunk 
@@ -190,10 +188,9 @@ of sub-chunks within a chunk that are accessed during repair is given by:
 	repair sub-chunk count = :math:`\frac{sub---chunk \: count}{q}`
 
 
-.. Examples
-
 实例
 ----
+.. Examples
 
 #. For a configuration with *k=4*, *m=2*, *d=5*, the sub-chunk count is
    8 and  the repair sub-chunk count is 4. Therefore, only half of a chunk is read 
@@ -203,10 +200,9 @@ of sub-chunks within a chunk that are accessed during repair is given by:
    chunk.
 
 
-.. How to choose a configuration given a workload
-
 已知载荷如何敲定配置
 ====================
+.. How to choose a configuration given a workload
 
 Only a few sub-chunks are read of all the sub-chunks within a chunk. These sub-chunks
 are not necessarily stored consecutively within a chunk. For best disk IO 
@@ -224,10 +220,9 @@ For a given stripe-size (that's fixed based on a workload), choose ``k``, ``m``,
    and disk IO benefits.
 
 
-.. Comparisons with LRC
-
 对比 LRC
 ========
+.. Comparisons with LRC
 
 Locally Recoverable Codes (LRC) are also designed in order to save in terms of network
 bandwidth, disk IO during single OSD recovery. However, the focus in LRCs is to keep the
