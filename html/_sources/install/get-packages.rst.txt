@@ -182,7 +182,7 @@ RHEL
 对于主要发布，你可以在 ``/etc/yum.repos.d/`` 目录下新增一个
 Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
 发布名（如 ``luminous`` 、 ``mimic`` 、 ``nautilus`` 等等）替换
-``{ceph-release}`` 、用 Linux 发行版名（ ``el7`` 等等）替换
+``{ceph-release}`` 、用 Linux 发行版名（ ``el8`` 等等）替换
 ``{distro}`` 。你可以到 https://download.ceph.com/rpm-{ceph-release}/
 看看 Ceph 支持哪些发行版。有些 Ceph 包（如 EPEL ）必须优先于\
 标准包，所以你必须确保设置了 ``priority=2`` 。
@@ -290,17 +290,17 @@ RPM 二进制包
 ~~~~~~~~~~~~
 .. RPM Packages
 
-对于当前开发分支，你可以在 ``/etc/yum.repos.d/`` 目录下创建 \
-Ceph 条目。你可以从 `shaman 网页`\ 获取软件库文件的所有细节，\
+对于当前开发分支，你可以在 ``/etc/yum.repos.d/`` 目录下创建 Ceph 条目。
+你可以从 `shaman 网页`\ 获取软件库文件的所有细节，
 可以通过 HTTP 请求获取，例如：
 
 .. prompt:: bash $
 
     curl -L https://shaman.ceph.com/api/repos/ceph/{BRANCH}/latest/centos/8/repo/ | sudo tee /etc/yum.repos.d/shaman.repo
 
-上面 URL 里用了 ``latest`` ，它用来指示本次构建的最后一个\
-提交。另外，还能指定某个特定的 sha1 号码。要给 CentOS 7
-构建 Ceph 的 master 分支，命令如下：
+上面 URL 里用了 ``latest`` ，它用来指示本次构建的最后一个提交。
+另外，还能指定某个特定的 sha1 号码。要给 CentOS 8 构建 Ceph 的 master 分支，
+命令如下：
 
 .. prompt:: bash $
 
@@ -345,8 +345,7 @@ Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库：
 
 当前，我们为 RHEL/CentOS8 （ ``el8`` ）平台构建二进制包，\
 软件库包会在本地系统上安装 Ceph 库配置文件，这样 ``yum`` 就\
-可以使用这些配置文件自动安装了。用你自己的发行版名字替换
-``{distro}`` 。
+可以使用这些配置文件自动安装了。用你自己的发行版名字替换 ``{distro}`` 。
 
 .. prompt:: bash $
    :substitutions:
@@ -367,8 +366,8 @@ Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库：
 
    https://download.ceph.com/rpm-|stable-release|
 
-对较老的 Ceph 发布，用 Ceph 发布名替换 ``{release-name}`` ，你\
-可以执行 ``lsb_release -sc`` 命令获取发行版代号。
+对较老的 Ceph 发布，用 Ceph 发布名替换 ``{release-name}`` ，
+你可以执行 ``lsb_release -sc`` 命令获取发行版代号。
 
 .. prompt:: bash $
 

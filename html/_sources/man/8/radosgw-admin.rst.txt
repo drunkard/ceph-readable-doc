@@ -799,7 +799,7 @@
 
 .. option:: --caps=<caps>
 
-   能力列表，如 "usage=read, write; user=read" 。
+   一系列能力，如 "usage=read, write; user=read" 。
 
 .. option:: --compression=<compression-algorithm>
 

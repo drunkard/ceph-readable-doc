@@ -1,6 +1,5 @@
-故障排除
-========
-.. Troubleshooting
+Troubleshooting
+===============
 
 You might need to investigate why a cephadm command failed
 or why a certain service no longer runs properly.

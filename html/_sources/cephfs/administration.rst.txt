@@ -16,7 +16,7 @@ CephFS 管理命令
 
 ::
 
-    fs new <filesystem name> <metadata pool name> <data pool name>
+    fs new <file system name> <metadata pool name> <data pool name>
 
 This command creates a new file system. The file system name and metadata pool
 name are self-explanatory. The specified data pool is the default data pool and

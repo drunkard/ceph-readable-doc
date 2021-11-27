@@ -1,9 +1,9 @@
-.. Ceph Manager Daemon
 .. _ceph-manager-daemon:
 
 =====================
  Ceph 管理器守护进程
 =====================
+.. Ceph Manager Daemon
 
 :term:`Ceph 管理器`\ 守护进程（ ceph-mgr ）附着在\
 监视器守护进程上，为外部的监控和管理系统提供了额外的监控和接口。

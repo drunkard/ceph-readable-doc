@@ -4,9 +4,10 @@
 .. Manual Deployment
 
 所有 Ceph 集群都需要至少一个监视器、且 OSD 数量不小于副本数。\
-自举引导初始监视器是部署 Ceph 存储集群的第一步，监视器的部署\
-也为整个集群奠定了重要框架，如存储池副本数、每个 OSD 拥有的\
-归置组数量、心跳周期、是否需认证等，其中大多数选项都有默认值，\
+自举引导初始监视器是部署 Ceph 存储集群的第一步，
+监视器的部署也为整个集群奠定了重要框架，
+如存储池副本数、每个 OSD 拥有的归置组数量、心跳周期、是否需认证等，
+其中大多数选项都有默认值，
 但是建设生产集群时仍需要您熟知它们。
 
 我们将配置起监视器为 ``mon-node1`` ， OSD 节点为 ``osd-node1`` 、
@@ -16,43 +17,49 @@
 .. ditaa:: 
 
            /------------------\         /----------------\
-           |    Admin Node    |         |     node1      |
+           |    Admin Node    |         |    mon-node1   |
            |                  +-------->+                |
            |                  |         | cCCC           |
            \---------+--------/         \----------------/
                      |
                      |                  /----------------\
-                     |                  |     node2      |
+                     |                  |    osd-node1   |
                      +----------------->+                |
                      |                  | cCCC           |
                      |                  \----------------/
                      |
                      |                  /----------------\
-                     |                  |     node3      |
+                     |                  |    osd-node2   |
                      +----------------->|                |
                                         | cCCC           |
                                         \----------------/
+
 
 
 监视器的自举引导
 ================
 .. Monitor Bootstrapping
 
-自举引导监视器（理论上是 Ceph 存储集群）需要以下几个条件：
+自举引导监视器（理论上是 Ceph 存储集群）
+需要以下几个条件：
 
-- **惟一标识符：** ``fsid`` 是集群的惟一标识，它是 Ceph 作为\
-  文件系统时的文件系统标识符。现在， Ceph 还支持原生接口、\
-  块设备、和对象存储网关接口，所以 ``fsid`` 有点名不符实了。
+- **惟一标识符：** ``fsid`` 是集群的惟一标识，
+  它是 Ceph 作为文件系统时的文件系统标识符。
+  现在， Ceph 还支持原生接口、块设备、和对象存储网关接口，
+  所以 ``fsid`` 有点名不符实了。
 
-- **集群名称：** 每个 Ceph 集群都有自己的名字，它是个不含空格的字符串。默认名字是 \
-  ``ceph`` 、但你可以更改；尤其是运营着多个集群时，需要用名字来区分要操作哪一个。
+- **集群名称：** 每个 Ceph 集群都有自己的名字，
+  它是个不含空格的字符串。
+  默认名字是 ``ceph`` 、但你可以更改；
+  尤其是运营着多个集群时，覆盖默认集群名特别重要，
+  而且你得清楚地知道正在操作哪一个。
 
-  比如，当你在一个\ :ref:`多站配置 <multisite>`\ 中运营多个\
-  集群时，集群名字（如 ``us-west`` 、 ``us-east`` ）将作为\
-  标识符出现在 CLI 界面上。\ **注意：**\ 要在命令行下指定某个\
-  集群，可以指定以集群名为前缀的配置文件（如 ``ceph.conf`` 、
-  ``us-west.conf`` 、 ``us-east.conf`` 等）；也可以参考 CLI
-  用法（ ``ceph --cluster {cluster-name}`` ）。
+  比如，当你在一个\ :ref:`多站配置 <multisite>`\ 中运营多个集群时，
+  集群名字（如 ``us-west`` 、 ``us-east`` ）将作为标识符出现在 CLI 界面上。
+  **注意：**\ 要在命令行下指定某个集群，
+  可以指定以集群名为前缀的配置文件（如
+  ``ceph.conf`` 、 ``us-west.conf`` 、 ``us-east.conf`` 等）；
+  也可以参考 CLI 用法（ ``ceph --cluster {cluster-name}`` ）。
   
 - **监视器名字：** 同一集群内的各监视器例程都有惟一的名字，\
   通常都用主机名作为监视器名字（我们建议每台主机只运行一个\
@@ -73,9 +80,10 @@
 创建个配置文件，并写好 ``fsid`` 、 ``mon initial members`` 和
 ``mon host`` 配置。
 
-你也可以查看或设置运行时配置。 Ceph 配置文件可以只包含\
-非默认配置， Ceph 配置文件的配置将覆盖默认值，把这些配置保存在\
-配置文件里可简化维护。
+你也可以查看或设置监视器所有的运行时配置。
+Ceph 配置文件可能只包含非默认配置。
+Ceph 配置文件的配置将覆盖默认值，
+把这些配置保存在配置文件里可简化维护。
 
 具体过程如下：
 
@@ -85,7 +93,8 @@
 
    如： ::
 
-	ssh node1
+	ssh mon-node1
+
 
 #. 确保保存 Ceph 配置文件的目录存在， Ceph 默认使用
    ``/etc/ceph`` 。安装 ``ceph`` 软件时，安装器也会自动创建
@@ -93,15 +102,18 @@
 
 	ls /etc/ceph   
 
+
 #. 创建 Ceph 配置文件， Ceph 默认使用 ``ceph.conf`` ，
    其中的 ``ceph`` 是集群名字。
    在配置文件里加这一行 [global] ::
 
     sudo vim /etc/ceph/ceph.conf
 
+
 #. 给集群分配惟一 ID （即 ``fsid`` ）。 ::
 
 	uuidgen
+
 
 #. 把此 ID 写入 Ceph 配置文件。 ::
 
@@ -111,13 +123,15 @@
 
 	fsid = a7f64266-0894-4f1e-a635-d0aeaca0e993
 
+
 #. 把初始监视器写入 Ceph 配置文件。 ::
 
 	mon initial members = {hostname}[,{hostname}]
 
    例如： ::
 
-	mon initial members = node1
+	mon initial members = mon-node1
+
 
 #. 把初始监视器的 IP 地址写入 Ceph 配置文件、并保存。 ::
 
@@ -130,27 +144,33 @@
    **注意：** 你可以用 IPv6 地址取代 IPv4 地址，但必须设置
    ``ms bind ipv6 = true`` 。详情见\ `网络配置参考`_\ 。
 
+
 #. 为此集群创建密钥环、并生成监视器密钥。 ::
 
 	sudo ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
+
 #. 生成管理员密钥环，生成 ``client.admin`` 用户并加入密钥环。 ::
 
 	sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
+
 
 #. 生成一个 bootstrap-osd 密钥环、生成一个
    ``client.bootstrap-osd`` 用户并把此用户加入密钥环。 ::
 
         sudo ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
 
+
 #. 把生成的密钥加进 ``ceph.mon.keyring`` 。 ::
 
 	sudo ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 	sudo ceph-authtool /tmp/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
 
+
 #. 更改 ``ceph.mon.keyring`` 的所有者： ::
 
 	sudo chown ceph:ceph /tmp/ceph.mon.keyring
+
 
 #. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，\
    并保存为 ``/tmp/monmap`` 。 ::
@@ -159,7 +179,8 @@
 
    例如： ::
 
-        monmaptool --create --add node1 192.168.0.1 --fsid a7f64266-0894-4f1e-a635-d0aeaca0e993 /tmp/monmap
+        monmaptool --create --add mon-node1 192.168.0.1 --fsid a7f64266-0894-4f1e-a635-d0aeaca0e993 /tmp/monmap
+
 
 #. 在监视器主机上分别创建数据目录。 ::
 
@@ -167,9 +188,10 @@
 
    例如： ::
 
-	sudo -u ceph mkdir /var/lib/ceph/mon/ceph-node1
+	sudo -u ceph mkdir /var/lib/ceph/mon/ceph-mon-node1
 
    详情见\ `监视器配置参考——数据`_\ 。
+
 
 #. 用监视器图和密钥环组装守护进程所需的初始数据。 ::
 
@@ -177,7 +199,8 @@
 
    例如： ::
 
-	sudo -u ceph ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
+	sudo -u ceph ceph-mon --mkfs -i mon-node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
+
 
 #. 仔细斟酌 Ceph 配置文件，公共的全局配置包括这些： ::
 
@@ -201,7 +224,7 @@
 
 	[global]
 	fsid = a7f64266-0894-4f1e-a635-d0aeaca0e993
-	mon initial members = node1
+	mon initial members = mon-node1
 	mon host = 192.168.0.1
 	public network = 192.168.0.0/24
 	auth cluster required = cephx
@@ -214,23 +237,17 @@
 	osd pool default pgp num = 333
 	osd crush chooseleaf type = 1
 
-#. 建一个空文件 ``done`` ，表示监视器已创建、可以启动了： ::
-
-	sudo touch /var/lib/ceph/mon/ceph-node1/done
 
 #. 启动监视器。
 
-   在大多数发行版上，现在都是用 systemd 启动服务的： ::
+   用 systemd 启动服务： ::
 
-	sudo systemctl start ceph-mon@node1
+    sudo systemctl start ceph-mon@mon-node1
 
-   在较老的 Debian/CentOS/RHEL 上用 sysvinit ： ::
-
-	sudo /etc/init.d/ceph start mon.node1
 
 #. 确认下集群在运行。 ::
 
-	sudo ceph -s
+    sudo ceph -s
 
    你应该从输出里看到刚刚启动的监视器在正常运行，并且应该会\
    看到一个健康错误：它表明归置组卡在了 ``stuck inactive``
@@ -241,8 +258,8 @@
         health: HEALTH_OK
 
       services:
-        mon: 1 daemons, quorum node1
-        mgr: node1(active)
+        mon: 1 daemons, quorum mon-node1
+        mgr: mon-node1(active)
         osd: 0 osds: 0 up, 0 in
 
       data:
@@ -251,25 +268,23 @@
         usage:   0 kB used, 0 kB / 0 kB avail
         pgs:
 
-   **注意：** 一旦你添加了 OSD 并启动，归置组健康错误应该消\
-   失，详情见\ `添加 OSD`_\ 。
 
+   **注意：** 一旦你添加了 OSD 并启动，归置组健康错误应该消失，
+   详情见\ `添加 OSD`_\ 。
 
-.. Manager daemon configuration
 
 管理守护进程配置
 ================
+.. Manager daemon configuration
 
-在每个运行 ceph-mon 守护进程的节点上，应该同时配置起一个
-ceph-mgr 守护进程。
+在每个运行 ceph-mon 守护进程的节点上，应该同时配置起一个 ceph-mgr 守护进程。
 
 请参考 :ref:`mgr-administrator-guide` 。
 
 
-.. Adding OSDs
-
 添加 OSD
 ========
+.. Adding OSDs
 
 你的初始监视器可以正常运行后就可以添加 OSD 了。要想让集群达到
 ``active + clean`` 状态，必须安装足够多的 OSD 来处理对象副本\
@@ -278,29 +293,31 @@ ceph-mgr 守护进程。
 还是空的，里面没有任何 OSD 映射到 Ceph 节点。
 
 
-.. Short Form
-
 精简型
 ------
+.. Short Form
 
-Ceph 软件包提供了 ``ceph-volume`` 工具，可为 Ceph 准备好\
-逻辑卷、硬盘或分区。 ``ceph-volume`` 可通过递增索引来创建
-OSD ID ；还能把新 OSD 加入 CRUSH 图内的主机之下。
-``ceph-volume`` 的详细用法可参考 ``ceph-volume -h`` ，此工具把\
-后面将提到的\ `细致型`_\ 里面的步骤都自动化了。为按照精简型\
-创建前两个 OSD ，在 ``node2`` 和 ``node3`` 上执行下列命令：
+Ceph 软件包提供了 ``ceph-volume`` 工具，可为 Ceph 准备好逻辑卷、硬盘或分区。
+``ceph-volume`` 可通过递增索引来创建 OSD ID ；
+还能把新 OSD 加入 CRUSH 图内的主机之下。
+详细用法可参考 ``ceph-volume -h`` ，
+此工具把后面将提到的\ `细致型`_\ 里面的步骤都自动化了。
+为按照精简型创建前两个 OSD ，为各 OSD 执行下列命令：
 
 bluestore
 ^^^^^^^^^
 #. 创建 OSD 。 ::
 
-	ssh {node-name}
+	copy /var/lib/ceph/bootstrap-osd/ceph.keyring from monitor node (mon-node1) to /var/lib/ceph/bootstrap-osd/ceph.keyring on osd node (osd-node1)
+	ssh {osd node}
 	sudo ceph-volume lvm create --data {data-path}
 
    例如： ::
 
-	ssh node1
-	sudo ceph-volume lvm create --data /dev/hdd1
+    scp -3 root@mon-node1:/var/lib/ceph/bootstrap-osd/ceph.keyring root@osd-node1:/var/lib/ceph/bootstrap-osd/ceph.keyring
+
+    ssh osd-node1
+    sudo ceph-volume lvm create --data /dev/hdd1
 
 或者，可以把创建过程分拆成两步（准备和激活）：
 
@@ -311,15 +328,15 @@ bluestore
 
    例如： ::
 
-	ssh node1
+	ssh osd-node1
 	sudo ceph-volume lvm prepare --data /dev/hdd1
 
-   准备完成后，已准备好的 OSD 的 ``ID`` 和 ``FSID`` 是激活所\
-   必需的。它们可以通过罗列当前服务器上的 OSD 获得： ::
+   准备完成后，已准备好的 OSD 的 ``ID`` 和 ``FSID`` 是激活所必需的。
+   它们可以通过罗列当前服务器上的 OSD 获得： ::
 
     sudo ceph-volume lvm list
 
-#. 激活 OSD： ::
+#. 激活此 OSD： ::
 
 	sudo ceph-volume lvm activate {ID} {FSID}
 
@@ -337,7 +354,7 @@ filestore
 
    例如： ::
 
-	ssh node1
+	ssh osd-node1
 	sudo ceph-volume lvm create --filestore --data /dev/hdd1 --journal /dev/hdd2
 
 或者，可以把创建过程分拆成两步（准备和激活）：
@@ -349,7 +366,7 @@ filestore
 
    例如： ::
 
-	ssh node1
+	ssh osd-node1
 	sudo ceph-volume lvm prepare --filestore --data /dev/hdd1 --journal /dev/hdd2
 
    准备完成后，已准备好的 OSD 的 ``ID`` 和 ``FSID`` 是激活所\
@@ -366,20 +383,20 @@ filestore
 	sudo ceph-volume lvm activate --filestore 0 a7f64266-0894-4f1e-a635-d0aeaca0e993
 
 
-.. Long Form
-
 细致型
 ------
+.. Long Form
 
 要是不想借助任何辅助工具，可按下列步骤创建 OSD 、将之加入集群和
 CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 
-.. note:: 本过程不涉及使用 dm-crypt “密码箱”实现基于 dm-crypt
-   的部署。
+.. note:: 本过程不涉及使用 dm-crypt “密码箱”
+   实现基于 dm-crypt 的部署。
 
 #. 登录到 OSD 主机、并切换为 root 用户。 ::
 
      ssh {node-name}
+     sudo bash
 
 #. 给 OSD 生成 UUID 。 ::
 
@@ -389,26 +406,26 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 
      OSD_SECRET=$(ceph-authtool --gen-print-key)
 
-#. 创建 OSD 。注意，如果你想重用先前已销毁 OSD 的 id ，可以给
-   ``ceph osd new`` 命令再加上 OSD ID 参数。我们假设
-   ``client.bootstrap-osd`` 密钥已存在于目标机器上。或者，你\
-   可以在持有此密钥的其它主机上、以 ``client.admin`` 身份执行\
-   这个命令： ::
+#. 创建 OSD 。注意，如果你想重用先前已销毁 OSD 的 id ，
+   可以给 ``ceph osd new`` 命令再加上 OSD ID 参数。
+   我们假设 ``client.bootstrap-osd`` 密钥已存在于目标机器上。
+   或者，你可以在持有此密钥的其它主机上、
+   以 ``client.admin`` 身份执行这个命令： ::
 
      ID=$(echo "{\"cephx_secret\": \"$OSD_SECRET\"}" | \
 	ceph osd new $UUID -i - \
 	-n client.bootstrap-osd -k /var/lib/ceph/bootstrap-osd/ceph.keyring)
 
-   还可以在 JSON 里加一个 ``crush_device_class`` 属性来设置\
-   一个默认值（基于自动探测到的设备类型生成的 ``ssd`` 或
-   ``hdd`` ）以外的初始类。
+   还可以在 JSON 里加一个 ``crush_device_class`` 属性
+   来设置一个默认值（基于自动探测到的设备类型生成的 ``ssd`` 或 ``hdd`` ）
+   以外的初始类。
 
 #. 在新 OSD 主机上创建默认目录。 ::
 
      mkdir /var/lib/ceph/osd/ceph-$ID
 
-#. 如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、然后\
-   挂载到刚创建的目录下： ::
+#. 如果要把 OSD 装到非系统盘的独立硬盘上，先创建文件系统、
+   然后挂载到刚创建的目录下： ::
 
      mkfs.xfs /dev/{DEV}
      mount /dev/{DEV} /var/lib/ceph/osd/ceph-$ID
@@ -426,8 +443,8 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 
      chown -R ceph:ceph /var/lib/ceph/osd/ceph-$ID
 
-#. 把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始\
-   运行，要启动这个新 OSD 它才能收数据。
+#. 把 OSD 加入 Ceph 后， OSD 已经在配置里了。但它还没开始运行，
+   要启动这个新 OSD 它才能收数据。
 
    在基于 systemd 的发行版上： ::
 
@@ -440,10 +457,9 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
      systemctl start ceph-osd@12
 
 
-.. Adding MDS
-
 添加 MDS
 ========
+.. Adding MDS
 
 在下面的命令中， ``{id}`` 可以是任意名字，如此机器的主机名。
 
@@ -476,18 +492,16 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 
 	mds.-1.0 ERROR: failed to authenticate: (22) Invalid argument
 
-   那么，你得确认： ceph.conf 的 global 段下没有密钥环配置；把\
-   此配置挪到客户端配置段下，或者给这个 MDS 守护进程配置单独的\
-   密钥环。还得确保 MDS 数据目录内的密钥与
-   ``ceph auth get mds.{id}`` 输出的相同。
+   那么，你得确认： ceph.conf 的 global 段下没有密钥环配置；
+   把此配置挪到客户端配置段下，或者给这个 MDS 守护进程配置单独的密钥环。
+   还得确保 MDS 数据目录内的密钥与 ``ceph auth get mds.{id}`` 输出的相同。
 
 #. 现在准备好了，你可以\ `创建 Ceph 文件系统`_\ 了。
 
 
-.. Summary
-
 总结
 ====
+.. Summary
 
 监视器和两个 OSD 开始正常运行后，你就可以通过下列命令观察\
 归置组互联过程了： ::
@@ -502,13 +516,13 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 
 	# id	weight	type name	up/down	reweight
 	-1	2	root default
-	-2	2		host node1
+	-2	2		host osd-node1
 	0	1			osd.0	up	1
-	-3	1		host node2
+	-3	1		host osd-node2
 	1	1			osd.1	up	1
 
-要增加（或删除）额外监视器，参见\ `增加/删除监视器`_\ 。要增加\
-（或删除）额外 OSD ，参见\ `增加/删除 OSD`_ 。
+要增加（或删除）额外监视器，参见\ `增加/删除监视器`_\ 。
+要增加（或删除）额外 OSD ，参见\ `增加/删除 OSD`_ 。
 
 
 .. _增加/删除监视器: ../../rados/operations/add-or-rm-mons

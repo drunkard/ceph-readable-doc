@@ -64,43 +64,44 @@ The dashboard provides the following features:
 Currently, Ceph Dashboard is capable of monitoring and managing the following
 aspects of your Ceph cluster:
 
-* **Overall cluster health**: Display overall cluster status, performance
-  and capacity metrics.
-* **Embedded Grafana Dashboards**: Ceph Dashboard is capable of embedding
-  `Grafana`_ dashboards in many locations, to display additional information
-  and performance metrics gathered by the :ref:`mgr-prometheus`. See
+* **Overall cluster health**: Display performance and capacity metrics as well
+  as cluster status.
+* **Embedded Grafana Dashboards**: Ceph Dashboard
+  `Grafana`_ dashboards may be embedded in external applications and web pages
+  to surface information and performance metrics gathered by
+  the :ref:`mgr-prometheus` module. See
   :ref:`dashboard-grafana` for details on how to configure this functionality.
 * **Cluster logs**: Display the latest updates to the cluster's event and
   audit log files. Log entries can be filtered by priority, date or keyword.
-* **Hosts**: Display a list of all hosts associated to the cluster, which
-  disks are attached, which services are running and which version of Ceph is
+* **Hosts**: Display a list of all cluster hosts along with their
+  storage drives, which services are running, and which version of Ceph is
   installed.
 * **Performance counters**: Display detailed service-specific statistics for
   each running service.
-* **Monitors**: List all MONs, their quorum status, open sessions.
-* **Monitoring**: Enable creation, re-creation, editing and expiration of
-  Prometheus' silences, list the alerting configuration of Prometheus and all
+* **Monitors**: List all Mons, their quorum status, and open sessions.
+* **Monitoring**: Enable creation, re-creation, editing, and expiration of
+  Prometheus' silences, list the alerting configuration and all
   configured and firing alerts. Show notifications for firing alerts.
 * **Configuration Editor**: Display all available configuration options,
-  their description, type and default values and edit the current values.
-* **Pools**: List all Ceph pools and their details (e.g. applications,
+  their descriptions, types, default and currently set values.  These may be edited as well.
+* **Pools**: List Ceph pools and their details (e.g. applications,
   pg-autoscaling, placement groups, replication size, EC profile, CRUSH
-  rulesets, quotas etc.)
-* **OSDs**: List all OSDs, their status and usage statistics as well as
+  rules, quotas etc.)
+* **OSDs**: List OSDs, their status and usage statistics as well as
   detailed information like attributes (OSD map), metadata, performance
   counters and usage histograms for read/write operations. Mark OSDs
   up/down/out, purge and reweight OSDs, perform scrub operations, modify
-  various scrub-related configuration options, select different profiles to
-  adjust the level of backfilling activity. List all disks associated with an
+  various scrub-related configuration options, select profiles to
+  adjust the level of backfilling activity. List all drives associated with an
   OSD. Set and change the device class of an OSD, display and sort OSDs by
-  device class. Deploy new OSDs on new disks/hosts.
+  device class. Deploy OSDs on new drives and hosts.
 * **Device management**: List all hosts known by the orchestrator. List all
-  disks and their properties attached to a node. Display disk health information
-  (health prediction and SMART data). Blink enclosure LEDs.
+  drives attached to a host and their properties. Display drive
+  health predictions and SMART data. Blink enclosure LEDs.
 * **iSCSI**: List all hosts that run the TCMU runner service, display all
   images and their performance characteristics (read/write ops, traffic).
-  Create, modify and delete iSCSI targets (via ``ceph-iscsi``). Display the
-  iSCSI gateway status on the landing page and info about active initiators.
+  Create, modify, and delete iSCSI targets (via ``ceph-iscsi``). Display the
+  iSCSI gateway status and info about active initiators.
   See :ref:`dashboard-iscsi-management` for instructions on how to configure
   this feature.
 * **RBD**: List all RBD images and their properties (size, objects, features).
@@ -110,10 +111,10 @@ aspects of your Ceph cluster:
   images, protect/unprotect these snapshots against modification. Copy or clone
   snapshots, flatten cloned images.
 * **RBD mirroring**: Enable and configure RBD mirroring to a remote Ceph server.
-  Lists all active sync daemons and their status, pools and RBD images including
-  their synchronization state.
-* **CephFS**: List all active file system clients and associated pools,
-  including their usage statistics. Evict active CephFS clients. Manage CephFS
+  List active daemons and their status, pools and RBD images including
+  sync progress.
+* **CephFS**: List active file system clients and associated pools,
+  including usage statistics. Evict active CephFS clients. Manage CephFS
   quotas and snapshots. Browse a CephFS directory structure.
 * **Object Gateway**: List all active object gateways and their performance
   counters. Display and manage (add/edit/delete) object gateway users and their
@@ -123,8 +124,8 @@ aspects of your Ceph cluster:
 * **NFS**: Manage NFS exports of CephFS file systems and RGW S3 buckets via NFS
   Ganesha. See :ref:`dashboard-nfs-ganesha-management` for details on how to
   enable this functionality.
-* **Ceph Manager Modules**: Enable and disable all Ceph Manager modules, change
-  the module-specific configuration settings.
+* **Ceph Manager Modules**: Enable and disable Ceph Manager modules, manage
+  module-specific configuration settings.
 
 Overview of the Dashboard Landing Page
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

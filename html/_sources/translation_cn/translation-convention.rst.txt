@@ -560,6 +560,9 @@
 
         即把字符串替换成同名变量的值。
 
+    striping period
+        ?
+
     subuser
         (Swift API) 子用户
 

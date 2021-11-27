@@ -1,17 +1,16 @@
-.. Authentication and ACLs
-
 ====================
  认证和访问控制列表
 ====================
+.. Authentication and ACLs
 
 Requests to the RADOS Gateway (RGW) can be either authenticated or
 unauthenticated. RGW assumes unauthenticated requests are sent by an anonymous
 user. RGW supports canned ACLs.
 
-.. Authentication
-
 认证
 ----
+.. Authentication
+
 Authenticating a request requires including an access key and a Hash-based
 Message Authentication Code (HMAC) in the request before it is sent to the
 RGW server. RGW uses an S3-compatible authentication approach.
@@ -54,10 +53,9 @@ To normalize the header into canonical form:
 Replace the ``{hash-of-header-and-secret}`` with the base-64 encoded HMAC string.
 
 
-.. Authentication against OpenStack Keystone
-
 向 OpenStack Keystone 发起认证
 ------------------------------
+.. Authentication against OpenStack Keystone
 
 In a radosgw instance that is configured with authentication against
 OpenStack Keystone, it is possible to use Keystone as an authoritative
@@ -92,10 +90,9 @@ access to radosgw.
           public read ACLs.
 
 
-.. Access Control Lists (ACLs)
-
 访问控制列表（ ACL ）
 ---------------------
+.. Access Control Lists (ACLs)
 
 RGW supports S3-compatible ACL functionality. An ACL is a list of access grants
 that specify which operations a user can perform on a bucket or on an object.
@@ -195,6 +192,8 @@ Internally, S3 operations are mapped to ACL permissions thus:
 +---------------------------------------+---------------+
 | ``s3:GetReplicationConfiguration``    | ``READ_ACP``  |
 +---------------------------------------+---------------+
+| ``s3:GetBucketEncryption``            | ``READ_ACP``  |
++---------------------------------------+---------------+
 | ``s3:DeleteBucketPolicy``             | ``WRITE_ACP`` |
 +---------------------------------------+---------------+
 | ``s3:DeleteBucketWebsite``            | ``WRITE_ACP`` |
@@ -228,6 +227,8 @@ Internally, S3 operations are mapped to ACL permissions thus:
 | ``s3:PutObjectVersionAcl``            | ``WRITE_ACP`` |
 +---------------------------------------+---------------+
 | ``s3:PutReplicationConfiguration``    | ``WRITE_ACP`` |
++---------------------------------------+---------------+
+| ``s3:PutBucketEncryption``            | ``WRITE_ACP`` |
 +---------------------------------------+---------------+
 
 Some mappings, (e.g. ``s3:CreateBucket`` to ``WRITE``) are not

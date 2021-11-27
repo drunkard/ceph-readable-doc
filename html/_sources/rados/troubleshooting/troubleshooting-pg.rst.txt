@@ -2,10 +2,9 @@
  归置组排障
 ============
 
-.. Placement Groups Never Get Clean
-
 归置组总不整洁
 ==============
+.. Placement Groups Never Get Clean
 
 When you create a cluster and your cluster remains in ``active``,
 ``active+remapped`` or ``active+degraded`` status and never achieves an
@@ -17,11 +16,11 @@ and make appropriate adjustments.
 As a general rule, you should run your cluster with more than one OSD and a
 pool size greater than 1 object replica.
 
-
-.. One Node Cluster
+.. _one-node-cluster:
 
 单节点集群
 ----------
+.. One Node Cluster
 
 Ceph no longer provides documentation for operating on a single node, because
 you would never deploy a system designed for distributed computing on a single
@@ -47,10 +46,9 @@ If you are creating OSDs using a single disk, you must create directories
 for the data manually first.
 
 
-.. Fewer OSDs than Replicas
-
 OSD 数量小于副本数
 ------------------
+.. Fewer OSDs than Replicas
 
 If you've brought up two OSDs to an ``up`` and ``in`` state, but you still 
 don't see ``active + clean`` placement groups, you may have an 
@@ -68,10 +66,9 @@ state.
    your Ceph configuration file, you may need to restart your cluster.
 
 
-.. Pool Size = 1
-
 存储池副本数为 1
 ----------------
+.. Pool Size = 1
 
 If you have the ``osd pool default size`` set to ``1``, you will only have 
 one copy of the object. OSDs rely on other OSDs to tell them which objects 
@@ -84,19 +81,17 @@ it needs by running::
    	ceph osd force-create-pg <pgid>
 
 
-.. CRUSH Map Errors
-
 CRUSH 图错误
 ------------
+.. CRUSH Map Errors
 
 Another candidate for placement groups remaining unclean involves errors 
 in your CRUSH map.
 
 
-.. Stuck Placement Groups
-
 卡住的归置组
 ============
+.. Stuck Placement Groups
 
 有失败时归置组会进入“degraded”（降级）或“peering”（连接建立中）状态，这事时有发\
 生，通常这些状态意味着正常的失败恢复正在进行。然而，如果一个归置组长时间处于某个这些\
@@ -497,35 +492,31 @@ OSD 不够多
 或者新增一个 OSD ，这个 PG 会自动用上的。
 
 
-.. CRUSH constraints cannot be satisfied
-
 CRUSH 条件不能满足
 ------------------
+.. CRUSH constraints cannot be satisfied
 
 即使集群拥有足够多的 OSD ， CRUSH 规则的强制要求仍有可能无法\
 满足。假如有 10 个 OSD 分布于两个主机上，且 CRUSH 规则要求\
 相同归置组不得使用位于同一主机的两个 OSD ，这样映射就会失败，\
 因为只能找到两个 OSD ，你可以从规则里查看必要条件： ::
 
-	$ ceph osd crush rule ls
-	[
-	    "replicated_rule",
-	    "erasurepool"]
-	$ ceph osd crush rule dump erasurepool
-	{ "rule_id": 1,
-	  "rule_name": "erasurepool",
-	  "ruleset": 1,
-	  "type": 3,
-	  "min_size": 3,
-	  "max_size": 20,
-	  "steps": [
-	        { "op": "take",
-	          "item": -1,
-	          "item_name": "default"},
-	        { "op": "chooseleaf_indep",
-	          "num": 0,
-	          "type": "host"},
-	        { "op": "emit"}]}
+    $ ceph osd crush rule ls
+    [
+        "replicated_rule",
+        "erasurepool"]
+    $ ceph osd crush rule dump erasurepool
+    { "rule_id": 1,
+      "rule_name": "erasurepool",
+      "type": 3,
+      "steps": [
+            { "op": "take",
+              "item": -1,
+              "item_name": "default"},
+            { "op": "chooseleaf_indep",
+              "num": 0,
+              "type": "host"},
+            { "op": "emit"}]}
 
 可以这样解决此问题，创建新存储池，其内的 PG 允许多个 OSD 位于\
 同一主机，命令如下： ::
@@ -534,58 +525,58 @@ CRUSH 条件不能满足
 	ceph osd pool create erasurepool erasure myprofile
 
 
-.. CRUSH gives up too soon
-
 CRUSH 过早中止
 --------------
+.. CRUSH gives up too soon
 
 假设集群拥有的 OSD 足以映射到 PG （比如有 9 个 OSD 和一个\
 纠删码存储池的集群，每个 PG 需要 9 个 OSD ）， CRUSH 仍然\
 有可能在找到映射前就中止了。可以这样解决：
 
-* 降低纠删存储池内 PG 的要求，让它使用较少的 OSD （需创建\
-  另一个存储池，因为纠删码配置不支持动态修改）。
+* 降低纠删存储池内 PG 的要求，让它使用较少的 OSD
+  （需创建另一个存储池，
+  因为纠删码配置不支持动态修改）。
 
-* 向集群添加更多 OSD （无需修改纠删存储池，它会自动回到\
-  清洁状态）。
+* 向集群添加更多 OSD （无需修改纠删存储池，
+  它会自动回到清洁状态）。
 
-* 通过手工打造的 CRUSH 规则，让它多试几次以找到合适的映射。把 \
-  ``set_choose_tries`` 设置得高于默认值即可。
+* 通过手工打造的 CRUSH 规则，让它多试几次以找到合适的映射。
+  把 ``set_choose_tries`` 设置得\
+  高于默认值即可。
 
 你从集群中提取出 crushmap 之后，应该先用 ``crushtool`` 校验\
 一下是否有问题，这样你的试验就无需触及 Ceph 集群，只要在一个\
 本地文件上测试即可： ::
 
-	$ ceph osd crush rule dump erasurepool
-	{ "rule_name": "erasurepool",
-	  "ruleset": 1,
-	  "type": 3,
-	  "min_size": 3,
-	  "max_size": 20,
-	  "steps": [
-	        { "op": "take",
-	          "item": -1,
-	          "item_name": "default"},
-	        { "op": "chooseleaf_indep",
-	          "num": 0,
-	          "type": "host"},
-	        { "op": "emit"}]}
-	$ ceph osd getcrushmap > crush.map
-	got crush map from osdmap epoch 13
-	$ crushtool -i crush.map --test --show-bad-mappings \
-	   --rule 1 \
-	   --num-rep 9 \
-	   --min-x 1 --max-x $((1024 * 1024))
-	bad mapping rule 8 x 43 num_rep 9 result [3,2,7,1,2147483647,8,5,6,0]
-	bad mapping rule 8 x 79 num_rep 9 result [6,0,2,1,4,7,2147483647,5,8]
-	bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]
+    $ ceph osd crush rule dump erasurepool
+    { "rule_id": 1,
+      "rule_name": "erasurepool",
+      "type": 3,
+      "steps": [
+            { "op": "take",
+              "item": -1,
+              "item_name": "default"},
+            { "op": "chooseleaf_indep",
+              "num": 0,
+              "type": "host"},
+            { "op": "emit"}]}
+    $ ceph osd getcrushmap > crush.map
+    got crush map from osdmap epoch 13
+    $ crushtool -i crush.map --test --show-bad-mappings \
+       --rule 1 \
+       --num-rep 9 \
+       --min-x 1 --max-x $((1024 * 1024))
+    bad mapping rule 8 x 43 num_rep 9 result [3,2,7,1,2147483647,8,5,6,0]
+    bad mapping rule 8 x 79 num_rep 9 result [6,0,2,1,4,7,2147483647,5,8]
+    bad mapping rule 8 x 173 num_rep 9 result [0,4,6,8,2,1,3,7,2147483647]
 
 其中 ``--num-rep`` 是纠删码 CRUSH 规则所需的 OSD 数量，
 ``--rule`` 是 ``ceph osd crush rule dump`` 命令结果中
-``ruleset`` 字段的值。此测试会尝试映射一百万个值（即
-``[--min-x,--max-x]`` 所指定的范围），且必须至少显示一个\
-坏映射；如果它没有任何输出，说明所有映射都成功了，你可以就此\
-打住：问题的根源不在这里。
+``rule_id`` 字段的值。此测试会尝试映射一百万个值
+（即 ``[--min-x,--max-x]`` 所指定的范围），
+且必须至少显示一个坏映射；如果它没有任何输出，
+说明所有映射都成功了，你可以就此打住：
+问题的根源不在这里。
 
 反编译 crush 图后，你可以手动编辑其 CRUSH 规则： ::
 
@@ -597,17 +588,15 @@ CRUSH 过早中止
 
 然后 ``crush.txt`` 文件内的这部分大致如此： ::
 
-	rule erasurepool {
-		ruleset 1
-		type erasure
-		min_size 3
-		max_size 20
-		step set_chooseleaf_tries 5
-		step set_choose_tries 100
-		step take default
-		step chooseleaf indep 0 type host
-		step emit
-	}
+     rule erasurepool {
+             id 1
+             type erasure
+             step set_chooseleaf_tries 5
+             step set_choose_tries 100
+             step take default
+             step chooseleaf indep 0 type host
+             step emit
+     }
 
 然后编译、并再次测试： ::
 

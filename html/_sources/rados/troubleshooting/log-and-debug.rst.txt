@@ -3,33 +3,36 @@
 ================
 .. Logging and Debugging
 
-一般来说，你应该在运行时增加调试选项来调试问题；\
-也可以把调试选项添加到 Ceph 配置文件里来调试启动问题，\
+一般来说，你应该在运行时增加调试选项来调试问题；
+也可以把调试选项添加到 Ceph 配置文件里来调试启动问题，
 然后查看 ``/var/log/ceph`` （默认位置）下的日志文件。
 
-.. tip:: 调试输出会拖慢系统，这种延时有可能掩盖竞争条件。
+.. tip:: 调试输出会拖慢系统，
+   这种延时有可能掩盖竞争条件。
 
-日志记录是资源密集任务。如果你碰到的问题在集群的某个特定区域，只启用那个区域对应的日\
-志功能即可。例如，你的 OSD 运行良好、元数据服务器却不行，这时应该先打开那个可疑元数\
-据服务器例程的调试日志；如果不行再打开各子系统的日志。
+日志记录是资源密集型任务。如果你碰到的问题在集群的某个特定区域，
+只启用那个区域对应的日志功能即可。例如，
+你的 OSD 运行良好、元数据服务器却不行，
+这时应该先打开那个可疑元数据服务器例程的调试日志；
+如果不行再打开各子系统的日志。
 
-.. important:: 详尽的日志每小时可能超过 1GB ，如果你的系统盘满了，这个节点就会停止\
-   工作。
+.. important:: 详尽的日志每小时可能超过 1GB ，如果你的系统盘满了，
+   这个节点就会停止工作。
 
-如果你要打开或增加 Ceph 日志级别，确保系统盘空间足够。滚动日志文件的方法见\ \
-`加快日志滚动`_\ 。集群稳定运行后，可以关闭不必要的调试选项以更好地运行。在运营中记\
-录调试输出会拖慢系统、且浪费资源。
+如果你要打开或增加 Ceph 日志级别，确保系统盘空间足够。
+滚动日志文件的方法见\ `加快日志滚动`_\ 。
+集群稳定运行后，可以关闭不必要的调试选项以更好地运行。
+在运营中记录调试输出会拖慢系统、且浪费资源。
 
 可用选项参见\ `子系统、日志和调试选项`_\ 。
 
 
-.. Runtime
-
 运行时
 ======
+.. Runtime
 
-如果你想查看一进程的运行时配置，必须先登录对应主机，然后执行\
-命令： ::
+如果你想查看一进程的运行时配置，必须先登录对应主机，
+然后执行命令： ::
 
 	ceph daemon {daemon-name} config show | less
 
@@ -42,30 +45,33 @@
 
 	ceph tell {daemon-type}.{daemon id or *} config set {name} {value}
 
-用 ``osd`` 、 ``mon`` 或 ``mds`` 替代 ``{daemon-type}`` 。你\
-可以用星号（ ``*`` ）把配置应用到同类型的所有守护进程，或者\
-指定具体守护进程的 ID 。例如，要给名为 ``ods.0`` 的
+用 ``osd`` 、 ``mon`` 或 ``mds`` 替代 ``{daemon-type}`` 。
+你可以用星号（ ``*`` ）把配置应用到同类型的所有守护进程，
+或者指定具体守护进程的 ID 。例如，要给名为 ``ods.0`` 的
 ``ceph-osd`` 守护进程提高调试级别，用下列命令： ::
 
 	ceph tell osd.0 config set debug_osd 0/5
 
-``ceph tell`` 命令会贯穿所有监视器。如果你不能绑定监视器，还\
-可以登录你要改的那台主机用 ``ceph daemon`` 来更改。例如： ::
+``ceph tell`` 命令会贯穿所有监视器。如果你不能绑定监视器，
+还可以登录你要改的那台主机用 ``ceph daemon`` 来更改。
+例如： ::
 
 	sudo ceph daemon osd.0 config set debug_osd 0/5
 
 可用选项参见\ `子系统、日志和调试选项`_\ 。
 
 
-.. Boot Time
-
 启动时
 ======
+.. Boot Time
 
-要在启动时激活调试输出（\ *即* ``dout()`` ），你得把选项加入配\
-置文件。各进程共有配置可写在配置文件的 ``[global]`` 下，某类进\
-程的配置可写在守护进程段下（\ *比如* ``[mon]`` 、 ``[osd]`` 、
-``[mds]`` ）。例如： ::
+要在启动时激活调试输出（\ *即* ``dout()`` ），
+你得把选项加入配置文件。
+各进程共有配置可写在配置文件的 ``[global]`` 下，
+某类进程的配置可写在守护进程段下
+（\ *比如* ``[mon]`` 、 ``[osd]`` 、 ``[mds]`` ）。例如：
+
+.. code-block:: ini
 
 	[global]
 		debug ms = 1/5
@@ -88,14 +94,14 @@
 可用选项参见\ `子系统、日志和调试选项`_\ 。
 
 
-.. Accelerating Log Rotation
-
 加快日志滚动
 ============
+.. Accelerating Log Rotation
 
 如果你的系统盘比较满，可以修改 ``/etc/logrotate.d/ceph`` 内的\
-日志滚动配置以加快滚动。在滚动频率后增加一个尺寸选项（达到\
-此尺寸就滚动）来加快滚动（通过 cronjob ）。例如默认配置大致如此： ::
+日志滚动配置以加快滚动。
+在滚动频率后增加一个尺寸选项（达到此尺寸就滚动）来加快滚动
+（通过 cronjob ）。例如默认配置大致如此： ::
 
 	rotate 7
   	weekly
@@ -124,22 +130,23 @@
 Valgrind
 ========
 
-你也许还得追踪内存和线程问题，可以在 Valgrind 中运行一个守护进\
-程、一类进程、或整个集群。 Valgrind 是计算密集型程序，应该只用\
-于开发或调试，否则会拖慢系统。其消息记录到 ``stderr`` 。
+你也许还得追踪内存和线程问题，
+可以在 Valgrind 中运行一个守护进程、一类进程、或整个集群。
+Valgrind 是计算密集型程序，应该只用于开发或调试，
+否则会拖慢系统。其消息记录到 ``stderr`` 。
 
-
-.. Subsystem, Log and Debug Settings
 
 子系统、日志和调试选项
 ======================
+.. Subsystem, Log and Debug Settings
+
 大多数情况下你可以通过子系统打开调试。
 
 
-.. Ceph Subsystems
-
 Ceph 子系统概览
 ---------------
+.. Ceph Subsystems
+
 各子系统都有日志级别用于分别控制其输出日志、和暂存日志，你可以\
 分别为这些子系统设置不同的记录级别。 Ceph 的日志级别从 ``1`` 到
 ``20`` ， ``1`` 是简洁、 ``20`` 是详尽\ [#]_\ 。通常，内存驻留\
@@ -289,296 +296,60 @@ Ceph 子系统概览
 +--------------------+-----------+--------------+
 
 
-.. Logging Settings
-
 日志记录选项
 ------------
+.. Logging Settings
 
 日志和调试选项不是必需配置，但你可以按需覆盖默认值。 Ceph 支持\
 如下配置：
 
-
-``log file``
-
-:描述: 集群日志文件的位置。
-:类型: String
-:是否必需: No
-:默认值: ``/var/log/ceph/$cluster-$name.log``
-
-
-``log max new``
-
-:描述: 新日志文件的最大数量。
-:类型: Integer
-:是否必需: No
-:默认值: ``1000``
-
-
-``log max recent``
-
-:描述: 一个日志文件包含的最新事件的最大数量。
-:类型: Integer
-:是否必需:  No
-:默认值: ``10000``
-
-
-``log to file``
-
-:Description: Determines if logging messages should appear in a file.
-:Type: Boolean
-:Required: No
-:Default: ``true``
-
-
-``log to stderr``
-
-:描述: 设置日志消息是否输出到标准错误（ ``stderr`` ）。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``err to stderr``
-
-:描述: 设置错误消息是否输出到标准错误（ ``stderr`` ）。
-:类型: Boolean
-:是否必需: No
-:默认值: ``true``
-
-
-``log to syslog``
-
-:描述: 设置日志消息是否输出到 ``syslog`` 。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``err to syslog``
-
-:描述: 设置错误消息是否输出到 ``syslog`` 。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``log flush on exit``
-
-:描述: 设置 Ceph 退出后是否回写日志文件。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``clog to monitors``
-
-:描述: 设置是否把 ``clog`` 消息发送给监视器。
-:类型: Boolean
-:是否必需: No
-:默认值: ``true``
-
-
-``clog to syslog``
-
-:描述: 设置是否把 ``clog`` 输出到 syslog 。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``mon cluster log to syslog``
-
-:描述: 设置集群日志是否输出到 syslog 。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``mon cluster log file``
-
-:描述: 集群各日志文件的位置。 Ceph 里有两个通道： ``cluster``
-       和 ``audit`` 。这个选项表示从通道至日志文件的映射，
-       ``default`` 配置是个退路，在通道没有明确配置时用到。所以，\
-       下面的默认配置将把集群日志发送到 ``$cluster.log`` 、\
-       审计日志发送到 ``$cluster.audit.log`` ，其中，
-       ``$cluster`` 将被替换成具体的集群名字。
-:类型: String
-:是否必需: No
-:默认值: ``default=/var/log/ceph/$cluster.$channel.log,cluster=/var/log/ceph/$cluster.log``
-
+.. confval:: log_file
+.. confval:: log_max_new
+.. confval:: log_max_recent
+.. confval:: log_to_file
+.. confval:: log_to_stderr
+.. confval:: err_to_stderr
+.. confval:: log_to_syslog
+.. confval:: err_to_syslog
+.. confval:: log_flush_on_exit
+.. confval:: clog_to_monitors
+.. confval:: clog_to_syslog
+.. confval:: mon_cluster_log_to_syslog
+.. confval:: mon_cluster_log_file
 
 
 OSD
 ---
 
-``osd debug drop ping probability``
-
-:描述: ?
-:类型: Double
-:是否必需: No
-:默认值: 0
-
-
-``osd debug drop ping duration``
-
-:描述:
-:类型: Integer
-:是否必需: No
-:默认值: 0
-
-
-``osd debug drop pg create probability``
-
-:描述:
-:类型: Integer
-:是否必需: No
-:默认值: 0
-
-
-``osd debug drop pg create duration``
-
-:描述: ?
-:类型: Double
-:是否必需: No
-:默认值: 1
-
-
-``osd min pg log entries``
-
-:描述: 归置组日志最小条数。
-:类型: 32-bit Unsigned Integer
-:是否必需: No
-:默认值: 250
-
-
-``osd op log threshold``
-
-:描述: 一次发送多少操作日志消息。
-:类型: Integer
-:是否必需: No
-:默认值: 5
-
+.. confval:: osd_debug_drop_ping_probability
+.. confval:: osd_debug_drop_ping_duration
 
 
 Filestore
 ---------
 
-``filestore debug omap check``
-
-:描述: 调试同步检查，这是昂贵的操作。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
+.. confval:: filestore_debug_omap_check
 
 
 MDS
 ---
 
-``mds debug scatterstat``
-
-:描述: Ceph 将把各种回归状态常量设置为真（谨为开发者）。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``mds debug frag``
-
-:描述: Ceph 将在方便时校验目录碎片（谨为开发者）。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``mds debug auth pins``
-
-:描述: debug auth pin 开关（谨为开发者）。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``mds debug subtrees``
-
-:描述: debug subtree 开关（谨为开发者）。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
+- :confval:`mds_debug_scatterstat`
+- :confval:`mds_debug_frag`
+- :confval:`mds_debug_auth_pins`
+- :confval:`mds_debug_subtrees`
 
 
 RADOS 网关
 ----------
 
-``rgw log nonexistent bucket``
-
-:描述: 记录不存在的桶？
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``rgw log object name``
-
-:描述: 是否记录对象名称。注：关于格式参考 ``man date`` ，子集也支持。
-:类型: String
-:是否必需: No
-:默认值: ``%Y-%m-%d-%H-%i-%n``
-
-
-``rgw log object name utc``
-
-:描述: 对象日志名称包含 UTC ？
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``rgw enable ops log``
-
-:描述: 允许记录 RGW 的每一个操作。
-:类型: Boolean
-:是否必需: No
-:默认值: ``true``
-
-
-``rgw enable usage log``
-
-:描述: 允许记录 RGW 的带宽使用。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
-
-
-``rgw usage log flush threshold``
-
-:描述: 回写未决的日志数据阀值。
-:类型: Integer
-:是否必需: No
-:默认值: ``1024``
-
-
-``rgw usage log tick interval``
-
-:描述: 每隔 ``s`` 回写一次未决日志。
-:类型: Integer
-:是否必需: No
-:默认值: 30
-
-
-``rgw intent log object name``
-
-:描述:
-:类型: String
-:是否必需: No
-:默认值: ``%Y-%m-%d-%i-%n``
-
-
-``rgw intent log object name utc``
-
-:描述: 日志对象名字里包含 UTC 时间戳。
-:类型: Boolean
-:是否必需: No
-:默认值: ``false``
+- :confval:`rgw_log_nonexistent_bucket`
+- :confval:`rgw_log_object_name`
+- :confval:`rgw_log_object_name_utc`
+- :confval:`rgw_enable_ops_log`
+- :confval:`rgw_enable_usage_log`
+- :confval:`rgw_usage_log_flush_threshold`
+- :confval:`rgw_usage_log_tick_interval`
 
 
 .. [#] 大于 20 的级别非常罕见，内容也极其详尽。
