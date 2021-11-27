@@ -4,12 +4,16 @@ NFS
 
 .. versionadded:: Jewel
 
-Ceph 对象网关的命名空间现在可以用基于文件的访问协议导出了，比如
-NFSv3 和 NFSv4 、以及传统的 HTTP 访问协议（ S3 和 Swift ）。
+.. note:: Only the NFSv4 protocol is supported when using a cephadm or rook based deployment.
 
-特别是， Ceph 对象网关在嵌入 NFS-Ganesha NFS 服务器时，配置好\
-就可以提供基于文件的访问。
+Ceph 对象网关的命名空间可以通过基于文件的 NFSV4 协议导出，
+也支持传统的 HTTP 访问协议（ S3 和 Swift ）。
 
+特别是， Ceph 对象网关在嵌入 NFS-Ganesha NFS 服务器时，
+配置好就可以提供基于文件的访问。
+
+The simplest and preferred way of managing nfs-ganesha clusters and rgw exports
+is using ``ceph nfs ...`` commands. See :doc:`/mgr/nfs` for more details.
 
 librgw
 ======
@@ -25,11 +29,9 @@ of NFS-Ganesha, for which it has been primarily designed.
 
 A set of Python bindings is also provided.
 
-
-.. Namespace Conventions
-
 命名空间惯例
 ============
+.. Namespace Conventions
 
 The implementation conforms to Amazon Web Services (AWS) hierarchical
 namespace conventions which map UNIX-style path names onto S3 buckets
@@ -59,36 +61,34 @@ leaf object representation used to store materialized attributes such
 as Unix ownership and permissions.
 
 
-.. Supported Operations
-
 支持的操作
 ==========
+.. Supported Operations
 
 The RGW NFS interface supports most operations on files and
 directories, with the following restrictions:
 
-- Links, including symlinks, are not supported
-- NFS ACLs are not supported
+- Links, including symlinks, are not supported.
+- NFS ACLs are not supported.
 
-  + Unix user and group ownership and permissions *are* supported
+  + Unix user and group ownership and permissions *are* supported.
 
-- Directories may not be moved/renamed
+- Directories may not be moved/renamed.
 
-  + files may be moved between directories
+  + Files may be moved between directories.
 
-- Only full, sequential *write* i/o is supported
+- Only full, sequential *write* I/O is supported
 
-  + i.e., write operations are constrained to be **uploads**
-  + many typical i/o operations such as editing files in place will necessarily fail as they perform non-sequential stores
-  + some file utilities *apparently* writing sequentially (e.g., some versions of GNU tar) may fail due to infrequent non-sequential stores
-  + When mounting via NFS, sequential application i/o can generally be constrained to be written sequentially to the NFS server via a synchronous mount option (e.g. -osync in Linux)
-  + NFS clients which cannot mount synchronously (e.g., MS Windows) will not be able to upload files
+  + i.e., write operations are constrained to be **uploads**.
+  + Many typical I/O operations such as editing files in place will necessarily fail as they perform non-sequential stores.
+  + Some file utilities *apparently* writing sequentially (e.g., some versions of GNU tar) may fail due to infrequent non-sequential stores.
+  + When mounting via NFS, sequential application I/O can generally be constrained to be written sequentially to the NFS server via a synchronous mount option (e.g. -osync in Linux).
+  + NFS clients which cannot mount synchronously (e.g., MS Windows) will not be able to upload files.
 
-
-.. Security
 
 安全
 ====
+.. Security
 
 The RGW NFS interface provides a hybrid security model with the
 following characteristics:
@@ -108,10 +108,9 @@ following characteristics:
     * additional RGW authentication types such as Keystone are not currently supported
 
 
-.. Configuring an NFS-Ganesha Instance
-
-NFS-Ganesha 例程的配置
-======================
+NFS-Ganesha 例程的手动配置
+==========================
+.. Manually configuring an NFS-Ganesha Instance
 
 Each NFS RGW instance is an NFS-Ganesha server instance *embeddding*
 a full Ceph RGW instance.
@@ -194,10 +193,9 @@ variables in the RGW config section::
 ``ceph_conf`` gives a path to a non-default ceph.conf file to use
 
 
-.. Other useful NFS-Ganesha configuration:
-
 其它有用的 NFS-Ganesha 配置选项
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. Other useful NFS-Ganesha configuration:
 
 Any EXPORT block which should support NFSv3 should include version 3
 in the NFS_Protocols setting. Additionally, NFSv3 is the last major
@@ -226,10 +224,9 @@ setups and for experimentation::
  }
 
 
-.. Troubleshooting
-
 故障排除
 ~~~~~~~~
+.. Troubleshooting
 
 NFS-Ganesha configuration problems are usually debugged by running the
 server with debugging options, controlled by the LOG config section.
@@ -288,10 +285,9 @@ component logging include::
  }
 
 
-.. Running Multiple NFS Gateways
-
 同时跑多个 NFS 网关
 ===================
+.. Running Multiple NFS Gateways
 
 Each NFS-Ganesha instance acts as a full gateway endpoint, with the
 limitation that currently an NFS-Ganesha instance cannot be configured
@@ -307,10 +303,9 @@ co-locate the NFS-Ganesha instance with a Ceph Object Gateway instance
 on the same host. 
 
 
-.. RGW vs RGW NFS
-
 RGW 与 RGW NFS
 ==============
+.. RGW vs RGW NFS
 
 Exporting an NFS namespace and other RGW namespaces (e.g., S3 or Swift
 via the Civetweb HTTP front-end) from the same program instance is
@@ -330,10 +325,9 @@ bucket name and will be rejected unless ``rgw_relaxed_s3_bucket_names``
 is set to true.
 
 
-.. Configuring NFSv4 clients
-
 NFSv4 客户端的配置
 ==================
+.. Configuring NFSv4 clients
 
 To access the namespace, mount the configured NFS-Ganesha export(s)
 into desired locations in the local POSIX namespace. As noted, this
@@ -361,10 +355,9 @@ From the command line::
 指定 NFS-Ganesha 主机名和客户端上挂载点的路径。
 
 
-.. Configuring NFSv3 Clients
-
 NFSv3 客户端的配置
 ==================
+.. Configuring NFSv3 Clients
 
 Linux clients can be configured to mount with NFSv3 by supplying
 ``nfsvers=3`` and ``noacl`` as mount options. To use UDP as the
@@ -377,10 +370,9 @@ Configure the NFS Ganesha EXPORT block Protocols setting with version
 3 and the Transports setting with UDP if the mount will use version 3 with UDP.
 
 
-.. NFSv3 Semantics
-
 NFSv3 语义
 ----------
+.. NFSv3 Semantics
 
 Since NFSv3 does not communicate client OPEN and CLOSE operations to
 file servers, RGW NFS cannot use these operations to mark the
@@ -392,9 +384,8 @@ timeout, set an alternate value for ``rgw_nfs_write_completion_interval_s``
 in the RGW section(s) of the Ceph configuration file. 
 
 
-.. References
-
 参考资料
 ========
+.. References
 
 .. [#] http://docs.aws.amazon.com/AmazonS3/latest/dev/ListingKeysHierarchy.html

@@ -1,9 +1,9 @@
-.. Get Packages
 .. _packages:
 
 ==============
  获取二进制包
 ==============
+.. Get Packages
 
 要安装 Ceph 及其依赖软件，你需要从 Ceph 软件库下载。
 
@@ -22,10 +22,9 @@
   问互联网，手动下载软件包安装 Ceph 也不复杂。
 
 
-.. Install packages with cephadm
-
 用 cephadm 安装软件包
 =====================
+.. Install packages with cephadm
 
 #. Download the cephadm script
 
@@ -55,10 +54,9 @@
      ./cephadm install ceph-common
 
 
-.. Configure Repositories Manually
-
 手动配置软件库
 ==============
+.. Configure Repositories Manually
 
 所有 Ceph 部署都需要 Ceph 软件包（除非是开发），你应该安装\
 相应的密钥和推荐的软件包。
@@ -73,10 +71,9 @@
   开发版、或者急需开发版中的尖端功能，可以安装开发版软件包。
 
 
-.. Add Keys
-
 安装密钥
 --------
+.. Add Keys
 
 把密钥加入你系统的可信密钥列表内，以消除安全告警。对主要发行版\
 （如 ``luminous`` 、 ``mimic`` 、 ``nautilus`` ）和开发版（如 \
@@ -100,10 +97,9 @@ RPM
 	sudo rpm --import 'https://download.ceph.com/keys/release.asc'
 
 
-.. Ceph Release Packages
-
 Ceph 正式版软件包
 -----------------
+.. Ceph Release Packages
 
 发布库用 ``release.asc`` 公钥校验软件包。要通过 APT 或 YUM
 安装 Ceph 二进制包，必须先配置库。
@@ -131,10 +127,9 @@ Ceph 的主要版本都汇总到了 :ref:`ceph-releases-general`\ 。
    Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
-.. Debian Packages
-
 Debian 二进制包
 ~~~~~~~~~~~~~~~
+.. Debian Packages
 
 把 Ceph 库加入系统级 APT 源列表。在较新版本的 Debian/Ubuntu
 上，用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换\
@@ -177,10 +172,9 @@ Debian 二进制包
    Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
-.. RPM Packages
-
 RPM 二进制包
 ~~~~~~~~~~~~
+.. RPM Packages
 
 RHEL
 ^^^^
@@ -256,19 +250,17 @@ The newest major release of Ceph is already available through the normal Tumblew
 There's no need to add another package repository manually.
 
 
-.. Ceph Development Packages
-
 Ceph 开发版软件包
 -----------------
+.. Ceph Development Packages
 
 如果你在参与 Ceph 开发，想要部署并测试某个分支，确保先删除\
 主版本库的配置文件。
 
 
-.. DEB Packages
-
 DEB 二进制包
 ~~~~~~~~~~~~ 
+.. DEB Packages
 
 我们自动为 Ubuntu 构建 Ceph 当前开发分支的二进制包，这\
 些包只适合开发者和质检人员。
@@ -294,10 +286,9 @@ master ）替换 ``{BRANCH}`` 。我们所构建发布的完整列表在 \
 .. warning:: 两周后开发库就不再可用了。
 
 
-.. RPM Packages
-
 RPM 二进制包
 ~~~~~~~~~~~~
+.. RPM Packages
 
 对于当前开发分支，你可以在 ``/etc/yum.repos.d/`` 目录下创建 \
 Ceph 条目。你可以从 `shaman 网页`\ 获取软件库文件的所有细节，\
@@ -320,19 +311,17 @@ Ceph 条目。你可以从 `shaman 网页`\ 获取软件库文件的所有细节
 .. note:: 如果某个仓库还没准备好，你就会遇到 HTTP 504 。
 
 
-.. Download Packages Manually
-
 手动下载软件包
 --------------
+.. Download Packages Manually
 
 如果你位于防火墙之内，不能访问互联网，那你必须先下载齐所需\
 软件包（镜像所有依赖）才能开始安装。
 
 
-.. Debian Packages
-
 Debian 二进制包
 ~~~~~~~~~~~~~~~
+.. Debian Packages
 
 这个软件库包会装好所需的 ``apt`` 软件库的配置文件。需用最新 Ceph \
 发布替换掉 ``{release}`` 、用最新 Ceph 版本号替换 ``{version}`` 、\
@@ -344,10 +333,9 @@ Debian 二进制包
 	wget -q https://download.ceph.com/debian-{release}/pool/main/c/ceph/ceph_{version}{distro}_{arch}.deb
 
 
-.. RPM Packages
-
 RPM 二进制包
 ~~~~~~~~~~~~
+.. RPM Packages
 
 Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库：
 
