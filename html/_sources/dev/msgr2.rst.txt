@@ -2,14 +2,12 @@
 
 msgr2 协议（ msgr2.0 和 msgr2.1 ）
 ==================================
-.. msgr2 protocol (msgr2.0 and msgr2.1)
 
 老的 Ceph 底层协议是用 SimpleMessenger 实现的，这个协议是它的\
 修订版，解决了性能和安全问题。
 
 目标
 ----
-.. Goals
 
 与最初的协议相比，这个协议修订有几个目标：
 
@@ -108,7 +106,8 @@ Each frame has a 32-byte preamble::
     __le32 segment length
     __le16 segment alignment
   } * 4
-  reserved (2 bytes)
+  __u8 flags
+  reserved (1 byte)
   __le32 preamble crc
 
 An empty frame has one empty segment.  A non-empty frame can have

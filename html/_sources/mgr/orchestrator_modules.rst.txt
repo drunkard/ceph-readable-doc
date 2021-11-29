@@ -258,6 +258,9 @@ specify a location when creating a stateless service.
 .. automethod:: Orchestrator.remove_daemons
 .. automethod:: Orchestrator.daemon_action
 
+.. autoclass:: DaemonDescription
+.. autoclass:: DaemonDescriptionStatus
+
 
 OSD 管理
 --------
@@ -278,9 +281,9 @@ OSD 替换
 See :ref:`rados-replacing-an-osd` for the underlying process.
 
 Replacing OSDs is fundamentally a two-staged process, as users need to
-physically replace drives. The orchestrator therefor exposes this two-staged process.
+physically replace drives. The orchestrator therefore exposes this two-staged process.
 
-Phase one is a call to :meth:`Orchestrator.remove_osds` with ``destroy=True`` in order to mark
+Phase one is a call to :meth:`Orchestrator.remove_daemons` with ``destroy=True`` in order to mark
 the OSD as destroyed.
 
 

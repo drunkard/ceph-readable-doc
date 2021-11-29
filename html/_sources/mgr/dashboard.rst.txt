@@ -384,7 +384,7 @@ password.
 
 启用对象网关管理前端
 ^^^^^^^^^^^^^^^^^^^^
-.. Enabling the Object Gateway management frontend
+.. Enabling the Object Gateway Management Frontend
 
 When RGW is deployed with cephadm, the RGW credentials used by the
 dashboard will be automatically configured. You can also manually force the

@@ -404,7 +404,9 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 --------
 .. Start the Gateway
 
-在对象网关所在的主机上，启动 Ceph 对象网关、并启用服务： ::
+在对象网关所在的主机上，启动 Ceph 对象网关、并启用服务：
+
+::
 
     # systemctl start ceph-radosgw@rgw.`hostname -s`
     # systemctl enable ceph-radosgw@rgw.`hostname -s`
@@ -414,14 +416,16 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 ------------
 .. Check Synchronization Status
 
-副域起来并正常运行后，检查一下同步状态。同步就是把主域中创建的\
-用户和桶都复制到副域。
+副域起来并正常运行后，检查一下同步状态。
+同步就是把主域中创建的用户和桶都复制到副域。
 
 ::
 
     # radosgw-admin sync status
 
-此命令的输出会显示同步操作的状态，例如： ::
+此命令的输出会显示同步操作的状态，例如：
+
+::
 
     realm f3239bc5-e1a8-4206-a81d-e1576480804d (earth)
         zonegroup c50dbb7e-d9ce-47cc-a8bb-97d9b399d388 (us)
@@ -436,17 +440,27 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
                           incremental sync: 128/128 shards
                           data is caught up with source
 
-.. note:: 副域可以接受桶操作，然而它们会把桶操作重定向到主域，\
-   然后再与主域同步，获取桶操作的结果。如果主域倒下了，副域上\
-   的桶操作会失败，但是对象操作仍会成功。
+.. note:: 副域可以接受桶操作，
+   然而它们会把桶操作重定向到主域，
+   然后再与主域同步，获取桶操作的结果。
+   如果主域倒下了，副域上的桶操作会失败，
+   但是对象操作仍会成功。
 
+Verification of an Object
+-------------------------
 
+By default, the objects are not verified again after the synchronization of an
+object was successful. To enable that, you can set :confval:`rgw_sync_obj_etag_verify`
+to ``true``. After enabling the optional objects that will be synchronized
+going forward, an additional MD5 checksum will verify that it is computed on
+the source and the destination. This is to ensure the integrity of the objects
+fetched from a remote server over HTTP including multisite sync. This option
+can decrease the performance of your RGW as more computation is needed.
 
 
 维护
 ====
 .. Maintenance
-
 
 检查同步状态
 ------------
@@ -473,6 +487,25 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
                           full sync: 0/128 shards
                           incremental sync: 128/128 shards
                           data is caught up with source
+
+The output can differ depending on the sync status. The shards are described
+as two different types during sync:
+
+- **Behind shards** are shards that need a full data sync and shards needing
+  an incremental data sync because they are not up-to-date.
+
+- **Recovery shards** are shards that encountered an error during sync and marked
+  for retry. The error mostly occurs on minor issues like acquiring a lock on
+  a bucket. This will typically resolve itself.
+
+Check the logs
+--------------
+
+For multi-site only, you can check out the metadata log (``mdlog``),
+the bucket index log (``bilog``) and the data log (``datalog``).
+You can list them and also trim them which is not needed in most cases as
+:confval:`rgw_sync_log_trim_interval` is set to 20 minutes as default. If it isn't manually
+set to 0, you shouldn't have to trim it at any time as it could cause side effects otherwise.
 
 
 更改元数据主域
@@ -503,8 +536,6 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 会把这个 period 发给其它域。
 
 
-
-
 故障切换和灾难恢复
 ==================
 .. Failover and Disaster Recovery
@@ -517,9 +548,11 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
        # radosgw-admin zone modify --rgw-zone={zone-name} --master --default
 
-   默认情况下， Ceph 对象网关运行在多活模式下。如果集群被配置\
-   成了主从模式，那么副域是个只读域，需要去除 ``--read-only``
-   状态，以允许这个域处理写操作。例如：
+   默认情况下， Ceph 对象网关运行在多活模式下。
+   如果集群被配置成了主从模式，
+   那么副域是个只读域，
+   需要去除 ``--read-only`` 状态，
+   以允许这个域处理写操作。例如：
 
    ::
 
@@ -576,25 +609,33 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 ====================
 .. Migrating a Single Site System to Multi-Site
 
-要想从只有一个 ``default`` 域组和域的单站系统迁移到多站系统，\
+要想从只有一个 ``default`` 域组和域的单站系统迁移到多站系统，
 可以按如下步骤实施：
 
-#. 创建一个 realm ，把下面命令中的 ``<name>`` 换成 realm 名字。 ::
+#. 创建一个 realm ，把下面命令中的 ``<name>`` 换成 realm 名字。
+
+   ::
 
        # radosgw-admin realm create --rgw-realm=<name> --default
 
-#. 重命名默认域和域组，把 ``<name>`` 替换成域组和域名字。 ::
+#. 重命名默认域和域组，把 ``<name>`` 替换成域组和域名字。
+
+   ::
 
        # radosgw-admin zonegroup rename --rgw-zonegroup default --zonegroup-new-name=<name>
        # radosgw-admin zone rename --rgw-zone default --zone-new-name us-east-1 --rgw-zonegroup=<name>
 
 #. 配置主域组。把 ``<name>`` 替换成 realm 或域组的名字；
-   ``<fqdn>`` 替换成域组内配置的全资域名。 ::
+   ``<fqdn>`` 替换成域组内配置的全资域名。
+
+   ::
 
        # radosgw-admin zonegroup modify --rgw-realm=<name> --rgw-zonegroup=<name> --endpoints http://<fqdn>:80 --master --default
 
 #. 配置主域。把 ``<name>`` 替换成 realm 、域组或域的名字；
-   ``<fqdn>`` 替换成域组内配置的全资域名。 ::
+   ``<fqdn>`` 替换成域组内配置的全资域名。
+
+   ::
 
        # radosgw-admin zone modify --rgw-realm=<name> --rgw-zonegroup=<name> \
                                    --rgw-zone=<name> --endpoints http://<fqdn>:80 \
@@ -602,23 +643,28 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
                                    --master --default
 
 #. 创建一个系统用户。把 ``<user-id>`` 替换成用户名；
-   ``<display-name>`` 替换成显示名称，它可以包含空格。 ::
+   ``<display-name>`` 替换成显示名称，它可以包含空格。
+
+   ::
 
        # radosgw-admin user create --uid=<user-id> --display-name="<display-name>"\
                                    --access-key=<access-key> --secret=<secret-key> --system
 
-#. 提交更新过的配置： ::
+#. 提交更新过的配置：
+
+   ::
 
        # radosgw-admin period update --commit
 
-#. 最后，重启 Ceph 对象网关： ::
+#. 最后，重启 Ceph 对象网关：
+
+   ::
 
        # systemctl restart ceph-radosgw@rgw.`hostname -s`
 
-完成这一步以后，可以继续在主域组中\
+完成这一步以后，
+可以继续在主域组中\
 `创建和配置副域 <#configure-secondary-zones>`_ 。
-
-
 
 
 多站配置参考
@@ -628,7 +674,12 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 以下是附上细节信息，以及与 realm 、 period 、 zone group 、 zone
 相关的命令行用法。
 
-
+For more details on every available configuration option, please check out
+``src/common/options/rgw.yaml.in`` or go to the more comfortable :ref:`mgr-dashboard`
+configuration page (found under `Cluster`) where you can view and set all
+options easily. On the page, set the level to ``advanced`` and search for RGW,
+to see all basic and advanced configuration options with a short description.
+Expand the details of an option to reveal a longer description.
 
 
 Realms
@@ -651,11 +702,15 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 .. Create a Realm
 
 创建 realm 可用 ``realm create`` 命令，并加上 realm 名字。如果\
-要创建默认的 realm ，需指定 ``--default`` 参数。 ::
+要创建默认的 realm ，需指定 ``--default`` 参数。
+
+::
 
     # radosgw-admin realm create --rgw-realm={realm-name} [--default]
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin realm create --rgw-realm=movies --default
 
@@ -669,7 +724,9 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 
 一堆 realm 里应该有一个默认的，而且只能有一个默认的。如果只有\
 一个 realm ，而且创建时没把它设置为默认，也可以稍后设置成默认\
-的。或者，要把某个 realm 改成默认的，用命令： ::
+的。或者，要把某个 realm 改成默认的，用命令：
+
+::
 
     # radosgw-admin realm default --rgw-realm=movies
 
@@ -681,11 +738,15 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 ~~~~~~~~~~
 .. Delete a Realm
 
-删除 realm 可用 ``realm rm`` 并加上其名字。 ::
+删除 realm 可用 ``realm rm`` 并加上其名字。
+
+::
 
     # radosgw-admin realm rm --rgw-realm={realm-name}
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin realm rm --rgw-realm=movies
 
@@ -694,15 +755,21 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 ~~~~~~~~~~
 .. Get a Realm
 
-查看 realm 可用 ``realm get`` 并加上其名字。 ::
+查看 realm 可用 ``realm get`` 并加上其名字。
+
+::
 
     #radosgw-admin realm get --rgw-realm=<name>
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin realm get --rgw-realm=movies [> filename.json]
 
-这个命令行会显示一个 JSON 对象，其内是 realm 属性： ::
+这个命令行会显示一个 JSON 对象，其内是 realm 属性：
+
+::
 
     {
         "id": "0a68d52e-a19c-4e8e-b012-a8f831cb3ebc",
@@ -719,11 +786,15 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 .. Set a Realm
 
 配置 realm 用 ``realm set`` 并指定其名字、和 ``--infile=`` 与\
-输入文件名。 ::
+输入文件名。
+
+::
 
     #radosgw-admin realm set --rgw-realm=<name> --infile=<infilename>
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin realm set --rgw-realm=movies --infile=filename.json
 
@@ -732,7 +803,9 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 ~~~~~~~~~~
 .. List Realms
 
-罗列 realm 可用 ``realm list`` ： ::
+罗列 realm 可用 ``realm list`` ：
+
+::
 
     # radosgw-admin realm list
 
@@ -741,7 +814,9 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 ~~~~~~~~~~~~~~~~~~~~
 .. List Realm Periods
 
-罗列 realm 的 period 可用 ``realm list-periods`` 。 ::
+罗列 realm 的 period 可用 ``realm list-periods`` 。
+
+::
 
     # radosgw-admin realm list-periods
 
@@ -751,7 +826,9 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 .. Pull a Realm
 
 要把 realm 配置从包含主域组和主域的节点拉取到包含副域组或副域\
-的节点，在接收 realm 配置的节点上执行 ``realm pull`` ： ::
+的节点，在接收 realm 配置的节点上执行 ``realm pull`` ：
+
+::
 
     # radosgw-admin realm pull --url={url-to-master-zone-gateway} --access-key={access-key} --secret={secret}
 
@@ -762,15 +839,15 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 
 realm 并非 period 的一部分，所以，对 realm 的重命名只在本地生\
 效，不会随 ``realm pull`` 拉过去。重命名一个包含多个域的 realm
-时，需要在各个域上分别执行这个命令。命令如下： ::
+时，需要在各个域上分别执行这个命令。命令如下：
+
+::
 
     # radosgw-admin realm rename --rgw-realm=<current-name> --realm-new-name=<new-realm-name>
 
 .. note:: **不要**\ 用 ``realm set`` 更改 ``name`` 参数，这样\
    只能更改内部名字，指定 ``--rgw-realm`` 时还会用老的 realm \
    名。
-
-
 
 
 域组
@@ -791,7 +868,9 @@ Ceph 对象网关例程的地理位置。
 
 创建域组时需指定：一个域组名； ``--rgw-realm=<realm-name>`` ，\
 否则就在默认 realm 里创建；加 ``--default`` 参数则创建为默认域\
-组；加 ``--master`` 参数则创建为主域组。例如： ::
+组；加 ``--master`` 参数则创建为主域组。例如：
+
+::
 
     # radosgw-admin zonegroup create --rgw-zonegroup=<name> [--rgw-realm=<name>][--master] [--default]
 
@@ -804,14 +883,18 @@ Ceph 对象网关例程的地理位置。
 .. Make a Zone Group the Default
 
 一堆域组应该有一个默认的，且只能有一个默认域组。如果只有一个域\
-组，且创建时没指定为默认，可让它成为默认域组。用命令： ::
+组，且创建时没指定为默认，可让它成为默认域组。用命令：
+
+::
 
     # radosgw-admin zonegroup default --rgw-zonegroup=comedy
 
 .. note:: 有默认域组时，每次执行命令会默认为加了
    ``--rgw-zonegroup=<zonegroup-name>`` 参数。
 
-然后，更新 period ： ::
+然后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
 
@@ -820,11 +903,15 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~~~~~
 .. Add a Zone to a Zone Group
 
-把域加入域组可以用： ::
+把域加入域组可以用：
+
+::
 
     # radosgw-admin zonegroup add --rgw-zonegroup=<name> --rgw-zone=<name>
 
-然后，更新 period ： ::
+然后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
 
@@ -833,11 +920,15 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~~~~~~~
 .. Remove a Zone from a Zone Group
 
-从域组删除域可以用下列命令： ::
+从域组删除域可以用下列命令：
+
+::
 
     # radosgw-admin zonegroup remove --rgw-zonegroup=<name> --rgw-zone=<name>
 
-然后，更新 period ： ::
+然后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
 
@@ -846,11 +937,15 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~~~
 .. Rename a Zone Group
 
-重命名一个域组可以用： ::
+重命名一个域组可以用：
+
+::
 
     # radosgw-admin zonegroup rename --rgw-zonegroup=<name> --zonegroup-new-name=<name>
 
-然后，更新 period ： ::
+然后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
 
@@ -859,11 +954,15 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~
 .. Delete a Zone Group
 
-删除域组可以用： ::
+删除域组可以用：
+
+::
 
     # radosgw-admin zonegroup delete --rgw-zonegroup=<name>
 
-然后，更新 period ： ::
+然后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
 
@@ -872,11 +971,15 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~
 .. List Zone Groups
 
-一个 Ceph 集群可以创建很多域组，用以下命令可以罗列出来： ::
+一个 Ceph 集群可以创建很多域组，用以下命令可以罗列出来：
+
+::
 
     # radosgw-admin zonegroup list
 
-``radosgw-admin`` 会返回 JSON 格式的域组列表： ::
+``radosgw-admin`` 会返回 JSON 格式的域组列表：
+
+::
 
     {
         "default_info": "90b28698-e7c3-462c-a42d-4aa780d24eda",

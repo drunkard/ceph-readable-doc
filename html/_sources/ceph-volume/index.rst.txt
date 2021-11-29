@@ -28,10 +28,10 @@ ceph-volume
 的信息和元数据。
 
 
-.. Migrating
-
 迁移
 ----
+.. Migrating
+
 Ceph 从 13.0.0 版起， ``ceph-disk`` 已弃用，弃用警告消息将链接\
 到本页。我们强烈建议用户转向 ``ceph-volume`` ，迁移有两种途径：
 
@@ -44,18 +44,18 @@ Ceph 从 13.0.0 版起， ``ceph-disk`` 已弃用，弃用警告消息将链接\
 :ref:`ceph-disk 为何被取代了？ <ceph-disk-replaced>` 一节。
 
 
-.. New deployments
-
 全新部署
 ^^^^^^^^
+.. New deployments
+
 对于全新部署，我们推荐用 :ref:`ceph-volume-lvm` ，它可以用逻辑\
 卷作数据 OSD 、或者把设备配置成一个最小化/全新的逻辑卷。
 
 
-.. Existing OSDs
-
 已有 OSD 怎么办
 ^^^^^^^^^^^^^^^
+.. Existing OSDs
+
 如果集群内已经有了用 ``ceph-disk`` 开通的 OSD ，
 ``ceph-volume`` 可以用 :ref:`ceph-volume-simple` 接管它们。扫\
 描完数据设备或 OSD 目录后，就会完全禁用 ``ceph-disk`` 。加密已\
@@ -81,6 +81,9 @@ Ceph 从 13.0.0 版起， ``ceph-disk`` 已弃用，弃用警告消息将链接\
    lvm/systemd
    lvm/list
    lvm/zap
+   lvm/migrate
+   lvm/newdb
+   lvm/newwal
    simple/index
    simple/activate
    simple/scan

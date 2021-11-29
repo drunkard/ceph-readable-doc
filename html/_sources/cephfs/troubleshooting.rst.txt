@@ -2,10 +2,9 @@
  故障排除
 ==========
 
-.. Slow/stuck operations
-
 慢或卡住的操作
 ==============
+.. Slow/stuck operations
 
 如果遇到了明显的卡顿操作，首先要定位问题源头：是客户端、
 MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（参考下面\
@@ -23,20 +22,19 @@ If high logging levels are set on the MDS, that will almost certainly hold the
 information we need to diagnose and solve the issue.
 
 
-.. RADOS Health
-
 RADOS 健康状况
 ==============
+.. RADOS Health
 
 如果 CephFS 的元数据或者数据存储池的某一部分不可用、且 CephFS
 不响应，很有可能是 RADOS 本身有问题，应该先解决这样的问题（
 :doc:`../../rados/troubleshooting/index` ）。
 
 
-.. The MDS
-
 MDS 问题
 ========
+.. The MDS
+
 如果某个操作卡在了 MDS 内部，类似 "slow requests are blocked"
 的消息最终会出现在 ``ceph health`` 里；也可能指出是客户端的\
 问题，如 "failing to respond" 或其它形式的异常行为。如果 MDS
@@ -55,11 +53,12 @@ MDS 问题
 除此之外，你也许遇到了新的软件缺陷，应该报告给开发者！
 
 
-.. Slow requests (MDS)
 .. _slow_requests:
 
 慢请求（ MDS 端）
 -----------------
+.. Slow requests (MDS)
+
 通过管理套接字，你可以罗列当前正在运行的操作： ::
 
         ceph daemon mds.<name> dump_ops_in_flight
@@ -77,11 +76,11 @@ MDS 问题
 可能在客户端上、或者它的请求还没到 MDS 上。
 
 
-.. ceph-fuse debugging
 .. _ceph_fuse_debugging:
 
 ceph-fuse 的调试
 ================
+.. ceph-fuse debugging
 
 ceph-fuse 也支持 dump_ops_in_flight 命令，可以查看是否卡住、卡\
 在哪里了。
@@ -97,11 +96,11 @@ ceph-fuse 也支持 dump_ops_in_flight 命令，可以查看是否卡住、卡\
 ``--debug-monc=20`` ）。
 
 
-.. Kernel mount debugging
 .. _kernel_mount_debugging:
 
 内核挂载的调试
 ==============
+.. Kernel mount debugging
 
 If there is an issue with the kernel client, the most important thing is
 figuring out whether the problem is with the kernel client or the MDS. Generally,
@@ -131,13 +130,12 @@ output in ``dmesg``. Collect it and any inappropriate kernel state.
 * osdc: 倒出当前发往 OSD 的操作（即文件数据的 IO ）
 * osdmap: 倒出当前的 OSDMap 时间结、存储池、所有 OSD
 
-如果没有卡住的请求，却有毫无进展的文件 IO ，问题也许是……
-
-
-.. Disconnected+Remounted FS
+如果数据存储池处于 NEARFULL 状态，那么内核 cephfs 客户端\
+将会切换到同步写，此时会非常慢。
 
 断线后又重新挂载的文件系统
 ==========================
+.. Disconnected+Remounted FS
 
 因为 CephFS 有个“一致性缓存”，如果你的网络连接中断时间较长，客\
 户端就会被系统强制断开，此时，内核客户端仍然傻站着（ in a bind
@@ -191,19 +189,19 @@ mount 12 错误显示 ``cannot allocate memory`` ，常见于
 确保安装的是最新版。
 
 
-.. Dynamic Debugging
-
 动态调试
 ========
+.. Dynamic Debugging
+
 You can enable dynamic debug against the CephFS module.
 
 Please see: https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh
 
 
-.. Reporting Issues
-
 报告问题
 ========
+.. Reporting Issues
+
 如果你确信发现了问题，报告时请附带尽可能多的信息，特别是重要\
 信息：
 

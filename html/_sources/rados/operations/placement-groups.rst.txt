@@ -10,15 +10,15 @@
 ============
 .. Autoscaling placement groups
 
-归置组（ PG ）是 Ceph 如何散布数据的一个内部实现细节。启用
-*pg-autoscaling* 后，你可以基于集群的用法让集群做出推荐或者\
-自动调整 PG 数。
+归置组（ PG ）是 Ceph 如何分配数据的一个具体的内部实现。
+你可以启用 *pg-autoscaling* ，这样就能让集群根据集群和存储池的利用率
+做出推荐或者自动调整 PG 数（ ``pgp_num`` ）。
 
-系统内的每个存储池都有一个 ``pg_autoscale_mode`` 属性，可以\
-设置为 ``off`` 、 ``on`` 、或 ``warn`` 。
+每个存储池都有一个 ``pg_autoscale_mode`` 属性，可以设置为
+``off`` 、 ``on`` 、或 ``warn`` 。
 
-* ``off``: 此存储池禁用自伸缩。由管理员为各个存储池选择合适的
-  PG 数量。详情参考 :ref:`choosing-number-of-placement-groups` 。
+* ``off``: 此存储池禁用自伸缩。由管理员为各个存储池选择合适的 PG 数量。
+  详情参考 :ref:`choosing-number-of-placement-groups` 。
 * ``on``: 在指定存储池上启用 PG 数的自动调整。
 * ``warn``: PG 数应该调整时发出健康报警。
 
@@ -30,8 +30,8 @@
 
   ceph osd pool set foo pg_autoscale_mode on
 
-你也可以配置默认的 ``pg_autoscale_mode`` ，它将应用于以后创建\
-的所有存储池： ::
+你也可以配置默认的 ``pg_autoscale_mode`` ，
+它将应用于之后创建的所有存储池： ::
 
   ceph config set global osd_pool_default_pg_autoscale_mode <mode>
 
@@ -47,10 +47,10 @@
 
 命令输出形似如下： ::
 
-   POOL    SIZE  TARGET SIZE  RATE  RAW CAPACITY   RATIO  TARGET RATIO  EFFECTIVE RATIO PG_NUM  NEW PG_NUM  AUTOSCALE
-   a     12900M                3.0        82431M  0.4695                                     8         128  warn
-   c         0                 3.0        82431M  0.0000        0.2000           0.9884      1          64  warn
-   b         0        953.6M   3.0        82431M  0.0347                                     8              warn
+   POOL    SIZE  TARGET SIZE  RATE  RAW CAPACITY   RATIO  TARGET RATIO  EFFECTIVE RATIO BIAS PG_NUM  NEW PG_NUM  AUTOSCALE PROFILE 
+   a     12900M                3.0        82431M  0.4695                                          8         128  warn      scale-up
+   c         0                 3.0        82431M  0.0000        0.2000           0.9884  1.0      1          64  warn      scale-down
+   b         0        953.6M   3.0        82431M  0.0347                                          8              warn      scale-down
 
 **SIZE** is the amount of data stored in the pool. **TARGET SIZE**, if
 present, is the amount of data the administrator has specified that
@@ -75,36 +75,47 @@ ratio takes precedence.
 
 **EFFECTIVE RATIO** is the target ratio after adjusting in two ways:
 
-1. subtracting any capacity expected to be used by pools with target size set
-2. normalizing the target ratios among pools with target ratio set so
+1. Subtracting any capacity expected to be used by pools with target size set
+2. Normalizing the target ratios among pools with target ratio set so
    they collectively target the rest of the space. For example, 4
    pools with target_ratio 1.0 would have an effective ratio of 0.25.
 
 The system uses the larger of the actual ratio and the effective ratio
 for its calculation.
 
+**BIAS** is used as a multiplier to manually adjust a pool's PG based
+on prior information about how much PGs a specific pool is expected
+to have.
+
 **PG_NUM** is the current number of PGs for the pool (or the current
 number of PGs that the pool is working towards, if a ``pg_num``
 change is in progress).  **NEW PG_NUM**, if present, is what the
 system believes the pool's ``pg_num`` should be changed to.  It is
 always a power of 2, and will only be present if the "ideal" value
-varies from the current value by more than a factor of 3.
+varies from the current value by more than a factor of 3 by default.
+This factor can be be adjusted with::
 
-The final column, **AUTOSCALE**, is the pool ``pg_autoscale_mode``,
+  ceph osd pool set threshold 2.0
+
+**AUTOSCALE**, is the pool ``pg_autoscale_mode``
 and will be either ``on``, ``off``, or ``warn``.
+
+The final column, **PROFILE** shows the autoscale profile 
+used by each pool. ``scale-up`` and ``scale-down`` are the
+currently available profiles.
 
 
 自动化的伸缩
 ------------
 .. Automated scaling
 
-Allowing the cluster to automatically scale PGs based on usage is the
+Allowing the cluster to automatically scale ``pgp_num`` based on usage is the
 simplest approach.  Ceph will look at the total available storage and
 target number of PGs for the whole system, look at how much data is
-stored in each pool, and try to apportion the PGs accordingly.  The
+stored in each pool, and try to apportion PGs accordingly.  The
 system is relatively conservative with its approach, only making
 changes to a pool when the current number of PGs (``pg_num``) is more
-than 3 times off from what it thinks it should be.
+than a factor of 3 off from what it thinks it should be.
 
 The target number of PGs per OSD is based on the
 ``mon_target_pg_per_osd`` configurable (default: 100), which can be
@@ -119,6 +130,29 @@ utilization of each subtree of the hierarchy independently.  For
 example, a pool that maps to OSDs of class `ssd` and a pool that maps
 to OSDs of class `hdd` will each have optimal PG counts that depend on
 the number of those respective device types.
+
+The autoscaler uses the `scale-up` profile by default,
+where it starts out each pool with minimal PGs and scales
+up PGs when there is more usage in each pool. However, it also has
+a `scale-down` profile, where each pool starts out with a full complements 
+of PGs and only scales down when the usage ratio across the pools is not even.
+
+With only the `scale-down` profile, the autoscaler identifies
+any overlapping roots and prevents the pools with such roots
+from scaling because overlapping roots can cause problems
+with the scaling process.
+
+To use the `scale-down` profile::
+
+  ceph osd pool set autoscale-profile scale-down
+
+To switch back to the default `scale-up` profile::
+
+  ceph osd pool set autoscale-profile scale-up
+
+Existing clusters will continue to use the `scale-up` profile.
+To use the `scale-down` profile, users will need to set autoscale-profile `scale-down`,
+after upgrading to a version of Ceph that provides the `scale-down` feature.
 
 
 .. _specifying_pool_target_size:
@@ -365,18 +399,20 @@ in these placement groups: recovery will take longer than when there
 were 40 OSDs, meaning the number of placement groups should be
 increased.
 
-不论恢复时间有多短，在此期间都可能有第二个 OSD 失败。在前述的有 10 个 OSD \
-的集群中，不管哪个失败了，都有大约 17 个归置组（即需恢复的大约 150 / 9 个归\
-置组）将只有一份可用副本；并且假设剩余的 8 个 OSD 中任意一个失败，两个归置\
-组中最后的对象都有可能丢失（即正在恢复的、大约 17 / 8 个仅剩一个副本的归置\
-组）。
+不论恢复时间有多短，在此期间都可能有第二个 OSD 失败。
+在前述的有 10 个 OSD 的集群中，不管哪个失败了，
+都有大约 17 个归置组（即需恢复的大约 150 / 9 个归置组）将只有一份可用副本；
+并且假设剩余的 8 个 OSD 中任意一个失败，
+两个归置组中最后的对象都有可能丢失
+（即正在恢复的、大约 17 / 8 个仅剩一个副本的归置组）。
 
-当集群大小变为 20 个 OSD 时， 3 个 OSD 丢失导致的归置组损坏会降低。第二个 \
-OSD 丢失会降级大约 4 个（即需恢复的归置组约为 75 / 19 ）而不是约 17 个归置\
-组，并且只有当第三个 OSD 恰好是包含可用副本的四分之一个 OSD 时、才会丢失数\
-据。换句话说，假设在恢复期间丢失一个 OSD 的概率是 0.0001% ，那么，在包含 10 \
-个 OSD 的集群中丢失 OSD 的概率是 17 * 10 * 0.0001% ，而在 20 个 OSD 的集群\
-中将是 4 * 20 * 0.0001% 。
+当集群大小变为 20 个 OSD 时， 3 个 OSD 丢失导致的归置组损坏会降低。
+第二个 OSD 丢失会降级大约 4 个（即需恢复的归置组约为 75 / 19 ）
+而不是约 17 个归置组，
+并且只有当第三个 OSD 恰好是包含可用副本的四分之一个 OSD 时、才会丢失数据。
+换句话说，假设在恢复期间丢失一个 OSD 的概率是 0.0001% ，那么，
+在包含 10 个 OSD 的集群中丢失 OSD 的概率是 17 * 10 * 0.0001% ，
+而在 20 个 OSD 的集群中将是 4 * 20 * 0.0001% 。
 
 In a nutshell, more OSDs mean faster recovery and a lower risk of
 cascading failures leading to the permanent loss of a Placement
@@ -431,9 +467,9 @@ others will remain occupied with only 400MB.
 --------------------------
 .. Memory, CPU and network usage
 
-各个归置组、 OSD 和监视器都一直需要内存、网络、处理器，在\
-恢复期间需求更大。为消除过载而把对象聚集成簇是归置组存在的\
-主要原因。
+各个归置组、 OSD 和监视器都一直需要内存、网络、处理器，
+在恢复期间需求更大。
+为消除过载而把对象聚集成簇是归置组存在的主要原因。
 
 最小化归置组数量可节省不少资源。
 
@@ -444,9 +480,9 @@ others will remain occupied with only 400MB.
 ==============
 .. Choosing the number of Placement Groups
 
-.. note:: 极少有必要手动计算。相反，用 ``ceph osd pool autoscale-status``
-   命令，加上 ``target_size_bytes`` 或 ``target_size_ratio``
-   存储池属性即可。详情见 :ref:`pg-autoscaler` 。
+.. note:: 极少有必要手动计算。相反，用 ``ceph osd pool autoscale-status`` 命令，
+   加上 ``target_size_bytes`` 或 ``target_size_ratio`` 存储池属性即可。
+   详情见 :ref:`pg-autoscaler` 。
 
 If you have more than 50 OSDs, we recommend approximately 50-100
 placement groups per OSD to balance out resource usage, data
@@ -497,18 +533,20 @@ stepping from one power of two to another.
 ==============
 .. Set the Number of Placement Groups
 
-要设置某存储池的归置组数量，你必须在创建它时就指定好，详情见\
-`创建存储池`_\ 。即使某一存储池已创建，你仍然可以用下面的命令\
-更改归置组数量： ::
+要设置某存储池的归置组数量，你必须在创建它时就指定好，
+详情见 `创建存储池`_\ 。即使某一存储池已创建，
+你仍然可以用下面的命令更改归置组数量： ::
 
 	ceph osd pool set {pool-name} pg_num {pg_num}
 
-你增加归置组数量后、还必须增加用于归置的归置组（ ``pgp_num`` ）\
-数量，这样才会开始重均衡。 ``pgp_num`` 数值才是 CRUSH 算法采用\
-的用于归置的归置组数量。虽然 ``pg_num`` 的增加引起了归置组的\
-分割，但是只有当用于归置的归置组（即 ``pgp_num`` ）增加以后，\
-数据才会被迁移到新归置组里。 ``pgp_num`` 的数值应等于
-``pg_num`` 。可用下列命令增加用于归置的归置组数量： ::
+你增加归置组数量后、
+还必须增加用于归置的归置组（ ``pgp_num`` ）数量，
+这样才会开始重均衡。 ``pgp_num`` 数值才是
+CRUSH 算法采用的用于归置的归置组数量。
+虽然 ``pg_num`` 的增加引起了归置组的分割，
+但是只有当用于归置的归置组（即 ``pgp_num`` ）增加以后，
+数据才会被迁移到新归置组里。 ``pgp_num`` 的数值应等于 ``pg_num`` 。
+可用下列命令增加用于归置的归置组数量： ::
 
 	ceph osd pool set {pool-name} pgp_num {pgp_num}
 
@@ -551,8 +589,9 @@ stepping from one power of two to another.
 **Stale** （不新鲜）归置组处于未知状态：存储它们的 OSD 有段时间没向监视器报告了\
 （由  ``mon_osd_report_timeout`` 配置）。
 
-可用格式有 ``plain`` （默认）和 ``json`` 。阀值定义的是，归置组被认为卡住前等待的\
-最小时间（默认 300 秒）。
+可用格式有 ``plain`` （默认）和 ``json`` 。
+阀值定义的是，归置组被认为卡住前等待的最小时间
+（默认 300 秒）。
 
 
 获取一归置组运行图

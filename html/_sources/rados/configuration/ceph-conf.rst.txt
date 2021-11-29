@@ -4,7 +4,8 @@
  配置 Ceph
 ===========
 
-你启动 Ceph 服务时，初始化进程会把一系列守护进程放到后台运行。
+你启动 Ceph 服务时，
+初始化进程会把一系列守护进程放到后台运行。
 :term:`Ceph 存储集群`\ 运行三种守护进程：
 
 - :term:`Ceph 监视器` （ ``ceph-mon`` ）
@@ -16,11 +17,12 @@
 :term:`Ceph 对象存储`\ 的集群需运行 Ceph 网关守护进程（
 ``radosgw`` ）。
 
-各个守护进程都有一系列配置选项，各选项都有其默认值。你可以更改\
-这些配置选项，以调整系统行为。覆盖默认值前应该深入理解可能\
-产生的后果，因为有可能显著降低集群的性能和稳定性。还要注意\
-后续版本的默认值可能会变，所以，最好回顾一下与你的 Ceph 版本\
-相对应的文档。
+各个守护进程都有一系列配置选项，各选项都有其默认值。
+你可以更改这些配置选项，以调整系统行为。
+覆盖默认值前应该深入理解可能产生的后果，
+因为有可能显著降低集群的性能和稳定性。
+还要注意后续版本的默认值可能会变，所以，
+最好回顾一下与你的 Ceph 版本相对应的文档。
 
 
 选项名
@@ -126,14 +128,12 @@ These sections include:
 
    :example: ``log_file = /var/log/ceph/$cluster-$type.$id.log``
 
-
 .. confsec:: mon
 
-   ``mon`` 下的配置影响 Ceph 集群里的所有 ``ceph-mon``
-       守护进程，并且会覆盖 ``global`` 下的同一选项。
+   ``mon`` 下的配置影响 Ceph 集群里的所有 ``ceph-mon`` 守护进程，
+   并且会覆盖 ``global`` 下的同一选项。
 
    :example: ``mon_cluster_log_to_syslog = true``
-
 
 .. confsec:: mgr
 
@@ -143,14 +143,12 @@ These sections include:
 
    :example: ``mgr_stats_period = 10``
 
-
 .. confsec:: osd
 
-   ``osd`` 下的配置影响 Ceph 存储集群里的所有 ``ceph-osd``
-   守护进程，并且会覆盖 ``global`` 下的同一选项。
+   ``osd`` 下的配置影响 Ceph 存储集群里的所有 ``ceph-osd`` 守护进程，
+   并且会覆盖 ``global`` 下的同一选项。
 
    :example: ``osd_op_queue = wpq``
-
 
 .. confsec:: mds
 
@@ -200,39 +198,34 @@ Ceph 支持下列元变量：
 
 .. describe:: $cluster
 
-   展开为存储集群名字，在同一套硬件上运行多个集群时有用。
+   展开为存储集群的名字，
+   在同一套硬件上运行多个集群时有用。
 
    :example:``/etc/ceph/$cluster.keyring``
    :default:``ceph``
 
-
 .. describe:: $type
 
-   可展开为 ``mds`` 、 ``osd`` 、 ``mon`` 中的一个，有赖于\
-   当前守护进程的类型。
+   可展开为守护进程或进程类型，如 ``mds`` 、 ``osd`` 、 ``mon`` 。
 
    :example:``/var/lib/ceph/$type``
 
-
 .. describe:: $id
 
-   展开为守护进程标识符； ``osd.0`` 应为 ``0`` ， ``mds.a``
-   是 ``a`` 。
+   展开为守护进程或客户端标识符；
+   ``osd.0`` 应为 ``0`` ， ``mds.a`` 是 ``a`` 。
 
    :example:``/var/lib/ceph/$type/$cluster-$id``
-
 
 .. describe:: $host
 
    展开为当前守护进程的主机名。
-
 
 .. describe:: $name
 
    展开为 ``$type.$id`` 。
 
    :example:``/var/run/ceph/$cluster-$name.asok``
-
 
 .. describe:: $pid
 
@@ -241,13 +234,15 @@ Ceph 支持下列元变量：
    :example:``/var/run/ceph/$cluster-$name-$pid.asok``
 
 
+
 配置文件
 ========
 .. The Configuration File
 
 启动时， Ceph 的各进程会依次到下列位置搜索配置文件：
 
-#. ``$CEPH_CONF`` （\ *就是* ``$CEPH_CONF`` 环境变量所指示的路径）；
+#. ``$CEPH_CONF`` （\ *就是* ``$CEPH_CONF`` 环境变量所\
+   指示的路径）；
 #. ``-c path/path``  （\ *就是* ``-c`` 命令行参数）；
 #. ``/etc/ceph/$cluster.conf``
 #. ``~/.ceph/$cluster.conf``

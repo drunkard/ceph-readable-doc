@@ -59,8 +59,10 @@ ceph-mgr 明确地标记为已失效。
 ----------
 .. Using modules
 
-用 ``ceph mgr module ls`` 命令可查看有哪些模块可用、哪些是当前\
-已经启用的。启用或禁用模块分别使用命令 ``ceph mgr module enable <module>``
+用 ``ceph mgr module ls`` 命令可查看有哪些模块可用、
+哪些是当前已经启用的；用 ``ceph mgr module ls --format=json-pretty`` 命令\
+可以查看已禁用模块的详细元数据。
+启用或禁用模块分别使用命令 ``ceph mgr module enable <module>``
 和 ``ceph mgr module disable <module>`` 。
 
 If a module is *enabled* then the active ceph-mgr daemon will load

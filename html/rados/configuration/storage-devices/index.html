@@ -233,53 +233,56 @@
 <h1>存储设备<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
 <p>有两种 Ceph 守护进程会在硬盘上存储数据：</p>
 <ul class="simple">
-<li><p><strong>Ceph OSDs</strong> (or Object Storage Daemons) are where most of the
-data is stored in Ceph.  Generally speaking, each OSD is backed by
-a single storage device, like a traditional hard disk (HDD) or
-solid state disk (SSD).  OSDs can also be backed by a combination
-of devices, like a HDD for most data and an SSD (or partition of an
-SSD) for some metadata.  The number of OSDs in a cluster is
-generally a function of how much data will be stored, how big each
-storage device will be, and the level and type of redundancy
-(replication or erasure coding).</p></li>
-<li><p><strong>Ceph Monitor</strong> daemons manage critical cluster state like cluster
-membership and authentication information.  For smaller clusters a
-few gigabytes is all that is needed, although for larger clusters
-the monitor database can reach tens or possibly hundreds of
+<li><p><strong>Ceph OSDs</strong> (Object Storage Daemons) store most of the data
+in Ceph. Usually each OSD is backed by a single storage device.
+This can be a traditional hard disk (HDD) or a solid state disk
+(SSD). OSDs can also be backed by a combination of devices: for
+example, a HDD for most data and an SSD (or partition of an
+SSD) for some metadata. The number of OSDs in a cluster is
+usually a function of the amount of data to be stored, the size
+of each storage device, and the level and type of redundancy
+specified (replication or erasure coding).</p></li>
+<li><p><strong>Ceph Monitor</strong> daemons manage critical cluster state. This
+includes cluster membership and authentication information.
+Small clusters require only a few gigabytes of storage to hold
+the monitor database. In large clusters, however, the monitor
+database can reach sizes of tens of gigabytes to hundreds of
 gigabytes.</p></li>
+<li><p><strong>Ceph Manager</strong> daemons run alongside monitor daemons, providing
+additional monitoring and providing interfaces to external
+monitoring and management systems.</p></li>
 </ul>
 <div class="section" id="osd">
 <h2>OSD 后端<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h2>
 <p>OSD 有两种管理它们存储着的数据的方法。从 Luminous 12.2.z 版起，新的默认（也是推荐的）后端是 <em>BlueStore</em> ；在 Luminous 之前，默认的（且是唯一选项）是 <em>FileStore</em> 。</p>
 <div class="section" id="bluestore">
 <h3>BlueStore<a class="headerlink" href="#bluestore" title="Permalink to this headline">¶</a></h3>
-<p>BlueStore is a special-purpose storage backend designed specifically
-for managing data on disk for Ceph OSD workloads.  It is motivated by
-experience supporting and managing OSDs using FileStore over the
-last ten years.  Key BlueStore features include:</p>
+<p>BlueStore is a special-purpose storage backend designed specifically for
+managing data on disk for Ceph OSD workloads.  BlueStore’s design is based on
+a decade of experience of supporting and managing Filestore OSDs.</p>
+<p>Key BlueStore features include:</p>
 <ul class="simple">
-<li><p>Direct management of storage devices.  BlueStore consumes raw block
-devices or partitions.  This avoids any intervening layers of
-abstraction (such as local file systems like XFS) that may limit
-performance or add complexity.</p></li>
-<li><p>Metadata management with RocksDB.  We embed RocksDB’s key/value database
-in order to manage internal metadata, such as the mapping from object
+<li><p>Direct management of storage devices. BlueStore consumes raw block devices or
+partitions. This avoids intervening layers of abstraction (such as local file
+systems like XFS) that can limit performance or add complexity.</p></li>
+<li><p>Metadata management with RocksDB. RocksDB’s key/value database is embedded
+in order to manage internal metadata, including the mapping of object
 names to block locations on disk.</p></li>
-<li><p>Full data and metadata checksumming.  By default all data and
+<li><p>Full data and metadata checksumming. By default, all data and
 metadata written to BlueStore is protected by one or more
-checksums.  No data or metadata will be read from disk or returned
+checksums. No data or metadata is read from disk or returned
 to the user without being verified.</p></li>
-<li><p>Inline compression.  Data written may be optionally compressed
-before being written to disk.</p></li>
-<li><p>Multi-device metadata tiering.  BlueStore allows its internal
+<li><p>Inline compression.  Data can be optionally compressed before being written
+to disk.</p></li>
+<li><p>Multi-device metadata tiering. BlueStore allows its internal
 journal (write-ahead log) to be written to a separate, high-speed
-device (like an SSD, NVMe, or NVDIMM) to increased performance.  If
+device (like an SSD, NVMe, or NVDIMM) for increased performance.  If
 a significant amount of faster storage is available, internal
-metadata can also be stored on the faster device.</p></li>
-<li><p>Efficient copy-on-write.  RBD and CephFS snapshots rely on a
+metadata can be stored on the faster device.</p></li>
+<li><p>Efficient copy-on-write. RBD and CephFS snapshots rely on a
 copy-on-write <em>clone</em> mechanism that is implemented efficiently in
-BlueStore.  This results in efficient IO both for regular snapshots
-and for erasure coded pools (which rely on cloning to implement
+BlueStore. This results in efficient I/O both for regular snapshots
+and for erasure-coded pools (which rely on cloning to implement
 efficient two-phase commits).</p></li>
 </ul>
 <p>更多信息请看 <a class="reference internal" href="../bluestore-config-ref/"><span class="doc">BlueStore 配置参考</span></a> 和
@@ -287,18 +290,18 @@ efficient two-phase commits).</p></li>
 </div>
 <div class="section" id="filestore">
 <h3>FileStore<a class="headerlink" href="#filestore" title="Permalink to this headline">¶</a></h3>
-<p>FileStore is the legacy approach to storing objects in Ceph.  It
+<p>FileStore is the legacy approach to storing objects in Ceph. It
 relies on a standard file system (normally XFS) in combination with a
 key/value database (traditionally LevelDB, now RocksDB) for some
 metadata.</p>
-<p>FileStore is well-tested and widely used in production but suffers
-from many performance deficiencies due to its overall design and
-reliance on a traditional file system for storing object data.</p>
-<p>Although FileStore is generally capable of functioning on most
-POSIX-compatible file systems (including btrfs and ext4), we only
-recommend that XFS be used.  Both btrfs and ext4 have known bugs and
-deficiencies and their use may lead to data loss.  By default all Ceph
-provisioning tools will use XFS.</p>
+<p>FileStore is well-tested and widely used in production. However, it
+suffers from many performance deficiencies due to its overall design
+and its reliance on a traditional file system for object data storage.</p>
+<p>Although FileStore is capable of functioning on most POSIX-compatible
+file systems (including btrfs and ext4), we recommend that only the
+XFS file system be used with Ceph. Both btrfs and ext4 have known bugs and
+deficiencies and their use may lead to data loss. By default, all Ceph
+provisioning tools use XFS.</p>
 <p>更多信息请看 <a class="reference internal" href="../filestore-config-ref/"><span class="doc">filestore 配置参考</span></a> 。</p>
 </div>
 </div>

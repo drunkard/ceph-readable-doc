@@ -1,8 +1,8 @@
-.. Ceph Container Images
 .. _containers:
 
 Ceph 容器映像
 =============
+.. Ceph Container Images
 
 .. important::
 
@@ -17,15 +17,14 @@ Ceph 容器映像
 
    ``podman pull ceph/ceph:v15.2.0``
 
-.. Official Releases
-
 官方发布
 --------
+.. Official Releases
 
-Ceph Container images are available from Docker Hub at::
+Ceph Container images are available from both Quay and Docker Hub::
 
+  https://quay.io/repository/ceph/ceph
   https://hub.docker.com/r/ceph
-
 
 ceph/ceph
 ^^^^^^^^^
@@ -44,6 +43,13 @@ ceph/ceph
 +----------------------+--------------------------------------------------------------+
 | vRELNUM.Y.Z-YYYYMMDD | A specific build (e.g., *v14.2.4-20191203*)                  |
 +----------------------+--------------------------------------------------------------+
+
+Legacy container images
+-----------------------
+
+Legacy container images are available from Docker Hub at::
+
+  https://hub.docker.com/r/ceph
 
 ceph/daemon-base
 ^^^^^^^^^^^^^^^^

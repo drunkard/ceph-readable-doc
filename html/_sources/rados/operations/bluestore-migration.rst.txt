@@ -1,8 +1,7 @@
-.. BlueStore Migration
-
 ==================
  迁移到 BlueStore
 ==================
+.. BlueStore Migration
 
 Each OSD can run either BlueStore or FileStore, and a single Ceph
 cluster can contain a mix of both.  Users who have previously deployed
@@ -17,10 +16,9 @@ replication and healing support or tools and strategies that copy OSD
 content from an old (FileStore) device to a new (BlueStore) one.
 
 
-.. Deploy new OSDs with BlueStore
-
 用 BlueStore 部署一个新 OSD
 ===========================
+.. Deploy new OSDs with BlueStore
 
 Any new OSDs (e.g., when the cluster is expanded) can be deployed
 using BlueStore.  This is the default behavior so no specific change
@@ -30,15 +28,13 @@ Similarly, any OSDs that are reprovisioned after replacing a failed drive
 can use BlueStore.
 
 
-.. Convert existing OSDs
-
 转换已有 OSD
 ============
-
-.. Mark out and replace
+.. Convert existing OSDs
 
 标记为 out 并替换
 -----------------
+.. Mark out and replace
 
 The simplest approach is to mark out each device in turn, wait for the
 data to replicate across the cluster, reprovision the OSD, and mark
@@ -116,10 +112,9 @@ Disadvantages:
   back to the reprovisioned BlueStore OSD.
 
 
-.. Whole host replacement
-
 整机替换
 --------
+.. Whole host replacement
 
 If you have a spare host in the cluster, or have sufficient free space
 to evacuate an entire host in order to use it as a spare, then the
@@ -129,10 +124,9 @@ the data migrating only once.
 First, you need have empty host that has no data.  There are two ways to do this: either by starting with a new, empty host that isn't yet part of the cluster, or by offloading data from an existing host that in the cluster.
 
 
-.. Use a new, empty host
-
 利用新的、空主机
 ^^^^^^^^^^^^^^^^
+.. Use a new, empty host
 
 Ideally the host should have roughly the
 same capacity as other hosts you will be converting (although it
@@ -147,10 +141,9 @@ Add the host to the CRUSH hierarchy, but do not attach it to the root::
 Make sure the ceph packages are installed.
 
 
-.. Use an existing host
-
 利用已有主机
 ^^^^^^^^^^^^
+.. Use an existing host
 
 If you would like to use an existing host
 that is already part of the cluster, and there is sufficient free
@@ -183,10 +176,9 @@ migration to complete" step below and proceed from there to clean up
 the old OSDs.
 
 
-.. Migration process
-
 迁移过程
 ^^^^^^^^
+.. Migration process
 
 If you're using a new host, start at step #1.  For an existing host,
 jump to step #5 below.
@@ -291,21 +283,21 @@ Caveats:
 
 * The device must be manually partitioned.
 
-* Tooling not implemented!
-
-* Not documented!
+* An unsupported user-contributed script that shows this process may be found at
+  https://github.com/ceph/ceph/blob/master/src/script/contrib/ceph-migrate-bluestore.bash
 
 优点：
 
-* 转换期间只有少量或没有数据通过网络迁移。
+* 转换期间，只要 OSD 或集群上设置了 `noout` 或者 `norecover`/`norebalance`  标记，
+  就只会有少量或没有数据通过网络迁移。
 
 缺点：
 
-* 工具链尚未完全实现；
-* Process not documented.
-* Each host must have a spare or empty device.
-* The OSD is offline during the conversion, which means new writes will
-  be written to only a subset of the OSDs.  This increases the risk of data
-  loss due to a subsequent failure.  (However, if there is a failure before
-  conversion is complete, the original FileStore OSD can be started to provide
-  access to its original data.)
+* 工具链尚未完全实现、支持、或有文档；
+* Each host must have an appropriate spare or empty device for staging.
+* The OSD is offline during the conversion, which means new writes to PGs
+  with the OSD in their acting set may not be ideally redundant until the
+  subject OSD comes up and recovers. This increases the risk of data
+  loss due to an overlapping failure.  However, if another OSD fails before
+  conversion and start-up are complete, the original Filestore OSD can be
+  started to provide access to its original data.

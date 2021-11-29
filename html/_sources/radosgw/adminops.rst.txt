@@ -608,13 +608,6 @@ Modify a user.
 :实例: ``s3``
 :是否必需: No
 
-``user-caps``
-
-:描述: User capabilities.
-:类型: String
-:实例: ``usage=read, write; users=read``
-:是否必需: No
-
 ``max-buckets``
 
 :描述: Specify the maximum number of buckets the user can own.

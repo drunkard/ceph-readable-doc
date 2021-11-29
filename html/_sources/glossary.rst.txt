@@ -24,8 +24,7 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
     Ceph
     Ceph Platform
     Ceph 平台
-        所有与 Ceph 相关的软件，包括所有位于 `https://github.com/ceph`_ \
-        的源码。
+        所有与 Ceph 相关的软件，包括所有位于 `https://github.com/ceph`_ 的源码。
 
     Ceph System
     Ceph Stack
@@ -86,23 +85,20 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
     CephFS
     Ceph FS
     Ceph 文件系统
-        Ceph 的组件之一，与 POSIX 兼容的文件系统。详情\
-        见 :ref:`CephFS 体系结构 <arch-cephfs>` 和
-        :ref:`ceph-file-system` 。
+        Ceph 的组件之一，与 POSIX 兼容的文件系统。详情见
+        :ref:`CephFS 体系结构 <arch-cephfs>` 和 :ref:`ceph-file-system` 。
 
     Cloud Platforms
     Cloud Stacks
     云平台
     云软件栈
-        Third party cloud provisioning platforms such as OpenStack, CloudStack, 
-        OpenNebula, ProxMox, etc.
+        第三方云服务平台，比如 OpenStack, CloudStack, OpenNebula, Proxmox VE 等等。
 
     Object Storage Device
     OSD
     对象存储设备
-        一个物理的或逻辑的存储单元（如 LUN ）。
-        有时候， Ceph 用户以术语 OSD 来引用 :term:`Ceph OSD 守护进程`\ ，\
-        然而恰当的术语应该是 Ceph OSD 。
+        一个物理的或逻辑的存储单元（如 LUN ）。有时候， Ceph 用户以术语 OSD 来引用
+        :term:`Ceph OSD 守护进程`\ ，然而恰当的术语应该是 Ceph OSD 。
 
     Ceph OSD Daemon
     Ceph OSD Daemons
@@ -115,8 +111,7 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
         proper term is "Ceph OSD".
 
     OSD id
-        定义一个 OSD 的整数。它是在新建 OSD 期间由\
-        监视器们生成的。
+        定义一个 OSD 的整数。它是在新建 OSD 期间由监视器们生成的。
 
     OSD fsid
         This is a unique identifier used to further improve the uniqueness of an
@@ -133,21 +128,19 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
         Ceph block devices without any file system interface.
 
     filestore
-        OSD 守护进程的一个后端，它需要日志、且文件是\
-        写入文件系统的。
+        OSD 守护进程的一个后端，它需要日志、且文件是写入文件系统的。
 
     Ceph Monitor
     MON
     Ceph 监视器
     监视器
-        The Ceph monitor software.
+        Ceph 的监视器软件。
 
     Ceph Manager
     MGR
     Ceph 管理器
     管理器
-        Ceph 管理器软件，它会把整个集群的所有状态信息\
-        收集到一起。
+        Ceph 管理器软件，它会把整个集群的所有状态信息收集到一起。
 
     Ceph Manager Dashboard
     Ceph Dashboard
@@ -159,15 +152,14 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
     仪表盘模块
     仪表盘插件
     仪表盘
-        一个内建的、基于网页的 Ceph 管理和监控应用程序，\
-        可用于管理集群的各方面以及对象。仪表盘是以一个
-        Ceph 管理器模块实现的。详情见 :ref:`mgr-dashboard` 。
+        一个内建的、基于网页的 Ceph 管理和监控应用程序，可用于管理集群的各方面以及对象。
+        仪表盘是以一个 Ceph 管理器模块实现的。详情见 :ref:`mgr-dashboard` 。
 
     Ceph Metadata Server
     MDS
     Ceph 元数据服务器
     元数据服务器
-        The Ceph metadata software.
+        Ceph 的元数据软件。
 
     Ceph Clients
     Ceph Client
@@ -231,14 +223,13 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
         池是对象存储的逻辑部分。
 
     systemd oneshot
-        一种 systemd 类型 ``type`` ，用于确定
-        ``ExecStart`` 的命令完成后是否退出（不想把它\
-        作为守护进程）。
+        一种 systemd 类型 ``type`` ，用于确定 ``ExecStart`` 的命令完成后是否退出
+        （不想把它作为守护进程）。
 
     LVM tags
     LVM 标签
-        LVM 卷和组的可扩展元数据，我们用它来存储 Ceph
-        相关的信息，如各设备、以及它们与 OSD 的关系。
+        LVM 卷和组的可扩展元数据，我们用它来存储 Ceph 相关的信息，
+        如各设备、以及它们与 OSD 的关系。
 
 
 .. _https://github.com/ceph: https://github.com/ceph

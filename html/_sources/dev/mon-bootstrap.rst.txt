@@ -138,7 +138,7 @@ the cluster::
      mon initial members = foo, bar, baz
 
 The monitors can then be initialized by providing the other pieces of
-information (they keyring, cluster fsid, and a way of determining
+information (the keyring, cluster fsid, and a way of determining
 their own address).  For example::
 
      ceph-mon --mkfs -i <name> --mon-initial-hosts 'foo,bar,baz' --keyring <initial_keyring> --public-addr <ip>
@@ -152,10 +152,8 @@ Once they learn enough of their peers from the initial member set,
 they will be able to create the cluster.
 
 
-.. Cluster expansion
-
-集群的扩展
-==========
+Cluster expansion
+=================
 
 Cluster expansion is slightly less demanding than creation, because
 the creation of the initial quorum is not an issue and there is no
@@ -166,12 +164,11 @@ New nodes can be forced to join an existing cluster in two ways:
 #. by providing no initial monitor peers addresses, and feeding them dynamically.
 #. by specifying the ``mon initial members`` config option to prevent the new nodes from forming a new, independent cluster, and feeding some existing monitors via any available method.
 
+Initially peerless expansion
+----------------------------
 
-.. Initially peerless expansion
-
-最初无互联点时的扩展
---------------------
-新建一个监视器，除了它自己的地址不给任何互联地址，例如： ::
+Create a new monitor and give it no peer addresses other than its own.  For
+example::
 
      ceph-mon --mkfs -i <myid> --fsid <fsid> --keyring <mon secret key> --public-addr <ip>
 

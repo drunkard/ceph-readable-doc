@@ -381,10 +381,9 @@ CentOS/RHEL7 发行版兼容的包，并手动安装。在 CentOS/RHEL7 下
 建文档了。
 
 
-.. Commit the Change
-
 提交变更
 --------
+.. Commit the Change
 
 Ceph文档的提交虽然简单，却遵循着严格的惯例：
 
@@ -395,9 +394,8 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 - 提交的注释\ **必须**\ 以 ``doc:`` 打头（应严格遵守）；
 - 注释摘要\ **必须**\ 只有一行（应严格遵守）；
 - 额外的注释\ **可以**\ 写到摘要下面空一行的地方，但应该简单明了；
-- 提交\ **可以**\ 包含 ``Fixes: #{bug number}`` 字样；
-- 提交\ **必须**\ 包含 \
-  ``Signed-off-by: Firstname Lasname <email>`` （应严格遵守）。
+- 提交\ **可以**\ 包含 ``Fixes: https://tracker.ceph.com/issues/{bug number}`` 字样；
+- 提交\ **必须**\ 包含 ``Signed-off-by: Firstname Lasname <email>`` （应严格遵守）。
 
 .. tip:: 请遵守前述惯例，特别是标明了 ``（应严格遵守）`` 的那些，\
    否则你的提交会被打回，修正后才能重新提交。
@@ -413,7 +411,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 
 	doc: Fixes a spelling error and a broken hyperlink.
 
-	Fixes: #1234
+	Fixes: https://tracker.ceph.com/issues/1234
 
 	Signed-off-by: John Doe <john.doe@gmail.com>
 
@@ -492,7 +490,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 --------
 .. Notify Us
 
-发出接收请求后，请发邮件给 ceph-doc@redhat.com 。
+如果发出的 PR 长时间没人审核，请联系相应组件 :ref:`clt` 的负责人。
 
 
 文档风格手册

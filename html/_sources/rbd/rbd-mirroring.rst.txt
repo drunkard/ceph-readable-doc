@@ -52,10 +52,9 @@ for either one- or two-way replication:
    bandwidth between the two data centers to handle mirroring workload.
 
 
-.. Pool Configuration
-
 存储池配置
 ==========
+.. Pool Configuration
 
 以下步骤演示了如何用 ``rbd`` 命令执行基本的管理任务，并配置\
 镜像。镜像是以 Ceph 集群的存储池为单位配置的。
@@ -75,10 +74,9 @@ for either one- or two-way replication:
    一个在 ``/etc/ceph`` 之外运营集群以避免混淆的策略。
 
 
-.. Enable Mirroring
-
 启用镜像功能
 ------------
+.. Enable Mirroring
 
 要用 ``rbd`` 命令启用存储池的镜像功能，可指定
 ``mirror pool enable`` 命令、存储池名字、镜像模式、和\
@@ -106,10 +104,9 @@ subcommand but note that the local site name and the corresponding site name
 used by the remote cluster generally must match.
 
 
-.. Disable Mirroring
-
 禁用镜像功能
 ------------
+.. Disable Mirroring
 
 要用 ``rbd`` 命令禁用存储池的镜像功能，可指定
 ``mirror pool disable`` 命令和存储池名字： ::
@@ -164,10 +161,9 @@ For example, on site-b::
         $ rbd --cluster site-b mirror pool peer bootstrap import --site-name site-b image-pool token
 
 
-.. Add Cluster Peer Manually
-
 手动增加互联的集群
 ------------------
+.. Add Cluster Peer Manually
 
 Cluster peers can be specified manually if desired or if the above bootstrap
 commands are not available with the currently installed Ceph release.
@@ -214,10 +210,9 @@ peer cluster connection attributes when adding a mirroring peer, use the
           587b08db-3d33-4f32-8af8-421e77abb081 site-b client.rbd-mirror-peer 192.168.1.1,192.168.1.2 AQAeuZdbMMoBChAAcj++/XUxNOLFaWdtTREEsw== 
 
 
-.. Remove Cluster Peer
-
 删除互联的集群
 --------------
+.. Remove Cluster Peer
 
 要用 ``rbd`` 删除镜像点 Ceph 集群，可指定 ``mirror pool peer remove``
 命令、以及互联点的 UUID （可用 ``rbd mirror pool info`` 命令\
@@ -231,10 +226,9 @@ peer cluster connection attributes when adding a mirroring peer, use the
         $ rbd --cluster site-b mirror pool peer remove image-pool 60c0e299-b38f-4234-91f6-eed0a367be08
 
 
-.. Data Pools
-
 数据存储池
 ----------
+.. Data Pools
 
 在目的集群创建映像时， ``rbd-mirror`` 这样选择数据集群：
 
@@ -245,10 +239,9 @@ peer cluster connection attributes when adding a mirroring peer, use the
 #. 如果上述二者都不可行，那就不会选中数据存储池。
 
 
-.. Image Configuration
-
 映像配置
 ========
+.. Image Configuration
 
 不像存储池配置方式，映像配置只需要操作单个镜像点 Ceph 集群\
 就行。
@@ -262,10 +255,9 @@ peer cluster connection attributes when adding a mirroring peer, use the
 `显式地开启`_\ ）。
 
 
-.. Enable Image Mirroring
-
 启用基于映像的镜像
 ------------------
+.. Enable Image Mirroring
 
 如果映像所在存储池的镜像功能配置成了 ``image`` 模式，那就得\
 显式地启用各个映像的镜像功能。可以用 ``rbd`` 的
@@ -291,10 +283,9 @@ The mirror image mode can either be ``journal`` or ``snapshot``:
         $ rbd --cluster site-a mirror image enable image-pool/image-2 journal
 
 
-.. Enable Image Journaling Feature
-
 开启映像的 journaling 功能
 --------------------------
+.. Enable Image Journaling Feature
 
 RBD 镜像用 journaling 功能来保证复制的映像始终保持崩溃一致性。\
 使用 ``image`` 镜像模式时，在此映像上启用镜像的同时就会自动\
@@ -399,10 +390,9 @@ For example::
         2020-02-26 18:00:00 image-pool/image1 
 
 
-.. Disable Image Mirroring
-
 禁用映像的镜像功能
 ------------------
+.. Disable Image Mirroring
 
 要禁用某一映像的镜像功能，可用 ``rbd`` 、加
 ``mirror image disable`` 命令，再加上存储池名和映像名： ::
@@ -414,10 +404,9 @@ For example::
         $ rbd --cluster site-a mirror image disable image-pool/image-1
 
 
-.. Image Promotion and Demotion
-
 映像的晋级和降级
 ----------------
+.. Image Promotion and Demotion
 
 .. note:: 译者注： promotion 翻译为晋级， demotion 翻译为降级。
 
@@ -476,10 +465,9 @@ For example::
    `强制重新同步命令`_\ 恢复同步。
 
 
-.. Force Image Resync
-
 强制重新同步映像
 ----------------
+.. Force Image Resync
 
 如果 ``rbd-mirror`` 守护进程探测到了裂脑事件，它就不会再企图\
 镜像受影响的映像，除非已纠正。要恢复一个映像的镜像，首先找出\
@@ -497,10 +485,9 @@ For example::
    地集群的 ``rbd-mirror`` 守护进程负责异步地重新同步。
 
 
-.. Mirror Status
-
 镜像状态
 ========
+.. Mirror Status
 
 每一个主的、被镜像的映像都存储了互联集群的复制状态，这些状态\
 信息可用 ``mirror image status`` 和 ``mirror pool status``
@@ -528,10 +515,9 @@ For example::
    选项，它还会额外输出此存储池内每一个映像的镜像状态细节。
 
 
-.. rbd-mirror Daemon
-
 rbd-mirror 守护进程
 ===================
+.. rbd-mirror Daemon
 
 两边的 ``rbd-mirror`` 守护进程负责监视远端的、互联集群的映像\
 日志，并在本地集群回放这些日志事件。 RBD 映像的 journaling 功\

@@ -266,8 +266,8 @@ Generic options
 :command:`append` *name* *infile*
   把 infile 的内容追加给集群内名为 name 的对象。
 
-:command:`rm` *name*
-  删除名为 name 的对象。
+:command:`rm` [--force-full] *name* ...
+  删除名为 name 的对象。集群被标记为 full 时需加上 ``--force-full`` 选项。
 
 :command:`listwatchers` *name*
   罗列此对象名的关注者。

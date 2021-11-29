@@ -2,6 +2,7 @@
 
 ``activate``
 ============
+
 Once :ref:`ceph-volume-lvm-prepare` is completed, and all the various steps
 that entails are done, the volume is ready to get "activated".
 
@@ -12,10 +13,13 @@ understand what OSD is enabled and needs to be mounted.
 .. note:: The execution of this call is fully idempotent, and there is no
           side-effects when running multiple times
 
-.. New OSDs
+For OSDs deployed by cephadm, please refer to :ref:cephadm-osd-activate: 
+instead.
 
 新 OSD
 ------
+.. New OSDs
+
 To activate newly prepared OSDs both the :term:`OSD id` and :term:`OSD uuid`
 need to be supplied. For example::
 
@@ -24,11 +28,13 @@ need to be supplied. For example::
 .. note:: 这个 UUID 存储于 OSD 路径下的 ``fsid`` 文件内，它\
    是在调用 :ref:`ceph-volume-lvm-prepare` 时生成的。
 
-
-.. Activating all OSDs
-
 激活所有 OSD
 ------------
+.. Activating all OSDs
+
+.. note:: For OSDs deployed by cephadm, please refer to :ref:cephadm-osd-activate: 
+          instead.
+
 It is possible to activate all existing OSDs at once by using the ``--all``
 flag. For example::
 
@@ -39,11 +45,10 @@ and will activate them one by one. If any of the OSDs are already running, it
 will report them in the command output and skip them, making it safe to rerun
 (idempotent).
 
-
-.. requiring uuids
-
 必备 uuid
 ^^^^^^^^^
+.. requiring uuids
+
 The :term:`OSD uuid` is being required as an extra step to ensure that the
 right OSD is being activated. It is entirely possible that a previous OSD with
 the same id exists and would end up activating the incorrect one.
@@ -56,10 +61,10 @@ specify ``--dmcrypt`` on the command line again (that flag is not available for
 the ``activate`` subcommand). An encrypted OSD will be automatically detected.
 
 
-.. Discovery
-
 发现
 ----
+.. Discovery
+
 With OSDs previously created by ``ceph-volume``, a *discovery* process is
 performed using :term:`LVM tags` to enable the systemd units.
 
@@ -94,21 +99,19 @@ ensure that the correct device is linked.
 .. note:: The system infers the objectstore type (filestore or bluestore) by
           inspecting the LVM tags applied to the OSD devices
 
-
-.. Existing OSDs
-
 对于已有 OSD
 ------------
+.. Existing OSDs
+
 对于之前已经用 ``ceph-disk`` 部署的各 OSD ，需要\
 :ref:`用 simple 子命令 <ceph-volume-simple>`\ 扫描并激活。如果\
 用的是其它的工具链，把它们移植到新机制唯一的方法是再准备一次\
 （会丢数据）。如何操作见 :ref:`ceph-volume-lvm-existing-osds` 。
 
-
-.. Summary
-
 总结
 ----
+.. Summary
+
 To recap the ``activate`` process for :term:`bluestore`:
 
 #. require both :term:`OSD id` and :term:`OSD uuid`
