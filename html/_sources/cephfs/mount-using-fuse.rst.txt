@@ -1,8 +1,7 @@
-.. Mount CephFS using FUSE
-
 =====================
  用 FUSE 挂载 CephFS
 =====================
+.. Mount CephFS using FUSE
 
 `ceph-fuse`_ is an alternate way of mounting CephFS, although it mounts it
 in userspace. Therefore, performance of FUSE can be relatively lower but FUSE
@@ -11,17 +10,11 @@ clients can be more manageable, especially while upgrading CephFS.
 Prerequisites
 =============
 
-Complete General Prerequisites
-------------------------------
 Go through the prerequisites required by both, kernel as well as FUSE mounts,
 in `Mount CephFS: Prerequisites`_ page.
 
-``fuse.conf`` option
---------------------
-
-#. If you are mounting Ceph with FUSE not as superuser/root user/system admin
-   you would need to add the option ``user_allow_other`` to ``/etc/fuse.conf``
-   (under no section in the conf).
+.. note:: Mounting CephFS using FUSE requires superuser privileges to trim dentries
+   by issuing a remount of itself.
 
 Synopsis
 ========

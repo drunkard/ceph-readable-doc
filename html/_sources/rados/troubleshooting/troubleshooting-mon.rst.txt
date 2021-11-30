@@ -536,7 +536,7 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
 .. Reaching out for help
 
 You can find us on IRC at #ceph and #ceph-devel at OFTC (server irc.oftc.net)
-and on ``ceph-devel@vger.kernel.org`` and ``ceph-users@lists.ceph.com``. Make
+and on ``dev@ceph.io`` and ``ceph-users@lists.ceph.com``. Make
 sure you have grabbed your logs and have them ready if someone asks: the faster
 the interaction and lower the latency in response, the better chances everyone's
 time is optimized.

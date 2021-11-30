@@ -21,9 +21,10 @@
 |                      | 给 Ceph 开发团队。 Ceph 开发者经常在 IRC 的     | - **域名：**                                  |
 |                      | ``#ceph`` 频道，尤其是美国太平洋标准时区白天    |     ``irc.oftc.net``                          |
 |                      | 工作时间。 ``#ceph`` 频道适合集群操作员和用户， | - **频道：**                                  |
-|                      | ``#ceph-devel`` 和 ``#ceph-dashboard`` 适合     |     ``#ceph``,                                |
-|                      | Ceph 开发人员。                                 |     ``#ceph-devel``,                          |
+|                      | ``#ceph-devel`` 、 ``#ceph-dashboard`` 和       |     ``#ceph``,                                |
+|                      | ``cephfs`` 适合 Ceph 开发人员。                 |     ``#ceph-devel``,                          |
 |                      |                                                 |     ``#ceph-dashboard``,                      |
+|                      |                                                 |     ``#cephfs``                               |
 +----------------------+-------------------------------------------------+-----------------------------------------------+
 | **用户邮件列表**     | 订阅 ceph-users@ceph.io  后可以提问或回答用户   | - `用户订阅`_                                 |
 |                      | 相关的问题。此邮件列表可以随时退订，只需        | - `用户退订`_                                 |
@@ -32,6 +33,10 @@
 | **开发邮件列表**     | 订阅位于  dev@ceph.io 的邮件列表来和开发者      | - `开发订阅`_                                 |
 |                      | 保持联系。此邮件列表可以随时退订，只需一封邮件  | - `开发退订`_                                 |
 |                      | 即可搞定！                                      | - `开发归档`_                                 |
++----------------------+-------------------------------------------------+-----------------------------------------------+
+| **内核客户端**       | Linux 内核相关的讨论，包括内核客户端代码相关的  | - `内核客户端订阅`_                           |
+|                      | 补丁和实现细节相关的讨论。                      | - `内核客户端退订`_                           |
+|                      |                                                 | - `内核客户端归档`_                           |
 +----------------------+-------------------------------------------------+-----------------------------------------------+
 | **提交邮件列表**     | 订阅 ceph-commit@ceph.com 后能收到提交通知邮    | - `提交订阅`_                                 |
 |                      | 件，同样，只需一封邮件即可随时退定。            | - `提交退订`_                                 |
@@ -58,6 +63,8 @@
 
 .. _开发订阅: mailto:dev-request@ceph.io?body=subscribe
 .. _开发退订: mailto:dev-request@ceph.io?body=unsubscribe
+.. _内核客户端订阅: mailto:majordomo@vger.kernel.org?body=subscribe+ceph-devel
+.. _内核客户端退订: mailto:majordomo@vger.kernel.org?body=unsubscribe+ceph-devel
 .. _用户订阅: mailto:ceph-users-request@ceph.io?body=subscribe
 .. _用户退订: mailto:ceph-users-request@ceph.io?body=unsubscribe
 .. _社区订阅: mailto:ceph-community-join@lists.ceph.com
@@ -68,6 +75,7 @@
 .. _QA 退订: mailto:ceph-qa-leave@lists.ceph.com
 .. _开发归档: https://lists.ceph.io/hyperkitty/list/dev@ceph.io/
 .. _用户归档: https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/
+.. _内核客户端归档: https://www.spinics.net/lists/ceph-devel/
 .. _邮件列表存档: http://lists.ceph.com/
 .. _博客: http://ceph.com/community/blog/
 .. _跟踪系统: http://tracker.ceph.com/

@@ -29,9 +29,9 @@ OSD 后端
 ========
 .. OSD Backends
 
-OSD 有两种管理它们存储着的数据的方法。从 Luminous 12.2.z 版\
-起，新的默认（也是推荐的）后端是 *BlueStore* ；在 Luminous 之\
-前，默认的（且是唯一选项）是 *FileStore* 。
+OSD 有两种管理它们存储着的数据的方法。
+从 Luminous 12.2.z 版起，新的默认（也是推荐的）后端是 *BlueStore* ；
+在 Luminous 之前，默认的（且是唯一选项）是 *FileStore* 。
 
 BlueStore
 ---------

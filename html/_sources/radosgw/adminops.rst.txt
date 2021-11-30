@@ -790,7 +790,7 @@ None.
 ::
 
 	PUT /{admin}/user?subuser&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -903,7 +903,7 @@ Modify an existing subuser
 ::
 
 	POST /{admin}/user?subuser&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1010,7 +1010,7 @@ Remove an existing subuser
 ::
 
 	DELETE /{admin}/user?subuser&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1072,7 +1072,7 @@ each user or subuser.
 ::
 
 	PUT /{admin}/user?key&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1191,7 +1191,7 @@ Remove an existing key.
 ::
 
 	DELETE /{admin}/user?key&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1253,7 +1253,7 @@ None.
 ::
 
 	GET /{admin}/bucket?format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1368,7 +1368,7 @@ accounting with ``check-objects``, ``fix`` must be set to True.
 ::
 
 	GET /{admin}/bucket?index&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1426,7 +1426,7 @@ Delete an existing bucket.
 ::
 
 	DELETE /{admin}/bucket?format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1479,7 +1479,7 @@ None.
 ::
 
 	POST /{admin}/bucket?format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1527,7 +1527,7 @@ None.
 ::
 
 	PUT /{admin}/bucket?format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 请求参数
@@ -1634,7 +1634,7 @@ Remove an existing object. NOTE: Does not require owner to be non-suspended.
 ::
 
 	DELETE /{admin}/bucket?object&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 Request Parameters
 ~~~~~~~~~~~~~~~~~~
@@ -1686,7 +1686,7 @@ Read the policy of an object or bucket.
 ::
 
 	GET /{admin}/bucket?policy&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 
 Request Parameters
@@ -1740,7 +1740,7 @@ If successful, returns the object or bucket policy
 ::
 
 	PUT /{admin}/user?caps&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 请求参数
 ~~~~~~~~
@@ -1815,7 +1815,7 @@ If successful, the response contains the user's capabilities.
 ::
 
 	DELETE /{admin}/user?caps&format=json HTTP/1.1
-	Host {fqdn}
+	Host: {fqdn}
 
 请求参数
 ~~~~~~~~

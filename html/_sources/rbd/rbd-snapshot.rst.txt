@@ -4,23 +4,25 @@
 
 .. index:: Ceph Block Device; snapshots
 
-一份快照是某映像在一个特定时间点的一份只读副本。 Ceph 块设备\
-的一个高级功能就是你可以为映像创建快照来保留其历史； Ceph 还\
-支持分层快照，让你快速、容易地克隆映像（如 VM 映像）。 Ceph
-的快照功能支持 ``rbd`` 命令和多种高级接口，包括 `QEMU`_ 、 \
-`libvirt`_ 、 `OpenStack`_ 和 `CloudStack`_ 。
+一份快照是某映像在一个特定时间点（一个 checkpoint ）的一份只读的逻辑副本。
+Ceph 块设备的一个高级功能就是你可以为映像创建一系列快照\
+来保留其在不同时间点的状态历史；
+Ceph 还支持分层快照，让你快速、容易地克隆映像（如 VM 映像）。
+Ceph 块设备的快照功能可以用 ``rbd`` 命令和多个高级接口来管理，
+包括 `QEMU`_ 、 `libvirt`_ 、 `OpenStack`_ 和 `CloudStack`_ 。
 
 .. important:: 要使用 RBD 快照功能，你必须有个运行着的集群。
 
-.. note:: 因为 RBD 并不知晓映像（卷）内的文件系统，如果没有\
-   在挂载着（捆绑着）它的操作系统内协调的话，快照就不是\
-   `崩溃一致（ crash-consistent）`\ 的。故此，我们建议\
-   在拍快照前先暂停这个映像上的 `I/O` 操作。如果\
-   这个卷包含文件系统，在拍快照前这个文件系统内部必须处于\
-   一致状态。在不一致的点拍下的快照需要完成 `fsck` 之后\
-   才能挂载。可以用 `fsfreeze` 命令中止 `I/O` ，命令细节请参考
-   `fsfreeze(8)` 手册页。对于虚拟机， `qemu-guest-agent`
-   可在创建快照时自动冻结文件系统。
+.. note:: 因为 RBD 并不知晓映像（卷）内的文件系统，
+   如果没有在挂载着（捆绑着）它的操作系统内协调的话，
+   快照就不是\ `崩溃一致（ crash-consistent）`\ 的。
+   故此，我们建议在拍快照前先暂停或停止这个映像上的 `I/O` 操作。
+   如果这个卷包含文件系统，在拍快照前这个文件系统内部必须处于一致状态。
+   在不一致的点拍下的快照需要完成 `fsck` 之后才能挂载。
+   可以用 `fsfreeze` 命令中止 `I/O` ，
+   命令细节请参考 `fsfreeze(8)` 手册页。
+   对于虚拟机， `qemu-guest-agent` 可在创建快照时\
+   自动冻结文件系统。
 
 .. ditaa::
 
@@ -32,10 +34,10 @@
            +------------+         +-------------+
 
 
-.. Cephx Notes
 
 Cephx 注意事项
 ==============
+.. Cephx Notes
 
 启用了 `cephx`_ 时（默认的），你必须指定用户名或 ID 、及其\
 密钥环的路径，详情见\ :ref:`用户管理 <user-management>`\ 。你\
@@ -53,21 +55,18 @@ Cephx 注意事项
    手动输入。
 
 
-.. Snapshot Basics
-
 快照基础
 ========
+.. Snapshot Basics
 
 下列过程演示了如何用 ``rbd`` 命令创建、罗列、和删除快照。
 
 
-.. Create Snapshot
-
 创建快照
 --------
+.. Create Snapshot
 
-用 ``rbd`` 命令创建快照，要指定 ``snap create`` 子命令、外加存储池\
-名、映像名。 ::
+用 ``rbd`` 命令创建快照，要指定 ``snap create`` 子命令、外加存储池名、映像名。 ::
 
 	rbd snap create {pool-name}/{image-name}@{snap-name}
 
@@ -76,10 +75,9 @@ Cephx 注意事项
 	rbd snap create rbd/foo@snapname
 
 
-.. List Snapshots
-
 罗列快照
 --------
+.. List Snapshots
 
 要列出一映像的快照，指定存储池名和映像名。 ::
 
@@ -90,10 +88,9 @@ Cephx 注意事项
 	rbd snap ls rbd/foo
 
 
-.. Rollback Snapshot
-
 回滚快照
 --------
+.. Rollback Snapshot
 
 要用 ``rbd`` 命令回滚到某一快照，指定 ``snap rollback`` 选项、存储\
 池名、映像名和快照名。 ::
@@ -109,13 +106,11 @@ Cephx 注意事项
    **克隆要快于回滚**\ 到某快照，这也是回到先前状态的首选方法。
 
 
-.. Delete a Snapshot
-
 删除快照
 --------
+.. Delete a Snapshot
 
-要用 ``rbd`` 删除一快照，指定 ``snap rm`` 选项、存储池名、映像名和\
-快照名。 ::
+要用 ``rbd`` 删除一快照，指定 ``snap rm`` 选项、存储池名、映像名和快照名。 ::
 
 	rbd snap rm {pool-name}/{image-name}@{snap-name}
 
@@ -127,10 +122,9 @@ Cephx 注意事项
    磁盘空间。
 
 
-.. Purge Snapshots
-
 清除快照
 --------
+.. Purge Snapshots
 
 要用 ``rbd`` 删除一映像的所有快照，指定 ``snap purge`` 选项和映像\
 名。 ::
@@ -143,10 +137,10 @@ Cephx 注意事项
 
 
 .. index:: Ceph Block Device; snapshot layering
-.. Layering
 
 分层
 ====
+.. Layering
 
 Ceph 支持创建某一设备快照的很多写时复制（ COW ）克隆。分层快照使得 \
 Ceph 块设备客户端可以很快地创建映像。例如，你可以创建一个块设备映\
@@ -181,10 +175,9 @@ Ceph 块设备客户端可以很快地创建映像。例如，你可以创建一
    版开始支持克隆的映像。
 
 
-.. Getting Started with Layering
-
 分层入门
 --------
+.. Getting Started with Layering
 
 Ceph 块设备的分层是个简单的过程。你必须有个映像、必须为它创建\
 快照、必须保护快照，执行过这些步骤后，你才能克隆快照。
@@ -235,10 +228,9 @@ Ceph 块设备的分层是个简单的过程。你必须有个映像、必须为
    数据迁移或恢复到另一存储池。
 
 
-.. Protecting a Snapshot
-
 保护快照
 --------
+.. Protecting a Snapshot
 
 克隆品要访问父快照。如果哪个用户不小心删除了父快照，所有克隆品\
 都会损坏。为防止数据丢失，\ **必须**\ 先保护、然后再克隆快照。 ::
@@ -252,10 +244,9 @@ Ceph 块设备的分层是个简单的过程。你必须有个映像、必须为
 .. note:: 你删除不了受保护的快照。
 
 
-.. Cloning a Snapshot
-
 克隆快照
 --------
+.. Cloning a Snapshot
 
 要克隆快照，你得指定父存储池、映像、和快照，还有子存储池和映像名。\
 克隆前必须先保护它。 ::
@@ -271,10 +262,9 @@ Ceph 块设备的分层是个简单的过程。你必须有个映像、必须为
    存储池。
 
 
-.. Unprotecting a Snapshot
-
 取消快照保护
 ------------
+.. Unprotecting a Snapshot
 
 删除快照前，必须先取消保护。另外，你\ *不能*\ 删除被克隆品引用的快\
 照，所以删除快照前必须先拍平此快照的各个克隆。 ::
@@ -286,10 +276,9 @@ Ceph 块设备的分层是个简单的过程。你必须有个映像、必须为
 	rbd snap unprotect rbd/my-image@my-snapshot
 
 
-.. Listing Children of a Snapshot
-
 罗列一快照的子孙
 ----------------
+.. Listing Children of a Snapshot
 
 用下列命令罗列一快照的子孙： ::
 
@@ -300,10 +289,9 @@ Ceph 块设备的分层是个简单的过程。你必须有个映像、必须为
 	rbd children rbd/my-image@my-snapshot
 
 
-.. Flattening a Cloned Image
-
 拍平克隆品映像
 --------------
+.. Flattening a Cloned Image
 
 克隆来的映像仍保留了父快照的引用。要从子克隆删除这些到父快照\
 的引用，你可以把快照的信息复制给子克隆，也就是“拍平”它。拍平\

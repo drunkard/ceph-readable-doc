@@ -243,7 +243,7 @@
   展示通过 rbd 内核模块映射的 rbd 映像（默认的）或其它支持的\
   设备。
 
-:command:`device map` [-t | --device-type *device-type*] [--read-only] [--exclusive] [-o | --options *device-options*] *image-spec* | *snap-spec*
+:command:`device map` [-t | --device-type *device-type*] [--cookie *device-cookie*] [--show-cookie] [--read-only] [--exclusive] [-o | --options *device-options*] *image-spec* | *snap-spec*
   把指定映像通过 rbd 内核模块映射成一个块设备（默认的）、或\
   其它支持的设备（ Linux 上的 *nbd* 或 FreeBSD 上的 *ggate* ）。
 

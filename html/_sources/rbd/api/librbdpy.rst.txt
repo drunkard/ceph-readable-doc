@@ -27,7 +27,7 @@
 要在映像上进行 I/O 操作，需实例化 :class:rbd.Image 对象： ::
 
     image = rbd.Image(ioctx, 'myimage')
-    data = 'foo' * 200
+    data = b'foo' * 200
     image.write(data, 0)
 
 上面的代码向映像前面写入了 600 字节的 foo 字符串。注意数据不能\
@@ -52,7 +52,7 @@
             rbd_inst.create(ioctx, 'myimage', size)
             image = rbd.Image(ioctx, 'myimage')
             try:
-                data = 'foo' * 200
+                data = b'foo' * 200
                 image.write(data, 0)
             finally:
                 image.close()
@@ -71,7 +71,7 @@
             size = 4 * 1024**3  # 4 GiB
             rbd_inst.create(ioctx, 'myimage', size)
             with rbd.Image(ioctx, 'myimage') as image:
-                data = 'foo' * 200
+                data = b'foo' * 200
                 image.write(data, 0)
 
 API 参考

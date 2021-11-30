@@ -14,8 +14,8 @@ Ceph's `Bucket Notifications`_ and `PubSub Module`_ APIs follow `AWS S3 Bucket N
 ------------
 .. Supported Destination
 
-AWS supports: **SNS**, **SQS** and **Lambda** as possible destinations (AWS internal destinations).
-Currently, we support: **HTTP/S**, **Kafka** and **AMQP**. And also support pulling and acking of events stored in Ceph (as an intrenal destination).
+AWS supports: **SNS**, **SQS** and **Lambda** as possible destinations (AWS internal destinations). 
+Currently, we support: **HTTP/S**, **Kafka** and **AMQP**. And also support pulling and acking of events stored in Ceph (as an internal destination).
 
 We are using the **SNS** ARNs to represent the **HTTP/S**, **Kafka** and **AMQP** destinations.
 
@@ -32,7 +32,7 @@ Following tags (and the tags inside them) are not supported:
 | ``<CloudFunctionConfiguration>``  | not needed, we treat all destinations as SNS |
 +-----------------------------------+----------------------------------------------+
 
-REST API Extension
+REST API Extension 
 ------------------
 
 Ceph's bucket notification API has the following extensions:
@@ -53,7 +53,7 @@ Ceph's bucket notification API has the following extensions:
 
   - Filtering based on object tags
 
-- Each one of the additional filters extends the S3 API and using it will require extension of the client SDK (unless you are using plain HTTP).
+- Each one of the additional filters extends the S3 API and using it will require extension of the client SDK (unless you are using plain HTTP). 
 
 - Filtering overlapping is allowed, so that same event could be sent as different notification
 
@@ -107,7 +107,7 @@ Event Types
 | ``s3:ReducedRedundancyLostObject``           | Not applicable to Ceph                                      |
 +----------------------------------------------+-----------------+-------------------------------------------+
 
-.. note::
+.. note:: 
 
    The ``s3:ObjectRemoved:DeleteMarkerCreated`` event presents information on the latest version of the object
 
@@ -117,20 +117,20 @@ Event Types
 
 Topic Configuration
 -------------------
-In the case of bucket notifications, the topics management API will be derived from `AWS Simple Notification Service API`_.
+In the case of bucket notifications, the topics management API will be derived from `AWS Simple Notification Service API`_. 
 Note that most of the API is not applicable to Ceph, and only the following actions are implemented:
 
  - ``CreateTopic``
  - ``DeleteTopic``
  - ``ListTopics``
 
-We also have the following extensions to topic configuration:
+We also have the following extensions to topic configuration: 
 
  - In ``GetTopic`` we allow fetching a specific topic, instead of all user topics
  - In ``CreateTopic``
 
   - we allow setting endpoint attributes
-  - we allow setting opaque data thta will be sent to the endpoint in the notification
+  - we allow setting opaque data that will be sent to the endpoint in the notification
 
 
 .. _AWS Simple Notification Service API: https://docs.aws.amazon.com/sns/latest/api/API_Operations.html
