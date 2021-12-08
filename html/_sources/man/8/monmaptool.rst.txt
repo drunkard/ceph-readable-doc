@@ -16,17 +16,18 @@
 ====
 
 **monmaptool** 工具用于创建、查看、修改用于
-Ceph 分布式存储系统的监视器集群运行图。监视器图只是在
-Ceph 分布式系统中定义了几个固定的地址，其他所有守护进程绑定\
-到任意地址、并注册到监视器。
+Ceph 分布式存储系统的监视器集群运行图。
+监视器图只是在 Ceph 分布式系统中定义了几个固定的地址，
+其他所有守护进程绑定到任意地址、
+并注册到监视器。
 
-用 --create 选项创建新图时，会创建新的随机 UUID ，此选项后\
-还应加一或多个监视器地址。
+用 --create 选项创建新图时，会创建新的随机 UUID ，
+此选项后还应加一或多个监视器地址。
 
-Ceph 监视器 v1 版信使协议的端口是 6789 ，而 v2 版协议的端口是
-3300 。
+Ceph 监视器 v1 版信使协议的端口是 6789 ，
+而 v2 版协议的端口是 3300 。
 
-Multiple actions can be performed per invocation.
+调用一次可以执行多个动作。
 
 
 选项
@@ -34,7 +35,8 @@ Multiple actions can be performed per invocation.
 
 .. option:: --print
 
-   在所有修改完成后，打印一份监视器图的纯文本转储。
+   在所有修改完成后，
+   打印一份监视器图的纯文本转储。
 
 .. option:: --feature-list [plain|parseable]
 
@@ -44,7 +46,8 @@ Multiple actions can be performed per invocation.
 
 .. option:: --create
 
-   新建一监视器图，它有新的 UUID （用它可创建个新的空 Ceph 文件系统）。
+   新建一监视器图，它有新的 UUID
+   （用它可创建个新的空 Ceph 文件系统）。
 
 .. option:: --clobber
 
@@ -54,7 +57,8 @@ Multiple actions can be performed per invocation.
 
 .. option:: --generate
 
-   基于命令行参数或配置文件中的配置生成新 monmap ，配置来源优先级如下：
+   基于命令行参数或配置文件中的配置生成新 monmap ，
+   配置来源优先级如下：
 
       #. ``--monmap filename`` 指定要载入的 monmap
       #. ``--mon-host 'host1,ip2'`` 指定一系列主机或 IP 地址
@@ -63,8 +67,9 @@ Multiple actions can be performed per invocation.
 
 .. option:: --filter-initial-members
 
-   用 ``mon initial members`` 选项的设置过滤初始 monmap ，不在此列表内的监视\
-   器将被删除、没在图内的初始成员将用假地址加入。
+   用 ``mon initial members`` 选项的设置过滤初始 monmap ，
+   不在此列表内的监视器将被删除、
+   没在图内的初始成员将用假地址加入。
 
 .. option:: --add name ip[:port]
 

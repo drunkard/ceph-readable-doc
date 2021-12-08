@@ -1,8 +1,7 @@
-.. Mount CephFS using Kernel Driver
-
 =======================
  用内核驱动挂载 CephFS
 =======================
+.. Mount CephFS using Kernel Driver
 
 The CephFS kernel driver is part of the Linux kernel. It allows mounting
 CephFS as a regular file system with native kernel performance. It is the
@@ -28,10 +27,10 @@ command. To check whether it is present on your system, do::
     stat /sbin/mount.ceph
 
 
-.. Which Kernel Version?
-
 哪个内核版本？
 --------------
+.. Which Kernel Version?
+
 由于内核客户端是作为 Linux 内核的一部分发布的（不是随打包的
 Ceph 二进制包发布），所以你得考虑客户端节点用哪个内核版本。已\
 知比较老的内核所带的 Ceph 客户端有诸多缺陷，而且不一定支持近期
@@ -109,17 +108,15 @@ To unmount the Ceph file system, use the ``umount`` command as usual::
 .. tip:: 执行此命令前确保你不在此文件系统目录下。
 
 
-.. Persistent Mounts
-
 永久挂载
 ========
+.. Persistent Mounts
 
-To mount CephFS in your file systems table as a kernel driver, add the
-following to ``/etc/fstab``::
+要在文件系统表里通过内核驱动挂载 CephFS ，把下列内容加入 ``/etc/fstab``::
 
     [{ipaddress}:{port}]:/ {mount}/{mountpoint} ceph [name=username,secret=secretkey|secretfile=/path/to/secretfile],[{mount.options}]
 
-For example::
+例如::
 
     :/     /mnt/ceph    ceph    name=admin,noatime,_netdev    0       2
 

@@ -1,12 +1,10 @@
 cephfs-journal-tool
 ===================
 
-.. Purpose
-
 目的
 ----
-如果 CephFS 的日志损坏了，就需要专家介入，把文件系统恢复到\
-工作状态。
+
+如果 CephFS 的日志损坏了，就需要专家介入，把文件系统恢复到工作状态。
 
 ``cephfs-journal-tool`` 工具提供的功能可帮助专家们检查、修改、\
 或从日志中提取数据。
@@ -18,10 +16,9 @@ cephfs-journal-tool
     就别运行此工具。
 
 
-.. Syntax
-
 语法
 ----
+
 ::
 
     cephfs-journal-tool journal <inspect|import|export|reset>
@@ -32,10 +29,10 @@ cephfs-journal-tool
 分别操作日志内的整个日志、头部、和事件。
 
 
-.. Journal mode
-
 Journal 模式
 ------------
+.. Journal mode
+
 这应该是你访问日志状态的起点。
 
 * ``inspect`` 报告日志的健康状况，它将鉴定存储日志中丢失或被\
@@ -49,10 +46,10 @@ Journal 模式
 * ``reset`` 删减日志，丢弃其内的任意信息。
 
 
-.. Example: journal inspect
-
 实例： journal inspect
 ~~~~~~~~~~~~~~~~~~~~~~
+.. Example: journal inspect
+
 ::
 
     # cephfs-journal-tool journal inspect
@@ -63,21 +60,18 @@ Journal 模式
       0x400000-ffffffffffffffff
 
 
-.. Example: Journal import/export
-
 实例：日志的导入和导出
 ~~~~~~~~~~~~~~~~~~~~~~
+.. Example: Journal import/export
+
 ::
 
     # cephfs-journal-tool journal export myjournal.bin
     journal is 4194304~80643
     read 80643 bytes at offset 4194304
     wrote 80643 bytes at offset 4194304 to myjournal.bin
-
-注：这是个\ **稀疏**\ 文件，你可以在保留其稀疏特性的前提下，用
-``tar cSzf myjournal.bin.tgz myjournal.bin`` 进行压缩。
-
-::
+    注：这是个\ **稀疏**\ 文件，你可以在保留其稀疏特性的前提下，
+    用 ``tar cSzf myjournal.bin.tgz myjournal.bin`` 进行压缩。
 
     # cephfs-journal-tool journal import myjournal.bin
     undump myjournal.bin
@@ -91,10 +85,9 @@ Journal 模式
    命令备份日志。
 
 
-.. Header mode
-
 头模式
 ------
+.. Header mode
 
 * ``get`` 输出日志头部的当前内容。
 
@@ -102,10 +95,10 @@ Journal 模式
   ``expire_pos`` 和 ``write_pos`` 。
 
 
-.. Example: header get/set
-
 实例： header get/set
 ~~~~~~~~~~~~~~~~~~~~~
+.. Example: header get/set
+
 ::
 
     # cephfs-journal-tool header get
@@ -125,15 +118,14 @@ Journal 模式
     Successfully updated header.
 
 
-.. Event mode
-
 事件模式
 --------
-事件模式下可对日志内容进行详细的检查和操作。事件模式可操作日志\
-中的所有或过滤出的事件。
+.. Event mode
 
-``cephfs-journal-tool event`` 的参数由动作、可选过滤器参数、和\
-输出模式组成。 ::
+事件模式下可对日志内容进行详细的检查和操作。
+事件模式可操作日志中的所有或过滤出的事件。
+
+``cephfs-journal-tool event`` 的参数由动作、可选过滤器参数、和输出模式组成。 ::
 
     cephfs-journal-tool event <action> [filter] <output>
 
@@ -141,8 +133,7 @@ Journal 模式
 
 * ``get`` 从日志读出事件；
 * ``splice`` 擦除日志中的某些事件或区域；
-* ``apply`` 从事件中提取文件系统元数据、并试着应用到元数据存储\
-  中。
+* ``apply`` 从事件中提取文件系统元数据、并试着应用到元数据存储中。
 
 过滤器选项：
 
@@ -161,19 +152,16 @@ Journal 模式
 
 输出模式：
 
-* ``binary``: 把各事件写入一个二进制文件，放入 ``--path`` 指定\
-  的目录；
-* ``json``: 把所有事件组织为序列化的 JSON 对象列表，并写入单个\
-  文件；
+* ``binary``: 把各事件写入一个二进制文件，放入 ``--path`` 指定的目录；
+* ``json``: 把所有事件组织为序列化的 JSON 对象列表，并写入单个文件；
 * ``summary``: 把人类可读的事件汇总写到标准输出；
 * ``list``: 写出一个人类可读的摘要列表，其中包含各事件的类型、\
   以及此事件所影响的文件路径。
 
 
-.. Example: event mode
-
 实例：事件模式
 ~~~~~~~~~~~~~~
+.. Example: event mode
 
 ::
 
@@ -250,4 +238,3 @@ Journal 模式
 
     # cephfs-journal-tool event get binary --path bin_events
     Wrote output to binary files in directory 'bin_events'
-

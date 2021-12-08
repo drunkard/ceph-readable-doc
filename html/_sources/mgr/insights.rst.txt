@@ -1,5 +1,3 @@
-.. Insights Module
-
 Insights 模块
 =============
 
@@ -22,16 +20,12 @@ depends on. The insights reports contains the following:
 * Software version, storage utilization, cluster maps, placement group summary,
   monitor status, cluster configuration, and OSD metadata.
 
-.. Enabling
-
 启用
 ----
 
 The *insights* module is enabled with::
 
   ceph mgr module enable insights
-
-.. Commands
 
 命令
 ----

@@ -50,11 +50,11 @@ Ceph 存储集群在运行，配置好 QEMU 即可；然后安装 ``libvirt``
    而且默认启用了 RBD 存储池支持。
 
 
-.. Create a Pool
 .. index:: pools; CloudStack
 
 创建存储池
 ==========
+.. Create a Pool
 
 默认情况下， Ceph 块设备使用 ``rbd`` 存储池，建议为 CloudStack
 NFS 主存储新建一存储池。确保 Ceph 集群在运行，再创建存储池： ::
@@ -70,10 +70,9 @@ NFS 主存储新建一存储池。确保 Ceph 集群在运行，再创建存储�
         rbd pool init cloudstack
 
 
-.. Create a Ceph User
-
 创建 Ceph 用户
 ==============
+.. Create a Ceph User
 
 To access the Ceph cluster we require a Ceph user which has the correct
 credentials to access the ``cloudstack`` pool we just created. Although we could
@@ -88,10 +87,9 @@ Primary Storage.
 详情见 `用户管理`_ 。
 
 
-.. Add Primary Storage
-
 添加主存储
 ==========
+.. Add Primary Storage
 
 要添加一个 Ceph 块设备作为 Primary Storage ，步骤包括：
 
@@ -132,10 +130,9 @@ Primary Storage.
 #. 点击 **OK** 。
 
 
-.. Create a Disk Offering
-
 创建存储服务
 ============
+.. Create a Disk Offering
 
 要新建硬盘存储服务，参考\ `创建一个新磁盘服务服务`_\ 。 创建\
 一存储服务以与 ``rbd`` 标签相配，这样 ``StoragePoolAllocator``
@@ -144,10 +141,9 @@ Primary Storage.
 存储池（即 ``clouldstack`` ）。
 
 
-.. Limitations
-
 局限性
 ======
+.. Limitations
 
 - ClouldStack 只能绑定一个监视器（但你可以创建一个轮询域名来\
   滚动多个监视器）

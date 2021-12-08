@@ -7,7 +7,6 @@
 
 概览
 ====
-.. Overview
 
 Ceph 集群可能产生的健康消息是有限的——它们通通被定义为\
 *健康检查*\ ，都有唯一标识符。
@@ -405,14 +404,13 @@ __________________
 
 CRUSH 图在使用很老的选项，应该更新它。还能使用（即，可连接此\
 集群的最老客户端版本号）而不会触发此健康告警的最老可调选项由
-``mon_crush_min_required_version`` 配置选项决定。详情见
-ref:`crush-map-tunables` 。
+``mon_crush_min_required_version`` 配置选项决定。
+详情见 ref:`crush-map-tunables` 。
 
 OLD_CRUSH_STRAW_CALC_VERSION
 ____________________________
 
-The CRUSH map is using an older, non-optimal method for calculating
-intermediate weight values for ``straw`` buckets.
+CRUSH 图在使用一个比较老的、非最优方法为 ``straw`` 桶计算中间权重值。
 
 The CRUSH map should be updated to use the newer method
 (``straw_calc_version=1``).  See
@@ -435,8 +433,7 @@ Hit sets can be configured on the cache pool with::
 OSD_NO_SORTBITWISE
 __________________
 
-No pre-luminous v12.y.z OSDs are running but the ``sortbitwise`` flag has not
-been set.
+没有在跑 luminous v12.y.z 之前的 OSD ，但却没有设置 ``sortbitwise`` 标记。
 
 The ``sortbitwise`` flag must be set before luminous v12.y.z or newer
 OSDs can start.  You can safely set the flag with::

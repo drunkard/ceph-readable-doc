@@ -1,8 +1,7 @@
-.. Open Policy Agent Integration
-
 ===========================
  与 Open Policy Agent 对接
 ===========================
+.. Open Policy Agent Integration
 
 Open Policy Agent (OPA) is a lightweight general-purpose policy engine
 that can be co-located with a service. OPA can be integrated as a
@@ -11,10 +10,9 @@ sidecar, host-level daemon, or library.
 Services can offload policy decisions to OPA by executing queries. Hence,
 policy enforcement can be decoupled from policy decisions.
 
-.. Configure OPA
-
 配置 OPA
 ========
+.. Configure OPA
 
 To configure OPA, load custom policies into OPA that control the resources users
 are allowed to access. Relevant data or context can also be loaded into OPA to make decisions.
@@ -24,10 +22,9 @@ Policies and data can be loaded into OPA in the following ways::
   * OPA's *bundle* feature that downloads policies and data from remote HTTP servers
   * Filesystem
 
-.. Configure the Ceph Object Gateway
-
 配置 Ceph 对象网关
 ==================
+.. Configure the Ceph Object Gateway
 
 The following configuration options are available for OPA integration::
 
@@ -36,10 +33,9 @@ The following configuration options are available for OPA integration::
      rgw opa token = {opa bearer token}
      rgw opa verify ssl = {verify opa server ssl certificate}
 
-.. How does the RGW-OPA integration work
-
 RGW-OPA 是如何对接的
 ====================
+.. How does the RGW-OPA integration work
 
 After a user is authenticated, OPA can be used to check if the user is authorized
 to perform the given action on the resource. OPA responds with an allow or deny

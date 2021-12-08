@@ -1,8 +1,7 @@
-.. Deploying Metadata Servers
-
 ==================
  部署元数据服务器
 ==================
+.. Deploying Metadata Servers
 
 Each CephFS file system requires at least one MDS. The cluster operator will
 generally use their automated deployment tool to launch required MDS servers as
@@ -13,10 +12,9 @@ may be run by the deployment technology if executed on bare-metal.
 关于元数据服务器的配置，见 `MDS 配置参考`_\ 。
 
 
-.. Provisioning Hardware for an MDS
-
 为 MDS 准备硬件
 ===============
+.. Provisioning Hardware for an MDS
 
 The present version of the MDS is single-threaded and CPU-bound for most
 activities, including responding to client requests. An MDS under the most
@@ -63,10 +61,9 @@ use available hardware within certain limits.  For the MDS, this generally
 means limiting its cache size.
 
 
-.. Adding an MDS
-
 增加一个 MDS
 ============
+.. Adding an MDS
 
 #. Create an mds data point ``/var/lib/ceph/mds/ceph-${id}``. The daemon only uses this directory to store its keyring.
 
@@ -87,10 +84,9 @@ means limiting its cache size.
     $ ceph config set mds.${id} mds_join_fs ${fs}
 
 
-.. Removing an MDS
-
 删除一个 MDS
 ============
+.. Removing an MDS
 
 If you have a metadata server in your cluster that you'd like to remove, you may use
 the following method.

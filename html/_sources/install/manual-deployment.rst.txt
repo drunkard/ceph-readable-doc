@@ -304,8 +304,8 @@ Ceph 软件包提供了 ``ceph-volume`` 工具，可为 Ceph 准备好逻辑卷�
 此工具把后面将提到的\ `细致型`_\ 里面的步骤都自动化了。
 为按照精简型创建前两个 OSD ，为各 OSD 执行下列命令：
 
-bluestore
-^^^^^^^^^
+bluestore 后端
+^^^^^^^^^^^^^^
 #. 创建 OSD 。 ::
 
 	copy /var/lib/ceph/bootstrap-osd/ceph.keyring from monitor node (mon-node1) to /var/lib/ceph/bootstrap-osd/ceph.keyring on osd node (osd-node1)
@@ -345,8 +345,8 @@ bluestore
 	sudo ceph-volume lvm activate 0 a7f64266-0894-4f1e-a635-d0aeaca0e993
 
 
-filestore
-^^^^^^^^^
+filestore 后端
+^^^^^^^^^^^^^^
 #. 创建 OSD 。 ::
 
 	ssh {node-name}

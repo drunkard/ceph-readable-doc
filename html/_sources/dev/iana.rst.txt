@@ -1,21 +1,17 @@
-.. IANA Numbers
-
 IANA 号
 =======
 
-.. Private Enterprise Number (PEN) Assignment
-
 私有企业号（ PEN ）分配情况
 ---------------------------
+.. Private Enterprise Number (PEN) Assignment
 
 50495
 
 组织 ``Ceph`` 。
 
-.. Port number (monitor)
-
 端口号（监视器）
 ----------------
+.. Port number (monitor)
 
 3300
 

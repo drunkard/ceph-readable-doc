@@ -1,18 +1,16 @@
-.. Bucket Policies
-
 ========
  桶策略
 ========
+.. Bucket Policies
 
 .. versionadded:: Luminous
 
 Ceph 对象网关支持部分 Amazon S3 桶策略语义。
 
 
-.. Creation and Removal
-
 创建和删除
 ==========
+.. Creation and Removal
 
 桶策略可通过标准的 S3 操作管理，而不是用 radosgw-admin 。
 
@@ -35,10 +33,9 @@ Ceph 对象网关支持部分 Amazon S3 桶策略语义。
   $ s3cmd delpolicy s3://happybucket
 
 
-.. Limitations
-
 限制
 ====
+.. Limitations
 
 现在，我们只支持如下操作：
 
@@ -123,18 +120,19 @@ ID 用。
 
 对于桶和对象请求，我们支持特定的 s3 条件关键字。
 
+
 .. versionadded:: Mimic
-.. Bucket Related Operations
 
 与桶相关的操作
 ~~~~~~~~~~~~~~
+.. Bucket Related Operations
 
 +-----------------------+----------------------+----------------+
 | 权限                  | 条件关键字           | 注释           |
 +-----------------------+----------------------+----------------+
 |                       | s3:x-amz-acl         |                |
 |                       | s3:x-amz-grant-<perm>|                |
-|s3:createBucket        | where perm is one of |                |
+| s3:createBucket       | where perm is one of |                |
 |                       | read/write/read-acp  |                |
 |                       | write-acp/           |                |
 |                       | full-control         |                |
@@ -149,11 +147,12 @@ ID 用。
 |                       | s3:x-amz-grant-<perm>|                |
 +-----------------------+----------------------+----------------+
 
-.. Object Related Operations
+
 .. _tag_policy:
 
 与对象相关的操作
 ~~~~~~~~~~~~~~~~
+.. Object Related Operations
 
 +-----------------------------+-----------------------------------------------+-------------------+
 | 权限                        | 条件关键字                                    | 注释              |

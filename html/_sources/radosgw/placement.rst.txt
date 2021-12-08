@@ -228,8 +228,7 @@ A custom placement target can be added to the ``api_name`` following a colon:
 Swift Bucket Placement
 ----------------------
 
-When creating a bucket with the Swift protocol, a placement target can be
-provided in the HTTP header ``X-Storage-Policy``:
+用 Swift 协议创建桶时，可以用 HTTP 头的 ``X-Storage-Policy`` 设置归置靶。
 
 ::
 

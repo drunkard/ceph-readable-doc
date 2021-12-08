@@ -80,8 +80,7 @@ credentials create`` command::
   | user_id    | 7ecbebaffeabbddeadbeefa23267cc24                                                                                                            |
   +------------+---------------------------------------------------------------------------------------------------------------------------------------------+
 
-The thus-generated access and secret key can then be used for S3 API
-access to radosgw.
+那样生成的访问密钥和私钥稍后可以用来访问 S3 API 的 radosgw 。
 
 .. note:: Consider that most production radosgw deployments
           authenticating against OpenStack Keystone are also set up

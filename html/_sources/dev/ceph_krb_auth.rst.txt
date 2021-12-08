@@ -1,7 +1,6 @@
 =========================================
  如何配置好 Ceph Kerberos 认证的详细文档
 =========================================
-.. A Detailed Documentation on How to Set up Ceph Kerberos Authentication
 
 This document provides details on the Kerberos authorization protocol. This is
 the 1st draft and we will try to keep it updated along with code changes that
@@ -21,7 +20,6 @@ Please, provide feedback to Daniel Oliveira (doliveira@suse.com)
 
 背景知识
 --------
-.. Background
 
 Before we get into *Kerberos details*, let us define a few terms so we can
 understand what to expect from it, *what it can and can't do*:

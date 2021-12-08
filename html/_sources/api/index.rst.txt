@@ -5,7 +5,7 @@
 Ceph RESTful API
 ================
 
-See :ref:`mgr ceph api`.
+见 :ref:`mgr ceph api` 。
 
 
 Ceph 存储集群 API
@@ -29,7 +29,7 @@ Ceph 块设备 API
 Ceph RADOS 网关 APIs
 ====================
 
-See :ref:`radosgw api`
+见 :ref:`radosgw api` 。
 
 
 Ceph 对象存储 API

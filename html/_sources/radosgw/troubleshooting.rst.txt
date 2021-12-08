@@ -1,14 +1,11 @@
-.. Troubleshooting
-
 ==========
  故障排除
 ==========
 
 
-.. The Gateway Won't Start
-
 网关启不起来
 ============
+.. The Gateway Won't Start
 
 If you cannot start the gateway (i.e., there is no existing ``pid``), 
 check to see if there is an existing ``.asok`` file from another 
@@ -29,10 +26,9 @@ can provide some insight as to what could be the issue::
   /etc/init.d radosgw start --verbose
 
 
-.. HTTP Request Errors
-
 HTTP 请求错误
 =============
+.. HTTP Request Errors
 
 Examining the access and error logs for the web server itself is
 probably the first step in identifying what is going on.  If there is
@@ -42,10 +38,9 @@ configured, and that the web server is looking for it in the proper
 location.
 
 
-.. Crashed ``radosgw`` process
-
 ``radosgw`` 进程崩溃
 ====================
+.. Crashed ``radosgw`` process
 
 如果 ``radosgw`` 进程挂了，一般会看到网页服务器（ apache 、 nginx \
 等）返回 500 错误，这种情况下，只要重启 radosgw 就能恢复服务。
@@ -54,10 +49,9 @@ location.
 文件（如果生成了）。
 
 
-.. Blocked ``radosgw`` Requests
-
 阻塞的 ``radosgw`` 请求
 =======================
+.. Blocked ``radosgw`` Requests
 
 如果某些（或者所有） radosgw 请求被阻塞了，你可以通过管理\
 套接字深入了解 ``radosgw`` 守护进程的内部状态。默认情况下，\
@@ -134,10 +128,9 @@ location.
 的响应。
 
 
-.. Java S3 API Troubleshooting
-
 Java S3 API 故障排除
 ====================
+.. Java S3 API Troubleshooting
 
 
 Peer Not Authenticated

@@ -1,8 +1,7 @@
-.. Block Device Quick Start
-
 ============
  块设备入门
 ============
+.. Block Device Quick Start
 
 开始用 :term:`Ceph 块设备`\ 之前，先确认 :term:`Ceph 存储集群`\
 处于 ``active + clean`` 状态。
@@ -19,29 +18,24 @@
            \------------------/         \----------------/
 
 
-你可以在虚拟机上运行 ``ceph-client`` 节点，但是不能在与 Ceph
-存储集群（除非它们也用 VM ）相同的物理节点上执行下列步骤。\
-详情见 `FAQ`_ 。
+你可以在虚拟机上运行 ``ceph-client`` 节点，但是不能在与 Ceph 存储集群
+（除非它们也用 VM ）相同的物理节点上执行下列步骤。详情见 `FAQ`_ 。
 
-
-.. Create a Block Device Pool
 
 创建一个块设备存储池
 ====================
+.. Create a Block Device Pool
 
-#. 在管理节点上，用 ``ceph`` 工具来\ `创建一个存储池`_\ （我们\
-   建议以 rbd 为名）；
+#. 在管理节点上，用 ``ceph`` 工具来\ `创建一个存储池`_\ （我们建议以 rbd 为名）；
 
-#. 在管理节点上，用 ``rbd`` 工具来初始化新建的存储池，这样才能\
-   用作 RBD::
+#. 在管理节点上，用 ``rbd`` 工具来初始化新建的存储池，这样才能用作 RBD::
 
         rbd pool init <pool-name>
 
 
-.. Configure a Block Device
-
 配置块设备
 ==========
+.. Configure a Block Device
 
 #. 在 ``ceph-client`` 节点上创建一个块设备映像。 ::
 

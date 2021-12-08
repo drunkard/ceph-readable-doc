@@ -113,10 +113,9 @@ for each bucket.
                     auth_region, NULL, 0, &listServiceHandler, &header_printed);
 
 
-.. Creating a Bucket
-
 创建一个桶
 ----------
+.. Creating a Bucket
 
 这里创建一个新桶。
 
@@ -125,14 +124,12 @@ for each bucket.
 	S3_create_bucket(S3ProtocolHTTP, access_key, secret_key, NULL, host, sample_bucket, S3CannedAclPrivate, NULL, NULL, &responseHandler, NULL);
 
 
-.. Listing a Bucket's Content
-
 罗列一个桶的内容
 ----------------
+.. Listing a Bucket's Content
 
-This gets a list of objects in the bucket.
-This also prints out each object's name, the file size, and
-last modified date.
+获取桶里对象的列表。
+它也会打印出各个对象的名字、文件尺寸、和最后修改日期。
 
 .. code-block:: cpp
 
@@ -247,10 +244,9 @@ This creates a file ``hello.txt``.
 	fclose(data.infile);
 
 
-.. Download an Object (to a file)
-
 下载一个对象（到一文件）
 ------------------------
+.. Download an Object (to a file)
 
 This downloads a file and prints the contents.
 

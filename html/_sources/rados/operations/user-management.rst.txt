@@ -95,11 +95,11 @@ wherever possible.
 ------------
 .. Authorization (Capabilities)
 
-Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
-的授权，这样才能使用监视器、 OSD 、和元数据服务器的功能。能力\
-也用于限制对一存储池内的数据、存储池内某个名字空间、或由\
-应用标签所标识的一系列存储池的访问。 Ceph 的管理用户可在创建或\
-更新某用户时赋予他能力。
+Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户的授权，
+这样才能使用监视器、 OSD 、和元数据服务器的功能。
+能力也用于限制对一存储池内的数据、存储池内某个名字空间、
+或由应用标签所标识的一系列存储池的访问。
+Ceph 的管理用户可在创建或更新某用户时赋予他能力。
 
 能力的语法符合下面的形式： ::
 
@@ -121,9 +121,8 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
   仅限于从这个网络连接过来的客户端。
 
 - **OSD 能力：** OSD 能力包括 ``r`` 、 ``w`` 、 ``x`` 、 \
-  ``class-read`` 、 ``class-write`` 访问选项和
-  ``profile {name}`` 。另外， OSD 能力还支持存储池和命名空间\
-  的配置。 ::
+  ``class-read`` 、 ``class-write`` 访问选项和 ``profile {name}`` 。
+  另外， OSD 能力还支持存储池和命名空间的配置。 ::
 
         osd 'allow {access-spec} [{match-spec}] [network {network/prefix}]'
 
@@ -174,9 +173,8 @@ Ceph 用能力（ capabilities, caps ）这个术语来描述给已认证用户\
 
         = | prefix | regex
 
-- **元数据服务器能力：** 对于管理员，设置 ``allow *`` 。对于\
-  其它的所有用户，如 CephFS 客户端，参考
-  :doc:`/cephfs/client-auth` 。
+- **元数据服务器能力：** 对于管理员，设置 ``allow *`` 。
+  对于其它的所有用户，如 CephFS 客户端，参考 :doc:`/cephfs/client-auth` 。
 
 .. note:: Ceph 对象网关守护进程（ ``radosgw`` ）是 Ceph 存储\
    集群的一种客户端，所以它没被表示成一种独立的 Ceph 存储集群\
@@ -378,10 +376,9 @@ use a namespace. **Note:** Only available using ``librados`` at this time.
 客户端，以便加入他们的密钥环。详情见\ `密钥环管理`_\ 。
 
 
-.. List Users
-
 罗列用户
 --------
+.. List Users
 
 罗列集群内的用户，用下列命令： ::
 
@@ -490,11 +487,11 @@ are often restricted to accessing a particular pool. ::
    所有存储池！
 
 
-.. Modify User Capabilities
 .. _modify-user-capabilities:
 
 更改用户能力
 ------------
+.. Modify User Capabilities
 
 ``ceph auth caps`` 命令可以用来修改指定用户的能力。设置新能力\
 时会覆盖当前能力。查看用户当前的能力可以用 \
@@ -513,10 +510,9 @@ are often restricted to accessing a particular pool. ::
 关于能力的更多信息请参考\ `授权（能力）`_\ 。
 
 
-.. Delete a User
-
 删除用户
 --------
+.. Delete a User
 
 要删除一用户，用 ``ceph auth del`` 命令： ::
 
@@ -526,10 +522,9 @@ are often restricted to accessing a particular pool. ::
 之一， ``{ID}`` 是用户名或守护进程的 ID 。
 
 
-.. Print a User's Key
-
 查看用户密钥
 ------------
+.. Print a User's Key
 
 To print a user's authentication key to standard output, execute the following::
 
@@ -544,10 +539,9 @@ software with a user's key  (e.g., libvirt). ::
 	mount -t ceph serverhost:/ mountpoint -o name=client.user,secret=`ceph auth print-key client.user`
 
 
-.. Import a User(s)
-
 导入用户
 --------
+.. Import a User(s)
 
 要导入一个或多个用户，可以用 ``ceph auth import`` 命令，并指定\
 一个密钥环： ::
@@ -562,10 +556,9 @@ software with a user's key  (e.g., libvirt). ::
    更新已有的用户们、他们的密钥和他们的能力。
 
 
-.. Keyring Management
-
 密钥环管理
 ==========
+.. Keyring Management
 
 When you access Ceph via a Ceph client, the Ceph client will look for a local
 keyring. Ceph presets the ``keyring`` setting with the following four keyring
@@ -629,10 +622,9 @@ that you execute ``chown`` or ``chmod`` to establish appropriate keyring
 ownership and access.
 
 
-.. Add a User to a Keyring
-
 把用户加入密钥环
 ----------------
+.. Add a User to a Keyring
 
 当你在 Ceph 存储集群中\ `创建用户`_\ 后，你可以用\ `获取用户`_\ 里面的方法获取此用\
 户、及其密钥、能力，并存入一个密钥环文件。
@@ -652,10 +644,9 @@ For example::
 	sudo ceph-authtool /etc/ceph/ceph.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
 
 
-.. Create a User
-
 创建用户
 --------
+.. Create a User
 
 Ceph provides the `创建用户`_ function to create a user directly in the Ceph
 Storage Cluster. However, you can also create a user, keys and capabilities
@@ -678,10 +669,9 @@ the new user to the Ceph Storage Cluster. ::
 	sudo ceph auth add client.ringo -i /etc/ceph/ceph.keyring
 
 
-.. Modify a User
-
 修改用户属性
 ------------
+.. Modify a User
 
 To modify the capabilities of a user record in a keyring, specify the keyring,
 and the user followed by the capabilities. For example::

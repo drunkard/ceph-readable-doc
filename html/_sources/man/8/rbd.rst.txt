@@ -17,9 +17,10 @@
 描述
 ====
 
-**rbd** 是个修改 rados 块设备（ RBD ）映像的工具， QEMU/KVM
-通过 Linux 内核驱动和 rbd 存储驱动使用 RBD 。 RBD 映像是简单\
-的块设备，它被条带化成小块对象后存储于 RADOS 对象存储集群，\
+**rbd** 是个修改 rados 块设备（ RBD ）映像的工具，
+QEMU/KVM 通过 Linux 内核驱动和 rbd 存储驱动使用 RBD 。
+RBD 映像是简单的块设备，
+它被条带化成小块对象后存储于 RADOS 对象存储集群，
 条带化后的对象尺寸必须是 2 的幂。
 
 
@@ -59,14 +60,15 @@
 
    选择用哪个对象布局，默认为 2 。
 
-   * format 1 - （已废弃）新建 rbd 映像时使用最初的格式。此\
-     格式兼容所有版本的 librbd 和内核模块，但是不支持较新的\
-     功能，像克隆。
+   * format 1 - （已废弃）新建 rbd 映像时使用最初的格式。
+     此格式兼容所有版本的 librbd 和内核模块，
+     但是不支持较新的功能，像克隆。
 
    * format 2 - 使用第二 rbd 格式， librbd 从 Bobtail 版起、\
-     内核版本在 3.10 以上（ fancy 条带化功能除外， 4.17 的内核\
-     才支持）的内核 rbd 模块才支持此格式。此格式增加了克隆\
-     支持，使得将来扩展新功能更容易。
+     内核版本在 3.10 以上（ fancy 条带化功能除外，
+     4.17 的内核才支持）的内核 rbd 模块才支持此格式。
+     此格式增加了克隆支持，
+     使得将来扩展新功能更容易。
 
 .. option:: -s size-in-M/G/T, --size size-in-M/G/T
 
@@ -86,7 +88,8 @@
 
 .. option:: --stripe-count num
 
-   条带化要至少跨越多少对象才能转回第一个。详情见条带化一节。
+   条带化要至少跨越多少对象才能转回第一个。
+   详情见条带化一节。
 
 .. option:: --snap snap
 
@@ -98,20 +101,23 @@
 
 .. option:: --keyring filename
 
-   因 map 命令所需，指定一个用户及其密钥文件。如果未指定，从默\
-   认密钥环里找。
+   因 map 命令所需，
+   指定一个用户及其密钥文件。
+   如果未指定，从默认密钥环里找。
 
 .. option:: --keyfile filename
 
-   因 map 命令所需，给 ``--id user`` 用户指定一个包含密钥的文\
-   件。如果同时指定了 ``--keyring`` 选项，本选项就会被覆盖。
+   因 map 命令所需，给 ``--id user`` 用户指定一个包含密钥的文件。
+   如果同时指定了 ``--keyring`` 选项，本选项就会被覆盖。
 
 .. option:: --shared lock-tag
 
-   `lock add` 命令的选项，它允许使用同一标签的多个客户端同时锁\
-   住同一映像。标签是任意字符串。当某映像必须从多个客户端同时\
-   打开时，此选项很有用，像迁移活动虚拟机时、或者在集群文件系\
-   统下使用时。
+   `lock add` 命令的选项，它允许使用同一标签的多个客户端\
+   同时锁住同一映像。标签是任意字符串。
+   当某映像必须从多个客户端同时打开时，
+   此选项很有用，
+   像迁移活动虚拟机时、
+   或者在集群文件系统下使用时。
 
 .. option:: --format format
 
@@ -124,8 +130,9 @@
 .. option:: -o krbd-options, --options krbd-options
 
    通过 rbd 内核驱动映射或取消映射某一映像时指定的选项。
-   krbd-options 是逗号分隔的一系列选项（类似于 mount(8) 的挂载\
-   选项）。详情见下面的内核 rbd (krbd) 选项一段。
+   krbd-options 是逗号分隔的一系列选项
+   （类似于 mount(8) 的挂载选项）。
+   详情见下面的内核 rbd (krbd) 选项一段。
 
 .. option:: --read-only
 
@@ -133,8 +140,9 @@
 
 .. option:: --image-feature feature-name
 
-   创建格式 2 的 RBD 映像时，指定要启用哪些功能。想要启用多个\
-   功能的话，可以多次重复使用此选项。当前支持下列功能：
+   创建格式 2 的 RBD 映像时，指定要启用哪些功能。
+   想要启用多个功能的话，可以多次重复使用此选项。
+   当前支持下列功能：
 
    * layering: 支持分层
    * striping: 支持条带化 v2
@@ -147,15 +155,17 @@
 
 .. option:: --image-shared
 
-   指定该映像将被多个客户端同时使用。此选项将禁用那些依赖于独\
-   占所有权的功能。
+   指定该映像将被多个客户端同时使用。
+   此选项将禁用那些依赖于独占所有权的功能。
 
 .. option:: --whole-object
 
-   把 diff 操作范围限定在完整的对象条带级别，而非对象内差异。\
-   当某一映像启用了 object-map 功能时，把 diff 操作限定到对象\
-   条带会显著地提高性能，因为通过检查驻留于内存中的对象映射就\
-   可以计算出差异，而无需针对映像内的各个对象查询 RADOS 。
+   把 diff 操作范围限定在完整的对象条带级别，
+   而非对象内差异。
+   当某一映像启用了 object-map 功能时，
+   把 diff 操作限定到对象条带会显著地提高性能，
+   因为通过检查驻留于内存中的对象映射就可以计算出差异，
+   而无需针对映像内的各个对象查询 RADOS 。
 
 .. option:: --limit
 
@@ -180,12 +190,13 @@
   只适用于 format 2 。
 
 :command:`clone` [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*] [--image-shared] *parent-snap-spec* *child-image-spec*
-  创建一个父快照的克隆品（写时复制子映像）。若不指定，对象尺\
-  寸将与父映像完全一样。尺寸和父快照一样。参数 --stripe-unit
-  和 --stripe-count 是可选的，但必须同时使用。
+  创建一个父快照的克隆品（写时复制子映像）。
+  若不指定，对象尺寸将与父映像完全一样。
+  尺寸和父快照一样。
+  参数 --stripe-unit 和 --stripe-count 是可选的，但必须同时使用。
 
-  父快照必须已被保护（见 `rbd snap protect` ）。 format 2 格式\
-  的映像才支持。
+  父快照必须已被保护（见 `rbd snap protect` ）。
+  format 2 格式的映像才支持。
 
 :command:`config global get` *config-entity* *key*
   Get a global-level configuration override.
@@ -224,9 +235,10 @@
   Remove a pool-level configuration override.
 
 :command:`cp` (*src-image-spec* | *src-snap-spec*) *dest-image-spec*
-  把源映像内容复制进新建的目标映像，目标映像和源映像\
-  将有相同的尺寸、对象尺寸和映像格式。
-  注意：它的快照没有复制，用 `deep cp` 命令包含快照。
+  把源映像内容复制进新建的目标映像，
+  目标映像和源映像将有相同的尺寸、对象尺寸和映像格式。
+  注意：它的快照没有复制，
+  用 `deep cp` 命令包含快照。
 
 :command:`create` (-s | --size *size-in-M/G/T*) [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--thick-provision] [--no-progress] [--image-feature *feature-name*]... [--image-shared] *image-spec*
   新建一个 rbd 映像。还必须用 --size 指定尺寸。 --strip-unit 和
@@ -244,18 +256,19 @@
   设备。
 
 :command:`device map` [-t | --device-type *device-type*] [--cookie *device-cookie*] [--show-cookie] [--read-only] [--exclusive] [-o | --options *device-options*] *image-spec* | *snap-spec*
-  把指定映像通过 rbd 内核模块映射成一个块设备（默认的）、或\
-  其它支持的设备（ Linux 上的 *nbd* 或 FreeBSD 上的 *ggate* ）。
+  把指定映像通过 rbd 内核模块映射成一个块设备（默认的）、
+  或其它支持的设备
+  （ Linux 上的 *nbd* 或 FreeBSD 上的 *ggate* ）。
 
-  --options 参数是个逗号分隔的特定于某类型设备的一系列选项（
-  opt1,opt2=val,... ）。
+  --options 参数是个逗号分隔的特定于某类型设备的一系列选项
+  （ opt1,opt2=val,... ）。
 
 :command:`device unmap` [-t | --device-type *device-type*] [-o | --options *device-options*] *image-spec* | *snap-spec* | *device-path*
-  断开块设备映射，之前通过 rbd 内核模块映射的（默认的）、或\
-  其它支持的设备。
+  断开块设备映射，之前通过 rbd 内核模块映射的（默认的）、
+  或其它支持的设备。
 
-  --options 参数是个逗号分隔的特定于某类型设备的一系列选项（
-  opt1,opt2=val,... ）。
+  --options 参数是个逗号分隔的特定于某类型设备的一系列选项
+  （ opt1,opt2=val,... ）。
 
 :command:`device attach` [-t | --device-type *device-type*] --device *device-path* [--cookie *device-cookie*] [--show-cookie] [--read-only] [--exclusive] [--force] [-o | --options *device-options*] *image-spec* | *snap-spec*
   Attach the specified image to the specified block device (currently only
@@ -274,13 +287,15 @@
   specific options (opt1,opt2=val,...).
 
 :command:`diff` [--from-snap *snap-name*] [--whole-object] *image-spec* | *snap-spec*
-  打印出从指定快照点起、或从映像创建点起，映像内的变动区域。\
-  输出的各行都包含起始偏移量（按字节）、数据块长度（按字节）、\
-  还有 zero 或 data ，用来指示此范围以前是 0 还是其它数据。
+  打印出从指定快照点起、或从映像创建点起，映像内的变动区域。
+  输出的各行都包含起始偏移量（按字节）、
+  数据块长度（按字节）、还有 zero 或 data ，
+  用来指示此范围以前是 0 还是其它数据。
 
 :command:`du` [-p | --pool *pool-name*] [*image-spec* | *snap-spec*] [--merge-snapshots]
-  会计算指定存储池内所有映像及其相关快照的磁盘使用量，包括\
-  分配的和实际使用的。此命令也可用于单个映像和快照。
+  会计算指定存储池内所有映像及其相关快照的磁盘使用量，
+  包括分配的和实际使用的。
+  此命令也可用于单个映像和快照。
 
   如果 RBD 映像的 fast-diff 特性没启用，本操作就需要向各个 OSD
   挨个查询此映像涉及的每个潜在对象。
@@ -297,26 +312,29 @@
 :command:`export` [--export-format *format (1 or 2)*] (*image-spec* | *snap-spec*) [*dest-path*]
   把映像导出到目的路径，用 - （短线）输出到标准输出。
   --export-format 现在只认 '1' 或 '2' 。格式 2 不仅允许我们导\
-  出映像内容，还可以导出快照和其它属性，如 image_order 、功能\
-  标志。
+  出映像内容，还可以导出快照和其它属性，如 image_order 、功能标志。
 
 :command:`export-diff` [--from-snap *snap-name*] [--whole-object] (*image-spec* | *snap-spec*) *dest-path*
-  导出一映像的增量差异，用-导出到标准输出。若给了起始快照，就\
-  只包含与此快照的差异部分；否则包含映像的所有数据部分；结束\
-  快照用 --snap 选项或 @snap （见下文）指定。此映像的差异格式\
-  包含了映像尺寸变更的元数据、起始和结束快照，它高效地表达了\
-  被忽略或映像内的全 0 区域。
+  导出一映像的增量差异，用-导出到标准输出。
+  若给了起始快照，就只包含与此快照的差异部分；
+  否则包含映像的所有数据部分；
+  结束快照用 --snap 选项或 @snap （见下文）指定。
+  此映像的差异格式包含了映像尺寸变更的元数据、起始和结束快照，
+  它高效地表达了被忽略或映像内的全 0 区域。
 
 :command:`feature disable` *image-spec* *feature-name*...
-  禁用指定镜像的某些功能，可以一次指定多个功能。
+  禁用指定镜像的某些功能，
+  可以一次指定多个功能。
 
 :command:`feature enable` *image-spec* *feature-name*...
-  启用指定镜像的某些功能，可以一次指定多个功能。
+  启用指定镜像的某些功能，
+  可以一次指定多个功能。
 
 :command:`flatten` *image-spec*
-  如果映像是个克隆品，就从父快照拷贝所有共享块，并使子快照独立\
-  于父快照、切断父子快照间的链接。如果没有克隆品引用此父快照\
-  了，就可以取消保护并删除。
+  如果映像是个克隆品，就从父快照拷贝所有共享块，
+  并使子快照独立于父快照、切断父子快照间的链接。
+  如果没有克隆品引用此父快照了，
+  就可以取消保护并删除。
 
   只适用于 format 2 。
 
@@ -369,25 +387,27 @@
   设置指定元数据关键字的值，会显示在 `metadata-list` 中。
 
 :command:`import` [--export-format *format (1 or 2)*] [--image-format *format-id*] [--object-size *size-in-B/K/M*] [--stripe-unit *size-in-B/K/M* --stripe-count *num*] [--image-feature *feature-name*]... [--image-shared] *src-path* [*image-spec*]
-  创建一映像，并从目的路径导入数据，用 - （短线）从标准输入导\
-  入。如果可能的话，导入操作会试着创建稀疏映像。如果从标准输入\
-  导入，稀疏化单位将是目标映像的数据块尺寸（即对象尺寸）。
+  创建一映像，并从目的路径导入数据，用 - （短线）从标准输入导入。
+  如果可能的话，导入操作会试着创建稀疏映像。
+  如果从标准输入导入，稀疏化单位将是目标映像的数据块尺寸
+  （即对象尺寸）。
 
-  参数 --stripe-unit 和 --stripe-count 是可选的，但必须同时使用。
+  参数 --stripe-unit 和 --stripe-count 是可选的，
+  但必须同时使用。
 
   --export-format 现在只认 '1' 或 '2' 。格式 2 不仅允许我们导\
-  出映像内容，还可以导出快照和其它属性，如 image_order 、功能\
-  标志。
+  出映像内容，还可以导出快照和其它属性，如 image_order 、功能标志。
 
 :command:`import-diff` *src-path* *image-spec*
-  导入一映像的增量差异并应用到当前映像。如果此差异是在起始快照\
-  基础上生成的，我们会先校验那个已存在快照再继续；如果指定了结\
-  束快照，我们先检查它是否存在、再应用变更，结束后再创建结束快\
-  照。
+  导入一映像的增量差异并应用到当前映像。
+  如果此差异是在起始快照基础上生成的，我们会先校验那个已存在快照再继续；
+  如果指定了结束快照，我们先检查它是否存在、再应用变更，
+  结束后再创建结束快照。
 
 :command:`info` *image-spec* | *snap-spec*
-  显示指定 rbd 映像的信息（如大小和对象尺寸）。若映像是克隆\
-  品，会显示相关父快照；若指定了快照，会显示是否被保护。
+  显示指定 rbd 映像的信息（如大小和对象尺寸）。
+  若映像是克隆品，会显示相关父快照；
+  若指定了快照，会显示是否被保护。
 
 :command:`journal client disconnect` *journal-spec*
   把映像日志客户端标记为连接已断。
@@ -414,16 +434,20 @@
   展示映像日志的状态。
 
 :command:`lock add` [--shared *lock-tag*] *image-spec* *lock-id*
-  为映像加锁，锁标识是用户一己所好的任意名字。默认加的是互斥\
-  锁，也就是说如果已经加过锁的话此命令会失败； --shared 选项\
-  会改变此行为。注意，加锁操作本身不影响除加锁之外的任何操作，\
-  也不会保护对象、防止它被删除。
+  为映像加锁，锁标识是用户一己所好的任意名字。
+  默认加的是互斥锁，也就是说如果已经加过锁的话此命令会失败；
+  --shared 选项会改变此行为。
+  注意，加锁操作本身不影响除加锁之外的任何操作，
+  也不会保护对象、
+  防止它被删除。
 
 :command:`lock ls` *image-spec*
-  显示锁着映像的锁，第一列是 `lock remove` 可以使用的锁名。
+  显示锁着映像的锁，
+  第一列是 `lock remove` 可以使用的锁名。
 
 :command:`lock rm` *image-spec* *lock-id* *locker*
-  释放映像上的锁。锁标识和其持有者来自 lock ls 。
+  释放映像上的锁。
+  锁标识和其持有者来自 lock ls 。
 
 :command:`ls` [-l | --long] [*pool-name*]
   列出 rbd_directory 对象中的所有 rbd 映像。\
@@ -572,14 +596,16 @@
   核验对象映射图是否正确。
 
 :command:`object-map rebuild` *image-spec* | *snap-spec*
-  为指定映像重建无效的对象映射关系。指定映像快照时，将为此快照\
-  重建无效的对象映射关系。
+  为指定映像重建无效的对象映射关系。指定映像快照时，
+  将为此快照重建无效的对象映射关系。
 
 :command:`pool init` [*pool-name*] [--force]
-  初始化用于 RBD 的存储池。新建的存储池必须先初始化才能使用。
+  初始化用于 RBD 的存储池。
+  新建的存储池必须先初始化才能使用。
 
 :command:`resize` (-s | --size *size-in-M/G/T*) [--allow-shrink] *image-spec*
-  rbd 大小调整。尺寸参数必须指定； --allow-shrink 选项允许缩小。
+  rbd 大小调整。尺寸参数必须指定；
+  --allow-shrink 选项允许缩小。
 
 :command:`rm` *image-spec*
   删除一 rbd 映像，包括所有数据块。如果此映像有快照，\
@@ -589,7 +615,8 @@
   新建一快照。需指定快照名。
 
 :command:`snap limit clear` *image-spec*
-  清除先前设置的映像所允许的快照数量上限。
+  清除先前设置的映像所允许的\
+  快照数量上限。
 
 :command:`snap limit set` [--limit] *limit* *image-spec*
   设置一个映像所允许的快照数量上限。
@@ -598,8 +625,9 @@
   列出一映像内的快照。
 
 :command:`snap protect` *snap-spec*
-  保护快照，防删除，这样才能从它克隆（见 `rbd clone` ）。做克\
-  隆前必须先保护快照，保护意味着克隆出的子快照依赖于此快照。 \
+  保护快照，防删除，这样才能从它克隆（见 `rbd clone` ）。
+  做克隆前必须先保护快照，
+  保护意味着克隆出的子快照依赖于此快照。
   `rbd clone` 不能在未保护的快照上操作。
 
   只适用于 format 2 。
@@ -614,8 +642,8 @@
   删除指定快照。
 
 :command:`snap rollback` *snap-spec*
-  把指定映像回滚到快照。此动作会递归整个块阵列，并把数据头内容\
-  更新到快照版本。
+  把指定映像回滚到快照。此动作会递归整个块阵列，
+  并把数据头内容更新到快照版本。
 
 :command:`snap unprotect` *snap-spec*
   取消对快照的保护（撤销 `snap protect` ）。如果还有克隆出的\
@@ -625,9 +653,10 @@
   只适用于 format 2 。
 
 :command:`sparsify` [--sparse-size *sparse-size*] *image-spec*
-  回收已被清零的映像条带所占的空间。默认的稀疏尺寸为
-  4096 字节，可用 --sparse-size 选项更改，但有这些限制条件：\
-  它应该是 2 幂、不小于 4096 、且不大于映像的对象尺寸。
+  回收已被清零的映像条带所占的空间。
+  默认的稀疏尺寸为 4096 字节，可用 --sparse-size 选项更改，
+  但有这些限制条件：它应该是 2 幂、不小于 4096 、
+  且不大于映像的对象尺寸。
 
 :command:`status` *image-spec*
   显示映像状态，包括哪个客户端打开着它。
@@ -636,8 +665,8 @@
   罗列垃圾桶内的所有条目。
 
 :command:`trash mv` *image-spec*
-  把映像移入垃圾桶。所有映像，包括正被克隆件引用的，都能被移入\
-  垃圾桶，而后删除。
+  把映像移入垃圾桶。所有映像，包括正被克隆件引用的，
+  都能被移入垃圾桶，而后删除。
 
 :command:`trash purge` [*pool-name*]
   删除垃圾桶内所有过期的映像。
@@ -646,8 +675,9 @@
   从垃圾桶恢复一个映像。
 
 :command:`trash rm` *image-id* 
-  从垃圾桶删除一个映像。如果映像的延期时间尚未满，那就不能\
-  删除，除非强删。但是正被克隆件引用的、或还有快照的删不掉。
+  从垃圾桶删除一个映像。如果映像的延期时间尚未满，
+  那就不能删除，除非强删。但是正被克隆件引用的、
+  或还有快照的删不掉。
 
 :command:`trash purge schedule add` [-p | --pool *pool*] [--namespace *namespace*] *interval* [*start-time*]
   Add trash purge schedule.
@@ -665,10 +695,9 @@
   盯着有关此映像的事件。
 
 
-.. Image, snap, group and journal specs
-
 映像、快照、组和日志的名称规范
 ==============================
+.. Image, snap, group and journal specs
 
 | *image-spec*      is [*pool-name*/[*namespace-name*/]]\ *image-name*
 | *snap-spec*       is [*pool-name*/[*namespace-name*/]]\ *image-name*\ @\ *snap-name*
@@ -676,9 +705,8 @@
 | *group-snap-spec* is [*pool-name*/[*namespace-name*/]]\ *group-name*\ @\ *snap-name*
 | *journal-spec*    is [*pool-name*/[*namespace-name*/]]\ *journal-name*
 
-*pool-name* 的默认值是 rbd 、 *namespace-name* 默认是 "" （\
-为空）。如果某个映像名包含斜杠字符（ / ），那么还必须指定
-*pool-name* 。
+*pool-name* 的默认值是 rbd 、 *namespace-name* 默认是 "" （为空）。
+如果某个映像名包含斜杠字符（ / ），那么还必须指定 *pool-name* 。
 
 *journal-name* 是 *image-id* 。
 
@@ -686,27 +714,24 @@
 指定各个名字，但是不鼓励这样用，大家还是倾向于上面的规范语法。
 
 
-.. Striping
-
 条带化
 ======
+.. Striping
 
-RBD 映像被条带化到很多对象，然后存储到
-Ceph 分布式对象存储（ RADOS ）集群中。因此，\
-到此映像的读和写请求会被分布到集群内的很多节点，\
+RBD 映像被条带化到很多对象，然后存储到 Ceph 分布式对象存储（ RADOS ）集群中。
+因此，到此映像的读和写请求会被分布到集群内的很多节点，
 也因此避免了映像巨大或繁忙时可能出现的单节点瓶颈。
 
 条带化由三个参数控制：
 
 .. option:: object-size
 
-   条带化产生的对象尺寸是 2 的幂，它会被对齐到最接近的 2 的\
-   幂。默认对象尺寸是 4MB ，最小是 4K 、最大 32 M 。
+   条带化产生的对象尺寸是 2 的幂，它会被对齐到最接近的 2 的幂。
+   默认对象尺寸是 4MB ，最小是 4K 、最大 32 M 。
 
 .. option:: stripe_unit
 
-   各条带单位是连续的字节，相邻地存储于同一对象，用满再去下一\
-   个对象。
+   各条带单位是连续的字节，相邻地存储于同一对象，用满再去下一个对象。
 
 .. option:: stripe_count
 
@@ -714,16 +739,14 @@ Ceph 分布式对象存储（ RADOS ）集群中。因此，\
    后，再转回到第一个对象写另一轮条带，直到达到对象的最大尺\
    寸。此时，我们继续写下一轮 [*stripe_count*] 个对象。
 
-默认情况下， [*stripe_unit*] 和对象尺寸相同、且
-[*stripe_count*] 为 1 ；另外指定 [*stripe_unit*] 和/或
-[*stripe_count*] 通常出现在使用 fancy 条带化时、而且必须是
-format 2 格式的映像。
+默认情况下， [*stripe_unit*] 和对象尺寸相同、且 [*stripe_count*] 为 1 ；
+另外指定 [*stripe_unit*] 和/或 [*stripe_count*] 通常出现在使用 fancy 条带化时、
+而且必须是 format 2 格式的映像。
 
-
-.. Kernel rbd (krbd) options
 
 内核 rbd (krbd) 选项
 ====================
+.. Kernel rbd (krbd) options
 
 这里的大多数选项主要适用于调试和压力测试。默认值设置于内核中，\
 因此还与所用内核的版本有关。
@@ -743,27 +766,33 @@ format 2 格式的映像。
   对 msgr2.1 协议来说，会忽略此选项： crc 模式下总是完全开启\
   校验和、 secure 模式下总是关闭。
 
-* nocrc - 对 msgr1 线上协议禁用 CRC32C 校验。注意，只是禁用了\
-  载荷校验，头校验一直开启。 msgr2.1 协议忽略此选项。
+* nocrc - 对 msgr1 线上协议禁用 CRC32C 校验。注意，
+  只是禁用了载荷校验，头校验一直开启。
+  msgr2.1 协议忽略此选项。
 
 * cephx_require_signatures - 要求对 msgr1 消息签名（从 3.19 起\
-  默认开启）。此选项已废弃，且未来会删除，因为此功能从
-  Bobtail 版起就支持了。
+  默认开启）。此选项已废弃，且未来会删除，
+  因为此功能从 Bobtail 版起就支持了。
 
-* nocephx_require_signatures - 不要求对 msgr1 消息签名（从 3.19 \
-  起）。此选项已废弃，且未来会删除，
+* nocephx_require_signatures - 不要求对 msgr1 消息签名
+  （从 3.19 起）。此选项已废弃，且未来会删除，
 
-* tcp_nodelay - 在客户端禁用 Nagle's 算法（从 4.0 起默认开启）。
+* tcp_nodelay - 在客户端禁用 Nagle's 算法
+  （从 4.0 起默认开启）。
 
 * notcp_nodelay - 在客户端启用 Nagle's 算法（从 4.0 起）。
 
-* cephx_sign_messages - 启用消息签名（从 4.4 起默认开启）。
+* cephx_sign_messages - 为 msgr1 协议启用消息签名
+  （从 4.4 起默认开启）。使用 msgr2 协议时会忽略此选项：
+  消息签名功能包含在 'secure' 模式里、而 'crc' 模式里没有。
 
-* nocephx_sign_messages - 禁用消息签名（从 4.4 起）。
+* nocephx_sign_messages - 为 msgr1 线路协议禁用消息签名
+  （从 4.4 起）。使用 msgr2 协议时会忽略此选项。
 
 * mount_timeout=x - 执行 `rbd device map` 和 `rbd device unmap`
-  时所涉及的各操作步骤的超时值（默认为 60 秒）。特别是从 4.2
-  起，与集群间没有连接时，即认为 `rbd device unmap` 操作超时了。
+  时所涉及的各操作步骤的超时值（默认为 60 秒）。
+  特别是从 4.2 起，与集群间没有连接时，
+  即认为 `rbd device unmap` 操作超时了。
 
 * osdkeepalive=x - OSD 保持连接的期限（默认为 5 秒）。
 
@@ -783,23 +812,24 @@ format 2 格式的映像。
 * exclusive - 禁止自动转换互斥锁（从 4.12 起）。
   等价于 --exclusive 。
 
-* lock_timeout=x - 获取互斥锁的超时时长（ 4.17 起支持，默认是
-  0 秒，意味着没有超时）。
+* lock_timeout=x - 获取互斥锁的超时时长
+  （ 4.17 起支持，默认是 0 秒，意味着没有超时）。
 
-* notrim - 关闭 discard 、和填 0 功能，以免全配映像的空间被\
-  收回（从 4.17 起支持）。启用后， discard 请求会以 -EOPNOTSUPP
-  代码失败，填 0 请求会回退成手动填 0 。
+* notrim - 关闭 discard 、和填 0 功能，
+  以免全配映像的空间被收回（从 4.17 起支持）。
+  启用后， discard 请求会以 -EOPNOTSUPP 代码失败，
+  填 0 请求会回退成手动填 0 。
 
-* abort_on_full - 在集群空间用尽或数据存储池用完配额时让写请求\
-  以 -ENOSPC 代码失败（从 5.0 起支持）。默认行为是阻塞着，直到\
-  占满条件释放。
+* abort_on_full - 在集群空间用尽或数据存储池用完配额时\
+  让写请求以 -ENOSPC 代码失败（从 5.0 起支持）。
+  默认行为是阻塞着，直到占满条件释放。
 
-* alloc_size - OSD 底层对象存储后端的最小分配单元（从 5.1 起\
-  支持，默认为 64KB ）。这是用于对齐数据块和丢弃太小的 discard
-  操作。对于 bluestore ，推荐的配置是 bluestore_min_alloc_size
-  （一般来说，硬盘是 64K 、 SSD 是 16K ）； filestore 用
-  filestore_punch_hole = false 配置，推荐的配置是映像对象尺寸\
-  （一般是 4M ）。
+* alloc_size - OSD 底层对象存储后端的最小分配单元
+  （从 5.1 起支持，默认为 64KB ）。
+  这是用于对齐数据块和丢弃太小的 discard 操作。对于 bluestore ，
+  推荐的配置是 bluestore_min_alloc_size （一般来说，硬盘是 64K 、 SSD 是 16K ）；
+  filestore 用 filestore_punch_hole = false 配置，
+  推荐的配置是映像对象尺寸（一般是 4M ）。
 
 * crush_location=x - Specify the location of the client in terms of CRUSH
   hierarchy (since 5.8).  This is a set of key-value pairs separated from
@@ -880,9 +910,9 @@ format 2 格式的映像。
 
 `rbd device unmap` 选项：
 
-* force - 让某一已打开的块设备强制取消映射（从 4.9 起支持）。\
-  其驱动会等待当前的请求完成之后再 unmap ；在 unmap 初始化之后\
-  再发给驱动的请求会失败。
+* force - 让某一已打开的块设备强制取消映射（从 4.9 起支持）。
+  其驱动会等待当前的请求完成之后再 unmap ；
+  在 unmap 初始化之后再发给驱动的请求会失败。
 
 * udev - Wait for udev device manager to finish executing all matching
   "remove" rules and clean up after the device before exiting (default).
@@ -963,8 +993,7 @@ format 2 格式的映像。
 
        rbd trash ls mypool
 
-推迟删除一个映像（用 *--expires-at* 设置一个过期时间，默认是\
-现在）： ::
+推迟删除一个映像（用 *--expires-at* 设置一个过期时间，默认是现在）： ::
 
        rbd trash mv mypool/myimage --expires-at "tomorrow"
 
@@ -985,12 +1014,11 @@ format 2 格式的映像。
        rbd trash restore mypool/myimage-id --image mynewimage
 
 
-
 使用范围
 ========
 
-**rbd** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的\
-存储系统，更多信息参见 https://docs.ceph.com 。
+**rbd** 是 Ceph 的一部分，这是个伸缩力强、开源、
+分布式的存储系统，更多信息参见 https://docs.ceph.com 。
 
 
 参考

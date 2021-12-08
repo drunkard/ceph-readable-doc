@@ -13,16 +13,12 @@ as well.
        environments where existing monitoring infrastructure does not
        exist.
 
-.. Enabling
-
 启用
 ----
 
 The *alerts* module is enabled with::
 
   ceph mgr module enable alerts
-
-.. Configuration
 
 配置
 ----
@@ -53,8 +49,6 @@ and, if there is a change, send a message.  To change that
 frequency,::
 
   ceph config set mgr mgr/alerts/interval *<interval>*   # e.g., "5m" for 5 minutes
-
-.. Commands
 
 命令
 ----

@@ -1,23 +1,26 @@
 ==============
  OSD 配置参考
 ==============
-.. OSD Config Reference
 
 .. index:: OSD; configuration
 
-你可以通过配置文件调整 OSD ，但靠默认值和极少的配置 OSD 守护进程\
-就能运行。最简 OSD 配置需设置 ``osd journal size`` 和 ``host`` ，\
+你可以通过配置文件调整 OSD ，
+（或者通过近期版本里的中央配置库）
+但靠默认值和极少的配置 OSD 守护进程就能运行。
+最简 OSD 配置需设置 ``osd journal size`` 和 ``host`` ，
 其他几乎都能用默认值。
 
-Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始，\
-如下： ::
+Ceph 的 OSD 守护进程用递增的数字作标识，
+按惯例以 ``0`` 开始，如下： ::
 
 	osd.0
 	osd.1
 	osd.2
 
-在配置文件里， ``[osd]`` 段下的配置适用于所有 OSD ；要添加针对\
-特定 OSD 的选项（如 ``host`` ），把它放到那个 OSD 段下即可，如：
+在配置文件里， ``[osd]`` 段下的配置适用于所有 OSD ；
+要添加针对特定 OSD 的选项（如 ``host`` ），
+把它放到那个 OSD 段下即可，
+如：
 
 .. code-block:: ini
 
@@ -37,15 +40,15 @@ Ceph 的 OSD 守护进程用递增的数字作标识，按惯例以 ``0`` 开始
 ========
 .. General Settings
 
-下列选项可配置一 OSD 的唯一标识符、以及数据和日志的路径。 Ceph
-部署脚本通常会自动生成 UUID 。
+下列选项可配置一 OSD 的唯一标识符、以及数据和日志的路径。
+Ceph 部署脚本通常会自动生成 UUID 。
 
 .. warning:: **不要**\ 更改数据和日志的默认路径，\
    因为这样会增加后续的排障难度。
 
-日志尺寸应该大于期望的驱动器速度和 ``filestore max sync interval``
-之乘积的两倍；最常见的方法是为日志驱动器（通常是 SSD ）分区并\
-挂载好，这样 Ceph 就可以用整个分区做日志。
+日志尺寸应该大于期望的驱动器速度和 ``filestore max sync interval`` 之乘积的两倍；
+最常见的方法是为日志驱动器（通常是 SSD ）分区并挂载好，
+这样 Ceph 就可以用整个分区做日志。
 
 .. confval:: osd_uuid
 .. confval:: osd_data
@@ -151,8 +154,7 @@ Ceph 生成一个所有对象的目录，并比对每个主对象及其副本以
 轻微洗刷（每天）检查对象尺寸和属性，
 深层洗刷（每周）会读出数据并用校验和方法确认数据完整性。
 
-洗刷对维护数据完整性很重要，
-但会导致性能下降；
+洗刷对维护数据完整性很重要，但会导致性能下降；
 你可以用下列选项来增加或减少洗刷操作。
 
 .. confval:: osd_max_scrubs
@@ -207,8 +209,7 @@ Ceph 生成一个所有对象的目录，并比对每个主对象及其副本以
 ------------------
 .. QoS Based on mClock
 
-现在， Ceph 对 mClock 的应用更精致了，\
-可以按照 `mClock 配置参考`_ 里的步骤使用。
+现在， Ceph 对 mClock 的应用更精致了，可以按照 `mClock 配置参考`_ 里的步骤使用。
 
 核心概念
 ````````
@@ -350,12 +351,11 @@ mClock and dmClock experiments on the ``ceph-devel`` mailing list.
 ====
 .. Backfilling
 
-当集群新增或移除 OSD 时，按照 CRUSH 算法应该重新均衡集群，它会\
-把一些归置组移出或移入多个 OSD 以回到均衡状态。归置组和对象的\
-迁移会导致集群运营性能显著降低，为维持运营性能， Ceph 用 \
-backfilling 来执行此迁移，它可以使得 Ceph 的回填操作优先级低于\
-用户读写请求。
-
+当集群新增或移除 OSD 时，按照 CRUSH 算法应该重新均衡集群，
+它会把一些归置组移出或移入多个 OSD 以回到均衡状态。
+归置组和对象的迁移会导致集群运营性能显著降低，为维持运营性能，
+Ceph 用 backfilling 来执行此迁移，
+它可以使得 Ceph 的回填操作优先级低于用户读写请求。
 
 .. confval:: osd_max_backfills
 .. confval:: osd_backfill_scan_min
@@ -384,8 +384,7 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。
 .. Recovery
 
 当集群启动、或某 OSD 守护进程崩溃后重启时，此 OSD 开始与其它 \
-OSD 们建立连接，这样才能正常工作。详情见\
-`监控 OSD 和归置组`_\ 。
+OSD 们建立连接，这样才能正常工作。详情见\ `监控 OSD 和归置组`_\ 。
 
 如果某 OSD 崩溃并重生，通常会落后于其他 OSD ，也就是没有同归置\
 组内最新版本的对象。这时， OSD 守护进程进入恢复模式并检索最新\
@@ -417,8 +416,7 @@ OSD 们建立连接，这样才能正常工作。详情见\
 .. confval:: osd_agent_max_ops
 .. confval:: osd_agent_max_low_ops
 
-关于在高速模式下，分级缓存代理何时刷回脏对象，见
-`cache target dirty high ratio`_ 选项。
+关于在高速模式下，分级缓存代理何时刷回脏对象，见 `cache target dirty high ratio`_ 选项。
 
 
 杂项
