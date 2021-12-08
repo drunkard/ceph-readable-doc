@@ -23,10 +23,11 @@ Block Device) 映像的 ``rbd map`` 和 ``rbd unmap`` 操作，同\
 操作自动化，由 init 系统（一个 systemd 的 unit 文件，为此
 ceph-common 软件包打包了 ``rbdmap.service`` ）触发。
 
-此脚本只需一个参数，可以是 map 或 unmap 。运行时，脚本会分\
-析配置文件（默认为 ``/etc/ceph/rbdmap`` ，但可以用环境变量
-``RBDMAPFILE`` 覆盖），配置文件的每行对应一个要映射、或取消\
-映射的 RBD 映像。
+此脚本只需一个参数，可以是 map 或 unmap 。
+运行时，脚本会分析配置文件（默认为 ``/etc/ceph/rbdmap`` ，
+但可以用环境变量 ``RBDMAPFILE`` 覆盖），
+配置文件的每行对应一个要映射、
+或取消映射的 RBD 映像。
 
 配置文件格式为： ::
 
@@ -45,8 +46,8 @@ ceph-common 软件包打包了 ``rbdmap.service`` ）触发。
     rbd map POOLNAME/IMAGENAME --PARAM1 VAL1 --PARAM2 VAL2 
 
 （ ``rbd`` 命令的可用选项请参考其手册页。）
-For parameters and values which contain commas or equality signs, a simple
-apostrophe can be used to prevent replacing them.
+对于包含逗号和等号的参数和数值，
+可以加单引号来防止它们被替换。
 
 运行 ``rbdmap map`` 时，此脚本先分析配置文件，对于每个配置了\
 的 RBD 映像，首先尝试映射它（用 ``rbd map`` 命令），然后，尝\
@@ -55,8 +56,8 @@ apostrophe can be used to prevent replacing them.
 运行 ``rbdmap unmap`` 时，罗列在配置文件内的映像会被依次卸\
 载、取消映射。
 
-``rbdmap unmap-all`` 尝试卸载、然后取消当前映射的所有 RBD 映\
-像，不管它们是否在配置文件里。
+``rbdmap unmap-all`` 尝试卸载、然后取消当前映射的\
+所有 RBD 映像，不管它们是否在配置文件里。
 
 如果操作成功， ``rbd map`` 操作会把映像映射到类似
 ``/dev/rbdX`` 的设备，此时，会触发 udev 规则来创建友好的设备\
@@ -68,8 +69,11 @@ apostrophe can be used to prevent replacing them.
 
 在 ``/etc/fstab`` 里面写 RBD 映像的配置条目时，最好加上
 noauto （或者 nofail ）挂载选项。这样可防止 init 系统过早地\
-挂载设备——甚至早于相应设备存在时。（正因为 ``rbdmap.service``
-是执行 shell 脚本的，所以在引导过程中都触发得很晚。）
+挂载设备——甚至早于相应设备存在时。
+（正因为 ``rbdmap.service`` 是执行 shell 脚本的，
+所以在引导过程中都触发得很晚。）
+
+
 
 
 实例
@@ -82,30 +86,33 @@ bar1 、 bar2 和 bar3 ，都在 foopool 存储池内： ::
     foopool/bar2    id=admin,keyring=/etc/ceph/ceph.client.admin.keyring
     foopool/bar3    id=admin,keyring=/etc/ceph/ceph.client.admin.keyring,options='lock_on_read,queue_depth=1024'
 
-此文件的每一行都有两种字符串：映像说明、和传递给 ``rbd map``
-的选项。这两行将被转换为如下的命令： ::
+此文件的每一行都有两种字符串：映像说明、
+和传递给 ``rbd map`` 的选项。这两行将被转换为\
+如下的命令： ::
 
     rbd map foopool/bar1 --id admin --keyring /etc/ceph/ceph.client.admin.keyring
     rbd map foopool/bar2 --id admin --keyring /etc/ceph/ceph.client.admin.keyring
     rbd map foopool/bar2 --id admin --keyring /etc/ceph/ceph.client.admin.keyring --options lock_on_read,queue_depth=1024
 
-假设这些映像上的文件系统为 XFS ，其对应的 ``/etc/fstab`` 配\
-置可能如下： ::
+假设这些映像上的文件系统为 XFS ，
+其对应的 ``/etc/fstab`` 配置可能如下： ::
 
     /dev/rbd/foopool/bar1 /mnt/bar1 xfs noauto 0 0
     /dev/rbd/foopool/bar2 /mnt/bar2 xfs noauto 0 0
     /dev/rbd/foopool/bar3 /mnt/bar3 xfs noauto 0 0
 
-创建好映像、并写好 ``/etc/ceph/rbdmap`` 配置文件后，只需启用\
-这个 unit 就可让映像在启动时自动映射和挂载： ::
+创建好映像、并写好 ``/etc/ceph/rbdmap`` 配置文件后，
+只需启用这个 unit 就可让映像在启动时自动映射和挂载： ::
 
     systemctl enable rbdmap.service
+
 
 
 选项
 ====
 
 无
+
 
 
 使用范围
