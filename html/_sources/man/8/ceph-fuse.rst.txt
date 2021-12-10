@@ -15,10 +15,10 @@
 描述
 ====
 
-**ceph-fuse** 是 Ceph 分布式文件系统的 FUSE
-（用户空间文件系统）客户端，它会把 Ceph 文件系统（用 -m 选项或
-ceph.conf 指定）挂载到指定挂载点。详情见\
-`用 FUSE 挂载 CephFS`_ 。
+**ceph-fuse** 是 Ceph 分布式文件系统的 FUSE （用户空间文件系统）
+客户端，它会把 Ceph 文件系统（用 -m 选项或
+ceph.conf 指定）挂载到指定挂载点。
+详情见\ `用 FUSE 挂载 CephFS`_ 。
 
 文件系统可这样卸载： ::
 
@@ -47,13 +47,13 @@ ceph-fuse 识别不了的选项将传递给 libfuse 。
 
 .. option:: -n client.{cephx-username}
 
-   Pass the name of CephX user whose secret key is be to used for mounting.
+   传入 CephX 用户名，它的密钥将用于挂载。
 
 .. option:: --id <client-id>
 
-   Pass the name of CephX user whose secret key is be to used for mounting.
-   ``--id`` takes just the ID of the client in contrast to ``-n``. For
-   example, ``--id 0`` for using ``client.0``.
+   传入 CephX 用户名，它的密钥将用于挂载。
+   与 ``-n`` 不同， ``--id`` 只接受客户端名字的 ID 部分，
+   例如，客户端为 ``client.0`` 时指定 ``--id 0`` 。
 
 .. option:: -k <path-to-keyring>
 
@@ -78,8 +78,7 @@ ceph-fuse 识别不了的选项将传递给 libfuse 。
 
 .. option:: --client_fs
 
-   Pass the name of Ceph FS to be mounted. Not passing this option mounts the
-   default Ceph FS on the Ceph cluster.
+   传入要挂载的 CephFS 名字。不加这个选项就挂载这个 Ceph 集群的默认 CephFS 。
 
 
 使用范围

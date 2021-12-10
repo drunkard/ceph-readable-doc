@@ -2,6 +2,7 @@
 
 文件布局
 ========
+
 文件布局可控制如何把文件内容映射到各 Ceph RADOS 对象，你可以\
 用\ *虚拟扩展属性*\ 或 xattrs 来读、写某一文件的布局。
 
@@ -11,29 +12,25 @@
 ``ceph.file.layout`` ，处理目录时就要替换为 ``dir`` 。
 
 .. tip::
-
-    你的 Linux 发行版也许默认没提供操作 xattrs 的命令，所需\
-    软件包通常是 ``attr`` 。
-
+   你的 Linux 发行版也许默认没提供操作 xattrs 的命令，所需\
+   软件包通常是 ``attr`` 。
 
 布局字段
 --------
 .. Layout fields
 
 pool
-    字符串，可指定 ID 或名字，其字符必须出自 [a-zA-Z0-9\_-.]
-    集合。它是文件的数据对象所在的 RADOS 存储池。
+    字符串，可指定 ID 或名字，其字符必须出自 [a-zA-Z0-9\_-.] 集合。
+    它是文件的数据对象所在的 RADOS 存储池。
 
 pool_namespace
-    字符串，其字符必须出自 [a-zA-Z0-9\_-.] 集合。在\
-    数据存储池内，对象应该写入哪个 RADOS 命名空间，默认为空\
-    （即默认命名空间）。
+    字符串，其字符必须出自 [a-zA-Z0-9\_-.] 集合。在数据存储池内，
+    对象应该写入哪个 RADOS 命名空间，默认为空（即默认命名空间）。
 
 stripe_unit
-    字节数、整数。一个文件的数据块按照此尺寸（字节）像 RAID 0
-    一样分布。一文件所有条带单元的尺寸一样，最后一个条带单元通\
-    常不完整——即它包含文件末尾的数据、还有数据末端到固定条带单\
-    元尺寸之间的未使用“空间”。
+    字节数、整数。一个文件的数据块按照此尺寸（字节）像 RAID 0 一样分布。
+    一文件所有条带单元的尺寸一样，最后一个条带单元通常不完整——
+    即它包含文件末尾的数据、还有数据末端到固定条带单元尺寸之间的未使用“空间”。
 
 stripe_count
     整数。组成 RAID 0 “条带”数据的连续条带单元数量。
@@ -42,13 +39,10 @@ object_size
     整数个字节。文件数据按此尺寸分块为 RADOS 对象。
 
 .. tip::
-
-   RADOS 会确保对象的尺寸是个可配置的限量：如果你自行增大
-   CephFS 对象尺寸，超过了那个限量，那么写入可能不会成功。对应\
-   的 OSD 选项是 ``osd_max_object_size`` ，默认值是 128MB 。
-   RADOS 对象过于大可能会影响集群的平稳运行，所以不建议对象尺\
-   寸限量超过默认值。
-
+   RADOS 会确保对象的尺寸是个可配置的限量：如果你自行增大 CephFS 对象尺寸，
+   超过了那个限量，那么写入可能不会成功。
+   对应的 OSD 选项是 ``osd_max_object_size`` ，默认值是 128MB 。
+   RADOS 对象过于大可能会影响集群的平稳运行，所以不建议对象尺寸限量超过默认值。
 
 用 ``getfattr`` 读取布局
 ------------------------
@@ -82,8 +76,8 @@ object_size
 
 .. note::
 
-    读取布局时，存储池通常是以名字标识的。然而在极少数情况下，如存储池刚创建\
-    时，可能会输出 ID 。
+    读取布局时，存储池通常是以名字标识的。
+    然而在极少数情况下，如存储池刚创建时，可能会输出 ID 。
 
 目录只有经过定制才会有显式的布局，如果从没更改过，那么读取其布局时就会失败：\
 这表明它会继承父目录的显式布局设置。
@@ -97,7 +91,6 @@ object_size
     $ getfattr -n ceph.dir.layout dir
     # file: dir
     ceph.dir.layout="stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data"
-
 
 用 ``setfattr`` 设置布局
 ------------------------
@@ -119,8 +112,7 @@ object_size
     $ setfattr -n ceph.file.layout.pool -v cephfs_data file2  # Setting pool by name
 
 .. note::
-   用 ``setfattr`` 命令修改文件的布局字段时，此文件必须是空\
-   的，否则会报错。
+   用 ``setfattr`` 命令修改文件的布局字段时，此文件必须是空的，否则会报错。
 
 .. code-block:: bash
 
@@ -134,7 +126,6 @@ object_size
     $ setfattr -n ceph.file.layout.stripe_count -v 4 file1
     setfattr: file1: Directory not empty
 
-
 清除布局
 --------
 .. Clearing layouts
@@ -145,8 +136,7 @@ object_size
 
     setfattr -x ceph.dir.layout mydir
 
-类似地，如果你已经设置了 ``pool_namespace`` 属性，又想让布局改\
-回默认命名空间：
+类似地，如果你已经设置了 ``pool_namespace`` 属性，又想让布局改回默认命名空间：
 
 .. code-block:: bash
 
@@ -194,8 +184,7 @@ object_size
     # file: dir/file2
     ceph.file.layout="stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data"
 
-如果中层目录没有设置布局，那么内层目录中创建的文件也会继承此\
-目录的布局：
+如果中层目录没有设置布局，那么内层目录中创建的文件也会继承此目录的布局：
 
 .. code-block:: bash
 
@@ -234,10 +223,10 @@ object_size
     $ mkdir /mnt/cephfs/myssddir
     $ setfattr -n ceph.dir.layout.pool -v cephfs_data_ssd /mnt/cephfs/myssddir
 
-此后，在那个目录内新创建的文件都会继承它的布局、并把它们的\
-数据放入你新加的存储池。
+此后，在那个目录内新创建的文件都会继承它的布局、
+并把它们的数据放入你新加的存储池。
 
 你也许注意到了，主数据存储池（传递给 ``fs new`` 的那个）内的\
 对象计数仍在继续增加，即使创建的文件位于你后加的存储池内。\
-这很正常：文件的数据存储于由布局指定的存储池内，但是所有文件\
-的元数据还都存储在主数据存储池内，数量很小。
+这很正常：文件的数据存储于由布局指定的存储池内，
+但是所有文件的元数据还都存储在主数据存储池内，数量很小。
