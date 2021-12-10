@@ -12,21 +12,22 @@
 置中，多个网关例程通常指向一个 Ceph 存储集群，而 Kraken 版的 \
 Ceph 对象网关支持几种多站配置方案：
 
-- **多域（ Multi-zone ）：** 比较高级的配置包括一个域组和多个\
-  域，每个域里有一或多个 `ceph-radosgw` 例程，每个域背后都配置\
-  了自己的 Ceph 存储集群。如果某个域有重大损伤，域组内的多个域\
-  还能实现灾难恢复。在 Kraken 版中，每个域都处于活跃状态，可处\
-  理写操作。除灾难恢复外，多个活跃的域也可以作内容分发网络的底\
-  层。
+- **多域（ Multi-zone ）：** 比较高级的配置包括一个域组和多个域，
+  每个域里有一或多个 `ceph-radosgw` 例程，
+  每个域背后都配置了自己的 Ceph 存储集群。
+  如果某个域有重大损伤，
+  域组内的多个域还能实现灾难恢复。
+  在 Kraken 版中，每个域都处于活跃状态，可处理写操作。
+  除灾难恢复外，多个活跃的域也可以作内容分发网络的底层。
 
-- **多域组（ Multi-zone-group ）：** 以前称为“region”。 Ceph \
-  对象网关也支持多域组，每个域组内可以有一或多个域。只要确保对\
-  象 ID 在域组和域中唯一，那么在同一 realm 内，可以跨域组和域\
-  共享同一个全局对象命名空间。
+- **多域组（ Multi-zone-group ）：** 以前称为“region”。
+  Ceph 对象网关也支持多域组，每个域组内可以有一或多个域。
+  只要确保对象 ID 在域组和域中唯一，那么在同一 realm 内，
+  可以跨域组和域共享同一个全局对象命名空间。
 
-- **多个 realm ：** Kraken 版的 Ceph 对象网关支持 realm 概念，\
-  它是单个或多个域组、和 realm 的一个全局唯一的命名空间。多
-  realm 功能使之有能力支持多种配置方案和命名空间。
+- **多个 realm ：** Kraken 版的 Ceph 对象网关支持 realm 概念，
+  它是单个或多个域组、和 realm 的一个全局唯一的命名空间。
+  多 realm 功能使之有能力支持多种配置方案和命名空间。
 
 同一域组内、两个域之间的数据复制情形如下：
 
@@ -57,26 +58,28 @@ realm 内存储着域组、域、和带有多个时间结的 peroid ，\
 ==============
 .. Requirements and Assumptions
 
-一套多站配置需要至少两个 Ceph 存储集群，最好有不同的集群名。至\
-少两个 Ceph 对象网关例程，分别连接两个 Ceph 存储集群。
+一套多站配置需要至少两个 Ceph 存储集群，最好有不同的集群名。
+至少两个 Ceph 对象网关例程，分别连接两个 Ceph 存储集群。
 
-本指南中，我们假设至少有两个地理位置不同的 Ceph 存储集群，其实\
-都在本地也能跑通；还假设有两个 Ceph 对象网关服务器，分别名为
-``rgw1`` 和 ``rgw2`` 。
+本指南中，我们假设至少有两个地理位置不同的 Ceph 存储集群，
+其实都在本地也能跑通；还假设有两个 Ceph 对象网关服务器，
+分别名为 ``rgw1`` 和 ``rgw2`` 。
 
 .. important:: **不建议**\ 运营单个（跨区域的） Ceph 存储集群，\
    除非你的 WAN 连接延时够低。
 
-一套多站配置必须有一个主域组和一个主域，另外，各域组都得有自己\
-的主域；域组可以有一或多个副域组、副域。
+一套多站配置必须有一个主域组和一个主域，
+另外，各域组都得有自己的主域；
+域组可以有一或多个副域组、副域。
 
-在本指南中， ``rgw1`` 主机将在主域组的主域中提供服务；而
-``rgw2`` 主机将在主域组的副域中提供服务。
+在本指南中， ``rgw1`` 主机将在主域组的主域中提供服务；
+而 ``rgw2`` 主机将在主域组的副域中提供服务。
 
-为 Ceph 对象存储服务创建和调整存储池的文档请参考\ `存储池`_\ 。
+为 Ceph 对象存储服务创建和调整存储池的文档请参考\
+`存储池`_\ 。
 
-See `Sync Policy Config`_ for instructions on defining fine grained bucket sync
-policy rules.
+`同步策略配置`_ 里会指引你如何定义粒度合适的桶同步策略\
+的规则。
 
 
 .. _master-zone-label:
@@ -85,9 +88,11 @@ policy rules.
 ========
 .. Configuring a Master Zone
 
-在多站配置中，所有网关都会向主域组中、主域内的 ``ceph-radosgw``
-守护进程索取配置。所以在多站配置中，要配置各网关，需要挑一个
-``ceph-radosgw`` 例程，在它上面配置主域组和主域。
+在多站配置中，所有网关都会向主域组中、主域内的
+``ceph-radosgw`` 守护进程索取配置。
+所以在多站配置中，要配置各网关，
+需要挑一个 ``ceph-radosgw`` 例程，
+在它上面配置主域组和主域。
 
 
 创建 realm
@@ -97,23 +102,29 @@ policy rules.
 realm 包含域组和域的多站配置信息，同时在 realm 内强制施行全局\
 唯一的命名空间。
 
-在为主域组和域提供服务的主机上，打开命令行，执行下列命令创建多\
-站配置所需的新 realm::
+在为主域组和域提供服务的主机上，打开命令行，
+执行下列命令创建多站配置所需的新 realm:
+
+::
 
     # radosgw-admin realm create --rgw-realm={realm-name} [--default]
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin realm create --rgw-realm=movies --default
 
-如果此集群上只会配置一个 realm ，可加上 ``--default`` 标记，指\
-定 ``--default`` 以后， ``radosgw-admin`` 就会默认使用这个
-realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
-``--rgw-realm`` 或 ``--realm-id`` 标记，以确定在哪个 realm 新\
-建。
+如果此集群上只会配置一个 realm ，可加上 ``--default`` 标记，
+指定 ``--default`` 以后， ``radosgw-admin`` 就会默认使用这个 realm ；
+如果没指定 ``--default`` ，新增域组和域时就必须指定
+``--rgw-realm`` 或 ``--realm-id`` 标记，
+以确定在哪个 realm 新建。
 
-创建 realm 后， ``radosgw-admin`` 会顺便显示此 realm 的配置信\
-息，例如： ::
+创建 realm 后， ``radosgw-admin`` 会顺便显示此 realm 的配置信息，
+例如：
+
+::
 
     {
         "id": "0956b174-fe14-4f97-8b50-bb7ec5e1cf62",
@@ -122,8 +133,8 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
         "epoch": 1
     }
 
-.. note:: Ceph 会给这个 realm 生成唯一的 ID ，这样，需要的话可\
-   以随时改名。
+.. note:: Ceph 会给这个 realm 生成唯一的 ID ，这样，
+   需要的话可以随时改名。
 
 
 创建主域组
@@ -133,22 +144,30 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 一个 realm 必须至少有一个域组，只有一个的话它将作为此 realm 的\
 主域组。
 
-在为主域组和域提供服务的主机上，打开命令行，执行下列命令新建\
-多站配置所需的主域组： ::
+在为主域组和域提供服务的主机上，打开命令行，
+执行下列命令新建多站配置所需的主域组：
+
+::
 
     # radosgw-admin zonegroup create --rgw-zonegroup={name} --endpoints={url} [--rgw-realm={realm-name}|--realm-id={realm-id}] --master --default
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin zonegroup create --rgw-zonegroup=us --endpoints=http://rgw1:80 --rgw-realm=movies --master --default
 
-如果这个 realm 只有一个域组，创建时可加上 ``--default`` 标记，\
-指定 ``--default`` 后， ``radosgw-admin`` 在创建新域时将默认使\
-用此域组；如果未指定 ``--default`` 标记，新增或修改域时就得指定
-``--rgw-zonegroup`` 或 ``--zonegroup-id`` 标记，以确定在哪个域\
-组内操作。
+如果这个 realm 只有一个域组，创建时可加上 ``--default`` 标记，
+指定 ``--default`` 后， ``radosgw-admin``
+在创建新域时将默认使用此域组；
+如果未指定 ``--default`` 标记，新增或修改域时就得指定
+``--rgw-zonegroup`` 或 ``--zonegroup-id`` 标记，
+以确定在哪个域组内操作。
 
-创建主域组后， ``radosgw-admin`` 会显示这个域组的配置，例如： ::
+创建主域组后， ``radosgw-admin`` 会显示这个域组的配置，
+例如：
+
+::
 
     {
         "id": "f1a233f5-c354-4107-b36c-df66126475a6",
@@ -174,33 +193,43 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
 .. important:: 域必须在此域内的 Ceph 对象网关所在节点上创建。
 
-在为主域组和域提供服务的主机上，打开命令行，执行下列命令新建\
-多站配置所需的主域： ::
+在为主域组和域提供服务的主机上，
+打开命令行，执行下列命令新建\
+多站配置所需的主域：
+
+::
 
     # radosgw-admin zone create --rgw-zonegroup={zone-group-name} \
                                 --rgw-zone={zone-name} \
                                 --master --default \
                                 --endpoints={http://fqdn}[,{http://fqdn}]
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-east \
                                 --master --default \
                                 --endpoints={http://fqdn}[,{http://fqdn}]
 
-.. note:: 这里没有指定 ``--access-key`` 和 ``--secret`` ，在后\
-   面的章节中创建用户后，再把这些配置写入域。
 
-.. important:: 后续步骤假设是在新安装好的系统上实施多站配置，\
-   上面还没有数据。如果你已经用它存储了一些数据，\ **不要删除**
-   ``default`` 域及其存储池，否则数据会被删除且不可恢复。
+.. note:: 这里没有指定 ``--access-key`` 和 ``--secret`` ，
+   在后面的章节中创建用户后，
+   再把这些配置写入域。
+
+.. important:: 后续步骤假设是在新安装好的系统上实施多站配置，
+   上面还没有数据。如果你已经用它存储了一些数据，
+   **不要删除** ``default`` 域及其存储池，
+   否则数据会被删除且不可恢复。
 
 
 删除默认域组与域
 ----------------
 .. Delete Default Zone Group and Zone
 
-如果有 ``default`` 域，要先从域组里删除，然后再删掉它。 ::
+如果有 ``default`` 域，要先从域组里删除，然后再删掉它。
+
+::
 
     # radosgw-admin zonegroup remove --rgw-zonegroup=default --rgw-zone=default
     # radosgw-admin period update --commit
@@ -209,12 +238,11 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
     # radosgw-admin zonegroup delete --rgw-zonegroup=default
     # radosgw-admin period update --commit
 
-最后，如果这个 Ceph 存储集群里还有 ``default`` 存储池，也需一\
-并删除。
+最后，如果这个 Ceph 存储集群里还有 ``default`` 存储池，也需一并删除。
 
-.. important:: 后续步骤假设是在新安装好的系统上实施多站配置，\
-   上面还没有数据。如果你已经用它存储了一些数据，\ **不要删除**
-   ``default`` 域及其存储池，否则数据会被删除且不可恢复。
+.. important:: 后续步骤假设是在新安装好的系统上实施多站配置，
+   上面还没有数据。如果你已经用它存储了一些数据，
+   **不要删除** ``default`` 域及其存储池，否则数据会被删除且不可恢复。
 
 ::
 
@@ -229,19 +257,24 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 ------------
 .. Create a System User
 
-``ceph-radosgw`` 守护进程在拉取 realm 和 peroid 信息前必须先通\
-过认证。在主域里，创建一个系统用户，用于守护进程之间的认证。 ::
+``ceph-radosgw`` 守护进程在拉取 realm 和 peroid 信息前必须先通过认证。
+在主域里，创建一个系统用户，用于守护进程之间的认证。
+
+::
 
     # radosgw-admin user create --uid="{user-name}" --display-name="{Display Name}" --system
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin user create --uid="synchronization-user" --display-name="Synchronization User" --system
 
-记下 ``access_key`` 和 ``secret_key`` 的内容，因为副域需要用它\
-们与主域认证。
+记下 ``access_key`` 和 ``secret_key`` 的内容，因为副域需要用它们与主域认证。
 
-最后，把系统用户加入主域。 ::
+最后，把系统用户加入主域。
+
+::
 
     # radosgw-admin zone modify --rgw-zone=us-east --access-key={access-key} --secret={secret}
     # radosgw-admin period update --commit
@@ -264,13 +297,17 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 .. Update the Ceph Configuration File
 
 更新主域所在主机上的 Ceph 配置文件，把 ``rgw_zone`` 配置选项和\
-主域的名字写在例程配置段下： ::
+主域的名字写在例程配置段下。
+
+::
 
     [client.rgw.{instance-name}]
     ...
     rgw_zone={zone-name}
 
-例如： ::
+例如：
+
+::
 
     [client.rgw.rgw1]
     host = rgw1
@@ -294,14 +331,17 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 ========
 .. Configure Secondary Zones
 
-一个域组内的域们会复制所有数据，以确保各个域都有相同的数据。\
+一个域组内的域们会复制所有数据，
+以确保各个域都有相同的数据。
 创建副域需在作为副域的主机上执行下面的所有操作。
 
-.. note:: 增加第三个域和增加副域的过程相同，必须用不同的域名称。
+.. note:: 增加第三个域和增加副域的过程相同，
+   必须用不同的域名称。
 
-.. important:: 你必须在主域内的主机上执行元数据操作，如用户\
-   创建。主域和副域都可以处理桶操作，但是副域会把桶操作重定向\
-   到主域；如果主域倒下了，桶操作会失败。
+.. important:: 你必须在主域内的主机上执行元数据操作，
+   如用户创建。主域和副域都可以接受桶操作，
+   但是副域会把桶操作重定向到主域；
+   如果主域倒下了，桶操作会失败。
 
 
 拉取 realm
@@ -310,14 +350,18 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
 用主域组中主域的 URL 、访问密钥和私钥可以把 realm 拉到本主机。\
 如果要拉取的不是默认 realm ，还需用 ``--rgw-realm`` 或
-``--realm-id`` 选项指定 realm 。 ::
+``--realm-id`` 选项指定 realm 。
+
+::
 
     # radosgw-admin realm pull --url={url-to-master-zone-gateway} --access-key={access-key} --secret={secret}
 
-.. note:: 拉取 realm 时也会检出远端的当前 period 、并使之成为\
-   本机的当前 period 。
+.. note:: 拉取 realm 时也会检出远端的当前 period 、
+   并使之成为本机的当前 period 。
 
-如果这是默认 realm 或仅有的一个 realm ，可以让它成为默认 realm::
+如果这是默认 realm 或仅有的一个 realm ，可以让它成为默认 realm 。
+
+::
 
     # radosgw-admin realm default --rgw-realm={realm-name}
 
@@ -328,14 +372,19 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
 .. important:: 域必须在此域内的 Ceph 对象网关所在节点上创建。
 
-在副域内提供服务的主机上，打开命令行新建多站配置所需的副域，需\
-指定域组 ID 、新的域名和这个域内配置的终结点；\ **不要加**
-``--master`` 或 ``--default`` 标记。在 Kraken 里，所有域都按多\
-活配置运行，也就是说，网关客户端可写入任意一个域，这个域会把数\
-据复制到同一域组内、除此之外的其它域上。如果不想让副域处理写操\
-作，创建时可以加 ``--read-only`` 标记，这样主域和副域就会按主\
-从方式配置。另外，还需提供系统用户的 ``access_key`` 和
-``secret_key`` ，它存储在主域组的主域内。命令如下： ::
+在副域内提供服务的主机上，打开命令行新建多站配置所需的副域，
+需指定域组 ID 、新的域名和这个域内配置的终结点；
+**不要加** ``--master`` 或 ``--default`` 标记。
+在 Kraken 里，所有域都按多活配置运行，
+也就是说，网关客户端可写入任意一个域，
+这个域会把数据复制到同一域组内、除此之外的其它域上。
+如果不想让副域处理写操作，创建时可以加 ``--read-only`` 标记，
+这样主域和副域就会按主从方式配置。另外，
+还需提供系统用户的 ``access_key`` 和 ``secret_key`` ，
+它存储在主域组的主域内。
+命令如下：
+
+::
 
     # radosgw-admin zone create --rgw-zonegroup={zone-group-name}\
                                 --rgw-zone={zone-name} --endpoints={url} \
@@ -343,22 +392,29 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
                                 --endpoints=http://{fqdn}:80 \
                                 [--read-only]
 
-例如： ::
+例如：
+
+::
 
     # radosgw-admin zone create --rgw-zonegroup=us --rgw-zone=us-west \
                                 --access-key={system-key} --secret={secret} \
                                 --endpoints=http://rgw2:80
 
 
-.. important:: 后续步骤假设是在新安装好的系统上实施多站配置，\
-   上面还没有数据。如果你已经用它存储了一些数据，\ **不要删除**
-   ``default`` 域及其存储池，否则数据会被删除且不可恢复。
+.. important:: 后续步骤假设是在新安装好的系统上实施多站配置，
+   上面还没有数据。
+   如果你已经用它存储了一些数据，\ **不要删除** ``default`` 域\
+   及其存储池，否则数据会被删除且不可恢复。
 
-如有必要，删除默认域： ::
+如有必要，删除默认域：
+
+::
 
     # radosgw-admin zone rm --rgw-zone=default
 
-最后，删除 Ceph 存储集群内的默认存储池。 ::
+最后，删除 Ceph 存储集群内的默认存储池。
+
+::
 
     # ceph osd pool rm default.rgw.control default.rgw.control --yes-i-really-really-mean-it
     # ceph osd pool rm default.rgw.data.root default.rgw.data.root --yes-i-really-really-mean-it
@@ -372,7 +428,9 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 .. Update the Ceph Configuration File
 
 更新副域所在主机上的 Ceph 配置文件，把 ``rgw_zone`` 配置选项和\
-副域的名字写在例程配置段下： ::
+副域的名字写在例程配置段下：
+
+::
 
     [client.rgw.{instance-name}]
     ...
@@ -384,7 +442,6 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
     host = rgw2
     rgw frontends = "civetweb port=80"
     rgw_zone=us-west
-
 
 更新 period
 -----------
@@ -399,7 +456,6 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 .. note:: 更新 period 会更改 epoch ，还需确保其它的域会收到更\
    新过的配置信息。
 
-
 启动网关
 --------
 .. Start the Gateway
@@ -410,7 +466,6 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
 
     # systemctl start ceph-radosgw@rgw.`hostname -s`
     # systemctl enable ceph-radosgw@rgw.`hostname -s`
-
 
 检查同步状态
 ------------
@@ -446,16 +501,17 @@ realm ；如果没指定 ``--default`` ，新增域组和域时就必须指定
    如果主域倒下了，副域上的桶操作会失败，
    但是对象操作仍会成功。
 
-Verification of an Object
--------------------------
 
-By default, the objects are not verified again after the synchronization of an
-object was successful. To enable that, you can set :confval:`rgw_sync_obj_etag_verify`
-to ``true``. After enabling the optional objects that will be synchronized
-going forward, an additional MD5 checksum will verify that it is computed on
-the source and the destination. This is to ensure the integrity of the objects
-fetched from a remote server over HTTP including multisite sync. This option
-can decrease the performance of your RGW as more computation is needed.
+对象的校验
+----------
+.. Verification of an Object
+
+默认情况下，一个对象成功同步后不会再次校验。
+要启用此功能，你可以把 :confval:`rgw_sync_obj_etag_verify` 设置为 ``true`` 。
+启用这个可选功能后，对象还会继续同步，
+在同步源和目的地都会额外计算对象的 MD5 校验和并核对。
+在经过 HTTP 远程传输后，包括多站同步，这样做可以保证对象的整体性。
+这个选项会降低 RGW 的性能，因为需要的计算量更大。
 
 
 维护
@@ -488,45 +544,43 @@ can decrease the performance of your RGW as more computation is needed.
                           incremental sync: 128/128 shards
                           data is caught up with source
 
-The output can differ depending on the sync status. The shards are described
-as two different types during sync:
+输出结果不同由同步状态决定。分片在同步时被描述成了两种不同的类型：
 
-- **Behind shards** are shards that need a full data sync and shards needing
-  an incremental data sync because they are not up-to-date.
+- **Behind shards （落伍分片）** 是那些需要完整的数据同步、
+  和需要增量数据同步的分片们，因为它们不是最新版本。
 
-- **Recovery shards** are shards that encountered an error during sync and marked
-  for retry. The error mostly occurs on minor issues like acquiring a lock on
-  a bucket. This will typically resolve itself.
+- **Recovery shards （恢复分片）** 是那些在同步时遇到错误、
+  并被标记为需要重试的分片们。这种错误大多是小问题，像获取桶的锁。
+  一般它都能自己解决。
 
-Check the logs
---------------
+检查日志
+--------
+.. Check the logs
 
-For multi-site only, you can check out the metadata log (``mdlog``),
-the bucket index log (``bilog``) and the data log (``datalog``).
-You can list them and also trim them which is not needed in most cases as
-:confval:`rgw_sync_log_trim_interval` is set to 20 minutes as default. If it isn't manually
-set to 0, you shouldn't have to trim it at any time as it could cause side effects otherwise.
-
+仅限于多站配置而言，你可以检查元数据日志（ ``mdlog`` ）、
+桶索引日志（ ``bilog`` ）、和数据日志（ ``mdlog`` ）。
+你可以罗列出它们、还能清理它们，大多数情况下都不需要这些日志，
+因为 :confval:`rgw_sync_log_trim_interval` 默认设置成了 20 分钟。
+如果它没被手动设置成 0 ，任何时候都不应该去手动清理，否则可能产生副作用。
 
 更改元数据主域
 --------------
 .. Changing the Metadata Master Zone
 
-.. important::
-   把某个域改为元数据主域时要格外小心。如果一个域还没与当前的\
-   主域同步完元数据，那么它晋级成为主域后，不能为尚未同步完的\
-   条目提供服务，而且这些变更将丢失。有鉴于此，我们建议先等这\
-   个域的元数据同步 ``radosgw-admin sync status`` 赶上后再把它\
-   晋级为主域。
+.. important:: 某个域是元数据主域时，更改它要格外小心。
+   如果一个域还没与当前的主域同步完元数据，那么它晋级成为主域后，
+   不能为尚未同步完的条目提供服务，而且这些变更将丢失。
+   有鉴于此，我们建议先等这个域的元数据同步状态 ``radosgw-admin sync status``
+   赶上后再把它晋级为主域。
 
-   同样，如果元数据变更是由当前的主域处理的，此时另一个域却被\
-   晋级成了主域，那么这些变更会也丢失。为避免出现此类情况，建\
-   议关闭先前主域内的所有 ``radosgw`` 例程；等晋级完另一个域之\
-   后，可以用 ``radosgw-admin period pull`` 拉取新的 period ，\
-   并启动先前停掉的网关。
+   同样，如果元数据变更是由当前的主域处理的，
+   此时另一个域却被晋级成了主域，那么这些变更会也丢失。
+   为避免出现此类情况，建议关闭先前主域内的所有 ``radosgw`` 例程；
+   等晋级完另一个域之后，可以用 ``radosgw-admin period pull`` 拉取\
+   新的 period ，并启动先前停掉的网关。
 
-要想把一个域（例如 ``us`` 域组内的 ``us-2`` 域）晋级为元数据主\
-域，在这个域上做如下操作： ::
+要想把一个域（例如 ``us`` 域组内的 ``us-2`` 域）晋级为元数据主域，
+在这个域上做如下操作： ::
 
     $ radosgw-admin zone modify --rgw-zone=us-2 --master
     $ radosgw-admin zonegroup modify --rgw-zonegroup=us --master
@@ -559,7 +613,9 @@ set to 0, you shouldn't have to trim it at any time as it could cause side effec
        # radosgw-admin zone modify --rgw-zone={zone-name} --master --default \
                                    --read-only=false
 
-#. 更新 period 以使变更生效。 ::
+#. 更新 period 以使变更生效。
+
+   ::
 
        # radosgw-admin period update --commit
 
@@ -577,30 +633,41 @@ set to 0, you shouldn't have to trim it at any time as it could cause side effec
        # radosgw-admin realm pull --url={url-to-master-zone-gateway} \
                                   --access-key={access-key} --secret={secret}
 
-#. 让恢复的域成为默认的主域，例如： ::
+#. 让恢复的域成为默认的主域，例如：
+
+   ::
 
        # radosgw-admin zone modify --rgw-zone={zone-name} --master --default
 
-#. 更新 period 以使变更生效： ::
+#. 更新 period 以使变更生效：
+
+   ::
 
        # radosgw-admin period update --commit
 
-#. 然后，在恢复好的域里重启 Ceph 对象网关。 ::
+#. 然后，在恢复好的域里重启 Ceph 对象网关。
+
+   ::
 
        # systemctl restart ceph-radosgw@rgw.`hostname -s`
 
-#. 如果副域还要恢复为只读配置，更新一下副域。 ::
+#. 如果副域还要恢复为只读配置，更新一下副域。
+
+   ::
 
        # radosgw-admin zone modify --rgw-zone={zone-name} --read-only
 
-#. 更新 period 以使变更生效。 ::
+#. 更新 period 以使变更生效。
+
+   ::
 
        # radosgw-admin period update --commit
 
-#. 最后，重启次域里的 Ceph 对象网关。 ::
+#. 最后，重启次域里的 Ceph 对象网关。
+
+   ::
 
        # systemctl restart ceph-radosgw@rgw.`hostname -s`
-
 
 
 .. _rgw-multisite-migrate-from-single-site:
@@ -625,14 +692,16 @@ set to 0, you shouldn't have to trim it at any time as it could cause side effec
        # radosgw-admin zonegroup rename --rgw-zonegroup default --zonegroup-new-name=<name>
        # radosgw-admin zone rename --rgw-zone default --zone-new-name us-east-1 --rgw-zonegroup=<name>
 
-#. 配置主域组。把 ``<name>`` 替换成 realm 或域组的名字；
+#. 配置主域组。
+   把 ``<name>`` 替换成 realm 或域组的名字；
    ``<fqdn>`` 替换成域组内配置的全资域名。
 
    ::
 
        # radosgw-admin zonegroup modify --rgw-realm=<name> --rgw-zonegroup=<name> --endpoints http://<fqdn>:80 --master --default
 
-#. 配置主域。把 ``<name>`` 替换成 realm 、域组或域的名字；
+#. 配置主域。
+   把 ``<name>`` 替换成 realm 、域组或域的名字；
    ``<fqdn>`` 替换成域组内配置的全资域名。
 
    ::
@@ -674,35 +743,37 @@ set to 0, you shouldn't have to trim it at any time as it could cause side effec
 以下是附上细节信息，以及与 realm 、 period 、 zone group 、 zone
 相关的命令行用法。
 
-For more details on every available configuration option, please check out
-``src/common/options/rgw.yaml.in`` or go to the more comfortable :ref:`mgr-dashboard`
-configuration page (found under `Cluster`) where you can view and set all
-options easily. On the page, set the level to ``advanced`` and search for RGW,
-to see all basic and advanced configuration options with a short description.
-Expand the details of an option to reveal a longer description.
+要看每个可用配置选项的详细用法，请看 ``src/common/options/rgw.yaml.in`` 文件、
+或者去看更友好的 :ref:`mgr-dashboard` WEB 配置页面（在 `Cluster` 内），
+在这里你可以方便地查看和配置所有选项。
+在这个页面上，把水平设置为 ``advanced`` 然后搜索 RGW ，
+这样才能看到所有基本和高级的配置选项，都带有简短描述。
+展开一个选项的详情，可以显示更长的描述。
 
 
 Realms
 ------
 
-一个 realm 代表一个全局唯一的命名空间，其内可包含一或多个域组、\
-域组有可能包含了一或多个域、域包含桶、桶内是对象。 realm 概念\
-可以让 Ceph 对象网关在同一套硬件上配置多个命名空间。
+一个 realm 代表一个全局唯一的命名空间，
+其内可包含一或多个域组、
+域组有可能包含了一或多个域、域包含桶、桶内是对象。
+realm 概念可以让 Ceph 对象网关在同一套硬件上配置多个命名空间。
 
-realm 暗含了 period 概念，每个 period 表示了域组和域在当时的状\
-态。每次更改域组或域后都需要更新 period 并提交它。
+realm 暗含了 period 概念，
+每个 period 表示了域组和域在当时的状态。
+每次更改域组或域后都需要更新 period 并提交它。
 
-考虑到与 Infernalis 以及更早版本的向后兼容问题，默认情况下，
-Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集群上创\
-建 realm 。
+考虑到与 Infernalis 以及更早版本的向后兼容问题，
+默认情况下， Ceph 对象网关不会创建 realm 。
+然而，我们建议您最好在新集群上创建 realm 。
 
 
 创建 realm
 ~~~~~~~~~~
 .. Create a Realm
 
-创建 realm 可用 ``realm create`` 命令，并加上 realm 名字。如果\
-要创建默认的 realm ，需指定 ``--default`` 参数。
+创建 realm 可用 ``realm create`` 命令，并加上 realm 名字。
+如果要创建默认的 realm ，需指定 ``--default`` 参数。
 
 ::
 
@@ -714,8 +785,8 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 
     # radosgw-admin realm create --rgw-realm=movies --default
 
-指定 ``--default`` 以后，每次调用 ``radosgw-admin`` 都会默认指\
-向这个 realm ，除非另外指定了 ``--rgw-realm`` 和 realm 名字。
+指定 ``--default`` 以后，每次调用 ``radosgw-admin`` 都会默认指向这个 realm ，
+除非另外指定了 ``--rgw-realm`` 和 realm 名字。
 
 
 让 realm 成为默认
@@ -744,9 +815,7 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 
     # radosgw-admin realm rm --rgw-realm={realm-name}
 
-例如：
-
-::
+例如： ::
 
     # radosgw-admin realm rm --rgw-realm=movies
 
@@ -785,16 +854,13 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 ~~~~~~~~~~
 .. Set a Realm
 
-配置 realm 用 ``realm set`` 并指定其名字、和 ``--infile=`` 与\
-输入文件名。
+配置 realm 用 ``realm set`` 并指定其名字、和 ``--infile=`` 与输入文件名。
 
 ::
 
     #radosgw-admin realm set --rgw-realm=<name> --infile=<infilename>
 
-例如：
-
-::
+例如： ::
 
     # radosgw-admin realm set --rgw-realm=movies --infile=filename.json
 
@@ -803,20 +869,15 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 ~~~~~~~~~~
 .. List Realms
 
-罗列 realm 可用 ``realm list`` ：
-
-::
+罗列 realm 可用 ``realm list`` ： ::
 
     # radosgw-admin realm list
-
 
 罗列 realm 的 period
 ~~~~~~~~~~~~~~~~~~~~
 .. List Realm Periods
 
-罗列 realm 的 period 可用 ``realm list-periods`` 。
-
-::
+罗列 realm 的 period 可用 ``realm list-periods`` 。 ::
 
     # radosgw-admin realm list-periods
 
@@ -825,10 +886,8 @@ Ceph 对象网关不会创建 realm 。然而，我们建议您最好在新集�
 ~~~~~~~~~~~~~~~
 .. Pull a Realm
 
-要把 realm 配置从包含主域组和主域的节点拉取到包含副域组或副域\
-的节点，在接收 realm 配置的节点上执行 ``realm pull`` ：
-
-::
+要把 realm 配置从包含主域组和主域的节点拉取到包含副域组或副域的节点，
+在接收 realm 配置的节点上执行 ``realm pull`` ： ::
 
     # radosgw-admin realm pull --url={url-to-master-zone-gateway} --access-key={access-key} --secret={secret}
 
@@ -846,8 +905,7 @@ realm 并非 period 的一部分，所以，对 realm 的重命名只在本地�
     # radosgw-admin realm rename --rgw-realm=<current-name> --realm-new-name=<new-realm-name>
 
 .. note:: **不要**\ 用 ``realm set`` 更改 ``name`` 参数，这样\
-   只能更改内部名字，指定 ``--rgw-realm`` 时还会用老的 realm \
-   名。
+   只能更改内部名字，指定 ``--rgw-realm`` 时还会用老的 realm 名。
 
 
 域组
@@ -882,8 +940,8 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~~~~~~~
 .. Make a Zone Group the Default
 
-一堆域组应该有一个默认的，且只能有一个默认域组。如果只有一个域\
-组，且创建时没指定为默认，可让它成为默认域组。用命令：
+一堆域组应该有一个默认的，且只能有一个默认域组。如果只有一个域组，
+且创建时没指定为默认，可让它成为默认域组。用命令：
 
 ::
 
@@ -920,9 +978,7 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~~~~~~~
 .. Remove a Zone from a Zone Group
 
-从域组删除域可以用下列命令：
-
-::
+从域组删除域可以用下列命令： ::
 
     # radosgw-admin zonegroup remove --rgw-zonegroup=<name> --rgw-zone=<name>
 
@@ -937,9 +993,7 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~~~
 .. Rename a Zone Group
 
-重命名一个域组可以用：
-
-::
+重命名一个域组可以用： ::
 
     # radosgw-admin zonegroup rename --rgw-zonegroup=<name> --zonegroup-new-name=<name>
 
@@ -954,9 +1008,7 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~
 .. Delete a Zone Group
 
-删除域组可以用：
-
-::
+删除域组可以用： ::
 
     # radosgw-admin zonegroup delete --rgw-zonegroup=<name>
 
@@ -993,7 +1045,9 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~~~~~~~
 .. Get a Zone Group Map
 
-查看各域组的详情可执行： ::
+查看各域组的详情可执行：
+
+::
 
     # radosgw-admin zonegroup-map get
 
@@ -1005,9 +1059,7 @@ Ceph 对象网关例程的地理位置。
 ~~~~~~~~
 .. Get a Zone Group
 
-查看域组配置可以用命令：
-
-::
+查看域组配置可以用命令： ::
 
     radosgw-admin zonegroup get [--rgw-zonegroup=<zonegroup>]
 
@@ -1071,35 +1123,39 @@ Ceph 对象网关例程的地理位置。
 
 #. ``api_name``: 域组的 API 名字，可选。
 
-#. ``is_master``: 决定此域组是否为主域组，必需。\ **注意：**\
-   一套系统只能有一个主域组。
+#. ``is_master``: 决定此域组是否为主域组，必需。
+   **注意：** 一套系统只能有一个主域组。
 
 #. ``endpoints``: 此域组可服务的终结点列表，例如，你可以让多个\
    域名指向同一域组。记得转义正斜线（ ``\/`` ）。每个终结点都\
    可以分别指定端口（ ``fqdn:port`` ）。可选参数。
 
-#. ``hostnames``: 域组内所有主机名的列表，例如，你可以让多个域\
-   名指向同一域组。可选参数。 ``rgw dns name`` 选项会自动包含\
-   在这个列表内，更改此选项后需重启网关进程。
+#. ``hostnames``: 域组内所有主机名的列表，例如，
+   你可以让多个域名指向同一域组。可选参数。
+   ``rgw dns name`` 选项会自动包含在这个列表内，
+   更改此选项后需重启网关进程。
 
 #. ``master_zone``: 域组的主域，不指定则为默认域，可选参数。\
    **注意：**\ 每个域组只能有一个主域。
 
 #. ``zones``: 域组内所有域的列表，每个域需包含其名字（必需）、\
-   终结点列表（可选）、以及网关是否需记录元数据和数据操作（默\
-   认为否）。
+   终结点列表（可选）、以及网关是否需记录元数据和数据操作
+   （默认为否）。
 
-#. ``placement_targets``: 归置靶列表（可选），每个归置靶需包含\
-   其名字（必需）、和一个标签列表（可选），只有打了这些标签的\
-   用户才可以使用这个归置靶（即用户信息里的 ``placement_tags``
-   字段）。
+#. ``placement_targets``: 归置靶列表（可选），
+   每个归置靶需包含其名字（必需）、
+   和一个标签列表（可选），
+   只有打了这些标签的用户才可以使用这个归置靶
+   （即用户信息里的 ``placement_tags`` 字段）。
 
-#. ``default_placement``: 对象索引和对象数据的默认归置靶，默认\
-   为 ``default-placement`` 。你也可以为每个用户分别设置它们自\
-   己的默认归置靶，设置在用户信息里。
+#. ``default_placement``: 对象索引和对象数据的默认归置靶，
+   默认为 ``default-placement`` 。
+   你也可以为每个用户分别设置它们自己的默认归置靶，
+   设置在用户信息里。
 
-要配置域组，需创建一个包含必需字段的 JSON 对象，并存入文件（例\
-如 ``zonegroup.json`` ），然后执行下列命令：
+要配置域组，需创建一个包含必需字段的 JSON 对象，
+并存入文件（例如 ``zonegroup.json`` ），
+然后执行下列命令：
 
 ::
 
@@ -1107,30 +1163,32 @@ Ceph 对象网关例程的地理位置。
 
 其中 ``zonegroup.json`` 是刚刚创建的 JSON 文件。
 
-.. important:: 名为 ``default`` 的域组其 ``is_master`` 选项的\
-   值默认是 ``true`` 。如果你要新建域组并让它成为主域组，必须\
-   把域组 ``default`` 的 ``is_master`` 选项设置为 ``false`` ，\
+.. important:: 名为 ``default`` 的域组\
+   其 ``is_master`` 选项的值默认是 ``true`` 。
+   如果你要新建域组并让它成为主域组，
+   必须把域组 ``default`` 的 ``is_master`` 选项设置为 ``false`` ，
    或者删除域组 ``default`` 。
 
-最后，更新 period::
+最后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
-
-
 
 
 配置域组映射图
 ~~~~~~~~~~~~~~
 .. Set a Zone Group Map
 
-要配置域组映射图，需创建一个包含一或多个域组的 JSON 对象，并设\
-置集群的 ``master_zonegroup`` 。域组映射图里的每个域组都包含一\
-个键值对，其中 ``key`` 选项相当于单个域组配置里的 ``name`` 选\
-项， ``val`` 是包含着整个域组配置的 JSON 对象。
+要配置域组映射图，需创建一个包含一或多个域组的 JSON 对象，
+并设置集群的 ``master_zonegroup`` 。
+域组映射图里的每个域组都包含一个键值对，
+其中 ``key`` 选项相当于单个域组配置里的 ``name`` 选项，
+``val`` 是包含着整个域组配置的 JSON 对象。
 
-你只能有一个 ``is_master`` 为 ``true`` 的域组，而且它必须是域\
-组映射图尾部 ``master_zonegroup`` 选项的值。下面是默认域组映射\
-图的一个实例：
+你只能有一个 ``is_master`` 为 ``true`` 的域组，
+而且它必须是域组映射图尾部 ``master_zonegroup`` 选项的值。
+下面是默认域组映射图的一个实例：
 
 .. code-block:: json
 
@@ -1201,8 +1259,9 @@ Ceph 对象网关例程的地理位置。
 
     # radosgw-admin zonegroup-map set --infile zonegroupmap.json
 
-其中 ``zonegroupmap.json`` 是你创建的 JSON 文件，需确保域组映\
-射图里的域都已创建。最后，更新 period::
+其中 ``zonegroupmap.json`` 是你创建的 JSON 文件，
+需确保域组映射图里的域都已创建。
+最后，更新 period::
 
     # radosgw-admin period update --commit
 
@@ -1213,10 +1272,10 @@ Ceph 对象网关例程的地理位置。
 --
 .. Zones
 
-Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的逻辑\
-分组。
+Ceph 对象网关支持域概念，
+域是一或多个 Ceph 对象网关例程的逻辑分组。
 
-域的配置不同于典型配置过程，因为有些配置不在 Ceph 配置文件里。\
+域的配置不同于典型配置过程，因为有些配置不在 Ceph 配置文件里。
 你可以罗列域、查看或修改域配置。
 
 
@@ -1224,9 +1283,11 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 ~~~~~~
 .. Create a Zone
 
-创建域时，需指定其名字。如果创建的是主域，得加上 ``--master`` \
-选项，一个域组只能有一个主域；若要把域加入域组，需加上
-``--rgw-zonegroup`` 选项和域组名字。 ::
+创建域时，需指定其名字。如果创建的是主域，得加上 ``--master`` 选项，
+一个域组只能有一个主域；若要把域加入域组，
+需加上 ``--rgw-zonegroup`` 选项和域组名字。
+
+::
 
     # radosgw-admin zone create --rgw-zone=<name> \
                     [--zonegroup=<zonegroup-name]\
@@ -1234,7 +1295,9 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
                     [--master] [--default] \
                     --access-key $SYSTEM_ACCESS_KEY --secret $SYSTEM_SECRET_KEY
 
-然后，更新 period::
+然后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
 
@@ -1243,34 +1306,43 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 ~~~~~~
 .. Delete a Zone
 
-删除域前，要先从域组删掉： ::
+删除域前，要先从域组删掉：
+
+::
 
     # radosgw-admin zonegroup remove --zonegroup=<name>\
                                      --zone=<name>
 
-然后，更新 period::
+然后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
 
-接下来删除域，用此命令： ::
+接下来删除域，用此命令：
+
+::
 
     # radosgw-admin zone rm --rgw-zone<name>
 
-最后，更新 period::
+最后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
 
-.. important:: 从域组删掉域之前先不要删除这个域，否则更新 period
-   时会失败。
+.. important:: 从域组删掉域之前先不要删除这个域，
+   否则更新 period 时会失败。
 
-域被删除后，如果其它地方也不需要与之相关的存储池，可以考虑删除\
-掉，把下面实例中的 ``<del-zone>`` 替换成已删除域的名字即可。
+域被删除后，如果其它地方也不需要与之相关的存储池，可以考虑删除掉，
+把下面实例中的 ``<del-zone>`` 替换成已删除域的名字即可。
 
-.. important:: 只能删除以域名打头的存储池。若删除根存储池（如
-   ``.rgw.root`` ），会删除整个系统的配置。
+.. important:: 只能删除以域名打头的存储池。
+   若删除根存储池（如 ``.rgw.root`` ），
+   会删除整个系统的配置。
 
-.. important:: 一旦删除存储池，其内的数据也会被删除，且不可恢\
-   复。所以，确定存储池内容不需要了再删除。
+.. important:: 一旦删除存储池，其内的数据也会被删除，
+   且不可恢复。所以，确定存储池内容不需要了再删除。
 
 ::
 
@@ -1281,13 +1353,13 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
     # ceph osd pool rm <del-zone>.rgw.users.uid <del-zone>.rgw.users.uid --yes-i-really-really-mean-it
 
 
-
-
 修改域配置
 ~~~~~~~~~~
 .. Modify a Zone
 
-修改域配置需指定域名、以及你想更改的参数。 ::
+修改域配置需指定域名、以及你想更改的参数。
+
+::
 
     # radosgw-admin zone modify [options]
 
@@ -1304,8 +1376,6 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
     # radosgw-admin period update --commit
 
 
-
-
 罗列域
 ~~~~~~
 .. List Zones
@@ -1313,8 +1383,6 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 以 ``root`` 身份罗列集群中的域： ::
 
     # radosgw-admin zone list
-
-
 
 
 查看域
@@ -1349,8 +1417,6 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
       }
 
 
-
-
 配置域
 ~~~~~~
 .. Set a Zone
@@ -1360,41 +1426,46 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 存储池如何配置见\
 `存储池 <http://docs.ceph.com/en/latest/rados/operations/pools/#pools>`__ 。
 
-要配置域，需创建一个包含存储池的 JSON 对象，并存入一个文件（如
-``zone.json`` ），然后执行下列命令（把 ``{zone-name}`` 替换为\
-域的名字）： ::
+要配置域，需创建一个包含存储池的 JSON 对象，
+并存入一个文件（如 ``zone.json`` ），
+然后执行下列命令（把 ``{zone-name}`` 替换为域的名字）：
+
+::
 
     # radosgw-admin zone set --rgw-zone={zone-name} --infile zone.json
 
 其中 ``zone.json`` 是你创建的 JSON 文件。
 
-然后，以 ``root`` 用户身份更新 period::
+然后，以 ``root`` 用户身份更新 period ：
+
+::
 
     # radosgw-admin period update --commit
-
-
 
 
 重命名域
 ~~~~~~~~
 .. Rename a Zone
 
-要重命名域，需指定域的名字和新的域名。\ ::
+要重命名域，需指定域的名字和新的域名。
+
+::
 
     # radosgw-admin zone rename --rgw-zone=<name> --zone-new-name=<name>
 
-然后，更新 period::
+然后，更新 period ：
+
+::
 
     # radosgw-admin period update --commit
-
-
 
 
 域组和域选项
 ------------
 .. Zone Group and Zone Settings
 
-配置默认的域组和域时，存储池名字里包含域的名字，例如：
+配置默认的域组和域时，存储池名字里包含域的名字，
+例如：
 
 -  ``default.rgw.control``
 
@@ -1417,5 +1488,6 @@ Ceph 对象网关支持域概念，域是一或多个 Ceph 对象网关例程的
 +-------------------------------------+------------------------------+---------+-----------------------+
 
 
+
 .. _`存储池`: ../pools
-.. _`Sync Policy Config`: ../multisite-sync-policy
+.. _`同步策略配置`: ../multisite-sync-policy
