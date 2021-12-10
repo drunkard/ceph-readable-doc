@@ -227,34 +227,34 @@
 <h2>慢或卡住的操作<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <p>如果遇到了明显的卡顿操作，首先要定位问题源头：是客户端、
 MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（参考下面的 <a class="reference internal" href="#slow-requests"><span class="std std-ref">慢请求（ MDS 端）</span></a> ），进而缩小范围。</p>
-<p>We can get hints about what’s going on by dumping the MDS cache</p>
+<p>我们可以这样获取线索，把 MDS 缓存转储出来看看发生了什么：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">mds</span><span class="o">.&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">dump</span> <span class="n">cache</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">dump</span><span class="o">.</span><span class="n">txt</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The file <cite>dump.txt</cite> is on the machine executing the MDS and for systemd
-controlled MDS services, this is in a tmpfs in the MDS container.
-Use <cite>nsenter(1)</cite> to locate <cite>dump.txt</cite> or specify another system-wide path.</p>
+<p><cite>dump.txt</cite> 这个文件在运行着 MDS 的机器上，而且，
+对于 systemd 控制着的 MDS 服务，它是在 MDS 容器内的一个 tmpfs 上。
+可以用 <cite>nsenter(1)</cite> 来定位 <cite>dump.txt</cite> ，或者指定另外一个系统级的路径。</p>
 </div>
-<p>If high logging levels are set on the MDS, that will almost certainly hold the
-information we need to diagnose and solve the issue.</p>
+<p>如果 MDS 设置了较高的日志级别，那里差不多肯定有我们需要的诊断信息，
+解决问题有望了。</p>
 </div>
 <div class="section" id="rados">
 <h2>RADOS 健康状况<a class="headerlink" href="#rados" title="Permalink to this headline">¶</a></h2>
-<p>如果 CephFS 的元数据或者数据存储池的某一部分不可用、且 CephFS
-不响应，很有可能是 RADOS 本身有问题，应该先解决这样的问题（
-<a class="reference internal" href="../../rados/troubleshooting/"><span class="doc">故障排除</span></a> ）。</p>
+<p>如果 CephFS 的元数据或者数据存储池的某一部分不可用、且 CephFS 不响应，
+很有可能是 RADOS 本身有问题，应该先解决这样的问题
+（ <a class="reference internal" href="../../rados/troubleshooting/"><span class="doc">故障排除</span></a> ）。</p>
 </div>
 <div class="section" id="mds">
 <h2>MDS 问题<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h2>
-<p>如果某个操作卡在了 MDS 内部，类似 “slow requests are blocked”
-的消息最终会出现在 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">health</span></code> 里；也可能指出是客户端的问题，如 “failing to respond” 或其它形式的异常行为。如果 MDS
-认定某些客户端的行为异常，你应该弄明白起因。常见起因有：</p>
+<p>如果某个操作卡在了 MDS 内部，类似 “slow requests are blocked” 的消息最终会出现在 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">health</span></code> 里；也可能指出是客户端的问题，
+如 “failing to respond” 或其它形式的异常行为。
+如果 MDS 认定某些客户端的行为异常，你应该弄明白起因。常见起因有：</p>
 <p>通常是这些起因：</p>
 <ol class="arabic simple">
-<li><p>系统过载（如果你还有空闲内存，增大 <code class="docutils literal notranslate"><span class="pre">mds</span> <span class="pre">cache</span> <span class="pre">memory</span> <span class="pre">limit</span></code>
-配置试试，默认才 1GiB ；活跃文件比较多，超过 MDS 缓存容量是此问题的首要起因！）</p></li>
+<li><p>系统过载（如果你还有空闲内存，增大 <code class="docutils literal notranslate"><span class="pre">mds</span> <span class="pre">cache</span> <span class="pre">memory</span> <span class="pre">limit</span></code> 配置试试，
+默认才 1GiB ；活跃文件比较多，超过 MDS 缓存容量是此问题的首要起因！）</p></li>
 <li><p>客户端比较老（行为乖张）；</p></li>
 <li><p>底层的 RADOS 问题。</p></li>
 </ol>
@@ -265,9 +265,14 @@ information we need to diagnose and solve the issue.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">mds</span><span class="o">.&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">dump_ops_in_flight</span>
 </pre></div>
 </div>
-<p>在 MDS 主机上执行。找出卡住的命令、并调查卡住的原因。通常最后一个“事件”（ event ）尝试过收集锁、或者把这个操作发往 MDS 日志。如果它是在等待 OSD ，修正即可；如果操作都卡在了某个索引节点上，原因可能是一个客户端一直占着能力，别人就没法拿到，也可能是这个客户端想刷回脏数据，还可能是你遇到了 CephFS 分布式文件锁的代码（文件能力子系统、 capabilities 、 caps ）缺陷。</p>
+<p>在 MDS 主机上执行。找出卡住的命令、并调查卡住的原因。
+通常最后一个“事件”（ event ）尝试过收集锁、或者把这个操作发往 MDS 日志。
+如果它是在等待 OSD ，修正即可；如果操作都卡在了某个索引节点上，
+原因可能是一个客户端一直占着能力，别人就没法拿到，
+也可能是这个客户端想刷回脏数据，还可能是你遇到了 CephFS 分布式文件锁的代码（文件能力子系统、 capabilities 、 caps ）缺陷。</p>
 <p>如果起因是能力代码的缺陷，重启 MDS 也许能解决此问题。</p>
-<p>如果 MDS 上没发现慢请求，而且也没报告客户端行为异常，那问题就可能在客户端上、或者它的请求还没到 MDS 上。</p>
+<p>如果 MDS 上没发现慢请求，而且也没报告客户端行为异常，
+那问题就可能在客户端上、或者它的请求还没到 MDS 上。</p>
 </div>
 </div>
 <div class="section" id="ceph-fuse">
@@ -276,22 +281,22 @@ information we need to diagnose and solve the issue.</p>
 <div class="section" id="id4">
 <h3>调试输出<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
 <p>要想看到 ceph-fuse 的更多调试信息，试试在前台运行，让日志输出到控制台（ <code class="docutils literal notranslate"><span class="pre">-d</span></code> ）、打开客户端调试（ <code class="docutils literal notranslate"><span class="pre">--debug-client=20</span></code> ）、打印发送过的所有消息（ <code class="docutils literal notranslate"><span class="pre">--debug-ms=1</span></code> ）。</p>
-<p>如果你怀疑是监视器的问题，也可以打开监视器调试开关（
-<code class="docutils literal notranslate"><span class="pre">--debug-monc=20</span></code> ）。</p>
+<p>如果你怀疑是监视器的问题，也可以打开监视器调试开关（ <code class="docutils literal notranslate"><span class="pre">--debug-monc=20</span></code> ）。</p>
 </div>
 </div>
 <div class="section" id="kernel-mount-debugging">
 <span id="id5"></span><h2>内核挂载的调试<a class="headerlink" href="#kernel-mount-debugging" title="Permalink to this headline">¶</a></h2>
-<p>If there is an issue with the kernel client, the most important thing is
-figuring out whether the problem is with the kernel client or the MDS. Generally,
-this is easy to work out. If the kernel client broke directly, there will be
-output in <code class="docutils literal notranslate"><span class="pre">dmesg</span></code>. Collect it and any inappropriate kernel state.</p>
+<p>如果内核客户端有问题，最重要的是找出问题起因是在内核客户端上、
+还是在 MDS 上，通常都比较容易发现。如果内核客户端直接垮了，
+<code class="docutils literal notranslate"><span class="pre">dmesg</span></code> 里会有输出信息，要收集好它们、还有任何不对劲的内核状态。</p>
 <div class="section" id="id6">
 <h3>慢请求<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
-<p>遗憾的是内核客户端不支持管理套接字，可是如果你的内核启用了（如果限制过） debugfs ，那么它就有相似的接口了。
+<p>遗憾的是内核客户端不支持管理套接字，可是如果你的内核启用了
+（如果限制过） debugfs ，那么它就有相似的接口了。
 <code class="docutils literal notranslate"><span class="pre">sys/kernel/debug/ceph/</span></code> 路径下有一个文件夹（其名字形如
-<code class="docutils literal notranslate"><span class="pre">28f7427e-5558-4ffd-ae1a-51ec3042759a.client25386880</span></code> ），而且其内包含很多文件，用 <code class="docutils literal notranslate"><span class="pre">cat</span></code> 命令查看它们的内容时会看到有趣的输出。这些文件描述如下，最有助于调试慢请求问题的文件可能是
-<code class="docutils literal notranslate"><span class="pre">mdsc</span></code> 和 <code class="docutils literal notranslate"><span class="pre">osdc</span></code> 。</p>
+<code class="docutils literal notranslate"><span class="pre">28f7427e-5558-4ffd-ae1a-51ec3042759a.client25386880</span></code> ），
+而且其内包含很多文件，用 <code class="docutils literal notranslate"><span class="pre">cat</span></code> 命令查看它们的内容时会看到有趣的输出。
+这些文件描述如下，最有助于调试慢请求问题的文件可能是 <code class="docutils literal notranslate"><span class="pre">mdsc</span></code> 和 <code class="docutils literal notranslate"><span class="pre">osdc</span></code> 。</p>
 <ul class="simple">
 <li><p>bdi: 关于 Ceph 系统的 BDI 信息（脏块、已写入的等等）</p></li>
 <li><p>caps: 文件的 caps 数据结构计数，包括内存中的和用过的</p></li>
@@ -310,8 +315,12 @@ output in <code class="docutils literal notranslate"><span class="pre">dmesg</sp
 </div>
 <div class="section" id="id7">
 <h2>断线后又重新挂载的文件系统<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
-<p>因为 CephFS 有个“一致性缓存”，如果你的网络连接中断时间较长，客户端就会被系统强制断开，此时，内核客户端仍然傻站着（ in a bind
-）：它不能安全地写回脏数据，另外很多应用程序在 close() 时不能正确处理 IO 错误。这个时候，内核客户端会重新挂载这个文件系统，但是先前的文件系统 IO 也许能完成、也许不能，这些情况下，你也许得重启客户端系统。</p>
+<p>因为 CephFS 有个“一致性缓存”，如果你的网络连接中断时间较长，
+客户端就会被系统强制断开，此时，内核客户端仍然傻站着（ in a bind ）：
+它不能安全地写回脏数据，另外很多应用程序在 close() 时不能正确处理 IO 错误。
+这个时候，内核客户端会重新挂载这个文件系统，
+但是先前的文件系统 IO 也许能完成、也许不能，
+这些情况下，你也许得重启客户端系统。</p>
 <p>如果 dmesg 或者 kern.log 里出现了类似消息，说明你遇到的就是这种情况：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Jul</span> <span class="mi">20</span> <span class="mi">08</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">38</span> <span class="n">teuthology</span> <span class="n">kernel</span><span class="p">:</span> <span class="p">[</span><span class="mf">3677601.123718</span><span class="p">]</span> <span class="n">ceph</span><span class="p">:</span> <span class="n">mds0</span> <span class="n">closed</span> <span class="n">our</span> <span class="n">session</span>
 <span class="n">Jul</span> <span class="mi">20</span> <span class="mi">08</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">38</span> <span class="n">teuthology</span> <span class="n">kernel</span><span class="p">:</span> <span class="p">[</span><span class="mf">3677601.128019</span><span class="p">]</span> <span class="n">ceph</span><span class="p">:</span> <span class="n">mds0</span> <span class="n">reconnect</span> <span class="n">start</span>
@@ -323,18 +332,23 @@ output in <code class="docutils literal notranslate"><span class="pre">dmesg</sp
 <span class="n">Jul</span> <span class="mi">20</span> <span class="mi">08</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">40</span> <span class="n">teuthology</span> <span class="n">kernel</span><span class="p">:</span> <span class="p">[</span><span class="mf">3677603.132176</span><span class="p">]</span> <span class="n">libceph</span><span class="p">:</span> <span class="n">reset</span> <span class="n">on</span> <span class="n">mds0</span>
 </pre></div>
 </div>
-<p>这是正在改善的领域，内核将很快能够可靠地向正在进行的 IO 发送错误代码，即便你的应用程序不能良好地应对这些情况。长远来看，在不违背 POSIX 语义的情况下，我们希望可以重连和回收数据（通常是其它客户端尚未访问、或修改的数据）。</p>
+<p>这是正在改善的领域，内核将很快能够可靠地向正在进行的 IO 发送错误代码，
+即便你的应用程序不能良好地应对这些情况。长远来看，
+在不违背 POSIX 语义的情况下，我们希望可以重连和回收数据
+（通常是其它客户端尚未访问、或修改的数据）。</p>
 </div>
 <div class="section" id="id8">
 <h2>挂载问题<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="mount-5-error">
 <h3>Mount 5 Error<a class="headerlink" href="#mount-5-error" title="Permalink to this headline">¶</a></h3>
-<p>mount 5 错误通常是 MDS 服务器滞后或崩溃导致的。要确保至少有一个 MDS 是启动且运行的，集群也要处于 <code class="docutils literal notranslate"><span class="pre">active+healthy</span></code> 状态。</p>
+<p>mount 5 错误通常是 MDS 服务器滞后或崩溃导致的。
+要确保至少有一个 MDS 是启动且运行的，集群也要处于 <code class="docutils literal notranslate"><span class="pre">active+healthy</span></code> 状态。</p>
 </div>
 <div class="section" id="mount-12-error">
 <h3>Mount 12 Error<a class="headerlink" href="#mount-12-error" title="Permalink to this headline">¶</a></h3>
-<p>mount 12 错误显示 <code class="docutils literal notranslate"><span class="pre">cannot</span> <span class="pre">allocate</span> <span class="pre">memory</span></code> ，常见于
-<a class="reference internal" href="../../glossary/#term-35"><span class="xref std std-term">Ceph 客户端</span></a>和 <a class="reference internal" href="../../glossary/#term-7"><span class="xref std std-term">Ceph 存储集群</span></a>版本不匹配。用以下命令检查版本：</p>
+<p>mount 12 错误显示 <code class="docutils literal notranslate"><span class="pre">cannot</span> <span class="pre">allocate</span> <span class="pre">memory</span></code> ，
+常见于 <a class="reference internal" href="../../glossary/#term-35"><span class="xref std std-term">Ceph 客户端</span></a>和 <a class="reference internal" href="../../glossary/#term-7"><span class="xref std std-term">Ceph 存储集群</span></a>版本不匹配。
+用以下命令检查版本：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">-</span><span class="n">v</span>
 </pre></div>
 </div>
@@ -347,8 +361,8 @@ output in <code class="docutils literal notranslate"><span class="pre">dmesg</sp
 </div>
 <div class="section" id="id9">
 <h2>动态调试<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
-<p>You can enable dynamic debug against the CephFS module.</p>
-<p>Please see: <a class="reference external" href="https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh">https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh</a></p>
+<p>你可以对 CephFS 模块开启动态调试。</p>
+<p>请看： <a class="reference external" href="https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh">https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh</a></p>
 </div>
 <div class="section" id="id10">
 <h2>报告问题<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>

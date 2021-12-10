@@ -9,24 +9,23 @@
 
 有三种方法获取软件包：
 
-- **Cephadm:** Cephadm can configure your Ceph repositories for you
-  based on a release name or a specific Ceph version.  Each
-  :term:`Ceph Node` in your cluster must have internet access.
+- **Cephadm:** Cephadm 可以根据版本名或者指定的版本号来\
+  帮你配置你的 Ceph 软件库。
+  集群内的各个 :term:`Ceph 节点` 都必须能访问互联网。
 
-- **手动配置软件库：** You can manually configure your
-  package management tool to retrieve Ceph packages and all enabling
-  software.
-  各 :term:`Ceph 节点`\ 都必须能连接互联网。
+- **手动配置软件库：** 你可以手动配置你的包管理工具来\
+  获取 Ceph 软件包及其所有依赖的软件包。
+  集群内的各个 :term:`Ceph 节点` 都必须能访问互联网。
 
-- **手动下载软件包：** 如果你的环境不允许 :term:`Ceph 节点`\ 访\
-  问互联网，手动下载软件包安装 Ceph 也不复杂。
+- **手动下载软件包：** 如果你的环境不允许 :term:`Ceph 节点`\
+  访问互联网，手动下载软件包安装 Ceph 也不复杂。
 
 
 用 cephadm 安装软件包
 =====================
 .. Install packages with cephadm
 
-#. Download the cephadm script
+#. 下载 cephadm 脚本
 
 .. prompt:: bash $
    :substitutions:
@@ -34,22 +33,21 @@
    curl --silent --remote-name --location https://github.com/ceph/ceph/raw/|stable-release|/src/cephadm/cephadm
    chmod +x cephadm
 
-#. Configure the Ceph repository based on the release name::
+#. 基于版本名来配置 Ceph 软件仓库： ::
 
      ./cephadm add-repo --release nautilus
 
-   For Octopus (15.2.0) and later releases, you can also specify a specific
-   version::
+   对于 Octopus (15.2.0) 及其后续版本，
+   你还能指定一个特定的版本： ::
 
      ./cephadm add-repo --version 15.2.1
 
-   For development packages, you can specify a specific branch name::
+   对于开发版软件包，你可以指定一个特定的分支名： ::
 
      ./cephadm add-repo --dev my-branch
 
-#. Install the appropriate packages.  You can install them using your
-   package management tool (e.g., APT, Yum) directly, or you can also
-   use the cephadm wrapper.  For example::
+#. 安装所需的软件包。你可以用你的包管理工具直接安装它们
+   （如 APT 、 Yum ），或者用 cephadm 套壳。例如： ::
 
      ./cephadm install ceph-common
 
@@ -58,27 +56,30 @@
 ==============
 .. Configure Repositories Manually
 
-所有 Ceph 部署都需要 Ceph 软件包（除非是开发），你应该安装\
-相应的密钥和推荐的软件包。
+所有 Ceph 部署都需要 Ceph 软件包（除非是开发），
+你应该安装相应的密钥和推荐的软件包。
 
-- **密钥：（推荐）** 不管你是用仓库还是手动下载，你都需要用\
-  密钥校验软件包。如果你没有密钥，就会收到安全警告。
+- **密钥：（推荐）** 不管你是用仓库还是手动下载，
+  你都需要用密钥校验软件包。如果你没有密钥，
+  就会收到安全警告。
 
-- **Ceph:（必要）** 所有 Ceph 部署都需要 Ceph 发布的软件包，\
-  除非你部署开发版软件包（仅有开发版、 QA 、和尖端部署）。
+- **Ceph:（必要）** 所有 Ceph 部署都需要 Ceph 发布的软件包，
+  除非你部署开发版软件包
+  （仅有开发版、 QA 、和尖端部署）。
 
-- **Ceph Development:（可选）** 如果你在做 Ceph 开发、测试 Ceph
-  开发版、或者急需开发版中的尖端功能，可以安装开发版软件包。
+- **Ceph Development:（可选）** 如果你在做 Ceph 开发、
+  测试 Ceph 开发版、或者急需开发版中的尖端功能，
+  可以安装开发版软件包。
 
 
 安装密钥
 --------
 .. Add Keys
 
-把密钥加入你系统的可信密钥列表内，以消除安全告警。对主要发行版\
-（如 ``luminous`` 、 ``mimic`` 、 ``nautilus`` ）和开发版（如 \
-``release-name-rc1`` 、 ``release-name-rc2`` ）应该用 \
-``release.asc`` 密钥。
+把密钥加入你系统的可信密钥列表内，以消除安全告警。
+对主要发行版（如 ``luminous`` 、 ``mimic`` 、 ``nautilus`` ）和\
+开发版（如 ``release-name-rc1`` 、 ``release-name-rc2`` ）
+应该用 ``release.asc`` 密钥。
 
 
 APT
@@ -104,7 +105,7 @@ Ceph 正式版软件包
 发布库用 ``release.asc`` 公钥校验软件包。要通过 APT 或 YUM
 安装 Ceph 二进制包，必须先配置库。
 
-适合 Debian/Ubuntu 的包位于： ::
+适合 Debian/Ubuntu （用 APT 安装的）的包位于： ::
 
 	https://download.ceph.com/debian-{release-name}
 
@@ -112,12 +113,12 @@ Ceph 正式版软件包
 
 	https://download.ceph.com/rpm-{release-name}
 
-For Octopus and later releases, you can also configure a repository for a
-specific version ``x.y.z``.  For Debian/Ubuntu packages::
+对于 Octopus 及其后续版本，你还能给特定版本 ``x.y.z`` 配置软件库。
+对于 Debian/Ubuntu 包： ::
 
   https://download.ceph.com/debian-{version}
 
-For RPMs::
+对于 RPM::
 
   https://download.ceph.com/rpm-{version}
 
@@ -131,9 +132,9 @@ Debian 二进制包
 ~~~~~~~~~~~~~~~
 .. Debian Packages
 
-把 Ceph 库加入系统级 APT 源列表。在较新版本的 Debian/Ubuntu
-上，用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换\
-下列命令里的 ``{codename}`` 。
+把 Ceph 库加入系统级 APT 源列表。在较新版本的 Debian/Ubuntu 上，
+用命令 ``lsb_release -sc`` 可获取短代码名，
+然后用它替换下列命令里的 ``{codename}`` 。
 
 .. prompt:: bash $
    :substitutions:
@@ -161,8 +162,8 @@ Debian 二进制包
 
 	echo deb https://download.ceph.com/debian-{release-name}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-对于开发版，把我们的软件库加入 APT 源。这里 \
-`Debian 测试版软件库`_ 是已支持的 Debian/Ubuntu 列表。
+对于开发版，把我们的软件库加入 APT 源。
+这里 `Debian 测试版软件库`_ 是已支持的 Debian/Ubuntu 列表。
 
 .. prompt:: bash $
 
@@ -179,13 +180,13 @@ RPM 二进制包
 RHEL
 ^^^^
 
-对于主要发布，你可以在 ``/etc/yum.repos.d/`` 目录下新增一个
-Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
-发布名（如 ``luminous`` 、 ``mimic`` 、 ``nautilus`` 等等）替换
-``{ceph-release}`` 、用 Linux 发行版名（ ``el8`` 等等）替换
-``{distro}`` 。你可以到 https://download.ceph.com/rpm-{ceph-release}/
-看看 Ceph 支持哪些发行版。有些 Ceph 包（如 EPEL ）必须优先于\
-标准包，所以你必须确保设置了 ``priority=2`` 。
+对于主要发布，你可以在 ``/etc/yum.repos.d/`` 目录下新增一个 Ceph 库：
+创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要发布名
+（如 ``luminous`` 、 ``mimic`` 、 ``nautilus`` 等等）替换 ``{ceph-release}`` 、
+用 Linux 发行版名（ ``el8`` 等等）替换 ``{distro}`` 。
+你可以到 https://download.ceph.com/rpm-{ceph-release}/
+看看 Ceph 支持哪些发行版。有些 Ceph 包（如 EPEL ）必须优先于标准包，
+所以你必须确保设置了 ``priority=2`` 。
 
 .. code-block:: ini
 
@@ -213,13 +214,14 @@ Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
 	gpgcheck=1
 	gpgkey=https://download.ceph.com/keys/release.asc
 
-对于某些包，你可以通过名字直接下载。按照我们的开发进度，每 3-4
-周会发布一次。这些包的变动比主要发布频繁，开发版会迅速地集成新\
-功能，然而这些新功能需要几周时间的质检才会发布。
+对于某些包，你可以通过名字直接下载。
+按照我们的开发进度，每 3-4 周会发布一次。
+这些包的变动比主要发布频繁，开发版会迅速地集成新功能，
+然而这些新功能需要几周时间的质检才会发布。
 
-软件库包会把软件库的具体配置安装到本机，以便 ``yum`` 使用。把
-``{distro}`` 替换成你的 Linux 发行版名字，把 ``{release}`` 换\
-成 Ceph 的某个发布名。
+软件库包会把软件库的具体配置安装到本机，以便 ``yum`` 使用。
+把 ``{distro}`` 替换成你的 Linux 发行版名字，
+把 ``{release}`` 换成 Ceph 的某个发布名。
 
 .. prompt:: bash $
 
@@ -236,8 +238,9 @@ Ceph 库：创建 ``ceph.repo`` 文件。在下例中，需要用 Ceph 主要\
 
 
 openSUSE Leap 15.1
-~~~~~~~~~~~~~~~~~~
-You need to add the Ceph package repository to your list of zypper sources. This can be done with the following command
+^^^^^^^^^^^^^^^^^^
+
+你得把 Ceph 软件包库加进你的 zypper 源列表里，可以用下面的命令：
 
 .. code-block:: bash
 
@@ -245,9 +248,9 @@ You need to add the Ceph package repository to your list of zypper sources. This
 
 
 openSUSE Tumbleweed
-~~~~~~~~~~~~~~~~~~~
-The newest major release of Ceph is already available through the normal Tumbleweed repositories.
-There's no need to add another package repository manually.
+^^^^^^^^^^^^^^^^^^^
+
+Ceph 的最新主版本在普通 Tumbleweed 软件库里已经能用了。没必要手动另外加软件库。
 
 
 Ceph 开发版软件包
@@ -262,12 +265,11 @@ DEB 二进制包
 ~~~~~~~~~~~~ 
 .. DEB Packages
 
-我们自动为 Ubuntu 构建 Ceph 当前开发分支的二进制包，这\
-些包只适合开发者和质检人员。
+我们自动为 Ubuntu 构建 Ceph 当前开发分支的二进制包，
+这些包只适合开发者和质检人员。
 
-把此仓库加进你的 APT 源，用你要测试的分支名（如 wip-hack 、 \
-master ）替换 ``{BRANCH}`` 。我们所构建发布的完整列表在 \
-`shaman 网页`\ 。
+把此仓库加进你的 APT 源，用你要测试的分支名（如 wip-hack 、 master ）
+替换 ``{BRANCH}`` 。我们所构建发布的完整列表在 `shaman 网页`\ 。
 
 .. prompt:: bash $
 
@@ -275,9 +277,9 @@ master ）替换 ``{BRANCH}`` 。我们所构建发布的完整列表在 \
 
 .. note:: 如果某个仓库还没准备好，你就会遇到 HTTP 504 。
 
-上面 URL 里用了 ``latest`` ，它用来指示本次构建的最后一个\
-提交。另外，还能指定某个特定的 sha1 号码。要给 Ubuntu Xenial
-构建 Ceph 的 master 分支，命令如下： ::
+上面 URL 里用了 ``latest`` ，它用来指示本次构建的最后一个提交。
+另外，还能指定某个特定的 sha1 号码。
+要给 Ubuntu Xenial 构建 Ceph 的 master 分支，命令如下：
 
 .. prompt:: bash $
 
@@ -315,18 +317,17 @@ RPM 二进制包
 --------------
 .. Download Packages Manually
 
-如果你位于防火墙之内，不能访问互联网，那你必须先下载齐所需\
-软件包（镜像所有依赖）才能开始安装。
+如果你位于防火墙之内，不能访问互联网，
+那你必须先下载齐所需软件包（镜像所有依赖）才能开始安装。
 
 
 Debian 二进制包
 ~~~~~~~~~~~~~~~
 .. Debian Packages
 
-这个软件库包会装好所需的 ``apt`` 软件库的配置文件。需用最新 Ceph \
-发布替换掉 ``{release}`` 、用最新 Ceph 版本号替换 ``{version}`` 、\
-用自己的 Linux 发行版代号替换 ``{distro}`` 、用自己的 CPU 架构替\
-换 ``{arch}`` 。
+这个软件库包会装好所需的 ``apt`` 软件库的配置文件。
+需用最新 Ceph 发布替换掉 ``{release}`` 、用最新 Ceph 版本号替换 ``{version}`` 、
+用自己的 Linux 发行版代号替换 ``{distro}`` 、用自己的 CPU 架构替换 ``{arch}`` 。
 
 .. prompt:: bash $
 
