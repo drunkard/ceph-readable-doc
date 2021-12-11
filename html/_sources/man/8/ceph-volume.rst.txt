@@ -35,15 +35,16 @@ Ceph 一起安装的 udev 规则。通过这些规则，系统可以自动探测
 子命令
 ======
 
+
 inventory
 ---------
 
 .. program:: ceph-volume inventory
 
-这个子命令可搜集到主机的物理磁盘清单，并报告它们的元数据。在\
-这些元数据中，有与磁盘相关的数据（像型号、尺寸、是机械磁盘还\
-是固态的）；还有与 Ceph 相关的，像是否可用于 Ceph 、或是否有\
-逻辑卷。
+这个子命令可搜集到主机的物理磁盘清单，并报告它们的元数据。
+在这些元数据中，有与磁盘相关的数据
+（像型号、尺寸、是机械磁盘还是固态的）；
+还有与 Ceph 相关的，像是否可用于 Ceph 、或是否有逻辑卷。
 
 实例： ::
 
@@ -62,6 +63,7 @@ inventory
    输出格式，可用值有 ``plain`` （默认的）、
    ``json`` 和 ``json-pretty``
 
+
 lvm
 ---
 
@@ -71,6 +73,7 @@ lvm
 查询与 OSD 有关的各个设备，以便稍后激活它们。
 
 可用子命令：
+
 
 batch
 ^^^^^
@@ -189,6 +192,8 @@ activate
 用（ idempotent ） ``--all`` 标记可以一次激活多个 OSD ： ::
 
     ceph-volume lvm activate --all
+
+
 
 
 prepare
@@ -340,7 +345,8 @@ zap
 
       ceph-volume lvm zap /dev/sdc1
 
-要完全删除设备，需加 ``--destroy`` 选项（适用于所有设备类型）： ::
+要完全删除设备，需加 ``--destroy`` 选项
+（适用于所有设备类型）： ::
 
       ceph-volume lvm zap --destroy /dev/sdc1
 
@@ -362,103 +368,105 @@ new-wal
 
 .. program:: ceph-volume lvm new-wal
 
-Attaches the given logical volume to OSD as a WAL. Logical volume
-name format is vg/lv. Fails if OSD has already got attached WAL.
+把指定逻辑卷捆绑到 OSD 上作为 WAL 。逻辑卷名字的格式是 vg/lv 。
+如果 OSD 已经捆绑了 WAL 这个命令就会失败。
 
-Usage::
+用法： ::
 
     ceph-volume lvm new-wal --osd-id OSD_ID --osd-fsid OSD_FSID --target <target lv>
 
-Optional arguments:
+可选参数：
 
 .. option:: -h, --help
 
-   show the help message and exit
+   显示帮助信息然后退出。
 
 .. option:: --no-systemd
 
-   Skip checking OSD systemd unit
+   跳过对 OSD 的 systemd unit 检查。
 
-Required arguments:
+必需参数：
 
 .. option:: --target
 
-   logical volume name to attach as WAL
+   要捆绑成 WAL 的逻辑卷名字。
+
 
 new-db
 ^^^^^^
 
 .. program:: ceph-volume lvm new-db
 
-Attaches the given logical volume to OSD as a DB. Logical volume
-name format is vg/lv. Fails if OSD has already got attached DB.
+把指定逻辑卷捆绑到 OSD 作为 DB 。逻辑卷名字的格式是 vg/lv 。
+如果 OSD 已经捆绑了 DB 这个命令就会失败。
 
-Usage::
+用法： ::
 
     ceph-volume lvm new-db --osd-id OSD_ID --osd-fsid OSD_FSID --target <target lv>
 
-Optional arguments:
+可选参数：
 
 .. option:: -h, --help
 
-   show the help message and exit
+   显示帮助信息然后退出。
 
 .. option:: --no-systemd
 
-   Skip checking OSD systemd unit
+   跳过对 OSD 的 systemd unit 的检查。
 
-Required arguments:
+必需参数：
 
 .. option:: --target
 
-   logical volume name to attach as DB
+   要捆绑成 DB 的逻辑卷名字。
+
 
 migrate
 ^^^^^^^
 
 .. program:: ceph-volume lvm migrate
 
-Moves BlueFS data from source volume(s) to the target one, source volumes
-(except the main, i.e. data or block one) are removed on success. LVM volumes
-are permitted for Target only, both already attached or new one. In the latter
-case it is attached to the OSD replacing one of the source devices. Following
-replacement rules apply (in the order of precedence, stop on the first match):
+把 BlueFS 数据从源卷宗挪到目标卷宗，
+成功后会删除源卷宗（除非是主的，即数据或块 1 )。
+目标卷宗只能是 LVM 卷，已经捆绑的或新的都是。
+在后一种情形下，它被捆绑到 OSD 上来替换其中一个源设备。
+适用的替换规则（按优先级排列，匹配到就不再往下）：
 
-    - if source list has DB volume - target device replaces it.
-    - if source list has WAL volume - target device replace it.
-    - if source list has slow volume only - operation is not permitted,
-      requires explicit allocation via new-db/new-wal command.
+    - 如果源列表里有 DB 卷 - 目标设备就替换它；
+    - 如果源列表里有 WAL 卷 - 目标设备就替换它；
+    - 如果源列表里只有低速卷宗 - 操作不允许，
+      需要用 new-db/new-wal 命令显式地分配。
 
-Usage::
+用法： ::
 
     ceph-volume lvm migrate --osd-id OSD_ID --osd-fsid OSD_FSID --target <target lv> --from {data|db|wal} [{data|db|wal} ...]
 
-Optional arguments:
+可选参数：
 
 .. option:: -h, --help
 
-   show the help message and exit
+   显示帮助信息然后退出。
 
 .. option:: --no-systemd
 
-   Skip checking OSD systemd unit
+   跳过对 OSD 的 systemd unit 的检查。
 
-Required arguments:
+必需参数：
 
 .. option:: --from
 
-   list of source device type names
+   源设备类型名字的列表
 
 .. option:: --target
 
-   logical volume to move data to
+   接收挪入数据的逻辑卷
 
 
 simple
 ------
 
-扫描旧 OSD 目录或数据设备，它们可能是由 ceph-disk 创建、或手动\
-创建的。
+扫描旧 OSD 目录或数据设备，它们可能是由 ceph-disk 创建、
+或手动创建的。
 
 子命令：
 
@@ -469,8 +477,8 @@ activate
 
 启用写死了 OSD ID 及其 UUID （在 Ceph CLI 工具里也叫 ``fsid``
 ）的 systemd 单元，这样，在系统引导时，通过读取之前创建并保存在
-``/etc/ceph/osd/`` 内的 JSON 数据，它就能知道哪个 OSD 被启用\
-了、且需挂载。
+``/etc/ceph/osd/`` 内的 JSON 数据，它就能知道哪个 OSD 被启用了、
+且需挂载。
 
 用法： ::
 

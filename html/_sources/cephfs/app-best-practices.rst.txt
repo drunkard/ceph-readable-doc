@@ -1,89 +1,82 @@
-.. Application best practices for distributed file systems
-
 分布式文件系统之上的应用程序最佳实践
 ====================================
+.. Application best practices for distributed file systems
 
-CephFS 与 POSIX 标准兼容的、所以它应该适用于使用 POSIX
-文件系统的任意应用程序。然而，由于它是一个网络文件系统（不像\
-诸如 XFS 的）并且是强一致性的（不像诸如 NFS 的），所以，\
+CephFS 与 POSIX 标准兼容的、所以它应该适用于\
+使用 POSIX 文件系统的任意应用程序。然而，
+由于它是一个网络文件系统（不像诸如 XFS 的）
+并且是强一致性的（不像诸如 NFS 的），所以，
 应用程序作者了解一下某些后果是有好处的。
 
-下面几节描述了分布式文件系统与本地文件系统在性能表现上有明显\
-差异的一些地方。
+下面几节描述了分布式文件系统与本地文件系统在\
+性能表现上有明显差异的一些地方。
 
 
 ls -l
 -----
-当你运行 ``ls -l`` 命令时， ``ls`` 程序会先罗列目录、然后对\
-其内每一个文件调用一次 ``stat`` 。
+当你运行 ``ls -l`` 命令时， ``ls`` 程序会先罗列目录、
+然后对其内每一个文件调用一次 ``stat`` 。
 
-这通常远超一个应用程序的真实需求，而且在大目录上会很慢。如果\
-你不是真的需要各文件的所有此类元数据，那就只用一个 ``ls`` 吧。
-
-
-ls/stat on files being extended
--------------------------------
-
-If another client is currently extending files in the listed directory,
-then an ``ls -l`` may take an exceptionally long time to complete, as
-the lister must wait for the writer to flush data in order to do a valid
-read of the every file's size.  So unless you *really* need to know the
-exact size of every file in the directory, just don't do it!
-
-This would also apply to any application code that was directly
-issuing ``stat`` system calls on files being appended from
-another node.
+这通常远超一个应用程序的真实需求，而且在大目录上会很慢。
+如果你不是真的需要各文件的所有此类元数据，那就只用一个 ``ls`` 吧。
 
 
-.. Very large directories
+文件的 ls/stat 操作扩展了
+-------------------------
+.. ls/stat on files being extended
+
+如果另一个客户端当时正在要罗列的目录里扩充文件，
+那么 ``ls -l`` 就需要特别长的时间才能完成，
+因为罗列器必须等着写入器刷回数据之后，
+它才能合法地读取每个文件的尺寸。所以，
+除非你 *特别想* 知道目录里每个文件的确切尺寸，否则别做这种操作。
+
+另一个节点在向文件追加时，这种问题同样适用于任何\
+直接发出 ``stat`` 系统调用的应用程序代码。
+
 
 巨型目录
 --------
+.. Very large directories
 
-Do you really need that 10,000,000 file directory?  While directory
-fragmentation enables CephFS to handle it, it is always going to be
-less efficient than splitting your files into more modest-sized directories.
+你真的需要有 10,000,000 个文件的目录？
+即便目录分片技术能让 CephFS 处理它，
+和拆分成中等规模的很多目录相比，它总是低效的。
 
-Even standard userspace tools can become quite slow when operating on very
-large directories. For example, the default behaviour of ``ls``
-is to give an alphabetically ordered result, but ``readdir`` system
-calls do not give an ordered result (this is true in general, not just
-with CephFS).  So when you ``ls`` on a million file directory, it is
-loading a list of a million names into memory, sorting the list, then writing
-it out to the display.
+操作很大的目录时，即使是标准的用户空间工具也会变得很慢。
+例如， ``ls`` 的默认行为是给出按字母顺序排列好的结果，
+但是 ``readdir`` 系统调用给出的可不是排序好的结果
+（一般来说是这样的，不止是 CephFS ）。
+所以，当你 ``ls`` 一个有百万个文件的目录时，
+它得把一百万个名字的列表加载进内存、排序列表、然后写出到显示器。
 
-
-.. Hard links
 
 硬链接
 ------
+.. Hard links
 
-Hard links have an intrinsic cost in terms of the internal housekeeping
-that a file system has to do to keep two references to the same data.  In
-CephFS there is a particular performance cost, because with normal files
-the inode is embedded in the directory (i.e. there is no extra fetch of
-the inode after looking up the path).
-
-
-Working set size
-----------------
-
-The MDS acts as a cache for the metadata stored in RADOS.  Metadata
-performance is very different for workloads whose metadata fits within
-that cache.
-
-If your workload has more files than fit in your cache (configured using 
-``mds_cache_memory_limit`` settings), then make sure you test it
-appropriately: don't test your system with a small number of files and then
-expect equivalent performance when you move to a much larger number of files.
+硬链接在内部管理上有个固有代价，
+一个文件系统必须维护同一份数据的两个引用。
+在 CephFS 文件系统中有特殊的性能代价，
+因为普通文件的 inode 是嵌入在目录里的
+（也就是，查找到路径后不会额外读取其它 inode ）。
 
 
-.. Do you need a file system?
+工作集的尺寸
+------------
+.. Working set size
+
+MDS 是作为 RADOS 里面元数据的缓存运作的。
+工作载荷的元数据是否能装进缓存对元数据的性能影响非常大。
+
+如果你的工作载荷文件太多，未必能全部装进缓存（用 ``mds_cache_memory_limit`` 选项配置），
+那么确保你测试得没问题：不要用少量文件测试完系统，
+就期望文件数巨大时也有差不多的性能。
+
 
 你真的需要文件系统么？
 ----------------------
+.. Do you need a file system?
 
-Remember that Ceph also includes an object storage interface.  If your
-application needs to store huge flat collections of files where you just
-read and write whole files at once, then you might well be better off
-using the :ref:`Object Gateway <object-gateway>`
+记着， Ceph 还有对象存储接口。如果你的应用程序需要存储海量扁平文件，
+而且都是一次读写整个文件，那么你可能更适合用 :ref:`对象网关 <object-gateway>` 。
