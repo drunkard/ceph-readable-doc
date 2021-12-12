@@ -1,108 +1,101 @@
-.. Differences from POSIX
-
 =====================
  与 POSIX 标准的差异
 =====================
+.. Differences from POSIX
 
-CephFS 尽可能地严格遵循 POSIX 语义，比如，与其他很多网络文件\
-系统（如 NFS ）相反， CephFS 与各个客户端之间维持着缓存的强一\
-致性。目的就是为了让不同主机上的进程通过这个文件系统通讯时，\
+CephFS 尽可能地严格遵循 POSIX 语义，比如，与其他很多网络文件系统
+（如 NFS ）相反， CephFS 与各个客户端之间维持着缓存的强一致性。
+目的就是为了让不同主机上的进程通过这个文件系统通讯时，\
 可以表现得与本机进程间的通讯一样。
 
-然而，CephFS 确实由于各种原因在某些地方偏离了严谨的 POSIX
-语义：
+然而，CephFS 确实由于各种原因在某些地方偏离了严谨的
+POSIX 语义：
 
-- If a client is writing to a file and fails, its writes are not
-  necessarily atomic. That is, the client may call write(2) on a file
-  opened with O_SYNC with an 8 MB buffer and then crash and the write
-  may be only partially applied.  (Almost all file systems, even local
-  file systems, have this behavior.)
-- In shared simultaneous writer situations, a write that crosses
-  object boundaries is not necessarily atomic. This means that you
-  could have writer A write "aa|aa" and writer B write "bb|bb"
-  simultaneously (where | is the object boundary), and end up with
-  "aa|bb" rather than the proper "aa|aa" or "bb|bb".
-- Sparse files propagate incorrectly to the stat(2) st_blocks field.
-  Because CephFS does not explicitly track which parts of a file are
-  allocated/written, the st_blocks field is always populated by the
-  file size divided by the block size.  This will cause tools like
-  du(1) to overestimate consumed space.  (The recursive size field,
-  maintained by CephFS, also includes file "holes" in its count.)
-- When a file is mapped into memory via mmap(2) on multiple hosts,
-  writes are not coherently propagated to other clients' caches.  That
-  is, if a page is cached on host A, and then updated on host B, host
-  A's page is not coherently invalidated.  (Shared writable mmap
-  appears to be quite rare--we have yet to here any complaints about this
-  behavior, and implementing cache coherency properly is complex.)
-- CephFS clients present a hidden ``.snap`` directory that is used to
-  access, create, delete, and rename snapshots.  Although the virtual
-  directory is excluded from readdir(2), any process that tries to
-  create a file or directory with the same name will get an error
-  code.  The name of this hidden directory can be changed at mount
-  time with ``-o snapdirname=.somethingelse`` (Linux) or the config
-  option ``client_snapdir`` (libcephfs, ceph-fuse).
+- 如果一个客户端向一个文件写入、然后失败了，它的写入动作不一定是原子的。
+  也就是说，客户端可以调用 write(2) 、
+  用 O_SYNC 打开一个文件填入了 8 MB 缓冲，
+  然后崩溃了，本次写入可能只有部分成功了。
+  （几乎所有的文件系统、甚至是本地文件系统，都有类似问题）
+- 在共享的、多人同时写入的情形下，
+  跨越对象边界的写入不一定是原子的。
+  这意味着你可以同时让写入程序 A 写 "aa|aa" 、
+  写入程序 B 写 "bb|bb" （其中的 | 是对象边界），
+  而结束于 "aa|bb" ，而非完全是 "aa|aa" 或者 "bb|bb" 。
+- 稀疏文件会错误地传递给 stat(2) 的 st_blocks 字段。
+  因为 CephFS 不会特意去追踪一个文件的哪部分已经分配了、写入了数据，
+  st_blocks 字段总是由文件尺寸除以块尺寸计算出的。
+  这会使类似 du(1) 这样的工具高估耗费的空间。
+  （CephFS 维护的递归尺寸字段，
+  也把文件“空洞”计算在内了。）
+- 当一个文件在多个主机上都被 mmap(2) 映射到了内存里，
+  写入的数据不会相应地传播到其它客户端的缓存里。
+  就是说，如果一个内存页在主机 A 上缓存了，然后主机 B 更新了这个文件，
+  主机 A 的内存页不会相应地变成失效页。
+  （共享的可写 mmap 似乎相当罕见——我们还没收到过关于这种行为的投诉，
+  而且，正确地实现缓存一致性很复杂。）
+- CephFS 客户端上都有一个隐藏的 ``.snap`` 目录，
+  它是用于访问、创建、删除、和重命名快照的。
+  虽然这个虚拟的目录会被 readdir(2) 排除出去，可是，
+  任何想创建同名文件或目录的进程都会收到一个报错码。
+  这个隐藏目录的名字可以在挂载时更改，
+  用 ``-o snapdirname=.somethingelse`` (Linux) 或者\
+  配置选项 ``client_snapdir`` (libcephfs, ceph-fuse) 。
 
-.. Perspective
 
 前景展望
 --------
+.. Perspective
 
-People talk a lot about "POSIX compliance," but in reality most file
-system implementations do not strictly adhere to the spec, including
-local Linux file systems like ext4 and XFS.  For example, for
-performance reasons, the atomicity requirements for reads are relaxed:
-processing reading from a file that is also being written may see torn
-results.
+人们关于 “POSIX 兼容性”的话很多，但\
+现实中大多数文件系统的实现都没有严格遵守这个规范，
+包括像 ext4 和 XFS 这样的本地文件系统。例如，
+为了高性能，读取的原子性要求放宽了：
+一个文件正被写入时、对它的读取结果就可能是撕裂的。
 
-Similarly, NFS has extremely weak consistency semantics when multiple
-clients are interacting with the same files or directories, opting
-instead for "close-to-open".  In the world of network attached
-storage, where most environments use NFS, whether or not the server's
-file system is "fully POSIX" may not be relevant, and whether client
-applications notice depends on whether data is being shared between
-clients or not.  NFS may also "tear" the results of concurrent writers
-as client data may not even be flushed to the server until the file is
-closed (and more generally writes will be significantly more
-time-shifted than CephFS, leading to less predictable results).
+类似地， NFS 的一致性语义非常弱，
+当多个客户端都对同一组文件或目录感兴趣时，
+它选择了“关闭再打开”。在网络附加存储的世界里，
+它们大多数都用 NFS ，服务器的文件系统是不是“完整的 POSIX ”文件系统都不要紧、
+客户端应用程序是否通知取决于客户端之间是否共享了数据。
+NFS 也会“撕裂”并行写入程序的结果，因为直到文件关闭、
+客户端的数据才会刷回服务器（更普遍的是，
+写入比 Ceph 用的时间更多，会导致更不可预测的结果）。
 
-However, all of there are very close to POSIX, and most of the time
-applications don't notice too much.  Many other storage systems (e.g.,
-HDFS) claim to be "POSIX-like" but diverge significantly from the
-standard by dropping support for things like in-place file
-modifications, truncate, or directory renames.
+即便如此，所有的都很接近 POSIX ，
+而且大多数时间应用程序也不会太在意。
+很多其它存储系统（如 HDFS ）宣称是类 POSIX 的，
+但却明显偏离了标准，它们放弃了一些事情，
+像文件的原地修改、裁剪、或目录重命名。
 
-
-.. Bottom line
 
 底线
 ----
+.. Bottom line
 
-CephFS relaxes more than local Linux kernel file systems (e.g., writes
-spanning object boundaries may be torn).  It relaxes strictly less
-than NFS when it comes to multiclient consistency, and generally less
-than NFS when it comes to write atomicity.
+CephFS 相比 Linux 内核的本地文件系统放宽得更多
+（如跨越对象边界的写入可能被撕裂）。
+在多客户端一致性方面它比 NFS 严格得多，
+而在写原子性上普遍不如 NFS 。
 
-In other words, when it comes to POSIX, ::
+换句话说，在 POSIX 严格性方面， ::
 
   HDFS < NFS < CephFS < {XFS, ext4}
 
 
-.. fsync() and error reporting
-
 fsync() 和报错
 --------------
+.. fsync() and error reporting
 
-POSIX is somewhat vague about the state of an inode after fsync reports
-an error. In general, CephFS uses the standard error-reporting
-mechanisms in the client's kernel, and therefore follows the same
-conventions as other file systems.
+fsync 报告一个错误之后， POSIX 关于一个 inode 的描述不太明确。
+总的来说， CephFS 在客户端的内核用的是标准的错误报告机制，
+因此，遵循和其它文件系统相同的惯例。
 
-In modern Linux kernels (v4.17 or later), writeback errors are reported
-once to every file description that is open at the time of the error. In
-addition, unreported errors that occurred before the file description was
-opened will also be returned on fsync.
+在现代 Linux 内核中（ v4.17 或更高版），发生错误时，
+会对每一个打开着的文件描述符报告回写错误。
+另外，文件描述符打开前发生的、没报告过的错误\
+也会在 fsync 时返回给它。
 
-See `PostgreSQL's summary of fsync() error reporting across operating systems
-<https://wiki.postgresql.org/wiki/Fsync_Errors>`_ and `Matthew Wilcox's
-presentation on Linux IO error handling
-<https://www.youtube.com/watch?v=74c19hwY2oE>`_ for more information.
+更多案例见 `PostgreSQL 在各操作系统上的 fsync() 错误报告汇总
+<https://wiki.postgresql.org/wiki/Fsync_Errors>`_ 和
+`Matthew Wilcox 关于 Linux IO 错误处理的演讲
+<https://www.youtube.com/watch?v=74c19hwY2oE>`_ 。
