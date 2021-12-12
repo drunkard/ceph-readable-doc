@@ -1,45 +1,38 @@
 ==========
 实验性功能
 ==========
-.. Experimental Features
 
-CephFS includes a number of experimental features which are not fully
-stabilized or qualified for users to turn on in real deployments. We generally
-do our best to clearly demarcate these and fence them off so they cannot be
-used by mistake.
+CephFS 有一些实验性功能，尚未完全稳定、或者适合用户在实际部署中打开。
+我们一般会尽量把这些功能区分开，并隔离起来，以免被误用。
 
-Some of these features are closer to being done than others, though. We
-describe each of them with an approximation of how risky they are and briefly
-describe what is required to enable them. Note that doing so will
-*irrevocably* flag maps in the monitor as having once enabled this flag to
-improve debugging and support processes.
+不过，这些功能里的一部分比另外一些更接近完工。
+我们大概地介绍一下它们的风险，以及启用它们需要些什么。
+注意，这样做会给监视器里的各种图留下 *不可撤销* 的标记，
+以此指示这个标记曾经启用过，这样有助于调试或技术支持。
 
 
 内联数据
 --------
 .. Inline data
 
-By default, all CephFS file data is stored in RADOS objects. The inline data
-feature enables small files (generally <2KB) to be stored in the inode
-and served out of the MDS. This may improve small-file performance but increases
-load on the MDS. It is not sufficiently tested to support at this time, although
-failures within it are unlikely to make non-inlined data inaccessible
+默认情况下，所有 CephFS 文件的数据都存储在 RADOS 对象里。
+内联数据（ inline data ）功能使得小文件（一般是 <2KB 的）可以存储在 inode 里，
+由 MDS 提供服务。这样可以提升小文件性能，但会增加 MDS 负担。
+这个功能现在还没有足够的测试，还不能证明它运行无误，即便如此，
+它导致的失败也不会使非内联数据变得不可访问。
 
-Inline data has always been off by default and requires setting
-the ``inline_data`` flag.
+内联数据一直是默认关闭的，并且需要设置 ``inline_data`` 标记。
 
-Inline data has been declared deprecated for the Octopus release, and will
-likely be removed altogether in the Q release.
+内联数据在 Octopus 版已经被标记成废弃的，很可能在 Q 版一起删除。
 
 
 Mantle: 可编程的元数据负载均衡器
 --------------------------------
 .. Mantle: Programmable Metadata Load Balancer
 
-Mantle is a programmable metadata balancer built into the MDS. The idea is to
-protect the mechanisms for balancing load (migration, replication,
-fragmentation) but stub out the balancing policies using Lua. For details, see
-:doc:`/cephfs/mantle`.
+Mantle 是一个可以编译进 MDS 的可编程元数据均衡器。
+目的是想保护负载均衡（迁移、复制、分片）的机制，
+却能用 Lua 实现均衡策略。详情见 :doc:`/cephfs/mantle` 。
 
 
 LazyIO

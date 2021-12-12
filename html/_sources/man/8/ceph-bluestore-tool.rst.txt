@@ -56,15 +56,18 @@
 
 :command:`qfsck`
 
-   run consistency check on BlueStore metadata comparing allocator data (from RocksDB CFB when exists and if not uses allocation-file) with ONodes state.
+   对 BlueStore 元数据进行一致性检查，比对分配器数据
+   （有 RocksDB CFB 就用它、没有用分配信息文件）与 ONode 状态。
 
 :command:`allocmap`
 
-   performs the same check done by qfsck and then stores a new allocation-file (command is disabled by default and requires a special build)
+   进行与 qfsck 相同的检查，然后保存一个新的分配信息文件
+   （此命令默认被禁用了，需要特意编译）。
 
 :command:`restore_cfb`
 
-   Reverses changes done by the new NCB code (either through ceph restart or when running allocmap command) and restores RocksDB B Column-Family (allocator-map).
+   回退新 NCB 代码做出的更改（通过重启 Ceph 或运行 allocmap 命令）、
+   并恢复 RocksDB B Column-Family (allocator-map) 。
 
 :command:`bluefs-export`
 
@@ -76,12 +79,12 @@
 
 :command:`bluefs-bdev-expand` --path *osd path*
 
-   让 BlueFS 检查它的块设备尺寸，并且，如果发现它们扩大了，把\
-   那些额外空间也用起来。请注意，在空闲空间足够的前提下，只有
-   BlueFS 新建的文件才会被分配到首选块设备；而已经存在的、溢出\
-   到慢速设备上的文件会在 RocksDB 压缩时逐渐删除。换句话说，\
-   如果有数据溢出到了慢速设备上，它会随着时间的推移被挪到\
-   高速设备上。
+   让 BlueFS 检查它的块设备尺寸，并且，如果发现它们扩大了，
+   把那些额外空间也用起来。请注意，在空闲空间足够的前提下，
+   只有 BlueFS 新建的文件才会被分配到首选块设备；
+   而已经存在的、溢出到慢速设备上的文件会在 RocksDB 压缩时逐渐删除。
+   换句话说，如果有数据溢出到了慢速设备上，
+   它会随着时间的推移被挪到高速设备上。
 
 :command:`bluefs-bdev-new-wal` --path *osd path* --dev-target *new-device*
 
@@ -93,15 +96,16 @@
    
 :command:`bluefs-bdev-migrate` --dev-target *new-device* --devs-source *device1* [--devs-source *device2*]
 
-   把一个或多个源设备上的 BlueFS 数据移动到目标设备，成功后\
-   源设备（除了主要的那个）将被删除。目标设备可以是已加入集群\
-   的、或新设备。稍后，它将被加进 OSD ，以替换某一个源设备。\
+   把一个或多个源设备上的 BlueFS 数据移动到目标设备，
+   成功后源设备（除了主要的那个）将被删除。
+   目标设备可以是已加入集群的、或新设备。稍后，
+   它将被加进 OSD ，以替换某一个源设备。
    遵循下面的替换规则（按优先级，匹配到即停止）：
 
       - 如果源列表中有 DB 卷——目标设备替换它；
       - 如果源列表中有 WAL 卷——目标设备替换它；
-      - 如果源列表中只有慢速卷——操作不允许，要显式地用
-        new-db 、 new-wal 命令分配。
+      - 如果源列表中只有慢速卷——操作不允许，
+        要显式地用 new-db 、 new-wal 命令分配。
 
 :command:`show-label` --dev *device* [...]
 
@@ -113,28 +117,29 @@
 
 :command:`free-score` --path *osd path* [ --allocator block/bluefs-wal/bluefs-db/bluefs-slow ]
 
-   会收到一个 0-1 之间的数字，用于表示分配器中碎片的质量。\
-   0 表示所有空闲空间都在一个块中的情形； 1 表示最糟糕的\
-   碎片散布情形。
+   会收到一个 0-1 之间的数字，用于表示分配器中碎片的质量。
+   0 表示所有空闲空间都在一个块中的情形； 1 表示最糟糕的碎片散布情形。
 
 :command:`reshard` --path *osd path* --sharding *new sharding* [ --resharding-ctrl *control string* ]
 
-   更改 BlueStore 内 RocksDB 的分片配置。分片建立在
-   RocksDB 列族基础之上。此选项方便你测试 *new sharding* 的\
-   性能，而无需重新部署 OSD 。重分片一般都耗时绵长，需要遍历\
-   整个 RocksDB 键名空间、并把其中某些挪到别的列族。
-   ``--resharding-ctrl`` 选项便于你对重分片过程进行性能控制。\
+   更改 BlueStore 内 RocksDB 的分片配置。
+   分片建立在 RocksDB 列族基础之上。
+   此选项方便你测试 *new sharding* 的性能，而无需重新部署 OSD 。
+   重分片一般都耗时绵长，需要遍历整个 RocksDB 键名空间、
+   并把其中某些挪到别的列族。
+   ``--resharding-ctrl`` 选项便于你对重分片过程进行性能控制。
    中断重分片会妨碍 OSD 的正常运行；中断重分片不会损坏数据；\
-   而且随时可以继续之前的重分片，或者选用其它分片方案，包括\
-   回退到最初的那个。
+   而且随时可以继续之前的重分片，或者选用其它分片方案，
+   包括回退到最初的那个。
 
 :command:`show-sharding` --path *osd path*
 
-   Show sharding that is currently applied to BlueStore's RocksDB.
+   罗列出当前正被应用到 BlueStore 的 RocksDB 的分片。
 
 
 选项
 ====
+.. Options
 
 .. option:: --dev *device*
 
@@ -142,8 +147,10 @@
 
 .. option:: -i *osd_id*
 
-   Operate as OSD *osd_id*. Connect to monitor for OSD specific options.
-   If monitor is unavailable, add --no-mon-config to read from ceph.conf instead.
+   以 OSD *osd_id* 的身份进行操作。
+   连接到监视器以实现 OSD 的特定选项。
+   如果监视器不可用，加上 --no-mon-config 选项\
+   直接从 ceph.conf 读取。
 
 .. option:: --devs-source *device*
 
@@ -157,8 +164,7 @@
 .. option:: --path *osd path*
 
    指定一个 osd 路径。大多数情况下，设备列表都是从 *osd path*
-   里的符号链接推断出来的。通常比显式地用 --dev 指定几个设备\
-   要简单些。
+   里的符号链接推断出来的。通常比显式地用 --dev 指定几个设备要简单些。
 
 .. option:: --out-dir *dir*
 
@@ -184,56 +190,65 @@
 .. option:: --resharding-ctrl *control string*
 
    提供了对重分片过程的控制手段，指示多久刷一次 RocksDB 递归器，\
-   以及提交给 RocksDB 的批次应该是多大。选项格式为：
+   以及提交给 RocksDB 的批次应该是多大。
+   选项格式为：
    <iterator_refresh_bytes>/<iterator_refresh_keys>/<batch_commit_bytes>/<batch_commit_keys>
    默认值： 10000000/10000/1000000/1000
 
 
-Additional ceph.conf options
-============================
+ceph.conf 附加选项
+==================
+.. Additional ceph.conf options
 
-Any configuration option that is accepted by OSD can be also passed to **ceph-bluestore-tool**.
-Useful to provide necessary configuration options when access to monitor/ceph.conf is impossible and -i option cannot be used.
+OSD 接受的任何配置选项都可以传给 **ceph-bluestore-tool** 。
+当不能访问监视器、 ceph.conf ， ``-i`` 选项也不能用时，
+用此方法提供必要的配置选项很有用。
 
 
 设备标签
 ========
+.. Device labels
 
-每个 BlueStore 块设备都有一个单独的块标签，位于设备起始处。你\
-可以用此命令查看标签内容： ::
+
+每个 BlueStore 块设备都有一个单独的块标签，位于设备起始处。
+你可以用此命令查看标签内容： ::
 
   ceph-bluestore-tool show-label --dev *device*
 
-主设备会有很多元数据，包括以前在 OSD 数据目录下存储的小文件内\
-的信息。辅助设备（ db 和 wal ）只含有必需的最少字段（
-OSD UUID 、尺寸、设备类型、创建时间）。
+主设备会有很多元数据，包括\
+以前在 OSD 数据目录下存储的小文件内的信息。
+辅助设备（ db 和 wal ）只含有必需的最少字段
+（ OSD UUID 、尺寸、设备类型、创建时间）。
 
 
 OSD 目录启动
 ============
 .. OSD directory priming
 
-你可以给一个 OSD 数据目录生成些数据，才能用 *prime-osd-dir*
-启动 BlueStore OSD ： ::
+你可以给一个 OSD 数据目录生成些数据，
+借此才能用 *prime-osd-dir* 启动 BlueStore OSD ： ::
 
   ceph-bluestore-tool prime-osd-dir --dev *main device* --path /var/lib/ceph/osd/ceph-*id*
 
 
-BlueFS log rescue
-=====================
+拯救 BlueFS 日志
+================
+.. BlueFS log rescue
 
-Some versions of BlueStore were susceptible to BlueFS log growing extremaly large -
-beyond the point of making booting OSD impossible. This state is indicated by
-booting that takes very long and fails in _replay function.
+有些版本的 BlueStore ，它的 BlueFS 日志会增长得非常巨大 ——
+以至于 OSD 都没法启动了。
+如果启动用了很长时间却在 _replay 函数里失败了，那就是遇到了这种状态。
 
-This can be fixed by::
-  ceph-bluestore-tool fsck --path *osd path* --bluefs_replay_recovery=true
+这情况可以这样修复： ::
 
-It is advised to first check if rescue process would be successfull::
-  ceph-bluestore-tool fsck --path *osd path* \
-  --bluefs_replay_recovery=true --bluefs_replay_recovery_disable_compact=true
+    ceph-bluestore-tool fsck --path *osd path* --bluefs_replay_recovery=true
 
-If above fsck is successful fix procedure can be applied.
+建议您首先检查一下拯救过程是否会成功： ::
+
+    ceph-bluestore-tool fsck --path *osd path* \
+        --bluefs_replay_recovery=true --bluefs_replay_recovery_disable_compact=true
+
+如果上面的 fsck 成功了，就可以施行修复过程。
 
 
 使用范围
