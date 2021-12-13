@@ -1,104 +1,97 @@
-.. Configuring Directory fragmentation
-
 ================
  目录分片的配置
 ================
 
-在 CephFS 中，目录变得非常大或非常繁忙时会被\ *分片*\ 。也就是\
-把元数据拆分开，分成多个对象置于元数据存储池内，以便由多个 MDS
-守护进程共同处理。
+在 CephFS 中，目录变得非常大或非常繁忙时会被\ *分片*\ 。
+也就是把元数据拆分开，分成多个对象置于元数据存储池内，
+以便由多个 MDS 守护进程共同处理。
 
-在常规操作中，目录碎片对用户和管理员不可见，并且这里提到的\
-所有配置选项都应该维持其默认值。
+在常规操作中，目录碎片对用户和管理员不可见，
+并且这里提到的所有配置选项都应该维持其默认值。
 
-While directory fragmentation enables CephFS to handle very large
-numbers of entries in a single directory, application programmers should
-remain conservative about creating very large directories, as they still
-have a resource cost in situations such as a CephFS client listing
-the directory, where all the fragments must be loaded at once.
+目录分片功能使得 CephFS 能处理条目数量非常巨大的单个目录，
+但是应用程序程序员仍然应该保守地创建巨型目录，
+因为 CephFS 客户端罗列此目录时仍然耗费不少资源，
+因为必须一次性加载所有分片。
 
-.. tip:: The root directory cannot be fragmented.
+.. tip:: 根目录不能被分片。
 
-All directories are initially created as a single fragment.  This fragment
-may be *split* to divide up the directory into more fragments, and these
-fragments may be *merged* to reduce the number of fragments in the directory.
+所有目录最初创建时都是单个分片。
+这个分片可以被 *分割* 、以便把目录分割成更多分片，
+而且这些分片还可以 *合并* 、以减少目录内的分片数量。
 
 
-.. Splitting and merging
 
 拆分和合并
 ==========
+.. Splitting and merging
 
-When an MDS identifies a directory fragment to be split, it does not
-do the split immediately.  Because splitting interrupts metadata IO,
-a short delay is used to allow short bursts of client IO to complete
-before the split begins.  This delay is configured with
-``mds_bal_fragment_interval``, which defaults to 5 seconds.
+当一个 MDS 确定了一个目录分片要分割，它不会立即进行分割。
+因为分割动作会中断元数据 IO ，短暂的延迟是为了在开始分割前、
+让客户端 IO 完成，会有短暂的爆发。
+这个延时可以用 ``mds_bal_fragment_interval`` 配置，默认是 5 秒。
 
-When the split is done, the directory fragment is broken up into
-a power of two number of new fragments.  The number of new
-fragments is given by two to the power ``mds_bal_split_bits``, i.e.
-if ``mds_bal_split_bits`` is 2, then four new fragments will be
-created.  The default setting is 3, i.e. splits create 8 new fragments.
+分割完成后，这个目录分片被分成了 2 的幂次个新分片。
+新分片的数量是 2 的 ``mds_bal_split_bits`` 次方个，也就是，
+假设 ``mds_bal_split_bits`` 是 2 ，那么将创建 4 个分片。
+默认值是 3 ，也就是分割时会创建 8 个新分片。
 
-The criteria for initiating a split or a merge are described in the
-following sections.
+初始化一个分割或合并操作的条件在下面几段描述。
 
 
-.. Size thresholds
 
 尺寸阈值
 ========
+.. Size thresholds
 
-一个目录碎片的尺寸超过 ``mds_bal_split_size`` （默认 10000 ）\
-时就达到分割的条件了。通常，此分割会被延迟
-``mds_bal_fragment_interval`` 长的时间，但如果这个碎片尺寸超过\
-分割尺寸的 ``mds_bal_fragment_fast_factor`` 倍数，分割就会\
-立马开始（先拦截着所有客户端在此目录上的元数据 IO ）。
+一个目录碎片的尺寸超过 ``mds_bal_split_size``
+（默认 10000 ）时就达到分割的条件了。通常，
+此分割会被延迟 ``mds_bal_fragment_interval`` 长的时间，
+但如果这个碎片尺寸超过分割尺寸的
+``mds_bal_fragment_fast_factor`` 倍数，分割就会立马开始
+（先拦截着所有客户端在此目录上的元数据 IO ）。
 
-``mds_bal_fragment_size_max`` is the hard limit on the size of
-directory fragments.  If it is reached, clients will receive
-ENOSPC errors if they try to create files in the fragment.  On
-a properly configured system, this limit should never be reached on
-ordinary directories, as they will have split long before.  By default,
-this is set to 10 times the split size, giving a dirfrag size limit of
-100000.  Increasing this limit may lead to oversized directory fragment
-objects in the metadata pool, which the OSDs may not be able to handle.
+``mds_bal_fragment_size_max`` 是目录分片尺寸的硬性限制。
+如果达到了，客户端们如果想在这个分片里新建文件\
+就会收到 ENOSPC 错误。在配置无误的系统上，
+一般目录永远不会达到这个限值，因为它们早就被分割了。
+默认情况下，此值设置成 10 倍于分割尺寸，
+也就是 dirfrag 尺寸限值是 100000 。
+增大这个限值会导致元数据存储池中的目录分片对象尺寸过于大，
+这样 OSD 可能就没法处理了。
 
-A directory fragment is elegible for merging when its size is less
-than ``mds_bal_merge_size``.  There is no merge equivalent of the
-"fast splitting" explained above: fast splitting exists to avoid
-creating oversized directory fragments, there is no equivalent issue
-to avoid when merging.  The default merge size is 50.
+一个目录分片的尺寸小于 ``mds_bal_merge_size`` 时就可以被合并了。
+前面说过的“快速分割”没有对等的合并操作：
+快速分割的存在是为了避免创建尺寸过大的目录分片，
+合并时没有需要避免的类似问题。
+默认的合并尺寸是 50 。
 
 
-.. Activity thresholds
 
 活跃度阈值
 ==========
+.. Activity thresholds
 
-In addition to splitting fragments based
-on their size, the MDS may split directory fragments if their
-activity exceeds a threshold.
+除了基于尺寸分割分片，
+MDS 还能在目录分片的活跃度超过阈值时分割它。
 
-The MDS maintains separate time-decaying load counters for read and write
-operations on directory fragments.  The decaying load counters have an
-exponential decay based on the ``mds_decay_halflife`` setting.
+MDS 为各个目录分片的读和写操作维护着独立的、
+随时间衰减的负载计数器。衰减计数器有一个基于
+``mds_decay_halflife`` 配置选项的指数式衰减。
 
-On writes, the write counter is
-incremented, and compared with ``mds_bal_split_wr``, triggering a 
-split if the threshold is exceeded.  Write operations include metadata IO
-such as renames, unlinks and creations. 
+写入时，写计数器会递增、
+并与 ``mds_bal_split_wr`` 比较、
+如果阈值达到了还会触发一次分割。
+写操作包括元数据 IO ，像重命名、解除连接和创建。
 
-The ``mds_bal_split_rd`` threshold is applied based on the read operation
-load counter, which tracks readdir operations.
+``mds_bal_split_rd`` 阈值是基于读操作负载计数器
+（它跟踪 readdir 操作）应用的。
 
-By the default, the read threshold is 25000 and the write threshold is
-10000, i.e. 2.5x as many reads as writes would be required to trigger
-a split.
+默认情况下，读取阈值是 25000 、而写入阈值是 10000 ，
+即读取是写入的 2.5 倍才会触发一次分割。
 
-After fragments are split due to the activity thresholds, they are only
-merged based on the size threshold (``mds_bal_merge_size``), so 
-a spike in activity may cause a directory to stay fragmented
-forever unless some entries are unlinked.
+分片因达到活跃度阈值被分割后，
+它们只有在达到尺寸阈值（ ``mds_bal_merge_size`` ）才会被合并，
+所以，活跃度的一个爆发就会导致一个目录永远处于碎片状态，
+除非删除一些条目。
 

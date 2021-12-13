@@ -4,61 +4,57 @@
  Ceph 文件系统
 ===============
 
-Ceph 文件系统（ CephFS ）是个与 POSIX 标准兼容的文件系统，\
-它建立在 Ceph 的分布式对象存储 RADOS 之上。
-CephFS endeavors to provide
-a state-of-the-art, multi-use, highly available, and performant file store for
-a variety of applications, including traditional use-cases like shared home
-directories, HPC scratch space, and distributed workflow shared storage.
+Ceph 文件系统、或者 **CephFS** ，是个与 POSIX 标准兼容的文件系统，
+它建立在 Ceph 的分布式对象存储 -- **RADOS** 之上。
+CephFS 致力于为各种应用程序（包括传统应用场景，
+像共享家目录、 HPC 暂存空间、和分布式工作流的共享存储），
+提供技术先进的、多用途的、高可用的、而且性能优异的文件存储功能
 
-CephFS achieves these goals through the use of some novel architectural
-choices.  Notably, file metadata is stored in a separate RADOS pool from file
-data and served via a resizable cluster of *Metadata Servers*, or **MDS**,
-which may scale to support higher throughput metadata workloads.  Clients of
-the file system have direct access to RADOS for reading and writing file data
-blocks. For this reason, workloads may linearly scale with the size of the
-underlying RADOS object store; that is, there is no gateway or broker mediating
-data I/O for clients.
+CephFS 通过采用一些新颖的架构实现了这些目标。
+特别是，文件元数据存储在与文件数据相独立的 RADOS 存储池内、
+并通过尺寸可变的 *元数据服务器* （缩写 **MDS** ）集群来提供服务，
+集群扩容就能支持更高的元数据载荷吞吐量。
+这个文件系统的客户端是直连到 RADOS 来读取和写入文件数据块的。
+正因为这样，工作载荷可以随底层 RADOS 存储的规模线性增长；
+就是说，没有网关或者代理为客户端转接数据 I/O 。
 
-Access to data is coordinated through the cluster of MDS which serve as
-authorities for the state of the distributed metadata cache cooperatively
-maintained by clients and MDS. Mutations to metadata are aggregated by each MDS
-into a series of efficient writes to a journal on RADOS; no metadata state is
-stored locally by the MDS. This model allows for coherent and rapid
-collaboration between clients within the context of a POSIX file system.
+到数据的访问是通过集群的 MDS 来协调的，
+客户端和 MDS 共同维护分布式的元数据缓存，而 MDS 是权威。
+对元数据的变更由各个 MDS 汇总成一系列、并高效地写入 RADOS 内的日志；
+MDS 本身不会存储元数据状态。这种模式使客户端们能够连贯且快速地协作，
+而且还是在 POSIX 文件系统的范畴内。
 
 .. image:: cephfs-architecture.svg
 
-CephFS is the subject of numerous academic papers for its novel designs and
-contributions to file system research. It is the oldest storage interface in
-Ceph and was once the primary use-case for RADOS.  Now it is joined by two
-other storage interfaces to form a modern unified storage system: RBD (Ceph
-Block Devices) and RGW (Ceph Object Storage Gateway).
+CephFS 因其新颖的设计、和对文件系统的研究而成了很多学术论文的主题。
+它是 Ceph 里最老的存储接口，而且曾经还是 RADOS 的主要用途。
+现在，又加入了两个其它的存储接口，
+形成了一个现代的、大一统的存储系统：
+RBD （ Ceph 块设备）和 RGW （Ceph 对象存储网关）。
 
 
 CephFS 入门
 ^^^^^^^^^^^
 .. Getting Started with CephFS
 
-For most deployments of Ceph, setting up a CephFS file system is as simple as:
+对绝大多数部署好的 Ceph ，建立一个 CephFS 文件系统都如此简单：
 
 .. code:: bash
 
     ceph fs volume create <fs name>
 
-The Ceph `Orchestrator`_  will automatically create and configure MDS for
-your file system if the back-end deployment technology supports it (see
-`Orchestrator deployment table`_). Otherwise, please `deploy MDS manually
-as needed`_.
+如果后端的部署技术支持的话（见 `编排器部署表`_ ），
+Ceph `编排器`_ 会自动给你的文件系统创建和配置 MDS ，
+否则，请 `根据需要手动部署 MDS`_ 。
 
-Finally, to mount CephFS on your client nodes, see `Mount CephFS:
-Prerequisites`_ page. Additionally, a command-line shell utility is available
-for interactive access or scripting via the `cephfs-shell`_.
+最后，要想在你的客户端节点上挂载 CephFS ，
+参见 `挂载 CephFS ：先决条件`_ 。另外，还有一个命令行的 shell 工具，
+可以用 `cephfs-shell`_ 交互地访问或者编写脚本。
 
-.. _Orchestrator: ../mgr/orchestrator
-.. _deploy MDS manually as needed: add-remove-mds
-.. _Orchestrator deployment table: ../mgr/orchestrator/#current-implementation-status
-.. _Mount CephFS\: Prerequisites: mount-prerequisites
+.. _编排器: ../mgr/orchestrator
+.. _根据需要手动部署 MDS: add-remove-mds
+.. _编排器部署表: ../mgr/orchestrator/#current-implementation-status
+.. _挂载 CephFS ：先决条件: mount-prerequisites
 .. _cephfs-shell: cephfs-shell
 
 
@@ -80,10 +76,10 @@ for interactive access or scripting via the `cephfs-shell`_.
 
     创建 CephFS 文件系统 <createfs>
     管理命令 <administration>
-    Creating Multiple File Systems <multifs>
+    创建多个文件系统 <multifs>
     配备、增加、删除 MDS <add-remove-mds>
     MDS 故障切换和灾备配置 <standby>
-    MDS Cache Configuration <cache-configuration>
+    MDS 缓存配置 <cache-configuration>
     MDS 配置选项 <mds-config-ref>
     ceph-mds 手册页 <../../man/8/ceph-mds>
     通过 NFS 导出 <nfs>
@@ -92,9 +88,9 @@ for interactive access or scripting via the `cephfs-shell`_.
     CephFS 配额管理 <quota>
     健康消息 <health-messages>
     升级旧文件系统 <upgrading>
-    CephFS Top Utility <cephfs-top>
-    Scheduled Snapshots <snap-schedule>
-    CephFS Snapshot Mirroring <cephfs-mirroring>
+    CephFS Top 工具 <cephfs-top>
+    定时快照 <snap-schedule>
+    CephFS 快照镜像 <cephfs-mirroring>
 
 .. raw:: html
 
@@ -142,7 +138,7 @@ CephFS 内幕
 
     MDS 的各种状态 <mds-states>
     POSIX 兼容性 <posix>
-    MDS Journaling <mds-journaling>
+    MDS 日志记录 <mds-journaling>
     文件布局 <file-layouts>
     分布式元数据缓存 <mdcache>
     CephFS 内的动态元数据管理 <dynamic-metadata-management>
@@ -174,7 +170,7 @@ CephFS 内幕
     故障排除 <troubleshooting>
     灾难恢复 <disaster-recovery>
     cephfs-journal-tool <cephfs-journal-tool>
-    Recovering file system after monitor store loss <recover-fs-after-mon-store-loss>
+    监视器存储丢失后恢复文件系统 <recover-fs-after-mon-store-loss>
 
 
 .. raw:: html
