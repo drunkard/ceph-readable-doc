@@ -12,6 +12,7 @@
 要克隆整个 git 源码库，你得先安装、配置 ``git`` 。
 
 
+
 安装 Git
 ========
 
@@ -23,11 +24,13 @@
 
 	sudo yum install git
 
-相应地，你必须有 ``github`` 帐户。如果你还没有，去
-`github.com`_ 注册一个，然后按照\ `设置 Git`_ 指引配置 git 。
+相应地，你必须有 ``github`` 帐户。
+如果你还没有，去 `github.com`_ 注册一个，
+然后按照\ `设置 Git`_ 指引配置 git 。
 
 .. _github.com: https://github.com
 .. _设置 Git: https://help.github.com/linux-set-up-git
+
 
 
 添加 SSH 密钥（可选）
@@ -57,6 +60,7 @@
 制的公钥粘帖进去，最后点击 “Add key” 按钮。
 
 
+
 克隆源码
 ========
 
@@ -64,23 +68,29 @@
 
 	git clone --recursive https://github.com/ceph/ceph.git
 
-``git clone`` 完成后，你应该已经得到了一份完整的 Ceph 源码库。
+``git clone`` 完成后，你应该已经得到了一份完整的
+Ceph 源码库。
 
-.. tip:: 确保你获取到的源码库之内的各子模块都是最新的，运行 ``git status`` 确认。 ::
+.. tip:: 确保你获取到的源码库之内的各子模块都是最新的，
+   运行 ``git status`` ，它会告诉你子模块是否过时了。
 
-	cd ceph
-	git status
+::
 
-   如果你的子模块过时了，运行： ::
+    cd ceph
+    git status
 
-	git submodule update --force --init --recursive
+如果你的子模块过时了，运行： ::
+
+    git submodule update --force --init --recursive
+
 
 
 选择分支
 ========
 
-克隆完源码和子模块后，你的源码库将默认位于 ``master`` 分支上，这是个不稳定开发分\
-支，你也可以切换到其他分支上。
+克隆完源码和子模块后，
+你的源码库将默认位于 ``master`` 分支上，
+这是个不稳定开发分支，你也可以切换到其他分支上。
 
 - ``master``: 不稳定开发分支；
 - ``stable``: 缺陷修正分支；

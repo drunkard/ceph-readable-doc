@@ -24,10 +24,9 @@ have the following features from that paper:
 [1] Supercomputing '15 Paper:
 http://sc15.supercomputing.org/schedule/event_detail-evid=pap168.html
 
-.. _Quickstart with vstart:
-
 vstart 快速入门
 ---------------
+.. Quickstart with vstart
 
 .. warning::
 
@@ -115,10 +114,9 @@ Mantle with `vstart.sh`
     for i in 0 1 2 3; do docker rm -f client$i; done
 
 
-.. _Output:
-
 输出解析
 ~~~~~~~~
+.. Output
 
 Looking at the log for the first MDS (could be a, b, or c), we see that
 everyone has no load::
@@ -152,10 +150,9 @@ Eventually load moves around::
     2016-08-21 06:47:10.210311 7fd03aaf7700  2 mds.0.bal  mantle decided that new targets={}
 
 
-.. _Implementation Details:
-
 实现细节
 --------
+.. Implementation Details
 
 Most of the implementation is in MDBalancer. Metrics are passed to the balancer
 policies via the Lua stack and a list of loads is returned back to MDBalancer.
@@ -191,10 +188,9 @@ in mds_load_t: auth.meta_load(), all.meta_load(), req_rate, queue_length,
 cpu_load_avg.
 
 
-.. _Compile/Execute the Balancer:
-
 编译、执行均衡器
 ~~~~~~~~~~~~~~~~
+.. Compile/Execute the Balancer
 
 Here we use `lua_pcall` instead of `lua_call` because we want to handle errors
 in the MDBalancer. We do not want the error propagating up the call chain. The

@@ -139,6 +139,13 @@
     endpoint
         终结点
 
+    ephemeral pinning
+    ephemerally pinned
+        临时挂单， CephFS 子树分区方面的术语；
+
+        挂单是佛教术语，指行脚僧到寺院投宿；单，指僧堂里的名单；
+        行脚僧把自己的衣挂在名单之下，故称挂单。
+
     epoch
         时间结 => <不翻译> ?
 

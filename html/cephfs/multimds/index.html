@@ -157,7 +157,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#id3">灾备守护进程</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rank">减少 rank 数量</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#cephfs-pinning">手动将目录树插入特定的 rank</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#setting-subtree-partitioning-policies">Setting subtree partitioning policies</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cephfs-ephemeral-pinning">设置子树分区策略</a></li>
 </ul>
 </li>
 </ul>
@@ -226,13 +226,21 @@
 <div class="section" id="id1">
 <h2>什么情况下我需要多个活跃的 MDS 守护进程？<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <p>当元数据默认的单个 MDS 成为瓶颈时，你应该配置多个活跃的 MDS 守护进程。</p>
-<p>增加守护进程不一定都能提升性能，要看负载类型。典型地，单个客户端上的单个应用程序就不会受益于 MDS 守护进程的增加，除非这个应用程序是在并行地操作元数据。</p>
-<p>通常，有很多客户端（操作着很多不同的目录时更好）时，大量活跃的
-MDS 守护进程有利于性能提升。</p>
+<p>增加守护进程不一定都能提升性能，要看负载类型。典型地，
+单个客户端上的单个应用程序就不会受益于 MDS 守护进程的增加，
+除非这个应用程序是在并行地操作元数据。</p>
+<p>通常，有很多客户端（操作着很多不同的目录时更好）时，
+大量活跃的 MDS 守护进程有利于性能提升。</p>
 </div>
 <div class="section" id="id2">
 <h2>MDS 活跃集群的扩容<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<p>每一个 CephFS 文件系统都有自己的 <em>max_mds</em> 配置，它控制着会创建多少 rank 。有空闲守护进程可接管新 rank 时，文件系统 rank 的实际数量才会增加，比如只有一个 MDS 守护进程运行着、 max_mds 被设置成了 2 ，此时不会创建第二个 rank 。</p>
+<p>每一个 CephFS 文件系统都有自己的 <em>max_mds</em> 配置，
+它控制着会创建多少 rank 。有空闲守护进程可接管新 rank 时，
+文件系统 rank 的实际数量才会增加，
+比如只有一个 MDS 守护进程运行着、 max_mds 被设置成了 2 ，
+此时不会创建第二个 rank 。（注意，这样的配置不具备高可用性（HA），
+因为没有备机能够接管失败的 rank 。
+配置成这样时，集群会通过健康告警发牢骚）</p>
 <p>把 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> 设置为想要的 rank 数量。在下面的例子里，
 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">status</span></code> 输出的 fsmap 行是此命令可能输出的结果。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># fsmap e5: 1/1/1 up {0=a=up:active}, 2 up:standby</span>
@@ -243,13 +251,16 @@ MDS 守护进程有利于性能提升。</p>
 <span class="c1"># fsmap e9: 2/2/2 up {0=a=up:active,1=c=up:active}, 1 up:standby</span>
 </pre></div>
 </div>
-<p>新创建的 rank (1) 会从 creating 状态过渡到 active 状态。</p>
+<p>新创建的 rank (1) 会从 creating 状态过渡到
+active 状态。</p>
 </div>
 <div class="section" id="id3">
 <h2>灾备守护进程<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
 <p>即使拥有多活 MDS 守护进程，一个高可用系统<em>仍然需要灾备守护进程</em>来顶替失效的活跃守护进程。</p>
 <p>因此，高可用系统的 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> 实际最大值比系统中 MDS 服务器的总数小一。</p>
-<p>为了在多个服务器失效时仍能保持可用，需增加系统中的灾备守护进程，以弥补你能承受的服务器失效数量。</p>
+<p>为了在多个服务器失效时仍能保持可用，
+需增加系统中的灾备守护进程，
+以弥补你能承受的服务器失效数量。</p>
 </div>
 <div class="section" id="rank">
 <h2>减少 rank 数量<a class="headerlink" href="#rank" title="Permalink to this headline">¶</a></h2>
@@ -263,23 +274,31 @@ MDS 守护进程有利于性能提升。</p>
 </pre></div>
 </div>
 <p>集群将会自动逐步地停掉多余的 rank ，直到符合 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> 。</p>
-<p>See <a class="reference internal" href="../administration/"><span class="doc">CephFS 管理命令</span></a> for more details which forms <code class="docutils literal notranslate"><span class="pre">&lt;role&gt;</span></code> can
-take.</p>
-<p>注意：被停掉的 rank 会先进入 stopping 状态，并持续一段时间，在此期间它要把它分享的那部分元数据转手给仍然活跃着的
-MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 MDS
-卡在了 stopping 状态，那可能是触发了软件缺陷。</p>
+<p>在 <a class="reference internal" href="../administration/"><span class="doc">CephFS 管理命令</span></a> 文档里有关于 <code class="docutils literal notranslate"><span class="pre">&lt;role&gt;</span></code> 格式的详细描述。</p>
+<p>注意：被停掉的 rank 会先进入 stopping 状态，并持续一段时间，
+在此期间它要把它分享的那部分元数据转手给仍然活跃着的 MDS 守护进程，
+这个过程可能要持续数秒到数分钟。
+如果这个 MDS 卡在了 stopping 状态，
+那可能是触发了软件缺陷。</p>
 <p>如果一个 MDS 守护进程正处于 <code class="docutils literal notranslate"><span class="pre">up:stopping</span></code> 状态时崩溃了、或是被杀死了，就会有一个灾备顶替它，而且集群的监视器们也会阻止停止此守护进程的尝试。</p>
 <p>守护进程完成 stopping 状态后，它会自己重生并成为灾备。</p>
 </div>
 <div class="section" id="cephfs-pinning">
 <span id="id4"></span><h2>手动将目录树插入特定的 rank<a class="headerlink" href="#cephfs-pinning" title="Permalink to this headline">¶</a></h2>
-<p>在多活元数据服务器配置中，均衡器负责在集群内均匀地散布元数据负荷。此设计对大多数用户来说都够用了，但是，有时人们想要跳过动态均衡器，手动把某些元数据映射到特定的 rank ；这样一来，管理员或用户就可以均匀地散布应用负荷、或者限制用户的元数据请求，以防他影响整个集群。</p>
+<p>在多活元数据服务器配置中，均衡器负责在集群内均匀地散布元数据负荷。此设计对大多数用户来说都够用了，
+但是，有时人们想要跳过动态均衡器，
+手动把某些元数据映射到特定的 rank ；这样一来，
+管理员或用户就可以均匀地散布应用负荷、或者限制用户的元数据请求，
+以防他影响整个集群。</p>
 <p>为实现此目的，引入了一个机制，名为 <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">pin</span></code> （导出销），是目录的一个扩展属性，名为 <code class="docutils literal notranslate"><span class="pre">ceph.dir.pin</span></code> 。用户可以用标准命令配置此属性：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">2</span> <span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="nb">dir</span>
 </pre></div>
 </div>
 <p>这个扩展属性的值是给这个目录树分配的 rank ，默认值 <code class="docutils literal notranslate"><span class="pre">-1</span></code> 表示此目录没有销进（某个 rank ）。</p>
-<p>一个目录的导出销是从最近的、配置了导出销的父目录继承的；同理，在一个目录上配置导出销会影响它的所有子目录。然而，设置子目录的导出销可以覆盖从父目录继承来的销子，例如：</p>
+<p>一个目录的导出销是从最近的、配置了导出销的父目录继承的；
+同理，在一个目录上配置导出销会影响它的所有子目录。
+然而，设置子目录的导出销可以覆盖从父目录继承来的销子，
+例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">a</span><span class="o">/</span><span class="n">b</span>
 <span class="c1"># &quot;a&quot; and &quot;a/b&quot; both start without an export pin set</span>
 <span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="n">a</span><span class="o">/</span>
@@ -289,73 +308,67 @@ MDS 守护进程，这个过程可能要持续数秒到数分钟。如果这个 
 </pre></div>
 </div>
 </div>
-<div class="section" id="setting-subtree-partitioning-policies">
-<span id="cephfs-ephemeral-pinning"></span><h2>Setting subtree partitioning policies<a class="headerlink" href="#setting-subtree-partitioning-policies" title="Permalink to this headline">¶</a></h2>
-<p>It is also possible to setup <strong>automatic</strong> static partitioning of subtrees via
-a set of <strong>policies</strong>. In CephFS, this automatic static partitioning is
-referred to as <strong>ephemeral pinning</strong>. Any directory (inode) which is
-ephemerally pinned will be automatically assigned to a particular rank
-according to a consistent hash of its inode number. The set of all
-ephemerally pinned directories should be uniformly distributed across all
-ranks.</p>
-<p>Ephemerally pinned directories are so named because the pin may not persist
-once the directory inode is dropped from cache. However, an MDS failover does
-not affect the ephemeral nature of the pinned directory. The MDS records what
-subtrees are ephemerally pinned in its journal so MDS failovers do not drop
-this information.</p>
-<p>A directory is either ephemerally pinned or not. Which rank it is pinned to is
-derived from its inode number and a consistent hash. This means that
-ephemerally pinned directories are somewhat evenly spread across the MDS
-cluster. The <strong>consistent hash</strong> also minimizes redistribution when the MDS
-cluster grows or shrinks. So, growing an MDS cluster may automatically increase
-your metadata throughput with no other administrative intervention.</p>
-<p>Presently, there are two types of ephemeral pinning:</p>
-<p><strong>Distributed Ephemeral Pins</strong>: This policy causes a directory to fragment
-(even well below the normal fragmentation thresholds) and distribute its
-fragments as ephemerally pinned subtrees. This has the effect of distributing
-immediate children across a range of MDS ranks.  The canonical example use-case
-would be the <code class="docutils literal notranslate"><span class="pre">/home</span></code> directory: we want every user’s home directory to be
-spread across the entire MDS cluster. This can be set via:</p>
+<div class="section" id="cephfs-ephemeral-pinning">
+<span id="id5"></span><h2>设置子树分区策略<a class="headerlink" href="#cephfs-ephemeral-pinning" title="Permalink to this headline">¶</a></h2>
+<p>通过一系列 <strong>策略</strong> 配置起 <strong>自动化的</strong> 子树静态分区也是可以的。
+在 CephFS 里，这种自动化的静态分区被称为
+<strong>（临时挂单） ephemeral pinning</strong> 。
+任何临时挂单的目录（ inode ）都会根据其
+inode 号的一致性哈希值被自动分配到一个特定的 rank 。
+所有这些临时挂单的目录都会统一地分布到所有 rank 上。</p>
+<p>给临时挂单的目录这样命名是因为，一旦这个目录 inode
+被缓存丢弃 pin 是不会持久化的。然而，
+一个 MDS 的故障不会影响挂单目录们“临时”的天性。
+MDS 在日志中记录了哪些子树是临时挂单的，
+这样 MDS 的故障就不会丢失这个信息。</p>
+<p>一个目录可以是临时挂单的，也可以不是。
+挂单到哪个 rank 是通过它的 inode 号和一致性哈希决定的。
+这意味着临时挂单的目录们大致均匀地散布在 MDS 集群中。
+<strong>一致性哈希</strong> 也最小化了在 MDS 集群扩容或缩小时的重分布。
+所以，扩容 MDS 集群后，无需管理介入就可以自动地增加你的元数据吞吐量。</p>
+<p>目前，有两种类型的临时挂单：</p>
+<p><strong>分布式的临时挂单</strong>: 这个策略会引起目录分片
+（即使远低于常规分片阈值）、
+并把它的分片作为临时挂单子树散布出去。
+借助这个特性正好可以把直系子目录散布到一系列 MDS rank 上。
+经典的应用案例就是 <code class="docutils literal notranslate"><span class="pre">/home</span></code> 目录：我们希望每个用户的家目录都被散布到整个 MDS 集群上。这样设置：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="o">/</span><span class="n">cephfs</span><span class="o">/</span><span class="n">home</span>
 </pre></div>
 </div>
-<p><strong>Random Ephemeral Pins</strong>: This policy indicates any descendent sub-directory
-may be ephemerally pinned. This is set through the extended attribute
-<code class="docutils literal notranslate"><span class="pre">ceph.dir.pin.random</span></code> with the value set to the percentage of directories
-that should be pinned. For example:</p>
+<p><strong>随机的临时挂单</strong>: 这个策略表面它下面的任意子目录分支都可以被临时挂单出去。
+这是通过扩展属性 <code class="docutils literal notranslate"><span class="pre">ceph.dir.pin.random</span></code> 设置的，
+值是允许挂单的目录百分比。例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">random</span> <span class="o">-</span><span class="n">v</span> <span class="mf">0.5</span> <span class="o">/</span><span class="n">cephfs</span><span class="o">/</span><span class="n">tmp</span>
 </pre></div>
 </div>
-<p>Would cause any directory loaded into cache or created under <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> to be
-ephemerally pinned 50 percent of the time.</p>
-<p>It is recomended to only set this to small values, like <code class="docutils literal notranslate"><span class="pre">.001</span></code> or <code class="docutils literal notranslate"><span class="pre">0.1%</span></code>.
-Having too many subtrees may degrade performance. For this reason, the config
-<code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_random_max</span></code> enforces a cap on the maximum of this
-percentage (default: <code class="docutils literal notranslate"><span class="pre">.01</span></code>). The MDS returns <code class="docutils literal notranslate"><span class="pre">EINVAL</span></code> when attempting to
-set a value beyond this config.</p>
-<p>Both random and distributed ephemeral pin policies are off by default in
-Octopus. The features may be enabled via the
-<code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_random</span></code> and <code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_distributed</span></code>
-configuration options.</p>
-<p>Ephemeral pins may override parent export pins and vice versa. What determines
-which policy is followed is the rule of the closest parent: if a closer parent
-directory has a conflicting policy, use that one instead. For example:</p>
+<p>这将使得任何被载入缓存的、或者在 <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> 下创建的目录在 50% 的时间里都可以临时挂单。</p>
+<p>建议你只设置很小的数值，像 <code class="docutils literal notranslate"><span class="pre">.001</span></code> 或 <code class="docutils literal notranslate"><span class="pre">0.1%</span></code> 。
+子树太多的话会降低性能。正因为如此，
+配置选项 <code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_random_max</span></code> 对这一比例的上限进行了规定（默认为 <code class="docutils literal notranslate"><span class="pre">.01</span></code> ）。
+试图设置得高于此配置时 MDS 会返回 <code class="docutils literal notranslate"><span class="pre">EINVAL</span></code> 。</p>
+<p>在 Octopus 版里，随机的和分布式的临时挂单策略默认都是关闭的。
+此功能可以通过
+<code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_random</span></code> 和 <code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_distributed</span></code>
+配置选项来启用。</p>
+<p>临时挂单可以覆盖父级导出的 pin ，反之亦然。
+施行哪条策略遵循的规则是最近的父级：
+如果一个比较近的父级目录有一条策略冲突，就用这一条。例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar1</span><span class="o">/</span><span class="n">baz</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar2</span>
 <span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">0</span> <span class="n">foo</span>
 <span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar1</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">foo/bar1/baz</span></code> directory will be ephemerally pinned because the
-<code class="docutils literal notranslate"><span class="pre">foo/bar1</span></code> policy overrides the export pin on <code class="docutils literal notranslate"><span class="pre">foo</span></code>. The <code class="docutils literal notranslate"><span class="pre">foo/bar2</span></code>
-directory will obey the pin on <code class="docutils literal notranslate"><span class="pre">foo</span></code> normally.</p>
-<p>For the reverse situation:</p>
+<p><code class="docutils literal notranslate"><span class="pre">foo/bar1/baz</span></code> 这一目录就会被临时挂单，
+因为 <code class="docutils literal notranslate"><span class="pre">foo/bar1</span></code> 策略覆盖了 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 上的 export pin 。
+<code class="docutils literal notranslate"><span class="pre">foo/bar2</span></code> 会正常地遵守 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 上的 pin 。</p>
+<p>对于相反的情况：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">home</span><span class="o">/</span><span class="p">{</span><span class="n">patrick</span><span class="p">,</span><span class="n">john</span><span class="p">}</span>
 <span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="n">home</span>
 <span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">2</span> <span class="n">home</span><span class="o">/</span><span class="n">patrick</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">home/patrick</span></code> directory and its children will be pinned to rank 2
-because its export pin overrides the policy on <code class="docutils literal notranslate"><span class="pre">home</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">home/patrick</span></code> 目录及其子目录会被插入 rank 2,
+因为它的 export pin 覆盖了 <code class="docutils literal notranslate"><span class="pre">home</span></code> 上的策略。</p>
 </div>
 </div>
 
