@@ -1,7 +1,6 @@
 =======================
  在 FreeBSD 上手动部署
 =======================
-..  Manual Deployment on FreeBSD
 
 This a largely a copy of the regular Manual Deployment with FreeBSD specifics.
 The difference lies in two parts: The underlying diskformat, and the way to use
@@ -88,7 +87,6 @@ A sample file is provided in ``/usr/local/share/doc/ceph/sample.ceph.conf``
 Note that ``/usr/local/etc/ceph/ceph.conf`` will be found by most tools,
 linking it to ``/etc/ceph/ceph.conf`` will help with any scripts that are found
 in extra tools, scripts, and/or discussionlists.
-
 
 监视器自举启动
 ==============
@@ -341,7 +339,6 @@ The procedure is as follows:
    **Note:** Once you add OSDs and start them, the placement group health errors
    should disappear. See the next section for details.
 
-
 .. _freebsd_adding_osds:
 
 添加 OSD
@@ -373,13 +370,11 @@ OSDs with the long form procedure, execute the following on ``node2`` and
 
 	uuidgen
 
-
 #. Create the OSD. If no UUID is given, it will be set automatically when the
    OSD starts up. The following command will output the OSD number, which you
    will need for subsequent steps. ::
 
 	ceph osd create [{uuid} [{id}]]
-
 
 #. Create the default directory on your new OSD. ::
 

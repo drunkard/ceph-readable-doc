@@ -1,5 +1,3 @@
-.. Development workflows
-
 ==========
  开发流程
 ==========
@@ -36,11 +34,9 @@ were not written prior to checking all integration tests, they can be
 commited to the stable branch and the result sent for publication
 without going through another run of integration tests.
 
-
-.. Release Cycle
-
 发布周期
 ========
+.. Release Cycle
 
 ::
 
@@ -66,11 +62,9 @@ frequency.  Every other release (firefly, hammer, jewel...) is a `Long Term
 Stable (LTS) <../../releases>`_.  See `Understanding the release cycle
 <../../releases#understanding-the-release-cycle>`_ for more information.
 
-
-.. Merging bug fixes or features
-
 缺陷修正或功能的合并
 ====================
+.. Merging bug fixes or features
 
 The development branch is ``master`` and the workflow followed by all
 developers can be summarized as follows:
@@ -105,8 +99,7 @@ follows:
   assign them a priority
 * The bugs with higher priority are worked on first
 
-各小组（ ``team`` ）分别负责一个项目，由\ :ref:`项目领导 <governance>`\
-管理。
+各小组（ ``team`` ）分别负责一个项目，由\ :ref:`项目领导 <governance>` 管理。
 
 The ``developer`` assigned to an issue is responsible for it. The
 status of an open issue can be:
@@ -238,12 +231,11 @@ differences:
   the ``release master`` directly informs the ``publisher`` that the
   release is ready to be published.
 
-Publishing point releases and backporting
-=========================================
+发布修正版和移植
+================
+.. Publishing point releases and backporting
 
-The publication workflow of the point releases is the same as
-preparing a new release and cutting it, with the following
-differences:
+修正版的发布工作流和新版本的准备、修剪是相同的，不同的地方有：
 
 * The ``backport`` field of each issue contains the code name of the
   stable release
@@ -252,6 +244,5 @@ differences:
 * All commits are cherry-picked with ``git cherry-pick -x`` to
   reference the original commit
 
-See `the backporter manual
-<http://tracker.ceph.com/projects/ceph-releases/wiki/HOWTO>`_ for more
-information.
+详情见 `移植手册
+<http://tracker.ceph.com/projects/ceph-releases/wiki/HOWTO>`_ 。

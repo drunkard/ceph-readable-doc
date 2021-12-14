@@ -1,10 +1,6 @@
-.. _Peering:
-
 ======
  互联
 ======
-
-.. _Concepts:
 
 概念
 ----
@@ -116,11 +112,9 @@
    At this point, *recovery* is deemed to have been
    completed.
 
-
-.. _Description of the Peering Process:
-
 互联过程描述
 ------------
+.. Description of the Peering Process
 
 The *Golden Rule* is that no write operation to any PG
 is acknowledged to a client until it has been persisted
@@ -260,10 +254,8 @@ The high level process is for the current PG primary to:
      old object (all of whose copies disappeared before they could be
      replicated on members of the current *acting set*).
 
-
-.. _State Model:
-
 状态机模型
 ----------
+.. State Model
 
 .. graphviz:: peering_graph.generated.dot

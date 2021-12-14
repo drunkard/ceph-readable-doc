@@ -1,8 +1,7 @@
-基本工作流
-==========
-.. Basic Workflow
+Basic Workflow
+==============
 
-The following chart illustrates basic development workflow:
+The following chart illustrates the basic Ceph development workflow:
 
 .. ditaa::
 
@@ -16,7 +15,7 @@ The following chart illustrates basic development workflow:
                 | git merge                          |
                 |                                    v
            /----------------\  git commit --amend   /-------------\
-           |  make check    |---------------------> | ceph/fix_1  |
+           | ninja check    |---------------------> | ceph/fix_1  |
            | ceph--qa--suite|                       \-------------/
            \----------------/                        |
                 ^                                    | fix changes
@@ -34,10 +33,8 @@ enhancement, but do not know how to proceed. Watch the `Getting Started with
 Ceph Development <https://www.youtube.com/watch?v=t5UIehZ1oLs>`_ video for a
 practical summary of this workflow.
 
-
-更新追踪器
-----------
-.. Update the tracker
+Updating the tracker
+--------------------
 
 Before you start, you should know the :ref:`issue-tracker` (Redmine) number
 of the bug you intend to fix. If there is no tracker issue, now is the time to
@@ -57,7 +54,6 @@ If you have sufficient tracker permissions, assign the bug to yourself by
 setting the ``Assignee`` field.  If your tracker permissions have not been
 elevated, simply add a comment with a short message like "I am working on this
 issue".
-
 
 Forking and Cloning the Ceph Repository
 ---------------------------------------
@@ -147,10 +143,8 @@ branch by running the following commands:
 This procedure should be followed often, in order to keep your local ``master``
 in sync with upstream ``master``.
 
-.. Creating a Bugfix branch
-
-创建一个缺陷修订分支
---------------------
+Creating a Bugfix branch
+------------------------
 
 Create a branch for your bugfix:
 
@@ -166,10 +160,8 @@ You are now ready to modify the code.  Be careful to always run `git checkout
 master` first, otherwise you may find commits from an unrelated branch mixed
 with your new work.
 
-.. Fixing the bug locally
-
-在本地修正缺陷
---------------
+Fixing the bug locally
+----------------------
 
 In the `Ceph issue tracker <https://tracker.ceph.com>`_, change the status of
 the tracker issue to "In progress".  This communicates to other Ceph
@@ -201,10 +193,8 @@ Push the changes to your fork:
 
    git push origin fix_1
 
-.. Opening a GitHub pull request
-
-新开一个 GitHub 拉取请求
-------------------------
+Opening a GitHub pull request
+-----------------------------
 
 The next step is to open a GitHub pull request (PR). This makes your bugfix
 visible to the community of Ceph contributors.  They will review it and may
@@ -234,11 +224,8 @@ as simple as::
 
     *PR*: https://github.com/ceph/ceph/pull/$NUMBER_OF_YOUR_PULL_REQUEST
 
-
-.. Understanding Automated PR validation
-
-了解全自动的 PR 校验
---------------------
+Understanding Automated PR validation
+-------------------------------------
 
 When you create or update your PR, the Ceph project's `Continuous Integration
 (CI) <https://en.wikipedia.org/wiki/Continuous_integration>`_ infrastructure
@@ -261,12 +248,10 @@ on GitHub in the pull request itself.
 You should test your modifications before you open a PR.
 Refer to the chapters on testing for details.
 
-.. Notes on PR make check test
+Notes on PR make check test
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PR make check 测试注意事项
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-GitHub 上的 :ref:`make check<make-check>` 测试是由
-Jenkins 例程驱动的。
+The GitHub :ref:`make check<make-check>` test is driven by a Jenkins instance.
 
 Jenkins merges your PR branch into the latest version of the base branch before
 starting tests. This means that you don't have to rebase the PR to pick up any fixes.
@@ -290,10 +275,8 @@ guarantee that these known strings are associated with any given
 :ref:`make check<make-check>` failure. You'll have to read through the log to determine the
 cause of your specific failure.
 
-.. Integration tests AKA ceph-qa-suite
-
-集成测试（也就是 ceph-qa-suite ）
----------------------------------
+Integration tests AKA ceph-qa-suite
+-----------------------------------
 
 Since Ceph is complex, it may be necessary to test your fix to
 see how it behaves on real clusters running on physical or virtual
@@ -320,24 +303,18 @@ tests`_ chapter.
 
 .. _integration tests: ../testing_integration_tests/tests-integration-testing-teuthology-intro
 
-
-.. Code review
-
-源码审核
---------
+Code review
+-----------
 
 Once your bugfix has been thoroughly tested, or even during this process,
 it will be subjected to code review by other developers. This typically
 takes the form of comments in the PR itself, but can be supplemented
 by discussions on :ref:`irc` and the :ref:`mailing-list`.
 
+Amending your PR
+----------------
 
-.. Amending your PR
-
-修订你的 PR
------------
-
-While your PR is going through testing and `源码审核`_, you can
+While your PR is going through testing and `Code Review`_, you can
 modify it at any time by editing files in your local branch.
 
 After updates are committed locally (to the ``fix_1`` branch in our
@@ -360,11 +337,8 @@ makes for clean history, eases peer review of your changes, and facilitates
 merges.  In rare circumstances it also makes it easier to cleanly revert
 changes.
 
-
-.. Merge
-
-合并
-----
+Merging
+-------
 
 The bugfix process completes when a project lead merges your PR.
 

@@ -2,14 +2,13 @@
  Ceph 术语
 ===========
 
-Ceph is growing rapidly. As firms deploy Ceph, the technical terms such as
-"RADOS", "RBD," "RGW" and so forth require corresponding marketing terms
-that explain what each component does. The terms in this glossary are 
-intended to complement the existing technical terminology.
+Ceph 在迅速成长。随着企业对 Ceph 的采用，技术性的术语如 RADOS 、 RBD 、 RGW
+等等需要对应的营销用语，用以解释各个组件是干什么的。
+这个术语表里的术语是用以完善已有技术性术语的。
 
-Sometimes more than one term applies to a definition. Generally, the first
-term reflects a term consistent with Ceph's marketing, and secondary terms
-reflect either technical terms or legacy ways of referring to Ceph systems.
+有时候，一个定义有不止一个术语。通常，
+第一个术语反映的是 Ceph 的营销用语，
+第二个术语反映的是技术性术语、或者引用 Ceph 系统的遗留方式。
 
 
 .. glossary:: 
@@ -49,37 +48,35 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
     Ceph 对象存储库
     RADOS 集群
     可靠自主的分布式对象存储库
-        The core set of storage software which stores the user's data (MON+OSD).
+        存储软件的核心部分，存储着用户的数据（ MON+OSD ）。
 
     Ceph Cluster Map
     Cluster Map
     Ceph 集群运行图
     集群运行图
-        The set of maps comprising the monitor map, OSD map, PG map, MDS map and 
-        CRUSH map. See `Cluster Map`_ for details.
+        一系列的运行图，包括监视器运行图、 OSD 运行图、 PG 图、 MDS 运行图\
+        和 CRUSH 图。详情见 `集群运行图`_ 。
 
     Ceph Object Storage
     Ceph 对象存储
-        The object storage "product", service or capabilities, which consists
-        essentially of a Ceph Storage Cluster and a Ceph Object Gateway.
+        对象存储“产品”、服务或者能力，至少由 Ceph 存储集群和一个 Ceph 对象网关组成。
 
     Ceph Object Gateway
     RADOS Gateway
     RGW
     Ceph 对象网关
     RADOS 网关
-        The S3/Swift gateway component of Ceph.
+        Ceph 的 S3/Swift 网关组件。
 
     Ceph Block Device
     RBD
     Ceph 块设备
-        The block storage component of Ceph.
+        Ceph 的块存储组件。
 
     Ceph Block Storage
     Ceph 块存储
-        The block storage "product," service or capabilities when used in 
-        conjunction with ``librbd``, a hypervisor such as QEMU or Xen, and a
-        hypervisor abstraction layer such as ``libvirt``.
+        块存储“产品”、服务或者能力，可以配合使用的有 ``librbd`` 、
+        虚拟化管理程序如 QEMU 或 Xen 、和虚拟化管理程序的抽象层，如 ``libvirt`` 。
 
     Ceph Filesystem
     CephFS
@@ -105,27 +102,24 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
     Ceph OSD
     Ceph 对象存储守护进程
     Ceph OSD 守护进程
-        The Ceph OSD software, which interacts with a logical
-        disk (:term:`OSD`). Sometimes, Ceph users use the
-        term "OSD" to refer to "Ceph OSD Daemon", though the
-        proper term is "Ceph OSD".
+        Ceph 的 OSD 软件，它与逻辑磁盘（ :term:`OSD` ）交互。有时候，
+        Ceph 用户们用 “OSD” 这个术语来指代 “Ceph OSD Daemon”，
+        然而正确的术语是 “Ceph OSD”。
 
     OSD id
         定义一个 OSD 的整数。它是在新建 OSD 期间由监视器们生成的。
 
     OSD fsid
-        This is a unique identifier used to further improve the uniqueness of an
-        OSD and it is found in the OSD path in a file called ``osd_fsid``. This
-        ``fsid`` term is used interchangeably with ``uuid``
+        这是一个唯一的标识符，用以提高一个 OSD 的唯一性，它位于 OSD 路径内、
+        一个名为 ``osd_fsid`` 的文件里。这个 ``fsid`` 可以和 ``uuid`` 互换着用。
 
     OSD uuid
-        Just like the OSD fsid, this is the OSD unique identifier and is used
-        interchangeably with ``fsid``
+        就像 OSD fsid ，这是 OSD 的唯一标识符，并且可以和 ``fsid`` 互换着用。
 
     bluestore
-        OSD BlueStore is a new back end for OSD daemons (kraken and newer
-        versions). Unlike :term:`filestore` it stores objects directly on the
-        Ceph block devices without any file system interface.
+        OSD BlueStore 是 OSD 守护进程的一个新后端（ kraken 及其后续版本）。
+        不像 :term:`filestore` ，它是直接在给 Ceph 使用的块设备上存储对象的，
+        不需要任何文件系统接口。
 
     filestore
         OSD 守护进程的一个后端，它需要日志、且文件是写入文件系统的。
@@ -164,44 +158,37 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
     Ceph Clients
     Ceph Client
     Ceph 客户端
-        The collection of Ceph components which can access a Ceph Storage 
-        Cluster. These include the Ceph Object Gateway, the Ceph Block Device, 
-        the Ceph Filesystem, and their corresponding libraries, kernel modules, 
-        and FUSEs.
+        一组能够访问 Ceph 存储集群的 Ceph 组件，其中包括 Ceph 对象网关、
+        Ceph 块设备、 Ceph 文件系统、及其对应的库、内核模块和 FUSE 。
 
     Ceph Kernel Modules
     Ceph 内核模块
-        The collection of kernel modules which can be used to interact with the 
-        Ceph System (e.g,. ``ceph.ko``, ``rbd.ko``).
+        一组能够成功和 Ceph 系统交互的内核模块（比如 ``ceph.ko`` 、 ``rbd.ko`` ）。
 
     Ceph Client Libraries
     Ceph 客户端库
-        The collection of libraries that can be used to interact with components 
-        of the Ceph System.
+        一组能够成功和相应 Ceph 组件交互的库。
 
     Ceph Release
     Ceph 发布
-        Any distinct numbered version of Ceph.
+        任何用不同数字编号的 Ceph 版本。
 
     Ceph Point Release
     Ceph 修正版
     Ceph 小版本
-        Any ad-hoc release that includes only bug or security fixes.
+        所有只包含缺陷或安全修正的特殊版本。
 
     Ceph Interim Release
     Ceph 临时发布
-        Versions of Ceph that have not yet been put through quality assurance
-        testing, but may contain new features.
+        尚未通过质检测试、但包含新功能的 Ceph 版本。
 
     Ceph Release Candidate
     Ceph 预发布
-        A major version of Ceph that has undergone initial quality assurance 
-        testing and is ready for beta testers.
+        Ceph 的一个主要版本，通过了基本的质检测试、并能够交付给普通测试者。
 
     Ceph Stable Release
     Ceph 稳定版
-        A major version of Ceph where all features from the preceding interim 
-        releases have been put through quality assurance testing successfully.
+        Ceph 的一个主要版本，前面临时版本的所有功能都成功通过了质检测试。
 
     Ceph Test Framework
     Teuthology
@@ -210,12 +197,12 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
         对 Ceph 进行脚本化测试的一系列软件。
 
     CRUSH
-        Controlled Replication Under Scalable Hashing. It is the algorithm
-        Ceph uses to compute object storage locations.
+        Controlled Replication Under Scalable Hashing ，可伸缩哈希控制的复制。
+        它是 Ceph 用以计算对象存储位置的算法。
 
     CRUSH rule
     CRUSH 规则
-        The CRUSH data placement rule that applies to a particular pool(s).
+        应用到某个特定存储池（们）的 CRUSH 数据归置规则。
 
     Pool
     Pools
@@ -233,4 +220,4 @@ reflect either technical terms or legacy ways of referring to Ceph systems.
 
 
 .. _https://github.com/ceph: https://github.com/ceph
-.. _Cluster Map: ../architecture#cluster-map
+.. _集群运行图: ../architecture#cluster-map

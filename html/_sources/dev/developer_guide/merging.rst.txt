@@ -1,14 +1,9 @@
-.. Commit merging:  scope and cadence
 .. _merging:
 
 合并提交：范围和节奏
 ====================
 
-Commits are merged into branches according to criteria specific to each phase
-of the Ceph release lifecycle. This chapter codifies these criteria.
-
-
-.. Development releases (i.e. x.0.z)
+提交会根据 Ceph 发布周期内的特定条件并入各个分支，本章整理出了这些条件。
 
 开发版（即 x.0.z ）
 -------------------
@@ -40,19 +35,17 @@ this point on, master was no longer associated with infernalis. As
 soon as the named branch of the next stable release is created, master
 starts getting periodically merged into it.
 
-Branch merges
-^^^^^^^^^^^^^
+分支合并
+^^^^^^^^
+.. Branch merges
 
-* The branch of the stable release is merged periodically into master.
-* The master branch is merged periodically into the branch of the
-  stable release.
-* The master is merged into the branch of the stable release
-  immediately after each development x.0.z release.
-
-.. Stable release candidates (i.e. x.1.z) phase 1
+* 稳定版的分支会周期性地并入 master ；
+* master 分支会周期性地并入稳定版；
+* 每次开发版 x.0.z 发布后， master 会立即并入稳定版分支；
 
 稳定版候选（即 x.1.z ）阶段一
 -----------------------------
+.. Stable release candidates (i.e. x.1.z) phase 1
 
 What ?
 ^^^^^^
@@ -79,17 +72,13 @@ x.1.0 tag is set in the release branch.
 Branch merges
 ^^^^^^^^^^^^^
 
-* The branch of the stable release is merged periodically into master.
-* The master branch is merged periodically into the branch of the
-  stable release.
-* The master is merged into the branch of the stable release
-  immediately after each x.1.z release candidate.
-
-
-.. Stable release candidates (i.e. x.1.z) phase 2
+* 稳定版的分支会周期性地并入 master ；
+* master 分支会周期性地并入稳定版；
+* 每次候选版 x.1.z 发布后， master 会立即并入稳定版分支；
 
 稳定版候选（即 x.1.z ）阶段二
 -----------------------------
+.. Stable release candidates (i.e. x.1.z) phase 2
 
 What ?
 ^^^^^^
@@ -109,17 +98,15 @@ When ?
 
 After Sage Weil decides it is time for phase 2 to happen.
 
-.. Branch merges
-
 分支合并
 ^^^^^^^^
+.. Branch merges
+
 * The branch of the stable release is merged periodically into master.
-
-
-.. Stable releases (i.e. x.2.z)
 
 稳定版（即 x.2.z ）
 -------------------
+.. Stable releases (i.e. x.2.z)
 
 What ?
 ^^^^^^
@@ -147,9 +134,9 @@ When ?
 After the stable release is published, i.e. after the "vx.2.0" tag is set in
 the release branch.
 
-.. Branch merges
-
 分支合并
 ^^^^^^^^
+.. Branch merges
+
 不会再并入。
 

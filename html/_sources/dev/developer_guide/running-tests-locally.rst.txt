@@ -1,9 +1,5 @@
-.. Running Unit Tests
-
 运行单元测试
 ============
-
-.. How to run s3-tests locally
 
 如何在本地运行 s3-tests
 -----------------------
@@ -13,20 +9,16 @@ cluster, and running the "s3-tests" suite against it.
 
 The following instructions should work on jewel and above.
 
-
-.. Step 1 - build Ceph
-
 第一步：构建 Ceph
 ^^^^^^^^^^^^^^^^^
+
 细节见 :doc:`/install/build-ceph` 。
 
 构建时间较长，你可以先单独试试第二步。
 
-
-.. Step 2 - vstart
-
 第二步： vstart
 ^^^^^^^^^^^^^^^
+
 构建结束后，还是在构建时的 git 克隆库顶极目录下，执行这些，用 \
 cmake 构建的话： ::
 
@@ -40,8 +32,6 @@ end you should see a message like::
 
 This means the cluster is running.
 
-
-.. Step 3 - run s3-tests
 
 第三步：运行 s3-tests
 ^^^^^^^^^^^^^^^^^^^^^
@@ -141,6 +131,27 @@ vstart_runner.py primarily does three things -
     ``LocalCephManager`` provides methods to run Ceph cluster commands with
     and without admin socket and ``LocalCephCluster`` provides methods to set
     or clear ``ceph.conf``.
+
+Running Workunits Using vstart_enviroment.sh
+--------------------------------------------
+
+Code can be tested by building Ceph locally from source, starting a vstart
+cluster, and running any suite against it.
+Similar to S3-Tests, other workunits can be run against by configuring your enviroment.
+
+Set up the enviroment
+^^^^^^^^^^^^^^^^^^^^^
+
+Configure your enviroment::
+
+    $ . ./build/vstart_enviroment.sh
+
+Running a test
+^^^^^^^^^^^^^^
+
+To run a workunit (e.g ``mon/osd.sh``) do the following::
+
+    $ ./qa/workunits/mon/osd.sh
 
 .. _test_reconnect_timeout: https://github.com/ceph/ceph/blob/master/qa/tasks/cephfs/test_client_recovery.py#L133
 .. _TestClientRecovery: https://github.com/ceph/ceph/blob/master/qa/tasks/cephfs/test_client_recovery.py#L86

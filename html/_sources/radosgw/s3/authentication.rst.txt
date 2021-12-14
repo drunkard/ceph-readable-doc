@@ -1,7 +1,6 @@
 ====================
  认证和访问控制列表
 ====================
-.. Authentication and ACLs
 
 Requests to the RADOS Gateway (RGW) can be either authenticated or
 unauthenticated. RGW assumes unauthenticated requests are sent by an anonymous
@@ -9,7 +8,6 @@ user. RGW supports canned ACLs.
 
 认证
 ----
-.. Authentication
 
 Authenticating a request requires including an access key and a Hash-based
 Message Authentication Code (HMAC) in the request before it is sent to the

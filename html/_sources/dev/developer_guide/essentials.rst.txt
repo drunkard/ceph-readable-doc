@@ -1,16 +1,13 @@
 必备知识
 ========
-.. Essentials (tl;dr)
 
 本章包含必要信息，每个 Ceph 开发者都应该知道。
 
-
 项目领导
 --------
-.. Leads
 
-Ceph 项目是由 Sage Weil 领导的。另外，各主要项目组件有自己的领\
-导，下面的表格罗列了所有领导、以及他们在 `GitHub`_ 上的昵称。
+Ceph 项目是由 Sage Weil 领导的。另外，各主要项目组件有自己的领导，
+下面的表格罗列了所有领导、以及他们在 `GitHub`_ 上的昵称。
 
 .. _github: https://github.com/
 
@@ -31,19 +28,15 @@ Docs      Zac Dover        zdover23
 
 上述表格里的 Ceph 专有缩写在 :doc:`/architecture` 里面有解释。
 
-
 历史
 ----
-.. History
 
 请翻阅 `Wikipedia 的 History 这章`_\ 。
 
 .. _`Wikipedia 的 History 这章`: https://en.wikipedia.org/wiki/Ceph_%28software%29#History
 
-
 软件许可
 --------
-.. Licensing
 
 Ceph 是自由软件。
 
@@ -53,13 +46,11 @@ Ceph 是自由软件。
 .. _`COPYING`:
    https://github.com/ceph/ceph/blob/master/COPYING
 
-
 源代码仓库
 ----------
 .. Source code repositories
 
-The source code of Ceph lives on `GitHub`_ in a number of repositories below
-the `Ceph "organization"`_.
+Ceph 的源码位于 `GitHub`_ 上， `Ceph "organization"`_ 下的众多软件库之一。
 
 .. _`Ceph "organization"`: https://github.com/ceph
 
@@ -70,7 +61,6 @@ knowledge of git_ is essential.
 
 Although the `Ceph "organization"`_ includes several software repositories,
 this document covers only one: https://github.com/ceph/ceph.
-
 
 Redmine 问题跟踪器
 ------------------
@@ -91,8 +81,7 @@ sufficient to open new issues and comment on existing ones.
 
 .. _registration: http://tracker.ceph.com/account/register
 
-要报告软件缺陷或者提议新功能，请\ `跳转到 Ceph 项目`_\ 并点击 \
-`New issue`_ 。
+要报告软件缺陷或者提议新功能，请\ `跳转到 Ceph 项目`_\ 并点击 `New issue`_ 。
 
 .. _`跳转到 Ceph 项目`: http://tracker.ceph.com/projects/ceph
 .. _`New issue`: http://tracker.ceph.com/projects/ceph/issues/new
@@ -200,13 +189,11 @@ tree. There may be some overlap between this guide and that file.
 
 All newcomers are encouraged to read that file carefully.
 
-
 从源码构建
 ----------
 .. Building from source
 
 请参考 :doc:`/install/build-ceph` 。
-
 
 用 ccache 加速本地构建
 ----------------------
@@ -288,20 +275,17 @@ UNIX timestamp) and set ``ENABLE_GIT_VERSION`` to ``OFF`` when running
 .. _`run modes`: https://ccache.samba.org/manual.html#_run_modes
 .. _`configuration`: https://ccache.samba.org/manual.html#_configuration
 
-
 开发模式的集群
 --------------
 .. Development-mode cluster
 
 参考 :doc:`/dev/quick_guide` 。
 
-
 Kubernetes/Rook 开发集群
 ------------------------
 .. Kubernetes/Rook development cluster
 
 参考 :ref:`kubernetes-dev`
-
 
 .. _backporting:
 
