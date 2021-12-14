@@ -1,26 +1,21 @@
 ==============
  配置管理系统
 ==============
-.. Configuration Management System
 
-The configuration management system exists to provide every daemon with the
-proper configuration information. The configuration can be viewed as a set of
-key-value pairs.
+配置管理系统存在的理由是为了向每一个守护进程提供正确的配置信息。配置信息是一系列键值对。
 
-How can the configuration be set? Well, there are several sources:
- - the ceph configuration file, usually named ceph.conf
- - command line arguments::
+如何设置配置值？有好几种方法：
+ - ceph 配置文件，名字一般是 ceph.conf
+ - 命令行参数::
 
     --debug-ms=1
     --debug-monc=10
 
-   etc.
+   等等。
  - 在运行时用 ``injectargs`` 或 ``config set`` 注入的参数
-
 
 配置文件
 ========
-.. The Configuration File
 
 Most configuration settings originate in the Ceph configuration file.
 
@@ -40,10 +35,8 @@ file win over earlier ones.
 
 A sample configuration file can be found in src/sample.ceph.conf.
 
-
 元变量
 ======
-.. Metavariables
 
 The configuration system allows any configuration value to be
 substituted into another value using the ``$varname`` syntax, similar
@@ -84,7 +77,6 @@ The observer method should be preferred in new code because
 
 For these reasons, reading directly from ``g_conf`` should be considered deprecated
 and not done in new code.  Do not ever alter ``g_conf``.
-
 
 更改配置值
 ==========

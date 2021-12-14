@@ -230,58 +230,48 @@
   
   <div class="section" id="nfs">
 <span id="cephfs-nfs"></span><h1>NFS<a class="headerlink" href="#nfs" title="Permalink to this headline">¶</a></h1>
-<p>CephFS namespaces can be exported over NFS protocol using the <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/wiki">NFS-Ganesha NFS
-server</a>.  This document provides information on configuring NFS-Ganesha
-clusters manually.  The simplest and preferred way of managing NFS-Ganesha
-clusters and CephFS exports is using <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">nfs</span> <span class="pre">...</span></code> commands. See
-<a class="reference internal" href="../../mgr/nfs/"><span class="doc">CephFS &amp; RGW Exports over NFS</span></a> for more details. As the deployment is done using cephadm or
-rook.</p>
+<p>CephFS 命名空间可以通过 NFS 协议导出，用 <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/wiki">NFS-Ganesha NFS 服务器</a> 。本文档说的是
+NFS-Ganesha 集群的手动配置方法。最简单的、首选的方法是通过 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">nfs</span> <span class="pre">...</span></code> 系列命令来管理 NFS-Ganesha 集群和 CephFS 的导出。详情见 <a class="reference internal" href="../../mgr/nfs/"><span class="doc">CephFS &amp; RGW Exports over NFS</span></a> 。
+假设 Ceph 是用 cephadm 或 rook 部署的。</p>
 <div class="section" id="id1">
 <h2>必要条件<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><p>Ceph file system</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">libcephfs2</span></code>, <code class="docutils literal notranslate"><span class="pre">nfs-ganesha</span></code> and <code class="docutils literal notranslate"><span class="pre">nfs-ganesha-ceph</span></code> packages on NFS
-server host machine.</p></li>
-<li><p>NFS-Ganesha server host connected to the Ceph public network</p></li>
+<li><p>Ceph 文件系统</p></li>
+<li><p>在 NFS 服务器所在主机上有 <code class="docutils literal notranslate"><span class="pre">libcephfs2</span></code> 、 <code class="docutils literal notranslate"><span class="pre">nfs-ganesha</span></code>
+和 <code class="docutils literal notranslate"><span class="pre">nfs-ganesha-ceph</span></code> 软件包。</p></li>
+<li><p>连接到 Ceph 公共网的 NFS-Ganesha 服务器主机。</p></li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>It is recommended to use 3.5 or later stable version of NFS-Ganesha
-packages with pacific (16.2.x) or later stable version of Ceph packages.</p>
+<p>建议用 3.5 或更高稳定版的 NFS-Ganesha 软件包，
+对接 pacific (16.2.x) 或更高版本的 Ceph 。</p>
 </div>
 </div>
 <div class="section" id="nfs-ganesha-cephfs">
 <h2>配置 NFS-Ganesha 来导出 CephFS<a class="headerlink" href="#nfs-ganesha-cephfs" title="Permalink to this headline">¶</a></h2>
-<p>NFS-Ganesha provides a File System Abstraction Layer (FSAL) to plug in
-different storage backends. <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a> is the plugin FSAL for CephFS. For
-each NFS-Ganesha export, <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a> uses a libcephfs client to mount the
-CephFS path that NFS-Ganesha exports.</p>
-<p>Setting up NFS-Ganesha with CephFS, involves setting up NFS-Ganesha’s and
-Ceph’s configuration file and CephX access credentials for the Ceph clients
-created by NFS-Ganesha to access CephFS.</p>
+<p>NFS-Ganesha 有一个文件系统抽象层（ File System Abstraction Layer, FSAL ）来适配不同的存储后端。 <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a> 是适配 CephFS 的 FSAL 插件。对于每一个 NFS-Ganesha 导出，
+<a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a> 都会用一个 libcephfs 客户端来挂载 NFS-Ganesha 要导出的 CephFS 路径。</p>
+<p>对接 NFS-Ganesha 和 CephFS 的配置，涉及 NFS-Ganesha 的配置、 Ceph 配置文件、
+NFS-Ganesha 创建的、用于访问 CephFS 的客户端所需的 CephX 访问证书。</p>
 <div class="section" id="nfs-ganesha">
 <h3>NFS-Ganesha 配置<a class="headerlink" href="#nfs-ganesha" title="Permalink to this headline">¶</a></h3>
-<p>Here’s a <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ceph.conf">sample ganesha.conf</a> configured with <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a>. It is suitable
-for a standalone NFS-Ganesha server, or an active/passive configuration of
-NFS-Ganesha servers, to be managed by some sort of clustering software
-(e.g., Pacemaker). Important details about the options are added as comments
-in the sample conf. There are options to do the following:</p>
+<p>这里有个用 <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a> 配置的 <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/ceph.conf">ganesha.conf 样本</a> 。它适合独立的 NFS-Ganesha 服务器，
+或者主从式的 NFS-Ganesha 服务器，这样适合让某些集群化软件管理（如 Pacemaker ）。
+关于选项的重要信息在样板配置的注释里。其中有些选项是：</p>
 <ul class="simple">
-<li><p>minimize Ganesha caching wherever possible since the libcephfs clients
-(of <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a>) also cache aggressively</p></li>
-<li><p>read from Ganesha config files stored in RADOS objects</p></li>
-<li><p>store client recovery data in RADOS OMAP key-value interface</p></li>
-<li><p>mandate NFSv4.1+ access</p></li>
-<li><p>enable read delegations (need at least v13.0.1 <code class="docutils literal notranslate"><span class="pre">libcephfs2</span></code> package
-and v2.6.0 stable <code class="docutils literal notranslate"><span class="pre">nfs-ganesha</span></code> and <code class="docutils literal notranslate"><span class="pre">nfs-ganesha-ceph</span></code> packages)</p></li>
+<li><p>尽可能最小化 Ganesha 的缓存，因为 <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/tree/next/src/FSAL/FSAL_CEPH">FSAL_CEPH</a> 的 libcephfs 客户端也会激进地缓存；</p></li>
+<li><p>从 Ganesha 配置文件里读出，它存储在 RADOS 对象里；</p></li>
+<li><p>用 RADOS OMAP 的键值接口存储客户端的恢复数据；</p></li>
+<li><p>指明访问协议为 NFSv4.1+</p></li>
+<li><p>启用读取授权（需要最低 v13.0.1 版的 <code class="docutils literal notranslate"><span class="pre">libcephfs2</span></code> 软件包和
+v2.6.0 稳定版的 <code class="docutils literal notranslate"><span class="pre">nfs-ganesha</span></code> 和 <code class="docutils literal notranslate"><span class="pre">nfs-ganesha-ceph</span></code> 软件包）</p></li>
 </ul>
 </div>
 <div class="section" id="libcephfs">
 <h3>给 libcephfs 客户端的配置<a class="headerlink" href="#libcephfs" title="Permalink to this headline">¶</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> for libcephfs clients includes a <code class="docutils literal notranslate"><span class="pre">[client]</span></code> section with
-<code class="docutils literal notranslate"><span class="pre">mon_host</span></code> option set to let the clients connect to the Ceph cluster’s
-monitors, usually generated via <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span> <span class="pre">generate-minimal-conf</span></code>.
-For example:</p>
+<p>libcephfs 客户端的 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 包含一个 <code class="docutils literal notranslate"><span class="pre">[client]</span></code> 段，要设置其下的 <code class="docutils literal notranslate"><span class="pre">mon_host</span></code> 选项，
+客户端才能连接到集群的监视器，通常是用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span> <span class="pre">generate-minimal-conf</span></code> 命令生成的。
+例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="p">]</span>
         <span class="n">mon</span> <span class="n">host</span> <span class="o">=</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168.1.7</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168.1.7</span><span class="p">:</span><span class="mi">6789</span><span class="p">],</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168.1.8</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168.1.8</span><span class="p">:</span><span class="mi">6789</span><span class="p">],</span> <span class="p">[</span><span class="n">v2</span><span class="p">:</span><span class="mf">192.168.1.9</span><span class="p">:</span><span class="mi">3300</span><span class="p">,</span><span class="n">v1</span><span class="p">:</span><span class="mf">192.168.1.9</span><span class="p">:</span><span class="mi">6789</span><span class="p">]</span>
 </pre></div>
@@ -290,10 +280,8 @@ For example:</p>
 </div>
 <div class="section" id="nfsv4">
 <h2>用 NFSv4 客户端挂载<a class="headerlink" href="#nfsv4" title="Permalink to this headline">¶</a></h2>
-<p>It is preferred to mount the NFS-Ganesha exports using NFSv4.1+ protocols
-to get the benefit of sessions.</p>
-<p>Conventions for mounting NFS resources are platform-specific. The
-following conventions work on Linux and some Unix platforms:</p>
+<p>最好用 NFSv4.1+ 协议挂载 NFS-Ganesha 的出口，这样才能获得会话上的好处。</p>
+<p>挂载 NFS 资源的惯例因平台而变，下面的惯例适合 Linux 和某些 Unix 平台：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mount -t nfs -o <span class="nv">nfsvers</span><span class="o">=</span><span class="m">4</span>.1,proto<span class="o">=</span>tcp &lt;ganesha-host-name&gt;:&lt;ganesha-pseudo-path&gt; &lt;mount-point&gt;
 </pre></div>
 </div>

@@ -1,155 +1,134 @@
-.. CephFS Snapshots
-
 CephFS 快照
 ===========
+.. CephFS Snapshots
+
 CephFS 支持快照，通常是在 ``.snap`` 目录下调用 mkdir 。注意，\
 这是个隐藏的、特殊目录，罗列目录时不可见。
 
-
-.. Overview
-
 概览
 ----
-Generally, snapshots do what they sound like: they create an immutable view
-of the filesystem at the point in time they're taken. There are some headline
-features that make CephFS snapshots different from what you might expect:
+.. Overview
 
-* Arbitrary subtrees. Snapshots are created within any directory you choose,
-  and cover all data in the filesystem under that directory.
-* Asynchronous. If you create a snapshot, buffered data is flushed out lazily,
-  including from other clients. As a result, "creating" the snapshot is
-  very fast.
+通常，快照做的事正如其名：它们创建了一个拍下快照的那个时刻的文件系统视图。
+有几个重要功能使得 CephFS 快照不同于你期望的样子：
 
-
-.. Important Data Structures
+* 任意子树。快照可以在你选定的任何目录拍下，而且涵盖那个目录下的所有、
+  存在于文件系统上的数据。
+* 异步性。如果你创建了一个快照，缓冲的数据是延后刷出的，包括其它客户端的数据。
+  因此，“创建”快照是非常迅速的。
 
 重要的数据结构
 --------------
-* SnapRealm: A `SnapRealm` is created whenever you create a snapshot at a new
-  point in the hierarchy (or, when a snapshotted inode is move outside of its
-  parent snapshot). SnapRealms contain an `sr_t srnode`, and `inodes_with_caps`
-  that are part of the snapshot. Clients also have a SnapRealm concept that
-  maintains less data but is used to associate a `SnapContext` with each open
-  file for writing.
-* sr_t: An `sr_t` is the on-disk snapshot metadata. It is part of the containing
-  directory and contains sequence counters, timestamps, the list of associated
-  snapshot IDs, and `past_parent_snaps`.
-* SnapServer: SnapServer manages snapshot ID allocation, snapshot deletion and
-  tracks list of effective snapshots in the file system. A file system only has
-  one instance of snapserver.
-* SnapClient: SnapClient is used to communicate with snapserver, each MDS rank
-  has its own snapclient instance. SnapClient also caches effective snapshots
-  locally.
+.. Important Data Structures
 
-
-.. Creating a snapshot
+* SnapRealm: 只要你在目录层次内的新点上（或者，已经拍过快照的 inode
+  被移出了它的父级快照）创建了一个快照，就会创建 `SnapRealm` 。
+  SnapRealm 都包含一个 `sr_t srnode` 、和 `inodes_with_caps` ，都是快照的一部分。
+  客户端们也有一个 SnapRealm 概念，维护的数据较少，
+  但它是用于把 `SnapContext` 关联到各个打开、要写入的文件。
+* sr_t: `sr_t` 是磁盘上的快照元数据。它是所在目录的一部分，
+  包含顺序计数器、时间戳、关联的快照 ID 的列表、和 `past_parent_snaps` 。
+* SnapServer: SnapServer 管理着快照 ID 的分配、快照删除、
+  并追踪着文件系统内有效快照的各个列表。一个文件系统只有一个 snapserver 例程。
+* SnapClient: SnapClient 用于和 snapserver 通讯，
+  每个 MDS rank 都有它们自己的 snapclient 例程。
+  SnapClient 也会在本地缓存有效的快照。
 
 创建快照
 --------
-CephFS 的快照功能在新文件系统上是默认启用的，要在现有文件系统\
-上启用，用以下命令。 ::
+.. Creating a snapshot
+
+CephFS 的快照功能在新文件系统上是默认启用的，要在现有文件系统上启用，
+用以下命令。
+
+.. code::
 
        $ ceph fs set <fs_name> allow_new_snaps true
 
-When snapshots are enabled, all directories in CephFS will have a special
-``.snap`` directory. (You may configure a different name with the ``client
-snapdir`` setting if you wish.)
+快照功能启用后， CephFS 内的所有目录都有一个特殊的 ``.snap`` 目录。
+（你如果愿意，可以用 ``client snapdir`` 选项配置个不同的名字。）
 
-To create a CephFS snapshot, create a subdirectory under
-``.snap`` with a name of your choice. For example, to create a snapshot on
-directory "/1/2/3/", invoke ``mkdir /1/2/3/.snap/my-snapshot-name`` .
+要创建一个 CephFS 快照，在 ``.snap`` 下创建一个子目录就行，
+名字随你。例如，要给 /1/2/3/ 目录创建一个快照，
+可以用 ``mkdir /1/2/3/.snap/my-snapshot-name`` 。
 
-This is transmitted to the MDS Server as a
-CEPH_MDS_OP_MKSNAP-tagged `MClientRequest`, and initially handled in
-Server::handle_client_mksnap(). It allocates a `snapid` from the `SnapServer`,
-projects a new inode with the new SnapRealm, and commits it to the MDLog as
-usual. When committed, it invokes
-`MDCache::do_realm_invalidate_and_update_notify()`, which notifies all clients
-with caps on files under "/1/2/3/", about the new SnapRealm. When clients get
-the notifications, they update client-side SnapRealm hierarchy, link files
-under "/1/2/3/" to the new SnapRealm and generate a `SnapContext` for the
-new SnapRealm.
+这会作为一个用 CEPH_MDS_OP_MKSNAP 打了标签的 `MClientRequest` 传给 MDS 服务器，
+起初在 Server::handle_client_mksnap() 里处理。它从 `SnapServer` 分到了\
+一个 `snapid` ，用新的 SnapRealm 规划了一个新的 inode ，并像往常一样提交到 MDLog 。
+提交后，它会调用 `MDCache::do_realm_invalidate_and_update_notify()` ，
+就会通知所有客户端，内容是 /1/2/3/ 下的文件们多了一层帽子，就是新的 SnapRealm 。
+客户端们收到通知后，它们会更新客户端这边的 SnapRealm 层次结构，
+把 /1/2/3/ 下的文件连接到这个新的 SnapRealm 、
+并为新的 SnapRealm 生成一个 `SnapContext` 。
 
-Note that this *is not* a synchronous part of the snapshot creation!
-
-.. Updating a snapshot
+注意，这 *不是* 快照创建过程中的同步部分。
 
 更新快照
 --------
-If you delete a snapshot, a similar process is followed. If you remove an inode
-out of its parent SnapRealm, the rename code creates a new SnapRealm for the
-renamed inode (if SnapRealm does not already exist), saves IDs of snapshots that
-are effective on the original parent SnapRealm into `past_parent_snaps` of the
-new SnapRealm, then follows a process similar to creating snapshot.
+.. Updating a snapshot
 
-.. Generating a SnapContext
+如果你删除一个快照，走的过程相似。如果你把一个 inode 挪出它的父级 SnapRealm ，
+重命名代码会给重命名过的 inode 创建一个新的 SnapRealm （如果还没有 SnapRealm ），
+把原来父级 SnapRealm 上有效快照们的 ID 保存到新 SnapRealm 的 `past_parent_snaps` 里，
+然后再走一次与新建快照相似的流程。
 
 生成 SnapContext
 ----------------
-A RADOS `SnapContext` consists of a snapshot sequence ID (`snapid`) and all
-the snapshot IDs that an object is already part of. To generate that list, we
-combine `snapids` associated with the SnapRealm and all valid `snapids` in
-`past_parent_snaps`. Stale `snapids` are filtered out by SnapClient's cached
-effective snapshots.
+.. Generating a SnapContext
 
-.. Storing snapshot data
+RADOS `SnapContext` 包括一个快照顺序 ID （ `snapid` ）、和这个对象牵涉的所有快照 ID 。
+要生成这个列表，我们把 SnapRealm 关联的 `snapids` 、和 `past_parent_snaps` 里的\
+所有 `snapids` 结合起来，过时的 `snapids` 会被 SnapClient 缓存的有效快照过滤出去。
 
 存入快照数据
 ------------
-File data is stored in RADOS "self-managed" snapshots. Clients are careful to
-use the correct `SnapContext` when writing file data to the OSDs.
+.. Storing snapshot data
 
-.. Storing snapshot metadata
+文件数据存储在 RADOS “自己管理的”快照中。客户端在向 OSD 们写入文件数据时会\
+小心地使用正确的 `SnapContext` 。
 
 存入快照元数据
 --------------
-Snapshotted dentries (and their inodes) are stored in-line as part of the
-directory they were in at the time of the snapshot. *All dentries* include a
-`first` and `last` snapid for which they are valid. (Non-snapshotted dentries
-will have their `last` set to CEPH_NOSNAP).
+.. Storing snapshot metadata
 
-.. Snapshot writeback
+拍过快照的 dentry （以及它们的 inode ）将作为目录的一部分以内联方式存储。
+*所有的 dentry* 包含有 `first` 和 `last` snapid 的都是有效的。
+（没拍过快照的 dentry 有 `last` 集合指向 CEPH_NOSNAP ）。
 
 快照回写
 --------
-There is a great deal of code to handle writeback efficiently. When a Client
-receives an `MClientSnap` message, it updates the local `SnapRealm`
-representation and its links to specific `Inodes`, and generates a `CapSnap`
-for the `Inode`. The `CapSnap` is flushed out as part of capability writeback,
-and if there is dirty data the `CapSnap` is used to block fresh data writes
-until the snapshot is completely flushed to the OSDs.
+.. Snapshot writeback
 
-In the MDS, we generate snapshot-representing dentries as part of the regular
-process for flushing them. Dentries with outstanding `CapSnap` data is kept
-pinned and in the journal.
+有大量的代码可以有效地处理回写。客户端收到一条 `MClientSnap` 消息时，
+它会更新本地 `SnapRealm` 表达式、以及它指向特定 `Inodes` 的连接，
+并给这个 `Inode` 生成一个 `CapSnap` 。 `CapSnap` 会作为能力回写的一部分刷出去、
+而且，如果存在脏数据， `CapSnap` 会阻塞新数据的写入，直到快照完全被刷回到 OSD 。
 
-.. Deleting snapshots
+在 MDS 里，作为刷回的、常规流程的一部分，我们生成表示快照的 dentry 。
+含有凸出的 `CapSnap` 数据的 dentry 会被保持在挂单状态、且在日志中。
 
 删除快照
 --------
-Snapshots are deleted by invoking "rmdir" on the ".snaps" directory they are
-rooted in. (Attempts to delete a directory which roots snapshots *will fail*;
-you must delete the snapshots first.) Once deleted, they are entered into the
-`OSDMap` list of deleted snapshots and the file data is removed by the OSDs.
-Metadata is cleaned up as the directory objects are read in and written back
-out again.
+.. Deleting snapshots
 
-.. Hard links
+在目录的 .snaps 目录内调用 rmdir 就能删除快照。（试图删除有快照的目录 *会失败* ；
+必须先删除所有快照。）一旦被删除，它们就进入 `OSDMap` 里的已删除快照列表、
+之后文件数据就会被 OSD 删除。元数据会在目录对象被读入并再次写回时被清理掉。
 
 硬链接
 ------
-有多个硬链接的 inode 会被挪进一个虚拟的全局 SnapRealms ，这个\
-虚拟 SnapRealms 统管文件系统内的所有快照。这个 inode 的数据会\
-保留给所有新快照，这些保留的数据会覆盖所有与此 inode 相关的\
-快照内链接。
+.. Hard links
 
-.. Multi-FS
+有多个硬链接的 inode 会被挪进一个虚拟的全局 SnapRealms ，这个虚拟 SnapRealms
+统管文件系统内的所有快照。这个 inode 的数据会保留给所有新快照，
+这些保留的数据会覆盖所有与此 inode 相关的快照内链接。
 
 多文件系统情况
 --------------
-Snapshots and multiiple filesystems don't interact well. Specifically, each
-MDS cluster allocates `snapids` independently; if you have multiple filesystems
-sharing a single pool (via namespaces), their snapshots *will* collide and
-deleting one will result in missing file data for others. (This may even be
-invisible, not throwing errors to the user.) If each FS gets its own
-pool things probably work, but this isn't tested and may not be true.
+.. Multi-FS
+
+快照功能和多个文件系统还没有很好地对接。特别是，各个 MDS 集群是独立地分配 `snapids` 的；
+如果你有多个文件系统共享着同一个存储池（通过命名空间），它们的快照会冲突、而且\
+删除一个会导致另一个的文件数据丢失。（这甚至是不可见的，不会向用户抛出错误。）
+如果各个 FS 都有它们自己的存储池，也许可以正常工作，但是这种场景还没完全测试，
+有可能和期望的不一样。
