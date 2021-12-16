@@ -290,6 +290,11 @@
     layout
         （ CephFS 的）布局
 
+    Legal Hold status
+    legal hold status
+        依法保留状态
+        https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/userguide/configure-inventory.html
+
     lifecycle
         生命周期
 
@@ -324,7 +329,11 @@
         信使层
 
     multipart object
-        多块对象；
+    multi-part
+        多块对象 -> 分段对象
+
+    multipart upload
+        分段上传
 
     nearfull ratio
         将满比率
@@ -335,6 +344,9 @@
 
     object-info
         <不翻译>，因为它是专有名词，来自代码、JSON 输出。
+
+    Object Retention
+        对象保留时长
 
     objectstore
         对象存储器
@@ -474,6 +486,10 @@
 
     replicated pool
         多副本存储池
+
+    request entities
+        请求实体？
+        不满意，但还没有更好的。
 
     reshard
         重分片
