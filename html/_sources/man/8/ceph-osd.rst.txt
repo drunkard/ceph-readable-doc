@@ -16,12 +16,14 @@
 描述
 ====
 
-**ceph-osd** 是 Ceph 分布式文件系统的对象存储守护进程。它\
-负责把对象存储到本地文件系统，并使之通过网络可访问。
+**ceph-osd** 是 Ceph 分布式文件系统的对象存储守护进程。
+它负责把对象存储到本地文件系统，
+并使之通过网络可访问。
 
-*datapath* 参数应该是 xfs 文件系统上保存对象数据的一个目录。\
-日志是可选的，只有它位于非数据盘的低延时设备上（理想中应该是
-NVRAM ）时才会达到最佳性能。
+*datapath* 参数应该是 xfs 文件系统上\
+保存对象数据的一个目录。日志是可选的，
+只有它位于非数据盘的低延时设备上
+（理想中应该是 NVRAM ）时才会达到最佳性能。
 
 
 选项
@@ -38,12 +40,14 @@ NVRAM ）时才会达到最佳性能。
 
 .. option:: --setuser userorgid
 
-   启动后设置 UID 。如果指定的是用户名，会查询用户记录以获取
-   UID 及其 GID ，同时设置 GID ，除非还指定了 --setgroup 选项。
+   启动后设置 UID 。如果指定的是用户名，
+   会查询用户记录以获取 UID 及其 GID ，同时设置 GID ，
+   除非还指定了 --setgroup 选项。
 
 .. option:: --setgroup grouporgid
 
-   启动后设置 GID 。如果指定的是组名，会查询组记录以获取 GID 。
+   启动后设置 GID 。如果指定的是组名，
+   会查询组记录以获取 GID 。
 
 .. option:: --osd-data osddata
 
@@ -67,22 +71,27 @@ NVRAM ）时才会达到最佳性能。
 
 .. option:: --mkfs
 
-   创建空的对象仓库。如果定义了日志，也同时初始化。
+   创建空的对象仓库。如果定义了日志，
+   也同时初始化。
 
 .. option:: --mkkey
 
-   生成新的私钥。通常和 ``--mkfs`` 一起使用，因为与 \
-   :doc:`ceph-authtool <ceph-authtool>`\(8) 生成密钥相比此选项更便捷。
+   生成新的私钥。通常和 ``--mkfs`` 一起使用，
+   因为与 :doc:`ceph-authtool <ceph-authtool>`\(8)
+   生成密钥相比此选项更便捷。
 
 .. option:: --mkjournal
 
-   创建适用于已有对象仓库的新日志文件。常用于因硬盘或文件系统故障时导致的日\
-   志设备或文件损坏。
+   创建适用于已有对象仓库的新日志文件。
+   常用于因硬盘或文件系统故障时\
+   导致的日志设备或文件损坏。
 
 .. option:: --flush-journal
 
-   把日志刷回永久存储，它运行于前台，这样你就能知道它何时完成。适用于你想调\
-   整日志尺寸或以其他方式销毁它时：此功能可保证不丢数据。
+   把日志刷回永久存储，它运行于前台，
+   这样你就能知道它何时完成。
+   适用于你想调整日志尺寸或以其他方式销毁它时：
+   此功能可保证不丢数据。
 
 .. option:: --get-cluster-fsid
 
@@ -90,16 +99,19 @@ NVRAM ）时才会达到最佳性能。
 
 .. option:: --get-osd-fsid
 
-   打印 OSD 的 fsid 然后退出。 OSD 的 UUID 是在创建文件系统（ --mkfs ）时生\
-   成的，而且对这个特定的 OSD 例程来说是惟一的。
+   打印 OSD 的 fsid 然后退出。
+   OSD 的 UUID 是在创建文件系统（ --mkfs ）时生成的，
+   而且对这个特定的 OSD 例程来说是惟一的。
 
 .. option:: --get-journal-fsid
 
-   打印日志的 UUID 。在新建文件系统（ --mkfs ）时设置了日志 fsid 以与 OSD 相配。
+   打印日志的 UUID 。在新建文件系统（ --mkfs ）时\
+   设置了日志 fsid 以与 OSD 相配。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   用 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定运行时配置。
+   用 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf``
+   来确定运行时配置。
 
 .. option:: -m monaddress[:port]
 
@@ -107,16 +119,15 @@ NVRAM ）时才会达到最佳性能。
 
 .. option:: --osdspec-affinity
 
-   Set an affinity to a certain OSDSpec.
-   This option can only be used in conjunction with --mkfs.
+   设置某个 OSDSpec 的亲和性。
+   这个选项只能与 --mkfs 一起使用。
 
 
 使用范围
 ========
 
-**ceph-osd** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
-更多信息参见 https://docs.ceph.com 。
-
+**ceph-osd** 是 Ceph 的一部分，这是个伸缩力强、开源、
+分布式的存储系统，更多信息参见 https://docs.ceph.com 。
 
 参考
 ====
