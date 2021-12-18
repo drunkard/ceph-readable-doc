@@ -22,7 +22,8 @@
 命令
 ====
 
-:program:`radosgw-admin` 工具有很多命令，可完成各种管理任务：
+:program:`radosgw-admin` 工具有很多命令，
+可完成各种管理任务：
 
 :command:`user create`
   创建一个新用户。
@@ -31,7 +32,8 @@
   修改一个用户。
 
 :command:`user info`
-  显示用户信息，以及可能存在的子用户和密钥。
+  显示用户信息，
+  以及可能存在的子用户和密钥。
 
 :command:`user rename`
   重命名一个用户。
@@ -76,8 +78,9 @@
   删除访问密钥。
 
 :command:`bucket list`
-  罗列所有桶，或者，如果给桶加 --bucket=<bucket> 选项就罗列\
-  其内的对象；如果给桶加 --allow-unordered 选项、就不再排序，\
+  罗列所有桶，或者，如果给桶加 --bucket=<bucket> 选项\
+  就罗列其内的对象；
+  如果给桶加 --allow-unordered 选项、就不再排序，
   对于有海量对象的桶生成结果的速度可能快得多。
 
 :command:`bucket limit check`
@@ -90,8 +93,8 @@
   取消指定用户和桶的关联。
 
 :command:`bucket chown`
-  Link bucket to specified user and update object ACLs. 
-  Use --marker to resume if command gets interrupted.
+  把桶链接到指定对象、并更新 ACL 。
+  如果命令被中断，用 --marker 继续执行。
 
 :command:`bucket stats`
   返回桶的统计信息。
@@ -106,9 +109,9 @@
   重写指定桶内的所有对象。
 
 :command:`bucket radoslist`
-  List the rados objects that contain the data for all objects is
-  the designated bucket, if --bucket=<bucket> is specified, or
-  otherwise all buckets.
+  如果指定了 --bucket=<bucket> ，
+  就罗列出与这个桶内所有对象数据相关的 rados 对象，
+  否则就罗列出所有桶的。
 
 :command:`bucket reshard`
   对桶进行重分片。
@@ -359,7 +362,9 @@
   手动处理垃圾。
 
 :command:`lc list`
-  罗列所有桶的生命周期进度。
+  罗列所有桶的生命周期进度。如果指定了桶
+  （如通过 --bucket_id 或 --bucket ，和可选的 --tenant ），
+  就只处理那个桶的。
 
 :command:`lc process`
   手动处理生命周期。
@@ -462,25 +467,25 @@
   取消一个桶的重分片。
 
 :command:`topic list`
-  List bucket notifications/pubsub topics                                                   
+  罗列桶的通知、发布订阅话题；
 
 :command:`topic get`
-  Get a bucket notifications/pubsub topic                                                   
+  查看一个桶的通知、发布订阅话题；
   
 :command:`topic rm`
-  Remove a bucket notifications/pubsub topic                                                
+  删除一个桶的通知、发布订阅话题；
 
 :command:`subscription get`
-  Get a pubsub subscription definition
+  查看发布订阅的配置情况；
 
 :command:`subscription rm`
-  Remove a pubsub subscription
+  删除一个订阅条目；
 
 :command:`subscription pull`
-  Show events in a pubsub subscription
+  展示发布订阅里的事件；
              
 :command:`subscription ack`
-  Ack (remove) an events in a pubsub subscription
+  签收（删除）一个订阅里的事件。
 
 
 选项
@@ -546,7 +551,8 @@
 
 .. option:: --access=<access>
 
-   为子用户设置访问权限。可用的访问权限有读、写、读写和完全。
+   为子用户设置访问权限。
+   可用的访问权限有读、写、读写和完全。
 
 .. option:: --display-name=<name>
 
@@ -562,8 +568,8 @@
 
 .. option:: --bucket=[tenant-id/]bucket
 
-   指定桶名。如果未指定 tenant-id ，那就用用户（ --uid ）的
-   tenant-id 。
+   指定桶名。如果未指定 tenant-id ，
+   那就用用户（ --uid ）的 tenant-id 。
 
 .. option:: --pool=<pool>
 
@@ -592,13 +598,13 @@
 
 .. option:: --bucket-new-name=[tenant-id/]<bucket>
 
-   `bucket link` 命令的可选项，用于重命名一个桶。 tenant-id/
-   可加可不加，常规操作一般没必要管。
+   `bucket link` 命令的可选项，用于重命名一个桶。
+   tenant-id/ 可加可不加，常规操作一般没必要管。
 
 .. option:: --shard-id=<shard-id>
 
-   ``mdlog list`` 、 ``bi list`` 、 ``data sync status`` 命令\
-   的可选项。对 ``mdlog trim`` 来说是必需的。
+   ``mdlog list`` 、 ``bi list`` 、 ``data sync status`` 命令的可选项。
+   对 ``mdlog trim`` 来说是必需的。
 
 .. option:: --max-entries=<entries>
 
@@ -694,78 +700,78 @@
 
 .. option:: --default
 
-   Set the entity (realm, zonegroup, zone) as default.
+   把实体（ realm, zonegroup, zone ）设置成默认的。
 
 .. option:: --read-only
 
-   Set the zone as read-only when adding to the zonegroup.
+   把域加进域组时设置成只读的。
 
 .. option:: --placement-id
 
-   Placement id for the zonegroup placement commands.
+   ``zonegroup placement`` 命令的归置 id 。
 
 .. option:: --tags=<list>
 
-   The list of tags for zonegroup placement add and modify commands.
+   ``zonegroup placement add`` 和 ``modify`` 命令可以加的标签串。
 
 .. option:: --tags-add=<list>
 
-   The list of tags to add for zonegroup placement modify command.
+   ``zonegroup placement modify`` 命令要新加的标签串。
 
 .. option:: --tags-rm=<list>
 
-   The list of tags to remove for zonegroup placement modify command.
+   ``zonegroup placement modify`` 命令要删除的标签串。
 
 .. option:: --endpoints=<list>
 
-   The zone endpoints.
+   域的终结点。
 
 .. option:: --index-pool=<pool>
 
-   The placement target index pool.
+   归置靶的索引存储池。
 
 .. option:: --data-pool=<pool>
 
-   The placement target data pool.
+   归置靶的数据存储池。
 
 .. option:: --data-extra-pool=<pool>
 
-   The placement target data extra (non-ec) pool.
+   归置靶的附加数据存储池（非 EC ）。
 
 .. option:: --placement-index-type=<type>
 
-   The placement target index type (normal, indexless, or #id).
+   归置靶的索引类型（ normal 、 indexless 或 #id ）。
 
 .. option:: --tier-type=<type>
 
-   The zone tier type.
+   zone tier 类型。
 
 .. option:: --tier-config=<k>=<v>[,...]
 
-   Set zone tier config keys, values.
+   设置 zone tier 的键值对。
 
 .. option:: --tier-config-rm=<k>[,...]
 
-   Unset zone tier config keys.
+   取消 zone tier 配置的键值对。
 
 .. option:: --sync-from-all[=false]
 
-   Set/reset whether zone syncs from all zonegroup peers.
+   设置/重置域是否从所有域组节点同步。
 
 .. option:: --sync-from=[zone-name][,...]
 
-   Set the list of zones to sync from.
+   设置从哪些域同步。
 
 .. option:: --sync-from-rm=[zone-name][,...]
 
-   Remove the zones from list of zones to sync from.
+   删除同步的源域。
 
 .. option:: --bucket-index-max-shards
 
-   Override a zone's or zonegroup's default number of bucket index shards. This
-   option is accepted by the 'zone create', 'zone modify', 'zonegroup add',
-   and 'zonegroup modify' commands, and applies to buckets that are created
-   after the zone/zonegroup changes take effect.
+   覆盖一个域或域组的桶索引分片默认数值。
+   ``zone create`` 、 ``zone modify`` 、 ``zonegroup add`` 和
+   ``zonegroup modify`` 命令接受这个参数，
+   并且会自动应用到 zone/zonegroup 变更生效之后才新建的桶。
 
 .. option:: --fix
 
@@ -798,7 +804,8 @@
 
 .. option:: --skip-zero-entries
 
-   让 ``log show`` 只显示数字字段非零的日志。
+   让 ``log show`` 只显示数字字段非零的\
+   日志。
 
 .. option:: --infile
 
@@ -830,7 +837,8 @@
 
 .. option:: --min-rewrite-stripe-size
 
-   指定对象重写时的最小条带尺寸（默认 0 ）。如果此值设置为 0 ，\
+   指定对象重写时的最小条带尺寸（默认 0 ）。
+   如果此值设置为 0 ，\
    那么被指定对象被重写后还需重新条带化。
 
 .. option:: --warnings-only
@@ -840,18 +848,19 @@
 
 .. option:: --bypass-gc
 
-   删除桶时若加了此选项，则跳过 GC 直接触发对象删除。
+   删除桶时若加了此选项，
+   则跳过 GC 直接触发对象删除。
 
 .. option:: --inconsistent-index
 
-   删除桶时若加了此选项、且加了 ``--bypass-gc`` 选项，则无视\
-   桶索引的一致性。
+   删除桶时若加了此选项、且加了 ``--bypass-gc`` 选项，
+   则无视桶索引的一致性。
 
 .. option:: --max-concurrent-ios
 
-   进行桶操作时的最大并行 IO 数。影响的操作诸如扫描桶索引，\
-   如罗列、删除；还有所有的扫描、搜索操作，比如捡漏或\
-   检查桶索引。默认值为 32 。
+   进行桶操作时的最大并行 IO 数。影响的操作诸如扫描桶索引，
+   如罗列、删除；还有所有的扫描、搜索操作，比如捡漏或检查桶索引。
+   默认值为 32 。
 
 
 配额选项
@@ -879,28 +888,25 @@
 
 .. option:: --orphan-stale-secs
 
-   对象被遗漏多久才被当作孤儿，单位是秒。
-   默认是 86400 （ 24 小时）。
+   对象被遗漏多久才被当作孤儿，单位是秒。默认是 86400 （ 24 小时）。
 
 .. option:: --job-id
 
    设置作业标识符（适用于 ``orphans find`` ）。
 
 
-.. Orphans list-jobs options
-
 ``orphans list-jobs`` 选项
 ==========================
+.. Orphans list-jobs options
 
 .. option:: --extra-info
 
    在作业列表中展示额外信息。
 
 
-.. Role Options
-
 角色选项
 ========
+.. Role Options
 
 .. option:: --role-name
 
@@ -927,21 +933,21 @@
    用于过滤角色的路径前缀。
 
 
-.. Bucket Notifications/PubSub Options
-
 桶的通知、发布订阅（PubSub）选项
 ================================
+.. Bucket Notifications/PubSub Options
+
 .. option:: --topic                   
 
-   The bucket notifications/pubsub topic name.
+   桶的通知、发布订阅的主题名字。
 
 .. option:: --subscription
 
-   The pubsub subscription name.
+   发布订阅的订阅名。
 
 .. option:: --event-id
 
-   The event id in a pubsub subscription.
+   一个订阅内的事件 id 。
 
 
 实例

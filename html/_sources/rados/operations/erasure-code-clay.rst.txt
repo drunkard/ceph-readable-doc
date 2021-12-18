@@ -2,10 +2,10 @@
  CLAY 码插件
 =============
 
-CLAY (short for coupled-layer) codes are erasure codes designed to bring about significant savings 
-in terms of network bandwidth and disk IO when a failed node/OSD/rack is being repaired. Let:
+CLAY （ coupled-layer 耦合层的缩写）码是一种纠删码，设计目的是为了在节点、
+OSD 、机柜在修复时能显著降低网络带宽和磁盘 IO 。令：
 
-	d = number of OSDs contacted during repair
+	d = 恢复时联系过的 OSD 数
 
 If *jerasure* is configured with *k=8* and *m=4*, losing one OSD requires 
 reading from the *d=8* others to repair. And recovery of say a 1GiB needs
@@ -23,13 +23,13 @@ amount of information. More general parameters are provided below. The benefits 
 when the repair is carried out for a rack that stores information on the order of 
 Terabytes.
 
-	+-------------+---------------------------------------------------------+
-	| plugin      | total amount of disk IO                                 |
-	+=============+=========================================================+
-	|jerasure,isa | :math:`k S`                                             |
-	+-------------+---------------------------------------------------------+
-	| clay        | :math:`\frac{d S}{d - k + 1} = \frac{(k + m - 1) S}{m}` |
-	+-------------+---------------------------------------------------------+
+	+--------------+---------------------------------------------------------+
+	| 插件         | 磁盘 IO 总量                                            |
+	+==============+=========================================================+
+	| jerasure,isa | :math:`k S`                                             |
+	+--------------+---------------------------------------------------------+
+	| clay         | :math:`\frac{d S}{d - k + 1} = \frac{(k + m - 1) S}{m}` |
+	+--------------+---------------------------------------------------------+
 
 where *S* is the amount of data stored on a single OSD undergoing repair. In the table above, we have 
 used the largest possible value of *d* as this will result in the smallest amount of data download needed
