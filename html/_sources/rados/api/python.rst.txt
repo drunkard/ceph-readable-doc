@@ -4,29 +4,26 @@
 
 ``rados`` 模块是 ``librados`` 的 Python 瘦封装。
 
-
 安装
 ====
 
-To install Python libraries for Ceph, see `Getting librados for Python`_.
+要安装 Ceph 的 Python 库，看看 `获取 librados 的 Python 接口`_ 。
 
-
-.. Getting Started
 
 开工
 ====
 
-You can create your own Ceph client using Python. The following tutorial will
-show you how to import the Ceph Python module, connect to a Ceph cluster,  and
-perform object operations as a ``client.admin`` user. 
+你可以用 Python 实现你自己的 Ceph 客户端。
+下面的教程会向你展示如何导入 Ceph 的 Python 门口、
+连接到集群、并以 ``client.admin`` 身份执行对象操作。
 
-.. note:: To use the Ceph Python bindings, you must have access to a 
-   running Ceph cluster. To set one up quickly, see `Getting Started`_.
+.. note:: 要使用 Ceph 的 Python 库，你必须有正常运行的 Ceph 集群、
+   及其访问权限。要快速配起一个集群，看 `入门手册`_ 。
 
-First, create a Python source file for your Ceph client. ::
+首先创建一个 Ceph 客户端的 Python 源文件。 ::
 
-	:linenos:
-	sudo vim client.py
+    :linenos:
+    sudo vim client.py
 
 
 导入模块
@@ -37,45 +34,42 @@ First, create a Python source file for your Ceph client. ::
 .. code-block:: python
    :linenos:
 
-	import rados
+    import rados
 
-
-.. Configure a Cluster Handle
 
 配置集群句柄
 ------------
+.. Configure a Cluster Handle
 
-Before connecting to the Ceph Storage Cluster, create a cluster handle. By
-default, the cluster handle assumes a cluster named ``ceph`` (i.e., the default
-for deployment tools, and our Getting Started guides too),  and a
-``client.admin`` user name. You may change these defaults to suit your needs.
+连接 Ceph 存储集群前，得先创建集群句柄。默认情况下，
+集群句柄假设集群名为 ``ceph`` （即部署工具的默认值，
+而且我们的 `入门手册`_ 也是）、用户名为 ``client.admin`` 。
+你可以根据自己的环境更改默认值。
 
-To connect to the Ceph Storage Cluster, your application needs to know where to
-find the  Ceph Monitor. Provide this information to your application by
-specifying the path to your Ceph configuration file, which contains the location
-of the initial Ceph monitors.
+要连接到 Ceph 存储集群，你的应用程序需要知道去哪里找到 Ceph 监视器。
+给你的应用程序指定 Ceph 配置文件的路径即可提供此信息，
+配置文件里有初始的 Ceph 监视器位置。
 
 .. code-block:: python
    :linenos:
 
-	import rados, sys
+    import rados, sys
 
-	#Create Handle Examples.
-	cluster = rados.Rados(conffile='ceph.conf')
-	cluster = rados.Rados(conffile=sys.argv[1])
-	cluster = rados.Rados(conffile = 'ceph.conf', conf = dict (keyring = '/path/to/keyring'))
+    #Create Handle Examples.
+    cluster = rados.Rados(conffile='ceph.conf')
+    cluster = rados.Rados(conffile=sys.argv[1])
+    cluster = rados.Rados(conffile = 'ceph.conf', conf = dict (keyring = '/path/to/keyring'))
 
-Ensure that the ``conffile`` argument provides the path and file name of your
-Ceph configuration file. You may use the ``sys`` module to avoid hard-coding the
-Ceph configuration path and file name. 
+确保 ``conffile`` 参数提供了 Ceph 配置文件的路径和文件名，
+你可以用 ``sys`` 模块避免写死 Ceph 配置文件路径和文件名。
 
-Your Python client also requires a client keyring. For this example, we use the
-``client.admin`` key by default. If you would like to specify the keyring when
-creating the cluster handle, you may use the ``conf`` argument. Alternatively,
-you may specify the keyring path in your Ceph configuration file. For example, 
-you may add something like the following line to you Ceph configuration file:: 
+你的 Python 客户端还需要一个客户端密钥环，在本例中，\
+我们默认使用 ``client.admin`` 的密钥。
+如果你想在创建集群句柄的时候指定密钥环，可以用 ``conf`` 参数。
+另外，你也可以在 Ceph 配置文件中指定密钥环文件的路径。例如，
+你可以在 Ceph 配置文件里加上类似如下的： ::
 
-	keyring = /path/to/ceph.client.admin.keyring
+    keyring = /path/to/ceph.client.admin.keyring
 
 通过 Python 修改配置的额外细节见\  `配置`_\ 。
 
@@ -84,99 +78,95 @@ you may add something like the following line to you Ceph configuration file::
 ----------
 .. Connect to the Cluster
 
-Once you have a cluster handle configured, you may connect to the cluster. 
-With a connection to the cluster, you may execute methods that return
-information about the cluster.
+配置好集群句柄后，你就可以连接到集群了。通过到集群的连接，
+你可以执行库的各种方法来获取集群信息。
 
 .. code-block:: python
    :linenos:
    :emphasize-lines: 7
 
-	import rados, sys
+    import rados, sys
 
-	cluster = rados.Rados(conffile='ceph.conf')
-	print("\nlibrados version: {}".format(str(cluster.version())))
-	print("Will attempt to connect to: {}".format(str(cluster.conf_get('mon host'))))
+    cluster = rados.Rados(conffile='ceph.conf')
+    print("\nlibrados version: {}".format(str(cluster.version())))
+    print("Will attempt to connect to: {}".format(str(cluster.conf_get('mon host'))))
 
-	cluster.connect()
-	print("\nCluster ID: {}".format(cluster.get_fsid()))
+    cluster.connect()
+    print("\nCluster ID: {}".format(cluster.get_fsid()))
 
-	print("\n\nCluster Statistics")
-	print("==================")
-	cluster_stats = cluster.get_cluster_stats()
+    print("\n\nCluster Statistics")
+    print("==================")
+    cluster_stats = cluster.get_cluster_stats()
 
-	for key, value in cluster_stats.items():
-		print(key, value)
+    for key, value in cluster_stats.items():
+        print(key, value)
 
-
-By default, Ceph authentication is ``on``. Your application will need to know
-the location of the keyring. The ``python-ceph`` module doesn't have the default
-location, so you need to specify the keyring path. The easiest way to specify
-the keyring is to add it to the Ceph configuration file. The following Ceph
-configuration file example uses the ``client.admin`` keyring.
+默认情况下， Ceph 的认证的 ``开启的`` ，应用程序需要知道密钥环的位置。
+``python-ceph`` 模块没有默认位置，所以你得指定密钥环路径。
+指定密钥环最简单的方法就是写入 Ceph 配置文件，
+下面的 Ceph 配置文件实例用的就是 ``client.admin`` 密钥环。
 
 .. code-block:: ini
    :linenos:
 
-	[global]
-	# ... elided configuration
-	keyring=/path/to/keyring/ceph.client.admin.keyring
+    [global]
+    # ... elided configuration
+    keyring=/path/to/keyring/ceph.client.admin.keyring
 
-
-.. Manage Pools
 
 管理存储池
 ----------
+.. Manage Pools
 
-When connected to the cluster, the ``Rados`` API allows you to manage pools. You
-can list pools, check for the existence of a pool, create a pool and delete a
-pool. 
+连接到集群后，你可以用 ``Rados`` API 管理存储池。
+你可以罗列存储池、检查一个存储池是否存在、新建存储池\
+和删除存储池。
 
 .. code-block:: python
    :linenos:
    :emphasize-lines: 6, 13, 18, 25
 
-	print("\n\nPool Operations")
-	print("===============")
+    print("\n\nPool Operations")
+    print("===============")
 
-	print("\nAvailable Pools")
-	print("----------------")
-	pools = cluster.list_pools()
+    print("\nAvailable Pools")
+    print("----------------")
+    pools = cluster.list_pools()
 
-	for pool in pools:
-		print(pool)
+    for pool in pools:
+        print(pool)
 
-	print("\nCreate 'test' Pool")
-	print("------------------")
-	cluster.create_pool('test')
+    print("\nCreate 'test' Pool")
+    print("------------------")
+    cluster.create_pool('test')
 
-	print("\nPool named 'test' exists: {}".format(str(cluster.pool_exists('test'))))
-	print("\nVerify 'test' Pool Exists")
-	print("-------------------------")
-	pools = cluster.list_pools()
+    print("\nPool named 'test' exists: {}".format(str(cluster.pool_exists('test'))))
+    print("\nVerify 'test' Pool Exists")
+    print("-------------------------")
+    pools = cluster.list_pools()
 
-	for pool in pools:
-		print(pool)
+    for pool in pools:
+        print(pool)
 
-	print("\nDelete 'test' Pool")
-	print("------------------")
-	cluster.delete_pool('test')
-	print("\nPool named 'test' exists: {}".format(str(cluster.pool_exists('test'))))
+    print("\nDelete 'test' Pool")
+    print("------------------")
+    cluster.delete_pool('test')
+    print("\nPool named 'test' exists: {}".format(str(cluster.pool_exists('test'))))
 
 
 输入/输出上下文
 ---------------
 .. Input/Output Context
 
-Reading from and writing to the Ceph Storage Cluster requires an input/output
-context (ioctx). You can create an ioctx with the ``open_ioctx()`` or
-``open_ioctx2()`` method of the ``Rados`` class. The ``ioctx_name`` parameter
-is the name of the  pool and ``pool_id`` is the ID of the pool you wish to use.
+读出或写入 Ceph 存储集群需要有输入输出上下文（ ioctx ）。
+你可以用 ``Rados`` 类的 ``open_ioctx()`` 或 ``open_ioctx2()`` 方法创建 ioctx 。
+``ioctx_name`` 参数是存储池的名字、
+``pool_id`` 是你想要使用的存储池的 ID 。
 
 .. code-block:: python
    :linenos:
 
-	ioctx = cluster.open_ioctx('data')
+    ioctx = cluster.open_ioctx('data')
 
 
 或者
@@ -187,106 +177,101 @@ is the name of the  pool and ``pool_id`` is the ID of the pool you wish to use.
         ioctx = cluster.open_ioctx2(pool_id)
 
 
-Once you have an I/O context, you can read/write objects, extended attributes,
-and perform a number of other operations. After you complete operations, ensure
-that you close the connection. For example: 
+拿到 I/O 上下文之后，你就能读写对象、扩展属性、
+以及其他很多操作了。完成操作后，
+必须关闭连接。例如：
 
 .. code-block:: python
    :linenos:
 
-	print("\nClosing the connection.")
-	ioctx.close()
+    print("\nClosing the connection.")
+    ioctx.close()
 
-
-.. Writing, Reading and Removing Objects
 
 对象的写入、读取和删除
 ----------------------
+.. Writing, Reading and Removing Objects
 
-Once you create an I/O context, you can write objects to the cluster. If you
-write to an object that doesn't exist, Ceph creates it. If you write to an
-object that exists, Ceph overwrites it (except when you specify a range, and
-then it only overwrites the range). You may read objects (and object ranges)
-from the cluster. You may also remove objects from the cluster. For example: 
+创建 I/O 上下文之后，你就能向集群写入对象了。如果你向一个不存在的对象写入，
+Ceph 会创建它。如果你向一个已存在的对象写入， Ceph 会覆盖它
+（除非你指定了一个范围，那么它就只覆盖那段范围）。
+你可以从集群读出对象（和对象的某一段）。也能从集群删除对象。例如：
 
 .. code-block:: python
-	:linenos:
-	:emphasize-lines: 2, 5, 8
+    :linenos:
+    :emphasize-lines: 2, 5, 8
 
-	print("\nWriting object 'hw' with contents 'Hello World!' to pool 'data'.")
-	ioctx.write_full("hw", "Hello World!")
+    print("\nWriting object 'hw' with contents 'Hello World!' to pool 'data'.")
+    ioctx.write_full("hw", "Hello World!")
 
-	print("\n\nContents of object 'hw'\n------------------------\n")
-	print(ioctx.read("hw"))
+    print("\n\nContents of object 'hw'\n------------------------\n")
+    print(ioctx.read("hw"))
 
-	print("\nRemoving object 'hw'")
-	ioctx.remove_object("hw")
+    print("\nRemoving object 'hw'")
+    ioctx.remove_object("hw")
 
 
 XATTRS 的读取和写入
 -------------------
 .. Writing and Reading XATTRS
 
-Once you create an object, you can write extended attributes (XATTRs) to
-the object and read XATTRs from the object. For example: 
+创建对象后，你可以向对象写入扩展属性（ XATTR ）、还能从对象读出 XATTR 。例如：
 
 .. code-block:: python
-	:linenos:
-	:emphasize-lines: 2, 5
+    :linenos:
+    :emphasize-lines: 2, 5
 
-	print("\n\nWriting XATTR 'lang' with value 'en_US' to object 'hw'")
-	ioctx.set_xattr("hw", "lang", "en_US")
+    print("\n\nWriting XATTR 'lang' with value 'en_US' to object 'hw'")
+    ioctx.set_xattr("hw", "lang", "en_US")
 
-	print("\n\nGetting XATTR 'lang' from object 'hw'\n")
-	print(ioctx.get_xattr("hw", "lang"))
+    print("\n\nGetting XATTR 'lang' from object 'hw'\n")
+    print(ioctx.get_xattr("hw", "lang"))
 
 
 罗列对象
 --------
 .. Listing Objects
 
-If you want to examine the list of objects in a pool, you may 
-retrieve the list of objects and iterate over them with the object iterator.
-For example:
+如果你想检查存储池内的对象们，你可以检索出这些对象，
+并通过对象迭代器挨个迭代出来。例如：
 
 .. code-block:: python
-	:linenos:
-	:emphasize-lines: 1, 6, 7
+    :linenos:
+    :emphasize-lines: 1, 6, 7
 
-	object_iterator = ioctx.list_objects()
+    object_iterator = ioctx.list_objects()
 
-	while True :
+    while True :
 
-		try :
-			rados_object = object_iterator.__next__()
-			print("Object contents = {}".format(rados_object.read()))
+        try :
+            rados_object = object_iterator.__next__()
+            print("Object contents = {}".format(rados_object.read()))
 
-		except StopIteration :
-			break
+        except StopIteration :
+            break
 
-	# Or alternatively
-	[print("Object contents = {}".format(obj.read())) for obj in ioctx.list_objects()]
+    # Or alternatively
+    [print("Object contents = {}".format(obj.read())) for obj in ioctx.list_objects()]
 
-The ``Object`` class provides a file-like interface to an object, allowing
-you to read and write content and extended attributes. Object operations using
-the I/O context provide additional functionality and asynchronous capabilities.
+``Object`` 类提供了类似文件的接口让你访问对象，
+可以读写内容和扩展属性。对象操作使用 I/O 上下文，
+它还提供了额外功能和异步能力。
 
 
 集群句柄 API
 ============
 .. Cluster Handle API
 
-The ``Rados`` class provides an interface into the Ceph Storage Daemon.
+``Rados`` 类提供了一个进入 Ceph 存储守护进程的接口。
 
 
 配置
 ----
 .. Configuration
 
-The ``Rados`` class provides methods for getting and setting configuration
-values, reading the Ceph configuration file, and parsing arguments. You 
-do not need to be connected to the Ceph Storage Cluster to invoke the following
-methods. See `Storage Cluster Configuration`_ for details on settings.
+``Rados`` 类提供了一些方法，可以获取和设置配置选项的值、
+读取 Ceph 配置文件、并分析参数。
+无需连接到 Ceph 存储集群就能调用下面的方法。有关配置的细节见 `存储集群配置`_ 。
 
 .. currentmodule:: rados
 .. automethod:: Rados.conf_get(option)
@@ -300,10 +285,9 @@ methods. See `Storage Cluster Configuration`_ for details on settings.
 --------
 .. Connection Management
 
-Once you configure your cluster handle, you may connect to the cluster, check
-the cluster ``fsid``, retrieve cluster statistics, and disconnect (shutdown)
-from the cluster. You may also assert that the cluster handle is in a particular
-state (e.g., "configuring", "connecting", etc.).
+配置好集群句柄后，你就能连接集群了，检查集群的 ``fsid`` 、检出集群统计信息、
+然后断开（关闭）到集群的连接。你也可以断言集群句柄处于某种状态
+（例如 configuring 、 connecting 等等）。
 
 .. automethod:: Rados.connect(timeout=0)
 .. automethod:: Rados.shutdown()
@@ -327,9 +311,8 @@ state (e.g., "configuring", "connecting", etc.).
 ----------
 .. Pool Operations
 
-To use pool operation methods, you must connect to the Ceph Storage Cluster
-first.  You may list the available pools, create a pool, check to see if a pool
-exists,  and delete a pool.
+要使用存储池操作方法，你必须先连接到 Ceph 存储集群。你可以列出可用存储池、
+创建一个存储池、检验一个存储池是否存在、还能删除存储池。
 
 .. automethod:: Rados.list_pools()
 .. automethod:: Rados.create_pool(pool_name, crush_rule=None)
@@ -341,9 +324,9 @@ CLI 命令
 --------
 .. CLI Commands
 
-The Ceph CLI command is internally using the following librados Python binding methods.
+Ceph CLI 命令的内部用的是下面的 librados Python 绑定的方法。
 
-In order to send a command, choose the correct method and choose the correct target.
+要发出一个命令，选对方法和正确的目标。
 
 .. automethod:: Rados.mon_command
 .. automethod:: Rados.osd_command
@@ -355,10 +338,9 @@ In order to send a command, choose the correct method and choose the correct tar
 ===================
 .. Input/Output Context API
 
-To write data to and read data from the Ceph Object Store, you must create
-an Input/Output context (ioctx). The `Rados` class provides `open_ioctx()`
-and `open_ioctx2()` methods. The remaining ``ioctx`` operations involve
-invoking methods of the `Ioctx` and other classes.
+要向 Ceph 对象存储系统写入和读出数据，必须创建一个输入/输出上下文（ ioctx ）。
+`Rados` 类提供了 `open_ioctx()` 和 `open_ioctx2()` 方法。
+其余 ``ioctx`` 操作包括 `Ioctx` 和其它类的调用方法。
 
 .. automethod:: Rados.open_ioctx(ioctx_name)
 .. automethod:: Ioctx.require_ioctx_open()
@@ -383,13 +365,13 @@ invoking methods of the `Ioctx` and other classes.
 
 .. not published. This doesn't seem ready yet.
 
-Object Operations
------------------
 
-The Ceph Storage Cluster stores data as objects. You can read and write objects
-synchronously or asynchronously. You can read and write from offsets. An object
-has a name (or key) and data.
+对象操作
+--------
+.. Object Operations
 
+Ceph 存储集群把数据存储成了对象。你可以同步或异步地读写对象。
+你可以从某个偏移量开始读写，每个对象有一个名字（键名）和数据。
 
 .. automethod:: Ioctx.aio_write(object_name, to_write, offset=0, oncomplete=None, onsafe=None)
 .. automethod:: Ioctx.aio_write_full(object_name, to_write, oncomplete=None, onsafe=None)
@@ -409,8 +391,7 @@ has a name (or key) and data.
 --------------
 .. Object Extended Attributes
 
-You may set extended attributes (XATTRs) on an object. You can retrieve a list
-of objects or XATTRs and iterate over them.
+你可以给一个对象设置扩展属性（ XATTR ）。你可以检出一些对象或扩展属性、并挨个迭代它们。
 
 .. automethod:: Ioctx.set_xattr(key, xattr_name, xattr_value)
 .. automethod:: Ioctx.get_xattrs(oid)
@@ -419,14 +400,13 @@ of objects or XATTRs and iterate over them.
 .. automethod:: Ioctx.rm_xattr(key, xattr_name)
 
 
+对象接口
+========
+.. Object Interface
 
-Object Interface
-================
-
-From an I/O context, you can retrieve a list of objects from a pool and iterate
-over them. The object interface provide makes each object look like a file, and
-you may perform synchronous operations on the  objects. For asynchronous
-operations, you should use the I/O context methods.
+从一个 I/O 上下文，可以从一个存储池检出一些对象、并挨个迭代它们。
+对象接口使得各个对象看起来像文件，你可以在对象上执行同步操作。
+异步操作你应该用 I/O 上下文方法。
 
 .. automethod:: Ioctx.list_objects()
 .. automethod:: ObjectIterator.__next__()
@@ -442,6 +422,6 @@ operations, you should use the I/O context methods.
 
 
 
-.. _Getting Started: ../../../start
-.. _Storage Cluster Configuration: ../../configuration
-.. _Getting librados for Python: ../librados-intro#getting-librados-for-python
+.. _入门手册: ../../../start
+.. _存储集群配置: ../../configuration
+.. _获取 librados 的 Python 接口: ../librados-intro#getting-librados-for-python
