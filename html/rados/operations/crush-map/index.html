@@ -157,9 +157,9 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">CRUSH 图</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id1">CRUSH 位置</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id3">CRUSH 结构</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6">修改 CRUSH 图</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">修改 CRUSH 图</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#crush-map-tunables">可调选项</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id19">主亲和性</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id23">主亲和性</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../crush-map-edits/">手动编辑一个 CRUSH 图</a></li>
@@ -241,43 +241,72 @@
   <div class="section" id="crush">
 <h1>CRUSH 图<a class="headerlink" href="#crush" title="Permalink to this headline">¶</a></h1>
 <p><abbr title="Controlled Replication Under Scalable Hashing">CRUSH</abbr>
-算法通过计算数据存储位置来确定如何存储和检索。 CRUSH 授权
-Ceph 客户端直接连接 OSD ，而非通过一个中央服务器或经纪人。数据存储、检索算法的使用，使 Ceph 避免了单点故障、性能瓶颈、和伸缩的物理限制。</p>
-<p>CRUSH 需要一张集群的地图，且使用 CRUSH 把数据伪随机地存储、检索于整个集群的 OSD 里。 CRUSH 的讨论详情参见 <a class="reference external" href="https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf">CRUSH - 可控、可伸缩、分布式地归置多副本数据</a> 。</p>
-<p>CRUSH 图包含 <abbr title="Object Storage Devices">OSD</abbr> 列表、把设备汇聚为物理位置的“桶”列表、和指示 CRUSH 如何复制存储池里的数据的规则列表。由于对所安装底层物理组织的表达， CRUSH 能模型化、并因此定位到潜在的相关失败设备源头，典型的源头有物理距离、共享电源、和共享网络，把这些信息编码到集群运行图里，
-CRUSH 归置策略可把对象副本分离到不同的失败域，却仍能保持期望的分布。例如，要定位同时失败的可能性，可能希望保证数据复制到的设备位于不同机架、不同托盘、不同电源、不同控制器、甚至不同物理位置。</p>
-<p>你在部署 OSD 时，它们自动被放入 CRUSH 图中的 <code class="docutils literal notranslate"><span class="pre">host</span></code> 节点下，其名字就是此 OSD 所在主机的主机名。这个，加上默认的 CRUSH 失效域，确保了副本或纠删码分片会跨主机散布，而且单个主机的失效不会影响可用性。然而，对于大一些的集群，管理员就应该仔细考虑失效域的选择；例如，副本跨机柜散布，对很多中型到大型集群来说很常见。</p>
+算法通过计算数据存储位置来确定如何存储和检索。
+CRUSH 授权 Ceph 客户端直接连接 OSD ，
+而非通过一个中央服务器或经纪人。
+数据存储、检索算法的使用，使 Ceph 避免了单点故障、性能瓶颈、和伸缩的物理限制。</p>
+<p>CRUSH 需要一张集群的地图（ CRUSH 图），
+根据配置的复制策略和故障域把数据伪随机地映射到各个 OSD 。
+关于 CRUSH 的详细讨论见 <a class="reference external" href="https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf">CRUSH - 可控、可伸缩、分布式地归置多副本数据</a> 。</p>
+<p>CRUSH 图包含一系列 <abbr title="对象存储设备，Object Storage Devices">OSD</abbr> 、
+汇聚设备和桶的“桶”分级结构、
+和指示 CRUSH 在存储池内如何复制数据的规则。
+由于反映了部署的底层物理组织方式，
+CRUSH 能模型化、并因此定位到潜在的相关联设备故障，
+典型的因素有机箱、机架、物理距离、共享电源、
+和共享网络，把这些信息编码到集群运行图里，
+CRUSH 归置策略可把对象副本分布到不同的故障域，
+却仍能维持期望的分配情况。例如，
+要定位同时失败的可能性，可能希望保证数据复制到的设备位于不同机架、不同托盘、不同电源、
+不同控制器、甚至不同物理位置。</p>
+<p>你在部署 OSD 时，它们自动被放入 CRUSH 图中的 <code class="docutils literal notranslate"><span class="pre">host</span></code> 节点下，其名字就是此 OSD 所在主机的主机名。这个，
+加上默认的 CRUSH 故障域，
+确保了副本或纠删码分片会跨主机散布，
+而且单个主机的失效不会影响可用性。然而，
+对于大一些的集群，管理员就应该谨慎地考虑故障域的选择；
+例如，副本跨机柜散布，对很多中型到大型集群来说很常见。</p>
 <div class="section" id="id1">
 <h2>CRUSH 位置<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>用 CRUSH 图层次结构所表示的 OSD 位置被称为“ crush 位置（
-crush location ）”，它用键/值对列表来表示。例如，一 OSD 位于某特定行、机柜、机架、和主机，且是 CRUSH 图里名为 default 树的一部分（绝大多数集群都是这样的情形），那么其 crush 位置可表示如下：</p>
+<p>用 CRUSH 图层次结构所表示的 OSD 位置被称为
+“ crush 位置（crush location ）”，它用键/值对列表来表示。
+例如，一 OSD 位于某特定行、机柜、机架、和主机，
+且是 CRUSH 图里名为 default 树的一部分
+（绝大多数集群都是这样的情形），
+那么其 crush 位置可表示如下：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">=</span><span class="n">default</span> <span class="n">row</span><span class="o">=</span><span class="n">a</span> <span class="n">rack</span><span class="o">=</span><span class="n">a2</span> <span class="n">chassis</span><span class="o">=</span><span class="n">a2a</span> <span class="n">host</span><span class="o">=</span><span class="n">a2a1</span>
 </pre></div>
 </div>
 <p>注：</p>
 <ol class="arabic simple">
 <li><p>注意键（关键词）与顺序无关；</p></li>
-<li><p>键名（ <code class="docutils literal notranslate"><span class="pre">=</span></code> 左边）必须是 CRUSH 内的合法 <code class="docutils literal notranslate"><span class="pre">type</span></code> ，默认情况下，它包含 root 、 datacenter 、 room 、 row 、 pod 、
-pdu 、 rack 、 chassis 、和 host ，但这些类型可修改 CRUSH
-图任意定义。</p></li>
+<li><p>键名（ <code class="docutils literal notranslate"><span class="pre">=</span></code> 左边）必须是 CRUSH 内的合法 <code class="docutils literal notranslate"><span class="pre">type</span></code> ，默认情况下，
+它包含 <code class="docutils literal notranslate"><span class="pre">root</span></code> 、 <code class="docutils literal notranslate"><span class="pre">datacenter</span></code> 、 <code class="docutils literal notranslate"><span class="pre">room</span></code> 、 <code class="docutils literal notranslate"><span class="pre">row</span></code> 、 <code class="docutils literal notranslate"><span class="pre">pod</span></code> 、 <code class="docutils literal notranslate"><span class="pre">pdu</span></code> 、
+<code class="docutils literal notranslate"><span class="pre">rack</span></code> 、 <code class="docutils literal notranslate"><span class="pre">chassis</span></code> 、和 <code class="docutils literal notranslate"><span class="pre">host</span></code> 。
+这些预定义的类型能满足几乎所有集群，
+但可以修改 CRUSH 图自定义。</p></li>
 <li><p>并非所有键都需指定，例如，默认情况下 Ceph 会自动把
 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 守护进程的位置设置为
 <code class="docutils literal notranslate"><span class="pre">root=default</span> <span class="pre">host=HOSTNAME</span></code> （即是 <code class="docutils literal notranslate"><span class="pre">hostname</span> <span class="pre">-s</span></code> ）。</p></li>
 </ol>
-<p>一个 OSD 的 crush 位置可以用 <code class="docutils literal notranslate"><span class="pre">crush</span> <span class="pre">location</span></code> 配置选项表示，写入 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 文件。 OSD 每次启动时，都会验证它还在
-CRUSH 图内的正确位置，如果不是，就自己挪过去。要禁用 CRUSH 图的这个自动管理功能，把下面的加进配置文件的 <code class="docutils literal notranslate"><span class="pre">[osd]</span></code> 段下：</p>
+<p>一个 OSD 的 CRUSH 位置可以用 <code class="docutils literal notranslate"><span class="pre">crush</span> <span class="pre">location</span></code> 配置选项表示，写入 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 文件。 OSD 每次启动时，
+都会验证它还在 CRUSH 图内的正确位置，如果不是，就自己挪过去。
+要禁用 CRUSH 图的这个自动管理功能，
+把下面的加进配置文件的 <code class="docutils literal notranslate"><span class="pre">[osd]</span></code> 段下：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">osd</span> <span class="n">crush</span> <span class="n">update</span> <span class="n">on</span> <span class="n">start</span> <span class="o">=</span> <span class="n">false</span>
 </pre></div>
 </div>
 <div class="section" id="id2">
 <h3>定制位置挂钩<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>定制的位置钩子可用于在启动时生成更完整的 crush 位置。按先后顺序， crush 位置是基于：</p>
+<p>定制的位置钩子可用于在启动时生成更完整的 crush 位置。
+按先后顺序， CRUSH 位置是基于：</p>
 <ol class="arabic simple">
-<li><p>ceph.conf 内的 <code class="docutils literal notranslate"><span class="pre">crush</span> <span class="pre">location</span></code> 选项；</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 内的 <code class="docutils literal notranslate"><span class="pre">crush</span> <span class="pre">location</span></code> 选项；</p></li>
 <li><p>默认的 <code class="docutils literal notranslate"><span class="pre">root=default</span> <span class="pre">host=HOSTNAME</span></code> ，其中主机名是用
 <code class="docutils literal notranslate"><span class="pre">hostname</span> <span class="pre">-s</span></code> 生成的。</p></li>
 </ol>
-<p>这个用处不大，因为 OSD 自身有着完全相同的行为。然而，可以写个脚本来提供额外的位置字段（例如，机柜或数据中心），然后通过配置选项启用这个钩子：</p>
+<p>可以写个脚本来提供额外的位置字段
+（例如，机柜或数据中心），
+然后通过配置选项启用这个钩子：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">crush</span> <span class="n">location</span> <span class="n">hook</span> <span class="o">=</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">customized</span><span class="o">-</span><span class="n">ceph</span><span class="o">-</span><span class="n">crush</span><span class="o">-</span><span class="n">location</span>
 </pre></div>
 </div>
@@ -285,8 +314,11 @@ CRUSH 图内的正确位置，如果不是，就自己挪过去。要禁用 CRUS
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">cluster</span> <span class="n">CLUSTER</span> <span class="o">--</span><span class="nb">id</span> <span class="n">ID</span> <span class="o">--</span><span class="nb">type</span> <span class="n">TYPE</span>
 </pre></div>
 </div>
-<p>其中，集群名通常是 “ceph” ， id 是守护进程标识符（ OSD 号或守护进程标识符），守护进程类型是 <code class="docutils literal notranslate"><span class="pre">osd</span></code> 、 <code class="docutils literal notranslate"><span class="pre">mds</span></code> 之类的。</p>
-<p>例如，下面这个简单的钩子，基于一个假设的文件 <code class="docutils literal notranslate"><span class="pre">/etc/rack</span></code> 、它额外指定了一个机架位，如下：</p>
+<p>其中，集群名通常是 <code class="docutils literal notranslate"><span class="pre">ceph</span></code> ， <code class="docutils literal notranslate"><span class="pre">id</span></code> 是守护进程标识符
+（例如， OSD 号或守护进程标识符），
+守护进程类型是 <code class="docutils literal notranslate"><span class="pre">osd</span></code> 、 <code class="docutils literal notranslate"><span class="pre">mds</span></code> 之类的。</p>
+<p>例如，下面这个简单的钩子，在 <code class="docutils literal notranslate"><span class="pre">/etc/rack</span></code> 里额外指定了一个机架位，
+如下：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/sh</span>
 <span class="n">echo</span> <span class="s2">&quot;host=$(hostname -s) rack=$(cat /etc/rack) root=default&quot;</span>
 </pre></div>
@@ -295,102 +327,96 @@ CRUSH 图内的正确位置，如果不是，就自己挪过去。要禁用 CRUS
 </div>
 <div class="section" id="id3">
 <h2>CRUSH 结构<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<p>The CRUSH map consists of, loosely speaking, a hierarchy describing
-the physical topology of the cluster, and a set of rules defining
-policy about how we place data on those devices.  The hierarchy has
-devices (<code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> daemons) at the leaves, and internal nodes
-corresponding to other physical features or groupings: hosts, racks,
-rows, datacenters, and so on.  The rules describe how replicas are
-placed in terms of that hierarchy (e.g., ‘three replicas in different
-racks’).</p>
-<div class="section" id="devices">
-<h3>Devices<a class="headerlink" href="#devices" title="Permalink to this headline">¶</a></h3>
-<p>Devices are individual <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> daemons that can store data.  You
-will normally have one defined here for each OSD daemon in your
-cluster.  Devices are identified by an id (a non-negative integer) and
-a name, normally <code class="docutils literal notranslate"><span class="pre">osd.N</span></code> where <code class="docutils literal notranslate"><span class="pre">N</span></code> is the device id.</p>
-<p>Devices may also have a <em>device class</em> associated with them (e.g.,
-<code class="docutils literal notranslate"><span class="pre">hdd</span></code> or <code class="docutils literal notranslate"><span class="pre">ssd</span></code>), allowing them to be conveniently targeted by a
-crush rule.</p>
+<p>不严谨地说， CRUSH 图包括，描述集群物理拓扑的一个分级结构、
+和一系列规则（定义了如何在那些设备上放置数据的策略）。
+这个分级结构包括，把叶子上挂设备（ <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 守护进程）、
+各内部节点对应其它物理功能或分组：
+主机、机架、排、数据中心，等等。
+这些规则描述了副本们如何放置在分级结构里
+（例如，“三个副本分别放到不同的机柜里”）。</p>
+<div class="section" id="id4">
+<h3>设备<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>设备都是单个的 OSD ，可以存储数据，通常每个存储设备对应一个。
+设备是用一个 id （非负整数）和名字标识的，
+通常 <code class="docutils literal notranslate"><span class="pre">osd.N</span></code> 中的 <code class="docutils literal notranslate"><span class="pre">N</span></code> 是设备 id 。</p>
+<p>从 Luminous 版起，设备还能分配一个 <em>device class</em>
+（例如 <code class="docutils literal notranslate"><span class="pre">hdd</span></code> 或 <code class="docutils literal notranslate"><span class="pre">ssd</span></code> 或 <code class="docutils literal notranslate"><span class="pre">nvme</span></code> ），
+方便让 CRUSH 规则引用。主机内混搭多种设备类型时尤其有用。</p>
 </div>
-<div class="section" id="types-and-buckets">
-<h3>Types and Buckets<a class="headerlink" href="#types-and-buckets" title="Permalink to this headline">¶</a></h3>
-<p>A bucket is the CRUSH term for internal nodes in the hierarchy: hosts,
-racks, rows, etc.  The CRUSH map defines a series of <em>types</em> that are
-used to describe these nodes.  By default, these types include:</p>
+<div class="section" id="crush-map-default-types">
+<span id="id5"></span><h3>类型和桶<a class="headerlink" href="#crush-map-default-types" title="Permalink to this headline">¶</a></h3>
+<p>桶是 CRUSH 术语，是分级结构的内部节点：主机、机架、行等等。
+CRUSH 图定义了一系列的 <em>类型</em> ，用于描述这些节点。
+默认类型有：</p>
 <ul class="simple">
-<li><p>osd (or device)</p></li>
-<li><p>host</p></li>
-<li><p>chassis</p></li>
-<li><p>rack</p></li>
-<li><p>row</p></li>
-<li><p>pdu</p></li>
-<li><p>pod</p></li>
-<li><p>room</p></li>
-<li><p>datacenter</p></li>
-<li><p>zone</p></li>
-<li><p>region</p></li>
-<li><p>root</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">osd</span></code> (或 <code class="docutils literal notranslate"><span class="pre">device</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">chassis</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rack</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">row</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pdu</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pod</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">room</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">datacenter</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">zone</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">region</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">root</span></code></p></li>
 </ul>
-<p>Most clusters make use of only a handful of these types, and others
-can be defined as needed.</p>
-<p>The hierarchy is built with devices (normally type <code class="docutils literal notranslate"><span class="pre">osd</span></code>) at the
-leaves, interior nodes with non-device types, and a root node of type
-<code class="docutils literal notranslate"><span class="pre">root</span></code>.  For example,</p>
-<p>Each node (device or bucket) in the hierarchy has a <em>weight</em>
-associated with it, indicating the relative proportion of the total
-data that device or hierarchy subtree should store.  Weights are set
-at the leaves, indicating the size of the device, and automatically
-sum up the tree from there, such that the weight of the default node
-will be the total of all devices contained beneath it.  Normally
-weights are in units of terabytes (TB).</p>
-<p>You can get a simple view the CRUSH hierarchy for your cluster,
-including the weights, with:</p>
+<p>大多数集群都只用了这些类型中的一小部分，
+其它的可以按需定义。</p>
+<p>这个分级结构的构成是：设备（类型通常是 <code class="docutils literal notranslate"><span class="pre">osd</span></code> ）位于叶子上、
+类型为非设备的内部节点、和一个类型为 <code class="docutils literal notranslate"><span class="pre">root</span></code> 的根节点。例如，</p>
+<p>分级结构里的每个节点（设备或桶）都有一个 <em>权重</em> ，
+表示的是那个设备或分级结构子树会存储的总数据的相对比重。
+权重是在叶子上设置的，表示的是设备的容量，
+并且随树逐级累加，这样，
+默认节点的权重就是它下面所有设备的总和。
+通常，权重按 TB 数表示。</p>
+<p>你可以用下面的命令查看集群的 CRUSH 分级结构，包括权重：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">tree</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="rules">
-<h3>Rules<a class="headerlink" href="#rules" title="Permalink to this headline">¶</a></h3>
-<p>Rules define policy about how data is distributed across the devices
-in the hierarchy.</p>
-<p>CRUSH rules define placement and replication strategies or
-distribution policies that allow you to specify exactly how CRUSH
-places object replicas. For example, you might create a rule selecting
-a pair of targets for 2-way mirroring, another rule for selecting
-three targets in two different data centers for 3-way mirroring, and
-yet another rule for erasure coding over six storage devices. For a
-detailed discussion of CRUSH rules, refer to <a class="reference external" href="https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf">CRUSH - 可控、可伸缩、分布式地归置多副本数据</a>,
-and more
-specifically to <strong>Section 3.2</strong>.</p>
-<p>In almost all cases, CRUSH rules can be created via the CLI by
-specifying the <em>pool type</em> they will be used for (replicated or
-erasure coded), the <em>failure domain</em>, and optionally a <em>device class</em>.
-In rare cases rules must be written by hand by manually editing the
-CRUSH map.</p>
-<p>You can see what rules are defined for your cluster with:</p>
+<div class="section" id="id6">
+<h3>规则<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>CRUSH 规则可以定义策略，
+让数据在分级结构里的设备上如何分布。
+它们定义归置和复制策略（或分配策略），
+让你决定如何指挥 CRUSH 归置数据副本。
+例如，你可以创建一条规则，让它选取一对目标做双路镜像；
+另一条规则每次可以选取三个位于不同数据中心的目标做三路镜像；
+还有一条规则，可以跨 6 个存储设备做纠删编码（ EC ）。
+想了解更多关于 CRUSH 规则的论述，见
+<a class="reference external" href="https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf">CRUSH - 可控、可伸缩、分布式地归置多副本数据</a> ，
+特别是 <strong>Section 3.2</strong> 。</p>
+<p>CRUSH 规则可以通过 CLI 创建，
+需要指定用于什么样的 <em>存储池类型</em>
+（多副本的或是纠删码的）、 <em>故障域</em> 、和可选的 <em>设备类别</em> 。
+在极少数情况下，只能通过手动编辑 CRUSH 图手写规则。</p>
+<p>你可以这样查看集群定义了哪些规则：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">rule</span> <span class="n">ls</span>
 </pre></div>
 </div>
-<p>You can view the contents of the rules with:</p>
+<p>你可以这样查看规则的内容：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">rule</span> <span class="n">dump</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id4">
-<h3>设备类别<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
-<p>每个设备都可以选择性地关联一个类别 <em>class</em> 。默认情况下， OSD
-们在启动时会根据其后端的设备类型自动将其类别设置为 <cite>hdd</cite> 、
-<cite>ssd</cite> 或 <cite>nvme</cite> 。</p>
-<dl class="simple">
-<dt>以下命令可以设置一或多个 OSD 的设备类别： ::</dt><dd><p>ceph osd crush set-device-class &lt;class&gt; &lt;osd-name&gt; […]</p>
-</dd>
-</dl>
-<p>设备类别配置后就不能再更改为另一个类别，得先删掉其旧类别，用命令：</p>
+<div class="section" id="id7">
+<h3>设备类别<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>每个设备都可以选择性地关联一个类别 <em>class</em> 。
+默认情况下， OSD 们在启动时会根据其后端的设备类型自动将其类别设置为 <cite>hdd</cite> 、 <cite>ssd</cite> 或 <cite>nvme</cite> 。</p>
+<p>以下命令可以设置一或多个 OSD 的设备类别：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph osd crush set-device-class &lt;class&gt; &lt;osd-name&gt; [...]
+</pre></div>
+</div>
+<p>设备类别配置后就不能再更改为另一个类别，
+得先删掉其旧类别，用命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ceph osd crush rm-device-class &lt;osd-name&gt; [...]
 </pre></div>
 </div>
-<p>如此一来，管理员配置设备类别后，就不会被 OSD 重启或其它脚本误改。</p>
+<p>如此一来，管理员配置设备类别后，
+就不会被 OSD 重启或其它脚本误改。</p>
 <p>指向某个特定设备类别的归置规则可以这样创建：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">rule</span> <span class="n">create</span><span class="o">-</span><span class="n">replicated</span> <span class="o">&lt;</span><span class="n">rule</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">root</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">failure</span><span class="o">-</span><span class="n">domain</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">class</span><span class="o">&gt;</span>
 </pre></div>
@@ -399,61 +425,76 @@ CRUSH map.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">crush_rule</span> <span class="o">&lt;</span><span class="n">rule</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
 </pre></div>
 </div>
-<p>设备类别的实现是在现有类别之上再创建一个“影子” CRUSH
-分级结构，此类别中只包含了本类别下的设备。这样，各规则就可以通过影子分级结构分发数据了。这个实现方法的好处之一是，它与老的Ceph 客户端们完全向后兼容。 CRUSH 分级结构的影子条目可以这样查看：</p>
+<p>设备类别的实现是在现有类别之上再创建一个“影子” CRUSH 分级结构，
+此类别中只包含了本类别下的设备。
+这样，各规则就可以通过影子分级结构分发数据了。
+这个实现方法的好处之一是，
+它完全向后兼容老的 Ceph 客户端们。
+CRUSH 分级结构的影子条目可以这样查看：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">tree</span> <span class="o">--</span><span class="n">show</span><span class="o">-</span><span class="n">shadow</span>
 </pre></div>
 </div>
-<p>For older clusters created before Luminous that relied on manually
-crafted CRUSH maps to maintain per-device-type hierarchies, there is a
-<em>reclassify</em> tool available to help transition to device classes
-without triggering data movement (see <a class="reference internal" href="../crush-map-edits/#crush-reclassify"><span class="std std-ref">从老式的 SSD 规则迁移到设备类</span></a>).</p>
+<p>对于 Luminous 之前比较老的集群，
+它们靠手动更改的 CRUSH 图维护每个设备类型的分级结构，
+有个 <em>reclassify （重分类）</em> 工具可以帮你转换成设备类，
+还不会导致数据移动（见 <a class="reference internal" href="../crush-map-edits/#crush-reclassify"><span class="std std-ref">从老式的 SSD 规则迁移到设备类</span></a> ）。</p>
 </div>
-<div class="section" id="id5">
-<h3>权重集<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
-<p><em>权重集</em>是计算数据归置时使用的另一种集。常规权重与 CRUSH 图内各设备的尺寸相关联，表明哪里<em>应该</em>存储多少数据。然而，由于 CRUSH 是基于伪随机归置过程，总会各种变数干扰这种理想的分布，道理和掷色子一样，掷 60 次不会正好是 10 个一点、和 10 个六点。权重集可以让集群系统针对特定的集群（层级、存储池、等等）做一些数字上的优化，以实现更均衡的分布。</p>
+<div class="section" id="id8">
+<h3>权重集<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<p><em>权重集</em>是计算数据归置时使用的另一种集。
+常规权重与 CRUSH 图内各设备的尺寸相关联，
+表明哪里<em>应该</em>存储多少数据。
+然而，由于 CRUSH 是“概率上的”伪随机归置过程，
+总会各种变数干扰这种理想的分布，
+道理和掷色子一样，掷 60 次不会正好是
+10 个一点、和 10 个六点。
+权重集可以让集群系统针对特定的集群
+（层级、存储池、等等）做一些数字上的优化，
+以实现更均衡的分布。</p>
 <p>当前支持两种权重集：</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li><p>A <strong>compat</strong> weight set is a single alternative set of weights for
-each device and node in the cluster.  This is not well-suited for
-correcting for all anomalies (for example, placement groups for
-different pools may be different sizes and have different load
-levels, but will be mostly treated the same by the balancer).
-However, compat weight sets have the huge advantage that they are
-<em>backward compatible</em> with previous versions of Ceph, which means
-that even though weight sets were first introduced in Luminous
-v12.2.z, older clients (e.g., firefly) can still connect to the
-cluster when a compat weight set is being used to balance data.</p></li>
-<li><p>A <strong>per-pool</strong> weight set is more flexible in that it allows
-placement to be optimized for each data pool.  Additionally,
-weights can be adjusted for each position of placement, allowing
-the optimizer to correct for a subtle skew of data toward devices
-with small weights relative to their peers (and effect that is
-usually only apparently in very large clusters but which can cause
-balancing problems).</p></li>
+<li><p><strong>compat （兼容的）</strong> 权重集是集群里各个设备和节点的一个单一的备选权重集。
+它不能完美纠正所有异常情况（例如，
+不同存储池的副本数不同、并且负载水平也不同，
+但均衡器却几乎公平地对待它们的归置组）。
+然而， compat 权重集的巨大优势是它与先前版本的 Ceph 有 <em>向后兼容性</em> ，
+这意味着，即便权重集是在 Luminous v12.2.z 首次引进的，
+在集群使用 compat 权重集来均衡数据时，
+较老的客户端们（如 firefly ）仍然能连接到这个集群。</p></li>
+<li><p><strong>per-pool （基于存储池的）</strong> 权重集更灵活，
+它允许单独优化各个数据存储池的归置。
+另外，可以针对归置的每个位置调整权重，
+这样优化程序通过微调其相对于互联节点的权重、
+进而纠正数据偏爱某些设备的情形
+（这种影响在非常巨大的集群上一般不明显，
+但却能导致均衡问题）。</p></li>
 </ol>
 </div></blockquote>
-<p>When weight sets are in use, the weights associated with each node in
-the hierarchy is visible as a separate column (labeled either
-<code class="docutils literal notranslate"><span class="pre">(compat)</span></code> or the pool name) from the command:</p>
+<p>启用了权重集、用命令查看时，
+分级结构里与各节点关联的权重显示在单独的一列里
+（标题是 <code class="docutils literal notranslate"><span class="pre">(compat)</span></code> 或是存储池名字）：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">tree</span>
 </pre></div>
 </div>
-<p>When both <em>compat</em> and <em>per-pool</em> weight sets are in use, data
-placement for a particular pool will use its own per-pool weight set
-if present.  If not, it will use the compat weight set if present.  If
-neither are present, it will use the normal CRUSH weights.</p>
-<p>Although weight sets can be set up and manipulated by hand, it is
-recommended that the <em>balancer</em> module be enabled to do so
-automatically.</p>
+<p><em>compat</em> 和 <em>per-pool</em> 两种权重集都在使用时，
+如果某个存储池有它自己的 per-pool 权重集，那就使用它；
+如果没有，但有 compat 权重集，那就用它；
+如果都没有，就用普通的 CRUSH 权重。</p>
+<p>虽然可以手动启用和修改权重集，
+运行 Luminous 及更高版本时，
+还是建议启用 <code class="docutils literal notranslate"><span class="pre">ceph-mgr</span></code> 的 <em>balancer</em> 模块自动完成。</p>
 </div>
 </div>
-<div class="section" id="id6">
-<h2>修改 CRUSH 图<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id9">
+<h2>修改 CRUSH 图<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="osd">
 <span id="addosd"></span><h3>增加/移动 OSD<a class="headerlink" href="#osd" title="Permalink to this headline">¶</a></h3>
-<p>要增加或删除在线集群里 OSD 所对应的 CRUSH 图条目，执行：</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>OSD 通常是在创建时自动被加进 CRUSH 图的。这个命令很少用到。</p>
+</div>
+<p>要增加或移动在线集群里 OSD 所对应的 CRUSH 图位置，执行：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="nb">set</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">weight</span><span class="p">}</span> <span class="n">root</span><span class="o">=</span><span class="p">{</span><span class="n">root</span><span class="p">}</span> <span class="p">[{</span><span class="n">bucket</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span><span class="o">=</span><span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="o">...</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -523,8 +564,13 @@ automatically.</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id7">
-<h3>调整 OSD 的权重<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id10">
+<h3>调整 OSD 的权重<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>通常在创建 OSD 时它们就会自动把自己加进 CRUSH 图、
+并且权重正确。这个命令很少用到。</p>
+</div>
 <p>要调整在线集群中一个 OSD 在 CRUSH 图中的 CRUSH 权重，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">reweight</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">weight</span><span class="p">}</span>
 </pre></div>
@@ -562,7 +608,12 @@ automatically.</p>
 </dl>
 </div>
 <div class="section" id="removeosd">
-<span id="id8"></span><h3>删除 OSD<a class="headerlink" href="#removeosd" title="Permalink to this headline">¶</a></h3>
+<span id="id11"></span><h3>删除 OSD<a class="headerlink" href="#removeosd" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>通常 OSD 会随 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">purge</span></code> 命令从 CRUSH 图中删除。
+这个命令很少用到。</p>
+</div>
 <p>要从在线集群里把一 OSD 踢出 CRUSH 图，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">remove</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
@@ -584,8 +635,18 @@ automatically.</p>
 </dd>
 </dl>
 </div>
-<div class="section" id="id9">
-<h3>增加桶<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id12">
+<h3>增加桶<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>新加 OSD 时如果指定了 <code class="docutils literal notranslate"><span class="pre">{bucket-type}={bucket-name}</span></code>
+这样的位置参数，而且没有那个名字的桶，就会隐式地创建这个桶。
+这个命令的典型用法是在 OSD 创建之后对分级结构进行手动调整。
+一种用途是把一系列主机移到一个新的、机架级的桶内；
+另一种用法是把新的 <code class="docutils literal notranslate"><span class="pre">host</span></code> 桶（ OSD 节点）挂到一个假的 <code class="docutils literal notranslate"><span class="pre">root</span></code> 下，
+它就不会接收数据，你准备好之后，
+就可以把它们移动到 <code class="docutils literal notranslate"><span class="pre">default</span></code> 或下文描述的其他根下面。</p>
+</div>
 <p>要在在线集群的 CRUSH 图中新建一个桶，用
 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">crush</span> <span class="pre">add-bucket</span></code> 命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">add</span><span class="o">-</span><span class="n">bucket</span> <span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span>
@@ -627,8 +688,8 @@ automatically.</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id10">
-<h3>移动桶<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id13">
+<h3>移动桶<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
 <p>要把一个桶挪动到 CRUSH 图里的不同位置，执行命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">move</span> <span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span><span class="o">=</span><span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="n">name</span><span class="p">},</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
 </pre></div>
@@ -665,8 +726,8 @@ automatically.</p>
 </dd>
 </dl>
 </div>
-<div class="section" id="id11">
-<h3>删除桶<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id14">
+<h3>删除桶<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
 <p>要把一个桶从 CRUSH 图的分级结构中删除，可用此命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">remove</span> <span class="p">{</span><span class="n">bucket</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
@@ -696,326 +757,365 @@ automatically.</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="creating-a-compat-weight-set">
-<h3>Creating a compat weight set<a class="headerlink" href="#creating-a-compat-weight-set" title="Permalink to this headline">¶</a></h3>
-<p>To create a <em>compat</em> weight set:</p>
+<div class="section" id="compat">
+<h3>创建一个 compat 权重集<a class="headerlink" href="#compat" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>启用 <code class="docutils literal notranslate"><span class="pre">balancer</span></code> 时，它通常会自动完成。</p>
+</div>
+<p>要创建一个 <em>compat</em> 权重集：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">weight</span><span class="o">-</span><span class="nb">set</span> <span class="n">create</span><span class="o">-</span><span class="n">compat</span>
 </pre></div>
 </div>
-<p>Weights for the compat weight set can be adjusted with:</p>
+<p>compat 权重集的权重可以这样调整：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">weight</span><span class="o">-</span><span class="nb">set</span> <span class="n">reweight</span><span class="o">-</span><span class="n">compat</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">weight</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>The compat weight set can be destroyed with:</p>
+<p>销毁 compat 权重集：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">weight</span><span class="o">-</span><span class="nb">set</span> <span class="n">rm</span><span class="o">-</span><span class="n">compat</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="creating-per-pool-weight-sets">
-<h3>Creating per-pool weight sets<a class="headerlink" href="#creating-per-pool-weight-sets" title="Permalink to this headline">¶</a></h3>
-<p>To create a weight set for a specific pool,:</p>
+<div class="section" id="per-pool">
+<h3>创建 per-pool 权重集<a class="headerlink" href="#per-pool" title="Permalink to this headline">¶</a></h3>
+<p>为指定存储池创建权重集：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">weight</span><span class="o">-</span><span class="nb">set</span> <span class="n">create</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">mode</span><span class="p">}</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Per-pool weight sets require that all servers and daemons
-run Luminous v12.2.z or later.</p>
+<p>Per-pool 权重集要求所有服务器和守护进程都运行
+Luminous v12.2.z 及以上版本。</p>
 </div>
-<p>Where:</p>
+<p>其中：</p>
 <p><code class="docutils literal notranslate"><span class="pre">pool-name</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The name of a RADOS pool</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>RADOS 存储池的名字。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>String</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>Yes</p>
 </dd>
-<dt class="field-even">Example</dt>
+<dt class="field-even">实例</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">rbd</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">mode</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>Either <code class="docutils literal notranslate"><span class="pre">flat</span></code> or <code class="docutils literal notranslate"><span class="pre">positional</span></code>.  A <em>flat</em> weight set
-has a single weight for each device or bucket.  A
-<em>positional</em> weight set has a potentially different
-weight for each position in the resulting placement
-mapping.  For example, if a pool has a replica count of
-3, then a positional weight set will have three weights
-for each device and bucket.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>可以是 <code class="docutils literal notranslate"><span class="pre">flat</span></code> 或 <code class="docutils literal notranslate"><span class="pre">positional</span></code> 。
+<em>flat</em> 权重集为每个设备或桶都分配了单独的权重。
+<em>positional</em> 权重集可能给归置映射图里的各个位置分配不同的权重。
+例如，如果一个存储池的副本数是 3 ，
+那么它的 positional 权重集将是每个设备和桶都有 3 个权重。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>String</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>Yes</p>
 </dd>
-<dt class="field-even">Example</dt>
+<dt class="field-even">实例</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">flat</span></code></p>
 </dd>
 </dl>
-<p>To adjust the weight of an item in a weight set:</p>
+<p>调整一个权重集内一个条目的权重：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">weight</span><span class="o">-</span><span class="nb">set</span> <span class="n">reweight</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">item</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">weight</span> <span class="p">[</span><span class="o">...</span><span class="p">]}</span>
 </pre></div>
 </div>
-<p>To list existing weight sets,:</p>
+<p>罗列现有的权重集：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">weight</span><span class="o">-</span><span class="nb">set</span> <span class="n">ls</span>
 </pre></div>
 </div>
-<p>To remove a weight set,:</p>
+<p>删除一个权重集：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">weight</span><span class="o">-</span><span class="nb">set</span> <span class="n">rm</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="id12">
-<h3>为多副本存储池创建规则<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
-<p>For a replicated pool, the primary decision when creating the CRUSH
-rule is what the failure domain is going to be.  For example, if a
-failure domain of <code class="docutils literal notranslate"><span class="pre">host</span></code> is selected, then CRUSH will ensure that
-each replica of the data is stored on a different host.  If <code class="docutils literal notranslate"><span class="pre">rack</span></code>
-is selected, then each replica will be stored in a different rack.
-What failure domain you choose primarily depends on the size of your
-cluster and how your hierarchy is structured.</p>
-<p>Normally, the entire cluster hierarchy is nested beneath a root node
-named <code class="docutils literal notranslate"><span class="pre">default</span></code>.  If you have customized your hierarchy, you may
-want to create a rule nested at some other node in the hierarchy.  It
-doesn’t matter what type is associated with that node (it doesn’t have
-to be a <code class="docutils literal notranslate"><span class="pre">root</span></code> node).</p>
-<p>It is also possible to create a rule that restricts data placement to
-a specific <em>class</em> of device.  By default, Ceph OSDs automatically
-classify themselves as either <code class="docutils literal notranslate"><span class="pre">hdd</span></code> or <code class="docutils literal notranslate"><span class="pre">ssd</span></code>, depending on the
-underlying type of device being used.  These classes can also be
-customized.</p>
-<p>To create a replicated rule,:</p>
+<div class="section" id="id15">
+<h3>为多副本存储池创建规则<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<p>对于多副本存储池，创建 CRUSH 规则时的主要关注点在于故障域是什么。
+例如，如果选择 <code class="docutils literal notranslate"><span class="pre">host</span></code> 作为故障域，那么
+CRUSH 就会确保将数据的各个副本存储到不同的主机上；
+如果选择 <code class="docutils literal notranslate"><span class="pre">rack</span></code> ，那么各个副本将会存储到不同的机架上。
+选择什么作为故障域主要取决于规模和集群的拓扑结构。</p>
+<p>大多数情况下，整个集群的分级结构都嵌套在一个名为 <code class="docutils literal notranslate"><span class="pre">default</span></code> 的根节点下。
+如果你自定义过分级结构，你也许想要创建一条规则，
+嵌套在分级结构里的某个节点上。那个节点的类型是什么无关紧要
+（不一定非得是 <code class="docutils literal notranslate"><span class="pre">root</span></code> 节点）。</p>
+<p>还能创建一种规则，它只负责 <em>一类（ class ）</em> 设备的数据归置。
+默认情况下， Ceph OSD 们会根据在用设备的类型把它自己归类为 <code class="docutils literal notranslate"><span class="pre">hdd</span></code> 或 <code class="docutils literal notranslate"><span class="pre">ssd</span></code> 。
+这些类别也可以自定义。</p>
+<p>创建一条多副本规则：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">rule</span> <span class="n">create</span><span class="o">-</span><span class="n">replicated</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">root</span><span class="p">}</span> <span class="p">{</span><span class="n">failure</span><span class="o">-</span><span class="n">domain</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span> <span class="p">[{</span><span class="n">class</span><span class="p">}]</span>
 </pre></div>
 </div>
-<p>Where:</p>
+<p>其中：</p>
 <p><code class="docutils literal notranslate"><span class="pre">name</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The name of the rule</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>规则的名字</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>String</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>Yes</p>
 </dd>
-<dt class="field-even">Example</dt>
+<dt class="field-even">实例</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">rbd-rule</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">root</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The name of the node under which data should be placed.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>节点的名字，数据应该放置到这个节点之下。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>String</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>Yes</p>
 </dd>
-<dt class="field-even">Example</dt>
+<dt class="field-even">实例</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">default</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">failure-domain-type</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The type of CRUSH nodes across which we should separate replicas.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>CRUSH 节点的类型，数据副本会跨过这些节点分布。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>String</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>Yes</p>
 </dd>
-<dt class="field-even">Example</dt>
+<dt class="field-even">实例</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">rack</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">class</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The device class data should be placed on.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>数据应该放置到这种类型的设备上。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>String</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Example</dt>
+<dt class="field-even">实例</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">ssd</span></code></p>
 </dd>
 </dl>
 </div>
-<div class="section" id="id13">
-<h3>为纠删码存储池创建规则<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
-<p>For an erasure-coded pool, the same basic decisions need to be made as
-with a replicated pool: what is the failure domain, what node in the
-hierarchy will data be placed under (usually <code class="docutils literal notranslate"><span class="pre">default</span></code>), and will
-placement be restricted to a specific device class.  Erasure code
-pools are created a bit differently, however, because they need to be
-constructed carefully based on the erasure code being used.  For this reason,
-you must include this information in the <em>erasure code profile</em>.  A CRUSH
-rule will then be created from that either explicitly or automatically when
-the profile is used to create a pool.</p>
-<p>The erasure code profiles can be listed with:</p>
+<div class="section" id="id16">
+<h3>为纠删码存储池创建规则<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
+<p>对于纠删码（ EC ）存储池，有同样的基本关注点：
+故障域是什么、数据放置到分级结构里的哪个节点下（通常是 <code class="docutils literal notranslate"><span class="pre">default</span></code> ）、
+归置动作是否要限定在某一类设备上。
+然而，纠删码存储池的创建有点不同，
+因为要根据所用的纠删码小心地构建。
+正因为这样， <em>纠删码配置信息</em> 里必须包含这个信息。
+创建存储池时需要用到配置信息，
+此时就会根据这些信息显式或自动地创建一条 CRUSH 规则。</p>
+<p>纠删码配置信息可以这样罗列：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span> <span class="n">ls</span>
 </pre></div>
 </div>
-<p>An existing profile can be viewed with:</p>
+<p>现有配置信息可以这样查看：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span> <span class="n">get</span> <span class="p">{</span><span class="n">profile</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>Normally profiles should never be modified; instead, a new profile
-should be created and used when creating a new pool or creating a new
-rule for an existing pool.</p>
-<p>An erasure code profile consists of a set of key=value pairs.  Most of
-these control the behavior of the erasure code that is encoding data
-in the pool.  Those that begin with <code class="docutils literal notranslate"><span class="pre">crush-</span></code>, however, affect the
-CRUSH rule that is created.</p>
-<p>The erasure code profile properties of interest are:</p>
+<p>正常情况下不要去修改配置信息；反之，
+应该新建存储池时新建一份配置信息并应用它，
+或者为现有存储池创建一条新规则。</p>
+<p>一份纠删码配置信息由一系列 key=value 对组成。
+其中的大多数都是为了控制纠删码的行为，让它在存储池中编码数据。
+而那些以 <code class="docutils literal notranslate"><span class="pre">crush-</span></code> 打头的，
+能够影响将要创建的这条 CRUSH 规则。</p>
+<p>纠删码配置信息的众多属性里比较重要的有：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><strong>crush-root</strong>: the name of the CRUSH node to place data under [default: <code class="docutils literal notranslate"><span class="pre">default</span></code>].</p></li>
-<li><p><strong>crush-failure-domain</strong>: the CRUSH type to separate erasure-coded shards across [default: <code class="docutils literal notranslate"><span class="pre">host</span></code>].</p></li>
-<li><p><strong>crush-device-class</strong>: the device class to place data on [default: none, meaning all devices are used].</p></li>
-<li><p><strong>k</strong> and <strong>m</strong> (and, for the <code class="docutils literal notranslate"><span class="pre">lrc</span></code> plugin, <strong>l</strong>): these determine the number of erasure code shards, affecting the resulting CRUSH rule.</p></li>
+<li><p><strong>crush-root</strong>: 容纳数据的 CRUSH 节点的名字 [默认值: <code class="docutils literal notranslate"><span class="pre">default</span></code>] ；</p></li>
+<li><p><strong>crush-failure-domain</strong>: 分配纠删编码的数据分片的 CRUSH 桶类型 [默认值: <code class="docutils literal notranslate"><span class="pre">host</span></code>] ；</p></li>
+<li><p><strong>crush-device-class</strong>: 可以放置数据的设备类 [默认值: none, 表示使用所有设备] ；</p></li>
+<li><p><strong>k</strong> 和 <strong>m</strong> (对于 <code class="docutils literal notranslate"><span class="pre">lrc</span></code> 插件还有 <strong>l</strong>): 这些确定了纠删码分片的数量，
+影响着生成的 CRUSH 规则；</p></li>
 </ul>
 </div></blockquote>
-<p>Once a profile is defined, you can create a CRUSH rule with:</p>
+<p>配置信息定义好之后，就可以用下列命令创建 CRUSH 规则：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">rule</span> <span class="n">create</span><span class="o">-</span><span class="n">erasure</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">profile</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>创建新存储池时，并非一定要显式地创建规则。
+如果只是指定了纠删码配置信息，
+而具体的规则参数却是空的， Ceph 会自动创建 CRUSH 规则。</p>
 </div>
-<div class="section" id="deleting-rules">
-<h3>Deleting rules<a class="headerlink" href="#deleting-rules" title="Permalink to this headline">¶</a></h3>
-<p>Rules that are not in use by pools can be deleted with:</p>
+</div>
+<div class="section" id="id17">
+<h3>规则的删除<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
+<p>没有存储池在用的规则可以这样删除：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">rule</span> <span class="n">rm</span> <span class="p">{</span><span class="n">rule</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="section" id="crush-map-tunables">
-<span id="id14"></span><h2>可调选项<a class="headerlink" href="#crush-map-tunables" title="Permalink to this headline">¶</a></h2>
-<p>时光荏苒，我们已经改进（并将继续改进）了用于计算数据位置的
-CRUSH 算法。为了体现（算法的）行为变化，我们引进了一系列可调选项，以控制是使用老的、还是改进算法。</p>
-<p>要使用较新的可调选项，客户端和服务器都得支持较新版的
-CRUSH 。正因为如此，我们建立了一系列以 Ceph 版本命名的配置集（ <code class="docutils literal notranslate"><span class="pre">profiles</span></code> ），比如， <code class="docutils literal notranslate"><span class="pre">firefly</span></code> 可调选项是在
-firefly 版首次支持的，而且不支持更老的（如 dumpling ）客户端。一旦配置的可调选项生效、改变了旧有的默认行为，
-<code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code> 和 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 就不再允许那些老的、不支持这些新 CRUSH 功能的客户端连接集群。</p>
+<span id="id18"></span><h2>可调选项<a class="headerlink" href="#crush-map-tunables" title="Permalink to this headline">¶</a></h2>
+<p>时光荏苒，我们已经改进（并将继续改进）了用于计算数据位置的 CRUSH 算法。
+为了体现（算法的）行为变化，我们引进了一系列可调选项，
+以控制是使用老的、还是改进的算法。</p>
+<p>要使用较新的可调选项，客户端和服务器都得支持较新版的 CRUSH 。
+正因为如此，我们建立了一系列以 Ceph 版本命名的配置集
+（ <code class="docutils literal notranslate"><span class="pre">profiles</span></code> ），比如，
+<code class="docutils literal notranslate"><span class="pre">firefly</span></code> 可调选项是在 firefly 版首次支持的，
+而且不支持更老的（如 dumpling ）客户端。
+一旦配置的可调选项生效、改变了旧有的默认行为，
+<code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code> 和 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 就不再允许那些老的、
+不支持这些新 CRUSH 功能的客户端连接集群。</p>
 <div class="section" id="argonaut">
 <h3>argonaut (遗老)<a class="headerlink" href="#argonaut" title="Permalink to this headline">¶</a></h3>
-<p>argonaut 和更老版本的 CRUSH 工作方式对大多数集群来说都没问题，也没有太多 OSD 被标记为 out 。</p>
+<p>argonaut 和更老版本的 CRUSH 工作方式对大多数集群来说都没问题，
+也没有太多 OSD 被标记为 out 。</p>
 </div>
 <div class="section" id="bobtail-crush-tunables2">
 <h3>bobtail (CRUSH_TUNABLES2)<a class="headerlink" href="#bobtail-crush-tunables2" title="Permalink to this headline">¶</a></h3>
 <p>bobtail 可调选项修正了一些关键的错误行为：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>如果分级结构树的叶子桶内只有少量设备，某些 PG 映射的副本数小于期望值。这种情形通常出现在分级结构树中、某些
-host 节点下面只挂少量（1-3个） OSD 时。</p></li>
-<li><p>在大型集群里，小部分 PG 映射到的 OSD 数目小于期望值，有多层结构（如：机架行、机架、主机、 OSD ）时这种情况更普遍。</p></li>
-<li><p>当一些 OSD 标记为 out 时，数据倾向于重分布到附近 OSD
+<li><p>如果分级结构树的叶子桶内只有少量设备，
+某些 PG 映射的副本数小于期望值。
+这种情形通常出现在分级结构树中、
+某些 host 节点下面只挂少量（1-3个） OSD 时。</p></li>
+<li><p>在大型集群里，小部分 PG 映射到的 OSD 数目小于期望值，有多层结构（如： <code class="docutils literal notranslate"><span class="pre">row</span></code>, <code class="docutils literal notranslate"><span class="pre">rack</span></code>, <code class="docutils literal notranslate"><span class="pre">host</span></code>, <code class="docutils literal notranslate"><span class="pre">osd</span></code> ）时这种情况更普遍。</p></li>
+<li><p>当一些 OSD 标记为 out 时，数据倾向于重分布到附近的 OSD
 而非整个分级结构树。</p></li>
 </ul>
 </div></blockquote>
 <p>新的可调选项有：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">choose_local_tries</span></code>: 本地重试次数。以前是 2 ，最优值是 0 。</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">choose_local_fallback_tries</span></code>: 以前 5 ，最优值是 0 。</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">choose_total_tries</span></code>: 选择一个条目的最大尝试次数。以前是 19 ，后来的测试表明，对典型的集群来说 50 更合适。最相当大的集群来说，也许有必要用更大的值。</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_descend_once</span></code>: 是否重试递归选叶尝试，或只试一次、并允许最初的归置重试。以前默认为 0 ，最优为 1 。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">choose_local_tries</span></code>: 本地重试次数。以前是 2 ，
+最优值是 0 。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">choose_local_fallback_tries</span></code>: 以前 5 ，
+最优值是 0 。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">choose_total_tries</span></code>: 选择一个条目的最大尝试次数。
+以前是 19 ，后来的测试表明，
+对典型的集群来说 50 更合适。
+最相当大的集群来说，也许有必要用更大的值。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_descend_once</span></code>: 是否重试递归选叶尝试，
+或只试一次、并允许最初的归置重试。
+以前默认为 0 ，最优为 1 。</p></li>
 </ul>
 </div></blockquote>
 <p>对数据迁移的影响：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>可调选项从 argonaut 改为 bobtail 会引起一定量的数据迁移。在已经有数据的集群上需谨慎点。</p></li>
+<li><p>可调选项从 <code class="docutils literal notranslate"><span class="pre">argonaut</span></code> 改为 <code class="docutils literal notranslate"><span class="pre">bobtail</span></code> 会引起一定量的数据迁移。
+在已经有数据的集群上需谨慎点。</p></li>
 </ul>
 </div></blockquote>
 </div>
 <div class="section" id="firefly-crush-tunables3">
 <h3>firefly (CRUSH_TUNABLES3)<a class="headerlink" href="#firefly-crush-tunables3" title="Permalink to this headline">¶</a></h3>
-<p>firefly 可调选项对 <code class="docutils literal notranslate"><span class="pre">chooseleaf</span></code> 这条 CRUSH 规则的行为有所修正，在太多 OSD 被标记为 out 状态时，用非常少的结果生成 PG
+<p><code class="docutils literal notranslate"><span class="pre">firefly</span></code> 可调选项对 <code class="docutils literal notranslate"><span class="pre">chooseleaf</span></code> 这条 CRUSH 规则的行为有所修正，
+在太多 OSD 被标记为 out 状态时，用非常少的结果生成 PG
 映射关系会有问题。</p>
 <p>新的可调选项是：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_vary_r</span></code>: 根据父节点已做过多少尝试，递归选叶是否应该以非零值 r 开始。原先的默认值是 0 ，但是用此值的话
-CRUSH 有时候会找不到映射关系；较优的值（计算代价和正确性合理）是 1 。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_vary_r</span></code>: 根据父节点已做过多少尝试，
+递归选叶是否应该以非零值 <code class="docutils literal notranslate"><span class="pre">r</span></code> 开始。
+原先的默认值是 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，但是用此值的话
+CRUSH 有时候会找不到映射关系；
+较优的值（计算代价和正确性合理）是 <code class="docutils literal notranslate"><span class="pre">1</span></code> 。</p></li>
 </ul>
 </div></blockquote>
 <p>对数据迁移的影响：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>对于已经在运行、里面已经有了大量数据的集群，从 0 改为 1
-会导致大量的数据迁移； 4 或 5 时 CRUSH 也能正确找到映射，而且数据迁移少的多。</p></li>
+<li><p>对于已经在运行、里面已经有了大量数据的集群，
+从 <code class="docutils literal notranslate"><span class="pre">0</span></code> 改为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 会导致大量的数据迁移； <code class="docutils literal notranslate"><span class="pre">4</span></code> 或 <code class="docutils literal notranslate"><span class="pre">5</span></code> 时
+CRUSH 也能正确找到映射，而且数据迁移少的多。</p></li>
 </ul>
 </div></blockquote>
 </div>
 <div class="section" id="straw-calc-version-firefly">
 <h3>straw_calc_version 可调选项（也是在 Firefly 引进的）<a class="headerlink" href="#straw-calc-version-firefly" title="Permalink to this headline">¶</a></h3>
-<p>以前，给 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶计算、并存储在 CRUSH 图里的内部权重有些问题。特别是，如果有些条目 CRUSH 权重为 0 或者配置了多个权重、重复配置了权重时， CRUSH 就不能正确地分布数据（也就是与权重配比失衡）。</p>
+<p>以前，给 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶计算、并存储在 CRUSH 图里的内部权重有些问题。
+特别是，如果有些条目 CRUSH 权重为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 或者配置了多个权重、
+重复配置了权重时， CRUSH 就不能正确地分布数据
+（也就是与权重配比失衡）。</p>
 <p>这个新可调参数是：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">straw_calc_version</span></code>: 值为 0 时保留老的、有问题的内部权重算法；值为 1 时修正此行为。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">straw_calc_version</span></code>: 值为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 时保留老的、有问题的内部权重算法；值为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 时修正此行为。</p></li>
 </ul>
 </div></blockquote>
 <p>对数据迁移的影响：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>straw_calc_version 改为 1 之后，<em>假如</em>此集群触碰了某个雷区（ problematic condition ），调整 straw 桶（新增、删除、更改某一条目的权重、或用 reweight-all 命令更改所有权重）时就有可能引起少量或少部分数据迁移。</p></li>
+<li><p>straw_calc_version 改为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 之后，
+<em>假如</em>此集群触碰了某个雷区（ problematic condition ），
+调整 straw 桶（新增、删除、更改某一条目的权重、
+或用 reweight-all 命令更改所有权重）
+时就有可能引起少量或少部分数据迁移。</p></li>
 </ul>
 </div></blockquote>
 <p>这个可调选项有些特殊，因为它对客户端的内核版本没任何要求。</p>
 </div>
 <div class="section" id="hammer-crush-v4">
 <h3>hammer (CRUSH_V4)<a class="headerlink" href="#hammer-crush-v4" title="Permalink to this headline">¶</a></h3>
-<p>仅仅是更改配置的话， hammer 版的可调配置不会影响已有 CRUSH
+<p>仅仅是更改配置的话， <code class="docutils literal notranslate"><span class="pre">hammer</span></code> 版的可调配置不会影响已有 CRUSH
 图的映射关系。然而：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>增加了新型桶（ <code class="docutils literal notranslate"><span class="pre">straw2</span></code> ）的支持。这种新型的 <code class="docutils literal notranslate"><span class="pre">straw2</span></code>
-桶解决了原来 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶的几个局限性。具体来说，老的
-<code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶在有权重变化时会改变一些映射关系，新的
-<code class="docutils literal notranslate"><span class="pre">straw2</span></code> 桶实现了预定目标，只有在这些桶的权重发生变化时才更改相应的映射关系。</p></li>
+<li><p>增加了新型桶（ <code class="docutils literal notranslate"><span class="pre">straw2</span></code> ）的支持。
+这种新型的 <code class="docutils literal notranslate"><span class="pre">straw2</span></code> 桶解决了原来 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶的几个局限性。
+具体来说，老的 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶在有权重变化时会改变一些映射关系，
+新的 <code class="docutils literal notranslate"><span class="pre">straw2</span></code> 桶实现了预定目标，
+只有在这些桶的权重发生变化时才更改相应的映射关系。</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">straw2</span></code> 是新建桶的默认类型。</p></li>
 </ul>
 </div></blockquote>
 <p>对数据迁移的影响：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>把桶类型从 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 改为 <code class="docutils literal notranslate"><span class="pre">straw2</span></code> 会导致少量数据迁移，这取决于桶内各条目的权重有多大落差。它们的权重都相同时就不会有数据迁移，各条目的权重落差巨大时就会有更多迁移。</p></li>
+<li><p>把桶类型从 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 改为 <code class="docutils literal notranslate"><span class="pre">straw2</span></code> 会导致少量数据迁移，
+这取决于桶内各条目的权重有多大落差。
+它们的权重都相同时就不会有数据迁移，
+各条目的权重落差巨大时就会有更多迁移。</p></li>
 </ul>
 </div></blockquote>
 </div>
 <div class="section" id="jewel-crush-tunables5">
 <h3>jewel (CRUSH_TUNABLES5)<a class="headerlink" href="#jewel-crush-tunables5" title="Permalink to this headline">¶</a></h3>
-<p>jewel 版的可调配置能够提升 CRUSH 的整体行为，这样，在 OSD
-被标记到集群外时可显著减少重映射。</p>
+<p><code class="docutils literal notranslate"><span class="pre">jewel</span></code> 可调配置提升了 CRUSH 的整体行为，
+这样，在 OSD 被标记到集群外时可显著减少映射变化。
+因此导致的数据移动少得多。</p>
 <p>这个新可调参数是：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_stable</span></code>: 当某一 OSD 被标记为 out 时，递归选叶尝试是否把更优值代入内层递归、对于减少重映射具有重大影响。以前的数值是 0 ，而新值 1 表示用新方法。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_stable</span></code>: 当某一 OSD 被标记为 out 时，
+递归选叶尝试是否把更优值代入内层递归、
+对于减少重映射具有重大影响。
+以前的数值是 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，而新值 <code class="docutils literal notranslate"><span class="pre">1</span></code> 表示用新方法。</p></li>
 </ul>
 </div></blockquote>
 <p>对数据迁移的影响：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>在已有集群上更改此值会导致海量数据迁移，因为几乎每个 PG
-映射都可能改变。</p></li>
+<li><p>在已有集群上更改此值会导致海量数据迁移，
+因为几乎每个 PG 映射都可能改变。</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -1065,16 +1165,22 @@ CRUSH 有时候会找不到映射关系；较优的值（计算代价和正确�
 </ul>
 </div></blockquote>
 </div>
-<div class="section" id="warning-when-tunables-are-non-optimal">
-<span id="id15"></span><h3>可调选项非最优时发出警告<a class="headerlink" href="#warning-when-tunables-are-non-optimal" title="Permalink to this headline">¶</a></h3>
-<p>从 v0.74 起，如果当前的 CRUSH 可调选项没囊括 <code class="docutils literal notranslate"><span class="pre">default</span></code> 配置集里的所有最优值（ <code class="docutils literal notranslate"><span class="pre">default</span></code> 配置集的含义见下文）， Ceph 就会发出健康警告，有两种方法可消除这些警告：</p>
+<div class="section" id="id19">
+<h3>可调选项非最优时发出警告<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h3>
+<p>从 v0.74 起，如果当前的 CRUSH 可调选项没囊括 <code class="docutils literal notranslate"><span class="pre">default</span></code> 配置集里的所有最优值（ <code class="docutils literal notranslate"><span class="pre">default</span></code> 配置集的含义见下文），
+Ceph 就会发出健康警告，有两种方法可消除这些警告：</p>
 <ol class="arabic">
-<li><p>调整现有集群上的可调选项。注意，这可能会导致一些数据迁移（可能有 10% 之多）。这是推荐的办法，但是在生产集群上要注意此调整对性能带来的影响。此命令可启用较优可调选项：</p>
+<li><p>调整现有集群上的可调选项。注意，
+这可能会导致一些数据迁移（可能有 10% 之多）。
+这是推荐的办法，但是在生产集群上要注意此调整对性能带来的影响。
+此命令可启用较优可调选项：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">tunables</span> <span class="n">optimal</span>
 </pre></div>
 </div>
-<p>如果切换得不太顺利（如负载太高）且切换才不久，或者有客户端兼容问题（较老的 cephfs 内核驱动或 rbd 客户端、或早于
-bobtail 的 librados 客户端），你可以这样切回：</p>
+<p>如果切换得不太顺利（如负载太高）且切换才不久，
+或者有客户端兼容问题（较老的 cephfs 内核驱动或 rbd 客户端、
+或早于 bobtail 的 <code class="docutils literal notranslate"><span class="pre">librados</span></code> 客户端），
+你可以这样切回：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">tunables</span> <span class="n">legacy</span>
 </pre></div>
 </div>
@@ -1084,27 +1190,36 @@ bobtail 的 librados 客户端），你可以这样切回：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon</span> <span class="n">warn</span> <span class="n">on</span> <span class="n">legacy</span> <span class="n">crush</span> <span class="n">tunables</span> <span class="o">=</span> <span class="n">false</span>
 </pre></div>
 </div>
-<p>为使变更生效需重启所有监视器，或者执行下列命令：</p>
+<p>为使变更生效需重启所有监视器，
+或者执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mon</span><span class="o">.</span>\<span class="o">*</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">mon_warn_on_legacy_crush_tunables</span> <span class="n">false</span>
 </pre></div>
 </div>
 </li>
 </ol>
 </div>
-<div class="section" id="id16">
-<h3>一些要点<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id20">
+<h3>一些要点<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h3>
 <blockquote>
 <div><ul class="simple">
-<li><p>调整这些值将使一些 PG 在存储节点间移位，如果 Ceph 集群已经存储了大量数据，做好移动一部分数据的准备。</p></li>
-<li><p>一旦更新运行图， <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 和 <code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code> 就会开始向新建连接要求功能位，然而，之前已经连接的客户端如果不支持新功能将行为失常。</p></li>
-<li><p>如果 CRUSH 可调值更改过、然后又改回了默认值， <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code>
-守护进程将不要求支持此功能，然而， OSD 连接建立进程要能检查和理解旧地图。因此，集群如果用过非默认 CRUSH 值就不应该再运行版本小于 0.48.1 的 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> ，即使最新版地图已经回滚到了遗留默认值。</p></li>
+<li><p>调整这些值将使一些 PG 在存储节点间移位，
+如果 Ceph 集群已经存储了大量数据，
+做好移动一部分数据的准备。</p></li>
+<li><p>一旦更新运行图， <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 和 <code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code>
+就会开始向新建连接要求功能位，
+然而，之前已经连接的客户端如果不支持新功能将行为失常。</p></li>
+<li><p>如果 CRUSH 可调值更改过、然后又改回了默认值，
+<code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 守护进程将不要求支持此功能，
+然而， OSD 连接建立进程要能检查和理解旧地图。
+因此，集群如果用过非默认 CRUSH 值就不应该再运行版本小于 0.48.1 的 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> ，
+即使最新版地图已经回滚到了遗留默认值。</p></li>
 </ul>
 </div></blockquote>
 </div>
-<div class="section" id="tuning-crush">
-<span id="id17"></span><h3>调整 CRUSH<a class="headerlink" href="#tuning-crush" title="Permalink to this headline">¶</a></h3>
-<p>更改 crush 可调值的最简方法就是改到一个已知配置，它们有：</p>
+<div class="section" id="id21">
+<h3>调整 CRUSH<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h3>
+<p>更改 CRUSH 可调值的最简方法就是应用一个配置集，也就是 <em>profile</em> ，
+到 Octopus 为止有：</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">legacy</span></code>: 采用 argonaut 及更低版本的行为；</p></li>
@@ -1126,8 +1241,8 @@ Ceph 版本，是写死的（ hard coded ），而且通常是最优值和遗留
 <p>要注意，这可能产生数据迁移，可能还不少。在运行着的集群上更改此配置前，请仔细研究发布说明和文档，并试着压制一下恢复、回填参数，以降低一大波回填造成的影响。</p>
 </div>
 </div>
-<div class="section" id="id19">
-<h2>主亲和性<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id23">
+<h2>主亲和性<a class="headerlink" href="#id23" title="Permalink to this headline">¶</a></h2>
 <p>一个 Ceph 客户端读取或写入数据时，它首先连接相关 PG 的
 acting set 里的主 OSD 。默认情况下，acting set 里的第一个 OSD 是主的。比如，在 acting set <code class="docutils literal notranslate"><span class="pre">[2,</span> <span class="pre">3,</span> <span class="pre">4]</span></code> 中， <code class="docutils literal notranslate"><span class="pre">osd.2</span></code> 位列第一，所以它就是是主 OSD （又名 lead ）。有时候我们知道某个 OSD 作为 lead 时不如其余的（比如它的硬盘慢、或控制器慢），为了防止出现性能瓶颈（特别是读操作），同时又能最大化地利用硬件，你可以调整 OSD 的主亲和性参数值、或定制一条 CRUSH 规则优先选择喜欢的的 OSD 们，以此来影响主 OSD 的选举。</p>
 <p>Tuning primary OSD selection is mainly useful for replicated pools, because

@@ -7,11 +7,11 @@
 ``[client.radosgw.{instance-name}]`` 段下，很多选项都有\
 默认值，你若未指定，自然用默认。
 
-Configuration variables set under the ``[client.radosgw.{instance-name}]``
-section will not apply to rgw or radosgw-admin commands without an instance-name
-specified in the command. Thus variables meant to be applied to all RGW
-instances or all radosgw-admin options can be put into the ``[global]`` or the
-``[client]`` section to avoid specifying ``instance-name``.
+rgw 或 radosgw-admin 命令执行时，如果指定了例程名，
+``[client.radosgw.{instance-name}]`` 段下的配置变量才有效。
+有些变量如果想要应用于所有 RGW 例程或所有的 radosgw-admin 选项，
+可以把它们放到 ``[global]`` 或 ``[client]`` 段内，
+这样就不用加 ``instance-name`` 了。
 
 .. confval:: rgw_frontends
 .. confval:: rgw_data
@@ -56,64 +56,57 @@ instances or all radosgw-admin options can be put into the ``[global]`` or the
 .. confval:: rgw_max_chunk_size
 
 
-Lifecycle Settings
-==================
+生命周期配置
+============
+.. Lifecycle Settings
 
-Bucket Lifecycle configuration can be used to manage your objects so they are stored
-effectively throughout their lifetime. In past releases Lifecycle processing was rate-limited
-by single threaded processing. With the Nautilus release this has been addressed and the
-Ceph Object Gateway now allows for parallel thread processing of bucket lifecycles across
-additional Ceph Object Gateway instances and replaces the in-order
-index shard enumeration with a random ordered sequence.
+桶的生命周期（ Lifecycle ）配置可以用于管理对象，使得它们在整个生命周期内得到有效存储。
+在以前的版本中，生命周期的处理效率被单线程耽误了；到 Nautilus 版，这个问题得到了彻底解决，
+Ceph 对象网关现在可以调用另外的 Ceph 对象网关例程、并用随机排序的序列取代了\
+按顺序排列的索引分片枚举，以此实现了桶生命周期的并行多线程处理。
 
-There are two options in particular to look at when looking to increase the
-aggressiveness of lifecycle processing:
+在寻求提高生命周期处理的激进性时，有两个选项需要特别注意：
 
 .. confval:: rgw_lc_max_worker
 .. confval:: rgw_lc_max_wp_worker
 
-These values can be tuned based upon your specific workload to further increase the
-aggressiveness of lifecycle processing. For a workload with a larger number of buckets (thousands)
-you would look at increasing the :confval:`rgw_lc_max_worker` value from the default value of 3 whereas for a
-workload with a smaller number of buckets but higher number of objects (hundreds of thousands)
-per bucket you would consider decreasing :confval:`rgw_lc_max_wp_worker` from the default value of 3.
+你可以根据自己的负载情况对这些选项进行调整，以得到更激进的生命周期处理效率。
+对于有大量桶（数千）的情形，你应该试着增加 :confval:`rgw_lc_max_worker` 的值，
+它的默认值是 3 ，而对于桶数量较少、每个桶内对象数却更高（数十万）的情形，
+你应该试着降低 :confval:`rgw_lc_max_wp_worker` ，默认值是 3 。
 
-.. note:: When looking to tune either of these specific values please validate the
-       current Cluster performance and Ceph Object Gateway utilization before increasing.
+.. note:: 试着调整这两个特定的取值前，请验证当前的集群性能、
+   以及 Ceph 对象网关的利用率。
 
 
 垃圾回收选项
 ============
 .. Garbage Collection Settings
 
-The Ceph Object Gateway allocates storage for new objects immediately.
+Ceph 对象网关会立即为新对象分配存储。
 
-The Ceph Object Gateway purges the storage space used for deleted and overwritten 
-objects in the Ceph Storage cluster some time after the gateway deletes the 
-objects from the bucket index. The process of purging the deleted object data 
-from the Ceph Storage cluster is known as Garbage Collection or GC.
+网关从桶索引中删除对象一段时间之后， Ceph 对象网关才会把\
+已删除对象和已被覆盖对象在 Ceph 存储集群里占用的存储空间清理掉。
+从 Ceph 存储集群清理已删除对象数据的过程叫做垃圾回收（ Garbage Collection ）或 GC 。
 
-To view the queue of objects awaiting garbage collection, execute the following
+要查看等待垃圾回收的对象队列，执行以下命令
 
 .. prompt:: bash $
 
    radosgw-admin gc list
 
-.. note:: specify ``--include-all`` to list all entries, including unexpired
-  
-Garbage collection is a background activity that may
-execute continuously or during times of low loads, depending upon how the
-administrator configures the Ceph Object Gateway. By default, the Ceph Object
-Gateway conducts GC operations continuously. Since GC operations are a normal
-part of Ceph Object Gateway operations, especially with object delete
-operations, objects eligible for garbage collection exist most of the time.
+.. note:: 加 ``--include-all`` 罗列所有条目，包括未到期的。
 
-Some workloads may temporarily or permanently outpace the rate of garbage
-collection activity. This is especially true of delete-heavy workloads, where
-many objects get stored for a short period of time and then deleted. For these
-types of workloads, administrators can increase the priority of garbage
-collection operations relative to other operations with the following
-configuration parameters.
+垃圾回收是后台活动，可以持续运行或在负载低的时候运行，
+取决于管理员是如何配置 Ceph 对象网关的。
+默认情况下， Ceph 会让 GC 操作持续运行。
+GC 操作是 Ceph 对象网关各种操作的常规部分，
+特别是有对象删除操作时，大多数时候都存在适合垃圾回收的对象。
+
+有的工作负荷会暂时或者永久地超过垃圾回收活动的速率。
+特别是有很多对象短暂存储然后删除的工作载荷，会有大量删除。
+对于这样的工作载荷，管理员可以用下面的配置参数，
+适当增加垃圾回收操作相对于其它操作的优先级。
 
 .. confval:: rgw_gc_max_objs
 .. confval:: rgw_gc_obj_min_wait
@@ -121,16 +114,17 @@ configuration parameters.
 .. confval:: rgw_gc_processor_period
 .. confval:: rgw_gc_max_concurrent_io
 
-:Tuning Garbage Collection for Delete Heavy Workloads:
+:为删除量大的工作载荷调整垃圾回收:
 
-As an initial step towards tuning Ceph Garbage Collection to be more aggressive the following options are suggested to be increased from their default configuration values::
+要把 Ceph 的垃圾回收调整得更激进，首先，建议在默认值的基础上增大下面的选项::
 
   rgw_gc_max_concurrent_io = 20
   rgw_gc_max_trim_chunk = 64
 
-.. note:: Modifying these values requires a restart of the RGW service.
+.. note:: 修改这些值需要重启 RGW 服务。
 
-Once these values have been increased from default please monitor for performance of the cluster during Garbage Collection to verify no adverse performance issues due to the increased values.
+这些值调整得高于默认值后，需要在垃圾回收期间监控集群性能，
+检验一下增加这些值没有对性能带来负面影响。
 
 
 多站设置
@@ -152,9 +146,8 @@ Once these values have been increased from default please monitor for performanc
 .. confval:: rgw_data_log_num_shards
 .. confval:: rgw_md_log_max_shards
 
-.. important:: 开始同步后就不应该再更改
-   ``rgw data log num shards`` 和 ``rgw md log max shards`` 的\
-   取值了。
+.. important:: 开始同步后就不应该再更改 ``rgw data log num shards`` 和
+   ``rgw md log max shards`` 的取值了。
 
 S3 选项
 =======
@@ -247,18 +240,15 @@ QoS 选项
 
 .. versionadded:: Nautilus
 
-The ``civetweb`` frontend has a threading model that uses a thread per
-connection and hence automatically throttled by ``rgw thread pool size``
-configurable when it comes to accepting connections. The ``beast`` frontend is
-not restricted by the thread pool size when it comes to accepting new
-connections, so a scheduler abstraction is introduced in Nautilus release which
-for supporting ways for scheduling requests in the future.
+``civetweb`` 前端有一个线程池模型，它给每个连接使用一个线程，因此它在接受请求时\
+自动接受 ``rgw thread pool size`` 配置的约束。 ``beast`` 前端在接受新连接时\
+不受线程池大小的限制，所以 Nautilus 版引进了调度器抽象层，
+以此支持未来调度请求的多种方法。
 
-Currently the scheduler defaults to a throttler which throttles the active
-connections to a configured limit. QoS based on mClock is currently in an
-*experimental* phase and not recommended for production yet. Current
-implementation of *dmclock_client* op queue divides RGW Ops on admin, auth
-(swift auth, sts) metadata & data requests.
+当前，这个调度器默认就是个减速器，它可以把活跃连接数压制到配置的限值之下。
+基于 mClock 的 QoS 现在还处于 *实验* 阶段，而且也不建议用于生产环境。
+当前实现的 *dmclock_client* 操作队列会把 RGW 的各种操作分割成管理的、认证的
+（ swift 认证、 sts ）、元数据和数据请求。
 
 
 .. confval:: rgw_max_concurrent_requests
