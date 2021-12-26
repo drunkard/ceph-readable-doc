@@ -1,15 +1,13 @@
 手动编辑一个 CRUSH 图
 =====================
-.. Manually editing a CRUSH Map
 
-.. note:: Manually editing the CRUSH map is considered an advanced
-      administrator operation.  All CRUSH changes that are
-      necessary for the overwhelming majority of installations are
-      possible via the standard ceph CLI and do not require manual
-      CRUSH map edits.  If you have identified a use case where
-      manual edits *are* necessary, consider contacting the Ceph
-      developers so that future versions of Ceph can make this
-      unnecessary.
+.. note:: 手动编辑 CRUSH 图是一项高级管理任务。
+   绝大多数集群所需的 CRUSH 变更基本都能通过\
+   标准的 ceph CLI 实现，不需要手动编辑 CRUSH 图。
+   如果你发现了一种使用案例，用最近的
+   Ceph 版本还 *不得不* 手动编辑，
+   试着联系一下 Ceph 开发者们，
+   这样未来的 Ceph 版本可以排除你的边角案例。
 
 要编辑现有的 CRUSH 图：
 
@@ -19,7 +17,7 @@
 #. `重编译`_ CRUSH 图；
 #. `注入 CRUSH 图`_\ 。
 
-关于为指定存储池设置 CRUSH 图规则的细节，见\ `调整存储池`_\ 。
+关于为指定存储池设置 CRUSH 图规则的细节，见 `调整存储池`_\ 。
 
 .. _获取 CRUSH 图: #getcrushmap
 .. _反编译: #decompilecrushmap
@@ -35,15 +33,13 @@
 
 获取 CRUSH 图
 -------------
-.. Get a CRUSH Map
 
 要获取集群的 CRUSH 图，执行命令： ::
 
     ceph osd getcrushmap -o {compiled-crushmap-filename}
 
-Ceph 将把 CRUSH 输出（ -o ）到你指定的文件，由于 CRUSH 图是\
-已编译的，所以编辑前必须先反编译。
-
+Ceph 将把 CRUSH 输出（ -o ）到你指定的文件，
+由于 CRUSH 图是已编译的，所以编辑前必须先反编译。
 
 .. _decompilecrushmap:
 
@@ -55,17 +51,15 @@ Ceph 将把 CRUSH 输出（ -o ）到你指定的文件，由于 CRUSH 图是\
 
     crushtool -d {compiled-crushmap-filename} -o {decompiled-crushmap-filename}
 
-
 .. _compilecrushmap:
 
 重编译 CRUSH 图
 ---------------
 .. Recompile a CRUSH Map
 
-To compile a CRUSH map, execute the following::
+编译 CRUSH 图用下列命令： ::
 
     crushtool -c {decompiled-crushmap-filename} -o {compiled-crushmap-filename}
-
 
 .. _setcrushmap:
 
@@ -73,12 +67,11 @@ To compile a CRUSH map, execute the following::
 -------------
 .. Set the CRUSH Map
 
-To set the CRUSH map for your cluster, execute the following::
+用下列命令为你的集群注入 CRUSH 图： ::
 
     ceph osd setcrushmap -i {compiled-crushmap-filename}
 
-Ceph will load (-i) a compiled CRUSH map from the filename you specified.
-
+Ceph 将从你指定的文件加载（ -i ）一份编译好的 CRUSH 图。
 
 分段
 ----
@@ -86,29 +79,27 @@ Ceph will load (-i) a compiled CRUSH map from the filename you specified.
 
 CRUSH 图有 6 个主要段落。
 
-#. **tunables:** The preamble at the top of the map described any *tunables*
-   for CRUSH behavior that vary from the historical/legacy CRUSH behavior. These
-   correct for old bugs, optimizations, or other changes in behavior that have
-   been made over the years to improve CRUSH's behavior.
+#. **tunables:** 图顶的序言描述了所有 CRUSH 行为变化
+   （与历史的、遗留的 CRUSH 行为相比）的 *tunables （可调值）* 。
+   它们之中有对以前缺陷的纠正、优化、或者其他行为上的变化，
+   都是多年来对 CRUSH 行为的持续优化。
 
-#. **devices:** Devices are individual ``ceph-osd`` daemons that can
-   store data.
+#. **devices:** 设备是存储数据的单个 OSD 。
 
-#. **types**: 定义了 CRUSH 分级结构里要用的桶类型（
-   ``types`` ），桶由逐级汇聚的存储位置（如行、机柜、机箱、\
-   主机等等）及其权重组成。
+#. **types**: ``types`` 桶定义了 CRUSH 分级结构里要用的桶类型，
+   桶由逐级汇聚的存储位置（如行、机柜、机箱、主机等等）
+   及其权重组成。
 
-#. **buckets:** Once you define bucket types, you must define each node
-   in the hierarchy, its type, and which devices or other nodes it
-   contains.
+#. **buckets:** 定义了桶类型之后，
+   还必须定义分级结构里的各个节点、
+   它们的类型、以及它包含的设备或其它节点。
 
-#. **rules:** Rules define policy about how data is distributed across
-   devices in the hierarchy.
+#. **rules:** 规则定义的是数据在分级结构里的设备上\
+   如何分配的策略。
 
-#. **choose_args:** Choose_args are alternative weights associated with
-   the hierarchy that have been adjusted to optimize data placement.  A single
-   choose_args map can be used for the entire cluster, or one can be
-   created for each individual pool.
+#. **choose_args:** 它是与已经调整完毕的分级结构关联的另一种权重，
+   用于优化数据归置。单个 choose_args 图可以用于整个集群、
+   也可以为每个存储池单独创建一个。
 
 
 .. _crushmapdevices:
@@ -117,10 +108,10 @@ CRUSH 图之设备
 --------------
 .. CRUSH Map Devices
 
-Devices are individual OSDs that store data.  Usually one is defined here for each
-OSD daemon in your
-cluster.  Devices are identified by an ``id`` (a non-negative integer) and
-a ``name``, normally ``osd.N`` where ``N`` is the device id.
+这里的设备是存储数据的单个 OSD 。
+通常，集群里的每个 OSD 守护进程都要在这里定义一条。
+设备用一个 ``id`` （一个非负整数）和一个 ``name`` 标识，
+一般 ``osd.N`` 里的 ``N`` 就是设备 id 。
 
 .. _crush-map-device-class:
 
@@ -140,22 +131,26 @@ a ``name``, normally ``osd.N`` where ``N`` is the device id.
     device 2 osd.2
     device 3 osd.3
 
-绝大多数情况下，各设备都映射到单个 ``ceph-osd`` 守护进程。它\
-通常是单个存储设备、一对设备（例如，一个用于数据、一个用于日志\
-或元数据）、或者某些情况下一个小的 RAID 设备。
+绝大多数情况下，每个设备都映射到单个 ``ceph-osd`` 守护进程。
+它通常是单个存储设备、一对设备（例如，
+一个用于数据、一个用于日志或元数据）、
+或者某些情况下一个小的 RAID 设备。
+
 
 
 CRUSH 图之桶类型
 ----------------
 .. CRUSH Map Bucket Types
 
-CRUSH 图里的第二个列表定义了 bucket （桶）类型，桶简化了节点和\
-叶子层次。节点（或非叶子）桶在分级结构里一般表示物理位置，节点\
-汇聚了其它节点或叶子，叶桶表示 ``ceph-osd`` 守护进程及其对应的\
-存储媒体。
+CRUSH 图里的第二个列表定义了 bucket （桶）类型，
+桶简化了节点和叶子层次。
+节点（或非叶子）桶在分级结构里一般表示物理位置，
+节点汇聚了其它节点或叶子，
+叶桶表示 ``ceph-osd`` 守护进程及其对应的存储媒体。
 
-.. tip:: CRUSH 中用到的 bucket 意思是分级结构中的一个节点，\
-   也就是一个位置或一部分硬件。但是在 RADOS 网关接口的术语中，\
+.. tip:: CRUSH 中用到的术语 bucket 表示分级结构中的一个节点，\
+   也就是一个位置或一部分硬件。
+   但是在 RADOS 网关接口的术语中，\
    它又是不同的概念。
 
 要往 CRUSH 图中增加一种 bucket 类型，在现有桶类型列表下方新增\
@@ -183,25 +178,32 @@ disk 、 drive 、 storage 等等）： ::
     type 11 root
 
 
+
 .. _crushmapbuckets:
 
 CRUSH 图之桶层次
 ----------------
 .. CRUSH Map Bucket Hierarchy
 
-CRUSH 算法根据各设备的权重、大致统一的概率把数据对象分布到存储\
-设备中。 CRUSH 根据你定义的集群运行图分布对象及其副本， CRUSH \
-图表达了可用存储设备以及包含它们的逻辑单元。
+CRUSH 算法根据各设备的权重、
+大致统一的概率把数据对象分布到存储设备中。
+CRUSH 根据你定义的集群运行图分布对象及其副本，
+CRUSH 图表达了可用存储设备以及\
+包含它们的逻辑单元。
 
-要把归置组映射到跨故障域的 OSD ，一个 CRUSH 图需定义一系列分级\
-桶类型（即现有 CRUSH 图的 ``#type`` 下）。创建桶分级结构的目的\
-是按故障域隔离叶节点，像主机、机箱、机柜、电力分配单元、机群、\
-行、房间、和数据中心。除了表示叶节点的 OSD ，其它分级结构都是\
-任意的，你可以按需定义。
+要把归置组映射到跨故障域的 OSD ，
+一个 CRUSH 图需定义一系列分级桶类型
+（即现有 CRUSH 图的 ``#type`` 下）。
+创建桶分级结构的目的是按故障域隔离叶节点，
+像主机、机箱、机柜、电力分配单元、机群、行、房间、和数据中心。
+除了表示叶节点的 OSD ，其它分级结构都是任意的，
+你可以按需定义。
 
-我们建议 CRUSH 图内的命名符合贵公司的硬件命名规则，并且采用反\
-映物理硬件的例程名。良好的命名可简化集群管理和故障排除，当 OSD \
-和/或其它硬件出问题时，管理员可轻易找到对应物理硬件。
+我们建议 CRUSH 图内的命名符合贵公司的硬件命名规则，
+并且采用反映物理硬件的例程名。
+良好的命名可简化集群管理和故障排除，
+当 OSD 和/或其它硬件出问题时，
+管理员可轻易找到对应物理硬件。
 
 在下例中，桶分级结构有一个名为 ``osd`` 的分支、和两个节点分别\
 名为 ``host`` 和 ``rack`` 。
@@ -227,23 +229,25 @@ CRUSH 算法根据各设备的权重、大致统一的概率把数据对象分�
    |   Bucket  |   |   Bucket  |   |   Bucket  |   |   Bucket  |
    +-----------+   +-----------+   +-----------+   +-----------+
 
-.. note:: 编号较高的 ``rack`` 桶类型汇聚编号较低的 ``host`` 桶\
-   类型。
+.. note:: 编号较高的 ``rack`` 桶类型汇聚编号较低的 ``host`` 桶类型。
 
-位于 CRUSH 图起始部分、 ``#devices`` 列表内是表示叶节点的存\
-储设备，没必要声明为桶例程。位于分级结构第二低层的桶一般用\
-于汇聚设备（即它通常是包含存储媒体的计算机，你可以用自己喜\
-欢的名字描述，如节点、计算机、服务器、主机、机器等等）。在\
-高密度环境下，经常出现一机框内安装多个主机/节点的情况，因此\
-还要考虑机框故障——比如，某一节点故障后需要拉出机框维修，这\
-会影响多个主机/节点和其内的 OSD 。
+位于 CRUSH 图起始部分、 ``#devices`` 列表内是表示叶节点的存储设备，
+没必要声明为桶例程。
+位于分级结构第二低层的桶一般用于汇聚设备
+（即它通常是包含存储媒体的计算机，
+你可以用自己喜欢的名字描述，如节点、计算机、服务器、主机、机器等等）。
+在高密度环境下，经常出现一机框内安装多个主机/节点的情况，
+因此还要考虑机框故障——比如，
+某一节点故障后需要拉出机框维修，
+这会影响多个主机/节点和其内的 OSD 。
 
-声明一个桶例程时，你必须指定其类型、惟一名称（字符串）、\
-惟一负整数 ID （可选）、指定和各条目总容量/能力相关的权重、\
-指定桶算法（通常是 ``straw2`` ）、和哈希（通常为 ``0`` ，表示\
-散列算法 ``rjenkins1`` ）。一个桶可以包含一到多条，这些条目\
-可以由节点桶或叶子组成，它们可以有个权重用来反映条目的\
-相对权重。
+声明一个桶例程时，你必须指定其类型、
+惟一名称（字符串）、惟一负整数 ID （可选）、
+指定和各条目总容量/能力相关的权重、\
+指定桶算法（通常是 ``straw2`` ）、和哈希（通常为 ``0`` ，
+表示散列算法 ``rjenkins1`` ）。一个桶可以包含一到多条，
+这些条目可以由节点桶或叶子组成，
+它们可以有个权重用来反映条目的相对权重。
 
 你可以按下列语法声明一个节点桶： ::
 
@@ -282,8 +286,9 @@ OSD 被声明为主机桶内的条目： ::
         item node2 weight 2.00
     }
 
-.. note:: 在前述示例中，机柜桶不包含任何 OSD ，它只包含低一\
-   级的主机桶、以及其内条目的权重之和。
+.. note:: 在前述示例中，机柜桶不包含任何 OSD ，
+   它只包含低一级的主机桶、
+   以及其内条目的权重之和。
 
 .. topic:: 桶类型
 
@@ -342,16 +347,22 @@ OSD 被声明为主机桶内的条目： ::
 
 .. topic:: 调整桶的权重
 
-   Ceph 用双整形表示桶权重。权重和设备容量不同，我们建议用
-   ``1.00`` 作为 1TB 存储设备的相对权重，这样 ``0.5`` 的权\
-   重大概代表 500GB 、 ``3.00`` 大概代表 3TB 。较高级桶的\
-   权重是所有枝叶桶的权重之和。
+   Ceph 用双整形表示桶权重。
+   权重和设备容量不同，
+   我们建议用 ``1.00`` 作为 1TB 存储设备的相对权重，
+   这样 ``0.5`` 的权重大概代表 500GB 、
+   ``3.00`` 大概代表 3TB 。
+   较高级桶的权重是所有枝叶桶的\
+   权重之和。
 
-   一个桶的权重是一维的，你也可以计算条目权重来反映存储设\
-   备性能。例如，如果你有很多 1TB 的硬盘，其中一些数据传输\
-   速率相对低、其他的数据传输率相对高，即使它们容量相同，\
-   也应该设置不同的权重（如给吞吐量较低的硬盘设置权重 0.8 ，\
+   一个桶的权重是一维的，
+   你也可以计算条目权重来反映存储设备性能。
+   例如，如果你有很多 1TB 的硬盘，
+   其中一些数据传输速率相对低、其他的数据传输率相对高，
+   即使它们容量相同，也应该设置不同的权重
+   （如给吞吐量较低的硬盘设置权重 0.8 ，\
    较高的设置 1.20 ）。
+
 
 
 .. _crushmaprules:
@@ -368,13 +379,14 @@ CRUSH 规则。
 .. note:: 大多数情况下，你都不需要修改默认规则。默认情况下，\
    新创建的存储池其规则会设置为 ``0`` 。
 
-CRUSH 规则定义了归置和复制策略、或分布策略，用它可以规定
-CRUSH 如何放置对象副本。例如，你也许想创建一条规则用以选择\
-一对目的地做双路镜像；另一条规则用以选择位于两个数据中心的\
-三个目的地做三路镜像；又一条规则用 6 个设备做纠删编码。关于
-CRUSH 规则的详细研究见
-`CRUSH - 可控、可伸缩、分布式地归置多副本数据`_\ ，主要是 \
-**Section 3.2** 。
+CRUSH 规则定义了归置和复制策略、或分布策略，
+用它可以规定 CRUSH 如何放置对象副本。
+例如，你也许想创建一条规则用以选择一对目的地做双路镜像；
+另一条规则用以选择位于两个数据中心的三个目的地做三路镜像；
+又一条规则用 6 个设备做纠删编码。
+关于 CRUSH 规则的详细研究见
+`CRUSH - 可控、可伸缩、分布式地归置多副本数据`_\ ，
+主要是 **Section 3.2** 。
 
 规则格式如下： ::
 
@@ -401,7 +413,9 @@ CRUSH 规则的详细研究见
 
 ``type``
 
-:描述: 为一个驱动器（多副本的）或 RAID 确定一条规则。
+:描述: 为一个驱动器（多副本的）或 RAID 确定\
+       一条规则。
+
 :目的: 规则掩码的一个组件。
 :类型: String
 :是否必需: Yes
@@ -436,6 +450,7 @@ CRUSH 规则的详细研究见
 :描述: 选取一个桶名，并沿树往下迭代。如果指定了
        ``device-class`` ，它必须与前面定义设备时的分类名一致，\
        不属于此类的设备都会被排除在外。
+
 :目的: 规则的一个组件。
 :是否必需: Yes
 :实例: ``step take data``
@@ -483,32 +498,29 @@ CRUSH 规则的详细研究见
 :先决条件: 在 ``step choose`` 之后。
 :实例: ``step emit``
 
-.. important:: 一条 CRUSH 规则可以分配给多个存储池使用，但是\
-   一个存储池不能同时配置多条 CRUSH 规则。
+.. important:: 一条 CRUSH 规则可以分配给多个存储池使用，
+   但是一个存储池不能同时配置多条 CRUSH 规则。
 
 
-``firstn`` versus ``indep``
+``firstn`` 对比 ``indep``
 
-:描述: Controls the replacement strategy CRUSH uses when items (OSDs)
-          are marked down in the CRUSH map. If this rule is to be used with
-          replicated pools it should be ``firstn`` and if it's for
-          erasure-coded pools it should be ``indep``.
+:描述: 控制着 CRUSH 图里的条目（ OSD ）被标记为 down 时 CRUSH 要用的替代策略。
+       如果这条规则用于多副本存储池那就用 ``firstn`` ，
+       如果用于纠删码存储池那就是 ``indep`` 。
 
-          The reason has to do with how they behave when a
-          previously-selected device fails. Let's say you have a PG stored
-          on OSDs 1, 2, 3, 4, 5. Then 3 goes down.
-          
-          With the "firstn" mode, CRUSH simply adjusts its calculation to
-          select 1 and 2, then selects 3 but discovers it's down, so it
-          retries and selects 4 and 5, and then goes on to select a new
-          OSD 6. So the final CRUSH mapping change is
-          1, 2, 3, 4, 5 -> 1, 2, 4, 5, 6.
+       原因与前面选定的设备失败后、它们的反应行为有关。我们假设，
+       你有一个 PG 存储在 OSD 1、2、3、4、5 上，然后 3 挂了。
 
-          But if you're storing an EC pool, that means you just changed the
-          data mapped to OSDs 4, 5, and 6! So the "indep" mode attempts to
-          not do that. You can instead expect it, when it selects the failed
-          OSD 3, to try again and pick out 6, for a final transformation of:
-          1, 2, 3, 4, 5 -> 1, 2, 6, 4, 5
+       在 firstn 模式下， CRUSH 只是简单地调整一下\
+       它选定 1 和 2 的计算方式，然后选择 3 但发现它挂了，
+       所以它需要重试，选定了 4 和 5 ，然后继续选定新的 OSD 6 ，
+       所以最终的 CRUSH 映射变更是 1, 2, 3, 4, 5 -> 1, 2, 4, 5, 6 。
+
+       但是如果你用 EC 存储池存储的话，
+       就意味着你只是把数据重新映射到 OSD 4、5 和 6 !
+       所以 indep 模式尝试不那样做，或者说期待这样的结果，
+       当它选择失败的 OSD 3 时，重试了一次并选定了 6 ，
+       所以最终转换是 1, 2, 3, 4, 5 -> 1, 2, 6, 4, 5 。
 
 
 .. _crush-reclassify:
@@ -517,29 +529,28 @@ CRUSH 规则的详细研究见
 -----------------------------
 .. Migrating from a legacy SSD rule to device classes
 
-It used to be necessary to manually edit your CRUSH map and maintain a
-parallel hierarchy for each specialized device type (e.g., SSD) in order to
-write rules that apply to those devices.  Since the Luminous release,
-the *device class* feature has enabled this transparently.
+以前，为了给每种专门的设备类型（如 SSD ）维护一套并行的分级结构，
+必须手动编辑 CRUSH 图，然后才能写规则应用这些设备。
+从 Luminous 版起，通过 *device class* 功能可以透明地实现此需求了。
 
-However, migrating from an existing, manually customized per-device map to
-the new device class rules in the trivial way will cause all data in the
-system to be reshuffled.
+然而，从常规途径把现有的、手工定制的\
+单设备图迁移到新的设备类规则，
+将导致系统里的所有数据重新洗牌。
 
-The ``crushtool`` has a few commands that can transform a legacy rule
-and hierarchy so that you can start using the new class-based rules.
-There are three types of transformations possible:
+``crushtool`` 有一些命令可以转换旧的规则和分级结构，
+这样你就能应用新的基于类的规则了。
+有三种可能的转换方式：
 
 #. ``--reclassify-root <root-name> <device-class>``
 
-   This will take everything in the hierarchy beneath root-name and
-   adjust any rules that reference that root via a ``take
-   <root-name>`` to instead ``take <root-name> class <device-class>``.
-   It renumbers the buckets in such a way that the old IDs are instead
-   used for the specified class's "shadow tree" so that no data
-   movement takes place.
+   这种方式会处理分级结构里根名字之下的所有内容，
+   并校正引用这个根的所有规则，把 ``take <root-name>``
+   改为 ``take <root-name> class <device-class>`` 。
+   它会以这种方式对桶重新编号，
+   用旧的 ID 作为指定类的“影子树（ shadow tree ）”，
+   这样就不会发生数据迁移。
 
-   For example, imagine you have an existing rule like::
+   例如，假设你现在的规则是这样的： ::
 
      rule replicated_rule {
         id 0
@@ -549,8 +560,8 @@ There are three types of transformations possible:
         step emit
      }
 
-   If you reclassify the root `default` as class `hdd`, the rule will
-   become::
+   如果你把 root `default` 重新分类为 `hdd` 类，
+   这条规则就变成了： ::
 
      rule replicated_rule {
         id 0
@@ -562,23 +573,23 @@ There are three types of transformations possible:
 
 #. ``--set-subtree-class <bucket-name> <device-class>``
 
-   This will mark every device in the subtree rooted at *bucket-name*
-   with the specified device class.
+   它会把以 *bucket-name* 为根的子树内的所有设备标记为\
+   指定的设备类。
 
-   This is normally used in conjunction with the ``--reclassify-root``
-   option to ensure that all devices in that root are labeled with the
-   correct class.  In some situations, however, some of those devices
-   (correctly) have a different class and we do not want to relabel
-   them.  In such cases, one can exclude the ``--set-subtree-class``
-   option.  This means that the remapping process will not be perfect,
-   since the previous rule distributed across devices of multiple
-   classes but the adjusted rules will only map to devices of the
-   specified *device-class*, but that often is an accepted level of
-   data movement when the nubmer of outlier devices is small.
+   通常和 ``--reclassify-root`` 选项一起使用，
+   以确保那个根下的所有设备都被标记成正确的类。
+   然而，有的时候，那些设备中的一些属于不同的类（正确的），
+   我们不想重新标记它们；这时，
+   你可以排除 ``--set-subtree-class`` 选项。
+   这意味着重映射过程是不完美的，
+   因为先前的规则跨越了多种类型的设备，
+   而校正过的规则只映射到指定设备类 *device-class* 的设备上，
+   这种异常设备数量不大的时候，由此导致的数据迁移处于可接受的水平。
 
 #. ``--reclassify-bucket <match-pattern> <device-class> <default-parent>``
 
-   This will allow you to merge a parallel type-specific hierarchy with the normal hierarchy.  For example, many users have maps like::
+   此选项可以让你把一个并行的、特定类型的分级结构合并成普通的分级结构。
+   例如，很多用户都有这样的图： ::
 
      host node1 {
         id -2           # do not change unnecessarily
@@ -620,27 +631,24 @@ There are three types of transformations possible:
         ...
      }
 
-   This function will reclassify each bucket that matches a
-   pattern.  The pattern can look like ``%suffix`` or ``prefix%``.
-   For example, in the above example, we would use the pattern
-   ``%-ssd``.  For each matched bucket, the remaining portion of the
-   name (that matches the ``%`` wildcard) specifies the *base bucket*.
-   All devices in the matched bucket are labeled with the specified
-   device class and then moved to the base bucket.  If the base bucket
-   does not exist (e.g., ``node12-ssd`` exists but ``node12`` does
-   not), then it is created and linked underneath the specified
-   *default parent* bucket.  In each case, we are careful to preserve
-   the old bucket IDs for the new shadow buckets to prevent data
-   movement.  Any rules with ``take`` steps referencing the old
-   buckets are adjusted.
+   这个函数会重分类每个匹配到的桶。
+   匹配的模式诸如 ``%suffix`` 或者 ``prefix%`` 。
+   比如，在上面的例子中，我们可以用模式 ``%-ssd`` 。
+   每一个匹配到的桶，其名字（匹配 ``%`` 通配符的）
+   的其余部分表明了它的 *基础桶（ base bucket ）* 。
+   匹配到的桶里的所有设备都被标记为指定的设备类，
+   然后移进基础桶。如果基础桶不存在
+   （例如 ``node12-ssd`` 存在但 ``node12`` 不存在），
+   那么它会被创建并链接到指定的 *默认父节点* 下。
+   不管哪种情形，我们都会为新的影子桶小心地保留旧的桶 ID ，以防数据移动。
+   所有引用旧的桶、包含 ``take`` 的语句都会被校正。
 
 #. ``--reclassify-bucket <bucket-name> <device-class> <base-bucket>``
 
-   The same command can also be used without a wildcard to map a
-   single bucket.  For example, in the previous example, we want the
-   ``ssd`` bucket to be mapped to the ``default`` bucket.
+   同样的命令，不用通配符可以映射单个桶。
+   例如，在上述例子中，我们要把 ``ssd`` 桶映射到 ``default`` 桶。
 
-The final command to convert the map comprised of the above fragments would be something like::
+综上所述，最终的转换命令可以这样写： ::
 
   $ ceph osd getcrushmap -o original
   $ crushtool -i original --reclassify \
@@ -650,17 +658,19 @@ The final command to convert the map comprised of the above fragments would be s
       --reclassify-bucket ssd ssd default \
       -o adjusted
 
-In order to ensure that the conversion is correct, there is a ``--compare`` command that will test a large sample of inputs to the CRUSH map and ensure that the same result comes back out.  These inputs are controlled by the same options that apply to the ``--test`` command.  For the above example,::
+为了确保转换正确无误，可以用 ``--compare`` 命令来测试，
+它可以向 CRUSH 图模拟输入大量样本，以确保会返回相同的结果。
+输入选项和 ``--test`` 命令的一样。以上面的为例： ::
 
   $ crushtool -i original --compare adjusted
   rule 0 had 0/10240 mismatched mappings (0)
   rule 1 had 0/10240 mismatched mappings (0)
   maps appear equivalent
 
-If there were difference, you'd see what ratio of inputs are remapped
-in the parentheses.
+如果有不同的地方，你得看看输入中有多大比例被重映射了
+（圆括号里）。
 
-If you are satisfied with the adjusted map, you can apply it to the cluster with something like::
+如果你对调整好的图满意了，就可以应用到集群，用： ::
 
   ceph osd setcrushmap -i adjusted
 
@@ -669,22 +679,23 @@ If you are satisfied with the adjusted map, you can apply it to the cluster with
 ---------------------
 .. Tuning CRUSH, the hard way
 
-如果你能保证所有客户端都运行最新代码，你可以这样调整可调值：从\
-集群抽取 CRUSH 图、修改值、重注入。
+如果你能保证所有客户端都运行最新代码，你可以这样调整可调值：
+从集群抽取 CRUSH 图、修改它们的值、重注入。
 
- * 提抽取最新 CRUSH 图： ::
+* 提抽取最新 CRUSH 图： ::
 
-        ceph osd getcrushmap -o /tmp/crush
+    ceph osd getcrushmap -o /tmp/crush
 
- * 调整可调参数。这些值在我们测试过的大、小型集群上都有最佳表现。\
-   在极端情况下，你需要给 ``crushtool`` 额外指定 \
-   ``--enable-unsafe-tunables`` 参数才行： ::
+* 调整可调参数。这些值在我们测试过的大、小型集群上都有最佳表现。
+  在极端情况下，你需要给 ``crushtool`` 额外指定 \
+  ``--enable-unsafe-tunables`` 参数才行，
+  用这个选项时需要万分谨慎。 ::
 
-        crushtool -i /tmp/crush --set-choose-local-tries 0 --set-choose-local-fallback-tries 0 --set-choose-total-tries 50 -o /tmp/crush.new
+    crushtool -i /tmp/crush --set-choose-local-tries 0 --set-choose-local-fallback-tries 0 --set-choose-total-tries 50 -o /tmp/crush.new
 
- * 重注入修改的图。 ::
+* 重注入修改的图。 ::
 
-        ceph osd setcrushmap -i /tmp/crush.new
+    ceph osd setcrushmap -i /tmp/crush.new
 
 
 遗留值
@@ -695,8 +706,9 @@ If you are satisfied with the adjusted map, you can apply it to the cluster with
 
    crushtool -i /tmp/crush --set-choose-local-tries 2 --set-choose-local-fallback-tries 5 --set-choose-total-tries 19 --set-chooseleaf-descend-once 0 --set-chooseleaf-vary-r 0 -o /tmp/crush.legacy
 
-再次申明， ``--enable-unsafe-tunables`` 是必需的，而且前面也\
-提到了，回退到遗留值后慎用旧版 ``ceph-osd`` 进程，因为此功能位\
-不是完全强制的。
+再次申明， ``--enable-unsafe-tunables`` 是必需的，
+而且前面也提到了，回退到遗留值后慎用旧版 ``ceph-osd`` 进程，
+因为此功能位不是完全强制的。
+
 
 .. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf
