@@ -1,28 +1,26 @@
 ==========
  存储设备
 ==========
-.. Storage Devices
 
-有两种 Ceph 守护进程会在硬盘上存储数据：
+在一套存储集群中有几种 Ceph 守护进程：
 
-* **Ceph OSDs** (Object Storage Daemons) store most of the data
-  in Ceph. Usually each OSD is backed by a single storage device.
-  This can be a traditional hard disk (HDD) or a solid state disk
-  (SSD). OSDs can also be backed by a combination of devices: for
-  example, a HDD for most data and an SSD (or partition of an
-  SSD) for some metadata. The number of OSDs in a cluster is
-  usually a function of the amount of data to be stored, the size
-  of each storage device, and the level and type of redundancy
-  specified (replication or erasure coding).
-* **Ceph Monitor** daemons manage critical cluster state. This
-  includes cluster membership and authentication information.
-  Small clusters require only a few gigabytes of storage to hold
-  the monitor database. In large clusters, however, the monitor
-  database can reach sizes of tens of gigabytes to hundreds of
-  gigabytes.  
-* **Ceph Manager** daemons run alongside monitor daemons, providing
-  additional monitoring and providing interfaces to external
-  monitoring and management systems.
+* **Ceph OSDs** （对象存储守护进程）存储着 Ceph 里的大多数数据。
+  通常，每个 OSD 后面都有一个独立的存储设备，
+  可以是传统硬盘（ HDD ）或者是固态硬盘（ SSD ）。
+  OSD 后端也可以是设备的组合：例如，
+  一个硬盘存储大多数数据、一个 SSD （或者一个 SSD 分区）存储一些元数据。
+  一套集群里的 OSD 数量通常是一个函数，
+  参数是要存储的数据量、各个存储设备的容量、
+  还有冗余的级别和类型（多副本或是纠删码）。
+* **Ceph Monitor （监视器）**
+  守护进程管理着集群的关键状态。
+  这其中有集群成员和认证信息。
+  小集群仅需要几个 GB 的存储空间来保存监视器数据库；
+  然而，在大型集群上，监视器数据库的尺寸\
+  能达到数十至数百 GB 。
+* **Ceph Manager （管理器）** 守护进程随监视器守护进程一起运行，
+  向外部监控和管理系统们\
+  提供了另外一套监控手段及其接口。
 
 
 OSD 后端
@@ -36,34 +34,33 @@ OSD 有两种管理它们存储着的数据的方法。
 BlueStore
 ---------
 
-BlueStore is a special-purpose storage backend designed specifically for
-managing data on disk for Ceph OSD workloads.  BlueStore's design is based on
-a decade of experience of supporting and managing Filestore OSDs. 
+BlueStore 是个专用存储后端，是为 Ceph OSD 工作载荷专门设计的，
+用于管理磁盘上的数据。 BlueStore 是在支持和管理 FileStore OSD
+十年之久的基础上设计的。
 
-Key BlueStore features include:
+BlueStore 的关键功能包括：
 
-* Direct management of storage devices. BlueStore consumes raw block devices or
-  partitions. This avoids intervening layers of abstraction (such as local file
-  systems like XFS) that can limit performance or add complexity.
-* Metadata management with RocksDB. RocksDB's key/value database is embedded
-  in order to manage internal metadata, including the mapping of object
-  names to block locations on disk.
-* Full data and metadata checksumming. By default, all data and
-  metadata written to BlueStore is protected by one or more
-  checksums. No data or metadata is read from disk or returned
-  to the user without being verified.
-* Inline compression.  Data can be optionally compressed before being written
-  to disk.
-* Multi-device metadata tiering. BlueStore allows its internal
-  journal (write-ahead log) to be written to a separate, high-speed
-  device (like an SSD, NVMe, or NVDIMM) for increased performance.  If
-  a significant amount of faster storage is available, internal
-  metadata can be stored on the faster device.
-* Efficient copy-on-write. RBD and CephFS snapshots rely on a
-  copy-on-write *clone* mechanism that is implemented efficiently in
-  BlueStore. This results in efficient I/O both for regular snapshots
-  and for erasure-coded pools (which rely on cloning to implement
-  efficient two-phase commits).
+* 直接管理存储设备。 BlueStore 使用的是原始块设备或分区。
+  这样可以避免抽象的中间层（如类似 XFS 的本地文件系统），
+  它们会降低性能、或增加复杂性。
+* 用 RocksDB 管理元数据。 RocksDB 的键值数据库是嵌入式的，
+  可以用于管理内部元数据，包括对象名到磁盘上数据块位置\
+  的映射情况。
+* 完整的数据及其元数据校验和。默认情况下，
+  写入 BlueStore 的所有数据和元数据都会被一个或多个校验和保护起来。
+  数据或元数据从磁盘读出来，
+  没有校验不会返回给用户。
+* 内联压缩。数据写入磁盘前可以\
+  选择性地压缩。
+* 元数据在多个设备上分级存储。
+  BlueStore 允许它的内部日志（预写日志）写到一个单独的、
+  高速设备（像 SSD 、 NVMe 、或 NVDIMM ）上，以提升性能。
+  如果高速存储的数量足够，
+  内部元数据可以存储在高速设备上。
+* 高效的写时复制（ copy-on-write ）。 RBD 和 CephFS 快照功能全靠
+  BlueStore 实现的一种高效的写时复制 *克隆（ clone ）* 机制。
+  这就产生了高效的 I/O ，对于常规快照和纠删码存储池
+  （它仰仗克隆功能实现高效的二阶段提交）都是如此。
 
 更多信息请看 :doc:`bluestore-config-ref` 和
 :doc:`/rados/operations/bluestore-migration` 。
@@ -72,19 +69,19 @@ Key BlueStore features include:
 FileStore
 ---------
 
-FileStore is the legacy approach to storing objects in Ceph. It
-relies on a standard file system (normally XFS) in combination with a
-key/value database (traditionally LevelDB, now RocksDB) for some
-metadata.
+FileStore 是 Ceph 存储对象的老方法。
+它依赖于标准文件系统（通常是 XFS ）和\
+用于元数据的键值数据库（以前是 LevelDB ，现在是 RocksDB ）
+组合。
 
-FileStore is well-tested and widely used in production. However, it
-suffers from many performance deficiencies due to its overall design
-and its reliance on a traditional file system for object data storage.
+FileStore 久经考验而且在生产环境下广泛应用。
+然而，由于其总体设计问题，遇到了很多性能不足，
+以及用传统文件系统存储对象数据时的可靠性。
 
-Although FileStore is capable of functioning on most POSIX-compatible
-file systems (including btrfs and ext4), we recommend that only the
-XFS file system be used with Ceph. Both btrfs and ext4 have known bugs and
-deficiencies and their use may lead to data loss. By default, all Ceph
-provisioning tools use XFS.
+虽说 FileStore 可以利用大多数兼容 POSIX 的文件系统
+（包括 btrfs 和 ext4 ），我们还是只推荐 Ceph 搭配 XFS 。
+btrfs 和 ext4 都有已知的缺陷和不足，
+使用它们可能会导致数据丢失。默认情况下，
+Ceph 的所有部署工具都用 XFS 。
 
 更多信息请看 :doc:`filestore-config-ref` 。
