@@ -6,15 +6,13 @@
 ==============
 .. Placement Groups Never Get Clean
 
-When you create a cluster and your cluster remains in ``active``,
-``active+remapped`` or ``active+degraded`` status and never achieves an
-``active+clean`` status, you likely have a problem with your configuration.
+如果你新建了一套集群，但集群一直处于 ``active`` 、 ``active+remapped``
+或者 ``active+degraded`` 状态，一直不能进入 ``active+clean`` 状态，
+那就可能是配置有问题。
 
-You may need to review settings in the `存储池、归置组和 CRUSH 配置参考`_
-and make appropriate adjustments.
+你也许得仔细阅读 `存储池、归置组和 CRUSH 配置参考`_ 里的配置选项，做一些调整。
 
-As a general rule, you should run your cluster with more than one OSD and a
-pool size greater than 1 object replica.
+一般来说，你的集群应该有一个以上 OSD 、并且存储池的对象副本数大于 1 。
 
 .. _one-node-cluster:
 
@@ -22,61 +20,59 @@ pool size greater than 1 object replica.
 ----------
 .. One Node Cluster
 
-Ceph no longer provides documentation for operating on a single node, because
-you would never deploy a system designed for distributed computing on a single
-node. Additionally, mounting client kernel modules on a single node containing a
-Ceph  daemon may cause a deadlock due to issues with the Linux kernel itself
-(unless you use VMs for the clients). You can experiment with Ceph in a 1-node
-configuration, in spite of the limitations as described herein.
+Ceph 不再提供单节点的运营文档，
+因为你不可能在单个节点上设计、部署一套分布式计算系统。
+另外，在运行 Ceph 守护进程的节点上同时用内核客户端挂载会导致死机，
+这是 Linux 内核自身的问题（除非你在 VM 里跑客户端）。
+抛开这里提到的诸多限制，用单节点配置体验 Ceph 是可以的。
 
-If you are trying to create a cluster on a single node, you must change the
-default of the ``osd crush chooseleaf type`` setting from ``1`` (meaning 
-``host`` or ``node``) to ``0`` (meaning ``osd``) in your Ceph configuration
-file before you create your monitors and OSDs. This tells Ceph that an OSD
-can peer with another OSD on the same host. If you are trying to set up a
-1-node cluster and ``osd crush chooseleaf type`` is greater than ``0``, 
-Ceph will try to peer the PGs of one OSD with the PGs of another OSD on 
-another node, chassis, rack, row, or even datacenter depending on the setting.
+如果你正尝试在单个节点上创建一个集群，在创建监视器和 OSD 前，
+必须把配置文件里的 ``osd crush chooseleaf type`` 的默认值从
+``1`` （表示 ``host`` 或 ``node`` ）改成 ``0`` （表示 ``osd`` ）。
+就是告诉 Ceph ， OSD 可以和同一主机上的其它 OSD 互联。
+如果你想要建一套单节点集群，
+而 ``osd crush chooseleaf type`` 却大于 ``0`` ，
+根据你的配置， Ceph 就会让一个 OSD 上的 PG 与\
+另一节点、机箱、机架、行、甚至是数据中心里面的 PG 互联。
 
-.. tip:: DO NOT mount kernel clients directly on the same node as your 
-   Ceph Storage Cluster, because kernel conflicts can arise. However, you 
-   can mount kernel clients within virtual machines (VMs) on a single node.
+.. tip:: **不要** 在运行 Ceph 存储集群的同一主机上\
+   用内核客户端直接挂载，因为会有内核冲突。
+   但是，你可以在同一节点上的虚拟机里面用内核客户端挂载。
 
-If you are creating OSDs using a single disk, you must create directories
-for the data manually first.
+如果你在用单个磁盘创建 OSD ，
+你必须先创建好数据目录。
 
 
 OSD 数量小于副本数
 ------------------
 .. Fewer OSDs than Replicas
 
-If you've brought up two OSDs to an ``up`` and ``in`` state, but you still 
-don't see ``active + clean`` placement groups, you may have an 
-``osd pool default size`` set to greater than ``2``.
+如果你已经把两个 OSD 带到了 ``up`` 且 ``in`` 状态，
+却还没见到处于 ``active + clean`` 状态的归置组，
+可能是因为你的 ``osd pool default size`` 大于 ``2`` 。
 
-There are a few ways to address this situation. If you want to operate your
-cluster in an ``active + degraded`` state with two replicas, you can set the 
-``osd pool default min size`` to ``2`` so that you can write objects in 
-an ``active + degraded`` state. You may also set the ``osd pool default size``
-setting to ``2`` so that you only have two stored replicas (the original and 
-one replica), in which case the cluster should achieve an ``active + clean`` 
-state.
+有几种办法解决这个问题。如果你想让\
+一个双副本集群进入 ``active + degraded`` 状态，
+你可以把 ``osd pool default min size`` 设置为 ``2`` ，
+这样就能在 ``active + degraded`` 状态下写入对象了。
+你还可以把 ``osd pool default size`` 设置成 ``2`` ，
+这样你就有两份副本了（原始的和一个副本），
+这种情况下，集群还能达到 ``active + clean`` 状态。
 
-.. note:: You can make the changes at runtime. If you make the changes in 
-   your Ceph configuration file, you may need to restart your cluster.
+.. note:: 你可以在运行时做出更改。如果在配置文件里更改，
+   就需要重启集群。
 
 
 存储池副本数为 1
 ----------------
 .. Pool Size = 1
 
-If you have the ``osd pool default size`` set to ``1``, you will only have 
-one copy of the object. OSDs rely on other OSDs to tell them which objects 
-they should have. If a first OSD has a copy of an object and there is no
-second copy, then no second OSD can tell the first OSD that it should have
-that copy. For each placement group mapped to the first OSD (see 
-``ceph pg dump``), you can force the first OSD to notice the placement groups
-it needs by running::
+如果把 ``osd pool default size`` 设置成 ``1`` ，你就只有一份对象副本。
+OSD 靠其它 OSD 们告诉它，它应该持有哪些对象。
+如果第一个 OSD 有某个对象的一个副本、并且没有第二个副本，
+那么就没有第二个 OSD 能告诉第一个 OSD 它应该有那个副本。
+对于映射到第一个 OSD 的每个归置组（见 ``ceph pg dump`` ），
+你可以强制第一个 OSD 通知它需要的归置组，用命令： ::
 
    	ceph osd force-create-pg <pgid>
 
@@ -85,46 +81,51 @@ CRUSH 图错误
 ------------
 .. CRUSH Map Errors
 
-Another candidate for placement groups remaining unclean involves errors 
-in your CRUSH map.
+归置组仍然不整洁的另一个原因可能是 CRUSH 图中的错误。
 
 
 卡住的归置组
 ============
 .. Stuck Placement Groups
 
-有失败时归置组会进入“degraded”（降级）或“peering”（连接建立中）状态，这事时有发\
-生，通常这些状态意味着正常的失败恢复正在进行。然而，如果一个归置组长时间处于某个这些\
-状态就意味着有更大的问题，因此监视器在归置组卡 （stuck） 在非最优状态时会警告。我们\
-具体检查：
+有失败时归置组会进入“degraded”（降级）或“peering”（连接建立中）状态，
+这事时有发生，通常这些状态意味着正常的失败恢复正在进行。
+然而，如果一个归置组长时间处于某个这些状态就意味着有更大的问题，
+因此监视器在归置组卡 （stuck） 在非最优状态时会警告。
+我们具体检查：
 
-* ``inactive`` （不活跃）——归置组长时间无活跃（即它不能提供读写服务了）；
+* ``inactive`` （不活跃）——归置组长时间无活跃
+  （即它不能提供读写服务了）；
   
-* ``unclean`` （不干净）——归置组长时间不干净（例如它未能从前面的失败完全恢复）；
+* ``unclean`` （不干净）——归置组长时间不干净
+  （例如它未能从前面的失败完全恢复）；
 
-* ``stale`` （不新鲜）——归置组状态没有被 ``ceph-osd`` 更新，表明存储这个归置组的所\
-  有节点可能都挂了。
+* ``stale`` （不新鲜）——归置组状态没有被 ``ceph-osd`` 更新，
+  表明存储这个归置组的所有节点可能都挂了。
 
-你可以摆出卡住的归置组： ::
+你可以摆出卡住的归置组，用下列命令之一： ::
 
 	ceph pg dump_stuck stale
 	ceph pg dump_stuck inactive
 	ceph pg dump_stuck unclean
 
-卡在 ``stale`` 状态的归置组通过修复 ``ceph-osd`` 进程通常可以修复；卡在 \
-``inactive`` 状态的归置组通常是互联问题（参见 :ref:`failures-osd-peering` ）；卡\
-在 ``unclean`` 状态的归置组通常是由于某些原因阻止了恢复的完成，像未找到的对象（参\
-见 :ref:`failures-osd-unfound` ）。
+卡在 ``stale`` 状态的归置组通过修复 ``ceph-osd`` 进程通常可以修复；
+卡在 ``inactive`` 状态的归置组通常是互联问题
+（参见 :ref:`failures-osd-peering` ）；
+卡在 ``unclean`` 状态的归置组通常是由于某些原因\
+阻止了恢复的完成，像未找到的对象
+（参见 :ref:`failures-osd-unfound` ）。
 
 
-.. Placement Group Down - Peering Failure
 .. _failures-osd-peering:
 
 归置组挂了——互联失败
 ========================
+.. Placement Group Down - Peering Failure
 
-在某些情况下， ``ceph-osd`` 连接建立进程会遇到问题，使 PG 不能活跃、可用，例如 \
-``ceph health`` 也许显示： ::
+在某些情况下， ``ceph-osd`` 的 `互联` 进程会遇到问题，
+使 PG 不能活跃、可用。
+例如 ``ceph health`` 也许显示： ::
 
 	ceph health detail
 	HEALTH_ERR 7 pgs degraded; 12 pgs down; 12 pgs peering; 1 pgs recovering; 6 pgs stuck unclean; 114/3300 degraded (3.455%); 1/3 in osds are down
@@ -163,13 +164,16 @@ in your CRUSH map.
     ]
  }
 
-``recovery_state`` 段告诉我们连接建立因 ``ceph-osd`` 进程挂了而被阻塞，本例是 \
-``osd.1`` 挂了，启动这个进程应该就可以恢复。
+``recovery_state`` 段告诉我们因 ``ceph-osd`` 守护进程挂了\
+而导致互联被阻塞，本例是 ``osd.1`` 挂了，
+启动这个 ``ceph-osd`` 应该就可以恢复。
 
-另外，如果 ``osd.1`` 是灾难性的失败（如硬盘损坏），我们可以告诉集群它丢失（ \
-``lost`` ）了，让集群尽力完成副本拷贝。
+另外，如果 ``osd.1`` 是灾难性的失败（如硬盘损坏），
+我们可以告诉集群它丢失（ ``lost`` ）了，
+让集群尽力完成副本拷贝。
 
-.. important:: 集群不能保证其它数据副本是一致且最新就危险了！
+.. important:: 假如集群不能保证\
+   其它数据副本是一致且最新就危险了！
 
 让 Ceph 无论如何都继续： ::
 
@@ -178,11 +182,12 @@ in your CRUSH map.
 恢复将继续。
 
 
-.. Unfound Objects
+
 .. _failures-osd-unfound:
 
 未找到的对象
 ============
+.. Unfound Objects
 
 某几种失败相组合可能导致 Ceph 抱怨有找不到（ ``unfound`` ）的\
 对象： ::
@@ -191,9 +196,10 @@ in your CRUSH map.
 	HEALTH_WARN 1 pgs degraded; 78/3778 unfound (2.065%)
 	pg 2.4 is active+degraded, 78 unfound
 
-这意味着存储集群知道一些对象（或者存在对象的较新副本）存在，\
-却没有找到它们的副本。下例展示了这种情况是如何发生的，一个 PG
-的数据存储在 ceph-osd 1 和 2 上：
+这意味着存储集群知道一些对象
+（或者现有对象的较新副本）存在，\
+却没有找到它们的副本。下例展示了这种情况是如何发生的，
+一个 PG 的数据存储在 ceph-osd 1 和 2 上：
 
 * 1 挂了；
 * 2 独自处理一些写动作；
@@ -202,8 +208,9 @@ in your CRUSH map.
 * 新对象还未拷贝完， 2 挂了。
 
 这时， 1 知道这些对象存在，但是活着的 ``ceph-osd`` 都没有副本，\
-这种情况下，读写这些对象的 IO 就会被阻塞，集群只能指望节点\
-早点恢复。这时我们假设用户希望先得到一个 IO 错误。
+这种情况下，读写这些对象的 IO 就会被阻塞，
+集群只能指望节点早点恢复。
+这时我们假设用户希望先得到一个 IO 错误。
 
 首先，你应该确认哪些对象找不到了： ::
 
@@ -246,19 +253,21 @@ in your CRUSH map.
     "more": false
   }
 
-如果在一次查询里列出的对象太多， ``more`` 这个字段将为
-``true`` ，因此你可以查询更多。（命令行工具可能隐藏了，但这里\
-没有）
+如果在一次查询里列出的对象太多，
+``more`` 这个字段将为 ``true`` ，因此你可以查询更多。
+（命令行工具可能隐藏了，但这里没有）
 
-其次，你可以找出哪些 OSD 上探测到、或可能包含数据。
+其次，你可以找出哪些 OSD 上探测到了、
+或可能包含数据。
 
-At the end of the listing (before ``more`` is false), ``might_have_unfound`` is provided
-when ``available_might_have_unfound`` is true.  This is equivalent to the output
-of ``ceph pg #.# query``.  This eliminates the need to use ``query`` directly.
-The ``might_have_unfound`` information given behaves the same way as described below for ``query``.
-The only difference is that OSDs that have ``already probed`` status are ignored.
+在这份罗列结果的末尾（ ``more`` 值为 false 之前），
+``available_might_have_unfound`` 是 true 的时候会有 ``might_have_unfound`` 。
+这个和 ``ceph pg #.# query`` 的输出是等价的，
+只是这个结果让我们省去了直接查询（ ``query`` ）的必要。
+``might_have_unfound`` 信息的提供方式和下文 ``query`` 的相同，
+仅有的差异是有 ``already probed`` 状态的 OSD 会被忽略。
 
-Use of ``query``::
+``query`` 的用法： ::
 
 	ceph pg 2.4 query
 
@@ -271,7 +280,7 @@ Use of ``query``::
                 { "osd": 1,
                   "status": "osd is down"}]},
 
-本例中，集群知道 ``osd.1`` 可能有数据，但它挂了（ ``down`` ）。\
+本案例中，集群知道 ``osd.1`` 可能有数据，但它挂了（ ``down`` ）。\
 所有可能的状态有：
 
 * 已经探测到了
@@ -281,13 +290,18 @@ Use of ``query``::
 
 有时候集群要花一些时间来查询可能的位置。
 
-还有一种可能性，对象存在于其它位置却未被列出，例如，集群里的一个 ``ceph-osd`` 停止\
-且被剔出，然后完全恢复了；后来的失败、恢复后仍有未找到的对象，它也不会觉得早已死亡\
-的 ``ceph-osd`` 上仍可能包含这些对象。（这种情况几乎不太可能发生）。
+还有一种可能性，对象存在于其它位置却未被列出，
+例如，集群里的一个 ``ceph-osd`` 停止且被剔出，
+然后完全恢复了；后来的失败、恢复后仍有未找到的对象，
+它也不会觉得早已死亡的 ``ceph-osd`` 上仍可能包含这些对象。
+（这种情况几乎不太可能发生）。
 
-如果所有位置都查询过了仍有对象丢失，那就得放弃丢失的对象了。这仍可能是罕见的失败组合\
-导致的，集群在写入完成前，未能得知写入是否已执行。以下命令把未找到的（ unfound ）对\
-象标记为丢失（ lost ）。 ::
+如果所有位置都查询过了仍有对象丢失，
+那就得放弃丢失的对象了。
+这仍可能是罕见的失败组合导致的，
+集群在写入完成前，未能得知写入是否已执行。
+以下命令把未找到的（ unfound ）对象\
+标记为丢失（ lost ）。 ::
 
 	ceph pg 2.5 mark_unfound_lost revert|delete
 
@@ -295,23 +309,26 @@ Use of ``query``::
 
 delete 选项将导致完全删除它们。
 
-revert 选项（纠删码存储池不可用）会回滚到前一个版本或者（如果它是新对象的话）删除\
-它。要慎用，它可能迷惑那些期望对象存在的应用程序。
+revert 选项（纠删码存储池不可用）会回滚到前一个版本或者
+（如果它是新对象的话）删除它。要慎用，
+它可能迷惑那些期望对象存在的应用程序。
 
-
-.. Homeless Placement Groups
 
 无根归置组
 ==========
+.. Homeless Placement Groups
 
-拥有归置组拷贝的 OSD 都可以失败，在这种情况下，那一部分的对象存储不可用，监视器就不\
-会收到那些归置组的状态更新了。为检测这种情况，监视器把任何主 OSD 失败的归置组标记\
-为 ``stale`` （不新鲜），例如： ::
+拥有归置组拷贝的 OSD 都可以失败，
+在这种情况下，那一部分的对象存储不可用，
+监视器就不会收到那些归置组的状态更新了。
+为检测这种情况，监视器把任何主 OSD 失败的归置组\
+标记为 ``stale`` （不新鲜），例如： ::
 
 	ceph health
 	HEALTH_WARN 24 pgs stale; 3/300 in osds are down
 
-你能找出哪些归置组 ``stale`` 、和存储这些归置组的最新 OSD ，命令如下： ::
+你能找出哪些归置组 ``stale`` 、和最后存储这些归置组的 OSD ，
+命令如下： ::
 
 	ceph health detail
 	HEALTH_WARN 24 pgs stale; 3/300 in osds are down
@@ -322,39 +339,40 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 	osd.11 is down since epoch 13, last address 192.168.106.220:6803/11539
 	osd.12 is down since epoch 24, last address 192.168.106.220:6806/11861
 
-如果想使归置组 2.5 重新在线，例如，上面的输出告诉我们它最后由 ``osd.0`` 和 \
-``osd.2`` 处理，重启这些 ``ceph-osd`` 将恢复之（还有其它的很多 PG ）。
+如果想使归置组 2.5 重新在线，例如，
+上面的输出告诉我们它最后由 ``osd.0`` 和 ``osd.2`` 处理，
+重启这些 ``ceph-osd`` 将恢复那个归置组（还有其它的很多 PG ）。
 
-
-.. Only a Few OSDs Receive Data
 
 只有几个 OSD 接收数据
 =====================
+.. Only a Few OSDs Receive Data
 
-如果你的集群有很多节点，但只有其中几个接收数据，\ `检查`_\ 下存储池里的归置组数量。\
-因为归置组是映射到多个 OSD 的，这样少量的归置组将不能分布于整个集群。试着创建个新存\
-储池，其归置组数量是 OSD 数量的若干倍。详情见\ `归置组`_\ ，存储池的默认归置组数量\
-没多大用，你可以参考\ `这里`_\ 更改它。
+如果你的集群有很多节点，但只有其中几个接收数据，
+`检查`_\ 下存储池里的归置组数量。因为归置组是映射到多个 OSD 的，
+这样少量的归置组将不能分布于整个集群。
+试着创建个新存储池，其归置组数量是 OSD 数量的若干倍。详情见\ `归置组`_\ ，
+存储池的默认归置组数量没多大用，你可以参考\ `这里`_\ 更改它。
 
-
-.. Can't Write Data
 
 不能写入数据
 ============
+.. Can't Write Data
 
-如果你的集群已启动，但一些 OSD 没起来，导致不能写入数据，确认下运行的 OSD 数量满足\
-归置组要求的最低 OSD 数。如果不能满足， Ceph 就不会允许你写入数据，因为 Ceph 不能保\
-证复制能如愿进行。详情参见\ `存储池、归置组和 CRUSH 配置参考`_\ 里的 \
+如果你的集群已启动，但一些 OSD 没起来，导致不能写入数据，
+确认下运行的 OSD 数量满足归置组要求的最低 OSD 数。
+如果不能满足， Ceph 就不会允许你写入数据，
+因为 Ceph 不能保证复制能如愿进行。
+详情参见\ `存储池、归置组和 CRUSH 配置参考`_\ 里的
 ``osd pool default min size`` 。
 
 
-.. PGs Inconsistent
-
 归置组不一致
 ============
+.. PGs Inconsistent
 
-如果你看到状态变成了 ``active + clean + inconsistent`` ，可能\
-是洗刷时遇到了错误。与往常一样，我们可以这样找出不一致的归置组： ::
+如果你看到状态变成了 ``active + clean + inconsistent`` ，
+可能是洗刷时遇到了错误。与往常一样，我们可以这样找出不一致的归置组： ::
 
     $ ceph health detail
     HEALTH_ERR 1 pgs inconsistent; 2 scrub errors
@@ -366,9 +384,9 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
     $ rados list-inconsistent-pg rbd
     ["0.6"]
 
-一致的状态只有一种，然而在最坏的情况下，我们可能会遇到多个对象\
-产生了各种各样的不一致。假设在 PG ``0.6`` 里的一个名为 ``foo``
-的对象被截断了，我们可以这样查看： ::
+一致的状态只有一种，然而在最坏的情况下，
+我们可能会遇到多个对象产生了各种各样的不一致。假设\
+在 PG ``0.6`` 里的一个名为 ``foo`` 的对象被截断了，我们可以这样查看： ::
 
     $ rados list-inconsistent-obj 0.6 --format=json-pretty
 
@@ -426,7 +444,8 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 
 此时，我们可以从输出里看到：
 
-* 唯一不一致的对象名为 ``foo`` ，并且它的 head 不一致。
+* 唯一不一致的对象名为 ``foo`` ，并且这就是\
+  它不一致的 head 。
 * 不一致分为两类：
 
   * ``errors``: 这些错误表明不一致性出现在分片之间，但是没说明\
@@ -443,9 +462,8 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
     的 ``errors`` 表明它是与 ``selected_object_info`` 的对照结\
     果。从 ``shards`` 阵列里可以查到哪个分片有什么样的错误。
 
-    * ``data_digest_mismatch_info``: 存储在 object-info （
-      对象信息）里的数字签名不是 ``0xffffffff`` （这个是根据
-      OSD.2 上的分片计算出来的）。
+    * ``data_digest_mismatch_info``: 存储在 object-info （对象信息）里的\
+      数字签名不是 ``0xffffffff`` （这个是根据 OSD.2 上的分片计算出来的）。
     * ``size_mismatch_info``: object-info 内存储的尺寸与 OSD.2
       上的对象尺寸 0 不同。
 
@@ -453,51 +471,48 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者�
 
 	ceph pg repair {placement-group-ID}
 
-此命令会用\ `权威的`\ 副本覆盖\ `有问题的`\ 。根据既定规则，多\
-数情况下 Ceph 都能从若干副本中选择正确的，但是也会有例外。比\
-如，存储的数字签名可能正好丢了，选择权威副本时又忽略了计算出的\
-数字签名，总之，用此命令时小心为好。
+此命令会用\ `权威的`\ 副本覆盖\ `有问题的`\ 。根据既定规则，
+多数情况下 Ceph 都能从若干副本中选择正确的，
+但是也会有例外。比如，存储的数字签名可能正好丢了，
+选择权威副本时又忽略了计算出的数字签名，
+总之，用此命令时小心为好。
 
-如果一个分片的 ``errors`` 里出现了 ``read_error`` ，很可能是磁\
-盘错误引起的不一致，你最好先查验那个 OSD 所用的磁盘。
+如果一个分片的 ``errors`` 里出现了 ``read_error`` ，
+很可能是磁盘错误引起的不一致，
+你最好先查验那个 OSD 所用的磁盘。
 
-如果你时不时遇到时钟偏移引起的 ``active + clean + inconsistent``
-状态，最好在监视器主机上配置 peer 角色的 `NTP`_ 服务。配置细节\
-可参考\ `网络时间协议`_\ 和 Ceph `时钟选项`_\ 。
+如果你时不时遇到时钟偏移引起的 ``active + clean + inconsistent`` 状态，
+最好在监视器主机上配置 peer 角色的 `NTP`_ 服务。
+配置细节可参考\ `网络时间协议`_\ 和 Ceph `时钟选项`_\ 。
 
-
-.. Erasure Coded PGs are not active+clean
 
 纠删编码的归置组不是 active+clean
 =================================
+.. Erasure Coded PGs are not active+clean
 
 CRUSH 找不到足够多的 OSD 映射到某个 PG 时，它会显示为
 ``2147483647`` ，意思是 ITEM_NONE 或 ``no OSD found`` ，例如： ::
 
 	[2,1,6,0,5,8,2147483647,7,4]
 
-
-.. Not enough OSDs
-
 OSD 不够多
 ----------
+.. Not enough OSDs
 
-如果 Ceph 集群仅有 8 个 OSD ，但是纠删码存储池需要 9 个，就会\
-显示上面的错误。这时候，你仍然可以另外创建需要较少 OSD 的\
-纠删码存储池： ::
+如果 Ceph 集群仅有 8 个 OSD ，但是纠删码存储池需要 9 个，就会显示上面的错误。
+这时候，你仍然可以另外创建需要较少 OSD 的纠删码存储池： ::
 
 	ceph osd erasure-code-profile set myprofile k=5 m=3
 	ceph osd pool create erasurepool erasure myprofile
 
 或者新增一个 OSD ，这个 PG 会自动用上的。
 
-
 CRUSH 条件不能满足
 ------------------
 .. CRUSH constraints cannot be satisfied
 
-即使集群拥有足够多的 OSD ， CRUSH 规则的强制要求仍有可能无法\
-满足。假如有 10 个 OSD 分布于两个主机上，且 CRUSH 规则要求\
+即使集群拥有足够多的 OSD ， CRUSH 规则的强制要求仍有可能无法满足。
+假如有 10 个 OSD 分布于两个主机上，且 CRUSH 规则要求\
 相同归置组不得使用位于同一主机的两个 OSD ，这样映射就会失败，\
 因为只能找到两个 OSD ，你可以从规则里查看必要条件： ::
 
@@ -529,8 +544,9 @@ CRUSH 过早中止
 --------------
 .. CRUSH gives up too soon
 
-假设集群拥有的 OSD 足以映射到 PG （比如有 9 个 OSD 和一个\
-纠删码存储池的集群，每个 PG 需要 9 个 OSD ）， CRUSH 仍然\
+假设集群拥有的 OSD 足以映射到 PG
+（比如有 9 个 OSD 和一个纠删码存储池的集群，
+每个 PG 需要 9 个 OSD ）， CRUSH 仍然\
 有可能在找到映射前就中止了。可以这样解决：
 
 * 降低纠删存储池内 PG 的要求，让它使用较少的 OSD
@@ -602,8 +618,9 @@ CRUSH 过早中止
 
 	$ crushtool --compile crush.txt -o better-crush.map
 
-所有映射都成功时，用 ``crushtool`` 的 ``--show-choose-tries``
-选项能看到成功映射的尝试次数直方图： ::
+所有映射都成功时，
+用 ``crushtool`` 的 ``--show-choose-tries`` 选项\
+能看到成功映射的尝试次数直方图： ::
 
 	$ crushtool -i better-crush.map --test --show-bad-mappings \
 	   --show-choose-tries \
@@ -659,7 +676,6 @@ CRUSH 过早中止
 以此类推。这样，重试的最高次数就是防止坏映射的最低值，也就是
 ``set_choose_tries`` 的取值（即上面输出中的 103 ，因为任意\
 归置组成功映射的重试次数都没有超过 103 ）。
-
 
 .. _检查: ../../operations/placement-groups#get-the-number-of-placement-groups
 .. _这里: ../../configuration/pool-pg-config-ref

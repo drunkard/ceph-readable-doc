@@ -12,8 +12,7 @@
 活跃版本
 ~~~~~~~~
 
-The following Ceph releases are actively maintained and receive periodic backports and
-security fixes.
+下面这些 Ceph 版本仍在积极维护，并且会有周期性的功能移植和安全修正。
 
 .. toctree::
    :maxdepth: 1
@@ -30,8 +29,7 @@ security fixes.
 ~~~~~~~~
 .. Archived Releases
 
-The following older Ceph releases are no longer maintained (do not
-receive bug fixes or backports).
+下面这些更老的 Ceph 版本已经不再维护（不会进行缺陷修正或功能移植）。
 
 .. ceph_releases:: releases.yml eol
 
@@ -53,13 +51,15 @@ receive bug fixes or backports).
    Bobtail (v0.56.*) <bobtail>
    Argonaut (v0.48.*) <argonaut>
 
-Release timeline
-----------------
+发布时间表
+----------
+.. Release timeline
 
 .. ceph_timeline:: releases.yml dev pacific octopus nautilus mimic luminous
 
 
 .. _Pacific: pacific
+.. _16.2.7: pacific#v16-2-7-pacific
 .. _16.2.6: pacific#v16-2-6-pacific
 .. _16.2.5: pacific#v16-2-5-pacific
 .. _16.2.4: pacific#v16-2-4-pacific
