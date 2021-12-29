@@ -100,6 +100,10 @@
     crash-consistent
         崩溃一致
 
+    CRUSH, Controlled Replication Under Scalable Hashing
+        基于可伸缩哈希算法的受控复制
+        RUSH, Replication Under Scalable Hashing, 基于可伸缩哈希算法的复制
+
     CRUSH map
         CRUSH 图
 

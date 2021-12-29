@@ -310,7 +310,7 @@
    小于这个的数据块不会被压缩。此选项会覆盖全局配置
    :confval:`bluestore_compression_min_blob_size` 、
    :confval:`bluestore_compression_min_blob_size_hdd` 、和
-   :confval:`bluestore_compression_min_blob_size_ssd`
+   :confval:`bluestore_compression_min_blob_size_ssd` 。
 
    :类型: Unsigned Integer
 

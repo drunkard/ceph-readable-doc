@@ -14,8 +14,7 @@
 
 支持 :term:`Ceph 文件系统`\ 的 Ceph 存储集群至少运行着一个
 :term:`Ceph 元数据服务器`\ （ ``ceph-mds`` ）。支持
-:term:`Ceph 对象存储`\ 的集群需运行 Ceph 网关守护进程（
-``radosgw`` ）。
+:term:`Ceph 对象存储`\ 的集群需运行 Ceph 网关守护进程（ ``radosgw`` ）。
 
 各个守护进程都有一系列配置选项，各选项都有其默认值。
 你可以更改这些配置选项，以调整系统行为。
@@ -47,23 +46,20 @@ throughout this documentation.
 ========
 .. Config sources
 
-Each Ceph daemon, process, and library will pull its configuration
-from several sources, listed below.  Sources later in the list will
-override those earlier in the list when both are present.
+每个 Ceph 守护进程、进程、和库都从好几个来源获取它的配置信息，在下面列出了。
+列表里位于后面的会覆盖靠前的同一选项。
 
-- the compiled-in default value
-- the monitor cluster's centralized configuration database
-- a configuration file stored on the local host
-- environment variables
-- command line arguments
-- runtime overrides set by an administrator
+- 编译时内建的默认值
+- 监视器集群的中央配置数据库
+- 本地主机上的配置文件
+- 环境变量
+- 命令行参数
+- 管理员在运行时覆盖的
 
-One of the first things a Ceph process does on startup is parse the
-configuration options provided via the command line, environment, and
-local configuration file.  The process will then contact the monitor
-cluster to retrieve configuration stored centrally for the entire
-cluster.  Once a complete view of the configuration is available, the
-daemon or process startup will proceed.
+一个 Ceph 进程启动时有很多事，其中的第一步就是分析命令行、
+环境变量和本地配置文件提供的配置选项。之后它会联系监视器集群，
+以获取它为整个集群集中存储的配置信息。获取到整个配置的完整视图之后，
+守护进程或者进程的启动就会继续。
 
 
 .. _bootstrap-options:
@@ -89,21 +85,19 @@ following:
   the monitor.  Note that in most cases the default keyring location
   is in the data directory specified above.
 
-In most cases, the default values of these options are suitable. There is one
-exception to this: the :confval:`mon_host` option that identifies the addresses
-of the cluster's monitors.  When DNS is used to identify monitors, a local Ceph
-configuration file can be avoided entirely.
+大多数情况下，这些选项的默认值都是恰当的。有一个例外：
+用于指示集群监视器地址的 :confval:`mon_host`  选项。
+使用 DNS 来查找监视器时，可以完全忽视本地配置文件。
 
 
 跳过监视器配置
 --------------
 .. Skipping monitor config
 
-Pass the option ``--no-mon-config`` to any process to skip the step that
-retrieves configuration information from the cluster monitors. This is useful
-in cases where configuration is managed entirely via configuration files, or
-when the monitor cluster is down and some maintenance activity needs to be
-done.
+给进程加 ``--no-mon-config`` 选项之后，
+它就会不会向集群的监视器们索要配置信息了。
+在某些时候需要用到，比如完全靠配置文件管理配置信息时、
+或者监视器集群挂了却需要进行一些维护活动。
 
 
 .. _ceph-conf-file:
@@ -160,9 +154,9 @@ These sections include:
 
 .. confsec:: client
 
-   ``[client]`` 下的配置影响所有 Ceph 客户端（如挂载的 Ceph
-       文件系统、挂载的块设备等等）、也影响 Rados 网关（ RGW ）\
-       守护进程。
+   ``[client]`` 下的配置影响所有 Ceph 客户端
+   （如挂载的 Ceph 文件系统、挂载的块设备等等）、
+   也影响 Rados 网关（ RGW ）守护进程。
 
    :example: ``objecter_inflight_ops = 512``
 
@@ -288,8 +282,9 @@ surrounded by square brackets. For example,
 	debug ms = 10
 
 
-Config file option values
--------------------------
+配置文件选项的值
+----------------
+.. Config file option values
 
 The value of a configuration option is a string. If it is too long to
 fit in a single line, you can put a backslash (``\``) at the end of line
@@ -426,8 +421,9 @@ monitors, authenticate, and fetch configuration information.  In most
 cases this is limited to the ``mon_host`` option, although this can
 also be avoided through the use of DNS SRV records.
 
-Sections and masks
-------------------
+段落和掩码
+----------
+.. Sections and masks
 
 Configuration options stored by the monitor can live in a global
 section, daemon type section, or specific daemon section, just like
@@ -455,8 +451,9 @@ When viewing configuration options, the section name and mask are
 generally separated out into separate fields or columns to ease readability.
 
 
-Commands
---------
+命令
+----
+.. Commands
 
 The following CLI commands are used to configure the cluster:
 
@@ -486,8 +483,9 @@ The following CLI commands are used to configure the cluster:
   configuration files to centralized monitor-based configuration.
 
 
-Help
-====
+帮助信息
+========
+.. Help
 
 You can get help for a particular option with::
 
@@ -537,8 +535,9 @@ The `dev` options are intended for use by developers, generally for
 testing purposes, and are not recommended for use by operators.
 
 
-Runtime Changes
-===============
+运行时改配置
+============
+.. Runtime Changes
 
 大多数情况下， Ceph 都允许在运行时更改守护进程的配置。此功能在\
 增加/降低日志输出、启用/禁用调试设置、甚至是运行时优化的时候\
@@ -626,8 +625,7 @@ nautilus 以来的变化
 ===================
 .. Changes since nautilus
 
-With the Octopus release We changed the way the configuration file is parsed.
-These changes are as follows:
+Octopus 版改变了配置文件的分析方式，改变的地方有：
 
 - Repeated configuration options are allowed, and no warnings will be printed.
   The value of the last one is used, which means that the setting last in the file

@@ -308,7 +308,7 @@ OSD 被声明为主机桶内的条目： ::
 
     #. **list**: 这种桶把它们的内容汇聚为链表。\
         对于一个\ **持续扩展的集群** 来说，基于
-        :abbr:`RUSH (Replication Under Scalable Hashing)` :sub:`P`
+        :abbr:`RUSH (基于可伸缩哈希算法的复制， Replication Under Scalable Hashing)` :sub:`P`
         算法的列表是一个自然、直观的选择，\
         不管是对象按一定概率被重定位到最新的设备、\
         或者像从前一样仍保留在较老的设备上，其结果都是，\

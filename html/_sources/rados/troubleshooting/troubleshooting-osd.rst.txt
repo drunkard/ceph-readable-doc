@@ -192,8 +192,8 @@ OSD 起不来
 
 - **段错误：** 如果出现了段错误，提高日志级别并再次启动有问题的守护进程。
   如果段错误重现了，搜索一下 Ceph 缺陷追踪器
-  `https://tracker.ceph/com/projects/ceph <https://tracker.ceph.com/projects/ceph/>`_
-  和 ``dev`` 、 ``ceph-users`` 邮件列表归档
+  `https://tracker.ceph/com/projects/ceph <https://tracker.ceph.com/projects/ceph/>`_ 和
+  ``dev`` 、 ``ceph-users`` 邮件列表归档
   `https://ceph.io/resources <https://ceph.io/resources>`_ 。
   如果它真是一个新的、唯一的失败案例，把它发到 ``dev`` 邮件列表，
   并提供运行着的 Ceph 版本号、 ``ceph.conf`` （把私密信息抹掉）、

@@ -397,7 +397,7 @@ OSD 及主机。如果集群利用率太高，在解决故障域期间也许不�
 
 .. tip:: 这些配置仅在创建集群时有效。之后要改它们就在 OSDMap
    里了，可以用 ``ceph osd set-nearfull-ratio`` 和
-   ``ceph osd set-full-ratio``
+   ``ceph osd set-full-ratio`` 。
 
 
 .. index:: heartbeat

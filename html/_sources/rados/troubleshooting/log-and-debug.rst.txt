@@ -34,29 +34,29 @@
 如果你想查看一进程的运行时配置，必须先登录对应主机，
 然后执行命令： ::
 
-	ceph daemon {daemon-name} config show | less
+    ceph daemon {daemon-name} config show | less
 
 例如： ::
 
-	ceph daemon osd.0 config show | less
+    ceph daemon osd.0 config show | less
 
 要在运行时激活 Ceph 的调试输出（即 ``dout()`` ），用
 ``ceph tell`` 命令把参数注入运行时配置： ::
 
-	ceph tell {daemon-type}.{daemon id or *} config set {name} {value}
+    ceph tell {daemon-type}.{daemon id or *} config set {name} {value}
 
 用 ``osd`` 、 ``mon`` 或 ``mds`` 替代 ``{daemon-type}`` 。
 你可以用星号（ ``*`` ）把配置应用到同类型的所有守护进程，
 或者指定具体守护进程的 ID 。例如，要给名为 ``ods.0`` 的
 ``ceph-osd`` 守护进程提高调试级别，用下列命令： ::
 
-	ceph tell osd.0 config set debug_osd 0/5
+    ceph tell osd.0 config set debug_osd 0/5
 
 ``ceph tell`` 命令会贯穿所有监视器。如果你不能绑定监视器，
 还可以登录你要改的那台主机用 ``ceph daemon`` 来更改。
 例如： ::
 
-	sudo ceph daemon osd.0 config set debug_osd 0/5
+    sudo ceph daemon osd.0 config set debug_osd 0/5
 
 可用选项参见\ `子系统、日志和调试选项`_\ 。
 
@@ -73,23 +73,23 @@
 
 .. code-block:: ini
 
-	[global]
-		debug ms = 1/5
+    [global]
+        debug ms = 1/5
 
-	[mon]
-		debug mon = 20
-		debug paxos = 1/5
-		debug auth = 2
-		
-	[osd]
-		debug osd = 1/5
-		debug filestore = 1/5
-		debug journal = 1
-		debug monc = 5/20
+    [mon]
+        debug mon = 20
+        debug paxos = 1/5
+        debug auth = 2
 
-	[mds]
-		debug mds = 1
-		debug mds balancer = 1
+    [osd]
+        debug osd = 1/5
+        debug filestore = 1/5
+        debug journal = 1
+        debug monc = 5/20
+
+    [mds]
+        debug mds = 1
+        debug mds balancer = 1
 
 可用选项参见\ `子系统、日志和调试选项`_\ 。
 
@@ -103,26 +103,26 @@
 在滚动频率后增加一个尺寸选项（达到此尺寸就滚动）来加快滚动
 （通过 cronjob ）。例如默认配置大致如此： ::
 
-	rotate 7
-  	weekly
-  	compress
-  	sharedscripts
+    rotate 7
+    weekly
+    compress
+    sharedscripts
 
 增加一个 ``size`` 选项。 ::
 
-	rotate 7
-	weekly
-	size 500M
-	compress
-	sharedscripts
+    rotate 7
+    weekly
+    size 500M
+    compress
+    sharedscripts
 
 然后，打开 crontab 编辑器。 ::
 
-  	crontab -e
+    crontab -e
 
 最后，增加一条用以检查 ``/etc/logrorate.d/ceph`` 文件。 ::
 
-  	30 * * * * /usr/sbin/logrotate /etc/logrotate.d/ceph >/dev/null 2>&1
+    30 * * * * /usr/sbin/logrotate /etc/logrotate.d/ceph >/dev/null 2>&1
 
 本例中每 30 分钟检查一次 ``/etc/logrorate.d/ceph`` 文件。
 
@@ -166,9 +166,9 @@ Ceph 子系统概览
 
 .. code-block:: ini
 
-	debug {subsystem} = {log-level}/{memory-level}
-	#for example
-	debug mds balancer = 1/20
+    debug {subsystem} = {log-level}/{memory-level}
+    #for example
+    debug mds balancer = 1/20
 
 
 下表列出了 Ceph 子系统及其默认日志和内存级别。一旦你完成调试，\

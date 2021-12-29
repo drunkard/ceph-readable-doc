@@ -6,38 +6,39 @@
 
 .. program:: cephfs-top
 
-Synopsis
-========
+提纲
+====
 
 | **cephfs-top** [flags]
 
 
-Description
-===========
+描述
+====
 
-**cephfs-top** provides top(1) like functionality for Ceph Filesystem.
-Various client metrics are displayed and updated in realtime.
+**cephfs-top** 为 Ceph 文件系统提供了 top(1) 风格的功能。
+可以显示各种客户端指标并实时更新。
 
-Ceph Metadata Servers periodically send client metrics to Ceph Manager.
-``Stats`` plugin in Ceph Manager provides an interface to fetch these metrics.
+Ceph 元数据服务器周期性地向 Ceph 管理器发送客户端指标。
+Ceph 管理器的 ``Stats`` 插件有接口获取这些指标。
 
-Options
-=======
+选项
+====
 
 .. option:: --cluster
 
-   Cluster: Ceph cluster to connect. Defaults to ``ceph``.
+   集群：要连接的 Ceph 集群，默认是 ``ceph`` 。
 
 .. option:: --id
 
-   Id: Client used to connect to Ceph cluster. Defaults to ``fstop``.
+   Id: 用于连接 Ceph 集群的客户端，默认是 ``fstop`` 。
 
 .. option:: --selftest
 
-   Perform a selftest. This mode performs a sanity check of ``stats`` module.
+   执行一次自检。这个模式对 ``stats`` 模块执行一次健全性检查。
 
-Descriptions of fields
-======================
+字段描述
+========
+.. Descriptions of fields
 
 .. describe:: chit
 
@@ -45,15 +46,15 @@ Descriptions of fields
 
 .. describe:: rlat
 
-   read latency
+   读延时
 
 .. describe:: wlat
 
-   write latency
+   写延时
 
 .. describe:: mlat
 
-   metadata latency
+   元数据延时
 
 .. describe:: dlease
 
@@ -61,7 +62,7 @@ Descriptions of fields
 
 .. describe:: ofiles
 
-   number of opened files
+   已打开文件的数量
 
 .. describe:: oicaps
 
@@ -69,42 +70,42 @@ Descriptions of fields
 
 .. describe:: oinodes
 
-   number of opened inodes
+   打开的 inode 数量
 
 .. describe:: rtio
 
-   total size of read IOs
+   读 IO 的总量
 
 .. describe:: wtio
 
-   total size of write IOs
+   写 IO 的总量
 
 .. describe:: raio
 
-   average size of read IOs
+   读 IO 的平均尺寸
 
 .. describe:: waio
 
-   average size of write IOs
+   写 IO 的平均尺寸
 
 .. describe:: rsp
 
-   speed of read IOs compared with the last refresh
+   与上次刷新相比的读 IO 速度
 
 .. describe:: wsp
 
-   speed of write IOs compared with the last refresh
+   与上次刷新相比的写 IO 速度
 
 
-Availability
-============
-
-**cephfs-top** is part of Ceph, a massively scalable, open-source, distributed storage system. Please refer to the Ceph documentation at
-http://ceph.com/ for more information.
-
-
-See also
+使用范围
 ========
+
+**cephfs-top** 是 Ceph 的一部分，这是个伸缩力强、开源、
+分布式的存储系统，更多信息参见 https://ceph.com/ 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8),
 :doc:`ceph-mds <ceph-mds>`\(8)
