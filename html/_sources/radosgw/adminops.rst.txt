@@ -10,6 +10,53 @@
 响应实体类型（ XML 或 JSON ）可以在请求中的 'format' 选项指定，
 如果没有指定，则默认为 JSON 。
 
+Info
+====
+
+查看集群、终结点的信息。
+
+:caps: info=read
+
+
+语法
+~~~~
+
+::
+
+	GET /{admin}/info?format=json HTTP/1.1
+	Host: {fqdn}
+
+
+请求参数
+~~~~~~~~
+
+None.
+
+
+响应内容解析
+~~~~~~~~~~~~
+
+如果成功，响应会包含一个 ``info`` 段。
+
+``info``
+
+:描述: 所有返回信息的容器。
+:类型: Container
+
+``cluster_id``
+
+:描述: RGW 集群的后端存储（一般是唯一的）标识符。
+       在典型案例中，这是 librados::rados::cluster_fsid()
+       返回的值。
+:类型: String
+:父节点: ``info``
+
+
+特殊错误响应
+~~~~~~~~~~~~
+
+None.
+
 
 查看使用率
 ==========
@@ -1946,6 +1993,7 @@ None.
 
 :描述: 此访问密钥不存在。
 :状态码: 404 Not Found
+
 
 
 
