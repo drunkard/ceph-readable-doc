@@ -63,9 +63,7 @@ list
 | *image-spec* is [*pool-name*]/*image-name*
 | *snap-spec*  is [*pool-name*]/*image-name*\ @\ *snap-name*
 
-*pool-name* 默认为 rbd 。如果一个映像名内包含斜杠（ / ），就\
-必须加 *pool-name* 。
-
+*pool-name* 默认为 rbd 。如果一个映像名内包含斜杠（ / ），就必须加 *pool-name* 。
 
 使用范围
 ========

@@ -15,7 +15,8 @@
 描述
 ====
 
-**librados-config** 工具可查看已安装 ``librados`` 的相关信息。
+**librados-config** 工具可查看已安装 ``librados`` 的\
+相关信息。
 
 
 选项
@@ -33,7 +34,8 @@
 使用范围
 ========
 
-**librados-config** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
+**librados-config** 是 Ceph 的一部分，
+这是个伸缩力强、开源、分布式的存储系统，\
 更多信息参见 https://docs.ceph.com 。
 
 

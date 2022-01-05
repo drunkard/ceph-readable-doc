@@ -47,10 +47,10 @@ Ceph 管理器作为监控、编排、和插件模块的端点。
 Ceph 元数据服务器（ MDS ）在启用了 CephFS 提供文件服务时\
 用来管理文件的元数据。
 
-存储集群的客户端和各个 :term:`Ceph OSD 守护进程`\ 使用
-CRUSH 算法高效地计算数据位置，而不是查询某个表。它的高级功能\
-包括：基于 ``librados`` 的原生存储接口、和多种基于 ``librados``
-的服务接口。
+存储集群的客户端和各个 :term:`Ceph OSD 守护进程`\
+使用 CRUSH 算法高效地计算数据位置，而不是查询某个表。
+它的高级功能包括：基于 ``librados`` 的原生存储接口、
+和多种基于 ``librados`` 的服务接口。
 
 
 
@@ -58,8 +58,8 @@ CRUSH 算法高效地计算数据位置，而不是查询某个表。它的高�
 ----------
 .. Storing Data
 
-Ceph 存储集群从 :term:`Ceph 客户端`\ 接收数据——不管是来自
-:term:`Ceph 块设备`\ 、 :term:`Ceph 对象存储`\ 、
+Ceph 存储集群从 :term:`Ceph 客户端`\ 接收数据——
+不管是来自 :term:`Ceph 块设备`\ 、 :term:`Ceph 对象存储`\ 、
 :term:`Ceph 文件系统`\ 、还是基于 ``librados`` 自己实现的\
 ——并存储为 RADOS 对象。 Ceph OSD 守护进程负责在存储驱动器上\
 处理读、写、还有复制操作。在比较老的 Filestore 后端上，\
@@ -494,7 +494,7 @@ Ceph 如何放置数据。
 详情见\ `调整存储池`_\ 。
 
 
-.. index: architecture; placement group mapping
+.. index:: architecture; placement group mapping
 
 PG 映射到 OSD
 ~~~~~~~~~~~~~
@@ -1567,6 +1567,7 @@ Ceph 文件系统（ CephFS ）是与 POSIX 兼容的文件系统服务，\
 坐落于基于对象的 Ceph 存储集群之上，
 其内的文件被映射到 Ceph 存储集群内的对象。
 客户端可以把此文件系统挂载为内核对象或用户空间文件系统（ FUSE ）。
+
 
 .. ditaa::
 

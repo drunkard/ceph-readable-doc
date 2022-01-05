@@ -16,11 +16,10 @@
 ====
 
 :program:`ceph-volume-systemd` 是一个 systemd 辅助工具，它会\
-持续接收来自 systemd 单元的输入（动态创建的），这样才能激活
-OSD 。
+持续接收来自 systemd 单元的输入（动态创建的），这样才能激活 OSD 。
 
-它会把输入翻译为一条指向 ceph-volume 的系统调用，只用于激活\
-目的。
+它会把输入翻译为一条指向 ceph-volume 的系统调用，
+只用于激活目的。
 
 
 实例

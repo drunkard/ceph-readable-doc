@@ -1,8 +1,8 @@
 :orphan:
 
-==========================================
- cephfs-top -- Ceph Filesystem Top Utility
-==========================================
+=====================================
+ cephfs-top -- Ceph 文件系统热点工具
+=====================================
 
 .. program:: cephfs-top
 
@@ -38,7 +38,6 @@ Ceph 管理器的 ``Stats`` 插件有接口获取这些指标。
 
 字段描述
 ========
-.. Descriptions of fields
 
 .. describe:: chit
 

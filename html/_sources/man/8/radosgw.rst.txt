@@ -197,12 +197,12 @@
 
 #. 启动 Apache 和 radosgw 。
 
-   Debian/Ubuntu::
+   在 Debian/Ubuntu 上::
 
         sudo /etc/init.d/apache2 start
         sudo /etc/init.d/radosgw start
 
-   CentOS/RHEL::
+   在 CentOS/RHEL 上::
 
         sudo apachectl start
         sudo /etc/init.d/ceph-radosgw start

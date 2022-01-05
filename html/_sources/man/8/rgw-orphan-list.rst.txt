@@ -1,69 +1,69 @@
 :orphan:
 
-==================================================================
- rgw-orphan-list -- list rados objects that are not indexed by rgw
-==================================================================
+===================================================
+ rgw-orphan-list -- 罗列没被 rgw 索引的 rados 对象
+===================================================
 
 .. program:: rgw-orphan-list
 
-Synopsis
-========
+提纲
+====
 
 | **rgw-orphan-list**
 
-Description
-===========
+描述
+====
 
-:program:`rgw-orphan-list` is an *EXPERIMENTAL* RADOS gateway user
-administration utility. It produces a listing of rados objects that
-are not directly or indirectly referenced through the bucket indexes
-on a pool. It places the results and intermediate files on the local
-filesystem rather than on the ceph cluster itself, and therefore will
-not itself consume additional cluster storage.
+:program:`rgw-orphan-list` 是个 *处于试验阶段的*
+RADOS 网关用户管理工具。
+它会罗列出一个存储池内没有通过桶索引\
+直接或间接引用的 rados 对象。
+它会把结果和中间文件放在本地文件系统上，而非 ceph 集群里，
+因此它自身不会额外消耗集群存储空间。
 
-In theory orphans should not exist. However because ceph evolves
-rapidly, bugs do crop up, and they may result in orphans that are left
-behind.
+理论上孤儿对象不应该存在，然而， Ceph 发展迅猛，
+缺陷不时出现，它们可能会导致孤儿对象的出现、
+并遗留下来。
 
-In its current form this utility does not take any command-line
-arguments or options. It will list the available pools and prompt the
-user to enter the pool they would like to list orphans for.
+目前，这个工具不需要任何命令行参数或选项。
+它会罗列出所有可用的存储池，
+并提示用户输入想要检查是否有孤儿对象的存储池。
 
-Behind the scenes it runs `rados ls` and `radosgw-admin bucket
-radoslist ...` and produces a list of those entries that appear in the
-former but not the latter. Those entries are presumed to be the
-orphans.
+在幕后，它会运行 `rados ls` 和
+`radosgw-admin bucket radoslist ...` ，
+进行比对，看哪些条目出现在前者而不在后者、
+并生成一个列表，那么这些条目就可能是孤儿对象。
 
-Warnings
-========
 
-This utility is currently considered *EXPERIMENTAL*.
+警告
+====
 
-This utility will produce false orphan entries for unindexed buckets
-since such buckets have no bucket indices that can provide the
-starting point for tracing.
+这个工具当前还 *处于试验阶段* 。
 
-Options
-=======
+对于未索引的桶们，这个工具会产生错误的孤儿条目，
+因为这类桶没有桶索引，没法提供追踪起点。
 
-At present there are no options.
+选项
+====
 
-Examples
-========
+当前没有选项。
 
-Launch the tool::
+实例
+====
+
+启动此工具： ::
 
         $ rgw-orphan-list
 
-Availability
-============
 
-:program:`radosgw-admin` is part of Ceph, a massively scalable, open-source,
-distributed storage system.  Please refer to the Ceph documentation at
-https://docs.ceph.com for more information.
-
-See also
+使用范围
 ========
+
+**rgw-orphan-list** 是 Ceph 的一部分，这是个伸缩力强、开源、
+分布式的存储系统，更多信息参见 https://docs.ceph.com 。
+
+参考
+====
 
 :doc:`radosgw-admin <radosgw-admin>`\(8)
 :doc:`ceph-diff-sorted <ceph-diff-sorted>`\(8)

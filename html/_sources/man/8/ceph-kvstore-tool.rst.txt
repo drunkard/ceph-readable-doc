@@ -38,61 +38,60 @@
     查验带有此前缀的键名。
 
 :command:`get <prefix> <key> [out <file>]`
-    Get the value of the KV pair stored with the URL encoded prefix and key.
-    If file is also specified, write the value to the file.
+    通过 URL 编码存储的 prefix 和 key 获取 KV 对的值。
+    如果指定了文件，把此值写入该文件。
 
 :command:`crc <prefix> <key>`
-    Get the CRC of the KV pair stored with the URL encoded prefix and key. 
+    通过 URL 编码存储的 prefix 和 key 获取 KV 对的 CRC 。
 
 :command:`get-size [<prefix> <key>]`
-    Get estimated store size or size of value specified by prefix and key.
+    获取 prefix 和 key 所指内容的大概尺寸、或是值的尺寸。
 
 :command:`set <prefix> <key> [ver <N>|in <file>]`
-    Set the value of the KV pair stored with the URL encoded prefix and key. 
-    The value could be *version_t* or text.
+    通过 URL 编码存储的 prefix 和 key 设置 KV 对的值。
+    这个值可以是 *version_t* 或文本。
 
 :command:`rm <prefix> <key>`
-    Remove the KV pair stored with the URL encoded prefix and key.
+    删除 URL 编码的 prefix 和 key 的 KV 对。
 
 :command:`rm-prefix <prefix>`
-    Remove all KV pairs stored with the URL encoded prefix.
+    删除 URL 编码存储的 prefix 之下的所有 KV 对。
 
 :command:`store-copy <path> [num-keys-per-tx]`
-    Copy all KV pairs to another directory specified by ``path``. 
-    [num-keys-per-tx] is the number of KV pairs copied for a transaction.
+    把所有 KV 对都复制到 ``path`` 目录里。
+    [num-keys-per-tx] 是一个事务可以复制的 KV 对数量。
 
 :command:`store-crc <path>`
-    Store CRC of all KV pairs to a file specified by ``path``.
+    把所有 KV 对的 CRC 都存储到 ``path`` 内的一个文件里。
 
 :command:`compact`
-    Subcommand ``compact`` is used to compact all data of kvstore. It will open
-    the database, and trigger a database's compaction. After compaction, some 
-    disk space may be released.
+    子命令 ``compact`` 用于压缩 kvstore 的所有数据。
+    它会打开数据库、触发数据库的压缩功能。压缩后，
+    会释放一些磁盘空间。
 
 :command:`compact-prefix <prefix>`
-    Compact all entries specified by the URL encoded prefix. 
+    压缩 URL 编码的 prefix 相关的所有条目。
    
 :command:`compact-range <prefix> <start> <end>`
-    Compact some entries specified by the URL encoded prefix and range.
+    压缩由 URL 编码的 prefix 和范围确定的那些条目。
 
 :command:`destructive-repair`
-    Make a (potentially destructive) effort to recover a corrupted database.
-    Note that in the case of rocksdb this may corrupt an otherwise uncorrupted
-    database--use this only as a last resort!
+    尽力（有可能是破坏性地）恢复损坏的数据库。
+    注意，底层是 rocksdb 时，此操作可能会损坏本来正常的数据库——
+    此命令只能作为终极手段！
 
 :command:`stats`
-    Prints statistics from underlying key-value database. This is only for informative purposes.
-    Format and information content may vary between releases. For RocksDB information includes
-    compactions stats, performance counters, memory usage and internal RocksDB stats. 
+    打印底层键值数据库的统计信息，这只是个信息来源。
+    格式和信息内容随版本变化频繁，对于 RocksDB ，
+    包含的信息有压缩统计信息、性能计数器、内存使用率和 RocksDB 内部统计信息。
 
 :command:`histogram`
-    Presents key-value sizes distribution statistics from the underlying KV database.
-
+    呈现出底层 KV 数据库的键/值尺寸分布情况统计。
 
 使用范围
 ========
 
-:program:`ceph-kvstore-tool` 是 Ceph 的一部分，这是个伸缩力强、\
+**ceph-kvstore-tool** 是 Ceph 的一部分，这是个伸缩力强、\
 开源、分布式的存储系统，更多信息参见 https://docs.ceph.com 。
 
 

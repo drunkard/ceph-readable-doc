@@ -1,66 +1,65 @@
 :orphan:
 
-============================================================
- cephfs-mirror -- Ceph daemon for mirroring CephFS snapshots
-============================================================
+=======================================================
+ cephfs-mirror -- 用于镜像 CephFS 快照的 Ceph 守护进程
+=======================================================
 
 .. program:: cephfs-mirror
 
-Synopsis
-========
+提纲
+====
 
 | **cephfs-mirror**
 
 
-Description
-===========
+描述
+====
 
-:program:`cephfs-mirror` is a daemon for asynchronous mirroring of Ceph
-Filesystem snapshots among Ceph clusters.
+:program:`cephfs-mirror` 是个守护进程，用于\
+在 Ceph 集群间异步地镜像 Ceph 文件系统快照。
 
-It connects to remote clusters via libcephfs, relying on default search
-paths to find ceph.conf files, i.e. ``/etc/ceph/$cluster.conf`` where
-``$cluster`` is the human-friendly name of the cluster.
+它通过 libcephfs 连接远程集群，通过默认搜索路径找到
+ceph.conf 文件，即 ``/etc/ceph/$cluster.conf`` ，其中，
+``$cluster`` 是人类可读的集群名字。
 
-
-Options
-=======
+选项
+====
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   Use ``ceph.conf`` configuration file instead of the default
-   ``/etc/ceph/ceph.conf`` to determine monitor addresses during startup.
+   启动时用 ``ceph.conf`` 配置文件，而非默认的
+   ``/etc/ceph/ceph.conf`` 来确定监视器地址。
 
 .. option:: -i ID, --id ID
 
-   Set the ID portion of name for cephfs-mirror
+   给 cephfs-mirror 设置名字的 ID 部分。
 
 .. option:: -n TYPE.ID, --name TYPE.ID
 
-   Set the rados user name (eg. client.mirror)
+   设置 rados 用户名（如 client.mirror ）
 
 .. option:: --cluster NAME
 
-   Set the cluster name (default: ceph)
+   指定集群名（默认 ceph ）
 
 .. option:: -d
 
-   Run in foreground, log to stderr
+   在前台运行，日志记录到标准错误（ stderr ）。
 
 .. option:: -f
 
-   Run in foreground, log to usual location
+   在前台运行，日志记录到常规位置。
 
 
-Availability
-============
 
-:program:`cephfs-mirror` is part of Ceph, a massively scalable, open-source, distributed
-storage system. Please refer to the Ceph documentation at https://docs.ceph.com for
-more information.
-
-
-See also
+使用范围
 ========
+
+**cephfs-mirror** 是 Ceph 的一部分，这是个伸缩力强、开源、
+分布式的存储系统，更多信息参见 https://docs.ceph.com 。
+
+
+参考
+====
 
 :doc:`ceph <ceph>`\(8)

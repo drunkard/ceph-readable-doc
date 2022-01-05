@@ -15,14 +15,12 @@
 | **rbd-nbd** attach --device *nbd device* *image-spec* | *snap-spec*
 | **rbd-nbd** detach *nbd device* | *image-spec* | *snap-spec*
 
-
 描述
 ====
 
 **rbd-nbd** 是个 RADOS 块设备（ rbd ）映像的客户端，与 rbd
 内核模块类似。它可以把一个 rbd 映像映射为 nbd （网络块设备）\
 设备，这样就可以当常规的本地块设备使用了。
-
 
 选项
 ====
@@ -51,16 +49,15 @@
 
 .. option:: --notrim
 
-   Turn off trim/discard.
+   关闭 trim/discard 功能。
 
 .. option:: --encryption-format
 
-   Image encryption format.
-   Possible values: *luks1*, *luks2*
+   映像加密格式。可用的有： *luks1* 、 *luks2*
 
 .. option:: --encryption-passphrase-file
 
-   Path of file containing a passphrase for unlocking image encryption.
+   包含口令的文件路径，用于解锁加密的映像。
 
 .. option:: --io-timeout *seconds*
 
@@ -69,10 +66,8 @@
 
 .. option:: --reattach-timeout *seconds*
 
-   Specify timeout for the kernel to wait for a new rbd-nbd process is
-   attached after the old process is detached. The default is 30
-   second.
-
+   旧的 rbd-nbd 进程解绑后，内核等待多久才允许新进程绑定。
+   默认是 30 秒。
 
 映像名和快照名规则
 ==================

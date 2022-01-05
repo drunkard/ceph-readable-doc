@@ -19,12 +19,13 @@
 地镜像 RADOS 块设备（ rbd ）映像。它可以在远端集群重放本地\
 集群内的映像变更，以实现异地灾备。
 
-它用 RADOS 协议连接远端集群，需要从默认路径搜索 ceph.conf
-配置文件、监视器地址、及其认证信息，即
-``/etc/ceph/$cluster.conf`` 、 ``/etc/ceph/$cluster.keyring``
-和 ``/etc/ceph/$cluster.$name.keyring`` ，其中 ``$cluster``
-表示自定义的集群名字、 ``$name`` 表示连接时所用的 rados 用\
-户，如 ``client.rbd-mirror`` 。
+它用 RADOS 协议连接远端集群，需要从默认路径搜索
+ceph.conf 配置文件、监视器地址、
+及其认证信息，即 ``/etc/ceph/$cluster.conf`` 、
+``/etc/ceph/$cluster.keyring`` 和
+``/etc/ceph/$cluster.$name.keyring`` ，其中 ``$cluster``
+表示自定义的集群名字、 ``$name`` 表示连接时所用的 rados 用户，
+如 ``client.rbd-mirror`` 。
 
 
 选项
@@ -58,6 +59,7 @@
 .. option:: -f
 
    在前台运行，日志走向不受影响。
+
 
 
 使用范围
