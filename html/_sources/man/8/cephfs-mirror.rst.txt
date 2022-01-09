@@ -22,6 +22,7 @@
 ceph.conf 文件，即 ``/etc/ceph/$cluster.conf`` ，其中，
 ``$cluster`` 是人类可读的集群名字。
 
+
 选项
 ====
 

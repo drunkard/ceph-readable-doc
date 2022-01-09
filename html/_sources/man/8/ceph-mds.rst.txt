@@ -15,16 +15,17 @@
 描述
 ====
 
-**ceph-mds** 是 Ceph 分布式文件系统的元数据服务器守护进程。一\
-或多个 ceph-mds 例程协作着管理文件系统的命名空间、协调到共享
-OSD 集群的访问。
+**ceph-mds** 是 Ceph 分布式文件系统的元数据服务器\
+守护进程。一或多个 ceph-mds 例程协作着管理\
+文件系统的命名空间、协调到共享 OSD 集群的访问。
 
 各 ceph-mds 守护进程例程都应该有惟一的名字，此名用于在
 ceph.conf 里标识例程。
 
-一旦守护进程启动，监视器集群会给它分配一个逻辑机架，或把它放入\
-一个候补存储池用于接替其它崩溃的进程。一些特定选项会导致其它行\
-为。
+一旦守护进程启动，监视器集群会给它分配\
+一个逻辑 rank ，或把它放入一个候补存储池\
+用于接替其它崩溃的进程。
+一些特定选项会导致其它行为。
 
 
 选项
@@ -32,8 +33,9 @@ ceph.conf 里标识例程。
 
 .. option:: -f, --foreground
 
-   前台：启动后不要进入后台（在前台运行），不生成 pid 文件。通\
-   过 :doc:`ceph-run <ceph-run>`\(8) 调用时有用。
+   前台：启动后不要进入后台（在前台运行），
+   不生成 pid 文件。通过
+   :doc:`ceph-run <ceph-run>`\(8) 调用时有用。
 
 .. option:: -d
 
@@ -41,17 +43,20 @@ ceph.conf 里标识例程。
 
 .. option:: --setuser userorgid
 
-   启动后设置 UID 。如果指定的是用户名，会查询用户记录以获取 UID \
-   及其 GID ，同时设置 GID ，除非还指定了 --setgroup 选项。
+   启动后设置 UID 。如果指定的是用户名，
+   会查询用户记录以获取 UID 及其 GID ，
+   同时设置 GID ，除非还指定了 --setgroup 选项。
 
 .. option:: --setgroup grouporgid
 
-   启动后设置 GID 。如果指定的是组名，会查询组记录以获取 GID 。
+   启动后设置 GID 。如果指定的是组名，
+   会查询组记录以获取 GID 。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   在启动时用 *ceph.conf* 而非默认的 ``/etc/ceph/ceph.conf`` 来确\
-   定监视器地址。
+   在启动时用 *ceph.conf* 而非默认的
+   ``/etc/ceph/ceph.conf`` 来确定\
+   监视器地址。
 
 .. option:: -m monaddress[:port]
 

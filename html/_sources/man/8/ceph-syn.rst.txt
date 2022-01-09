@@ -15,11 +15,13 @@
 描述
 ====
 
-**ceph-syn** 是个适用于 Ceph 分布式文件系统的简单的人造载荷生成器。它通过用\
-户空间客户端库在当前运行着的文件系统上生成简单的载荷，此文件系统不必通过 \
-ceph-fuse(8) 或内核客户端挂载。
+**ceph-syn** 是个适用于 Ceph 分布式文件系统的简单的\
+人造载荷生成器。它通过用户空间客户端库在\
+当前运行着的文件系统上生成简单的载荷，
+此文件系统不必通过 ceph-fuse(8) 或内核客户端挂载。
 
-一或多个 ``--syn`` 命令参数规定特定的载荷，具体文档如下。
+一或多个 ``--syn`` 命令参数规定特定的载荷，
+具体文档如下。
 
 
 选项
@@ -31,8 +33,9 @@ ceph-fuse(8) 或内核客户端挂载。
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 
-   启动时用 *ceph.conf* 配置文件而非默认的 ``/etc/ceph/ceph.conf`` 来确定监\
-   视器地址。
+   启动时用 *ceph.conf* 配置文件而非默认的
+   ``/etc/ceph/ceph.conf`` 来确定\
+   监视器地址。
 
 .. option:: -m monaddress[:port]
 
@@ -44,13 +47,15 @@ ceph-fuse(8) 或内核客户端挂载。
 
 .. option:: --syn workloadspec
 
-   运行给定载荷。可以指定任意多次，通常依次被运行。
+   运行给定载荷。可以指定任意多次，
+   通常依次被运行。
 
 
 载荷
 ====
 
-命令行中每个载荷前都要加 ``--syn`` 。下面是个不太完整的列表。
+命令行中每个载荷前都要加 ``--syn`` 。
+下面是个不太完整的列表。
 
 :command:`mknap` *path* *snapname*
   在 *path* 下创建名为 *snapname* 的快照。
@@ -62,19 +67,19 @@ ceph-fuse(8) 或内核客户端挂载。
   删除或断链 *path* 。
 
 :command:`writefile` *sizeinmb* *blocksize*
-  创建一个文件，以我们的客户端 ID 命名，写入 *blocksize* 个尺寸为 *sizeinmb* \
-  MB 的数据块。
+  创建一个文件，以我们的客户端 ID 命名，写入 *blocksize* 个尺寸为
+  *sizeinmb* MB 的数据块。
 
 :command:`readfile` *sizeinmb* *blocksize*
-  读文件，以我们的客户端 ID 命名，写入 *blocksize* 个尺寸为 *sizeinmb* MB 的\
-  数据块。
+  读文件，以我们的客户端 ID 命名，写入 *blocksize* 个尺寸为
+  *sizeinmb* MB 的数据块。
 
 :command:`rw` *sizeinmb* *blocksize*
   写文件，然后再读出，像上面的一样。
 
 :command:`makedirs` *numsubdirs* *numfiles* *depth*
-  创建深度为 *depth* 级的分级目录，各目录有 *numsubdirs* 个子目录和 \
-  *numfiles* 个文件。
+  创建深度为 *depth* 级的分级目录，各目录有
+  *numsubdirs* 个子目录和 *numfiles* 个文件。
 
 :command:`walk`
   递归地遍历文件系统（类似 find ）。

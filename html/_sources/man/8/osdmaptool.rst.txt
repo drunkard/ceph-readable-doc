@@ -35,12 +35,13 @@
 
 .. option:: --print
 
-   修改完成后，打印此图的一份纯文本转储。
+   修改完成后，打印此运行图的一份纯文本转储。
 
 .. option:: --dump <format>
 
-   <format> 为 plain 时以纯文本方式显示运行图，若不支持指定\
-   格式就默认为 json 。这是 print 选项的替代品。
+   <format> 为 plain 时以纯文本方式显示运行图，
+   若不支持指定格式就默认为 json 。
+   这是 print 选项的替代品。
 
 .. option:: --clobber
 
@@ -56,11 +57,11 @@
 
 .. option:: --createsimple numosd [--pg-bits bitsperosd] [--pgp-bits bits]
 
-   创建有 numosd 个设备的相对通用的 OSD 图。若指定了 --pg-bits
-   选项，每个 OSD 的归置组数量将是 bitsperosd 个位偏移。也就是
-   pg_num 属性将被设置为 numosd 数值再右移 bitsperosd 位。若\
-   指定了 --pgp-bits 选项， pgp_num 属性将被设置为 numosd 数值\
-   再右移 bits 位。
+   创建有 numosd 个设备的相对通用的 OSD 图。
+   若指定了 --pg-bits 选项，每个 OSD 的归置组数量将是 bitsperosd 个位偏移。
+   也就是 pg_num 属性将被设置为 numosd 数值再右移 bitsperosd 位。
+   若指定了 --pgp-bits 选项，
+   pgp_num 属性将被设置为 numosd 数值再右移 bits 位。
 
    <译者注>: pgp_num map attribute: 意为 osd map 之中的 pgp_num 属性
 
@@ -70,8 +71,9 @@
 
 .. option:: --test-map-pgs [--pool poolid] [--range-first <first> --range-last <last>]
 
-   打印出归置组到 OSD 的映射关系。如果指定了范围，那它就依次\
-   递归 osdmaptool 参数所指目录内 first 到 last 之间的。
+   打印出归置组到 OSD 的映射关系。
+   如果指定了范围，那它就依次递归
+   osdmaptool 参数所指目录内 first 到 last 之间的。
    例如： **osdmaptool --test-map-pgs --range-first 0 --range-last 2 osdmap_dir**.
    它会递归 osdmap_dir 内名为 0 、 1 、 2 的文件。
 
@@ -85,100 +87,100 @@
 
 .. option:: --test-map-pgs-dump-all [--pool poolid] [--range-first <first> --range-last <last>]
 
-   will print out the summary of all placement groups and the mappings
-   from them to all the OSDs.
-   If range is specified, then it iterates from first to last in the directory
-   specified by argument to osdmaptool.
-   Eg: **osdmaptool --test-map-pgs-dump-all --range-first 0 --range-last 2 osdmap_dir**.
-   This will iterate through the files named 0,1,2 in osdmap_dir.
+   会打印出所有归置组及其到所有 OSD 映射关系\
+   的汇总。
+   如果指定了范围， osdmaptool 会根据参数指定的目录\
+   从头到尾挨个迭代。
+   例如： **osdmaptool --test-map-pgs-dump-all --range-first 0 --range-last 2 osdmap_dir** ，
+   此命令会迭代 osdmap_dir 里名为 0,1,2 的文件们。
 
 .. option:: --test-random
 
-   does a random mapping of placement groups to the OSDs.
+   把归置组随机地映射到各个 OSD 。
 
 .. option:: --test-map-pg <pgid>
 
-   map a particular placement group(specified by pgid) to the OSDs.
+   把某个特定的归置组（用 pgid 指定的）映射到多个 OSD 。
 
 .. option:: --test-map-object <objectname> [--pool <poolid>]
 
-   map a particular placement group(specified by objectname) to the OSDs.
+   把某个特定的归置组（由对象名 objectname 确定）映射到一组 OSD 。
 
 .. option:: --test-crush [--range-first <first> --range-last <last>]
 
-   map placement groups to acting OSDs.
-   If range is specified, then it iterates from first to last in the directory
-   specified by argument to osdmaptool.
-   Eg: **osdmaptool --test-crush --range-first 0 --range-last 2 osdmap_dir**.
-   This will iterate through the files named 0,1,2 in osdmap_dir.
+   把各归置组映射到正常工作的 OSD 们。
+   如果指定了范围，根据 osdmaptool 参数里指定的、
+   从目录里的第一个到最后一个挨个迭代。
+   例如： **osdmaptool --test-crush --range-first 0 --range-last 2 osdmap_dir**.
+   此命令会迭代 osdmap_dir 里名为 0,1,2 的文件。
 
 .. option:: --mark-up-in
 
-   mark osds up and in (but do not persist).
+   把 OSD 们标记为 up 且 in （但不持久化）。
 
 .. option:: --mark-out
 
-   mark an osd as out (but do not persist)
+   把 OSD 们标记为 out （但不持久化）。
 
 .. option:: --mark-up <osdid>
 
-   mark an osd as up (but do not persist)
+   把 OSD 们标记为 up （但不持久化）。
 
 .. option:: --mark-in <osdid>
 
-   mark an osd as in (but do not persist)
+   把 OSD 们标记为 in （但不持久化）。
 
 .. option:: --tree
 
-   Displays a hierarchical tree of the map.
+   按分级树显示此运行图。
 
 .. option:: --clear-temp
 
-   clears pg_temp and primary_temp variables.
+   清空 pg_temp 和 primary_temp 变量。
 
 .. option:: --clean-temps
 
-   clean pg_temps.
+   清空 pg_temps 。
 
 .. option:: --health
 
-   dump health checks
+   转储出健康检查信息。
 
 .. option:: --with-default-pool
 
-   include default pool when creating map
+   创建运行图时包含默认的存储池。
 
 .. option:: --upmap-cleanup <file>
 
-   clean up pg_upmap[_items] entries, writing commands to <file> [default: - for stdout]
+   清理 pg_upmap[_items] 条目，把命令写入 <file> [默认: - 表示写入 stdout]
 
 .. option:: --upmap <file>
 
-   calculate pg upmap entries to balance pg layout writing commands to <file> [default: - for stdout]
+   计算 pg upmap 条目，以均衡 pg 布局，把命令写入 <file> [默认: - 表示写入 stdout]
 
 .. option:: --upmap-max <max-optimizations>
 
-   set max upmap entries to calculate [default: 10]
+   设置要计算的最大 upmap 条目数 [默认: 10]
 
 .. option:: --upmap-deviation <max-deviation>
 
-   max deviation from target [default: 5]
+   与目标的最大偏差 [默认: 5]
 
 .. option:: --upmap-pool <poolname>
 
-   restrict upmap balancing to 1 pool or the option can be repeated for multiple pools
+   把 upmap 均衡限制在指定存储池之内，此选项可以重用多次以指定多个存储池。
 
 .. option:: --upmap-active
 
-   Act like an active balancer, keep applying changes until balanced
+   像一个活跃的均衡器一样运行，不停地应用变更直到均衡完成。
 
 .. option:: --adjust-crush-weight <osdid:weight>[,<osdid:weight>,<...>]
 
-   Change CRUSH weight of <osdid>
+   更改 <osdid> 的 CRUSH 权重。
 
 .. option:: --save
 
-   write modified osdmap with upmap or crush-adjust changes
+   写入更改过（ upmap 或调整了 crush ）的 osdmap
 
 
 实例
@@ -235,7 +237,7 @@
  #. 再看是托管着归置组的 OSD 数量，是 3 个。接下来是
 
     * avarge, stddev （标准偏差）, stddev/average, expected stddev, expected stddev / average
-    * min and max
+    * min 和 max
  #. 映射到 n 个 OSD 的归置组数量。在本例中，全部的 8 个归置组\
     都映射到了 3 个不同的 OSD 。
 
@@ -265,60 +267,61 @@
 
 模拟 upmap 模式下的动态均衡器： ::
 
-        osdmaptool --upmap upmaps.out --upmap-active --upmap-deviation 6 --upmap-max 11 osdmap
+    osdmaptool --upmap upmaps.out --upmap-active --upmap-deviation 6 --upmap-max 11 osdmap
 
-   osdmaptool: osdmap file 'osdmap'
-   writing upmap command output to: upmaps.out
-   checking for upmap cleanups
-   upmap, max-count 11, max deviation 6
-   pools movies photos metadata data
-   prepared 11/11 changes
-   Time elapsed 0.00310404 secs
-   pools movies photos metadata data
-   prepared 11/11 changes
-   Time elapsed 0.00283402 secs
-   pools data metadata movies photos
-   prepared 11/11 changes
-   Time elapsed 0.003122 secs
-   pools photos metadata data movies
-   prepared 11/11 changes
-   Time elapsed 0.00324372 secs
-   pools movies metadata data photos
-   prepared 1/11 changes
-   Time elapsed 0.00222609 secs
-   pools data movies photos metadata
-   prepared 0/11 changes
-   Time elapsed 0.00209916 secs
-   Unable to find further optimization, or distribution is already perfect
-   osd.0 pgs 41
-   osd.1 pgs 42
-   osd.2 pgs 42
-   osd.3 pgs 41
-   osd.4 pgs 46
-   osd.5 pgs 39
-   osd.6 pgs 39
-   osd.7 pgs 43
-   osd.8 pgs 41
-   osd.9 pgs 46
-   osd.10 pgs 46
-   osd.11 pgs 46
-   osd.12 pgs 46
-   osd.13 pgs 41
-   osd.14 pgs 40
-   osd.15 pgs 40
-   osd.16 pgs 39
-   osd.17 pgs 46
-   osd.18 pgs 46
-   osd.19 pgs 39
-   osd.20 pgs 42
-   Total time elapsed 0.0167765 secs, 5 rounds
+    osdmaptool: osdmap file 'osdmap'
+    writing upmap command output to: upmaps.out
+    checking for upmap cleanups
+    upmap, max-count 11, max deviation 6
+    pools movies photos metadata data
+    prepared 11/11 changes
+    Time elapsed 0.00310404 secs
+    pools movies photos metadata data
+    prepared 11/11 changes
+    Time elapsed 0.00283402 secs
+    pools data metadata movies photos
+    prepared 11/11 changes
+    Time elapsed 0.003122 secs
+    pools photos metadata data movies
+    prepared 11/11 changes
+    Time elapsed 0.00324372 secs
+    pools movies metadata data photos
+    prepared 1/11 changes
+    Time elapsed 0.00222609 secs
+    pools data movies photos metadata
+    prepared 0/11 changes
+    Time elapsed 0.00209916 secs
+    Unable to find further optimization, or distribution is already perfect
+    osd.0 pgs 41
+    osd.1 pgs 42
+    osd.2 pgs 42
+    osd.3 pgs 41
+    osd.4 pgs 46
+    osd.5 pgs 39
+    osd.6 pgs 39
+    osd.7 pgs 43
+    osd.8 pgs 41
+    osd.9 pgs 46
+    osd.10 pgs 46
+    osd.11 pgs 46
+    osd.12 pgs 46
+    osd.13 pgs 41
+    osd.14 pgs 40
+    osd.15 pgs 40
+    osd.16 pgs 39
+    osd.17 pgs 46
+    osd.18 pgs 46
+    osd.19 pgs 39
+    osd.20 pgs 42
+    Total time elapsed 0.0167765 secs, 5 rounds
+
 
 
 使用范围
 ========
 
-**osdmaptool** 是 Ceph 的一部分，这是个伸缩力强、开源、分布式的存储系统，\
-更多信息参见 https://docs.ceph.com 。
+**osdmaptool** 是 Ceph 的一部分，这是个伸缩力强、开源、
+分布式的存储系统，更多信息参见 https://docs.ceph.com 。
 
 
 参考

@@ -21,7 +21,8 @@ Ceph 分布式存储系统的监视器集群运行图。
 其他所有守护进程绑定到任意地址、
 并注册到监视器。
 
-用 --create 选项创建新图时，会创建新的随机 UUID ，
+用 --create 选项创建新图时，
+会创建新的随机 UUID ，
 此选项后还应加一或多个监视器地址。
 
 Ceph 监视器 v1 版信使协议的端口是 6789 ，
@@ -40,9 +41,9 @@ Ceph 监视器 v1 版信使协议的端口是 6789 ，
 
 .. option:: --feature-list [plain|parseable]
 
-   list the enabled features as well as the available ones.
+   罗列出已启用的功能、还有可用的。
 
-   By default, a human readable output is produced.
+   默认返回的是人类可读的输出。
 
 .. option:: --create
 
@@ -53,7 +54,7 @@ Ceph 监视器 v1 版信使协议的端口是 6789 ，
 
    更改时允许 monmaptool 覆盖 mapfilename 。
 
-   Only useful when *--create* is used.
+   只有加 *--create* 时有用。
 
 .. option:: --generate
 
@@ -75,12 +76,12 @@ Ceph 监视器 v1 版信使协议的端口是 6789 ，
 
    把指定 ip:port 的监视器加入图中。
 
-   If the *nautilus* feature is set, and the port is not, the monitor
-   will be added for both messenger protocols.
+   如果启用了 *nautilus* 功能，却没指定端口，
+   会为两种信使协议都增加监视器。
 
 .. option:: --addv name [protocol:ip:port[,...]]
 
-   add a monitor with the specified version:ip:port to the map.
+   以 version:ip:port 格式向运行图增加监视器。
 
 .. option:: --rm name
 
@@ -88,23 +89,23 @@ Ceph 监视器 v1 版信使协议的端口是 6789 ，
 
 .. option:: --fsid uuid
 
-    把 fsid 设置为指定的 uuid ，如果 --create 时没指定，将会随机生成一个。
+   把 fsid 设置为指定的 uuid ，如果 --create 时没指定，将会随机生成一个。
 
 .. option:: --feature-set value [--optional|--persistent]
 
-   enable a feature.
+   启用一个功能。
 
 .. option:: --feature-unset value [--optional|--persistent]
 
-   disable a feature.
+   禁用一个功能。
 
 .. option:: --enable-all-features
 
-   enable all supported features.
+   启用所有支持的协议。
 
 .. option:: --set-min-mon-release release
 
-   set the min_mon_release.
+   设置 min_mon_release 的值。
 
 
 实例
