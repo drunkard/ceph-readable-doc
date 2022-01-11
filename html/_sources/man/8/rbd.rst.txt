@@ -199,40 +199,40 @@ RBD 映像是简单的块设备，
   format 2 格式的映像才支持。
 
 :command:`config global get` *config-entity* *key*
-  Get a global-level configuration override.
+  查看一条全局级的配置选项覆盖。
 
 :command:`config global list` [--format plain | json | xml] [--pretty-format] *config-entity*
-  List global-level configuration overrides.
+  罗列全局级的配置选项覆盖。
 
 :command:`config global set` *config-entity* *key* *value*
-  Set a global-level configuration override.
+  设置一条全局级的配置选项覆盖。
 
 :command:`config global remove` *config-entity* *key*
-  Remove a global-level configuration override.
+  删除一条全局级的配置选项覆盖。
 
 :command:`config image get` *image-spec* *key*
-  Get an image-level configuration override.
+  查看一条映像级的配置选项覆盖。
 
 :command:`config image list` [--format plain | json | xml] [--pretty-format] *image-spec*
-  List image-level configuration overrides.
+  罗列映像级的配置选项覆盖。.
 
 :command:`config image set` *image-spec* *key* *value*
-  Set an image-level configuration override.
+  设置一条映像级的配置选项覆盖。
 
 :command:`config image remove` *image-spec* *key*
-  Remove an image-level configuration override.
+  删除一条映像级的配置选项覆盖。
 
 :command:`config pool get` *pool-name* *key*
-  Get a pool-level configuration override.
+  查看一条存储池级的配置选项覆盖。
 
 :command:`config pool list` [--format plain | json | xml] [--pretty-format] *pool-name*
-  List pool-level configuration overrides.
+  罗列存储池级的配置选项覆盖。.
 
 :command:`config pool set` *pool-name* *key* *value*
-  Set a pool-level configuration override.
+  配置一条存储池级的配置选项覆盖。
 
 :command:`config pool remove` *pool-name* *key*
-  Remove a pool-level configuration override.
+  删除一条存储池级的配置选项覆盖。
 
 :command:`cp` (*src-image-spec* | *src-snap-spec*) *dest-image-spec*
   把源映像内容复制进新建的目标映像，
@@ -271,20 +271,20 @@ RBD 映像是简单的块设备，
   （ opt1,opt2=val,... ）。
 
 :command:`device attach` [-t | --device-type *device-type*] --device *device-path* [--cookie *device-cookie*] [--show-cookie] [--read-only] [--exclusive] [--force] [-o | --options *device-options*] *image-spec* | *snap-spec*
-  Attach the specified image to the specified block device (currently only
-  `nbd` on Linux). This operation is unsafe and should not be normally used.
-  In particular, specifying the wrong image or the wrong block device may
-  lead to data corruption as no validation is performed by `nbd` kernel driver.
+  把指定映像捆绑到指定块设备（当前仅适用于 Linux 上的 `nbd` ）。
+  此操作不安全，平常不应该使用。
+  特别是，指定了错误的映像或错误的块设备可能会导致数据损坏，
+  因为 `nbd` 内核驱动不会进行核实。
 
-  The --options argument is a comma separated list of device type
-  specific options (opt1,opt2=val,...).
+  --options 参数是一个逗号分隔的、特定于设备类型的选项
+  （ opt1,opt2=val,... ）列表。
 
 :command:`device detach` [-t | --device-type *device-type*] [-o | --options *device-options*] *image-spec* | *snap-spec* | *device-path*
-  Detach the block device that was mapped or attached (currently only `nbd`
-  on Linux). This operation is unsafe and should not be normally used.
+  解绑之前映射或绑定（当前仅适用于 Linux 上的 `nbd` ）的块设备。
+  此操作不安全，平常不应该使用。
 
-  The --options argument is a comma separated list of device type
-  specific options (opt1,opt2=val,...).
+  --options 参数是一个逗号分隔的、特定于设备类型的选项
+  （ opt1,opt2=val,... ）列表。
 
 :command:`diff` [--from-snap *snap-name*] [--whole-object] *image-spec* | *snap-spec*
   打印出从指定快照点起、或从映像创建点起，映像内的变动区域。
@@ -303,11 +303,11 @@ RBD 映像是简单的块设备，
   --merge-snapshots 会把快照占用的空间算到它的父映像头上。
 
 :command:`encryption format` *image-spec* *format* *passphrase-file* [--cipher-alg *alg*]
-  Formats image to an encrypted format.
-  All data previously written to the image will become unreadable.
-  A cloned image cannot be formatted, although encrypted images can be cloned.
-  Supported formats: *luks1*, *luks2*.
-  Supported cipher algorithms: *aes-128*, *aes-256* (default).
+  把映像格式化成加密格式。
+  之前写入此映像的所有数据都将不可读。
+  虽然加密的映像可以被克隆，但是克隆的映像不能被格式化。
+  支持的格式有： *luks1* 、 *luks2* 。
+  支持的加密算法： *aes-128* 、 *aes-256* （默认）。
 
 :command:`export` [--export-format *format (1 or 2)*] (*image-spec* | *snap-spec*) [*dest-path*]
   把映像导出到目的路径，用 - （短线）输出到标准输出。
@@ -463,122 +463,122 @@ RBD 映像是简单的块设备，
   注意，当前此命令只支持 stripe_count == 1 这样的源增量差异。
 
 :command:`migration abort` *image-spec*
-  Cancel image migration. This step may be run after successful or
-  failed migration prepare or migration execute steps and returns the
-  image to its initial (before migration) state. All modifications to
-  the destination image are lost.
+  取消映像迁移。这个步骤在成功或失败的迁移准备、
+  各个迁移执行步骤之后运行，
+  并让映像回到它最初（迁移前）的状态。
+  目的映像的所有更改都将丢失。
 
 :command:`migration commit` *image-spec*
-  Commit image migration. This step is run after a successful migration
-  prepare and migration execute steps and removes the source image data.
+  提交映像迁移。这个步骤在成功的迁移准备、
+  迁移执行的各个步骤、并删除源映像数据后运行。
 
 :command:`migration execute` *image-spec*
-  Execute image migration. This step is run after a successful migration
-  prepare step and copies image data to the destination.
+  执行映像迁移。这个步骤在成功的迁移准备步骤、
+  并把映像数据复制到目的地之后运行。
 
 :command:`migration prepare` [--order *order*] [--object-size *object-size*] [--image-feature *image-feature*] [--image-shared] [--stripe-unit *stripe-unit*] [--stripe-count *stripe-count*] [--data-pool *data-pool*] [--import-only] [--source-spec *json*] [--source-spec-path *path*] *src-image-spec* [*dest-image-spec*]
-  Prepare image migration. This is the first step when migrating an
-  image, i.e. changing the image location, format or other
-  parameters that can't be changed dynamically. The destination can
-  match the source, and in this case *dest-image-spec* can be omitted.
-  After this step the source image is set as a parent of the
-  destination image, and the image is accessible in copy-on-write mode
-  by its destination spec.
+  准备映像迁移。这是迁移一个映像的第一步，
+  即改变映像的位置，格式或其它参数不能动态更改。
+  在目标和源的规格一致时，可以忽略 *dest-image-spec* 。
+  本步骤之后，源映像将被设置成目标映像的父映像，
+  这个映像将可以按照目标规格、
+  通过写时复制模式访问。
 
-  An image can also be migrated from a read-only import source by adding the
-  *--import-only* optional and providing a JSON-encoded *--source-spec* or a
-  path to a JSON-encoded source-spec file using the *--source-spec-path*
-  optionals.
+  映像也可以从一个只读导入源迁移，
+  加可选的 *--import-only* 、
+  并加上 JSON 编码的 *--source-spec* 或\
+  用 *--source-spec-path* 指定一个 JSON 编码的源规格文件路径。
+
 
 :command:`mirror image demote` *image-spec*
   把 RBD 映像中的主映像降级成非主映像。
 
 :command:`mirror image disable` [--force] *image-spec*
-  Disable RBD mirroring for an image. If the mirroring is
-  configured in ``image`` mode for the image's pool, then it
-  can be explicitly disabled mirroring for each image within
-  the pool.
+  禁用一个映像的 RBD 镜像服务。
+  如果镜像服务是在 ``image`` 模式下\
+  在镜像存储池上配置的，
+  那该存储池内各个映像的镜像服务就可以显式地禁用。
 
 :command:`mirror image enable` *image-spec* *mode*
-  Enable RBD mirroring for an image. If the mirroring is
-  configured in ``image`` mode for the image's pool, then it
-  can be explicitly enabled mirroring for each image within
-  the pool.
+  启用一个映像的 RBD 镜像服务。
+  如果镜像服务是在 ``image`` 模式下\
+  在镜像存储池上配置的，
+  那该存储池内各个映像的镜像服务就可以显式地启用。
 
-  The mirror image mode can either be ``journal`` (default) or
-  ``snapshot``. The ``journal`` mode requires the RBD journaling
-  feature.
+  镜像映像的模式还可以是 ``journal`` （默认的）
+  或 ``snapshot`` 。 ``journal`` 模式依赖
+  RBD 的日志记录功能。
 
 :command:`mirror image promote` [--force] *image-spec*
-  Promote a non-primary image to primary for RBD mirroring.
+  为 RBD 镜像服务把一个非主映像晋级成主的。
 
 :command:`mirror image resync` *image-spec*
-  Force resync to primary image for RBD mirroring.
+  在 RBD 镜像中，强制重新同步到主映像。
 
 :command:`mirror image status` *image-spec*
-  Show RBD mirroring status for an image.
+  显示一个映像的 RBD 镜像状态。
 
 :command:`mirror pool demote` [*pool-name*]
-  Demote all primary images within a pool to non-primary.
-  Every mirroring enabled image will demoted in the pool.
+  把一个存储池内的所有主映像都降级成非主的。
+  存储池内每个启用了镜像服务的映像都会被降级。
 
 :command:`mirror pool disable` [*pool-name*]
-  Disable RBD mirroring by default within a pool. When mirroring
-  is disabled on a pool in this way, mirroring will also be
-  disabled on any images (within the pool) for which mirroring
-  was enabled explicitly.
+  默认禁用一个存储池的 RBD 镜像服务。
+  某个存储池的镜像服务以这种方式禁用后，
+  此存储池内的所有映像的镜像、包括那些\
+  显式地启用了镜像服务的也会禁用。
 
 :command:`mirror pool enable` [*pool-name*] *mode*
-  Enable RBD mirroring by default within a pool.
-  The mirroring mode can either be ``pool`` or ``image``.
-  If configured in ``pool`` mode, all images in the pool
-  with the journaling feature enabled are mirrored.
-  If configured in ``image`` mode, mirroring needs to be
-  explicitly enabled (by ``mirror image enable`` command)
-  on each image.
+  启用一个存储池的默认镜像。
+  镜像模式可以是 ``pool`` 或 ``image`` 。
+  如果配置成了 ``pool`` 模式，存储池内所有\
+  开启了日志功能的映像都会被镜像；
+  如果配置成了 ``image`` 模式，
+  每个映像的镜像功能都需要显式地启用
+  （用 ``mirror image enable`` 命令）。
 
 :command:`mirror pool info` [*pool-name*]
-  Show information about the pool mirroring configuration.
-  It includes mirroring mode, peer UUID, remote cluster name,
-  and remote client name.
+  显示出存储池的镜像服务配置信息。
+  它包括镜像模式、互联的 UUID 、
+  远程集群名字和远程客户端名字。
 
 :command:`mirror pool peer add` [*pool-name*] *remote-cluster-spec*
-  Add a mirroring peer to a pool.
-  *remote-cluster-spec* is [*remote client name*\ @\ ]\ *remote cluster name*.
+  给存储池增加一个镜像互联点。
+  *remote-cluster-spec* 是 [*远程客户端名*\ @\ ]\ *远程集群名*.
 
-  The default for *remote client name* is "client.admin".
+  *远程客户端名* 默认是 client.admin 。
 
-  This requires mirroring mode is enabled.
+  此命令要求先启用镜像模式。
 
 :command:`mirror pool peer remove` [*pool-name*] *uuid*
-  Remove a mirroring peer from a pool. The peer uuid is available
-  from ``mirror pool info`` command.
+  删除一个存储池的镜像互联点，此互联点的 uuid 可以\
+  通过 ``mirror pool info`` 获取。
 
 :command:`mirror pool peer set` [*pool-name*] *uuid* *key* *value*
-  Update mirroring peer settings.
-  The key can be either ``client`` or ``cluster``, and the value
-  is corresponding to remote client name or remote cluster name.
+  更新镜像互联点配置信息。
+  键（ key ）是 ``client`` 或 ``cluster`` ，
+  值对应远程客户端名或远程集群名。
 
 :command:`mirror pool promote` [--force] [*pool-name*]
-  Promote all non-primary images within a pool to primary.
-  Every mirroring enabled image will promoted in the pool.
+  把一个存储池内的所有非主映像晋级成主的。
+  此存储池里所有启用了镜像服务的映像都会晋级。
 
 :command:`mirror pool status` [--verbose] [*pool-name*]
-  Show status for all mirrored images in the pool.
-  With --verbose, also show additionally output status
-  details for every mirroring image in the pool.
+  显示此存储池内所有被镜像的映像的状态。
+  加 --verbose 选项后，还会显示存储池内、
+  所有启用了镜像的映像的额外状态细节。
 
 :command:`mirror snapshot schedule add` [-p | --pool *pool*] [--namespace *namespace*] [--image *image*] *interval* [*start-time*]
-  Add mirror snapshot schedule.
+  预定镜像快照。
 
 :command:`mirror snapshot schedule list` [-R | --recursive] [--format *format*] [--pretty-format] [-p | --pool *pool*] [--namespace *namespace*] [--image *image*]
-  List mirror snapshot schedule.
+  罗列镜像快照的预定情况。
 
 :command:`mirror snapshot schedule remove` [-p | --pool *pool*] [--namespace *namespace*] [--image *image*] *interval* [*start-time*]
-  Remove mirror snapshot schedule.
+  删除镜像快照的预定任务。
 
 :command:`mirror snapshot schedule status` [-p | --pool *pool*] [--format *format*] [--pretty-format] [--namespace *namespace*] [--image *image*]
-  Show mirror snapshot schedule status.
+  显示镜像快照的预定状态。
 
 :command:`mv` *src-image-spec* *dest-image-spec*
   映像改名。注：不支持跨存储池。
@@ -680,16 +680,16 @@ RBD 映像是简单的块设备，
   或还有快照的删不掉。
 
 :command:`trash purge schedule add` [-p | --pool *pool*] [--namespace *namespace*] *interval* [*start-time*]
-  Add trash purge schedule.
+  预定一次垃圾清理。
 
 :command:`trash purge schedule list` [-R | --recursive] [--format *format*] [--pretty-format] [-p | --pool *pool*] [--namespace *namespace*]
-  List trash purge schedule.
+  罗列垃圾清理的预定情况。
 
 :command:`trash purge schedule remove` [-p | --pool *pool*] [--namespace *namespace*] *interval* [*start-time*]
-  Remove trash purge schedule.
+  删除垃圾清理的预定任务。
 
 :command:`trash purge schedule status` [-p | --pool *pool*] [--format *format*] [--pretty-format] [--namespace *namespace*]
-  Show trash purge schedule status.
+  显示垃圾清理的预定状态。
 
 :command:`watch` *image-spec*
   盯着有关此映像的事件。
@@ -831,82 +831,82 @@ RBD 映像被条带化到很多对象，然后存储到 Ceph 分布式对象存�
   filestore 用 filestore_punch_hole = false 配置，
   推荐的配置是映像对象尺寸（一般是 4M ）。
 
-* crush_location=x - Specify the location of the client in terms of CRUSH
-  hierarchy (since 5.8).  This is a set of key-value pairs separated from
-  each other by '|', with keys separated from values by ':'.  Note that '|'
-  may need to be quoted or escaped to avoid it being interpreted as a pipe
-  by the shell.  The key is the bucket type name (e.g. rack, datacenter or
-  region with default bucket types) and the value is the bucket name.  For
-  example, to indicate that the client is local to rack "myrack", data center
-  "mydc" and region "myregion"::
+* crush_location=x - 指定客户端在 CRUSH 分级结构（从 5.8 起）里的位置。
+  这是用 '|' 分隔的一系列键值对，键名和值之间用 ':' 分隔。
+  注意， '|' 可能得用引号包起来、或者转义（即 '\|' ），
+  以免被 shell 解释为管道。键名是桶类型的名字
+  （比如 rack 、 datacenter 、或者 region ，
+  它是默认桶类型）、而值对应桶名字。
+  例如，要表面客户端是本地的， rack 为 myrack 、
+  数据中心为 mydc 、 region 是 myregion::
 
     crush_location=rack:myrack|datacenter:mydc|region:myregion
 
-  Each key-value pair stands on its own: "myrack" doesn't need to reside in
-  "mydc", which in turn doesn't need to reside in "myregion".  The location
-  is not a path to the root of the hierarchy but rather a set of nodes that
-  are matched independently, owning to the fact that bucket names are unique
-  within a CRUSH map.  "Multipath" locations are supported, so it is possible
-  to indicate locality for multiple parallel hierarchies::
+  每一个键值对都是独立的： myrack 不一定\
+  位于 mydc 内、因此也不一定位于 myregion 内。
+  这个位置不是到分级结构根（ root ）的路径，而是一系列独立匹配到的节点，
+  多亏了桶名在 CRUSH 图里唯一这个特性。
+  多路径（ multipath ）位置也可以，因此\
+  可以为多个并行的分级结构定义位置： ::
 
     crush_location=rack:myrack1|rack:myrack2|datacenter:mydc
 
-* read_from_replica=no - Disable replica reads, always pick the primary OSD
-  (since 5.8, default).
+* read_from_replica=no - 禁用副本读取，总是选取主 OSD
+  （从 5.8 起是默认行为）。
 
-* read_from_replica=balance - When issued a read on a replicated pool, pick
-  a random OSD for serving it (since 5.8).
+* read_from_replica=balance - 向多副本存储池发出读取请求时，
+  随机选一个 OSD 提供服务（从 5.8 开始支持）。
 
-  This mode is safe for general use only since Octopus (i.e. after "ceph osd
-  require-osd-release octopus").  Otherwise it should be limited to read-only
-  workloads such as images mapped read-only everywhere or snapshots.
+  只有在 Octopus 之后（即 ``ceph osd require-osd-release octopus`` 之后）的版本上，
+  这个模式才可以安全地作为一般用途。否则，就应该仅限于只读载荷，
+  比如只读地映射出去的映像、或快照。
 
-* read_from_replica=localize - When issued a read on a replicated pool, pick
-  the most local OSD for serving it (since 5.8).  The locality metric is
-  calculated against the location of the client given with crush_location;
-  a match with the lowest-valued bucket type wins.  For example, with default
-  bucket types, an OSD in a matching rack is closer than an OSD in a matching
-  data center, which in turn is closer than an OSD in a matching region.
+* read_from_replica=localize - 向多副本存储池发出读取请求时，
+  选最近的 OSD 提供服务（从 5.8 开始支持）。
+  位置指标根据客户端的 crush_location 位置计算出来；
+  匹配到的级别最低的桶类型胜出。例如，在默认的桶类型中，
+  一个匹配到 rack 的 OSD 比匹配到数据中心的 OSD 更近，
+  自然也比匹配到 region 的 OSD 近。
 
-  This mode is safe for general use only since Octopus (i.e. after "ceph osd
-  require-osd-release octopus").  Otherwise it should be limited to read-only
-  workloads such as images mapped read-only everywhere or snapshots.
+  只有在 Octopus 之后（即 ``ceph osd require-osd-release octopus`` 之后）的版本上，
+  这个模式才可以安全地作为一般用途。否则，就应该仅限于只读载荷，
+  比如只读地映射出去的映像、或快照。
 
-* compression_hint=none - Don't set compression hints (since 5.8, default).
+* compression_hint=none - 不设置压缩提示（从 5.8 起支持，默认的）。
 
-* compression_hint=compressible - Hint to the underlying OSD object store
-  backend that the data is compressible, enabling compression in passive mode
-  (since 5.8).
+* compression_hint=compressible - 提示底层的 OSD 对象存储后端，
+  告诉它数据可以压缩，在被动模式下启用了压缩功能
+  （从 5.8 起支持）。
 
-* compression_hint=incompressible - Hint to the underlying OSD object store
-  backend that the data is incompressible, disabling compression in aggressive
-  mode (since 5.8).
+* compression_hint=incompressible - 提示底层的 OSD 对象存储后端，
+  告诉它数据不可压缩，在激进模式下禁用了压缩功能
+  （从 5.8 起支持）。
 
-* ms_mode=legacy - Use msgr1 on-the-wire protocol (since 5.11, default).
+* ms_mode=legacy - 采用 msgr1 线路协议（从 5.11 起支持，默认的）。
 
-* ms_mode=crc - Use msgr2.1 on-the-wire protocol, select 'crc' mode, also
-  referred to as plain mode (since 5.11).  If the daemon denies 'crc' mode,
-  fail the connection.
+* ms_mode=crc - 采用 msgr2.1 线路协议，选择 crc 模式，
+  也叫明文模式（从 5.11 起支持）。如果守护进程拒绝 crc 模式，
+  连接会失败。
 
-* ms_mode=secure - Use msgr2.1 on-the-wire protocol, select 'secure' mode
-  (since 5.11).  'secure' mode provides full in-transit encryption ensuring
-  both confidentiality and authenticity.  If the daemon denies 'secure' mode,
-  fail the connection.
+* ms_mode=secure - 采用 msgr2.1 线路协议，选择 secure 模式
+  （从 5.11 起支持）。 secure 模式提供了完整的传输加密，
+  可以同时确保保密性和真实性。如果守护进程拒绝 secure 模式，
+  连接会失败。
 
-* ms_mode=prefer-crc - Use msgr2.1 on-the-wire protocol, select 'crc'
-  mode (since 5.11).  If the daemon denies 'crc' mode in favor of 'secure'
-  mode, agree to 'secure' mode.
+* ms_mode=prefer-crc - 采用 msgr2.1 线路协议，选择 crc 模式
+  （从 5.11 起支持）。如果守护进程拒绝了 crc 模式而选择 secure 模式，
+  那就用 secure 模式。
 
-* ms_mode=prefer-secure - Use msgr2.1 on-the-wire protocol, select 'secure'
-  mode (since 5.11).  If the daemon denies 'secure' mode in favor of 'crc'
-  mode, agree to 'crc' mode.
+* ms_mode=prefer-secure - 采用 msgr2.1 线路协议，选择 secure 模式
+  （从 5.11 起支持）。如果守护进程拒绝了 secure 模式而选择 crc 模式，
+  那就用 crc 模式。
 
-* udev - Wait for udev device manager to finish executing all matching
-  "add" rules and release the device before exiting (default).  This option
-  is not passed to the kernel.
+* udev - 等着 udev 设备管理器，让它执行完所有\
+  能匹配 "add" 的规则、并在退出前释放设备（默认的）。
+  这个选项不是传递给内核的。
 
-* noudev - Don't wait for udev device manager.  When enabled, the device may
-  not be fully usable immediately on exit.
+* noudev - 不要等待 udev 设备管理器。打开此选项后，
+  退出之后，设备可能不会立即恢复完全可用的状态。
 
 `rbd device unmap` 选项：
 
@@ -914,11 +914,11 @@ RBD 映像被条带化到很多对象，然后存储到 Ceph 分布式对象存�
   其驱动会等待当前的请求完成之后再 unmap ；
   在 unmap 初始化之后再发给驱动的请求会失败。
 
-* udev - Wait for udev device manager to finish executing all matching
-  "remove" rules and clean up after the device before exiting (default).
-  This option is not passed to the kernel.
+* udev - 等着 udev 设备管理器，让它执行完所有\
+  能匹配 "add" 的规则、并在退出前释放设备（默认的）。
+  这个选项不是传递给内核的。
 
-* noudev - Don't wait for udev device manager.
+* noudev - 不要等待 udev 设备管理器。
 
 
 实例
