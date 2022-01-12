@@ -192,7 +192,7 @@
    提供了对重分片过程的控制手段，指示多久刷一次 RocksDB 递归器，\
    以及提交给 RocksDB 的批次应该是多大。
    选项格式为：
-   <iterator_refresh_bytes>/<iterator_refresh_keys>/<batch_commit_bytes>/<batch_commit_keys>
+   <iterator_refresh_bytes>/<iterator_refresh_keys>/<batch_commit_bytes>/<batch_commit_keys> 。
    默认值： 10000000/10000/1000000/1000
 
 

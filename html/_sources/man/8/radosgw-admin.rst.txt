@@ -510,7 +510,7 @@
 
 .. option:: --new-uid=uid
 
-   ID of the new user. Used with 'user rename' command.
+   新用户的 ID ， ``user rename`` 命令用到此选项。
 
 .. option:: --subuser=<name>
 

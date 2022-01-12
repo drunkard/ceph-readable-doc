@@ -28,9 +28,9 @@
 
 每个文件都需要先完成按字典排序。大多数 POSIX 系统\
 都用 *LANG* 环境变量来确定 `sort` 工具的排序方式。
-要按字典顺序排序，我们需要这样：
+要按字典顺序排序，我们需要这样： ::
 
-        $ LANG=C sort some-file.txt >some-file-sorted.txt
+    $ LANG=C sort some-file.txt >some-file-sorted.txt
 
 
 实例
@@ -38,7 +38,7 @@
 
 比较两个文件::
 
-        $ ceph-diff-sorted fileA.txt fileB.txt
+    $ ceph-diff-sorted fileA.txt fileB.txt
 
 退出状态
 ========

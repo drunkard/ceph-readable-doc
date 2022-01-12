@@ -10,6 +10,5 @@
 .. tip:: 对国际用户来说，你也许可以从比较近的镜像下载 Ceph 。\
    请参考 `Ceph 镜像`_\ 。
 
-
 .. _Ceph 发布的源码包: https://download.ceph.com/tarballs/
 .. _Ceph 镜像: ../mirrors

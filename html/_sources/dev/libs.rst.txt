@@ -1,6 +1,6 @@
-======================
- Library architecture
-======================
+============
+ 库体系结构
+============
 
 Ceph is structured into libraries which are built and then combined together to
 make executables and other libraries.

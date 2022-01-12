@@ -1,7 +1,6 @@
 ============
  块设备入门
 ============
-.. Block Device Quick Start
 
 开始用 :term:`Ceph 块设备`\ 之前，先确认 :term:`Ceph 存储集群`\
 处于 ``active + clean`` 状态。

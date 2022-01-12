@@ -5,19 +5,19 @@
 你可以下载 Ceph 源码并自行构建。首先，你得准备开发环境、编译
 Ceph 、然后安装到用户区或者构建二进制包并安装。
 
+
 构建依赖
 ========
 .. Build Prerequisites
 
 .. tip:: 对照本段检查下你的 Linux/Unix 发行版是否满足这些依赖。
 
-A debug build of Ceph may take around 40 gigabytes. If you want to build Ceph in
-a virtual machine (VM) please make sure total disk space on the VM is at least
-60 gigabytes.
+Ceph 的调试构建有将近 40 GB 大。如果你想在虚拟机（ VM ）里构建 Ceph ，
+需要保证虚拟机的磁盘总空间大于 60 GB 。
 
-Please also be aware that some distributions of Linux, like CentOS, use Linux
-Volume Manager (LVM) for the default installation. LVM may reserve a large
-portion of disk space of a typical sized virtual disk for the operating system.
+还需要注意， Linux 的一些发行版（像 CentOS ）的\
+默认安装会使用卷管理器（ LVM ）。 LVM 会在\
+典型尺寸的虚拟磁盘上为操作系统保留一大块磁盘空间。
 
 构建 Ceph 源码前，你得先安装几个库和工具： ::
 
@@ -47,18 +47,20 @@ Ceph 是用 cmake 构建的，构建时，先进入刚克隆的 Ceph 源码库�
 ================
 .. Build Ceph Packages
 
-要构建安装包，你必须克隆 `Ceph`_ 源码库。用 ``dpkg-buildpackage`` 基于最新代码为 \
-Debian/Ubuntu 创建安装包；用 ``rpmbuild`` 为 RPM 包管理器创建安装包。
+要构建安装包，你必须克隆 `Ceph`_ 源码库。
+用 ``dpkg-buildpackage`` 基于最新代码为 Debian/Ubuntu 创建安装包；
+用 ``rpmbuild`` 为 RPM 包管理器创建安装包。
 
-.. tip:: 在多核 CPU 上构建时，用参数 ``-j`` 、再加上核心数的 2 倍数，例如在双核处\
-   理器上用 ``-j4`` 来加速构建。
+.. tip:: 在多核 CPU 上构建时，用参数 ``-j`` 、再加上核心数的 2 倍数，
+   例如在双核处理器上用 ``-j4`` 来加速构建。
 
 
 高级打包工具（ APT ）
 ---------------------
+.. Advanced Package Tool (APT)
 
-要为 Debian/Ubuntu 创建 ``.deb`` 安装包，先要克隆 Ceph 源码库、安装好必要的\ `构\
-建依赖`_\ 和 ``debhelper`` 。 ::
+要为 Debian/Ubuntu 创建 ``.deb`` 安装包，先要克隆 Ceph 源码库、
+安装好必要的 `构建依赖`_\ 和 ``debhelper`` 。 ::
 
 	sudo apt-get install debhelper
 
@@ -71,6 +73,7 @@ Debian/Ubuntu 创建安装包；用 ``rpmbuild`` 为 RPM 包管理器创建安�
 
 RPM 包管理器
 ------------
+.. RPM Package Manager
 
 要创建 ``.rpm`` 包，先得克隆 `Ceph`_ 源码库、安装必要的\ `构建依赖`_\ 、安装好 \
 ``rpm-build`` 和 ``rpmdevtools`` ： ::

@@ -39,8 +39,8 @@
 如果你计划向 Ceph 贡献代码、或者想通过 SSH 克隆（ \
 ``git@github.com:ceph/ceph.git`` ），你必须生成一个 SSH 密钥对。
 
-.. tip:: 如果你只是想克隆，不需要 SSH 密钥也可用 \
-   ``git clone --recursive https://github.com/ceph/ceph.git``
+.. tip:: 如果你只是想克隆，不需要 SSH 密钥也可\
+   用 ``git clone --recursive https://github.com/ceph/ceph.git``
    克隆。
 
 执行如下命令生成 SSH 密钥对用于 ``github`` ： ::
@@ -60,9 +60,9 @@
 制的公钥粘帖进去，最后点击 “Add key” 按钮。
 
 
-
 克隆源码
 ========
+.. Clone the Source
 
 执行下列命令克隆源码库： ::
 
@@ -84,9 +84,9 @@ Ceph 源码库。
     git submodule update --force --init --recursive
 
 
-
 选择分支
 ========
+.. Choose a Branch
 
 克隆完源码和子模块后，
 你的源码库将默认位于 ``master`` 分支上，

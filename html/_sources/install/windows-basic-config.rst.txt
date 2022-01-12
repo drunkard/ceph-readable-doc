@@ -1,21 +1,21 @@
 :orphan:
 
-===========================
-Windows basic configuration
-===========================
+==================
+ Windows 基本配置
+==================
 
-This page describes the minimum Ceph configuration required for using the
-client components on Windows.
+本页描述的是在 Windows 上使用客户端组件需要的最小化 Ceph 配置。
+
 
 ceph.conf
 =========
 
-The default location for the ``ceph.conf`` file on Windows is
-``%ProgramData%\ceph\ceph.conf``, which usually expands to
-``C:\ProgramData\ceph\ceph.conf``.
+Windows 上 ``ceph.conf`` 文件的默认位置是
+``%ProgramData%\ceph\ceph.conf`` ，通常展开成
+``C:\ProgramData\ceph\ceph.conf`` 。
 
-Below you may find a sample. Please fill in the monitor addresses
-accordingly.
+下面是个样本，请填入\
+你自己的监视器地址。
 
 .. code:: ini
 
@@ -40,9 +40,9 @@ accordingly.
     [global]
         mon host = <ceph_monitor_addresses>
 
-Don't forget to also copy your keyring file to the specified location and make
-sure that the configured directories exist (e.g. ``C:\ProgramData\ceph\out``).
+别忘了，还得把你的密钥环文件复制到指定位置，
+并确保配置的目录存在（例如 ``C:\ProgramData\ceph\out`` ）。
 
-Please use slashes ``/`` instead of backslashes ``\`` as path separators
-within ``ceph.conf``.
+在 ``ceph.conf`` 里面请用斜杠 ``/`` 而不是反斜杠 ``\``
+作为路径的分隔符。
 
