@@ -2,11 +2,11 @@
  为块设备安装虚拟化支持
 ========================
 
-If you intend to use Ceph Block Devices and the Ceph Storage Cluster as a
-backend for Virtual Machines (VMs) or  :term:`Cloud Platforms` the QEMU/KVM and
-``libvirt`` packages are important for enabling VMs and cloud platforms.
-Examples of VMs include: QEMU/KVM, XEN, VMWare, LXC, VirtualBox, etc. Examples
-of Cloud Platforms include OpenStack, CloudStack, OpenNebula, etc.
+如果你想使用 Ceph 块设备、还想把 Ceph 存储集群作为\
+虚拟机（ VM ）或 :term:`云平台` 的后端，
+QEMU/KVM 和 ``libvirt`` 软件包对于 VM 和云平台的实现很重要。
+VM 的具体实现有： QEMU/KVM, XEN, VMWare, LXC, VirtualBox 等等。
+云平台的具体实现有： OpenStack 、 CloudStack 、 OpenNebula 等等。
 
 
 .. ditaa::
@@ -65,8 +65,9 @@ RPM 软件包
 
 构建 QEMU
 ---------
+.. Building QEMU
 
-To build QEMU from source, use the following procedure::
+要从源码构建 QEMU ，按下列步骤： ::
 
 	cd {your-development-directory}
 	git clone git://git.qemu.org/qemu.git
@@ -75,13 +76,13 @@ To build QEMU from source, use the following procedure::
 	make; make install
 
 
-
 安装 libvirt
 ============
+.. Install libvirt
 
-To use ``libvirt`` with Ceph, you must have a running Ceph Storage Cluster, and
-you must have installed and configured QEMU. See `Using libvirt with Ceph Block
-Device`_ for usage.
+要在 Ceph 上使用 ``libvirt`` ，你必须有正常运行的 Ceph 存储集群、
+还必须安装并配置好 QEMU 。
+用法见 `在 libvirt 上使用 Ceph 块设备`_ 。
 
 
 Debian 软件包
@@ -109,10 +110,11 @@ Ceph 集群、还必须安装支持 ``rbd`` 格式的 QEMU 。详情见 \
 
 构建 ``libvirt``
 ----------------
+.. Building ``libvirt``
 
-To build ``libvirt`` from source, clone the ``libvirt`` repository and use
-`AutoGen`_ to generate the build. Then, execute ``make`` and ``make install`` to
-complete the installation. For example::
+要从源码构建 ``libvirt`` ，需要克隆 ``libvirt`` 软件库，
+然后用 `AutoGen`_ 生成构建文件。然后执行 ``make`` 和 ``make install``
+完成安装。例如： ::
 
 	git clone git://libvirt.org/libvirt.git
 	cd libvirt
@@ -123,7 +125,8 @@ complete the installation. For example::
 详情见 `libvirt 安装手册`_\ 。
 
 
+
 .. _libvirt 安装手册: http://www.libvirt.org/compiling.html
 .. _AutoGen: http://www.gnu.org/software/autogen/
 .. _QEMU 和块设备: ../../rbd/qemu-rbd
-.. _Using libvirt with Ceph Block Device: ../../rbd/libvirt
+.. _在 libvirt 上使用 Ceph 块设备: ../../rbd/libvirt

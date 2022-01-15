@@ -3,11 +3,12 @@
 ==========
 .. Manual Deployment
 
-所有 Ceph 集群都需要至少一个监视器、且 OSD 数量不小于副本数。\
+所有 Ceph 集群都需要至少一个监视器、
+和数量不小于副本数的 OSD 。\
 自举引导初始监视器是部署 Ceph 存储集群的第一步，
 监视器的部署也为整个集群奠定了重要框架，
-如存储池副本数、每个 OSD 拥有的归置组数量、心跳周期、是否需认证等，
-其中大多数选项都有默认值，
+如存储池副本数、每个 OSD 拥有的归置组数量、心跳周期、
+是否需认证等，其中大多数选项都有默认值，
 但是建设生产集群时仍需要您熟知它们。
 
 我们将配置起监视器为 ``mon-node1`` ， OSD 节点为 ``osd-node1`` 、
@@ -66,18 +67,21 @@
   监视器、并且不要与 OSD 主机复用。短主机名可以用
   ``hostname -s`` 获取。
 
-- **监视器图：** 自举引导初始监视器需要生成监视器图，为此，\
-  需要有 ``fsid`` 、集群名（或用默认）、至少一个主机名及其 IP 。
+- **监视器图：** 自举引导初始监视器需要生成监视器图，
+  为此，需要有 ``fsid`` 、集群名（或用默认）、
+  至少一个主机名及其 IP 。
 
-- **监视器密钥环：** 监视器之间通过密钥通讯，所以你必须把\
-  监视器密钥加入密钥环，并在自举引导时提供。
+- **监视器密钥环：** 监视器之间通过密钥通讯，
+  所以你必须把监视器密钥加入密钥环，
+  并在自举引导时提供。
   
-- **管理密钥环：** 要使用 ``ceph`` 这个命令行工具，你必须有
-  ``client.admin`` 用户，所以你要创建此用户及其密钥，并把他们\
-  加入密钥环。
+- **管理密钥环：** 要使用 ``ceph`` 这个命令行工具，
+  你必须有 ``client.admin`` 用户，所以你要创建此用户及其密钥，
+  并把他们加入密钥环。
 
-前述必要条件并未提及 Ceph 配置文件的创建，然而，实践中最好\
-创建个配置文件，并写好 ``fsid`` 、 ``mon initial members`` 和
+前述必要条件并未提及 Ceph 配置文件的创建，
+然而，实践中最好创建个配置文件，并写好
+``fsid`` 、 ``mon initial members`` 和
 ``mon host`` 配置。
 
 你也可以查看或设置监视器所有的运行时配置。
@@ -100,7 +104,7 @@ Ceph 配置文件的配置将覆盖默认值，
    ``/etc/ceph`` 。安装 ``ceph`` 软件时，安装器也会自动创建
    ``/etc/ceph/`` 目录。 ::
 
-	ls /etc/ceph   
+    ls /etc/ceph   
 
 
 #. 创建 Ceph 配置文件， Ceph 默认使用 ``ceph.conf`` ，
@@ -133,7 +137,8 @@ Ceph 配置文件的配置将覆盖默认值，
 	mon initial members = mon-node1
 
 
-#. 把初始监视器的 IP 地址写入 Ceph 配置文件、并保存。 ::
+#. 把初始监视器的 IP 地址写入 Ceph 配置文件、
+   并保存。 ::
 
         mon host = {ip-address}[,{ip-address}]
 
@@ -141,8 +146,9 @@ Ceph 配置文件的配置将覆盖默认值，
 
         mon host = 192.168.0.1
 
-   **注意：** 你可以用 IPv6 地址取代 IPv4 地址，但必须设置
-   ``ms bind ipv6 = true`` 。详情见\ `网络配置参考`_\ 。
+   **注意：** 你可以用 IPv6 地址取代 IPv4 地址，
+   但必须设置 ``ms bind ipv6 = true`` 。
+   详情见\ `网络配置参考`_\ 。
 
 
 #. 为此集群创建密钥环、并生成监视器密钥。 ::
@@ -150,15 +156,16 @@ Ceph 配置文件的配置将覆盖默认值，
 	sudo ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
 
-#. 生成管理员密钥环，生成 ``client.admin`` 用户并加入密钥环。 ::
+#. 生成管理员密钥环，生成 ``client.admin`` 用户并\
+   加入密钥环。 ::
 
-	sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
+    sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
 
 
 #. 生成一个 bootstrap-osd 密钥环、生成一个
    ``client.bootstrap-osd`` 用户并把此用户加入密钥环。 ::
 
-        sudo ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
+    sudo ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
 
 
 #. 把生成的密钥加进 ``ceph.mon.keyring`` 。 ::
@@ -273,8 +280,8 @@ Ceph 配置文件的配置将覆盖默认值，
    详情见\ `添加 OSD`_\ 。
 
 
-管理守护进程配置
-================
+管理器守护进程配置
+==================
 .. Manager daemon configuration
 
 在每个运行 ceph-mon 守护进程的节点上，应该同时配置起一个 ceph-mgr 守护进程。
