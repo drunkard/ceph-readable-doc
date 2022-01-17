@@ -420,6 +420,15 @@
    :有效范围: 1 开启， 0 取消
    :适用版本: Version ``FIXME``
 
+.. _bulk:
+
+.. describe:: bulk
+
+   设置、取消指定存储池的 bulk 标志。
+
+   :类型: Boolean
+   :有效范围: true/1 设置标志， false/0 取消标志
+
 .. _write_fadvise_dontneed:
 
 .. describe:: write_fadvise_dontneed

@@ -81,6 +81,9 @@ RBD 映像是简单的块设备，
    2 的幂；如果不指定后缀，则认为单位是 B 。默认的对象尺寸是
    4MB ，最小允许 4K 、最大允许 32M 。
 
+   这个默认值可以用配置选项 ``rbd_default_order`` 更改，
+   它是 2 的幂次（默认对象尺寸是 ``2 ^ rbd_default_order`` ）。
+
 .. option:: --stripe-unit size-in-B/K/M
 
    指定条带单元尺寸，单位可以是 B/K/M ，没加的话默认为 B 。详\

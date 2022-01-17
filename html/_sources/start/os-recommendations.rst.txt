@@ -125,12 +125,12 @@ Luminous (12.2.z)
   质量检验。从 Mimic 版起我们建议用 ``bluestore`` ，之前的建议\
   用 ``XFS`` 搭配 ``filestore`` 。
 
-- **4**: ``btrfs`` is no longer tested on this release. We recommend
-  using ``bluestore``.
+- **4**: 这个版本不再测试 ``btrfs`` 了，
+  我们建议用 ``bluestore`` 。
 
-- **5**: Some additional features related to dashboard are not available.
+- **5**: 和仪表盘相关的一些附加功能不可用。
 
-- **6**: Building packages are built regularly, but not distributed by Ceph.
+- **6**: 该构建的软件包会照常构建，但不会发布出去。
 
 
 测试情况

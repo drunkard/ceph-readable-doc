@@ -367,7 +367,9 @@
   就只处理那个桶的。
 
 :command:`lc process`
-  手动处理生命周期。
+  手动处理生命周期。如果指定了桶（例如，
+  用 --bucket_id 或 --bucket 和可选的 --tenant ），
+  就只处理那个桶的。
 
 :command:`metadata get`
   读取元数据信息。

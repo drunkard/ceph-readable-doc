@@ -130,7 +130,7 @@
 相关文件
 ========
 
-``/etc/ceph/$cluster.conf``, ``~/.ceph/$cluster.conf``, ``$cluster.conf``
+``/etc/ceph/$cluster.conf`` 、 ``~/.ceph/$cluster.conf`` 、 ``$cluster.conf``
 
 没指定的话就用这些 Ceph 配置文件。
 

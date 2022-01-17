@@ -1,26 +1,26 @@
-运行单元测试
-============
+Running Unit Tests
+==================
 
-如何在本地运行 s3-tests
------------------------
+How to run s3-tests locally
+---------------------------
 
 RGW code can be tested by building Ceph locally from source, starting a vstart
 cluster, and running the "s3-tests" suite against it.
 
 The following instructions should work on jewel and above.
 
-第一步：构建 Ceph
-^^^^^^^^^^^^^^^^^
+Step 1 - build Ceph
+^^^^^^^^^^^^^^^^^^^
 
-细节见 :doc:`/install/build-ceph` 。
+Refer to :doc:`/install/build-ceph`.
 
-构建时间较长，你可以先单独试试第二步。
+You can do step 2 separately while it is building.
 
-第二步： vstart
+Step 2 - vstart
 ^^^^^^^^^^^^^^^
 
-构建结束后，还是在构建时的 git 克隆库顶极目录下，执行这些，用 \
-cmake 构建的话： ::
+When the build completes, and still in the top-level directory of the git
+clone where you built Ceph, do the following, for cmake builds::
 
     cd build/
     RGW=1 ../src/vstart.sh -n
@@ -33,12 +33,12 @@ end you should see a message like::
 This means the cluster is running.
 
 
-第三步：运行 s3-tests
+Step 3 - run s3-tests
 ^^^^^^^^^^^^^^^^^^^^^
 
 .. highlight:: console
 
-用下列命令运行 s3tests 测试套件： ::
+To run the s3tests suite do the following::
 
    $ ../qa/workunits/rgw/run-s3tests.sh
 
@@ -137,12 +137,12 @@ Running Workunits Using vstart_enviroment.sh
 
 Code can be tested by building Ceph locally from source, starting a vstart
 cluster, and running any suite against it.
-Similar to S3-Tests, other workunits can be run against by configuring your enviroment.
+Similar to S3-Tests, other workunits can be run against by configuring your environment.
 
-Set up the enviroment
-^^^^^^^^^^^^^^^^^^^^^
+Set up the environment
+^^^^^^^^^^^^^^^^^^^^^^
 
-Configure your enviroment::
+Configure your environment::
 
     $ . ./build/vstart_enviroment.sh
 

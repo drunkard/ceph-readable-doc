@@ -8,7 +8,13 @@ To list hosts associated with the cluster:
 
 .. prompt:: bash #
 
-    ceph orch host ls [--format yaml]
+    ceph orch host ls [--format yaml] [--host-pattern <name>] [--label <label>] [--host-status <status>]
+
+where the optional arguments "host-pattern", "label" and "host-status" are used for filtering.
+"host-pattern" is a regex that will match against hostnames and will only return matching hosts
+"label" will only return hosts with the given label
+"host-status" will only return hosts with the given status (currently "offline" or "maintenance")
+Any combination of these filtering flags is valid. You may filter against name, label and/or status simultaneously
 
 .. _cephadm-adding-hosts:    
     
@@ -82,7 +88,7 @@ All osds on the host will be scheduled to be removed. You can check osd removal 
 
 see :ref:`cephadm-osd-removal` for more details about osd removal
 
-You can check if there are no deamons left on the host with the following:
+You can check if there are no daemons left on the host with the following:
 
 .. prompt:: bash #
 
@@ -163,7 +169,7 @@ Maintenance Mode
 Place a host in and out of maintenance mode (stops all Ceph daemons on host)::
 
     ceph orch host maintenance enter <hostname> [--force]
-    ceph orch host maintenace exit <hostname>
+    ceph orch host maintenance exit <hostname>
 
 Where the force flag when entering maintenance allows the user to bypass warnings (but not alerts)
 
@@ -202,7 +208,7 @@ Setting the initial CRUSH location of host
 ==========================================
 
 Hosts can contain a ``location`` identifier which will instruct cephadm to 
-create a new CRUSH host located in the specified hierachy.
+create a new CRUSH host located in the specified hierarchy.
 
 .. code-block:: yaml
 
@@ -217,6 +223,8 @@ create a new CRUSH host located in the specified hierachy.
   The ``location`` attribute will be only affect the initial CRUSH location. Subsequent
   changes of the ``location`` property will be ignored. Also, removing a host will no remove
   any CRUSH buckets.
+
+See also :ref:`crush_map_default_types`.
 
 SSH Configuration
 =================

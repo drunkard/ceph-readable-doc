@@ -1,7 +1,7 @@
 scan
 ====
-This sub-command will allow to discover Ceph volumes previously setup by the
-tool by looking into the system's logical volumes and their tags.
+这个子命令用于发现之前安装好的 Ceph 卷宗，
+它可以查找系统的逻辑卷及其标签。
 
 作为 :ref:`ceph-volume-lvm-prepare` 过程的一部分，逻辑卷会被\
 分配一些标签，含有重要信息。

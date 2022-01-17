@@ -197,14 +197,22 @@
 <li class="toctree-l4"><a class="reference internal" href="#string-functions">String functions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#alias">Alias</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#testing">Testing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#additional-syntax-support">Additional syntax support</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#sending-query-to-rgw">Sending Query to RGW</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#syntax">Syntax</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#input-serialization">Input Serialization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#output-serialization">Output Serialization</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#csv-parsing-behavior">CSV parsing behavior</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#boto3">BOTO3</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#s3-select-responses">S3 SELECT Responses</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#error-response">Error Response</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#report-response">Report Response</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#response-description">Response Description</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../lua-scripting/">Lua Scripting</a></li>
@@ -290,15 +298,24 @@
 <li><p><a class="reference internal" href="#string-functions" id="id12">String functions</a></p></li>
 <li><p><a class="reference internal" href="#alias" id="id13">Alias</a></p></li>
 <li><p><a class="reference internal" href="#testing" id="id14">Testing</a></p></li>
+<li><p><a class="reference internal" href="#additional-syntax-support" id="id15">Additional syntax support</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#sending-query-to-rgw" id="id15">Sending Query to RGW</a></p>
+<li><p><a class="reference internal" href="#sending-query-to-rgw" id="id16">Sending Query to RGW</a></p>
 <ul>
-<li><p><a class="reference internal" href="#syntax" id="id16">Syntax</a></p></li>
+<li><p><a class="reference internal" href="#input-serialization" id="id17">Input Serialization</a></p></li>
+<li><p><a class="reference internal" href="#output-serialization" id="id18">Output Serialization</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#csv-parsing-behavior" id="id17">CSV parsing behavior</a></p></li>
-<li><p><a class="reference internal" href="#boto3" id="id18">BOTO3</a></p></li>
+<li><p><a class="reference internal" href="#csv-parsing-behavior" id="id19">CSV parsing behavior</a></p></li>
+<li><p><a class="reference internal" href="#boto3" id="id20">BOTO3</a></p></li>
+<li><p><a class="reference internal" href="#s3-select-responses" id="id21">S3 SELECT Responses</a></p>
+<ul>
+<li><p><a class="reference internal" href="#error-response" id="id22">Error Response</a></p></li>
+<li><p><a class="reference internal" href="#report-response" id="id23">Report Response</a></p></li>
+<li><p><a class="reference internal" href="#response-description" id="id24">Response Description</a></p></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -308,17 +325,17 @@
 <blockquote>
 <div><div class="line-block">
 <div class="line">The purpose of the <strong>s3 select</strong> engine is to create an efficient pipe between user client and storage nodes (the engine should be close as possible to storage).</div>
-<div class="line">It enables selection of a restricted subset of (structured) data stored in an S3 object using an SQL-like syntax.</div>
-<div class="line">It also enables for higher level analytic-applications (such as SPARK-SQL) , using that feature to improve their latency and throughput.</div>
+<div class="line">It enables the selection of a restricted subset of (structured) data stored in an S3 object using an SQL-like syntax.</div>
+<div class="line">It also enables for higher level analytic-applications (such as SPARK-SQL), using that feature to improve their latency and throughput.</div>
 </div>
 <div class="line-block">
-<div class="line">For example, a s3-object of several GB (CSV file), a user needs to extract a single column which filtered by another column.</div>
+<div class="line">For example, an s3-object of several GB (CSV file), a user needs to extract a single column filtered by another column.</div>
 <div class="line">As the following query:</div>
 <div class="line"><code class="docutils literal notranslate"><span class="pre">select</span> <span class="pre">customer-id</span> <span class="pre">from</span> <span class="pre">s3Object</span> <span class="pre">where</span> <span class="pre">age&gt;30</span> <span class="pre">and</span> <span class="pre">age&lt;65;</span></code></div>
 </div>
 <div class="line-block">
-<div class="line">Currently the whole s3-object must retrieve from OSD via RGW before filtering and extracting data.</div>
-<div class="line">By “pushing down” the query into OSD , it’s possible to save a lot of network and CPU(serialization / deserialization).</div>
+<div class="line">Currently the whole s3-object must be retrieved from OSD via RGW before filtering and extracting data.</div>
+<div class="line">By “pushing down” the query into radosgw, it’s possible to save a lot of network and CPU(serialization / deserialization).</div>
 </div>
 <div class="line-block">
 <div class="line"><strong>The bigger the object, and the more accurate the query, the better the performance</strong>.</div>
@@ -337,24 +354,24 @@
 <div class="line"><strong>send_response_data</strong> is first handling the input query, it extracts the query and other CLI parameters.</div>
 </div>
 <div class="line-block">
-<div class="line">Per each new fetched chunk (~4m), RGW executes s3-select query on it.</div>
+<div class="line">Per each new fetched chunk (~4m), RGW executes an s3-select query on it.</div>
 <div class="line">The current implementation supports CSV objects and since chunks are randomly “cutting” the CSV rows in the middle, those broken-lines (first or last per chunk) are skipped while processing the query.</div>
 <div class="line">Those “broken” lines are stored and later merged with the next broken-line (belong to the next chunk), and finally processed.</div>
 </div>
 <div class="line-block">
 <div class="line">Per each processed chunk an output message is formatted according to <a class="reference external" href="https://docs.aws.amazon.com/AmazonS3/latest/API/archive-RESTObjectSELECTContent.html#archive-RESTObjectSELECTContent-responses">AWS specification</a> and sent back to the client.</div>
 <div class="line">RGW supports the following response: <code class="docutils literal notranslate"><span class="pre">{:event-type,records}</span> <span class="pre">{:content-type,application/octet-stream}</span> <span class="pre">{:message-type,event}</span></code>.</div>
-<div class="line">For aggregation queries the last chunk should be identified as the end of input, following that the s3-select-engine initiates end-of-process and produces an aggregate result.</div>
+<div class="line">For aggregation queries the last chunk should be identified as the end of input, following that the s3-select-engine initiates end-of-process and produces an aggregated result.</div>
 </div>
 </div></blockquote>
 <div class="section" id="basic-functionalities">
 <h3><a class="toc-backref" href="#id4">Basic functionalities</a><a class="headerlink" href="#basic-functionalities" title="Permalink to this headline">¶</a></h3>
 <blockquote>
 <div><div class="line-block">
-<div class="line"><strong>S3select</strong> has a definite set of functionalities that should be implemented (if we wish to stay compliant with AWS), currently only a portion of it is implemented.</div>
+<div class="line"><strong>S3select</strong> has a definite set of functionalities compliant with AWS.</div>
 </div>
 <div class="line-block">
-<div class="line">The implemented software architecture supports basic arithmetic expressions, logical and compare expressions, including nested function calls and casting operators, that alone enables the user reasonable flexibility.</div>
+<div class="line">The implemented software architecture supports basic arithmetic expressions, logical and compare expressions, including nested function calls and casting operators, which enables the user great flexibility.</div>
 <div class="line">review the below <a class="reference internal" href="#s3-select-feature-table">s3-select-feature-table</a>.</div>
 </div>
 </div></blockquote>
@@ -363,10 +380,17 @@
 <h3><a class="toc-backref" href="#id5">Error Handling</a><a class="headerlink" href="#error-handling" title="Permalink to this headline">¶</a></h3>
 <blockquote>
 <div><div class="line-block">
-<div class="line">Any error occurs while the input query processing, i.e. parsing phase or execution phase, is returned to client as response error message.</div>
-</div>
-<div class="line-block">
-<div class="line">Fatal severity (attached to the exception) will end query execution immediately, other error severity are counted, upon reaching 100, it ends query execution with an error message.</div>
+<div class="line">Upon an error being detected, RGW returns 400-Bad-Request and a specific error message sends back to the client.</div>
+<div class="line">Currently, there are 2 main types of error.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>Syntax error</strong>: the s3selecet parser rejects user requests that are not aligned with parser syntax definitions, as</div>
+<div class="line">described in this documentation.</div>
+<div class="line">Upon Syntax Error, the engine creates an error message that points to the location of the error.</div>
+<div class="line">RGW sends back the error message in a specific error response.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>Processing Time error</strong>: the runtime engine may detect errors that occur only on processing time, for that type of</div>
+<div class="line">error, a different error message would describe that.</div>
+<div class="line">RGW sends back the error message in a specific error response.</div>
 </div>
 </div></blockquote>
 </div>
@@ -511,7 +535,7 @@ predicate as a projection</p></td>
 where address like ‘%new-york%’;</p></td>
 </tr>
 <tr class="row-odd"><td><p>an alias to
-predicate as a prjection</p></td>
+predicate as a projection</p></td>
 <td colspan="2"><p>select (_1 like “_3_”) as <em>likealias</em>,_1 from s3object
 where <em>likealias</em> = true and cast(_1 as int) between 800 and 900;</p></td>
 </tr>
@@ -707,7 +731,7 @@ from s3object where a3&gt;100 and a3&lt;300;</p></td>
 <div class="line">Supported data-part : year, month, day, hour, minute, second.</div>
 </div>
 <div class="line-block">
-<div class="line"><code class="docutils literal notranslate"><span class="pre">date_diff(date-part,</span> <span class="pre">timestamp,</span> <span class="pre">timestamp)</span></code> : The function returns an integer, a calculated result for difference between 2 timestamps according to date-part. It includes timezone in calculation.</div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">date_diff(date-part,</span> <span class="pre">timestamp,</span> <span class="pre">timestamp)</span></code> : The function returns an integer, a calculated result for difference between 2 timestamps according to date-part. It includes timezone in calculation.</div>
 <div class="line">supported date-part : year, month, day, hour, minute, second.</div>
 </div>
 <div class="line-block">
@@ -921,18 +945,18 @@ from s3object where a3&gt;100 and a3&lt;300;</p></td>
 <h3><a class="toc-backref" href="#id14">Testing</a><a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
 <blockquote>
 <div><div class="line-block">
-<div class="line">s3select contains several testing frameworks which provide a large coverage for its functionalities.</div>
+<div class="line">s3select contains several testing frameworks which provide a large coverage for its functionalities.</div>
 </div>
 <div class="line-block">
-<div class="line">(1) tests comparison against trusted engine, meaning,  C/C++ compiler is a trusted expression evaluator,</div>
+<div class="line">(1) tests comparison against a trusted engine, meaning,  C/C++ compiler is a trusted expression evaluator,</div>
 <div class="line">since the syntax for arithmetical and logical expressions are identical (s3select compare to C)</div>
-<div class="line">the framework runs equal expressions and validates their results.</div>
+<div class="line">the framework runs equal expressions and validates their results.</div>
 <div class="line">A dedicated expression generator produces different sets of expressions per each new test session.</div>
 </div>
 <div class="line-block">
-<div class="line">(2) compare results of queries whose syntax is different but semantically they are equal.</div>
-<div class="line">this kind of test validates that different runtime flows produce identical result,</div>
-<div class="line">on each run with different dataset(random).</div>
+<div class="line">(2) compare results of queries whose syntax is different but semantically they are equal.</div>
+<div class="line">this kind of test validates that different runtime flows produce an identical result,</div>
+<div class="line">on each run with a different dataset(random).</div>
 </div>
 <div class="line-block">
 <div class="line">For one example, on a dataset which contains a random numbers(1-1000)</div>
@@ -941,20 +965,32 @@ from s3object where a3&gt;100 and a3&lt;300;</p></td>
 <div class="line"><code class="docutils literal notranslate"><span class="pre">select</span> <span class="pre">count(*)</span> <span class="pre">from</span> <span class="pre">s3object</span> <span class="pre">where</span> <span class="pre">cast(_3</span> <span class="pre">as</span> <span class="pre">int)&gt;99</span> <span class="pre">and</span> <span class="pre">cast(_3</span> <span class="pre">as</span> <span class="pre">int)&lt;1000;</span></code></div>
 </div>
 <div class="line-block">
-<div class="line">(3) constant dataset, the conventional way of testing. A query is processing a constant dataset, its result is validated against constant results.</div>
+<div class="line">(3) constant dataset, the conventional way of testing. A query is processing a constant dataset, its result is validated against constant results.</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="additional-syntax-support">
+<h3><a class="toc-backref" href="#id15">Additional syntax support</a><a class="headerlink" href="#additional-syntax-support" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line">S3select syntax supports table-alias <code class="docutils literal notranslate"><span class="pre">select</span> <span class="pre">s._1</span> <span class="pre">from</span> <span class="pre">s3object</span> <span class="pre">s</span> <span class="pre">where</span> <span class="pre">s._2</span> <span class="pre">=</span> <span class="pre">‘4’;</span></code></div>
+<div class="line"><br /></div>
+<div class="line">S3select syntax supports case insensitive <code class="docutils literal notranslate"><span class="pre">Select</span> <span class="pre">SUM(Cast(_1</span> <span class="pre">as</span> <span class="pre">int))</span> <span class="pre">FROM</span> <span class="pre">S3Object;</span></code></div>
+<div class="line"><br /></div>
+<div class="line">S3select syntax supports statements without closing semicolon  <code class="docutils literal notranslate"><span class="pre">select</span> <span class="pre">count(*)</span> <span class="pre">from</span> <span class="pre">s3object</span></code></div>
 </div>
 </div></blockquote>
 </div>
 </div>
 <div class="section" id="sending-query-to-rgw">
-<h2><a class="toc-backref" href="#id15">Sending Query to RGW</a><a class="headerlink" href="#sending-query-to-rgw" title="Permalink to this headline">¶</a></h2>
+<h2><a class="toc-backref" href="#id16">Sending Query to RGW</a><a class="headerlink" href="#sending-query-to-rgw" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><div class="line-block">
-<div class="line">Any http-client can send s3-select request to RGW, it must be compliant with <a class="reference external" href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_SelectObjectContent.html#API_SelectObjectContent_RequestSyntax">AWS Request syntax</a>.</div>
+<div class="line">Any http-client can send an s3-select request to RGW, it must be compliant with <a class="reference external" href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_SelectObjectContent.html#API_SelectObjectContent_RequestSyntax">AWS Request syntax</a>.</div>
 </div>
 <div class="line-block">
-<div class="line">Sending s3-select request to RGW using AWS cli, should follow <a class="reference external" href="https://docs.aws.amazon.com/cli/latest/reference/s3api/select-object-content.html">AWS command reference</a>.</div>
-<div class="line">below is an example for it.</div>
+<div class="line">Sending s3-select request to RGW using AWS CLI, should follow <a class="reference external" href="https://docs.aws.amazon.com/cli/latest/reference/s3api/select-object-content.html">AWS command reference</a>.</div>
+<div class="line">below is an example of it.</div>
 </div>
 </div></blockquote>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">aws</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">-</span><span class="n">url</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">8000</span> <span class="n">s3api</span> <span class="n">select</span><span class="o">-</span><span class="nb">object</span><span class="o">-</span><span class="n">content</span>
@@ -962,34 +998,80 @@ from s3object where a3&gt;100 and a3&lt;300;</p></td>
  <span class="o">--</span><span class="n">expression</span><span class="o">-</span><span class="nb">type</span> <span class="s1">&#39;SQL&#39;</span>
  <span class="o">--</span><span class="nb">input</span><span class="o">-</span><span class="n">serialization</span>
  <span class="s1">&#39;{&quot;CSV&quot;: {&quot;FieldDelimiter&quot;: &quot;,&quot; , &quot;QuoteCharacter&quot;: &quot;</span><span class="se">\&quot;</span><span class="s1">&quot; , &quot;RecordDelimiter&quot; : &quot;</span><span class="se">\n</span><span class="s1">&quot; , &quot;QuoteEscapeCharacter&quot; : &quot;</span><span class="se">\\</span><span class="s1">&quot; , &quot;FileHeaderInfo&quot;: &quot;USE&quot; }, &quot;CompressionType&quot;: &quot;NONE&quot;}&#39;</span>
- <span class="o">--</span><span class="n">output</span><span class="o">-</span><span class="n">serialization</span> <span class="s1">&#39;{&quot;CSV&quot;: </span><span class="si">{}</span><span class="s1">}&#39;</span>
+ <span class="o">--</span><span class="n">output</span><span class="o">-</span><span class="n">serialization</span> <span class="s1">&#39;{&quot;CSV&quot;: {&quot;FieldDelimiter&quot;: &quot;:&quot;, &quot;RecordDelimiter&quot;:&quot;</span><span class="se">\t</span><span class="s1">&quot;, &quot;QuoteFields&quot;: &quot;ALWAYS&quot;}}&#39;</span>
  <span class="o">--</span><span class="n">key</span> <span class="p">{</span><span class="n">OBJECT</span><span class="o">-</span><span class="n">NAME</span><span class="p">}</span>
+ <span class="o">--</span><span class="n">request</span><span class="o">-</span><span class="n">progress</span> <span class="s1">&#39;{&quot;Enabled&quot;: True}&#39;</span>
  <span class="o">--</span><span class="n">expression</span> <span class="s2">&quot;select count(0) from s3object where int(_1)&lt;10;&quot;</span> <span class="n">output</span><span class="o">.</span><span class="n">csv</span>
 </pre></div>
 </div>
-<div class="section" id="syntax">
-<h3><a class="toc-backref" href="#id16">Syntax</a><a class="headerlink" href="#syntax" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="input-serialization">
+<h3><a class="toc-backref" href="#id17">Input Serialization</a><a class="headerlink" href="#input-serialization" title="Permalink to this headline">¶</a></h3>
 <blockquote>
 <div><div class="line-block">
-<div class="line"><strong>Input serialization</strong> (Implemented), it let the user define the CSV definitions; the default values are {\n} for row-delimiter {,} for field delimiter, {“} for quote, {\} for escape characters.</div>
-<div class="line">it handle the <strong>csv-header-info</strong>, the first row in input object containing the schema.</div>
-<div class="line"><strong>Output serialization</strong> is currently not implemented, the same for <strong>compression-type</strong>.</div>
+<div class="line"><strong>FileHeaderInfo</strong> -&gt; (string)</div>
+<div class="line">Describes the first line of input. Valid values are:</div>
+<div class="line"><br /></div>
+<div class="line"><strong>NONE</strong> : The first line is not a header.</div>
+<div class="line"><strong>IGNORE</strong> : The first line is a header, but you can’t use the header values to indicate the column in an expression.</div>
+<div class="line">it’s possible to use column position (such as _1, _2, …) to indicate the column (<code class="docutils literal notranslate"><span class="pre">SELECT</span> <span class="pre">s._1</span> <span class="pre">FROM</span> <span class="pre">S3OBJECT</span> <span class="pre">s</span></code>).</div>
+<div class="line"><strong>USE</strong> : First line is a header, and you can use the header value to identify a column in an expression (<code class="docutils literal notranslate"><span class="pre">SELECT</span> <span class="pre">column_name</span> <span class="pre">FROM</span> <span class="pre">S3OBJECT</span></code>).</div>
+<div class="line"><br /></div>
+<div class="line"><strong>QuoteEscapeCharacter</strong> -&gt; (string)</div>
+<div class="line">A single character used for escaping the quotation mark character inside an already escaped value.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>RecordDelimiter</strong> -&gt; (string)</div>
+<div class="line">A single character is used to separate individual records in the input. Instead of the default value, you can specify an arbitrary delimiter.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>FieldDelimiter</strong> -&gt; (string)</div>
+<div class="line">A single character is used to separate individual fields in a record. You can specify an arbitrary delimiter.</div>
 </div>
-<div class="line-block">
-<div class="line">s3-select engine contain a CSV parser, which parse s3-objects as follows.</div>
-<div class="line">- each row ends with row-delimiter.</div>
-<div class="line">- field-separator separates between adjacent columns, successive field separator define NULL column.</div>
-<div class="line">- quote-character overrides field separator, meaning , field separator become as any character between quotes.</div>
-<div class="line">- escape character disables any special characters, except for row delimiter.</div>
+</div></blockquote>
 </div>
+<div class="section" id="output-serialization">
+<h3><a class="toc-backref" href="#id18">Output Serialization</a><a class="headerlink" href="#output-serialization" title="Permalink to this headline">¶</a></h3>
 <div class="line-block">
-<div class="line">Below are examples for CSV parsing rules.</div>
+<div class="line"><strong>AWS CLI example</strong></div>
+</div>
+<blockquote>
+<div><div class="line-block">
+<div class="line">aws s3api select-object-content </div>
+<div class="line">–bucket “mybucket” </div>
+<div class="line">–key keyfile1 </div>
+<div class="line">–expression “SELECT * FROM s3object s” </div>
+<div class="line">–expression-type ‘SQL’ </div>
+<div class="line">–request-progress ‘{“Enabled”: false}’ </div>
+<div class="line">–input-serialization ‘{“CSV”: {“FieldDelimiter”: “,”}, “CompressionType”: “NONE”}’ </div>
+<div class="line">–output-serialization ‘{“CSV”: {“FieldDelimiter”: “:”, “RecordDelimiter”:”\t”, “QuoteFields”: “ALWAYS”}}’ /dev/stdout</div>
+<div class="line"><br /></div>
+<div class="line"><strong>QuoteFields</strong> -&gt; (string)</div>
+<div class="line">Indicates whether to use quotation marks around output fields.</div>
+<div class="line"><strong>ALWAYS</strong>: Always use quotation marks for output fields.</div>
+<div class="line"><strong>ASNEEDED</strong> (not implemented): Use quotation marks for output fields when needed.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>RecordDelimiter</strong> -&gt; (string)</div>
+<div class="line">A single character is used to separate individual records in the output. Instead of the default value, you can specify an</div>
+<div class="line">arbitrary delimiter.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>FieldDelimiter</strong> -&gt; (string)</div>
+<div class="line">The value used to separate individual fields in a record. You can specify an arbitrary delimiter.</div>
 </div>
 </div></blockquote>
 </div>
 </div>
 <div class="section" id="csv-parsing-behavior">
-<h2><a class="toc-backref" href="#id17">CSV parsing behavior</a><a class="headerlink" href="#csv-parsing-behavior" title="Permalink to this headline">¶</a></h2>
+<h2><a class="toc-backref" href="#id19">CSV parsing behavior</a><a class="headerlink" href="#csv-parsing-behavior" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">s3-select engine contains a CSV parser, which parses s3-objects as follows.</div>
+<div class="line">- each row ends with row-delimiter.</div>
+<div class="line">- field-separator separates between adjacent columns, successive field separator defines NULL column.</div>
+<div class="line">- quote-character overrides field separator, meaning, field separator becomes as any character between quotes.</div>
+<div class="line">- escape character disables any special characters, except for row delimiter.</div>
+</div>
+<div class="line-block">
+<div class="line">Below are examples of CSV parsing rules.</div>
+</div>
+</div></blockquote>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 27%" />
@@ -1039,34 +1121,51 @@ tag</p></td>
 </table>
 </div>
 <div class="section" id="boto3">
-<h2><a class="toc-backref" href="#id18">BOTO3</a><a class="headerlink" href="#boto3" title="Permalink to this headline">¶</a></h2>
+<h2><a class="toc-backref" href="#id20">BOTO3</a><a class="headerlink" href="#boto3" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><div class="line-block">
 <div class="line">using BOTO3 is “natural” and easy due to AWS-cli support.</div>
 </div>
 </div></blockquote>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">run_s3select</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span><span class="n">key</span><span class="p">,</span><span class="n">query</span><span class="p">,</span><span class="n">column_delim</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span><span class="n">row_delim</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="n">quot_char</span><span class="o">=</span><span class="s1">&#39;&quot;&#39;</span><span class="p">,</span><span class="n">esc_char</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">csv_header_info</span><span class="o">=</span><span class="s2">&quot;NONE&quot;</span><span class="p">):</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pprint</span>
+
+<span class="k">def</span> <span class="nf">run_s3select</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span><span class="n">key</span><span class="p">,</span><span class="n">query</span><span class="p">,</span><span class="n">column_delim</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span><span class="n">row_delim</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="n">quot_char</span><span class="o">=</span><span class="s1">&#39;&quot;&#39;</span><span class="p">,</span><span class="n">esc_char</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">csv_header_info</span><span class="o">=</span><span class="s2">&quot;NONE&quot;</span><span class="p">):</span>
+
    <span class="n">s3</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span>
        <span class="n">endpoint_url</span><span class="o">=</span><span class="n">endpoint</span><span class="p">,</span>
        <span class="n">aws_access_key_id</span><span class="o">=</span><span class="n">access_key</span><span class="p">,</span>
        <span class="n">region_name</span><span class="o">=</span><span class="n">region_name</span><span class="p">,</span>
        <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="n">secret_key</span><span class="p">)</span>
 
-
-
-   <span class="n">r</span> <span class="o">=</span> <span class="n">s3</span><span class="o">.</span><span class="n">select_object_content</span><span class="p">(</span>
+   <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+   <span class="k">try</span><span class="p">:</span>
+       <span class="n">r</span> <span class="o">=</span> <span class="n">s3</span><span class="o">.</span><span class="n">select_object_content</span><span class="p">(</span>
        <span class="n">Bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">,</span>
        <span class="n">Key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
        <span class="n">ExpressionType</span><span class="o">=</span><span class="s1">&#39;SQL&#39;</span><span class="p">,</span>
        <span class="n">InputSerialization</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;CSV&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;RecordDelimiter&quot;</span> <span class="p">:</span> <span class="n">row_delim</span><span class="p">,</span> <span class="s2">&quot;FieldDelimiter&quot;</span> <span class="p">:</span> <span class="n">column_delim</span><span class="p">,</span><span class="s2">&quot;QuoteEscapeCharacter&quot;</span><span class="p">:</span> <span class="n">esc_char</span><span class="p">,</span> <span class="s2">&quot;QuoteCharacter&quot;</span><span class="p">:</span> <span class="n">quot_char</span><span class="p">,</span> <span class="s2">&quot;FileHeaderInfo&quot;</span><span class="p">:</span> <span class="n">csv_header_info</span><span class="p">},</span> <span class="s2">&quot;CompressionType&quot;</span><span class="p">:</span> <span class="s2">&quot;NONE&quot;</span><span class="p">},</span>
        <span class="n">OutputSerialization</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;CSV&quot;</span><span class="p">:</span> <span class="p">{}},</span>
-       <span class="n">Expression</span><span class="o">=</span><span class="n">query</span><span class="p">,)</span>
+       <span class="n">Expression</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
+       <span class="n">RequestProgress</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Enabled&quot;</span><span class="p">:</span> <span class="n">progress</span><span class="p">})</span>
 
-   <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+   <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">c</span><span class="p">:</span>
+       <span class="n">result</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+       <span class="k">return</span> <span class="n">result</span>
+
    <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;Payload&#39;</span><span class="p">]:</span>
-       <span class="k">if</span> <span class="s1">&#39;Records&#39;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
-           <span class="n">records</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;Records&#39;</span><span class="p">][</span><span class="s1">&#39;Payload&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
-           <span class="n">result</span> <span class="o">+=</span> <span class="n">records</span>
+           <span class="k">if</span> <span class="s1">&#39;Records&#39;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
+               <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+               <span class="n">records</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;Records&#39;</span><span class="p">][</span><span class="s1">&#39;Payload&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+               <span class="n">result</span> <span class="o">+=</span> <span class="n">records</span>
+           <span class="k">if</span> <span class="s1">&#39;Progress&#39;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
+               <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;progress&quot;</span><span class="p">)</span>
+               <span class="n">pprint</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;Progress&#39;</span><span class="p">],</span><span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+           <span class="k">if</span> <span class="s1">&#39;Stats&#39;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
+               <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Stats&quot;</span><span class="p">)</span>
+               <span class="n">pprint</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;Stats&#39;</span><span class="p">],</span><span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+           <span class="k">if</span> <span class="s1">&#39;End&#39;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
+               <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;End&quot;</span><span class="p">)</span>
+               <span class="n">pprint</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;End&#39;</span><span class="p">],</span><span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
    <span class="k">return</span> <span class="n">result</span>
 
@@ -1078,6 +1177,90 @@ tag</p></td>
  <span class="s2">&quot;my_csv_object&quot;</span><span class="p">,</span>
  <span class="s2">&quot;select int(_1) as a1, int(_2) as a2 , (a1+a2) as a3 from s3object where a3&gt;100 and a3&lt;300;&quot;</span><span class="p">)</span>
 </pre></div>
+</div>
+</div>
+<div class="section" id="s3-select-responses">
+<h2><a class="toc-backref" href="#id21">S3 SELECT Responses</a><a class="headerlink" href="#s3-select-responses" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="error-response">
+<h3><a class="toc-backref" href="#id22">Error Response</a><a class="headerlink" href="#error-response" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line">&lt;?xml version=”1.0” encoding=”UTF-8”?&gt;</div>
+<div class="line">&lt;Error&gt;</div>
+<div class="line-block">
+<div class="line">&lt;Code&gt;NoSuchKey&lt;/Code&gt;</div>
+<div class="line">&lt;Message&gt;The resource you requested does not exist&lt;/Message&gt;</div>
+<div class="line">&lt;Resource&gt;/mybucket/myfoto.jpg&lt;/Resource&gt;</div>
+<div class="line">&lt;RequestId&gt;4442587FB7D0A2F9&lt;/RequestId&gt;</div>
+</div>
+<div class="line">&lt;/Error&gt;</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="report-response">
+<h3><a class="toc-backref" href="#id23">Report Response</a><a class="headerlink" href="#report-response" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line">HTTP/1.1 200</div>
+<div class="line">&lt;?xml version=”1.0” encoding=”UTF-8”?&gt;</div>
+<div class="line">&lt;Payload&gt;</div>
+<div class="line-block">
+<div class="line">&lt;Records&gt;</div>
+<div class="line-block">
+<div class="line">&lt;Payload&gt;blob&lt;/Payload&gt;</div>
+</div>
+<div class="line">&lt;/Records&gt;</div>
+<div class="line">&lt;Stats&gt;</div>
+<div class="line-block">
+<div class="line">&lt;Details&gt;</div>
+<div class="line-block">
+<div class="line">&lt;BytesProcessed&gt;long&lt;/BytesProcessed&gt;</div>
+<div class="line">&lt;BytesReturned&gt;long&lt;/BytesReturned&gt;</div>
+<div class="line">&lt;BytesScanned&gt;long&lt;/BytesScanned&gt;</div>
+</div>
+<div class="line">&lt;/Details&gt;</div>
+</div>
+<div class="line">&lt;/Stats&gt;</div>
+<div class="line">&lt;Progress&gt;</div>
+<div class="line-block">
+<div class="line">&lt;Details&gt;</div>
+<div class="line-block">
+<div class="line">&lt;BytesProcessed&gt;long&lt;/BytesProcessed&gt;</div>
+<div class="line">&lt;BytesReturned&gt;long&lt;/BytesReturned&gt;</div>
+<div class="line">&lt;BytesScanned&gt;long&lt;/BytesScanned&gt;</div>
+</div>
+<div class="line">&lt;/Details&gt;</div>
+</div>
+<div class="line">&lt;/Progress&gt;</div>
+<div class="line">&lt;Cont&gt;</div>
+<div class="line">&lt;/Cont&gt;</div>
+<div class="line">&lt;End&gt;</div>
+<div class="line">&lt;/End&gt;</div>
+</div>
+<div class="line">&lt;/Payload&gt;</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="response-description">
+<h3><a class="toc-backref" href="#id24">Response Description</a><a class="headerlink" href="#response-description" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><div class="line-block">
+<div class="line">For CEPH S3 Select, responses can be messages of the following types:</div>
+<div class="line"><br /></div>
+<div class="line"><strong>Records message</strong>: Can contain a single record, partial records, or multiple records. Depending on the size of the result, a response can contain one or more of these messages.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>Error message</strong>: Upon an error being detected, RGW returns 400 Bad Request, and a specific error message sends back to the client, according to its type.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>Continuation message</strong>: Ceph S3 periodically sends this message to keep the TCP connection open.</div>
+<div class="line">These messages appear in responses at random. The client must detect the message type and process it accordingly.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>Progress message</strong>: Ceph S3 periodically sends this message if requested. It contains information about the progress of a query that has started but has not yet been completed.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>Stats message</strong>: Ceph S3 sends this message at the end of the request. It contains statistics about the query.</div>
+<div class="line"><br /></div>
+<div class="line"><strong>End message</strong>: Indicates that the request is complete, and no more messages will be sent. You should not assume that request is complete until the client receives an End message.</div>
+</div>
+</div></blockquote>
 </div>
 </div>
 </div>

@@ -1,103 +1,102 @@
 =====================
  用 FUSE 挂载 CephFS
 =====================
-.. Mount CephFS using FUSE
 
-`ceph-fuse`_ is an alternate way of mounting CephFS, although it mounts it
-in userspace. Therefore, performance of FUSE can be relatively lower but FUSE
-clients can be more manageable, especially while upgrading CephFS.
+`ceph-fuse`_ 是挂载 CephFS 的另外一种方法，虽然是挂载到了用户空间。
+因此， FUSE 的性能会相对低一些，但 FUSE 客户端更容易管理，
+特别是在升级 CephFS 时。
 
-Prerequisites
-=============
-
-Go through the prerequisites required by both, kernel as well as FUSE mounts,
-in `Mount CephFS: Prerequisites`_ page.
-
-.. note:: Mounting CephFS using FUSE requires superuser privileges to trim dentries
-   by issuing a remount of itself.
-
-Synopsis
+前提条件
 ========
-In general, the command to mount CephFS via FUSE looks like this::
+
+先走通二者都需要的先决条件，内核、 FUSE 挂载的，位于 `挂载 CephFS ：先决条件`_ 。
+
+.. note:: 通过 FUSE 挂载 CephFS 需要超级用户权限，这样才能发出重挂载自身的命令，
+   以修剪 dentry 。
+
+提纲
+====
+
+一般来说，通过 FUSE 挂载 CephFS 的命令是这样的： ::
 
     ceph-fuse {mountpoint} {options}
 
-Mounting CephFS
-===============
-To FUSE-mount the Ceph file system, use the ``ceph-fuse`` command::
+挂载 CephFS
+===========
+
+要以 FUSE 方式挂载 Ceph 文件系统，用 ``ceph-fuse`` 命令： ::
 
     mkdir /mnt/mycephfs
     ceph-fuse --id foo /mnt/mycephfs
 
-Option ``-id`` passes the name of the CephX user whose keyring we intend to
-use for mounting CephFS. In the above command, it's ``foo``. You can also use
-``-n`` instead, although ``--id`` is evidently easier::
+``--id`` 选项传入的是 CephX 用户的名字，我们挂载 CephFS 时要用他的密钥环，
+在这个命令里，他是 ``foo`` 。你也可以用 ``-n`` 代替，但 ``--id`` 显然更简单::
 
     ceph-fuse -n client.foo /mnt/mycephfs
 
-In case the keyring is not present in standard locations, you may pass it
-too::
+如果密钥环不在标准位置下，你可以手动传入： ::
 
     ceph-fuse --id foo -k /path/to/keyring /mnt/mycephfs
 
-You may pass the MON's socket too, although this is not mandatory::
+你也可以传入监视器地址，虽然这不是强制的： ::
 
     ceph-fuse --id foo -m 192.168.0.1:6789 /mnt/mycephfs
 
-You can also mount a specific directory within CephFS instead of mounting
-root of CephFS on your local FS::
+你也可以只挂载 CephFS 里的某个特定目录，而不是挂载 CephFS 的根目录： ::
 
     ceph-fuse --id foo -r /path/to/dir /mnt/mycephfs
 
-If you have more than one FS on your Ceph cluster, use the option
-``--client_fs`` to mount the non-default FS::
+如果你的 Ceph 集群有多个 FS ，可以用 ``--client_fs`` 选项挂载\
+非默认的文件系统： ::
 
     ceph-fuse --id foo --client_fs mycephfs2 /mnt/mycephfs2
 
-You may also add a ``client_fs`` setting to your ``ceph.conf``
+你也可以在 ``ceph.conf`` 里加上 ``client_fs`` 配置。
 
-Unmounting CephFS
-=================
 
-Use ``umount`` to unmount CephFS like any other FS::
+卸载 CephFS
+===========
+.. Unmounting CephFS
+
+像其它文件系统一样，用 ``umount`` 卸载 CephFS::
 
     umount /mnt/mycephfs
 
-.. tip:: Ensure that you are not within the file system directories before
-   executing this command.
+.. tip:: 执行此命令时需要确保你不在这个文件系统的目录里。
 
-Persistent Mounts
-=================
 
-To mount CephFS as a file system in user space, add the following to ``/etc/fstab``::
+永久挂载
+========
+.. Persistent Mounts
+
+要把 CephFS 挂载成用户空间文件系统，在 ``/etc/fstab`` 里加上如下内容::
 
        #DEVICE PATH       TYPE      OPTIONS
        none    /mnt/mycephfs  fuse.ceph ceph.id={user-ID}[,ceph.conf={path/to/conf.conf}],_netdev,defaults  0 0
 
-For example::
+例如::
 
        none    /mnt/mycephfs  fuse.ceph ceph.id=myuser,_netdev,defaults  0 0
        none    /mnt/mycephfs  fuse.ceph ceph.id=myuser,ceph.conf=/etc/ceph/foo.conf,_netdev,defaults  0 0
 
-Ensure you use the ID (e.g., ``myuser``, not ``client.myuser``). You can pass
-any valid ``ceph-fuse`` option to the command line this way.
+这里用的是 ID （如 ``myuser`` ，不是 ``client.myuser`` ）。
+你可以这样给命令行加上任意的合法 ``ceph-fuse`` 选项。
 
-To mount a subdirectory of the CephFS, add the following to ``/etc/fstab``::
+要挂载 CephFS 的一个子目录，把下面的加进 ``/etc/fstab``::
 
        none    /mnt/mycephfs  fuse.ceph ceph.id=myuser,ceph.client_mountpoint=/path/to/dir,_netdev,defaults  0 0
 
-``ceph-fuse@.service`` and ``ceph-fuse.target`` systemd units are available.
-As usual, these unit files declare the default dependencies and recommended
-execution context for ``ceph-fuse``. After making the fstab entry shown above,
-run following commands::
+``ceph-fuse@.service`` 和 ``ceph-fuse.target`` systemd unit 默认可用。
+和往常一样，这些 unit 文件声明了默认的依赖关系和建议的 ``ceph-fuse`` 执行上下文。
+写好上面的 fstab 条目后，运行下列命令： ::
 
     systemctl start ceph-fuse@/mnt/mycephfs.service
     systemctl enable ceph-fuse.target
     systemctl enable ceph-fuse@-mnt-mycephfs.service
 
-See :ref:`User Management <user-management>` for details on CephX user management and `ceph-fuse`_
-manual for more options it can take. For troubleshooting, see
-:ref:`ceph_fuse_debugging`.
+关于 CephX 用户管理的细节见 :ref:`用户管理 <user-management>` ，
+`ceph-fuse`_ 手册里有它支持的更多选项。
+故障排除请参考 :ref:`ceph_fuse_debugging` 。
 
 .. _ceph-fuse: ../../man/8/ceph-fuse/#options
-.. _Mount CephFS\: Prerequisites: ../mount-prerequisites
+.. _挂载 CephFS ：先决条件: ../mount-prerequisites

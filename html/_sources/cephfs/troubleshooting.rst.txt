@@ -150,26 +150,26 @@ ceph-fuse 也支持 dump_ops_in_flight 命令，可以查看是否卡住、卡�
     Jul 20 08:14:40 teuthology kernel: [3677603.132176] libceph: reset on mds0
 
 这是正在改善的领域，内核将很快能够可靠地向正在进行的 IO 发送错误代码，
-即便你的应用程序不能良好地应对这些情况。长远来看，
-在不违背 POSIX 语义的情况下，我们希望可以重连和回收数据
-（通常是其它客户端尚未访问、或修改的数据）。
+即便你的应用程序不能良好地应对这些情况。长远来看，在不违背 POSIX 语义的情况下，
+我们希望可以重连和回收数据（通常是其它客户端尚未访问、或修改的数据）。
 
 
 挂载问题
 ========
 
-Mount 5 Error
--------------
+挂载错误 5
+----------
+.. Mount 5 Error
 
 mount 5 错误通常是 MDS 服务器滞后或崩溃导致的。
 要确保至少有一个 MDS 是启动且运行的，集群也要处于 ``active+healthy`` 状态。
 
-Mount 12 Error
---------------
+挂载错误 12
+-----------
+.. Mount 12 Error
 
-mount 12 错误显示 ``cannot allocate memory`` ，
-常见于 :term:`Ceph 客户端`\ 和 :term:`Ceph 存储集群`\ 版本不匹配。
-用以下命令检查版本： ::
+mount 12 错误显示 ``cannot allocate memory`` ，常见于 :term:`Ceph 客户端`\ 和
+:term:`Ceph 存储集群`\ 版本不匹配。用以下命令检查版本： ::
 
 	ceph -v
 

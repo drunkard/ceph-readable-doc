@@ -1,21 +1,21 @@
-=========================
- Ceph File System IO Path
-=========================
+=======================
+ Ceph 文件系统 IO 路径
+=======================
+.. Ceph File System IO Path
 
-All file data in CephFS is stored as RADOS objects. CephFS clients can directly
-access RADOS to operate on file data. MDS only handles metadata operations.
+CephFS 里的所有文件数据都存储成了 RADOS 对象，客户端们可以直接访问 RADOS
+来操作文件数据。 MDS 只处理元数据操作。
 
-To read/write a CephFS file, client needs to have 'file read/write' capabilities
-for corresponding inode. If client does not have required capabilities, it sends
-a 'cap message' to MDS, telling MDS what it wants. MDS will issue capabilities
-to client when it is possible. Once client has 'file read/write' capabilities,
-it can directly access RADOS to read/write file data. File data are stored as
-RADOS objects in the form of <inode number>.<object index>. See 'Data Striping'
-section of `Architecture`_ for more information. If the file is only opened by
-one client, MDS also issues 'file cache/buffer' capabilities to the only client.
-The 'file cache' capability means that file read can be satisfied by client
-cache. The 'file buffer' capability means that file write can be buffered in
-client cache.
+要读、写一个 CephFS 文件，客户端需要有对应 inode 上的 "file read/write" 能力。
+如果客户端没有必需的能力，它会向 MDS 发送 "cap message" ，
+告诉 MDS 它想要什么。如果可能的话， MDS 会把所需的能力发给客户端。
+一旦客户端有了 "file read/write" 能力，它就能直接访问 RADOS ，
+以读取、写入文件数据了。文件数据以 RADOS 对象存储，
+名字格式是 <inode number>.<object index> 。
+更多信息见 `体系结构`_ 的“数据条带化”一节。如果某个文件只被一个客户端打开了，
+MDS 也只会这个客户端发放 "file cache/buffer" 能力。
+"file cache" 能力的含义是，文件读取操作可以由客户端缓存来满足。
+"file buffer" 能力的含义是，文件的写入可以缓冲在客户端缓存中。
 
 
 .. ditaa::
@@ -47,4 +47,4 @@ client cache.
             |         MDSs        | -=-------> |         OSDs       |
             +---------------------+            +--------------------+
 
-.. _Architecture: ../architecture
+.. _体系结构: ../architecture

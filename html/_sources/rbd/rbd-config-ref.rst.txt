@@ -11,7 +11,7 @@
 
 .. confval:: rbd_compression_hint
 .. confval:: rbd_read_from_replica_policy
-
+.. confval:: rbd_default_order
 
 缓存选项
 ========
@@ -53,7 +53,8 @@ is on disk on all replicas.
    if there are others accessing the image. Running GFS or OCFS on top of
    RBD will not work with caching enabled.
 
-RBD 选项应该位于 ``ceph.conf`` 配置文件的 ``[client]`` 段下，\
+RBD 选项应该位于 ``ceph.conf`` 配置文件或\
+中央配置库的 ``[client]`` 段下，\
 可用选项有：
 
 .. confval:: rbd_cache
@@ -85,7 +86,10 @@ librbd 支持预读或预取功能，以此优化小块的顺序读。此功能�
 ========
 .. Image Features
 
-RBD supports advanced features which can be specified via the command line when creating images or the default features can be specified via Ceph config file via 'rbd_default_features = <sum of feature numeric values>' or 'rbd_default_features = <comma-delimited list of CLI values>'
+RBD supports advanced features which can be specified via the command line when
+creating images or the default features can be configured via
+``rbd_default_features = <sum of feature numeric values>`` or
+``rbd_default_features = <comma-delimited list of CLI values>``.
 
 
 ``Layering``

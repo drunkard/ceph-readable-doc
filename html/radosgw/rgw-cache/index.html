@@ -152,9 +152,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#new-apis">New APIs</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#auth-api">Auth API</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#cache-api">Cache API</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#using-nginx-with-rgw">Using Nginx with RGW</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#using-nginx-with-rgw">Using Nginx with RGW</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#appendix">Appendix</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../swift/">Swift API</a></li>
@@ -258,53 +259,76 @@
 <ul>
 <li><p><a class="reference internal" href="#auth-api" id="id3">Auth API</a></p></li>
 <li><p><a class="reference internal" href="#cache-api" id="id4">Cache API</a></p></li>
-<li><p><a class="reference internal" href="#using-nginx-with-rgw" id="id5">Using Nginx with RGW</a></p></li>
 </ul>
 </li>
+<li><p><a class="reference internal" href="#using-nginx-with-rgw" id="id5">Using Nginx with RGW</a></p></li>
+<li><p><a class="reference internal" href="#appendix" id="id6">Appendix</a></p></li>
 </ul>
 </li>
 </ul>
 </div>
-<p>This feature adds to RGW the ability to securely cache objects and offload the workload from the cluster, using Nginx.
-After an object is accessed the first time it will be stored in the Nginx directory.
-When data is already cached, it need not be fetched from RGW. A permission check will be made against RGW to ensure the requesting user has access.
-This feature is based on some Nginx modules, ngx_http_auth_request_module, <a class="reference external" href="https://github.com/kaltura/nginx-aws-auth-module">https://github.com/kaltura/nginx-aws-auth-module</a>, Openresty for lua capabilities.
-Currently this feature only works for GET requests and it will cache only AWSv4 requests (only s3 requests).
-The feature introduces 2 new APIs: Auth and Cache.</p>
+<p>This feature adds to RGW the ability to securely cache objects and offload
+the workload from the cluster, using Nginx.</p>
+<p>After an object is accessed the first time it will be stored in the Nginx
+cache directory. When data is already cached, it need not be fetched from RGW.
+A permission check will be made against RGW to ensure the requesting user
+has access. This feature is based on some Nginx modules, ngx_http_auth_request_module,
+<a class="reference external" href="https://github.com/kaltura/nginx-aws-auth-module">ngx_http_aws_auth</a>,
+Openresty for Lua capabilities.</p>
+<p>Currently, this feature will cache only AWSv4 requests (only s3 requests),
+caching-in the output of the 1st GET request and caching-out on subsequent
+GET requests, passing thru transparently PUT, POST, HEAD, DELETE and COPY
+requests.</p>
+<p>The feature introduces 2 new APIs: Auth and Cache.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <a class="reference external" href="../d3n_datacache/">D3N RGW Data Cache</a> is an alternative data caching mechanism
+implemented natively in the Rados Gateway.</p>
+</div>
 <div class="section" id="new-apis">
 <h2><a class="toc-backref" href="#id2">New APIs</a><a class="headerlink" href="#new-apis" title="Permalink to this headline">¶</a></h2>
-<p>There are 2 new apis for this feature:</p>
-<p>Auth API - The cache uses this to validate that an user can access the cached data</p>
-<p>Cache API - Adds the ability to override securely Range header, that way Nginx can use it is own smart cache on top of S3:
-<a class="reference external" href="https://www.nginx.com/blog/smart-efficient-byte-range-caching-nginx/">https://www.nginx.com/blog/smart-efficient-byte-range-caching-nginx/</a>
-Using this API gives the ability to read ahead objects when clients asking a specific range from the object.
-On subsequent accesses to the cached object, Nginx will satisfy requests for already-cached ranges from cache. Uncached ranges will be read from RGW (and cached).</p>
+<p>There are 2 new APIs for this feature:</p>
+<p>Auth API - The cache uses this to validate that a user can access the
+cached data.</p>
+<p>Cache API - Adds the ability to securely override the Range header, that way
+Nginx can use its own <a class="reference external" href="https://www.nginx.com/blog/smart-efficient-byte-range-caching-nginx/">smart cache</a> on top of S3. Using this API gives
+the ability to read ahead objects when clients asking a specific range
+from the object. On subsequent accesses to the cached object,
+Nginx will satisfy requests for already-cached ranges from the cache.
+Uncached ranges will be read from RGW (and cached).</p>
 <div class="section" id="auth-api">
 <h3><a class="toc-backref" href="#id3">Auth API</a><a class="headerlink" href="#auth-api" title="Permalink to this headline">¶</a></h3>
-<p>This API Validates a specific authenticated access being made to the cache, using RGW’s knowledge of the client credentials and stored access policy.
+<p>This API Validates a specific authenticated access being made to the cache,
+using RGW’s knowledge of the client credentials and stored access policy.
 Returns success if the encapsulated request would be granted.</p>
 </div>
 <div class="section" id="cache-api">
 <h3><a class="toc-backref" href="#id4">Cache API</a><a class="headerlink" href="#cache-api" title="Permalink to this headline">¶</a></h3>
-<p>This API is meant to allow changing signed Range headers using a privileged user, cache user.</p>
-<p>Creating cache user</p>
+<p>This API is meant to allow changing signed Range headers using a privileged
+user, cache user.</p>
+<p>Creating cache user:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ radosgw-admin user create --uid=&lt;uid for cache user&gt; --display-name=&quot;cache user&quot; --caps=&quot;amz-cache=read&quot;
 </pre></div>
 </div>
-<p>This user can send to the RGW the Cache API header <code class="docutils literal notranslate"><span class="pre">X-Amz-Cache</span></code>, this header contains the headers from the original request(before changing the Range header).
+<p>This user can send to the RGW the Cache API header <code class="docutils literal notranslate"><span class="pre">X-Amz-Cache</span></code>, this header
+contains the headers from the original request(before changing the Range header).
 It means that <code class="docutils literal notranslate"><span class="pre">X-Amz-Cache</span></code> built from several headers.
-The headers that are building the <code class="docutils literal notranslate"><span class="pre">X-Amz-Cache</span></code> header are separated by char with ascii code 177 and the header name and value are separated by char ascii code 178.
-The RGW will check that the cache user is an authorized user and if it is a cache user,
-if yes it will use the <code class="docutils literal notranslate"><span class="pre">X-Amz-Cache</span></code> to revalidate that the user have permissions, using the headers from the X-Amz-Cache.
-During this flow the RGW will override the Range header.</p>
+The headers that are building the <code class="docutils literal notranslate"><span class="pre">X-Amz-Cache</span></code> header are separated by
+char with ASCII code 177 and the header name and value are separated by
+char ASCII code 178.
+The RGW will check that the cache user is an authorized user and if it is
+a cache user, if yes it will use the <code class="docutils literal notranslate"><span class="pre">X-Amz-Cache</span></code> to revalidate that
+the user has permissions, using the headers from the X-Amz-Cache.
+During this flow, the RGW will override the Range header.</p>
+</div>
 </div>
 <div class="section" id="using-nginx-with-rgw">
-<h3><a class="toc-backref" href="#id5">Using Nginx with RGW</a><a class="headerlink" href="#using-nginx-with-rgw" title="Permalink to this headline">¶</a></h3>
+<h2><a class="toc-backref" href="#id5">Using Nginx with RGW</a><a class="headerlink" href="#using-nginx-with-rgw" title="Permalink to this headline">¶</a></h2>
 <p>Download the source of Openresty:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://openresty.org/download/openresty-1.15.8.3.tar.gz
 </pre></div>
 </div>
-<p>git clone the aws auth nginx module:</p>
+<p>git clone the AWS auth Nginx module:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ git clone https://github.com/kaltura/nginx-aws-auth-module
 </pre></div>
 </div>
@@ -321,30 +345,57 @@ $ sudo gmake install
 $ sudo ln -sf /usr/local/openresty/bin/openresty /usr/bin/nginx
 </pre></div>
 </div>
-<p>Put in-place your nginx configuration files and edit them according to your environment:</p>
-<p>All nginx conf files are under: <a class="reference external" href="https://github.com/ceph/ceph/tree/master/examples/rgw-cache">https://github.com/ceph/ceph/tree/master/examples/rgw-cache</a></p>
-<p>nginx.conf should go to /etc/nginx/nginx.conf</p>
-<p>nginx-lua-file.lua should go to /etc/nginx/nginx-lua-file.lua</p>
-<p>nginx-default.conf should go to /etc/nginx/conf.d/nginx-default.conf</p>
-<p>The parameters that are most likely to require adjustment according to the environment are located in the file nginx-default.conf</p>
+<p>Put in-place your Nginx configuration files and edit them according to
+your environment:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>All Nginx conf files are under: <a class="reference external" href="https://github.com/ceph/ceph/tree/master/examples/rgw-cache">https://github.com/ceph/ceph/tree/master/examples/rgw-cache</a></p></li>
+<li><p><cite>nginx.conf</cite> should go to <cite>/etc/nginx/nginx.conf</cite></p></li>
+<li><p><cite>nginx-lua-file.lua</cite> should go to <cite>/etc/nginx/nginx-lua-file.lua</cite></p></li>
+<li><p><cite>nginx-default.conf</cite> should go to <cite>/etc/nginx/conf.d/nginx-default.conf</cite></p></li>
+</ul>
+</div></blockquote>
+<p>The parameters that are most likely to require adjustment according to
+the environment are located in the file <cite>nginx-default.conf</cite></p>
 <p>Modify the example values of <em>proxy_cache_path</em> and <em>max_size</em> at:</p>
-<p><cite>proxy_cache_path /data/cache levels=2:2:2 keys_zone=mycache:999m max_size=20G inactive=1d use_temp_path=off;</cite></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">proxy_cache_path</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">cache</span> <span class="n">levels</span><span class="o">=</span><span class="mi">2</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span><span class="mi">2</span> <span class="n">keys_zone</span><span class="o">=</span><span class="n">mycache</span><span class="p">:</span><span class="mi">999</span><span class="n">m</span> <span class="n">max_size</span><span class="o">=</span><span class="mi">20</span><span class="n">G</span> <span class="n">inactive</span><span class="o">=</span><span class="mi">1</span><span class="n">d</span> <span class="n">use_temp_path</span><span class="o">=</span><span class="n">off</span><span class="p">;</span>
+</pre></div>
+</div>
 <p>And modify the example <em>server</em> values to point to the RGWs URIs:</p>
-<p><cite>server rgw1:8000 max_fails=2 fail_timeout=5s;</cite></p>
-<p><cite>server rgw2:8000 max_fails=2 fail_timeout=5s;</cite></p>
-<p><cite>server rgw3:8000 max_fails=2 fail_timeout=5s;</cite></p>
-<p>It is important to substitute the access key and secret key located in the nginx.conf with those belong to the user with the amz-cache caps</p>
-<p>It is possible to use nginx slicing which is a better method for streaming purposes.</p>
-<p>For using slice you should use nginx-slicing.conf and not nginx-default.conf</p>
-<p>Further information about nginx slicing:</p>
-<p><a class="reference external" href="https://docs.nginx.com/nginx/admin-guide/content-cache/content-caching/#byte-range-caching">https://docs.nginx.com/nginx/admin-guide/content-cache/content-caching/#byte-range-caching</a></p>
-<p>If you do not want to use the prefetch caching, It is possible to replace nginx-default.conf with nginx-noprefetch.conf
-Using noprefetch means that if the client is sending range request of 0-4095 and then 0-4096 Nginx will cache those requests separately, So it will need to fetch those requests twice.</p>
-<p>Run nginx(openresty):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">server</span> <span class="n">rgw1</span><span class="p">:</span><span class="mi">8000</span> <span class="n">max_fails</span><span class="o">=</span><span class="mi">2</span> <span class="n">fail_timeout</span><span class="o">=</span><span class="mi">5</span><span class="n">s</span><span class="p">;</span>
+<span class="n">server</span> <span class="n">rgw2</span><span class="p">:</span><span class="mi">8000</span> <span class="n">max_fails</span><span class="o">=</span><span class="mi">2</span> <span class="n">fail_timeout</span><span class="o">=</span><span class="mi">5</span><span class="n">s</span><span class="p">;</span>
+<span class="n">server</span> <span class="n">rgw3</span><span class="p">:</span><span class="mi">8000</span> <span class="n">max_fails</span><span class="o">=</span><span class="mi">2</span> <span class="n">fail_timeout</span><span class="o">=</span><span class="mi">5</span><span class="n">s</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>It is important to substitute the <em>access key</em> and <em>secret key</em> located
+in the <cite>nginx.conf</cite> with those belong to the user with the <cite>amz-cache</cite> caps.
+For example, create the <cite>cache</cite> user as following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">radosgw</span><span class="o">-</span><span class="n">admin</span> <span class="n">user</span> <span class="n">create</span> <span class="o">--</span><span class="n">uid</span><span class="o">=</span><span class="n">cacheuser</span> <span class="o">--</span><span class="n">display</span><span class="o">-</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;cache user&quot;</span> <span class="o">--</span><span class="n">caps</span><span class="o">=</span><span class="s2">&quot;amz-cache=read&quot;</span> <span class="o">--</span><span class="n">access</span><span class="o">-</span><span class="n">key</span> <span class="o">&lt;</span><span class="n">access</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">secret</span> <span class="o">&lt;</span><span class="n">secret</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>It is possible to use Nginx slicing which is a better method for streaming purposes.</p>
+<p>For using slice you should use <cite>nginx-slicing.conf</cite> and not <cite>nginx-default.conf</cite></p>
+<p>Further information about <a class="reference external" href="https://docs.nginx.com/nginx/admin-guide/content-cache/content-caching/#byte-range-caching">Nginx slicing</a>.</p>
+<p>If you do not want to use the prefetch caching, it is possible to replace
+<cite>nginx-default.conf</cite> with <cite>nginx-noprefetch.conf</cite>. Using <cite>noprefetch</cite> means
+that if the client is sending range requests of 0-4095 and then 0-4096,
+Nginx will cache those requests separately, So it will need to fetch
+those requests twice.</p>
+<p>Run Nginx (openresty):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo systemctl restart nginx
 </pre></div>
 </div>
 </div>
+<div class="section" id="appendix">
+<h2><a class="toc-backref" href="#id6">Appendix</a><a class="headerlink" href="#appendix" title="Permalink to this headline">¶</a></h2>
+<p><strong>A note about performance:</strong> In certain instances like development
+environment, disabling the authentication by commenting the following line
+in <cite>nginx-default.conf</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#auth_request /authentication;</span>
+</pre></div>
+</div>
+<p>may (depending on the hardware) increases the performance significantly as
+it forgoes the auth API calls to radosgw.</p>
 </div>
 </div>
 

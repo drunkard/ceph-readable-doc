@@ -7,17 +7,15 @@
 ============
 .. The Gateway Won't Start
 
-If you cannot start the gateway (i.e., there is no existing ``pid``), 
-check to see if there is an existing ``.asok`` file from another 
-user. If an ``.asok`` file from another user exists and there is no
-running ``pid``, remove the ``.asok`` file and try to start the
-process again. This may occur when you start the process as a ``root`` user and 
-the startup script is trying to start the process as a 
-``www-data`` or ``apache`` user and an existing ``.asok`` is 
-preventing the script from starting the daemon.
+如果你启动不了网关（就是没有 ``pid`` ），检查下有没有 ``.asok`` 文件、
+它是不是属于另外一个用户。如果有 ``.asok`` 文件、但属于另外一个用户，
+而且没有在运行的 ``pid`` ，删掉 ``.asok`` 文件并重启一下这个进程。
+这种情况发生在你以 ``root`` 用户启动了进程、
+而启动脚本尝试以 ``www-data`` 或 ``apache`` 用户启动、
+而且已经存在的 ``.asok`` 妨碍了脚本启动这个进程。
 
-The radosgw init script (/etc/init.d/radosgw) also has a verbose argument that
-can provide some insight as to what could be the issue::
+radosgw 初始化脚本（ /etc/init.d/radosgw ）也有一个详情参数，
+可以让你深入了解问题所在： ::
 
   /etc/init.d/radosgw start -v
 
@@ -30,12 +28,10 @@ HTTP 请求错误
 =============
 .. HTTP Request Errors
 
-Examining the access and error logs for the web server itself is
-probably the first step in identifying what is going on.  If there is
-a 500 error, that usually indicates a problem communicating with the
-``radosgw`` daemon.  Ensure the daemon is running, its socket path is
-configured, and that the web server is looking for it in the proper
-location.
+检查 web 服务器自身的访问日志和错误日志可能是找出问题的第一步。
+如果有 500 错误，通常说明和 ``radosgw`` 守护进程的通讯有问题。
+确保这个守护进程在运行，它的套接字路径配置了，
+而且 web 服务器去正确的位置找它了。
 
 
 ``radosgw`` 进程崩溃
@@ -57,18 +53,18 @@ location.
 套接字深入了解 ``radosgw`` 守护进程的内部状态。默认情况下，\
 套接字文件位于 ``/var/run/ceph`` ，可以这样查询： ::
 
-	ceph daemon /var/run/ceph/client.rgw help
+    ceph daemon /var/run/ceph/client.rgw help
 
-	help                list available commands
-	objecter_requests   show in-progress osd requests
-	perfcounters_dump   dump perfcounters value
-	perfcounters_schema dump perfcounters schema
-	version             get protocol version
+    help                list available commands
+    objecter_requests   show in-progress osd requests
+    perfcounters_dump   dump perfcounters value
+    perfcounters_schema dump perfcounters schema
+    version             get protocol version
 
 某个特定请求： ::
 
-	ceph daemon /var/run/ceph/client.rgw objecter_requests
-	...
+    ceph daemon /var/run/ceph/client.rgw objecter_requests
+    ...
 
 它会显示当前正在进行的、发往 RADOS 集群的请求。用这个功能你就\
 能确定是否有请求因 OSD 不响应而被阻塞，比如，你也许能看到： ::
@@ -107,9 +103,9 @@ location.
 请求发出的时间，如果以及有一段时间了，说明那个 OSD 没响应。例如，\
 对于 1858 这个请求，你可以这样检查 OSD 状态： ::
 
-	ceph pg map 2.d2041a48
+    ceph pg map 2.d2041a48
 
-	osdmap e9 pg 2.d2041a48 (2.0) -> up [1,0] acting [1,0]
+    osdmap e9 pg 2.d2041a48 (2.0) -> up [1,0] acting [1,0]
 
 这说明，我们得查看 ``osd.1`` ，它是这个 PG 的主副本： ::
 
@@ -132,78 +128,81 @@ Java S3 API 故障排除
 ====================
 .. Java S3 API Troubleshooting
 
+互联点没认证
+------------
+.. Peer Not Authenticated
 
-Peer Not Authenticated
-----------------------
+你可能会遇到类似这样的错误： ::
 
-You may receive an error that looks like this:: 
+    [java] INFO: Unable to execute HTTP request: peer not authenticated
 
-     [java] INFO: Unable to execute HTTP request: peer not authenticated
+S3 的 Java SDK 需要一个认可的证书机构颁发的合法证书，因为它默认使用 HTTPS 。
+如果你只是想测试一下 Ceph 对象存储服务，可以用这几种方法解决这个问题：
 
-The Java SDK for S3 requires a valid certificate from a recognized certificate
-authority, because it uses HTTPS by default. If you are just testing the Ceph
-Object Storage services, you can resolve this problem in a few ways:  
+#. 在 IP 地址或主机名前加 ``http://`` 。例如，改这行： ::
 
-#. Prepend the IP address or hostname with ``http://``. For example, change this::
+    conn.setEndpoint("myserver");
 
-	conn.setEndpoint("myserver");
+   改成:: 
 
-   To:: 
+    conn.setEndpoint("http://myserver")
 
-	conn.setEndpoint("http://myserver")
+#. 配置好凭证后，加上客户端配置、并把协议设置成 
+   ``Protocol.HTTP`` 。 ::
 
-#. After setting your credentials, add a client configuration and set the 
-   protocol to ``Protocol.HTTP``. :: 
+        AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
 
-			AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
+        ClientConfiguration clientConfig = new ClientConfiguration();
+        clientConfig.setProtocol(Protocol.HTTP);
 
-			ClientConfiguration clientConfig = new ClientConfiguration();
-			clientConfig.setProtocol(Protocol.HTTP);
-
-			AmazonS3 conn = new AmazonS3Client(credentials, clientConfig);
-
+        AmazonS3 conn = new AmazonS3Client(credentials, clientConfig);
 
 
 405 MethodNotAllowed
 --------------------
 
-If you receive an 405 error, check to see if you have the S3 subdomain set up correctly. 
-You will need to have a wild card setting in your DNS record for subdomain functionality
-to work properly.
+如果你遇到了 405 错误，检查一下你是否配置好了 S3 子域。
+你得在子域的 DNS 记录里配置通配符，这样它才能正常工作。
 
-Also, check to ensure that the default site is disabled. ::
+还有，要确保禁用了默认站点。 ::
 
      [java] Exception in thread "main" Status Code: 405, AWS Service: Amazon S3, AWS Request ID: null, AWS Error Code: MethodNotAllowed, AWS Error Message: null, S3 Extended Request ID: null
 
 
-Numerous objects in default.rgw.meta pool
-=========================================
+default.rgw.meta 存储池里的几个对象
+===================================
+.. Numerous objects in default.rgw.meta pool
 
-Clusters created prior to *jewel* have a metadata archival feature enabled by default, using the ``default.rgw.meta`` pool.
-This archive keeps all old versions of user and bucket metadata, resulting in large numbers of objects in the ``default.rgw.meta`` pool.
+在 *jewel* 之前创建的集群上有一个元数据存档功能是默认启用的，
+用的是 ``default.rgw.meta`` 存储池。这个存档保留着用户和桶元数据的所有老版本，
+导致 ``default.rgw.meta`` 存储池里产生了大量的对象。
 
-Disabling the Metadata Heap
----------------------------
+禁用 Metadata Heap 字段
+-----------------------
+.. Disabling the Metadata Heap
 
-Users who want to disable this feature going forward should set the ``metadata_heap`` field to an empty string ``""``::
+想要禁用此功能的用户可以把 ``metadata_heap`` 字段设置为空字符串 ``""``::
 
   $ radosgw-admin zone get --rgw-zone=default > zone.json
   [edit zone.json, setting "metadata_heap": ""]
   $ radosgw-admin zone set --rgw-zone=default --infile=zone.json
   $ radosgw-admin period update --commit
 
-This will stop new metadata from being written to the ``default.rgw.meta`` pool, but does not remove any existing objects or pool.
+这样新的元数据就不会再写入 ``default.rgw.meta`` 存储池了，
+但是所有现有的对象或存储池都不会删除。
 
-Cleaning the Metadata Heap Pool
--------------------------------
+清理 Metadata Heap 存储池
+-------------------------
+.. Cleaning the Metadata Heap Pool
 
-Clusters created prior to *jewel* normally use ``default.rgw.meta`` only for the metadata archival feature.
+在 *jewel* 之前创建的集群的 ``default.rgw.meta`` 存储池通常只用作元数据归档。
 
-However, from *luminous* onwards, radosgw uses :ref:`Pool Namespaces <radosgw-pool-namespaces>` within ``default.rgw.meta`` for an entirely different purpose, that is, to store ``user_keys`` and other critical metadata.
+而从 *luminous* 起， radosgw 利用 ``default.rgw.meta`` 存储池的 :ref:`存储池命名空间 <radosgw-pool-namespaces>` 的目的完全变了，就是说，用来存储 ``user_keys`` 和其它关键元数据了。
 
-Users should check zone configuration before proceeding any cleanup procedures::
+用户们在清理之前应该核对一下域配置信息： ::
 
   $ radosgw-admin zone get --rgw-zone=default | grep default.rgw.meta
   [should not match any strings]
 
-Having confirmed that the pool is not used for any purpose, users may safely delete all objects in the ``default.rgw.meta`` pool, or optionally, delete the entire pool itself.
+确认过这个存储池确实没在用，用户就可以安全删除
+``default.rgw.meta`` 存储池里的所有对象了，或者干脆删除整个存储池。

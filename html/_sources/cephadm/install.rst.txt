@@ -1,7 +1,6 @@
 ========================
  部署个全新的 Ceph 集群
 ========================
-.. Deploying a new Ceph cluster
 
 Cephadm creates a new Ceph cluster by "bootstrapping" on a single
 host, expanding the cluster to encompass any additional hosts, and
@@ -14,7 +13,6 @@ then deploying the needed services.
 
 准备事项
 ========
-.. Requirements
 
 - Python 3
 - Systemd
@@ -31,14 +29,13 @@ are compatible with Podman. Not every version of Podman is compatible with
 Ceph.
 
 
-
 .. _get-cephadm:
 
 安装 cephadm
 ============
 .. Install cephadm
 
-The ``cephadm`` command can 
+``cephadm`` 命令可以
 
 #. bootstrap a new cluster
 #. launch a containerized shell with a working Ceph CLI
@@ -217,16 +214,12 @@ available options.
 
 * If you are using a container on an authenticated registry that requires
   login, you may add the three arguments:
- 
-  #. ``--registry-url <url of registry>``
 
-  #. ``--registry-username <username of account on registry>``
+  * ``--registry-json <path to json file>`` 
 
-  #. ``--registry-password <password of account on registry>`` 
+  example contents of JSON file with login info::
 
-  OR
-
-  * ``--registry-json <json file with login info>`` 
+      {"url":"REGISTRY_URL", "username":"REGISTRY_USERNAME", "password":"REGISTRY_PASSWORD"}
   
   Cephadm will attempt to log in to this registry so it can pull your container
   and then store the login info in its config database. Other hosts added to

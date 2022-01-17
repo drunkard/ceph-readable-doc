@@ -1033,6 +1033,9 @@ not contain as much data have too many PGs.  See the discussion of
 在管理器上调高 ``mon_pg_warn_max_object_skew`` 配置选项的阈值\
 可以消除此健康告警。
 
+如果把 ``pg_autoscale_mode`` 设置为 ``on`` ，某个特定存储池\
+的健康告警就能消除。
+
 
 POOL_APP_NOT_ENABLED
 ____________________

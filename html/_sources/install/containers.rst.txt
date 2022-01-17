@@ -94,7 +94,7 @@ ceph/daemon
 我们会为开发分支 ``wip-*`` 自动构建容器映像，
 在 ceph-ci.git 代码库里，并把它们推送到了 Quay::
 
-  https://quay.io/organization/ceph-ci
+  https://quay.ceph.io/organization/ceph-ci
 
 ceph-ci/ceph
 ^^^^^^^^^^^^

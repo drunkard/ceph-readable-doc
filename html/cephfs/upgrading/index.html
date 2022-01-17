@@ -225,47 +225,46 @@
   
   <div class="section" id="mds">
 <span id="upgrade-mds-cluster"></span><h1>升级 MDS 集群<a class="headerlink" href="#mds" title="Permalink to this headline">¶</a></h1>
-<p>Currently the MDS cluster does not have built-in versioning or file system
-flags to support seamless upgrades of the MDSs without potentially causing
-assertions or other faults due to incompatible messages or other functional
-differences. For this reason, it’s necessary during any cluster upgrade to
-reduce the number of active MDS for a file system to one first so that two
-active MDS do not communicate with different versions.</p>
-<p>The proper sequence for upgrading the MDS cluster is:</p>
+<p>当前， MDS 集群还没有内置的版本管理或者文件系统标识，
+可以让你避免由不兼容的消息或其它功能变化引起的断言或其它错误，
+就能完成 MDS 的无缝升级，正因为如此，在所有集群升级期间，
+都有必要首先把一个文件系统的活跃 MDS 数量减少成一个，
+以免两个版本不同的活跃 MDS 进行通讯。</p>
+<p>升级 MDS 集群的合理顺序是：</p>
 <ol class="arabic simple">
-<li><p>For each file system, disable and stop standby-replay daemons.</p></li>
+<li><p>给每个文件系统禁用、并停止热备（ standby-replay ）守护进程。</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">allow_standby_replay</span> <span class="n">false</span>
 </pre></div>
 </div>
-<p>In Pacific, the standby-replay daemons are stopped for you after running this
-command. Older versions of Ceph require you to stop these daemons manually.</p>
+<p>在 Pacific 版中，运行这个命令就会停止热备守护进程。
+更老版本的 Ceph 需要手动停止这些守护进程。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">dump</span> <span class="c1"># find standby-replay daemons</span>
 <span class="n">ceph</span> <span class="n">mds</span> <span class="n">fail</span> <span class="n">mds</span><span class="o">.&lt;</span><span class="n">X</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
-<li><p>For each file system, reduce the number of ranks to 1:</p></li>
+<li><p>把所有文件系统的 rank 都减少到 1:</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">max_mds</span> <span class="mi">1</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="3">
-<li><p>Wait for cluster to stop non-zero ranks where only rank 0 is active and the rest are standbys.</p></li>
+<li><p>等着集群停掉非 0 的 rank ，也就是只有 rank 0 是活跃的，其余都是备用的。</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">status</span> <span class="c1"># wait for MDS to finish stopping</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="4">
-<li><p>For each MDS, upgrade packages and restart. Note: to reduce failovers, it is
-recommended – but not strictly necessary – to first upgrade standby daemons.</p></li>
+<li><p>在每一台 MDS 上，升级软件包并重启。注意：为了避免失败，
+建议这样做 – 但不是必须的 – 首先升级备用守护进程。</p></li>
 </ol>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># use package manager to update cluster</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># 用软件包管理器升级集群</span>
 <span class="n">systemctl</span> <span class="n">restart</span> <span class="n">ceph</span><span class="o">-</span><span class="n">mds</span><span class="o">.</span><span class="n">target</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="5">
-<li><p>For each file system, restore the previous max_mds and allow_standby_replay settings for your cluster:</p></li>
+<li><p>对每一个文件系统，恢复集群之前的 max_mds 和 allow_standby_replay 配置：</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">max_mds</span> <span class="o">&lt;</span><span class="n">old_max_mds</span><span class="o">&gt;</span>
 <span class="n">ceph</span> <span class="n">fs</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">allow_standby_replay</span> <span class="o">&lt;</span><span class="n">old_allow_standby_replay</span><span class="o">&gt;</span>
@@ -276,15 +275,22 @@ recommended – but not strictly necessary – to first upgrade standby daemons.
 <h1>升级比 Firefly 老的文件系统，需过 Jewel 这个槛<a class="headerlink" href="#firefly-jewel" title="Permalink to this headline">¶</a></h1>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>本建议是给那些用 <em>Firefly</em> (0.80) 之前的 Ceph 创建了文件系统的用户们。打算创建新文件系统的用户可以忽略此建议。</p>
+<p>本建议是给那些用 <em>Firefly</em> (0.80) 之前的
+Ceph 创建了文件系统的用户们。
+打算创建新文件系统的用户可以忽略此建议。</p>
 </div>
-<p>Ceph 版本小于 Firefly 的，使用了现已废弃的格式来存储 CephFS
-目录对象，也就是 TMAP 。到 Jewel 版以后， RADOS 就不再支持此格式的读取了，所以，对于升级 CephFS 的用户来说，非常重要的事就是转换旧目录对象格式。</p>
+<p>Ceph 版本小于 Firefly 的，使用了现已废弃的格式来存储 CephFS 目录对象，也就是 TMAP 。
+到 Jewel 版以后， RADOS 就不再支持此格式的读取了，
+所以，对于升级 CephFS 的用户来说，
+非常重要的事就是转换旧目录对象格式。</p>
 <p>在所有的 MDS 和 OSD 服务器上安装 Jewel 版、并重启服务后，运行下面的命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">tmap_upgrade</span> <span class="o">&lt;</span><span class="n">metadata</span> <span class="n">pool</span> <span class="n">name</span><span class="o">&gt;</span>
 </pre></div>
 </div>
-<p>此命令只需运行一次，且运行期间没必要中止其它服务。这个命令要运行不少时间，因为它得遍历元数据存储池内的所有对象。在此命令运行期间，你可以放心地、正常使用文件系统。如果此命令因故中止，可以放心地再次运行。</p>
+<p>此命令只需运行一次，且运行期间没必要中止其它服务。
+这个命令要运行不少时间，因为它得遍历元数据存储池内的所有对象。
+在此命令运行期间，你可以放心地、正常使用文件系统。
+如果此命令因故中止，可以放心地再次运行。</p>
 <p>如果你想把一个比 Firefly 还老的 CephFS 文件系统升级到比
 Jewel 更高的版本，必须先升级到 Jewel 版，然后运行
 <code class="docutils literal notranslate"><span class="pre">tmap_upgrade</span></code> 命令，之后才能升级到最新版本。</p>
