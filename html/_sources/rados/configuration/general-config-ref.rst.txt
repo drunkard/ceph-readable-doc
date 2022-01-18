@@ -3,7 +3,7 @@
 ==============
 
 .. confval:: admin_socket
-   :default: /var/run/ceph/$cluster-$name.asok
+   :default: /var/run/ceph/$cluster-$name.asok 。
 .. confval:: pid_file
 .. confval:: chdir
 .. confval:: fatal_signal_handlers

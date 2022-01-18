@@ -60,11 +60,12 @@ Ceph's bucket notification API has the following extensions:
 - Filtering overlapping is allowed, so that same event could be sent as different notification
 
 
-Unsupported Fields in the Event Record
---------------------------------------
+事件记录里不支持的字段
+----------------------
+.. Unsupported Fields in the Event Record
 
-The records sent for bucket notification follow format described in: `Event Message Structure`_.
-However, the following fields may be sent empty, under the different deployment options (Notification/PubSub):
+为桶通知发出的记录遵循 `事件消息数据结构`_ 里描述的格式。
+然而，在不同的部署选项下（ Notification/PubSub ），下列的字段可能会为空：
 
 +----------------------------------------+--------------+---------------+------------------------------------------------------------+
 | Field                                  | Notification | PubSub        | Description                                                |
@@ -132,7 +133,7 @@ However, the following fields may be sent empty, under the different deployment 
 
 Topic Configuration
 -------------------
-In the case of bucket notifications, the topics management API will be derived from `AWS Simple Notification Service API`_. 
+In the case of bucket notifications, the topics management API will be derived from `AWS 简单通知服务 API`_. 
 Note that most of the API is not applicable to Ceph, and only the following actions are implemented:
 
  - ``CreateTopic``
@@ -148,9 +149,9 @@ We also have the following extensions to topic configuration:
   - we allow setting opaque data that will be sent to the endpoint in the notification
 
 
-.. _AWS Simple Notification Service API: https://docs.aws.amazon.com/sns/latest/api/API_Operations.html
-.. _AWS S3 Bucket Notifications API: https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html
-.. _Event Message Structure: https://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html
-.. _`PubSub Module`: ../pubsub-module
-.. _`Bucket Notifications`: ../notifications
+.. _AWS 简单通知服务 API: https://docs.aws.amazon.com/sns/latest/api/API_Operations.html
+.. _AWS S3 桶通知 API: https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html
+.. _事件消息数据结构: https://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html
+.. _`PubSub 模块`: ../pubsub-module
+.. _`桶通知`: ../notifications
 .. _`boto3 SDK filter extensions`: https://github.com/ceph/ceph/tree/master/examples/boto3
