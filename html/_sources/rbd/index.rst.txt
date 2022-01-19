@@ -4,14 +4,15 @@
 
 .. index:: Ceph Block Device; introduction
 
-块是一个字节序列（通常是 512 字节）。在媒体（像硬盘、SSD、
-CD 、软盘、甚至磁带）上存入数据时，基于块的存储接口是一种\
-成熟且通用的方式。块设备接口的普遍性使它完美适配海量存储系统，\
-包括 Ceph 。
+块是一个字节序列（通常是 512 字节）。
+在媒体（像硬盘、SSD 、 CD 、软盘、甚至磁带）上存入数据时，
+基于块的存储接口是一种成熟且通用的方式。
+块设备接口的普遍性使它完美适配海量存储系统，包括 Ceph 。
 
-Ceph 块设备是瘦接口、大小可调且数据条带化到 Ceph 集群内的多个
-OSD 。 Ceph 块设备均衡多个 \
-:abbr:`RADOS (Reliable Autonomic Distributed Object Store)`
+Ceph 块设备是瘦接口、大小可调且数据\
+条带化到 Ceph 集群内的多个 OSD 。
+Ceph 块设备能够均衡多种 :abbr:`RADOS
+(Reliable Autonomic Distributed Object Store, 可靠自主的分布式对象存储库)`
 能力，如快照、复制和强一致性， Ceph 的 \
 块存储客户端通过内核模块或 librbd 库与 Ceph 集群通讯。
 
