@@ -1,8 +1,7 @@
-.. Ceph Mirrors
-
 ===========
  Ceph 镜像
 ===========
+.. Ceph Mirrors
 
 为提升用户体验，世界各地有多个 Ceph 镜像。
 
@@ -11,20 +10,21 @@
 
 位置
 ----
+.. Locations
 
 这些镜像位于如下地点：
 
-- **EU: Netherlands**: http://eu.ceph.com/
-- **AU: Australia**: http://au.ceph.com/
-- **SE: Sweden**: http://se.ceph.com/
-- **DE: Germany**: http://de.ceph.com/
-- **HK: Hong Kong**: http://hk.ceph.com/
-- **FR: France**: http://fr.ceph.com/
-- **UK: UK**: http://uk.ceph.com
-- **US-East: US East Coast**: http://us-east.ceph.com/
-- **US-Mid-West: Chicago**: http://mirrors.gigenet.com/ceph/
-- **US-West: US West Coast**: http://us-west.ceph.com/
-- **CN: China**: http://mirrors.ustc.edu.cn/ceph/
+- **EU: 荷兰**: http://eu.ceph.com/
+- **AU: 澳大利亚**: http://au.ceph.com/
+- **SE: 瑞典**: http://se.ceph.com/
+- **DE: 德国**: http://de.ceph.com/
+- **HK: 香港**: http://hk.ceph.com/
+- **FR: 法国**: http://fr.ceph.com/
+- **UK: 英国**: http://uk.ceph.com
+- **US-East: 美国东海岸**: http://us-east.ceph.com/
+- **US-Mid-West: 芝加哥**: http://mirrors.gigenet.com/ceph/
+- **US-West: 美国西海岸**: http://us-west.ceph.com/
+- **CN: 中国**: http://mirrors.ustc.edu.cn/ceph/
 
 你可以把所有的 download.ceph.com URL 替换成任意镜像，例如：
 

@@ -309,27 +309,26 @@ be configured with a minimum compatible OSD release of Octopus.</p>
 </div>
 <p>Ceph 块设备的用户空间实现（即 <code class="docutils literal notranslate"><span class="pre">librbd</span></code> ）不能利用 Linux
 页缓存，所以它自己实现了内存缓存，名为“ RBD 缓存”。 RBD 缓存就像硬盘缓存一样工作，当 OS 发送了 barrier 或 flush 请求时，所有脏数据都会写入 OSD ，这意味着只要 VM 会正确地发送回写命令（即内核版本大于 2.6.32 ），使用回写缓存就像用正常的物理硬盘一样安全。此缓存用最近最少使用（ Least Recently Used, LRU ）算法，而且在回写模式下它能合并相邻请求以提高吞吐量。</p>
-<p>The librbd cache is enabled by default and supports three different cache
-policies: write-around, write-back, and write-through. Writes return
-immediately under both the write-around and write-back policies, unless there
-are more than <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">cache</span> <span class="pre">max</span> <span class="pre">dirty</span></code> unwritten bytes to the storage cluster.
-The write-around policy differs from the write-back policy in that it does
-not attempt to service read requests from the cache, unlike the write-back
-policy, and is therefore faster for high performance write workloads. Under the
-write-through policy, writes return only when the data is on disk on all
-replicas, but reads may come from the cache.</p>
-<p>Prior to receiving a flush request, the cache behaves like a write-through cache
-to ensure safe operation for older operating systems that do not send flushes to
-ensure crash consistent behavior.</p>
-<p>If the librbd cache is disabled, writes and
-reads go directly to the storage cluster, and writes return only when the data
-is on disk on all replicas.</p>
+<p>librbd 缓存默认就是开启的，支持三种缓存策略：
+write-around 、 write-back 、 and write-through 。
+采用 write-around 和 write-back 策略时，写入会立即返回，
+除非没写入存储集群的字节数大于 <code class="docutils literal notranslate"><span class="pre">rbd_cache_max_dirty</span></code> 。
+write-around 策略不同于 write-back 策略的地方在于，
+它不会用缓存提供读请求服务，这点和 write-back 策略不同，
+并因此获得了更高的写入载荷性能。采用 write-through 策略时，
+只有在数据的所有副本都存入磁盘后它才返回，
+但是读取的可以出自缓存。</p>
+<p>在收到回刷请求前，缓存的工作方式类似 write-through 缓存，
+是为了确保能让较老的操作系统安全地运作，因为它们不会回刷，
+也就不能保证崩溃一致性。</p>
+<p>如果禁用了 librbd 缓存，写入和读取操作都是直接发生在存储集群上，
+而且写入操作只在数据进入所有副本的磁盘上时才返回。</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The cache is in memory on the client, and each RBD image has
-its own.  Since the cache is local to the client, there’s no coherency
-if there are others accessing the image. Running GFS or OCFS on top of
-RBD will not work with caching enabled.</p>
+<p>缓存位于客户端的内存中，而且每个 RBD 映像都有自己的缓存。
+正因为缓存位于客户端本地，所以，
+如果有其他人访问这个映像就不能保证一致性。
+在 RBD 之上运行的 GFS 或 OCFS 与这个缓存机制不兼容。</p>
 </div>
 <p>RBD 选项应该位于 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 配置文件或中央配置库的 <code class="docutils literal notranslate"><span class="pre">[client]</span></code> 段下，可用选项有：</p>
 <dl class="std confval">
@@ -526,14 +525,13 @@ RBD will not work with caching enabled.</p>
 </div>
 <div class="section" id="id5">
 <h2>映像功能<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
-<p>RBD supports advanced features which can be specified via the command line when
-creating images or the default features can be configured via
-<code class="docutils literal notranslate"><span class="pre">rbd_default_features</span> <span class="pre">=</span> <span class="pre">&lt;sum</span> <span class="pre">of</span> <span class="pre">feature</span> <span class="pre">numeric</span> <span class="pre">values&gt;</span></code> or
-<code class="docutils literal notranslate"><span class="pre">rbd_default_features</span> <span class="pre">=</span> <span class="pre">&lt;comma-delimited</span> <span class="pre">list</span> <span class="pre">of</span> <span class="pre">CLI</span> <span class="pre">values&gt;</span></code>.</p>
+<p>RBD 支持一些高级功能，可以在创建映像时通过命令行指定，
+或者用 <code class="docutils literal notranslate"><span class="pre">rbd_default_features</span> <span class="pre">=</span> <span class="pre">&lt;sum</span> <span class="pre">of</span> <span class="pre">feature</span> <span class="pre">numeric</span> <span class="pre">values&gt;</span></code> 或者
+<code class="docutils literal notranslate"><span class="pre">rbd_default_features</span> <span class="pre">=</span> <span class="pre">&lt;comma-delimited</span> <span class="pre">list</span> <span class="pre">of</span> <span class="pre">CLI</span> <span class="pre">values&gt;</span></code> 来配置默认功能。</p>
 <p><code class="docutils literal notranslate"><span class="pre">Layering</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Layering enables you to use cloning.</p>
+<dd class="field-odd"><p>分层可以启用克隆功能。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>1</p>
@@ -554,7 +552,8 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Striping</span> <span class="pre">v2</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Striping spreads data across multiple objects. Striping helps with parallelism for sequential read/write workloads.</p>
+<dd class="field-odd"><p>条带化功能使得数据可以横跨多个对象。
+条带化有助于顺序读写载荷的并行化。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>2</p>
@@ -566,7 +565,7 @@ creating images or the default features can be configured via
 <dd class="field-even"><p>v0.55 (Bobtail)</p>
 </dd>
 <dt class="field-odd">KRBD 支持情况</dt>
-<dd class="field-odd"><p>since v3.10 (default striping only, “fancy” striping added in v4.17)</p>
+<dd class="field-odd"><p>从 v3.10 起(只有默认的条带化， “fancy” 条带化在 v4.17 新加)</p>
 </dd>
 <dt class="field-even">默认值</dt>
 <dd class="field-even"><p>yes</p>
@@ -575,7 +574,8 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Exclusive</span> <span class="pre">locking</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>When enabled, it requires a client to get a lock on an object before making a write. Exclusive lock should only be enabled when a single client is accessing an image at the same time.</p>
+<dd class="field-odd"><p>启用后，客户端要写入一个对象前要先获取一个锁。
+独占锁只适用于任何时候只能有一个客户端访问一个映像的情形。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>4</p>
@@ -596,7 +596,11 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Object</span> <span class="pre">map</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Object map support depends on exclusive lock support. Block devices are thin provisioned—meaning, they only store data that actually exists. Object map support helps track which objects actually exist (have data stored on a drive). Enabling object map support speeds up I/O operations for cloning; importing and exporting a sparsely populated image; and deleting.</p>
+<dd class="field-odd"><p>对象表的支持情况依赖于独占锁。块设备是简配的，
+意味着它只存储真的写入过的数据，也就是说，
+它们是 <em>稀疏的（ sparse ）</em> 。支持对象表才能追踪哪些对象真的存在
+（真的在设备上存储了数据）。对象表功能启用后可以加速的 I/O 操作有
+克隆、导入和导出稀疏分布的映像、和删除。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>8</p>
@@ -617,7 +621,10 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Fast-diff</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Fast-diff support depends on object map support and exclusive lock support. It adds another property to the object map, which makes it much faster to generate diffs between snapshots of an image, and the actual data usage of a snapshot much faster.</p>
+<dd class="field-odd"><p>Fast-diff 功能依赖于对象表和独占锁。
+它向对象表增加了另外一个属性，
+使得它能够更快地生成一个映像的两个快照之间的差别。
+也能更快地计算出一个快照或者卷宗的实际数据量（ <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">du</span></code> ）。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>16</p>
@@ -638,7 +645,12 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Deep-flatten</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Deep-flatten makes rbd flatten work on all the snapshots of an image, in addition to the image itself. Without it, snapshots of an image will still rely on the parent, so the parent will not be delete-able until the snapshots are deleted. Deep-flatten makes a parent independent of its clones, even if they have snapshots.</p>
+<dd class="field-odd"><p>Deep-flatten 功能使得 <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">flatten</span></code> 不但适用于映像自身，
+还能适用于一个映像的所有快照。没有它，
+映像的快照就必须依赖其父映像，
+这样如果不先删除这些映像就无法删除它们的父映像。
+Deep-flatten 功能能让一个父映像独立于它的克隆映像，
+即使它们有快照也不影响，只是额外牺牲一些 OSD 设备空间而已。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>32</p>
@@ -659,7 +671,10 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Journaling</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Journaling support depends on exclusive lock support. Journaling records all modifications to an image in the order they occur. RBD mirroring utilizes the journal to replicate a crash consistent image to a remote cluster.</p>
+<dd class="field-odd"><p>日志记录功能依赖于独占锁功能。此功能会按照发生顺序记录对一个映像做出的所有更改。
+RBD 镜像功能能利用日志功能把一个崩溃一致映像复制到一个远程集群。
+最好让 <code class="docutils literal notranslate"><span class="pre">rbd-mirror</span></code> 按需管理这个功能，
+因为长期启用它会导致大量额外的 OSD 空间被消耗。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>64</p>
@@ -680,7 +695,7 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">pool</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>On erasure-coded pools, the image data block objects need to be stored on a separate pool from the image metadata.</p>
+<dd class="field-odd"><p>在纠删码存储池里，映像的数据块对象需要单独存储到映像元数据之外的存储池里。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>128</p>
@@ -698,7 +713,7 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Operations</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Used to restrict older clients from performing certain maintenance operations against an image (e.g. clone, snap create).</p>
+<dd class="field-odd"><p>用于限制较老的客户端对一个映像执行特定的维护性操作（比如克隆、创建快照）。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>256</p>
@@ -713,7 +728,7 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Migrating</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Used to restrict older clients from opening an image when it is in migration state.</p>
+<dd class="field-odd"><p>用于限制较老的客户端在迁移状态下打开一个映像。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>512</p>
@@ -728,7 +743,7 @@ creating images or the default features can be configured via
 <p><code class="docutils literal notranslate"><span class="pre">Non-primary</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>Used to restrict changes to non-primary images using snapshot-based mirroring.</p>
+<dd class="field-odd"><p>用于限制利用基于快照的镜像功能对非主映像进行更改。</p>
 </dd>
 <dt class="field-even">内置值</dt>
 <dd class="field-even"><p>1024</p>
@@ -743,8 +758,30 @@ creating images or the default features can be configured via
 </div>
 <div class="section" id="qos">
 <h2>QOS 选项<a class="headerlink" href="#qos" title="Permalink to this headline">¶</a></h2>
-<p>librbd supports limiting per image IO, controlled by the following
-settings.</p>
+<p>librbd 支持限制单个映像的 IO ，有多种途径。
+都会在一个指定进程内应用到一个指定映像 - 同一映像用在多个地方，
+例如两个独立的 VM ，会有相互独立的限制。</p>
+<ul class="simple">
+<li><p><strong>IOPS:</strong> 每秒的 I/O 数量（任意类型的 I/O ）</p></li>
+<li><p><strong>read IOPS:</strong> 每秒的读  I/O 数</p></li>
+<li><p><strong>write IOPS:</strong> 每秒的写 I/O 数</p></li>
+<li><p><strong>bps:</strong> 每秒的字节数（任意类型的 I/O ）</p></li>
+<li><p><strong>read bps:</strong> 每秒读取的字节数</p></li>
+<li><p><strong>write bps:</strong> 每秒写入的字节数</p></li>
+</ul>
+<p>这些限制中的每一个都与其他的无关。默认都是关闭的。
+每一种限制都是用一个令牌桶算法来减速 I/O 的，
+还得能配置限额（一段时间内的平均速度）、
+和短时间内（爆发秒数）潜在的高速率（一次爆发）。
+当这些限制中的任意一个达到时，而且爆发量也用完了，
+librbd 就会把那种类型的 I/O 速率压低到限额之下。</p>
+<p>例如，假设读取 bps 配置成了 100MB ，而写入的没限制，
+写入就可以尽快处理，而读取就会被减速到平均 100MB/s 。
+如果设置了读取 bps 的爆发量是 150MB ，
+而且读取爆发秒数设置成了 5 秒，
+读操作可以在 150MB/s 下维持 5 秒，
+然后再降低到 100MB/s 的限额。</p>
+<p>下列选项可以配置这些减速阀：</p>
 <dl class="std confval">
 <dt id="confval-rbd_qos_iops_limit">
 <code class="sig-name descname"><span class="pre">rbd_qos_iops_limit</span></code><a class="headerlink" href="#confval-rbd_qos_iops_limit" title="Permalink to this definition">¶</a></dt>
@@ -1065,6 +1102,24 @@ settings.</p>
 </dd>
 <dt class="field-odd">min</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt id="confval-rbd_qos_exclude_ops">
+<code class="sig-name descname"><span class="pre">rbd_qos_exclude_ops</span></code><a class="headerlink" href="#confval-rbd_qos_exclude_ops" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Optionally exclude ops from QoS. This setting accepts either an
+integer bitmask value or comma-delimited string of op names. This
+setting is always internally stored as an integer bitmask value. The
+mapping between op bitmask value and op name is as follows: +1 -&gt;
+read, +2 -&gt; write, +4 -&gt; discard, +8 -&gt; write_same, +16 -&gt;
+compare_and_write</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
 </dd>
 </dl>
 </div></blockquote>

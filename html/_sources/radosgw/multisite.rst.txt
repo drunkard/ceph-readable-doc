@@ -1366,7 +1366,7 @@ Ceph 对象网关支持域概念，
 其中 ``[options]`` 可以是： 
 
 - ``--access-key=<key>``
-- ``--secret/--secret-key=<key>``
+- ``--secret 或 --secret-key=<key>``
 - ``--master``
 - ``--default``
 - ``--endpoints=<list>``

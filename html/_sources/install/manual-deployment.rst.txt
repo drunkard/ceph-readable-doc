@@ -420,8 +420,8 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
    以 ``client.admin`` 身份执行这个命令： ::
 
      ID=$(echo "{\"cephx_secret\": \"$OSD_SECRET\"}" | \
-	ceph osd new $UUID -i - \
-	-n client.bootstrap-osd -k /var/lib/ceph/bootstrap-osd/ceph.keyring)
+     ceph osd new $UUID -i - \
+     -n client.bootstrap-osd -k /var/lib/ceph/bootstrap-osd/ceph.keyring)
 
    还可以在 JSON 里加一个 ``crush_device_class`` 属性
    来设置一个默认值（基于自动探测到的设备类型生成的 ``ssd`` 或 ``hdd`` ）

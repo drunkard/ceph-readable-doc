@@ -2,17 +2,42 @@
  贡献 Ceph 文档
 ================
 
-帮助 Ceph 项目的\ **最简单的方法**\ 之一就是贡献文档，\
-随着 Ceph 用户量的增长和开发的迅速推进，\
-越来越多的人在更新文档、增加新条目。\
-即使是修正拼写错误或增加说明这样的小贡献也会提升 Ceph 项目的品质。
+想帮助 Ceph 项目可以贡献文档。
+即使是小小的贡献也对 Ceph 项目有益，
+比如修正拼写错误或者重写含糊不清的语句。
+
+纠正文档最简单的方法就是往 `ceph-users@ceph.io` 发送电子邮件。在标题行写上
+"ATTN: DOCS" 或者 "Attention: Docs" 或者 "Attention: Documentation" 。
+在 email 正文，写上要纠正的文本（以便我在代码库里找到它）、还有你的更正。
+
+纠正文档的另外一种方法是发出一个拉取请求。
+向 Ceph 文档提出拉取请求的说明位于 :ref:`making_contributions` 。
+
+如果这是你第一次改进文档、或者假设你发现了\
+一个小小的错误（比如拼写错误或者错别字），
+发一封邮件比提出拉取请求更简单。
+这次改进将归功于你，除非你向 Ceph 文档上游明确提出不要归功于你。
+
+
+文档在源码库里的位置
+====================
+.. Location of the Documentation in the Repository
 
 Ceph 文档源码位于 Ceph 源码库的 ``ceph/doc`` 目录下，\
-由 Python Sphinx 渲染成 HTML 和手册页。 \
-https://docs.ceph.com 链接默认展示 ``master`` 分支，\
-也可以查看较早分支（如 ``mimic`` ）的文档，\
-把 URL 里的 ``latest`` 改成你想看的分支即可。
+由 Python Sphinx 渲染成 HTML 和手册页。
 
+怎么看以前的 Ceph 文档
+======================
+.. Viewing Old Ceph Documentation
+
+https://docs.ceph.com 链接默认展示 ``master`` 分支，也可以查看较早版本
+（如 ``mimic`` ）的文档，把 URL 里（如
+`https://docs.ceph.com/en/pacific <https://docs.ceph.com/en/pacific>`_ 里的 ``pacific`` ）
+的版本名替换成你想看的分支即可（如 ``mimic`` ， URL 就成了
+`https://docs.ceph.com/en/mimic/ <https://docs.ceph.com/en/mimic/>`_ ）。
+
+
+.. _making_contributions:
 
 如何贡献
 ========
@@ -20,7 +45,7 @@ https://docs.ceph.com 链接默认展示 ``master`` 分支，\
 
 贡献文档和贡献源码的过程基本相同，\
 唯一不同的就是你编译的是文档源码而不是程序源码。\
-大致顺序如下：
+大致顺序（编译文档源码的顺序）如下：
 
 #. `获取源代码`_
 #. `进入分支`_
@@ -110,13 +135,12 @@ Ceph 文档按它自身的主要组件来分类组织。
   应该放到 ``doc/images`` 目录下。
 
 
-
 进入分支
 --------
 .. Select a Branch
 
 如果只是细小的变更，像修正排版错误、或换一种措辞，
-直接提交到 ``master`` 分支即可；
+直接提交到 ``master`` 分支（默认的）即可；
 为当前版本的功能提供文档时也应该提交到 ``master`` 分支。
 ``master`` 是最常用的分支。
 
@@ -208,8 +232,9 @@ Ceph 文档按它自身的主要组件来分类组织。
 	cd ceph
 
 .. note::
-   包含 ``build-doc`` 和 ``serve-doc`` 的目录必须加进 ``PATH`` 环境变量里，
-   这些命令才能好好运行。
+   包含 ``build-doc`` 和 ``serve-doc`` 的目录必须加进
+   ``PATH`` 环境变量里，这些命令才能好好运行。
+
 
 在 Debian/Ubuntu 、 Fedora 或 CentOS/RHEL 上执行此命令构建文档：
 
@@ -249,7 +274,6 @@ Ceph 文档按它自身的主要组件来分类组织。
 那里应该有 ``html`` 目录和 ``man`` 目录分别存放着 HTML 和手册\
 页格式的文档。
 
-
 构建源码（首次）
 ~~~~~~~~~~~~~~~~
 .. Build the Source (First Time)
@@ -267,10 +291,10 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构
 	<table cellpadding="10"><colgroup><col width="30%"><col width="30%"><col width="30%"></colgroup><tbody valign="top"><tr><td><h3>Debian/Ubuntu</h3>
 
 - gcc
-- python-dev
-- python-pip
-- python-virtualenv
-- python-sphinx
+- python3-dev
+- python3-pip
+- python3-sphinx
+- python3-venv
 - libxml2-dev
 - libxslt1-dev
 - doxygen
@@ -318,8 +342,8 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构
 	</td></tr></tbody></table>
 
 
-缺少的依赖都要安装，基于 Debian/Ubuntu 发行版的系统可以用此命\
-令安装：
+缺少的依赖都要安装，基于 Debian/Ubuntu 发行版的系统\
+可以用此命令安装：
 
 .. prompt:: bash $
 
@@ -392,7 +416,6 @@ Ceph 文档大量使用了 `ditaa`_ ，
 
 安装好所有这些包之后，就可以按照\ `构建文档源码`_\ 里的步骤构\
 建文档了。
-
 
 
 提交变更
@@ -513,7 +536,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 请联系相应组件 :ref:`clt` 的负责人。
 
 
-文档风格手册
+文档风格指南
 ============
 .. Documentation Style Guide
 
@@ -534,15 +557,17 @@ Ceph 文档项目的目标之一就是可读性，
 ----
 .. Headings
 
-#. **文档标题：** 标题行的前、后各加一行 ``=`` ，且标题行首、\
-   行尾各有一个空格，详情见\ `文档标题`_\ 。
+#. **文档标题：** 标题行的前、后各加一行 ``=`` ，
+   且标题行首、行尾各有一个空格，
+   详情见\ `文档标题`_\ 。
 
-#. **段落标题：** 段标题行下是一行 ``=`` ，且标题行首、行尾都\
-   没有空格；段标题前应该有两个空行（除非前面是内嵌引用）。详\
-   情见\ `小节`_\ 。
+#. **段落标题：** 段标题行下是一行 ``=`` ，且标题行首、
+   行尾都没有空格；段标题前应该有两个空行（除非前面是内嵌引用）。
+   详情见\ `小节`_\ 。
 
-#. **小节标题：** 小节标题行下是一行 ``-`` ，且行首、行尾都没\
-   有空格；段标题前应该有两个空行（除非前面是内嵌引用）。
+#. **小节标题：** 小节标题行下是一行 ``_`` ，
+   且行首、行尾都没有空格；段标题前应该有两个空行
+   （除非前面是内嵌引用）。
 
 
 正文

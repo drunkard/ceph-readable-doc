@@ -18,12 +18,12 @@
 .. toctree::
    :maxdepth: 1
 
-	获取软件包 <get-packages>
-	获取源码包 <get-tarballs>
-	克隆源码库 <clone-source>
-	构建 Ceph <build-ceph>
-    	Ceph 镜像 <mirrors>
-	Ceph 容器 <containers>
+    获取软件包 <get-packages>
+    获取源码包 <get-tarballs>
+    克隆源码库 <clone-source>
+    构建 Ceph <build-ceph>
+    Ceph 镜像 <mirrors>
+    Ceph 容器 <containers>
 
 
 安装软件
@@ -40,7 +40,7 @@
    :maxdepth: 1
 
     安装 Ceph 存储集群 <install-storage-cluster>
-	Install Virtualization for Block <install-vm-cloud>
+    为块设备安装虚拟化支持 <install-vm-cloud>
 
 
 手动部署一套集群
@@ -52,8 +52,8 @@
 
 .. toctree::
 
-	手动部署 <manual-deployment>
-	在 FreeBSD 上手动部署 <manual-freebsd-deployment>
+    手动部署 <manual-deployment>
+    在 FreeBSD 上手动部署 <manual-freebsd-deployment>
 
 
 升级软件
