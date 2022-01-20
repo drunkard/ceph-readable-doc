@@ -43,7 +43,7 @@
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
     <link rel="next" title="RBD Persistent Write Log Cache" href="../rbd-persistent-write-log-cache/" />
-    <link rel="prev" title="映像实时迁移" href="../rbd-live-migration/" /> 
+    <link rel="prev" title="映像在线迁移" href="../rbd-live-migration/" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -144,7 +144,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../rados-rbd-cmds/">基本命令</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../rbd-operations/">运维</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../rbd-snapshot/">快照</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../rbd-exclusive-locks/">互斥锁</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-exclusive-locks/">互斥锁、独占锁</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../rbd-mirroring/">镜像</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../rbd-live-migration/">实时迁移</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">永久只读缓存</a><ul>
@@ -219,25 +219,21 @@
 <h1>RBD 永久只读缓存<a class="headerlink" href="#rbd" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="index-0">
 <span id="id1"></span><h2>共享、只读的父映像缓存<a class="headerlink" href="#index-0" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference external" href="../rbd-snapshot/#layering">Cloned RBD images</a> from a parent usually only modify a small portion of
-the image. For example, in a VDI workload, the VMs are cloned from the same
-base image and initially only differ by hostname and IP address. During the
-booting stage, all of these VMs would re-read portions of duplicate parent
-image data from the RADOS cluster. If we have a local cache of the parent
-image, this will help to speed up the read process on one host, as well as
-to save the client to cluster network traffic.
-RBD shared read-only parent image cache requires explicitly enabling in
-<code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code>. The <code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> daemon is responsible for
-caching the parent content on the local disk, and future reads on that data
-will be serviced from the local cache.</p>
+<p>从父映像 <a class="reference external" href="../rbd-snapshot/#layering">克隆的 RBD 映像</a> 只对父映像更改了很小一部分。例如，
+在一个 VDI 应用案例中， VM 都是从同一个基础映像克隆来的，
+最初的差异只有主机名和 IP 地址。在启动期间，所有这些 VM 都会读取同一父映像数据的一部分。如果我们有这个父映像的本地缓存，
+在这个有缓存的主机上就可以提速读取操作。
+还能减少客户端到集群的网络流量。RBD 缓存必须在 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 里显式地启用。
+<code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> 守护进程负责把父映像的内容缓存在本地磁盘上，
+以后再有那些数据的读取就从本地缓存中读取。</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>RBD shared read-only parent image cache requires the Ceph Nautilus release or later.</p>
+<p>RBD 共享、只读的父映像缓存需要 Ceph Nautilus 或更高版本。</p>
 </div>
 <div class="section" id="id2">
 <h3>启用 RBD 的共享只读父映像缓存功能<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>To enable RBD shared read-only parent image cache, the following Ceph settings
-need to added in the <code class="docutils literal notranslate"><span class="pre">[client]</span></code> <a class="reference external" href="../../rados/configuration/ceph-conf/#configuration-sections">section</a> of your <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> file:</p>
+<p>要启用 RBD 共享、只读的父映像缓存功能，需要把下列选项加进
+<code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 文件的 <code class="docutils literal notranslate"><span class="pre">[client]</span></code> <a class="reference external" href="../../rados/configuration/ceph-conf/#configuration-sections">段</a> 下：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">parent</span> <span class="n">cache</span> <span class="n">enabled</span> <span class="o">=</span> <span class="n">true</span>
 <span class="n">rbd</span> <span class="n">plugins</span> <span class="o">=</span> <span class="n">parent_cache</span>
 </pre></div>
@@ -246,224 +242,214 @@ need to added in the <code class="docutils literal notranslate"><span class="pre
 </div>
 <div class="section" id="id3">
 <h2>不可变对象缓存守护进程<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="introduction-and-generic-settings">
-<h3>Introduction and Generic Settings<a class="headerlink" href="#introduction-and-generic-settings" title="Permalink to this headline">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> daemon is responsible for caching parent
-image content within its local caching directory. For better performance it’s
-recommended to use SSDs as the underlying storage.</p>
-<p>The key components of the daemon are:</p>
+<div class="section" id="id4">
+<h3>介绍及常规选项<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> 守护进程负责把父映像内容缓存进本地的缓存目录里。
+要想提高性能，建议用 SSD 作为底层存储器。</p>
+<p>这个守护进程的关键组件有：</p>
 <ol class="arabic simple">
-<li><p><strong>Domain socket based IPC:</strong> The daemon will listen on a local domain
-socket on start up and wait for connections from librbd clients.</p></li>
-<li><p><strong>LRU based promotion/demotion policy:</strong> The daemon will maintain
-in-memory statistics of cache-hits on each cache file. It will demote the
-cold cache if capacity reaches to the configured threshold.</p></li>
-<li><p><strong>File-based caching store:</strong> The daemon will maintain a simple file
-based cache store. On promotion the RADOS objects will be fetched from
-RADOS cluster and stored in the local caching directory.</p></li>
+<li><p><strong>基于 IPC 的域套接字:</strong> 这个守护进程在启动时会监听本地域套接字，
+并等待 librbd 客户端连接。</p></li>
+<li><p><strong>基于 LRU 的晋级、降级策略:</strong> 这个守护进程会在内存里维护各个缓存文件的命中统计信息。
+如果缓存容量达到了配置的阈值，它就会降级冷缓存。</p></li>
+<li><p><strong>基于文件的缓存库:</strong> 这个守护进程维护着一个简单的基于文件的缓存库。需要晋级时，
+会从 RADOS 集群取回 RADOS 对象、并存储在本地的缓存目录里。</p></li>
 </ol>
-<p>On opening each cloned rbd image, <code class="docutils literal notranslate"><span class="pre">librbd</span></code> will try to connect to the
-cache daemon through its Unix domain socket. Once successfully connected,
-<code class="docutils literal notranslate"><span class="pre">librbd</span></code> will coordinate with the daemon on the subsequent reads.
-If there’s a read that’s not cached, the daemon will promote the RADOS object
-to local caching directory, so the next read on that object will be serviced
-from cache. The daemon also maintains simple LRU statistics so that under
-capacity pressure it will evict cold cache files as needed.</p>
-<p>Here are some important cache configuration settings:</p>
+<p>打开各个克隆的 rbd 映像时， <code class="docutils literal notranslate"><span class="pre">librbd</span></code> 会尝试通过它的 Unix 域套接字连接到缓存守护进程。成功连接后， <code class="docutils literal notranslate"><span class="pre">librbd</span></code> 会和那个守护进程协调后续的读取操作。
+如果有没缓存的读取，缓存守护进程会把那个 RADOS 对象晋级到本地缓存目录，
+这样下次读取这个对象时就可以从缓存读取。缓存守护进程维护着简单的 LRU 统计信息，
+以便容量不足时可以按需逐出冷缓存文件。</p>
+<p>这里是一些重要的缓存配置选项：</p>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_sock</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The path to the domain socket used for communication between
-librbd clients and the ceph-immutable-object-cache daemon.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>域套接字路径， librbd 客户端和
+ceph-immutable-object-cache 守护进程之间通讯用的。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>String</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">/var/run/ceph/immutable_object_cache_sock</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_path</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The immutable object cache data directory.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变对象缓存的数据目录。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>String</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">/tmp/ceph_immutable_object_cache</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_max_size</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The max size for immutable cache.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变缓存的最大尺寸。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Size</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1G</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_watermark</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The high-water mark for the cache. The value is between (0, 1).
-If the cache size reaches this threshold the daemon will start
-to delete cold cache based on LRU statistics.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>缓存的最大量（最高水位），数值在 (0, 1) 二者之间。如果缓存的尺寸达到了这个阈值，守护进程就根据 LRU 统计信息开始删除冷缓存。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Float</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.9</span></code></p>
 </dd>
 </dl>
-<p>The <code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> daemon is available within the optional
-<code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> distribution package.</p>
+<p>可选的 <code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> 软件包里包含这个守护进程。</p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p><code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> daemon requires the ability to
-connect RADOS clusters.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> 守护进程要能连接 RADOS 集群。</p>
 </div>
 </div>
-<div class="section" id="running-the-immutable-object-cache-daemon">
-<h3>Running the Immutable Object Cache Daemon<a class="headerlink" href="#running-the-immutable-object-cache-daemon" title="Permalink to this headline">¶</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> daemon should use a unique Ceph user ID.
-To <a class="reference external" href="../../rados/operations/user-management#add-a-user">create a Ceph user</a>, with <code class="docutils literal notranslate"><span class="pre">ceph</span></code> specify the <code class="docutils literal notranslate"><span class="pre">auth</span> <span class="pre">get-or-create</span></code>
-command, user name, monitor caps, and OSD caps:</p>
+<div class="section" id="id5">
+<h3>如何运行不可变对象缓存守护进程<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> 守护进程应该用一个唯一的 Ceph 用户 ID 。
+要 <a class="reference external" href="../../rados/operations/user-management#add-a-user">新建一个 Ceph 用户</a> ，用 <code class="docutils literal notranslate"><span class="pre">ceph</span></code> 命令加上 <code class="docutils literal notranslate"><span class="pre">auth</span> <span class="pre">get-or-create</span></code> 子命令、
+用户名、监视器能力、和 OSD 能力：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="n">get</span><span class="o">-</span><span class="ow">or</span><span class="o">-</span><span class="n">create</span> <span class="n">client</span><span class="o">.</span><span class="n">ceph</span><span class="o">-</span><span class="n">immutable</span><span class="o">-</span><span class="nb">object</span><span class="o">-</span><span class="n">cache</span><span class="o">.</span><span class="p">{</span><span class="n">unique</span> <span class="nb">id</span><span class="p">}</span> <span class="n">mon</span> <span class="s1">&#39;allow r&#39;</span> <span class="n">osd</span> <span class="s1">&#39;profile rbd-read-only&#39;</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> daemon can be managed by <code class="docutils literal notranslate"><span class="pre">systemd</span></code> by specifying the user
-ID as the daemon instance:</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> 守护进程可以用 <code class="docutils literal notranslate"><span class="pre">systemd</span></code> 管理，
+指定用户 ID 作为守护进程例程：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systemctl</span> <span class="n">enable</span> <span class="n">ceph</span><span class="o">-</span><span class="n">immutable</span><span class="o">-</span><span class="nb">object</span><span class="o">-</span><span class="n">cache</span><span class="nd">@ceph</span><span class="o">-</span><span class="n">immutable</span><span class="o">-</span><span class="nb">object</span><span class="o">-</span><span class="n">cache</span><span class="o">.</span><span class="p">{</span><span class="n">unique</span> <span class="nb">id</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> can also be run in foreground by <code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> command:</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> 也能在前台运行，用 <code class="docutils literal notranslate"><span class="pre">ceph-immutable-object-cache</span></code> 命令:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">immutable</span><span class="o">-</span><span class="nb">object</span><span class="o">-</span><span class="n">cache</span> <span class="o">-</span><span class="n">f</span> <span class="o">--</span><span class="n">log</span><span class="o">-</span><span class="n">file</span><span class="o">=</span><span class="p">{</span><span class="n">log_path</span><span class="p">}</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="qos-settings">
-<h3>QOS Settings<a class="headerlink" href="#qos-settings" title="Permalink to this headline">¶</a></h3>
-<p>The immutable object cache supports throttling, controlled by the following settings:</p>
+<div class="section" id="qos">
+<h3>QoS 选项<a class="headerlink" href="#qos" title="Permalink to this headline">¶</a></h3>
+<p>不可变对象缓存支持节流，由下列选项控制：</p>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_qos_schedule_tick_min</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>Minimum schedule tick for immutable object cache.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变对象缓存的最小时间片。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Milliseconds</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_qos_iops_limit</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The desired immutable object cache IO operations limit per second.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变对象缓存 IO 操作期望的每秒限额。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Unsigned Integer</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_qos_iops_burst</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The desired burst limit of immutable object cache IO operations.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变对象缓存 IO 操作允许的爆发量。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Unsigned Integer</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_qos_iops_burst_seconds</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The desired burst duration in seconds of immutable object cache IO operations.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变对象缓存 IO 操作允许的爆发时长。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Seconds</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_qos_bps_limit</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The desired immutable object cache IO bytes limit per second.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变对象缓存 IO 期望的每秒的字节数限额。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Unsigned Integer</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_qos_bps_burst</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The desired burst limit of immutable object cache IO bytes.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变对象缓存 IO 允许的字节数爆发量限额。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Unsigned Integer</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">immutable_object_cache_qos_bps_burst_seconds</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Description</dt>
-<dd class="field-odd"><p>The desired burst duration in seconds of immutable object cache IO bytes.</p>
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不可变对象缓存 IO 允许的爆发秒数。</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">类型</dt>
 <dd class="field-even"><p>Seconds</p>
 </dd>
-<dt class="field-odd">Required</dt>
+<dt class="field-odd">是否必需</dt>
 <dd class="field-odd"><p>No</p>
 </dd>
-<dt class="field-even">Default</dt>
+<dt class="field-even">默认值</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 </dl>
@@ -479,7 +465,7 @@ ID as the daemon instance:</p>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
         <a href="../rbd-persistent-write-log-cache/" class="btn btn-neutral float-right" title="RBD Persistent Write Log Cache" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-        <a href="../rbd-live-migration/" class="btn btn-neutral float-left" title="映像实时迁移" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../rbd-live-migration/" class="btn btn-neutral float-left" title="映像在线迁移" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

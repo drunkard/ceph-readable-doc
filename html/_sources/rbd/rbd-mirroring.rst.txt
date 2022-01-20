@@ -38,18 +38,15 @@ peer cluster and applying them to the image within the local cluster.
 Depending on the desired needs for replication, RBD mirroring can be configured
 for either one- or two-way replication:
 
-* **One-way Replication**: When data is only mirrored from a primary cluster to
-  a secondary cluster, the ``rbd-mirror`` daemon runs only on the secondary
-  cluster.
+* **单向复制（ One-way Replication ）**: 数据只是从主集群镜像到次集群时，
+  ``rbd-mirror`` 守护进程只需在次集群上运行。
 
-* **Two-way Replication**: When data is mirrored from primary images on one
-  cluster to non-primary images on another cluster (and vice-versa), the
-  ``rbd-mirror`` daemon runs on both clusters.
+* **双向复制（ Two-way Replication ）**: 数据从一个集群的主映像镜像到另一个集群\
+  的非主映像时（反之亦然），两个集群上都得运行 ``rbd-mirror`` 守护进程。
 
-.. important:: Each instance of the ``rbd-mirror`` daemon must be able to
-   connect to both the local and remote Ceph clusters simultaneously (i.e.
-   all monitor and OSD hosts). Additionally, the network must have sufficient
-   bandwidth between the two data centers to handle mirroring workload.
+.. important:: 每一个 ``rbd-mirror`` 都必须能够同时连接本地和远端 Ceph 集群
+   （即所有监视器和 OSD 主机）。另外，两个数据中心之间的网络必须有足够的带宽，
+   以处理镜像流量。
 
 
 存储池配置
@@ -96,8 +93,7 @@ for either one- or two-way replication:
         $ rbd --cluster site-a mirror pool enable --site-name site-a image-pool image
         $ rbd --cluster site-b mirror pool enable --site-name site-b image-pool image
 
-The site name can also be specified when creating or importing a new
-`bootstrap token`_.
+创建或导入一个新的 `自举引导令牌`_ 时也可以指定站点名。
 
 The site name can be changed later using the same ``mirror pool enable``
 subcommand but note that the local site name and the corresponding site name
@@ -138,7 +134,7 @@ optional friendly site name to describe the local cluster::
         rbd mirror pool peer bootstrap create [--site-name {local-site-name}] {pool-name}
 
 The output of ``mirror pool peer bootstrap create`` will be a token that should
-be provided to the ``mirror pool peer bootstrap import`` command. For example,
+be provided to the ``mirror pool peer bootstrap import`` command. 例如,
 on site-a::
 
         $ rbd --cluster site-a mirror pool peer bootstrap create --site-name site-a image-pool
@@ -153,7 +149,7 @@ to rx-only for unidirectional mirroring)::
 
         rbd mirror pool peer bootstrap import [--site-name {local-site-name}] [--direction {rx-only or rx-tx}] {pool-name} {token-path}
 
-For example, on site-b::
+例如，在 site-b 上： ::
 
         $ cat <<EOF > token
         eyJmc2lkIjoiOWY1MjgyZGItYjg5OS00NTk2LTgwOTgtMzIwYzFmYzM5NmYzIiwiY2xpZW50X2lkIjoicmJkLW1pcnJvci1wZWVyIiwia2V5IjoiQVFBUnczOWQwdkhvQmhBQVlMM1I4RmR5dHNJQU50bkFTZ0lOTVE9PSIsIm1vbl9ob3N0IjoiW3YyOjE5Mi4xNjguMS4zOjY4MjAsdjE6MTkyLjE2OC4xLjM6NjgyMV0ifQ==
@@ -183,7 +179,7 @@ To manually add a mirroring peer Ceph cluster with ``rbd``, specify the
 
         rbd mirror pool peer add {pool-name} {client-name}@{cluster-name}
 
-For example::
+例如::
 
         $ rbd --cluster site-a mirror pool peer add image-pool client.rbd-mirror-peer@site-b
         $ rbd --cluster site-b mirror pool peer add image-pool client.rbd-mirror-peer@site-a
@@ -197,7 +193,7 @@ the addresses of the peer cluster's monitors, in addition to a keyring for
 Alternatively, the peer cluster's monitor and/or client key can be securely
 stored within the local Ceph monitor ``config-key`` store. To specify the
 peer cluster connection attributes when adding a mirroring peer, use the
-``--remote-mon-host`` and ``--remote-key-file`` optionals. For example::
+``--remote-mon-host`` and ``--remote-key-file`` optionals. 例如::
 
         $ cat <<EOF > remote-key-file
         AQAeuZdbMMoBChAAcj++/XUxNOLFaWdtTREEsw==
@@ -332,7 +328,7 @@ create a mirror-snapshot manually with ``rbd``, specify the
 
         rbd mirror image snapshot {pool-name}/{image-name}
 
-For example::
+例如::
 
         $ rbd --cluster site-a mirror image snapshot image-pool/image-1
 
@@ -356,7 +352,7 @@ image name; interval; and optional start time::
 
 The ``interval`` can be specified in days, hours, or minutes using ``d``, ``h``,
 ``m`` suffix respectively. The optional ``start-time`` can be specified using
-the ISO 8601 time format. For example::
+the ISO 8601 time format. 例如::
 
         $ rbd --cluster site-a mirror snapshot schedule add --pool image-pool 24h 14:00:00-05:00
         $ rbd --cluster site-a mirror snapshot schedule add --pool image-pool --image image1 6h
@@ -383,7 +379,7 @@ image name::
 
         rbd mirror snapshot schedule status [--pool {pool-name}] [--image {image-name}]
 
-For example::
+例如::
 
         $ rbd --cluster site-a mirror snapshot schedule status
         SCHEDULE TIME       IMAGE             
@@ -551,7 +547,7 @@ rbd-mirror 守护进程
 .. _rbd: ../../man/8/rbd
 .. _ceph-conf: ../../rados/configuration/ceph-conf/#running-multiple-clusters
 .. _显式地开启: #enable-image-mirroring
-.. _bootstrap token: #bootstrap-peers
+.. _自举引导令牌: #bootstrap-peers
 .. _强制重新同步命令: #force-image-resync
 .. _降级此映像: #image-promotion-and-demotion
 .. _创建一个 Ceph 用户: ../../rados/operations/user-management#add-a-user

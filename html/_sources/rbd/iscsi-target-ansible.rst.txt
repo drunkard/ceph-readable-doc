@@ -1,7 +1,6 @@
 ==============================
  用 Ansible 配置 iSCSI Target
 ==============================
-.. Configuring the iSCSI Target using Ansible
 
 The Ceph iSCSI gateway is the iSCSI target node and also a Ceph client
 node. The Ceph iSCSI gateway can be provisioned on dedicated node

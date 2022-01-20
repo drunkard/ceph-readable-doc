@@ -1,7 +1,6 @@
 =========================
  Ceph 块设备与第三方对接
 =========================
-.. Ceph Block Device 3rd Party Integration
 
 .. toctree::
    :maxdepth: 1

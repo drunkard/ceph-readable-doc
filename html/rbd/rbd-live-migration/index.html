@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>映像实时迁移 &mdash; Ceph Documentation</title>
+  <title>映像在线迁移 &mdash; Ceph Documentation</title>
   
 
   
@@ -78,7 +78,7 @@
         
           <li><a href="../rbd-operations/">Ceph 块设备运维</a> &raquo;</li>
         
-      <li>映像实时迁移</li>
+      <li>映像在线迁移</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -144,14 +144,14 @@
 <li class="toctree-l2"><a class="reference internal" href="../rados-rbd-cmds/">基本命令</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../rbd-operations/">运维</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../rbd-snapshot/">快照</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../rbd-exclusive-locks/">互斥锁</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../rbd-exclusive-locks/">互斥锁、独占锁</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../rbd-mirroring/">镜像</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">实时迁移</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#prepare-migration">Prepare Migration</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#prepare-import-only-migration">Prepare Import-Only Migration</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#execute-migration">Execute Migration</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#commit-migration">Commit Migration</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#abort-migration">Abort Migration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">准备迁移事宜</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">为单纯导入的迁移做准备</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">执行迁移</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">提交迁移</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">中止迁移</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../rbd-persistent-read-only-cache/">永久只读缓存</a></li>
@@ -219,70 +219,67 @@
 
   
   <div class="section" id="id1">
-<h1>映像实时迁移<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
-<p id="index-0">RBD images can be live-migrated between different pools within the same cluster;
-between different image formats and layouts; or from external data sources.
-When started, the source will be deep-copied to the destination image, pulling
-all snapshot history while preserving the sparse allocation of data where
-possible.</p>
-<p>By default, when live-migrating RBD images within the same Ceph cluster, the
-source image will be marked read-only and all clients will instead redirect
-IOs to the new target image. In addition, this mode can optionally preserve the
-link to the source image’s parent to preserve sparseness, or it can flatten the
-image during the migration to remove the dependency on the source image’s
-parent.</p>
-<p>The live-migration process can also be used in an import-only mode where the
-source image remains unmodified and the target image can be linked to an
-external data source such as a backing file, HTTP(s) file, or S3 object.</p>
-<p>The live-migration copy process can safely run in the background while the new
-target image is in use. There is currently a requirement to temporarily stop
-using the source image before preparing a migration when not using the
-import-only mode of operation. This helps to ensure that the client using the
-image is updated to point to the new target image.</p>
+<h1>映像在线迁移<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p id="index-0">在同一集群内， RBD 映像可以在不同存储池之间在线迁移、
+在不同映像格式和布局之间、或者从外部数据源迁移。
+启动后，源映像会被深度复制到目标映像，
+会拉取所有快照历史，同时尽可能保留稀疏分配的数据。</p>
+<p>默认情况下，如果在线迁移的 RBD 映像们位于同一集群内，
+源映像会被标记为只读，并且所有客户端会把 IO 重定向到新的目标映像。
+另外，这个模式可以选择性地保留它到源映像的父映像的链接，
+以保留稀疏数据块；或者可以在迁移映像时拍平映像，
+以去除到源映像的父映像的依赖关系。</p>
+<p>在线迁移进程还可以用在纯导入模式，
+此时，源映像保持不变，而目标映像可以被链接到外部数据源，
+像备份的文件、 HTTP(S) 文件、或者 S3 对象。</p>
+<p>新的目标映像正在被使用时，
+在线迁移复制进程可以安全地在后台运行。
+当前，如果不是用纯导入模式操作，
+在准备迁移前需要先暂时停止源映像的使用。
+这是为了帮助确保客户端使用的映像和新的目标映像位于同一个更新点。</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Image live-migration requires the Ceph Nautilus release or later. Support for
-external data sources requires the Ceph Pacific release of later. The
-<code class="docutils literal notranslate"><span class="pre">krbd</span></code> kernel module does not support live-migration at this time.</p>
+<p>映像的在线迁移需要 Ceph Nautilus 或更高版本。
+在 Ceph Pacific 或更高版本才支持外部数据源。
+<code class="docutils literal notranslate"><span class="pre">krbd</span></code> 内核模块现在还不支持在线迁移。</p>
 </div>
-<p>The live-migration process is comprised of three steps:</p>
+<p>在线迁移过程分三步：</p>
 <ol class="arabic">
-<li><p><strong>Prepare Migration:</strong> The initial step creates the new target image and
-links the target image to the source. When not configured in the import-only
-mode, the source image will also be linked to the target image and marked
-read-only.</p>
-<p>Similar to <a class="reference external" href="../rbd-snapshot/#layering">layered images</a>, attempts to read uninitialized data extents
-within the target image will internally redirect the read to the source
-image, and writes to uninitialized extents within the target will internally
-deep-copy the overlapping source image block to the target image.</p>
+<li><p><strong>准备迁移（ Prepare Migration ）:</strong> 初始步骤，
+会创建新的目标映像，并链接到源映像。
+如果没配置成纯导入模式，源映像还会链接到目标映像，
+并标记为只读。</p>
+<p>与 <a class="reference external" href="../rbd-snapshot/#layering">分层映像</a> 相似，尝试读取目标映像内未初始化的数据区时，
+会在程序内部把它重定向到源映像，
+而写入目标映像内未初始化的数据区时，
+程序内部会把重叠的源映像块深度复制到目标映像。</p>
 </li>
-<li><p><strong>Execute Migration:</strong> This is a background operation that deep-copies all
-initialized blocks from the source image to the target. This step can be
-run while clients are actively using the new target image.</p></li>
-<li><p><strong>Finish Migration:</strong> Once the background migration process has completed,
-the migration can be committed or aborted. Committing the migration will
-remove the cross-links between the source and target images, and will
-remove the source image if not configured in the import-only mode. Aborting
-the migration will remove the cross-links, and will remove the target image.</p></li>
+<li><p><strong>执行迁移（ Execute Migration ）:</strong> 这是后台操作，
+会把所有初始化的数据块从源映像深度复制到目标映像。
+这一步可以在客户端们正使用新目标映像时运行。</p></li>
+<li><p><strong>完成迁移（ Finish Migration ）:</strong>
+后台迁移过程完成后，迁移操作可以提交或中止。
+提交本次迁移会去除源和目标映像之间的链接，
+如果不是在纯导入模式下，还会删除源映像。
+中止迁移会删除交叉链接、并删除目标映像。</p></li>
 </ol>
-<div class="section" id="prepare-migration">
-<h2>Prepare Migration<a class="headerlink" href="#prepare-migration" title="Permalink to this headline">¶</a></h2>
-<p>The default live-migration process for images within the same Ceph cluster is
-initiated by running the <cite>rbd migration prepare</cite> command, providing the source
-and target images:</p>
+<div class="section" id="id2">
+<h2>准备迁移事宜<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>在同一一个 Ceph 集群内，映像的默认在线迁移过程由
+<cite>rbd migration prepare</cite> 命令初始化，需提供源和目的映像：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration prepare migration_source [migration_target]
 </pre></div>
 </div>
-<p>The <cite>rbd migration prepare</cite> command accepts all the same layout optionals as the
-<cite>rbd create</cite> command, which allows changes to the immutable image on-disk
-layout. The <cite>migration_target</cite> can be skipped if the goal is only to change the
-on-disk layout, keeping the original image name.</p>
-<p>All clients using the source image must be stopped prior to preparing a
-live-migration. The prepare step will fail if it finds any running clients with
-the image open in read/write mode. Once the prepare step is complete, the
-clients can be restarted using the new target image name. Attempting to restart
-the clients using the source image name will result in failure.</p>
-<p>The <cite>rbd status</cite> command will show the current state of the live-migration:</p>
+<p><cite>rbd migration prepare</cite> 命令支持的布局可选参数和
+<cite>rbd create</cite> 命令的一样，可以用来更改不可变对象的磁盘布局。
+如果只是为了更改磁盘上的布局，可以跳过 <cite>migration_target</cite> ，
+还沿用最初的映像名。</p>
+<p>在准备在线迁移前，所有使用这个源映像的客户端都必须先停止。
+如果发现有客户端打开了客户端，不管是读还是写模式，
+准备这步都会失败。准备步骤完成后，
+客户端们可以用新的目标映像名重启。
+仍然尝试用源映像名重启的客户端会失败。</p>
+<p><cite>rbd status</cite> 命令可以显示在线迁移当前的状态：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
 Watchers: none
 Migration:
@@ -291,8 +288,8 @@ Migration:
             state: prepared
 </pre></div>
 </div>
-<p>Note that the source image will be moved to the RBD trash to avoid mistaken
-usage during the migration process:</p>
+<p>注意，在迁移进程运行期间，源映像会被挪到 RBD 垃圾桶，
+以免被误用：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd info migration_source
 rbd: error opening image migration_source: (2) No such file or directory
 $ rbd trash ls --all
@@ -300,20 +297,18 @@ $ rbd trash ls --all
 </pre></div>
 </div>
 </div>
-<div class="section" id="prepare-import-only-migration">
-<h2>Prepare Import-Only Migration<a class="headerlink" href="#prepare-import-only-migration" title="Permalink to this headline">¶</a></h2>
-<p>The import-only live-migration process is initiated by running the same
-<cite>rbd migration prepare</cite> command, but adding the <cite>–import-only</cite> optional
-and providing a JSON-encoded <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> to describe how to access
-the source image data. This <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> can either be passed
-directly via the <cite>–source-spec</cite> optional, or via a file or STDIN via the
-<cite>–source-spec-path</cite> optional:</p>
+<div class="section" id="id3">
+<h2>为单纯导入的迁移做准备<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>单纯导入（ import-only ）在线迁移进程同样是用 <cite>rbd migration prepare</cite> 命令初始化的，但是得加上 <cite>–import-only</cite> 选项，
+还得提供一个 JSON 编码的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> ，
+用以描述如何访问源映像数据。这份 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code>
+可以直接用 <cite>–source-spec</cite> 选项传入、
+或者通过 <cite>–source-spec-path</cite> 选项传入一个文件或 STDIN:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration prepare --import-only --source-spec &quot;&lt;JSON&gt;&quot; migration_target
 </pre></div>
 </div>
-<p>The <cite>rbd migration prepare</cite> command accepts all the same layout optionals as the
-<cite>rbd create</cite> command.</p>
-<p>The <cite>rbd status</cite> command will show the current state of the live-migration:</p>
+<p><cite>rbd migration prepare</cite> 命令支持与 <cite>rbd create</cite> 命令相同的所有布局选项。</p>
+<p><cite>rbd status</cite> 命令可以显示在线迁移当前的状态：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
 Watchers: none
 Migration:
@@ -322,7 +317,7 @@ Migration:
         state: prepared
 </pre></div>
 </div>
-<p>The general format for the <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is as follows:</p>
+<p><code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 文件的通用格式如下：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;format-type&gt;&quot;</span><span class="p">,</span>
     <span class="o">&lt;</span><span class="nb">format</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
@@ -333,14 +328,12 @@ Migration:
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The following formats are currently supported: <code class="docutils literal notranslate"><span class="pre">native</span></code>, <code class="docutils literal notranslate"><span class="pre">qcow</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">raw</span></code>. The following streams are currently supported: <code class="docutils literal notranslate"><span class="pre">file</span></code>, <code class="docutils literal notranslate"><span class="pre">http</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">s3</span></code>.</p>
-<div class="section" id="formats">
-<h3>Formats<a class="headerlink" href="#formats" title="Permalink to this headline">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">native</span></code> format can be used to describe a native RBD image within a
-Ceph cluster as the source image. Its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded
-as follows:</p>
+<p>当前支持这几种格式： <code class="docutils literal notranslate"><span class="pre">native</span></code> 、 <code class="docutils literal notranslate"><span class="pre">qcow</span></code> 、和 <code class="docutils literal notranslate"><span class="pre">raw</span></code> 。
+当前支持这几种流格式： <code class="docutils literal notranslate"><span class="pre">file</span></code> 、 <code class="docutils literal notranslate"><span class="pre">http</span></code> 、和 <code class="docutils literal notranslate"><span class="pre">s3</span></code> 。</p>
+<div class="section" id="id4">
+<h3>格式<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">native</span></code> 格式用于描述与源映像位于同一集群内的本地 RBD 映像，
+它的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;native&quot;</span><span class="p">,</span>
     <span class="s2">&quot;pool_name&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;pool-name&gt;&quot;</span><span class="p">,</span>
@@ -353,9 +346,9 @@ as follows:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Note that the <code class="docutils literal notranslate"><span class="pre">native</span></code> format does not include the <code class="docutils literal notranslate"><span class="pre">stream</span></code> object since
-it utilizes native Ceph operations. For example, to import from the image
-<code class="docutils literal notranslate"><span class="pre">rbd/ns1/image1&#64;snap1</span></code>, the <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> could be encoded as:</p>
+<p>需要注意的是， <code class="docutils literal notranslate"><span class="pre">native</span></code> 格式不包含 <code class="docutils literal notranslate"><span class="pre">stream</span></code> 对象，因为它利用的是
+Ceph 的本地操作。例如，要从 <code class="docutils literal notranslate"><span class="pre">rbd/ns1/image1&#64;snap1</span></code> 映像导入，
+对应的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> 应该是：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;native&quot;</span><span class="p">,</span>
     <span class="s2">&quot;pool_name&quot;</span><span class="p">:</span> <span class="s2">&quot;rbd&quot;</span><span class="p">,</span>
@@ -365,13 +358,12 @@ it utilizes native Ceph operations. For example, to import from the image
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">qcow</span></code> format can be used to describe a QCOW (QEMU copy-on-write) block
-device. Both the QCOW (v1) and QCOW2 formats are currently supported with the
-exception of advanced features such as compression, encryption, backing
-files, and external data files. Support for these missing features may be added
-in a future release. The <code class="docutils literal notranslate"><span class="pre">qcow</span></code> format data can be linked to any supported
-stream source described below. For example, its base <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is
-encoded as follows:</p>
+<p><code class="docutils literal notranslate"><span class="pre">qcow</span></code> 格式可以用于描述 QCOW (QEMU copy-on-write) 块设备。
+当前， QCOW (v1) 和 QCOW2 格式都支持，除了一些高级功能，
+如压缩、加密、 backing files 、和外部数据文件。
+这些缺失的功能可能在以后的版本中加上。
+<code class="docutils literal notranslate"><span class="pre">qcow</span></code> 格式的数据可以被链接到下文描述的任意 stream 源。
+例如，它的基础 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;qcow&quot;</span><span class="p">,</span>
     <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -380,36 +372,35 @@ encoded as follows:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">raw</span></code> format can be used to describe a thick-provisioned, raw block device
-export (i.e. <cite>rbd export –export-format 1 &lt;snap-spec&gt;</cite>). The <code class="docutils literal notranslate"><span class="pre">raw</span></code> format
-data can be linked to any supported stream source described below. For example,
-its base <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="o">&lt;</span><span class="n">stream</span> <span class="n">unique</span> <span class="n">parameters</span> <span class="k">for</span> <span class="n">HEAD</span><span class="p">,</span> <span class="n">non</span><span class="o">-</span><span class="n">snapshot</span> <span class="n">revision</span><span class="o">&gt;</span>
-    <span class="p">},</span>
-    <span class="s2">&quot;snapshots&quot;</span><span class="p">:</span> <span class="p">[</span>
-        <span class="p">{</span>
-            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;snapshot-name&gt;&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="o">&lt;</span><span class="n">stream</span> <span class="n">unique</span> <span class="n">parameters</span> <span class="k">for</span> <span class="n">snapshot</span><span class="o">&gt;</span>
-            <span class="p">}</span>
-        <span class="p">},</span>
-    <span class="p">]</span> <span class="p">(</span><span class="n">optional</span> <span class="n">oldest</span> <span class="n">to</span> <span class="n">newest</span> <span class="n">ordering</span> <span class="n">of</span> <span class="n">snapshots</span><span class="p">)</span>
-<span class="p">}</span>
+<p><code class="docutils literal notranslate"><span class="pre">raw</span></code> 格式可以用于描述一个完备配置的、 raw 块设备导出
+（即 <cite>rbd export –export-format 1 &lt;snap-spec&gt;</cite> ）。
+<code class="docutils literal notranslate"><span class="pre">raw</span></code> 格式的数据可以被链接到下文描述的任意 stream 源。
+例如，它的基础 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>{
+    &quot;type&quot;: &quot;raw&quot;,
+    &quot;stream&quot;: {
+        &lt;stream unique parameters for HEAD, non-snapshot revision&gt;
+    },
+    &quot;snapshots&quot;: [
+        {
+            &quot;type&quot;: &quot;raw&quot;,
+            &quot;name&quot;: &quot;&lt;snapshot-name&gt;&quot;,
+            &quot;stream&quot;: {
+                &lt;stream unique parameters for snapshot&gt;
+            }
+        },
+    ] (可选，按最老到最新排序的快照)
+}
 </pre></div>
 </div>
-<p>The inclusion of the <code class="docutils literal notranslate"><span class="pre">snapshots</span></code> array is optional and currently only supports
-thick-provisioned <code class="docutils literal notranslate"><span class="pre">raw</span></code> snapshot exports.</p>
-<p>Additional formats such as RBD export-format v2 and RBD export-diff
-snapshots will be added in a future release.</p>
+<p><code class="docutils literal notranslate"><span class="pre">snapshots</span></code> 数组是可选的，而且当前仅支持全配 <code class="docutils literal notranslate"><span class="pre">raw</span></code> 快照的导出。</p>
+<p>其它格式，像 RBD export-format v2 和
+RBD export-diff 快照会在未来版本中增加。</p>
 </div>
-<div class="section" id="streams">
-<h3>Streams<a class="headerlink" href="#streams" title="Permalink to this headline">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">file</span></code> stream can be used to import from a locally accessible POSIX file
-source. Its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<div class="section" id="id5">
+<h3>流格式<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">file</span></code> 流可以用于从一个本地可访问的 POSIX 文件源导入。
+它的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="o">&lt;</span><span class="nb">format</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
     <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -419,8 +410,8 @@ source. Its <code class="docutils literal notranslate"><span class="pre">source-
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>For example, to import a raw-format image from a file located at
-“/mnt/image.raw”, its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<p>例如，要导入一个位于 /mnt/image.raw 、格式为 raw 的映像，
+它的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
     <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -430,8 +421,8 @@ source. Its <code class="docutils literal notranslate"><span class="pre">source-
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">http</span></code> stream can be used to import from a remote HTTP or HTTPS web
-server. Its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<p><code class="docutils literal notranslate"><span class="pre">http</span></code> 流可以用于从远端 HTTP 或 HTTPS web 服务器导入。
+它的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="o">&lt;</span><span class="nb">format</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
     <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -441,9 +432,8 @@ server. Its <code class="docutils literal notranslate"><span class="pre">source-
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>For example, to import a raw-format image from a file located at
-<code class="docutils literal notranslate"><span class="pre">http://download.ceph.com/image.raw</span></code>, its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded
-as follows:</p>
+<p>例如，要导入一个位于 <code class="docutils literal notranslate"><span class="pre">http://download.ceph.com/image.raw</span></code> 、
+格式为 raw 的映像，它的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
     <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -453,8 +443,8 @@ as follows:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">s3</span></code> stream can be used to import from a remote S3 bucket. Its
-<code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded as follows:</p>
+<p><code class="docutils literal notranslate"><span class="pre">s3</span></code> 流可以用于从一个远端 S3 桶导入。
+它的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="o">&lt;</span><span class="nb">format</span> <span class="n">unique</span> <span class="n">parameters</span><span class="o">&gt;</span>
     <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -466,9 +456,8 @@ as follows:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>For example, to import a raw-format image from a file located at
-<cite>http://s3.ceph.com/bucket/image.raw</cite>, its <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON is encoded
-as follows:</p>
+<p>例如，要导入一个位于 <cite>http://s3.ceph.com/bucket/image.raw</cite> 、
+格式为 raw 的映像，它的 <code class="docutils literal notranslate"><span class="pre">source-spec</span></code> JSON 编码成这样：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
     <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -482,25 +471,22 @@ as follows:</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">access_key</span></code> and <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> parameters support storing the keys in
-the MON config-key store by prefixing the key values with <code class="docutils literal notranslate"><span class="pre">config://</span></code>
-followed by the path in the MON config-key store to the value. Values can be
-stored in the config-key store via <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config-key</span> <span class="pre">set</span> <span class="pre">&lt;key-path&gt;</span> <span class="pre">&lt;value&gt;</span></code>
-(e.g. <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config-key</span> <span class="pre">set</span> <span class="pre">rbd/s3/access_key</span> <span class="pre">NX5QOQKC6BH2IDN8HC7A</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">access_key</span></code> 和 <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> 参数可以利用 MON 的 config-key 存储库，
+引用时加 <code class="docutils literal notranslate"><span class="pre">config://</span></code> 前缀、然后是那个值在 MON config-key 库里的路径。
+存入 config-key 库时可以用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config-key</span> <span class="pre">set</span> <span class="pre">&lt;key-path&gt;</span> <span class="pre">&lt;value&gt;</span></code> 命令，
+（例如 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config-key</span> <span class="pre">set</span> <span class="pre">rbd/s3/access_key</span> <span class="pre">NX5QOQKC6BH2IDN8HC7A</span></code> ）。</p>
 </div>
 </div>
 </div>
-<div class="section" id="execute-migration">
-<h2>Execute Migration<a class="headerlink" href="#execute-migration" title="Permalink to this headline">¶</a></h2>
-<p>After preparing the live-migration, the image blocks from the source image
-must be copied to the target image. This is accomplished by running the
-<cite>rbd migration execute</cite> command:</p>
+<div class="section" id="id6">
+<h2>执行迁移<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>准备好在线迁移后，源映像里的数据块必须复制到目标映像。
+要运行 <cite>rbd migration execute</cite> 命令来完成：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration execute migration_target
 Image migration: 100% complete...done.
 </pre></div>
 </div>
-<p>The <cite>rbd status</cite> command will also provide feedback on the progress of the
-migration block deep-copy process:</p>
+<p><cite>rbd status</cite> 命令可以反馈迁移数据块的深度复制进度：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
 Watchers:
     watcher=1.2.3.4:0/3695551461 client.123 cookie=123
@@ -511,10 +497,9 @@ Migration:
 </pre></div>
 </div>
 </div>
-<div class="section" id="commit-migration">
-<h2>Commit Migration<a class="headerlink" href="#commit-migration" title="Permalink to this headline">¶</a></h2>
-<p>Once the live-migration has completed deep-copying all data blocks from the
-source image to the target, the migration can be committed:</p>
+<div class="section" id="id7">
+<h2>提交迁移<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<p>在线迁移把所有数据块深度复制到目标映像之后，就可以提交这个迁移了：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status migration_target
 Watchers: none
 Migration:
@@ -525,25 +510,23 @@ $ rbd migration commit migration_target
 Commit image migration: 100% complete...done.
 </pre></div>
 </div>
-<p>If the <cite>migration_source</cite> image is a parent of one or more clones, the <cite>–force</cite>
-option will need to be specified after ensuring all descendent clone images are
-not in use.</p>
-<p>Committing the live-migration will remove the cross-links between the source
-and target images, and will remove the source image:</p>
+<p>如果 <cite>migration_source</cite> 映像是一个或多个克隆品的父映像，
+在确保所有派生出的映像都不在使用之后，需要加上 <cite>–force</cite> 选项。</p>
+<p>提交在线迁移后，源和目标映像之间的交叉链接会被删除，
+还会删除源映像：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd trash list --all
 </pre></div>
 </div>
 </div>
-<div class="section" id="abort-migration">
-<h2>Abort Migration<a class="headerlink" href="#abort-migration" title="Permalink to this headline">¶</a></h2>
-<p>If you wish to revert the prepare or execute step, run the <cite>rbd migration abort</cite>
-command to revert the migration process:</p>
+<div class="section" id="id8">
+<h2>中止迁移<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<p>如果你想回退准备或执行步骤，可以用 <cite>rbd migration abort</cite> 命令来回退迁移进程：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd migration abort migration_target
 Abort image migration: 100% complete...done.
 </pre></div>
 </div>
-<p>Aborting the migration will result in the target image being deleted and access
-to the original source image being restored:</p>
+<p>中止迁移进程后，目标映像会被删除、
+到源映像的访问会恢复：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd ls
 migration_source
 </pre></div>

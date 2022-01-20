@@ -1,8 +1,7 @@
-.. Basic Block Device Commands
-
 ================
  块设备基础命令
 ================
+.. Basic Block Device Commands
 
 .. index:: Ceph Block Device; image management
 
@@ -10,14 +9,12 @@
 映像、创建快照、回滚快照、查看快照等等。 ``rbd`` 命令用法详情见
 `RBD – 管理 RADOS 块设备映像`_\ 。
 
-.. important:: 要使用 Ceph 块设备命令，你必须有相应的集群\
-   访问权限。
+.. important:: 要使用 Ceph 块设备命令，你必须有相应的集群访问权限。
 
-
-.. Create a Block Device Pool
 
 创建一个块设备存储池
 ====================
+.. Create a Block Device Pool
 
 #. 在管理节点上，用 ``ceph`` 工具\ `创建一个存储池`_\ 。
 
@@ -25,44 +22,40 @@
 
         rbd pool init <pool-name>
 
-.. note:: 没指定存储池名字时， ``rbd`` 工具会假设默认的是
-   rbd 。
+.. note:: 没指定存储池名字时， ``rbd`` 工具会假设默认的是 rbd 。
 
-
-.. Create a Block Device User
 
 创建一个块设备用户
 ==================
+.. Create a Block Device User
 
-Unless specified, the ``rbd`` command will access the Ceph cluster using the ID
-``admin``. This ID allows full administrative access to the cluster. It is
-recommended that you utilize a more restricted user wherever possible.
+如果不指定用户名， ``rbd`` 命令默认将使用 ``admin`` 用户 ID 访问 Ceph 集群。
+这个 ID 有拥有集群的所有管理权限。可能的话，建议你用一个限制了权限的用户访问。
 
-To `创建一个 Ceph 用户`_, with ``ceph`` specify the ``auth get-or-create``
-command, user name, monitor caps, and OSD caps::
+要 `创建一个 Ceph 用户`_ ，用 ``ceph`` 命令加上 ``auth get-or-create`` 子命令、
+用户名、监视器能力、和 OSD 能力： ::
 
         ceph auth get-or-create client.{ID} mon 'profile rbd' osd 'profile {profile name} [pool={pool-name}][, profile ...]' mgr 'profile rbd [pool={pool-name}]'
 
-For example, to create a user ID named ``qemu`` with read-write access to the
-pool ``vms`` and read-only access to the pool ``images``, execute the
-following::
+例如，要创建一个名为 ``qemu`` 的用户 ID ，有 ``vms`` 存储池的读写权限、
+和 ``images`` 存储池的只读权限，执行命令： ::
 
 	ceph auth get-or-create client.qemu mon 'profile rbd' osd 'profile rbd pool=vms, profile rbd-read-only pool=images' mgr 'profile rbd pool=images'
 
-The output from the ``ceph auth get-or-create`` command will be the keyring for
-the specified user, which can be written to ``/etc/ceph/ceph.client.{ID}.keyring``.
+``ceph auth get-or-create`` 命令的输出是指定用户的密钥环，
+可以写入 ``/etc/ceph/ceph.client.{ID}.keyring`` 。
 
-.. note:: The user ID can be specified when using the ``rbd`` command by
-        providing the ``--id {id}`` optional argument.
+.. note:: 使用 ``rbd`` 命令的时候可以用 ``--id {id}`` 可选参数\
+   指定用户 ID 。
 
-
-.. Creating a Block Device Image
 
 创建块设备映像
 ==============
+.. Creating a Block Device Image
 
-要想把块设备加入某节点，你得先在 :term:`Ceph 存储集群`\ 中创建\
-一个映像，用下列命令： ::
+要想把块设备加入某节点，你得先在
+:term:`Ceph 存储集群`\ 中创建一个映像。
+创建一个块设备映像用下列命令： ::
 
 	rbd create --size {megabytes} {pool-name}/{image-name}
 
@@ -80,18 +73,15 @@ the specified user, which can be written to ``/etc/ceph/ceph.client.{ID}.keyring
 .. note:: 指定此存储池前必须先创建它，详情见\ `存储池`_\ 。
 
 
-.. Listing Block Device Images
-
 罗列块设备映像
 ==============
+.. Listing Block Device Images
 
-要罗列 ``rbd`` 存储池中的块设备，用下列命令（即 ``rbd`` 是默认\
-存储池名字）： ::
+要罗列 ``rbd`` 存储池中的块设备，用下列命令（即 ``rbd`` 是默认存储池名字）： ::
 
 	rbd ls
 
-用下列命令罗列某个特定存储池中的块设备，用存储池名字替换掉 \
-``{poolname}`` ： ::
+用下列命令罗列某个特定存储池中的块设备，用存储池名字替换掉 ``{poolname}`` ： ::
 
 	rbd ls {poolname}
 
@@ -113,13 +103,11 @@ the specified user, which can be written to ``/etc/ceph/ceph.client.{ID}.keyring
         rbd trash ls swimmingpool
 
 
-.. Retrieving Image Information
-
 检索映像信息
 ============
+.. Retrieving Image Information
 
-用下列命令检索某特定映像的信息，用 ``{image-name}`` 替换\
-映像名字： ::
+用下列命令检索某特定映像的信息，用 ``{image-name}`` 替换映像名字： ::
 
 	rbd info {image-name}
 
@@ -137,24 +125,21 @@ the specified user, which can be written to ``/etc/ceph/ceph.client.{ID}.keyring
 	rbd info swimmingpool/bar
 
 
-.. Resizing a Block Device Image
-
 调整块设备映像尺寸
 ==================
+.. Resizing a Block Device Image
 
-:term:`Ceph 块设备`\ 映像是瘦接口设备，只有在你开始写入数据\
-时它们才会占用物理空间。然而，它们都有最大容量，就是你设置的
-``--size`` 选项。如果你想增加（或减小） Ceph 块设备映像的最\
-大尺寸，用下列命令： ::
+:term:`Ceph 块设备`\ 映像是瘦接口设备，只有在你开始写入数据时它们才会占用\
+物理空间。然而，它们都有最大容量，就是你设置的 ``--size`` 选项。
+如果你想增加（或减小） Ceph 块设备映像的最大尺寸，用下列命令： ::
 
 	rbd resize --size 2048 foo (to increase)
 	rbd resize --size 2048 foo --allow-shrink (to decrease)
 
 
-.. Removing a Block Device Image
-
 删除块设备映像
 ==============
+.. Removing a Block Device Image
 
 用下列命令删除块设备，用 ``{image-name}`` 替换映像名字： ::
 
@@ -203,10 +188,10 @@ the specified user, which can be written to ``/etc/ceph/ceph.client.{ID}.keyring
     选项。
 
 
-.. Restoring a Block Device Image
-
 块设备映像的恢复
 ================
+.. Restoring a Block Device Image
+
 要恢复 rbd 存储池内的一个延期删除块设备，用下列命令，但需把
 ``{image-id}`` 替换成那个映像的 id ： ::
 

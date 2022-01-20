@@ -8,19 +8,16 @@
 ======================
 .. Shared, Read-only Parent Image Cache
 
-`Cloned RBD images`_ from a parent usually only modify a small portion of
-the image. For example, in a VDI workload, the VMs are cloned from the same
-base image and initially only differ by hostname and IP address. During the
-booting stage, all of these VMs would re-read portions of duplicate parent
-image data from the RADOS cluster. If we have a local cache of the parent
-image, this will help to speed up the read process on one host, as well as
-to save the client to cluster network traffic.
-RBD shared read-only parent image cache requires explicitly enabling in
-``ceph.conf``. The ``ceph-immutable-object-cache`` daemon is responsible for
-caching the parent content on the local disk, and future reads on that data
-will be serviced from the local cache.
+从父映像 `克隆的 RBD 映像`_ 只对父映像更改了很小一部分。例如，
+在一个 VDI 应用案例中， VM 都是从同一个基础映像克隆来的，
+最初的差异只有主机名和 IP 地址。在启动期间，所有这些 VM 都会\
+读取同一父映像数据的一部分。如果我们有这个父映像的本地缓存，
+在这个有缓存的主机上就可以提速读取操作。
+还能减少客户端到集群的网络流量。RBD 缓存必须在 ``ceph.conf`` 里显式地启用。
+``ceph-immutable-object-cache`` 守护进程负责把父映像的内容缓存在本地磁盘上，
+以后再有那些数据的读取就从本地缓存中读取。
 
-.. note:: RBD shared read-only parent image cache requires the Ceph Nautilus release or later.
+.. note:: RBD 共享、只读的父映像缓存需要 Ceph Nautilus 或更高版本。
 
 .. ditaa::
 
@@ -39,8 +36,8 @@ will be serviced from the local cache.
 ---------------------------------
 .. Enable RBD Shared Read-only Parent Image Cache
 
-To enable RBD shared read-only parent image cache, the following Ceph settings
-need to added in the ``[client]`` `section`_ of your ``ceph.conf`` file::
+要启用 RBD 共享、只读的父映像缓存功能，需要把下列选项加进
+``ceph.conf`` 文件的 ``[client]`` `段`_ 下： ::
 
         rbd parent cache enabled = true
         rbd plugins = parent_cache
@@ -50,155 +47,154 @@ need to added in the ``[client]`` `section`_ of your ``ceph.conf`` file::
 ======================
 .. Immutable Object Cache Daemon
 
-Introduction and Generic Settings
----------------------------------
+介绍及常规选项
+--------------
+.. Introduction and Generic Settings
 
-The ``ceph-immutable-object-cache`` daemon is responsible for caching parent
-image content within its local caching directory. For better performance it's
-recommended to use SSDs as the underlying storage.
+``ceph-immutable-object-cache`` 守护进程负责把父映像内容缓存进本地的缓存目录里。
+要想提高性能，建议用 SSD 作为底层存储器。
 
-The key components of the daemon are:
+这个守护进程的关键组件有：
 
-#. **Domain socket based IPC:** The daemon will listen on a local domain
-   socket on start up and wait for connections from librbd clients.
+#. **基于 IPC 的域套接字:** 这个守护进程在启动时会监听本地域套接字，
+   并等待 librbd 客户端连接。
 
-#. **LRU based promotion/demotion policy:** The daemon will maintain
-   in-memory statistics of cache-hits on each cache file. It will demote the
-   cold cache if capacity reaches to the configured threshold.
+#. **基于 LRU 的晋级、降级策略:** 这个守护进程\
+   会在内存里维护各个缓存文件的命中统计信息。
+   如果缓存容量达到了配置的阈值，它就会降级冷缓存。
 
-#. **File-based caching store:** The daemon will maintain a simple file
-   based cache store. On promotion the RADOS objects will be fetched from
-   RADOS cluster and stored in the local caching directory.
+#. **基于文件的缓存库:** 这个守护进程\
+   维护着一个简单的基于文件的缓存库。需要晋级时，
+   会从 RADOS 集群取回 RADOS 对象、并存储在本地的缓存目录里。
 
-On opening each cloned rbd image, ``librbd`` will try to connect to the
-cache daemon through its Unix domain socket. Once successfully connected,
-``librbd`` will coordinate with the daemon on the subsequent reads.
-If there's a read that's not cached, the daemon will promote the RADOS object
-to local caching directory, so the next read on that object will be serviced
-from cache. The daemon also maintains simple LRU statistics so that under
-capacity pressure it will evict cold cache files as needed.
+打开各个克隆的 rbd 映像时， ``librbd`` 会尝试通过它的 Unix 域套接字连接到\
+缓存守护进程。成功连接后， ``librbd`` 会和那个守护进程协调后续的读取操作。
+如果有没缓存的读取，缓存守护进程会把那个 RADOS 对象晋级到本地缓存目录，
+这样下次读取这个对象时就可以从缓存读取。缓存守护进程维护着简单的 LRU 统计信息，
+以便容量不足时可以按需逐出冷缓存文件。
 
-Here are some important cache configuration settings:
+这里是一些重要的缓存配置选项：
 
 ``immutable_object_cache_sock``
 
-:Description: The path to the domain socket used for communication between
-              librbd clients and the ceph-immutable-object-cache daemon.
-:Type: String
-:Required: No
-:Default: ``/var/run/ceph/immutable_object_cache_sock``
+:描述: 域套接字路径， librbd 客户端和
+       ceph-immutable-object-cache 守护进程之间通讯用的。
+:类型: String
+:是否必需: No
+:默认值: ``/var/run/ceph/immutable_object_cache_sock``
 
 
 ``immutable_object_cache_path``
 
-:Description: The immutable object cache data directory.
-:Type: String
-:Required: No
-:Default: ``/tmp/ceph_immutable_object_cache``
+:描述: 不可变对象缓存的数据目录。
+:类型: String
+:是否必需: No
+:默认值: ``/tmp/ceph_immutable_object_cache``
 
 
 ``immutable_object_cache_max_size``
 
-:Description: The max size for immutable cache.
-:Type: Size
-:Required: No
-:Default: ``1G``
+:描述: 不可变缓存的最大尺寸。
+:类型: Size
+:是否必需: No
+:默认值: ``1G``
 
 
 ``immutable_object_cache_watermark``
 
-:Description: The high-water mark for the cache. The value is between (0, 1).
-              If the cache size reaches this threshold the daemon will start
-              to delete cold cache based on LRU statistics.
-:Type: Float
-:Required: No
-:Default: ``0.9``
+:描述: 缓存的最大量（最高水位），数值在 (0, 1) 二者之间。如果缓存的尺寸\
+       达到了这个阈值，守护进程就根据 LRU 统计信息开始删除冷缓存。
+:类型: Float
+:是否必需: No
+:默认值: ``0.9``
 
-The ``ceph-immutable-object-cache`` daemon is available within the optional
-``ceph-immutable-object-cache`` distribution package.
+可选的 ``ceph-immutable-object-cache`` 软件包里包含这个守护进程。
 
-.. important:: ``ceph-immutable-object-cache`` daemon requires the ability to
-   connect RADOS clusters.
+.. important:: ``ceph-immutable-object-cache`` 守护进程要能连接 RADOS 集群。
 
-Running the Immutable Object Cache Daemon
------------------------------------------
 
-``ceph-immutable-object-cache`` daemon should use a unique Ceph user ID.
-To `create a Ceph user`_, with ``ceph`` specify the ``auth get-or-create``
-command, user name, monitor caps, and OSD caps::
+如何运行不可变对象缓存守护进程
+------------------------------
+.. Running the Immutable Object Cache Daemon
+
+``ceph-immutable-object-cache`` 守护进程应该用一个唯一的 Ceph 用户 ID 。
+要 `新建一个 Ceph 用户`_ ，用 ``ceph`` 命令加上 ``auth get-or-create`` 子命令、
+用户名、监视器能力、和 OSD 能力： ::
 
   ceph auth get-or-create client.ceph-immutable-object-cache.{unique id} mon 'allow r' osd 'profile rbd-read-only'
 
-The ``ceph-immutable-object-cache`` daemon can be managed by ``systemd`` by specifying the user
-ID as the daemon instance::
+``ceph-immutable-object-cache`` 守护进程可以用 ``systemd`` 管理，
+指定用户 ID 作为守护进程例程： ::
 
   systemctl enable ceph-immutable-object-cache@ceph-immutable-object-cache.{unique id}
 
-The ``ceph-immutable-object-cache`` can also be run in foreground by ``ceph-immutable-object-cache`` command::
+``ceph-immutable-object-cache`` 也能在前台运行，用 ``ceph-immutable-object-cache`` 命令::
 
   ceph-immutable-object-cache -f --log-file={log_path}
 
-QOS Settings
-------------
 
-The immutable object cache supports throttling, controlled by the following settings:
+QoS 选项
+--------
+.. QOS Settings
+
+不可变对象缓存支持节流，由下列选项控制：
 
 ``immutable_object_cache_qos_schedule_tick_min``
 
-:Description: Minimum schedule tick for immutable object cache.
-:Type: Milliseconds
-:Required: No
-:Default: ``50``
+:描述: 不可变对象缓存的最小时间片。
+:类型: Milliseconds
+:是否必需: No
+:默认值: ``50``
 
 
 ``immutable_object_cache_qos_iops_limit``
 
-:Description: The desired immutable object cache IO operations limit per second.
-:Type: Unsigned Integer
-:Required: No
-:Default: ``0``
+:描述: 不可变对象缓存 IO 操作期望的每秒限额。
+:类型: Unsigned Integer
+:是否必需: No
+:默认值: ``0``
 
 
 ``immutable_object_cache_qos_iops_burst``
 
-:Description: The desired burst limit of immutable object cache IO operations.
-:Type: Unsigned Integer
-:Required: No
-:Default: ``0``
+:描述: 不可变对象缓存 IO 操作允许的爆发量。
+:类型: Unsigned Integer
+:是否必需: No
+:默认值: ``0``
 
 
 ``immutable_object_cache_qos_iops_burst_seconds``
 
-:Description: The desired burst duration in seconds of immutable object cache IO operations.
-:Type: Seconds
-:Required: No
-:Default: ``1``
+:描述: 不可变对象缓存 IO 操作允许的爆发时长。
+:类型: Seconds
+:是否必需: No
+:默认值: ``1``
 
 
 ``immutable_object_cache_qos_bps_limit``
 
-:Description: The desired immutable object cache IO bytes limit per second.
-:Type: Unsigned Integer
-:Required: No
-:Default: ``0``
+:描述: 不可变对象缓存 IO 期望的每秒的字节数限额。
+:类型: Unsigned Integer
+:是否必需: No
+:默认值: ``0``
 
 
 ``immutable_object_cache_qos_bps_burst``
 
-:Description: The desired burst limit of immutable object cache IO bytes.
-:Type: Unsigned Integer
-:Required: No
-:Default: ``0``
+:描述: 不可变对象缓存 IO 允许的字节数爆发量限额。
+:类型: Unsigned Integer
+:是否必需: No
+:默认值: ``0``
 
 
 ``immutable_object_cache_qos_bps_burst_seconds``
 
-:Description: The desired burst duration in seconds of immutable object cache IO bytes.
-:Type: Seconds
-:Required: No
-:Default: ``1``
+:描述: 不可变对象缓存 IO 允许的爆发秒数。
+:类型: Seconds
+:是否必需: No
+:默认值: ``1``
 
-.. _Cloned RBD Images: ../rbd-snapshot/#layering
-.. _section: ../../rados/configuration/ceph-conf/#configuration-sections
-.. _create a Ceph user: ../../rados/operations/user-management#add-a-user
+.. _克隆的 RBD 映像: ../rbd-snapshot/#layering
+.. _段: ../../rados/configuration/ceph-conf/#configuration-sections
+.. _新建一个 Ceph 用户: ../../rados/operations/user-management#add-a-user
 
