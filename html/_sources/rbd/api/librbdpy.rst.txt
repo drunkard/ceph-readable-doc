@@ -30,9 +30,9 @@
     data = b'foo' * 200
     image.write(data, 0)
 
-上面的代码向映像前面写入了 600 字节的 foo 字符串。注意数据不能\
-是 :type:unicode ， librbd 不能如何处理大于 :c:type:char 的\
-字符串。
+上面的代码向映像前面写入了 600 字节的 foo 字符串。
+注意数据不能是 :type:unicode - `Librbd` 不能处理\
+大于 :c:type:char 的字符串。
 
 最后，关闭映像、 IO 上下文、和到 RADOS 的连接。 ::
 
@@ -40,7 +40,8 @@
     ioctx.close()
     cluster.shutdown()
 
-安全起见，每个调用都应该封装到单独的 :finally 块内。 ::
+安全起见，每个调用都应该封装到\
+单独的 :finally 块内。 ::
 
     cluster = rados.Rados(conffile='my_ceph_conf')
     try:
@@ -61,9 +62,10 @@
     finally:
         cluster.shutdown()
 
-这样做有些繁琐，所以 :class:`Rados` 、 :class:`Ioctx` 和 :class:`Image` 类可以当\
-上下文管理器来用，它能自动关闭（见 :pep:`343` ）。当上下文管理器用时，上面的实例可\
-以写成： ::
+这样做有些繁琐，所以 :class:`Rados` 、 :class:`Ioctx` 和
+:class:`Image` 类可以当上下文管理器来用，
+它能自动关闭（见 :pep:`343` ）。当上下文管理器用时，
+上面的实例可以写成： ::
 
     with rados.Rados(conffile='my_ceph.conf') as cluster:
         with cluster.open_ioctx('mypool') as ioctx:
@@ -74,8 +76,10 @@
                 data = b'foo' * 200
                 image.write(data, 0)
 
+
 API 参考
 ========
+.. API Reference
 
 .. automodule:: rbd
     :members: RBD, Image, SnapIterator

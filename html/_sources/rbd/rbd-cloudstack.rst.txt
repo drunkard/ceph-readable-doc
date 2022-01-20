@@ -64,8 +64,7 @@ NFS 主存储新建一存储池。确保 Ceph 集群在运行，再创建存储�
 参考\ `创建存储池`_\ 为存储池指定归置组数量，参考\ `归置组`_\
 确定应该为存储池分配多少归置组。
 
-新建的存储池在使用前必须先初始化，用 ``rbd`` 工具初始化此\
-存储池： ::
+新建的存储池在使用前必须先初始化，用 ``rbd`` 工具初始化此存储池： ::
 
         rbd pool init cloudstack
 
@@ -74,15 +73,13 @@ NFS 主存储新建一存储池。确保 Ceph 集群在运行，再创建存储�
 ==============
 .. Create a Ceph User
 
-To access the Ceph cluster we require a Ceph user which has the correct
-credentials to access the ``cloudstack`` pool we just created. Although we could
-use ``client.admin`` for this, it's recommended to create a user with only
-access to the ``cloudstack`` pool. ::
+要访问 Ceph 集群，我们需要一个有足够权限的 Ceph 用户，以便访问\
+我们刚刚创建的 ``cloudstack`` 存储池。虽说我们可以用 ``client.admin`` ，
+还是建议新建一个只能访问 ``cloudstack`` 存储池的用户。 ::
 
   ceph auth get-or-create client.cloudstack mon 'profile rbd' osd 'profile rbd pool=cloudstack'
 
-Use the information returned by the command in the next step when adding the
-Primary Storage.
+下一步，添加主存储（ Primary Storage ）时，我们需要用这个命令返回的信息。
 
 详情见 `用户管理`_ 。
 
@@ -99,7 +96,7 @@ Primary Storage.
 #. 点击右上角的 **Add Primary Storage** 按钮；
 #. 按照你的基础设施配置，填入下列信息：
 
-   - Scope (i.e. Cluster or Zone-Wide).
+   - Scope （就是说，集群或 zone 范围的）
 
    - Zone.
 
@@ -107,11 +104,12 @@ Primary Storage.
 
    - Cluster.
 
-   - Name of Primary Storage.
+   - 主存储的名字。
 
    - **Protocol** 那里选择 ``RBD`` ；
 
-   - For **Provider**, select the appropriate provider type (i.e. DefaultPrimary, SolidFire, SolidFireShared, or CloudByte).  Depending on the provider chosen, fill out the information pertinent to your setup.
+   - **Provider** ，这里选择适宜你的供应商类型（即 DefaultPrimary, SolidFire,
+     SolidFireShared, 或 CloudByte）。根据选定的供应商，填上对应的相关信息。
 
 #. 添加集群信息（支持 ``cephx`` ）。
 

@@ -440,6 +440,25 @@ OSDs can start.  You can safely set the flag with::
 
   ceph osd set sortbitwise
 
+OSD_FILESTORE
+__________________
+
+Filestore has been deprecated, considering that Bluestore has been the default
+objectstore for quite some time. Warn if OSDs are running Filestore.
+
+The 'mclock_scheduler' is not supported for filestore OSDs. Therefore, the
+default 'osd_op_queue' is set to 'wpq' for filestore OSDs and is enforced
+even if the user attempts to change it.
+
+Filestore OSDs can be listed with::
+
+  ceph report | jq -c '."osd_metadata" | .[] | select(.osd_objectstore | contains("filestore")) | {id, osd_objectstore}'
+
+If it is not feasible to migrate Filestore OSDs to Bluestore immediately, you can silence
+this warning temporarily with::
+
+  ceph health mute OSD_FILESTORE
+
 POOL_FULL
 _________
 
@@ -554,7 +573,7 @@ The old OSDs can be updated to use the new usage tracking scheme by stopping eac
   ceph-bluestore-tool repair --path /var/lib/ceph/osd/ceph-123
   systemctl start ceph-osd@123
 
-This warning can be disabled with::
+此警报可以这样禁用::
 
   ceph config set global bluestore_warn_on_legacy_statfs false
 
@@ -575,7 +594,7 @@ running a repair operation, and the restarting it.  For example, if
   ceph-bluestore-tool repair --path /var/lib/ceph/osd/ceph-123
   systemctl start ceph-osd@123
 
-This warning can be disabled with::
+此警报可以这样禁用::
 
   ceph config set global bluestore_warn_on_no_per_pool_omap false
 
@@ -594,7 +613,7 @@ running a repair operation, and the restarting it.  For example, if
   ceph-bluestore-tool repair --path /var/lib/ceph/osd/ceph-123
   systemctl start ceph-osd@123
 
-This warning can be disabled with::
+此警报可以这样禁用::
 
   ceph config set global bluestore_warn_on_no_per_pg_omap false
 
@@ -978,7 +997,7 @@ the pool is too large and should be reduced or set to zero with::
 
   ceph osd pool set <pool-name> target_size_bytes 0
 
-For more information, see :ref:`specifying_pool_target_size`.
+更详细的内容见  :ref:`specifying_pool_target_size`.
 
 POOL_HAS_TARGET_SIZE_BYTES_AND_RATIO
 ____________________________________
@@ -993,7 +1012,7 @@ To reset ``target_size_bytes`` to zero::
 
   ceph osd pool set <pool-name> target_size_bytes 0
 
-For more information, see :ref:`specifying_pool_target_size`.
+更详细的内容见  :ref:`specifying_pool_target_size`.
 
 TOO_FEW_OSDS
 ____________
@@ -1033,9 +1052,7 @@ not contain as much data have too many PGs.  See the discussion of
 在管理器上调高 ``mon_pg_warn_max_object_skew`` 配置选项的阈值\
 可以消除此健康告警。
 
-如果把 ``pg_autoscale_mode`` 设置为 ``on`` ，某个特定存储池\
-的健康告警就能消除。
-
+如果把 ``pg_autoscale_mode`` 设置为 ``on`` ，某个特定存储池的健康告警就能消除。
 
 POOL_APP_NOT_ENABLED
 ____________________
@@ -1053,7 +1070,7 @@ via the low-level command::
 
   ceph osd pool application enable foo
 
-For more information, see :ref:`associate-pool-to-application`.
+更详细的内容见  :ref:`associate-pool-to-application`.
 
 POOL_FULL
 _________
@@ -1290,14 +1307,14 @@ To review the contents of the telemetry report,::
   ceph telemetry show
 
 Note that the telemetry report consists of several optional channels
-that may be independently enabled or disabled.  For more information, see
+that may be independently enabled or disabled.  更详细的内容见 
 :ref:`telemetry`.
 
-To re-enable telemetry (and make this warning go away),::
+要重新启用 telemetry （并消除这条警报）::
 
   ceph telemetry on
 
-To disable telemetry (and make this warning go away),::
+要禁用 telemetry （并消除这条警报）::
 
   ceph telemetry off
 
@@ -1335,23 +1352,20 @@ operations after an OSD fails.  Instead, an administrator (or some
 other external entity) will need to manually mark down OSDs as 'out'
 (i.e., via ``ceph osd out <osd-id>``) in order to trigger recovery.
 
-This option is normally set to five or ten minutes--enough time for a
-host to power-cycle or reboot.
+这个选项通常设置成 5 或 10 分钟 - 足够一台主机更换电源或重启。
 
-This warning can silenced by setting the
-``mon_warn_on_osd_down_out_interval_zero`` to false::
+把 ``mon_warn_on_osd_down_out_interval_zero`` 设置成 false 可以消除这个警报::
 
   ceph config global mon mon_warn_on_osd_down_out_interval_zero false
 
 DASHBOARD_DEBUG
 _______________
 
-The Dashboard debug mode is enabled. This means, if there is an error
-while processing a REST API request, the HTTP error response contains
-a Python traceback. This behaviour should be disabled in production
-environments because such a traceback might contain and expose sensible
-information.
+打开了 Dashboard 调试模式。这意味着，如果在处理一个 REST API 请求时出错了，
+HTTP 错误响应会包含 Python 的追溯信息（ traceback ）。
+这个行为在生产环境下应该禁用，因为\
+这样的回溯信息可能包含并暴露敏感信息。
 
-The debug mode can be disabled with::
+调试模式可以这样关闭::
 
   ceph dashboard debug disable
