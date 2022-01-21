@@ -237,8 +237,8 @@ RHEL
    Ceph 。请参考 `Ceph 镜像`_\ 。
 
 
-openSUSE Leap 15.1
-^^^^^^^^^^^^^^^^^^
+openSUSE Leap 15.1 版
+^^^^^^^^^^^^^^^^^^^^^
 
 你得把 Ceph 软件包库加进你的 zypper 源列表里，可以用下面的命令：
 
@@ -247,8 +247,8 @@ openSUSE Leap 15.1
     zypper ar https://download.opensuse.org/repositories/filesystems:/ceph/openSUSE_Leap_15.1/filesystems:ceph.repo
 
 
-openSUSE Tumbleweed
-^^^^^^^^^^^^^^^^^^^
+openSUSE Tumbleweed 版
+^^^^^^^^^^^^^^^^^^^^^^
 
 Ceph 的最新主版本在普通 Tumbleweed 软件库里已经能用了。没必要手动另外加软件库。
 

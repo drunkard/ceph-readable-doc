@@ -3,9 +3,9 @@
 ceph-volume
 ===========
 
-通过不同的设备技术（如 lvm 或物理硬盘）部署 OSD ，用可替换的\
-工具（ :doc:`lvm/index` 它自己就被当成一个插件了），并按照可\
-预见、健壮的方法来准备、激活、并启动 OSD 。
+通过不同的设备技术（如 lvm 或物理硬盘）部署 OSD ，用可替换的工具
+（ :doc:`lvm/index` 它自己就被当成一个插件了），并按照可预见、
+健壮的方法来准备、激活、并启动 OSD 。
 
 :ref:`概览 <ceph-volume-overview>` |
 :ref:`插件手册 <ceph-volume-plugins>` |
@@ -13,10 +13,10 @@ ceph-volume
 
 **命令行子命令**
 
-当前已经支持 ``lvm`` ，和普通硬盘（分区格式为 GPT ），它可能是用
-``ceph-disk`` 部署的。
+当前已经支持 ``lvm`` ，和普通硬盘（分区格式为 GPT ），
+它可能是用 ``ceph-disk`` 部署的。
 
-``zfs`` support is available for running a FreeBSD cluster.
+``zfs`` 在 FreeBSD 集群上可用。
 
 * :ref:`ceph-volume-lvm`
 * :ref:`ceph-volume-simple`
@@ -24,8 +24,7 @@ ceph-volume
 
 **节点清单**
 
-:ref:`ceph-volume-inventory` 子命令可查看一个节点上物理磁盘库\
-的信息和元数据。
+:ref:`ceph-volume-inventory` 子命令可查看一个节点上物理磁盘库的信息和元数据。
 
 
 迁移
@@ -43,7 +42,6 @@ Ceph 从 13.0.0 版起， ``ceph-disk`` 已弃用，弃用警告消息将链接\
 ``ceph-disk`` 被去除的原因请看
 :ref:`ceph-disk 为何被取代了？ <ceph-disk-replaced>` 一节。
 
-
 全新部署
 ^^^^^^^^
 .. New deployments
@@ -51,16 +49,13 @@ Ceph 从 13.0.0 版起， ``ceph-disk`` 已弃用，弃用警告消息将链接\
 对于全新部署，我们推荐用 :ref:`ceph-volume-lvm` ，它可以用逻辑\
 卷作数据 OSD 、或者把设备配置成一个最小化/全新的逻辑卷。
 
-
 已有 OSD 怎么办
 ^^^^^^^^^^^^^^^
 .. Existing OSDs
 
-如果集群内已经有了用 ``ceph-disk`` 开通的 OSD ，
-``ceph-volume`` 可以用 :ref:`ceph-volume-simple` 接管它们。扫\
-描完数据设备或 OSD 目录后，就会完全禁用 ``ceph-disk`` 。加密已\
-完全支持。
-
+如果集群内已经有了用 ``ceph-disk`` 开通的 OSD ， ``ceph-volume`` 可以用
+:ref:`ceph-volume-simple` 接管它们。扫描完数据设备或 OSD 目录后，
+就会完全禁用 ``ceph-disk`` 。加密已完全支持。
 
 .. toctree::
    :hidden:

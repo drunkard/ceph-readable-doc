@@ -12,7 +12,7 @@ Ceph 容器映像
 
    请使用显式的标签或映像 ID ，而非 ``:latest`` 标签。例如：
 
-   ``podman pull ceph/ceph:v15.2.0``
+   ``podman pull ceph/ceph:v15.2.0`` 。
 
 
 官方发布

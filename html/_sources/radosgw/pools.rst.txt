@@ -35,17 +35,17 @@ Ceph 对象网关要用多个存储池来满足多种存储需求，它们罗列
 一个域的存储池名字应该遵循命名惯例 ``{zone-name}.pool-name`` ，\
 例如，名为 ``us-east`` 的域需要创建如下存储池：
 
--  ``.rgw.root``
+ - ``.rgw.root``
 
--  ``us-east.rgw.control``
+ - ``us-east.rgw.control``
 
--  ``us-east.rgw.meta``
+ - ``us-east.rgw.meta``
 
--  ``us-east.rgw.log``
+ - ``us-east.rgw.log``
 
--  ``us-east.rgw.buckets.index``
+ - ``us-east.rgw.buckets.index``
 
--  ``us-east.rgw.buckets.data``
+ - ``us-east.rgw.buckets.data``
 
 域定义还多罗列了几个存储池，但是其中很多通过 rados 命名空间功\
 能合并了。例如，下面所有的存储池条目共用了 ``us-east.rgw.meta``

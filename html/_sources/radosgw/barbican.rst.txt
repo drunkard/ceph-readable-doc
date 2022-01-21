@@ -1,11 +1,8 @@
-.. OpenStack Barbican Integration
-
 ============================
  与 OpenStack Barbican 对接
 ============================
 
-在\ `服务器端加密`_\ 中，可以用 OpenStack `Barbican`_ 作密钥管\
-理服务。
+在\ `服务器端加密`_\ 中，可以用 OpenStack `Barbican`_ 作密钥管理服务。
 
 .. image:: ../images/rgw-encryption-barbican.png
 
@@ -14,9 +11,6 @@
 #. `配置 Ceph 对象网关`_
 #. `在 Barbican 里创建密钥`_
 
-
-.. Configure Keystone
-
 配置 Keystone
 =============
 
@@ -24,11 +18,9 @@ Barbican 靠 Keystone 实现密钥的授权和访问控制。
 
 参考 `与 OpenStack Keystone 对接`_\ 。
 
-
-.. Create a Keystone user
-
 创建 Keystone 用户
 ==================
+.. Create a Keystone user
 
 创建个新用户， Ceph 对象网关索取密钥时要用到。
 
@@ -40,16 +32,14 @@ Barbican 靠 Keystone 实现密钥的授权和访问控制。
 
 关于\ `管理项目、用户和角色`_\ 请参考 OpenStack 文档。
 
-
-.. Create a key in Barbican
-
 在 Barbican 里创建密钥
 ======================
+.. Create a key in Barbican
 
-想知道\ `如何创建密钥`_\ 请参考 Barbican 文档。向 Barbican 发\
-起请求时， ``X-Auth-Token`` 头必须携带合法的 Keystone 令牌。
+想知道\ `如何创建密钥`_\ 请参考 Barbican 文档。向 Barbican 发起请求时，
+``X-Auth-Token`` 头必须携带合法的 Keystone 令牌。
 
-.. note:: Server-side encryption keys must be 256-bit long and base64 encoded.
+.. note:: 服务器端的加密密钥必须是 256 位长、且用 base64 编码的。
 
 请求实例： ::
 
@@ -75,11 +65,11 @@ Barbican 靠 Keystone 实现密钥的授权和访问控制。
 
    {"secret_ref": "http://barbican.example.com:9311/v1/secrets/d1e7ef3b-f841-4b7c-90b2-b7d90ca2d723"}
 
-响应中的 ``d1e7ef3b-f841-4b7c-90b2-b7d90ca2d723`` 是密钥 id ，\
+响应中的 ``d1e7ef3b-f841-4b7c-90b2-b7d90ca2d723`` 是密钥 id ，
 可以用于任何 `SSE-KMS`_ 请求。
 
-``rgwcrypt-user`` 不能访问新创建的密钥，必须用 ACL 加上这个权\
-限，请参考\ `如何设置、替换 ACL`_ 。
+``rgwcrypt-user`` 不能访问新创建的密钥，必须用 ACL 加上这个权限，
+请参考\ `如何设置、替换 ACL`_ 。
 
 请求实例（假设 ``rgwcrypt-user`` 的 Keystone ID 是
 ``906aa90bd8a946c89cdff80d0869460f`` ）： ::
@@ -102,11 +92,9 @@ Barbican 靠 Keystone 实现密钥的授权和访问控制。
 
    {"acl_ref": "http://barbican.example.com:9311/v1/secrets/d1e7ef3b-f841-4b7c-90b2-b7d90ca2d723/acl"}
 
-
-.. Configure the Ceph Object Gateway
-
 配置 Ceph 对象网关
 ==================
+.. Configure the Ceph Object Gateway
 
 编辑 Ceph 配置文件，让 Barbican 作为 KMS 、并且加上
 Barbican 服务器和 Keystone 用户的信息： ::

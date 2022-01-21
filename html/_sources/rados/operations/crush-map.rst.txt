@@ -2,8 +2,8 @@
  CRUSH 图
 ==========
 
-:abbr:`CRUSH (Controlled Replication Under Scalable Hashing)`
-算法通过计算数据存储位置来确定如何存储和检索。
+:abbr:`CRUSH (Controlled Replication Under Scalable Hashing)` 算法\
+通过计算数据存储位置来确定如何存储和检索。
 CRUSH 授权 Ceph 客户端直接连接 OSD ，
 而非通过一个中央服务器或经纪人。
 数据存储、检索算法的使用，使 Ceph 避免了\

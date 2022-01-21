@@ -1,13 +1,13 @@
-Service Operations
-==================
+服务支持的操作
+==============
 
-List Buckets
-------------
-``GET /`` returns a list of buckets created by the user making the request. ``GET /`` only
-returns buckets created by an authenticated user. You cannot make an anonymous request.
+罗列桶
+------
+``GET /`` 会返回请求发起者创建的所有桶。
+``GET /`` 只会返回已认证用户创建的桶，不支持匿名请求。
 
-Syntax
-~~~~~~
+语法
+~~~~
 ::
 
 	GET / HTTP/1.1
@@ -15,37 +15,37 @@ Syntax
 
 	Authorization: AWS {access-key}:{hash-of-header-and-secret}
 
-Response Entities
-~~~~~~~~~~~~~~~~~
+响应内容解析
+~~~~~~~~~~~~
 
 +----------------------------+-------------+-----------------------------------------------------------------+
-| Name                       | Type        | Description                                                     |
+| 名字                       | 类型        | 描述                                                            |
 +============================+=============+=================================================================+
-| ``Buckets``                | Container   | Container for list of buckets.                                  |
+| ``Buckets``                | Container   | 桶列表的容器。                                                  |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``Bucket``                 | Container   | Container for bucket information.                               |
+| ``Bucket``                 | Container   | 桶信息的容器。                                                  |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``Name``                   | String      | Bucket name.                                                    |
+| ``Name``                   | String      | 桶的名字。                                                      |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``CreationDate``           | Date        | UTC time when the bucket was created.                           |
+| ``CreationDate``           | Date        | 桶创建时的 UTC 时间。                                           |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``ListAllMyBucketsResult`` | Container   | A container for the result.                                     |
+| ``ListAllMyBucketsResult`` | Container   | 请求结果的容器。                                                |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``Owner``                  | Container   | A container for the bucket owner's ``ID`` and ``DisplayName``.  |
+| ``Owner``                  | Container   | 桶所有者 ``ID`` 和 ``DisplayName`` 的容器。                     |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``ID``                     | String      | The bucket owner's ID.                                          |
+| ``ID``                     | String      | 桶所有者的 ID 。                                                |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``DisplayName``            | String      | The bucket owner's display name.                                |
+| ``DisplayName``            | String      | 桶所有者的显示名字。                                            |
 +----------------------------+-------------+-----------------------------------------------------------------+
 
 
-Get Usage Stats
----------------
+查看利用率统计信息
+------------------
 
-Gets usage stats per user, similar to the admin command :ref:`rgw_user_usage_stats`.
+查看各个用户的利用率统计信息，类似于管理命令的 :ref:`rgw_user_usage_stats` 。
 
-Syntax
-~~~~~~
+语法
+~~~~
 ::
 
 	GET /?usage HTTP/1.1
@@ -53,17 +53,17 @@ Syntax
 
 	Authorization: AWS {access-key}:{hash-of-header-and-secret}
 
-Response Entities
-~~~~~~~~~~~~~~~~~
+响应内容解析
+~~~~~~~~~~~~
 
 +----------------------------+-------------+-----------------------------------------------------------------+
-| Name                       | Type        | Description                                                     |
+| 名字                       | 类型        | 描述                                                            |
 +============================+=============+=================================================================+
-| ``Summary``                | Container   | Summary of total stats by user.                                 |
+| ``Summary``                | Container   | 按用户汇总的统计信息。                                          |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``TotalBytes``             | Integer     | Bytes used by user                                              |
+| ``TotalBytes``             | Integer     | 用户已用字节数。                                                |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``TotalBytesRounded``      | Integer     | Bytes rounded to the nearest 4k boundary                        |
+| ``TotalBytesRounded``      | Integer     | 四舍五入到最近 4k 边界的字节数。                                |
 +----------------------------+-------------+-----------------------------------------------------------------+
-| ``TotalEntries``           | Integer     | Total object entries                                            |
+| ``TotalEntries``           | Integer     | 对象总数。                                                      |
 +----------------------------+-------------+-----------------------------------------------------------------+
