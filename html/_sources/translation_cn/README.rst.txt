@@ -76,7 +76,7 @@ fmt_desc > long_desc > desc ，见 _ext/ceph_confval.py 里：
 
 .. code:: python
 
-	desc = opt.get('fmt_desc') or opt.get('long_desc') or opt.get('desc')
+    desc = opt.get('fmt_desc') or opt.get('long_desc') or opt.get('desc')
 
 字段名
 ``````
@@ -94,7 +94,8 @@ TODO: 翻译字段名，位于 _ext/ceph_confval.py -> TEMPLATE
     mkdir /git && cd /git
     git clone https://github.com/ceph/ceph.git
     git clone https://github.com/{你的github用户名}/ceph-Chinese-doc.git
-    cd /git/ceph-Chinese-doc/translation_cn/ && ./update-doc.sh
+
+    cd /git/ceph-Chinese-doc/ && ./translation_cn/update-doc.sh
     # update-doc.sh 脚本用了 git 和 tig 命令，最好先检查下安装了没。
     # 对照着 tig 里的 commit 历史开始更新中文文档！
     # 从第一个 commit 开始更新、翻译。
@@ -110,6 +111,36 @@ TODO: 翻译字段名，位于 _ext/ceph_confval.py -> TEMPLATE
     git push origin
 
 然后可以在 github 上向我反馈您的更新 :-)
+
+
+翻译步骤
+========
+
+用于辅助翻译质量的工具 ``qa`` 是用 Python 写的，主要用了 ``pandas`` ，
+我这里配置了 venv 环境配置::
+
+    python3.9 -m venv /cc
+    . /cc/bin/activate
+    pip install pandas
+
+代码库克隆步骤见上一节。 ::
+
+    cd /git/ceph-Chinese-doc/
+
+    # 看整个项目的翻译情况
+    ./qa
+
+    # 看单个子系统的翻译情况（不含 ``dev/`` ，开发文档）
+    ./qa rbd
+
+    # 看单个文档的翻译情况
+    ./qa rbd/rbd-mirroring.rst
+
+``qa`` 工具的输出仅作参考，应该能够涵盖大部分应该翻译的内容。
+翻译完、核对完之后，用脚本提交（如果你用 ``zh_build-doc`` 编译了中文文档，
+这个脚本也会自动同步，如果没有就只是提交）::
+
+    ./translation_cn/commit-updated.sh
 
 
 文档编译
@@ -161,4 +192,4 @@ TODO: 翻译字段名，位于 _ext/ceph_confval.py -> TEMPLATE
 如果编译失败，请参考\ `此文档 </translation_cn/build-errors>`_\
 （即 build-errors.rst ）解决。
 
-.. vim: set colorcolumn=80 noexpandtab smarttab:
+.. vim: set colorcolumn=80 smarttab:

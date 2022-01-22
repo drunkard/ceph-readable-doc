@@ -1,29 +1,26 @@
 ======
  加密
 ======
-.. Encryption
 
 .. versionadded:: Luminous
 
-配置好 3 个加密密钥管理选项， Ceph 对象网关可支持在服务器端\
-加密上传的对象。服务器端加密的含义是，通过 HTTP 发出的数据是\
-未加密的，但是 Ceph 对象网关在 Ceph 存储集群中存储的却是\
-加密数据。
+配置好 3 个加密密钥管理选项， Ceph 对象网关可支持在服务器端加密上传的对象。
+服务器端加密的含义是，通过 HTTP 发出的数据是未加密的，
+但是 Ceph 对象网关在 Ceph 存储集群中存储的却是加密数据。
 
-.. note:: Requests for server-side encryption must be sent over a secure HTTPS
-          connection to avoid sending secrets in plaintext. If a proxy is used
-          for SSL termination, ``rgw trust forwarded https`` must be enabled
-          before forwarded requests will be trusted as secure.
+.. note:: 服务器端加密的请求必须通过\
+   安全的 HTTPS 连接发送，以免用明文发送密钥信息。
+   如果用代理作为 SSL 终结，要让转发的请求被认为是可信的，
+   必须先启用 ``rgw trust forwarded https`` 。
 
-.. note:: Server-side encryption keys must be 256-bit long and base64 encoded.
+.. note:: 服务器端加密密钥必须是 256 位长、且用 base64 编码过。
 
 客户提供的密钥
 ==============
 .. Customer-Provided Keys
 
-在此模式下，客户端的每个请求都需要传递加密密钥，用以读取或写入\
-已加密数据。管理那些加密密钥是客户端的责任，而且得记住加密各对\
-象时分别用了哪个密钥。
+在此模式下，客户端的每个请求都需要传递加密密钥，用以读取或写入已加密数据。
+管理那些加密密钥是客户端的责任，而且得记住加密各对象时分别用了哪个密钥。
 
 这是根据 `Amazon SSE-C`_ 标准在 S3 里实现的。
 
@@ -45,14 +42,15 @@
 参见\ `与 OpenStack Barbican 对接`_ 、 `与 HashiCorp Vault 对接`_\
 和\ `与 KMIP 对接`_\ 。
 
-Bucket Encryption APIs
-======================
+桶加密 API
+==========
+.. Bucket Encryption APIs
 
-Bucket Encryption APIs to support server-side encryption with Amazon
-S3-managed keys (SSE-S3) or AWS KMS customer master keys (SSE-KMS). 
-SSE-KMS implementation via BucketEncryption APIs is not supported yet.
+桶加密 API （Bucket Encryption API ）是为了支持用基于 Amazon S3 管理的密钥
+（SSE-S3）或者 AWS KMS 客户主密钥（SSE-KMS）的服务器端加密。
+通过 BucketEncryption API 的 SSE-KMS 实现还不支持。
 
-See `PutBucketEncryption`_, `GetBucketEncryption`_, `DeleteBucketEncryption`_
+见 `PutBucketEncryption`_, `GetBucketEncryption`_, `DeleteBucketEncryption`_ 。
 
 自动化加密（仅用于测试）
 ========================
