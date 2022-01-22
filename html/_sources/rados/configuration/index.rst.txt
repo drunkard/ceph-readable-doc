@@ -8,6 +8,7 @@
 某种类型的所有守护进程或服务、\
 或仅适用于某个守护进程、进程或客户端。
 
+
 .. raw:: html
 
 	<table cellpadding="10"><colgroup><col width="50%"><col width="50%"></colgroup><tbody valign="top"><tr><td><h3>配置对象存储</h3>
@@ -38,7 +39,7 @@
    mon-lookup-dns
    心跳选项（监视器与 OSD 的的交互） <mon-osd-interaction>
    OSD 选项 <osd-config-ref>
-   DmClock Settings <mclock-config-ref>
+   DmClock 配置 <mclock-config-ref>
    BlueStore 配置 <bluestore-config-ref>
    FileStore 配置 <filestore-config-ref>
    日志选项 <journal-ref>

@@ -18,32 +18,29 @@
 ========
 .. Deployment Scenarios
 
-There are two main scenarios for deploying a Ceph cluster, which impact
-how you initially configure Cephx. Most first time Ceph users use
-``cephadm`` to create a cluster (easiest). For clusters using
-other deployment tools (e.g., Chef, Juju, Puppet, etc.), you will need
-to use the manual procedures or configure your deployment tool to
-bootstrap your monitor(s).
+部署一套 Ceph 集群主要有两种情形，影响你首次配置 Cephx 的方式。
+大多数 Ceph 新手都用 ``cephadm`` 创建集群（最简单）。
+对于用其它部署工具（比如 Chef 、 Juju 、 Puppet 等等）的集群，
+你就得执行手工步骤、或者配置部署工具，
+让它们来自举引导你的监视器。
 
 
 手动部署
 --------
 .. Manual Deployment
 
-When you deploy a cluster manually, you have to bootstrap the monitor manually
-and create the ``client.admin`` user and keyring. To bootstrap monitors, follow
-the steps in `监视器的自举引导`_. The steps for monitor bootstrapping are
-the logical steps you must perform when using third party deployment tools like
-Chef, Puppet,  Juju, etc.
+如果你手动部署集群，你就得手动自举引导监视器、并创建 ``client.admin`` 用户\
+及其密钥环。要想自举引导监视器，按照 `监视器的自举引导`_ 里的步骤。
+那些自举引导监视器的步骤是你必须执行的逻辑步骤，使用第三方部署工具
+（如 Chef 、 Puppet 、 Juju 等等）时也是这些步骤。
 
 
 启用和禁用 Cephx
 ================
 .. Enabling/Disabling Cephx
 
-Enabling Cephx requires that you have deployed keys for your monitors,
-OSDs and metadata servers. If you are simply toggling Cephx on / off, 
-you do not have to repeat the bootstrapping procedures.
+启用 Cephx 需要你为监视器、 OSD 和元数据服务器部署密钥。
+如果你只是简单地打开、关闭 Cephx ，那就没必要重复那些自举引导步骤。
 
 
 启用 Cephx
@@ -62,7 +59,7 @@ you do not have to repeat the bootstrapping procedures.
 
    .. prompt:: bash $
 
-     ceph auth get-or-create client.admin mon 'allow *' mds 'allow *' mgr 'allow *' osd 'allow *' -o /etc/ceph/ceph.client.admin.keyring
+      ceph auth get-or-create client.admin mon 'allow *' mds 'allow *' mgr 'allow *' osd 'allow *' -o /etc/ceph/ceph.client.admin.keyring
 
    **警告：** 此命令会覆盖任何存在的
    ``/etc/ceph/client.admin.keyring`` 文件，如果部署工具已经\
@@ -72,7 +69,7 @@ you do not have to repeat the bootstrapping procedures.
 
    .. prompt:: bash $
 
-     ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
+      ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
 
 #. 把监视器密钥环复制到 ``ceph.mon.keyring`` 文件，再把此文件\
    复制到各监视器的 ``mon data`` 目录下。比如要把它复制给名为
@@ -114,15 +111,16 @@ you do not have to repeat the bootstrapping procedures.
 要手动自启监视器，请参考\ `手动部署`_\ 。
 
 
-.. Disabling Cephx
-
 禁用 Cephx
 ----------
+.. Disabling Cephx
 
-下述步骤描述了如何禁用 Cephx 。如果你的集群环境相对安全，你可以减免认证耗费的计算资\
-源，然而\ **我们不推荐**\ 。但是临时禁用认证会使安装、和/或排障更简单。
+下述步骤描述了如何禁用 Cephx 。如果你的集群环境相对安全，
+你可以减免认证耗费的计算资源，然而\ **我们不推荐**\ 。
+但是临时禁用认证会使安装、和/或排障更简单。
 
-#. 把下列配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下即可禁用 ``cephx`` 认证：
+#. 把下列配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下\
+   即可禁用 ``cephx`` 认证：
 
    .. code-block:: ini
 
@@ -187,11 +185,12 @@ you do not have to repeat the bootstrapping procedures.
 ----
 .. Signatures
 
-Ceph 施行的签名检查可以为消息提供一些有限的保护，以防消息被\
-在线篡改（比如被“中间人”攻击篡改）。
+Ceph 施行的签名检查可以为消息提供一些有限的保护，
+以防消息被在线篡改（比如被“中间人”攻击篡改）。
 
-像 Ceph 认证的其他部分一样，客户端和集群间的消息签名也能做到\
-细粒度控制；而且能启用或禁用 Ceph 守护进程间的签名。
+像 Ceph 认证的其他部分一样，客户端和集群间的\
+消息签名也能做到细粒度控制；而且\
+能启用或禁用 Ceph 守护进程间的签名。
 
 注意，即便启用了签名，数据也没在线加密。
 

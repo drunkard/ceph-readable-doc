@@ -18,13 +18,14 @@
 Ceph 文件系统、 Ceph 对象存储、和 Ceph 块设备从 Ceph 存储集群\
 读出和写入数据。
 
+
 .. container:: columns-3
 
    .. container:: column
 
       .. raw:: html
 
-          <h3>Config and Deploy</h3>
+          <h3>配置和部署</h3>
 
       Ceph 存储集群有少量配置选项是必要的，但大多数都有默认值。
       典型部署是通过部署工具定义集群、并启动监视器的。
@@ -72,6 +73,7 @@ Ceph 文件系统、 Ceph 对象存储、和 Ceph 块设备从 Ceph 存储集群
          :maxdepth: 2
 
          APIs <api/index>
+
 
 .. _Ceph 块设备: ../rbd/
 .. _Ceph 文件系统: ../cephfs/

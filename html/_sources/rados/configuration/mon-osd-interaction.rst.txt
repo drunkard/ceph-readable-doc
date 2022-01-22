@@ -202,7 +202,6 @@ OSD 报告自己的状态
 
 
 
-
 配置选项
 ========
 .. Configuration Settings
