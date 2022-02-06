@@ -44,6 +44,8 @@ mgr 启动。
     Insights 模块 <insights>
     Orchestrator 模块 <orchestrator>
     Rook 模块 <rook>
+    RGW 模块 <rgw>
     MDS Autoscaler 模块 <mds_autoscaler>
     NFS 模块 <nfs>
     Progress 模块 <progress>
+    CLI API 命令模块 <cli_api>

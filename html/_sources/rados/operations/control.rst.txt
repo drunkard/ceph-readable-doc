@@ -42,7 +42,7 @@
 
 	ceph tell mon.[id] mon_status
 
-where the value of ``[id]`` can be determined, e.g., from ``ceph -s``.
+其中， ``[id]`` 的值可以从 ``ceph -s`` 的输出里获取。
 
 
 认证子系统
@@ -66,8 +66,11 @@ where the value of ``[id]`` can be determined, e.g., from ``ceph -s``.
 
 	ceph pg dump [--format {format}]
 
-可用输出格式有 ``plain`` （默认）、 ``json`` 、
-``json-pretty`` 、 ``xml`` 和 ``xml-pretty`` 。
+可用输出格式有 ``plain`` （默认）、 ``json`` 、 ``json-pretty`` 、 ``xml`` 和
+``xml-pretty`` 。实现监视器和其它工具时，最好用 ``json`` 格式。
+JSON 格式分析起来比给人看的文本 ``plain`` 格式更具确定性，
+Ceph 版本更迭时它的布局变化少得多。
+``jq`` 工具很适合从 JSON 输出中提取数据。
 
 要显示卡在某状态的所有归置组，执行下列命令： ::
 
@@ -82,13 +85,14 @@ where the value of ``[id]`` can be determined, e.g., from ``ceph -s``.
 **Inactive** 归置组不能处理读或写，因为它们在等待数据及时更新的
 OSD 回来。
 
-**Unclean** 归置组包含副本数未达期望值的对象，它们应该在恢复中。
+**Unclean** 归置组包含副本数未达期望值的对象，
+它们应该在恢复中。
 
-**Stale** 归置组处于未知状态——归置组所托付的 OSD 有一阵没向监\
-视器报告了（由 ``mon osd report timeout`` 配置）。
+**Stale** 归置组处于未知状态——归置组所托付的 OSD 有一阵\
+没向监视器报告了（由 ``mon osd report timeout`` 配置）。
 
-删除“丢失”对象，或者恢复到其先前状态，可以是前一版本、或如果刚\
-创建就干脆删除。 ::
+删除“丢失”对象，或者恢复到其先前状态，可以是前一版本、
+或如果刚创建就干脆删除。 ::
 
 	ceph pg {pgid} mark_unfound_lost revert|delete
 
@@ -117,13 +121,14 @@ OSD 子系统
 	ceph osd getmap -o /tmp/osdmap
 	osdmaptool /tmp/osdmap --export-crush file
 
-转储 OSD 运行图， ``-f`` 的可用格式有 ``plain`` 、 ``json`` 、
-``json-pretty`` 、 ``xml`` 和 ``xml-pretty`` ，如未指定
-``--format`` 则转储为纯文本。 ::
+转储 OSD 运行图， ``-f`` 的可用格式有 ``plain`` 、 ``json`` 、 ``json-pretty`` 、
+``xml`` 和 ``xml-pretty`` ，如未指定 ``--format`` 则转储为纯文本。
+上文已经说过， JSON 格式适合各种工具、脚本以及其它自动化工具。 ::
 
 	ceph osd dump [--format {format}]
 
-把 OSD 运行图转储为树，每个 OSD 一行、包含权重和状态。 ::
+把 OSD 运行图转储为树，每个 OSD 一行、
+包含权重和状态。 ::
 
 	ceph osd tree [--format {format}]
 
@@ -155,7 +160,8 @@ OSD 子系统
 
 	ceph osd lost {id} [--yes-i-really-mean-it]
 
-创建新 OSD 。如果未指定 ID ，有可能的话将自动分配个新 ID 。 ::
+创建新 OSD 。如果未指定 ID ，有可能的话将自动分配个\
+新 ID 。 ::
 
 	ceph osd create [{uuid}]
 
@@ -171,7 +177,8 @@ OSD 子系统
 
 	ceph osd setcrushmap -i file
 
-设置 OSD 运行图的 ``max_osd`` 参数，扩展存储集群时有必要。 ::
+设置 OSD 运行图的 ``max_osd`` 参数，
+扩展存储集群时有必要。 ::
 
 	ceph osd setmaxosd
 
@@ -187,60 +194,63 @@ OSD 子系统
 
 	ceph osd in {osd-num}
 
-设置或清空 OSD 运行图里的暂停标记。若设置了，不会有 IO 请求发\
-送到任何 OSD ；用 ``unpause`` 清空此标记会导致重发未决的请求。 ::
+设置或清空 OSD 运行图里的暂停标记。若设置了，
+不会有 IO 请求发送到任何 OSD ；
+用 ``unpause`` 清空此标记会导致重发未决的请求。 ::
 
 	ceph osd pause
 	ceph osd unpause
 
 把 ``{osd-num}`` 的覆盖权重（重设权重）设置为 ``{weight}`` ，\
-权重相同的两个 OSD 大致会收到相同的 I/O 请求、并存储相同数量\
-的数据。 ``ceph osd reweight`` 命令可给 OSD 设置一个增益权重，\
-有效值在 0 和 1 之间，它使得 CRUSH 重新归置一定数量的、本应该\
-放到此处的数据。它不会影响 crush 图里所分配的权重，在
-CRUSH 分布算法没能理想地执行时，它可作为一种纠正手段。比如，\
-假设你的某个 OSD 使用率达到了 90% ，但其它的大致都在 50% ，\
-这时你就可以下调此权重来补偿它。 ::
+权重相同的两个 OSD 大致会收到相同的 I/O 请求、
+并存储相同数量的数据。 ``ceph osd reweight`` 命令\
+可给 OSD 设置一个增益权重，有效值在 0 和 1 之间，
+它使得 CRUSH 重新归置一定数量的、本应该放到此处的数据。
+它不会影响 crush 图里所分配的权重，
+在 CRUSH 分布算法没能理想地执行时，
+它可作为一种纠正手段。比如，\
+假设你的某个 OSD 使用率达到了 90% ，
+但其它的大致都在 50% ，这时你就可以下调此权重来补偿它。 ::
 
 	ceph osd reweight {osd-num} {weight}
 
-Balance OSD fullness by reducing the override weight of OSDs which are
-overly utilized.  Note that these override aka ``reweight`` values
-default to 1.00000 and are relative only to each other; they not absolute.
-It is crucial to distinguish them from CRUSH weights, which reflect the
-absolute capacity of a bucket in TiB.  By default this command adjusts
-override weight on OSDs which have + or - 20% of the average utilization,
-but if you include a ``threshold`` that percentage will be used instead. ::
+通过减少利用率过高的 OSD 的覆盖权重可以均衡 OSD 饱足感。
+需要注意的是，这些覆盖也叫 ``reweight`` ，
+默认是 1.00000 ，仅仅是相互之间的相对值，不是绝对值。
+一定要把它们与 CRUSH 权重区别开来，
+后者反映的是一个桶以 TiB 计算的绝对容量。
+默认情况下，这个命令调整覆盖权重时会选择比平均利用率大或小 20% 的 OSD 们，
+但是，如果你加上了 ``threshold`` ，就会采用这个百分比。 ::
 
 	ceph osd reweight-by-utilization [threshold [max_change [max_osds]]] [--no-increasing]
 
-To limit the step by which any OSD's reweight will be changed, specify
-``max_change`` which defaults to 0.05.  To limit the number of OSDs that will
-be adjusted, specify ``max_osds`` as well; the default is 4.  Increasing these
-parameters can speed leveling of OSD utilization, at the potential cost of
-greater impact on client operations due to more data moving at once.
+要限制 OSD 权重调整的幅度，可以指定 ``max_change`` ，
+默认为 0.05 。要限制调整的 OSD 数量，
+再指定 ``max_osds`` ，默认是 4 。
+增大这些参数可以加速 OSD 利用率的均衡，
+也会潜在地增加对客户端操作的影响，因为一次挪动的数据更多。
 
-To determine which and how many PGs and OSDs will be affected by a given invocation
-you can test before executing. ::
+要想确定调用时哪个还有哪些 PG 和 OSD 会受影响，
+可以在执行前先测试。 ::
 
 	ceph osd test-reweight-by-utilization [threshold [max_change max_osds]] [--no-increasing]
 
-Adding ``--no-increasing`` to either command prevents increasing any
-override weights that are currently < 1.00000.  This can be useful when
-you are balancing in a hurry to remedy ``full`` or ``nearful`` OSDs or
-when some OSDs are being evacuated or slowly brought into service.
+给这些命令加上 ``--no-increasing`` 可以防止\
+当前 < 1.00000 的覆盖权重被增加。
+在均衡一个需要急于补救的 ``full`` 或 ``nearful`` 的 OSD 时、
+或者一些 OSD 正在维修、或者正在慢慢进入工作状态时，这个选项很有用。
 
-Deployments utilizing Nautilus (or later revisions of Luminous and Mimic)
-that have no pre-Luminous cients may instead wish to instead enable the
-`balancer`` module for ``ceph-mgr``.
+用 Nautilus 部署的（或者 Luminous 和 Mimic 的后期修订版）
+它们没有 Luminous 之前的辅佐，可以转而启用
+``ceph-mgr`` 的 `balancer` 模块。
 
-增加、删除黑名单里的一个 IP 地址。增加地址的时候可以指定\
-屏蔽时长（单位为秒），否则默认为 1 小时。黑名单里的地址不允许\
-连接任何 OSD 。黑名单机制最常用于防止滞后的元数据服务器改错
-OSD 上的数据。
+增加、删除黑名单里的一个 IP 地址。增加地址的时候\
+可以指定屏蔽时长（单位为秒），否则默认为 1 小时。
+黑名单里的地址不允许连接任何 OSD 。黑名单机制最常用于\
+防止滞后的元数据服务器改错 OSD 上的数据。
 
-这些命令大多只在故障测试时有用，因为黑名单是自动维护的，无需\
-手动干涉。 ::
+这些命令大多只在故障测试时有用，因为黑名单是自动维护的，
+无需手动干涉。 ::
 
 	ceph osd blocklist add ADDRESS[:source_port] [TIME]
 	ceph osd blocklist rm ADDRESS[:source_port]
@@ -287,9 +297,9 @@ OSD 上的数据。
 	ceph osd repair N
 
 在 osdN 上做个简单的吞吐量测试，每次写入 ``BYTES_PER_WRITE`` 、\
-一共写入 ``TOTAL_DATA_BYTES`` 。默认以 4MB 增量写入 1GB 。此压\
-力测试是非破坏性的，不会覆盖已有 OSD 数据，但可能会暂时影响同\
-时访问此 OSD 的客户端性能。 ::
+一共写入 ``TOTAL_DATA_BYTES`` 。默认以 4MB 增量写入 1GB 。
+此压力测试是非破坏性的，不会覆盖已有 OSD 数据，
+但可能会暂时影响同时访问此 OSD 的客户端性能。 ::
 
 	ceph tell osd.N bench [TOTAL_DATA_BYTES] [BYTES_PER_WRITE]
 
@@ -399,7 +409,8 @@ MDS 子系统
 
 	ceph tell mon.[name] mon_status
 
-其中， ``[name]`` 的值取自 ``ceph quorum_status`` ，其输出样本： ::
+其中， ``[name]`` 的值取自 ``ceph quorum_status`` ，
+其输出样本： ::
 
 	{
 	    "name": "b",

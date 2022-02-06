@@ -15,7 +15,8 @@
 --------
 .. Interactive mode
 
-要在交互模式下运行 ``ceph`` ，不要带参数运行 ``ceph`` ，例如： ::
+要在交互模式下运行 ``ceph`` ，不要带参数运行 ``ceph`` ，
+例如： ::
 
 	ceph
 	ceph> health
@@ -86,8 +87,8 @@ Ceph 就会打印出集群状态。例如，一个小型的演示集群，各种
 ========
 .. Watching a Cluster
 
-除了各守护进程的本地日志， Ceph 集群还维护着一个\
-*集群日志*\ ，它记录着事关整个系统的高级事件。此类日志记录在\
+除了各守护进程的本地日志， Ceph 集群还维护着一个 *集群日志*\ ，
+它记录着事关整个系统的高级事件。此类日志记录在\
 监视器服务器的磁盘上（默认为 ``/var/log/ceph/ceph.log`` ），\
 也可以通过命令行监控。
 
@@ -331,22 +332,24 @@ error.
 ============
 .. Detecting configuration issues
 
-除了 Ceph 持续运行时进行的自我健康检查，还有一些配置问题只能用\
-外部工具探测。
+除了 Ceph 持续运行时进行的自我健康检查，
+还有一些配置问题只能用外部工具探测。
 
-可以用 `ceph-medic`_ 工具另行检查你的 Ceph 集群配置。
+可以用 `ceph-medic`_ 工具另行检查你的
+Ceph 集群配置。
 
 
 检查集群的使用情况
 ==================
 .. Checking a Cluster's Usage Stats
 
-要检查集群的数据用量及其在存储池内的分布情况，可以用 ``df``
-选项，它和 Linux 上的 ``df`` 相似。如下： ::
+要检查集群的数据用量及其在存储池内的分布情况，
+可以用 ``df`` 选项，它和 Linux 上的 ``df`` 相似。
+如下： ::
 
 	ceph df
 
-The output of ``ceph df`` looks like this::
+``ceph df`` 的输出像这样： ::
 
    CLASS     SIZE    AVAIL     USED  RAW USED  %RAW USED
    ssd    202 GiB  200 GiB  2.0 GiB   2.0 GiB       1.00
@@ -367,9 +370,10 @@ The output of ``ceph df`` looks like this::
 - **USED:** 用户数据消耗的原始存储空间；
 - **RAW USED:** 已使用的原始存储空间总量，包括用户数据、内部开销、\
   或保留容量；
-- **% RAW USED:** 已用原始存储空间比率。用此值参照 ``full ratio``
-  和 ``near full ratio`` 来确保不会用尽集群空间。详情见\
-  `存储容量`_\ 。
+- **% RAW USED:** 已用原始存储空间比率。
+  用此值参照 ``full ratio`` 和 ``near full ratio``
+  来确保不会用尽集群空间。
+  详情见\ `存储容量`_\ 。
 
 
 **POOLS:**  
