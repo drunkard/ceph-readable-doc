@@ -6,11 +6,9 @@
 
 .. versionadded:: Luminous
 
-A large bucket index can lead to performance problems. In order
-to address this problem we introduced bucket index sharding.
-Until Luminous, changing the number of bucket shards (resharding)
-needed to be done offline. Starting with Luminous we support
-online bucket resharding.
+巨大的桶索引会导致性能问题，为了解决此问题，我们引进了桶索引分片（机制）。
+到 Luminous 版为止，更改桶的分片数量（重分片， resharding ）需要离线操作。
+从 Luminous 起才支持桶的在线重分片。
 
 Each bucket index shard can handle its entries efficiently up until
 reaching a certain threshold number of entries. If this threshold is
@@ -48,19 +46,19 @@ resharding tasks, one at a time.
 
 启用、禁用动态的桶索引重分片功能：
 
-- ``rgw_dynamic_resharding``:  true/false, default: true.
+- ``rgw_dynamic_resharding``:  true/false, 默认： true.
 
-Configuration options that control the resharding process:
+用于控制重分片进程的配置选项：
 
-- ``rgw_max_objs_per_shard``: maximum number of objects per bucket index shard before resharding is triggered, default: 100000 objects
+- ``rgw_max_objs_per_shard``: 每个桶索引分片内的对象数最大多少时就触发重分片，默认： 100000 对象。
 
-- ``rgw_max_dynamic_shards``: maximum number of shards that dynamic bucket index resharding can increase to, default: 1999
+- ``rgw_max_dynamic_shards``: 动态桶索引重分片可以达到的最大分片数，默认： 1999
 
-- ``rgw_reshard_bucket_lock_duration``: duration, in seconds, of lock on bucket obj during resharding, default: 360 seconds (i.e., 6 minutes)
+- ``rgw_reshard_bucket_lock_duration``: 重分片时锁住桶对象的时长，按秒算，默认： 360 秒（即6分钟）
 
-- ``rgw_reshard_thread_interval``: maximum time, in seconds, between rounds of resharding queue processing, default: 600 seconds (i.e., 10 minutes)
+- ``rgw_reshard_thread_interval``: 两轮重分片队列处理的最大间隔时间，按秒算，默认： 600 秒（即10分钟）
 
-- ``rgw_reshard_num_logs``: number of shards for the resharding queue, default: 16
+- ``rgw_reshard_num_logs``: 重分片队列的分片数量，默认： 16
 
 
 管理命令
@@ -102,11 +100,11 @@ Configuration options that control the resharding process:
 
    # radosgw-admin reshard status --bucket <bucket_name>
 
-The output is a json array of 3 objects (reshard_status, new_bucket_instance_id, num_shards) per shard.
+以下输出是每个分片里有 3 个对象的 json 数组（reshard_status, new_bucket_instance_id, num_shards）。
 
-For example, the output at different Dynamic Resharding stages is shown below:
+例如，在动态重分片的不同阶段，输出分别如下：
 
-``1. Before resharding occurred:``
+``1. 重分片之前：``
 ::
 
   [
@@ -117,7 +115,7 @@ For example, the output at different Dynamic Resharding stages is shown below:
     }
   ]
 
-``2. During resharding:``
+``2. 重分片期间：``
 ::
 
   [
@@ -133,7 +131,7 @@ For example, the output at different Dynamic Resharding stages is shown below:
     }
   ]
 
-``3, After resharding completed:``
+``3, 重分片完成之后：``
 ::
 
   [
@@ -194,16 +192,12 @@ these issues can be worked around using a couple of radosgw-admin commands.
 ------------
 .. Stale instance management
 
-List the stale instances in a cluster that are ready to be cleaned up.
-
-::
+罗列出集群里已经准备好、可以被清理掉的过时例程。 ::
 
    # radosgw-admin reshard stale-instances list
 
-Clean up the stale instances in a cluster. Note: cleanup of these
-instances should only be done on a single site cluster.
-
-::
+清理掉集群里的过时例程。注意：
+只能在单站点集群上进行这种例程清理。 ::
 
    # radosgw-admin reshard stale-instances rm
 
@@ -218,12 +212,9 @@ bucket instance changed during a reshard. While this is fixed for newer clusters
 (from Mimic 13.2.6 and Luminous 12.2.12), older buckets that had lifecycle policies and
 that have undergone resharding will have to be manually fixed.
 
-The command to do so is:
+完成修复的命令是： ::
 
-::
-
-   # radosgw-admin lc reshard fix --bucket {bucketname}
-
+    # radosgw-admin lc reshard fix --bucket {bucketname}
 
 As a convenience wrapper, if the ``--bucket`` argument is dropped then this
 command will try and fix lifecycle policies for all the buckets in the cluster.
@@ -240,9 +231,7 @@ cluster was upgraded, but if their expiration was after the upgrade
 the objects would be correctly handled. To manage these expire-stale
 objects, radosgw-admin provides two subcommands.
 
-罗列：
-
-::
+罗列： ::
 
    # radosgw-admin objects expire-stale list --bucket {bucketname}
 
@@ -254,5 +243,4 @@ Displays a list of object names and expiration times in JSON format.
 
    # radosgw-admin objects expire-stale rm --bucket {bucketname}
 
-
-Initiates deletion of such objects, displaying a list of object names, expiration times, and deletion status in JSON format.
+它会初始化这些对象的删除、以 JSON 格式显示对象名列表、过期时间、和删除状态。

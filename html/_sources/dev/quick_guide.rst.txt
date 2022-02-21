@@ -14,30 +14,29 @@
 
    ./run-make-check.sh
 
-Optionally if you want to work on a specific component of Ceph,
-install the dependencies and build Ceph in debug mode with required cmake flags.
+如果你只想选择性地开发某个 Ceph 组件，
+安装好依赖关系并用必需的 cmake 标识构建调试模式的 Ceph 。
 
-Example:
+实例：
 
 .. prompt:: bash $
 
    ./install-deps.sh
    ./do_cmake.sh -DWITH_MANPAGE=OFF -DWITH_BABELTRACE=OFF -DWITH_MGR_DASHBOARD_FRONTEND=OFF
 
-You can also turn off building of some core components that are not relevant to
-your development:
+你也可以取消构建那些与开发无关的核心组件：
 
 .. prompt:: bash $
 
    ./do_cmake.sh ... -DWITH_RBD=OFF -DWITH_KRBD=OFF -DWITH_RADOSGW=OFF
 
-Finally, build ceph:
+最后，构建 ceph ：
 
 .. prompt:: bash $
 
    cmake --build build [--target <target>...]
 
-Omit ``--target...`` if you want to do a full build.
+如果你想完整地构建，忽略 ``--target...`` 即可。
 
 
 开发集群的部署
@@ -53,41 +52,41 @@ Ceph 包含一个名为 ``vstart.sh`` 的脚本（还有\ \
    cd build
    ../src/vstart.sh -d -n
 
-你也可以让 ``vstart.sh`` 只用一个监视器和一个元数据服务器，用\
-下列命令：
+你也可以让 ``vstart.sh`` 只用一个监视器和一个元数据服务器，
+用下列命令：
 
 .. prompt:: bash $
 
    env MON=1 MDS=1 ../src/vstart.sh -d -n -x
 
-Most logs from the cluster can be found in ``build/out``.
+集群的大多数日志都位于 ``build/out`` 。
 
 这个系统启动时创建了两个存储池： `cephfs_data_a` 和
 `cephfs_metadata_a` ，我们看看当前存储池的统计信息：
 
 .. code-block:: console
 
-  $ bin/ceph osd pool stats
-  *** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
-  pool cephfs_data_a id 1
-    nothing is going on
-	
-  pool cephfs_metadata_a id 2
-    nothing is going on
-	
-  $ bin/ceph osd pool stats cephfs_data_a
-  *** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
-  pool cephfs_data_a id 1
-    nothing is going on
+   $ bin/ceph osd pool stats
+   *** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
+   pool cephfs_data_a id 1
+     nothing is going on
 
-  $ bin/rados df
-  POOL_NAME         USED OBJECTS CLONES COPIES MISSING_ON_PRIMARY UNFOUND DEGRADED RD_OPS RD WR_OPS WR
-  cephfs_data_a        0       0      0      0                  0       0        0      0  0      0    0
-  cephfs_metadata_a 2246      21      0     63                  0       0        0      0  0     42 8192
+   pool cephfs_metadata_a id 2
+     nothing is going on
 
-  total_objects    21
-  total_used       244G
-  total_space      1180G
+   $ bin/ceph osd pool stats cephfs_data_a
+   *** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
+   pool cephfs_data_a id 1
+     nothing is going on
+
+   $ bin/rados df
+   POOL_NAME         USED OBJECTS CLONES COPIES MISSING_ON_PRIMARY UNFOUND DEGRADED RD_OPS RD WR_OPS WR
+   cephfs_data_a        0       0      0      0                  0       0        0      0  0      0    0
+   cephfs_metadata_a 2246      21      0     63                  0       0        0      0  0     42 8192
+
+   total_objects    21
+   total_used       244G
+   total_space      1180G
 
 
 创建个存储池，并给它做个压力测试：
@@ -152,7 +151,7 @@ vstart 脚本会创建 out/ 和 dev/ 目录，集群的状态就保存在里面�
 运行单元测试
 ------------
 
-The tests are located in `src/tests`.  To run them type:
+测试代码位于 `src/tests` ，可以这样运行：
 
 .. prompt:: bash $
 

@@ -142,7 +142,9 @@ manually, this can be done with this command:
 .. Debugging
 
 你要是想调试 Zabbix 模块，增大 ceph-mgr 的日志记录级别、并检查\
-日志即可。 ::
+日志即可。
+
+::
 
     [mgr]
         debug mgr = 20
