@@ -956,6 +956,8 @@ Ceph 就会发出健康警告，有两种方法可消除这些警告：
 .. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf
 
 
+.. _rados_ops_primary_affinity:
+
 主亲和性
 ========
 .. Primary Affinity

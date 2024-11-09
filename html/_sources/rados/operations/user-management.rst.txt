@@ -25,19 +25,25 @@
              actor
 
 
-When Ceph runs with authentication and authorization enabled (enabled by
-default), you must specify a user name and a keyring containing the secret key
-of the specified user (usually via the command line). If you do not specify a
-user name, Ceph will use ``client.admin`` as the default user name. If you do
-not specify a keyring, Ceph will look for a keyring via the ``keyring`` setting
-in the Ceph configuration. 例如, if you execute the ``ceph health``
-command without specifying a user or keyring::
+When Ceph runs with authentication and authorization enabled (both are enabled
+by default), you must specify a user name and a keyring that contains the
+secret key of the specified user (usually these are specified via the command
+line). If you do not specify a user name, Ceph will use ``client.admin`` as the
+default user name. If you do not specify a keyring, Ceph will look for a
+keyring via the ``keyring`` setting in the Ceph configuration. For example, if
+you execute the ``ceph health`` command without specifying a user or a keyring,
+Ceph will assume that the keyring is in ``/etc/ceph/ceph.client.admin.keyring``
+and will attempt to use that keyring. The following illustrates this behavior:
 
-	ceph health
+.. prompt:: bash $
 
-Ceph interprets the command like this::
+   ceph health
 
-	ceph -n client.admin --keyring=/etc/ceph/ceph.client.admin.keyring health
+Ceph will interpret the command like this:
+
+.. prompt:: bash $
+
+   ceph -n client.admin --keyring=/etc/ceph/ceph.client.admin.keyring health
 
 另外，你也可以用 ``CEPH_ARGS`` 环境变量来避免\
 多次输入用户名和密钥。

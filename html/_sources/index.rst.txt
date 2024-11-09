@@ -2,8 +2,20 @@
  欢迎来到 Ceph 世界
 ====================
 
-Ceph 独一无二地在一个统一的系统中同时提供了\
-**对象、块、和文件存储功能**\ 。
+Ceph 在一个统一的系统中同时提供了\ **对象、块、和文件存储功能**\ 。
+
+.. warning::
+
+   :ref:`If this is your first time using Ceph, read the "Basic Workflow"
+   page in the Ceph Developer Guide to learn how to contribute to the
+   Ceph project. (Click anywhere in this paragraph to read the "Basic
+   Workflow" page of the Ceph Developer Guide.) <basic workflow dev guide>`.
+
+.. note::
+
+   :ref:`If you want to make a commit to the documentation but you don't
+   know how to get started, read the "Documenting Ceph" page. (Click anywhere
+   in this paragraph to read the "Documenting Ceph" page.) <documenting_ceph>`.
 
 .. container:: columns-3
 
@@ -98,6 +110,7 @@ Ceph 的强大可以改变您公司的 IT 基础架构和海量数据管理能�
    radosgw/index
    mgr/index
    mgr/dashboard
+   monitoring/index
    api/index
    architecture
    开发者指南 <dev/developer_guide/index>
@@ -108,6 +121,7 @@ Ceph 的强大可以改变您公司的 IT 基础架构和海量数据管理能�
    releases/general
    releases/index
    security/index
+   hardware-monitoring/index
    Ceph 术语 <glossary>
    Tracing <jaegertracing/index>
    中文版翻译资源 <translation_cn/index>

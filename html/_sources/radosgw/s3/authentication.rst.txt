@@ -28,17 +28,17 @@ In the foregoing example, replace ``{access-key}`` with the value for your acces
 key ID followed by a colon (``:``). Replace ``{hash-of-header-and-secret}`` with
 a hash of the header string and the secret corresponding to the access key ID.
 
-To generate the hash of the header string and secret, you must:
+要生成头部字符串和密钥的哈希值，必须：
 
-#. Get the value of the header string.
+#. 获取头部字符串的值。
 #. Normalize the request header string into canonical form.
-#. Generate an HMAC using a SHA-1 hashing algorithm.
-   See `RFC 2104`_ and `HMAC`_ for details.
-#. Encode the ``hmac`` result as base-64.
+#. 用 SHA-1 哈希算法生成一个 HMAC 。
+   详情见 `RFC 2104`_ 和 `HMAC`_ 。
+#. 把 ``hmac`` 结果用 base-64 编码。
 
 To normalize the header into canonical form:
 
-#. Get all fields beginning with ``x-amz-``.
+#. 提取所有以 ``x-amz-`` 打头的字段。
 #. Ensure that the fields are all lowercase.
 #. Sort the fields lexicographically.
 #. Combine multiple instances of the same field name into a
@@ -48,7 +48,7 @@ To normalize the header into canonical form:
 #. Append a new line after each field.
 #. Merge the fields back into the header.
 
-Replace the ``{hash-of-header-and-secret}`` with the base-64 encoded HMAC string.
+把 ``{hash-of-header-and-secret}`` 替换成 base-64 编码的 HMAC 字符串。
 
 
 向 OpenStack Keystone 发起认证
@@ -59,12 +59,11 @@ In a radosgw instance that is configured with authentication against
 OpenStack Keystone, it is possible to use Keystone as an authoritative
 source for S3 API authentication. To do so, you must set:
 
-* the ``rgw keystone`` configuration options explained in :doc:`../keystone`,
-* ``rgw s3 auth use keystone = true``.
+* ``rgw keystone`` 配置选项在 :doc:`../keystone` 里解释了，
+* ``rgw s3 auth use keystone = true`` 。
 
-In addition, a user wishing to use the S3 API must obtain an AWS-style
-access key and secret key. They can do so with the ``openstack ec2
-credentials create`` command::
+另外，想要使用 S3 API 的用户必须取得 AWS 风格的访问密钥和私钥。
+可以用 ``openstack ec2 credentials create`` 命令获取::
 
   $ openstack --os-interface public ec2 credentials create
   +------------+---------------------------------------------------------------------------------------------------------------------------------------------+
@@ -110,10 +109,10 @@ an object:
 | ``FULL_CONTROL`` | Grantee has full permissions for object in the bucket. | Grantee can read or write to the object ACL. |
 +------------------+--------------------------------------------------------+----------------------------------------------+
 
-Internally, S3 operations are mapped to ACL permissions thus:
+在内部， S3 操作是这样映射到 ACL 权限的：
 
 +---------------------------------------+---------------+
-| Operation                             | Permission    |
+| 操作                                  | 权限          |
 +=======================================+===============+
 | ``s3:GetObject``                      | ``READ``      |
 +---------------------------------------+---------------+

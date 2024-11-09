@@ -12,17 +12,22 @@
 要克隆整个 git 源码库，你得先安装、配置 ``git`` 。
 
 
+.. _install-git:
 
 安装 Git
 ========
 
-在 Debian/Ubuntu 上执行下列命令安装 ``git`` ： ::
+在 Debian/Ubuntu 上执行下列命令安装 ``git`` ：
 
-	sudo apt-get install git
+.. prompt:: bash $
 
-在 CentOS/RHEL 上执行下列命令安装 ``git`` ： ::
+   sudo apt-get install git
 
-	sudo yum install git
+在 CentOS/RHEL 上执行下列命令安装 ``git`` ：
+
+.. prompt:: bash $
+
+   sudo yum install git
 
 相应地，你必须有 ``github`` 帐户。
 如果你还没有，去 `github.com`_ 注册一个，
@@ -43,11 +48,15 @@
    用 ``git clone --recursive https://github.com/ceph/ceph.git``
    克隆。
 
-执行如下命令生成 SSH 密钥对用于 ``github`` ： ::
+执行如下命令生成 SSH 密钥对用于 ``github`` ：
 
-	ssh-keygen
+.. prompt:: bash $
 
-把此密钥对的公钥加入 ``github`` 帐户（本例假设用了默认路径）： ::
+   ssh-keygen
+
+把此密钥对的公钥加入 ``github`` 帐户（本例假设用了默认路径）：
+
+.. prompt:: bash $
 
 	cat .ssh/id_rsa.pub
 
@@ -64,7 +73,9 @@
 ========
 .. Clone the Source
 
-执行下列命令克隆源码库： ::
+执行下列命令克隆源码库：
+
+.. prompt:: bash $
 
 	git clone --recursive https://github.com/ceph/ceph.git
 
@@ -73,29 +84,47 @@ Ceph 源码库。
 
 .. tip:: 确保你获取到的源码库之内的各子模块都是最新的，
    运行 ``git status`` ，它会告诉你子模块是否过时了。
+   详情见 :ref:`update-submodules` 。
 
-::
+
+.. prompt:: bash $
 
     cd ceph
     git status
 
-如果你的子模块过时了，运行： ::
 
-    git submodule update --force --init --recursive
+.. _update-submodules:
+
+更新子模块
+----------
+.. Updating Submodules
+
+如果你的子模块过时了，运行：
+
+   .. prompt:: bash $
+
+      git submodule update --force --init --recursive --progress
+      git clean -fdx
+      git submodule foreach git clean -fdx
+
+If you still have problems with a submodule directory, use ``rm -rf [directory
+name]`` to remove the directory. Then run ``git submodule update --init
+--recursive --progress`` again.
 
 
 选择分支
 ========
 .. Choose a Branch
 
-克隆完源码和子模块后，
-你的源码库将默认位于 ``master`` 分支上，
+克隆完源码和子模块后，你的源码库将默认位于 ``main`` 分支上，
 这是个不稳定开发分支，你也可以切换到其他分支上。
 
-- ``master``: 不稳定开发分支；
-- ``stable``: 缺陷修正分支；
+- ``main``: 不稳定开发分支；
+- ``stable-release-name``: 稳定的、 `活跃版本`_ 的名字，比如 ``Pacific`` ；
 - ``next``: 发布候选分支。
 
 ::
 
-	git checkout master
+	git checkout main
+
+.. _活跃版本: https://docs.ceph.com/en/latest/releases/#active-releases

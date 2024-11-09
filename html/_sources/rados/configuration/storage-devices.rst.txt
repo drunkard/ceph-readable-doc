@@ -4,6 +4,8 @@
 
 在一套存储集群中有几种 Ceph 守护进程：
 
+.. _rados_configuration_storage-devices_ceph_osd:
+
 * **Ceph OSDs** （对象存储守护进程）存储着 Ceph 里的大多数数据。
   通常，每个 OSD 后面都有一个独立的存储设备，
   可以是传统硬盘（ HDD ）或者是固态硬盘（ SSD ）。
@@ -22,6 +24,7 @@
   向外部监控和管理系统们\
   提供了另外一套监控手段及其接口。
 
+.. _rados_config_storage_devices_osd_backends:
 
 OSD 后端
 ========
@@ -30,6 +33,8 @@ OSD 后端
 OSD 有两种管理它们存储着的数据的方法。
 从 Luminous 12.2.z 版起，新的默认（也是推荐的）后端是 *BlueStore* ；
 在 Luminous 之前，默认的（且是唯一选项）是 *FileStore* 。
+
+.. _rados_config_storage_devices_bluestore:
 
 BlueStore
 ---------
@@ -68,6 +73,7 @@ BlueStore 的关键功能包括：
 
 FileStore
 ---------
+.. warning:: Filestore has been deprecated in the Reef release and is no longer supported.
 
 FileStore 是 Ceph 存储对象的老方法。
 它依赖于标准文件系统（通常是 XFS ）和\

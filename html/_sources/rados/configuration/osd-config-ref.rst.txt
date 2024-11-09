@@ -143,6 +143,8 @@ OSD 周期性地相互检查心跳并报告给监视器。 Ceph 默认配置可�
 
 .. index:: OSD; scrubbing
 
+.. _rados_config_scrubbing:
+
 洗刷
 ====
 .. Scrubbing

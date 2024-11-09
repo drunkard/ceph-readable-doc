@@ -44,7 +44,7 @@
 .. Running a development deployment
 
 Ceph 包含一个名为 ``vstart.sh`` 的脚本（还有\ \
-:doc:`/dev/dev_cluster_deployement`\ ），可以让开发者们在开发\
+:doc:`/dev/dev_cluster_deployment`\ ），可以让开发者们在开发\
 系统上用最简部署快速地测试代码。编译成功后，用下列命令开始部署：
 
 .. prompt:: bash $

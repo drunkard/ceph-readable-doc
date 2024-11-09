@@ -29,16 +29,14 @@ for configuring any sync plugin
 
    ElasticSearch 同步模块 <elastic-sync-module>
    Cloud 同步模块 <cloud-sync-module>
-   PubSub 模块 <pubsub-module>
    Archive 同步模块 <archive-sync-module>
 
 .. note ``rgw`` 是默认同步插件，无需多加配置。
 
 
-.. Requirements and Assumptions
-
 需求和假设
 ----------
+.. Requirements and Assumptions
 
 Let us assume a simple multisite configuration as described in the :ref:`multisite`
 docs, of 2 zones ``us-east`` and ``us-west``, let's add a third zone
@@ -99,5 +97,4 @@ Now start the radosgw in the zone
 .. _`elasticsearch sync module`: ../elastic-sync-module
 .. _`elasticsearch`: ../elastic-sync-module
 .. _`cloud sync module`: ../cloud-sync-module
-.. _`pubsub module`: ../pubsub-module
 .. _`archive sync module`: ../archive-sync-module

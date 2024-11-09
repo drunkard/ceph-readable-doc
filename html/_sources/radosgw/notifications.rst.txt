@@ -95,17 +95,26 @@ Topics
 
 .. note::
 
-    In all topic actions, the parameters are URL encoded, and sent in the message body using ``application/x-www-form-urlencoded`` content type
+    In all topic actions, the parameters are URL-encoded and sent in the
+    message body using this content type:
+    ``application/x-www-form-urlencoded``.
+   
+
+.. _Create a Topic:
 
 Create a Topic
 ``````````````
 
-This will create a new topic. The topic should be provided with push endpoint parameters that would be used later
-when a notification is created.
-Upon a successful request, the response will include the topic ARN that could be later used to reference this topic in the notification request.
-To update a topic, use the same command used for topic creation, with the topic name of an existing topic and different endpoint values.
+This creates a new topic. Provide the topic with push endpoint parameters,
+which will be used later when a notification is created. A response is
+generated. A successful response includes the topic's `ARN
+<https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html>`_
+(the "Amazon Resource Name", a unique identifier used to reference the topic).
+To update a topic, use the same command that you used to create it (but when
+updating, use the name of an existing topic and different endpoint values).
 
-.. tip:: Any notification already associated with the topic needs to be re-created for the topic update to take effect
+.. tip:: Any notification already associated with the topic must be re-created
+   in order for the topic to update.
 
 ::
 
@@ -123,56 +132,125 @@ To update a topic, use the same command used for topic creation, with the topic 
    [&Attributes.entry.8.key=push-endpoint&Attributes.entry.8.value=<endpoint>]
    [&Attributes.entry.9.key=persistent&Attributes.entry.9.value=true|false]
    [&Attributes.entry.10.key=cloudevents&Attributes.entry.10.value=true|false]
+   [&Attributes.entry.11.key=mechanism&Attributes.entry.11.value=<mechanism>]
+   [&Attributes.entry.12.key=time_to_live&Attributes.entry.12.value=<seconds to live>]
+   [&Attributes.entry.13.key=max_retries&Attributes.entry.13.value=<retries number>]
+   [&Attributes.entry.14.key=retry_sleep_duration&Attributes.entry.14.value=<sleep seconds>]
+   [&Attributes.entry.15.key=Policy&Attributes.entry.15.value=<policy-JSON-string>]
 
 Request parameters:
 
-- push-endpoint: URI of an endpoint to send push notification to
-- OpaqueData: opaque data is set in the topic configuration and added to all notifications triggered by the topic
-- persistent: indication whether notifications to this endpoint are persistent (=asynchronous) or not ("false" by default)
+- push-endpoint: This is the URI of an endpoint to send push notifications to.
+- OpaqueData: Opaque data is set in the topic configuration and added to all
+  notifications that are triggered by the topic.
+- persistent: This indicates whether notifications to this endpoint are
+  persistent (=asynchronous) or not persistent. (This is "false" by default.)
+- time_to_live: This will limit the time (in seconds) to retain the notifications.
+  default value is taken from `rgw_topic_persistency_time_to_live`.
+  providing a value overrides the global value.
+  zero value means infinite time to live.
+- max_retries: This will limit the max retries before expiring notifications.
+  default value is taken from `rgw_topic_persistency_max_retries`.
+  providing a value overrides the global value.
+  zero value means infinite retries.
+- retry_sleep_duration: This will control the frequency of retrying the notifications.
+  default value is taken from `rgw_topic_persistency_sleep_duration`.
+  providing a value overrides the global value.
+  zero value mean there is no delay between retries.
+- Policy: This will control who can access the topic in addition to the owner of the topic.
+  The policy passed needs to be a JSON string similar to bucket policy.
+  For example, one can send a policy string as follows::
+
+    {
+      "Version": "2012-10-17",
+      "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": ["arn:aws:iam::usfolks:user/fred:subuser"]},
+        "Action": ["sns:GetTopicAttributes","sns:Publish"],
+        "Resource": ["arn:aws:sns:default::mytopic"],
+      }]
+    }
+
+  Currently, we support only the following actions:
+  - sns:GetTopicAttributes  To list or get existing topics
+  - sns:SetTopicAttributes  To set attributes for the existing topic
+  - sns:DeleteTopic         To delete the existing topic
+  - sns:Publish             To be able to create/subscribe notification on existing topic
 
 - HTTP endpoint
 
  - URI: ``http[s]://<fqdn>[:<port]``
- - port defaults to: 80/443 for HTTP/S accordingly
- - verify-ssl: indicate whether the server certificate is validated by the client or not ("true" by default)
- - cloudevents: indicate whether the HTTP header should contain attributes according to the `S3 CloudEvents Spec`_ ("false" by default)
+ - port: This defaults to 80 for HTTP and 443 for HTTPS.
+ - verify-ssl: This indicates whether the server certificate is validated by
+   the client. (This is "true" by default.)
+ - cloudevents: This indicates whether the HTTP header should contain
+   attributes according to the `S3 CloudEvents Spec`_. (This is "false" by
+   default.)
 
 - AMQP0.9.1 endpoint
 
  - URI: ``amqp[s]://[<user>:<password>@]<fqdn>[:<port>][/<vhost>]``
- - user/password defaults to: guest/guest
- - user/password may only be provided over HTTPS. If not, topic creation request will be rejected.
- - port defaults to: 5672/5671 for unencrypted/SSL-encrypted connections
- - vhost defaults to: "/"
- - verify-ssl: indicate whether the server certificate is validated by the client or not ("true" by default)
- - if ``ca-location`` is provided, and secure connection is used, the specified CA will be used, instead of the default one, to authenticate the broker
- - amqp-exchange: the exchanges must exist and be able to route messages based on topics (mandatory parameter for AMQP0.9.1). Different topics pointing to the same endpoint must use the same exchange
- - amqp-ack-level: no end2end acking is required, as messages may persist in the broker before delivered into their final destination. Three ack methods exist:
+ - user/password: This defaults to "guest/guest".
+ - user/password: This must be provided only over HTTPS. Topic creation
+   requests will otherwise be rejected.
+ - port: This defaults to 5672 for unencrypted connections and 5671 for
+   SSL-encrypted connections.
+ - vhost: This defaults to "/".
+ - verify-ssl: This indicates whether the server certificate is validated by
+   the client. (This is "true" by default.)
+ - If ``ca-location`` is provided and a secure connection is used, the
+   specified CA will be used to authenticate the broker. The default CA will
+   not be used.  
+ - amqp-exchange: The exchanges must exist and must be able to route messages
+   based on topics. This parameter is mandatory.
+ - amqp-ack-level: No end2end acking is required. Messages may persist in the
+   broker before being delivered to their final destinations. Three ack methods
+   exist:
 
   - "none": message is considered "delivered" if sent to broker
   - "broker": message is considered "delivered" if acked by broker (default)
   - "routable": message is considered "delivered" if broker can route to a consumer
 
-.. tip:: The topic-name (see :ref:`radosgw-create-a-topic`) is used for the AMQP topic ("routing key" for a topic exchange)
+.. tip:: The topic-name (see :ref:`Create a Topic`) is used for the
+   AMQP topic ("routing key" for a topic exchange).
 
 - Kafka endpoint
 
  - URI: ``kafka://[<user>:<password>@]<fqdn>[:<port]``
- - if ``use-ssl`` is set to "true", secure connection will be used for connecting with the broker ("false" by default)
- - if ``ca-location`` is provided, and secure connection is used, the specified CA will be used, instead of the default one, to authenticate the broker
- - user/password may only be provided over HTTPS. If not, topic creation request will be rejected.
- - user/password may only be provided together with ``use-ssl``, if not, the connection to the broker would fail.
- - port defaults to: 9092
- - kafka-ack-level: no end2end acking is required, as messages may persist in the broker before delivered into their final destination. Two ack methods exist:
+ - ``use-ssl``: If this is set to "true", a secure connection is used to
+   connect to the broker. (This is "false" by default.)
+ - ``ca-location``: If this is provided and a secure connection is used, the
+   specified CA will be used instead of the default CA to authenticate the
+   broker. 
+ - user/password: This should be provided over HTTPS. If not, the config parameter `rgw_allow_notification_secrets_in_cleartext` must be `true` in order to create topics.
+ - user/password: This should be provided together with ``use-ssl``. If not, the broker credentials will be sent over insecure transport.
+ - mechanism: may be provided together with user/password (default: ``PLAIN``). The supported SASL mechanisms are:
 
-  - "none": message is considered "delivered" if sent to broker
-  - "broker": message is considered "delivered" if acked by broker (default)
+  - PLAIN
+  - SCRAM-SHA-256
+  - SCRAM-SHA-512
+  - GSSAPI
+  - OAUTHBEARER
+
+ - port: This defaults to 9092.
+ - kafka-ack-level: No end2end acking is required. Messages may persist in the
+   broker before being delivered to their final destinations. Two ack methods
+   exist:
+
+  - "none": Messages are considered "delivered" if sent to the broker.
+  - "broker": Messages are considered "delivered" if acked by the broker. (This
+    is the default.)
 
 .. note::
 
-    - The key/value of a specific parameter does not have to reside in the same line, or in any specific order, but must use the same index
-    - Attribute indexing does not need to be sequential or start from any specific value
-    - `AWS Create Topic`_ has a detailed explanation of the endpoint attributes format. However, in our case different keys and values are used
+    - The key-value pair of a specific parameter need not reside in the same
+      line as the parameter, and need not appear in any specific order, but it
+      must use the same index.
+    - Attribute indexing need not be sequential and need not start from any
+      specific value.
+    - `AWS Create Topic`_ provides a detailed explanation of the endpoint
+      attributes format. In our case, however, different keys and values are
+      used.
 
 The response will have the following format:
 
@@ -187,7 +265,9 @@ The response will have the following format:
         </ResponseMetadata>
     </CreateTopicResponse>
 
-The topic ARN in the response will have the following format:
+The topic `ARN
+<https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html>`_
+in the response has the following format:
 
 ::
 
@@ -196,7 +276,8 @@ The topic ARN in the response will have the following format:
 Get Topic Attributes
 ````````````````````
 
-Returns information about a specific topic. This includes push-endpoint information, if provided.
+This returns information about a specific topic. This includes push-endpoint
+information, if provided.
 
 ::
 

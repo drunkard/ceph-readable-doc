@@ -21,6 +21,7 @@
     monitoring-osd-pg
     user-management
     pg-repair
+    pgcalc/index
 
 .. raw:: html 
 
@@ -39,8 +40,9 @@ Ceph 可以支撑 PB 级的数据存储集群，
     erasure-code
     cache-tiering
     placement-groups
-    balancer
     upmap
+    read-balancer
+    balancer
     crush-map
     crush-map-edits
     stretch-mode

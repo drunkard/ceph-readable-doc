@@ -271,6 +271,9 @@
     guest operating system
         客座操作系统
 
+    hypervisor
+        虚拟化管理程序
+
     immutable object
         不可变对象
 
@@ -631,6 +634,9 @@
         存储开销
         假设数据存储了 3 个副本，其实我们只要保证一份完整即可，另外两份就是
         overhead 。
+
+    store
+        存储系统
 
     stray
         an OSD who is not a member of the current acting set, but has not yet

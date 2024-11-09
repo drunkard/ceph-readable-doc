@@ -25,7 +25,7 @@ Ceph 提供了一个可无限伸缩的 :term:`Ceph 存储集群`\ ，它基于 \
 Ceph 存储集群包含多种类型的守护进程：
 
 - :term:`Ceph 监视器`
-- :term:`Ceph 对象存储守护进程`
+- :term:`Ceph OSD 守护进程`
 - :term:`Ceph 管理器`
 - :term:`Ceph 元数据服务器`
 

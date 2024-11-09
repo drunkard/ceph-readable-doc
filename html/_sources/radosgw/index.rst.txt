@@ -41,14 +41,15 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    :maxdepth: 1
 
    HTTP 前端 <frontends>
-   存储池归置与存储类 <placement>
    多站配置 <multisite>
+   Zone Features <zone-features>
+   存储池归置与存储类 <placement>
    多站同步策略配置 <multisite-sync-policy>
    存储池的配置 <pools>
    配置参考 <config-ref>
    管理指南 <admin>
    S3 API <s3>
-   Data caching and CDN <rgw-cache.rst>
+   数据缓存和 CDN <rgw-cache.rst>
    Swift API <swift>
    管理操作 API <adminops>
    Python 接口 <api>
@@ -56,7 +57,7 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    与 OpenStack Keystone 对接 <keystone>
    与 OpenStack Barbican 对接 <barbican>
    与 HashiCorp Vault 对接 <vault>
-   KMIP Integration <kmip>
+   与 KMIP 对接 <kmip>
    与 Open Policy Agent 对接 <opa>
    多租户 <multitenancy>
    压缩 <compression>
@@ -71,8 +72,8 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    STS <STS>
    STS Lite <STSLite>
    Keycloak <keycloak>
-   Role <role>
    Session Tags <session-tags>
+   Role <role>
    Orphan List and Associated Tooliing <orphans>
    OpenID Connect Provider <oidc>
    troubleshooting
@@ -83,3 +84,5 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    Lua Scripting <lua-scripting>
    D3N Data Cache <d3n_datacache>
    Cloud Transition <cloud-transition>
+   Metrics <metrics>
+

@@ -3,18 +3,20 @@
 ``activate``
 ============
 
-Once :ref:`ceph-volume-lvm-prepare` is completed, and all the various steps
-that entails are done, the volume is ready to get "activated".
+After :ref:`ceph-volume-lvm-prepare` has completed its run, the volume can be
+activated. 
 
-This activation process enables a systemd unit that persists the OSD ID and its
-UUID (also called ``fsid`` in Ceph CLI tools), so that at boot time it can
-understand what OSD is enabled and needs to be mounted.
+Activating the volume involves enabling a ``systemd`` unit that persists the
+``OSD ID`` and its ``UUID`` (which is also called the ``fsid`` in the Ceph CLI
+tools). After this information has been persisted, the cluster can determine
+which OSD is enabled and must be mounted.
 
-.. note:: The execution of this call is fully idempotent, and there is no
-          side-effects when running multiple times
+.. note:: The execution of this call is fully idempotent. This means that the
+   call can be executed multiple times without changing the result of its first
+   successful execution.
 
-For OSDs deployed by cephadm, please refer to :ref:cephadm-osd-activate: 
-instead.
+For information about OSDs deployed by cephadm, refer to
+:ref:`cephadm-osd-activate`.
 
 新 OSD
 ------
@@ -85,18 +87,14 @@ Would start the discovery process for the OSD with an id of ``0`` and a UUID of
 The systemd unit will look for the matching OSD device, and by looking at its
 :term:`LVM tags` will proceed to:
 
-# mount the device in the corresponding location (by convention this is
-  ``/var/lib/ceph/osd/<cluster name>-<osd id>/``)
+#. Mount the device in the corresponding location (by convention this is
+``/var/lib/ceph/osd/<cluster name>-<osd id>/``)
 
-# ensure that all required devices are ready for that OSD. In the case of
-a journal (when ``--filestore`` is selected) the device will be queried (with
-``blkid`` for partitions, and lvm for logical volumes) to ensure that the
-correct device is being linked. The symbolic link will *always* be re-done to
-ensure that the correct device is linked.
+#. Ensure that all required devices are ready for that OSD.
 
-# 启动 ``ceph-osd@0`` systemd unit
+#. Start the ``ceph-osd@0`` systemd unit
 
-.. note:: The system infers the objectstore type (filestore or bluestore) by
+.. note:: The system infers the objectstore type by
           inspecting the LVM tags applied to the OSD devices
 
 对于已有 OSD

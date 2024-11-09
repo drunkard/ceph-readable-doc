@@ -23,16 +23,16 @@ that the replicas of the versioned S3 objects would consume in the rest of the
 zones.
 
 
+归档同步 tier-type 的配置
+-------------------------
+.. Archive Sync Tier Type Configuration
 
-Archive Sync Tier Type Configuration
-------------------------------------
+如何配置
+~~~~~~~~
+.. How to Configure
 
-How to Configure
-~~~~~~~~~~~~~~~~
-
-See `Multisite Configuration`_ for how to multisite config instructions. The
-archive sync module requires a creation of a new zone. The zone tier type needs
-to be defined as ``archive``:
+多站配置方法见 `多站配置`_ 。归档同步模块需要创建一个新域，
+它的域 tier type 需要定义为 ``archive`` ：
 
 ::
 
@@ -41,4 +41,4 @@ to be defined as ``archive``:
                                 --endpoints={http://fqdn}[,{http://fqdn}]
                                 --tier-type=archive
 
-.. _Multisite Configuration: ../multisite
+.. _多站配置: ../multisite

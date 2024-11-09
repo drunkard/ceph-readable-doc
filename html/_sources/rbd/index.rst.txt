@@ -69,4 +69,5 @@ libvirt 和 QEMU 的 `OpenStack`_ 和 `CloudStack`_ 云计算系统都\
 .. _内核模块: ./rbd-ko/
 .. _QEMU: ./qemu-rbd/
 .. _OpenStack: ./rbd-openstack
+.. _OpenNebula: https://docs.opennebula.io/stable/open_cluster_deployment/storage_setup/ceph_ds.html
 .. _CloudStack: ./rbd-cloudstack

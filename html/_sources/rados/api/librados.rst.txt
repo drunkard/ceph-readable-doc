@@ -183,5 +183,5 @@
 API 调用
 ========
 
- .. autodoxygenfile:: rados_types.h
- .. autodoxygenfile:: librados.h
+.. autodoxygenfile:: rados_types.h
+.. autodoxygenfile:: librados.h

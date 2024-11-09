@@ -23,3 +23,4 @@
    Ceph Dashboard 开发者文档 (之前是 HACKING.rst) <dash-devel>
    Tracing 开发者文档 <jaegertracing>
    Cephadm 开发者文档 <../cephadm/index>
+   用 GDB 调试 <debugging-gdb>

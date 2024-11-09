@@ -9,5 +9,6 @@
    
    
    usage
-   Admin Ops Nonimplemented <admin/adminops_nonimplemented>
+   尚未实现的管理操作 <admin/adminops_nonimplemented>
    s3_compliance
+   bucket_index
