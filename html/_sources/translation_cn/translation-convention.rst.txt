@@ -368,6 +368,9 @@
     multipart upload
         分段上传
 
+    multisite
+        多站、多站点
+
     nearfull ratio
         将满比率
 
@@ -669,6 +672,9 @@
 
     tier type
         <不翻译> RGW 术语。
+
+    tight coupling
+        紧耦合
 
     token
         (OpenStack) 令牌

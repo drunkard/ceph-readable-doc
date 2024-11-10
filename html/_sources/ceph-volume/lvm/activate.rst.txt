@@ -112,18 +112,11 @@ The systemd unit will look for the matching OSD device, and by looking at its
 
 To recap the ``activate`` process for :term:`bluestore`:
 
-#. require both :term:`OSD id` and :term:`OSD uuid`
-#. enable the system unit with matching id and uuid
+#. Require both :term:`OSD id` and :term:`OSD uuid`
+#. Enable the system unit with matching id and uuid
 #. Create the ``tmpfs`` mount at the OSD directory in
    ``/var/lib/ceph/osd/$cluster-$id/``
 #. Recreate all the files needed with ``ceph-bluestore-tool prime-osd-dir`` by
    pointing it to the OSD ``block`` device.
-#. the systemd unit will ensure all devices are ready and linked
-#. the matching ``ceph-osd`` systemd unit will get started
-
-And for :term:`filestore`:
-
-#. require both :term:`OSD id` and :term:`OSD uuid`
-#. enable the system unit with matching id and uuid
-#. the systemd unit will ensure all devices are ready and mounted (if needed)
-#. the matching ``ceph-osd`` systemd unit will get started
+#. The systemd unit will ensure all devices are ready and linked
+#. The matching ``ceph-osd`` systemd unit will get started

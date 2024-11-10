@@ -32,8 +32,6 @@ mgr 启动。
     Alerts 模块 <alerts>
     DiskPrediction 模块 <diskprediction>
     localpool 模块 <localpool>
-    RESTful 模块 <restful>
-    Zabbix 模块 <zabbix>
     Prometheus 模块 <prometheus>
     Influx 模块 <influx>
     Hello 模块 <hello>
@@ -47,5 +45,6 @@ mgr 启动。
     RGW 模块 <rgw>
     MDS Autoscaler 模块 <mds_autoscaler>
     NFS 模块 <nfs>
+    SMB module <smb>
     Progress 模块 <progress>
     CLI API 命令模块 <cli_api>

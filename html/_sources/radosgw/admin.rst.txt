@@ -7,6 +7,8 @@
 配额管理、和使用情况跟踪等功能。
 
 
+.. _radosgw-user-management:
+
 用户管理
 ========
 .. User Management:

@@ -48,7 +48,9 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    存储池的配置 <pools>
    配置参考 <config-ref>
    管理指南 <admin>
+   User Accounts <account>
    S3 API <s3>
+   IAM API <iam>
    数据缓存和 CDN <rgw-cache.rst>
    Swift API <swift>
    管理操作 API <adminops>
@@ -85,4 +87,4 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    D3N Data Cache <d3n_datacache>
    Cloud Transition <cloud-transition>
    Metrics <metrics>
-
+   UADK Acceleration for Compression <uadk-accel>

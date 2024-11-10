@@ -545,7 +545,7 @@ stepping from one power of two to another.
 
 设置归置组数量
 ==============
-.. Set the Number of Placement Groups
+.. Setting the Number of PGs
 
 要设置某存储池的归置组数量，你必须在创建它时就指定好，
 详情见 `创建存储池`_\ 。即使某一存储池已创建，
@@ -560,16 +560,20 @@ CRUSH 算法采用的用于归置的归置组数量。
 虽然 ``pg_num`` 的增加引起了归置组的分割，
 但是只有当用于归置的归置组（即 ``pgp_num`` ）增加以后，
 数据才会被迁移到新归置组里。 ``pgp_num`` 的数值应等于 ``pg_num`` 。
-可用下列命令增加用于归置的归置组数量： ::
+可用下列命令增加用于归置的归置组数量：
+
+.. prompt:: bash #
 
 	ceph osd pool set {pool-name} pgp_num {pgp_num}
 
 减少归置组数量时，系统会自动调整 ``pgp_num`` 数值。
 
 
+.. _rados_ops_pgs_get_pg_num:
+
 获取归置组数量
 ==============
-.. Get the Number of Placement Groups
+.. Get the Number of PGs
 
 要获取一个存储池的归置组数量，执行命令： ::
 
@@ -636,7 +640,7 @@ Ceph 将返回归置组图、归置组、和 OSD 状态： ::
 
 洗刷归置组
 ==========
-.. Scrub a Placement Group
+.. Scrub a PG
 
 要洗刷一个归置组，执行命令： ::
 
@@ -654,7 +658,7 @@ To scrub all placement groups from a specific pool, execute the following::
 
 改变归置组的回填/恢复优先级
 ===========================
-.. Prioritize backfill/recovery of a Placement Group(s)
+.. Prioritize backfill/recovery of PG(s)
 
 你可能会遇到这样的情形，有一大堆归置组需要恢复和/或回填，而\
 其中有几个组内的数据比其它的更重要（例如，那些 PG 持有正在\
@@ -710,7 +714,7 @@ all priority 1 or priorities 3, 2, 1 respectively.
 
 恢复丢失的
 ==========
-.. Revert Lost
+.. Reverting Lost RADOS Objects
 
 如果集群丢了一或多个对象，而且必须放弃搜索这些数据，你就要把\
 未找到的对象标记为丢失（ ``lost`` ）。

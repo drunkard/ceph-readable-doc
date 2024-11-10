@@ -536,6 +536,8 @@ OSD 处理 ops 时的事件：
 （像数据加锁后传入新线程）。
 
 
+.. _rados_tshooting_flapping_osd:
+
 状态抖动的 OSD
 ==============
 .. Flapping OSDs

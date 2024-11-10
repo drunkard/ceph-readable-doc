@@ -39,9 +39,10 @@ CephFS 入门
 
 对绝大多数部署好的 Ceph ，建立一个 CephFS 文件系统都如此简单：
 
-.. code:: bash
+.. prompt:: bash
 
-    ceph fs volume create <fs name>
+    # Create a CephFS volume named (for example) "cephfs":
+    ceph fs volume create cephfs
 
 如果后端的部署技术支持的话（见 `编排器部署表`_ ），
 Ceph `编排器`_ 会自动给你的文件系统创建和配置 MDS ，
@@ -193,6 +194,7 @@ CephFS 内幕
     客户端的能力 <capabilities>
     Java 和 Python 捆绑库 <api/index>
     Mantle <mantle>
+    Metrics <metrics>
 
 
 .. raw:: html

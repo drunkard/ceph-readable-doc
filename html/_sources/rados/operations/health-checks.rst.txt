@@ -819,7 +819,7 @@ the cluster.  Specifically, one or more PGs has the *inconsistent* or
 found a problem, or that the *repair* flag is set, meaning a repair
 for such an inconsistency is currently in progress.
 
-详情见 :doc:`pg-repair` 。
+详情见 :doc:`../troubleshooting/troubleshooting-pg` 。
 
 OSD_SCRUB_ERRORS
 ________________
@@ -827,7 +827,7 @@ ________________
 近期的 OSD 洗刷出现了明显不一致的地方。这个错误一般和
 *PG_DAMAGED* （见上文）成对出现。
 
-详情见 :doc:`pg-repair` 。
+详情见 :doc:`../troubleshooting/troubleshooting-pg` 。
 
 OSD_TOO_MANY_REPAIRS
 ____________________

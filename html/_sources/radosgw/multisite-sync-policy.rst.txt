@@ -1,6 +1,9 @@
-=====================
-Multisite Sync Policy
-=====================
+.. _radosgw-multisite-sync-policy:
+
+===============
+ 多站同步策略
+===============
+.. Multisite Sync Policy
 
 .. versionadded:: Octopus
 

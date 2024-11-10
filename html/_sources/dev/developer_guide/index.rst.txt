@@ -20,6 +20,7 @@
    测试：单元测试 <tests-unit-tests>
    测试：集成测试(Teuthology) <testing_integration_tests/index>
    测试：在本地运行测试 <running-tests-locally>
+   测试: Windows <tests-windows>
    Ceph Dashboard 开发者文档 (之前是 HACKING.rst) <dash-devel>
    Tracing 开发者文档 <jaegertracing>
    Cephadm 开发者文档 <../cephadm/index>

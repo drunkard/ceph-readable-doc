@@ -101,7 +101,7 @@ Ceph 的强大可以改变您公司的 IT 基础架构和海量数据管理能�
    :maxdepth: 3
    :hidden:
 
-   start/intro
+   start/index
    install/index
    cephadm/index
    rados/index

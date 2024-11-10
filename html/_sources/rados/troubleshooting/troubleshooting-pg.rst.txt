@@ -72,7 +72,9 @@ OSD 靠其它 OSD 们告诉它，它应该持有哪些对象。
 如果第一个 OSD 有某个对象的一个副本、并且没有第二个副本，
 那么就没有第二个 OSD 能告诉第一个 OSD 它应该有那个副本。
 对于映射到第一个 OSD 的每个归置组（见 ``ceph pg dump`` ），
-你可以强制第一个 OSD 通知它需要的归置组，用命令： ::
+你可以强制第一个 OSD 通知它需要的归置组，用命令：
+
+.. prompt:: bash
 
    	ceph osd force-create-pg <pgid>
 
@@ -103,7 +105,9 @@ CRUSH 图错误
 * ``stale`` （不新鲜）——归置组状态没有被 ``ceph-osd`` 更新，
   表明存储这个归置组的所有节点可能都挂了。
 
-你可以摆出卡住的归置组，用下列命令之一： ::
+你可以摆出卡住的归置组，用下列命令之一：
+
+.. prompt:: bash
 
 	ceph pg dump_stuck stale
 	ceph pg dump_stuck inactive
@@ -125,9 +129,14 @@ CRUSH 图错误
 
 在某些情况下， ``ceph-osd`` 的 `互联` 进程会遇到问题，
 使 PG 不能活跃、可用。
-例如 ``ceph health`` 也许显示： ::
+例如 ``ceph health`` 也许显示：
+
+.. prompt:: bash
 
 	ceph health detail
+
+::
+
 	HEALTH_ERR 7 pgs degraded; 12 pgs down; 12 pgs peering; 1 pgs recovering; 6 pgs stuck unclean; 114/3300 degraded (3.455%); 1/3 in osds are down
 	...
 	pg 0.5 is down+peering
@@ -135,7 +144,9 @@ CRUSH 图错误
 	...
 	osd.1 is down since epoch 69, last address 192.168.106.220:6801/8651
 
-可以查询到 PG 为何被标记为 ``down`` ： ::
+可以查询到 PG 为何被标记为 ``down`` ：
+
+.. prompt:: bash
 
 	ceph pg 0.5 query
 
@@ -175,7 +186,9 @@ CRUSH 图错误
 .. important:: 假如集群不能保证\
    其它数据副本是一致且最新就危险了！
 
-让 Ceph 无论如何都继续： ::
+让 Ceph 无论如何都继续：
+
+.. prompt:: bash
 
 	ceph osd lost 1
 
@@ -190,9 +203,14 @@ CRUSH 图错误
 .. Unfound Objects
 
 某几种失败相组合可能导致 Ceph 抱怨有找不到（ ``unfound`` ）的\
-对象： ::
+对象：
+
+.. prompt:: bash
 
 	ceph health detail
+
+::
+
 	HEALTH_WARN 1 pgs degraded; 78/3778 unfound (2.065%)
 	pg 2.4 is active+degraded, 78 unfound
 
@@ -212,7 +230,13 @@ CRUSH 图错误
 集群只能指望节点早点恢复。
 这时我们假设用户希望先得到一个 IO 错误。
 
-首先，你应该确认哪些对象找不到了： ::
+.. note:: The situation described immediately above is one reason that setting
+   ``size=2`` on a replicated pool and ``m=1`` on an erasure coded pool risks
+   data loss.
+
+首先，你应该确认哪些对象找不到了：
+
+.. prompt:: bash
 
 	ceph pg 2.4 list_unfound [starting offset, in json]
 
@@ -267,7 +291,9 @@ CRUSH 图错误
 ``might_have_unfound`` 信息的提供方式和下文 ``query`` 的相同，
 仅有的差异是有 ``already probed`` 状态的 OSD 会被忽略。
 
-``query`` 的用法： ::
+``query`` 的用法：
+
+.. prompt:: bash
 
 	ceph pg 2.4 query
 
@@ -301,15 +327,17 @@ CRUSH 图错误
 这仍可能是罕见的失败组合导致的，
 集群在写入完成前，未能得知写入是否已执行。
 以下命令把未找到的（ unfound ）对象\
-标记为丢失（ lost ）。 ::
+标记为丢失（ lost ）。
+
+.. prompt:: bash
 
 	ceph pg 2.5 mark_unfound_lost revert|delete
 
-上述最后一个参数告诉集群应如何处理丢失的对象。
+上述最后一个参数 （ ``revert|delete`` ）告诉集群应如何处理丢失的对象。
 
-delete 选项将导致完全删除它们。
+``delete`` 选项将导致完全删除它们。
 
-revert 选项（纠删码存储池不可用）会回滚到前一个版本或者
+``revert`` 选项（纠删码存储池不可用）会回滚到前一个版本或者
 （如果它是新对象的话）删除它。要慎用，
 它可能迷惑那些期望对象存在的应用程序。
 
@@ -322,15 +350,25 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者
 在这种情况下，那一部分的对象存储不可用，
 监视器就不会收到那些归置组的状态更新了。
 为检测这种情况，监视器把任何主 OSD 失败的归置组\
-标记为 ``stale`` （不新鲜），例如： ::
+标记为 ``stale`` （不新鲜），例如：
+
+.. prompt:: bash
 
 	ceph health
+
+::
+
 	HEALTH_WARN 24 pgs stale; 3/300 in osds are down
 
 你能找出哪些归置组 ``stale`` 、和最后存储这些归置组的 OSD ，
-命令如下： ::
+命令如下：
+
+.. prompt:: bash
 
 	ceph health detail
+
+::
+
 	HEALTH_WARN 24 pgs stale; 3/300 in osds are down
 	...
 	pg 2.5 is stuck stale+active+remapped, last acting [2,0]
@@ -348,11 +386,15 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者
 =====================
 .. Only a Few OSDs Receive Data
 
-如果你的集群有很多节点，但只有其中几个接收数据，
-`检查`_\ 下存储池里的归置组数量。因为归置组是映射到多个 OSD 的，
-这样少量的归置组将不能分布于整个集群。
-试着创建个新存储池，其归置组数量是 OSD 数量的若干倍。详情见\ `归置组`_\ ，
-存储池的默认归置组数量没多大用，你可以参考\ `这里`_\ 更改它。
+如果你的集群有很多节点，但只有其中几个接收数据，检查下
+存储池的归置组数量，按照 :ref:`归置组<rados_ops_pgs_get_pg_num>`
+文档里的方法。因为在把归置组映射到多个 OSD 的操作中，
+是按照集群内 OSD 的数量来确定集群归置组数量的，
+这样归置组（在此操作中，是余下的部分）数量较小时就不能分布于整个集群。
+在这样的情况下，创建存储池时的归置组数量应该是 OSD 数量的若干倍，
+详情见\ `归置组`_\ 。参考
+:ref:`存储池、归置组和 CRUSH 配置参考 <rados_config_pool_pg_crush_ref>`
+里的指导，去更改分配给各个存储池的默认归置组数量。
 
 
 不能写入数据
@@ -372,21 +414,33 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者
 .. PGs Inconsistent
 
 如果你看到状态变成了 ``active + clean + inconsistent`` ，
-可能是洗刷时遇到了错误。与往常一样，我们可以这样找出不一致的归置组： ::
+可能是洗刷时遇到了错误。与往常一样，我们可以这样找出不一致的归置组：
+
+.. prompt:: bash
 
     $ ceph health detail
+
+::
+
     HEALTH_ERR 1 pgs inconsistent; 2 scrub errors
     pg 0.6 is active+clean+inconsistent, acting [0,1,2]
     2 scrub errors
 
-或者这样，如果你喜欢程序化的输出： ::
+或者这样，如果你喜欢程序化的输出：
+
+.. prompt:: bash
 
     $ rados list-inconsistent-pg rbd
+
+::
+
     ["0.6"]
 
 一致的状态只有一种，然而在最坏的情况下，
 我们可能会遇到多个对象产生了各种各样的不一致。假设\
-在 PG ``0.6`` 里的一个名为 ``foo`` 的对象被截断了，我们可以这样查看： ::
+在 PG ``0.6`` 里的一个名为 ``foo`` 的对象被截断了，我们可以这样查看：
+
+.. prompt:: bash
 
     $ rados list-inconsistent-obj 0.6 --format=json-pretty
 
@@ -467,24 +521,93 @@ revert 选项（纠删码存储池不可用）会回滚到前一个版本或者
     * ``size_mismatch_info``: object-info 内存储的尺寸与 OSD.2
       上的对象尺寸 0 不同。
 
-你可以用下列命令修复不一致的归置组： ::
+.. warning:: If ``read_error`` is listed in a shard's ``errors`` attribute, the
+   inconsistency is likely due to physical storage errors. In cases like this,
+   check the storage used by that OSD. 
+   
+   Examine the output of ``dmesg`` and ``smartctl`` before attempting a drive
+   repair.
+
+你可以用下列命令修复不一致的归置组：
+
+.. prompt:: bash
 
 	ceph pg repair {placement-group-ID}
 
-此命令会用\ `权威的`\ 副本覆盖\ `有问题的`\ 。根据既定规则，
-多数情况下 Ceph 都能从若干副本中选择正确的，
-但是也会有例外。比如，存储的数字签名可能正好丢了，
-选择权威副本时又忽略了计算出的数字签名，
-总之，用此命令时小心为好。
+例如：
 
-如果一个分片的 ``errors`` 里出现了 ``read_error`` ，
-很可能是磁盘错误引起的不一致，
-你最好先查验那个 OSD 所用的磁盘。
+.. prompt:: bash #
+
+   ceph pg repair 1.4
+
+.. warning:: 此命令会用\ `权威的`\ 副本覆盖\ `有问题的`\ 。
+   根据既定规则，多数情况下 Ceph 都能从若干副本中选择正确的，
+   但也不是所有情况下都行得通，也会有例外。比如，
+   存储的数字签名可能正好丢了，
+   Ceph 选择权威副本时就会忽略计算出的数字签名，
+   总之，用此命令时小心为好。
+
+.. note:: PG IDs have the form ``N.xxxxx``, where ``N`` is the number of the
+   pool that contains the PG. The command ``ceph osd listpools`` and the
+   command ``ceph osd dump | grep pool`` return a list of pool numbers.
 
 如果你时不时遇到时钟偏移引起的 ``active + clean + inconsistent`` 状态，
-最好在监视器主机上配置 peer 角色的 `NTP`_ 服务。
-配置细节可参考\ `网络时间协议`_\ 和 Ceph `时钟选项`_\ 。
+最好在监视器主机上配置 peer 角色的
+`NTP <https://en.wikipedia.org/wiki/Network_Time_Protocol>`_ 服务。
+配置细节可参考\ `网络时间协议 <http://www.ntp.org>`_\ 和 Ceph
+:ref:`时钟选项 <mon-config-ref-clock>`\ 。
 
+
+More Information on PG Repair
+-----------------------------
+Ceph stores and updates the checksums of objects stored in the cluster. When a
+scrub is performed on a PG, the lead OSD attempts to choose an authoritative
+copy from among its replicas. Only one of the possible cases is consistent.
+After performing a deep scrub, Ceph calculates the checksum of each object that
+is read from disk and compares it to the checksum that was previously recorded.
+If the current checksum and the previously recorded checksum do not match, that
+mismatch is considered to be an inconsistency. In the case of replicated pools,
+any mismatch between the checksum of any replica of an object and the checksum
+of the authoritative copy means that there is an inconsistency. The discovery
+of these inconsistencies cause a PG's state to be set to ``inconsistent``.
+
+The ``pg repair`` command attempts to fix inconsistencies of various kinds. When 
+``pg repair`` finds an inconsistent PG, it attempts to overwrite the digest of
+the inconsistent copy with the digest of the authoritative copy. When ``pg
+repair`` finds an inconsistent copy in a replicated pool, it marks the
+inconsistent copy as missing. In the case of replicated pools, recovery is
+beyond the scope of ``pg repair``.
+
+In the case of erasure-coded and BlueStore pools, Ceph will automatically
+perform repairs if ``osd_scrub_auto_repair`` (default ``false``) is set to
+``true`` and if no more than ``osd_scrub_auto_repair_num_errors`` (default
+``5``) errors are found.
+
+The ``pg repair`` command will not solve every problem. Ceph does not
+automatically repair PGs when they are found to contain inconsistencies.
+
+The checksum of a RADOS object or an omap is not always available. Checksums
+are calculated incrementally. If a replicated object is updated
+non-sequentially, the write operation involved in the update changes the object
+and invalidates its checksum. The whole object is not read while the checksum
+is recalculated. The ``pg repair`` command is able to make repairs even when
+checksums are not available to it, as in the case of Filestore. Users working
+with replicated Filestore pools might prefer manual repair to ``ceph pg
+repair``.
+
+This material is relevant for Filestore, but not for BlueStore, which has its
+own internal checksums. The matched-record checksum and the calculated checksum
+cannot prove that any specific copy is in fact authoritative. If there is no
+checksum available, ``pg repair`` favors the data on the primary, but this
+might not be the uncorrupted replica. Because of this uncertainty, human
+intervention is necessary when an inconsistency is discovered. This
+intervention sometimes involves use of ``ceph-objectstore-tool``.
+
+PG Repair Walkthrough
+---------------------
+https://ceph.io/geen-categorie/ceph-manually-repair-object/ - This page
+contains a walkthrough of the repair of a PG. It is recommended reading if you
+want to repair a PG but have never done so.
 
 纠删编码的归置组不是 active+clean
 =================================
@@ -500,7 +623,9 @@ OSD 不够多
 .. Not enough OSDs
 
 如果 Ceph 集群仅有 8 个 OSD ，但是纠删码存储池需要 9 个，就会显示上面的错误。
-这时候，你仍然可以另外创建需要较少 OSD 的纠删码存储池： ::
+这时候，你仍然可以另外创建需要较少 OSD 的纠删码存储池：
+
+.. prompt:: bash
 
 	ceph osd erasure-code-profile set myprofile k=5 m=3
 	ceph osd pool create erasurepool erasure myprofile
@@ -514,9 +639,14 @@ CRUSH 条件不能满足
 即使集群拥有足够多的 OSD ， CRUSH 规则的强制要求仍有可能无法满足。
 假如有 10 个 OSD 分布于两个主机上，且 CRUSH 规则要求\
 相同归置组不得使用位于同一主机的两个 OSD ，这样映射就会失败，\
-因为只能找到两个 OSD ，你可以从规则里查看必要条件： ::
+因为只能找到两个 OSD ，你可以从规则里查看必要条件：
 
-    $ ceph osd crush rule ls
+.. prompt:: bash
+
+   ceph osd crush rule ls
+
+::
+
     [
         "replicated_rule",
         "erasurepool"]
@@ -534,7 +664,9 @@ CRUSH 条件不能满足
             { "op": "emit"}]}
 
 可以这样解决此问题，创建新存储池，其内的 PG 允许多个 OSD 位于\
-同一主机，命令如下： ::
+同一主机，命令如下：
+
+.. prompt:: bash
 
 	ceph osd erasure-code-profile set myprofile crush-failure-domain=osd
 	ceph osd pool create erasurepool erasure myprofile
@@ -562,9 +694,14 @@ CRUSH 过早中止
 
 你从集群中提取出 crushmap 之后，应该先用 ``crushtool`` 校验\
 一下是否有问题，这样你的试验就无需触及 Ceph 集群，只要在一个\
-本地文件上测试即可： ::
+本地文件上测试即可：
+
+.. prompt:: bash
 
     $ ceph osd crush rule dump erasurepool
+
+::
+
     { "rule_id": 1,
       "rule_name": "erasurepool",
       "type": 3,
@@ -594,93 +731,98 @@ CRUSH 过早中止
 说明所有映射都成功了，你可以就此打住：
 问题的根源不在这里。
 
-反编译 crush 图后，你可以手动编辑其 CRUSH 规则： ::
+Changing the value of set_choose_tries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	$ crushtool --decompile crush.map > crush.txt
+#. 反编译 crush 图后，你可以手动编辑其 CRUSH 规则：
 
-并把下面这行加进规则： ::
+   .. prompt:: bash
 
-	step set_choose_tries 100
+	  crushtool --decompile crush.map > crush.txt
 
-然后 ``crush.txt`` 文件内的这部分大致如此： ::
+#. 并把下面这行加进规则： ::
 
-     rule erasurepool {
-             id 1
-             type erasure
-             step set_chooseleaf_tries 5
-             step set_choose_tries 100
-             step take default
-             step chooseleaf indep 0 type host
-             step emit
-     }
+	  step set_choose_tries 100
 
-然后编译、并再次测试： ::
+   然后 ``crush.txt`` 文件内的这部分大致如此： ::
 
-	$ crushtool --compile crush.txt -o better-crush.map
+      rule erasurepool {
+              id 1
+              type erasure
+              step set_chooseleaf_tries 5
+              step set_choose_tries 100
+              step take default
+              step chooseleaf indep 0 type host
+              step emit
+      }
 
-所有映射都成功时，
-用 ``crushtool`` 的 ``--show-choose-tries`` 选项\
-能看到成功映射的尝试次数直方图： ::
+#. 然后编译、并再次测试：
 
-	$ crushtool -i better-crush.map --test --show-bad-mappings \
-	   --show-choose-tries \
-	   --rule 1 \
-	   --num-rep 9 \
-	   --min-x 1 --max-x $((1024 * 1024))
-	...
-	11:        42
-	12:        44
-	13:        54
-	14:        45
-	15:        35
-	16:        34
-	17:        30
-	18:        25
-	19:        19
-	20:        22
-	21:        20
-	22:        17
-	23:        13
-	24:        16
-	25:        13
-	26:        11
-	27:        11
-	28:        13
-	29:        11
-	30:        10
-	31:         6
-	32:         5
-	33:        10
-	34:         3
-	35:         7
-	36:         5
-	37:         2
-	38:         5
-	39:         5
-	40:         2
-	41:         5
-	42:         4
-	43:         1
-	44:         2
-	45:         2
-	46:         3
-	47:         1
-	48:         0
-	...
-	102:         0
-	103:         1
-	104:         0
-	...
+   .. prompt:: bash
 
-有 42 个归置组需 11 次重试、 44 个归置组需 12 次重试，\
-以此类推。这样，重试的最高次数就是防止坏映射的最低值，也就是
-``set_choose_tries`` 的取值（即上面输出中的 103 ，因为任意\
-归置组成功映射的重试次数都没有超过 103 ）。
+	  crushtool --compile crush.txt -o better-crush.map
+
+#. 所有映射都成功时，
+   用 ``crushtool`` 的 ``--show-choose-tries`` 选项\
+   能看到成功映射的尝试次数直方图：
+
+   .. prompt:: bash
+
+      crushtool -i better-crush.map --test --show-bad-mappings \
+       --show-choose-tries \
+       --rule 1 \
+       --num-rep 9 \
+       --min-x 1 --max-x $((1024 * 1024))
+    ...
+    11:        42
+    12:        44
+    13:        54
+    14:        45
+    15:        35
+    16:        34
+    17:        30
+    18:        25
+    19:        19
+    20:        22
+    21:        20
+    22:        17
+    23:        13
+    24:        16
+    25:        13
+    26:        11
+    27:        11
+    28:        13
+    29:        11
+    30:        10
+    31:         6
+    32:         5
+    33:        10
+    34:         3
+    35:         7
+    36:         5
+    37:         2
+    38:         5
+    39:         5
+    40:         2
+    41:         5
+    42:         4
+    43:         1
+    44:         2
+    45:         2
+    46:         3
+    47:         1
+    48:         0
+    ...
+    102:         0
+    103:         1
+    104:         0
+    ...
+
+   有 42 个归置组需 11 次重试、 44 个归置组需 12 次重试，\
+   以此类推。这样，重试的最高次数就是防止坏映射的最低值，也就是
+   ``set_choose_tries`` 的取值（即上面输出中的 103 ，因为任意\
+   归置组成功映射的重试次数都没有超过 103 ）。
 
 .. _检查: ../../operations/placement-groups#get-the-number-of-placement-groups
-.. _这里: ../../configuration/pool-pg-config-ref
 .. _归置组: ../../operations/placement-groups
 .. _存储池、归置组和 CRUSH 配置参考: ../../configuration/pool-pg-config-ref
-.. _NTP: https://en.wikipedia.org/wiki/Network_Time_Protocol
-.. _网络时间协议: http://www.ntp.org/
-.. _时钟选项: ../../configuration/mon-config-ref/#clock

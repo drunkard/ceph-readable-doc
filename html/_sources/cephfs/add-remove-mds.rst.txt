@@ -1,3 +1,14 @@
+.. _cephfs_add_remote_mds:
+
+.. warning:: The material on this page is to be used only for manually setting
+   up a Ceph cluster. If you intend to use an automated tool such as
+   :doc:`/cephadm/index` to set up a Ceph cluster, do not use the
+   instructions on this page.
+
+.. note:: If you are certain that you know what you are doing and you intend to
+   manually deploy MDS daemons, see :doc:`/cephadm/services/mds/` before
+   proceeding.
+
 ==================
  部署元数据服务器
 ==================
@@ -110,5 +121,11 @@ the following method.
 
 	$ sudo rm -rf /var/lib/ceph/mds/ceph-${id}
 
+
+.. note:: When an active MDS either has health warning MDS_TRIM or
+   MDS_CACHE_OVERSIZED, confirmation flag (--yes-i-really-mean-it)
+   needs to be passed, else the command will fail. It is not recommended to
+   restart an MDS which has these warnings since slow recovery at restart may
+   lead to more problems.
 
 .. _MDS 配置参考: ../mds-config-ref
