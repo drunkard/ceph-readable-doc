@@ -44,9 +44,8 @@
 如果你计划向 Ceph 贡献代码、或者想通过 SSH 克隆（ \
 ``git@github.com:ceph/ceph.git`` ），你必须生成一个 SSH 密钥对。
 
-.. tip:: 如果你只是想克隆，不需要 SSH 密钥也可\
-   用 ``git clone --recursive https://github.com/ceph/ceph.git``
-   克隆。
+.. tip:: 如果你只是想克隆，不需要 SSH 密钥也可用
+   ``git clone --recursive https://github.com/ceph/ceph.git`` 克隆。
 
 执行如下命令生成 SSH 密钥对用于 ``github`` ：
 
@@ -54,7 +53,8 @@
 
    ssh-keygen
 
-把此密钥对的公钥加入 ``github`` 帐户（本例假设用了默认路径）：
+打印出刚才生成的密钥，准备添加到你的 ``github`` 帐户，
+用 ``cat`` 命令。（本例假设你用的是默认的文件路径）：
 
 .. prompt:: bash $
 
@@ -62,11 +62,11 @@
 
 复制公钥。
 
-进入 ``github`` 帐户，点击 “Account Settings” （即 ``tools``
-图标），然后点击导航条左边的 “SSH Keys” 。
+进入 ``github`` 帐户，点击 “Account Settings”
+（即 "tools" 图标），然后点击左侧导航条的 “SSH Keys” 。
 
-点击 “SSH Keys” 列表里的 “Add SSH key” ，给密钥起个名字，把复\
-制的公钥粘帖进去，最后点击 “Add key” 按钮。
+点击 “SSH Keys” 列表里的 “Add SSH key” ，给密钥起个名字，
+把复制的公钥粘帖进去，最后点击 “Add key” 按钮。
 
 
 克隆源码
@@ -79,8 +79,7 @@
 
 	git clone --recursive https://github.com/ceph/ceph.git
 
-``git clone`` 完成后，你应该已经得到了一份完整的
-Ceph 源码库。
+``git clone`` 完成后，你应该已经得到了一份完整的 Ceph 源码库。
 
 .. tip:: 确保你获取到的源码库之内的各子模块都是最新的，
    运行 ``git status`` ，它会告诉你子模块是否过时了。
@@ -99,7 +98,7 @@ Ceph 源码库。
 ----------
 .. Updating Submodules
 
-如果你的子模块过时了，运行：
+如果你的子模块（ submodule ）过时了，运行：
 
    .. prompt:: bash $
 
@@ -107,9 +106,9 @@ Ceph 源码库。
       git clean -fdx
       git submodule foreach git clean -fdx
 
-If you still have problems with a submodule directory, use ``rm -rf [directory
-name]`` to remove the directory. Then run ``git submodule update --init
---recursive --progress`` again.
+如果你的子模块目录仍然有问题，用
+``rm -rf [directory name]`` 删掉那个目录。然后再次运行
+``git submodule update --init --recursive --progress`` 。
 
 
 选择分支

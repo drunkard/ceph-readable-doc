@@ -28,7 +28,7 @@
 
 OSD 后端
 ========
-.. OSD Backends
+.. OSD Back Ends
 
 OSD 有两种管理它们存储着的数据的方法。
 从 Luminous 12.2.z 版起，新的默认（也是推荐的）后端是 *BlueStore* ；
@@ -73,7 +73,7 @@ BlueStore 的关键功能包括：
 
 FileStore
 ---------
-.. warning:: Filestore has been deprecated in the Reef release and is no longer supported.
+.. warning:: Filestore 在 Reef 版已经废弃，并且不会再支持。
 
 FileStore 是 Ceph 存储对象的老方法。
 它依赖于标准文件系统（通常是 XFS ）和\

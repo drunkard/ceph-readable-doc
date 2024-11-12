@@ -1,16 +1,20 @@
 ======
  角色
 ======
+.. Role
 
-A role is similar to a user and has permission policies attached to it, that determine what a role can or can not do. A role can be assumed by any identity that needs it. If a user assumes a role, a set of dynamically created temporary credentials are returned to the user. A role can be used to delegate access to users, applications, services that do not have permissions to access some s3 resources.
+角色类似于用户。它附带着权限策略，决定着它能干什么、不能干什么。
+任何有需求的身份都可以用角色来实现。当一个用户进入一个角色时，
+一系列动态创建的临时凭证就会分配给这个用户。角色也可以用来把
+访问权限授权给用户、给应用程序、给没权限访问特定 S3 资源的服务。
 
-The following radosgw-admin commands can be used to create/ delete/ update a role and permissions asscociated with a role.
+下面的 ``radosgw-admin`` 命令可以用来创建、删除或者更新角色，及其相关联的权限。
 
 新建一个角色
 ------------
 .. Create a Role
 
-要新建角色，执行命令： ::
+要新建角色，按下面的格式执行命令： ::
 
 	radosgw-admin role create --role-name={role-name} [--path=="{path to the role}"] [--assume-role-policy-doc={trust-policy-document}]
 
@@ -28,7 +32,7 @@ The following radosgw-admin commands can be used to create/ delete/ update a rol
 
 ``assume-role-policy-doc``
 
-:描述: The trust relationship policy document that grants an entity permission to assume the role.
+:描述: 信任关系策略文档，负责给一个实体权限让它承担角色。
 :类型: String
 
 例如::
@@ -47,12 +51,13 @@ The following radosgw-admin commands can be used to create/ delete/ update a rol
     "assume_role_policy_document": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/TESTER\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
   }
 
-
 删除一角色
 ----------
 .. Delete a Role
 
-要删除角色，执行命令： ::
+要删除角色，按下面的格式执行命令：
+
+.. prompt:: bash
 
 	radosgw-admin role delete --role-name={role-name}
 
@@ -63,18 +68,21 @@ The following radosgw-admin commands can be used to create/ delete/ update a rol
 :描述: 角色的名字。
 :类型: String
 
-例如::
+例如：
+
+.. prompt:: bash
 
     radosgw-admin role delete --role-name=S3Access1
 
 注意：在没有捆绑任何权限策略的时候才能删除此角色。
 
-
 查看一角色
 ----------
 .. Get a Role
 
-要查看一个角色的信息，执行命令： ::
+要查看一个角色的信息，执行命令：
+
+.. prompt:: bash
 
 	radosgw-admin role get --role-name={role-name}
 
@@ -85,9 +93,11 @@ The following radosgw-admin commands can be used to create/ delete/ update a rol
 :描述: 角色的名字。
 :类型: String
 
-例如::
-	
-    radosgw-admin role get --role-name=S3Access1
+例如：
+
+.. prompt:: bash
+
+   radosgw-admin role get --role-name=S3Access1
 
 .. code-block:: javascript
 
@@ -101,12 +111,13 @@ The following radosgw-admin commands can be used to create/ delete/ update a rol
     "assume_role_policy_document": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/TESTER\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
   }
 
-
 罗列角色
 --------
 .. List Roles
 
-要罗列指定路径前缀的角色，执行命令： ::
+要罗列指定路径前缀的角色，执行命令：
+
+.. prompt:: bash
 
 	radosgw-admin role list [--path-prefix ={path prefix}]
 
@@ -117,7 +128,9 @@ The following radosgw-admin commands can be used to create/ delete/ update a rol
 :描述: 用于过滤角色的路径前缀。如果没指定，就罗列所有角色。
 :类型: String
 
-例如::
+例如：
+
+.. prompt:: bash
 
     radosgw-admin role list --path-prefix="/application"
 
@@ -152,7 +165,7 @@ The following radosgw-admin commands can be used to create/ delete/ update a rol
 
 ``assume-role-policy-doc``
 
-:描述: The trust relationship policy document that grants an entity permission to assume the role.
+:描述: 信任关系策略文档，负责给一个实体权限让它承担角色。
 :类型: String
 
 例如::
@@ -171,14 +184,14 @@ The following radosgw-admin commands can be used to create/ delete/ update a rol
     "assume_role_policy_document": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/TESTER2\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
   }
 
-In the above example, we are modifying the Principal from TESTER to TESTER2 in its assume role policy document.
+在前面的例子里，我们把用户 assume role 策略文档里
+Principal 的内容从 TESTER 修改成了 TESTER2 。
 
-
-新增、更新一个角色的策略
+增加、更新一个角色的策略
 ------------------------
 .. Add/ Update a Policy attached to a Role
 
-To add or update the inline policy attached to a role, execute the following::
+要增加或更新一个角色的内联策略，用下列命令： ::
 
 	radosgw-admin role policy put --role-name={role-name} --policy-name={policy-name} --policy-doc={permission-policy-doc}
 
@@ -203,14 +216,18 @@ To add or update the inline policy attached to a role, execute the following::
 
   radosgw-admin role-policy put --role-name=S3Access1 --policy-name=Policy1 --policy-doc=\{\"Version\":\"2012-10-17\",\"Statement\":\[\{\"Effect\":\"Allow\",\"Action\":\[\"s3:*\"\],\"Resource\":\"arn:aws:s3:::example_bucket\"\}\]\}
 
-In the above example, we are attaching a policy 'Policy1' to role 'S3Access1', which allows all s3 actions on 'example_bucket'.
+用文件传递 ``policy-doc`` 参数： ::
 
+  radosgw-admin role-policy put --role-name=S3Access1 --policy-name=Policy1 --infile policy-document.json
+
+在前面的例子里，我们把 Policy1 策略捆绑给了 S3Access1 角色，
+此策略许可了 example_bucket 上的所有 s3 操作。
 
 罗列与角色捆绑的权限策略名
 --------------------------
 .. List Permission Policy Names attached to a Role
 
-To list the names of permission policies attached to a role, execute the following::
+要罗列一个角色捆绑的权限策略的名字，执行下列的： ::
 
 	radosgw-admin role policy get --role-name={role-name}
 
@@ -230,7 +247,6 @@ To list the names of permission policies attached to a role, execute the followi
   [
     "Policy1"
   ]
-
 
 查看与角色捆绑的权限策略
 ------------------------
@@ -262,7 +278,6 @@ To list the names of permission policies attached to a role, execute the followi
     "Permission policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:*\"],\"Resource\":\"arn:aws:s3:::example_bucket\"}]}"
   }
 
-
 删除与角色捆绑的策略
 --------------------
 .. Delete Policy attached to a Role
@@ -287,14 +302,42 @@ To list the names of permission policies attached to a role, execute the followi
 
   radosgw-admin role-policy delete --role-name=S3Access1 --policy-name=Policy1
 
+更新角色
+--------
+.. Update a role
+
+要更新一个角色的 max-session-duration， 执行下列的： ::
+
+	radosgw-admin role update --role-name={role-name} --max-session-duration={max-session-duration}
+
+请求参数
+~~~~~~~~
+
+``role-name``
+
+:描述: 角色的名字。
+:类型: String
+
+``max-session-duration``
+
+:描述: 一个角色的最大会话持续时长。
+:类型: String
+
+例如::
+
+  radosgw-admin role update --role-name=S3Access1 --max-session-duration=43200
+
+注意：这个命令当前只能用于更新 max-session-duration 。
+
 
 操作角色的 REST API
 ===================
 .. REST APIs for Manipulating a Role
 
-In addition to the above radosgw-admin commands, the following REST APIs can be used for manipulating a role. For the request parameters and their explanations, refer to the sections above.
+除了上面的 radosgw-admin 命令，下面的 REST API 也可以用来操作角色。
+请求参数及其含义和前面段落的一致。
 
-In order to invoke the REST admin APIs, a user with admin caps needs to be created.
+要调用 REST 管理 API，需要先创建个有管理权限的用户。
 
 .. code-block:: javascript
 
@@ -329,7 +372,8 @@ In order to invoke the REST admin APIs, a user with admin caps needs to be creat
 
   POST "<hostname>?Action=DeleteRole&RoleName=S3Access"
 
-Note: A role can be deleted only when it doesn't have any permission policy attached to it.
+注意：一个角色没有捆绑任何权限策略时才能删掉。
+如果你想删除一个角色，必须首先删除与之捆绑的所有策略。
 
 查看角色
 --------
@@ -379,7 +423,7 @@ Note: A role can be deleted only when it doesn't have any permission policy atta
 
   POST "<hostname>?Action=UpdateAssumeRolePolicy&RoleName=S3Access&PolicyDocument=\{\"Version\":\"2012-10-17\",\"Statement\":\[\{\"Effect\":\"Allow\",\"Principal\":\{\"AWS\":\[\"arn:aws:iam:::user/TESTER2\"\]\},\"Action\":\[\"sts:AssumeRole\"\]\}\]\}"
 
-新增、更新与角色捆绑的策略
+增加、更新与角色捆绑的策略
 --------------------------
 .. Add/ Update a Policy attached to a Role
 
@@ -400,6 +444,7 @@ Note: A role can be deleted only when it doesn't have any permission policy atta
   <PolicyNames>
     <member>Policy1</member>
   </PolicyNames>
+
 
 查看与角色捆绑的权限策略
 ------------------------
@@ -429,7 +474,7 @@ Note: A role can be deleted only when it doesn't have any permission policy atta
 ----------
 .. Tag a role
 
-A role can have multivalued tags attached to it. These tags can be passed in as part of CreateRole REST API also.
+角色可以捆绑有多个值的标签，这些标签也可以在调用 CreateRole REST API 时作为一部分传入。
 AWS 不支持有多个值的角色标签。
 
 实例::
@@ -487,6 +532,26 @@ AWS 不支持有多个值的角色标签。
       <RequestId>tx000000000000000000007-00611f337e-1027-default</RequestId>
     </ResponseMetadata>
   </UntagRoleResponse>
+
+更新角色
+--------
+.. Update Role
+
+实例::
+
+  POST "<hostname>?Action=UpdateRole&RoleName=S3Access&MaxSessionDuration=43200"
+
+.. code-block:: XML
+
+  <UpdateRoleResponse>
+    <UpdateRoleResult>
+      <ResponseMetadata>
+        <RequestId>tx000000000000000000007-00611f337e-1027-default</RequestId>
+      </ResponseMetadata>
+      </UpdateRoleResult>
+  </UpdateRoleResponse>
+
+注意：这个 API 当前只能用于更新 max-session-duration 。
 
 给角色打标、罗列标签和删除标签的代码示例
 ----------------------------------------
