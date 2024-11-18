@@ -341,7 +341,7 @@ Ceph CLI 命令的内部用的是下面的 librados Python 绑定的方法。
 ===================
 .. Input/Output Context API
 
-要向 Ceph 对象存储系统写入和读出数据，必须创建一个输入/输出上下文（ ioctx ）。
+要向 Ceph 对象存储库写入和读出数据，必须创建一个输入/输出上下文（ ioctx ）。
 `Rados` 类提供了 `open_ioctx()` 和 `open_ioctx2()` 方法。
 其余 ``ioctx`` 操作包括 `Ioctx` 和其它类的调用方法。
 

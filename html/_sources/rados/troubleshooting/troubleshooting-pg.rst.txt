@@ -232,11 +232,11 @@ CRUSH 图错误
 集群只能指望节点早点恢复。
 这时我们假设用户希望先得到一个 IO 错误。
 
-.. note:: The situation described immediately above is one reason that setting
-   ``size=2`` on a replicated pool and ``m=1`` on an erasure coded pool risks
-   data loss.
+.. note:: 上面描述的情境是可能导致数据丢失的其中一个原因，就是
+   在给多副本存储池配置 ``size=2`` ，
+   或者给纠删码存储池配置 ``m=1`` 。
 
-首先，你应该确认哪些对象找不到了：
+确认哪些对象找不到了，命令格式如下：
 
 .. prompt:: bash
 
@@ -283,10 +283,10 @@ CRUSH 图错误
 ``more`` 这个字段将为 ``true`` ，因此你可以查询更多。
 （命令行工具可能隐藏了，但这里没有）
 
-其次，你可以找出哪些 OSD 上探测到了、
+然后找出哪些 OSD 上探测到了、
 或可能包含数据。
 
-在这份罗列结果的末尾（ ``more`` 值为 false 之前），
+在这份罗列结果的末尾（ ``more: false`` 之前），
 ``available_might_have_unfound`` 是 true 的时候会有 ``might_have_unfound`` 。
 这个和 ``ceph pg #.# query`` 的输出是等价的，
 只是这个结果让我们省去了直接查询（ ``query`` ）的必要。
@@ -335,7 +335,8 @@ CRUSH 图错误
 
 	ceph pg 2.5 mark_unfound_lost revert|delete
 
-上述最后一个参数 （ ``revert|delete`` ）告诉集群应如何处理丢失的对象。
+上述最后一个参数 （ ``revert|delete`` ）告诉集群应该
+如何处理丢失的对象。
 
 ``delete`` 选项将导致完全删除它们。
 
@@ -415,8 +416,10 @@ CRUSH 图错误
 ============
 .. PGs Inconsistent
 
-如果你看到状态变成了 ``active + clean + inconsistent`` ，
-可能是洗刷时遇到了错误。与往常一样，我们可以这样找出不一致的归置组：
+如果 ``ceph health detail`` 返回的状态是
+``active + clean + inconsistent`` ，
+这表明可能在洗刷时遇到了错误。
+用下面的命令找出不一致的归置组：
 
 .. prompt:: bash
 
@@ -428,7 +431,7 @@ CRUSH 图错误
     pg 0.6 is active+clean+inconsistent, acting [0,1,2]
     2 scrub errors
 
-或者这样，如果你喜欢程序化的输出：
+另外，如果你喜欢程序化的输出可以用这个命令：
 
 .. prompt:: bash
 
@@ -439,8 +442,9 @@ CRUSH 图错误
     ["0.6"]
 
 一致的状态只有一种，然而在最坏的情况下，
-我们可能会遇到多个对象产生了各种各样的不一致。假设\
-在 PG ``0.6`` 里的一个名为 ``foo`` 的对象被截断了，我们可以这样查看：
+我们可能会遇到多个对象产生了各种各样的不一致。
+假设在 PG ``0.6`` 里的一个名为 ``foo`` 的对象被截断了，
+``rados list-inconsistent-pg rbd`` 命令的输出可能是这样的：
 
 .. prompt:: bash
 
@@ -504,31 +508,32 @@ CRUSH 图错误
   它不一致的 head 。
 * 不一致分为两类：
 
-  * ``errors``: 这些错误表明不一致性出现在分片之间，但是没说明\
-    哪个（或哪些）分片有问题。如果 `shards` 阵列中有 ``errors``
-    字段，且不为空，它会指出问题所在。
+  #.  ``errors``: 这些错误表明不一致性出现在分片之间，但是没说明\
+     哪个（或哪些）分片有问题。如果 ``shards`` 数组中有 ``errors``
+     字段，且不为空，它会指出问题所在。
 
-    * ``data_digest_mismatch``: OSD.2 内读取到的副本的数字摘要\
-      与 OSD.0 和 OSD.1 的不一样。
-    * ``size_mismatch``: OSD.2 内读取到的副本的尺寸是 0 ，而
-      OSD.0 和 OSD.1 说是 968 。
-  * ``union_shard_errors``: ``shards`` 阵列中、所有与分片相关\
-    的错误 ``errors`` 的并集。 ``errors`` 是个错误原因集合，汇\
-    集了相关分片的这类问题，如 ``read_error`` 。以 ``oi`` 结尾\
-    的 ``errors`` 表明它是与 ``selected_object_info`` 的对照结\
-    果。从 ``shards`` 阵列里可以查到哪个分片有什么样的错误。
+     * ``data_digest_mismatch``: OSD.2 内读取到的副本的数字摘要\
+       与 OSD.0 和 OSD.1 的不一样。
+     * ``size_mismatch``: OSD.2 内读取到的副本的尺寸是 0 ，而
+       OSD.0 和 OSD.1 说是 968 。
 
-    * ``data_digest_mismatch_info``: 存储在 object-info （对象信息）里的\
-      数字签名不是 ``0xffffffff`` （这个是根据 OSD.2 上的分片计算出来的）。
-    * ``size_mismatch_info``: object-info 内存储的尺寸与 OSD.2
-      上的对象尺寸 0 不同。
+  #. ``union_shard_errors``: ``shards`` 数组中、所有与分片相关\
+     的错误 ``errors`` 的联合体。 ``errors`` 是个错误原因集合，
+     汇集了存在这类问题的分片，包括 ``read_error`` 等相似的错误。
+     以 ``oi`` 结尾的 ``errors`` 表明它是与 ``selected_object_info`` 的对照结果。
+     从 ``shards`` 数组里可以查到哪个分片有什么样的错误。
 
-.. warning:: If ``read_error`` is listed in a shard's ``errors`` attribute, the
-   inconsistency is likely due to physical storage errors. In cases like this,
-   check the storage used by that OSD. 
-   
-   Examine the output of ``dmesg`` and ``smartctl`` before attempting a drive
-   repair.
+     * ``data_digest_mismatch_info``: 存储在 object-info （对象信息）
+       里的数字签名不是 ``0xffffffff`` 
+       （这个是根据 OSD.2 上的分片计算出来的）。
+     * ``size_mismatch_info``: ``object-info`` 内存储的尺寸与 ``OSD.2``
+       上读出的对象尺寸不同。后者是 ``0`` 。
+
+.. warning:: 如果 ``read_error`` 出现在一个分片的 ``errors`` 属性里，
+   不一致很可能是物理存储器错误导致的。遇到这样的情况，
+   就要检查下那个 OSD 所用的存储驱动器。
+
+   在维修驱动器前，先检查下 ``dmesg`` 和 ``smartctl`` 的输出。
 
 你可以用下列命令修复不一致的归置组：
 
@@ -549,9 +554,9 @@ CRUSH 图错误
    Ceph 选择权威副本时就会忽略计算出的数字签名，
    总之，用此命令时小心为好。
 
-.. note:: PG IDs have the form ``N.xxxxx``, where ``N`` is the number of the
-   pool that contains the PG. The command ``ceph osd listpools`` and the
-   command ``ceph osd dump | grep pool`` return a list of pool numbers.
+.. note:: PG ID 的格式是 ``N.xxxxx`` ，其中 ``N`` 是这个 PG
+   所在存储池的号码。 ``ceph osd listpools`` 命令和
+   ``ceph osd dump | grep pool`` 命令可以查看存储池号码列表。
 
 如果你时不时遇到时钟偏移引起的 ``active + clean + inconsistent`` 状态，
 最好在监视器主机上配置 peer 角色的
@@ -560,63 +565,67 @@ CRUSH 图错误
 :ref:`时钟选项 <mon-config-ref-clock>`\ 。
 
 
-More Information on PG Repair
------------------------------
-Ceph stores and updates the checksums of objects stored in the cluster. When a
-scrub is performed on a PG, the lead OSD attempts to choose an authoritative
-copy from among its replicas. Only one of the possible cases is consistent.
-After performing a deep scrub, Ceph calculates the checksum of each object that
-is read from disk and compares it to the checksum that was previously recorded.
-If the current checksum and the previously recorded checksum do not match, that
-mismatch is considered to be an inconsistency. In the case of replicated pools,
-any mismatch between the checksum of any replica of an object and the checksum
-of the authoritative copy means that there is an inconsistency. The discovery
-of these inconsistencies cause a PG's state to be set to ``inconsistent``.
+有关修复 PG 的更多信息
+----------------------
+.. More Information on PG Repair
 
-The ``pg repair`` command attempts to fix inconsistencies of various kinds. When 
-``pg repair`` finds an inconsistent PG, it attempts to overwrite the digest of
-the inconsistent copy with the digest of the authoritative copy. When ``pg
-repair`` finds an inconsistent copy in a replicated pool, it marks the
-inconsistent copy as missing. In the case of replicated pools, recovery is
-beyond the scope of ``pg repair``.
+Ceph 会存储和更新集群内存储着的对象的校验和。
+在洗刷一个 PG 时， lead OSD 会尝试从其副本中选择一个权威副本。
+各种可能的情况里只有一种是一致的。
+执行深度洗刷后， Ceph 会计算从磁盘读出的每个对象的校验和，
+并将其与之前记录的校验和进行比对。
+如果当前校验和与之前记录的校验和不匹配，
+那么这个不匹配将被视为不一致。对于多副本存储池来说，
+对象的任何副本与权威副本的校验和不匹配都意味着存在不一致。
+发现这些不一致会导致 PG 的状态被设置为不一致（ ``inconsistent`` ）。
 
-In the case of erasure-coded and BlueStore pools, Ceph will automatically
-perform repairs if ``osd_scrub_auto_repair`` (default ``false``) is set to
-``true`` and if no more than ``osd_scrub_auto_repair_num_errors`` (default
-``5``) errors are found.
+``pg repair`` 命令试图修复各种类型的不一致。
+当 ``pg repair`` 发现不一致的 PG 时，
+它会尝试用权威副本的签名覆盖不一致副本的签名。
+当 ``pg repair`` 在多副本存储池中发现不一致副本时，
+它会将不一致副本标记为丢失。对于多副本存储池，
+恢复不在 ``pg repair`` 的范围内。
 
-The ``pg repair`` command will not solve every problem. Ceph does not
-automatically repair PGs when they are found to contain inconsistencies.
+对于纠删码存储池和 BlueStore 存储池，如果
+``osd_scrub_auto_repair`` （默认为 ``false`` ）设置为 ``true`` ，
+而且发现的错误个数不超过 ``osd_scrub_auto_repair_num_errors``
+（默认为 ``5`` ）， Ceph 就会自动执行修复。
 
-The checksum of a RADOS object or an omap is not always available. Checksums
-are calculated incrementally. If a replicated object is updated
-non-sequentially, the write operation involved in the update changes the object
-and invalidates its checksum. The whole object is not read while the checksum
-is recalculated. The ``pg repair`` command is able to make repairs even when
-checksums are not available to it, as in the case of Filestore. Users working
-with replicated Filestore pools might prefer manual repair to ``ceph pg
-repair``.
+``pg repair`` 命令不能解决所有问题。
+当发现 PG 存在不一致时，Ceph 也不会自动修复 PG。
 
-This material is relevant for Filestore, but not for BlueStore, which has its
-own internal checksums. The matched-record checksum and the calculated checksum
-cannot prove that any specific copy is in fact authoritative. If there is no
-checksum available, ``pg repair`` favors the data on the primary, but this
-might not be the uncorrupted replica. Because of this uncertainty, human
-intervention is necessary when an inconsistency is discovered. This
-intervention sometimes involves use of ``ceph-objectstore-tool``.
+RADOS 对象或 omap 的校验和并非总是可用。
+校验和是以增量方式计算的。如果一个对象副本不是顺序更新的，
+更新时的写入操作会改变对象并使其校验和失效。
+在重新计算校验和时，不会读取整个对象。
+即使无法获得校验和， ``pg repair`` 命令也能进行修复，
+比如在使用 Filestore 时。使用多副本 Filestore 存储池
+的用户可能更喜欢手动修复而不是 ``ceph pg repair`` 。
 
-PG Repair Walkthrough
----------------------
-https://ceph.io/geen-categorie/ceph-manually-repair-object/ - This page
-contains a walkthrough of the repair of a PG. It is recommended reading if you
-want to repair a PG but have never done so.
+这部分材料与 Filestore 有关，而与 BlueStore 无关，因为 BlueStore
+有它自己的内部校验和。记录的校验和与计算出的校验和相匹配
+并不能证明哪一份副本确实是权威的。
+如果没有可用的校验和， ``pg repair`` 会倾向于主 PG 内的数据，
+但它可能不是未损坏的副本。由于存在这种不确定性，
+所以发现不一致时有必要人工介入。
+人工介入有时还得使用 ``ceph-objectstore-tool`` 工具。
+
+
+PG 修复实战
+-----------
+.. PG Repair Walkthrough
+
+https://ceph.io/geen-categorie/ceph-manually-repair-object/ - 这个网页
+上有一个 PG 修复的实战记录。如果你从来没修复过，
+现在想试试，建议先读一下。
+
 
 纠删编码的归置组不是 active+clean
 =================================
 .. Erasure Coded PGs are not active+clean
 
 CRUSH 找不到足够多的 OSD 映射到某个 PG 时，它会显示为
-``2147483647`` ，意思是 ITEM_NONE 或 ``no OSD found`` ，例如： ::
+``2147483647`` ，意思是 ``ITEM_NONE`` 或 ``no OSD found`` ，例如： ::
 
 	[2,1,6,0,5,8,2147483647,7,4]
 
@@ -624,8 +633,10 @@ OSD 不够多
 ----------
 .. Not enough OSDs
 
-如果 Ceph 集群仅有 8 个 OSD ，但是纠删码存储池需要 9 个，就会显示上面的错误。
-这时候，你仍然可以另外创建需要较少 OSD 的纠删码存储池：
+如果 Ceph 集群仅有 8 个 OSD ，但是纠删码存储池需要 9 个，
+集群就会显示 "Not enough OSDs" 。这时候，
+你还可以另外创建一个需要较少 OSD 的纠删码存储池，
+命令格式如下constraints：
 
 .. prompt:: bash
 
@@ -638,10 +649,11 @@ CRUSH 条件不能满足
 ------------------
 .. CRUSH constraints cannot be satisfied
 
-即使集群拥有足够多的 OSD ， CRUSH 规则的强制要求仍有可能无法满足。
-假如有 10 个 OSD 分布于两个主机上，且 CRUSH 规则要求\
-相同归置组不得使用位于同一主机的两个 OSD ，这样映射就会失败，\
-因为只能找到两个 OSD ，你可以从规则里查看必要条件：
+即使集群拥有足够多的 OSD ， CRUSH 规则的强制条件仍有可能无法满足。
+假如有 10 个 OSD 分布于两个主机上，
+而 CRUSH 规则要求相同归置组不得使用位于同一主机的两个 OSD ，
+这样映射就会失败，因为只能找到两个 OSD 。
+你可以从规则里查看（ dump ）必要条件：
 
 .. prompt:: bash
 
@@ -665,8 +677,8 @@ CRUSH 条件不能满足
               "type": "host"},
             { "op": "emit"}]}
 
-可以这样解决此问题，创建新存储池，其内的 PG 允许多个 OSD 位于\
-同一主机，命令如下：
+可以这样解决此问题，创建新存储池，其内的 PG 允许多个 OSD
+位于同一主机，命令如下：
 
 .. prompt:: bash
 
@@ -694,8 +706,8 @@ CRUSH 过早中止
   把 ``set_choose_tries`` 设置得\
   高于默认值即可。
 
-你从集群中提取出 crushmap 之后，应该先用 ``crushtool`` 校验\
-一下是否有问题，这样你的试验就无需触及 Ceph 集群，只要在一个\
+从集群中提取出 crushmap 之后，应该先用 ``crushtool`` 校验一下\
+是否有问题，这样你的试验就无需触及 Ceph 集群，只要在一个\
 本地文件上测试即可：
 
 .. prompt:: bash
@@ -733,8 +745,9 @@ CRUSH 过早中止
 说明所有映射都成功了，你可以就此打住：
 问题的根源不在这里。
 
-Changing the value of set_choose_tries
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+修改 set_choose_tries 的值
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. Changing the value of set_choose_tries
 
 #. 反编译 crush 图后，你可以手动编辑其 CRUSH 规则：
 
@@ -766,7 +779,8 @@ Changing the value of set_choose_tries
 
 #. 所有映射都成功时，
    用 ``crushtool`` 的 ``--show-choose-tries`` 选项\
-   能看到成功映射的尝试次数直方图：
+   能看到所有成功映射的尝试次数直方图，
+   如下面的例子：
 
    .. prompt:: bash
 
