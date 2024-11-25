@@ -55,6 +55,24 @@ ceph-mgr 守护进程无需形成法定人数。
 如果你想提前做故障切换，可以用 ``ceph mgr fail <mgr name>`` 把
 ceph-mgr 明确地标记为已失效。
 
+性能和伸缩性
+------------
+.. Performance and Scalability
+
+All the mgr modules share a cache that can be enabled with
+``ceph config set mgr mgr_ttl_cache_expire_seconds <seconds>``, where seconds
+is the time to live of the cached python objects.
+
+It is recommended to enable the cache with a 10 seconds TTL when there are 500+
+osds or 10k+ pgs as internal structures might increase in size, and cause latency
+issues when requesting large structures. As an example, an OSDMap with 1000 osds
+has a approximate size of 4MiB. With heavy load, on a 3000 osd cluster there has
+been a 1.5x improvement enabling the cache.
+
+Furthermore, you can run ``ceph daemon mgr.${MGRNAME} perf dump`` to retrieve perf
+counters of a mgr module. In ``mgr.cache_hit`` and ``mgr.cache_miss`` you'll find the
+hit/miss ratio of the mgr cache.
+
 模块的使用
 ----------
 .. Using modules
@@ -86,7 +104,6 @@ Here is an example of enabling the :term:`Dashboard` module:
 	$ ceph mgr module ls
 	{
 		"enabled_modules": [
-			"restful",
 			"status"
 		],
 		"disabled_modules": [
@@ -98,7 +115,6 @@ Here is an example of enabling the :term:`Dashboard` module:
 	$ ceph mgr module ls
 	{
 		"enabled_modules": [
-			"restful",
 			"status",
 			"dashboard"
 		],
@@ -108,8 +124,7 @@ Here is an example of enabling the :term:`Dashboard` module:
 
 	$ ceph mgr services
 	{
-		"dashboard": "http://myserver.com:7789/",
-		"restful": "https://myserver.com:8789/"
+		"dashboard": "http://myserver.com:7789/"
 	}
 
 

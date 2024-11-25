@@ -191,9 +191,12 @@ TODO: 翻译字段名，位于 _ext/ceph_confval.py -> TEMPLATE
 
 #. 编译环境配置。
 
-   * 安装 ``ditaa`` ，编译文档里的 ditaa 图需要这个软件。它依赖 Java 虚拟机，
-     应该用 JDK，比如 oracle-jdk-bin-1.8 或 oracle-jdk-bin-1.7 ，jre 缺少\
-     必要的库文件。
+   * 在系统内安装 ``ceph`` 软件，编译文档前脚本会自动配置文档的编译环境，\
+     配置时依赖随 ``ceph`` 安装的库，这个依赖是一次性的，文档能正常编译之后\
+     就可以删掉安装的 ``ceph`` 软件。
+   * 在系统内安装 ``ditaa`` ，编译文档里的 ditaa 图需要这个软件。它依赖
+     Java 虚拟机，应该用 JDK，比如 oracle-jdk-bin-1.8 或 oracle-jdk-bin-1.7 ，
+     jre 缺少必要的库文件。
    * 安装 Sphinx ，这个文档编译系统是基于 Python 的，我现在用的是 Python 3.11 ；
 
 #. 执行 ceph 库内 admin 目录下的 build-doc 开始构建文档； ::

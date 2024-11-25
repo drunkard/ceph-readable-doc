@@ -301,28 +301,36 @@ ID ： ::
 
 增加、删除管理能力
 ------------------
-.. Add / Remove Admin Capabilities
+.. Add or Remove Admin Capabilities
 
 Ceph 存储集群提供了一个管理 API ，用户可以通过 REST API 使用管\
 理功能。默认情况下，用户\ **无权**\ 访问这个 API ，给用户分配\
 管理能力后，他才能使用管理功能。
 
-要给用户分配管理能力，执行下面的： ::
+要给用户分配管理能力，执行下面的：
+
+.. prompt:: bash
 
 	radosgw-admin caps add --uid={uid} --caps={caps}
 
 
 你可以给 users 、 buckets 、 metadata 和 usage （利用率）分配
-read 、 write 或 all 能力，例如： ::
+read 、 write 或 all 能力，例如：
 
-	--caps="[users|buckets|metadata|usage|zone]=[*|read|write|read, write]"
+.. prompt:: bash
 
-例如： ::
+   --caps="[users|buckets|metadata|usage|zone|amz-cache|info|bilog|mdlog|datalog|user-policy|oidc-provider|roles|ratelimit|user-info-without-keys]=[\*|read|write|read, write]"
+
+例如：
+
+.. prompt:: bash
 
 	radosgw-admin caps add --uid=johndoe --caps="users=*;buckets=*"
 
 
-要删除某用户的管理能力，可用下面的命令： ::
+要删除某用户的管理能力，可用下面的命令：
+
+.. prompt:: bash
 
 	radosgw-admin caps rm --uid=johndoe --caps={caps}
 
@@ -355,22 +363,28 @@ Ceph 对象网关允许你给用户及其拥有的桶设置配额，可设置的
 
 	radosgw-admin quota set --quota-scope=user --uid=<uid> [--max-objects=<num objects>] [--max-size=<max size>]
 
-例如： ::
+例如：
 
-	radosgw-admin quota set --quota-scope=user --uid=johndoe --max-objects=1024 --max-size=1024B
+.. prompt:: bash
 
-对象数和、或最大尺寸为负值时，表示不再检查这种配额属性。
+   radosgw-admin quota set --quota-scope=user --uid=johndoe --max-objects=1024 --max-size=1024B
+
+``--max-objects`` 或 ``--max-size`` 的参数为负值时，表示禁用这种配额属性。
 
 
 启用或禁用用户配额
 ------------------
 .. Enable/Disable User Quota
 
-设置好用户配额后就可以启用了。例如： ::
+设置好用户配额后就可以启用了。例如：
+
+.. prompt:: bash
 
 	radosgw-admin quota enable --quota-scope=user --uid=<uid>
 
-你也可以关闭已启用的用户配额功能。例如： ::
+你也可以关闭已启用的用户配额功能。例如：
+
+.. prompt:: bash
 
 	radosgw-admin quota disable --quota-scope=user --uid=<uid>
 
@@ -380,23 +394,30 @@ Ceph 对象网关允许你给用户及其拥有的桶设置配额，可设置的
 .. Set Bucket Quota
 
 Bucket quotas apply to the buckets owned by the specified ``uid``. They are
-independent of the user. ::
+independent of the user. To set a bucket quota, run a command of the following
+form:
 
-	radosgw-admin quota set --uid=<uid> --quota-scope=bucket [--max-objects=<num objects>] [--max-size=<max size]
+.. prompt:: bash
 
-A negative value for num objects and / or max size means that the
-specific quota attribute check is disabled.
+   radosgw-admin quota set --uid=<uid> --quota-scope=bucket [--max-objects=<num objects>] [--max-size=<max size]
+
+A negative value for ``--max-objects`` or ``--max-size`` means that the
+specific quota attribute is disabled.
 
 
 启用、禁用桶配额
 ----------------
-.. Enable/Disable Bucket Quota
+.. Enable and Disabling Bucket Quota
 
-设置好桶配额后，你可以这样启用： ::
+设置好桶配额后，必须启用才能生效。启用桶配额用下面的命令：
+
+.. prompt:: bash
 
 	radosgw-admin quota enable --quota-scope=bucket --uid=<uid>
 
-已启用的桶配额可禁用。例如： ::
+要禁用一个已经启用的桶配额，按下列格式运行命令：
+
+.. prompt:: bash
 
 	radosgw-admin quota disable --quota-scope=bucket --uid=<uid>
 
@@ -407,7 +428,9 @@ specific quota attribute check is disabled.
 
 You may access each user's quota settings via the user information
 API. To read user quota setting information with the CLI interface,
-execute the following::
+execute the following:
+
+.. prompt:: bash
 
 	radosgw-admin user info --uid=<uid>
 
@@ -416,9 +439,12 @@ execute the following::
 ----------------
 .. Update Quota Stats
 
-Quota stats get updated asynchronously. You can update quota
-statistics for all users and all buckets manually to retrieve
-the latest quota stats. ::
+Quota stats are updated asynchronously. You can update quota statistics for all
+users and all buckets manually to force an update of the latest quota stats. To
+update quota statistics for all users and all buckets in order to retrieve the
+latest quota statistics, run a command of the following form:
+
+.. prompt:: bash
 
 	radosgw-admin user stats --uid=<uid> --sync-stats
 
@@ -429,7 +455,9 @@ the latest quota stats. ::
 --------------------------
 .. Get User Usage Stats
 
-查看用户已经消耗了多少配额可以用下列命令： ::
+查看用户已经消耗了多少配额可以用下列命令：
+
+.. prompt:: bash
 
 	radosgw-admin user stats --uid=<uid>
 
@@ -453,15 +481,22 @@ the latest quota stats. ::
 --------
 .. Quota Cache
 
-配额统计信息缓存在各个 RGW 例程内。如果有多个例程，这些缓存就\
-会妨碍配额的完整施行，因为各例程将持有不同的配额信息。控制这些\
-的选项有 ``rgw bucket quota ttl`` 、
-``rgw user quota bucket sync interval`` 和
-``rgw user quota sync interval`` 。这些值设置得越高，配额操作\
-越高效，但是多个例程也会变得更不同步；这些值设置得越低，多个例\
-程就越接近完整地施行配额。如果三者都是 0 ，那就意味着配额缓存\
-被禁用了，这样多个例程就会完整地施行配额。请参考\
-`Ceph 对象网关配置参考`_\ 。
+配额统计信息缓存在各个 RGW 例程内。如果有多个例程，\
+这些缓存就会妨碍配额的完整施行，因为各例程可能持有不同的配额信息。
+
+控制此行为的选项有：
+
+:confval:`rgw_bucket_quota_ttl`
+:confval:`rgw_user_quota_bucket_sync_interval`
+:confval:`rgw_user_quota_sync_interval`
+
+这些值设置得越高，配额操作越高效，
+但是多个例程也会变得更不同步；
+这些值设置得越低，多个例程就越接近完整地施行配额。
+
+如果三者都是 ``0`` ，那就意味着配额缓存被禁用了，
+这样多个例程就会完整地施行配额。
+请参考\ `Ceph 对象网关配置参考`_\ 。
 
 
 读取、写入全局配额
@@ -469,7 +504,9 @@ the latest quota stats. ::
 .. Reading / Writing Global Quotas
 
 你可以在 period 配置中读取或写入全局配额设置，查看全局配额配置\
-可以用： ::
+可以用：
+
+.. prompt:: bash
 
 	radosgw-admin global quota get
 
@@ -487,23 +524,44 @@ the latest quota stats. ::
 Rate Limit Management
 =====================
 
-The Ceph Object Gateway enables you to set rate limits on users and buckets.
-Rate limit includes the maximum number of read ops and write ops per minute
-and how many bytes per minute could be written or read per user or per bucket.
-Requests that are using GET or HEAD method in the REST request are considered as "read requests", otherwise they are considered as "write requests".
-Every Object Gateway tracks per user and bucket metrics separately, these metrics are not shared with other gateways.
-That means that the desired limits configured should be divide by the number of active Object Gateways.
-例如, if userA should be limited by 10 ops per minute and there are 2 Object Gateways in the cluster,
-the limit over userA should be 5 (10 ops per minute / 2 RGWs).
-if the requests are ``not`` balanced between RGWs, the rate limit may be underutilized.
-例如, if the ops limit is 5 and there are 2 RGWs, ``but`` the Load Balancer send load only to one of those RGWs,
-The effective limit would be 5 ops, because this limit is enforced per RGW.
-If there is a limit reached for bucket not for user or vice versa the request would be cancelled as well.
-The bandwidth counting happens after the request is being accepted, as a result, even if in the middle of the request the bucket/user has reached its bandwidth limit this request will proceed.
-The RGW will keep a "debt" of used bytes more than the configured value and will prevent this user/bucket from sending more requests until there "debt" is being paid.
-The "debt" maximum size is twice the max-read/write-bytes per minute.
-If userA has 1 byte read limit per minute and this user tries to GET 1 GB object, the user will be able to do it.
-After userA completes this 1GB operation, the RGW will block the user request for up to 2 minutes until userA will be able to send GET request again.
+Quotas can be set for The Ceph Object Gateway on users and buckets. The "rate
+limit" includes the maximum number of read operations (read ops) and write
+operations (write ops) per minute as well as the number of bytes per minute
+that can be written or read per user or per bucket.
+
+Read Requests and Write Requests
+--------------------------------
+Operations that use the ``GET`` method or the ``HEAD`` method in their REST
+requests are "read requests". All other requests are "write requests".  
+
+How Metrics Work
+----------------
+Each object gateway tracks per-user metrics separately from bucket metrics.
+These metrics are not shared with other gateways. The configured limits should
+be divided by the number of active object gateways. For example, if "user A" is
+to be be limited to 10 ops per minute and there are two object gateways in the
+cluster, then the limit on "user A" should be ``5`` (10 ops per minute / 2
+RGWs). If the requests are **not** balanced between RGWs, the rate limit might
+be underutilized. For example: if the ops limit is ``5`` and there are two
+RGWs, **but** the Load Balancer sends load to only one of those RGWs, the
+effective limit is 5 ops, because this limit is enforced per RGW. If the rate
+limit that has been set for the bucket has been reached but the rate limit that
+has been set for the user has not been reached, then the request is cancelled.
+The contrary holds as well: if the rate limit that has been set for the user
+has been reached but the rate limit that has been set for the bucket has not
+been reached, then the request is cancelled.
+
+The accounting of bandwidth happens only after a request has been accepted.
+This means that requests will proceed even if the bucket rate limit or user
+rate limit is reached during the execution of the request. The RGW keeps track
+of a "debt" consisting of bytes used in excess of the configured value; users
+or buckets that incur this kind of debt are prevented  from sending more
+requests until the "debt" has been repaid. The maximum size of the "debt" is
+twice the max-read/write-bytes per minute. If "user A" is subject to a 1-byte
+read limit per minute and they attempt to GET an object that is 1 GB in size,
+then the ``GET`` action will fail. After "user A" has completed this 1 GB
+operation, RGW blocks the user's requests for up to two minutes. After this
+time has elapsed, "user A" will be able to send ``GET`` requests again.
 
 
 - **Bucket:** The ``--bucket`` option allows you to specify a rate limit for a
@@ -512,156 +570,212 @@ After userA completes this 1GB operation, the RGW will block the user request fo
 - **User:** The ``--uid`` option allows you to specify a rate limit for a
   user.
 
-- **Maximum Read Ops:** The ``--max-read-ops`` setting allows you to specify
-  the maximum number of read ops per minute per RGW. A 0 value disables this setting (which means unlimited access).
-
-- **Maximum Read Bytes:** The ``--max-read-bytes`` setting allows you to specify
-  the maximum number of read bytes per minute per RGW. A 0 value disables this setting (which means unlimited access).
+- **Maximum Read Ops:** The ``--max-read-ops`` setting allows you to limit read
+  bytes per minute per RGW instance. A ``0`` value disables throttling. 
+  
+- **Maximum Read Bytes:** The ``--max-read-bytes`` setting allows you to limit
+  read bytes per minute per RGW instance. A ``0`` value disables throttling. 
 
 - **Maximum Write Ops:** The ``--max-write-ops`` setting allows you to specify
-  the maximum number of write ops per minute per RGW. A 0 value disables this setting (which means unlimited access).
-
-- **Maximum Write Bytes:** The ``--max-write-bytes`` setting allows you to specify
-  the maximum number of write bytes per minute per RGW. A 0 value disables this setting (which means unlimited access).
-
-- **Rate Limit Scope:** The ``--ratelimit-scope`` option sets the scope for the rate limit.
-  The options are ``bucket`` , ``user`` and ``anonymous``. Bucket rate limit apply to buckets.
-  The user rate limit applies to a user. Anonymous applies to an unauthenticated user.
-  Anonymous scope is only available for global rate limit.
+  the maximum number of write ops per minute per RGW instance. A ``0`` value
+  disables throttling.
+  
+- **Maximum Write Bytes:** The ``--max-write-bytes`` setting allows you to
+  specify the maximum number of write bytes per minute per RGW instance. A
+  ``0`` value disables throttling.
+ 
+- **Rate Limit Scope:** The ``--ratelimit-scope`` option sets the scope for the
+  rate limit.  The options are ``bucket`` , ``user`` and ``anonymous``. Bucket
+  rate limit apply to buckets.  The user rate limit applies to a user.  The
+  ``anonymous`` option applies to an unauthenticated user. Anonymous scope is
+  available only for global rate limit.
 
 
 Set User Rate Limit
 -------------------
 
-Before you enable a rate limit, you must first set the rate limit parameters.
-例如::
+Before you can enable a rate limit, you must first set the rate limit
+parameters. The following is the general form of commands that set rate limit
+parameters: 
 
-	radosgw-admin ratelimit set --ratelimit-scope=user --uid=<uid> <[--max-read-ops=<num ops>] [--max-read-bytes=<num bytes>]
-  [--max-write-ops=<num ops>] [--max-write-bytes=<num bytes>]>
+.. prompt:: bash
 
-例如::
+   radosgw-admin ratelimit set --ratelimit-scope=user --uid=<uid>
+   <[--max-read-ops=<num ops>] [--max-read-bytes=<num bytes>]
+   [--max-write-ops=<num ops>] [--max-write-bytes=<num bytes>]>
 
-	radosgw-admin ratelimit set --ratelimit-scope=user --uid=johndoe --max-read-ops=1024 --max-write-bytes=10240
+An example of using ``radosgw-admin ratelimit set`` to set a rate limit might
+look like this: 
+
+.. prompt:: bash
+
+   radosgw-admin ratelimit set --ratelimit-scope=user --uid=johndoe --max-read-ops=1024 --max-write-bytes=10240
 
 
-A 0 value for num ops and / or num bytes means that the
-specific rate limit attribute check is disabled.
+A value of ``0`` assigned to ``--max-read-ops``, ``--max-read-bytes``,
+``--max-write-ops``, or ``--max-write-bytes`` disables the specified rate
+limit.  
 
 Get User Rate Limit
 -------------------
 
-Get the current configured rate limit parameters
-例如::
+The ``radosgw-admin ratelimit get`` command returns the currently configured
+rate limit parameters.
 
-	radosgw-admin ratelimit get --ratelimit-scope=user --uid=<uid>
+The following is the general form of the command that returns the current
+configured limit parameters:  
 
-例如::
+.. prompt:: bash
 
-	radosgw-admin ratelimit get --ratelimit-scope=user --uid=johndoe
+   radosgw-admin ratelimit get --ratelimit-scope=user --uid=<uid>
 
+An example of using ``radosgw-admin ratelimit get`` to return the rate limit
+parameters might look like this: 
 
-A 0 value for num ops and / or num bytes means that the
-specific rate limit attribute check is disabled.
+.. prompt:: bash
+
+   radosgw-admin ratelimit get --ratelimit-scope=user --uid=johndoe
+
+A value of ``0`` assigned to ``--max-read-ops``, ``--max-read-bytes``,
+``--max-write-ops``, or ``--max-write-bytes`` disables the specified rate
+limit.  
 
 
 Enable/Disable User Rate Limit
 ------------------------------
 
-Once you set a user rate limit, you may enable it. 例如::
+After you have set a user rate limit, you must enable it in order for it to
+take effect. Run a command of the following form to enable a user rate limit: 
 
-	radosgw-admin ratelimit enable --ratelimit-scope=user --uid=<uid>
+.. prompt:: bash
 
-You may disable an enabled user rate limit. 例如::
+   radosgw-admin ratelimit enable --ratelimit-scope=user --uid=<uid>
 
-	radosgw-admin ratelimit disable --ratelimit-scope=user --uid=johndoe
+To disable an enabled user rate limit, run a command of the following form: 
+
+.. prompt:: bash
+
+   radosgw-admin ratelimit disable --ratelimit-scope=user --uid=johndoe
 
 
 Set Bucket Rate Limit
 ---------------------
 
 Before you enable a rate limit, you must first set the rate limit parameters.
-例如::
+The following is the general form of commands that set rate limit parameters:
 
-	radosgw-admin ratelimit set --ratelimit-scope=bucket --bucket=<bucket> <[--max-read-ops=<num ops>] [--max-read-bytes=<num bytes>]
+.. prompt:: bash
+
+   radosgw-admin ratelimit set --ratelimit-scope=bucket --bucket=<bucket> <[--max-read-ops=<num ops>] [--max-read-bytes=<num bytes>]
   [--max-write-ops=<num ops>] [--max-write-bytes=<num bytes>]>
 
-例如::
+An example of using ``radosgw-admin ratelimit set`` to set a rate limit for a
+bucket might look like this: 
 
-	radosgw-admin ratelimit set --ratelimit-scope=bucket --bucket=mybucket --max-read-ops=1024 --max-write-bytes=10240
+.. prompt:: bash
+
+   radosgw-admin ratelimit set --ratelimit-scope=bucket --bucket=mybucket --max-read-ops=1024 --max-write-bytes=10240
 
 
-A 0 value for num ops and / or num bytes means that the
-specific rate limit attribute check is disabled.
+A value of ``0`` assigned to ``--max-read-ops``, ``--max-read-bytes``,
+``--max-write-ops``, or ``-max-write-bytes`` disables the specified bucket rate
+limit. 
 
 Get Bucket Rate Limit
 ---------------------
 
-Get the current configured rate limit parameters
-例如::
+The ``radosgw-admin ratelimit get`` command returns the current configured rate
+limit parameters.
 
-	radosgw-admin ratelimit set --ratelimit-scope=bucket --bucket=<bucket>
+The following is the general form of the command that returns the current
+configured limit parameters:
 
-例如::
+.. prompt:: bash
 
-	radosgw-admin ratelimit get --ratelimit-scope=bucket --bucket=mybucket
+   radosgw-admin ratelimit get --ratelimit-scope=bucket --bucket=<bucket>
 
+An example of using ``radosgw-admin ratelimit get`` to return the rate limit
+parameters for a bucket might look like this:
 
-A 0 value for num ops and / or num bytes means that the
-specific rate limit attribute check is disabled.
+.. prompt:: bash
 
+   radosgw-admin ratelimit get --ratelimit-scope=bucket --bucket=mybucket
 
-Enable/Disable Bucket Rate Limit
---------------------------------
-
-Once you set a bucket rate limit, you may enable it. 例如::
-
-	radosgw-admin ratelimit enable --ratelimit-scope=bucket --bucket=<bucket>
-
-You may disable an enabled bucket rate limit. 例如::
-
-	radosgw-admin ratelimit disable --ratelimit-scope=bucket --uid=mybucket
+A value of ``0`` assigned to ``--max-read-ops``, ``--max-read-bytes``,
+``--max-write-ops``, or ``--max-write-bytes`` disables the specified rate
+limit.
 
 
-Reading / Writing Global Rate Limit Configuration
--------------------------------------------------
+Enable and Disable Bucket Rate Limit
+------------------------------------
 
-You can read and write global rate limit settings in the period configuration. To
-view the global rate limit settings::
+After you set a bucket rate limit, you can enable it. The following is the
+general form of the ``radosgw-admin ratelimit enable`` command that enables
+bucket rate limits: 
 
-	radosgw-admin global rate limit get
+.. prompt:: bash
+
+   radosgw-admin ratelimit enable --ratelimit-scope=bucket --bucket=<bucket>
+
+An enabled bucket rate limit can be disabled by running a command of the following form:
+
+.. prompt:: bash
+
+   radosgw-admin ratelimit disable --ratelimit-scope=bucket --uid=mybucket
+
+Reading and Writing Global Rate Limit Configuration
+---------------------------------------------------
+
+You can read and write global rate limit settings in the period's configuration.
+To view the global rate limit settings, run the following command:
+
+.. prompt:: bash
+
+   radosgw-admin global ratelimit get
 
 The global rate limit settings can be manipulated with the ``global ratelimit``
-counterparts of the ``ratelimit set``, ``ratelimit enable``, and ``ratelimit disable``
-commands. Per user and per bucket ratelimit configuration is overriding the global configuration::
+counterparts of the ``ratelimit set``, ``ratelimit enable``, and ``ratelimit
+disable`` commands. Per-user and per-bucket ratelimit configurations override
+the global configuration:
 
-	radosgw-admin global ratelimit set --ratelimit-scope bucket --max-read-ops=1024
-	radosgw-admin global ratelimit enable --ratelimit-scope bucket
+.. prompt:: bash
 
-The global rate limit can configure rate limit scope for all authenticated users::
+   radosgw-admin global ratelimit set --ratelimit-scope bucket --max-read-ops=1024
+   radosgw-admin global ratelimit enable --ratelimit-scope bucket
 
-  radosgw-admin global ratelimit set --ratelimit-scope user --max-read-ops=1024
-  radosgw-admin global ratelimit enable --ratelimit-scope user
+The global rate limit can be used to configure the scope of the rate limit for
+all authenticated users:
 
-The global rate limit can configure rate limit scope for all unauthenticated users::
+.. prompt:: bash
 
-  radosgw-admin global ratelimit set --ratelimit-scope=anonymous --max-read-ops=1024
-  radosgw-admin global ratelimit enable --ratelimit-scope=anonymous
+   radosgw-admin global ratelimit set --ratelimit-scope user --max-read-ops=1024
+   radosgw-admin global ratelimit enable --ratelimit-scope user
 
-.. note:: In a multisite configuration, where there is a realm and period
-   present, changes to the global rate limit must be committed using ``period
-   update --commit``. If there is no period present, the rados gateway(s) must
-   be restarted for the changes to take effect.
+The global rate limit can be used to configure the scope of the rate limit for
+all unauthenticated users:
+
+.. prompt:: bash
+  
+   radosgw-admin global ratelimit set --ratelimit-scope=anonymous --max-read-ops=1024
+   radosgw-admin global ratelimit enable --ratelimit-scope=anonymous
+
+.. note:: In a multisite configuration where a realm and a period are present,
+   any changes to the global rate limit must be committed using ``period update
+   --commit``. If no period is present, the rados gateway(s) must be restarted
+   for the changes to take effect.
 
 
 使用情况
 ========
 .. Usage
 
-Ceph 对象网关会记录每个用户的使用情况，你可以查看某段时间内用\
-户的使用情况。
+Ceph 对象网关会记录每个用户的使用情况，
+你可以跟踪查看某段时间内每个用户的使用情况。
 
-- 需要在 ceph.conf 的 [client.rgw] 段下加
-  ``rgw enable usage log = true`` 配置，然后重启 radosgw 服务。
+- 需要在 ``ceph.conf`` 的 ``[client.rgw]`` 段下加
+  ``rgw enable usage log = true`` 配置，然后重启 ``radosgw`` 服务。
+
+  .. note:: Until Ceph has a linkable macro that handles all the many ways that options can be set, we advise that you set ``rgw_enable_usage_log = true`` in central config or in ``ceph.conf`` and restart all RGWs.
 
 选项有：
 
@@ -683,28 +797,37 @@ Ceph 对象网关会记录每个用户的使用情况，你可以查看某段时
 ------------
 .. Show Usage
 
-To show usage statistics, specify the ``usage show``. To show usage for a
-particular user, you must specify a user ID. You may also specify a start date,
-end date, and whether or not to show log entries.::
+To show usage statistics, use the ``radosgw-admin usage show`` command. To show
+usage for a particular user, you must specify a user ID. You can also specify a
+start date, end date, and whether to show log entries. The following is an example
+of such a command:
+
+.. prompt:: bash $
 
 	radosgw-admin usage show --uid=johndoe --start-date=2012-03-01 --end-date=2012-04-01
 
-You may also show a summary of usage information for all users by omitting a user ID. ::
+You can show a summary of usage information for all users by omitting the user
+ID, as in the following example command:
 
-	radosgw-admin usage show --show-log-entries=false
+.. prompt:: bash $
+
+   radosgw-admin usage show --show-log-entries=false
 
 
 清理统计日志
 ------------
 .. Trim Usage
 
-With heavy use, usage logs can begin to take up storage space. You can trim
-usage logs for all users and for specific users. You may also specify date
-ranges for trim operations. ::
+Usage logs can consume significant storage space, especially over time and with
+heavy use. You can trim the usage logs for all users and for specific users.
+You can also specify date ranges for trim operations, as in the following
+example commands:
 
-	radosgw-admin usage trim --start-date=2010-01-01 --end-date=2010-12-31
-	radosgw-admin usage trim --uid=johndoe
-	radosgw-admin usage trim --uid=johndoe --end-date=2013-12-31
+.. prompt:: bash $
+
+   radosgw-admin usage trim --start-date=2010-01-01 --end-date=2010-12-31
+   radosgw-admin usage trim --uid=johndoe	
+   radosgw-admin usage trim --uid=johndoe --end-date=2013-12-31
 
 
 .. _radosgw-admin: ../../man/8/radosgw-admin/

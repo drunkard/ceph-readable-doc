@@ -135,6 +135,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#fs-subvolumes">FS Subvolumes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#cloning-snapshots">Cloning Snapshots</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pinning-subvolumes-and-subvolume-groups">Pinning Subvolumes and Subvolume Groups</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#subvolume-quiesce">Subvolume quiesce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#disabling-volumes-plugin">Disabling Volumes Plugin</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../quota/"> CephFS 配额管理</a></li>
@@ -209,31 +211,31 @@
   
   <section id="fs-volumes-and-subvolumes">
 <span id="id1"></span><h1>FS volumes and subvolumes<a class="headerlink" href="#fs-volumes-and-subvolumes" title="Permalink to this heading"></a></h1>
-<p>A  single source of truth for CephFS exports is implemented in the volumes
-module of the <a class="reference internal" href="../../glossary/#term-Ceph-Manager"><span class="xref std std-term">Ceph Manager</span></a> daemon (ceph-mgr). The OpenStack shared
-file system service (<a class="reference external" href="https://github.com/openstack/manila">manila</a>), Ceph Container Storage Interface (<a class="reference external" href="https://github.com/ceph/ceph-csi">CSI</a>),
-storage administrators among others can use the common CLI provided by the
-ceph-mgr volumes module to manage the CephFS exports.</p>
-<p>The ceph-mgr volumes module implements the following file system export
-abstactions:</p>
+<p>The volumes module of the <a class="reference internal" href="../../glossary/#term-Ceph-Manager"><span class="xref std std-term">Ceph Manager</span></a> daemon (ceph-mgr) provides a
+single source of truth for CephFS exports. The OpenStack shared file system
+service (<a class="reference external" href="https://github.com/openstack/manila">manila</a>) and the Ceph Container Storage Interface (<a class="reference external" href="https://github.com/ceph/ceph-csi">CSI</a>) storage
+administrators use the common CLI provided by the ceph-mgr <code class="docutils literal notranslate"><span class="pre">volumes</span></code> module
+to manage CephFS exports.</p>
+<p>The ceph-mgr <code class="docutils literal notranslate"><span class="pre">volumes</span></code> module implements the following file system export
+abstractions:</p>
 <ul class="simple">
 <li><p>FS volumes, an abstraction for CephFS file systems</p></li>
-<li><p>FS subvolumes, an abstraction for independent CephFS directory trees</p></li>
 <li><p>FS subvolume groups, an abstraction for a directory level higher than FS
-subvolumes to effect policies (e.g., <a class="reference internal" href="../file-layouts/"><span class="doc">文件布局</span></a>) across a
-set of subvolumes</p></li>
+subvolumes. Used to effect policies (e.g., <a class="reference internal" href="../file-layouts/"><span class="doc">文件布局</span></a>)
+across a set of subvolumes</p></li>
+<li><p>FS subvolumes, an abstraction for independent CephFS directory trees</p></li>
 </ul>
-<p>Some possible use-cases for the export abstractions:</p>
+<p>Possible use-cases for the export abstractions:</p>
 <ul class="simple">
-<li><p>FS subvolumes used as manila shares or CSI volumes</p></li>
-<li><p>FS subvolume groups used as manila share groups</p></li>
+<li><p>FS subvolumes used as Manila shares or CSI volumes</p></li>
+<li><p>FS-subvolume groups used as Manila share groups</p></li>
 </ul>
 <section id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this heading"></a></h2>
 <ul>
-<li><p>Nautilus (14.2.x) or a later version of Ceph</p></li>
+<li><p>Nautilus (14.2.x) or later Ceph release</p></li>
 <li><p>Cephx client user (see <a class="reference internal" href="../../rados/operations/user-management/"><span class="doc">用户管理</span></a>) with
-the following minimum capabilities:</p>
+at least the following capabilities:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon</span> <span class="s1">&#39;allow r&#39;</span>
 <span class="n">mgr</span> <span class="s1">&#39;allow rw&#39;</span>
 </pre></div>
@@ -243,370 +245,1134 @@ the following minimum capabilities:</p>
 </section>
 <section id="fs-volumes">
 <h2>FS Volumes<a class="headerlink" href="#fs-volumes" title="Permalink to this heading"></a></h2>
-<p>Create a volume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs volume create &lt;vol_name&gt; [&lt;placement&gt;]
-</pre></div>
+<p>Create a volume by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "# ";
+}
+</style><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>volume<span class="w"> </span>create<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span><span class="o">[</span>placement<span class="o">]</span></span>
+</pre></div></div><p>This creates a CephFS file system and its data and metadata pools. This command
+can also deploy MDS daemons for the filesystem using a Ceph Manager orchestrator
+module (for example Rook). See <a class="reference internal" href="../../mgr/orchestrator/"><span class="doc">Orchestrator CLI</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;vol_name&gt;</span></code> is the volume name (an arbitrary string). <code class="docutils literal notranslate"><span class="pre">[placement]</span></code> is an
+optional string that specifies the <a class="reference internal" href="../../cephadm/services/#orchestrator-cli-placement-spec"><span class="std std-ref">Daemon Placement</span></a> for
+the MDS. See also <a class="reference internal" href="../../cephadm/services/mds/#orchestrator-cli-cephfs"><span class="std std-ref">Deploy CephFS</span></a> for more examples on
+placement.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Specifying placement via a YAML file is not supported through the
+volume interface.</p>
 </div>
-<p>This creates a CephFS file system and its data and metadata pools. It can also
-try to create MDSes for the filesystem using the enabled ceph-mgr orchestrator
-module (see <a class="reference internal" href="../../mgr/orchestrator/"><span class="doc">Orchestrator CLI</span></a>), e.g. rook.</p>
-<p>&lt;vol_name&gt; is the volume name (an arbitrary string), and</p>
-<p>&lt;placement&gt; is an optional string signifying which hosts should have NFS Ganesha
-daemon containers running on them and, optionally, the total number of NFS
-Ganesha daemons the cluster (should you want to have more than one NFS Ganesha
-daemon running per node). For example, the following placement string means
-“deploy NFS Ganesha daemons on nodes host1 and host2 (one daemon per host):</p>
-<blockquote>
-<div><p>“host1,host2”</p>
-</div></blockquote>
-<p>and this placement specification says to deploy two NFS Ganesha daemons each
-on nodes host1 and host2 (for a total of four NFS Ganesha daemons in the
-cluster):</p>
-<blockquote>
-<div><p>“4 host1,host2”</p>
-</div></blockquote>
-<p>For more details on placement specification refer to the <a class="reference internal" href="../../cephadm/services/#orchestrator-cli-service-spec"><span class="std std-ref">Service Specification</span></a>,
-but keep in mind that specifying the placement via a YAML file is not supported.</p>
-<p>Remove a volume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs volume rm &lt;vol_name&gt; [--yes-i-really-mean-it]
-</pre></div>
+<p>To remove a volume, run the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>volume<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span><span class="o">[</span>--yes-i-really-mean-it<span class="o">]</span></span>
+</pre></div></div><p>This command removes a file system and its data and metadata pools. It also
+tries to remove MDS daemons using the enabled Ceph Manager orchestrator module.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>After volume deletion, we recommend restarting <cite>ceph-mgr</cite> if a new
+file system is created on the same cluster and the subvolume interface is
+being used. See <a class="reference external" href="https://tracker.ceph.com/issues/49605#note-5">https://tracker.ceph.com/issues/49605#note-5</a> for more
+details.</p>
 </div>
-<p>This removes a file system and its data and metadata pools. It also tries to
-remove MDSes using the enabled ceph-mgr orchestrator module.</p>
-<p>List volumes using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs volume ls
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If the snap-schedule Ceph Manager module is being used for a volume
+and the volume is deleted, then the snap-schedule Ceph Manager module will
+continue to hold references to the old pools. This will lead to the
+snap-schedule Ceph Manager module faulting and logging errors. To remedy
+this scenario, we recommend that the snap-schedule Ceph Manager module
+be restarted after volume deletion. If the faults still persist, then we
+recommend restarting <cite>ceph-mgr</cite>.</p>
+</div>
+<p>List volumes by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>volume<span class="w"> </span>ls</span>
+</pre></div></div><p>Rename a volume by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>volume<span class="w"> </span>rename<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;new_vol_name&gt;<span class="w"> </span><span class="o">[</span>--yes-i-really-mean-it<span class="o">]</span></span>
+</pre></div></div><p>Renaming a volume can be an expensive operation that requires the following:</p>
+<ul class="simple">
+<li><p>Renaming the orchestrator-managed MDS service to match the
+<code class="docutils literal notranslate"><span class="pre">&lt;new_vol_name&gt;</span></code>.  This involves launching a MDS service with
+<code class="docutils literal notranslate"><span class="pre">&lt;new_vol_name&gt;</span></code> and bringing down the MDS service with <code class="docutils literal notranslate"><span class="pre">&lt;vol_name&gt;</span></code>.</p></li>
+<li><p>Renaming the file system from <code class="docutils literal notranslate"><span class="pre">&lt;vol_name&gt;</span></code> to <code class="docutils literal notranslate"><span class="pre">&lt;new_vol_name&gt;</span></code>.</p></li>
+<li><p>Changing the application tags on the data and metadata pools of the file
+system to <code class="docutils literal notranslate"><span class="pre">&lt;new_vol_name&gt;</span></code>.</p></li>
+<li><p>Renaming the metadata and data pools of the file system.</p></li>
+</ul>
+<p>The CephX IDs that are authorized for <code class="docutils literal notranslate"><span class="pre">&lt;vol_name&gt;</span></code> must be reauthorized for
+<code class="docutils literal notranslate"><span class="pre">&lt;new_vol_name&gt;</span></code>. Any ongoing operations of the clients that are using these
+IDs may be disrupted. Ensure that mirroring is disabled on the volume.</p>
+<p>To fetch the information of a CephFS volume, run the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>volume<span class="w"> </span>info<span class="w"> </span>vol_name<span class="w"> </span><span class="o">[</span>--human_readable<span class="o">]</span></span>
+</pre></div></div><p>The <code class="docutils literal notranslate"><span class="pre">--human_readable</span></code> flag shows used and available pool capacities in
+KB/MB/GB.</p>
+<p>The output format is JSON and contains fields as follows:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">pools</span></code>: Attributes of data and metadata pools</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">avail</span></code>: The amount of free space available in bytes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">used</span></code>: The amount of storage consumed in bytes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code>: Name of the pool</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mon_addrs</span></code>: List of Ceph monitor addresses</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">used_size</span></code>: Current used size of the CephFS volume in bytes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pending_subvolume_deletions</span></code>: Number of subvolumes pending deletion</p></li>
+</ul>
+<p>Sample output of the <code class="docutils literal notranslate"><span class="pre">volume</span> <span class="pre">info</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>volume<span class="w"> </span>info<span class="w"> </span>vol_name</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;mon_addrs&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;192.168.1.7:40977&quot;</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;pending_subvolume_deletions&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;pools&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;avail&quot;</span><span class="p">:</span> <span class="mi">106288709632</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;cephfs.vol_name.data&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;used&quot;</span><span class="p">:</span> <span class="mi">4096</span>
+            <span class="p">}</span>
+        <span class="p">],</span>
+        <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;avail&quot;</span><span class="p">:</span> <span class="mi">106288709632</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;cephfs.vol_name.meta&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;used&quot;</span><span class="p">:</span> <span class="mi">155648</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;used_size&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<span class="p">}</span>
 </pre></div>
 </div>
 </section>
 <section id="fs-subvolume-groups">
 <h2>FS Subvolume groups<a class="headerlink" href="#fs-subvolume-groups" title="Permalink to this heading"></a></h2>
-<p>Create a subvolume group using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup create &lt;vol_name&gt; &lt;group_name&gt; [--pool_layout &lt;data_pool_name&gt;] [--uid &lt;uid&gt;] [--gid &lt;gid&gt;] [--mode &lt;octal_mode&gt;]
-</pre></div>
-</div>
-<p>The command succeeds even if the subvolume group already exists.</p>
-<p>When creating a subvolume group you can specify its data pool layout (see
-<a class="reference internal" href="../file-layouts/"><span class="doc">文件布局</span></a>), uid, gid, and file mode in octal numerals. By default, the
-subvolume group is created with an octal file mode ‘755’, uid ‘0’, gid ‘0’ and data pool
+<p>Create a subvolume group by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>create<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;<span class="w"> </span><span class="o">[</span>--size<span class="w"> </span>&lt;size_in_bytes&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--pool_layout<span class="w"> </span>&lt;data_pool_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--uid<span class="w"> </span>&lt;uid&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--gid<span class="w"> </span>&lt;gid&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--mode<span class="w"> </span>&lt;octal_mode&gt;<span class="o">]</span></span>
+</pre></div></div><p>The command succeeds even if the subvolume group already exists.</p>
+<p>When you create a subvolume group, you can specify its data pool layout (see
+<a class="reference internal" href="../file-layouts/"><span class="doc">文件布局</span></a>), uid, gid, file mode in octal numerals, and
+size in bytes. The size of the subvolume group is specified by setting
+a quota on it (see <a class="reference internal" href="../quota/"><span class="doc">配额管理</span></a>). By default, the subvolume group
+is created with octal file mode <code class="docutils literal notranslate"><span class="pre">755</span></code>, uid <code class="docutils literal notranslate"><span class="pre">0</span></code>, gid <code class="docutils literal notranslate"><span class="pre">0</span></code> and the data pool
 layout of its parent directory.</p>
-<p>Remove a subvolume group using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup rm &lt;vol_name&gt; &lt;group_name&gt; [--force]
-</pre></div>
-</div>
-<p>The removal of a subvolume group fails if it is not empty or non-existent.
-‘--force’ flag allows the non-existent subvolume group remove command to succeed.</p>
-<p>Fetch the absolute path of a subvolume group using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup getpath &lt;vol_name&gt; &lt;group_name&gt;
-</pre></div>
-</div>
-<p>List subvolume groups using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup ls &lt;vol_name&gt;
-</pre></div>
-</div>
-<div class="admonition note">
+<p>Remove a subvolume group by running a command of the following form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;<span class="w"> </span><span class="o">[</span>--force<span class="o">]</span></span>
+</pre></div></div><p>The removal of a subvolume group fails if the subvolume group is not empty or
+is non-existent. The <code class="docutils literal notranslate"><span class="pre">--force</span></code> flag allows the command to succeed when its
+argument is a non-existent subvolume group.</p>
+<p>Fetch the absolute path of a subvolume group by running a command of the
+following form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>getpath<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;</span>
+</pre></div></div><p>List subvolume groups by running a command of the following form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>ls<span class="w"> </span>&lt;vol_name&gt;</span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Subvolume group snapshot feature is no longer supported in mainline CephFS (existing group
 snapshots can still be listed and deleted)</p>
 </div>
-<p>Remove a snapshot of a subvolume group using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup snapshot rm &lt;vol_name&gt; &lt;group_name&gt; &lt;snap_name&gt; [--force]
-</pre></div>
+<p>Fetch the metadata of a subvolume group by running a command of the following
+form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>info<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;</span>
+</pre></div></div><p>The output format is JSON and contains fields as follows:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">atime</span></code>: access time of the subvolume group path in the format <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span>
+<span class="pre">HH:MM:SS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mtime</span></code>: time of the most recent modification of the subvolume group path
+in the format
+<code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span> <span class="pre">HH:MM:SS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ctime</span></code>: time of the most recent change of the subvolume group path in the
+format <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span> <span class="pre">HH:MM:SS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">uid</span></code>: uid of the subvolume group path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gid</span></code>: gid of the subvolume group path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mode</span></code>: mode of the subvolume group path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mon_addrs</span></code>: list of monitor addresses</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bytes_pcent</span></code>: quota used in percentage if quota is set, else displays “undefined”</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bytes_quota</span></code>: quota size in bytes if quota is set, else displays “infinite”</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bytes_used</span></code>: current used size of the subvolume group in bytes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">created_at</span></code>: creation time of the subvolume group in the format “YYYY-MM-DD HH:MM:SS”</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data_pool</span></code>: data pool to which the subvolume group belongs</p></li>
+</ul>
+<p>Check for the presence of a given subvolume group by running a command of the
+following form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>exist<span class="w"> </span>&lt;vol_name&gt;</span>
+</pre></div></div><p>The <code class="docutils literal notranslate"><span class="pre">exist</span></code> command outputs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">subvolumegroup</span> <span class="pre">exists</span></code>: if any subvolumegroup is present</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">subvolumegroup</span> <span class="pre">exists</span></code>: if no subvolumegroup is present</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This command checks for the presence of custom groups and not
+presence of the default one. A subvolumegroup-existence check alone is not
+sufficient to validate the emptiness of the volume. Subvolume existence must
+also be checked, as there might be subvolumes in the default group.</p>
 </div>
-<p>Using the ‘--force’ flag allows the command to succeed that would otherwise
-fail if the snapshot did not exist.</p>
-<p>List snapshots of a subvolume group using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup snapshot ls &lt;vol_name&gt; &lt;group_name&gt;
-</pre></div>
-</div>
-</section>
+<p>Resize a subvolume group by running a command of the following form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>resize<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;<span class="w"> </span>&lt;new_size&gt;<span class="w"> </span><span class="o">[</span>--no_shrink<span class="o">]</span></span>
+</pre></div></div><p>This command resizes the subvolume group quota, using the size specified by
+<code class="docutils literal notranslate"><span class="pre">new_size</span></code>.  The <code class="docutils literal notranslate"><span class="pre">--no_shrink</span></code> flag prevents the subvolume group from
+shrinking below the current used size.</p>
+<p>The subvolume group may be resized to an infinite size by passing <code class="docutils literal notranslate"><span class="pre">inf</span></code> or
+<code class="docutils literal notranslate"><span class="pre">infinite</span></code> as the <code class="docutils literal notranslate"><span class="pre">new_size</span></code>.</p>
+<p>Remove a snapshot of a subvolume group by running a command of the following
+form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>snapshot<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span><span class="o">[</span>--force<span class="o">]</span></span>
+</pre></div></div><p>Supplying the <code class="docutils literal notranslate"><span class="pre">--force</span></code> flag allows the command to succeed when it would
+otherwise fail due to the nonexistence of the snapshot.</p>
+<p>List snapshots of a subvolume group by running a command of the following form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>snapshot<span class="w"> </span>ls<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;</span>
+</pre></div></div></section>
 <section id="fs-subvolumes">
 <h2>FS Subvolumes<a class="headerlink" href="#fs-subvolumes" title="Permalink to this heading"></a></h2>
-<p>Create a subvolume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume create &lt;vol_name&gt; &lt;subvol_name&gt; [--size &lt;size_in_bytes&gt;] [--group_name &lt;subvol_group_name&gt;] [--pool_layout &lt;data_pool_name&gt;] [--uid &lt;uid&gt;] [--gid &lt;gid&gt;] [--mode &lt;octal_mode&gt;] [--namespace-isolated]
-</pre></div>
-</div>
-<p>The command succeeds even if the subvolume already exists.</p>
-<p>When creating a subvolume you can specify its subvolume group, data pool layout,
-uid, gid, file mode in octal numerals, and size in bytes. The size of the subvolume is
-specified by setting a quota on it (see <a class="reference internal" href="../quota/"><span class="doc">配额管理</span></a>). The subvolume can be
-created in a separate RADOS namespace by specifying --namespace-isolated option. By
-default a subvolume is created within the default subvolume group, and with an octal file
-mode ‘755’, uid of its subvolume group, gid of its subvolume group, data pool layout of
-its parent directory and no size limit.</p>
-<p>Remove a subvolume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume rm &lt;vol_name&gt; &lt;subvol_name&gt; [--group_name &lt;subvol_group_name&gt;] [--force] [--retain-snapshots]
-</pre></div>
-</div>
-<p>The command removes the subvolume and its contents. It does this in two steps.
-First, it moves the subvolume to a trash folder, and then asynchronously purges
-its contents.</p>
-<p>The removal of a subvolume fails if it has snapshots, or is non-existent.
-‘--force’ flag allows the non-existent subvolume remove command to succeed.</p>
-<p>A subvolume can be removed retaining existing snapshots of the subvolume using the
-‘--retain-snapshots’ option. If snapshots are retained, the subvolume is considered
-empty for all operations not involving the retained snapshots.</p>
+<section id="creating-a-subvolume">
+<h3>Creating a subvolume<a class="headerlink" href="#creating-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to create a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>create<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--size<span class="w"> </span>&lt;size_in_bytes&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--pool_layout<span class="w"> </span>&lt;data_pool_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--uid<span class="w"> </span>&lt;uid&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--gid<span class="w"> </span>&lt;gid&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--mode<span class="w"> </span>&lt;octal_mode&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--namespace-isolated<span class="o">]</span><span class="w"> </span><span class="o">[</span>--earmark<span class="w"> </span>&lt;earmark&gt;<span class="o">]</span></span>
+</pre></div></div><p>The command succeeds even if the subvolume already exists.</p>
+<p>When creating a subvolume, you can specify its subvolume group, data pool
+layout, uid, gid, file mode in octal numerals, and size in bytes. The size of
+the subvolume is specified by setting a quota on it (see <a class="reference internal" href="../quota/"><span class="doc">配额管理</span></a>).
+The subvolume can be created in a separate RADOS namespace by specifying the
+<code class="docutils literal notranslate"><span class="pre">--namespace-isolated</span></code> option. By default, a subvolume is created within the
+default subvolume group with an octal file mode of <code class="docutils literal notranslate"><span class="pre">755</span></code>, a uid of its
+subvolume group, a gid of its subvolume group, a data pool layout of its parent
+directory, and no size limit.
+You can also assign an earmark to a subvolume using the <code class="docutils literal notranslate"><span class="pre">--earmark</span></code> option.
+The earmark is a unique identifier that tags the subvolume for specific purposes,
+such as NFS or SMB services. By default, no earmark is set, allowing for flexible
+assignment based on administrative needs. An empty string (“”) can be used to remove
+any existing earmark from a subvolume.</p>
+<p>The earmarking mechanism ensures that subvolumes are correctly tagged and managed,
+helping to avoid conflicts and ensuring that each subvolume is associated
+with the intended service or use case.</p>
+</section>
+<section id="valid-earmarks">
+<h3>Valid Earmarks<a class="headerlink" href="#valid-earmarks" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt><strong>For NFS:</strong></dt><dd><ul>
+<li><p>The valid earmark format is the top-level scope: <code class="docutils literal notranslate"><span class="pre">'nfs'</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>For SMB:</strong></dt><dd><ul>
+<li><dl class="simple">
+<dt>The valid earmark formats are:</dt><dd><ul>
+<li><p>The top-level scope: <code class="docutils literal notranslate"><span class="pre">'smb'</span></code>.</p></li>
+<li><p>The top-level scope with an intra-module level scope: <code class="docutils literal notranslate"><span class="pre">'smb.cluster.{cluster_id}'</span></code>, where <code class="docutils literal notranslate"><span class="pre">cluster_id</span></code> is a short string uniquely identifying the cluster.</p></li>
+<li><p>Example without intra-module scope: <code class="docutils literal notranslate"><span class="pre">smb</span></code></p></li>
+<li><p>Example with intra-module scope: <code class="docutils literal notranslate"><span class="pre">smb.cluster.cluster_1</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Snapshot retained subvolumes can be recreated using ‘ceph fs subvolume create’</p>
+<p>If you are changing an earmark from one scope to another (e.g., from nfs to smb or vice versa),
+be aware that user permissions and ACLs associated with the previous scope might still apply. Ensure that
+any necessary permissions are updated as needed to maintain proper access control.</p>
 </div>
+</section>
+<section id="removing-a-subvolume">
+<h3>Removing a subvolume<a class="headerlink" href="#removing-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to remove a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--retain-snapshots<span class="o">]</span></span>
+</pre></div></div><p>This command removes the subvolume and its contents. This is done in two steps.
+First, the subvolume is moved to a trash folder. Second, the contents of that
+trash folder are purged asynchronously.</p>
+<p>Subvolume removal fails if the subvolume has snapshots or is non-existent.  The
+<code class="docutils literal notranslate"><span class="pre">--force</span></code> flag allows the “non-existent subvolume remove” command to succeed.</p>
+<p>To remove a subvolume while retaining snapshots of the subvolume, use the
+<code class="docutils literal notranslate"><span class="pre">--retain-snapshots</span></code> flag. If snapshots associated with a given subvolume are
+retained, then the subvolume is considered empty for all operations that do not
+involve the retained snapshots.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Retained snapshots can be used as a clone source to recreate the subvolume, or clone to a newer subvolume.</p>
-</div>
-<p>Resize a subvolume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume resize &lt;vol_name&gt; &lt;subvol_name&gt; &lt;new_size&gt; [--group_name &lt;subvol_group_name&gt;] [--no_shrink]
-</pre></div>
-</div>
-<p>The command resizes the subvolume quota using the size specified by ‘new_size’.
-‘--no_shrink’ flag prevents the subvolume to shrink below the current used size of the subvolume.</p>
-<p>The subvolume can be resized to an infinite size by passing ‘inf’ or ‘infinite’ as the new_size.</p>
-<p>Authorize cephx auth IDs, the read/read-write access to fs subvolumes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume authorize &lt;vol_name&gt; &lt;sub_name&gt; &lt;auth_id&gt; [--group_name=&lt;group_name&gt;] [--access_level=&lt;access_level&gt;]
-</pre></div>
-</div>
-<p>The ‘access_level’ takes ‘r’ or ‘rw’ as value.</p>
-<p>Deauthorize cephx auth IDs, the read/read-write access to fs subvolumes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume deauthorize &lt;vol_name&gt; &lt;sub_name&gt; &lt;auth_id&gt; [--group_name=&lt;group_name&gt;]
-</pre></div>
-</div>
-<p>List cephx auth IDs authorized to access fs subvolume:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume authorized_list &lt;vol_name&gt; &lt;sub_name&gt; [--group_name=&lt;group_name&gt;]
-</pre></div>
-</div>
-<p>Evict fs clients based on auth ID and subvolume mounted:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume evict &lt;vol_name&gt; &lt;sub_name&gt; &lt;auth_id&gt; [--group_name=&lt;group_name&gt;]
-</pre></div>
-</div>
-<p>Fetch the absolute path of a subvolume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume getpath &lt;vol_name&gt; &lt;subvol_name&gt; [--group_name &lt;subvol_group_name&gt;]
-</pre></div>
-</div>
-<p>Fetch the metadata of a subvolume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume info &lt;vol_name&gt; &lt;subvol_name&gt; [--group_name &lt;subvol_group_name&gt;]
-</pre></div>
-</div>
-<p>The output format is json and contains fields as follows.</p>
-<ul class="simple">
-<li><p>atime: access time of subvolume path in the format “YYYY-MM-DD HH:MM:SS”</p></li>
-<li><p>mtime: modification time of subvolume path in the format “YYYY-MM-DD HH:MM:SS”</p></li>
-<li><p>ctime: change time of subvolume path in the format “YYYY-MM-DD HH:MM:SS”</p></li>
-<li><p>uid: uid of subvolume path</p></li>
-<li><p>gid: gid of subvolume path</p></li>
-<li><p>mode: mode of subvolume path</p></li>
-<li><p>mon_addrs: list of monitor addresses</p></li>
-<li><p>bytes_pcent: quota used in percentage if quota is set, else displays “undefined”</p></li>
-<li><p>bytes_quota: quota size in bytes if quota is set, else displays “infinite”</p></li>
-<li><p>bytes_used: current used size of the subvolume in bytes</p></li>
-<li><p>created_at: time of creation of subvolume in the format “YYYY-MM-DD HH:MM:SS”</p></li>
-<li><p>data_pool: data pool the subvolume belongs to</p></li>
-<li><p>path: absolute path of a subvolume</p></li>
-<li><p>type: subvolume type indicating whether it’s clone or subvolume</p></li>
-<li><p>pool_namespace: RADOS namespace of the subvolume</p></li>
-<li><p>features: features supported by the subvolume</p></li>
-<li><p>state: current state of the subvolume</p></li>
-</ul>
-<p>If a subvolume has been removed retaining its snapshots, the output only contains fields as follows.</p>
-<ul class="simple">
-<li><p>type: subvolume type indicating whether it’s clone or subvolume</p></li>
-<li><p>features: features supported by the subvolume</p></li>
-<li><p>state: current state of the subvolume</p></li>
-</ul>
-<p>The subvolume “features” are based on the internal version of the subvolume and is a list containing
-a subset of the following features,</p>
-<ul class="simple">
-<li><p>“snapshot-clone”: supports cloning using a subvolumes snapshot as the source</p></li>
-<li><p>“snapshot-autoprotect”: supports automatically protecting snapshots, that are active clone sources, from deletion</p></li>
-<li><p>“snapshot-retention”: supports removing subvolume contents, retaining any existing snapshots</p></li>
-</ul>
-<p>The subvolume “state” is based on the current state of the subvolume and contains one of the following values.</p>
-<ul class="simple">
-<li><p>“complete”: subvolume is ready for all operations</p></li>
-<li><p>“snapshot-retained”: subvolume is removed but its snapshots are retained</p></li>
-</ul>
-<p>List subvolumes using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume ls &lt;vol_name&gt; [--group_name &lt;subvol_group_name&gt;]
-</pre></div>
+<p>Snapshot-retained subvolumes can be recreated using <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">fs</span>
+<span class="pre">subvolume</span> <span class="pre">create</span></code>.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>subvolumes that are removed but have snapshots retained, are also listed.</p>
+<p>Retained snapshots can be used as clone sources for recreating the
+subvolume or for cloning to a newer subvolume.</p>
 </div>
-<p>Create a snapshot of a subvolume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot create &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;]
-</pre></div>
+</section>
+<section id="resizing-a-subvolume">
+<h3>Resizing a subvolume<a class="headerlink" href="#resizing-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to resize a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>resize<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;new_size&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--no_shrink<span class="o">]</span></span>
+</pre></div></div><p>This command resizes the subvolume quota, using the size specified by
+<code class="docutils literal notranslate"><span class="pre">new_size</span></code>.  The <code class="docutils literal notranslate"><span class="pre">--no_shrink</span></code> flag prevents the subvolume from shrinking
+below the current “used size” of the subvolume.</p>
+<p>The subvolume can be resized to an unlimited (but sparse) logical size by
+passing <code class="docutils literal notranslate"><span class="pre">inf</span></code> or <code class="docutils literal notranslate"><span class="pre">infinite</span></code> as <code class="docutils literal notranslate"><span class="pre">&lt;new_size&gt;</span></code>.</p>
+</section>
+<section id="authorizing-cephx-auth-ids">
+<h3>Authorizing CephX auth IDs<a class="headerlink" href="#authorizing-cephx-auth-ids" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to authorize CephX auth IDs. This provides
+the read/read-write access to file system subvolumes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>authorize<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;sub_name&gt;<span class="w"> </span>&lt;auth_id&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="o">=</span>&lt;group_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--access_level<span class="o">=</span>&lt;access_level&gt;<span class="o">]</span></span>
+</pre></div></div><p>The <code class="docutils literal notranslate"><span class="pre">&lt;access_level&gt;</span></code> option takes either <code class="docutils literal notranslate"><span class="pre">r</span></code> or <code class="docutils literal notranslate"><span class="pre">rw</span></code> as a value.</p>
+</section>
+<section id="de-authorizing-cephx-auth-ids">
+<h3>De-authorizing CephX auth IDs<a class="headerlink" href="#de-authorizing-cephx-auth-ids" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to deauthorize CephX auth IDs. This removes
+the read/read-write access to file system subvolumes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>deauthorize<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;sub_name&gt;<span class="w"> </span>&lt;auth_id&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="o">=</span>&lt;group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="listing-cephx-auth-ids">
+<h3>Listing CephX auth IDs<a class="headerlink" href="#listing-cephx-auth-ids" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to list CephX auth IDs authorized to access
+the file system subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>authorized_list<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;sub_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="o">=</span>&lt;group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="evicting-file-system-clients-auth-id">
+<h3>Evicting File System Clients (Auth ID)<a class="headerlink" href="#evicting-file-system-clients-auth-id" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to evict file system clients based on the
+auth ID and the subvolume mounted:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>evict<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;sub_name&gt;<span class="w"> </span>&lt;auth_id&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="o">=</span>&lt;group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="fetching-the-absolute-path-of-a-subvolume">
+<h3>Fetching the Absolute Path of a Subvolume<a class="headerlink" href="#fetching-the-absolute-path-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to fetch the absolute path of a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>getpath<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="fetching-a-subvolume-s-information">
+<h3>Fetching a Subvolume’s Information<a class="headerlink" href="#fetching-a-subvolume-s-information" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to fetch a subvolume’s information:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>info<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div><p>The output format is JSON and contains the following fields.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">atime</span></code>: access time of the subvolume path in the format <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span>
+<span class="pre">HH:MM:SS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mtime</span></code>: modification time of the subvolume path in the format <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span>
+<span class="pre">HH:MM:SS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ctime</span></code>: change time of the subvolume path in the format <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span>
+<span class="pre">HH:MM:SS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">uid</span></code>: uid of the subvolume path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gid</span></code>: gid of the subvolume path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mode</span></code>: mode of the subvolume path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mon_addrs</span></code>: list of monitor addresses</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bytes_pcent</span></code>: quota used in percentage if quota is set; else displays
+<code class="docutils literal notranslate"><span class="pre">undefined</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bytes_quota</span></code>: quota size in bytes if quota is set; else displays
+<code class="docutils literal notranslate"><span class="pre">infinite</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bytes_used</span></code>: current used size of the subvolume in bytes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">created_at</span></code>: creation time of the subvolume in the format <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span>
+<span class="pre">HH:MM:SS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data_pool</span></code>: data pool to which the subvolume belongs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code>: absolute path of a subvolume</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">type</span></code>: subvolume type, indicating whether it is <code class="docutils literal notranslate"><span class="pre">clone</span></code> or <code class="docutils literal notranslate"><span class="pre">subvolume</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pool_namespace</span></code>: RADOS namespace of the subvolume</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">features</span></code>: features supported by the subvolume</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">state</span></code>: current state of the subvolume</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">earmark</span></code>: earmark of the subvolume</p></li>
+</ul>
+<p>If a subvolume has been removed but its snapshots have been retained, the
+output contains only the following fields.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">type</span></code>: subvolume type indicating whether it is <code class="docutils literal notranslate"><span class="pre">clone</span></code> or <code class="docutils literal notranslate"><span class="pre">subvolume</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">features</span></code>: features supported by the subvolume</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">state</span></code>: current state of the subvolume</p></li>
+</ul>
+<p>A subvolume’s <code class="docutils literal notranslate"><span class="pre">features</span></code> are based on the internal version of the subvolume
+and are a subset of the following:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">snapshot-clone</span></code>: supports cloning using a subvolume’s snapshot as the
+source</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">snapshot-autoprotect</span></code>: supports automatically protecting snapshots from
+deletion if they are active clone sources</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">snapshot-retention</span></code>: supports removing subvolume contents, retaining any
+existing snapshots</p></li>
+</ul>
+<p>A subvolume’s <code class="docutils literal notranslate"><span class="pre">state</span></code> is based on the current state of the subvolume and
+contains one of the following values.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">complete</span></code>: subvolume is ready for all operations</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">snapshot-retained</span></code>: subvolume is removed but its snapshots are retained</p></li>
+</ul>
+</section>
+<section id="listing-subvolumes">
+<h3>Listing Subvolumes<a class="headerlink" href="#listing-subvolumes" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to list subvolumes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>ls<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Subvolumes that have been removed but have snapshots retained, are
+also listed.</p>
 </div>
-<p>Remove a snapshot of a subvolume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot rm &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;] [--force]
-</pre></div>
+</section>
+<section id="checking-for-the-presence-of-a-subvolume">
+<h3>Checking for the Presence of a Subvolume<a class="headerlink" href="#checking-for-the-presence-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to check for the presence of a given
+subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>exist<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div><p>These are the possible results of the <code class="docutils literal notranslate"><span class="pre">exist</span></code> command:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">subvolume</span> <span class="pre">exists</span></code>: if any subvolume of given <code class="docutils literal notranslate"><span class="pre">group_name</span></code> is present</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">subvolume</span> <span class="pre">exists</span></code>: if no subvolume of given <code class="docutils literal notranslate"><span class="pre">group_name</span></code> is present</p></li>
+</ul>
+</section>
+<section id="setting-custom-metadata-on-a-subvolume">
+<h3>Setting Custom Metadata On a Subvolume<a class="headerlink" href="#setting-custom-metadata-on-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to set custom metadata on the subvolume as
+a key-value pair:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>metadata<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;key_name&gt;<span class="w"> </span>&lt;value&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If the key_name already exists then the old value will get replaced by the new value.</p>
 </div>
-<p>Using the ‘--force’ flag allows the command to succeed that would otherwise
-fail if the snapshot did not exist.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">key_name</span></code> and <code class="docutils literal notranslate"><span class="pre">value</span></code> should be a string of ASCII characters (as
+specified in Python’s <code class="docutils literal notranslate"><span class="pre">string.printable</span></code>). <code class="docutils literal notranslate"><span class="pre">key_name</span></code> is
+case-insensitive and always stored in lower case.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Custom metadata on a subvolume is not preserved when snapshotting the
+subvolume, and is therefore also not preserved when cloning the subvolume
+snapshot.</p>
+</div>
+</section>
+<section id="getting-the-custom-metadata-set-of-a-subvolume">
+<h3>Getting The Custom Metadata Set of a Subvolume<a class="headerlink" href="#getting-the-custom-metadata-set-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to get the custom metadata set on the
+subvolume using the metadata key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>metadata<span class="w"> </span>get<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;key_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="listing-the-custom-metadata-set-of-a-subvolume">
+<h3>Listing The Custom Metadata Set of a Subvolume<a class="headerlink" href="#listing-the-custom-metadata-set-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to list custom metadata (key-value pairs)
+set on the subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>metadata<span class="w"> </span>ls<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="removing-a-custom-metadata-set-from-a-subvolume">
+<h3>Removing a Custom Metadata Set from a Subvolume<a class="headerlink" href="#removing-a-custom-metadata-set-from-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to remove custom metadata set on the
+subvolume using the metadata key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>metadata<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;key_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span></span>
+</pre></div></div><p>Using the <code class="docutils literal notranslate"><span class="pre">--force</span></code> flag allows the command to succeed when it would
+otherwise fail (if the metadata key did not exist).</p>
+</section>
+<section id="getting-earmark-of-a-subvolume">
+<h3>Getting earmark of a subvolume<a class="headerlink" href="#getting-earmark-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to get the earmark of a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>earmark<span class="w"> </span>get<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="setting-earmark-of-a-subvolume">
+<h3>Setting earmark of a subvolume<a class="headerlink" href="#setting-earmark-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to set the earmark of a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>earmark<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span><span class="w"> </span>&lt;earmark&gt;</span>
+</pre></div></div></section>
+<section id="removing-earmark-of-a-subvolume">
+<h3>Removing earmark of a subvolume<a class="headerlink" href="#removing-earmark-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to remove the earmark of a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>earmark<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="creating-a-snapshot-of-a-subvolume">
+<h3>Creating a Snapshot of a Subvolume<a class="headerlink" href="#creating-a-snapshot-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to create a snapshot of a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="removing-a-snapshot-of-a-subvolume">
+<h3>Removing a Snapshot of a Subvolume<a class="headerlink" href="#removing-a-snapshot-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to remove a snapshot of a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span></span>
+</pre></div></div><p>Using the <code class="docutils literal notranslate"><span class="pre">--force</span></code> flag allows the command to succeed when it would
+otherwise fail (if the snapshot did not exist).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>if the last snapshot within a snapshot retained subvolume is removed, the subvolume is also removed</p>
 </div>
-<p>List snapshots of a subvolume using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot ls &lt;vol_name&gt; &lt;subvol_name&gt; [--group_name &lt;subvol_group_name&gt;]
-</pre></div>
-</div>
-<p>Fetch the metadata of a snapshot using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot info &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;]
-</pre></div>
-</div>
-<p>The output format is json and contains fields as follows.</p>
+</section>
+<section id="listing-the-snapshots-of-a-subvolume">
+<h3>Listing the Snapshots of a Subvolume<a class="headerlink" href="#listing-the-snapshots-of-a-subvolume" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following from to list the snapshots of a subvolume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>ls<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="fetching-a-snapshot-s-information">
+<h3>Fetching a Snapshot’s Information<a class="headerlink" href="#fetching-a-snapshot-s-information" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to fetch a snapshot’s information:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>info<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div><p>The output format is JSON and contains the following fields.</p>
 <ul class="simple">
-<li><p>created_at: time of creation of snapshot in the format “YYYY-MM-DD HH:MM:SS:ffffff”</p></li>
-<li><p>data_pool: data pool the snapshot belongs to</p></li>
-<li><p>has_pending_clones: “yes” if snapshot clone is in progress otherwise “no”</p></li>
-<li><p>size: snapshot size in bytes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">created_at</span></code>: creation time of the snapshot in the format <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span>
+<span class="pre">HH:MM:SS:ffffff</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data_pool</span></code>: data pool to which the snapshot belongs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">has_pending_clones</span></code>: <code class="docutils literal notranslate"><span class="pre">yes</span></code> if snapshot clone is in progress, otherwise
+<code class="docutils literal notranslate"><span class="pre">no</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pending_clones</span></code>: list of in-progress or pending clones and their target
+groups if any exist; otherwise this field is not shown</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">orphan_clones_count</span></code>: count of orphan clones if the snapshot has orphan
+clones, otherwise this field is not shown</p></li>
 </ul>
+<p>Sample output when snapshot clones are in progress or pending:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>info<span class="w"> </span>cephfs<span class="w"> </span>subvol<span class="w"> </span>snap</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="s2">&quot;2022-06-14 13:54:58.618769&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;cephfs.cephfs.data&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;has_pending_clones&quot;</span><span class="p">:</span> <span class="s2">&quot;yes&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pending_clones&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;clone_1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;target_group&quot;</span><span class="p">:</span> <span class="s2">&quot;target_subvol_group&quot;</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;clone_2&quot;</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;clone_3&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;target_group&quot;</span><span class="p">:</span> <span class="s2">&quot;target_subvol_group&quot;</span>
+        <span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Sample output when no snapshot clone is in progress or pending:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>info<span class="w"> </span>cephfs<span class="w"> </span>subvol<span class="w"> </span>snap</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="s2">&quot;2022-06-14 13:54:58.618769&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;data_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;cephfs.cephfs.data&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;has_pending_clones&quot;</span><span class="p">:</span> <span class="s2">&quot;no&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="setting-custom-key-value-pair-metadata-on-a-snapshot">
+<h3>Setting Custom Key-Value Pair Metadata on a Snapshot<a class="headerlink" href="#setting-custom-key-value-pair-metadata-on-a-snapshot" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to set custom key-value metadata on the
+snapshot:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>metadata<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span>&lt;key_name&gt;<span class="w"> </span>&lt;value&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If the <code class="docutils literal notranslate"><span class="pre">key_name</span></code> already exists then the old value will get replaced
+by the new value.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">key_name</span></code> and value should be a strings of ASCII characters
+(as specified in Python’s <code class="docutils literal notranslate"><span class="pre">string.printable</span></code>). The <code class="docutils literal notranslate"><span class="pre">key_name</span></code> is
+case-insensitive and always stored in lowercase.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Custom metadata on a snapshot is not preserved when snapshotting the
+subvolume, and is therefore not preserved when cloning the subvolume
+snapshot.</p>
+</div>
+</section>
+<section id="getting-custom-metadata-that-has-been-set-on-a-snapshot">
+<h3>Getting Custom Metadata That Has Been Set on a Snapshot<a class="headerlink" href="#getting-custom-metadata-that-has-been-set-on-a-snapshot" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to get custom metadata that has been set on
+the snapshot using the metadata key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>metadata<span class="w"> </span>get<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span>&lt;key_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="listing-custom-metadata-that-has-been-set-on-a-snapshot">
+<h3>Listing Custom Metadata that has been Set on a Snapshot<a class="headerlink" href="#listing-custom-metadata-that-has-been-set-on-a-snapshot" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following from to list custom metadata (key-value pairs)
+set on the snapshot:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>metadata<span class="w"> </span>ls<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div></section>
+<section id="removing-custom-metadata-from-a-snapshot">
+<h3>Removing Custom Metadata from a Snapshot<a class="headerlink" href="#removing-custom-metadata-from-a-snapshot" title="Permalink to this heading"></a></h3>
+<p>Use a command of the following form to remove custom metadata set on the
+snapshot using the metadata key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>metadata<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span>&lt;key_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span></span>
+</pre></div></div><p>Using the <code class="docutils literal notranslate"><span class="pre">--force</span></code> flag allows the command to succeed when it would otherwise
+fail (if the metadata key did not exist).</p>
+</section>
 </section>
 <section id="cloning-snapshots">
 <h2>Cloning Snapshots<a class="headerlink" href="#cloning-snapshots" title="Permalink to this heading"></a></h2>
-<p>Subvolumes can be created by cloning subvolume snapshots. Cloning is an asynchronous operation involving copying
-data from a snapshot to a subvolume. Due to this bulk copy nature, cloning is currently inefficient for very huge
-data sets.</p>
+<p>Subvolumes can be created by cloning subvolume snapshots. Cloning is an
+asynchronous operation that copies data from a snapshot to a subvolume. Because
+cloning is an operation that involves bulk copying, it is slow for
+very large data sets.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Removing a snapshot (source subvolume) would fail if there are pending or in progress clone operations.</p>
+<p>Removing a snapshot (source subvolume) fails when there are
+pending or in-progress clone operations.</p>
 </div>
-<p>Protecting snapshots prior to cloning was a pre-requisite in the Nautilus release, and the commands to protect/unprotect
-snapshots were introduced for this purpose. This pre-requisite, and hence the commands to protect/unprotect, is being
-deprecated in mainline CephFS, and may be removed from a future release.</p>
-<dl class="simple">
-<dt>The commands being deprecated are:</dt><dd><p>$ ceph fs subvolume snapshot protect &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;]
-$ ceph fs subvolume snapshot unprotect &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; [--group_name &lt;subvol_group_name&gt;]</p>
-</dd>
-</dl>
+<p>Protecting snapshots prior to cloning was a prerequisite in the Nautilus
+release. Commands that made possible the protection and unprotection of
+snapshots were introduced for this purpose. This prerequisite is being
+deprecated and may be removed from a future release.</p>
+<p>The commands being deprecated are:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>protect<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+<span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>unprotect<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;<span class="o">]</span></span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Using the above commands will not result in an error, but they have no useful purpose.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Using the above commands would not result in an error, but they serve no useful function.</p>
+<p>Use the <code class="docutils literal notranslate"><span class="pre">subvolume</span> <span class="pre">info</span></code> command to fetch subvolume metadata regarding supported <code class="docutils literal notranslate"><span class="pre">features</span></code> to help decide if protect/unprotect of snapshots is required, based on the availability of the <code class="docutils literal notranslate"><span class="pre">snapshot-autoprotect</span></code> feature.</p>
 </div>
-<div class="admonition note">
+<p>Run a command of the following form to initiate a clone operation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>clone<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span>&lt;target_subvol_name&gt;</span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Use subvolume info command to fetch subvolume metadata regarding supported “features” to help decide if protect/unprotect of snapshots is required, based on the “snapshot-autoprotect” feature availability.</p>
+<p><code class="docutils literal notranslate"><span class="pre">subvolume</span> <span class="pre">snapshot</span> <span class="pre">clone</span></code> command depends upon the above mentioned config option <code class="docutils literal notranslate"><span class="pre">snapshot_clone_no_wait</span></code></p>
 </div>
-<p>To initiate a clone operation use:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; &lt;target_subvol_name&gt;
-</pre></div>
-</div>
-<p>If a snapshot (source subvolume) is a part of non-default group, the group name needs to be specified as per:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; &lt;target_subvol_name&gt; --group_name &lt;subvol_group_name&gt;
-</pre></div>
-</div>
-<p>Cloned subvolumes can be a part of a different group than the source snapshot (by default, cloned subvolumes are created in default group). To clone to a particular group use:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; &lt;target_subvol_name&gt; --target_group_name &lt;subvol_group_name&gt;
-</pre></div>
-</div>
-<p>Similar to specifying a pool layout when creating a subvolume, pool layout can be specified when creating a cloned subvolume. To create a cloned subvolume with a specific pool layout use:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone &lt;vol_name&gt; &lt;subvol_name&gt; &lt;snap_name&gt; &lt;target_subvol_name&gt; --pool_layout &lt;pool_layout&gt;
-</pre></div>
-</div>
-<p>Configure maximum number of concurrent clones. The default is set to 4:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph config set mgr mgr/volumes/max_concurrent_clones &lt;value&gt;
-</pre></div>
-</div>
-<p>To check the status of a clone operation use:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs clone status &lt;vol_name&gt; &lt;clone_name&gt; [--group_name &lt;group_name&gt;]
-</pre></div>
-</div>
-<p>A clone can be in one of the following states:</p>
+<p>Run a command of the following form when a snapshot (source subvolume) is a
+part of non-default group. Note that the group name needs to be specified:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>clone<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span>&lt;target_subvol_name&gt;<span class="w"> </span>--group_name<span class="w"> </span>&lt;subvol_group_name&gt;</span>
+</pre></div></div><p>Cloned subvolumes can be a part of a different group than the source snapshot
+(by default, cloned subvolumes are created in default group). Run a command of
+the following form to clone to a particular group use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>clone<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span>&lt;target_subvol_name&gt;<span class="w"> </span>--target_group_name<span class="w"> </span>&lt;subvol_group_name&gt;</span>
+</pre></div></div><p>Pool layout can be specified when creating a cloned subvolume in a way that is
+similar to specifying a pool layout when creating a subvolume. Run a command of
+the following form to create a cloned subvolume with a specific pool layout:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>clone<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;subvol_name&gt;<span class="w"> </span>&lt;snap_name&gt;<span class="w"> </span>&lt;target_subvol_name&gt;<span class="w"> </span>--pool_layout<span class="w"> </span>&lt;pool_layout&gt;</span>
+</pre></div></div><p>Run a command of the following form to check the status of a clone operation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>clone<span class="w"> </span>status<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;clone_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;group_name&gt;<span class="o">]</span></span>
+</pre></div></div><p>A clone can be in one of the following states:</p>
 <ol class="arabic simple">
-<li><p><cite>pending</cite>     : Clone operation has not started</p></li>
-<li><p><cite>in-progress</cite> : Clone operation is in progress</p></li>
-<li><p><cite>complete</cite>    : Clone operation has successfully finished</p></li>
-<li><p><cite>failed</cite>      : Clone operation has failed</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pending</span></code>     : Clone operation has not started</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">in-progress</span></code> : Clone operation is in progress</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">complete</span></code>    : Clone operation has successfully finished</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">failed</span></code>      : Clone operation has failed</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">canceled</span></code>    : Clone operation is cancelled by user</p></li>
 </ol>
-<p>Sample output from an <cite>in-progress</cite> clone operation:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone cephfs subvol1 snap1 clone1
-$ ceph fs clone status cephfs clone1
-{
-  &quot;status&quot;: {
-    &quot;state&quot;: &quot;in-progress&quot;,
-    &quot;source&quot;: {
-      &quot;volume&quot;: &quot;cephfs&quot;,
-      &quot;subvolume&quot;: &quot;subvol1&quot;,
-      &quot;snapshot&quot;: &quot;snap1&quot;
-    }
-  }
-}
+<p>The reason for a clone failure is shown as below:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">errno</span></code>     : error number</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">error_msg</span></code> : failure error string</p></li>
+</ol>
+<p>Here is an example of an <code class="docutils literal notranslate"><span class="pre">in-progress</span></code> clone:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>clone<span class="w"> </span>cephfs<span class="w"> </span>subvol1<span class="w"> </span>snap1<span class="w"> </span>clone1</span>
+<span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>clone<span class="w"> </span>status<span class="w"> </span>cephfs<span class="w"> </span>clone1</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;in-progress&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="s2">&quot;cephfs&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;subvolume&quot;</span><span class="p">:</span> <span class="s2">&quot;subvol1&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;snapshot&quot;</span><span class="p">:</span> <span class="s2">&quot;snap1&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;progress_report&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;percentage cloned&quot;</span><span class="p">:</span> <span class="s2">&quot;12.24%&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;amount cloned&quot;</span><span class="p">:</span> <span class="s2">&quot;376M/3.0G&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;files cloned&quot;</span><span class="p">:</span> <span class="s2">&quot;4/6&quot;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
 </pre></div>
 </div>
-<p>(NOTE: since <cite>subvol1</cite> is in default group, <cite>source</cite> section in <cite>clone status</cite> does not include group name)</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Cloned subvolumes are accessible only after the clone operation has successfully completed.</p>
-</div>
-<p>For a successful clone operation, <cite>clone status</cite> would look like so:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs clone status cephfs clone1
-{
-  &quot;status&quot;: {
-    &quot;state&quot;: &quot;complete&quot;
-  }
-}
+<p>A progress report is also printed in the output when clone is <code class="docutils literal notranslate"><span class="pre">in-progress</span></code>.
+Here the progress is reported only for the specific clone. For collective
+progress made by all ongoing clones, a progress bar is printed at the bottom
+in ouput of <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">status</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">progress</span><span class="p">:</span>
+  <span class="mi">3</span> <span class="n">ongoing</span> <span class="n">clones</span> <span class="o">-</span> <span class="n">average</span> <span class="n">progress</span> <span class="ow">is</span> <span class="mf">47.569</span><span class="o">%</span> <span class="p">(</span><span class="mi">10</span><span class="n">s</span><span class="p">)</span>
+    <span class="p">[</span><span class="o">=============...............</span><span class="p">]</span> <span class="p">(</span><span class="n">remaining</span><span class="p">:</span> <span class="mi">11</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>or <cite>failed</cite> state when clone is unsuccessful.</p>
-<p>On failure of a clone operation, the partial clone needs to be deleted and the clone operation needs to be retriggered.
-To delete a partial clone use:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume rm &lt;vol_name&gt; &lt;clone_name&gt; [--group_name &lt;group_name&gt;] --force
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Cloning only synchronizes directories, regular files and symbolic links. Also, inode timestamps (access and
-modification times) are synchronized upto seconds granularity.</p>
-</div>
-<p>An <cite>in-progress</cite> or a <cite>pending</cite> clone operation can be canceled. To cancel a clone operation use the <cite>clone cancel</cite> command:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs clone cancel &lt;vol_name&gt; &lt;clone_name&gt; [--group_name &lt;group_name&gt;]
-</pre></div>
-</div>
-<p>On successful cancelation, the cloned subvolume is moved to <cite>canceled</cite> state:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot clone cephfs subvol1 snap1 clone1
-$ ceph fs clone cancel cephfs clone1
-$ ceph fs clone status cephfs clone1
-{
-  &quot;status&quot;: {
-    &quot;state&quot;: &quot;canceled&quot;,
-    &quot;source&quot;: {
-      &quot;volume&quot;: &quot;cephfs&quot;,
-      &quot;subvolume&quot;: &quot;subvol1&quot;,
-      &quot;snapshot&quot;: &quot;snap1&quot;
-    }
-  }
-}
+<p>If the number of clone jobs are more than cloner threads, two progress bars
+are printed, one for ongoing clones (same as above) and other for all
+(ongoing+pending) clones:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">progress</span><span class="p">:</span>
+  <span class="mi">4</span> <span class="n">ongoing</span> <span class="n">clones</span> <span class="o">-</span> <span class="n">average</span> <span class="n">progress</span> <span class="ow">is</span> <span class="mf">27.669</span><span class="o">%</span> <span class="p">(</span><span class="mi">15</span><span class="n">s</span><span class="p">)</span>
+    <span class="p">[</span><span class="o">=======.....................</span><span class="p">]</span> <span class="p">(</span><span class="n">remaining</span><span class="p">:</span> <span class="mi">41</span><span class="n">s</span><span class="p">)</span>
+  <span class="n">Total</span> <span class="mi">5</span> <span class="n">clones</span> <span class="o">-</span> <span class="n">average</span> <span class="n">progress</span> <span class="ow">is</span> <span class="mf">41.667</span><span class="o">%</span> <span class="p">(</span><span class="mi">3</span><span class="n">s</span><span class="p">)</span>
+    <span class="p">[</span><span class="o">===========.................</span><span class="p">]</span> <span class="p">(</span><span class="n">remaining</span><span class="p">:</span> <span class="mi">4</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The canceled cloned can be deleted by using --force option in <cite>fs subvolume rm</cite> command.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">failure</span></code> section will be shown only if the clone’s state is <code class="docutils literal notranslate"><span class="pre">failed</span></code> or <code class="docutils literal notranslate"><span class="pre">cancelled</span></code></p>
 </div>
+<p>Here is an example of a <code class="docutils literal notranslate"><span class="pre">failed</span></code> clone:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>clone<span class="w"> </span>cephfs<span class="w"> </span>subvol1<span class="w"> </span>snap1<span class="w"> </span>clone1</span>
+<span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>clone<span class="w"> </span>status<span class="w"> </span>cephfs<span class="w"> </span>clone1</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="s2">&quot;cephfs&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;subvolume&quot;</span><span class="p">:</span> <span class="s2">&quot;subvol1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;snapshot&quot;</span><span class="p">:</span> <span class="s2">&quot;snap1&quot;</span>
+            <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="s2">&quot;104857600&quot;</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;failure&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;errno&quot;</span><span class="p">:</span> <span class="s2">&quot;122&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;errstr&quot;</span><span class="p">:</span> <span class="s2">&quot;Disk quota exceeded&quot;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Because <code class="docutils literal notranslate"><span class="pre">subvol1</span></code> is in the default group, the <code class="docutils literal notranslate"><span class="pre">source</span></code> object’s
+<code class="docutils literal notranslate"><span class="pre">clone</span> <span class="pre">status</span></code> does not include the group name)</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cloned subvolumes are accessible only after the clone operation has
+successfully completed.</p>
+</div>
+<p>After a successful clone operation, <code class="docutils literal notranslate"><span class="pre">clone</span> <span class="pre">status</span></code> will look like the
+following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>clone<span class="w"> </span>status<span class="w"> </span>cephfs<span class="w"> </span>clone1</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;complete&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>If a clone operation is unsuccessful, the <code class="docutils literal notranslate"><span class="pre">state</span></code> value will be  <code class="docutils literal notranslate"><span class="pre">failed</span></code>.</p>
+<p>To retry a failed clone operation, the incomplete clone must be deleted and the
+clone operation must be issued again.</p>
+<p>Run a command of the following form to delete a partial clone:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>rm<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;clone_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;group_name&gt;<span class="o">]</span><span class="w"> </span>--force</span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cloning synchronizes only directories, regular files and symbolic
+links. inode timestamps (access and modification times) are synchronized up
+to a second’s granularity.</p>
+</div>
+<p>An <code class="docutils literal notranslate"><span class="pre">in-progress</span></code> or a <code class="docutils literal notranslate"><span class="pre">pending</span></code> clone operation may be canceled. To cancel
+a clone operation use the <code class="docutils literal notranslate"><span class="pre">clone</span> <span class="pre">cancel</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>clone<span class="w"> </span>cancel<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;clone_name&gt;<span class="w"> </span><span class="o">[</span>--group_name<span class="w"> </span>&lt;group_name&gt;<span class="o">]</span></span>
+</pre></div></div><p>On successful cancellation, the cloned subvolume is moved to the <code class="docutils literal notranslate"><span class="pre">canceled</span></code>
+state:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>clone<span class="w"> </span>cephfs<span class="w"> </span>subvol1<span class="w"> </span>snap1<span class="w"> </span>clone1</span>
+<span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>clone<span class="w"> </span>cancel<span class="w"> </span>cephfs<span class="w"> </span>clone1</span>
+<span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>clone<span class="w"> </span>status<span class="w"> </span>cephfs<span class="w"> </span>clone1</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;canceled&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="s2">&quot;cephfs&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;subvolume&quot;</span><span class="p">:</span> <span class="s2">&quot;subvol1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;snapshot&quot;</span><span class="p">:</span> <span class="s2">&quot;snap1&quot;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Delete the canceled cloned by supplying the <code class="docutils literal notranslate"><span class="pre">--force</span></code> option to the
+<code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">subvolume</span> <span class="pre">rm</span></code> command.</p>
+</div>
+<section id="configurables">
+<h3>Configurables<a class="headerlink" href="#configurables" title="Permalink to this heading"></a></h3>
+<p>Configure the maximum number of concurrent clone operations. The default is 4:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mgr<span class="w"> </span>mgr/volumes/max_concurrent_clones<span class="w"> </span>&lt;value&gt;</span>
+</pre></div></div><p>Configure the <code class="docutils literal notranslate"><span class="pre">snapshot_clone_no_wait</span></code> option:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">snapshot_clone_no_wait</span></code> config option is used to reject clone-creation
+requests when cloner threads (which can be configured using the above options,
+for example, <code class="docutils literal notranslate"><span class="pre">max_concurrent_clones</span></code>) are not available. It is enabled by
+default. This means that the value is set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, but it can be configured
+by using the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mgr<span class="w"> </span>mgr/volumes/snapshot_clone_no_wait<span class="w"> </span>&lt;bool&gt;</span>
+</pre></div></div><p>The current value of <code class="docutils literal notranslate"><span class="pre">snapshot_clone_no_wait</span></code> can be fetched by running the
+following command.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>get<span class="w"> </span>mgr<span class="w"> </span>mgr/volumes/snapshot_clone_no_wait</span>
+</pre></div></div></section>
 </section>
 <section id="pinning-subvolumes-and-subvolume-groups">
 <span id="subvol-pinning"></span><h2>Pinning Subvolumes and Subvolume Groups<a class="headerlink" href="#pinning-subvolumes-and-subvolume-groups" title="Permalink to this heading"></a></h2>
-<p>Subvolumes and subvolume groups can be automatically pinned to ranks according
-to policies. This can help distribute load across MDS ranks in predictable and
+<p>Subvolumes and subvolume groups may be automatically pinned to ranks according
+to policies. This can distribute load across MDS ranks in predictable and
 stable ways.  Review <a class="reference internal" href="../multimds/#cephfs-pinning"><span class="std std-ref">手动将目录树插入特定的 rank</span></a> and <a class="reference internal" href="../multimds/#cephfs-ephemeral-pinning"><span class="std std-ref">设置子树分区策略</span></a>
 for details on how pinning works.</p>
-<p>Pinning is configured by:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup pin &lt;vol_name&gt; &lt;group_name&gt; &lt;pin_type&gt; &lt;pin_setting&gt;
-</pre></div>
-</div>
-<p>or for subvolumes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume pin &lt;vol_name&gt; &lt;group_name&gt; &lt;pin_type&gt; &lt;pin_setting&gt;
-</pre></div>
-</div>
-<p>Typically you will want to set subvolume group pins. The <code class="docutils literal notranslate"><span class="pre">pin_type</span></code> may be
-one of <code class="docutils literal notranslate"><span class="pre">export</span></code>, <code class="docutils literal notranslate"><span class="pre">distributed</span></code>, or <code class="docutils literal notranslate"><span class="pre">random</span></code>. The <code class="docutils literal notranslate"><span class="pre">pin_setting</span></code>
-corresponds to the extended attributed “value” as in the pinning documentation
-referenced above.</p>
-<p>So, for example, setting a distributed pinning strategy on a subvolume group:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolumegroup pin cephfilesystem-a csi distributed 1
-</pre></div>
-</div>
-<p>Will enable distributed subtree partitioning policy for the “csi” subvolume
-group.  This will cause every subvolume within the group to be automatically
+<p>Run a command of the following form to configure pinning for subvolume groups:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>pin<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;<span class="w"> </span>&lt;pin_type&gt;<span class="w"> </span>&lt;pin_setting&gt;</span>
+</pre></div></div><p>Run a command of the following form to configure pinning for subvolumes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>pin<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>&lt;group_name&gt;<span class="w"> </span>&lt;pin_type&gt;<span class="w"> </span>&lt;pin_setting&gt;</span>
+</pre></div></div><p>Under most circumstances, you will want to set subvolume group pins. The
+<code class="docutils literal notranslate"><span class="pre">pin_type</span></code> may be <code class="docutils literal notranslate"><span class="pre">export</span></code>, <code class="docutils literal notranslate"><span class="pre">distributed</span></code>, or <code class="docutils literal notranslate"><span class="pre">random</span></code>. The
+<code class="docutils literal notranslate"><span class="pre">pin_setting</span></code> corresponds to the extended attributed “value” as in the
+pinning documentation referenced above.</p>
+<p>Here is an example of setting a distributed pinning strategy on a subvolume
+group:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>subvolumegroup<span class="w"> </span>pin<span class="w"> </span>cephfilesystem-a<span class="w"> </span>csi<span class="w"> </span>distributed<span class="w"> </span><span class="m">1</span></span>
+</pre></div></div><p>This enables distributed subtree partitioning policy for the “csi” subvolume
+group. This will cause every subvolume within the group to be automatically
 pinned to one of the available ranks on the file system.</p>
+</section>
+<section id="subvolume-quiesce">
+<h2>Subvolume quiesce<a class="headerlink" href="#subvolume-quiesce" title="Permalink to this heading"></a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The information in this section applies only to Squid and later
+releases of Ceph.</p>
+</div>
+<p>CephFS snapshots do not provide strong-consistency guarantees in cases involving writes
+performed by multiple clients, which makes consistent backups and disaster recovery a serious
+challenge for distributed applications. Even in a case where an application uses
+file system flushes to synchronize checkpoints across its distributed components, there is
+no guarantee that all acknowledged writes will be part of a given snapshot.</p>
+<p>The subvolume quiesce feature has been developed to provide enterprise-level consistency guarantees
+for multi-client applications that work with one or more subvolumes. The feature makes it possible to pause IO
+to a set of subvolumes of a given volume (file system). Enforcing such a pause across all clients makes
+it possible to guarantee that any persistent checkpoints reached by the application before the pause
+will be recoverable from the snapshots made during the pause.</p>
+<p>The <cite>volumes</cite> plugin provides a CLI to initiate and await the pause for a set of subvolumes.
+This pause is called a <cite>quiesce</cite>, which is also used as the command name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt2:before {
+  content: "$ ";
+}
+</style><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>--set-id<span class="w"> </span>myset1<span class="w"> </span>&lt;<span class="o">[</span>group_name/<span class="o">]</span>sub_name...&gt;<span class="w"> </span>--await
+<span class="c1"># perform actions while the IO pause is active, like taking snapshots</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>&lt;vol_name&gt;<span class="w"> </span>--set-id<span class="w"> </span>myset1<span class="w"> </span>--release<span class="w"> </span>--await
+<span class="c1"># if successful, all members of the set were confirmed as still paused and released</span></span>
+</pre></div></div><p>The <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">quiesce</span></code> functionality is based on a lower level <code class="docutils literal notranslate"><span class="pre">quiesce</span> <span class="pre">db</span></code> service provided by the MDS
+daemons, which operates at a file system path granularity.
+The <cite>volumes</cite> plugin merely maps the subvolume names to their corresponding paths on the given file system
+and then issues the corresponding <code class="docutils literal notranslate"><span class="pre">quiesce</span> <span class="pre">db</span></code> command to the MDS. You can learn more about the low-level service
+in the developer guides.</p>
+<section id="operations">
+<h3>Operations<a class="headerlink" href="#operations" title="Permalink to this heading"></a></h3>
+<p>The quiesce can be requested for a set of one or more subvolumes (i.e. paths in a filesystem).
+This set is referred to as <cite>quiesce set</cite>. Every quiesce set is identified by a unique <cite>set id</cite>.
+A quiesce set can be manipulated in the following ways:</p>
+<ul class="simple">
+<li><p><strong>include</strong> one or more subvolumes - quiesce set members</p></li>
+<li><p><strong>exclude</strong> one or more members</p></li>
+<li><p><strong>cancel</strong> the set, asynchronously aborting the pause on all its current members</p></li>
+<li><p><strong>release</strong> the set, requesting the end of the pause from all members and expecting an ack from all clients</p></li>
+<li><p><strong>query</strong> the current state of a set by id or all active sets or all known sets</p></li>
+<li><p><strong>cancel all</strong> active sets in case an immediate resume of IO is required.</p></li>
+</ul>
+<p>The operations listed above are non-blocking: they attempt the intended modification
+and return with an up to date version of the target set, whether the operation was successful or not.
+The set may change states as a result of the modification, and the version that’s returned in the response
+is guaranteed to be in a state consistent with this and potentialy other successful operations from
+the same control loop batch.</p>
+<p>Some set states are <cite>awaitable</cite>. We will discuss those below, but for now it’s important to mention that
+any of the commands above can be amended with an <strong>await</strong> modifier, which will cause them to block
+on the set after applying their intended modification, as long as the resulting set state is <cite>awaitable</cite>.
+Such a command will block until the set reaches the awaited state, gets modified by another command,
+or transitions into another state. The return code will unambiguously identify the exit condition, and
+the contents of the response will always carry the latest known set state.</p>
+<img alt="../../_images/quiesce-set-states.svg" src="../../_images/quiesce-set-states.svg" /><p><cite>Awaitable</cite> states on the diagram are marked with <code class="docutils literal notranslate"><span class="pre">(a)</span></code> or <code class="docutils literal notranslate"><span class="pre">(A)</span></code>. Blocking versions of the operations
+will pend while the set is in an <code class="docutils literal notranslate"><span class="pre">(a)</span></code> state and will complete with success if it reaches an <code class="docutils literal notranslate"><span class="pre">(A)</span></code> state.
+If the set is already at an <code class="docutils literal notranslate"><span class="pre">(A)</span></code> state, the operation completes immediately with a success.</p>
+<p>Most of the operations require a set-id. The exceptions are:</p>
+<ul class="simple">
+<li><p>creation of a new set without specifying a set id,</p></li>
+<li><p>query of active or all known sets, and</p></li>
+<li><p>the cancel all</p></li>
+</ul>
+<p>Creating a new set is achieved by including member(s) via the <cite>include</cite> or <cite>reset</cite> commands.
+It’s possible to specify a set id, and if it’s a new id then the set will be created
+with the specified member(s) in the <cite>QUIESCING</cite> state. When no set id is specified while including
+or resetting members, then a new set with a unique set id is created. The set id will be known
+to the caller by inspecting the output</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>sub1<span class="w"> </span>--set-id<span class="o">=</span>unique-id
+<span class="o">{</span>
+<span class="w">    </span><span class="s2">&quot;epoch&quot;</span>:<span class="w"> </span><span class="m">3</span>,
+<span class="w">    </span><span class="s2">&quot;set_version&quot;</span>:<span class="w"> </span><span class="m">1</span>,
+<span class="w">    </span><span class="s2">&quot;sets&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="s2">&quot;unique-id&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="s2">&quot;version&quot;</span>:<span class="w"> </span><span class="m">1</span>,
+<span class="w">            </span><span class="s2">&quot;age_ref&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;TIMEDOUT&quot;</span>,
+<span class="w">                </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">0</span>.0
+<span class="w">            </span><span class="o">}</span>,
+<span class="w">            </span><span class="s2">&quot;timeout&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;expiration&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;members&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;file:/volumes/_nogroup/sub1/b1fcce76-3418-42dd-aa76-f9076d047dd3&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="s2">&quot;excluded&quot;</span>:<span class="w"> </span>false,
+<span class="w">                    </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                        </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                        </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">0</span>.0
+<span class="w">                    </span><span class="o">}</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span></span>
+</pre></div></div><p>The output contains the set we just created successfully, however it’s already <cite>TIMEDOUT</cite>.
+This is expected, since we have not specified the timeout for this quiesce,
+and we can see in the output that it was initialized to 0 by default, along with the expiration.</p>
+</section>
+<section id="timeouts">
+<h3>Timeouts<a class="headerlink" href="#timeouts" title="Permalink to this heading"></a></h3>
+<p>The two timeout parameters, <cite>timeout</cite> and <cite>expiration</cite>, are the main guards against
+accidentally causing a DOS condition for our application. Any command to an active set
+may carry the <code class="docutils literal notranslate"><span class="pre">--timeout</span></code> or <code class="docutils literal notranslate"><span class="pre">--expiration</span></code> arguments to update these values for the set.
+If present, the values will be applied before the action this command requests.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="o">=</span>unique-id<span class="w"> </span>--timeout<span class="o">=</span><span class="m">10</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+Error<span class="w"> </span>EPERM:</span>
+</pre></div></div><p>It’s too late for our <code class="docutils literal notranslate"><span class="pre">unique-id</span></code> set, as it’s in a terminal state. No changes are allowed
+to sets that are in their terminal states, i.e. inactive. Let’s create a new set:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>sub1<span class="w"> </span>--timeout<span class="w"> </span><span class="m">60</span>
+<span class="o">{</span>
+<span class="w">    </span><span class="s2">&quot;epoch&quot;</span>:<span class="w"> </span><span class="m">3</span>,
+<span class="w">    </span><span class="s2">&quot;set_version&quot;</span>:<span class="w"> </span><span class="m">2</span>,
+<span class="w">    </span><span class="s2">&quot;sets&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="s2">&quot;8988b419&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="s2">&quot;version&quot;</span>:<span class="w"> </span><span class="m">2</span>,
+<span class="w">            </span><span class="s2">&quot;age_ref&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">0</span>.0
+<span class="w">            </span><span class="o">}</span>,
+<span class="w">            </span><span class="s2">&quot;timeout&quot;</span>:<span class="w"> </span><span class="m">60</span>.0,
+<span class="w">            </span><span class="s2">&quot;expiration&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;members&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;file:/volumes/_nogroup/sub1/b1fcce76-3418-42dd-aa76-f9076d047dd3&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="s2">&quot;excluded&quot;</span>:<span class="w"> </span>false,
+<span class="w">                    </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                        </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                        </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">0</span>.0
+<span class="w">                    </span><span class="o">}</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span></span>
+</pre></div></div><p>This time, we haven’t specified a set id, so the system created a new one. We see its id
+in the output, it’s <code class="docutils literal notranslate"><span class="pre">8988b419</span></code>. The command was a success and we see that
+this time the set is <cite>QUIESCING</cite>. At this point, we can add more members to the set</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="w"> </span>8988b419<span class="w"> </span>--include<span class="w"> </span>sub2<span class="w"> </span>sub3
+<span class="o">{</span>
+<span class="w">    </span><span class="s2">&quot;epoch&quot;</span>:<span class="w"> </span><span class="m">3</span>,
+<span class="w">    </span><span class="s2">&quot;set_version&quot;</span>:<span class="w"> </span><span class="m">3</span>,
+<span class="w">    </span><span class="s2">&quot;sets&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="s2">&quot;8988b419&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="s2">&quot;version&quot;</span>:<span class="w"> </span><span class="m">3</span>,
+<span class="w">            </span><span class="s2">&quot;age_ref&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">30</span>.7
+<span class="w">            </span><span class="o">}</span>,
+<span class="w">            </span><span class="s2">&quot;timeout&quot;</span>:<span class="w"> </span><span class="m">60</span>.0,
+<span class="w">            </span><span class="s2">&quot;expiration&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;members&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;file:/volumes/_nogroup/sub1/b1fcce76-3418-42dd-aa76-f9076d047dd3&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="s2">&quot;excluded&quot;</span>:<span class="w"> </span>false,
+<span class="w">                    </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                        </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                        </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">30</span>.7
+<span class="w">                    </span><span class="o">}</span>
+<span class="w">                </span><span class="o">}</span>,
+<span class="w">                </span><span class="s2">&quot;file:/volumes/_nogroup/sub2/bc8f770e-7a43-48f3-aa26-d6d76ef98d3e&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="s2">&quot;excluded&quot;</span>:<span class="w"> </span>false,
+<span class="w">                    </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                        </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                        </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">0</span>.0
+<span class="w">                    </span><span class="o">}</span>
+<span class="w">                </span><span class="o">}</span>,
+<span class="w">                </span><span class="s2">&quot;file:/volumes/_nogroup/sub3/24c4b57b-e249-4b89-b4fa-7a810edcd35b&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="s2">&quot;excluded&quot;</span>:<span class="w"> </span>false,
+<span class="w">                    </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                        </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                        </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">0</span>.0
+<span class="w">                    </span><span class="o">}</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span></span>
+</pre></div></div><p>The <code class="docutils literal notranslate"><span class="pre">--include</span></code> bit is optional, as if no operation is given while members are provided,
+then “include” is assumed.</p>
+<p>As we have seen, the timeout argument specifies how much time we are ready to give the system
+to reach the <cite>QUIESCED</cite> state on the set. However, since new members can be added to an
+active set at any time, it wouldn’t be fair to measure the timeout from the set creation time.
+Hence, the timeout is tracked per member: every member has <cite>timeout</cite> seconds to quiesce,
+and if any one takes longer than that, the whole set is marked as <cite>TIMEDOUT</cite> and the pause is released.</p>
+<p>Once the set is in the <cite>QUIESCED</cite> state, it will begin its expiration timer. This timer is tracked
+per set as a whole, not per members. Once the <cite>expiration</cite> seconds elapse, the set will transition
+into an <cite>EXPIRED</cite> state, unless it was actively released or canceled by a dedicated operation.</p>
+<p>It’s possible to add new members to a <cite>QUIESCED</cite> set. In this case, it will transition back to <cite>QUIESCING</cite>,
+and the new member(s) will have their own timeout to quiesce. If they succeed, then the set will
+again be <cite>QUIESCED</cite> and the expiration timer will restart.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul class="simple">
+<li><p>The <cite>expiration timer</cite> doesn’t apply when a set is <cite>QUIESCING</cite>; it is reset to the
+value of the <cite>expiration</cite> property when the <strong>set</strong> becomes <cite>QUIESCED</cite></p></li>
+<li><p>The <cite>timeout</cite> doesn’t apply to <strong>members</strong> that are <cite>QUIESCED</cite></p></li>
+</ul>
+</div>
+</section>
+<section id="awaiting">
+<h3>Awaiting<a class="headerlink" href="#awaiting" title="Permalink to this heading"></a></h3>
+<p>Note that the commands above are all non-blocking. If we want to wait for the quiesce set
+to reach the <cite>QUIESCED</cite> state, we should await it at some point. <code class="docutils literal notranslate"><span class="pre">--await</span></code> can be given
+along with other arguments to let the system know our intention.</p>
+<p>There are two types of await: <cite>quiesce await</cite> and <cite>release await</cite>. The former is the default,
+and the latter can only be achieved with <code class="docutils literal notranslate"><span class="pre">--release</span></code> present in the argument list.
+To avoid confision, it is not permitted to issue a <cite>quiesce await</cite> when the set is not <cite>QUIESCING</cite>.
+Trying to <code class="docutils literal notranslate"><span class="pre">--release</span></code> a set that is not <cite>QUIESCED</cite> is an <code class="docutils literal notranslate"><span class="pre">EPERM</span></code> error as well, regardless
+of whether await is requested alongside. However, it’s not an error to <cite>release await</cite>
+an already released set, or to <cite>quiesce await</cite> a <cite>QUIESCED</cite> one - those are successful no-ops.</p>
+<p>Since a set is awaited after the application of the <code class="docutils literal notranslate"><span class="pre">--await</span></code>-augmented command, the await operation
+may mask a successful result with its own error. A good example is trying to cancel-await a set:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="w"> </span>set1<span class="w"> </span>--cancel<span class="w"> </span>--await
+<span class="o">{</span>
+<span class="w">    </span>//<span class="w"> </span>...
+<span class="w">    </span><span class="s2">&quot;sets&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="s2">&quot;set1&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span>//<span class="w"> </span>...
+<span class="w">            </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;CANCELED&quot;</span>,
+<span class="w">                </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">0</span>
+<span class="w">            </span><span class="o">}</span>,
+<span class="w">            </span>//<span class="w"> </span>...
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+Error<span class="w"> </span>EPERM:</span>
+</pre></div></div><p>Although <code class="docutils literal notranslate"><span class="pre">--cancel</span></code> will succeed syncrhonously for a set in an active state, awaiting a canceled
+set is not permitted, hence this call will result in an <code class="docutils literal notranslate"><span class="pre">EPERM</span></code>. This is deliberately different from
+returning a <code class="docutils literal notranslate"><span class="pre">EINVAL</span></code> error, denoting an error on the user’s side, to simplify the system’s behavior
+when <code class="docutils literal notranslate"><span class="pre">--await</span></code> is requested. As a result, it’s also a simpler model for the user to work with.</p>
+<p>When awaiting, one may specify a maximum duration that they would like this await request to block for,
+orthogonally to the two intrinsic set timeouts discussed above. If the target awaited state isn’t reached
+within the specified duration, then <code class="docutils literal notranslate"><span class="pre">EINPROGRESS</span></code> is returned. For that, one should use the argument
+<code class="docutils literal notranslate"><span class="pre">--await-for=&lt;seconds&gt;</span></code>. One could think of <code class="docutils literal notranslate"><span class="pre">--await</span></code> as equivalent to <code class="docutils literal notranslate"><span class="pre">--await-for=Infinity</span></code>.
+While it doesn’t make sense to specify both arguments, it is not considered an error. If
+both <code class="docutils literal notranslate"><span class="pre">--await</span></code> and <code class="docutils literal notranslate"><span class="pre">--await-for</span></code> are present, then the former is ignored, and the time limit
+from <code class="docutils literal notranslate"><span class="pre">--await-for</span></code> is honored.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2"><span class="nb">time</span><span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>sub1<span class="w"> </span>--timeout<span class="o">=</span><span class="m">10</span><span class="w"> </span>--await-for<span class="o">=</span><span class="m">2</span>
+<span class="o">{</span>
+<span class="w">    </span><span class="s2">&quot;epoch&quot;</span>:<span class="w"> </span><span class="m">6</span>,
+<span class="w">    </span><span class="s2">&quot;set_version&quot;</span>:<span class="w"> </span><span class="m">3</span>,
+<span class="w">    </span><span class="s2">&quot;sets&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="s2">&quot;c3c1d8de&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="s2">&quot;version&quot;</span>:<span class="w"> </span><span class="m">3</span>,
+<span class="w">            </span><span class="s2">&quot;age_ref&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">2</span>.0
+<span class="w">            </span><span class="o">}</span>,
+<span class="w">            </span><span class="s2">&quot;timeout&quot;</span>:<span class="w"> </span><span class="m">10</span>.0,
+<span class="w">            </span><span class="s2">&quot;expiration&quot;</span>:<span class="w"> </span><span class="m">0</span>.0,
+<span class="w">            </span><span class="s2">&quot;members&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s2">&quot;file:/volumes/_nogroup/sub1/b1fcce76-3418-42dd-aa76-f9076d047dd3&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="s2">&quot;excluded&quot;</span>:<span class="w"> </span>false,
+<span class="w">                    </span><span class="s2">&quot;state&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">                        </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;QUIESCING&quot;</span>,
+<span class="w">                        </span><span class="s2">&quot;age&quot;</span>:<span class="w"> </span><span class="m">2</span>.0
+<span class="w">                    </span><span class="o">}</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+Error<span class="w"> </span>EINPROGRESS:
+ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>sub1<span class="w"> </span>--timeout<span class="o">=</span><span class="m">10</span><span class="w"> </span>--await-for<span class="o">=</span><span class="m">2</span><span class="w">  </span><span class="m">0</span>.41s<span class="w"> </span>user<span class="w"> </span><span class="m">0</span>.04s<span class="w"> </span>system<span class="w"> </span><span class="m">17</span>%<span class="w"> </span>cpu<span class="w"> </span><span class="m">2</span>.563<span class="w"> </span>total</span>
+</pre></div></div><p>(there is a ~0.5 sec overhead that the ceph client adds, at least in a local debug setup)</p>
+</section>
+<section id="quiesce-await-and-expiration">
+<h3>Quiesce-Await and Expiration<a class="headerlink" href="#quiesce-await-and-expiration" title="Permalink to this heading"></a></h3>
+<p>Quiesce await has a side effect: it resets the internal expiration timer. This allows for a watchdog
+approach to a long running multistep process under the IO pause by repeatedly <code class="docutils literal notranslate"><span class="pre">--await</span></code>ing an already
+<cite>QUIESCED</cite> set. Consider the following example script:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2"><span class="nb">set</span><span class="w"> </span>-e<span class="w">   </span><span class="c1"># (1)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>sub1<span class="w"> </span>sub2<span class="w"> </span>sub3<span class="w"> </span>--timeout<span class="o">=</span><span class="m">30</span><span class="w"> </span>--expiration<span class="o">=</span><span class="m">10</span><span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--await<span class="w"> </span><span class="c1"># (2)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>a<span class="w"> </span>sub1<span class="w"> </span>snap1-sub1<span class="w">  </span><span class="c1"># (3)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--await<span class="w">  </span><span class="c1"># (4)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>a<span class="w"> </span>sub2<span class="w"> </span>snap1-sub2<span class="w">  </span><span class="c1"># (3)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--await<span class="w">  </span><span class="c1"># (4)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>a<span class="w"> </span>sub3<span class="w"> </span>snap1-sub3<span class="w">  </span><span class="c1"># (3)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--release<span class="w"> </span>--await<span class="w">  </span><span class="c1"># (5)</span></span>
+</pre></div></div><div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This example uses arbitrary timeouts to convey the concept. In real life, the values must be carefully
+chosen in accordance with the actual system requirements and specifications.</p>
+</div>
+<p>The goal of the script is to take consistent snapshots of 3 subvolumes.
+We begin by setting the bash <code class="docutils literal notranslate"><span class="pre">-e</span></code> option <cite>(1)</cite> to exit this script if any or the following commands
+returns with a non-zero status.</p>
+<p>We go on requesting an IO pause for the three subvolumes <cite>(2)</cite>. We set our timeouts allowing
+the system to spend up to 30 seconds reaching the quiesced state across all members
+and stay quiesced for up to 10 seconds before the quiesce expires and the IO
+is resumed. We also specify <code class="docutils literal notranslate"><span class="pre">--await</span></code> to only proceed once the quiesce is reached.</p>
+<p>We then proceed with a set of command pairs that take the next snapshot and call <code class="docutils literal notranslate"><span class="pre">--await</span></code> on our set
+to extend the expiration timeout for 10 more seconds <cite>(3,4)</cite>. This approach gives us up to 10 seconds
+for every snapshot, but also allows taking as many snapshots as we need without losing the IO pause,
+and with it - consistency. If we wanted, we could update the <cite>expiration</cite> every time we called for await.</p>
+<p>If any of the snapshots gets stuck and takes longer than 10 seconds to complete, then the next call
+to <code class="docutils literal notranslate"><span class="pre">--await</span></code> will return an error since the set will be <cite>EXPIRED</cite> which is not an awaitable state.
+This limits the impact on the applications in the bad case scenarios.</p>
+<p>We could have set the <cite>expiration</cite> timeout to 30 at the beginning <cite>(2)</cite>, but that would mean that
+a single stuck snapshot would keep the applications pending for all this time.</p>
+</section>
+<section id="if-version">
+<h3>If Version<a class="headerlink" href="#if-version" title="Permalink to this heading"></a></h3>
+<p>Sometimes, it’s not enough to just observe the successful quiesce or release. The reason could be
+a concurrent change of the set by another client. Consider this example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>sub1<span class="w"> </span>sub2<span class="w"> </span>sub3<span class="w"> </span>--timeout<span class="o">=</span><span class="m">30</span><span class="w"> </span>--expiration<span class="o">=</span><span class="m">60</span><span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--await<span class="w">  </span><span class="c1"># (1)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>a<span class="w"> </span>sub1<span class="w"> </span>snap1-sub1<span class="w">  </span><span class="c1"># (2)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>a<span class="w"> </span>sub2<span class="w"> </span>snap1-sub2<span class="w">  </span><span class="c1"># (3)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>a<span class="w"> </span>sub3<span class="w"> </span>snap1-sub3<span class="w">  </span><span class="c1"># (4)</span></span>
+<span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--release<span class="w"> </span>--await<span class="w">  </span><span class="c1"># (5)</span></span>
+</pre></div></div><p>The sequence looks good, and the release <cite>(5)</cite> completes successfully. However, it could be that
+before snap for sub3 <cite>(4)</cite> is taken, another session excludes sub3 from the set, resuming its IOs</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--exclude<span class="w"> </span>sub3</span>
+</pre></div></div><p>Since removing a member from a set doesn’t affect its <cite>QUIESCED</cite> state, the release command <cite>(5)</cite>
+has no reason to fail. It will ack the two unexcluded members sub1 and sub2 and report success.</p>
+<p>In order to address this or similar problems, the quiesce command supports an optimistic concurrency
+mode. To activate it, one needs to pass an <code class="docutils literal notranslate"><span class="pre">--if-version=&lt;version&gt;</span></code> that will be compared
+to the set’s db version and the operation will only proceed if the values match. Otherwise, the command
+will not be executed and the return status will be <code class="docutils literal notranslate"><span class="pre">ESTALE</span></code>.</p>
+<p>It’s easy to know which version to expect of a set, since every command that modifies a set will return
+this set on the stdout, regarldess of the exit status. In the examples above one can notice that every
+set carries a <code class="docutils literal notranslate"><span class="pre">&quot;version&quot;</span></code> property which gets updated whenever this set is modified, explicitly
+by the user or implicitly during</p>
+<p>In the example at the beginning of this subsection, the initial quiesce command <cite>(1)</cite> would have returned
+the newly created set with id <code class="docutils literal notranslate"><span class="pre">&quot;snapshots&quot;</span></code> and some version, let’s say <code class="docutils literal notranslate"><span class="pre">13</span></code>. Since we don’t expect any other
+changes to the set while we are making snapshots with the commands <cite>(2,3,4)</cite>, the release command <cite>(5)</cite>
+could have looked like</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--release<span class="w"> </span>--await<span class="w"> </span>--if-version<span class="o">=</span><span class="m">13</span><span class="w"> </span><span class="c1"># (5)</span></span>
+</pre></div></div><p>This way, the result of the release command would have been <code class="docutils literal notranslate"><span class="pre">ESTALE</span></code> instead of 0, and we would
+know that something wasn’t right with the quiesce set and our snapshots might not be consistent.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">--if-version</span></code> and the command returns <code class="docutils literal notranslate"><span class="pre">ESTALE</span></code>, the requested action is <strong>not</strong> executed.
+It means that the script may want to execute some unconditional command on the set to adjust its state
+according to the requirements</p>
+</div>
+<p>There is another use of the <code class="docutils literal notranslate"><span class="pre">--if-version</span></code> argument which could come handy for automation software.
+As we have discussed earlier, it is possible to create a new quiesce set with a given set id. Drivers like
+the CSI for Kubernetes could use their internal request id to eliminate the need to keep an additional mapping
+to the quiesce set id. However, to guarantee uniqueness, the driver may want to verify that the set is
+indeed new. For that, <code class="docutils literal notranslate"><span class="pre">if-version=0</span></code> may be used, and it will only create the new set if no other
+set with this id was present in the database</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>sub1<span class="w"> </span>sub2<span class="w"> </span>sub3<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;external-id&quot;</span><span class="w"> </span>--if-version<span class="o">=</span><span class="m">0</span></span>
+</pre></div></div></section>
+</section>
+<section id="disabling-volumes-plugin">
+<span id="id2"></span><h2>Disabling Volumes Plugin<a class="headerlink" href="#disabling-volumes-plugin" title="Permalink to this heading"></a></h2>
+<p>By default the volumes plugin is enabled and set to <code class="docutils literal notranslate"><span class="pre">always</span> <span class="pre">on</span></code>. However, in
+certain cases it might be appropriate to disable it. For example, when a CephFS
+is in a degraded state, the volumes plugin commands may accumulate in MGR
+instead of getting served. Which eventually causes policy throttles to kick in
+and the MGR becomes unresponsive.</p>
+<p>In this event, volumes plugin can be disabled even though it is an
+<code class="docutils literal notranslate"><span class="pre">always</span> <span class="pre">on</span></code> module in MGR. To do so, run <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">mgr</span> <span class="pre">module</span> <span class="pre">disable</span> <span class="pre">volumes</span>
+<span class="pre">--yes-i-really-mean-it</span></code>. Do note that this command will disable operations
+and remove commands of volumes plugin since it will disable all CephFS
+services on the Ceph cluster accessed through this plugin.</p>
+<p>Before resorting to a measure as drastic as this, it is a good idea to try less
+drastic measures and then assess if the file system experience has improved due
+to it. One example of such less drastic measure is to disable asynchronous
+threads launched by volumes plugins for cloning and purging trash.</p>
 </section>
 </section>
 

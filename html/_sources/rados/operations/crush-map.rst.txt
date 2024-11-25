@@ -49,26 +49,36 @@ CRUSH 位置
 
   root=default row=a rack=a2 chassis=a2a host=a2a1
 
-注：
+.. note::
 
-#. 注意键（关键词）与顺序无关；
-#. 键名（ ``=`` 左边）必须是 CRUSH 内的合法 ``type`` ，默认情况下，
-   它包含 ``root`` 、 ``datacenter`` 、 ``room`` 、 ``row`` 、 ``pod`` 、 ``pdu`` 、
-   ``rack`` 、 ``chassis`` 、和 ``host`` 。
-   这些预定义的类型能满足几乎所有集群，
-   但可以修改 CRUSH 图自定义。
-#. 并非所有键都需指定，例如，默认情况下 Ceph 会自动把
-   ``ceph-osd`` 守护进程的位置设置为
-   ``root=default host=HOSTNAME`` （即是 ``hostname -s`` ）。
+   #. 注意键（关键词）与顺序无关；
+   #. 键名（ ``=`` 左边）必须是 CRUSH 内的合法 ``type`` ，默认情况下，
+      它包含 ``root`` 、 ``datacenter`` 、 ``room`` 、 ``row`` 、
+      ``pod`` 、 ``pdu`` 、 ``rack`` 、 ``chassis`` 、和 ``host`` 。
+      这些预定义的类型能满足几乎所有集群，
+      但可以修改 CRUSH 图自定义。
 
-一个 OSD 的 CRUSH 位置可以用 ``crush location`` 配置选项表示，\
-写入 ``ceph.conf`` 文件。 OSD 每次启动时，
-都会验证它还在 CRUSH 图内的正确位置，如果不是，就自己挪过去。
+一个 OSD 的 CRUSH 位置可以在 ``ceph.conf`` 配置文件里加上
+``crush_location`` 选项来设置，例如：
+
+   crush_location = root=default row=a rack=a2 chassis=a2a host=a2a1
+
+如果加了这个选项，以后 OSD 每次启动时，
+都会验证它还在 CRUSH 图内的正确位置，
+如果不是，就自己挪过去。
 要禁用 CRUSH 图的这个自动管理功能，
-把下面的加进配置文件的 ``[osd]`` 段下： ::
+把下面的加进 ``ceph.conf`` 配置文件的 ``[osd]`` 段下： ::
 
-  osd crush update on start = false
+   osd_crush_update_on_start = false
 
+注意，大多数情况下都没必要配置这个。
+
+如果没有明确设置 ``crush_location`` ，
+OSD 们的默认位置就是 ``root=default host=HOSTNAME`` ，
+其中，主机名是 ``hostname -s`` 命令的输出结果。
+
+.. note:: 如果将默认设置改为明确设置的 ``crush_location`` ，
+   不要忘了包含 ``root=default`` ，因为现有的 CRUSH 规则会引用它。
 
 
 定制位置挂钩
@@ -76,43 +86,42 @@ CRUSH 位置
 .. Custom location hooks
 
 定制的位置钩子可用于在启动时生成更完整的 crush 位置。
-按先后顺序， CRUSH 位置是基于：
 
-#. ``ceph.conf`` 内的 ``crush location`` 选项；
-#. 默认的 ``root=default host=HOSTNAME`` ，其中主机名是用
-   ``hostname -s`` 生成的。
+如果在编写 ``ceph.conf`` 时不知道某些位置字段（例如，
+在多个数据中心部署单套配置时的机架 ``rack`` 或\
+数据中心 ``datacenter`` 字段），那么这个钩子就非常有用。
 
-可以写个脚本来提供额外的位置字段
-（例如，机柜或数据中心），
-然后通过配置选项启用这个钩子： ::
+如果配置、执行和解析成功，钩子的输出将取代之前设置的任何 CRUSH 位置。
 
-  crush location hook = /path/to/customized-ceph-crush-location
+可以在 ``ceph.conf`` 中提供可执行文件（通常是脚本）的路径\
+来启用钩子，例如： ::
 
-此挂钩应该接受几个参数（下述）并\
-向标准输出打印一行 CRUSH 位置描述： ::
+   crush_location_hook = /path/to/customized-ceph-crush-location
 
-  --cluster CLUSTER --id ID --type TYPE
+此挂钩应该接受几个参数（下述）。
+并向标准输出 ``stdout`` 打印一行
+CRUSH 位置描述。参数大概是下面的样子： ::
 
-其中，集群名通常是 ``ceph`` ， ``id`` 是守护进程标识符
-（例如， OSD 号或守护进程标识符），
-守护进程类型是 ``osd`` 、 ``mds`` 之类的。
+  --id ID --type TYPE
 
-例如，下面这个简单的钩子，在 ``/etc/rack`` 里额外指定了一个机架位，
-如下： ::
+其中， ``id`` 是守护进程标识符或者
+（如果是 OSD 的话）是 OSD 号，
+守护进程类型是 ``osd`` 、 ``mds`` 、 ``mgr`` 或者 ``mon`` 。
+
+例如，下面这个简单的钩子，在 ``/etc/rack`` （假设它没有空格）\
+里额外指定了一个机架位，如下： ::
 
   #!/bin/sh
-  echo "host=$(hostname -s) rack=$(cat /etc/rack) root=default"
+  echo "root=default rack=$(cat /etc/rack) host=$(hostname -s)"
 
 
 CRUSH 结构
 ==========
 .. CRUSH structure
 
-不严谨地说， CRUSH 图包括，描述集群物理拓扑的一个分级结构、
-和一系列规则（定义了如何在那些设备上放置数据的策略）。
-这个分级结构包括，把叶子上挂设备（ ``ceph-osd`` 守护进程）、
-各内部节点对应其它物理功能或分组：
-主机、机架、排、数据中心，等等。
+CRUSH 图包括， (1) 描述集群物理拓扑的一个分级结构，和 (2) 定义数据归置策略的\
+一系列规则。这个分级结构包括，叶子上挂的设备（ OSD ）、
+内部节点对应其它物理功能或分组：主机、机架、排、数据中心，等等。
 这些规则描述了副本们如何放置在分级结构里
 （例如，“三个副本分别放到不同的机柜里”）。
 
@@ -120,13 +129,13 @@ CRUSH 结构
 ----
 .. Devices
 
-设备都是单个的 OSD ，可以存储数据，通常每个存储设备对应一个。
-设备是用一个 id （非负整数）和名字标识的，
-通常 ``osd.N`` 中的 ``N`` 是设备 id 。
+设备（ device ）都是用来存数据的单个 OSD （通常一个设备对应一个存储驱动器）。
+设备是用一个 ``id`` （非负整数）和名字 ``name`` 标识的
+（通常是 ``osd.N`` ，其中的 ``N`` 是设备的 ``id`` ）。
 
-从 Luminous 版起，设备还能分配一个 *device class*
-（例如 ``hdd`` 或 ``ssd`` 或 ``nvme`` ），
-方便让 CRUSH 规则引用。主机内混搭多种设备类型时尤其有用。
+从 Luminous 版起，设备还能分配一个 *device class （设备类别）*
+（例如 ``hdd`` 或 ``ssd`` 或 ``nvme`` ），方便让 CRUSH 规则引用。
+主机内混搭多种设备类型时设备类别尤其有用。
 
 .. _crush_map_default_types:
 
@@ -134,7 +143,7 @@ CRUSH 结构
 --------
 .. Types and Buckets
 
-桶是 CRUSH 术语，是分级结构的内部节点：主机、机架、行等等。
+桶（ bucket ），在 CRUSH 这里，是分级结构的内部节点：主机、机架、行等等。
 CRUSH 图定义了一系列的 *类型* ，用于描述这些节点。
 默认类型有：
 
@@ -151,11 +160,12 @@ CRUSH 图定义了一系列的 *类型* ，用于描述这些节点。
 - ``region``
 - ``root``
 
-大多数集群都只用了这些类型中的一小部分，
-其它的可以按需定义。
+大多数集群都只用了这些类型中的一小部分，其它的可以按需定义。
 
 这个分级结构的构成是：设备（类型通常是 ``osd`` ）位于叶子上、
-类型为非设备的内部节点、和一个类型为 ``root`` 的根节点。例如，
+类型为非设备的内部节点、和一个类型为 ``root`` 的根节点。
+例如，
+
 
 .. ditaa::
 
@@ -175,16 +185,19 @@ CRUSH 图定义了一系列的 *类型* ，用于描述这些节点。
    |   osd.0   |   |   osd.1   |   |   osd.2   |   |   osd.3   |
    +-----------+   +-----------+   +-----------+   +-----------+
 
-分级结构里的每个节点（设备或桶）都有一个 *权重* ，
+
+分级结构里的每个节点（设备或桶）都有一个 *权重（ weight ）* ，
 表示的是那个设备或分级结构子树会存储的总数据的相对比重。
 权重是在叶子上设置的，表示的是设备的容量，
 并且随树逐级累加，这样，
 默认节点的权重就是它下面所有设备的总和。
 通常，权重按 TB 数表示。
 
-你可以用下面的命令查看集群的 CRUSH 分级结构，包括权重： ::
+你可以用下面的命令查看集群的 CRUSH 分级结构，包括权重：
 
-  ceph osd crush tree
+.. prompt:: bash $
+
+   ceph osd crush tree
 
 规则
 ----
@@ -207,13 +220,19 @@ CRUSH 规则可以通过 CLI 创建，
 在极少数情况下，只能通过手动编辑 CRUSH 图\
 手写规则。
 
-你可以这样查看集群定义了哪些规则： ::
+你可以这样查看集群定义了哪些规则：
 
-  ceph osd crush rule ls
+.. prompt:: bash $
 
-你可以这样查看规则的内容： ::
+   ceph osd crush rule ls
 
-  ceph osd crush rule dump
+你可以这样查看规则的内容：
+
+.. prompt:: bash $
+
+   ceph osd crush rule dump
+
+.. _device_classes:
 
 设备类别
 --------
@@ -223,34 +242,45 @@ CRUSH 规则可以通过 CLI 创建，
 默认情况下， OSD 们在启动时会根据其后端的设备类型\
 自动将其类别设置为 `hdd` 、 `ssd` 或 `nvme` 。
 
-以下命令可以设置一或多个 OSD 的设备类别： ::
+以下命令可以设置一或多个 OSD 的设备类别：
 
-  ceph osd crush set-device-class <class> <osd-name> [...]
+.. prompt:: bash $
 
-设备类别配置后就不能再更改为另一个类别，
-得先删掉其旧类别，用命令： ::
+   ceph osd crush set-device-class <class> <osd-name> [...]
 
-  ceph osd crush rm-device-class <osd-name> [...]
+设备类别配置后就不能改成另一个类别，必须先取消其旧类别。
+按下面的格式用命令删除一个或多个 OSD 的旧类别：
+
+.. prompt:: bash $
+
+   ceph osd crush rm-device-class <osd-name> [...]
 
 如此一来，管理员配置设备类别后，
 就不会被 OSD 重启或其它脚本误改。
 
-指向某个特定设备类别的归置规则可以这样创建： ::
+指向某个特定设备类别的归置规则可以这样创建，
+命令格式如下：
 
-  ceph osd crush rule create-replicated <rule-name> <root> <failure-domain> <class>
+.. prompt:: bash $
 
-然后，存储池就可以改用新规则了： ::
+   ceph osd crush rule create-replicated <rule-name> <root> <failure-domain> <class>
+
+给指定存储池应用新规则，命令如下：
+
+.. prompt:: bash $
 
   ceph osd pool set <pool-name> crush_rule <rule-name>
 
-设备类别的实现是在现有类别之上再创建一个“影子” CRUSH 分级结构，
+设备类别的实现方式是在现有类别之上再创建一个“影子” CRUSH 分级结构，
 此类别中只包含了本类别下的设备。
-这样，各规则就可以通过影子分级结构分发数据了。
+这样，各 CRUSH 规则就可以通过对应的影子分级结构分发数据了。
 这个实现方法的好处之一是，
 它完全向后兼容老的 Ceph 客户端们。
 CRUSH 分级结构的影子条目可以这样查看： ::
 
-  ceph osd crush tree --show-shadow
+.. prompt:: bash #
+
+   ceph osd crush tree --show-shadow
 
 对于 Luminous 之前比较老的集群，
 它们靠手动更改的 CRUSH 图维护每个设备类型的分级结构，
@@ -275,37 +305,35 @@ CRUSH 分级结构的影子条目可以这样查看： ::
 
 当前支持两种权重集：
 
- #. **compat （兼容的）** 权重集是集群里\
-    各个设备和节点的一个单一的备选权重集。
-    它不能完美纠正所有异常情况（例如，
-    不同存储池的副本数不同、并且负载水平也不同，
-    但均衡器却几乎公平地对待它们的归置组）。
-    然而， compat 权重集的巨大优势是\
-    它与先前版本的 Ceph 有 *向后兼容性* ，
-    这意味着，即便权重集是在 Luminous v12.2.z 首次引进的，
-    在集群使用 compat 权重集来均衡数据时，
-    较老的客户端们（如 firefly ）仍然能连接到这个集群。
- #. **per-pool （基于存储池的）** 权重集更灵活，
-    它允许单独优化各个数据存储池的归置。
-    另外，可以针对归置的每个位置调整权重，
-    这样优化程序通过微调其相对于互联节点的权重、
-    进而纠正数据偏爱某些设备的情形
-    （这种影响在非常巨大的集群上一般不明显，
-    但却能导致均衡问题）。
+#. **compat （兼容的）** 权重集是集群里各个设备和节点的一个单一的备选权重集。
+   它不能完美纠正所有异常情况（例如，
+   不同存储池的副本数不同、并且负载水平也不同，
+   但均衡器却几乎公平地对待它们的归置组）。
+   然而， compat 权重集的巨大优势是它与先前版本的 Ceph 有 *向后兼容性* ，
+   这意味着，即便权重集是在 Luminous v12.2.z 首次引进的，
+   在集群使用 compat 权重集来均衡数据时，
+   较老的客户端们（如 firefly ）仍然能连接到这个集群。
 
-启用了权重集、用命令查看时，
-分级结构里与各节点关联的权重显示在单独的一列里
-（标题是 ``(compat)`` 或是存储池名字）： ::
+#. **per-pool （基于存储池的）** 权重集更灵活，
+   它允许单独优化各个数据存储池的归置。
+   另外，可以针对归置的每个位置调整权重，
+   这样优化程序通过微调其相对于互联节点的权重、
+   进而纠正数据偏爱某些设备的情形
+   （这种影响在非常巨大的集群上一般不明显，但却能导致均衡问题）。
 
-  ceph osd crush tree
+启用了权重集、用命令查看时，分级结构里与各节点关联的权重显示在单独的一列里
+（标题是 ``(compat)`` 或是存储池名字）：
+
+.. prompt:: bash #
+
+   ceph osd crush tree
 
 *compat* 和 *per-pool* 两种权重集都在使用时，
 如果某个存储池有它自己的 per-pool 权重集，那就使用它；
 如果没有，但有 compat 权重集，那就用它；
 如果都没有，就用普通的 CRUSH 权重。
 
-虽然可以手动启用和修改权重集，
-运行 Luminous 及更高版本时，
+虽然可以手动启用和修改权重集，运行 Luminous 及更高版本时，
 还是建议启用 ``ceph-mgr`` 的 *balancer* 模块自动完成。
 
 
@@ -318,80 +346,80 @@ CRUSH 分级结构的影子条目可以这样查看： ::
 增加/移动 OSD
 -------------
 
-.. note:: OSD 通常是在创建时自动被加进 CRUSH 图的。这个命令很少用到。
+.. note:: 正常情况下， OSD 是在创建时自动加入 CRUSH 图的。
+   这一段里的命令很少用到。
 
-要增加或移动在线集群里 OSD 所对应的 CRUSH 图位置，执行： ::
 
-  ceph osd crush set {name} {weight} root={root} [{bucket-type}={bucket-name} ...]
+要增加或移动在线集群里 OSD 所对应的 CRUSH 图位置，执行命令：
 
-其中：
+.. prompt:: bash $
 
+   ceph osd crush set {name} {weight} root={root} [{bucket-type}={bucket-name} ...]
+
+命令参数的详细含义如下：
 
 ``name``
-
-:描述: OSD 的全名。
-:类型: String
-:是否必需: Yes
-:实例: ``osd.0``
+    :描述: OSD 的全名。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``osd.0``
 
 
 ``weight``
-
-:描述: OSD 的 CRUSH 权重，通常是以 TB 计算的数值。
-:类型: Double
-:是否必需: Yes
-:实例: ``2.0``
+    :描述: OSD 的 CRUSH 权重，就是它的尺寸，是以 TB 计算的数值。
+    :类型: Double
+    :是否必需: Yes
+    :实例: ``2.0``
 
 
 ``root``
-
-:描述: OSD 所在树的根节点（通常是 ``default`` ）。
-:类型: Key/value pair.
-:是否必需: Yes
-:实例: ``root=default``
+    :描述: OSD 所在 CRUSH 分级结构的根节点（通常是 ``default`` ）。
+    :类型: Key/value pair.
+    :是否必需: Yes
+    :实例: ``root=default``
 
 
 ``bucket-type``
+    :描述: 定义 OSD 在 CRUSH 分级结构中的位置。
+    :类型: Key/value pairs.
+    :是否必需: No
+    :实例: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
 
-:描述: 定义 OSD 在 CRUSH 分级结构中的位置。
-:类型: Key/value pairs.
-:是否必需: No
-:实例: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
 
+下例把 ``osd.0`` 添加到分级结构里、或者说从前一个位置挪动一下。
 
-下例把 ``osd.0`` 添加到分级结构里、或者说从前一个位置挪动一下。 ::
+.. prompt:: bash $
 
-  ceph osd crush set osd.0 1.0 root=default datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1
+   ceph osd crush set osd.0 1.0 root=default datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1
 
 
 调整 OSD 的权重
 ---------------
 .. Adjust OSD weight
 
-.. note:: 通常在创建 OSD 时它们就会自动把自己加进 CRUSH 图、
-   并且权重正确。这个命令很少用到。
+.. note:: 正常情况下， OSD 是在创建时自动加入 CRUSH 图的。
+   这一段里的命令很少用到。
 
-要调整在线集群中一个 OSD 在 CRUSH 图中的 CRUSH 权重，执行命令： ::
+要调整在线集群中一个 OSD 的 CRUSH 权重，执行命令：
 
-  ceph osd crush reweight {name} {weight}
+.. prompt:: bash $
 
-其中：
+   ceph osd crush reweight {name} {weight}
 
+命令参数的详细含义如下：
 
 ``name``
-
-:描述: OSD 的全名。
-:类型: String
-:是否必需: Yes
-:实例: ``osd.0``
+    :描述: OSD 的全名。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``osd.0``
 
 
 ``weight``
-
-:描述: OSD 的 CRUSH权重。
-:类型: Double
-:是否必需: Yes
-:实例: ``2.0``
+    :描述: OSD 的 CRUSH 权重。
+    :类型: Double
+    :是否必需: Yes
+    :实例: ``2.0``
 
 
 .. _removeosd:
@@ -405,17 +433,17 @@ CRUSH 分级结构的影子条目可以这样查看： ::
 
 要从在线集群里把一 OSD 踢出 CRUSH 图，执行命令： ::
 
-  ceph osd crush remove {name}
+.. prompt:: bash $
 
-其中：
+   ceph osd crush remove {name}
 
+命令参数的详细含义如下：
 
 ``name``
-
-:描述: OSD 全名。
-:类型: String
-:是否必需: Yes
-:实例: ``osd.0``
+    :描述: OSD 全名。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``osd.0``
 
 
 增加桶
@@ -430,139 +458,168 @@ CRUSH 分级结构的影子条目可以这样查看： ::
    它就不会接收数据，你准备好之后，
    就可以把它们移动到 ``default`` 或下文描述的其他根下面。
 
-要在在线集群的 CRUSH 图中新建一个桶，用
-``ceph osd crush add-bucket`` 命令： ::
+要在在线集群的 CRUSH 图中新建一个桶，用命令：
 
-  ceph osd crush add-bucket {bucket-name} {bucket-type}
+.. prompt:: bash $
 
-其中：
+   ceph osd crush add-bucket {bucket-name} {bucket-type}
+
+命令参数的详细含义如下：
 
 ``bucket-name``
-
-:描述: 桶的全名。
-:类型: String
-:是否必需: Yes
-:实例: ``rack12``
+    :描述: 桶的全名。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``rack12``
 
 
 ``bucket-type``
+    :描述: 桶的类型，它必须已存在于分级结构中。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``rack``
 
-:描述: 桶的类型，它必须已存在于分级结构中。
-:类型: String
-:是否必需: Yes
-:实例: ``rack``
+下例把 ``rack12`` 桶加入了分级结构：
 
+.. prompt:: bash $
 
-下例把 ``rack12`` 桶加入了分级结构： ::
-
-	ceph osd crush add-bucket rack12 rack
+   ceph osd crush add-bucket rack12 rack
 
 移动桶
 ------
-.. Move a Bucket
+.. Moving a Bucket
 
-要把一个桶挪动到 CRUSH 图里的不同位置，执行命令： ::
+要把一个桶挪动到 CRUSH 图里的不同位置，执行命令：
 
-  ceph osd crush move {bucket-name} {bucket-type}={bucket-name}, [...]
+.. prompt:: bash $
 
-其中：
+   ceph osd crush move {bucket-name} {bucket-type}={bucket-name}, [...]
+
+命令参数的详细含义如下：
 
 ``bucket-name``
-
-:描述: 要移动或重新定位的桶名。
-:类型: String
-:是否必需: Yes
-:实例: ``foo-bar-1``
-
+    :描述: 要移动或重新定位的桶名。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``foo-bar-1``
 
 ``bucket-type``
+    :描述: 你可以指定桶在 CRUSH 分级结构里的位置。
+    :类型: Key/value pairs.
+    :是否必需: No
+    :实例: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
 
-:描述: 你可以指定桶在 CRUSH 分级结构里的位置。
-:类型: Key/value pairs.
-:是否必需: No
-:实例: ``datacenter=dc1 room=room1 row=foo rack=bar host=foo-bar-1``
+重命名桶
+--------
+.. Renaming a bucket
+
+要重新命名一个桶，同时保持其在 CRUSH 图层次结构中的位置不变，
+用命令：
+
+.. prompt:: bash #
+
+   ceph osd crush rename-bucket {oldname} {newname}
 
 删除桶
 ------
-.. Remove a Bucket
+.. Removing a Bucket
 
-要把一个桶从 CRUSH 图的分级结构中删除，可用此命令： ::
+要把一个桶从 CRUSH 图分级结构中删除，可用此命令：
 
-  ceph osd crush remove {bucket-name}
+.. prompt:: bash $
 
-.. note:: 从 CRUSH 分级结构里删除时必须是空桶。
+   ceph osd crush remove {bucket-name}
 
-其中：
+.. note:: 从 CRUSH 分级结构里删除时必须是空桶，
+   换句话说，里面一定不能有 OSD 或者其它的 CRUSH 桶。
+
+命令参数的详细含义如下：
 
 ``bucket-name``
+    :描述: 将要删除的桶的名字。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``rack12``
 
-:描述: 将要删除的桶的名字。
-:类型: String
-:是否必需: Yes
-:实例: ``rack12``
+下例从分级结构里删除了 ``rack12`` ：
 
-下例从分级结构里删除了 ``rack12`` 。 ::
+.. prompt:: bash $
 
-  ceph osd crush remove rack12
+   ceph osd crush remove rack12
+
 
 创建一个 compat 权重集
 ----------------------
 .. Creating a compat weight set
 
-.. note:: 启用 ``balancer`` 时，它通常会自动完成。
+.. note:: 通常， ``balancer`` 模块认为有必要时会自动完成此动作
+   （前提是此模块已启用）。
 
-要创建一个 *compat* 权重集： ::
+要创建一个 *compat* 权重集：
 
-  ceph osd crush weight-set create-compat
+.. prompt:: bash $
 
-compat 权重集的权重可以这样调整： ::
+   ceph osd crush weight-set create-compat
 
-  ceph osd crush weight-set reweight-compat {name} {weight}
+调整 compat 权重集的权重，用下列命令：
 
-销毁 compat 权重集： ::
+.. prompt:: bash $
 
-  ceph osd crush weight-set rm-compat
+   ceph osd crush weight-set reweight-compat {name} {weight}
+
+销毁 compat 权重集，用下列命令：
+
+.. prompt:: bash $
+
+   ceph osd crush weight-set rm-compat
+
 
 创建 per-pool 权重集
 --------------------
 .. Creating per-pool weight sets
 
-为指定存储池创建权重集： ::
+为指定存储池创建权重集，用下列命令：
 
-  ceph osd crush weight-set create {pool-name} {mode}
+.. prompt:: bash $
+
+   ceph osd crush weight-set create {pool-name} {mode}
 
 .. note:: Per-pool 权重集要求所有服务器和守护进程都运行
    Luminous v12.2.z 及以上版本。
 
-其中：
+命令参数的详细含义如下：
 
 ``pool-name``
-
-:描述: RADOS 存储池的名字。
-:类型: String
-:是否必需: Yes
-:实例: ``rbd``
+    :描述: RADOS 存储池的名字。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``rbd``
 
 ``mode``
+    :描述: 可以是 ``flat`` 或 ``positional`` 。
+           *flat* 权重集为每个设备或桶都分配了单独的权重。
+           *positional* 权重集可能给归置映射图里的各个位置分配不同的权重。
+           例如，如果一个存储池的副本数是 3 ，
+           那么它的 positional 权重集将是每个设备和桶都有 3 个权重。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``flat``
 
-:描述: 可以是 ``flat`` 或 ``positional`` 。
-       *flat* 权重集为每个设备或桶都分配了单独的权重。
-       *positional* 权重集可能给归置映射图里的各个位置分配不同的权重。
-       例如，如果一个存储池的副本数是 3 ，
-       那么它的 positional 权重集将是每个设备和桶都有 3 个权重。
-:类型: String
-:是否必需: Yes
-:实例: ``flat``
+调整一个权重集内一个条目的权重，用下列命令：
 
-调整一个权重集内一个条目的权重： ::
+.. prompt:: bash $
 
-  ceph osd crush weight-set reweight {pool-name} {item-name} {weight [...]}
+   ceph osd crush weight-set reweight {pool-name} {item-name} {weight [...]}
 
-罗列现有的权重集： ::
+罗列现有的权重集，用下列命令：
+
+.. prompt:: bash $
 
   ceph osd crush weight-set ls
 
-删除一个权重集： ::
+删除一个权重集，用下列命令：
+
+.. prompt:: bash $
 
   ceph osd crush weight-set rm {pool-name}
 
@@ -571,54 +628,60 @@ compat 权重集的权重可以这样调整： ::
 ----------------------
 .. Creating a rule for a replicated pool
 
-对于多副本存储池，创建 CRUSH 规则时的主要关注点在于故障域是什么。
-例如，如果选择 ``host`` 作为故障域，那么
-CRUSH 就会确保将数据的各个副本存储到不同的主机上；
-如果选择 ``rack`` ，那么各个副本将会存储到不同的机架上。
-选择什么作为故障域主要取决于规模和集群的拓扑结构。
+对于多副本存储池，创建 CRUSH 规则时重要的关注点在于：故障域是什么。
+例如，如果选择 ``host`` 作为故障域，
+那么 CRUSH 就会确保将数据的各个副本存储到不同的主机上；
+或者，如果选择 ``rack`` ，
+那么各个数据副本将会存储到不同的机架上。
+选择什么作为故障域主要取决于集群规模和它的 CRUSH 拓扑结构。
 
 大多数情况下，整个集群的分级结构都嵌套在一个名为 ``default`` 的根节点下。
 如果你自定义过分级结构，你也许想要创建一条规则，
-嵌套在分级结构里的某个节点上。那个节点的类型是什么无关紧要
-（不一定非得是 ``root`` 节点）。
+嵌套在分级结构里的某个节点上。
+在自定义的分级结构里创建规则时，那个节点的类型是什么无关紧要，
+而且，此规则不一定非得嵌套在 ``root`` 节点下。
 
 还能创建一种规则，它只负责 *一类（ class ）* 设备的数据归置。
-默认情况下， Ceph OSD 们会根据在用设备的类型把它自己归类为 ``hdd`` 或 ``ssd`` 。
-这些类别也可以自定义。
+默认情况下， Ceph OSD 们会根据在用设备的类型\
+把它自己归类为 ``hdd`` 或 ``ssd`` 。
+这些设备类别也可以自定义。
+我们可以将 OSD 的设备类别 ``device class`` 设置为 ``nvme`` ，
+以区别于 SATA SSD ；或者，将其随便设置为诸如
+``ssd-testing`` 或 ``ssd-ethel`` 这样的类别，
+这样就可以根据特定要求灵活地限制规则和存储池，
+以使用（或避免使用）特定的 OSD 子集。
 
-创建一条多副本规则： ::
+要给多副本存储池创建一条规则，用下列命令：
 
-  ceph osd crush rule create-replicated {name} {root} {failure-domain-type} [{class}]
+.. prompt:: bash $
 
-其中：
+   ceph osd crush rule create-replicated {name} {root} {failure-domain-type} [{class}]
+
+命令参数的详细含义如下：
 
 ``name``
-
-:描述: 规则的名字
-:类型: String
-:是否必需: Yes
-:实例: ``rbd-rule``
+    :描述: 规则的名字
+    :类型: String
+    :是否必需: Yes
+    :实例: ``rbd-rule``
 
 ``root``
-
-:描述: 节点的名字，数据应该放置到这个节点之下。
-:类型: String
-:是否必需: Yes
-:实例: ``default``
+    :描述: 节点的名字，数据应该放置到这个节点之下。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``default``
 
 ``failure-domain-type``
-
-:描述: CRUSH 节点的类型，数据副本会跨过这些节点分布。
-:类型: String
-:是否必需: Yes
-:实例: ``rack``
+    :描述: CRUSH 节点的类型，数据副本会跨过这些节点分布。
+    :类型: String
+    :是否必需: Yes
+    :实例: ``rack``
 
 ``class``
-
-:描述: 数据应该放置到这种类型的设备上。
-:类型: String
-:是否必需: No
-:实例: ``ssd``
+    :描述: 数据应该放置到这种类型的设备上。
+    :类型: String
+    :是否必需: No
+    :实例: ``ssd``
 
 
 为纠删码存储池创建规则
@@ -634,13 +697,17 @@ CRUSH 就会确保将数据的各个副本存储到不同的主机上；
 创建存储池时需要用到配置信息，
 此时就会根据这些信息显式或自动地创建一条 CRUSH 规则。
 
-纠删码配置信息可以这样罗列： ::
+罗列纠删码配置信息，用下列命令：
 
-  ceph osd erasure-code-profile ls
+.. prompt:: bash $
 
-现有配置信息可以这样查看： ::
+   ceph osd erasure-code-profile ls
 
-  ceph osd erasure-code-profile get {profile-name}
+查看一个现有配置信息，用下列命令：
+
+.. prompt:: bash $
+
+   ceph osd erasure-code-profile get {profile-name}
 
 正常情况下不要去修改配置信息；反之，
 应该新建存储池时新建一份配置信息并应用它，
@@ -653,17 +720,30 @@ CRUSH 就会确保将数据的各个副本存储到不同的主机上；
 
 纠删码配置信息的众多属性里比较重要的有：
 
- * **crush-root**: 容纳数据的 CRUSH 节点的名字 [默认值: ``default``] ；
- * **crush-failure-domain**: 分配纠删编码的数据分片的 CRUSH 桶类型 [默认值: ``host``] ；
- * **crush-device-class**: 可以放置数据的设备类 [默认值: none, 表示使用所有设备] ；
+ * **crush-root**: 容纳数据的 CRUSH 节点的名字
+   [默认值: ``default``] ；
+ * **crush-failure-domain**: 分配纠删编码的数据分片的 CRUSH 桶类型
+   [默认值: ``host``] ；
+ * **crush-osds-per-failure-domain**: Maximum number of OSDs to place in each
+   failure domain -- defaults to 1.  Using a value greater than one will
+   cause a CRUSH MSR rule to be created, see below.  Must be specified if
+   ``crush-num-failure-domains`` is specified.
+ * **crush-num-failure-domains**: Number of failure domains to map.  Must be
+   specified if ``crush-osds-per-failure-domain`` is specified.  Results in
+   a CRUSH MSR rule being created.
+ * **crush-device-class**: 可以放置数据的设备类
+   [默认值: none, 表示使用所有设备] ；
  * **k** 和 **m** (对于 ``lrc`` 插件还有 **l**): 这些确定了纠删码分片的数量，
    影响着生成的 CRUSH 规则；
 
-配置信息定义好之后，就可以用下列命令创建 CRUSH 规则： ::
+配置信息定义好之后，就可以创建 CRUSH 规则了，
+用下列命令：
 
-  ceph osd crush rule create-erasure {name} {profile-name}
+.. prompt:: bash $
 
-.. note:: 创建新存储池时，并非一定要显式地创建规则。
+   ceph osd crush rule create-erasure {name} {profile-name}
+
+.. note:: 创建新存储池时，没必要明确地创建规则。
    如果只是指定了纠删码配置信息，
    而具体的规则参数却是空的， Ceph 会自动创建 CRUSH 规则。
 
@@ -953,7 +1033,7 @@ Ceph 就会发出健康警告，有两种方法可消除这些警告：
 并试着压制一下恢复、回填参数，以降低一大波回填造成的影响。
 
 
-.. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf
+.. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.io/assets/pdfs/weil-crush-sc06.pdf
 
 
 .. _rados_ops_primary_affinity:

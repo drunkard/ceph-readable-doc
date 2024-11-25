@@ -380,9 +380,7 @@ memory with other services, cephadm can automatically adjust the per-OSD
 memory consumption based on the total amount of RAM and the number of deployed
 OSDs.
 
-This option is enabled globally with::
-
-  ceph config set osd osd_memory_target_autotune true
+.. warning:: Cephadm sets ``osd_memory_target_autotune`` to ``true`` by default which is unsuitable for hyperconverged infrastructures.
 
 Cephadm will start with a fraction
 (``mgr/cephadm/autotune_memory_target_ratio``, which defaults to
@@ -419,13 +417,27 @@ for that OSD and also set a specific memory target.  For example,
 Advanced OSD Service Specifications
 ===================================
 
-:ref:`orchestrator-cli-service-spec`\s of type ``osd`` are a way to describe a
-cluster layout, using the properties of disks. Service specifications give the
-user an abstract way to tell Ceph which disks should turn into OSDs with which
-configurations, without knowing the specifics of device names and paths.
+:ref:`orchestrator-cli-service-spec`\s of type ``osd`` provide a way to use the
+properties of disks to describe a Ceph cluster's layout. Service specifications
+are an abstraction used to tell Ceph which disks it should transform into OSDs
+and which configurations to apply to those OSDs.
+:ref:`orchestrator-cli-service-spec`\s make it possible to target these disks
+for transformation into OSDs even when the Ceph cluster operator does not know
+the specific device names and paths associated with those disks.
 
-Service specifications make it possible to define a yaml or json file that can
-be used to reduce the amount of manual work involved in creating OSDs.
+:ref:`orchestrator-cli-service-spec`\s make it possible to define a ``.yaml``
+or ``.json`` file that can be used to reduce the amount of manual work involved
+in creating OSDs.
+
+.. note::
+   We recommend that advanced OSD specs include the ``service_id`` field set.
+   OSDs created using ``ceph orch daemon add`` or ``ceph orch apply osd
+   --all-available-devices`` are placed in the plain ``osd`` service. Failing
+   to include a ``service_id`` in your OSD spec causes the Ceph cluster to mix
+   the OSDs from your spec with those OSDs, which can potentially result in the
+   overwriting of service specs created by ``cephadm`` to track them. Newer
+   versions of ``cephadm`` will even block creation of advanced OSD specs that
+   do not include the ``service_id``. 
 
 For example, instead of running the following command:
 
@@ -433,8 +445,8 @@ For example, instead of running the following command:
 
   ceph orch daemon add osd *<host>*:*<path-to-device>*
 
-for each device and each host, we can define a yaml or json file that allows us
-to describe the layout. Here's the most basic example.
+for each device and each host, we can define a ``.yaml`` or ``.json`` file that
+allows us to describe the layout. Here is the most basic example:
 
 Create a file called (for example) ``osd_spec.yml``:
 
@@ -452,17 +464,18 @@ This means :
 
 #. Turn any available device (ceph-volume decides what 'available' is) into an
    OSD on all hosts that match the glob pattern '*'. (The glob pattern matches
-   against the registered hosts from `host ls`) A more detailed section on
-   host_pattern is available below.
+   against the registered hosts from `ceph orch host ls`) See
+   :ref:`cephadm-services-placement-by-pattern-matching` for more on using
+   ``host_pattern``-matching to turn devices into OSDs.
 
-#. Then pass it to `osd create` like this:
+#. Pass ``osd_spec.yml`` to ``osd create`` by using the following command:
 
    .. prompt:: bash [monitor.1]#
 
      ceph orch apply -i /path/to/osd_spec.yml
 
-   This instruction will be issued to all the matching hosts, and will deploy
-   these OSDs.
+   This instruction is issued to all the matching hosts, and will deploy these
+   OSDs.
 
    Setups more complex than the one specified by the ``all`` filter are
    possible. See :ref:`osd_filters` for details.
@@ -474,7 +487,7 @@ Example
 
 .. prompt:: bash [monitor.1]#
 
-   ceph orch apply -i /path/to/osd_spec.yml --dry-run
+  ceph orch apply -i /path/to/osd_spec.yml --dry-run
 
 
 
@@ -631,6 +644,21 @@ This example would deploy all OSDs with encryption enabled.
         all: true
       encrypted: true
 
+Ceph Squid onwards support tpm2 token enrollment to LUKS2 devices.
+You can add the `tpm2` to your OSD spec:
+
+.. code-block:: yaml
+
+    service_type: osd
+    service_id: example_osd_spec_with_tpm2
+    placement:
+      host_pattern: '*'
+    spec:
+      data_devices:
+        all: true
+      encrypted: true
+      tpm2: true
+
 See a full list in the DriveGroupSpecs
 
 .. py:currentmodule:: ceph.deployment.drive_group
@@ -638,6 +666,7 @@ See a full list in the DriveGroupSpecs
 .. autoclass:: DriveGroupSpec
    :members:
    :exclude-members: from_json
+
 
 Examples
 ========
@@ -823,6 +852,7 @@ You can use the 'placement' key in the layout to target certain nodes.
       db_devices:
         model: SSD-123-foo
 
+
 This applies different OSD specs to different hosts depending on the `placement` key.
 See :ref:`orchestrator-cli-placement-spec`
 
@@ -896,6 +926,57 @@ It is also possible to specify directly device paths in specific hosts like the 
 
 
 This can easily be done with other filters, like `size` or `vendor` as well.
+
+It's possible to specify the `crush_device_class` parameter within the
+DriveGroup spec, and it's applied to all the devices defined by the `paths`
+keyword:
+
+.. code-block:: yaml
+
+    service_type: osd
+    service_id: osd_using_paths
+    placement:
+      hosts:
+        - Node01
+        - Node02
+    crush_device_class: ssd
+    spec:
+      data_devices:
+        paths:
+        - /dev/sdb
+        - /dev/sdc
+      db_devices:
+        paths:
+        - /dev/sdd
+      wal_devices:
+        paths:
+        - /dev/sde
+
+The `crush_device_class` parameter, however, can be defined for each OSD passed
+using the `paths` keyword with the following syntax:
+
+.. code-block:: yaml
+
+    service_type: osd
+    service_id: osd_using_paths
+    placement:
+      hosts:
+        - Node01
+        - Node02
+    crush_device_class: ssd
+    spec:
+      data_devices:
+        paths:
+        - path: /dev/sdb
+          crush_device_class: ssd
+        - path: /dev/sdc
+          crush_device_class: nvme
+      db_devices:
+        paths:
+        - /dev/sdd
+      wal_devices:
+        paths:
+        - /dev/sde
 
 .. _cephadm-osd-activate:
 

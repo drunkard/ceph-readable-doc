@@ -119,10 +119,11 @@
 <li class="toctree-l3"><a class="reference internal" href="#id1">手动设置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id2">客户端认证</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id3">高可用性</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id4">模块的使用</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">性能和伸缩性</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">模块的使用</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#module-pool">Module Pool</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id5">调用模块命令</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id6">配置选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">调用模块命令</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">配置选项</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/">模块编程</a></li>
@@ -242,7 +243,21 @@ ceph-mgr 守护进程无需形成法定人数。</p>
 ceph-mgr 明确地标记为已失效。</p>
 </section>
 <section id="id4">
-<h2>模块的使用<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
+<h2>性能和伸缩性<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
+<p>All the mgr modules share a cache that can be enabled with
+<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span> <span class="pre">set</span> <span class="pre">mgr</span> <span class="pre">mgr_ttl_cache_expire_seconds</span> <span class="pre">&lt;seconds&gt;</span></code>, where seconds
+is the time to live of the cached python objects.</p>
+<p>It is recommended to enable the cache with a 10 seconds TTL when there are 500+
+osds or 10k+ pgs as internal structures might increase in size, and cause latency
+issues when requesting large structures. As an example, an OSDMap with 1000 osds
+has a approximate size of 4MiB. With heavy load, on a 3000 osd cluster there has
+been a 1.5x improvement enabling the cache.</p>
+<p>Furthermore, you can run <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">daemon</span> <span class="pre">mgr.${MGRNAME}</span> <span class="pre">perf</span> <span class="pre">dump</span></code> to retrieve perf
+counters of a mgr module. In <code class="docutils literal notranslate"><span class="pre">mgr.cache_hit</span></code> and <code class="docutils literal notranslate"><span class="pre">mgr.cache_miss</span></code> you’ll find the
+hit/miss ratio of the mgr cache.</p>
+</section>
+<section id="id5">
+<h2>模块的使用<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h2>
 <p>用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">mgr</span> <span class="pre">module</span> <span class="pre">ls</span></code> 命令可查看有哪些模块可用、
 哪些是当前已经启用的；用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">mgr</span> <span class="pre">module</span> <span class="pre">ls</span> <span class="pre">--format=json-pretty</span></code> 命令可以查看已禁用模块的详细元数据。
 启用或禁用模块分别使用命令 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">mgr</span> <span class="pre">module</span> <span class="pre">enable</span> <span class="pre">&lt;module&gt;</span></code>
@@ -262,7 +277,6 @@ information about what functionality each module provides.</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>ceph<span class="w"> </span>mgr<span class="w"> </span>module<span class="w"> </span>ls
 <span class="go">{</span>
 <span class="go">        &quot;enabled_modules&quot;: [</span>
-<span class="go">                &quot;restful&quot;,</span>
 <span class="go">                &quot;status&quot;</span>
 <span class="go">        ],</span>
 <span class="go">        &quot;disabled_modules&quot;: [</span>
@@ -274,7 +288,6 @@ information about what functionality each module provides.</p>
 <span class="gp">$ </span>ceph<span class="w"> </span>mgr<span class="w"> </span>module<span class="w"> </span>ls
 <span class="go">{</span>
 <span class="go">        &quot;enabled_modules&quot;: [</span>
-<span class="go">                &quot;restful&quot;,</span>
 <span class="go">                &quot;status&quot;,</span>
 <span class="go">                &quot;dashboard&quot;</span>
 <span class="go">        ],</span>
@@ -284,8 +297,7 @@ information about what functionality each module provides.</p>
 
 <span class="gp">$ </span>ceph<span class="w"> </span>mgr<span class="w"> </span>services
 <span class="go">{</span>
-<span class="go">        &quot;dashboard&quot;: &quot;http://myserver.com:7789/&quot;,</span>
-<span class="go">        &quot;restful&quot;: &quot;https://myserver.com:8789/&quot;</span>
+<span class="go">        &quot;dashboard&quot;: &quot;http://myserver.com:7789/&quot;</span>
 <span class="go">}</span>
 </pre></div>
 </div>
@@ -313,15 +325,15 @@ Quincy, this pool is automatically renamed to be the common manager module
 pool.</p>
 </div>
 </section>
-<section id="id5">
-<h2>调用模块命令<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h2>
+<section id="id6">
+<h2>调用模块命令<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h2>
 <p>对于实现了命令行钩子的模块，其实现的命令可以像一般的 Ceph 命令那样调用。 Ceph 会自动把模块命令整合进标准 CLI 接口，并正确地路由到那个模块。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">&lt;</span><span class="n">command</span> <span class="o">|</span> <span class="n">help</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 </section>
-<section id="id6">
-<h2>配置选项<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h2>
+<section id="id7">
+<h2>配置选项<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-mgr_module_path">
 <span class="sig-name descname"><span class="pre">mgr_module_path</span></span><a class="headerlink" href="#confval-mgr_module_path" title="Permalink to this definition"></a></dt>

@@ -114,19 +114,14 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">部署个全新的 Ceph 集群</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#cephadm-host-requirements">准备事项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cephadm">安装 cephadm</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#curl-based-installation">curl-based installation</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#distribution-specific-installations">distribution-specific installations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#curl-based-installation">curl-based installation</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#bootstrap-a-new-cluster">Bootstrap a new cluster</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#what-to-know-before-you-bootstrap">What to know before you bootstrap</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#running-the-bootstrap-command">Running the bootstrap command</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#further-information-about-cephadm-bootstrap">Further information about cephadm bootstrap</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="#different-deployment-scenarios">Different deployment scenarios</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#single-host">Single host</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#deployment-in-an-isolated-environment">Deployment in an isolated environment</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#enable-ceph-cli">Enable Ceph CLI</a></li>
@@ -137,9 +132,11 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#using-ceph">Using Ceph</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#cephadm-deployment-scenarios">Different deployment scenarios</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id3">Single host</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id4">Deployment in an isolated environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#different-deployment-scenarios">Different deployment scenarios</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#single-host">Single host</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#deployment-in-an-isolated-environment">Deployment in an isolated environment</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#deployment-with-custom-ssh-keys">Deployment with custom SSH keys</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#deployment-with-ca-signed-ssh-keys">Deployment with CA signed SSH keys</a></li>
 </ul>
 </li>
 </ul>
@@ -212,7 +209,7 @@
 
   
   <section id="ceph">
-<h1>部署个全新的 Ceph 集群<a class="headerlink" href="#ceph" title="Permalink to this heading"></a></h1>
+<span id="cephadm-deploying-new-cluster"></span><h1>部署个全新的 Ceph 集群<a class="headerlink" href="#ceph" title="Permalink to this heading"></a></h1>
 <p>Cephadm creates a new Ceph cluster by “bootstrapping” on a single
 host, expanding the cluster to encompass any additional hosts, and
 then deploying the needed services.</p>
@@ -227,6 +224,9 @@ then deploying the needed services.</p>
 </ul>
 <p>Any modern Linux distribution should be sufficient.  Dependencies
 are installed automatically by the bootstrap process below.</p>
+<p>See <a class="reference external" href="https://docs.docker.com/engine/daemon/live-restore/">Docker Live Restore</a>
+for an optional feature that allows restarting Docker Engine without restarting
+all running containers.</p>
 <p>See the section <a class="reference internal" href="../compatibility/#cephadm-compatibility-with-podman"><span class="std std-ref">Compatibility With Podman
 Versions</span></a> for a table of Ceph versions that
 are compatible with Podman. Not every version of Podman is compatible with
@@ -234,34 +234,73 @@ Ceph.</p>
 </section>
 <section id="cephadm">
 <span id="get-cephadm"></span><h2>安装 cephadm<a class="headerlink" href="#cephadm" title="Permalink to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">cephadm</span></code> 命令可以</p>
+<p>When installing cephadm there are two key steps: first you need to acquire
+an initial copy of cephadm, then the second step is to ensure you have an
+up-to-date cephadm. There are two ways to get the initial <code class="docutils literal notranslate"><span class="pre">cephadm</span></code>:</p>
 <ol class="arabic simple">
-<li><p>bootstrap a new cluster</p></li>
-<li><p>launch a containerized shell with a working Ceph CLI</p></li>
-<li><p>aid in debugging containerized Ceph daemons</p></li>
-</ol>
-<p>There are two ways to install <code class="docutils literal notranslate"><span class="pre">cephadm</span></code>:</p>
-<ol class="arabic simple">
-<li><p>a <a class="reference internal" href="#cephadm-install-curl"><span class="std std-ref">curl-based installation</span></a> method</p></li>
 <li><p><a class="reference internal" href="#cephadm-install-distros"><span class="std std-ref">distribution-specific installation methods</span></a></p></li>
+<li><p>a <a class="reference internal" href="#cephadm-install-curl"><span class="std std-ref">curl-based installation</span></a> method</p></li>
 </ol>
-<section id="curl-based-installation">
-<span id="cephadm-install-curl"></span><h3>curl-based installation<a class="headerlink" href="#curl-based-installation" title="Permalink to this heading"></a></h3>
-<ul>
-<li><p>Use <code class="docutils literal notranslate"><span class="pre">curl</span></code> to fetch the most recent version of the
-standalone script.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>These methods of installing <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> are mutually exclusive.
+Choose either the distribution-specific method or the curl-based method. Do
+not attempt to use both these methods on one system.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Recent versions of cephadm are distributed as an executable compiled from source code.
+Unlike for earlier versions of Ceph it is no longer sufficient to copy a
+single script from Ceph’s git tree and run it. If you wish to run
+cephadm using a development version you should create your own build of
+cephadm. See <a class="reference internal" href="../../dev/cephadm/developing-cephadm/#compiling-cephadm"><span class="std std-ref">Compiling cephadm</span></a> for details on how to create your own
+standalone cephadm executable.</p>
+</div>
+<section id="distribution-specific-installations">
+<span id="cephadm-install-distros"></span><h3>distribution-specific installations<a class="headerlink" href="#distribution-specific-installations" title="Permalink to this heading"></a></h3>
+<p>Some Linux distributions may already include up-to-date Ceph packages.  In
+that case, you can install cephadm directly. For example:</p>
+<blockquote>
+<div><p>In Ubuntu:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
 span.prompt1:before {
   content: "# ";
 }
-</style><span class="prompt1">curl<span class="w"> </span>--silent<span class="w"> </span>--remote-name<span class="w"> </span>--location<span class="w"> </span>https://github.com/ceph/ceph/raw/squid/src/cephadm/cephadm</span>
-</pre></div></div><p>Make the <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> script executable:</p>
+</style><span class="prompt1">apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>cephadm</span>
+</pre></div></div><p>In CentOS Stream:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">dnf<span class="w"> </span>search<span class="w"> </span>release-ceph</span>
+<span class="prompt1">dnf<span class="w"> </span>install<span class="w"> </span>--assumeyes<span class="w"> </span>centos-release-ceph-squid</span>
+<span class="prompt1">dnf<span class="w"> </span>install<span class="w"> </span>--assumeyes<span class="w"> </span>cephadm</span>
+</pre></div></div><p>In Fedora:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">dnf<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>cephadm</span>
+</pre></div></div><p>In SUSE:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">zypper<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>cephadm</span>
+</pre></div></div></div></blockquote>
+</section>
+<section id="curl-based-installation">
+<span id="cephadm-install-curl"></span><h3>curl-based installation<a class="headerlink" href="#curl-based-installation" title="Permalink to this heading"></a></h3>
+<ul>
+<li><p>First, determine what version of Ceph you wish to install. You can use the releases
+page to find the <a class="reference external" href="https://docs.ceph.com/en/latest/releases/#active-releases">latest active releases</a>.
+For example, we might find that <code class="docutils literal notranslate"><span class="pre">18.2.1</span></code> is the latest
+active release.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">curl</span></code> to fetch a build of cephadm for that release.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1"><span class="nv">CEPH_RELEASE</span><span class="o">=</span><span class="m">18</span>.2.0<span class="w"> </span><span class="c1"># replace this with the active release</span></span>
+<span class="prompt1">curl<span class="w"> </span>--silent<span class="w"> </span>--remote-name<span class="w"> </span>--location<span class="w"> </span>https://download.ceph.com/rpm-<span class="si">${</span><span class="nv">CEPH_RELEASE</span><span class="si">}</span>/el9/noarch/cephadm</span>
+</pre></div></div><p>Ensure the <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> file is executable:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">chmod<span class="w"> </span>+x<span class="w"> </span>cephadm</span>
-</pre></div></div><p>This script can be run directly from the current directory:</p>
+</pre></div></div><p>This file can be run directly from the current directory:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">./cephadm<span class="w"> </span>&lt;arguments...&gt;</span>
 </pre></div></div></li>
-<li><p>Although the standalone script is sufficient to get a cluster started, it is
-convenient to have the <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> command installed on the host.  To install
+<li><p>If you encounter any issues with running cephadm due to errors including
+the message <code class="docutils literal notranslate"><span class="pre">bad</span> <span class="pre">interpreter</span></code>, then you may not have Python or
+the correct version of Python installed. The cephadm tool requires Python 3.6
+or later. You can manually run cephadm with a particular version of Python by
+prefixing the command with your installed Python version. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">python3.8<span class="w"> </span>./cephadm<span class="w"> </span>&lt;arguments...&gt;</span>
+</pre></div></div></li>
+<li><p>Although the standalone cephadm is sufficient to bootstrap a cluster, it is
+best to have the <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> command installed on the host.  To install
 the packages that provide the <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> command, run the following
 commands:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">./cephadm<span class="w"> </span>add-repo<span class="w"> </span>--release<span class="w"> </span>squid</span>
@@ -275,23 +314,6 @@ commands:</p>
 </li>
 </ul>
 </section>
-<section id="distribution-specific-installations">
-<span id="cephadm-install-distros"></span><h3>distribution-specific installations<a class="headerlink" href="#distribution-specific-installations" title="Permalink to this heading"></a></h3>
-<div class="admonition important">
-<p class="admonition-title">Important</p>
-<p>The methods of installing <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> in this section are distinct from the curl-based method above. Use either the curl-based method above or one of the methods in this section, but not both the curl-based method and one of these.</p>
-</div>
-<p>Some Linux distributions  may already include up-to-date Ceph packages.  In
-that case, you can install cephadm directly. For example:</p>
-<blockquote>
-<div><p>In Ubuntu:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>cephadm</span>
-</pre></div></div><p>In Fedora:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">dnf<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>cephadm</span>
-</pre></div></div><p>In SUSE:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">zypper<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>cephadm</span>
-</pre></div></div></div></blockquote>
-</section>
 </section>
 <section id="bootstrap-a-new-cluster">
 <h2>Bootstrap a new cluster<a class="headerlink" href="#bootstrap-a-new-cluster" title="Permalink to this heading"></a></h2>
@@ -300,9 +322,14 @@ that case, you can install cephadm directly. For example:</p>
 <p>The first step in creating a new Ceph cluster is running the <code class="docutils literal notranslate"><span class="pre">cephadm</span>
 <span class="pre">bootstrap</span></code> command on the Ceph cluster’s first host. The act of running the
 <code class="docutils literal notranslate"><span class="pre">cephadm</span> <span class="pre">bootstrap</span></code> command on the Ceph cluster’s first host creates the Ceph
-cluster’s first “monitor daemon”, and that monitor daemon needs an IP address.
+cluster’s first Monitor daemon.
 You must pass the IP address of the Ceph cluster’s first host to the <code class="docutils literal notranslate"><span class="pre">ceph</span>
 <span class="pre">bootstrap</span></code> command, so you’ll need to know the IP address of that host.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><code class="docutils literal notranslate"><span class="pre">ssh</span></code> must be installed and running in order for the
+bootstrapping procedure to succeed.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>If there are multiple networks and interfaces, be sure to choose one
@@ -330,7 +357,7 @@ with this label will (also) get a copy of <code class="docutils literal notransl
 </ul>
 </section>
 <section id="further-information-about-cephadm-bootstrap">
-<h3>Further information about cephadm bootstrap<a class="headerlink" href="#further-information-about-cephadm-bootstrap" title="Permalink to this heading"></a></h3>
+<span id="cephadm-bootstrap-further-info"></span><h3>Further information about cephadm bootstrap<a class="headerlink" href="#further-information-about-cephadm-bootstrap" title="Permalink to this heading"></a></h3>
 <p>The default bootstrap behavior will work for most users. But if you’d like
 immediately to know more about <code class="docutils literal notranslate"><span class="pre">cephadm</span> <span class="pre">bootstrap</span></code>, read the list below.</p>
 <p>Also, you can run <code class="docutils literal notranslate"><span class="pre">cephadm</span> <span class="pre">bootstrap</span> <span class="pre">-h</span></code> to see all of <code class="docutils literal notranslate"><span class="pre">cephadm</span></code>’s
@@ -389,35 +416,8 @@ the cluster will then also be able to make use of the authenticated registry.</p
 </ul>
 </section>
 </section>
-<section id="different-deployment-scenarios">
-<span id="cephadm-enable-cli"></span><h2>Different deployment scenarios<a class="headerlink" href="#different-deployment-scenarios" title="Permalink to this heading"></a></h2>
-<section id="single-host">
-<h3>Single host<a class="headerlink" href="#single-host" title="Permalink to this heading"></a></h3>
-<p>To configure a Ceph cluster to run on a single host, use the <code class="docutils literal notranslate"><span class="pre">--single-host-defaults</span></code> flag when bootstrapping.</p>
-</section>
-<section id="deployment-in-an-isolated-environment">
-<h3>Deployment in an isolated environment<a class="headerlink" href="#deployment-in-an-isolated-environment" title="Permalink to this heading"></a></h3>
-<p>You can install Cephadm in an isolated environment by using a custom container registry and configuring Docker to use an insecure registry. Ensure your container image is inside the registry and that you have access to all hosts you wish to add to the cluster. Currently, to add multiple hosts to a Ceph cluster in an isolated environment, you must use Docker. This may require you to uninstall Podman if it’s present on your host as Cephadm prefers to use Podman over Docker.</p>
-<p>Run a local container registry:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">docker<span class="w"> </span>run<span class="w"> </span>--privileged<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>registry<span class="w"> </span>-p<span class="w"> </span><span class="m">5000</span>:5000<span class="w"> </span>-v<span class="w"> </span>/var/lib/registry:/var/lib/registry<span class="w"> </span>--restart<span class="o">=</span>always<span class="w"> </span>registry:2</span>
-</pre></div></div><p>Edit the <code class="docutils literal notranslate"><span class="pre">/etc/docker/daemon.json</span></code> file with the hostname and port where the registry is running:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">{</span><span class="w"> </span><span class="s2">&quot;insecure-registries&quot;</span>:<span class="o">[</span><span class="s2">&quot;*&lt;hostname&gt;*:5000&quot;</span><span class="o">]</span><span class="w"> </span><span class="o">}</span>
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>For every host which accesses the local registry, you will need to repeat this step and edit the <code class="docutils literal notranslate"><span class="pre">/etc/docker/daemon.json</span></code> file on the host.</p>
-</div>
-<p>Restart docker:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">systemctl<span class="w"> </span>daemon-reload</span>
-<span class="prompt1">systemctl<span class="w"> </span>restart<span class="w"> </span>docker</span>
-</pre></div></div><p>Next, push your container image to your local registry.</p>
-<p>Then run bootstrap using the <code class="docutils literal notranslate"><span class="pre">--image</span></code> flag with your container image. For example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephadm<span class="w"> </span>--image<span class="w"> </span>*&lt;hostname&gt;*:5000/ceph/ceph<span class="w"> </span>bootstrap<span class="w"> </span>--mon-ip<span class="w"> </span>*&lt;mon-ip&gt;*</span>
-</pre></div></div></section>
-</section>
 <section id="enable-ceph-cli">
-<h2>Enable Ceph CLI<a class="headerlink" href="#enable-ceph-cli" title="Permalink to this heading"></a></h2>
+<span id="cephadm-enable-cli"></span><h2>Enable Ceph CLI<a class="headerlink" href="#enable-ceph-cli" title="Permalink to this heading"></a></h2>
 <p>Cephadm does not require any Ceph packages to be installed on the
 host.  However, we recommend enabling easy access to the <code class="docutils literal notranslate"><span class="pre">ceph</span></code>
 command.  There are several ways to do this:</p>
@@ -451,39 +451,46 @@ its status with:</p>
 </pre></div></div></section>
 <section id="adding-hosts">
 <h2>Adding Hosts<a class="headerlink" href="#adding-hosts" title="Permalink to this heading"></a></h2>
-<p>Next, add all hosts to the cluster by following <a class="reference internal" href="../host-management/#cephadm-adding-hosts"><span class="std std-ref">Adding Hosts</span></a>.</p>
-<p>By default, a <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> file and a copy of the <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> keyring
-are maintained in <code class="docutils literal notranslate"><span class="pre">/etc/ceph</span></code> on all hosts with the <code class="docutils literal notranslate"><span class="pre">_admin</span></code> label, which is initially
-applied only to the bootstrap host. We usually recommend that one or more other hosts be
-given the <code class="docutils literal notranslate"><span class="pre">_admin</span></code> label so that the Ceph CLI (e.g., via <code class="docutils literal notranslate"><span class="pre">cephadm</span> <span class="pre">shell</span></code>) is easily
-accessible on multiple hosts.  To add the <code class="docutils literal notranslate"><span class="pre">_admin</span></code> label to additional host(s),</p>
+<p>Add all hosts to the cluster by following the instructions in
+<a class="reference internal" href="../host-management/#cephadm-adding-hosts"><span class="std std-ref">Adding Hosts</span></a>.</p>
+<p>By default, a <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> file and a copy of the <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> keyring are
+maintained in <code class="docutils literal notranslate"><span class="pre">/etc/ceph</span></code> on all hosts that have the <code class="docutils literal notranslate"><span class="pre">_admin</span></code> label. This
+label is initially applied only to the bootstrap host. We recommend
+that one or more other hosts be given the <code class="docutils literal notranslate"><span class="pre">_admin</span></code> label so that the Ceph CLI
+(for example, via <code class="docutils literal notranslate"><span class="pre">cephadm</span> <span class="pre">shell</span></code>) is easily accessible on multiple hosts. To add
+the <code class="docutils literal notranslate"><span class="pre">_admin</span></code> label to additional host(s), run a command of the following form:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>host<span class="w"> </span>label<span class="w"> </span>add<span class="w"> </span>*&lt;host&gt;*<span class="w"> </span>_admin</span>
 </pre></div></div></div></blockquote>
 </section>
 <section id="adding-additional-mons">
 <h2>Adding additional MONs<a class="headerlink" href="#adding-additional-mons" title="Permalink to this heading"></a></h2>
-<p>A typical Ceph cluster has three or five monitor daemons spread
+<p>A typical Ceph cluster has three or five Monitor daemons spread
 across different hosts.  We recommend deploying five
-monitors if there are five or more nodes in your cluster.</p>
+Monitors if there are five or more nodes in your cluster. Most clusters do not
+benefit from seven or more Monitors.</p>
 <p>Please follow <a class="reference internal" href="../services/mon/#deploy-additional-monitors"><span class="std std-ref">Deploying additional monitors</span></a> to deploy additional MONs.</p>
 </section>
 <section id="adding-storage">
 <h2>Adding Storage<a class="headerlink" href="#adding-storage" title="Permalink to this heading"></a></h2>
-<p>To add storage to the cluster, either tell Ceph to consume any
-available and unused device:</p>
+<p>To add storage to the cluster, you can tell Ceph to consume any
+available and unused device(s):</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>apply<span class="w"> </span>osd<span class="w"> </span>--all-available-devices</span>
 </pre></div></div></div></blockquote>
 <p>See <a class="reference internal" href="../services/osd/#cephadm-deploy-osds"><span class="std std-ref">Deploy OSDs</span></a> for more detailed instructions.</p>
 <section id="enabling-osd-memory-autotuning">
 <h3>Enabling OSD memory autotuning<a class="headerlink" href="#enabling-osd-memory-autotuning" title="Permalink to this heading"></a></h3>
-<p>It is recommended to enable <code class="docutils literal notranslate"><span class="pre">osd_memory_target_autotune</span></code>.
-in order to maximise the performance of the cluster. See <a class="reference internal" href="../services/osd/#osd-autotune"><span class="std std-ref">Automatically tuning OSD memory</span></a>.</p>
-<p>In case the cluster hardware is not exclusively used by Ceph (hyperconverged),
-reduce the memory consuption of Ceph like so:</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>By default, cephadm enables <code class="docutils literal notranslate"><span class="pre">osd_memory_target_autotune</span></code> on bootstrap, with <code class="docutils literal notranslate"><span class="pre">mgr/cephadm/autotune_memory_target_ratio</span></code> set to <code class="docutils literal notranslate"><span class="pre">.7</span></code> of total host memory.</p>
+</div>
+<p>See <a class="reference internal" href="../services/osd/#osd-autotune"><span class="std std-ref">Automatically tuning OSD memory</span></a>.</p>
+<p>To deploy hyperconverged Ceph with TripleO, please refer to the TripleO documentation: <a class="reference external" href="https://docs.openstack.org/project-deploy-guide/tripleo-docs/latest/features/cephadm.html#scenario-deploy-hyperconverged-ceph">Scenario: Deploy Hyperconverged Ceph</a></p>
+<p>In other cases where the cluster hardware is not exclusively used by Ceph (converged infrastructure),
+reduce the memory consumption of Ceph like so:</p>
 <blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1"><span class="c1"># hyperconverged only:</span></span>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1"><span class="c1"># converged only:</span></span>
 <span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mgr<span class="w"> </span>mgr/cephadm/autotune_memory_target_ratio<span class="w"> </span><span class="m">0</span>.2</span>
 </pre></div></div></div></blockquote>
 <p>Then enable memory autotuning:</p>
@@ -499,33 +506,158 @@ reduce the memory consuption of Ceph like so:</p>
 <p>To use <em>NFS</em>, follow <a class="reference internal" href="../services/nfs/#deploy-cephadm-nfs-ganesha"><span class="std std-ref">NFS Service</span></a></p>
 <p>To use <em>iSCSI</em>, follow <a class="reference internal" href="../services/iscsi/#cephadm-iscsi"><span class="std std-ref">Deploying iSCSI</span></a></p>
 </section>
-<section id="cephadm-deployment-scenarios">
-<span id="id2"></span><h2>Different deployment scenarios<a class="headerlink" href="#cephadm-deployment-scenarios" title="Permalink to this heading"></a></h2>
-<section id="id3">
-<h3>Single host<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h3>
-<p>To configure a Ceph cluster to run on a single host, use the <code class="docutils literal notranslate"><span class="pre">--single-host-defaults</span></code> flag when bootstrapping. For use cases of this, see <a class="reference internal" href="../../rados/troubleshooting/troubleshooting-pg/#one-node-cluster"><span class="std std-ref">单节点集群</span></a>.</p>
+<section id="different-deployment-scenarios">
+<span id="cephadm-deployment-scenarios"></span><h2>Different deployment scenarios<a class="headerlink" href="#different-deployment-scenarios" title="Permalink to this heading"></a></h2>
+<section id="single-host">
+<h3>Single host<a class="headerlink" href="#single-host" title="Permalink to this heading"></a></h3>
+<p>To deploy a Ceph cluster running on a single host, use the
+<code class="docutils literal notranslate"><span class="pre">--single-host-defaults</span></code> flag when bootstrapping. For use cases, see
+<a class="reference internal" href="../../rados/troubleshooting/troubleshooting-pg/#one-node-cluster"><span class="std std-ref">单节点集群</span></a>. Such clusters are generally not suitable for
+production.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">--single-host-defaults</span></code> flag sets the following configuration options:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">global/osd_crush_choose_leaf_type = 0</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">global/osd_crush_chooseleaf_type = 0</span>
 <span class="go">global/osd_pool_default_size = 2</span>
 <span class="go">mgr/mgr_standby_modules = False</span>
 </pre></div>
 </div>
-<p>For more information on these options, see <a class="reference internal" href="../../rados/troubleshooting/troubleshooting-pg/#one-node-cluster"><span class="std std-ref">单节点集群</span></a> and <code class="docutils literal notranslate"><span class="pre">mgr_standby_modules</span></code> in <a class="reference internal" href="../../mgr/administrator/#mgr-administrator-guide"><span class="std std-ref">ceph-mgr 管理员指南</span></a>.</p>
+<p>For more information on these options, see <a class="reference internal" href="../../rados/troubleshooting/troubleshooting-pg/#one-node-cluster"><span class="std std-ref">单节点集群</span></a> and
+<code class="docutils literal notranslate"><span class="pre">mgr_standby_modules</span></code> in <a class="reference internal" href="../../mgr/administrator/#mgr-administrator-guide"><span class="std std-ref">ceph-mgr 管理员指南</span></a>.</p>
 </section>
-<section id="id4">
-<h3>Deployment in an isolated environment<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h3>
-<p>You can install Cephadm in an isolated environment by using a custom container registry. You can either configure Podman or Docker to use an insecure registry, or make the registry secure. Ensure your container image is inside the registry and that you have access to all hosts you wish to add to the cluster.</p>
-<p>Run a local container registry:</p>
+<section id="deployment-in-an-isolated-environment">
+<span id="cephadm-airgap"></span><h3>Deployment in an isolated environment<a class="headerlink" href="#deployment-in-an-isolated-environment" title="Permalink to this heading"></a></h3>
+<p>You might need to install cephadm in an environment that is not connected
+directly to the Internet (an “isolated” or “airgapped”
+environment). This requires the use of a custom container registry. Either
+of two kinds of custom container registry can be used in this scenario: (1) a
+Podman-based or Docker-based insecure registry, or (2) a secure registry.</p>
+<p>The practice of installing software on systems that are not connected directly
+to the internet is called “airgapping” and registries that are not connected
+directly to the internet are referred to as “airgapped”.</p>
+<p>Make sure that your container image is inside the registry. Make sure that you
+have access to all hosts that you plan to add to the cluster.</p>
+<ol class="arabic">
+<li><p>Run a local container registry:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">podman<span class="w"> </span>run<span class="w"> </span>--privileged<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>registry<span class="w"> </span>-p<span class="w"> </span><span class="m">5000</span>:5000<span class="w"> </span>-v<span class="w"> </span>/var/lib/registry:/var/lib/registry<span class="w"> </span>--restart<span class="o">=</span>always<span class="w"> </span>registry:2</span>
-</pre></div></div><p>If you are using an insecure registry, configure Podman or Docker with the hostname and port where the registry is running.</p>
+</pre></div></div></li>
+<li><p>If you are using an insecure registry, configure Podman or Docker with the
+hostname and port where the registry is running.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>For every host which accesses the local insecure registry, you will need to repeat this step on the host.</p>
+<p>You must repeat this step for every host that accesses the local
+insecure registry.</p>
 </div>
-<p>Next, push your container image to your local registry.</p>
-<p>Then run bootstrap using the <code class="docutils literal notranslate"><span class="pre">--image</span></code> flag with your container image. For example:</p>
+</li>
+<li><p>Push your container image to your local registry. Here are some acceptable
+kinds of container images:</p>
+<ul class="simple">
+<li><p>Ceph container image. See <a class="reference internal" href="../../install/containers/#containers"><span class="std std-ref">Ceph 容器映像</span></a>.</p></li>
+<li><p>Prometheus container image</p></li>
+<li><p>Node exporter container image</p></li>
+<li><p>Grafana container image</p></li>
+<li><p>Alertmanager container image</p></li>
+</ul>
+</li>
+<li><p>Create a temporary configuration file to store the names of the monitoring
+images. (See <a class="reference internal" href="../services/monitoring/#cephadm-monitoring-images"><span class="std std-ref">Default images</span></a>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt2:before {
+  content: "$ ";
+}
+</style><span class="prompt2">cat<span class="w"> </span>&lt;&lt;EOF<span class="w"> </span>&gt;<span class="w"> </span>initial-ceph.conf</span>
+</pre></div></div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">[mgr]</span>
+<span class="go">mgr/cephadm/container_image_prometheus = *&lt;hostname&gt;*:5000/prometheus</span>
+<span class="go">mgr/cephadm/container_image_node_exporter = *&lt;hostname&gt;*:5000/node_exporter</span>
+<span class="go">mgr/cephadm/container_image_grafana = *&lt;hostname&gt;*:5000/grafana</span>
+<span class="go">mgr/cephadm/container_image_alertmanager = *&lt;hostname&gt;*:5000/alertmanger</span>
+</pre></div>
+</div>
+</li>
+<li><p>Run bootstrap using the <code class="docutils literal notranslate"><span class="pre">--image</span></code> flag and pass the name of your
+container image as the argument of the image flag. For example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephadm<span class="w"> </span>--image<span class="w"> </span>*&lt;hostname&gt;*:5000/ceph/ceph<span class="w"> </span>bootstrap<span class="w"> </span>--mon-ip<span class="w"> </span>*&lt;mon-ip&gt;*</span>
-</pre></div></div></section>
+</pre></div></div></li>
+</ol>
+</section>
+<section id="deployment-with-custom-ssh-keys">
+<span id="cephadm-bootstrap-custom-ssh-keys"></span><h3>Deployment with custom SSH keys<a class="headerlink" href="#deployment-with-custom-ssh-keys" title="Permalink to this heading"></a></h3>
+<p>Bootstrap allows users to create their own private/public SSH key pair
+rather than having cephadm generate them automatically.</p>
+<p>To use custom SSH keys, pass the <code class="docutils literal notranslate"><span class="pre">--ssh-private-key</span></code> and <code class="docutils literal notranslate"><span class="pre">--ssh-public-key</span></code>
+fields to bootstrap. Both parameters require a path to the file where the
+keys are stored:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephadm<span class="w"> </span>bootstrap<span class="w"> </span>--mon-ip<span class="w"> </span>&lt;ip-addr&gt;<span class="w"> </span>--ssh-private-key<span class="w"> </span>&lt;private-key-filepath&gt;<span class="w"> </span>--ssh-public-key<span class="w"> </span>&lt;public-key-filepath&gt;</span>
+</pre></div></div><p>This setup allows users to use a key that has already been distributed to hosts
+the user wants in the cluster before bootstrap.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In order for cephadm to connect to other hosts you’d like to add
+to the cluster, make sure the public key of the key pair provided is set up
+as an authorized key for the ssh user being used, typically root. If you’d
+like more info on using a non-root user as the ssh user, see <a class="reference internal" href="#cephadm-bootstrap-further-info"><span class="std std-ref">Further information about cephadm bootstrap</span></a></p>
+</div>
+</section>
+<section id="deployment-with-ca-signed-ssh-keys">
+<span id="cephadm-bootstrap-ca-signed-keys"></span><h3>Deployment with CA signed SSH keys<a class="headerlink" href="#deployment-with-ca-signed-ssh-keys" title="Permalink to this heading"></a></h3>
+<p>As an alternative to standard public key authentication, cephadm also supports
+deployment using CA signed keys. Before bootstrapping it’s recommended to set up
+the CA public key as a trusted CA key on hosts you’d like to eventually add to
+the cluster. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2"><span class="c1"># we will act as our own CA, therefore we&#39;ll need to make a CA key</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># ssh-keygen -t rsa -f ca-key -N &quot;&quot;</span></span>
+<span class="prompt2"></span>
+<span class="prompt2"><span class="c1"># make the ca key trusted on the host we&#39;ve generated it on</span></span>
+<span class="prompt2"><span class="c1"># this requires adding in a line in our /etc/sshd_config</span></span>
+<span class="prompt2"><span class="c1"># to mark this key as trusted</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># cp ca-key.pub /etc/ssh</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># vi /etc/ssh/sshd_config</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># cat /etc/ssh/sshd_config | grep ca-key</span></span>
+<span class="prompt2">TrustedUserCAKeys<span class="w"> </span>/etc/ssh/ca-key.pub</span>
+<span class="prompt2"><span class="c1"># now restart sshd so it picks up the config change</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># systemctl restart sshd</span></span>
+<span class="prompt2"></span>
+<span class="prompt2"><span class="c1"># now, on all other hosts we want in the cluster, also install the CA key</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># scp /etc/ssh/ca-key.pub host2:/etc/ssh/</span></span>
+<span class="prompt2"></span>
+<span class="prompt2"><span class="c1"># on other hosts, make the same changes to the sshd_config</span></span>
+<span class="prompt2"><span class="o">[</span>root@host2<span class="w"> </span>~<span class="o">]</span><span class="c1"># vi /etc/ssh/sshd_config</span></span>
+<span class="prompt2"><span class="o">[</span>root@host2<span class="w"> </span>~<span class="o">]</span><span class="c1"># cat /etc/ssh/sshd_config | grep ca-key</span></span>
+<span class="prompt2">TrustedUserCAKeys<span class="w"> </span>/etc/ssh/ca-key.pub</span>
+<span class="prompt2"><span class="c1"># and restart sshd so it picks up the config change</span></span>
+<span class="prompt2"><span class="o">[</span>root@host2<span class="w"> </span>~<span class="o">]</span><span class="c1"># systemctl restart sshd</span></span>
+</pre></div></div><p>Once the CA key has been installed and marked as a trusted key, you are ready
+to use a private key/CA signed cert combination for SSH. Continuing with our
+current example, we will create a new key-pair for for host access and then
+sign it with our CA key</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2"><span class="c1"># make a new key pair</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># ssh-keygen -t rsa -f cephadm-ssh-key -N &quot;&quot;</span></span>
+<span class="prompt2"><span class="c1"># sign the private key. This will create a new cephadm-ssh-key-cert.pub</span></span>
+<span class="prompt2"><span class="c1"># note here we&#39;re using user &quot;root&quot;. If you&#39;d like to use a non-root</span></span>
+<span class="prompt2"><span class="c1"># user the arguments to the -I and -n params would need to be adjusted</span></span>
+<span class="prompt2"><span class="c1"># Additionally, note the -V param indicates how long until the cert</span></span>
+<span class="prompt2"><span class="c1"># this creates will expire</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># ssh-keygen -s ca-key -I user_root -n root -V +52w cephadm-ssh-key</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># ls</span></span>
+<span class="prompt2">ca-key<span class="w">  </span>ca-key.pub<span class="w">  </span>cephadm-ssh-key<span class="w">  </span>cephadm-ssh-key-cert.pub<span class="w">  </span>cephadm-ssh-key.pub</span>
+<span class="prompt2"></span>
+<span class="prompt2"><span class="c1"># verify our signed key is working. To do this, make sure the generated private</span></span>
+<span class="prompt2"><span class="c1"># key (&quot;cephadm-ssh-key&quot; in our example) and the newly signed cert are stored</span></span>
+<span class="prompt2"><span class="c1"># in the same directory. Then try to ssh using the private key</span></span>
+<span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># ssh -i cephadm-ssh-key host2</span></span>
+</pre></div></div><p>Once you have your private key and corresponding CA signed cert and have tested
+SSH authentication using that key works, you can pass those keys to bootstrap
+in order to have cephadm use them for SSHing between cluster hosts</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2"><span class="o">[</span>root@host1<span class="w"> </span>~<span class="o">]</span><span class="c1"># cephadm bootstrap --mon-ip &lt;ip-addr&gt; --ssh-private-key cephadm-ssh-key --ssh-signed-cert cephadm-ssh-key-cert.pub</span></span>
+</pre></div></div><p>Note that this setup does not require installing the corresponding public key
+from the private key passed to bootstrap on other nodes. In fact, cephadm will
+reject the <code class="docutils literal notranslate"><span class="pre">--ssh-public-key</span></code> argument when passed along with <code class="docutils literal notranslate"><span class="pre">--ssh-signed-cert</span></code>.
+This is not because having the public key breaks anything, but rather because it is not at all needed
+and helps the bootstrap command differentiate if the user wants the CA signed
+keys setup or standard pubkey encryption. What this means is that SSH key rotation
+would simply be a matter of getting another key signed by the same CA and providing
+cephadm with the new private key and signed cert. No additional distribution of
+keys to cluster nodes is needed after the initial setup of the CA key as a trusted key,
+no matter how many new private key/signed cert pairs are rotated in.</p>
+</section>
 </section>
 </section>
 

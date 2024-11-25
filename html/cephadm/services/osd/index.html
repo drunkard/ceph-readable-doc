@@ -144,6 +144,9 @@
 <li class="toctree-l3"><a class="reference internal" href="../#daemon-status">Daemon Status</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../#service-specification">Service Specification</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../#daemon-placement">Daemon Placement</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../#extra-container-arguments">Extra Container Arguments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../#extra-entrypoint-arguments">Extra Entrypoint Arguments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../#custom-config-files">Custom Config Files</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../#removing-a-service">Removing a Service</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../#disabling-automatic-deployment-of-daemons">Disabling automatic deployment of daemons</a></li>
 </ul>
@@ -489,9 +492,9 @@ default).  If Ceph is deployed on dedicated nodes that are not sharing
 memory with other services, cephadm can automatically adjust the per-OSD
 memory consumption based on the total amount of RAM and the number of deployed
 OSDs.</p>
-<p>This option is enabled globally with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">osd</span> <span class="n">osd_memory_target_autotune</span> <span class="n">true</span>
-</pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Cephadm sets <code class="docutils literal notranslate"><span class="pre">osd_memory_target_autotune</span></code> to <code class="docutils literal notranslate"><span class="pre">true</span></code> by default which is unsuitable for hyperconverged infrastructures.</p>
 </div>
 <p>Cephadm will start with a fraction
 (<code class="docutils literal notranslate"><span class="pre">mgr/cephadm/autotune_memory_target_ratio</span></code>, which defaults to
@@ -522,20 +525,35 @@ for that OSD and also set a specific memory target.  For example,</p>
 </section>
 <section id="advanced-osd-service-specifications">
 <span id="drivegroups"></span><h2>Advanced OSD Service Specifications<a class="headerlink" href="#advanced-osd-service-specifications" title="Permalink to this heading"></a></h2>
-<p><a class="reference internal" href="../#orchestrator-cli-service-spec"><span class="std std-ref">Service Specification</span></a>s of type <code class="docutils literal notranslate"><span class="pre">osd</span></code> are a way to describe a
-cluster layout, using the properties of disks. Service specifications give the
-user an abstract way to tell Ceph which disks should turn into OSDs with which
-configurations, without knowing the specifics of device names and paths.</p>
-<p>Service specifications make it possible to define a yaml or json file that can
-be used to reduce the amount of manual work involved in creating OSDs.</p>
+<p><a class="reference internal" href="../#orchestrator-cli-service-spec"><span class="std std-ref">Service Specification</span></a>s of type <code class="docutils literal notranslate"><span class="pre">osd</span></code> provide a way to use the
+properties of disks to describe a Ceph cluster’s layout. Service specifications
+are an abstraction used to tell Ceph which disks it should transform into OSDs
+and which configurations to apply to those OSDs.
+<a class="reference internal" href="../#orchestrator-cli-service-spec"><span class="std std-ref">Service Specification</span></a>s make it possible to target these disks
+for transformation into OSDs even when the Ceph cluster operator does not know
+the specific device names and paths associated with those disks.</p>
+<p><a class="reference internal" href="../#orchestrator-cli-service-spec"><span class="std std-ref">Service Specification</span></a>s make it possible to define a <code class="docutils literal notranslate"><span class="pre">.yaml</span></code>
+or <code class="docutils literal notranslate"><span class="pre">.json</span></code> file that can be used to reduce the amount of manual work involved
+in creating OSDs.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>We recommend that advanced OSD specs include the <code class="docutils literal notranslate"><span class="pre">service_id</span></code> field set.
+OSDs created using <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">orch</span> <span class="pre">daemon</span> <span class="pre">add</span></code> or <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">orch</span> <span class="pre">apply</span> <span class="pre">osd</span>
+<span class="pre">--all-available-devices</span></code> are placed in the plain <code class="docutils literal notranslate"><span class="pre">osd</span></code> service. Failing
+to include a <code class="docutils literal notranslate"><span class="pre">service_id</span></code> in your OSD spec causes the Ceph cluster to mix
+the OSDs from your spec with those OSDs, which can potentially result in the
+overwriting of service specs created by <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> to track them. Newer
+versions of <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> will even block creation of advanced OSD specs that
+do not include the <code class="docutils literal notranslate"><span class="pre">service_id</span></code>.</p>
+</div>
 <p>For example, instead of running the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
 span.prompt2:before {
   content: "[monitor.1]# ";
 }
 </style><span class="prompt2">ceph<span class="w"> </span>orch<span class="w"> </span>daemon<span class="w"> </span>add<span class="w"> </span>osd<span class="w"> </span>*&lt;host&gt;*:*&lt;path-to-device&gt;*</span>
-</pre></div></div><p>for each device and each host, we can define a yaml or json file that allows us
-to describe the layout. Here’s the most basic example.</p>
+</pre></div></div><p>for each device and each host, we can define a <code class="docutils literal notranslate"><span class="pre">.yaml</span></code> or <code class="docutils literal notranslate"><span class="pre">.json</span></code> file that
+allows us to describe the layout. Here is the most basic example:</p>
 <p>Create a file called (for example) <code class="docutils literal notranslate"><span class="pre">osd_spec.yml</span></code>:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osd</span>
 <span class="nt">service_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default_drive_group</span><span class="w">  </span><span class="c1"># custom name of the osd spec</span>
@@ -550,12 +568,13 @@ to describe the layout. Here’s the most basic example.</p>
 <ol class="arabic">
 <li><p>Turn any available device (ceph-volume decides what ‘available’ is) into an
 OSD on all hosts that match the glob pattern ‘*’. (The glob pattern matches
-against the registered hosts from <cite>host ls</cite>) A more detailed section on
-host_pattern is available below.</p></li>
-<li><p>Then pass it to <cite>osd create</cite> like this:</p>
+against the registered hosts from <cite>ceph orch host ls</cite>) See
+<a class="reference internal" href="../#cephadm-services-placement-by-pattern-matching"><span class="std std-ref">Placement by pattern matching</span></a> for more on using
+<code class="docutils literal notranslate"><span class="pre">host_pattern</span></code>-matching to turn devices into OSDs.</p></li>
+<li><p>Pass <code class="docutils literal notranslate"><span class="pre">osd_spec.yml</span></code> to <code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">create</span></code> by using the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>orch<span class="w"> </span>apply<span class="w"> </span>-i<span class="w"> </span>/path/to/osd_spec.yml</span>
-</pre></div></div><p>This instruction will be issued to all the matching hosts, and will deploy
-these OSDs.</p>
+</pre></div></div><p>This instruction is issued to all the matching hosts, and will deploy these
+OSDs.</p>
 <p>Setups more complex than the one specified by the <code class="docutils literal notranslate"><span class="pre">all</span></code> filter are
 possible. See <a class="reference internal" href="#osd-filters"><span class="std std-ref">Filters</span></a> for details.</p>
 <p>A <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> flag can be passed to the <code class="docutils literal notranslate"><span class="pre">apply</span> <span class="pre">osd</span></code> command to display a
@@ -679,6 +698,19 @@ You can add these options to the base level of an OSD spec for it to take effect
 <span class="w">  </span><span class="nt">data_devices</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">all</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">  </span><span class="nt">encrypted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+<p>Ceph Squid onwards support tpm2 token enrollment to LUKS2 devices.
+You can add the <cite>tpm2</cite> to your OSD spec:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example_osd_spec_with_tpm2</span>
+<span class="nt">placement</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">host_pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;*&#39;</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">data_devices</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">all</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">encrypted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">tpm2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </pre></div>
 </div>
 <p>See a full list in the DriveGroupSpecs</p>
@@ -1032,6 +1064,53 @@ Size: 256GB
 </pre></div>
 </div>
 <p>This can easily be done with other filters, like <cite>size</cite> or <cite>vendor</cite> as well.</p>
+<p>It’s possible to specify the <cite>crush_device_class</cite> parameter within the
+DriveGroup spec, and it’s applied to all the devices defined by the <cite>paths</cite>
+keyword:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osd_using_paths</span>
+<span class="nt">placement</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Node01</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Node02</span>
+<span class="nt">crush_device_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ssd</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">data_devices</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/sdb</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/sdc</span>
+<span class="w">  </span><span class="nt">db_devices</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/sdd</span>
+<span class="w">  </span><span class="nt">wal_devices</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/sde</span>
+</pre></div>
+</div>
+<p>The <cite>crush_device_class</cite> parameter, however, can be defined for each OSD passed
+using the <cite>paths</cite> keyword with the following syntax:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osd</span>
+<span class="nt">service_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osd_using_paths</span>
+<span class="nt">placement</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Node01</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Node02</span>
+<span class="nt">crush_device_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ssd</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">data_devices</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/sdb</span>
+<span class="w">      </span><span class="nt">crush_device_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ssd</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/sdc</span>
+<span class="w">      </span><span class="nt">crush_device_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvme</span>
+<span class="w">  </span><span class="nt">db_devices</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/sdd</span>
+<span class="w">  </span><span class="nt">wal_devices</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/sde</span>
+</pre></div>
+</div>
 </section>
 </section>
 <section id="activate-existing-osds">
