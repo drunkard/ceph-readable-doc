@@ -66,7 +66,12 @@ ceph.conf 里标识例程。
 
 .. option:: --id/-i ID
 
-   指定 MDS 名字的 ID 部分。
+   指定 MDS 名字的 ID 部分。 ID 不能用数字打头。
+
+.. option:: --name/-n TYPE.ID
+
+   按照 TYPE.ID 格式设置 MDS 名字。 TYPE 显然就是 mds ，
+   ID 不能以数字打头。
 
 
 使用范围

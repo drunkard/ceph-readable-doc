@@ -87,12 +87,13 @@
 个选项配置成什么，都会报告整个文件系统的使用情况。
 
 
+.. _cephfs-layout-and-quota-restriction:
+
+布局和配额使用条件（ p 标记）
+=============================
 .. Layout and Quota restriction (the 'p' flag)
 
-布局和配额限定（ p 标记）
-=========================
-
-要设置布局或配额，客户端不但得有 rw 标记，还得有 p 标记。这种\
+要设置布局或配额，客户端不但得有 ``rw`` 标记，还得有 ``p`` 标记。这种\
 方法会限制所有以 ``ceph.`` 为前缀的特殊扩展属性、也会限制以其\
 它方法配置这些字段（如对布局进行 openc 操作）。
 
@@ -112,10 +113,9 @@
         caps: [osd] allow rw tag cephfs data=data
 
 
+快照使用条件（ s 标记）
+=======================
 .. Snapshot restriction (the 's' flag)
-
-快照限定（ s 标记）
-===================
 
 To create or delete snapshots, clients require the 's' flag in addition to
 'rw'. Note that when capability string also contains the 'p' flag, the 's'

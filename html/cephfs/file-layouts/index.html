@@ -198,6 +198,8 @@
   <section id="file-layouts">
 <span id="id1"></span><h1>文件布局<a class="headerlink" href="#file-layouts" title="Permalink to this heading"></a></h1>
 <p>文件布局可控制如何把文件内容映射到各 Ceph RADOS 对象，你可以用<em>虚拟扩展属性</em>或 xattrs 来读、写某一文件的布局。</p>
+<p>客户端在写文件的布局时必须用 <code class="docutils literal notranslate"><span class="pre">p</span></code> 标志。见
+<a class="reference internal" href="../client-auth/#cephfs-layout-and-quota-restriction"><span class="std std-ref">布局和配额使用条件（ p 标记）</span></a> 。</p>
 <p>布局 xattrs 的名字取决于此文件是常规文件还是目录，常规文件的布局 xattrs 叫作 <code class="docutils literal notranslate"><span class="pre">ceph.file.layout</span></code> 、目录的布局 xattrs 叫作
 <code class="docutils literal notranslate"><span class="pre">ceph.dir.layout</span></code> 。因此后续实例中若用的是
 <code class="docutils literal notranslate"><span class="pre">ceph.file.layout</span></code> ，处理目录时就要替换为 <code class="docutils literal notranslate"><span class="pre">dir</span></code> 。</p>
@@ -208,15 +210,23 @@
 <section id="id2">
 <h2>布局字段<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
 <dl class="simple">
-<dt>pool</dt><dd><p>字符串，可指定 ID 或名字，其字符必须出自 [a-zA-Z0-9_-.] 集合。
+<dt>pool</dt><dd><p>字符串，可指定 ID 或名字，
+其字符必须出自 <code class="docutils literal notranslate"><span class="pre">[a-zA-Z0-9\_-.]</span></code> 集合。
 它是文件的数据对象所在的 RADOS 存储池。</p>
 </dd>
-<dt>pool_namespace</dt><dd><p>字符串，其字符必须出自 [a-zA-Z0-9_-.] 集合。在数据存储池内，
-对象应该写入哪个 RADOS 命名空间，默认为空（即默认命名空间）。</p>
+<dt>pool_id</dt><dd><p>这是数字组成的字符串。这是存储池的 ID ，
+是在创建这个 RADOS 存储池时 Ceph 分配的。</p>
 </dd>
-<dt>stripe_unit</dt><dd><p>字节数、整数。一个文件的数据块按照此尺寸（字节）像 RAID 0 一样分布。
+<dt>pool_name</dt><dd><p>这是个字符串。这是 RADOS 存储池的名字，
+是用户在创建此存储池时指定的。</p>
+</dd>
+<dt>pool_namespace</dt><dd><p>字符串，其字符必须出自 <code class="docutils literal notranslate"><span class="pre">[a-zA-Z0-9\_-.]</span></code> 集合。
+这个参数决定对象应该写入数据存储池的哪个 RADOS 命名空间。
+默认为空（即默认命名空间）。</p>
+</dd>
+<dt>stripe_unit</dt><dd><p>字节数、整数。一个文件的数据块按照此尺寸（字节）分布。
 一文件所有条带单元的尺寸一样，最后一个条带单元通常不完整——
-即它包含文件末尾的数据、还有数据末端到固定条带单元尺寸之间的未使用“空间”。</p>
+即它包含直到文件末尾 EOF 的数据、还有用于满足固定条带单元尺寸的填充数据。</p>
 </dd>
 <dt>stripe_count</dt><dd><p>整数。组成 RAID 0 “条带”数据的连续条带单元数量。</p>
 </dd>
@@ -241,7 +251,13 @@ ceph.file.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=41943
 </pre></div>
 </div>
 <p>读取单个布局字段：</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.pool<span class="w"> </span>file
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.pool_name<span class="w"> </span>file
+<span class="c1"># file: file</span>
+ceph.file.layout.pool_name<span class="o">=</span><span class="s2">&quot;cephfs_data&quot;</span>
+$<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.pool_id<span class="w"> </span>file
+<span class="c1"># file: file</span>
+ceph.file.layout.pool_id<span class="o">=</span><span class="s2">&quot;5&quot;</span>
+$<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.pool<span class="w"> </span>file
 <span class="c1"># file: file</span>
 ceph.file.layout.pool<span class="o">=</span><span class="s2">&quot;cephfs_data&quot;</span>
 $<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.stripe_unit<span class="w"> </span>file
@@ -270,6 +286,19 @@ $<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </sp
 ceph.dir.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data&quot;</span>
 </pre></div>
 </div>
+<p>获取 json 格式的布局。如果没有为特定 inode 设置特定布局，
+系统会向后遍历目录路径，找到距离最近的、
+有布局的上级目录，并以 json 格式返回。
+文件布局也可以用 <code class="docutils literal notranslate"><span class="pre">ceph.file.layout.json</span></code> vxattr 以 json 格式检索。</p>
+<p>在 json 输出中会增加一个名为 <code class="docutils literal notranslate"><span class="pre">inheritance</span></code> 的虚拟字段，
+用于展示布局的状态。 <code class="docutils literal notranslate"><span class="pre">inheritance</span></code> 字段可以有以下值：</p>
+<p><code class="docutils literal notranslate"><span class="pre">&#64;default</span></code> 表示系统默认布局
+<code class="docutils literal notranslate"><span class="pre">&#64;set</span></code> 表示已为该特定 inode 设置了指定的布局
+<code class="docutils literal notranslate"><span class="pre">&#64;inherited</span></code> 表示从上级目录继承了返回的布局</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.layout.json<span class="w"> </span>--only-values<span class="w"> </span>/mnt/mycephs/accounts
+<span class="o">{</span><span class="s2">&quot;stripe_unit&quot;</span>:<span class="w"> </span><span class="m">4194304</span>,<span class="w"> </span><span class="s2">&quot;stripe_count&quot;</span>:<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="s2">&quot;object_size&quot;</span>:<span class="w"> </span><span class="m">4194304</span>,<span class="w"> </span><span class="s2">&quot;pool_name&quot;</span>:<span class="w"> </span><span class="s2">&quot;cephfs.a.data&quot;</span>,<span class="w"> </span><span class="s2">&quot;pool_id&quot;</span>:<span class="w"> </span><span class="m">3</span>,<span class="w"> </span><span class="s2">&quot;pool_namespace&quot;</span>:<span class="w"> </span><span class="s2">&quot;&quot;</span>,<span class="w"> </span><span class="s2">&quot;inheritance&quot;</span>:<span class="w"> </span><span class="s2">&quot;@default&quot;</span><span class="o">}</span>
+</pre></div>
+</div>
 </section>
 <section id="setfattr">
 <h2>用 <code class="docutils literal notranslate"><span class="pre">setfattr</span></code> 设置布局<a class="headerlink" href="#setfattr" title="Permalink to this heading"></a></h2>
@@ -284,6 +313,8 @@ $<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </sp
 $<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.object_size<span class="w"> </span>-v<span class="w"> </span><span class="m">10485760</span><span class="w"> </span>file2
 $<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.pool<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span><span class="w"> </span>file2<span class="w">  </span><span class="c1"># Setting pool by ID</span>
 $<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.pool<span class="w"> </span>-v<span class="w"> </span>cephfs_data<span class="w"> </span>file2<span class="w">  </span><span class="c1"># Setting pool by name</span>
+$<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.pool_id<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span><span class="w"> </span>file2<span class="w">  </span><span class="c1"># Setting pool by ID</span>
+$<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.pool_name<span class="w"> </span>-v<span class="w"> </span>cephfs_data<span class="w"> </span>file2<span class="w">  </span><span class="c1"># Setting pool by name</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -301,14 +332,23 @@ $<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </sp
 setfattr:<span class="w"> </span>file1:<span class="w"> </span>Directory<span class="w"> </span>not<span class="w"> </span>empty
 </pre></div>
 </div>
+<p>文件和目录布局也可以用 json 格式设置。
+设置布局时 <code class="docutils literal notranslate"><span class="pre">inheritance</span></code> 字段将被忽略。
+此外，如果同时指定了 <code class="docutils literal notranslate"><span class="pre">pool_name</span></code> 和 <code class="docutils literal notranslate"><span class="pre">pool_id</span></code> 字段，
+则优先使用 <code class="docutils literal notranslate"><span class="pre">pool_name</span></code> ，因为它更清晰明了，不容易出现歧义。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.file.layout.json<span class="w"> </span>-v<span class="w"> </span><span class="s1">&#39;{&quot;stripe_unit&quot;: 4194304, &quot;stripe_count&quot;: 1, &quot;object_size&quot;: 4194304, &quot;pool_name&quot;: &quot;cephfs.a.data&quot;, &quot;pool_id&quot;: 3, &quot;pool_namespace&quot;: &quot;&quot;, &quot;inheritance&quot;: &quot;@default&quot;}&#39;</span><span class="w"> </span>file1
+</pre></div>
+</div>
 </section>
 <section id="id3">
 <h2>清除布局<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
-<p>如果你想删除某一目录的布局，还继承上级的布局，可以这样：</p>
+<p>如果你想删除某一目录的布局，
+以便继承上级的布局，可以这样：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>setfattr<span class="w"> </span>-x<span class="w"> </span>ceph.dir.layout<span class="w"> </span>mydir
 </pre></div>
 </div>
-<p>类似地，如果你已经设置了 <code class="docutils literal notranslate"><span class="pre">pool_namespace</span></code> 属性，又想让布局改回默认命名空间：</p>
+<p>类似地，如果你已经设置了 <code class="docutils literal notranslate"><span class="pre">pool_namespace</span></code> 属性，
+又想让布局改回默认命名空间：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 创建个目录，并给它设置命名空间</span>
 mkdir<span class="w"> </span>mydir
 setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.layout.pool_namespace<span class="w"> </span>-v<span class="w"> </span>foons<span class="w"> </span>mydir
@@ -324,7 +364,8 @@ ceph.dir.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=419430
 </section>
 <section id="id4">
 <h2>布局的继承<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
-<p>文件会在创建时继承其父目录的布局，然而之后对父目录布局的更改不会影响其子孙。</p>
+<p>文件会在创建时继承其父目录的布局，
+然而之后对父目录布局的更改不会影响其子孙。</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.layout<span class="w"> </span>dir
 <span class="c1"># file: dir</span>
 ceph.dir.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=2 object_size=4194304 pool=cephfs_data&quot;</span>
@@ -350,7 +391,8 @@ $<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </sp
 ceph.file.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data&quot;</span>
 </pre></div>
 </div>
-<p>如果中层目录没有设置布局，那么内层目录中创建的文件也会继承此目录的布局：</p>
+<p>如果中层目录没有设置布局，
+那么内层目录中创建的文件也会继承此目录的布局：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>getfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.layout<span class="w"> </span>dir
 <span class="c1"># file: dir</span>
 ceph.dir.layout<span class="o">=</span><span class="s2">&quot;stripe_unit=4194304 stripe_count=4 object_size=4194304 pool=cephfs_data&quot;</span>
