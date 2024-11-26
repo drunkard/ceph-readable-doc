@@ -43,18 +43,6 @@ Ceph 管理器的 ``Stats`` 插件有接口获取这些指标。
 
    cap hit rate
 
-.. describe:: rlat
-
-   读延时
-
-.. describe:: wlat
-
-   写延时
-
-.. describe:: mlat
-
-   元数据延时
-
 .. describe:: dlease
 
    dentry lease rate
@@ -94,6 +82,30 @@ Ceph 管理器的 ``Stats`` 插件有接口获取这些指标。
 .. describe:: wsp
 
    与上次刷新相比的写 IO 速度
+
+.. describe:: rlatavg
+
+   平均读延时
+
+.. describe:: rlatsd
+
+   读取延时的标准偏差（方差）
+
+.. describe:: wlatavg
+
+   平均写延时
+
+.. describe:: wlatsd
+
+   写入延时的标准偏差（方差）
+
+.. describe:: mlatavg
+
+   平均元数据延时
+
+.. describe:: mlatsd
+
+   元数据延时的标准偏差（方差）
 
 
 使用范围

@@ -208,21 +208,34 @@
 <h1>创建 Ceph 文件系统<a class="headerlink" href="#ceph" title="Permalink to this heading"></a></h1>
 <section id="id1">
 <h2>创建存储池<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
-<p>一个 Ceph 文件系统需要至少两个 RADOS 存储池，一个用于数据、一个用于元数据。配置这些存储池时需考虑：</p>
+<p>一个 Ceph 文件系统需要至少两个 RADOS 存储池，一个用于数据、一个用于元数据。规划这些存储池时有几个重要的注意事项：</p>
 <ul class="simple">
-<li><p>为元数据存储池设置更高的副本级别，因为此存储池丢失任何数据都会导致整个文件系统失效。</p></li>
-<li><p>为元数据存储池分配延时较低的存储器（像 SSD ），因为它会直接影响到客户端的操作延时。</p></li>
-<li><p>用于创建文件系统的数据存储池是“默认”存储池，它还存储着所有的索引节点回溯信息，
-可用于管理硬链接和灾难恢复。正因为如此， CephFS 内创建的所有索引节点都至少有一个对象存储于默认的数据存储池。如果文件系统打算采用纠删码存储池，
-一般来说，最好用副本存储池作为默认的数据存储池，以提升更新回溯信息时涉及的小对象读写性能。另外，可以单独加一个纠删码存储池（参见 <a class="reference internal" href="../../rados/operations/erasure-code/#ecpool"><span class="std std-ref">纠删码</span></a> ）
+<li><p>我们建议给元数据存储池配置<em>至少三个</em>副本，
+因为此存储池丢失数据可能会导致整个文件系统不可访问。
+配置 4 份都不算多，因为元数据存储池占用不了多大容量。</p></li>
+<li><p>我们建议给元数据存储池分配最快的、延时低的存储器
+（ NVMe 、 Optane 、或者至少是 SAS/SATA SSD ），
+因为它会直接影响到客户端的操作延时。</p></li>
+<li><p>我们强烈建议在专用 SSD / NVMe OSD 上配置 CephFS 元数据存储池。
+这样可确保客户端工作处于高负载时不会对元数据操作造成不利影响。
+参阅 <a class="reference internal" href="../../rados/operations/crush-map/#device-classes"><span class="std std-ref">设备类别</span></a> ，以这种方式配置存储池。</p></li>
+<li><p>用于创建文件系统的数据存储池默认是名为 default 的存储池，
+它还存储着所有的索引节点回溯信息，可用于管理硬链接和灾难恢复。
+正因为如此， CephFS 内创建的所有索引节点都至少有一个对象存储在 default 数据存储池内。
+如果文件系统的数据打算放在纠删码存储池内，
+最好还是用副本存储池作为默认的数据存储池，
+以提升更新回溯信息时涉及的小对象读写性能。
+另外，可以单独加一个纠删码存储池（参见 <a class="reference internal" href="../../rados/operations/erasure-code/#ecpool"><span class="std std-ref">纠删码</span></a> ）
 用于存储整个子树下的目录和文件（参见 <a class="reference internal" href="../file-layouts/#file-layouts"><span class="std std-ref">文件布局</span></a> ）。</p></li>
 </ul>
-<p>关于存储池的管理请参考 <a class="reference internal" href="../../rados/operations/pools/"><span class="doc">存储池</span></a> 。例如，要用默认设置为文件系统创建两个存储池，你可以用下列命令：</p>
+<p>关于存储池的管理请参考 <a class="reference internal" href="../../rados/operations/pools/"><span class="doc">存储池</span></a> 。
+例如，要用默认配置信息为文件系统创建两个存储池，你可以用下列命令：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>create<span class="w"> </span>cephfs_data
 $<span class="w"> </span>ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>create<span class="w"> </span>cephfs_metadata
 </pre></div>
 </div>
-<p>通常，元数据存储池最多也就有几个 GB 的数据，因此我们建议用较小的 PG 数，在用的大型集群通常用 64 或 128 个。</p>
+<p>通常，元数据存储池最多也就有几个 GB 的数据，因此我们建议用较小的 PG 数，
+在用的大型集群通常用 64 或 128 个。</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>文件系统、元数据存储池、和数据存储池的名字只能用
@@ -232,21 +245,51 @@ $<span class="w"> </span>ceph<span class="w"> </span>osd<span class="w"> </span>
 <section id="id2">
 <h2>创建文件系统<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
 <p>创建好存储池后，你就可以用 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">new</span></code> 命令启用文件系统了：</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>new<span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>&lt;metadata&gt;<span class="w"> </span>&lt;data&gt;
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>new<span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>&lt;metadata&gt;<span class="w"> </span>&lt;data&gt;<span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--allow-dangerous-metadata-overlay<span class="o">]</span><span class="w"> </span><span class="o">[</span>&lt;fscid:int&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--recover<span class="o">]</span><span class="w"> </span><span class="o">[</span>--yes-i-really-really-mean-it<span class="o">]</span><span class="w"> </span><span class="o">[</span>&lt;set&gt;...<span class="o">]</span>
 </pre></div>
 </div>
+<p>该命令用指定的元数据和数据存储池创建新文件系统。
+指定的数据存储池是默认数据存储池，一旦设置就不能更改。
+每个文件系统都有自己的一套 MDS 守护进程，分别负责各个 rank ，
+因此要确保有足够多的备用守护进程来容纳新文件系统。</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>有些 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">set</span></code> 命令也许需要加 <code class="docutils literal notranslate"><span class="pre">--yes-i-really-really-mean-it</span></code> 选项。</p>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--force</span></code> 选项用于实现以下功能：</p>
+<ul class="simple">
+<li><p>用来把纠删码存储池设置为默认的数据存储池。
+用纠删码存储池作为默认数据存储池是不受鼓励的。详情见<a class="reference internal" href="#id1">创建存储池</a>。</p></li>
+<li><p>用来把非空存储池（存储池内已经有一些对象）设置为元数据存储池。</p></li>
+<li><p>用来创建具有指定文件系统 ID （ fscid ）的文件系统。
+指定了 --fscid 选项时，必须加 --force 选项。</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">--allow-dangerous-metadata-overlay</span></code> 选项允许重用已在使用中的元数据和数据存储池。
+只有在紧急情况下，并仔细阅读了相关文档后，才可以这样做。</p>
+<p>如果加了 <code class="docutils literal notranslate"><span class="pre">--fscid</span></code> 选项，就会创建一个具有指定 fscid 的文件系统。
+当应用程序希望文件系统的 ID 在恢复后仍然保持稳定时，
+就可以用该选项，比如监视器数据库丢失并重建后。
+因此，文件系统 ID 不一定随着新文件系统的创建而增加。</p>
+<p><code class="docutils literal notranslate"><span class="pre">--recover</span></code> 选项会将文件系统的 rank 0 的状态设置为存在但失败。
+这样的话，当一个 MDS 守护进程最终接管 rank 0 时，
+这个守护进程就会读取现有 RADOS 内的元数据，而不会覆盖它。
+这个标志还能防止备用 MDS 守护进程加入文件系统。</p>
+<p><code class="docutils literal notranslate"><span class="pre">set</span></code> 选项允许在创建文件系统的同时，
+原子地设置 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">set</span></code> 支持的多个选项。</p>
 <p>例如：</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>new<span class="w"> </span>cephfs<span class="w"> </span>cephfs_metadata<span class="w"> </span>cephfs_data
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>new<span class="w"> </span>cephfs<span class="w"> </span>cephfs_metadata<span class="w"> </span>cephfs_data<span class="w"> </span><span class="nb">set</span><span class="w"> </span>max_mds<span class="w"> </span><span class="m">2</span><span class="w"> </span>allow_standby_replay<span class="w"> </span><span class="nb">true</span>
 $<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>ls
 name:<span class="w"> </span>cephfs,<span class="w"> </span>metadata<span class="w"> </span>pool:<span class="w"> </span>cephfs_metadata,<span class="w"> </span>data<span class="w"> </span>pools:<span class="w"> </span><span class="o">[</span>cephfs_data<span class="w"> </span><span class="o">]</span>
 </pre></div>
 </div>
-<p>文件系统创建完毕后， MDS 服务器就能达到 <em>active</em> 状态了，比如在一个单 MDS 系统中：</p>
+<p>文件系统创建完毕后， MDS 服务器就能达到 <em>active</em> 状态了，
+比如在一个单 MDS 系统中：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>mds<span class="w"> </span>stat
 cephfs-1/1/1<span class="w"> </span>up<span class="w"> </span><span class="o">{</span><span class="nv">0</span><span class="o">=</span><span class="nv">a</span><span class="o">=</span>up:active<span class="o">}</span>
 </pre></div>
 </div>
-<p>建好文件系统且 MDS 活跃后，你就可以挂载此文件系统了。如果你创建的文件系统不止一个，挂载的时候还需指定挂载哪个。</p>
+<p>建好文件系统且 MDS 活跃后，你就可以挂载此文件系统了。
+如果你创建的文件系统不止一个，挂载的时候还需指定挂载哪个。</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><a class="reference external" href="../../cephfs/mount-using-kernel-driver">挂载 CephFS 文件系统</a></p></li>
@@ -254,8 +297,8 @@ cephfs-1/1/1<span class="w"> </span>up<span class="w"> </span><span class="o">{<
 <li><p><a class="reference external" href="../../cephfs/ceph-dokan">在 Windows 上挂载 CephFS</a></p></li>
 </ul>
 </div></blockquote>
-<p>如果你创建了不止一个文件系统，而且客户端在挂载时还不指定哪个文件系统，
-这时你可以用 <cite>ceph fs set-default</cite> 命令来决定他们能看到的文件系统。</p>
+<p>如果你创建了不止一个文件系统，而且客户端在挂载时还没有指定哪个文件系统，
+这时你可以用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">fs</span> <span class="pre">set-default</span></code> 命令来决定他们能看到的文件系统。</p>
 <section id="id4">
 <h3>向文件系统增加数据存储池<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h3>
 <p>见 <a class="reference internal" href="../file-layouts/#adding-data-pool-to-file-system"><span class="std std-ref">把数据存储池加入文件系统</span></a> 。</p>
@@ -263,12 +306,13 @@ cephfs-1/1/1<span class="w"> </span>up<span class="w"> </span><span class="o">{<
 </section>
 <section id="id5">
 <h2>在 CephFS 中使用纠删码存储池<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h2>
-<p>纠删码存储池在启用覆写功能后可以用作 CephFS 的数据存储池，这样启用：</p>
+<p>纠删码存储池在启用覆写功能（ overwrites ）后可以用作 CephFS 的数据存储池，
+这样启用：</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>my_ec_pool<span class="w"> </span>allow_ec_overwrites<span class="w"> </span><span class="nb">true</span>
 </pre></div>
 </div>
 <p>注意， EC 的覆写功能只有在 OSD 们都使用 BlueStore 后端时才支持。</p>
-<p>纠删码存储池不能用作 CephFS 的元数据存储池，因为 CephFS 元数据是用 RADOS <em>OMAP</em> 数据结构存储的，而 EC 存储池不能存储。</p>
+<p>纠删码存储池不能用作 CephFS 的元数据存储池，因为 CephFS 元数据是用 RADOS <em>OMAP</em> 数据结构存储的，而 EC 存储池不能存储这个。</p>
 </section>
 </section>
 

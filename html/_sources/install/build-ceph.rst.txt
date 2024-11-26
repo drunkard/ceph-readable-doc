@@ -1,6 +1,7 @@
 ===========
  构建 Ceph
 ===========
+.. Build Ceph
 
 你可以下载 Ceph 源码并自行构建。首先，你得准备开发环境、编译
 Ceph 、然后安装到用户区或者构建二进制包并安装。
@@ -12,20 +13,21 @@ Ceph 、然后安装到用户区或者构建二进制包并安装。
 
 .. tip:: 对照本段检查下你的 Linux/Unix 发行版是否满足这些依赖。
 
-Ceph 的调试构建有将近 40 GB 大。如果你想在虚拟机（ VM ）里构建 Ceph ，
+Ceph 的调试构建大概有 40 GB 大。如果你想在虚拟机（ VM ）里构建 Ceph ，
 需要保证虚拟机的磁盘总空间大于 60 GB 。
 
-还需要注意， Linux 的一些发行版（像 CentOS ）的\
-默认安装会使用卷管理器（ LVM ）。 LVM 会在\
-典型尺寸的虚拟磁盘上为操作系统保留一大块磁盘空间。
+还需要注意， Linux 的一些发行版（像 CentOS ）的默认安装会使用卷管理器（ LVM ）。
+LVM 会在典型尺寸的虚拟磁盘上为操作系统保留一大块磁盘空间。
 
 构建 Ceph 源码前，你得先安装几个库和工具： ::
 
-        ./install-deps.sh
+    ./install-deps.sh
 
 .. note:: 在某些支持 Google 内存剖析工具的发行版上，名字未必如\
    此（如 ``libgoogle-perftools4`` ）。
 
+
+.. _build-ceph:
 
 构建 Ceph
 =========
@@ -75,8 +77,8 @@ RPM 包管理器
 ------------
 .. RPM Package Manager
 
-要创建 ``.rpm`` 包，先得克隆 `Ceph`_ 源码库、安装必要的\ `构建依赖`_\ 、安装好 \
-``rpm-build`` 和 ``rpmdevtools`` ： ::
+要创建 ``.rpm`` 包，先得克隆 `Ceph`_ 源码库、
+安装必要的\ `构建依赖`_\ 、安装好 ``rpm-build`` 和 ``rpmdevtools`` ： ::
 
 	yum install rpm-build rpmdevtools
 

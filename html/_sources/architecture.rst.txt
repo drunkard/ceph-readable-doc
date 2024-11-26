@@ -1657,13 +1657,13 @@ Ceph 力争兼容 POSIX 。 ``ceph-mds`` 可以只运行一个，
 
 
 
-.. _RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters: https://ceph.com/wp-content/uploads/2016/08/weil-rados-pdsw07.pdf
+.. _RADOS - A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters: https://ceph.io/assets/pdfs/weil-rados-pdsw07.pdf
 .. _Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 .. _监视器配置参考: ../rados/configuration/mon-config-ref
 .. _监控 OSD 和归置组: ../rados/operations/monitoring-osd-pg
 .. _心跳: ../rados/configuration/mon-osd-interaction
 .. _监控 OSD: ../rados/operations/monitoring-osd-pg/#monitoring-osds
-.. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf
+.. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.io/assets/pdfs/weil-crush-sc06.pdf
 .. _数据洗刷: ../rados/configuration/osd-config-ref#scrubbing
 .. _报告互联失败: ../rados/configuration/mon-osd-interaction#osds-report-peering-failure
 .. _互联失败排障: ../rados/troubleshooting/troubleshooting-pg#placement-group-down-peering-failure

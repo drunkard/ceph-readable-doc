@@ -1,9 +1,9 @@
-.. RGW Multi-tenancy
 .. _rgw-multitenancy:
 
 ============
  RGW 多租户
 ============
+.. RGW Multi-tenancy
 
 .. versionadded:: Jewel
 
@@ -21,10 +21,9 @@ to create and access buckets as before. The layout of objects in RADOS
 is extended in a compatible way, ensuring a smooth upgrade to Jewel.
 
 
-.. Administering Users With Explicit Tenants
-
 指定租户内的用户管理
 ====================
+.. Administering Users With Explicit Tenants
 
 这样的租户本身没有任何操作。在进行用户管理时，他们都是按需\
 出现和消失。要想创建、修改、和删除带有租户的用户，使用
@@ -48,10 +47,9 @@ is extended in a compatible way, ensuring a smooth upgrade to Jewel.
    租户名只能包含字母、数字、和下划线。
 
 
-.. Accessing Buckets with Explicit Tenants
-
 访问指定租户的桶
 ================
+.. Accessing Buckets with Explicit Tenants
 
 When a client application accesses buckets, it always operates with
 credentials of a particular user. As mentioned above, every user belongs
@@ -125,18 +123,16 @@ involved when dealing with signed URLs and public read ACLs.
   ``http://<host>:<port>/7188e165c0ae4424ac68ae2e89a05c50:foo/bar``.
 
 
-.. Swift with built-in authenticator
-
 用内置认证器的 Swift 接口
 -------------------------
+.. Swift with built-in authenticator
 
 TBD -- not in test_multen.py yet
 
 
-.. Swift with Keystone
-
 用 Keystone 认证的 Swift 接口
 -----------------------------
+.. Swift with Keystone
 
 In the default configuration, although native Swift has inherent
 multi-tenancy, radosgw does not enable multi-tenancy for the Swift
@@ -174,10 +170,9 @@ with older versions of ceph, where implicit tenants
 only applied to the swift protocol.
 
 
-.. Notes and known issues
-
 注意事项和已知问题
 ------------------
+.. Notes and known issues
 
 Just to be clear, it is not possible to create buckets in other
 tenants at present. The owner of newly created bucket is extracted

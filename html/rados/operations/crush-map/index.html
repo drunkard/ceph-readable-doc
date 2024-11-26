@@ -133,6 +133,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#id3">CRUSH 结构</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id9">修改 CRUSH 图</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#crush-map-tunables">可调选项</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id23">主 OSD 选择的调整</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rados-ops-primary-affinity">主亲和性</a></li>
 </ul>
 </li>
@@ -264,9 +265,9 @@ CRUSH 归置策略可把对象副本分布到不同的故障域，
 </div>
 <p>一个 OSD 的 CRUSH 位置可以在 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 配置文件里加上
 <code class="docutils literal notranslate"><span class="pre">crush_location</span></code> 选项来设置，例如：</p>
-<blockquote>
-<div><p>crush_location = root=default row=a rack=a2 chassis=a2a host=a2a1</p>
-</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">crush_location</span> <span class="o">=</span> <span class="n">root</span><span class="o">=</span><span class="n">default</span> <span class="n">row</span><span class="o">=</span><span class="n">a</span> <span class="n">rack</span><span class="o">=</span><span class="n">a2</span> <span class="n">chassis</span><span class="o">=</span><span class="n">a2a</span> <span class="n">host</span><span class="o">=</span><span class="n">a2a1</span>
+</pre></div>
+</div>
 <p>如果加了这个选项，以后 OSD 每次启动时，
 都会验证它还在 CRUSH 图内的正确位置，
 如果不是，就自己挪过去。
@@ -918,13 +919,13 @@ Luminous v12.2.z 及以上版本。</p>
 [默认值: <code class="docutils literal notranslate"><span class="pre">default</span></code>] ；</p></li>
 <li><p><strong>crush-failure-domain</strong>: 分配纠删编码的数据分片的 CRUSH 桶类型
 [默认值: <code class="docutils literal notranslate"><span class="pre">host</span></code>] ；</p></li>
-<li><p><strong>crush-osds-per-failure-domain</strong>: Maximum number of OSDs to place in each
-failure domain -- defaults to 1.  Using a value greater than one will
-cause a CRUSH MSR rule to be created, see below.  Must be specified if
-<code class="docutils literal notranslate"><span class="pre">crush-num-failure-domains</span></code> is specified.</p></li>
-<li><p><strong>crush-num-failure-domains</strong>: Number of failure domains to map.  Must be
-specified if <code class="docutils literal notranslate"><span class="pre">crush-osds-per-failure-domain</span></code> is specified.  Results in
-a CRUSH MSR rule being created.</p></li>
+<li><p><strong>crush-osds-per-failure-domain</strong>: 每个故障域里最多几个 OSD ，
+默认是 1 。取值大于 1 的话，
+会导致创建一个 CRUSH MSR 规则，见下文。
+如果配置了 <code class="docutils literal notranslate"><span class="pre">crush-num-failure-domains</span></code> ，那就必须配置这个选项。</p></li>
+<li><p><strong>crush-num-failure-domains</strong>: 要映射的故障域数量。
+如果配置了 <code class="docutils literal notranslate"><span class="pre">crush-osds-per-failure-domain</span></code> ，那就必须配置这个选项。
+会导致创建一个 CRUSH MSR 规则。</p></li>
 <li><p><strong>crush-device-class</strong>: 可以放置数据的设备类
 [默认值: none, 表示使用所有设备] ；</p></li>
 <li><p><strong>k</strong> 和 <strong>m</strong> (对于 <code class="docutils literal notranslate"><span class="pre">lrc</span></code> 插件还有 <strong>l</strong>): 这些确定了纠删码分片的数量，
@@ -941,31 +942,41 @@ a CRUSH MSR rule being created.</p></li>
 而具体的规则参数却是空的， Ceph 会自动创建 CRUSH 规则。</p>
 </div>
 </section>
+<section id="crush-msr">
+<h3>CRUSH MSR 规则<a class="headerlink" href="#crush-msr" title="Permalink to this heading"></a></h3>
+<p>创建纠删码配置文件时，如果 <code class="docutils literal notranslate"><span class="pre">crush-osds-per-failure-domain</span></code> 值大于 1 ，
+会导致创建 CRUSH MSR 类型的规则，而不是普通的 CRUSH 规则。
+当遇到 OSD 故障时，普通 CRUSH 规则无法重试之前的步骤，
+只能依靠 CHOOSELEAF 步骤将 OSD 转移到新主机。
+然而， CHOOSELEAF 规则却不允许每个故障域超过一个 OSD 。
+在 squid 版中新加入了 MSR 规则，
+它允许一个故障域里有多个 OSD ，
+此规则允许在遇到 OSD 掉线时重试所有先前的步骤。
+使用 MSR 规则要求所有 OSD 和客户端们都支持 CRUSH_MSR 功能位
+（在 squid 以及更高版本上）。</p>
+</section>
 <section id="id18">
 <h3>规则的删除<a class="headerlink" href="#id18" title="Permalink to this heading"></a></h3>
-<p>没有存储池在用的规则可以这样删除：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">rule</span> <span class="n">rm</span> <span class="p">{</span><span class="n">rule</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
-</pre></div>
-</div>
-</section>
+<p>要删除没有存储池在用的规则，用下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>crush<span class="w"> </span>rule<span class="w"> </span>rm<span class="w"> </span><span class="o">{</span>rule-name<span class="o">}</span></span>
+</pre></div></div></section>
 </section>
 <section id="crush-map-tunables">
 <span id="id19"></span><h2>可调选项<a class="headerlink" href="#crush-map-tunables" title="Permalink to this heading"></a></h2>
 <p>时光荏苒，我们已经改进（并将继续改进）了用于计算数据位置的 CRUSH 算法。
 为了体现（算法的）行为变化，我们引进了一系列可调选项，
 以控制是使用老的、还是改进的算法。</p>
-<p>要使用较新的可调选项，客户端和服务器都得支持较新版的 CRUSH 。
-正因为如此，我们建立了一系列以 Ceph 版本命名的配置集
-（ <code class="docutils literal notranslate"><span class="pre">profiles</span></code> ），比如，
-<code class="docutils literal notranslate"><span class="pre">firefly</span></code> 可调选项是在 firefly 版首次支持的，
-而且不支持更老的（如 dumpling ）客户端。
-一旦配置的可调选项生效、改变了旧有的默认行为，
-<code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code> 和 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 就不再允许那些老的、
+<p>要使用较新的可调选项，所有 Ceph 客户端和守护进程都得支持较新版的 CRUSH 。正因为如此，
+我们建立了一系列以 Ceph 版本命名的配置集（ <code class="docutils literal notranslate"><span class="pre">profiles</span></code> ）。
+比如，<code class="docutils literal notranslate"><span class="pre">firefly</span></code> 可调选项是在 firefly 版首次支持的，
+而且不支持较老的客户端（如 dumpling 版的客户端）。
+一套集群的可调选项配置更改后，比如从较老的升级到较新的或更优化的（ <code class="docutils literal notranslate"><span class="pre">optimal</span></code> ）配置集，
+<code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code> 和 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 会阻止那些老的、
 不支持这些新 CRUSH 功能的客户端连接集群。</p>
 <section id="argonaut">
 <h3>argonaut (遗老)<a class="headerlink" href="#argonaut" title="Permalink to this heading"></a></h3>
 <p>argonaut 和更老版本的 CRUSH 工作方式对大多数集群来说都没问题，
-也没有太多 OSD 被标记为 out 。</p>
+也没有太多 OSD 被标记为 <code class="docutils literal notranslate"><span class="pre">out</span></code> 。</p>
 </section>
 <section id="bobtail-crush-tunables2">
 <h3>bobtail (CRUSH_TUNABLES2)<a class="headerlink" href="#bobtail-crush-tunables2" title="Permalink to this heading"></a></h3>
@@ -1007,10 +1018,12 @@ a CRUSH MSR rule being created.</p></li>
 </section>
 <section id="firefly-crush-tunables3">
 <h3>firefly (CRUSH_TUNABLES3)<a class="headerlink" href="#firefly-crush-tunables3" title="Permalink to this heading"></a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">firefly</span></code> 可调选项对 <code class="docutils literal notranslate"><span class="pre">chooseleaf</span></code> 这条 CRUSH 规则的行为有所修正，
-在太多 OSD 被标记为 out 状态时，用非常少的结果生成 PG
-映射关系会有问题。</p>
-<p>新的可调选项是：</p>
+<section id="chooseleaf-vary-r">
+<h4>chooseleaf_vary_r<a class="headerlink" href="#chooseleaf-vary-r" title="Permalink to this heading"></a></h4>
+<p><code class="docutils literal notranslate"><span class="pre">firefly</span></code> 可调选项对 <code class="docutils literal notranslate"><span class="pre">chooseleaf</span></code> 这条 CRUSH 规则的行为有所修正。
+在太多 OSD 被标记为 <code class="docutils literal notranslate"><span class="pre">out</span></code> 状态时这个问题会浮现，
+会导致 PG 和极少的几个 OSD 映射。</p>
+<p>此配置是在 Firefly 版引进的，新增了如下这个可调选项：</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_vary_r</span></code>: 根据父节点已做过多少尝试，
@@ -1024,27 +1037,29 @@ CRUSH 有时候会找不到映射关系；
 <blockquote>
 <div><ul class="simple">
 <li><p>对于已经在运行、里面已经有了大量数据的集群，
-从 <code class="docutils literal notranslate"><span class="pre">0</span></code> 改为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 会导致大量的数据迁移； <code class="docutils literal notranslate"><span class="pre">4</span></code> 或 <code class="docutils literal notranslate"><span class="pre">5</span></code> 时
-CRUSH 也能正确找到映射，而且数据迁移少的多。</p></li>
+从 <code class="docutils literal notranslate"><span class="pre">0</span></code> 改为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 会导致大量的数据迁移；
+<code class="docutils literal notranslate"><span class="pre">4</span></code> 或 <code class="docutils literal notranslate"><span class="pre">5</span></code> 时 CRUSH 也能正确找到映射，而且数据迁移少很多。</p></li>
 </ul>
 </div></blockquote>
 </section>
-<section id="straw-calc-version-firefly">
-<h3>straw_calc_version 可调选项（也是在 Firefly 引进的）<a class="headerlink" href="#straw-calc-version-firefly" title="Permalink to this heading"></a></h3>
-<p>以前，给 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶计算、并存储在 CRUSH 图里的内部权重有些问题。
-特别是，如果有些条目 CRUSH 权重为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 或者配置了多个权重、
-重复配置了权重时， CRUSH 就不能正确地分布数据
-（也就是与权重配比失衡）。</p>
-<p>这个新可调参数是：</p>
+</section>
+<section id="straw-calc-version">
+<h3>straw_calc_version 可调选项<a class="headerlink" href="#straw-calc-version" title="Permalink to this heading"></a></h3>
+<p>以前，给 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 算法桶计算出、并存储在 CRUSH 图里的内部权重有些问题。
+当有些条目的 CRUSH 权重为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 或者混合了不同的唯一权重时，
+CRUSH 就不能正确地分布数据
+（也就不按照权重比例分配数据）。</p>
+<p>这个可调选项是 Firefly 版引进的，如下：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">straw_calc_version</span></code>: 值为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 时保留老的、有问题的内部权重算法；值为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 时修正此行为。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">straw_calc_version</span></code>: 值为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 时保留老的、
+有问题的内部权重算法；值为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 时修正此行为。</p></li>
 </ul>
 </div></blockquote>
 <p>对数据迁移的影响：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>straw_calc_version 改为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 之后，
+<li><p>这个可调选项改为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 之后，
 <em>假如</em>此集群触碰了某个雷区（ problematic condition ），
 调整 straw 桶（新增、删除、更改某一条目的权重、
 或用 reweight-all 命令更改所有权重）
@@ -1055,15 +1070,14 @@ CRUSH 也能正确找到映射，而且数据迁移少的多。</p></li>
 </section>
 <section id="hammer-crush-v4">
 <h3>hammer (CRUSH_V4)<a class="headerlink" href="#hammer-crush-v4" title="Permalink to this heading"></a></h3>
-<p>仅仅是更改配置的话， <code class="docutils literal notranslate"><span class="pre">hammer</span></code> 版的可调配置不会影响已有 CRUSH
-图的映射关系。然而：</p>
+<p>仅仅是更改配置的话， <code class="docutils literal notranslate"><span class="pre">hammer</span></code> 版的可调配置不会影响已有 CRUSH 图的映射关系。然而：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>增加了新型桶（ <code class="docutils literal notranslate"><span class="pre">straw2</span></code> ）的支持。
-这种新型的 <code class="docutils literal notranslate"><span class="pre">straw2</span></code> 桶解决了原来 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶的几个局限性。
-具体来说，老的 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶在有权重变化时会改变一些映射关系，
-新的 <code class="docutils literal notranslate"><span class="pre">straw2</span></code> 桶实现了预定目标，
-只有在这些桶的权重发生变化时才更改相应的映射关系。</p></li>
+<li><p>支持了新的桶算法 <code class="docutils literal notranslate"><span class="pre">straw2</span></code> 。
+这种新算法解决了原来 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶的几个局限性。
+具体来说，老的 <code class="docutils literal notranslate"><span class="pre">straw</span></code> 桶在有权重变化时会改变一些本来不应该改变的映射关系，
+而 <code class="docutils literal notranslate"><span class="pre">straw2</span></code> 可实现预定目标，
+即只改变权重发生变化的那些桶的映射关系。</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">straw2</span></code> 是新建桶的默认类型。</p></li>
 </ul>
 </div></blockquote>
@@ -1079,15 +1093,14 @@ CRUSH 也能正确找到映射，而且数据迁移少的多。</p></li>
 </section>
 <section id="jewel-crush-tunables5">
 <h3>jewel (CRUSH_TUNABLES5)<a class="headerlink" href="#jewel-crush-tunables5" title="Permalink to this heading"></a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">jewel</span></code> 可调配置提升了 CRUSH 的整体行为，
-这样，在 OSD 被标记到集群外时可显著减少映射变化。
+<p><code class="docutils literal notranslate"><span class="pre">jewel</span></code> 可调配置提升了 CRUSH 的整体性能，这样，
+在 OSD 被标记到集群外（ <code class="docutils literal notranslate"><span class="pre">out</span></code> ）时可显著减少映射变化。
 因此导致的数据移动少得多。</p>
-<p>这个新可调参数是：</p>
+<p>这个新可调参数是 Jewel 版引进的：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_stable</span></code>: 当某一 OSD 被标记为 out 时，
-递归选叶尝试是否把更优值代入内层递归、
-对于减少重映射具有重大影响。
+<li><p><code class="docutils literal notranslate"><span class="pre">chooseleaf_stable</span></code>: 决定递归选叶是否使用更好的内循环值，
+该值可在 OSD 被标记为 <code class="docutils literal notranslate"><span class="pre">out</span></code> 时大大减少映射更改的数量。
 以前的数值是 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，而新值 <code class="docutils literal notranslate"><span class="pre">1</span></code> 表示用新方法。</p></li>
 </ul>
 </div></blockquote>
@@ -1099,107 +1112,72 @@ CRUSH 也能正确找到映射，而且数据迁移少的多。</p></li>
 </ul>
 </div></blockquote>
 </section>
-<section id="crush-tunables">
-<h3>哪些客户端版本支持 CRUSH_TUNABLES<a class="headerlink" href="#crush-tunables" title="Permalink to this heading"></a></h3>
-<blockquote>
-<div><ul class="simple">
-<li><p>argonaut 系列， v0.48.1 或更高版</p></li>
-<li><p>v0.49 或更高版</p></li>
-<li><p>Linux 内核版本大于等于 v3.6 （对文件系统和 RBD 客户端都一样）</p></li>
-</ul>
-</div></blockquote>
-</section>
 <section id="crush-tunables2">
 <h3>哪些客户端版本支持 CRUSH_TUNABLES2<a class="headerlink" href="#crush-tunables2" title="Permalink to this heading"></a></h3>
-<blockquote>
-<div><ul class="simple">
-<li><p>v0.55 或更高版，包括 bobtail 系列 (v0.56.x)</p></li>
-<li><p>Linux 内核版本大于等于 v3.9 （对文件系统和 RBD 客户端都一样）</p></li>
-</ul>
-</div></blockquote>
 </section>
 <section id="crush-tunables3">
 <h3>哪些客户端版本支持 CRUSH_TUNABLES3<a class="headerlink" href="#crush-tunables3" title="Permalink to this heading"></a></h3>
-<blockquote>
-<div><ul class="simple">
-<li><p>v0.78 (firefly) 或更高版</p></li>
-<li><p>Linux 内核版本大于等于 v3.15 （对文件系统和 RBD 内核客户端来说）</p></li>
-</ul>
-</div></blockquote>
 </section>
 <section id="crush-v4">
 <h3>哪些客户端版本支持 CRUSH_V4<a class="headerlink" href="#crush-v4" title="Permalink to this heading"></a></h3>
-<blockquote>
-<div><ul class="simple">
-<li><p>v0.94 (hammer) 或更高版</p></li>
-<li><p>Linux 内核版本大于等于 v4.1 （对文件系统和 RBD 内核客户端来说）</p></li>
-</ul>
-</div></blockquote>
 </section>
 <section id="crush-tunables5">
 <h3>哪些客户端版本支持 CRUSH_TUNABLES5<a class="headerlink" href="#crush-tunables5" title="Permalink to this heading"></a></h3>
-<blockquote>
-<div><ul class="simple">
-<li><p>v10.0.2 (jewel) 或更高版</p></li>
-<li><p>Linux 内核版本大于等于 v4.5 （对文件系统和 RBD 内核客户端来说）</p></li>
-</ul>
-</div></blockquote>
 </section>
 <section id="id20">
 <h3>可调选项非最优时发出警告<a class="headerlink" href="#id20" title="Permalink to this heading"></a></h3>
-<p>从 v0.74 起，如果当前的 CRUSH 可调选项没囊括 <code class="docutils literal notranslate"><span class="pre">default</span></code> 配置集里的所有最优值（ <code class="docutils literal notranslate"><span class="pre">default</span></code> 配置集的含义见下文），
-Ceph 就会发出健康警告，有两种方法可消除这些警告：</p>
+<p>从 v0.74 版起，如果当前的 CRUSH 可调选项没囊括
+:ref:` <code class="docutils literal notranslate"><span class="pre">default</span></code> 配置&lt;rados_operations_crush_map_default_profile_definition&gt;`里的所有最优值， Ceph 就会发出健康警告
+（ “HEALTH_WARN crush map has non-optimal tunables” ）。
+有两种方法可消除这些警告：</p>
 <ol class="arabic">
-<li><p>调整现有集群上的可调选项。注意，
-这可能会导致一些数据迁移（可能有 10% 之多）。
-这是推荐的办法，但是在生产集群上要注意此调整对性能带来的影响。
-此命令可启用较优可调选项：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">tunables</span> <span class="n">optimal</span>
-</pre></div>
-</div>
-<p>如果切换得不太顺利（如负载太高）且切换才不久，
-或者有客户端兼容问题（较老的 cephfs 内核驱动或 rbd 客户端、
-或早于 bobtail 的 <code class="docutils literal notranslate"><span class="pre">librados</span></code> 客户端），
-你可以这样切回：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">tunables</span> <span class="n">legacy</span>
-</pre></div>
-</div>
-</li>
+<li><p>调整现有集群上的可调选项，使其达到最佳状态。
+做这个调整可能会导致一些数据迁移（可能有 10% 之多）。
+这个方法比别的方法更好，但是在数据迁移会对性能带来影响时要特别小心，
+比如在生产集群上。此命令可启用最佳可调选项：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>crush<span class="w"> </span>tunables<span class="w"> </span>optimal</span>
+</pre></div></div><p>有几个潜在问题可能会迫使你回退到以前的可调选项值。
+新值可能会对集群产生过大的负载、新值可能导致集群龟速运行、
+或者可能存在客户端兼容性问题。
+使用较老的 CephFS 内核驱动或 RBD 客户端、
+或早于 Bobtail 的 <code class="docutils literal notranslate"><span class="pre">librados</span></code> 客户端，会遇到这样的客户端兼任性问题。
+可调选项可以这样回退到以前的取值，用下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>crush<span class="w"> </span>tunables<span class="w"> </span>legacy</span>
+</pre></div></div></li>
 <li><p>不对 CRUSH 做任何更改也能消除报警，把下列配置加入
-<code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 的 <code class="docutils literal notranslate"><span class="pre">[mon]</span></code> 段下：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon</span> <span class="n">warn</span> <span class="n">on</span> <span class="n">legacy</span> <span class="n">crush</span> <span class="n">tunables</span> <span class="o">=</span> <span class="n">false</span>
+<code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 文件的 <code class="docutils literal notranslate"><span class="pre">[mon]</span></code> 段下：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mon_warn_on_legacy_crush_tunables</span> <span class="o">=</span> <span class="n">false</span>
 </pre></div>
 </div>
-<p>为使变更生效需重启所有监视器，
-或者执行下列命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mon</span><span class="o">.</span>\<span class="o">*</span> <span class="n">config</span> <span class="nb">set</span> <span class="n">mon_warn_on_legacy_crush_tunables</span> <span class="n">false</span>
-</pre></div>
-</div>
-</li>
+<p>要让这些变更生效，需重启所有监视器，
+或者在监视器上执行下列命令来应用此选项：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span>mon.<span class="se">\*</span><span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mon_warn_on_legacy_crush_tunables<span class="w"> </span><span class="nb">false</span></span>
+</pre></div></div></li>
 </ol>
 </section>
 <section id="id21">
-<h3>一些要点<a class="headerlink" href="#id21" title="Permalink to this heading"></a></h3>
+<h3>调整 CRUSH<a class="headerlink" href="#id21" title="Permalink to this heading"></a></h3>
+<p>在调整 CRUSH 可调选项时，时刻注意以下几点：</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>调整这些值将使一些 PG 在存储节点间移位，
+<li><p>调整 CRUSH 可调选项的值会导致一个或更多 PG 在存储节点间迁移。
 如果 Ceph 集群已经存储了大量数据，
-做好移动一部分数据的准备。</p></li>
-<li><p>一旦更新运行图， <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 和 <code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code>
-就会开始向新建连接要求功能位，
-然而，之前已经连接的客户端如果不支持新功能将行为失常。</p></li>
-<li><p>如果 CRUSH 可调值更改过、然后又改回了默认值，
-<code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 守护进程将不要求支持此功能，
-然而， OSD 连接建立进程要能检查和理解旧地图。
-因此，集群如果用过非默认 CRUSH 值就不应该再运行版本小于 0.48.1 的 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> ，
-即使最新版地图已经回滚到了遗留默认值。</p></li>
+做好迁移大量数据的准备。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 和 <code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code> 守护进程们收到新的运行图后，
+它们会立即拒绝不支持新功能的客户端建立新连接。
+然而，之前已经连接的客户端实际上仍能继续使用，
+而这些客户端里不支持新功能的将会出现故障。</p></li>
+<li><p>如果 CRUSH 可调选项设置成了较新的值（不是旧的 legacy 值），
+然后又改回了旧的值， <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 守护进程将不要求支持与这个较新值（不是旧的 legacy 值）对应的 CRUSH 功能。
+然而， OSD 互联进程要能检查和理解旧的运行图。
+因此，<strong>如果集群之前用过非默认（ non-legacy ） CRUSH 值，
+就不应该再运行</strong> <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> <strong>守护进程</strong>，
+—— 即使为了使用默认的旧值已经回滚了最新版运行图。</p></li>
 </ul>
 </div></blockquote>
-</section>
-<section id="id22">
-<h3>调整 CRUSH<a class="headerlink" href="#id22" title="Permalink to this heading"></a></h3>
-<p>更改 CRUSH 可调值的最简方法就是应用一个配置集，也就是 <em>profile</em> ，
-到 Octopus 为止有：</p>
+<p>更改 CRUSH 可调值的最简方法就是应用一个配置集，
+也就是 <em>profile</em> ，到 Octopus 为止，
+Ceph 支持下列配置集：</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">legacy</span></code>: 采用 argonaut 及更低版本的行为；</p></li>
@@ -1208,57 +1186,82 @@ Ceph 就会发出健康警告，有两种方法可消除这些警告：</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">firefly</span></code>: 采用 firefly 版的配置；</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">hammer</span></code>: hammer 版支持的值</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">jewel</span></code>: jewel 版支持的值</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">optimal</span></code>: 当前 Ceph 版本的最佳（即最优的）值；</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">optimal</span></code>: 当前 Ceph 版本的最佳值；
+.. _rados_operations_crush_map_default_profile_definition:</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">default</span></code>: 从头安装的新集群的默认值。
 这些值依附于当前的 Ceph 版本，
 是写死的（ hard coded ），
 而且通常是最优值和遗留值的混合体。
-这些值通常对应于前一个 LTS 版本的 <code class="docutils literal notranslate"><span class="pre">optimal</span></code> 配置集，
-或者是最近的、我们预计大多数用户都不会升级过来的版本。</p></li>
+这些值通常对应于前一个 LTS （长期服务）版本或者是最新版本的 <code class="docutils literal notranslate"><span class="pre">optimal</span></code> 配置集，
+而大多数用户都拥有最新客户端。</p></li>
 </ul>
 </div></blockquote>
 <p>你可以在运行着的集群上选择一个配置：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">crush</span> <span class="n">tunables</span> <span class="p">{</span><span class="n">PROFILE</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>要注意，这可能产生数据迁移，可能还不少。在运行着的集群上更改此配置前，请仔细研究发布说明和文档，并试着压制一下恢复、回填参数，以降低一大波回填造成的影响。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>crush<span class="w"> </span>tunables<span class="w"> </span><span class="o">{</span>PROFILE<span class="o">}</span></span>
+</pre></div></div><p>这个操作可能导致大量数据迁移。
+在运行着的集群上更改此配置前，请仔细研究发布说明和文档，并试着压制一下恢复、回填参数，以降低一大波回填造成的影响。</p>
 </section>
+</section>
+<section id="id23">
+<h2>主 OSD 选择的调整<a class="headerlink" href="#id23" title="Permalink to this heading"></a></h2>
+<p>当 Ceph 客户端读出或写入数据时，它会首先联系每个相关 PG 的 acting set 中的第一个 OSD ，默认情况下，
+acting set 中的第一个 OSD 是主 OSD （也称为“主导 OSD ”， “lead OSD” ）。
+例如，在 acting set <code class="docutils literal notranslate"><span class="pre">[2,</span> <span class="pre">3,</span> <span class="pre">4]</span></code> 中， <code class="docutils literal notranslate"><span class="pre">osd.2</span></code> 位列第一，因此是主 OSD 。
+但有时，很明显，与其他 OSD 相比，某个 OSD 不适合充当主 OSD
+（例如，如果该 OSD 的驱动器较慢或控制器速度较慢）。
+为了防止出现性能瓶颈（尤其是读出操作），同时最大限度地提高硬件利用率，
+可以调整“主亲和性（ primary affinity ）”值或定制 CRUSH 规则来影响主 OSD 的选定，
+从而内定一批 OSD 充当主导 OSD ，而不会选定其他 OSD 。</p>
+<p>要确定调整 Ceph 的主 OSD 选择是否能提高集群性能，
+还必须考虑存储池冗余策略。
+对于多副本存储池，这种调整可能特别有用，因为默认情况下，
+读出操作是由每个 PG 的主 OSD 提供服务的。
+不过，对于纠删码存储池，可以通过启用<strong>快速读（ fast read ）</strong>来提高读取操作的速度（参阅 <a class="reference internal" href="../../configuration/mon-config-ref/#pool-settings"><span class="std std-ref">存储池选项</span></a> ）。</p>
 </section>
 <section id="rados-ops-primary-affinity">
 <span id="id24"></span><h2>主亲和性<a class="headerlink" href="#rados-ops-primary-affinity" title="Permalink to this heading"></a></h2>
-<p>一个 Ceph 客户端读取或写入数据时，它首先连接相关 PG 的
-acting set 里的主 OSD 。默认情况下，acting set 里的第一个 OSD 是主的。比如，在 acting set <code class="docutils literal notranslate"><span class="pre">[2,</span> <span class="pre">3,</span> <span class="pre">4]</span></code> 中， <code class="docutils literal notranslate"><span class="pre">osd.2</span></code> 位列第一，所以它就是是主 OSD （又名 lead ）。有时候我们知道某个 OSD 作为 lead 时不如其余的（比如它的硬盘慢、或控制器慢），为了防止出现性能瓶颈（特别是读操作），同时又能最大化地利用硬件，你可以调整 OSD 的主亲和性参数值、或定制一条 CRUSH 规则优先选择喜欢的的 OSD 们，以此来影响主 OSD 的选举。</p>
-<p>调整主 OSD 的选择主要对多副本存储池有用，
-因为默认情况下，读操作服务由每个 PG 的主 OSD 提供。
-对于纠删码（ EC ）存储池，提速读操作的一种途径是启用 <em>快速读（ fast read ）</em> ，
-会在 <a class="reference internal" href="../../configuration/mon-config-ref/#pool-settings"><span class="std std-ref">存储池选项</span></a> 里详述。</p>
-<p>主亲和性的一个常见应用场景是集群包含的驱动器容量大小不一时，
+<p><strong>主亲和性（ Primary affinity ）</strong> 是 OSD 的一个特性，
+它决定了一个指定 OSD 在一个指定 acting set 中被选为主 OSD （或“主导 OSD ”）的可能性。
+主亲和性的值可以是 <code class="docutils literal notranslate"><span class="pre">0</span></code> 至 <code class="docutils literal notranslate"><span class="pre">1</span></code> （含 <code class="docutils literal notranslate"><span class="pre">1</span></code> ）之间的任何实数。</p>
+<p>主亲和性的一个常见应用场景是调整主亲和性值，
+我们假设一个集群内的驱动器容量大小不一，
 例如，较老的机架配备的是 1.9 TB 的 SATA SSD 、而较新的机架是 3.84TB SATA SSD 。
-平均下来，后者将会分配到双倍的 PG 、
+平均下来，后者将会分配到数量上双倍的 PG 、
 因而将需要提供双倍的读写操作，
-因此它们会比前者忙碌得多。粗略地按照 OSD 容量的反比例分配主亲和性也未必是 100% 最优的，
+因此它们会比前者忙碌得多。在这样的场景下，
+粗略地按照 OSD 容量的反比例分配主亲和性，
+这样的分配未必是 100% 最优的，
 但它能够很轻松地实现 15% 的整体读吞吐量提升，
-因为更平均地利用了 SATA 接口带宽和 CPU 周期。</p>
-<p>默认情况下， Ceph 所有 OSD 的主亲和性都是 <code class="docutils literal notranslate"><span class="pre">1</span></code> ，
-表示所有 OSD 成为主 OSD 的几率都是相等的。</p>
-<p>你可以降低 Ceph OSD 的主亲和性，这样 CRUSH 就不太会把这样的 OSD 选为 PG 的 acting set 里的主 OSD 了：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">primary</span><span class="o">-</span><span class="n">affinity</span> <span class="o">&lt;</span><span class="n">osd</span><span class="o">-</span><span class="nb">id</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">weight</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p>你可以把某一 OSD 的主亲和性设置为 <code class="docutils literal notranslate"><span class="pre">[0-1]</span></code> 范围内的实数，其中， <code class="docutils literal notranslate"><span class="pre">0</span></code> 表示此 OSD <strong>不能</strong> 用作主的，而 <code class="docutils literal notranslate"><span class="pre">1</span></code> 表示这个 OSD 可以用作主的。这个权重介于二者之间时，
-CRUSH 把那个 OSD 选为主 OSD 的可能性较低。选中一个 lead OSD 的过程不仅仅是个简单的、基于相对亲和值的概率问题，而是一系列可测量的结果，进而取得期望值的一阶近似值。</p>
+因为更平均地利用了 SATA 接口带宽和 CPU 周期。
+这个例子不仅仅是一个思想实验，
+本意是为了在理论上说明调整主亲和性值的好处；
+这百分之十五的改进也是在一个真实的 Ceph 集群上实测过的。</p>
+<p>默认情况下，所有 Ceph OSD 的主亲和性都是 <code class="docutils literal notranslate"><span class="pre">1</span></code> 。
+集群里所有 OSD 的主亲和性取值都是默认值时，
+所有 OSD 成为主 OSD 的几率是相等的。</p>
+<p>你可以降低 Ceph OSD 的主亲和性取值，
+这样 CRUSH 就不太可能把这样的 OSD 选为 PG 的 acting set 里的主 OSD 了。
+要更改一个指定 OSD 的主亲和性相关联的权重值，用下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>primary-affinity<span class="w"> </span>&lt;osd-id&gt;<span class="w"> </span>&lt;weight&gt;</span>
+</pre></div></div><p>你可以把某一个 OSD 的主亲和性设置为 <code class="docutils literal notranslate"><span class="pre">[0-1]</span></code> 范围内的实数，其中， <code class="docutils literal notranslate"><span class="pre">0</span></code> 表示此 OSD <strong>不能</strong> 用作主的，而 <code class="docutils literal notranslate"><span class="pre">1</span></code> 表示这个 OSD 可以用作主的，且可能性最大。
+这个权重介于这两个极端之间时，
+这个取值就大致是被 CRUSH 选定为主 OSD 的可能性。</p>
+<p>CRUSH 选中一个 lead OSD 的过程不仅仅是个简单的、由相对亲和值决定的概率函数。
+而是通过理想的主亲和性取值的一阶近似值，
+取得一系列可测量的结果。</p>
 <section id="id25">
 <h3>自定义 CRUSH 规则<a class="headerlink" href="#id25" title="Permalink to this heading"></a></h3>
 <p>有的集群为了均衡成本和性能，会在同一个多副本存储池里混搭 SSD 和 HDD 。
-然后把 HDD OSD 们的主亲和性设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，就可以把操作都引导到各个 acting set 里的 SSD 上。另一个办法是定义一条 CRUSH 规则，
-只选用 SSD OSD 作为第一个 OSD 、然后其余 OSD 选用 HDD 。这样，
-每个 PG 的 acting set 就会只包含一个 SSD OSD 作为主的，以此实现了和 HDD 的平衡。</p>
+然后把 HDD OSD 们的主亲和性设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，
+就可以把操作都引导到各个 acting set 里的 SSD OSD 上。
+另一个办法是定义一条 CRUSH 规则，
+只选用 SSD OSD 作为主 OSD 、然后其余 OSD 选用 HDD 。
+有了这个规则，每个 PG 的 acting set
+就只会用 SSD OSD 作为主的，其余 OSD 在 HDD 上。</p>
 <p>以下面的 CRUSH 规则为例：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rule</span> <span class="n">mixed_replicated_rule</span> <span class="p">{</span>
         <span class="nb">id</span> <span class="mi">11</span>
         <span class="nb">type</span> <span class="n">replicated</span>
-        <span class="n">min_size</span> <span class="mi">1</span>
-        <span class="n">max_size</span> <span class="mi">10</span>
         <span class="n">step</span> <span class="n">take</span> <span class="n">default</span> <span class="k">class</span> <span class="nc">ssd</span>
         <span class="n">step</span> <span class="n">chooseleaf</span> <span class="n">firstn</span> <span class="mi">1</span> <span class="nb">type</span> <span class="n">host</span>
         <span class="n">step</span> <span class="n">emit</span>
@@ -1268,20 +1271,19 @@ CRUSH 把那个 OSD 选为主 OSD 的可能性较低。选中一个 lead OSD 的
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>它选了一个 SSD 作为第一个 OSD 。注意，对于 <code class="docutils literal notranslate"><span class="pre">N</span></code> 个副本的存储池，
+<p>这个规则选了一个 SSD 作为第一个 OSD 。对于 <code class="docutils literal notranslate"><span class="pre">N</span></code> 个副本的存储池，
 本规则会选用 <code class="docutils literal notranslate"><span class="pre">N+1</span></code> 个 OSD 来保证 <code class="docutils literal notranslate"><span class="pre">N</span></code> 个副本位于不同的主机上，
 因为第一个 SSD OSD 可能和 <code class="docutils literal notranslate"><span class="pre">N</span></code> 个 HDD OSD 中的某一个位于同一台主机上。</p>
-<p>额外的存储空间需求也可以避免，需要折衷一下，
+<p>为了避免额外的存储空间需求，需要折衷一下，
 把 SSD 和 HDD 分别放到不同的主机上，
-持有 SSD 的主机需要接收所有客户端的请求。为此，
-你可以为 SSD 主机配备更快的 CPU 、为 HDD 节点配备更稳定的，
-因为后者通常只有恢复服务的操作。这里的 CRUSH 根
-<code class="docutils literal notranslate"><span class="pre">ssd_hosts</span></code> 和 <code class="docutils literal notranslate"><span class="pre">hdd_hosts</span></code> 必须严格地不包含相同的服务器：</p>
+然而这就意味着持有 SSD 的主机需要接收所有客户端的请求。为此，
+你可以为 SSD OSD 们配备更快的 CPU 、为 HDD OSD 节点配备差一点的，
+因为后者只需要应对常规情况，执行恢复操作。
+这里的 CRUSH 根 <code class="docutils literal notranslate"><span class="pre">ssd_hosts</span></code> 和 <code class="docutils literal notranslate"><span class="pre">hdd_hosts</span></code> 有严格要求，
+不能包含相同的服务器，如下 CRUSH 规则所示：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rule</span> <span class="n">mixed_replicated_rule_two</span> <span class="p">{</span>
        <span class="nb">id</span> <span class="mi">1</span>
        <span class="nb">type</span> <span class="n">replicated</span>
-       <span class="n">min_size</span> <span class="mi">1</span>
-       <span class="n">max_size</span> <span class="mi">10</span>
        <span class="n">step</span> <span class="n">take</span> <span class="n">ssd_hosts</span> <span class="k">class</span> <span class="nc">ssd</span>
        <span class="n">step</span> <span class="n">chooseleaf</span> <span class="n">firstn</span> <span class="mi">1</span> <span class="nb">type</span> <span class="n">host</span>
        <span class="n">step</span> <span class="n">emit</span>
@@ -1291,9 +1293,12 @@ CRUSH 把那个 OSD 选为主 OSD 的可能性较低。选中一个 lead OSD 的
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>还需注意，在 SSD 故障时，
-到 PG 的请求临时会由（较慢的） HDD OSD 接替，
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>如果一个主的 SSD OSD 故障了，
+到相关联 PG 的请求临时会由较慢的 HDD OSD 接替，
 直到 PG 的数据复制到接替它的主 SSD OSD 上。</p>
+</div>
 </section>
 </section>
 </section>

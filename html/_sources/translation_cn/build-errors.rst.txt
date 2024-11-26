@@ -21,7 +21,7 @@ ImportError: librados.so: cannot open shared object file: No such file or direct
    ImportError: librados.so: cannot open shared object file: No such file or directory
    >>> 
 
-原因：没找到对应的库。
+原因：没找到对应的库。编译文档需要系统上也安装 ceph 软件。
 
 解决方法：手动链接到系统库位置，需 root 权限。
 

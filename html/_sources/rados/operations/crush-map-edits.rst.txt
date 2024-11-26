@@ -711,4 +711,4 @@ CRUSH 规则定义了归置和复制策略、或分布策略，
 因为此功能位不是完全强制的。
 
 
-.. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf
+.. _CRUSH - 可控、可伸缩、分布式地归置多副本数据: https://ceph.io/assets/pdfs/weil-crush-sc06.pdf

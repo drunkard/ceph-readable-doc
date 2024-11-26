@@ -199,14 +199,38 @@ TODO: 翻译字段名，位于 _ext/ceph_confval.py -> TEMPLATE
      jre 缺少必要的库文件。
    * 安装 Sphinx ，这个文档编译系统是基于 Python 的，我现在用的是 Python 3.11 ；
 
-#. 执行 ceph 库内 admin 目录下的 build-doc 开始构建文档； ::
+#. 执行 ceph 代码库内的 ``admin/build-doc`` 开始构建文档；
 
-    cd /git/ceph
-    ./admin/zh_build-doc
-    ./admin/zh_build-doc linkcheck    # 检查链接是否有效，耗时很长
+   .. code:: sh
 
-    # 编译原版文档
-    ./admin/build-doc
+      # 编译原版文档
+      ./admin/build-doc
+
+      # 编译中文版文档
+      cd /git/ceph && mkdir doc-zh/
+      mount --bind /git/ceph-Chinese-doc doc-zh     # 需要 root 权限
+      ./admin/zh_build-doc
+      ./admin/zh_build-doc linkcheck    # 检查链接是否有效，耗时很长
+
+   解释：为何要创建 ``/git/ceph/doc-zh/`` 目录并挂载呢，软链接行不行？软链接\
+   有时候可以，有时候脚本里有 `realpath` ，会导致计算出的路径出现偏差，进而\
+   导致文档编译错误。所以，还是挂载更稳定。
+
+   注意：脚本在正式编译前，会自动在 ``/git/ceph/build-doc/`` 下配置编译所需的\
+   python venv 环境。其中， ``pip`` 在安装 ``/git/ceph/admin/doc-pybind.txt``
+   时，可能会遇到编译失败的情况，这个不解决就无法编译文档。一个临时解决方法是：\
+   在系统内安装 ceph 时已经装过对应的 python binding 了，可以把那些装好的库复制\
+   到 venv 下，以 ``rados`` 模块为例：
+
+   .. code:: sh
+
+      . /git/ceph/build-doc/virtualenv/bin/activate
+      pip list      # 此时应该没有 rados 模块
+
+      cd /usr/lib/python3.12/site-packages
+      cp -r rados* /git/ceph/build-doc/virtualenv/lib/python3.12/site-packages/
+
+      pip list      # 此时有 rados 模块
 
 #. 启动文档服务器，这样就可以通过 http://localhost:9080/ 阅读文档了。 ::
 
