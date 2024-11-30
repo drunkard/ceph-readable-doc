@@ -1,3 +1,5 @@
+.. _dev-testing-unit-tests:
+
 测试 - 单元测试
 ===============
 
@@ -43,10 +45,9 @@ may have different requirements. Depending on your hardware, it can take from
 twenty minutes to three hours to complete.
 
 
-.. How unit tests are declared
-
 如何声明单元测试
 ^^^^^^^^^^^^^^^^
+.. How unit tests are declared
 
 Unit tests are declared in the ``CMakeLists.txt`` file, which is found in the
 ``./src`` directory. The ``add_ceph_test`` and ``add_ceph_unittest`` CMake
@@ -60,10 +61,10 @@ compiled during the build process.
 * ``add_ceph_test`` function - used to declare unit test scripts 
 * ``add_ceph_unittest`` function - used for unit test binaries
 
-.. Unit testing of CLI tools
-
 CLI 工具的单元测试
 ^^^^^^^^^^^^^^^^^^
+.. Unit testing of CLI tools
+
 Some of the CLI tools are tested using special files ending with the extension
 ``.t`` and stored under ``./src/test/cli``. These tests are run using a tool
 called `cram`_ via a shell script called ``./src/test/run-cli-tests``.
@@ -105,6 +106,10 @@ Currently (December 2020) the following modules use **tox**:
   * ``./src/ceph-volume/ceph_volume/tests/functional/simple/tox.ini``
 
   * ``./src/ceph-volume/ceph_volume/tests/functional/lvm/tox.ini``
+
+Configuring Tox environments and tasks 
+""""""""""""""""""""""""""""""""""""""
+Most tox configurations support multiple environments and tasks. 
 
 The list of environments and tasks that are supported is in the ``tox.ini``
 file, under ``envlist``. For example, here are the first three lines of
@@ -158,16 +163,21 @@ includes ``mgr_util.py``.
 
 .. _doctests: https://docs.python.org/3/library/doctest.html
 
-
-.. Unit test caveats
-
 单元测试注意事项
 ----------------
+.. Unit test caveats
 
 #. Unlike the various Ceph daemons and ``ceph-fuse``, the unit tests are
    linked against the default memory allocator (glibc) unless they are
    explicitly linked against something else. This enables tools such as
    **valgrind** to be used in the tests.
+
+#. Google Test unit testing library hides the client output from the shell.
+   In order to debug the client after setting the desired debug level
+   (e.g ``ceph config set client debug_rbd 20``), the debug log file can
+   be found at ``build/out/client.admin.<pid>.log``.
+   This can also be handy when examining teuthology failed unit test
+   jobs, the job's debug level can be set at the relevant yaml file.
 
 .. _make check:
 .. _teuthology framework: https://github.com/ceph/teuthology
