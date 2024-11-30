@@ -24,12 +24,14 @@ see :ref:`nfs-ganesha-config`.
 NFS Cluster management
 ======================
 
+.. _nfs-module-cluster-create:
+
 Create NFS Ganesha Cluster
 --------------------------
 
 .. code:: bash
 
-    $ ceph nfs cluster create <cluster_id> [<placement>] [--port <port>] [--ingress --virtual-ip <ip>]
+    $ ceph nfs cluster create <cluster_id> [<placement>] [--ingress] [--virtual_ip <value>] [--ingress-mode {default|keepalive-only|haproxy-standard|haproxy-protocol}] [--port <int>]
 
 This creates a common recovery pool for all NFS Ganesha daemons, new user based on
 ``cluster_id``, and a common NFS Ganesha config RADOS object.
@@ -76,6 +78,17 @@ service.
 For more details, refer :ref:`orchestrator-cli-placement-spec` but keep
 in mind that specifying the placement via a YAML file is not supported.
 
+Deployment of NFS daemons and the ingress service is asynchronous: the
+command may return before the services have completely started. You may
+wish to check that these services do successfully start and stay running.
+When using cephadm orchestration, these commands check service status:
+
+.. code:: bash
+
+    $ ceph orch ls --service_name=nfs.<cluster_id>
+    $ ceph orch ls --service_name=ingress.nfs.<cluster_id>
+
+
 Ingress
 -------
 
@@ -94,10 +107,29 @@ of the details of NFS redirecting traffic on the virtual IP to the
 appropriate backend NFS servers, and redeploying NFS servers when they
 fail.
 
-Enabling ingress via the ``ceph nfs cluster create`` command deploys a
-simple ingress configuration with the most common configuration
-options.  Ingress can also be added to an existing NFS service (e.g.,
-one created without the ``--ingress`` flag), and the basic NFS service can
+An optional ``--ingress-mode`` parameter can be provided to choose
+how the *ingress* service is configured:
+
+- Setting ``--ingress-mode keepalive-only`` deploys a simplified *ingress*
+  service that provides a virtual IP with the nfs server directly binding to
+  that virtual IP and leaves out any sort of load balancing or traffic
+  redirection. This setup will restrict users to deploying only 1 nfs daemon
+  as multiple cannot bind to the same port on the virtual IP.
+- Setting ``--ingress-mode haproxy-standard`` deploys a full *ingress* service
+  to provide load balancing and high-availability using HAProxy and keepalived.
+  Client IP addresses are not visible to the back-end NFS server and IP level
+  restrictions on NFS exports will not function.
+- Setting ``--ingress-mode haproxy-protocol`` deploys a full *ingress* service
+  to provide load balancing and high-availability using HAProxy and keepalived.
+  Client IP addresses are visible to the back-end NFS server and IP level
+  restrictions on NFS exports are usable. This mode requires NFS Ganesha version
+  5.0 or later.
+- Setting ``--ingress-mode default`` is equivalent to not providing any other
+  ingress mode by name. When no other ingress mode is specified by name
+  the default ingress mode used is ``haproxy-standard``.
+
+Ingress can be added to an existing NFS service (e.g., one initially created
+without the ``--ingress`` flag), and the basic NFS service can
 also be modified after the fact to include non-default options, by modifying
 the services directly.  For more information, see :ref:`cephadm-ha-nfs`.
 
@@ -127,6 +159,18 @@ Delete NFS Ganesha Cluster
     $ ceph nfs cluster rm <cluster_id>
 
 This deletes the deployed cluster.
+
+
+Removal of NFS daemons and the ingress service is asynchronous: the
+command may return before the services have been completely deleted. You may
+wish to check that these services are no longer reported. When using cephadm
+orchestration, these commands check service status:
+
+.. code:: bash
+
+    $ ceph orch ls --service_name=nfs.<cluster_id>
+    $ ceph orch ls --service_name=ingress.nfs.<cluster_id>
+
 
 Updating an NFS Cluster
 -----------------------
@@ -239,7 +283,7 @@ Create CephFS Export
 
 .. code:: bash
 
-    $ ceph nfs export create cephfs --cluster-id <cluster_id> --pseudo-path <pseudo_path> --fsname <fsname> [--readonly] [--path=/path/in/cephfs] [--client_addr <value>...] [--squash <value>]
+    $ ceph nfs export create cephfs --cluster-id <cluster_id> --pseudo-path <pseudo_path> --fsname <fsname> [--readonly] [--path=/path/in/cephfs] [--client_addr <value>...] [--squash <value>] [--sectype <value>...] [--cmount_path <value>]
 
 This creates export RADOS objects containing the export block, where
 
@@ -266,6 +310,25 @@ for permissible values.
 value is `no_root_squash`. See the `NFS-Ganesha Export Sample`_ for
 permissible values.
 
+``<sectype>`` specifies which authentication methods will be used when
+connecting to the export. Valid values include "krb5p", "krb5i", "krb5", "sys",
+and "none". More than one value can be supplied. The flag may be specified
+multiple times (example: ``--sectype=krb5p --sectype=krb5i``) or multiple
+values may be separated by a comma (example: ``--sectype krb5p,krb5i``). The
+server will negotatiate a supported security type with the client preferring
+the supplied methods left-to-right.
+
+``<cmount_path>`` specifies the path within the CephFS to mount this export on. It is
+allowed to be any complete path hierarchy between ``/`` and the ``EXPORT {path}``. (i.e. if ``EXPORT { Path }`` parameter is ``/foo/bar`` then cmount_path could be ``/``, ``/foo`` or ``/foo/bar``).
+
+.. note:: If this and the other ``EXPORT { FSAL {} }`` options are the same between multiple exports, those exports will share a single CephFS client.
+          If not specified, the default is ``/``.
+
+.. note:: Specifying values for sectype that require Kerberos will only function on servers
+          that are configured to support Kerberos. Setting up NFS-Ganesha to support Kerberos
+          can be found here `Kerberos setup for NFS Ganesha in Ceph <https://github.com/nfs-ganesha/nfs-ganesha/wiki/Kerberos-setup-for-NFS-Ganesha-in-Ceph>`_.
+
+
 .. note:: Export creation is supported only for NFS Ganesha clusters deployed using nfs interface.
 
 Create RGW Export
@@ -285,7 +348,7 @@ To export a *bucket*:
 
 .. code::
 
-   $ ceph nfs export create rgw --cluster-id <cluster_id> --pseudo-path <pseudo_path> --bucket <bucket_name> [--user-id <user-id>] [--readonly] [--client_addr <value>...] [--squash <value>]
+   $ ceph nfs export create rgw --cluster-id <cluster_id> --pseudo-path <pseudo_path> --bucket <bucket_name> [--user-id <user-id>] [--readonly] [--client_addr <value>...] [--squash <value>] [--sectype <value>...]
 
 For example, to export *mybucket* via NFS cluster *mynfs* at the pseudo-path */bucketdata* to any host in the ``192.168.10.0/24`` network
 
@@ -315,6 +378,18 @@ for permissible values.
 ``<squash>`` defines the kind of user id squashing to be performed. The default
 value is `no_root_squash`. See the `NFS-Ganesha Export Sample`_ for
 permissible values.
+
+``<sectype>`` specifies which authentication methods will be used when
+connecting to the export. Valid values include "krb5p", "krb5i", "krb5", "sys",
+and "none". More than one value can be supplied. The flag may be specified
+multiple times (example: ``--sectype=krb5p --sectype=krb5i``) or multiple
+values may be separated by a comma (example: ``--sectype krb5p,krb5i``). The
+server will negotatiate a supported security type with the client preferring
+the supplied methods left-to-right.
+
+.. note:: Specifying values for sectype that require Kerberos will only function on servers
+          that are configured to support Kerberos. Setting up NFS-Ganesha to support Kerberos
+          is outside the scope of this document.
 
 RGW user export
 ^^^^^^^^^^^^^^^
@@ -409,9 +484,9 @@ For example,::
      ],
      "fsal": {
        "name": "CEPH",
-       "user_id": "nfs.mynfs.1",
        "fs_name": "a",
-       "sec_label_xattr": ""
+       "sec_label_xattr": "",
+       "cmount_path": "/"
      },
      "clients": []
    }
@@ -425,6 +500,9 @@ provided JSON should fully describe the new state of the export (just
 as when creating a new export), with the exception of the
 authentication credentials, which will be carried over from the
 previous state of the export where possible.
+
+!! NOTE: The ``user_id`` in the ``fsal`` block should not be modified or mentioned in the JSON file as it is auto-generated for CephFS exports.
+It's auto-generated in the format ``nfs.<cluster_id>.<fs_name>.<hash_id>``.
 
 ::
 
@@ -446,9 +524,9 @@ previous state of the export where possible.
      ],
      "fsal": {
        "name": "CEPH",
-       "user_id": "nfs.mynfs.1",
        "fs_name": "a",
-       "sec_label_xattr": ""
+       "sec_label_xattr": "",
+       "cmount_path": "/"
      },
      "clients": []
    }
@@ -500,6 +578,9 @@ If the NFS service is running on a non-standard port number:
 
 .. note:: Only NFS v4.0+ is supported.
 
+.. note:: As of this writing (01 Jan 2024), no version of Microsoft Windows
+   supports mouting an NFS v4.x export natively.
+
 Troubleshooting
 ===============
 
@@ -533,20 +614,26 @@ The NFS log level can be adjusted using `nfs cluster config set` command (see :r
 Manual Ganesha deployment
 =========================
 
-It may be possible to deploy and manage the NFS ganesha daemons manually
-instead of allowing cephadm or rook to do so.
+It may be possible to deploy and manage the NFS ganesha daemons without
+orchestration frameworks such as cephadm or rook.
 
 .. note:: Manual configuration is not tested or fully documented; your
           mileage may vary. If you make this work, please help us by
           updating this documentation.
 
-Known issues
+Limitations
 ------------
 
-* The ``mgr/nfs`` module enumerates NFS clusters via the orchestrator API; if NFS is
-  not managed by the orchestrator (e.g., cephadm or rook) then this will not work.  It
-  may be possible to create the cluster, mark the cephadm service as 'unmanaged', but this
-  is awkward and not ideal.
+If no orchestrator module is enabled for the Ceph Manager the NFS cluster
+management commands, such as those starting with ``ceph nfs cluster``, will not
+function. However, commands that manage NFS exports, like those prefixed with
+``ceph nfs export`` are expected to work as long as the necessary RADOS objects
+have already been created. The exact RADOS objects required are not documented
+at this time as support for this feature is incomplete. A curious reader can
+find some details about the object by reading the source code for the
+``mgr/nfs`` module (found in the ceph source tree under
+``src/pybind/mgr/nfs``).
+
 
 Requirements
 ------------

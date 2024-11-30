@@ -77,9 +77,9 @@ following:
 .. confval:: mon_host_override
 
 - :confval:`mon_dns_srv_name`
-- ``mon_data``, ``osd_data``, ``mds_data``, ``mgr_data``, and
-  similar options that define which local directory the daemon
-  stores its data in.
+- :confval:`mon_data`, :confval:`osd_data`, :confval:`mds_data`,
+  :confval:`mgr_data`, and similar options that define which local directory
+  the daemon stores its data in.
 - :confval:`keyring`, :confval:`keyfile`, and/or :confval:`key`, which can be used to
   specify the authentication credential to use to authenticate with
   the monitor.  Note that in most cases the default keyring location
@@ -229,9 +229,9 @@ Ceph 支持下列元变量：
 
 
 
-配置文件
-========
-.. The Configuration File
+Ceph 配置文件
+=============
+.. Ceph configuration file
 
 启动时， Ceph 的各进程会依次到下列位置搜索配置文件：
 
@@ -457,57 +457,75 @@ generally separated out into separate fields or columns to ease readability.
 
 The following CLI commands are used to configure the cluster:
 
-* ``ceph config dump`` will dump the entire configuration database for
-  the cluster.
+* ``ceph config dump`` dumps the entire monitor configuration
+  database for the cluster.
 
-* ``ceph config get <who>`` will dump the configuration for a specific
-  daemon or client (e.g., ``mds.a``), as stored in the monitors'
-  configuration database.
+* ``ceph config get <who>`` dumps the configuration options stored in
+  the monitor configuration database for a specific daemon or client
+  (for example, ``mds.a``).
 
-* ``ceph config set <who> <option> <value>`` will set a configuration
-  option in the monitors' configuration database.
+* ``ceph config get <who> <option>`` shows either a configuration value
+  stored in the monitor configuration database for a specific daemon or client
+  (for example, ``mds.a``), or, if that value is not present in the monitor
+  configuration database, the compiled-in default value.
 
-* ``ceph config show <who>`` will show the reported running
-  configuration for a running daemon.  These settings may differ from
-  those stored by the monitors if there are also local configuration
-  files in use or options have been overridden on the command line or
-  at run time.  The source of the option values is reported as part
-  of the output.
+* ``ceph config set <who> <option> <value>`` specifies a configuration
+  option in the monitor configuration database.
 
-* ``ceph config assimilate-conf -i <input file> -o <output file>``
-  will ingest a configuration file from *input file* and move any
-  valid options into the monitors' configuration database.  Any
-  settings that are unrecognized, invalid, or cannot be controlled by
-  the monitor will be returned in an abbreviated config file stored in
-  *output file*.  This command is useful for transitioning from legacy
-  configuration files to centralized monitor-based configuration.
+* ``ceph config show <who>`` shows the configuration for a running daemon.
+  These settings might differ from those stored by the monitors if there are
+  also local configuration files in use or if options have been overridden on
+  the command line or at run time. The source of the values of the options is
+  displayed in the output.
+
+* ``ceph config assimilate-conf -i <input file> -o <output file>`` ingests a
+  configuration file from *input file* and moves any valid options into the
+  monitor configuration database. Any settings that are unrecognized, are
+  invalid, or cannot be controlled by the monitor will be returned in an
+  abbreviated configuration file stored in *output file*. This command is
+  useful for transitioning from legacy configuration files to centralized
+  monitor-based configuration.
+
+Note that ``ceph config set <who> <option> <value>`` and ``ceph config get
+<who> <option>`` will not necessarily return the same values. The latter
+command will show compiled-in default values. In order to determine whether a
+configuration option is present in the monitor configuration database, run
+``ceph config dump``.
 
 
 帮助信息
 ========
 .. Help
 
-You can get help for a particular option with::
+To get help for a particular option, run the following command:
 
-  ceph config help <option>
+.. prompt:: bash $
 
-Note that this will use the configuration schema that is compiled into the running monitors.  If you have a mixed-version cluster (e.g., during an upgrade), you might also want to query the option schema from a specific running daemon::
+   ceph config help <option>
 
-  ceph daemon <name> config help [option]
+For example:
 
-For example,::
+.. prompt:: bash $
 
-  $ ceph config help log_file
-  log_file - path to log file
+   ceph config help log_file
+
+::
+
+   log_file - path to log file
     (std::string, basic)
     Default (non-daemon):
     Default (daemon): /var/log/ceph/$cluster-$name.log
     Can update at runtime: false
     See also: [log_to_stderr,err_to_stderr,log_to_syslog,err_to_syslog]
 
-or::
+or:
 
-  $ ceph config help log_file -f json-pretty
+.. prompt:: bash $
+
+   ceph config help log_file -f json-pretty
+
+::
+
   {
       "name": "log_file",
       "type": "std::string",
@@ -530,9 +548,18 @@ or::
       "can_update_at_runtime": false
   }
 
-The ``level`` property can be any of `basic`, `advanced`, or `dev`.
-The `dev` options are intended for use by developers, generally for
-testing purposes, and are not recommended for use by operators.
+The ``level`` property can be ``basic``, ``advanced``, or ``dev``.  The `dev`
+options are intended for use by developers, generally for testing purposes, and
+are not recommended for use by operators.
+
+.. note:: This command uses the configuration schema that is compiled into the
+   running monitors. If you have a mixed-version cluster (as might exist, for
+   example, during an upgrade), you might want to query the option schema from
+   a specific running daemon by running a command of the following form:
+
+.. prompt:: bash $
+
+   ceph daemon <name> config help [option]
 
 
 运行时改配置
@@ -543,113 +570,146 @@ testing purposes, and are not recommended for use by operators.
 增加/降低日志输出、启用/禁用调试设置、甚至是运行时优化的时候\
 非常有用。
 
-Generally speaking, configuration options can be updated in the usual
-way via the ``ceph config set`` command.  For example, do enable the debug log level on a specific OSD,::
+Use the ``ceph config set`` command to update configuration options. For
+example, to enable the most verbose  debug log level on a specific OSD, run a
+command of the following form:
 
-  ceph config set osd.123 debug_ms 20
+.. prompt:: bash $
 
-Note that if the same option is also customized in a local
-configuration file, the monitor setting will be ignored (it has a
-lower priority than the local config file).
+   ceph config set osd.123 debug_ms 20
+
+.. note:: If an option has been customized in a local configuration file, the
+   `central config
+   <https://ceph.io/en/news/blog/2018/new-mimic-centralized-configuration-management/>`_
+   setting will be ignored because it has a lower priority than the local
+   configuration file.
+
+.. note:: Log levels range from 0 to 20.
 
 覆盖值
 ------
 .. Override values
 
-You can also temporarily set an option using the `tell` or `daemon`
-interfaces on the Ceph CLI.  These *override* values are ephemeral in
-that they only affect the running process and are discarded/lost if
-the daemon or process restarts.
+Options can be set temporarily by using the Ceph CLI ``tell`` or ``daemon``
+interfaces on the Ceph CLI. These *override* values are ephemeral, which means
+that they affect only the current instance of the daemon and revert to
+persistently configured values when the daemon restarts.
 
 Override values can be set in two ways:
 
-#. From any host, we can send a message to a daemon over the network with::
+#. From any host, send a message to a daemon with a command of the following
+   form:
 
-     ceph tell <name> config set <option> <value>
+   .. prompt:: bash $
 
-   For example,::
+      ceph tell <name> config set <option> <value>
 
-     ceph tell osd.123 config set debug_osd 20
+   For example:
 
-   The `tell` command can also accept a wildcard for the daemon
-   identifier.  For example, to adjust the debug level on all OSD
-   daemons,::
+   .. prompt:: bash $
 
-     ceph tell osd.* config set debug_osd 20
+      ceph tell osd.123 config set debug_osd 20
 
-#. From the host the process is running on, we can connect directly to
-   the process via a socket in ``/var/run/ceph`` with::
+   The ``tell`` command can also accept a wildcard as the daemon identifier.
+   For example, to adjust the debug level on all OSD daemons, run a command of
+   the following form:
 
-     ceph daemon <name> config set <option> <value>
+   .. prompt:: bash $
 
-   For example,::
+      ceph tell osd.* config set debug_osd 20
 
-     ceph daemon osd.4 config set debug_osd 20
+#. On the host where the daemon is running, connect to the daemon via a socket
+   in ``/var/run/ceph`` by running a command of the following form:
 
-Note that in the ``ceph config show`` command output these temporary
-values will be shown with a source of ``override``.
+   .. prompt:: bash $
+
+      ceph daemon <name> config set <option> <value>
+
+   For example:
+
+   .. prompt:: bash $
+
+      ceph daemon osd.4 config set debug_osd 20
+
+.. note:: In the output of the ``ceph config show`` command, these temporary
+   values are shown to have a source of ``override``.
 
 
 查看运行时配置
 ==============
 .. Viewing runtime settings
 
-You can see the current options set for a running daemon with the ``ceph config show`` command.  For example,::
+You can see the current settings specified for a running daemon with the ``ceph
+config show`` command. For example, to see the (non-default) settings for the
+daemon ``osd.0``, run the following command:
 
-  ceph config show osd.0
+.. prompt:: bash $
 
-will show you the (non-default) options for that daemon.  You can also look at a specific option with::
+   ceph config show osd.0
 
-  ceph config show osd.0 debug_osd
+To see a specific setting, run the following command:
 
-or view all options (even those with default values) with::
+.. prompt:: bash $
 
-  ceph config show-with-defaults osd.0
+   ceph config show osd.0 debug_osd
 
-You can also observe settings for a running daemon by connecting to it from the local host via the admin socket.  For example,::
+To see all settings (including those with default values), run the following
+command:
 
-  ceph daemon osd.0 config show
+.. prompt:: bash $
 
-will dump all current settings,::
+   ceph config show-with-defaults osd.0
 
-  ceph daemon osd.0 config diff
+You can see all settings for a daemon that is currently running by connecting
+to it on the local host via the admin socket. For example, to dump all
+current settings, run the following command:
 
-will show only non-default settings (as well as where the value came from: a config file, the monitor, an override, etc.), and::
+.. prompt:: bash $
 
-  ceph daemon osd.0 config get debug_osd
+   ceph daemon osd.0 config show
 
-will report the value of a single option.
+To see non-default settings and to see where each value came from (for example,
+a config file, the monitor, or an override), run the following command:
+
+.. prompt:: bash $
+
+   ceph daemon osd.0 config diff
+
+To see the value of a single setting, run the following command:
+
+.. prompt:: bash $
+
+   ceph daemon osd.0 config get debug_osd
 
 
-nautilus 以来的变化
-===================
-.. Changes since nautilus
+Octopus 版发生的变化
+====================
+.. Changes introduced in Octopus
 
 Octopus 版改变了配置文件的分析方式，改变的地方有：
 
-- Repeated configuration options are allowed, and no warnings will be printed.
-  The value of the last one is used, which means that the setting last in the file
-  is the one that takes effect. Before this change, we would print warning messages
-  when lines with duplicated options were encountered, like::
+- Repeated configuration options are allowed, and no warnings will be
+  displayed. This means that the setting that comes last in the file is the one
+  that takes effect. Prior to this change, Ceph displayed warning messages when
+  lines containing duplicate options were encountered, such as::
 
     warning line 42: 'foo' in section 'bar' redefined
-
-- Invalid UTF-8 options were ignored with warning messages. But since Octopus,
-  they are treated as fatal errors.
-
-- Backslash ``\`` is used as the line continuation marker to combine the next
-  line with current one. Before Octopus, it was required to follow a backslash with
-  a non-empty line. But in Octopus, an empty line following a backslash is now allowed.
-
+- Prior to Octopus, options containing invalid UTF-8 characters were ignored
+  with warning messages. But in Octopus, they are treated as fatal errors.
+- The backslash character ``\`` is used as the line-continuation marker that
+  combines the next line with the current one. Prior to Octopus, there was a
+  requirement that any end-of-line backslash be followed by a non-empty line.
+  But in Octopus, an empty line following a backslash is allowed.
 - In the configuration file, each line specifies an individual configuration
   option. The option's name and its value are separated with ``=``, and the
-  value may be quoted using single or double quotes. If an invalid
+  value may be enclosed within single or double quotes. If an invalid
   configuration is specified, we will treat it as an invalid configuration
-  file ::
+  file::
 
     bad option ==== bad value
+- Prior to Octopus, if no section name was specified in the configuration file,
+  all options would be set as though they were within the :confsec:`global`
+  section. This approach is discouraged. Since Octopus, any configuration
+  file that has no section name must contain only a single option.
 
-- Before Octopus, if no section name was specified in the configuration file,
-  all options would be set as though they were within the :confsec:`global` section. This is
-  now discouraged. Since Octopus, only a single option is allowed for
-  configuration files without a section name.
+.. |---|   unicode:: U+2014 .. EM DASH :trim:

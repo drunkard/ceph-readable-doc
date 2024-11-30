@@ -44,11 +44,12 @@ It is recommended to make use of the explicit device lists for ``block.db``,
    ``block.wal`` and ``journal``.
 
 
-.. Reporting
 .. _ceph-volume-lvm-batch_report:
 
 报表
 ====
+.. Reporting
+
 By default ``batch`` will print a report of the computed OSD layout and ask the
 user to confirm. This can be overridden by passing ``--yes``.
 
@@ -62,7 +63,10 @@ Consider the following invocation::
 This will deploy three OSDs with external ``db`` and ``wal`` volumes on
 an NVME device.
 
-**易读的报表**
+易读的报表
+----------
+.. Pretty reporting
+
 The ``pretty`` report format (the default) would
 look like this::
 
@@ -85,7 +89,10 @@ look like this::
       block_db        /dev/nvme0n1                                           66.67 GB         33.33%
 
 
-**JSON 格式的报表**
+JSON 格式的报表
+---------------
+.. JSON reporting
+
 Reporting can produce a structured output with ``--format json`` or
 ``--format json-pretty``::
 

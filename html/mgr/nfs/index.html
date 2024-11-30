@@ -160,7 +160,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#mounting">Mounting</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#manual-ganesha-deployment">Manual Ganesha deployment</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#known-issues">Known issues</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#limitations">Limitations</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#requirements">Requirements</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ganesha-configuration-hierarchy">Ganesha Configuration Hierarchy</a></li>
 </ul>
@@ -245,8 +245,8 @@ see <a class="reference internal" href="#nfs-ganesha-config"><span class="std st
 <section id="nfs-cluster-management">
 <h2>NFS Cluster management<a class="headerlink" href="#nfs-cluster-management" title="Permalink to this heading"></a></h2>
 <section id="create-nfs-ganesha-cluster">
-<h3>Create NFS Ganesha Cluster<a class="headerlink" href="#create-nfs-ganesha-cluster" title="Permalink to this heading"></a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>nfs<span class="w"> </span>cluster<span class="w"> </span>create<span class="w"> </span>&lt;cluster_id&gt;<span class="w"> </span><span class="o">[</span>&lt;placement&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>&lt;port&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--ingress<span class="w"> </span>--virtual-ip<span class="w"> </span>&lt;ip&gt;<span class="o">]</span>
+<span id="nfs-module-cluster-create"></span><h3>Create NFS Ganesha Cluster<a class="headerlink" href="#create-nfs-ganesha-cluster" title="Permalink to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>nfs<span class="w"> </span>cluster<span class="w"> </span>create<span class="w"> </span>&lt;cluster_id&gt;<span class="w"> </span><span class="o">[</span>&lt;placement&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--ingress<span class="o">]</span><span class="w"> </span><span class="o">[</span>--virtual_ip<span class="w"> </span>&lt;value&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--ingress-mode<span class="w"> </span><span class="o">{</span>default<span class="p">|</span>keepalive-only<span class="p">|</span>haproxy-standard<span class="p">|</span>haproxy-protocol<span class="o">}]</span><span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>&lt;int&gt;<span class="o">]</span>
 </pre></div>
 </div>
 <p>This creates a common recovery pool for all NFS Ganesha daemons, new user based on
@@ -292,6 +292,14 @@ is expected to be completed by the Quincy release (March
 </div>
 <p>For more details, refer <a class="reference internal" href="../../cephadm/services/#orchestrator-cli-placement-spec"><span class="std std-ref">Daemon Placement</span></a> but keep
 in mind that specifying the placement via a YAML file is not supported.</p>
+<p>Deployment of NFS daemons and the ingress service is asynchronous: the
+command may return before the services have completely started. You may
+wish to check that these services do successfully start and stay running.
+When using cephadm orchestration, these commands check service status:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>orch<span class="w"> </span>ls<span class="w"> </span>--service_name<span class="o">=</span>nfs.&lt;cluster_id&gt;
+$<span class="w"> </span>ceph<span class="w"> </span>orch<span class="w"> </span>ls<span class="w"> </span>--service_name<span class="o">=</span>ingress.nfs.&lt;cluster_id&gt;
+</pre></div>
+</div>
 </section>
 <section id="ingress">
 <h3>Ingress<a class="headerlink" href="#ingress" title="Permalink to this heading"></a></h3>
@@ -308,10 +316,29 @@ NFS endpoint that all clients can use to mount.  Ceph will take care
 of the details of NFS redirecting traffic on the virtual IP to the
 appropriate backend NFS servers, and redeploying NFS servers when they
 fail.</p>
-<p>Enabling ingress via the <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">nfs</span> <span class="pre">cluster</span> <span class="pre">create</span></code> command deploys a
-simple ingress configuration with the most common configuration
-options.  Ingress can also be added to an existing NFS service (e.g.,
-one created without the <code class="docutils literal notranslate"><span class="pre">--ingress</span></code> flag), and the basic NFS service can
+<p>An optional <code class="docutils literal notranslate"><span class="pre">--ingress-mode</span></code> parameter can be provided to choose
+how the <em>ingress</em> service is configured:</p>
+<ul class="simple">
+<li><p>Setting <code class="docutils literal notranslate"><span class="pre">--ingress-mode</span> <span class="pre">keepalive-only</span></code> deploys a simplified <em>ingress</em>
+service that provides a virtual IP with the nfs server directly binding to
+that virtual IP and leaves out any sort of load balancing or traffic
+redirection. This setup will restrict users to deploying only 1 nfs daemon
+as multiple cannot bind to the same port on the virtual IP.</p></li>
+<li><p>Setting <code class="docutils literal notranslate"><span class="pre">--ingress-mode</span> <span class="pre">haproxy-standard</span></code> deploys a full <em>ingress</em> service
+to provide load balancing and high-availability using HAProxy and keepalived.
+Client IP addresses are not visible to the back-end NFS server and IP level
+restrictions on NFS exports will not function.</p></li>
+<li><p>Setting <code class="docutils literal notranslate"><span class="pre">--ingress-mode</span> <span class="pre">haproxy-protocol</span></code> deploys a full <em>ingress</em> service
+to provide load balancing and high-availability using HAProxy and keepalived.
+Client IP addresses are visible to the back-end NFS server and IP level
+restrictions on NFS exports are usable. This mode requires NFS Ganesha version
+5.0 or later.</p></li>
+<li><p>Setting <code class="docutils literal notranslate"><span class="pre">--ingress-mode</span> <span class="pre">default</span></code> is equivalent to not providing any other
+ingress mode by name. When no other ingress mode is specified by name
+the default ingress mode used is <code class="docutils literal notranslate"><span class="pre">haproxy-standard</span></code>.</p></li>
+</ul>
+<p>Ingress can be added to an existing NFS service (e.g., one initially created
+without the <code class="docutils literal notranslate"><span class="pre">--ingress</span></code> flag), and the basic NFS service can
 also be modified after the fact to include non-default options, by modifying
 the services directly.  For more information, see <a class="reference internal" href="../../cephadm/services/nfs/#cephadm-ha-nfs"><span class="std std-ref">High-availability NFS</span></a>.</p>
 </section>
@@ -339,6 +366,14 @@ $ kubectl get services -n rook-ceph rook-ceph-nfs-&lt;cluster-name&gt;-&lt;node-
 </pre></div>
 </div>
 <p>This deletes the deployed cluster.</p>
+<p>Removal of NFS daemons and the ingress service is asynchronous: the
+command may return before the services have been completely deleted. You may
+wish to check that these services are no longer reported. When using cephadm
+orchestration, these commands check service status:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>orch<span class="w"> </span>ls<span class="w"> </span>--service_name<span class="o">=</span>nfs.&lt;cluster_id&gt;
+$<span class="w"> </span>ceph<span class="w"> </span>orch<span class="w"> </span>ls<span class="w"> </span>--service_name<span class="o">=</span>ingress.nfs.&lt;cluster_id&gt;
+</pre></div>
+</div>
 </section>
 <section id="updating-an-nfs-cluster">
 <h3>Updating an NFS Cluster<a class="headerlink" href="#updating-an-nfs-cluster" title="Permalink to this heading"></a></h3>
@@ -443,7 +478,7 @@ supported.</p>
 </div>
 <section id="create-cephfs-export">
 <h3>Create CephFS Export<a class="headerlink" href="#create-cephfs-export" title="Permalink to this heading"></a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>nfs<span class="w"> </span><span class="nb">export</span><span class="w"> </span>create<span class="w"> </span>cephfs<span class="w"> </span>--cluster-id<span class="w"> </span>&lt;cluster_id&gt;<span class="w"> </span>--pseudo-path<span class="w"> </span>&lt;pseudo_path&gt;<span class="w"> </span>--fsname<span class="w"> </span>&lt;fsname&gt;<span class="w"> </span><span class="o">[</span>--readonly<span class="o">]</span><span class="w"> </span><span class="o">[</span>--path<span class="o">=</span>/path/in/cephfs<span class="o">]</span><span class="w"> </span><span class="o">[</span>--client_addr<span class="w"> </span>&lt;value&gt;...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--squash<span class="w"> </span>&lt;value&gt;<span class="o">]</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>nfs<span class="w"> </span><span class="nb">export</span><span class="w"> </span>create<span class="w"> </span>cephfs<span class="w"> </span>--cluster-id<span class="w"> </span>&lt;cluster_id&gt;<span class="w"> </span>--pseudo-path<span class="w"> </span>&lt;pseudo_path&gt;<span class="w"> </span>--fsname<span class="w"> </span>&lt;fsname&gt;<span class="w"> </span><span class="o">[</span>--readonly<span class="o">]</span><span class="w"> </span><span class="o">[</span>--path<span class="o">=</span>/path/in/cephfs<span class="o">]</span><span class="w"> </span><span class="o">[</span>--client_addr<span class="w"> </span>&lt;value&gt;...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--squash<span class="w"> </span>&lt;value&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--sectype<span class="w"> </span>&lt;value&gt;...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--cmount_path<span class="w"> </span>&lt;value&gt;<span class="o">]</span>
 </pre></div>
 </div>
 <p>This creates export RADOS objects containing the export block, where</p>
@@ -463,6 +498,26 @@ for permissible values.</p>
 <p><code class="docutils literal notranslate"><span class="pre">&lt;squash&gt;</span></code> defines the kind of user id squashing to be performed. The default
 value is <cite>no_root_squash</cite>. See the <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/export.txt">NFS-Ganesha Export Sample</a> for
 permissible values.</p>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;sectype&gt;</span></code> specifies which authentication methods will be used when
+connecting to the export. Valid values include “krb5p”, “krb5i”, “krb5”, “sys”,
+and “none”. More than one value can be supplied. The flag may be specified
+multiple times (example: <code class="docutils literal notranslate"><span class="pre">--sectype=krb5p</span> <span class="pre">--sectype=krb5i</span></code>) or multiple
+values may be separated by a comma (example: <code class="docutils literal notranslate"><span class="pre">--sectype</span> <span class="pre">krb5p,krb5i</span></code>). The
+server will negotatiate a supported security type with the client preferring
+the supplied methods left-to-right.</p>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;cmount_path&gt;</span></code> specifies the path within the CephFS to mount this export on. It is
+allowed to be any complete path hierarchy between <code class="docutils literal notranslate"><span class="pre">/</span></code> and the <code class="docutils literal notranslate"><span class="pre">EXPORT</span> <span class="pre">{path}</span></code>. (i.e. if <code class="docutils literal notranslate"><span class="pre">EXPORT</span> <span class="pre">{</span> <span class="pre">Path</span> <span class="pre">}</span></code> parameter is <code class="docutils literal notranslate"><span class="pre">/foo/bar</span></code> then cmount_path could be <code class="docutils literal notranslate"><span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">/foo</span></code> or <code class="docutils literal notranslate"><span class="pre">/foo/bar</span></code>).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If this and the other <code class="docutils literal notranslate"><span class="pre">EXPORT</span> <span class="pre">{</span> <span class="pre">FSAL</span> <span class="pre">{}</span> <span class="pre">}</span></code> options are the same between multiple exports, those exports will share a single CephFS client.
+If not specified, the default is <code class="docutils literal notranslate"><span class="pre">/</span></code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Specifying values for sectype that require Kerberos will only function on servers
+that are configured to support Kerberos. Setting up NFS-Ganesha to support Kerberos
+can be found here <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/wiki/Kerberos-setup-for-NFS-Ganesha-in-Ceph">Kerberos setup for NFS Ganesha in Ceph</a>.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Export creation is supported only for NFS Ganesha clusters deployed using nfs interface.</p>
@@ -480,7 +535,7 @@ the objects in the bucket.</p></li>
 <section id="rgw-bucket-export">
 <h4>RGW bucket export<a class="headerlink" href="#rgw-bucket-export" title="Permalink to this heading"></a></h4>
 <p>To export a <em>bucket</em>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph nfs export create rgw --cluster-id &lt;cluster_id&gt; --pseudo-path &lt;pseudo_path&gt; --bucket &lt;bucket_name&gt; [--user-id &lt;user-id&gt;] [--readonly] [--client_addr &lt;value&gt;...] [--squash &lt;value&gt;]
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph nfs export create rgw --cluster-id &lt;cluster_id&gt; --pseudo-path &lt;pseudo_path&gt; --bucket &lt;bucket_name&gt; [--user-id &lt;user-id&gt;] [--readonly] [--client_addr &lt;value&gt;...] [--squash &lt;value&gt;] [--sectype &lt;value&gt;...]
 </pre></div>
 </div>
 <p>For example, to export <em>mybucket</em> via NFS cluster <em>mynfs</em> at the pseudo-path <em>/bucketdata</em> to any host in the <code class="docutils literal notranslate"><span class="pre">192.168.10.0/24</span></code> network</p>
@@ -508,6 +563,19 @@ for permissible values.</p>
 <p><code class="docutils literal notranslate"><span class="pre">&lt;squash&gt;</span></code> defines the kind of user id squashing to be performed. The default
 value is <cite>no_root_squash</cite>. See the <a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/export.txt">NFS-Ganesha Export Sample</a> for
 permissible values.</p>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;sectype&gt;</span></code> specifies which authentication methods will be used when
+connecting to the export. Valid values include “krb5p”, “krb5i”, “krb5”, “sys”,
+and “none”. More than one value can be supplied. The flag may be specified
+multiple times (example: <code class="docutils literal notranslate"><span class="pre">--sectype=krb5p</span> <span class="pre">--sectype=krb5i</span></code>) or multiple
+values may be separated by a comma (example: <code class="docutils literal notranslate"><span class="pre">--sectype</span> <span class="pre">krb5p,krb5i</span></code>). The
+server will negotatiate a supported security type with the client preferring
+the supplied methods left-to-right.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Specifying values for sectype that require Kerberos will only function on servers
+that are configured to support Kerberos. Setting up NFS-Ganesha to support Kerberos
+is outside the scope of this document.</p>
+</div>
 </section>
 <section id="rgw-user-export">
 <h4>RGW user export<a class="headerlink" href="#rgw-user-export" title="Permalink to this heading"></a></h4>
@@ -579,9 +647,9 @@ $ cat update_cephfs_export.json
   ],
   &quot;fsal&quot;: {
     &quot;name&quot;: &quot;CEPH&quot;,
-    &quot;user_id&quot;: &quot;nfs.mynfs.1&quot;,
     &quot;fs_name&quot;: &quot;a&quot;,
-    &quot;sec_label_xattr&quot;: &quot;&quot;
+    &quot;sec_label_xattr&quot;: &quot;&quot;,
+    &quot;cmount_path&quot;: &quot;/&quot;
   },
   &quot;clients&quot;: []
 }
@@ -595,6 +663,8 @@ provided JSON should fully describe the new state of the export (just
 as when creating a new export), with the exception of the
 authentication credentials, which will be carried over from the
 previous state of the export where possible.</p>
+<p>!! NOTE: The <code class="docutils literal notranslate"><span class="pre">user_id</span></code> in the <code class="docutils literal notranslate"><span class="pre">fsal</span></code> block should not be modified or mentioned in the JSON file as it is auto-generated for CephFS exports.
+It’s auto-generated in the format <code class="docutils literal notranslate"><span class="pre">nfs.&lt;cluster_id&gt;.&lt;fs_name&gt;.&lt;hash_id&gt;</span></code>.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph nfs export apply mynfs -i update_cephfs_export.json
 $ cat update_cephfs_export.json
 {
@@ -613,9 +683,9 @@ $ cat update_cephfs_export.json
   ],
   &quot;fsal&quot;: {
     &quot;name&quot;: &quot;CEPH&quot;,
-    &quot;user_id&quot;: &quot;nfs.mynfs.1&quot;,
     &quot;fs_name&quot;: &quot;a&quot;,
-    &quot;sec_label_xattr&quot;: &quot;&quot;
+    &quot;sec_label_xattr&quot;: &quot;&quot;,
+    &quot;cmount_path&quot;: &quot;/&quot;
   },
   &quot;clients&quot;: []
 }
@@ -664,6 +734,11 @@ and the export’s pseudo-path was <code class="docutils literal notranslate"><s
 <p class="admonition-title">Note</p>
 <p>Only NFS v4.0+ is supported.</p>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As of this writing (01 Jan 2024), no version of Microsoft Windows
+supports mouting an NFS v4.x export natively.</p>
+</div>
 </section>
 <section id="troubleshooting">
 <h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this heading"></a></h2>
@@ -689,22 +764,25 @@ the relevant host with:</p>
 </section>
 <section id="manual-ganesha-deployment">
 <span id="nfs-ganesha-config"></span><h2>Manual Ganesha deployment<a class="headerlink" href="#manual-ganesha-deployment" title="Permalink to this heading"></a></h2>
-<p>It may be possible to deploy and manage the NFS ganesha daemons manually
-instead of allowing cephadm or rook to do so.</p>
+<p>It may be possible to deploy and manage the NFS ganesha daemons without
+orchestration frameworks such as cephadm or rook.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Manual configuration is not tested or fully documented; your
 mileage may vary. If you make this work, please help us by
 updating this documentation.</p>
 </div>
-<section id="known-issues">
-<h3>Known issues<a class="headerlink" href="#known-issues" title="Permalink to this heading"></a></h3>
-<ul class="simple">
-<li><p>The <code class="docutils literal notranslate"><span class="pre">mgr/nfs</span></code> module enumerates NFS clusters via the orchestrator API; if NFS is
-not managed by the orchestrator (e.g., cephadm or rook) then this will not work.  It
-may be possible to create the cluster, mark the cephadm service as ‘unmanaged’, but this
-is awkward and not ideal.</p></li>
-</ul>
+<section id="limitations">
+<h3>Limitations<a class="headerlink" href="#limitations" title="Permalink to this heading"></a></h3>
+<p>If no orchestrator module is enabled for the Ceph Manager the NFS cluster
+management commands, such as those starting with <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">nfs</span> <span class="pre">cluster</span></code>, will not
+function. However, commands that manage NFS exports, like those prefixed with
+<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">nfs</span> <span class="pre">export</span></code> are expected to work as long as the necessary RADOS objects
+have already been created. The exact RADOS objects required are not documented
+at this time as support for this feature is incomplete. A curious reader can
+find some details about the object by reading the source code for the
+<code class="docutils literal notranslate"><span class="pre">mgr/nfs</span></code> module (found in the ceph source tree under
+<code class="docutils literal notranslate"><span class="pre">src/pybind/mgr/nfs</span></code>).</p>
 </section>
 <section id="requirements">
 <h3>Requirements<a class="headerlink" href="#requirements" title="Permalink to this heading"></a></h3>

@@ -120,15 +120,20 @@
 <li class="toctree-l3"><a class="reference internal" href="#id3">数据存储</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id4">硬盘驱动器</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id5">固态硬盘</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6">控制器</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">压力测试</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id8">写缓存</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id9">其他注意事项</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">控制器</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">压力测试</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">写缓存</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">其他注意事项</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#id10">网络</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id11">故障域</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id12">最低硬件推荐</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">网络</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id12">速度</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">成本</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#bmc">底板管理控制器（ BMC ）</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id14">故障域</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id15">最低硬件推荐</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../os-recommendations/">操作系统推荐</a></li>
@@ -197,74 +202,104 @@
   
   <section id="hardware-recommendations">
 <span id="id1"></span><h1>硬件推荐<a class="headerlink" href="#hardware-recommendations" title="Permalink to this heading"></a></h1>
-<p>Ceph 为普通硬件设计，这可使构建、
+<p>Ceph 为普通硬件设计，这样可使建造、
 维护 PB 级数据集群的费用相对低廉。
 规划集群硬件时，需要均衡几方面的因素，
-包括区域失效和潜在的性能问题。
-硬件规划要包含把使用 Ceph 集群的 Ceph 守护进程和其他进程恰当分布。
-通常，我们推荐在一台机器上只运行一种类型的守护进程。
-我们推荐把使用数据集群的进程
-（如 OpenStack 、 CloudStack 等）
-安装在别的机器上。</p>
+包括故障域、成本和性能。
+硬件规划还包括，恰当地分布使用
+Ceph 集群的 Ceph 守护进程和其他进程。
+通常，我们推荐在一台机器上只运行一种类型的 Ceph 守护进程。
+我们推荐把使用数据集群的进程（如 OpenStack 、 OpenNebula 、
+CloudStack 、 Kubernetes 等）安装在别的机器上。</p>
+<p>一个 Ceph 集群的需求与另一个集群的需求不尽相同，
+下面是一些一般准则。</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>另请参考 <a class="reference external" href="https://ceph.com/community/blog/">Ceph 博客文章</a>。</p>
+<p>也可以参考 <a class="reference external" href="https://ceph.com/community/blog/">Ceph 博客文章</a>。</p>
 </div>
 <section id="cpu">
 <h2>CPU<a class="headerlink" href="#cpu" title="Permalink to this heading"></a></h2>
-<p>Ceph 元数据服务器对 CPU 敏感，所以它们应该有足够的处理能力
-（如 4 核或更强悍的 CPU ），而且时钟速率（频率 GHz ）越高越有利。
-Ceph 的 OSD 运行着 <a class="reference internal" href="../../glossary/#term-RADOS"><span class="xref std std-term">RADOS</span></a> 服务、
-用 <a class="reference internal" href="../../glossary/#term-CRUSH"><span class="xref std std-term">CRUSH</span></a> 计算数据存放位置、复制数据、维护它自己的集群运行图副本，
-因此， OSD 需要一定的处理能力；
-需求随应用场景不同差异巨大，对于轻量级的、归档应用场景，
-需要为每个 OSD 配备最少一个核心，
-高负载场景（比如为 VM 提供 RBD 卷）需要为每个 OSD 配备两个核心。
-监视器、管理器对 CPU 要求不高，普通处理器就可以。
-还得考虑机器以后是否还会运行 Ceph 守护进程以外的 CPU 密集型任务。
-例如，如果服务器以后要运行用于计算的虚拟机（如 OpenStack Nova ），
-你就要确保给 Ceph 守护进程们保留了足够的处理能力，
-我们建议在单独的机器上运行 CPU 密集型任务，
-以避免资源竞争。</p>
+<p>Ceph 元数据服务器（ MDS ）对 CPU 敏感，它们是单线程的，
+而且时钟速率（频率 GHz ）越高运行越高效。
+MDS 服务器不需要很多 CPU 核心，除非这些服务器还托管着别的服务，
+比如用于 CephFS 元数据存储池的 SSD OSD 。
+OSD 节点需要有足够的处理能力来运行 <a class="reference internal" href="../../glossary/#term-RADOS"><span class="xref std std-term">RADOS</span></a> 服务、
+用 <a class="reference internal" href="../../glossary/#term-CRUSH"><span class="xref std std-term">CRUSH</span></a> 计算数据存放位置、复制数据、维护它自己的集群运行图副本，</p>
+<p>在 Ceph 的早期版本中，我们根据每个 OSD 的核心数来推荐硬件，
+但这个<em>每个 OSD 的核心数</em>指标与每个 IOP 的周期数和每个 OSD 的 IOPS 数指标相比，不再那样有用了。
+例如，使用 NVMe OSD 驱动器时，在真正的集群上 Ceph 可以轻松用掉五六个核心，
+而在隔离的单个 OSD 上最多可以利用约十四个核心。
+因此，每个 OSD 的核心数这个指标不再像以前那样有效。
+选择硬件时，请根据每个核心的 IOPS 进行选择。</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>当我们谈到 CPU <em>核心</em>时，我们指的是启用超线程功能后的<em>线程</em>。
+超线程通常有利于 Ceph 服务器。</p>
+</div>
+<p>监视器节点和管理器节点对 CPU 的需求不高，只需要普通的处理器。
+如果您的主机除了运行 Ceph 守护进程外还将运行 CPU 密集型进程，
+请确保有足够的算力同时运行 CPU 密集型进程和 Ceph 守护进程
+（比如 OpenStack Nova 就是一种 CPU 密集型进程）。
+我们建议您在单独的主机上运行 Ceph 以外的 CPU 密集型进程
+（就是在监视器和管理器节点的以外的主机上），以避免资源竞争。
+如果集群部署了 Ceph 对象网关，那么 RGW 守护进程可以与监视器和管理器服务共同驻留，前提是这些节点有足够的资源。</p>
 </section>
 <section id="ram">
 <h2>RAM 内存<a class="headerlink" href="#ram" title="Permalink to this heading"></a></h2>
 <p>一般来说，内存越多越好。对于一般的集群，
 监视器、管理器节点有 64GB 就够用了；对于有数百个 OSD 的较大集群来说，
-128GB 差不多够。 BlueStore OSD 默认的内存限度是 4GB ，
-考虑到操作系统占用的、管理任务（像监控和指标测量）、
-还有恢复时内存消耗会增加：建议每个 BlueStore OSD 配备 8GB 左右。</p>
+128GB 差不多够。</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>在谈到内存和存储需求时，
+我们通常描述的是特定类型的单个守护进程的需求。
+因此，一台服务器作为一个整体，它的最低需求要累加：
+本机上运行的所有守护进程、以及日志和其他操作系统组件所需的资源。
+记着，服务器对内存和存储的需求在启动时、组件故障或新增组件、
+还有集群重新平衡时会更大。换句话说，
+预留的余量应该大于你在小型初始集群的平静期见过它占用的空间。</p>
+</div>
+<p>用 <a class="reference internal" href="../../rados/configuration/bluestore-config-ref/#confval-osd_memory_target"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_target</span></code></a> 选项配置 BlueStore OSD 的内存限度，
+默认值是 4GB 。考虑到操作系统占用的、管理任务（像监控和指标测量）、
+还有恢复时内存消耗会增加：建议<em>每个 BlueStore OSD</em> 配备 8GB 左右。</p>
 <section id="ceph-mon-ceph-mgr">
 <h3>监视器和管理器（ ceph-mon 和 ceph-mgr ）<a class="headerlink" href="#ceph-mon-ceph-mgr" title="Permalink to this heading"></a></h3>
-<p>监视器和管理器守护进程的内存使用量通常和集群的规模成正比。
+<p>监视器和管理器守护进程的内存使用量随着集群的规模变化。
 需要注意的是，在启动时、拓扑结构变化时、和恢复期间，
 这些守护进程需要的内存量高于稳定状态下的，所以应该按峰值使用量规划。
 对于很小的集群， 32GB 就够了；
 对于比较大的集群，比如 300 个 OSD 以内，应该配备 64GB ；
 对于 OSD 更多的集群（或者会扩容到这么大的），应该配备 128GB 。
-你可能还得调整配置，比如 <code class="docutils literal notranslate"><span class="pre">mon_osd_cache_size</span></code> 或
-<code class="docutils literal notranslate"><span class="pre">rocksdb_cache_size</span></code> ，应该仔细研究后再动手。</p>
+你可能还得调整下面的选项：</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../../rados/configuration/mon-config-ref/#confval-mon_osd_cache_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">mon_osd_cache_size</span></code></a></p></li>
+<li><p><code class="xref std std-confval docutils literal notranslate"><span class="pre">rocksdb_cache_size</span></code></p></li>
+</ul>
 </section>
 <section id="ceph-mds">
 <h3>元数据服务器（ ceph-mds ）<a class="headerlink" href="#ceph-mds" title="Permalink to this heading"></a></h3>
-<p>元数据守护进程的内存使用量取决于给它配置的缓存有多大。
-对于大多数系统我们都建议 1GB 起步，见 <code class="xref std std-confval docutils literal notranslate"><span class="pre">mds_cache_memory</span></code> 。</p>
+<p>CephFS 元数据守护进程的内存使用量取决于给它配置的缓存有多大。
+对于大多数系统我们都建议 1GB 起步，见 <a class="reference internal" href="../../cephfs/cache-configuration/#confval-mds_cache_memory_limit"><code class="xref std std-confval docutils literal notranslate"><span class="pre">mds_cache_memory_limit</span></code></a> 。</p>
 </section>
 </section>
 <section id="id2">
 <h2>内存<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
 <p>Bluestore 用它自己的内存缓存数据，而不是靠操作系统的页缓存机制。
-在 bluestore 里，能用 <a class="reference internal" href="../../rados/configuration/bluestore-config-ref/#confval-osd_memory_target"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_target</span></code></a> 配置选项来调整 OSD 可以消耗的内存量。</p>
+在 Bluestore 里，能用 <a class="reference internal" href="../../rados/configuration/bluestore-config-ref/#confval-osd_memory_target"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_target</span></code></a> 配置选项来调整 OSD 可以消耗的内存量。</p>
 <ul class="simple">
-<li><p>把 osd_memory_target 设置到 2GB 以下是非常不推荐的，
-它没法保持那么低的内存使用量，还会导致非常差的性能。</p></li>
-<li><p>把内存量设置为 2GB - 4GB 一般可以用，但性能提不起来，
-因为在 IO 操作时元数据得从磁盘读取，
-除非活跃的数据集相当较小。</p></li>
-<li><p>4GB 是 osd_memory_target 选项的当前默认值，设置成这样后，
-一般的使用场景下都可以均衡内存需求量和 OSD 性能。</p></li>
-<li><p>把 osd_memory_target 设置成 4GB 以上，在有很多（小）对象时、
-或者处理巨大的（256GB/OSD 或更多）数据集时可以提升性能。</p></li>
+<li><p>不建议把 <a class="reference internal" href="../../rados/configuration/bluestore-config-ref/#confval-osd_memory_target"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_target</span></code></a> 设置到 2GB 以下，
+Ceph 不一定能把内存消耗量压到 2GB 以下，
+还会导致非常差的性能。</p></li>
+<li><p>把内存量设置为 2GB - 4GB 一般可以用，
+但性能提不起来，因为在 IO 操作时元数据得从磁盘读取，
+除非活跃的数据集相对较小。</p></li>
+<li><p>4GB 是 <a class="reference internal" href="../../rados/configuration/bluestore-config-ref/#confval-osd_memory_target"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_target</span></code></a> 选项当前的默认值，
+这个默认值适用于典型的应用场景，
+主要是为了均衡内存成本和 OSD 性能。</p></li>
+<li><p>把 <a class="reference internal" href="../../rados/configuration/bluestore-config-ref/#confval-osd_memory_target"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_memory_target</span></code></a> 设置成 4GB 以上，
+在有很多（小）对象时、或者处理巨大的
+（256GB/OSD 或更多）数据集时可以提升性能。
+特别是在高速的 NVMe OSD 上更是如此。</p></li>
 </ul>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
@@ -276,59 +311,92 @@ Ceph 的 OSD 运行着 <a class="reference internal" href="../../glossary/#term-
 现在的 Ceph 为了避免此问题，在应用层禁用了透明巨型页，
 即使那样，仍然不能保证内核会立即回收空出来的（ unmapped ）内存。
 OSD 也会时不时地越过它的内存限值。
-我们建议另外再预留大约 20% 的内存，以防止偶尔爆发、或内核回收空闲内存延期而导致 OSD 们被 OOM 清理掉。
+我们建议另外再预留大约 20% 的内存，以防止偶尔爆发、或内核回收空闲内存延期而导致 OSD 们被
+OOM （<strong>O</strong>ut <strong>O</strong>f <strong>M</strong>emory, 内存耗尽）清理掉。
 总之，这个值比实际需要的可多可少，
 取决于系统的实际配置。</p>
 </div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>对于现代操作系统，不建议给它配置交换区来为守护进程提供额外的虚拟内存。
+这样做可能会导致更差的性能，而 Ceph 集群可能宁愿守护进程崩溃，
+也不要慢的像蜗牛一样。</p>
+</div>
 <p>使用旧的 FileStore 后端时，数据缓存会使用内核的页缓存机制，
-所以通常不需要调整，而且 OSD 的内存消耗量一般和系统内每个守护进程持有的 PG 数有关。</p>
+所以通常不需要调整。而且在使用旧的 FileStore 后端时，
+OSD 的内存消耗量一般和系统内每个守护进程持有的 PG 数有关。</p>
 </section>
 <section id="id3">
 <h2>数据存储<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
-<p>要谨慎地规划数据存储配置，因为其间涉及明显的成本和性能折衷。来自操作系统的并行操作和到单个硬盘的多个守护进程并发读、
+<p>要谨慎地规划数据存储配置，
+因为对成本和性能的权衡会导致结果会有很大起伏。来自操作系统的并行操作和到单个硬盘的多个守护进程并发读、
 写请求操作会极大地降低性能。</p>
+<p>OSD 需要大量硬盘空间来存储 RADOS 数据。
+我们建议硬盘容量至少为 1 TB。小于 1 TB 的 OSD 硬盘会将其容量的很大一部分用于元数据，
+而小于 100 GB 的硬盘则完全没效益。</p>
+<p>即便要用 HDD 存储海量的 OSD 数据，
+我们仍然<em>强烈建议</em>至少为 Ceph 监视器、 Ceph 管理器主机、
+CephFS 元数据服务器的元数据存储池和
+Ceph 对象网关 (RGW) 索引存储池配置（企业级）固态硬盘。</p>
+<p>要榨出 Ceph 的最佳性能，
+最好在单独的硬盘上安装以下：</p>
+<ul class="simple">
+<li><p>操作系统</p></li>
+<li><p>OSD 数据</p></li>
+<li><p>BlueStore WAL+DB</p></li>
+</ul>
+<p>关于如何在 Ceph 集群中有效混合使用快速驱动器和慢速驱动器的详细信息，
+参阅《 Bluestore 配置参考》中的 <a class="reference external" href="https://docs.ceph.com/en/latest/rados/configuration/bluestore-config-ref/#block-and-block-db">block 和 block.db</a> 部分。</p>
 <section id="id4">
 <h3>硬盘驱动器<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h3>
-<p>OSD 应该有足够的空间用于存储对象数据。
-考虑到大硬盘的每 GB 成本，
-我们建议用容量大于 1TB 的硬盘。
+<p>请仔细考虑大硬盘的每 GB 成本优势。
 建议用 GB 数除以硬盘价格来计算每 GB 成本，
-因为较大的硬盘通常会对每 GB 成本有较大影响，
+因为更大的硬盘通常会对每 GB 成本有比较大影响，
 例如，单价为 $75 的 1TB 硬盘其每 GB 价格为 $0.07 （ $75/1024=0.0732 ），
 而单价为 $150 的 3TB 硬盘其每 GB 价格为 $0.05 （ $150/3072=0.0488 ），
-这样，使用 1TB 硬盘会增加 40% 的每 GB 价格，
-使得你集群的经济性较低。</p>
+这样，使用 1TB 硬盘会导致每 GB 价格增加 40% ，
+从而导致你的集群经济性大幅降低。</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>在单个 SAS / SATA 硬盘上运行多个 OSD <strong>不明智</strong>！
-而对于 NVMe 驱动器，
-分割到两个或更多 OSD 可以提高性能。</p>
+<p>在单个 SAS / SATA 硬盘上运行多个 OSD
+<strong>不明智</strong>！</p>
 </div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>在一个驱动器上同时运行 OSD 和监视器或元数据服务器也<strong>不明智</strong>！</p>
+<p>在一个驱动器上同时运行 OSD 和监视器、管理器或 MDS 数据也<strong>不明智</strong>！</p>
 </div>
-<p>存储驱动器受限于寻道时间、访问时间、读写时间、还有总吞吐量，
-这些物理局限性影响着整体系统性能，尤其在系统恢复期间。
-因此我们推荐独立的（最好是镜像的）驱动器用于安装操作系统和软件，
-另外每个 OSD 守护进程独占一个驱动器（不包括前述的 NVMe ）。
-大多数 “slow OSD” 问题的起因都是在相同的硬盘上运行了操作系统、多个 OSD 、
-和/或多个日志文件。对小型集群来说，
-鉴于解决性能问题的成本差不多会超过另外增加磁盘驱动器，
-你应该在规划设计时就避免增加 OSD 存储驱动器的负担来优化集群。</p>
-<p>Ceph 允许你在每块硬盘驱动器上运行多个 OSD ，
-但这会导致资源竞争并降低总体吞吐量。</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>对于机械硬盘， SATA 和 SAS 接口在容量较大时会逐渐成为瓶颈。
+另请参阅<a class="reference external" href="https://www.snia.org/forums/cmsi/programs/TCOcalc">存储网络行业协会的总拥有成本计算器</a> 。</p>
+</div>
+<p>存储驱动器受限于寻道时间、访问时间、
+读写时间、还有总吞吐量，
+这些物理限制影响着系统的整体性能，特别是在系统恢复期间。
+因此我们推荐独立的（最好是带镜像的）驱动器用于安装操作系统和软件，
+另外每个 OSD 守护进程独占一个驱动器。
+大多数 “slow OSD” 问题（如果不是硬件故障造成的）的起因都是在同一个硬盘上同时运行了操作系统和多个 OSD 。
+还要注意，现今的 22TB HDD 和 10 年前的 3TB 硬盘使用着同样的 SATA 接口，
+这意味着同样的接口承担的数据量却是以前的 7 倍。
+因此，在给 OSD 配备 HDD 时，大于 8TB 的驱动器最好只用来存储大文件、大对象，这些对性能不太敏感的数据。</p>
 </section>
 <section id="id5">
 <h3>固态硬盘<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h3>
-<p>一种提升性能的方法是使用固态硬盘（ SSD ）
-来降低随机访问时间和读延时，同时增加吞吐量。
-SSD 和硬盘相比每 GB 成本通常要高 10 倍以上，
-但访问时间至少比硬盘快 100 倍。</p>
+<p>使用固态硬盘（ SSD ）时可以大大提升 Ceph 性能，
+它在增加吞吐量的同时还能降低随机访问时间和读延时。</p>
+<p>SSD 和 HDD 相比每 GB 成本高，
+但访问时间至少比硬盘快 100 倍。
+SSD 可在繁忙的集群中避免热点问题和瓶颈问题，
+在全面评估总体拥有成本（ TCO ）时， SSD 可能有更好的经济性。
+值得注意的是，对于一定数量的 IOPS ， SSD 的驱动器摊销成本要比 HDD 低得多。
+SSD 没有旋转或寻道延时，除了能提高客户端性能外，
+还能大幅提高在集群有变动时的响应速度和降低客户端影响，
+集群变动包括在 OSD 或监视器添加、删除、
+发生故障时进行的重新平衡。</p>
 <p>SSD 没有可移动机械部件，
-所以不存在和硬盘一样的局限性。
-但 SSD 也有局限性，评估 SSD 时，
-顺序读写性能很重要。</p>
+所以不存在和 HDD 一样的局限性。
+但 SSD 也有它自身的局限性。在评估 SSD 时，
+考察顺序和随机读写性能非常重要。</p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
 <p>我们建议发掘 SSD 的用法来提升性能。
@@ -337,51 +405,92 @@ SSD 和硬盘相比每 GB 成本通常要高 10 倍以上，
 并在测试环境下衡量性能。</p>
 </div>
 <p>相对廉价的 SSD 很诱人，慎用！
-可接受的 IOPS 指标对选择用于 Ceph 的 SSD 还不够。</p>
-<p>历史上， SSD 用于对象存储曾经成本高昂，
-尽管 QLC 驱动器的引进缩小的差距。基于 HDD 的 OSD
-把 WAL+DB 载荷挪到 SSD 上之后可以看到明显的性能提升。</p>
-<p>提升 CephFS 文件系统性能的一种方法是从 CephFS 文件内容里分离出元数据。
+为 Ceph 选用 SSD 时，可接受的 IOPS 指标不是唯一要考虑的因素。
+廉价的固态硬盘往往不划算：它们可能会出现“悬崖效应”，
+即在最初的爆发之后，一旦有限的缓存被填满，
+持续性能就会大幅下降。此外，还要考虑耐用性：
+每日整盘写入次数（ Drive Writes Per Day, DWPD, 或等价指标）为 0.3
+的驱动器可能适用于某些特定场景，比如顺序写入而读取居多的数据；
+但不适宜做 Ceph 监视器的存储设备。企业级 SSD 是 Ceph 的最佳选择：
+它们几乎都有掉电保护功能（ power loss protection, PLP ），
+不会像消费级（桌面台式机）型号那样出现严重的断电现象。</p>
+<p>在单个（或镜像的一对） SSD 上同时安装操作系统和
+Ceph 监视器/管理器时，建议容量至少为 256GB ，最好是 480GB 。
+驱动器建议选用 DWPD 值为 1+ （或等效的 TBW 值， TeraBytes Written）的型号。
+不过，在写入载荷固定的情况下，比实际需求大的驱动器会更加耐用，
+因为它有实质上更大的周转空间。
+我们再次强调，企业级驱动器对于生产环境是最好的，
+因为它们有掉电保护功能、与消费级（台式机）相比更好的耐用性，
+消费级产品是为低负载、间歇性的使用场景设计的。</p>
+<p>对于对象存储而言， SSD 的成本历来过高，
+但 QLC SSD 正在缩小差距，以更低的功耗、
+更低的冷却成本提供更高的密度。此外，
+通过将 WAL+DB 载荷卸载到固态硬盘上， HDD OSD 的写延迟也会得到显著改善。
+现实中很多 Ceph OSD 不需要耐用性超过 1 DWPD （又称“读优化的”）的固态硬盘。
+3 DWPD 级别的“混合用途（ Mixed-use ）”固态硬盘通常远超这一需求，
+而且成本显著升高。</p>
+<p>要更好地了解决定存储总成本的各种因素，
+可以用<a class="reference external" href="https://www.snia.org/forums/cmsi/programs/TCOcalc">存储网络行业协会的总拥有成本计算器</a> 。</p>
+<section id="id6">
+<h4>分区对齐<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h4>
+<p>在 Ceph 中使用固态硬盘时，要确保正确对齐分区。
+没有正确对齐的分区比正确对齐的分区数据传输速度更慢。
+关于正确对齐分区，以及查看如何正确对齐分区的示例命令，
+参阅 <a class="reference external" href="https://www.thomas-krenn.com/en/wiki/Partition_Alignment_detailed_explanation">Werner Fischer 有关分区对齐的博文</a>。</p>
+</section>
+<section id="cephfs">
+<h4>CephFS 元数据分离<a class="headerlink" href="#cephfs" title="Permalink to this heading"></a></h4>
+<p>提升 CephFS 文件系统性能的一种方法是把 CephFS 元数据的存储和文件内容的存储分开。
 Ceph 提供了默认的 <code class="docutils literal notranslate"><span class="pre">metadata</span></code> 存储池来存储 CephFS 元数据，
-所以你不需要给 CephFS 元数据创建存储池，
-但是可以给它创建一个仅指向某主机 SSD 的 CRUSH 运行图。
+所以你不需要手动给 CephFS 元数据创建存储池，但是可以给
+CephFS 元数据单独创建一个 CRUSH 运行图分级结构，其中只包含 SSD 存储器。
 详情见 <a class="reference internal" href="../../rados/operations/crush-map-edits/#crush-map-device-class"><span class="std std-ref">CRUSH 设备类</span></a>。</p>
 </section>
-<section id="id6">
-<h3>控制器<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h3>
+</section>
+<section id="id7">
+<h3>控制器<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h3>
 <p>硬盘控制器（ HBA ）对写吞吐量有显著影响，
 要谨慎地选择，确保不会产生性能瓶颈。
 特别是 RAID 模式（IR）的 HBA 与简单的 JBOD（IT）模式相比，
 更可能出现较高延时，而且 RAID SoC 、写缓存、
-和备用电池功能还会增加硬件和维护代价。
-有些 RAID HBA 可以“个性化”配置成 IT 模式。</p>
+和备用电池功能还会增加硬件和维护成本。
+很多 RAID HBA 可以配置成 IT 模式，”personality” 或 “JBOD mode” ，
+以简化它的操作。</p>
+<p>您不需要 RoC （带 RAID 功能的） HBA 。 ZFS 或 Linux MD 软件镜像可以很好地保证启动卷的耐用性。使用 SAS 或 SATA 数据驱动器时，
+放弃 HBA RAID 功能可缩小硬盘和固态硬盘之间的成本差距。
+此外，使用 NVMe 固态硬盘时，<em>根本不需要</em> HBA ，
+从整个系统考虑，这将进一步缩小硬盘与固态硬盘的成本差距。
+一个高级 RAID HBA 、加上板载高速缓存、再加上备用电池（ BBU 或超级电容器）的初始成本即使打折后也很容易超过 1000 美元 ——
+加上这个就和使用 SSD 的成本差不多了。
+如果购买年度维护合同或延长保修期，
+不含 HBA 的系统每年还会少花数百美元。</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p><a class="reference external" href="https://ceph.com/community/blog/">Ceph 博客文章</a> 常常是优秀的 Ceph 性能问题信息源，
-见 <a class="reference external" href="http://ceph.com/community/ceph-performance-part-1-disk-controller-write-throughput/">Ceph 写吞吐量 1</a> 和 <a class="reference external" href="http://ceph.com/community/ceph-performance-part-2-write-throughput-without-ssd-journals/">Ceph 写吞吐量 2</a> 。</p>
+<p><a class="reference external" href="https://ceph.com/community/blog/">Ceph 博客文章</a>常常是优秀的 Ceph 性能问题信息源，
+详情见 <a class="reference external" href="http://ceph.com/community/ceph-performance-part-1-disk-controller-write-throughput/">Ceph 写吞吐量 1</a> 和 <a class="reference external" href="http://ceph.com/community/ceph-performance-part-2-write-throughput-without-ssd-journals/">Ceph 写吞吐量 2</a> 。</p>
 </div>
 </section>
-<section id="id7">
-<h3>压力测试<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h3>
-<p>BlueStore 打开块设备时加了 O_DIRECT 标记，并且频繁调用 fsync ，
-以确保数据安全地持久化到了媒体。
-你可以用 <code class="docutils literal notranslate"><span class="pre">fio</span></code> 来评测一个驱动器的底层写性能。
-例如， 4kB 随机写性能可以这样衡量：</p>
+<section id="id8">
+<h3>压力测试<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h3>
+<p>BlueStore 打开块设备时加了 <code class="docutils literal notranslate"><span class="pre">O_DIRECT</span></code> 标记，并且频繁调用 <code class="docutils literal notranslate"><span class="pre">fsync</span></code> ，
+以确保数据安全地持久化到了媒体介质中。你可以用 <code class="docutils literal notranslate"><span class="pre">fio</span></code> 来评测一个驱动器的底层写性能。例如， 4kB 随机写性能可以这样衡量：</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span>fio<span class="w"> </span>--name<span class="o">=</span>/dev/sdX<span class="w"> </span>--ioengine<span class="o">=</span>libaio<span class="w"> </span>--direct<span class="o">=</span><span class="m">1</span><span class="w"> </span>--fsync<span class="o">=</span><span class="m">1</span><span class="w"> </span>--readwrite<span class="o">=</span>randwrite<span class="w"> </span>--blocksize<span class="o">=</span>4k<span class="w"> </span>--runtime<span class="o">=</span><span class="m">300</span>
 </pre></div>
 </div>
 </section>
-<section id="id8">
-<h3>写缓存<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h3>
-<p>企业级 SSD 和 HDD 通常都有掉电保护功能，它们用多级缓存来加速 direct 或同步写。
+<section id="id9">
+<h3>写缓存<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h3>
+<p>企业级 SSD 和 HDD 通常都有掉电保护功能，
+它能确保操作时掉电的数据持久性，
+并且用多级缓存来加速 direct 或同步写。
 这些设备可以在两种缓存模式之间切换——用 fsync 把易失性缓存刷到持久性介质上，
 或者同步地写入非易失性缓存中。</p>
 <p>这两种模式的切换可以通过在硬件配置里启用（ enabling ）或禁用（ disabling ）写（易失性）缓存来实现。易失性缓存启用时，
-Linux 会以 write back 模式使用此设备，禁用时以 write through 模式。</p>
+Linux 会以 write back 模式使用此设备；禁用时以 write through 模式使用。</p>
 <p>默认配置（缓存通常都是开启的）未必是最优的，
-而且禁用写缓存时 OSD 性能会极大地提升，也就是 IOPS 提高、
-且 commit_latency 降低。</p>
-<p>因此，我们鼓励用户通过 <code class="docutils literal notranslate"><span class="pre">fio</span></code> 评测他们的设备，
+禁用写缓存时可显著提高 OSD 性能、提高 IOPS 、
+并降低提交延时。</p>
+<p>因此，我们鼓励用户用 <code class="docutils literal notranslate"><span class="pre">fio</span></code> 评测他们的设备，
 用前面描述过的方法，并保存好设备的最优缓存配置。</p>
 <p>缓存配置可以用 <code class="docutils literal notranslate"><span class="pre">hdparm</span></code> 、 <code class="docutils literal notranslate"><span class="pre">sdparm</span></code> 、 <code class="docutils literal notranslate"><span class="pre">smartctl</span></code> 或读取 <code class="docutils literal notranslate"><span class="pre">/sys/class/scsi_disk/*/cache_type</span></code> 里的数值来查询，
 例如：</p>
@@ -403,7 +512,7 @@ Linux 会以 write back 模式使用此设备，禁用时以 write through 模�
 <span class="go">write back</span>
 </pre></div>
 </div>
-<p>同样可以用那些工具来禁用：</p>
+<p>同样可以用那些工具来禁用写缓存：</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span>hdparm<span class="w"> </span>-W0<span class="w"> </span>/dev/sda
 
 <span class="go">/dev/sda:</span>
@@ -422,7 +531,8 @@ Linux 会以 write back 模式使用此设备，禁用时以 write through 模�
 </div>
 <p>通常，用 <code class="docutils literal notranslate"><span class="pre">hdparm</span></code> 、 <code class="docutils literal notranslate"><span class="pre">sdparm</span></code> 、或 <code class="docutils literal notranslate"><span class="pre">smartctl</span></code> 禁用缓存会导致 cache_type 自动切换为 write through 。
 如果没有自动切换，你可以按下面的方法直接设置。
-（用户们请注意，下次重启之后，设置了 cache_type 的同时还会永久保存设备的缓存模式）：</p>
+（用户需确保设置了 cache_type 的同时还永久保存了设备的缓存模式，
+这些配置在重启之前都有效，因为有些驱动器需要在每次重启之后重新设置）：</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;write through&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/sys/class/scsi_disk/0<span class="se">\:</span><span class="m">0</span><span class="se">\:</span><span class="m">0</span><span class="se">\:</span><span class="m">0</span>/cache_type
 
 <span class="gp"># </span>hdparm<span class="w"> </span>-W<span class="w"> </span>/dev/sda
@@ -471,57 +581,85 @@ Linux 会以 write back 模式使用此设备，禁用时以 write through 模�
 </div>
 </div>
 </section>
-<section id="id9">
-<h3>其他注意事项<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h3>
-<p>你可以在同一主机上运行多个 OSD ，
+<section id="id10">
+<h3>其他注意事项<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h3>
+<p>Ceph 运维人员通常会给每台主机配置多个 OSD ，
 但要确保 OSD 硬盘总吞吐量不超过为客户端提供读写服务所需的网络带宽；
-还要考虑集群在每台主机上所存储的数据占总体的百分比，
+还要考虑每台主机占集群总容量的百分比，
 如果一台主机所占百分比太大而它挂了，
-就可能导致诸如超过 <code class="docutils literal notranslate"><span class="pre">full</span> <span class="pre">ratio</span></code> 的问题，
-此问题会使 Ceph 中止运作以防数据丢失。</p>
+就可能导致恢复时出现超过 <code class="docutils literal notranslate"><span class="pre">full</span> <span class="pre">ratio</span></code> 的问题，
+进而导致 Ceph 中止运行以防数据丢失。</p>
 <p>如果每台主机运行多个 OSD ，也得保证内核是最新的。
 参阅<a class="reference external" href="../os-recommendations">操作系统推荐</a>里关于 <code class="docutils literal notranslate"><span class="pre">glibc</span></code> 和 <code class="docutils literal notranslate"><span class="pre">syncfs(2)</span></code> 的部分，
-确保在运行多个 OSD 的时候硬件性能能达到期望值。</p>
+确保每台主机在运行多个 OSD 的时候硬件性能能达到期望值。</p>
 </section>
-</section>
-<section id="id10">
-<h2>网络<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h2>
-<p>机架之间至少要配备 10Gbps 以上的网络连接。
-通过 1Gbps 的网络复制 1TB 数据需要 3 小时，而 10TB 需要 30 小时！
-相比之下，如果使用 10Gbps 复制时间可分别缩减到 20 分钟和 1 小时。
-在一个 PB 级集群中， OSD 磁盘失败是常态，而非异常；
-在性价比合理的的前提下，系统管理员想让 PG
-尽快从 <code class="docutils literal notranslate"><span class="pre">degraded</span></code> （降级）状态恢复到 <code class="docutils literal notranslate"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></code> 状态。
-另外，有些部署工具使用了 VLAN 来提高硬件和网络线路的可管理性。
-VLAN 使用 802.1q 协议，还需要采用支持 VLAN 功能的网卡和交换机，
-增加的硬件成本可用节省的运营（网络安装、维护）成本抵消。
-使用 VLAN 来处理集群和计算栈（如 OpenStack 、 CloudStack 等等）之间的 VM 流量时，
-采用 10G 或更高速率的以太网更合算；到 2020 年，
-40Gb 或 25/50/100 Gb 的网络在生产集群上很普遍。</p>
-<p>每个网络的机架路由器到骨干网路由器的带宽应该更大，
-通常 40Gbp/s 以上。</p>
-<p>服务器硬件应配置底板管理控制器
-（ Baseboard Management Controller, BMC ），
-管理和部署工具也普遍会使用 BMC ，
-尤其是通过 IPMI 或 Redfish ，
-所以请权衡带外网络管理的成本/效益，
-此程序管理着 SSH 访问、 VM 映像上传、
-操作系统安装、端口管理、等等，
-会徒增网络负载。运营 3 个网络有点夸张了，
-但是每条流量路径都表明，部署一个大型数据集群前要仔细考虑潜在容量、吞吐量、性能瓶颈。</p>
 </section>
 <section id="id11">
-<h2>故障域<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h2>
-<p>故障域指任何导致不能访问一个或多个 OSD 的故障，
-可以是主机上停止的进程、硬盘故障、操作系统崩溃、
-有问题的网卡、损坏的电源、断网、断电等等。
-规划硬件需求时，要在多个需求间寻求平衡点，
-像付出很多努力减少故障域带来的成本削减、
-隔离每个潜在故障域增加的成本。</p>
-</section>
+<h2>网络<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h2>
+<p>数据中心的网络至少要 10Gbps 以上，包括 Ceph 主机之间的、客户端和 Ceph 集群之间的。强烈建议网络链路采用 active/active 绑定并连接到不同的交换机，
+这样在增加吞吐量的同时，还能为网络故障和日常维护提供冗余。
+注意，绑定的散列策略（ hash policy ）会在链路间分配流量。</p>
 <section id="id12">
-<h2>最低硬件推荐<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h2>
-<p>Ceph 可以运行在廉价的普通硬件上，小型生产集群和开发集群可以在一般的硬件上。</p>
+<h3>速度<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h3>
+<p>通过 1Gbps 的网络复制 1TB 数据需要 3 小时，
+而 10TB 需要 30 小时！
+相比之下，如果使用 10Gbps 复制时间可分别缩减到 20 分钟和 1 小时。</p>
+<p>注意，一个 40 Gb/s 的网络链路实际上是四个并行的 10 Gb/s 通道，
+而一个 100 Gb/s 的网络链路实际上是四个并行的 25 Gb/s 通道。
+因此，与 40 Gb/s 网络相比， 25 Gb/s 网络上的单个数据包的延迟时间稍短，
+这个事有点违背直觉。</p>
+</section>
+<section id="id13">
+<h3>成本<a class="headerlink" href="#id13" title="Permalink to this heading"></a></h3>
+<p>Ceph 集群规模越大， OSD 故障越常见；
+PG 从降级（ <code class="docutils literal notranslate"><span class="pre">degraded</span></code> ）状态恢复到 <code class="docutils literal notranslate"><span class="pre">active</span> <span class="pre">+</span> <span class="pre">clean</span></code> 状态的速度越快越好。应该注意，
+快速恢复可最大限度减少多次、重叠的故障，
+它们有可能导致数据暂时不能访问甚至丢失。当然，
+建设网络时，还得均衡造价和性能。</p>
+<p>有些部署工具使用了 VLAN 来提高硬件和网络线路的可管理性。
+VLAN 使用 802.1q 协议，还需要采用支持 VLAN 功能的网卡和交换机，
+增加的硬件成本可以用节省的运营（网络安装、维护）成本抵消。
+使用 VLAN 来处理集群和计算栈（如 OpenStack 、 CloudStack 等等）之间的 VM 流量时，
+采用 10G 或更高速率的以太网更合算；到 2022 年，
+40Gb/s 或 25/50/100 Gb/s 的网络在生产集群上很普遍。</p>
+<p>机架交换机（Top-of-rack, TOR ）到核心/骨干交换机或路由器的上联链路也要做到高速、有冗余，带宽应该更大，通常 40Gbp/s 以上。</p>
+</section>
+<section id="bmc">
+<h3>底板管理控制器（ BMC ）<a class="headerlink" href="#bmc" title="Permalink to this heading"></a></h3>
+<p>服务器硬件应配置底板管理控制器（ Baseboard Management Controller, BMC ），
+常见的有 iDRAC （戴尔）、 CIMC (Cisco UCS) 、 iLO (HPE) 。
+管理和部署工具也普遍会使用 BMC ，尤其是通过 IPMI 或 Redfish ，
+所以请权衡带外网络在安全和管理方面的成本/效益，
+此程序管理着 SSH 访问、 VM 映像上传、
+操作系统映像安装、管理通道、等等，这些会显著增加网络负载。
+运营多张网络看似夸张（过分小心），但是每条流量路径都代表着潜在容量、吞吐量和/或性能瓶颈，
+部署一个大型数据集群前，这些都要仔细考虑。</p>
+<p>此外，截至 2023 年， BMC 很少有速度超过 1 Gb/s 的网络连接，
+所以，专门用于 BMC 管理流量的廉价 1 Gb/s 交换机可以节省昂贵的、更快的主机交换机端口，从而降低成本。</p>
+</section>
+</section>
+<section id="id14">
+<h2>故障域<a class="headerlink" href="#id14" title="Permalink to this heading"></a></h2>
+<p>故障域可以认为是有组件丢失，导致不能访问一个或多个 OSD ，
+或者是其它的 Ceph 守护进程。可以是主机上停止的进程、
+存储驱动器故障、操作系统崩溃、有问题的网卡、损坏的电源、
+断网、断电等等。规划硬件需求时，
+不得不找准平衡点：把太多责任划给少数几个故障域风险太大，
+隔离每个潜在故障域又会增加成本。</p>
+</section>
+<section id="id15">
+<h2>最低硬件推荐<a class="headerlink" href="#id15" title="Permalink to this heading"></a></h2>
+<p>Ceph 可以运行在廉价的普通硬件上，小型生产集群和开发集群可以在普通硬件上运行。
+如上所述：当我们谈到 CPU <em>核心</em>时，我们指的是启用超线程（ HT ）后的<em>线程</em>。每个现代物理 x64 CPU 核心通常会提供两个逻辑 CPU 线程；其他 CPU 架构可能有所不同。</p>
+<p>注意，影响资源选择的因素很多。
+一种用途所需的最低资源对于另一种用途来说不一定够。
+在装有 VirtualBox 的笔记本电脑或三台树莓派（Raspberry PI）上建立只有一个 OSD 的沙盒集群所需的资源要少于为五千个 RBD 客户端提供服务的一千个 OSD 的生产部署所需的资源。
+经典的 Fisher Price PXL 2000 可以捕捉视频， IMAX 或 RED 摄像机也是如此，
+但我们不能指望前者可以完成后者的工作。
+因此我们特别强调：
+在生产环境下使用企业级存储器至关重要。</p>
+<p>有关生产集群资源规划的其他见解，
+请参阅上文和本文档的其他部分。</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 20%" />
@@ -531,24 +669,26 @@ VLAN 使用 802.1q 协议，还需要采用支持 VLAN 功能的网卡和交换�
 <thead>
 <tr class="row-odd"><th class="head"><p>进程</p></th>
 <th class="head"><p>规范</p></th>
-<th class="head"><p>最低建议</p></th>
+<th class="head"><p>最低标准和建议标准</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td rowspan="5"><p><code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code></p></td>
 <td><p>处理器</p></td>
 <td><ul class="simple">
-<li><p>1 core minimum</p></li>
-<li><p>1 core per 200-500 MB/s</p></li>
-<li><p>1 core per 1000-3000 IOPS</p></li>
+<li><p>最低 1 核，建议 2 核</p></li>
+<li><p>每 200-500 MB/s 一个核心</p></li>
+<li><p>每 1000-3000 IOPS 一个核心</p></li>
 </ul>
 <ul class="simple">
 <li><p>Results are before replication.</p></li>
-<li><p>Results may vary with different
-CPU models and Ceph features.
+<li><p>Results may vary across CPU and drive
+models and Ceph configuration:
 (erasure coding, compression, etc)</p></li>
 <li><p>ARM processors specifically may
-require additional cores.</p></li>
+require more cores for performance.</p></li>
+<li><p>SSD OSDs, especially NVMe, will
+benefit from additional cores per OSD.</p></li>
 <li><p>Actual performance depends on many
 factors including drives, net, and
 client throughput and latency.
@@ -564,14 +704,17 @@ Benchmarking is highly recommended.</p></li>
 </ul>
 </td>
 </tr>
-<tr class="row-even"><td><p>存储卷宗</p></td>
+<tr class="row-even"><td><p>存储驱动器</p></td>
 <td><p>1x storage drive per daemon</p></td>
 </tr>
-<tr class="row-odd"><td><p>DB/WAL</p></td>
-<td><p>1x SSD partition per daemon (optional)</p></td>
+<tr class="row-odd"><td><p>DB/WAL
+(可选的)</p></td>
+<td><p>1x SSD partion per HDD OSD
+4-5x HDD OSDs per DB/WAL SATA SSD
+&lt;= 10 HDD OSDss per DB/WAL NVMe SSD</p></td>
 </tr>
 <tr class="row-even"><td><p>网络</p></td>
-<td><p>1x 1GbE+ NICs (10GbE+ recommended)</p></td>
+<td><p>1x 1Gb/s (bonded 10+ Gb/s recommended)</p></td>
 </tr>
 <tr class="row-odd"><td rowspan="4"><p><code class="docutils literal notranslate"><span class="pre">ceph-mon</span></code></p></td>
 <td><p>处理器</p></td>
@@ -581,13 +724,14 @@ Benchmarking is highly recommended.</p></li>
 </td>
 </tr>
 <tr class="row-even"><td><p>RAM</p></td>
-<td><p>2-4GB+ per daemon</p></td>
+<td><p>5GB+ per daemon (large / production
+clusters need more)</p></td>
 </tr>
-<tr class="row-odd"><td><p>磁盘空间</p></td>
-<td><p>60 GB per daemon</p></td>
+<tr class="row-odd"><td><p>存储</p></td>
+<td><p>每个守护进程 100 GB ，建议用 SSD</p></td>
 </tr>
 <tr class="row-even"><td><p>网络</p></td>
-<td><p>1x 1GbE+ NICs</p></td>
+<td><p>1x 1Gb/s (10+ Gb/s recommended)</p></td>
 </tr>
 <tr class="row-odd"><td rowspan="4"><p><code class="docutils literal notranslate"><span class="pre">ceph-mds</span></code></p></td>
 <td><p>处理器</p></td>
@@ -597,21 +741,21 @@ Benchmarking is highly recommended.</p></li>
 </td>
 </tr>
 <tr class="row-even"><td><p>RAM</p></td>
-<td><p>2GB+ per daemon</p></td>
+<td><p>每个守护进程 2GB+ ，生产环境配更多</p></td>
 </tr>
 <tr class="row-odd"><td><p>磁盘空间</p></td>
-<td><p>1 MB per daemon</p></td>
+<td><p>1 GB per daemon</p></td>
 </tr>
 <tr class="row-even"><td><p>网络</p></td>
-<td><p>1x 1GbE+ NICs</p></td>
+<td><p>1x 1Gb/s (10+ Gb/s recommended)</p></td>
 </tr>
 </tbody>
 </table>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>如果在只有一块硬盘的机器上运行 OSD ，
+<p>如果在只有一块硬盘的机器上运行一个 OSD 节点，
 要把数据和操作系统分别放到不同分区；
-一般来说，我们推荐操作系统和数据分别使用不同的硬盘。</p>
+我们建议操作系统和 OSD 存储分别使用不同的驱动器。</p>
 </div>
 </section>
 </section>
