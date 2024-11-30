@@ -5,56 +5,55 @@
  Ceph 基金会
 =============
 
-The Ceph Foundation exists to enable industry members to collaborate
-and pool resources to support the Ceph project community. The
-Foundation provides an open, collaborative, and neutral home for
-project stakeholders to coordinate their development and community
-investments in the Ceph ecosystem.
+Ceph 基金会的存在是为了使行业成员能够合作并整合资源，
+以支持 Ceph 项目社区。
+基金会为项目利益相关者提供了一个开放、协作和中立的家园，
+以协调他们在 Ceph 软件生态中的开发和社区投入。
 
-The Ceph Foundation is organized as a directed fund under the Linux
-Foundation. Premier and General Member organizations contribute a
-yearly fee to become members. Associate members are educational
-institutions or government organizations and are invited to join at no
-cost.
+Ceph 基金会是 Linux 基金会下的一个定向基金。
+高级会员和普通会员组织每年缴费成为会员。
+准会员是教育机构或政府组织，可免费加入。
 
-For more information, see `https://ceph.com/foundation
-<https://ceph.com/foundation>`_.
+更多信息，请访问 `https://ceph.com/foundation 
+<https://ceph.com/foundation>`_ 。
 
 
-会员
-====
+会员列表
+========
 .. Members
+
+Diamond
+-------
+
+* `45Drives <https://45drives.com/>`_
+* `Bloomberg <https://bloomberg.com>`_
+* `IBM <https://ibm.com>`_
+
+Platinum
+--------
+
+* `Clyso <https://www.clyso.com/en/>`_
+* `Samsung Electronics <https://samsung.com/>`_
 
 Premier
 -------
 
-* `Bloomberg <https://bloomberg.com>`_
-* `China Mobile <https://www.chinamobileltd.com/>`_
-* `DigitalOcean <https://www.digitalocean.com/>`_
-* `Intel <http://www.intel.com/>`_
 * `OVH <https://www.ovh.com/>`_
-* `Red Hat <https://www.redhat.com/>`_
-* `Samsung Electronics <https://samsung.com/>`_
-* `SoftIron <https://www.softiron.com/>`_
-* `SUSE <https://www.suse.com/>`_
-* `Western Digital <https://www.wdc.com/>`_
-* `XSKY <https://www.xsky.com/en/>`_
-* `ZTE <https://www.zte.com.cn/global/>`_
 
-General
--------
+Gold
+----
 
-* `ARM <http://www.arm.com/>`_
+* `42on <https://www.42on.com/>`_
+
+Silver
+------
+
 * `Canonical <https://www.canonical.com/>`_
-* `Cloudbase Solutions <https://cloudbase.it/>`_
-* `Clyso <https://www.clyso.com/en/>`_
+* `CloudFerro <https://cloudferro.com/>`_
 * `croit <http://www.croit.io/>`_
-* `EasyStack <https://www.easystack.io/>`_
 * `ISS <http://iss-integration.com/>`_
-* `Linode <https://linode.com/>`_
+* `Intel <http://www.intel.com/>`_
 * `OSNexus <https://osnexus.com/>`_
-* `SinoRail <http://www.sinorail.com/>`_
-* `Vexxhost <https://vexxhost.com>`_
 
 Associate
 ---------
@@ -66,57 +65,54 @@ Associate
 * `grnet <https://grnet.gr/>`_
 * `Monash University <http://www.monash.edu/>`_
 * `NRF SARAO <http://www.ska.ac.za/about/sarao/>`_
+* `Open Infrastructure Foundation <http://openinfra.dev>`_
 * `Science & Technology Facilities Councel (STFC) <https://stfc.ukri.org/>`_
-* `University of Michigan <http://www.osris.org/>`_
 * `SWITCH <https://switch.ch/>`_
+* `University of Michigan <http://www.osris.org/>`_
 
-Governing Board
-===============
+理事会
+======
+.. Governing Board
 
-The Governing Board consists of all Premier members, a representative
-for the General members, a representative for the Associate members,
-and a representative from the Ceph Leadership Team (the technical
-governance body). The board is responsible for:
+理事会由所有高级会员（ Premier ）、
+一名普通会员（ General ）代表、一名准会员代表\
+和一名来自 Ceph 领导团队（技术管理机构）的代表组成。
+董事会负责：
 
-* Building and approving an annual budget for spending in support of
-  the Ceph project
-* Establishing ad-hoc committees to address current needs of the
-  project
-* Coordinating outreach or marketing
-* Meeting regularly to discuss Foundation activities, the status of
-  the Ceph project, and overall project strategy
-* Voting on any decisions or matters before the board
+* 制定并批准用于支持 Ceph 项目的年度预算
+* 成立特设委员会以确定项目当前的需求
+* 协调外联或市场营销工作
+* 定期召开会议，讨论基金会的活动、
+  Ceph 项目的现状以及项目的总体战略
+* 对提交给董事会的任何决定或事项进行表决
 
-The Ceph Foundation board is not responsible for and does not have any
-direct control over the technical governance of Ceph. Development and
-engineering activities are managed through traditional open source
-processes and are overseen by the :ref:`clt`. For more
-information see :ref:`governance`.
+Ceph 基金会董事会不负责，
+也不直接控制 Ceph 的技术管理。
+开发和工程活动通过传统的开源流程进行管理，
+并由 :ref:`csc` 监督。
+详情见 :ref:`governance` 。
 
-Members
--------
 
-* Anjaneya "Reddy" Chagam (Intel)
-* Dan van der Ster (CERN) - Associate member representative
-* Haomai Wang (XSKY)
-* James Page (Canonical)
-* Lenz Grimmer (SUSE) - Ceph Leadership Team representative
-* Lars Marowsky-Bree (SUSE)
-* Matias Bjorling (Western Digital)
+成员
+----
+.. Members
+
+* Brett Kelly (45Drives)
+* Carlos Maltzahn (UCSC) - Associate member representative
+* Dan van der Ster (Clyso) - Ceph Council representative
+* Joachim Kraftmayer (Clyso)
+* Josh Durgin (IBM) - Ceph Council representative
 * Matthew Leonard (Bloomberg)
-* Mike Perez (Red Hat) - Ceph community manager
-* Myoungwon Oh (Samsung Electronics)
-* Martin Verges (croit) - General member representative
+* Mike Perez (IBM) - Ceph community manager
+* Neha Ojha (IBM) - Ceph Council Representative
+* Steven Umbehocker (OSNexus) - General member representative
 * Pawel Sadowski (OVH)
-* Phil Straw (SoftIron)
-* Robin Johnson (DigitalOcean)
-* Sage Weil (Red Hat) - Ceph project leader
-* Xie Xingguo (ZTE)
-* Zhang Shaowen (China Mobile)
+* Sungmin Lee (Samsung Electronics)
+* Vincent Hsu (IBM)
 
-Joining
-=======
 
-For information about joining the Ceph Foundation, please contact
-membership@linuxfoundation.org.
+如何加入
+========
+.. Joining
 
+有关加入 Ceph 基金会的信息，请联系 membership@linuxfoundation.org 。
