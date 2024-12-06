@@ -127,6 +127,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#id4">转储堆栈信息</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id5">释放内存</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id6">停止剖析器</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">其他内存分析方法</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../cpu-profiling/">CPU 剖析</a></li>
@@ -193,16 +194,21 @@
   
   <section id="id1">
 <h1>内存剖析<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h1>
-<p>Ceph 监视器、 OSD 、和元数据服务器可利用 <code class="docutils literal notranslate"><span class="pre">tcmalloc</span></code> 生成堆栈剖析，此功能依赖 <code class="docutils literal notranslate"><span class="pre">google-perftools</span></code> ：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">google</span><span class="o">-</span><span class="n">perftools</span>
-</pre></div>
-</div>
-<p>剖析器会把输出保存到 <code class="docutils literal notranslate"><span class="pre">log</span> <span class="pre">file</span></code> 目录（如
-<code class="docutils literal notranslate"><span class="pre">/var/log/ceph</span></code> ），详情见<a class="reference external" href="../log-and-debug">日志记录和调试</a>。剖析器日志可用 Google 性能工具来查看，执行如下命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">google</span><span class="o">-</span><span class="n">pprof</span> <span class="o">--</span><span class="n">text</span> <span class="p">{</span><span class="n">path</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">daemon</span><span class="p">}</span>  <span class="p">{</span><span class="n">log</span><span class="o">-</span><span class="n">path</span><span class="o">/</span><span class="n">filename</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如：</p>
+<p>Ceph 监视器、 OSD 和 MDS 可以报告 <code class="docutils literal notranslate"><span class="pre">TCMalloc</span></code> 堆栈剖析信息。
+如果要生成这些信息，请安装 <code class="docutils literal notranslate"><span class="pre">google-perftools</span></code> 。
+你用的操作系统发行版可能打包的名字不同（例如 <code class="docutils literal notranslate"><span class="pre">gperftools</span></code> ），
+而且操作系统发行版可能会使用不同的软件包管理器。
+运行与此类似的命令安装 <code class="docutils literal notranslate"><span class="pre">google-perftools</span></code> ：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>google-perftools</span>
+</pre></div></div><p>剖析器会把输出保存到 <code class="docutils literal notranslate"><span class="pre">log</span> <span class="pre">file</span></code> 目录（ <code class="docutils literal notranslate"><span class="pre">/var/log/ceph</span></code> ），
+详情见<a class="reference external" href="../log-and-debug">日志记录和调试</a>。</p>
+<p>剖析器日志可用 Google 性能工具来查看，执行如下命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">google-pprof<span class="w"> </span>--text<span class="w"> </span><span class="o">{</span>path-to-daemon<span class="o">}</span><span class="w">  </span><span class="o">{</span>log-path/filename<span class="o">}</span></span>
+</pre></div></div><p>例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph tell osd.0 heap start_profiler
 $ ceph tell osd.0 heap dump
 osd.0 tcmalloc heap stats:------------------------------------------------
@@ -246,70 +252,74 @@ $ google-pprof --text \
 </pre></div>
 </div>
 <p>详情见 <a class="reference external" href="http://goog-perftools.sourceforge.net/doc/heap_profiler.html">Google 堆栈剖析器</a> 。</p>
-<p>安装堆栈剖析器后，启动集群就可以开始使用了。你可以在运行时启用、或禁用堆栈剖析器，或确保它在持续运行。在随后的几个命令行用法中，用 <code class="docutils literal notranslate"><span class="pre">mon</span></code> 、 <code class="docutils literal notranslate"><span class="pre">osd</span></code> 或 <code class="docutils literal notranslate"><span class="pre">mds</span></code> 替换掉 <code class="docutils literal notranslate"><span class="pre">{daemon-type}</span></code> ，用 OSD 号、监视器或元数据服务器的 ID 替换掉 <code class="docutils literal notranslate"><span class="pre">{daemon-id}</span></code> 。</p>
+<p>安装堆栈剖析器后，启动集群就可以开始使用了。
+你可以在运行时启用、或禁用堆栈剖析器，
+或确保它在持续运行。按照随后的几个例子运行命令时，先做如下的：</p>
+<ol class="arabic simple">
+<li><p>把 <code class="docutils literal notranslate"><span class="pre">{daemon-type}</span></code> 替换成 <code class="docutils literal notranslate"><span class="pre">mon</span></code> 、 <code class="docutils literal notranslate"><span class="pre">osd</span></code> 或 <code class="docutils literal notranslate"><span class="pre">mds</span></code></p></li>
+<li><p>把 <code class="docutils literal notranslate"><span class="pre">{daemon-id}</span></code> 替换成 OSD 号、监视器 ID 或元数据服务器的 ID</p></li>
+</ol>
 <section id="id2">
 <h2>启动剖析器<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
 <p>要启动堆栈剖析器，执行如下命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span><span class="o">.</span><span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="n">heap</span> <span class="n">start_profiler</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">osd</span><span class="mf">.1</span> <span class="n">heap</span> <span class="n">start_profiler</span>
-</pre></div>
-</div>
-<p>另外，在启动守护进程时若设置了 <code class="docutils literal notranslate"><span class="pre">CEPH_HEAP_PROFILER_INIT=true</span></code> 环境变量，剖析器也会启动。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span><span class="o">{</span>daemon-type<span class="o">}</span>.<span class="o">{</span>daemon-id<span class="o">}</span><span class="w"> </span>heap<span class="w"> </span>start_profiler</span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span>osd.1<span class="w"> </span>heap<span class="w"> </span>start_profiler</span>
+</pre></div></div><p>另外，在启动守护进程时若设置了环境变量 <code class="docutils literal notranslate"><span class="pre">CEPH_HEAP_PROFILER_INIT=true</span></code> ，
+剖析器也会随守护进程的运行而启动。</p>
 </section>
 <section id="id3">
 <h2>打印统计信息<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
 <p>用下列命令打印统计状态：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span>  <span class="n">tell</span> <span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span><span class="o">.</span><span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="n">heap</span> <span class="n">stats</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">osd</span><span class="mf">.0</span> <span class="n">heap</span> <span class="n">stats</span>
-</pre></div>
-</div>
-<div class="admonition note">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w">  </span>tell<span class="w"> </span><span class="o">{</span>daemon-type<span class="o">}</span>.<span class="o">{</span>daemon-id<span class="o">}</span><span class="w"> </span>heap<span class="w"> </span>stats</span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span>osd.0<span class="w"> </span>heap<span class="w"> </span>stats</span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>打印状态不要求剖析器在运行，也不会把堆栈分配信息转储到文件。</p>
+<p>用这个命令打印统计信息不要求剖析器在运行，
+也不会把堆栈分配信息转储到文件。</p>
 </div>
 </section>
 <section id="id4">
 <h2>转储堆栈信息<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
 <p>用下列命令转储堆栈信息：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span><span class="o">.</span><span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="n">heap</span> <span class="n">dump</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">mds</span><span class="o">.</span><span class="n">a</span> <span class="n">heap</span> <span class="n">dump</span>
-</pre></div>
-</div>
-<div class="admonition note">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span><span class="o">{</span>daemon-type<span class="o">}</span>.<span class="o">{</span>daemon-id<span class="o">}</span><span class="w"> </span>heap<span class="w"> </span>dump</span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span>mds.a<span class="w"> </span>heap<span class="w"> </span>dump</span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>只能在剖析器运行的时候转储堆栈信息。</p>
 </div>
 </section>
 <section id="id5">
 <h2>释放内存<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h2>
-<p>要释放由 <code class="docutils literal notranslate"><span class="pre">tcmalloc</span></code> 分配、但不是被 Ceph 守护进程使用的内存，用下列命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">type</span><span class="p">}{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="n">heap</span> <span class="n">release</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">osd</span><span class="mf">.2</span> <span class="n">heap</span> <span class="n">release</span>
-</pre></div>
-</div>
-</section>
+<p>要释放由 <code class="docutils literal notranslate"><span class="pre">tcmalloc</span></code> 分配、但 Ceph 守护进程没在使用的内存，用下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span><span class="o">{</span>daemon-type<span class="o">}{</span>daemon-id<span class="o">}</span><span class="w"> </span>heap<span class="w"> </span>release</span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span>osd.2<span class="w"> </span>heap<span class="w"> </span>release</span>
+</pre></div></div></section>
 <section id="id6">
 <h2>停止剖析器<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h2>
 <p>要停止堆栈剖析器，执行下列命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">type</span><span class="p">}</span><span class="o">.</span><span class="p">{</span><span class="n">daemon</span><span class="o">-</span><span class="nb">id</span><span class="p">}</span> <span class="n">heap</span> <span class="n">stop_profiler</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">tell</span> <span class="n">osd</span><span class="mf">.0</span> <span class="n">heap</span> <span class="n">stop_profiler</span>
-</pre></div>
-</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span><span class="o">{</span>daemon-type<span class="o">}</span>.<span class="o">{</span>daemon-id<span class="o">}</span><span class="w"> </span>heap<span class="w"> </span>stop_profiler</span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span>osd.0<span class="w"> </span>heap<span class="w"> </span>stop_profiler</span>
+</pre></div></div></section>
+<section id="id8">
+<h2>其他内存分析方法<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h2>
+<section id="valgrind-massif">
+<h3>使用 Valgrind 运行 Massif 堆栈剖析器<a class="headerlink" href="#valgrind-massif" title="Permalink to this heading"></a></h3>
+<p>Massif 堆栈剖析工具可与 Valgrind 一起使用，
+以测量堆内存的使用量。这种方法非常适合 RadosGW 的故障诊断。</p>
+<p>更多信息请参阅 <a class="reference external" href="https://valgrind.org/docs/manual/ms-manual.html">Massif 文档</a>。</p>
+<p>用发行版的软件包管理器安装 Valgrind ，然后启动要诊断的 Ceph 守护进程：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sudo<span class="w"> </span>-u<span class="w"> </span>ceph<span class="w"> </span>valgrind<span class="w"> </span>--max-threads<span class="o">=</span><span class="m">1024</span><span class="w"> </span>--tool<span class="o">=</span>massif<span class="w"> </span>/usr/bin/radosgw<span class="w"> </span>-f<span class="w"> </span>--cluster<span class="w"> </span>ceph<span class="w"> </span>--name<span class="w"> </span>NAME<span class="w"> </span>--setuser<span class="w"> </span>ceph<span class="w"> </span>--setgroup<span class="w"> </span>ceph</span>
+</pre></div></div><p>该命令运行完成后，将在当前工作目录下保存一个文件，文件名为 <code class="docutils literal notranslate"><span class="pre">massif.out.&lt;pid&gt;</span></code> 。
+要运行上述命令，运行该命令的用户必须在当前目录下有写入权限。</p>
+<p>运行 <code class="docutils literal notranslate"><span class="pre">ms_print</span></code> 命令，从 <code class="docutils literal notranslate"><span class="pre">massif.out.&lt;pid&gt;</span></code> 文件中收集的数据中获取图表和统计数据：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ms_print<span class="w"> </span>massif.out.12345</span>
+</pre></div></div><p>该命令的输出结果有助于提交错误报告。</p>
+</section>
 </section>
 </section>
 

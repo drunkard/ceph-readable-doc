@@ -16,6 +16,7 @@ and configure ``ceph-csi`` within your Nomad environment. The following
 diagram shows the Nomad/Ceph technology stack.
 
 .. ditaa::
+
             +-------------------------+-------------------------+
             |      Container          |          ceph--csi      |
             |                         |            node         |
