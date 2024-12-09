@@ -394,8 +394,6 @@ CRUSH 规则定义了归置和复制策略、或分布策略，
 
         id [a unique whole numeric ID]
         type [ replicated | erasure ]
-        min_size <min-size>
-        max_size <max-size>
         step take <bucket-name> [class <device-class>]
         step [choose|chooseleaf] [firstn|indep] <N> type <bucket-type>
         step emit
@@ -421,28 +419,6 @@ CRUSH 规则定义了归置和复制策略、或分布策略，
 :是否必需: Yes
 :默认值: ``replicated``
 :有效值: 当前仅支持 ``replicated`` 和 ``erasure``
-
-
-``min_size``
-
-:描述: 如果一个归置组副本数小于此数， CRUSH 将\ **不**\ 应用此\
-       规则。
-
-:类型: Integer
-:目的: 规则掩码的一个组件。
-:是否必需: Yes
-:默认值: ``1``
-
-
-``max_size``
-
-:描述: 如果一个归置组副本数大于此数， CRUSH 将\ **不**\ 应用此\
-       规则。
-
-:类型: Integer
-:目的: 规则掩码的一个组件。
-:是否必需: Yes
-:默认值: 10
 
 
 ``step take <bucket-name> [class <device-class>]``

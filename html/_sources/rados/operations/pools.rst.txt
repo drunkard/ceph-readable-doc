@@ -56,7 +56,7 @@
 
 创建存储池
 ==========
-.. Create a Pool
+.. Creating a Pool
 
 创建存储池前先看看\ `存储池、归置组和 CRUSH 配置参考`_\ 。
 你最好在配置文件里重置默认归置组数量，因为默认值并不理想。
@@ -172,7 +172,7 @@
 
 关联存储池与应用程序
 ====================
-.. Associate Pool to Application
+.. Associating a Pool with an Application
 
 存储池要先与应用程序关联才能使用。
 要用于 CephFS 的存储池、或由 RGW 创建的存储池已经自动关联过了；
@@ -189,7 +189,7 @@
 
 设置存储池配额
 ==============
-.. Set Pool Quotas
+.. Setting Pool Quotas
 
 存储池配额可设置最大字节数、和/或每存储池最大对象数。 ::
 
@@ -204,7 +204,7 @@
 
 删除存储池
 ==========
-.. Delete a Pool
+.. Deleting a Pool
 
 要删除一存储池，执行： ::
 
@@ -237,7 +237,7 @@
 
 重命名存储池
 ============
-.. Rename a Pool
+.. Renaming a Pool
 
 要重命名一个存储池，执行： ::
 
@@ -249,7 +249,7 @@
 
 查看存储池统计信息
 ==================
-.. Show Pool Statistics
+.. Showing Pool Statistics
 
 要查看某存储池的使用统计信息，执行命令： ::
 
@@ -261,7 +261,7 @@
 
 拍下存储池快照
 ==============
-.. Make a Snapshot of a Pool
+.. Making a Snapshot of a Pool
 
 要拍下某存储池的快照，执行命令： ::
 
@@ -269,7 +269,7 @@
 
 删除存储池快照
 ==============
-.. Remove a Snapshot of a Pool
+.. Removing a Snapshot of a Pool
 
 要删除某存储池的一个快照，执行命令： ::
 
@@ -280,7 +280,7 @@
 
 调整存储池选项值
 ================
-.. Set Pool Values
+.. Setting Pool Values
 
 要设置一个存储池的选项值，执行命令： ::
 
@@ -661,7 +661,7 @@
 
 获取存储池选项值
 ================
-.. Get Pool Values
+.. Getting Pool Values
 
 要获取一个存储池的选项值，执行命令： ::
 
@@ -830,7 +830,7 @@
 
 设置对象副本数
 ==============
-.. Set the Number of Object Replicas
+.. Setting the Number of RADOS Object Replicas
 
 要设置多副本存储池的对象副本数，执行命令： ::
 
@@ -857,7 +857,7 @@
 
 获取对象副本数
 ==============
-.. Get the Number of Object Replicas
+.. Getting the Number of Object Replicas
 
 要获取对象副本数，执行命令： ::
 
@@ -865,6 +865,122 @@
 
 Ceph 会列出存储池，且高亮 ``replicated size`` 属性。默认情况下，
 Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 3 ）。
+
+
+Managing pools that are flagged with ``--bulk``
+===============================================
+See :ref:`managing_bulk_flagged_pools`.
+
+Setting values for a stretch pool
+=================================
+To set values for a stretch pool, run a command of the following form:
+
+.. prompt:: bash $
+
+   ceph osd pool stretch set {pool-name} {peering_crush_bucket_count} {peering_crush_bucket_target} {peering_crush_bucket_barrier} {crush_rule} {size} {min_size} [--yes-i-really-mean-it]
+
+Here are the break downs of the arguments:
+
+.. describe:: {pool-name}
+
+   The name of the pool. It must be an existing pool, this command doesn't create a new pool.
+
+   :Type: String
+   :Required: Yes.
+
+.. describe:: {peering_crush_bucket_count}
+
+   The value is used along with peering_crush_bucket_barrier to determined whether the set of
+   OSDs in the chosen acting set can peer with each other, based on the number of distinct
+   buckets there are in the acting set.
+
+   :Type: Integer
+   :Required: Yes.
+
+.. describe:: {peering_crush_bucket_target}
+   
+   This value is used along with peering_crush_bucket_barrier and size to calculate
+   the value bucket_max which limits the number of OSDs in the same bucket from getting chose to be in the acting set of a PG.
+   
+   :Type: Integer
+   :Required: Yes.
+
+.. describe:: {peering_crush_bucket_barrier}
+      
+   The type of bucket a pool is stretched across, e.g., rack, row, or datacenter.
+
+   :Type: String
+   :Required: Yes.
+
+.. describe:: {crush_rule}
+      
+   The crush rule to use for the stretch pool. The type of pool must match the type of crush_rule
+   (replicated or erasure).
+
+   :Type: String
+   :Required: Yes.
+
+.. describe:: {size}
+         
+   The number of replicas for objects in the stretch pool.
+   
+   :Type: Integer
+   :Required: Yes.
+
+.. describe:: {min_size}
+            
+   The minimum number of replicas required for I/O in the stretch pool.
+
+   :Type: Integer
+   :Required: Yes.
+
+.. describe:: {--yes-i-really-mean-it}
+   
+      This flag is required to confirm that you really want to by-pass
+      the safety checks and set the values for a stretch pool, e.g,
+      when you are trying to set ``peering_crush_bucket_count`` or 
+      ``peering_crush_bucket_target`` to be more than the number of buckets in the crush map.
+   
+      :Type: Flag
+      :Required: No.
+
+.. _setting_values_for_a_stretch_pool:
+
+Unsetting values for a stretch pool
+===================================
+To move the pool back to non-stretch, run a command of the following form:
+
+.. prompt:: bash $
+
+   ceph osd pool stretch unset {pool-name}
+
+Here are the break downs of the argument:
+
+.. describe:: {pool-name}
+
+   The name of the pool. It must be an existing pool that is stretched,
+   i.e., it has already been set with the command `ceph osd pool stretch set`.
+
+   :Type: String
+   :Required: Yes.
+
+Showing values of a stretch pool
+================================
+To show values for a stretch pool, run a command of the following form:
+
+.. prompt:: bash $
+
+   ceph osd pool stretch show {pool-name}
+
+Here are the break downs of the argument:
+
+.. describe:: {pool-name}
+
+   The name of the pool. It must be an existing pool that is stretched,
+   i.e., it has already been set with the command `ceph osd pool stretch set`.
+
+   :Type: String
+   :Required: Yes.
 
 
 .. _存储池、归置组和 CRUSH 配置参考: ../../configuration/pool-pg-config-ref

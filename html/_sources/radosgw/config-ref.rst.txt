@@ -43,6 +43,7 @@ rgw 或 radosgw-admin 命令执行时，如果指定了例程名，
 .. confval:: rgw_curl_wait_timeout_ms
 .. confval:: rgw_copy_obj_progress
 .. confval:: rgw_copy_obj_progress_every_bytes
+.. confval:: rgw_max_copy_obj_concurrent_io
 .. confval:: rgw_admin_entry
 .. confval:: rgw_content_length_compat
 .. confval:: rgw_bucket_quota_ttl
@@ -52,6 +53,8 @@ rgw 或 radosgw-admin 命令执行时，如果指定了例程名，
 .. confval:: rgw_bucket_default_quota_max_size
 .. confval:: rgw_user_default_quota_max_objects
 .. confval:: rgw_user_default_quota_max_size
+.. confval:: rgw_account_default_quota_max_objects
+.. confval:: rgw_account_default_quota_max_size
 .. confval:: rgw_verify_ssl
 .. confval:: rgw_max_chunk_size
 
@@ -60,8 +63,9 @@ rgw 或 radosgw-admin 命令执行时，如果指定了例程名，
 ============
 .. Lifecycle Settings
 
-桶的生命周期（ Lifecycle ）配置可以用于管理对象，使得它们在整个生命周期内得到有效存储。
-在以前的版本中，生命周期的处理效率被单线程耽误了；到 Nautilus 版，这个问题得到了彻底解决，
+桶的生命周期（ Lifecycle ）配置可以用于管理对象，
+使得它们在整个生命周期内得到有效存储。在以前的版本中，
+生命周期的处理效率被单线程耽误了；到 Nautilus 版，这个问题得到了彻底解决，
 Ceph 对象网关现在可以调用另外的 Ceph 对象网关例程、并用随机排序的序列取代了\
 按顺序排列的索引分片枚举，以此实现了桶生命周期的并行多线程处理。
 

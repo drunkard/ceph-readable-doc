@@ -25,6 +25,21 @@ ceph.conf 文件，即 ``/etc/ceph/$cluster.conf`` ，其中，
 
 选项
 ====
+.. option:: --mon-host monaddress[:port]
+
+   连接到指定监视器（而不是通过 ``ceph.conf`` 查询）
+
+.. option:: --keyring=<path-to-keyring>
+
+   提供密钥环路径，当它不在标准位置时用得上这个选项。
+
+.. option:: --log-file=<logfile>
+
+   记录调试输出信息的文件
+
+.. option:: --debug-cephfs-mirror=<log-level>/<memory-level>
+
+   设置 cephfs-mirror 的调试级别
 
 .. option:: -c ceph.conf, --conf=ceph.conf
 

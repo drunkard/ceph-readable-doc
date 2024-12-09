@@ -52,6 +52,17 @@ CephFS 的快照功能在新文件系统上是默认启用的，要在现有文�
 名字随你。例如，要给 /1/2/3/ 目录创建一个快照，
 可以用 ``mkdir /1/2/3/.snap/my-snapshot-name`` 。
 
+.. note::
+   快照名不能以下划线（ "_" ）打头，
+   因为这样的名字是为内部用途保留的。
+
+.. note::
+   快照名长度不能超过 240 个字符。
+   因为 MDS 要在内部使用长快照名，格式是：
+   `_<SNAPSHOT-NAME>_<INODE-NUMBER>` 。通常，文件名不能超过 255 个字符，
+   而 `<node-id>` 占用 13 个字符，
+   长快照名最多就只能有 255 - 1 - 1 - 13 = 240 个字符。
+
 这会作为一个用 CEPH_MDS_OP_MKSNAP 打了标签的 `MClientRequest` 传给 MDS 服务器，
 起初在 Server::handle_client_mksnap() 里处理。它从 `SnapServer` 分到了\
 一个 `snapid` ，用新的 SnapRealm 规划了一个新的 inode ，并像往常一样提交到 MDLog 。

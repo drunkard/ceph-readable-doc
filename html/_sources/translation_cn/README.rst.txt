@@ -177,6 +177,8 @@ fmt_desc > long_desc > desc ，见 _ext/ceph_confval.py 里：
 
     desc = opt.get('fmt_desc') or opt.get('long_desc') or opt.get('desc')
 
+注意：字段内容不能以 '`' 打头，编译器会报错。
+
 字段名
 ''''''
 TODO: 翻译字段名，位于 _ext/ceph_confval.py -> TEMPLATE

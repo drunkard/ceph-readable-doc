@@ -1615,9 +1615,11 @@ version
 
    使输出简洁些。
 
-.. option:: -f {json,json-pretty,xml,xml-pretty,plain}, --format
+.. option:: -f {json,json-pretty,xml,xml-pretty,plain,yaml}, --format
 
    输出格式。
+
+   注意：只有 orch 命令支持 yaml 。
 
 .. option:: --connect-timeout CLUSTER_TIMEOUT
 

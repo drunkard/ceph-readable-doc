@@ -139,9 +139,11 @@
 <li class="toctree-l4"><a class="reference internal" href="#id5">手动调整缓存尺寸</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id6">校验和</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id7">内联压缩</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#rocksdb-sharding">RocksDB Sharding</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#throttling">Throttling</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rocksdb">RocksDB 分片</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">节流</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#spdk">SPDK 用法</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">最低分配尺寸</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dsa">DSA （数据流加速器）的用法</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../filestore-config-ref/">FileStore 配置</a></li>
@@ -216,157 +218,148 @@
 <h1>BlueStore 配置参考<a class="headerlink" href="#bluestore" title="Permalink to this heading"></a></h1>
 <section id="id1">
 <h2>设备<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
-<p>BlueStore 可管理一个、两个、或（某些情况下）三个存储设备。</p>
-<p>In the simplest case, BlueStore consumes a single (primary) storage device.
-The storage device is normally used as a whole, occupying the full device that
-is managed directly by BlueStore. This <em>primary device</em> is normally identified
-by a <code class="docutils literal notranslate"><span class="pre">block</span></code> symlink in the data directory.</p>
-<p>The data directory is a <code class="docutils literal notranslate"><span class="pre">tmpfs</span></code> mount which gets populated (at boot time, or
-when <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> activates it) with all the common OSD files that hold
-information about the OSD, like: its identifier, which cluster it belongs to,
-and its private keyring.</p>
-<p>It is also possible to deploy BlueStore across one or two additional devices:</p>
+<p>BlueStore 可管理一个、两个、某些情况下还能管理三个存储设备。
+这些<em>设备</em>是 Linux/Unix 意义上的 “设备（ devices ）”。
+这意味着它们是在 <code class="docutils literal notranslate"><span class="pre">/dev</span></code> 或 <code class="docutils literal notranslate"><span class="pre">/devices</span></code> 下可以看得到的资产。
+每个设备可以是整个存储驱动器，或是存储驱动器的一个分区，或是一个逻辑卷。
+BlueStore 不会在它使用的设备上创建或挂载传统文件系统；
+BlueStore 以“原始”方式直接读写设备。</p>
+<p>在最简单的情况下， BlueStore 会使用整个存储设备，
+这个设备被称为<em>主设备</em>。
+主设备由数据目录中的 <code class="docutils literal notranslate"><span class="pre">block</span></code> 符号链接标识。</p>
+<p>数据目录挂载的是 <code class="docutils literal notranslate"><span class="pre">tmpfs</span></code> 文件系统。当该数据目录被启动或被 <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> 激活时，它将被装入元数据文件和链接，
+这些文件和链接包含着关于 OSD 的信息：例如， OSD 的标识符、
+OSD 所属集群的名称以及 OSD 的私钥。</p>
+<p>在更复杂的情况下， BlueStore
+会跨越一个或两个设备部署：</p>
 <ul class="simple">
-<li><p>A <em>write-ahead log (WAL) device</em> (identified as <code class="docutils literal notranslate"><span class="pre">block.wal</span></code> in the data directory) can be
-used for BlueStore’s internal journal or write-ahead log. It is only useful
-to use a WAL device if the device is faster than the primary device (e.g.,
-when it is on an SSD and the primary device is an HDD).</p></li>
-<li><p>A <em>DB device</em> (identified as <code class="docutils literal notranslate"><span class="pre">block.db</span></code> in the data directory) can be used
-for storing BlueStore’s internal metadata.  BlueStore (or rather, the
-embedded RocksDB) will put as much metadata as it can on the DB device to
-improve performance.  If the DB device fills up, metadata will spill back
-onto the primary device (where it would have been otherwise).  Again, it is
-only helpful to provision a DB device if it is faster than the primary
-device.</p></li>
+<li><p>可以使用<em>预写日志（ write-ahead log, WAL ）设备</em>（数据目录中的 <code class="docutils literal notranslate"><span class="pre">block.wal</span></code> ）来分离 BlueStore 的内部日志或预写日志。
+只有在 WAL 设备的速度比主设备快的时候，使用 WAL 设备才有优势
+（例如，如果 WAL 设备是 SSD ，而主设备是 HDD ）。</p></li>
+<li><p><em>DB 设备</em>（数据目录中的 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> ）可用于存储 BlueStore 的内部元数据。
+为了提高性能， BlueStore （更准确地说，是嵌入式 RocksDB ）
+会尽可能多地把元数据存入 DB 设备。如果 DB 设备满了，
+元数据就会溢出，回到主设备上（没有 DB 设备时，元数据会放在主设备上）。
+同样，只有当 DB 设备的速度比主设备快的时候，
+配置 DB 设备才是有利的。</p></li>
 </ul>
-<p>If there is only a small amount of fast storage available (e.g., less
-than a gigabyte), we recommend using it as a WAL device.  If there is
-more, provisioning a DB device makes more sense.  The BlueStore
-journal will always be placed on the fastest device available, so
-using a DB device will provide the same benefit that the WAL device
-would while <em>also</em> allowing additional metadata to be stored there (if
-it will fit).  This means that if a DB device is specified but an explicit
-WAL device is not, the WAL will be implicitly colocated with the DB on the faster
-device.</p>
-<p>A single-device (colocated) BlueStore OSD can be provisioned with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">prepare</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">device</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p>To specify a WAL device and/or DB device,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">prepare</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">device</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">block</span><span class="o">.</span><span class="n">wal</span> <span class="o">&lt;</span><span class="n">wal</span><span class="o">-</span><span class="n">device</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">block</span><span class="o">.</span><span class="n">db</span> <span class="o">&lt;</span><span class="n">db</span><span class="o">-</span><span class="n">device</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<div class="admonition note">
+<p>如果可用的快速存储空间比较少（例如，少于 1 GB ），
+我们建议将这些空间用作 WAL 设备。
+但如果可用的快速存储空间较多，则配置 DB 设备更为合理。
+由于 BlueStore 日志总是放在可用的最快设备上，
+因此使用 DB 设备与使用 WAL 设备具有同等优势，
+<em>同时还允许</em>在主设备以外存储额外的元数据
+（前提是适合）。 DB 设备之所以能做到这一点，
+是因为只要指定了 DB 设备，而没有明确指定 WAL 设备时，
+WAL 就会隐式地与 DB 共存于这个速度更快的设备上。</p>
+<p>要配置单设备（共存） BlueStore OSD ，
+运行以下命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">ceph-volume<span class="w"> </span>lvm<span class="w"> </span>prepare<span class="w"> </span>--bluestore<span class="w"> </span>--data<span class="w"> </span>&lt;device&gt;</span>
+</pre></div></div><p>要指定 WAL 设备或 DB 设备，请运行以下命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph-volume<span class="w"> </span>lvm<span class="w"> </span>prepare<span class="w"> </span>--bluestore<span class="w"> </span>--data<span class="w"> </span>&lt;device&gt;<span class="w"> </span>--block.wal<span class="w"> </span>&lt;wal-device&gt;<span class="w"> </span>--block.db<span class="w"> </span>&lt;db-device&gt;</span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>--data 可以是以 <em>vg/lv</em> 方式表达的逻辑卷。其他设备可以是现有的逻辑卷或 GPT 分区。</p>
+<p><code class="docutils literal notranslate"><span class="pre">--data</span></code> 选项可以用以下设备作为参数：
+用 <em>vg/lv</em> 方式指定的逻辑卷、
+现有的逻辑卷、 GPT 分区。</p>
 </div>
 <section id="id2">
 <h3>存储配置策略<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h3>
-<p>虽然有多种途径部署后端为 BlueStore 的 OSD （不像 Filestore
-只有一种），但是这里的两种常见用法有助于澄清部署策略。</p>
+<p>BlueStore 与 Filestore 不同，它有多种部署 BlueStore OSD 的方法。
+不过，只需研究这两种常见的做法，就可以明白 BlueStore 的整体部署策略：</p>
 <section id="block-data-only">
 <span id="bluestore-single-type-device-config"></span><h4><strong>block (data) only</strong><a class="headerlink" href="#block-data-only" title="Permalink to this heading"></a></h4>
-<p>If all devices are the same type, for example all rotational drives, and
-there are no fast devices to use for metadata, it makes sense to specifiy the
-block device only and to not separate <code class="docutils literal notranslate"><span class="pre">block.db</span></code> or <code class="docutils literal notranslate"><span class="pre">block.wal</span></code>. The
-<a class="reference internal" href="../../../ceph-volume/lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> command for a single <code class="docutils literal notranslate"><span class="pre">/dev/sda</span></code> device looks like:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">create</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sda</span>
-</pre></div>
-</div>
-<p>If logical volumes have already been created for each device, (a single LV
-using 100% of the device), then the <a class="reference internal" href="../../../ceph-volume/lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> call for an LV named
-<code class="docutils literal notranslate"><span class="pre">ceph-vg/block-lv</span></code> would look like:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">create</span> <span class="o">--</span><span class="n">bluestore</span> <span class="o">--</span><span class="n">data</span> <span class="n">ceph</span><span class="o">-</span><span class="n">vg</span><span class="o">/</span><span class="n">block</span><span class="o">-</span><span class="n">lv</span>
-</pre></div>
-</div>
-</section>
-<section id="block-and-block-db">
-<span id="bluestore-mixed-device-config"></span><h4><strong>block and block.db</strong><a class="headerlink" href="#block-and-block-db" title="Permalink to this heading"></a></h4>
-<p>If you have a mix of fast and slow devices (SSD / NVMe and rotational),
-it is recommended to place <code class="docutils literal notranslate"><span class="pre">block.db</span></code> on the faster device while <code class="docutils literal notranslate"><span class="pre">block</span></code>
-(data) lives on the slower (spinning drive).</p>
-<p>You must create these volume groups and logical volumes manually as
-the <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> tool is currently not able to do so automatically.</p>
-<p>For the below example, let us assume four rotational (<code class="docutils literal notranslate"><span class="pre">sda</span></code>, <code class="docutils literal notranslate"><span class="pre">sdb</span></code>, <code class="docutils literal notranslate"><span class="pre">sdc</span></code>, and <code class="docutils literal notranslate"><span class="pre">sdd</span></code>)
-and one (fast) solid state drive (<code class="docutils literal notranslate"><span class="pre">sdx</span></code>). First create the volume groups:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ vgcreate ceph-block-0 /dev/sda
-$ vgcreate ceph-block-1 /dev/sdb
-$ vgcreate ceph-block-2 /dev/sdc
-$ vgcreate ceph-block-3 /dev/sdd
-</pre></div>
-</div>
-<p>Now create the logical volumes for <code class="docutils literal notranslate"><span class="pre">block</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ lvcreate -l 100%FREE -n block-0 ceph-block-0
-$ lvcreate -l 100%FREE -n block-1 ceph-block-1
-$ lvcreate -l 100%FREE -n block-2 ceph-block-2
-$ lvcreate -l 100%FREE -n block-3 ceph-block-3
-</pre></div>
-</div>
-<p>We are creating 4 OSDs for the four slow spinning devices, so assuming a 200GB
-SSD in <code class="docutils literal notranslate"><span class="pre">/dev/sdx</span></code> we will create 4 logical volumes, each of 50GB:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ vgcreate ceph-db-0 /dev/sdx
-$ lvcreate -L 50GB -n db-0 ceph-db-0
-$ lvcreate -L 50GB -n db-1 ceph-db-0
-$ lvcreate -L 50GB -n db-2 ceph-db-0
-$ lvcreate -L 50GB -n db-3 ceph-db-0
-</pre></div>
-</div>
-<p>Finally, create the 4 OSDs with <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph-volume lvm create --bluestore --data ceph-block-0/block-0 --block.db ceph-db-0/db-0
-$ ceph-volume lvm create --bluestore --data ceph-block-1/block-1 --block.db ceph-db-0/db-1
-$ ceph-volume lvm create --bluestore --data ceph-block-2/block-2 --block.db ceph-db-0/db-2
-$ ceph-volume lvm create --bluestore --data ceph-block-3/block-3 --block.db ceph-db-0/db-3
-</pre></div>
-</div>
-<p>These operations should end up creating four OSDs, with <code class="docutils literal notranslate"><span class="pre">block</span></code> on the slower
-rotational drives with a 50 GB logical volume (DB) for each on the solid state
-drive.</p>
+<p>如果所有设备都是同一类型（例如，它们都是 HDD ），
+而且没有可用来存储元数据的快速设备，
+那么只需要指定块设备即可，不用分离出 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 和 <code class="docutils literal notranslate"><span class="pre">block.wal</span></code> 。
+针对单个设备 <code class="docutils literal notranslate"><span class="pre">/dev/sda</span></code> 的 <a class="reference internal" href="../../../ceph-volume/lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> 命令如下：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph-volume<span class="w"> </span>lvm<span class="w"> </span>create<span class="w"> </span>--bluestore<span class="w"> </span>--data<span class="w"> </span>/dev/sda</span>
+</pre></div></div><p>如果要用于 BlueStore OSD 的设备已经预先创建了逻辑卷，那么在名为
+<code class="docutils literal notranslate"><span class="pre">ceph-vg/block-lv</span></code> 的逻辑卷上调用 <a class="reference internal" href="../../../ceph-volume/lvm/#ceph-volume-lvm"><span class="std std-ref">lvm</span></a> 的命令如下：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph-volume<span class="w"> </span>lvm<span class="w"> </span>create<span class="w"> </span>--bluestore<span class="w"> </span>--data<span class="w"> </span>ceph-vg/block-lv</span>
+</pre></div></div></section>
+<section id="block-block-db">
+<span id="bluestore-mixed-device-config"></span><h4><strong>block 和 block.db</strong><a class="headerlink" href="#block-block-db" title="Permalink to this heading"></a></h4>
+<p>如果混合使用快慢设备（例如 SSD 和 HDD），
+我们建议将 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 放在速度较快的设备上，
+而 <code class="docutils literal notranslate"><span class="pre">block</span></code> （即数据）则存储在速度较慢的设备上（也就是机械硬盘）。</p>
+<p>您必须手动创建这些卷组和逻辑卷，因为 <code class="docutils literal notranslate"><span class="pre">ceph-volume</span></code> 工具目前还无法自动创建这些卷组和逻辑卷。</p>
+<p>下面的步骤展示了如何手动创建卷组和逻辑卷。在本例中，
+我们假设有四个机械硬盘（ <code class="docutils literal notranslate"><span class="pre">sda</span></code> 、 <code class="docutils literal notranslate"><span class="pre">sdb</span></code> 、 <code class="docutils literal notranslate"><span class="pre">sdc</span></code> 和 <code class="docutils literal notranslate"><span class="pre">sdd</span></code> ）
+和一个（高速的） SSD （ <code class="docutils literal notranslate"><span class="pre">sdx</span></code> ）。首先，运行以下命令创建卷组：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">vgcreate<span class="w"> </span>ceph-block-0<span class="w"> </span>/dev/sda</span>
+<span class="prompt1">vgcreate<span class="w"> </span>ceph-block-1<span class="w"> </span>/dev/sdb</span>
+<span class="prompt1">vgcreate<span class="w"> </span>ceph-block-2<span class="w"> </span>/dev/sdc</span>
+<span class="prompt1">vgcreate<span class="w"> </span>ceph-block-3<span class="w"> </span>/dev/sdd</span>
+</pre></div></div><p>接下来，为 <code class="docutils literal notranslate"><span class="pre">block</span></code> 创建逻辑卷，运行以下命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">lvcreate<span class="w"> </span>-l<span class="w"> </span><span class="m">100</span>%FREE<span class="w"> </span>-n<span class="w"> </span>block-0<span class="w"> </span>ceph-block-0</span>
+<span class="prompt1">lvcreate<span class="w"> </span>-l<span class="w"> </span><span class="m">100</span>%FREE<span class="w"> </span>-n<span class="w"> </span>block-1<span class="w"> </span>ceph-block-1</span>
+<span class="prompt1">lvcreate<span class="w"> </span>-l<span class="w"> </span><span class="m">100</span>%FREE<span class="w"> </span>-n<span class="w"> </span>block-2<span class="w"> </span>ceph-block-2</span>
+<span class="prompt1">lvcreate<span class="w"> </span>-l<span class="w"> </span><span class="m">100</span>%FREE<span class="w"> </span>-n<span class="w"> </span>block-3<span class="w"> </span>ceph-block-3</span>
+</pre></div></div><p>因为有四个 HDD ，所以就会有四个 OSD 。假设 <code class="docutils literal notranslate"><span class="pre">/dev/sdx</span></code> 中有一个 200GB 的 SSD ，
+我们可以创建四个 50GB 的逻辑卷，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">vgcreate<span class="w"> </span>ceph-db-0<span class="w"> </span>/dev/sdx</span>
+<span class="prompt1">lvcreate<span class="w"> </span>-L<span class="w"> </span>50GB<span class="w"> </span>-n<span class="w"> </span>db-0<span class="w"> </span>ceph-db-0</span>
+<span class="prompt1">lvcreate<span class="w"> </span>-L<span class="w"> </span>50GB<span class="w"> </span>-n<span class="w"> </span>db-1<span class="w"> </span>ceph-db-0</span>
+<span class="prompt1">lvcreate<span class="w"> </span>-L<span class="w"> </span>50GB<span class="w"> </span>-n<span class="w"> </span>db-2<span class="w"> </span>ceph-db-0</span>
+<span class="prompt1">lvcreate<span class="w"> </span>-L<span class="w"> </span>50GB<span class="w"> </span>-n<span class="w"> </span>db-3<span class="w"> </span>ceph-db-0</span>
+</pre></div></div><p>最后，创建四个 OSD ，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph-volume<span class="w"> </span>lvm<span class="w"> </span>create<span class="w"> </span>--bluestore<span class="w"> </span>--data<span class="w"> </span>ceph-block-0/block-0<span class="w"> </span>--block.db<span class="w"> </span>ceph-db-0/db-0</span>
+<span class="prompt1">ceph-volume<span class="w"> </span>lvm<span class="w"> </span>create<span class="w"> </span>--bluestore<span class="w"> </span>--data<span class="w"> </span>ceph-block-1/block-1<span class="w"> </span>--block.db<span class="w"> </span>ceph-db-0/db-1</span>
+<span class="prompt1">ceph-volume<span class="w"> </span>lvm<span class="w"> </span>create<span class="w"> </span>--bluestore<span class="w"> </span>--data<span class="w"> </span>ceph-block-2/block-2<span class="w"> </span>--block.db<span class="w"> </span>ceph-db-0/db-2</span>
+<span class="prompt1">ceph-volume<span class="w"> </span>lvm<span class="w"> </span>create<span class="w"> </span>--bluestore<span class="w"> </span>--data<span class="w"> </span>ceph-block-3/block-3<span class="w"> </span>--block.db<span class="w"> </span>ceph-db-0/db-3</span>
+</pre></div></div><p>完成这些步骤后，应该有四个 OSD ， <code class="docutils literal notranslate"><span class="pre">block</span></code> 应该在四个 HDD 上，
+每个 HDD 在 SSD 上共享着一个 50GB 的逻辑卷（往细了说，是 DB 设备）。</p>
 </section>
 </section>
 </section>
 <section id="id3">
 <h2>调整尺寸<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
-<p>When using a <a class="reference internal" href="#bluestore-mixed-device-config"><span class="std std-ref">mixed spinning and solid drive setup</span></a> it is important to make a large enough
-<code class="docutils literal notranslate"><span class="pre">block.db</span></code> logical volume for BlueStore. Generally, <code class="docutils literal notranslate"><span class="pre">block.db</span></code> should have
-<em>as large as possible</em> logical volumes.</p>
-<p>The general recommendation is to have <code class="docutils literal notranslate"><span class="pre">block.db</span></code> size in between 1% to 4%
-of <code class="docutils literal notranslate"><span class="pre">block</span></code> size. For RGW workloads, it is recommended that the <code class="docutils literal notranslate"><span class="pre">block.db</span></code>
-size isn’t smaller than 4% of <code class="docutils literal notranslate"><span class="pre">block</span></code>, because RGW heavily uses it to store
-metadata (omap keys). For example, if the <code class="docutils literal notranslate"><span class="pre">block</span></code> size is 1TB, then <code class="docutils literal notranslate"><span class="pre">block.db</span></code> shouldn’t
-be less than 40GB. For RBD workloads, 1% to 2% of <code class="docutils literal notranslate"><span class="pre">block</span></code> size is usually enough.</p>
-<p>In older releases, internal level sizes mean that the DB can fully utilize only
-specific partition / LV sizes that correspond to sums of L0, L0+L1, L1+L2,
-etc. sizes, which with default settings means roughly 3 GB, 30 GB, 300 GB, and
-so forth.  Most deployments will not substantially benefit from sizing to
-accomodate L3 and higher, though DB compaction can be facilitated by doubling
-these figures to 6GB, 60GB, and 600GB.</p>
-<p>Improvements in releases beginning with Nautilus 14.2.12 and Octopus 15.2.6
-enable better utilization of arbitrary DB device sizes, and the Pacific
-release brings experimental dynamic level support.  Users of older releases may
-thus wish to plan ahead by provisioning larger DB devices today so that their
-benefits may be realized with future upgrades.</p>
-<p>When <em>not</em> using a mix of fast and slow devices, it isn’t required to create
-separate logical volumes for <code class="docutils literal notranslate"><span class="pre">block.db</span></code> (or <code class="docutils literal notranslate"><span class="pre">block.wal</span></code>). BlueStore will
-automatically colocate these within the space of <code class="docutils literal notranslate"><span class="pre">block</span></code>.</p>
+<p><a class="reference internal" href="#bluestore-mixed-device-config"><span class="std std-ref">混合使用机械硬盘和固态硬盘</span></a>时，
+给 BlueStore 创建足够大的 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 逻辑卷很重要。
+与 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 相关联的逻辑卷应该<em>尽可能大</em>。</p>
+<p>一般建议， <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 的大小应该是 <code class="docutils literal notranslate"><span class="pre">block</span></code>
+大小的 1% 至 4% 。对于 RGW 工作载荷，
+建议 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 至少是 <code class="docutils literal notranslate"><span class="pre">block</span></code> 大小的 4% ，
+因为 RGW 会大量使用 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 来存储元数据（尤其是 omap 键）。例如，
+如果 <code class="docutils literal notranslate"><span class="pre">block</span></code> 大小为 1TB ，那么 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 的大小最低应该是 40GB 。
+不过，对于 RBD 工作载荷， <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 所需的大小通常不会超过 <code class="docutils literal notranslate"><span class="pre">block</span></code> 大小的 1% 到 2% 。</p>
+<p>在旧版本中，内部会这样对准尺寸：数据库只能完全利用那些特定的尺寸，
+就是与 L0 、 L0+L1 、 L1+L2 等等总和相对应的分区/逻辑卷的尺寸，
+也就是说，在默认设置下，尺寸大致为 3GB 、 30GB 、 300GB 等等。
+大多数部署不会从 L3 以及更大的容量中获得实质性好处，
+尽管 DB 压缩技术可以将这些数字翻倍至 6GB 、 60GB 和 600GB 。</p>
+<p>Nautilus 14.2.12 、 Octopus 15.2.6 以及后续版本做了改进，
+可以更好地使用任意大小的 DB 设备。此外，
+Pacific 版还试验性地支持动态对准。由于这些改进，
+旧版本的用户可能希望未雨绸缪，
+现在就配置更大的 DB 设备，
+以便将来升级的时候实现规模效益。</p>
+<p>如果<em>不</em>混合使用快速和慢速设备，
+则无需为 <code class="docutils literal notranslate"><span class="pre">block.db</span></code> 或 <code class="docutils literal notranslate"><span class="pre">block.wal</span></code> 创建单独的逻辑卷。
+BlueStore 会自动把这些设备放置在 <code class="docutils literal notranslate"><span class="pre">block</span></code> 的空间内。</p>
 </section>
 <section id="id4">
 <h2>自动调整缓存尺寸<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
-<p>BlueStore can be configured to automatically resize its caches when TCMalloc
-is configured as the memory allocator and the <code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code>
-setting is enabled.  This option is currently enabled by default.  BlueStore
-will attempt to keep OSD heap memory usage under a designated target size via
-the <code class="docutils literal notranslate"><span class="pre">osd_memory_target</span></code> configuration option.  This is a best effort
-algorithm and caches will not shrink smaller than the amount specified by
-<code class="docutils literal notranslate"><span class="pre">osd_memory_cache_min</span></code>.  Cache ratios will be chosen based on a hierarchy
-of priorities.  If priority information is not available, the
-<code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code> and <code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code> options are
-used as fallbacks.</p>
+<p>只要满足特定条件， BlueStore 就能配置为自动调整缓存大小：
+必须用 TCMalloc 作为内存分配器、还必须启用 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune</span></code> 配置选项
+（注意，目前是默认启用的）。当自动调整缓存大小生效时，
+BlueStore 会尝试将 OSD 堆内存使用量保持在一定的目标尺寸
+（由 <code class="docutils literal notranslate"><span class="pre">osd_memory_target</span></code> 确定）之内。
+这种方法采用尽力而为的算法，
+缓存不会缩减到小于 <code class="docutils literal notranslate"><span class="pre">osd_memory_cache_min</span></code> 所定义的尺寸。
+缓存比率是根据优先级层次来选择的。
+但如果没有优先级信息，就会用 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code> 和
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code> 选项指定的值作为后备缓存比率。</p>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-bluestore_cache_autotune">
 <span class="sig-name descname"><span class="pre">bluestore_cache_autotune</span></span><a class="headerlink" href="#confval-bluestore_cache_autotune" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Automatically tune the space ratios assigned to various BlueStore
-caches while respecting minimum values.</p>
+<div><p>在保证最小值的情况下， 自动调整分配给各种 BlueStore 缓存的空间比例。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
@@ -385,17 +378,17 @@ caches while respecting minimum values.</p>
 <dt class="sig sig-object std" id="confval-osd_memory_target">
 <span class="sig-name descname"><span class="pre">osd_memory_target</span></span><a class="headerlink" href="#confval-osd_memory_target" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>When TCMalloc is available and cache autotuning is enabled, try to
-keep this many bytes mapped in memory. Note: This may not exactly
-match the RSS memory usage of the process.  While the total amount
-of heap memory mapped by the process should usually be close
-to this target, there is no guarantee that the kernel will actually
-reclaim  memory that has been unmapped.  During initial development,
-it was found that some kernels result in the OSD’s RSS memory
-exceeding the mapped memory by up to 20%.  It is hypothesised
-however, that the kernel generally may be more aggressive about
-reclaiming unmapped memory when there is a high amount of memory
-pressure.  Your mileage may vary.</p>
+<div><p>当 TCMalloc 可用且启用了缓存自动调整功能时，
+尽量在内存中保持这么多字节的映射。注意：
+这可能与进程的 RSS 内存使用量不完全一致。
+虽然正常情况下，进程映射的堆内存总量应该接近此目标值，
+但无法保证内核真的会回收已取消映射的内存。
+在最初的开发过程中，
+我们发现有些版本的内核会导致 OSD 的
+RSS 内存超出映射内存多达 20% 。不过，
+据推测，通常，当内存压力较大时，
+内核会更积极地回收未映射内存。
+现实情况可能差别较大。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -417,12 +410,10 @@ pressure.  Your mileage may vary.</p>
 <dt class="sig sig-object std" id="confval-bluestore_cache_autotune_interval">
 <span class="sig-name descname"><span class="pre">bluestore_cache_autotune_interval</span></span><a class="headerlink" href="#confval-bluestore_cache_autotune_interval" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>The number of seconds to wait between rebalances when cache autotune
-is
-enabled.  <cite>bluestore_cache_autotune_interval</cite> sets the speed at which
-Ceph
-recomputes the allocation ratios of various caches. Note: Setting this
-interval too small can result in high CPU usage and lower performance.</p>
+<div><p>启用缓存自动调整时，两次重新平衡之间的等待秒数。
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_autotune_interval</span></code> 设置
+Ceph 重新计算各种缓存分配比例的速度。注意：
+这个时间间隔设置得过小可能会导致 CPU 占用率过高和性能降低。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
@@ -441,10 +432,7 @@ interval too small can result in high CPU usage and lower performance.</p>
 <dt class="sig sig-object std" id="confval-osd_memory_base">
 <span class="sig-name descname"><span class="pre">osd_memory_base</span></span><a class="headerlink" href="#confval-osd_memory_base" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>When TCMalloc and cache autotuning are enabled, estimate the minimum
-amount of memory in bytes the OSD will need.  This is used to help the
-autotuner estimate the expected aggregate memory consumption of the
-caches.</p>
+<div><p>启用 TCMalloc 和缓存自动调整功能后， 以字节为单位估算 OSD 将需要的最小内存量。 这将有助于自动调整器估算缓存的预期总内存消耗量。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -463,9 +451,7 @@ caches.</p>
 <dt class="sig sig-object std" id="confval-osd_memory_expected_fragmentation">
 <span class="sig-name descname"><span class="pre">osd_memory_expected_fragmentation</span></span><a class="headerlink" href="#confval-osd_memory_expected_fragmentation" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>When TCMalloc and cache autotuning is enabled, estimate the percentage
-of memory fragmentation.  This is used to help the autotuner estimate
-the expected aggregate memory consumption of the caches.</p>
+<div><p>启用 TCMalloc 和高速缓存自动调整时， 估算内存碎片的百分比。 这有助于自动调整器估算缓存的预期总内存消耗。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
@@ -487,9 +473,9 @@ the expected aggregate memory consumption of the caches.</p>
 <dt class="sig sig-object std" id="confval-osd_memory_cache_min">
 <span class="sig-name descname"><span class="pre">osd_memory_cache_min</span></span><a class="headerlink" href="#confval-osd_memory_cache_min" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>When TCMalloc and cache autotuning are enabled, set the minimum
-amount of memory used for caches. Note: Setting this value too
-low can result in significant cache thrashing.</p>
+<div><p>启用 TCMalloc 和缓存自动调整后，
+设置缓存使用的最小内存量。注意：
+此值设置得过低会导致严重的缓存颠簸（ cache thrashing ）。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -511,11 +497,8 @@ low can result in significant cache thrashing.</p>
 <dt class="sig sig-object std" id="confval-osd_memory_cache_resize_interval">
 <span class="sig-name descname"><span class="pre">osd_memory_cache_resize_interval</span></span><a class="headerlink" href="#confval-osd_memory_cache_resize_interval" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>When TCMalloc and cache autotuning are enabled, wait this many seconds
-between resizing caches.  This setting changes the total amount of
-memory available for BlueStore to use for caching.  Note that setting
-this interval too small can result in memory allocator thrashing and
-lower performance.</p>
+<div><p>启用 TCMalloc 和缓存自动调整功能后， 调整缓存大小时要间隔这么多秒数。 此设置可更改 BlueStore 用于缓存的可用内存总量。
+注意，如果设置的时间间隔太短， 会导致内存分配器颠簸、性能低下。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
@@ -533,39 +516,33 @@ lower performance.</p>
 </section>
 <section id="id5">
 <h2>手动调整缓存尺寸<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h2>
-<p>The amount of memory consumed by each OSD for BlueStore caches is
-determined by the <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code> configuration option.  If
-that config option is not set (i.e., remains at 0), there is a
-different default value that is used depending on whether an HDD or
-SSD is used for the primary device (set by the
-<code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> and <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> config
-options).</p>
-<p>BlueStore and the rest of the Ceph OSD daemon do the best they can
-to work within this memory budget.  Note that on top of the configured
-cache size, there is also memory consumed by the OSD itself, and
-some additional utilization due to memory fragmentation and other
-allocator overhead.</p>
-<p>The configured cache memory budget can be used in a few different ways:</p>
+<p>每个 OSD 用于 BlueStore 缓存的内存消耗量由 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size</span></code> 配置选项决定。
+如果未指定该选项（即该选项保持为 0 ），
+那么 Ceph 会使用别的配置选项来确定默认的内存预算：
+如果主设备是 HDD ，则使用 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> ；
+如果主设备是 SSD ，则使用 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> 。</p>
+<p>BlueStore 和 Ceph OSD 守护进程的其他部分会尽力在此内存预算范围内运行。
+注意，除了配置的缓存大小外，
+OSD 本身也会消耗内存。
+内存碎片和其他分配器开销会导致额外的内存使用。</p>
+<p>配置的缓存内存预算可用于存储以下类型的内容：</p>
 <ul class="simple">
-<li><p>Key/Value metadata (i.e., RocksDB’s internal cache)</p></li>
-<li><p>BlueStore metadata</p></li>
-<li><p>BlueStore data (i.e., recently read or written object data)</p></li>
+<li><p>Key/Value 元数据（也就是 RocksDB 的内部缓存）</p></li>
+<li><p>BlueStore 元数据</p></li>
+<li><p>BlueStore 数据（就是最近读出或最近写入的对象数据）</p></li>
 </ul>
-<p>Cache memory usage is governed by the following options:
-<code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code> and <code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code>.
-The fraction of the cache devoted to data
-is governed by the effective bluestore cache size (depending on
-<code class="docutils literal notranslate"><span class="pre">bluestore_cache_size[_ssd|_hdd]</span></code> settings and the device class of the primary
-device) as well as the meta and kv ratios.
-The data fraction can be calculated by
-<code class="docutils literal notranslate"><span class="pre">&lt;effective_cache_size&gt;</span> <span class="pre">*</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">bluestore_cache_meta_ratio</span> <span class="pre">-</span> <span class="pre">bluestore_cache_kv_ratio)</span></code></p>
+<p>缓存内存用量受以下选项控制：
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_meta_ratio</span></code> 和 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_kv_ratio</span></code> 。
+缓存中用于数据的部分受有效 BlueStore 缓存大小
+（取决于 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size[_ssd|_hdd]</span></code> 选项和主设备的设备类别）以及 meta 比率和 kv 比率的影响。
+数据部分的计算公式为： <code class="docutils literal notranslate"><span class="pre">&lt;effective_cache_size&gt;</span> <span class="pre">*</span> <span class="pre">(1</span> <span class="pre">-</span>
+<span class="pre">bluestore_cache_meta_ratio</span> <span class="pre">-</span> <span class="pre">bluestore_cache_kv_ratio)</span></code> 。</p>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-bluestore_cache_size">
 <span class="sig-name descname"><span class="pre">bluestore_cache_size</span></span><a class="headerlink" href="#confval-bluestore_cache_size" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>The amount of memory BlueStore will use for its cache.  If zero,
-<code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> or <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> will be
-used instead.</p>
+<div><p>BlueStore 用于缓存的内存大小。 如果为零，将使用 <code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_hdd</span></code> 或
+<code class="docutils literal notranslate"><span class="pre">bluestore_cache_size_ssd</span></code> 代替。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -581,8 +558,7 @@ used instead.</p>
 <dt class="sig sig-object std" id="confval-bluestore_cache_size_hdd">
 <span class="sig-name descname"><span class="pre">bluestore_cache_size_hdd</span></span><a class="headerlink" href="#confval-bluestore_cache_size_hdd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>The default amount of memory BlueStore will use for its cache when
-backed by an HDD.</p>
+<div><p>底层是 HDD 时， BlueStore 用于缓存的默认内存量。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -601,8 +577,7 @@ backed by an HDD.</p>
 <dt class="sig sig-object std" id="confval-bluestore_cache_size_ssd">
 <span class="sig-name descname"><span class="pre">bluestore_cache_size_ssd</span></span><a class="headerlink" href="#confval-bluestore_cache_size_ssd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>The default amount of memory BlueStore will use for its cache when
-backed by an SSD.</p>
+<div><p>底层是 SSD 时， BlueStore 用于缓存的默认内存量。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -621,7 +596,7 @@ backed by an SSD.</p>
 <dt class="sig sig-object std" id="confval-bluestore_cache_meta_ratio">
 <span class="sig-name descname"><span class="pre">bluestore_cache_meta_ratio</span></span><a class="headerlink" href="#confval-bluestore_cache_meta_ratio" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Ratio of bluestore cache to devote to metadata</p>
+<div><p>用于元数据的 bluestore 缓存比例</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
@@ -640,7 +615,7 @@ backed by an SSD.</p>
 <dt class="sig sig-object std" id="confval-bluestore_cache_kv_ratio">
 <span class="sig-name descname"><span class="pre">bluestore_cache_kv_ratio</span></span><a class="headerlink" href="#confval-bluestore_cache_kv_ratio" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Ratio of bluestore cache to devote to key/value database (RocksDB)</p>
+<div><p>用于键/值数据库（RocksDB）的 bluestore 缓存比例</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
@@ -658,34 +633,28 @@ backed by an SSD.</p>
 </section>
 <section id="id6">
 <h2>校验和<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h2>
-<p>BlueStore checksums all metadata and data written to disk.  Metadata
-checksumming is handled by RocksDB and uses <cite>crc32c</cite>. Data
-checksumming is done by BlueStore and can make use of <cite>crc32c</cite>,
-<cite>xxhash32</cite>, or <cite>xxhash64</cite>.  The default is <cite>crc32c</cite> and should be
-suitable for most purposes.</p>
-<p>Full data checksumming does increase the amount of metadata that
-BlueStore must store and manage.  When possible, e.g., when clients
-hint that data is written and read sequentially, BlueStore will
-checksum larger blocks, but in many cases it must store a checksum
-value (usually 4 bytes) for every 4 kilobyte block of data.</p>
-<p>It is possible to use a smaller checksum value by truncating the
-checksum to two or one byte, reducing the metadata overhead.  The
-trade-off is that the probability that a random error will not be
-detected is higher with a smaller checksum, going from about one in
-four billion with a 32-bit (4 byte) checksum to one in 65,536 for a
-16-bit (2 byte) checksum or one in 256 for an 8-bit (1 byte) checksum.
-The smaller checksum values can be used by selecting <cite>crc32c_16</cite> or
-<cite>crc32c_8</cite> as the checksum algorithm.</p>
-<p>The <em>checksum algorithm</em> can be set either via a per-pool
-<code class="docutils literal notranslate"><span class="pre">csum_type</span></code> property or the global config option.  For example,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">csum_type</span> <span class="o">&lt;</span><span class="n">algorithm</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<dl class="std confval">
+<p>BlueStore 会对写入磁盘的所有元数据、所有数据做校验和。
+元数据校验和由 RocksDB 处理，使用 <cite>crc32c</cite> 算法；
+而数据校验由 BlueStore 处理，可以使用 <cite>crc32c</cite> 、 <cite>xxhash32</cite> 或 <cite>xxhash64</cite> 。
+不过， <cite>crc32c</cite> 是默认的校验和算法，适合大多数用途。</p>
+<p>完整的数据校验和会增加元数据量， BlueStore 必须存储和管理它们。
+只要有可能（例如，当客户端提示数据是按顺序写入和读出时），
+BlueStore 就会对较大的数据块进行校验。但在许多情况下，
+它必须为每 4 KB 数据块存储一个校验和结果
+（通常为 4 字节）。</p>
+<p>把校验和截断成 1 或 2 个字节可以得到一个较小的校验和数值，
+这样可以削减元数据开销。这样做的缺点是增加了随机错误未被发现的概率：
+32 位（ 4 字节）校验和的概率约为 40 亿分之一，
+16 位（ 2 字节）校验和的概率约为 65536 分之一，
+8 位（ 1 字节）校验和约为 256 分之一。要使用较小的校验和值，
+选用 <cite>crc32c_16</cite> 或 <cite>crc32c_8</cite> 校验和算法。</p>
+<p>可以通过每个存储池的 <code class="docutils literal notranslate"><span class="pre">csum_type</span></code> 配置选项或全局配置选项指定<em>校验和算法</em>。例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>csum_type<span class="w"> </span>&lt;algorithm&gt;</span>
+</pre></div></div><dl class="std confval">
 <dt class="sig sig-object std" id="confval-bluestore_csum_type">
 <span class="sig-name descname"><span class="pre">bluestore_csum_type</span></span><a class="headerlink" href="#confval-bluestore_csum_type" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>The default checksum algorithm to use.</p>
+<div><p>要使用的默认校验和算法。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
@@ -710,45 +679,41 @@ The smaller checksum values can be used by selecting <cite>crc32c_16</cite> or
 </section>
 <section id="id7">
 <h2>内联压缩<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
-<p>BlueStore 支持内联压缩，可用 <cite>snappy</cite> 、 <cite>zlib</cite> 或 <cite>lz4</cite>
-压缩算法。请注意， <cite>lz4</cite> 压缩插件不在官方发布内。</p>
-<p>Whether data in BlueStore is compressed is determined by a combination
-of the <em>compression mode</em> and any hints associated with a write
-operation.  The modes are:</p>
+<p>BlueStore 支持内联压缩，可用 <cite>snappy</cite> 、 <cite>zlib</cite> 、 <cite>lz4</cite> 、 <cite>zstd</cite> 压缩算法。</p>
+<p>BlueStore 中的数据是否压缩由两个因素决定： (1) <em>压缩模式</em>和
+(2) 与写入操作相关的客户端提示。压缩模式如下：</p>
 <ul class="simple">
 <li><p><strong>none</strong>: 永不压缩数据；</p></li>
-<li><p><strong>passive</strong>: Do not compress data unless the write operation has a
-<em>compressible</em> hint set.</p></li>
-<li><p><strong>aggressive</strong>: Compress data unless the write operation has an
-<em>incompressible</em> hint set.</p></li>
-<li><p><strong>force</strong>: 压缩一切数据。</p></li>
+<li><p><strong>passive</strong>: 不压缩数据，
+除非写入操作设置了 <em>compressible</em> （可压缩）提示。</p></li>
+<li><p><strong>aggressive</strong>: 总是压缩数据，
+除非写操作设置了 <em>incompressible</em> （不可压缩）提示。</p></li>
+<li><p><strong>force</strong>: 压缩一切数据（忽视提示）。</p></li>
 </ul>
-<p>For more information about the <em>compressible</em> and <em>incompressible</em> IO
-hints, see <a class="reference internal" href="../../api/librados/#c.rados_set_alloc_hint" title="rados_set_alloc_hint"><code class="xref c c-func docutils literal notranslate"><span class="pre">rados_set_alloc_hint()</span></code></a>.</p>
-<p>Note that regardless of the mode, if the size of the data chunk is not
-reduced sufficiently it will not be used and the original
-(uncompressed) data will be stored.  For example, if the <code class="docutils literal notranslate"><span class="pre">bluestore</span>
-<span class="pre">compression</span> <span class="pre">required</span> <span class="pre">ratio</span></code> is set to <code class="docutils literal notranslate"><span class="pre">.7</span></code> then the compressed data
-must be 70% of the size of the original (or smaller).</p>
-<p>The <em>compression mode</em>, <em>compression algorithm</em>, <em>compression required
-ratio</em>, <em>min blob size</em>, and <em>max blob size</em> can be set either via a
-per-pool property or a global config option.  Pool properties can be
-set with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_algorithm</span> <span class="o">&lt;</span><span class="n">algorithm</span><span class="o">&gt;</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_mode</span> <span class="o">&lt;</span><span class="n">mode</span><span class="o">&gt;</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_required_ratio</span> <span class="o">&lt;</span><span class="n">ratio</span><span class="o">&gt;</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_min_blob_size</span> <span class="o">&lt;</span><span class="n">size</span><span class="o">&gt;</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="o">&lt;</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">compression_max_blob_size</span> <span class="o">&lt;</span><span class="n">size</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<dl class="std confval">
+<p>有关 <em>compressible</em> 和 <em>incompressible</em> I/O 提示的更多信息，
+参阅 <a class="reference internal" href="../../api/librados/#c.rados_set_alloc_hint" title="rados_set_alloc_hint"><code class="xref c c-func docutils literal notranslate"><span class="pre">rados_set_alloc_hint()</span></code></a> 。</p>
+<p>注意，只有当数据块的尺寸减少得足够多时，才会压缩 BlueStore 中的数据
+（由 <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">required</span> <span class="pre">ratio</span></code> 选项决定）。
+无论使用的是哪种压缩模式，
+如果数据块过大，就会被忽略，而是存储原始（未压缩的）数据。
+例如，如果 <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">required</span> <span class="pre">ratio</span></code> 设置为 <code class="docutils literal notranslate"><span class="pre">.7</span></code> ，
+那么只有当压缩数据的大小不超过原始数据大小的 70% 时，
+才会存储压缩的数据。</p>
+<p><em>compression mode</em> 、 <em>compression algorithm</em> 、 <em>compression required ratio</em> 、
+<em>min blob size</em> 和 <em>max blob size</em> 这些选项，
+可以通过每个存储池的属性设置，也可以通过全局配置选项设置。
+要指定存储池属性，执行以下命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>compression_algorithm<span class="w"> </span>&lt;algorithm&gt;</span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>compression_mode<span class="w"> </span>&lt;mode&gt;</span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>compression_required_ratio<span class="w"> </span>&lt;ratio&gt;</span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>compression_min_blob_size<span class="w"> </span>&lt;size&gt;</span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>compression_max_blob_size<span class="w"> </span>&lt;size&gt;</span>
+</pre></div></div><dl class="std confval">
 <dt class="sig sig-object std" id="confval-bluestore_compression_algorithm">
 <span class="sig-name descname"><span class="pre">bluestore_compression_algorithm</span></span><a class="headerlink" href="#confval-bluestore_compression_algorithm" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>The default compressor to use (if any) if the per-pool property
-<code class="docutils literal notranslate"><span class="pre">compression_algorithm</span></code> is not set. Note that <code class="docutils literal notranslate"><span class="pre">zstd</span></code> is <em>not</em>
-recommended for BlueStore due to high CPU overhead when compressing
-small amounts of data.</p>
+<div><p>没有设置单个存储池属性 <code class="docutils literal notranslate"><span class="pre">compression_algorithm</span></code> 时， 默认使用的压缩器（如果有）。注意， 由于压缩少量数据时
+CPU 开销较高， 因此、 <em>不建议</em>在 BlueStore 中使用 <code class="docutils literal notranslate"><span class="pre">zstd</span></code> 。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
@@ -773,12 +738,10 @@ small amounts of data.</p>
 <dt class="sig sig-object std" id="confval-bluestore_compression_mode">
 <span class="sig-name descname"><span class="pre">bluestore_compression_mode</span></span><a class="headerlink" href="#confval-bluestore_compression_mode" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>The default policy for using compression if the per-pool property
-<code class="docutils literal notranslate"><span class="pre">compression_mode</span></code> is not set. <code class="docutils literal notranslate"><span class="pre">none</span></code> means never use compression.
-<code class="docutils literal notranslate"><span class="pre">passive</span></code> means use compression when <a class="reference internal" href="../../api/librados/#c.rados_set_alloc_hint" title="rados_set_alloc_hint"><code class="xref c c-func docutils literal notranslate"><span class="pre">clients</span> <span class="pre">hint</span></code></a> that data is compressible.  <code class="docutils literal notranslate"><span class="pre">aggressive</span></code>
-means use compression unless clients hint that data is not
-compressible.  <code class="docutils literal notranslate"><span class="pre">force</span></code> means use compression under all circumstances
-even if the clients hint that the data is not compressible.</p>
+<div><p>没有设置单个存储池属性 <code class="docutils literal notranslate"><span class="pre">compression_mode</span></code> 时， 默认使用的压缩策略。 <code class="docutils literal notranslate"><span class="pre">none</span></code> 表示从不使用压缩。
+<code class="docutils literal notranslate"><span class="pre">passive</span></code> 表示 <a class="reference internal" href="../../api/librados/#c.rados_set_alloc_hint" title="rados_set_alloc_hint"><code class="xref c c-func docutils literal notranslate"><span class="pre">客户端提示</span></code></a> 数据可压缩时使用压缩。
+<code class="docutils literal notranslate"><span class="pre">aggressive</span></code> 表示除非客户提示数据不可压缩，否则一律压缩。 <code class="docutils literal notranslate"><span class="pre">force</span></code> 表示不管任何情况一律压缩，
+即使客户提示数据不可压缩也不行。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
@@ -818,8 +781,7 @@ even if the clients hint that the data is not compressible.</p>
 <dt class="sig sig-object std" id="confval-bluestore_compression_min_blob_size">
 <span class="sig-name descname"><span class="pre">bluestore_compression_min_blob_size</span></span><a class="headerlink" href="#confval-bluestore_compression_min_blob_size" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Chunks smaller than this are never compressed. The per-pool property
-<code class="docutils literal notranslate"><span class="pre">compression_min_blob_size</span></code> overrides this setting.</p>
+<div><p>小于这个尺寸的数据块不会被压缩。 单个存储池属性 <code class="docutils literal notranslate"><span class="pre">compression_min_blob_size</span></code> 可以覆盖此设置。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -835,8 +797,7 @@ even if the clients hint that the data is not compressible.</p>
 <dt class="sig sig-object std" id="confval-bluestore_compression_min_blob_size_hdd">
 <span class="sig-name descname"><span class="pre">bluestore_compression_min_blob_size_hdd</span></span><a class="headerlink" href="#confval-bluestore_compression_min_blob_size_hdd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code> for
-rotational media.</p>
+<div><p>配置项 <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code> 的默认值， 适用于机械硬盘。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -855,8 +816,7 @@ rotational media.</p>
 <dt class="sig sig-object std" id="confval-bluestore_compression_min_blob_size_ssd">
 <span class="sig-name descname"><span class="pre">bluestore_compression_min_blob_size_ssd</span></span><a class="headerlink" href="#confval-bluestore_compression_min_blob_size_ssd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code> for non-
-rotational (solid state) media.</p>
+<div><p>配置项 <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">min</span> <span class="pre">blob</span> <span class="pre">size</span></code> 的默认值， 适用于非机械硬盘，即固态硬盘。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -875,10 +835,8 @@ rotational (solid state) media.</p>
 <dt class="sig sig-object std" id="confval-bluestore_compression_max_blob_size">
 <span class="sig-name descname"><span class="pre">bluestore_compression_max_blob_size</span></span><a class="headerlink" href="#confval-bluestore_compression_max_blob_size" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Chunks larger than this value are broken into smaller blobs of at most
-<code class="docutils literal notranslate"><span class="pre">bluestore_compression_max_blob_size</span></code> bytes before being compressed.
-The per-pool property <code class="docutils literal notranslate"><span class="pre">compression_max_blob_size</span></code> overrides this
-setting.</p>
+<div><p>大于此值的数据块，在压缩前会被分割成最大为 <code class="docutils literal notranslate"><span class="pre">bluestore_compression_max_blob_size</span></code>
+字节的较小数据块。 单个存储池属性 <code class="docutils literal notranslate"><span class="pre">compression_max_blob_size</span></code> 会覆盖此设置。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -894,8 +852,7 @@ setting.</p>
 <dt class="sig sig-object std" id="confval-bluestore_compression_max_blob_size_hdd">
 <span class="sig-name descname"><span class="pre">bluestore_compression_max_blob_size_hdd</span></span><a class="headerlink" href="#confval-bluestore_compression_max_blob_size_hdd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Default value of <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code> for
-rotational media.</p>
+<div><p>配置项 <code class="docutils literal notranslate"><span class="pre">bluestore</span> <span class="pre">compression</span> <span class="pre">max</span> <span class="pre">blob</span> <span class="pre">size</span></code> 的默认值， 适用于机械硬盘。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -930,38 +887,38 @@ rotational media.</p>
 </dd></dl>
 
 </section>
-<section id="rocksdb-sharding">
-<span id="bluestore-rocksdb-sharding"></span><h2>RocksDB Sharding<a class="headerlink" href="#rocksdb-sharding" title="Permalink to this heading"></a></h2>
-<p>Internally BlueStore uses multiple types of key-value data,
-stored in RocksDB.  Each data type in BlueStore is assigned a
-unique prefix. Until Pacific all key-value data was stored in
-single RocksDB column family: ‘default’.  Since Pacific,
-BlueStore can divide this data into multiple RocksDB column
-families. When keys have similar access frequency, modification
-frequency and lifetime, BlueStore benefits from better caching
-and more precise compaction. This improves performance, and also
-requires less disk space during compaction, since each column
-family is smaller and can compact independent of others.</p>
-<p>OSDs deployed in Pacific or later use RocksDB sharding by default.
-If Ceph is upgraded to Pacific from a previous version, sharding is off.</p>
-<p>To enable sharding and apply the Pacific defaults, stop an OSD and run</p>
+<section id="rocksdb">
+<span id="bluestore-rocksdb-sharding"></span><h2>RocksDB 分片<a class="headerlink" href="#rocksdb" title="Permalink to this heading"></a></h2>
+<p>BlueStore 内部使用了多种类型的键值数据，这些数据都存储在 RocksDB 中。
+BlueStore 中的每种数据类型都分配了一个唯一前缀。
+在 Pacific 版之前，所有键值数据都存储在单个 RocksDB 列族： default 。
+从 Pacific 版开始， BlueStore 可以将这些数据拆分到多个 RocksDB 列族中。
+键名相似时， BlueStore 就能实现更好的缓存和更精确的压缩，
+特别是一些键的访问频率、修改频率和生命周期相似时更加如此。
+这不仅提升了性能，而且压缩后需要的磁盘空间也更少，
+因为每个列族都更小，可以独立地分别压缩。</p>
+<p>用 Pacific 或更高版本部署的 OSD 默认使用 RocksDB 分片。
+但是，如果 Ceph 是从以前的版本升级到 Pacific 或之后的版本，
+那些 OSD 是用 Pacific 之前的版本创建的，
+它们的分片功能都是关闭的。</p>
+<p>要在指定 OSD 上启用分片并应用 Pacific 的默认值，先停止 OSD ，
+并执行下列命令：</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
-span.prompt1:before {
+span.prompt2:before {
   content: "# ";
 }
-</style><span class="prompt1">ceph-bluestore-tool<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--path<span class="w"> </span>&lt;data<span class="w"> </span>path&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sharding<span class="o">=</span><span class="s2">&quot;m(3) p(3,0-12) O(3,0-13)=block_cache={type=binned_lru} L P&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>reshard</span>
+</style><span class="prompt2">ceph-bluestore-tool<span class="w"> </span><span class="se">\</span>
+<span class="w"> </span>--path<span class="w"> </span>&lt;data<span class="w"> </span>path&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w"> </span>--sharding<span class="o">=</span><span class="s2">&quot;m(3) p(3,0-12) O(3,0-13)=block_cache={type=binned_lru} L P&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w"> </span>reshard</span>
 </pre></div></div></div></blockquote>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-bluestore_rocksdb_cf">
 <span class="sig-name descname"><span class="pre">bluestore_rocksdb_cf</span></span><a class="headerlink" href="#confval-bluestore_rocksdb_cf" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Enables sharding of BlueStore’s RocksDB. When <code class="docutils literal notranslate"><span class="pre">true</span></code>,
-<code class="docutils literal notranslate"><span class="pre">bluestore_rocksdb_cfs</span></code> is used. Only applied when OSD is doing
-<code class="docutils literal notranslate"><span class="pre">--mkfs</span></code>.</p>
+<div><p>启用 BlueStore 的 RocksDB 分片功能。 设置为 <code class="docutils literal notranslate"><span class="pre">true</span></code> 时，使用
+<code class="docutils literal notranslate"><span class="pre">bluestore_rocksdb_cfs</span></code> 。 仅在 OSD 执行 <code class="docutils literal notranslate"><span class="pre">--mkfs</span></code> 时用一下。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
@@ -977,10 +934,8 @@ span.prompt1:before {
 <dt class="sig sig-object std" id="confval-bluestore_rocksdb_cfs">
 <span class="sig-name descname"><span class="pre">bluestore_rocksdb_cfs</span></span><a class="headerlink" href="#confval-bluestore_rocksdb_cfs" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Definition of BlueStore’s RocksDB sharding. The optimal value depends
-on multiple factors, and modification is invadvisable. This setting is
-used only when OSD is doing <code class="docutils literal notranslate"><span class="pre">--mkfs</span></code>. Next runs of OSD retrieve
-sharding from disk.</p>
+<div><p>BlueStore 的 RocksDB 分片功能定义。 最佳值取决于多种因素，最好别修改。 该配置仅在 OSD 执行 <code class="docutils literal notranslate"><span class="pre">--mkfs</span></code>
+时使用。 下一次 OSD 跑起来时，将从磁盘检索分片信息。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
@@ -993,13 +948,13 @@ sharding from disk.</p>
 </dd></dl>
 
 </section>
-<section id="throttling">
-<h2>Throttling<a class="headerlink" href="#throttling" title="Permalink to this heading"></a></h2>
+<section id="id8">
+<h2>节流<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h2>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-bluestore_throttle_bytes">
 <span class="sig-name descname"><span class="pre">bluestore_throttle_bytes</span></span><a class="headerlink" href="#confval-bluestore_throttle_bytes" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Maximum bytes in flight before we throttle IO submission</p>
+<div><p>待处理数据最多达到这个字节数，就对 IO 提交进行节流。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -1015,7 +970,7 @@ sharding from disk.</p>
 <dt class="sig sig-object std" id="confval-bluestore_throttle_deferred_bytes">
 <span class="sig-name descname"><span class="pre">bluestore_throttle_deferred_bytes</span></span><a class="headerlink" href="#confval-bluestore_throttle_deferred_bytes" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Maximum bytes for deferred writes before we throttle IO submission</p>
+<div><p>延迟写入的数据最多达到这个字节数，就对 IO 提交进行节流。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -1031,7 +986,7 @@ sharding from disk.</p>
 <dt class="sig sig-object std" id="confval-bluestore_throttle_cost_per_io">
 <span class="sig-name descname"><span class="pre">bluestore_throttle_cost_per_io</span></span><a class="headerlink" href="#confval-bluestore_throttle_cost_per_io" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Overhead added to transaction cost (in bytes) for each IO</p>
+<div><p>给每个 IO 事务成本（以字节为单位）增加的额外开销</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
@@ -1047,7 +1002,7 @@ sharding from disk.</p>
 <dt class="sig sig-object std" id="confval-bluestore_throttle_cost_per_io_hdd">
 <span class="sig-name descname"><span class="pre">bluestore_throttle_cost_per_io_hdd</span></span><a class="headerlink" href="#confval-bluestore_throttle_cost_per_io_hdd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Default bluestore_throttle_cost_per_io for rotational media</p>
+<div><p>机械硬盘的 bluestore_throttle_cost_per_io 默认值。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
@@ -1066,8 +1021,7 @@ sharding from disk.</p>
 <dt class="sig sig-object std" id="confval-bluestore_throttle_cost_per_io_ssd">
 <span class="sig-name descname"><span class="pre">bluestore_throttle_cost_per_io_ssd</span></span><a class="headerlink" href="#confval-bluestore_throttle_cost_per_io_ssd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Default bluestore_throttle_cost_per_io for non-rotation (solid state)
-media</p>
+<div><p>非机械硬盘（固态硬盘）的 bluestore_throttle_cost_per_io 默认值。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
@@ -1085,37 +1039,193 @@ media</p>
 </section>
 <section id="spdk">
 <h2>SPDK 用法<a class="headerlink" href="#spdk" title="Permalink to this heading"></a></h2>
-<p>如果你想让 NVMe SSD 使用 SPDK 驱动，你得先配置好系统。详情见
-<a class="reference external" href="http://www.spdk.io/doc/getting_started.html#getting_started_examples">SPDK 文档</a>。</p>
+<p>如果你想让 NVMe 设备使用 SPDK 驱动，你得先配置好系统。详情见 <a class="reference external" href="http://www.spdk.io/doc/getting_started.html#getting_started_examples">SPDK 文档</a>。</p>
 <p>SPDK 有个脚本可以自动配置设备，以 root 身份执行：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo src/spdk/scripts/setup.sh
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sudo<span class="w"> </span>src/spdk/scripts/setup.sh</span>
+</pre></div></div><p>你需要给 <code class="docutils literal notranslate"><span class="pre">bluestore_block_path</span></code> 指定 NVMe 设备的设备选择器，
+它以 spdk: 为前缀。</p>
+<p>例如，执行下列命令，先找出一个 Intel NVMe SSD 的设备选择器：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">lspci<span class="w"> </span>-mm<span class="w"> </span>-n<span class="w"> </span>-d<span class="w"> </span>-d<span class="w"> </span><span class="m">8086</span>:0953</span>
+</pre></div></div><p>设备选择器的格式是 <code class="docutils literal notranslate"><span class="pre">DDDD:BB:DD.FF</span></code> 或
+<code class="docutils literal notranslate"><span class="pre">DDDD.BB.DD.FF</span></code> 。</p>
+<p>接下来，假设 <code class="docutils literal notranslate"><span class="pre">lspci</span></code> 命令输出中的设备选择器是 <code class="docutils literal notranslate"><span class="pre">0000:01:00.0</span></code> ，
+可以用以下命令来指定设备选择器：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bluestore_block_path</span> <span class="o">=</span> <span class="s2">&quot;spdk:trtype:pcie traddr:0000:01:00.0&quot;</span>
 </pre></div>
 </div>
-<p>之后你需要在这里给 <code class="docutils literal notranslate"><span class="pre">bluestore_block_path</span></code> 指定 NVMe 设备的设备档位，它以 spdk: 为前缀。</p>
-<p>例如，你可以这样找出一个 Intel PCIe SSD 的设备档位：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ lspci -mm -n -D -d 8086:0953
+<p>您也可以通过 TCP 传输指定一个远程 NVMeoF 目标，
+如下例所示：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bluestore_block_path</span> <span class="o">=</span> <span class="s2">&quot;spdk:trtype:tcp traddr:10.67.110.197 trsvcid:4420 subnqn:nqn.2019-02.io.spdk:cnode1&quot;</span>
 </pre></div>
 </div>
-<p>设备档位的格式肯定是 <code class="docutils literal notranslate"><span class="pre">DDDD:BB:DD.FF</span></code> 或 <code class="docutils literal notranslate"><span class="pre">DDDD.BB.DD.FF</span></code> 。</p>
-<p>然后这样设置：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bluestore</span> <span class="n">block</span> <span class="n">path</span> <span class="o">=</span> <span class="n">spdk</span><span class="p">:</span><span class="mi">0000</span><span class="p">:</span><span class="mi">01</span><span class="p">:</span><span class="mf">00.0</span>
-</pre></div>
-</div>
-<p>其中， <code class="docutils literal notranslate"><span class="pre">0000:01:00.0</span></code> 就是在前面 <code class="docutils literal notranslate"><span class="pre">lspci</span></code> 命令的输出里找到的。</p>
-<p>If you want to run multiple SPDK instances per node, you must specify the
-amount of dpdk memory size in MB each instance will use, to make sure each
-instance uses its own dpdk memory</p>
-<p>In most cases, we only need one device to serve as data, db, db wal purposes.
-We need to make sure configurations below to make sure all IOs issued under
-SPDK.:</p>
+<p>要在每个节点运行多个 SPDK 实例，
+必须让每个实例使用自己的 DPDK 内存，
+方法是为每个实例指定它将使用的 DPDK 内存量（单位： MB ）。</p>
+<p>在大多数情况下，单个设备可以同时用作数据、 DB 和 WAL 。
+我们把这种策略描述为将这些组件扎堆放置。
+务必做出以下设置，以确保所有 I/O 都通过 SPDK 发出：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bluestore_block_db_path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
 <span class="n">bluestore_block_db_size</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">bluestore_block_wal_path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
 <span class="n">bluestore_block_wal_size</span> <span class="o">=</span> <span class="mi">0</span>
 </pre></div>
 </div>
-<p>Otherwise, the current implementation will setup symbol file to kernel
-filesystem location and uses kernel driver to issue DB/WAL IO.</p>
+<p>如果没有做这些设置，那么当前的软件将会用内核文件系统符号填充 SPDK 映射文件，
+并使用内核驱动程序发出 DB/WAL I/O。</p>
+</section>
+<section id="id10">
+<h2>最低分配尺寸<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h2>
+<p>BlueStore 在底层存储设备上分配存储空间时，有一个最低配置量。
+实践中，这是一个对象会占用的最低容量，即使是一个很小的 RADOS 对象，
+在每个 OSD 的主设备上也会占用这么大的容量。相关的配置选项 --
+<a class="reference internal" href="#confval-bluestore_min_alloc_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size</span></code></a> -- 的值来自 <a class="reference internal" href="#confval-bluestore_min_alloc_size_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size_hdd</span></code></a>
+或 <a class="reference internal" href="#confval-bluestore_min_alloc_size_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size_ssd</span></code></a> 的值，
+具体取决于 OSD 的 <code class="docutils literal notranslate"><span class="pre">rotational</span></code> 属性。因此，如果在 HDD 上创建 OSD ，
+BlueStore 将使用 <a class="reference internal" href="#confval-bluestore_min_alloc_size_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size_hdd</span></code></a> 当前的值进行初始化；
+而对于 SSD OSD （包括 NVMe 设备）， Bluestore 将使用
+<a class="reference internal" href="#confval-bluestore_min_alloc_size_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size_ssd</span></code></a> 当前的值进行初始化。</p>
+<p>在 Mimic 和早期版本中，旋转介质（ HDD ）的默认值为 64KB 、
+非旋转介质（ SSD ）的默认值为 16KB 。
+Octopus 版本将非旋转介质（SSD）的默认值改成了 4KB ，
+Pacific 版将旋转介质（ HDD ）的默认值改成了 4KB 。</p>
+<p>之所以做出这些更改，是因为 Ceph RADOS 网关 (RGW) 会托管海量小文件
+（ S3/Swift 对象），而这些小文件会导致空间放大。</p>
+<p>例如，当 RGW 客户端存入一个 1 KB 的 S3 对象时，
+该对象会被写入一个单独的 RADOS 对象。
+根据默认的 <code class="xref std std-confval docutils literal notranslate"><span class="pre">min_alloc_size</span></code> 值，将给它分配 4 KB 的底层驱动器空间。
+这意味着大约有 3 KB （即 4 KB 减去 1 KB）的空间分配了却没使用：
+这相当于 300% 的额外开销或 25% 的效率。同样，
+一个 5 KB 的用户对象将被存储为两个 RADOS 对象，即一个 4 KB 的 RADOS 对象和一个 1 KB 的 RADOS 对象，结果是它占用了 4KB 的设备容量。
+不过，在这个案例中，额外开销百分比小多了。
+可以把它当作是取模运算的余数。因此，
+额外开销的<em>百分比</em>会随着对象尺寸的增加而迅速降低。</p>
+<p>还有一个容易被忽略的微妙之处：
+刚才描述过的放大现象发生在<em>每一个</em>副本中。例如，
+使用默认的三副本 (3R) 配置时，一个 1 KB 的 S3 对象实际上会浪费大约 9 KB 的设备存储容量。
+如果用的是纠删码（ EC ）而不是多副本，放大的幅度可能会更高：
+对于一个 <code class="docutils literal notranslate"><span class="pre">k=4,</span> <span class="pre">m=2</span></code> 的存储池，会给 1 KB S3 对象会分配 24 KB
+（即 4 KB 乘以 6）的设备容量。</p>
+<p>当 RGW 桶存储池中包含许多相对较大的用户对象时，
+这种现象的影响往往可以忽略不计。不过，
+如果系统可能会存储很大一部分相对较小的用户对象时，
+那就应该考虑这种影响。</p>
+<p>默认值为 4KB 时，与传统的 HDD 和 SSD 设备非常吻合。
+不过，如果在创建 OSD 时指定 <a class="reference internal" href="#confval-bluestore_min_alloc_size_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size_ssd</span></code></a> ，
+使之与设备的 IU （可能是 8KB 、 16KB 甚至 64KB ）匹配，
+某些新型粗 IU （方向单元， Indirection Unit ） QLC SSD 的性能和磨损会达到最佳。
+这些新型存储驱动器的读取性能可与传统的 TLC SSD 相媲美，
+写入性能比 HDD 更快，
+而且密度更高、成本比 TLC SSD 更低。</p>
+<p>注意，在这些新型设备上创建 OSD 时，
+必须小心，只给这些设备配置非默认值，
+不能影响传统的 HDD 和 SSD 设备。通过仔细安排 OSD 创建顺序、
+自定义 OSD 设备类别，特别是使用中央配置<em>掩码</em>，
+可以避免出现错误。</p>
+<p>在 Quincy 及更高版本中，可以使用
+<a class="reference internal" href="#confval-bluestore_use_optimal_io_size_for_min_alloc_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_use_optimal_io_size_for_min_alloc_size</span></code></a> 选项，
+以便在创建每个 OSD 时自动发现正确的值。注意，
+使用 <code class="docutils literal notranslate"><span class="pre">bcache</span></code> 、 <code class="docutils literal notranslate"><span class="pre">OpenCAS</span></code> 、 <code class="docutils literal notranslate"><span class="pre">dmcrypt</span></code> 、 <code class="docutils literal notranslate"><span class="pre">ATA</span> <span class="pre">over</span> <span class="pre">Ethernet</span></code> 、 <cite>iSCSI</cite>
+或其他设备分层技术和抽象技术可能会影响正确值的确定。
+此外，在 VMware 存储之上部署的 OSD
+有时会报告与底层硬件不一致的 <code class="docutils literal notranslate"><span class="pre">rotational</span></code> 属性。</p>
+<p>我们建议在启动时通过日志和管理套接字检查此类 OSD ，
+以确保其行为正确。需要注意的是，
+这种检查在旧内核上可能无法正常工作。要确认此问题，
+应该检查 <code class="docutils literal notranslate"><span class="pre">/sys/block/&lt;drive&gt;/queue/optimal_io_size</span></code> 是否存在以及它的值。</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>在运行 Reef 或更高版本的 Ceph 时，
+可以用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">metadata</span></code> 方便地查询每个 OSD 的 <code class="docutils literal notranslate"><span class="pre">min_alloc_size</span></code> 。</p>
+</div>
+<p>要查询某个 OSD ，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>osd<span class="w"> </span>metadata<span class="w"> </span>osd.1701<span class="w"> </span><span class="p">|</span><span class="w"> </span>egrep<span class="w"> </span>rotational<span class="se">\|</span>alloc</span>
+</pre></div></div><p>这种空间放大可能表现为 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">df</span></code> 报告的原始空间与所存储数据的比率异常高。
+<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">df</span></code> 报告的 <code class="docutils literal notranslate"><span class="pre">%USE</span></code> / <code class="docutils literal notranslate"><span class="pre">VAR</span></code> 值与其他表面上看起来相同的 OSD 相比也可能异常地高。
+最后， OSD 的 <code class="docutils literal notranslate"><span class="pre">min_alloc_size</span></code> 值不匹配时，
+平衡器在使用它们的存储池中也可能出现意料之外的行为。</p>
+<p>BlueStore 的这一属性<em>仅仅</em>在创建 OSD 时有效；
+如果后来更改了这个属性，这个特定 OSD 的行为也不会改变，还是保持原样，
+除非销毁这个 OSD 并用适当的选项值重新部署。
+Ceph 升级到更高版本后，也<em>不会</em>更改 OSD 一直沿用的值，
+它们是在旧版本或其他配置下部署的。</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-bluestore_min_alloc_size">
+<span class="sig-name descname"><span class="pre">bluestore_min_alloc_size</span></span><a class="headerlink" href="#confval-bluestore_min_alloc_size" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>分配尺寸越小，通常意味着触发了写时复制操作时 （如向最近拍过快照的内容写入时），读出和重写的数据量越少。
+同样，在执行覆盖写操作时，记入日志的数据也比较少 （小于 min_alloc_size 的写入必须首先通过 BlueStore 日志）。
+min_alloc_size 的值越大，描述磁盘布局所需的元数据量就越少， 整体碎片也会减少。</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-bluestore_min_alloc_size_hdd">
+<span class="sig-name descname"><span class="pre">bluestore_min_alloc_size_hdd</span></span><a class="headerlink" href="#confval-bluestore_min_alloc_size_hdd" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>机械硬盘的默认 min_alloc_size 值</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">4Ki</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_min_alloc_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-bluestore_min_alloc_size_ssd">
+<span class="sig-name descname"><span class="pre">bluestore_min_alloc_size_ssd</span></span><a class="headerlink" href="#confval-bluestore_min_alloc_size_ssd" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>非旋转（固态）介质的默认 min_alloc_size 值</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">4Ki</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_min_alloc_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-bluestore_use_optimal_io_size_for_min_alloc_size">
+<span class="sig-name descname"><span class="pre">bluestore_use_optimal_io_size_for_min_alloc_size</span></span><a class="headerlink" href="#confval-bluestore_use_optimal_io_size_for_min_alloc_size" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>发现底层介质的最佳 IO 尺寸，并用于 min_alloc_size</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-bluestore_min_alloc_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_min_alloc_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</section>
+<section id="dsa">
+<h2>DSA （数据流加速器）的用法<a class="headerlink" href="#dsa" title="Permalink to this heading"></a></h2>
 </section>
 </section>
 

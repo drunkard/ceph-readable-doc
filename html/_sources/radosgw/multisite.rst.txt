@@ -223,34 +223,34 @@ realm 包含域组和域的多站配置信息，同时在 realm 内强制施行�
    否则数据会被删除且不可恢复。
 
 
-删除默认域组与域
+删除默认域组和域
 ----------------
-.. Delete Default Zone Group and Zone
+.. Delete Default Zonegroup and Zone
 
-如果有 ``default`` 域，要先从域组里删除，然后再删掉它。
+#. 如果有 ``default`` 域，要先从域组里删除，然后再删掉它。
 
-::
+   .. prompt:: bash #
 
-    # radosgw-admin zonegroup remove --rgw-zonegroup=default --rgw-zone=default
-    # radosgw-admin period update --commit
-    # radosgw-admin zone rm --rgw-zone=default
-    # radosgw-admin period update --commit
-    # radosgw-admin zonegroup delete --rgw-zonegroup=default
-    # radosgw-admin period update --commit
+      radosgw-admin zonegroup delete --rgw-zonegroup=default --rgw-zone=default
+      radosgw-admin period update --commit
+      radosgw-admin zone delete --rgw-zone=default
+      radosgw-admin period update --commit
+      radosgw-admin zonegroup delete --rgw-zonegroup=default
+      radosgw-admin period update --commit
 
-最后，如果这个 Ceph 存储集群里还有 ``default`` 存储池，也需一并删除。
+#. 如果这个 Ceph 存储集群里还有 ``default`` 存储池，也需一并删除。
 
-.. important:: 后续步骤假设是在新安装好的系统上实施多站配置，
-   上面还没有数据。如果你已经用它存储了一些数据，
-   **不要删除** ``default`` 域及其存储池，否则数据会被删除且不可恢复。
+   .. important:: 后续步骤假设是在新安装好的系统上实施多站配置，
+      上面还没有数据。如果你已经用它存储了一些数据，
+      **不要删除** ``default`` 域及其存储池，否则数据会被删除且不可恢复。
 
-::
+   .. prompt:: bash #
 
-    # ceph osd pool rm default.rgw.control default.rgw.control --yes-i-really-really-mean-it
-    # ceph osd pool rm default.rgw.data.root default.rgw.data.root --yes-i-really-really-mean-it
-    # ceph osd pool rm default.rgw.gc default.rgw.gc --yes-i-really-really-mean-it
-    # ceph osd pool rm default.rgw.log default.rgw.log --yes-i-really-really-mean-it
-    # ceph osd pool rm default.rgw.users.uid default.rgw.users.uid --yes-i-really-really-mean-it
+      ceph osd pool rm default.rgw.control default.rgw.control --yes-i-really-really-mean-it
+      ceph osd pool rm default.rgw.data.root default.rgw.data.root --yes-i-really-really-mean-it
+      ceph osd pool rm default.rgw.gc default.rgw.gc --yes-i-really-really-mean-it
+      ceph osd pool rm default.rgw.log default.rgw.log --yes-i-really-really-mean-it
+      ceph osd pool rm default.rgw.users.uid default.rgw.users.uid --yes-i-really-really-mean-it
 
 
 创建系统用户

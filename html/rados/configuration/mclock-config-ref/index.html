@@ -132,13 +132,17 @@
 <li class="toctree-l3"><a class="reference internal" href="../mon-osd-interaction/">心跳选项（监视器与 OSD 的的交互）</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../osd-config-ref/">OSD 选项</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">DmClock 配置</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mclock-client-types">mClock Client Types</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#mclock-profiles-definition-and-purpose">mClock Profiles - Definition and Purpose</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#mclock-profile-types">mClock Profile Types</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mclock-built-in-profiles">mClock Built-in Profiles</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#osd-shard-configuration-for-hdd-based-clusters-with-mclock">OSD Shard Configuration For HDD Based Clusters With mClock</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mclock-built-in-profiles-locked-config-options">mClock Built-in Profiles -  Locked Config Options</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#steps-to-enable-mclock-profile">Steps to Enable mClock Profile</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#switching-between-built-in-and-custom-profiles">Switching Between Built-in and Custom Profiles</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#steps-to-modify-mclock-max-backfills-recovery-limits">Steps to Modify mClock Max Backfills/Recovery Limits</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#osd-capacity-determination-automated">OSD Capacity Determination (Automated)</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#steps-to-manually-benchmark-an-osd-optional">Steps to Manually Benchmark an OSD (Optional)</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mclock-config-options">mClock Config Options</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#index-7">mClock Config Options</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../bluestore-config-ref/">BlueStore 配置</a></li>
@@ -212,69 +216,299 @@
   
   <section id="mclock-config-reference">
 <h1>mClock Config Reference<a class="headerlink" href="#mclock-config-reference" title="Permalink to this heading"></a></h1>
-<p id="index-0">Mclock profiles mask the low level details from users, making it
-easier for them to configure mclock.</p>
+<p id="index-0">QoS support in Ceph is implemented using a queuing scheduler based on <a class="reference external" href="https://www.usenix.org/legacy/event/osdi10/tech/full_papers/Gulati.pdf">the
+dmClock algorithm</a>. See <a class="reference internal" href="../osd-config-ref/#dmclock-qos"><span class="std std-ref">基于 mClock 的 QoS</span></a> section for more details.</p>
+<p>To make the usage of mclock more user-friendly and intuitive, mclock config
+profiles are introduced. The mclock profiles mask the low level details from
+users, making it easier to configure and use mclock.</p>
 <p>The following input parameters are required for a mclock profile to configure
 the QoS related parameters:</p>
 <ul class="simple">
-<li><p>total capacity (IOPS) of each OSD (determined automatically)</p></li>
+<li><p>total capacity (IOPS) of each OSD (determined automatically -
+See <a class="reference internal" href="#osd-capacity-determination-automated">OSD Capacity Determination (Automated)</a>)</p></li>
+<li><p>the max sequential bandwidth capacity (MiB/s) of each OSD -
+See <em>osd_mclock_max_sequential_bandwidth_[hdd|ssd]</em> option</p></li>
 <li><p>an mclock profile type to enable</p></li>
 </ul>
-<p>Using the settings in the specified profile, the OSD determines and applies the
+<p>Using the settings in the specified profile, an OSD determines and applies the
 lower-level mclock and Ceph parameters. The parameters applied by the mclock
-profile make it possible to tune the QoS between client I/O, recovery/backfill
-operations, and other background operations (for example, scrub, snap trim, and
-PG deletion). These background activities are considered best-effort internal
-clients of Ceph.</p>
+profile make it possible to tune the QoS between client I/O and background
+operations in the OSD.</p>
+<section id="mclock-client-types">
+<span id="index-1"></span><h2>mClock Client Types<a class="headerlink" href="#mclock-client-types" title="Permalink to this heading"></a></h2>
+<p>The mclock scheduler handles requests from different types of Ceph services.
+Each service can be considered as a type of client from mclock’s perspective.
+Depending on the type of requests handled, mclock clients are classified into
+the buckets as shown in the table below,</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28%" />
+<col style="width: 72%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Client Type</p></th>
+<th class="head"><p>Request Types</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Client</p></td>
+<td><p>I/O requests issued by external clients of Ceph</p></td>
+</tr>
+<tr class="row-odd"><td><p>Background recovery</p></td>
+<td><p>Internal recovery requests</p></td>
+</tr>
+<tr class="row-even"><td><p>Background best-effort</p></td>
+<td><p>Internal backfill, scrub, snap trim and PG deletion requests</p></td>
+</tr>
+</tbody>
+</table>
+<p>The mclock profiles allocate parameters like reservation, weight and limit
+(see <a class="reference internal" href="../osd-config-ref/#dmclock-qos"><span class="std std-ref">基于 mClock 的 QoS</span></a>) differently for each client type. The next sections
+describe the mclock profiles in greater detail.</p>
+</section>
 <section id="mclock-profiles-definition-and-purpose">
-<span id="index-1"></span><h2>mClock Profiles - Definition and Purpose<a class="headerlink" href="#mclock-profiles-definition-and-purpose" title="Permalink to this heading"></a></h2>
+<span id="index-2"></span><h2>mClock Profiles - Definition and Purpose<a class="headerlink" href="#mclock-profiles-definition-and-purpose" title="Permalink to this heading"></a></h2>
 <p>A mclock profile is <em>“a configuration setting that when applied on a running
 Ceph cluster enables the throttling of the operations(IOPS) belonging to
 different client classes (background recovery, scrub, snaptrim, client op,
 osd subop)”</em>.</p>
 <p>The mclock profile uses the capacity limits and the mclock profile type selected
-by the user to determine the low-level mclock resource control parameters.</p>
-<p>Depending on the profile type, lower-level mclock resource-control parameters
-and some Ceph-configuration parameters are transparently applied.</p>
+by the user to determine the low-level mclock resource control configuration
+parameters and apply them transparently. Additionally, other Ceph configuration
+parameters are also applied. Please see sections below for more information.</p>
 <p>The low-level mclock resource control parameters are the <em>reservation</em>,
 <em>limit</em>, and <em>weight</em> that provide control of the resource shares, as
 described in the <a class="reference internal" href="../osd-config-ref/#dmclock-qos"><span class="std std-ref">基于 mClock 的 QoS</span></a> section.</p>
 </section>
 <section id="mclock-profile-types">
-<span id="index-2"></span><h2>mClock Profile Types<a class="headerlink" href="#mclock-profile-types" title="Permalink to this heading"></a></h2>
-<p>mclock profiles can be broadly classified into two types,</p>
-<ul class="simple">
-<li><p><strong>Built-in</strong>: Users can choose between the following built-in profile types:</p>
-<ul>
-<li><p><strong>high_client_ops</strong> (<em>default</em>):
-This profile allocates more reservation and limit to external-client ops
-as compared to background recoveries and other internal clients within
-Ceph. This profile is enabled by default.</p></li>
-<li><p><strong>high_recovery_ops</strong>:
-This profile allocates more reservation to background recoveries as
-compared to external clients and other internal clients within Ceph. For
-example, an admin may enable this profile temporarily to speed-up background
-recoveries during non-peak hours.</p></li>
-<li><p><strong>balanced</strong>:
-This profile allocates equal reservation to client ops and background
-recovery ops.</p></li>
-</ul>
-</li>
-<li><p><strong>Custom</strong>: This profile gives users complete control over all the mclock
-configuration parameters. Using this profile is not recommended without
-a deep understanding of mclock and related Ceph-configuration options.</p></li>
-</ul>
+<span id="index-3"></span><h2>mClock Profile Types<a class="headerlink" href="#mclock-profile-types" title="Permalink to this heading"></a></h2>
+<p>mclock profiles can be broadly classified into <em>built-in</em> and <em>custom</em> profiles,</p>
+<section id="built-in-profiles">
+<h3>Built-in Profiles<a class="headerlink" href="#built-in-profiles" title="Permalink to this heading"></a></h3>
+<p>Users can choose between the following built-in profile types:</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Across the built-in profiles, internal clients of mclock (for example
-“scrub”, “snap trim”, and “pg deletion”) are given slightly lower
-reservations, but higher weight and no limit. This ensures that
-these operations are able to complete quickly if there are no other
-competing services.</p>
+<p>The values mentioned in the tables below represent the proportion
+of the total IOPS capacity of the OSD allocated for the service type.</p>
+</div>
+<ul class="simple">
+<li><p>balanced (default)</p></li>
+<li><p>high_client_ops</p></li>
+<li><p>high_recovery_ops</p></li>
+</ul>
+<section id="balanced-default">
+<h4>balanced (<em>default</em>)<a class="headerlink" href="#balanced-default" title="Permalink to this heading"></a></h4>
+<p>The <em>balanced</em> profile is the default mClock profile. This profile allocates
+equal reservation/priority to client operations and background recovery
+operations. Background best-effort ops are given lower reservation and therefore
+take a longer time to complete when are are competing operations. This profile
+helps meet the normal/steady-state requirements of the cluster. This is the
+case when external client performance requirement is not critical and there are
+other background operations that still need attention within the OSD.</p>
+<p>But there might be instances that necessitate giving higher allocations to either
+client ops or recovery ops. In order to deal with such a situation, the alternate
+built-in profiles may be enabled by following the steps mentioned in next sections.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 46%" />
+<col style="width: 25%" />
+<col style="width: 15%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Service Type</p></th>
+<th class="head"><p>Reservation</p></th>
+<th class="head"><p>Weight</p></th>
+<th class="head"><p>Limit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>client</p></td>
+<td><p>50%</p></td>
+<td><p>1</p></td>
+<td><p>MAX</p></td>
+</tr>
+<tr class="row-odd"><td><p>background recovery</p></td>
+<td><p>50%</p></td>
+<td><p>1</p></td>
+<td><p>MAX</p></td>
+</tr>
+<tr class="row-even"><td><p>background best-effort</p></td>
+<td><p>MIN</p></td>
+<td><p>1</p></td>
+<td><p>90%</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="high-client-ops">
+<h4>high_client_ops<a class="headerlink" href="#high-client-ops" title="Permalink to this heading"></a></h4>
+<p>This profile optimizes client performance over background activities by
+allocating more reservation and limit to client operations as compared to
+background operations in the OSD. This profile, for example, may be enabled
+to provide the needed performance for I/O intensive applications for a
+sustained period of time at the cost of slower recoveries. The table shows
+the resource control parameters set by the profile:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 46%" />
+<col style="width: 25%" />
+<col style="width: 15%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Service Type</p></th>
+<th class="head"><p>Reservation</p></th>
+<th class="head"><p>Weight</p></th>
+<th class="head"><p>Limit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>client</p></td>
+<td><p>60%</p></td>
+<td><p>2</p></td>
+<td><p>MAX</p></td>
+</tr>
+<tr class="row-odd"><td><p>background recovery</p></td>
+<td><p>40%</p></td>
+<td><p>1</p></td>
+<td><p>MAX</p></td>
+</tr>
+<tr class="row-even"><td><p>background best-effort</p></td>
+<td><p>MIN</p></td>
+<td><p>1</p></td>
+<td><p>70%</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="high-recovery-ops">
+<h4>high_recovery_ops<a class="headerlink" href="#high-recovery-ops" title="Permalink to this heading"></a></h4>
+<p>This profile optimizes background recovery performance as compared to external
+clients and other background operations within the OSD. This profile, for
+example, may be enabled by an administrator temporarily to speed-up background
+recoveries during non-peak hours. The table shows the resource control
+parameters set by the profile:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 46%" />
+<col style="width: 25%" />
+<col style="width: 15%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Service Type</p></th>
+<th class="head"><p>Reservation</p></th>
+<th class="head"><p>Weight</p></th>
+<th class="head"><p>Limit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>client</p></td>
+<td><p>30%</p></td>
+<td><p>1</p></td>
+<td><p>MAX</p></td>
+</tr>
+<tr class="row-odd"><td><p>background recovery</p></td>
+<td><p>70%</p></td>
+<td><p>2</p></td>
+<td><p>MAX</p></td>
+</tr>
+<tr class="row-even"><td><p>background best-effort</p></td>
+<td><p>MIN</p></td>
+<td><p>1</p></td>
+<td><p>MAX</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Across the built-in profiles, internal background best-effort clients
+of mclock include “backfill”, “scrub”, “snap trim”, and “pg deletion”
+operations.</p>
 </div>
 </section>
-<section id="mclock-built-in-profiles">
-<span id="index-3"></span><h2>mClock Built-in Profiles<a class="headerlink" href="#mclock-built-in-profiles" title="Permalink to this heading"></a></h2>
+</section>
+<section id="custom-profile">
+<h3>Custom Profile<a class="headerlink" href="#custom-profile" title="Permalink to this heading"></a></h3>
+<p>This profile gives users complete control over all the mclock configuration
+parameters. This profile should be used with caution and is meant for advanced
+users, who understand mclock and Ceph related configuration options.</p>
+</section>
+</section>
+<section id="osd-shard-configuration-for-hdd-based-clusters-with-mclock">
+<span id="mclock-hdd-cfg"></span><span id="index-4"></span><h2>OSD Shard Configuration For HDD Based Clusters With mClock<a class="headerlink" href="#osd-shard-configuration-for-hdd-based-clusters-with-mclock" title="Permalink to this heading"></a></h2>
+<p>Each OSD is configured with one or more shards to perform tasks. Each shard
+comprises a unique queue to handle various types of OSD specific operations
+like client I/O, recovery, scrub and so on. The scheduling of these operations
+in the queue is performed by a scheduler - in this case the mClock scheduler.</p>
+<p>For HDD based OSDs, the number of shards is controlled by configuration
+<a class="reference internal" href="../osd-config-ref/#confval-osd_op_num_shards_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_shards_hdd</span></code></a>. Items are queued and dequeued by one or
+more worker threads and this is controlled by configuration
+<code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_threads_per_shard_hdd</span></code>.</p>
+<p>As described in <a class="reference internal" href="../osd-config-ref/#dmclock-qos-caveats"><span class="std std-ref">注意事项</span></a>, the number of OSD shards employed
+determines the impact of mClock queue. In general, a lower number of shards
+increases the impact of mClock queues with respect to scheduling accuracy.
+This is providing there are enough number of worker threads per shard
+to help process the items in the mClock queue.</p>
+<p>Based on tests performed at scale with small objects in the range
+[1 KiB - 256 KiB] on a HDD based cluster (192 OSDs, 8 nodes,
+150 Million objects), it was found that scheduling with mClock was not optimal
+with multiple OSD shards. For example, in this cluster with multiple OSD node
+failures, the client throughput was found to be inconsistent across test runs
+coupled with multiple reported slow requests. For more details
+see <a class="reference external" href="https://tracker.ceph.com/issues/66289">https://tracker.ceph.com/issues/66289</a>. With multiple shards, the situation
+was exacerbated when MAX limit was allocated to both client and background
+recovery class of operations. During the OSD failure phase, since both client
+and recovery ops were in direct competition to utilize the full bandwidth of
+OSDs, there was no predictability with respect to the throughput of either
+class of services.</p>
+<p>However, the same test with a single OSD shard and with multiple worker threads
+yielded significantly better results in terms of consistency of client and
+recovery throughput across multiple test runs. Please refer to the tracker
+above for more details. For sanity, the same test executed using this shard
+configuration with large objects in the range [1 MiB - 256 MiB] yielded similar
+results.</p>
+<p>Therefore, as an interim measure until the issue with multiple OSD shards
+(or multiple mClock queues per OSD) is investigated and fixed, the following
+change to the default HDD OSD shard configuration is made:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 57%" />
+<col style="width: 23%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Config Option</p></th>
+<th class="head"><p>Old Default</p></th>
+<th class="head"><p>New Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../osd-config-ref/#confval-osd_op_num_shards_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_shards_hdd</span></code></a></p></td>
+<td><p>5</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_threads_per_shard_hdd</span></code></p></td>
+<td><p>1</p></td>
+<td><p>5</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="mclock-built-in-profiles-locked-config-options">
+<span id="index-5"></span><h2>mClock Built-in Profiles -  Locked Config Options<a class="headerlink" href="#mclock-built-in-profiles-locked-config-options" title="Permalink to this heading"></a></h2>
+<p>The below sections describe the config options that are locked to certain values
+in order to ensure mClock scheduler is able to provide predictable QoS.</p>
+<section id="mclock-config-options">
+<h3>mClock Config Options<a class="headerlink" href="#mclock-config-options" title="Permalink to this heading"></a></h3>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>These defaults cannot be changed using any of the config
+subsytem commands like <em>config set</em> or via the <em>config daemon</em> or <em>config
+tell</em> interfaces. Although the above command(s) report success, the mclock
+QoS parameters are reverted to their respective built-in profile defaults.</p>
+</div>
 <p>When a built-in profile is enabled, the mClock scheduler calculates the low
 level mclock parameters [<em>reservation</em>, <em>weight</em>, <em>limit</em>] based on the profile
 enabled for each client type. The mclock parameters are calculated based on
@@ -291,22 +525,66 @@ config parameters cannot be modified when using any of the built-in profiles:</p
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_mclock_scheduler_background_best_effort_wgt"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_scheduler_background_best_effort_wgt</span></code></a></p></li>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_mclock_scheduler_background_best_effort_lim"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_scheduler_background_best_effort_lim</span></code></a></p></li>
 </ul>
-<p>The following Ceph options will not be modifiable by the user:</p>
+</section>
+<section id="recovery-backfill-options">
+<h3>Recovery/Backfill Options<a class="headerlink" href="#recovery-backfill-options" title="Permalink to this heading"></a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The recommendation is to not change these options as the built-in
+profiles are optimized based on them. Changing these defaults can result in
+unexpected performance outcomes.</p>
+</div>
+<p>The following recovery and backfill related Ceph options are overridden to
+mClock defaults:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_max_backfills"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_max_backfills</span></code></a></p></li>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_max_active"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_max_active</span></code></a></p></li>
+<li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_max_active_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_max_active_hdd</span></code></a></p></li>
+<li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_max_active_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_max_active_ssd</span></code></a></p></li>
 </ul>
-<p>This is because the above options are internally modified by the mclock
-scheduler in order to maximize the impact of the set profile.</p>
-<p>By default, the <em>high_client_ops</em> profile is enabled to ensure that a larger
-chunk of the bandwidth allocation goes to client ops. Background recovery ops
-are given lower allocation (and therefore take a longer time to complete). But
-there might be instances that necessitate giving higher allocations to either
-client ops or recovery ops. In order to deal with such a situation, you can
-enable one of the alternate built-in profiles by following the steps mentioned
-in the next section.</p>
+<p>The following table shows the mClock defaults which is the same as the current
+defaults. This is done to maximize the performance of the foreground (client)
+operations:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 54%" />
+<col style="width: 24%" />
+<col style="width: 22%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Config Option</p></th>
+<th class="head"><p>Original Default</p></th>
+<th class="head"><p>mClock Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../osd-config-ref/#confval-osd_max_backfills"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_max_backfills</span></code></a></p></td>
+<td><p>1</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_max_active"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_max_active</span></code></a></p></td>
+<td><p>0</p></td>
+<td><p>0</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_max_active_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_max_active_hdd</span></code></a></p></td>
+<td><p>3</p></td>
+<td><p>3</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_max_active_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_max_active_ssd</span></code></a></p></td>
+<td><p>10</p></td>
+<td><p>10</p></td>
+</tr>
+</tbody>
+</table>
+<p>The above mClock defaults, can be modified only if necessary by enabling
+<a class="reference internal" href="#confval-osd_mclock_override_recovery_settings"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_override_recovery_settings</span></code></a> (default: false). The
+steps for this is discussed in the
+<a class="reference internal" href="#steps-to-modify-mclock-max-backfills-recovery-limits">Steps to Modify mClock Max Backfills/Recovery Limits</a> section.</p>
+</section>
+<section id="sleep-options">
+<h3>Sleep Options<a class="headerlink" href="#sleep-options" title="Permalink to this heading"></a></h3>
 <p>If any mClock profile (including “custom”) is active, the following Ceph config
-sleep options will be disabled,</p>
+sleep options are disabled (set to 0),</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_sleep"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep</span></code></a></p></li>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_sleep_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep_hdd</span></code></a></p></li>
@@ -327,10 +605,11 @@ determine when to pick the next op from its operation queue and transfer it to
 the operation sequencer. This results in the desired QoS being provided across
 all its clients.</p>
 </section>
+</section>
 <section id="steps-to-enable-mclock-profile">
-<span id="index-4"></span><h2>Steps to Enable mClock Profile<a class="headerlink" href="#steps-to-enable-mclock-profile" title="Permalink to this heading"></a></h2>
-<p>As already mentioned, the default mclock profile is set to <em>high_client_ops</em>.
-The other values for the built-in profiles include <em>balanced</em> and
+<span id="index-6"></span><h2>Steps to Enable mClock Profile<a class="headerlink" href="#steps-to-enable-mclock-profile" title="Permalink to this heading"></a></h2>
+<p>As already mentioned, the default mclock profile is set to <em>balanced</em>.
+The other values for the built-in profiles include <em>high_client_ops</em> and
 <em>high_recovery_ops</em>.</p>
 <p>If there is a requirement to change the default profile, then the option
 <a class="reference internal" href="#confval-osd_mclock_profile"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_profile</span></code></a> may be set during runtime by using the following
@@ -355,14 +634,178 @@ user.</p>
 <p>And that’s it! You are ready to run workloads on the cluster and check if the
 QoS requirements are being met.</p>
 </section>
+<section id="switching-between-built-in-and-custom-profiles">
+<h2>Switching Between Built-in and Custom Profiles<a class="headerlink" href="#switching-between-built-in-and-custom-profiles" title="Permalink to this heading"></a></h2>
+<p>There may be situations requiring switching from a built-in profile to the
+<em>custom</em> profile and vice-versa. The following sections outline the steps to
+accomplish this.</p>
+<section id="steps-to-switch-from-a-built-in-to-the-custom-profile">
+<h3>Steps to Switch From a Built-in to the Custom Profile<a class="headerlink" href="#steps-to-switch-from-a-built-in-to-the-custom-profile" title="Permalink to this heading"></a></h3>
+<p>The following command can be used to switch to the <em>custom</em> profile:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd<span class="w"> </span>osd_mclock_profile<span class="w"> </span>custom</span>
+</pre></div></div></div></blockquote>
+<p>For example, to change the profile to <em>custom</em> on all OSDs, the following
+command can be used:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd<span class="w"> </span>osd_mclock_profile<span class="w"> </span>custom</span>
+</pre></div></div></div></blockquote>
+<p>After switching to the <em>custom</em> profile, the desired mClock configuration
+option may be modified. For example, to change the client reservation IOPS
+ratio for a specific OSD (say osd.0) to 0.5 (or 50%), the following command
+can be used:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd.0<span class="w"> </span>osd_mclock_scheduler_client_res<span class="w"> </span><span class="m">0</span>.5</span>
+</pre></div></div></div></blockquote>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Care must be taken to change the reservations of other services
+like recovery and background best effort accordingly to ensure that the sum
+of the reservations do not exceed the maximum proportion (1.0) of the IOPS
+capacity of the OSD.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The reservation and limit parameter allocations are per-shard based on
+the type of backing device (HDD/SSD) under the OSD. See
+<a class="reference internal" href="../osd-config-ref/#confval-osd_op_num_shards_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_shards_hdd</span></code></a> and <a class="reference internal" href="../osd-config-ref/#confval-osd_op_num_shards_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_shards_ssd</span></code></a> for
+more details.</p>
+</div>
+</section>
+<section id="steps-to-switch-from-the-custom-profile-to-a-built-in-profile">
+<h3>Steps to Switch From the Custom Profile to a Built-in Profile<a class="headerlink" href="#steps-to-switch-from-the-custom-profile-to-a-built-in-profile" title="Permalink to this heading"></a></h3>
+<p>Switching from the <em>custom</em> profile to a built-in profile requires an
+intermediate step of removing the custom settings from the central config
+database for the changes to take effect.</p>
+<p>The following sequence of commands can be used to switch to a built-in profile:</p>
+<ol class="arabic">
+<li><p>Set the desired built-in profile using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd<span class="w"> </span>&lt;mClock<span class="w"> </span>Configuration<span class="w"> </span>Option&gt;</span>
+</pre></div></div><p>For example, to set the built-in profile to <code class="docutils literal notranslate"><span class="pre">high_client_ops</span></code> on all
+OSDs, run the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd<span class="w"> </span>osd_mclock_profile<span class="w"> </span>high_client_ops</span>
+</pre></div></div></li>
+<li><p>Determine the existing custom mClock configuration settings in the central
+config database using the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>dump</span>
+</pre></div></div></li>
+<li><p>Remove the custom mClock configuration settings determined in the previous
+step from the central config database:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>rm<span class="w"> </span>osd<span class="w"> </span>&lt;mClock<span class="w"> </span>Configuration<span class="w"> </span>Option&gt;</span>
+</pre></div></div><p>For example, to remove the configuration option
+<a class="reference internal" href="../osd-config-ref/#confval-osd_mclock_scheduler_client_res"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_scheduler_client_res</span></code></a> that was set on all OSDs, run the
+following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>rm<span class="w"> </span>osd<span class="w"> </span>osd_mclock_scheduler_client_res</span>
+</pre></div></div></li>
+<li><p>After all existing custom mClock configuration settings have been removed
+from the central config database, the configuration settings pertaining to
+<code class="docutils literal notranslate"><span class="pre">high_client_ops</span></code> will come into effect. For e.g., to verify the settings
+on osd.0 use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>show<span class="w"> </span>osd.0</span>
+</pre></div></div></li>
+</ol>
+</section>
+<section id="switch-temporarily-between-mclock-profiles">
+<h3>Switch Temporarily Between mClock Profiles<a class="headerlink" href="#switch-temporarily-between-mclock-profiles" title="Permalink to this heading"></a></h3>
+<p>To switch between mClock profiles on a temporary basis, the following commands
+may be used to override the settings:</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This section is for advanced users or for experimental testing. The
+recommendation is to not use the below commands on a running cluster as it
+could have unexpected outcomes.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The configuration changes on an OSD using the below commands are
+ephemeral and are lost when it restarts. It is also important to note that
+the config options overridden using the below commands cannot be modified
+further using the <em>ceph config set osd.N …</em> command. The changes will not
+take effect until a given OSD is restarted. This is intentional, as per the
+config subsystem design. However, any further modification can still be made
+ephemerally using the commands mentioned below.</p>
+</div>
+<ol class="arabic">
+<li><p>Run the <em>injectargs</em> command as shown to override the mclock settings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span>osd.N<span class="w"> </span>injectargs<span class="w"> </span><span class="s1">&#39;--&lt;mClock Configuration Option&gt;=&lt;value&gt;&#39;</span></span>
+</pre></div></div><p>For example, the following command overrides the
+<a class="reference internal" href="#confval-osd_mclock_profile"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_profile</span></code></a> option on osd.0:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>tell<span class="w"> </span>osd.0<span class="w"> </span>injectargs<span class="w"> </span><span class="s1">&#39;--osd_mclock_profile=high_recovery_ops&#39;</span></span>
+</pre></div></div></li>
+<li><p>An alternate command that can be used is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>daemon<span class="w"> </span>osd.N<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;mClock<span class="w"> </span>Configuration<span class="w"> </span>Option&gt;<span class="w"> </span>&lt;value&gt;</span>
+</pre></div></div><p>For example, the following command overrides the
+<a class="reference internal" href="#confval-osd_mclock_profile"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_profile</span></code></a> option on osd.0:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>daemon<span class="w"> </span>osd.0<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd_mclock_profile<span class="w"> </span>high_recovery_ops</span>
+</pre></div></div></li>
+</ol>
+<p>The individual QoS-related config options for the <em>custom</em> profile can also be
+modified ephemerally using the above commands.</p>
+</section>
+</section>
+<section id="steps-to-modify-mclock-max-backfills-recovery-limits">
+<h2>Steps to Modify mClock Max Backfills/Recovery Limits<a class="headerlink" href="#steps-to-modify-mclock-max-backfills-recovery-limits" title="Permalink to this heading"></a></h2>
+<p>This section describes the steps to modify the default max backfills or recovery
+limits if the need arises.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This section is for advanced users or for experimental testing. The
+recommendation is to retain the defaults as is on a running cluster as
+modifying them could have unexpected performance outcomes. The values may
+be modified only if the cluster is unable to cope/showing poor performance
+with the default settings or for performing experiments on a test cluster.</p>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The max backfill/recovery options that can be modified are listed
+in section <a class="reference internal" href="#recovery-backfill-options">Recovery/Backfill Options</a>. The modification of the mClock
+default backfills/recovery limit is gated by the
+<a class="reference internal" href="#confval-osd_mclock_override_recovery_settings"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_override_recovery_settings</span></code></a> option, which is set to
+<em>false</em> by default. Attempting to modify any default recovery/backfill
+limits without setting the gating option will reset that option back to the
+mClock defaults along with a warning message logged in the cluster log. Note
+that it may take a few seconds for the default value to come back into
+effect. Verify the limit using the <em>config show</em> command as shown below.</p>
+</div>
+<ol class="arabic">
+<li><p>Set the <a class="reference internal" href="#confval-osd_mclock_override_recovery_settings"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_override_recovery_settings</span></code></a> config option on all
+osds to <em>true</em> using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd<span class="w"> </span>osd_mclock_override_recovery_settings<span class="w"> </span><span class="nb">true</span></span>
+</pre></div></div></li>
+<li><p>Set the desired max backfill/recovery option using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd<span class="w"> </span>osd_max_backfills<span class="w"> </span>&lt;value&gt;</span>
+</pre></div></div><p>For example, the following command modifies the <a class="reference internal" href="../osd-config-ref/#confval-osd_max_backfills"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_max_backfills</span></code></a>
+option on all osds to 5.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd<span class="w"> </span>osd_max_backfills<span class="w"> </span><span class="m">5</span></span>
+</pre></div></div></li>
+<li><p>Wait for a few seconds and verify the running configuration for a specific
+OSD using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>show<span class="w"> </span>osd.N<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>osd_max_backfills</span>
+</pre></div></div><p>For example, the following command shows the running configuration of
+<a class="reference internal" href="../osd-config-ref/#confval-osd_max_backfills"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_max_backfills</span></code></a> on osd.0.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>show<span class="w"> </span>osd.0<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>osd_max_backfills</span>
+</pre></div></div></li>
+<li><p>Reset the <a class="reference internal" href="#confval-osd_mclock_override_recovery_settings"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_override_recovery_settings</span></code></a> config option on
+all osds to <em>false</em> using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd<span class="w"> </span>osd_mclock_override_recovery_settings<span class="w"> </span><span class="nb">false</span></span>
+</pre></div></div></li>
+</ol>
+</section>
 <section id="osd-capacity-determination-automated">
 <h2>OSD Capacity Determination (Automated)<a class="headerlink" href="#osd-capacity-determination-automated" title="Permalink to this heading"></a></h2>
 <p>The OSD capacity in terms of total IOPS is determined automatically during OSD
 initialization. This is achieved by running the OSD bench tool and overriding
 the default value of <code class="docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_[hdd,</span> <span class="pre">ssd]</span></code> option
 depending on the device type. No other action/input is expected from the user
-to set the OSD capacity. You may verify the capacity of an OSD after the
-cluster is brought up by using the following command:</p>
+to set the OSD capacity.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you wish to manually benchmark OSD(s) or manually tune the
+Bluestore throttle parameters, see section
+<a class="reference internal" href="#steps-to-manually-benchmark-an-osd-optional">Steps to Manually Benchmark an OSD (Optional)</a>.</p>
+</div>
+<p>You may verify the capacity of an OSD after the cluster is brought up by using
+the following command:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>show<span class="w"> </span>osd.N<span class="w"> </span>osd_mclock_max_capacity_iops_<span class="o">[</span>hdd,<span class="w"> </span>ssd<span class="o">]</span></span>
 </pre></div></div></div></blockquote>
@@ -371,6 +814,46 @@ node whose underlying device type is SSD:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>show<span class="w"> </span>osd.0<span class="w"> </span>osd_mclock_max_capacity_iops_ssd</span>
 </pre></div></div></div></blockquote>
+<section id="mitigation-of-unrealistic-osd-capacity-from-automated-test">
+<h3>Mitigation of Unrealistic OSD Capacity From Automated Test<a class="headerlink" href="#mitigation-of-unrealistic-osd-capacity-from-automated-test" title="Permalink to this heading"></a></h3>
+<p>In certain conditions, the OSD bench tool may show unrealistic/inflated result
+depending on the drive configuration and other environment related conditions.
+To mitigate the performance impact due to this unrealistic capacity, a couple
+of threshold config options depending on the osd’s device type are defined and
+used:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#confval-osd_mclock_iops_capacity_threshold_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_iops_capacity_threshold_hdd</span></code></a> = 500</p></li>
+<li><p><a class="reference internal" href="#confval-osd_mclock_iops_capacity_threshold_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_iops_capacity_threshold_ssd</span></code></a> = 80000</p></li>
+</ul>
+<p>The following automated step is performed:</p>
+<section id="fallback-to-using-default-osd-capacity-automated">
+<h4>Fallback to using default OSD capacity (automated)<a class="headerlink" href="#fallback-to-using-default-osd-capacity-automated" title="Permalink to this heading"></a></h4>
+<p>If OSD bench reports a measurement that exceeds the above threshold values
+depending on the underlying device type, the fallback mechanism reverts to the
+default value of <a class="reference internal" href="#confval-osd_mclock_max_capacity_iops_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_hdd</span></code></a> or
+<a class="reference internal" href="#confval-osd_mclock_max_capacity_iops_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_ssd</span></code></a>. The threshold config options
+can be reconfigured based on the type of drive used. Additionally, a cluster
+warning is logged in case the measurement exceeds the threshold. For example,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">2022</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">27</span><span class="n">T15</span><span class="p">:</span><span class="mi">30</span><span class="p">:</span><span class="mf">23.270</span><span class="o">+</span><span class="mi">0000</span> <span class="mi">7</span><span class="n">f9b5dbe95c0</span>  <span class="mi">0</span> <span class="n">log_channel</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span> <span class="n">log</span> <span class="p">[</span><span class="n">WRN</span><span class="p">]</span>
+<span class="p">:</span> <span class="n">OSD</span> <span class="n">bench</span> <span class="n">result</span> <span class="n">of</span> <span class="mf">39546.479392</span> <span class="n">IOPS</span> <span class="n">exceeded</span> <span class="n">the</span> <span class="n">threshold</span> <span class="n">limit</span> <span class="n">of</span>
+<span class="mf">25000.000000</span> <span class="n">IOPS</span> <span class="k">for</span> <span class="n">osd</span><span class="mf">.1</span><span class="o">.</span> <span class="n">IOPS</span> <span class="n">capacity</span> <span class="ow">is</span> <span class="n">unchanged</span> <span class="n">at</span> <span class="mf">21500.000000</span>
+<span class="n">IOPS</span><span class="o">.</span> <span class="n">The</span> <span class="n">recommendation</span> <span class="ow">is</span> <span class="n">to</span> <span class="n">establish</span> <span class="n">the</span> <span class="n">osd</span><span class="s1">&#39;s IOPS capacity using other</span>
+<span class="n">benchmark</span> <span class="n">tools</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="n">Fio</span><span class="p">)</span> <span class="ow">and</span> <span class="n">then</span> <span class="n">override</span>
+<span class="n">osd_mclock_max_capacity_iops_</span><span class="p">[</span><span class="n">hdd</span><span class="o">|</span><span class="n">ssd</span><span class="p">]</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>If the default capacity doesn’t accurately represent the OSD’s capacity, the
+following additional step is recommended to address this:</p>
+</section>
+<section id="run-custom-drive-benchmark-if-defaults-are-not-accurate-manual">
+<h4>Run custom drive benchmark if defaults are not accurate (manual)<a class="headerlink" href="#run-custom-drive-benchmark-if-defaults-are-not-accurate-manual" title="Permalink to this heading"></a></h4>
+<p>If the default OSD capacity is not accurate, the recommendation is to run a
+custom benchmark using your preferred tool (e.g. Fio) on the drive and then
+override the <code class="docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_[hdd,</span> <span class="pre">ssd]</span></code> option as described
+in the <a class="reference internal" href="#specifying-max-osd-capacity">Specifying  Max OSD Capacity</a> section.</p>
+<p>This step is highly recommended until an alternate mechansim is worked upon.</p>
+</section>
+</section>
 </section>
 <section id="steps-to-manually-benchmark-an-osd-optional">
 <h2>Steps to Manually Benchmark an OSD (Optional)<a class="headerlink" href="#steps-to-manually-benchmark-an-osd-optional" title="Permalink to this heading"></a></h2>
@@ -386,9 +869,10 @@ Otherwise, you may skip this section entirely.</p>
 override the max osd capacity for an OSD, you may skip to section
 <a class="reference internal" href="#specifying-max-osd-capacity">Specifying  Max OSD Capacity</a>.</p>
 </div>
-<p>Any existing benchmarking tool can be used for this purpose. In this case, the
-steps use the <em>Ceph OSD Bench</em> command described in the next section. Regardless
-of the tool/command used, the steps outlined further below remain the same.</p>
+<p>Any existing benchmarking tool (e.g. Fio) can be used for this purpose. In this
+case, the steps use the <em>Ceph OSD Bench</em> command described in the next section.
+Regardless of the tool/command used, the steps outlined further below remain the
+same.</p>
 <p>As already described in the <a class="reference internal" href="../osd-config-ref/#dmclock-qos"><span class="std std-ref">基于 mClock 的 QoS</span></a> section, the number of
 shards and the bluestore’s throttle parameters have an impact on the mclock op
 queues. Therefore, it is critical to set these values carefully in order to
@@ -479,8 +963,8 @@ configuration file under the respective [osd.N] section. See
 <a class="reference internal" href="../ceph-conf/#ceph-conf-settings"><span class="std std-ref">配置文件段落</span></a> for more details.</p>
 </section>
 </section>
-<section id="mclock-config-options">
-<span id="index-5"></span><h2>mClock Config Options<a class="headerlink" href="#mclock-config-options" title="Permalink to this heading"></a></h2>
+<section id="index-7">
+<span id="id1"></span><h2>mClock Config Options<a class="headerlink" href="#index-7" title="Permalink to this heading"></a></h2>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-osd_mclock_profile">
 <span class="sig-name descname"><span class="pre">osd_mclock_profile</span></span><a class="headerlink" href="#confval-osd_mclock_profile" title="Permalink to this definition"></a></dt>
@@ -549,101 +1033,72 @@ state media)</p>
 </dd></dl>
 
 <dl class="std confval">
-<dt class="sig sig-object std" id="confval-osd_mclock_cost_per_io_usec">
-<span class="sig-name descname"><span class="pre">osd_mclock_cost_per_io_usec</span></span><a class="headerlink" href="#confval-osd_mclock_cost_per_io_usec" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object std" id="confval-osd_mclock_max_sequential_bandwidth_hdd">
+<span class="sig-name descname"><span class="pre">osd_mclock_max_sequential_bandwidth_hdd</span></span><a class="headerlink" href="#confval-osd_mclock_max_sequential_bandwidth_hdd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Cost per IO in microseconds to consider per OSD (overrides _ssd and
-_hdd if non-zero)</p>
+<div><p>The maximum sequential bandwidth in bytes/second to consider for the
+OSD (for rotational media)</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 </dd>
 <dt class="field-even">default</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">150Mi</span></code></p>
 </dd>
 </dl>
 </div></blockquote>
 </dd></dl>
 
 <dl class="std confval">
-<dt class="sig sig-object std" id="confval-osd_mclock_cost_per_io_usec_hdd">
-<span class="sig-name descname"><span class="pre">osd_mclock_cost_per_io_usec_hdd</span></span><a class="headerlink" href="#confval-osd_mclock_cost_per_io_usec_hdd" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object std" id="confval-osd_mclock_max_sequential_bandwidth_ssd">
+<span class="sig-name descname"><span class="pre">osd_mclock_max_sequential_bandwidth_ssd</span></span><a class="headerlink" href="#confval-osd_mclock_max_sequential_bandwidth_ssd" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Cost per IO in microseconds to consider per OSD (for rotational media)</p>
+<div><p>The maximum sequential bandwidth in bytes/second to consider for the
+OSD (for solid state media)</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 </dd>
 <dt class="field-even">default</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">25000.0</span></code></p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1200Mi</span></code></p>
 </dd>
 </dl>
 </div></blockquote>
 </dd></dl>
 
 <dl class="std confval">
-<dt class="sig sig-object std" id="confval-osd_mclock_cost_per_io_usec_ssd">
-<span class="sig-name descname"><span class="pre">osd_mclock_cost_per_io_usec_ssd</span></span><a class="headerlink" href="#confval-osd_mclock_cost_per_io_usec_ssd" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object std" id="confval-osd_mclock_force_run_benchmark_on_init">
+<span class="sig-name descname"><span class="pre">osd_mclock_force_run_benchmark_on_init</span></span><a class="headerlink" href="#confval-osd_mclock_force_run_benchmark_on_init" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Cost per IO in microseconds to consider per OSD (for solid state
-media)</p>
+<div><p>Force run the OSD benchmark on OSD initialization/boot-up</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
 </dd>
 <dt class="field-even">default</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">50.0</span></code></p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p>
+</dd>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-osd_mclock_max_capacity_iops_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_hdd</span></code></a>, <a class="reference internal" href="#confval-osd_mclock_max_capacity_iops_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_ssd</span></code></a></p>
 </dd>
 </dl>
 </div></blockquote>
 </dd></dl>
 
 <dl class="std confval">
-<dt class="sig sig-object std" id="confval-osd_mclock_cost_per_byte_usec">
-<span class="sig-name descname"><span class="pre">osd_mclock_cost_per_byte_usec</span></span><a class="headerlink" href="#confval-osd_mclock_cost_per_byte_usec" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object std" id="confval-osd_mclock_skip_benchmark">
+<span class="sig-name descname"><span class="pre">osd_mclock_skip_benchmark</span></span><a class="headerlink" href="#confval-osd_mclock_skip_benchmark" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Cost per byte in microseconds to consider per OSD (overrides _ssd and
-_hdd if non-zero)</p>
+<div><p>Skip the OSD benchmark on OSD initialization/boot-up</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
 </dd>
 <dt class="field-even">default</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p>
 </dd>
-</dl>
-</div></blockquote>
-</dd></dl>
-
-<dl class="std confval">
-<dt class="sig sig-object std" id="confval-osd_mclock_cost_per_byte_usec_hdd">
-<span class="sig-name descname"><span class="pre">osd_mclock_cost_per_byte_usec_hdd</span></span><a class="headerlink" href="#confval-osd_mclock_cost_per_byte_usec_hdd" title="Permalink to this definition"></a></dt>
-<dd><blockquote>
-<div><p>Cost per byte in microseconds to consider per OSD (for rotational
-media)</p>
-<dl class="field-list simple">
-<dt class="field-odd">type</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
-</dd>
-<dt class="field-even">default</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">5.2</span></code></p>
-</dd>
-</dl>
-</div></blockquote>
-</dd></dl>
-
-<dl class="std confval">
-<dt class="sig sig-object std" id="confval-osd_mclock_cost_per_byte_usec_ssd">
-<span class="sig-name descname"><span class="pre">osd_mclock_cost_per_byte_usec_ssd</span></span><a class="headerlink" href="#confval-osd_mclock_cost_per_byte_usec_ssd" title="Permalink to this definition"></a></dt>
-<dd><blockquote>
-<div><p>Cost per byte in microseconds to consider per OSD (for solid state
-media)</p>
-<dl class="field-list simple">
-<dt class="field-odd">type</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p>
-</dd>
-<dt class="field-even">default</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.011</span></code></p>
+<dt class="field-odd">see also</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-osd_mclock_max_capacity_iops_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_hdd</span></code></a>, <a class="reference internal" href="#confval-osd_mclock_max_capacity_iops_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_ssd</span></code></a></p>
 </dd>
 </dl>
 </div></blockquote>

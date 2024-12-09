@@ -288,6 +288,8 @@ of the current time. The ultimate lesson is that values for weight
 should not be too large. They should be under the number of requests
 one expects to be serviced each second.
 
+.. _dmclock-qos-caveats:
+
 注意事项
 ````````
 .. Caveats
