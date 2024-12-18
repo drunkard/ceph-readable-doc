@@ -225,12 +225,16 @@ persistent-on-flush mode after the first flush request is received.</p>
 <section id="enable-cache">
 <h2>Enable Cache<a class="headerlink" href="#enable-cache" title="Permalink to this heading"></a></h2>
 <p>To enable the PWL cache, set the following configuration settings:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">persistent</span> <span class="n">cache</span> <span class="n">mode</span> <span class="o">=</span> <span class="p">{</span><span class="n">cache</span><span class="o">-</span><span class="n">mode</span><span class="p">}</span>
-<span class="n">rbd</span> <span class="n">plugins</span> <span class="o">=</span> <span class="n">pwl_cache</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd_persistent_cache_mode</span> <span class="o">=</span> <span class="p">{</span><span class="n">cache</span><span class="o">-</span><span class="n">mode</span><span class="p">}</span>
+<span class="n">rbd_plugins</span> <span class="o">=</span> <span class="n">pwl_cache</span>
 </pre></div>
 </div>
 <p>Value of {cache-mode} can be <code class="docutils literal notranslate"><span class="pre">rwl</span></code>, <code class="docutils literal notranslate"><span class="pre">ssd</span></code> or <code class="docutils literal notranslate"><span class="pre">disabled</span></code>. By default the
 cache is disabled.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">rwl</span></code> cache mode depends on libpmem library (part of PMDK). It should
+be universally available on x86_64 architecture and may also be available on
+ppc64le and aarch64 architectures on some distributions. It is not available
+on s390x architecture.</p>
 <p>Here are some cache configuration settings:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">rbd_persistent_cache_path</span></code> A file folder to cache data. This folder must
@@ -238,9 +242,6 @@ have DAX enabled (see <a class="reference external" href="https://www.kernel.org
 degradation.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">rbd_persistent_cache_size</span></code> The cache size per image. The minimum cache
 size is 1 GB.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">rbd_persistent_cache_log_periodic_stats</span></code> This is a debug option. It is
-used to emit periodic perf stats to the debug log if <code class="docutils literal notranslate"><span class="pre">debug</span> <span class="pre">rbd</span> <span class="pre">pwl</span></code> is
-set to <code class="docutils literal notranslate"><span class="pre">1</span></code> or higher.</p></li>
 </ul>
 <p>The above configurations can be set per-host, per-pool, per-image etc. Eg, to
 set per-host, add the overrides to the appropriate <a class="reference external" href="../../rados/configuration/ceph-conf/#configuration-sections">section</a> in the host’s
@@ -255,27 +256,55 @@ users may use the command <code class="docutils literal notranslate"><span class
 </pre></div>
 </div>
 <p>The status of the cache is shown, including present, clean, cache size and the
-location. Currently the status is updated only at the time the cache is opened
-and closed and therefore may appear to be out of date (e.g. show that the cache
-is clean when it is actually dirty).</p>
+location as well as some basic metrics.</p>
 <p>For example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd status rbd/foo
-Watchers: none
-Image cache state: {&quot;present&quot;:&quot;true&quot;,&quot;empty&quot;:&quot;false&quot;,&quot;clean&quot;:&quot;true&quot;,&quot;cache_type&quot;:&quot;ssd&quot;,&quot;pwl_host&quot;:&quot;sceph9&quot;,&quot;pwl_path&quot;:&quot;/tmp/rbd-pwl.rbd.abcdef123456.pool&quot;,&quot;pwl_size&quot;:1073741824}
+Watchers:
+        watcher=10.10.0.102:0/1061883624 client.25496 cookie=140338056493088
+Persistent cache state:
+        host: sceph9
+        path: /mnt/nvme0/rbd-pwl.rbd.101e5824ad9a.pool
+        size: 1 GiB
+        mode: ssd
+        stats_timestamp: Sun Apr 10 13:26:32 2022
+        present: true   empty: false    clean: false
+        allocated: 509 MiB
+        cached: 501 MiB
+        dirty: 338 MiB
+        free: 515 MiB
+        hits_full: 1450 / 61%
+        hits_partial: 0 / 0%
+        misses: 924
+        hit_bytes: 192 MiB / 66%
+        miss_bytes: 97 MiB
 </pre></div>
 </div>
 </section>
-<section id="discard-cache">
-<h3>Discard Cache<a class="headerlink" href="#discard-cache" title="Permalink to this heading"></a></h3>
-<p>To discard a cache file with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the <code class="docutils literal notranslate"><span class="pre">image-cache</span> <span class="pre">invalidate</span></code>
-option, the pool name and the image name.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">image</span><span class="o">-</span><span class="n">cache</span> <span class="n">invalidate</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+<section id="flush-cache">
+<h3>Flush Cache<a class="headerlink" href="#flush-cache" title="Permalink to this heading"></a></h3>
+<p>To flush a cache file with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the <code class="docutils literal notranslate"><span class="pre">persistent-cache</span> <span class="pre">flush</span></code>
+command, the pool name and the image name.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">persistent</span><span class="o">-</span><span class="n">cache</span> <span class="n">flush</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>The command removes the cache metadata of the corresponding image, disable
+<p>If the application dies unexpectedly, this command can also be used to flush
+the cache back to OSDs.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd persistent-cache flush rbd/foo
+</pre></div>
+</div>
+</section>
+<section id="invalidate-cache">
+<h3>Invalidate Cache<a class="headerlink" href="#invalidate-cache" title="Permalink to this heading"></a></h3>
+<p>To invalidate (discard) a cache file with <code class="docutils literal notranslate"><span class="pre">rbd</span></code>, specify the
+<code class="docutils literal notranslate"><span class="pre">persistent-cache</span> <span class="pre">invalidate</span></code> command, the pool name and the image name.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">persistent</span><span class="o">-</span><span class="n">cache</span> <span class="n">invalidate</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">image</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>The command removes the cache metadata of the corresponding image, disables
 the cache feature and deletes the local cache file if it exists.</p>
 <p>For example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd image-cache invalidate rbd/foo
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd persistent-cache invalidate rbd/foo
 </pre></div>
 </div>
 </section>

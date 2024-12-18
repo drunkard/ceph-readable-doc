@@ -123,12 +123,18 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#canceling-an-upgrade">Canceling an upgrade</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#post-upgrade-actions">Post upgrade actions</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#potential-problems">Potential problems</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#error-enoent-module-not-found">Error: ENOENT: Module not found</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#upgrade-no-standby-mgr">UPGRADE_NO_STANDBY_MGR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#upgrade-failed-pull">UPGRADE_FAILED_PULL</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#using-customized-container-images">Using customized container images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#staggered-upgrade">Staggered Upgrade</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#upgrading-to-a-version-that-supports-staggered-upgrade-from-one-that-doesn-t">Upgrading to a version that supports staggered upgrade from one that doesn’t</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../operations/">Cephadm operations</a></li>
@@ -196,29 +202,7 @@
   
   <section id="ceph">
 <h1>Ceph 的升级<a class="headerlink" href="#ceph" title="Permalink to this heading"></a></h1>
-<div class="admonition danger">
-<p class="admonition-title">Danger</p>
-<p>DATE: 01 NOV 2021.</p>
-<p>DO NOT UPGRADE TO CEPH PACIFIC FROM AN OLDER VERSION.</p>
-<p>A recently-discovered bug (<a class="reference external" href="https://tracker.ceph.com/issues/53062">https://tracker.ceph.com/issues/53062</a>) can cause
-data corruption. This bug occurs during OMAP format conversion for
-clusters that are updated to Pacific. New clusters are not affected by this
-bug.</p>
-<p>The trigger for this bug is BlueStore’s repair/quick-fix functionality. This
-bug can be triggered in two known ways:</p>
-<blockquote>
-<div><ol class="arabic simple">
-<li><p>manually via the ceph-bluestore-tool, or</p></li>
-<li><p>automatically, by OSD if <code class="docutils literal notranslate"><span class="pre">bluestore_fsck_quick_fix_on_mount</span></code> is set
-to true.</p></li>
-</ol>
-</div></blockquote>
-<p>The fix for this bug is expected to be available in Ceph v16.2.7.</p>
-<p>DO NOT set <code class="docutils literal notranslate"><span class="pre">bluestore_quick_fix_on_mount</span></code> to true. If it is currently
-set to true in your configuration, immediately set it to false.</p>
-<p>DO NOT run <code class="docutils literal notranslate"><span class="pre">ceph-bluestore-tool</span></code>’s repair/quick-fix commands.</p>
-</div>
-<p>Cephadm can safely upgrade Ceph from one bugfix release to the next.  For
+<p>Cephadm can safely upgrade Ceph from one point release to the next.  For
 example, you can upgrade from v15.2.0 (the first Octopus release) to the next
 point release, v15.2.1.</p>
 <p>The automated upgrade process follows Ceph best practices.  For example:</p>
@@ -238,15 +222,40 @@ will remain available.</p></li>
 </div>
 <section id="starting-the-upgrade">
 <h2>Starting the upgrade<a class="headerlink" href="#starting-the-upgrade" title="Permalink to this heading"></a></h2>
-<p>Before you use cephadm to upgrade Ceph, verify that all hosts are currently online and that your cluster is healthy by running the following command:</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#staggered-upgrade">Staggered Upgrade</a> of the mons/mgrs may be necessary to have access
+to this new feature.</p>
+</div>
+<p>Cephadm by default reduces <cite>max_mds</cite> to <cite>1</cite>. This can be disruptive for large
+scale CephFS deployments because the cluster cannot quickly reduce active MDS(s)
+to <cite>1</cite> and a single active MDS cannot easily handle the load of all clients
+even for a short time. Therefore, to upgrade MDS(s) without reducing <cite>max_mds</cite>,
+the <cite>fail_fs</cite> option can to be set to <cite>true</cite> (default value is <cite>false</cite>) prior
+to initiating the upgrade:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
 span.prompt1:before {
   content: "# ";
 }
-</style><span class="prompt1">ceph<span class="w"> </span>-s</span>
-</pre></div></div><p>To upgrade (or downgrade) to a specific release, run the following command:</p>
+</style><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mgr<span class="w"> </span>mgr/orchestrator/fail_fs<span class="w"> </span><span class="nb">true</span></span>
+</pre></div></div><dl class="simple">
+<dt>This would:</dt><dd><ol class="arabic simple">
+<li><p>Fail CephFS filesystems, bringing active MDS daemon(s) to
+<cite>up:standby</cite> state.</p></li>
+<li><p>Upgrade MDS daemons safely.</p></li>
+<li><p>Bring CephFS filesystems back up, bringing the state of active
+MDS daemon(s) from <cite>up:standby</cite> to <cite>up:active</cite>.</p></li>
+</ol>
+</dd>
+</dl>
+</div>
+<p>Before you use cephadm to upgrade Ceph, verify that all hosts are currently online and that your cluster is healthy by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>-s</span>
+</pre></div></div><p>To upgrade to a specific release, run a command of the following form:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>start<span class="w"> </span>--ceph-version<span class="w"> </span>&lt;version&gt;</span>
-</pre></div></div><p>For example, to upgrade to v16.2.6, run the following command:</p>
+</pre></div></div><p>For example, to upgrade to v16.2.6, run a command of the following form:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>start<span class="w"> </span>--ceph-version<span class="w"> </span><span class="m">16</span>.2.6</span>
 </pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -283,22 +292,36 @@ looks like this:</p>
 <p>You can stop the upgrade process at any time by running the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>stop</span>
 </pre></div></div></section>
+<section id="post-upgrade-actions">
+<h2>Post upgrade actions<a class="headerlink" href="#post-upgrade-actions" title="Permalink to this heading"></a></h2>
+<p>In case the new version is based on <code class="docutils literal notranslate"><span class="pre">cephadm</span></code>, once done with the upgrade the user
+has to update the <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> package (or ceph-common package in case the user
+doesn’t use <code class="docutils literal notranslate"><span class="pre">cephadm</span> <span class="pre">shell</span></code>) to a version compatible with the new version.</p>
+</section>
 <section id="potential-problems">
 <h2>Potential problems<a class="headerlink" href="#potential-problems" title="Permalink to this heading"></a></h2>
-<p>There are a few health alerts that can arise during the upgrade process.</p>
+<section id="error-enoent-module-not-found">
+<h3>Error: ENOENT: Module not found<a class="headerlink" href="#error-enoent-module-not-found" title="Permalink to this heading"></a></h3>
+<p>The message <code class="docutils literal notranslate"><span class="pre">Error</span> <span class="pre">ENOENT:</span> <span class="pre">Module</span> <span class="pre">not</span> <span class="pre">found</span></code> appears in response to the command <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">orch</span> <span class="pre">upgrade</span> <span class="pre">status</span></code> if the orchestrator has crashed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>status</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Error</span> <span class="n">ENOENT</span><span class="p">:</span> <span class="n">Module</span> <span class="ow">not</span> <span class="n">found</span>
+</pre></div>
+</div>
+<p>This is possibly caused by invalid JSON in a mgr config-key. See <a class="reference external" href="https://tracker.ceph.com/issues/67329">Redmine tracker Issue #67329</a> and <a class="reference external" href="https://www.spinics.net/lists/ceph-users/msg83667.html">the discussion on the [ceph-users] mailing list</a>.</p>
+</section>
 <section id="upgrade-no-standby-mgr">
 <h3>UPGRADE_NO_STANDBY_MGR<a class="headerlink" href="#upgrade-no-standby-mgr" title="Permalink to this heading"></a></h3>
 <p>This alert (<code class="docutils literal notranslate"><span class="pre">UPGRADE_NO_STANDBY_MGR</span></code>) means that Ceph does not detect an
-active standby manager daemon. In order to proceed with the upgrade, Ceph
-requires an active standby manager daemon (which you can think of in this
+active standby Manager daemon. In order to proceed with the upgrade, Ceph
+requires an active standby Manager daemon (which you can think of in this
 context as “a second manager”).</p>
-<p>You can ensure that Cephadm is configured to run 2 (or more) managers by
+<p>You can ensure that Cephadm is configured to run two (or more) Managers by
 running the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>apply<span class="w"> </span>mgr<span class="w"> </span><span class="m">2</span><span class="w">  </span><span class="c1"># or more</span></span>
-</pre></div></div><p>You can check the status of existing mgr daemons by running the following
+</pre></div></div><p>You can check the status of existing Manager daemons by running the following
 command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>ps<span class="w"> </span>--daemon-type<span class="w"> </span>mgr</span>
-</pre></div></div><p>If an existing mgr daemon has stopped, you can try to restart it by running the
+</pre></div></div><p>If an existing Manager daemon has stopped, you can try to restart it by running the
 following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>daemon<span class="w"> </span>restart<span class="w"> </span>&lt;name&gt;</span>
 </pre></div></div></section>
@@ -317,14 +340,89 @@ the following commands:</p>
 <section id="using-customized-container-images">
 <h2>Using customized container images<a class="headerlink" href="#using-customized-container-images" title="Permalink to this heading"></a></h2>
 <p>For most users, upgrading requires nothing more complicated than specifying the
-Ceph version number to upgrade to.  In such cases, cephadm locates the specific
+Ceph version to which to upgrade.  In such cases, cephadm locates the specific
 Ceph container image to use by combining the <code class="docutils literal notranslate"><span class="pre">container_image_base</span></code>
 configuration option (default: <code class="docutils literal notranslate"><span class="pre">docker.io/ceph/ceph</span></code>) with a tag of
 <code class="docutils literal notranslate"><span class="pre">vX.Y.Z</span></code>.</p>
 <p>But it is possible to upgrade to an arbitrary container image, if that’s what
 you need. For example, the following command upgrades to a development build:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>start<span class="w"> </span>--image<span class="w"> </span>quay.io/ceph-ci/ceph:recent-git-branch-name</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>start<span class="w"> </span>--image<span class="w"> </span>quay.ceph.io/ceph-ci/ceph:recent-git-branch-name</span>
 </pre></div></div><p>For more information about available container images, see <a class="reference internal" href="../../install/containers/#containers"><span class="std std-ref">Ceph 容器映像</span></a>.</p>
+</section>
+<section id="staggered-upgrade">
+<h2>Staggered Upgrade<a class="headerlink" href="#staggered-upgrade" title="Permalink to this heading"></a></h2>
+<p>Some users may prefer to upgrade components in phases rather than all at once.
+The upgrade command, starting in 16.2.11 and 17.2.1 allows parameters
+to limit which daemons are upgraded by a single upgrade command. The options in
+include <code class="docutils literal notranslate"><span class="pre">daemon_types</span></code>, <code class="docutils literal notranslate"><span class="pre">services</span></code>, <code class="docutils literal notranslate"><span class="pre">hosts</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code>. <code class="docutils literal notranslate"><span class="pre">daemon_types</span></code>
+takes a comma-separated list of daemon types and will only upgrade daemons of those
+types. <code class="docutils literal notranslate"><span class="pre">services</span></code> is mutually exclusive with <code class="docutils literal notranslate"><span class="pre">daemon_types</span></code>, only takes services
+of one type at a time (e.g. can’t provide an OSD and RGW service at the same time), and
+will only upgrade daemons belonging to those services. <code class="docutils literal notranslate"><span class="pre">hosts</span></code> can be combined
+with <code class="docutils literal notranslate"><span class="pre">daemon_types</span></code> or <code class="docutils literal notranslate"><span class="pre">services</span></code> or provided on its own. The <code class="docutils literal notranslate"><span class="pre">hosts</span></code> parameter
+follows the same format as the command line options for <a class="reference internal" href="../services/#orchestrator-cli-placement-spec"><span class="std std-ref">Daemon Placement</span></a>.
+<code class="docutils literal notranslate"><span class="pre">limit</span></code> takes an integer &gt; 0 and provides a numerical limit on the number of
+daemons cephadm will upgrade. <code class="docutils literal notranslate"><span class="pre">limit</span></code> can be combined with any of the other
+parameters. For example, if you specify to upgrade daemons of type osd on host
+Host1 with <code class="docutils literal notranslate"><span class="pre">limit</span></code> set to 3, cephadm will upgrade (up to) 3 osd daemons on
+Host1.</p>
+<p>Example: specifying daemon types and hosts:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>start<span class="w"> </span>--image<span class="w"> </span>&lt;image-name&gt;<span class="w"> </span>--daemon-types<span class="w"> </span>mgr,mon<span class="w"> </span>--hosts<span class="w"> </span>host1,host2</span>
+</pre></div></div><p>Example: specifying services and using limit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>start<span class="w"> </span>--image<span class="w"> </span>&lt;image-name&gt;<span class="w"> </span>--services<span class="w"> </span>rgw.example1,rgw.example2<span class="w"> </span>--limit<span class="w"> </span><span class="m">2</span></span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cephadm strictly enforces an order to the upgrade of daemons that is still present
+in staggered upgrade scenarios. The current upgrade ordering is
+<code class="docutils literal notranslate"><span class="pre">mgr</span> <span class="pre">-&gt;</span> <span class="pre">mon</span> <span class="pre">-&gt;</span> <span class="pre">crash</span> <span class="pre">-&gt;</span> <span class="pre">osd</span> <span class="pre">-&gt;</span> <span class="pre">mds</span> <span class="pre">-&gt;</span> <span class="pre">rgw</span> <span class="pre">-&gt;</span> <span class="pre">rbd-mirror</span> <span class="pre">-&gt;</span> <span class="pre">cephfs-mirror</span> <span class="pre">-&gt;</span> <span class="pre">iscsi</span> <span class="pre">-&gt;</span> <span class="pre">nfs</span></code>.
+If you specify parameters that would upgrade daemons out of order, the upgrade
+command will block and note which daemons will be missed if you proceed.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Upgrade commands with limiting parameters will validate the options before beginning the
+upgrade, which may require pulling the new container image. Do not be surprised
+if the upgrade start command takes a while to return when limiting parameters are provided.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In staggered upgrade scenarios (when a limiting parameter is provided) monitoring
+stack daemons including Prometheus and node-exporter are refreshed after the Manager
+daemons have been upgraded. Do not be surprised if Manager upgrades thus take longer
+than expected. Note that the versions of monitoring stack daemons may not change between
+Ceph releases, in which case they are only redeployed.</p>
+</div>
+<section id="upgrading-to-a-version-that-supports-staggered-upgrade-from-one-that-doesn-t">
+<h3>Upgrading to a version that supports staggered upgrade from one that doesn’t<a class="headerlink" href="#upgrading-to-a-version-that-supports-staggered-upgrade-from-one-that-doesn-t" title="Permalink to this heading"></a></h3>
+<p>While upgrading from a version that already supports staggered upgrades the process
+simply requires providing the necessary arguments. However, if you wish to upgrade
+to a version that supports staggered upgrade from one that does not, there is a
+workaround. It requires first manually upgrading the Manager daemons and then passing
+the limiting parameters as usual.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Make sure you have multiple running mgr daemons before attempting this procedure.</p>
+</div>
+<p>To start with, determine which Manager is your active one and which are standby. This
+can be done in a variety of ways such as looking at the <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">-s</span></code> output. Then,
+manually upgrade each standby mgr daemon with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>daemon<span class="w"> </span>redeploy<span class="w"> </span>mgr.example1.abcdef<span class="w"> </span>--image<span class="w"> </span>&lt;new-image-name&gt;</span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you are on a very early version of cephadm (early Octopus) the <code class="docutils literal notranslate"><span class="pre">orch</span> <span class="pre">daemon</span> <span class="pre">redeploy</span></code>
+command may not have the <code class="docutils literal notranslate"><span class="pre">--image</span></code> flag. In that case, you must manually set the
+Manager container image <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">config</span> <span class="pre">set</span> <span class="pre">mgr</span> <span class="pre">container_image</span> <span class="pre">&lt;new-image-name&gt;</span></code> and then
+redeploy the Manager <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">orch</span> <span class="pre">daemon</span> <span class="pre">redeploy</span> <span class="pre">mgr.example1.abcdef</span></code></p>
+</div>
+<p>At this point, a Manager fail over should allow us to have the active Manager be one
+running the new version.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>mgr<span class="w"> </span>fail</span>
+</pre></div></div><p>Verify the active Manager is now one running the new version. To complete the Manager
+upgrading:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>upgrade<span class="w"> </span>start<span class="w"> </span>--image<span class="w"> </span>&lt;new-image-name&gt;<span class="w"> </span>--daemon-types<span class="w"> </span>mgr</span>
+</pre></div></div><p>You should now have all your Manager daemons on the new version and be able to
+specify the limiting parameters for the rest of the upgrade.</p>
+</section>
 </section>
 </section>
 

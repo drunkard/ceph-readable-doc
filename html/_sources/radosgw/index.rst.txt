@@ -15,9 +15,10 @@
 #. **Swift-compatible:** 提供了对象存储接口，与 OpenStack 的
    Swift 接口兼容。
 
-Ceph 对象存储使用 Ceph 对象网关守护进程（ ``radosgw`` ），它是\
-个与 Ceph 存储集群交互的 FastCGI 模块。因为它提供了与 OpenStack
-Swift 和 Amazon S3 兼容的接口， RADOS 要有它自己的用户管理。
+Ceph 对象存储使用 Ceph 对象网关守护进程（ ``radosgw`` ），
+它是个与 Ceph 存储集群交互的 FastCGI 模块。
+因为它提供了与 OpenStack Swift 和 Amazon S3 兼容的接口，
+RADOS 要有它自己的用户管理。
 Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
 存储集群。 S3 和 Swift API 共用一个通用命名空间，所以你可以\
 用一个 API 写、然后用另一个检出。
@@ -88,3 +89,5 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    Cloud Transition <cloud-transition>
    Metrics <metrics>
    UADK Acceleration for Compression <uadk-accel>
+   桶的日志记录 <bucket_logging>
+

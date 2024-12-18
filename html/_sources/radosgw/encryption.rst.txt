@@ -25,14 +25,15 @@
 这是根据 `Amazon SSE-C`_ 标准在 S3 里实现的。
 
 因为所有密钥管理事务都是客户端处理的，所以要支持这种加密模式不\
-需要什么特殊的配置。
+需要 Ceph 做什么特殊的配置。
 
 密钥管理服务
 ============
 .. Key Management Service
 
-此模式可以让密钥存储在一个安全的密钥管理服务中，并可以让 Ceph \
-对象网关按需索取，然后用于加密或解密所要请求的数据。
+在此模式下，管理员把密钥存储在一个安全的密钥管理服务中，
+并可以让 Ceph 对象网关按需索取密钥，
+然后用于加密或解密所要请求的数据。
 
 这是根据 `Amazon SSE-KMS`_ 标准在 S3 里实现的。
 
@@ -41,6 +42,21 @@
 
 参见\ `与 OpenStack Barbican 对接`_ 、 `与 HashiCorp Vault 对接`_\
 和\ `与 KMIP 对接`_\ 。
+
+SSE-S3
+======
+
+This makes key management invisible to the user.  They are still stored
+in Vault, but they are automatically created and deleted by Ceph and
+retrieved as required to serve requests to encrypt
+or decrypt data.
+
+This is implemented in S3 according to the `Amazon SSE-S3`_ specification.
+
+In principle, any key management service could be used here.  Currently
+only integration with `Vault`_, is implemented.
+
+见 `与 HashiCorp Vault 对接`_.
 
 桶加密 API
 ==========
@@ -69,6 +85,7 @@
 
 .. _Amazon SSE-C: https://docs.aws.amazon.com/AmazonS3/latest/dev/ServerSideEncryptionCustomerKeys.html
 .. _Amazon SSE-KMS: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html
+.. _Amazon SSE-S3: https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingServerSideEncryption.html
 .. _Barbican: https://wiki.openstack.org/wiki/Barbican
 .. _Vault: https://www.vaultproject.io/docs/
 .. _KMIP: http://www.oasis-open.org/committees/kmip/

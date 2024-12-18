@@ -40,6 +40,11 @@ POSIX 语义：
   这个隐藏目录的名字可以在挂载时更改，
   用 ``-o snapdirname=.somethingelse`` (Linux) 或者\
   配置选项 ``client_snapdir`` (libcephfs, ceph-fuse) 。
+- CephFS 目前不维护 ``atime`` 字段。大多数应用程序对此并不在意，
+  不过这会影响到一些备份和数据分层应用程序，
+  因为它们会将未使用的数据移动到次级存储系统。
+  由于 CephFS 确实支持通过 ``setattr`` 操作设置 ``atime`` ，
+  因此在某些案例下可以解决这个问题。
 
 
 前景展望

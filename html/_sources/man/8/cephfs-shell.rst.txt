@@ -1,5 +1,7 @@
 :orphan:
 
+.. _cephfs-shell:
+
 ==============================================
 cephfs-shell -- 与 CephFS 对话的类 shell 工具
 ==============================================
@@ -63,6 +65,23 @@ CephFS Shell 的行为可以用 ``cephfs-shell.conf`` 调整。
 ====
 .. Commands
 
+.. note::
+
+    除了 Ceph 文件系统， CephFS Shell 命令行\
+    还能直接与本地文件系统交互。
+    要这样做，必须在 CephFS Shell 命令前面加上 ``!`` （感叹号）。
+
+    用法：
+
+        !<cephfs_shell_command>
+
+    例如，
+
+    .. code:: bash
+
+        CephFS:~/>>> !ls # Lists the local file system directory contents.
+        CephFS:~/>>> ls  # Lists the Ceph File System directory contents.
+
 mkdir
 -----
 
@@ -85,7 +104,7 @@ put
 
 用法：
 
-    put [options] <source_path> [target_path]
+    put [options] <source_path> <target_path>
 
 * source_path - 要复制到 cephfs 的本地文件、目录的路径
     * 如果是 `.` 就复制当前工作目录内的所有文件、目录。
@@ -105,7 +124,7 @@ get
 
 用法：
 
-    get [options] <source_path> [target_path]
+    get [options] <source_path> <target_path>
 
 * source_path - 将被复制到本地文件系统的远程文件、目录路径
     * 如果是 `.` ，就复制远程工作目录下的所有文件、目录。

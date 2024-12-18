@@ -52,10 +52,33 @@ Running your first test
 The Python tests in Ceph repository can be executed on your local machine
 using `vstart_runner.py`_. To do that, you'd need `teuthology`_ installed::
 
+    $ git clone https://github.com/ceph/teuthology
+    $ cd teuthology
+    $ ./bootstrap install
+
+This will create a virtual environment named ``virtualenv`` in root of the
+teuthology repository and install teuthology in it.
+
+You can also install teuthology via ``pip`` if you would like to install it
+in a custom virtual environment with clone `teuthology`_ repository using
+``git``::
+
     $ virtualenv --python=python3 venv
     $ source venv/bin/activate
     $ pip install 'setuptools >= 12'
-    $ pip install git+https://github.com/ceph/teuthology#egg=teuthology[test]
+    $ pip install teuthology[test]@git+https://github.com/ceph/teuthology
+    $ deactivate
+
+If for some unforeseen reason above approaches do no work (maybe boostrap
+script doesn't work due to a bug or you can't download tethology at the
+moment) teuthology can be installed manually manually from copy of
+teuthology repo already present on your machine::
+
+    $ cd teuthology
+    $ virtualenv -p python3 venv
+    $ source venv/bin/activate
+    $ pip install -r requirements.txt
+    $ pip install .
     $ deactivate
 
 The above steps installs teuthology in a virtual environment. Before running
@@ -93,7 +116,7 @@ vstart_runner.py can take the following options -
 --interactive               drops a Python shell when a test fails
 --log-ps-output             logs ps output; might be useful while debugging
 --teardown                  tears Ceph cluster down after test(s) has finished
-                            runnng
+                            running
 --kclient                   use the kernel cephfs client instead of FUSE
 --brxnet=<net/mask>         specify a new net/mask for the mount clients' network
                             namespace container (Default: 192.168.0.0/16)
@@ -103,9 +126,10 @@ vstart_runner.py can take the following options -
           to ``/etc/fuse.conf``.
 
 .. note:: If using the kernel client, the user must have the ability to run
-          commands with passwordless sudo access. A failure on the kernel
-          client may crash the host, so it's recommended to use this
-          functionality within a virtual machine.
+          commands with passwordless sudo access.
+
+.. note:: A failure on the kernel client may crash the host, so it's
+          recommended to use this functionality within a virtual machine.
 
 Internal working of vstart_runner.py -
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -131,6 +155,17 @@ vstart_runner.py primarily does three things -
     ``LocalCephManager`` provides methods to run Ceph cluster commands with
     and without admin socket and ``LocalCephCluster`` provides methods to set
     or clear ``ceph.conf``.
+
+.. note:: vstart_runner.py deletes "adjust-ulimits" and "ceph-coverage" from
+          the command arguments unconditionally since they are not applicable
+          when tests are run on a developer's machine.
+
+.. note:: "omit_sudo" is re-set to False unconditionally in cases of commands
+          "passwd" and "chown".
+
+.. note:: The presence of binary file named after the first argument is
+          checked in ``<ceph-repo-root>/build/bin/``. If present, the first
+          argument is replaced with the path to binary file.
 
 Running Workunits Using vstart_enviroment.sh
 --------------------------------------------

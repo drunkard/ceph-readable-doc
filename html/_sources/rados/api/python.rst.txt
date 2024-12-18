@@ -22,11 +22,11 @@
 .. note:: 要使用 Ceph 的 Python 库，你必须有正常运行的 Ceph 集群、
    及其访问权限。要快速配起一个集群，看 `入门手册`_ 。
 
-首先创建一个 Ceph 客户端的 Python 源文件。
+首先创建一个 Ceph 客户端的 Python 源码文件。
 
 .. prompt:: bash
 
-   sudo vim client.py
+   vim client.py
 
 
 导入模块

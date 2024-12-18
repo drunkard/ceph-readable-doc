@@ -18,8 +18,6 @@ Ceph 对象网关要用多个存储池来满足多种存储需求，它们罗列
 的默认值创建那个存储池。这些默认值对于某些存储池来说足够了，\
 但是其它的（特别是 ``placement_pools`` 内罗列的、\
 用于桶索引和数据的存储池）就需要额外调整了。\
-我们建议用 `Ceph 归置组的单存储池计算器 <http://ceph.com/pgcalc/>`__\
-给这些存储池计算个合适的归置组数量。\
 存储池创建细节请参考\
 `存储池 <http://docs.ceph.com/en/latest/rados/operations/pools/#pools>`__\ 。
 

@@ -35,7 +35,7 @@
 
 | **ceph** **mds** [ *compat* \| *fail* \| *rm* \| *rmfailed* \| *set_state* \| *stat* \| *repaired* ] ...
 
-| **ceph** **mon** [ *add* \| *dump* \| *getmap* \| *remove* \| *stat* ] ...
+| **ceph** **mon** [ *add* \| *dump* \| *enable_stretch_mode* \| *getmap* \| *remove* \| *stat* ] ...
 
 | **ceph** **osd** [ *blocklist* \| *blocked-by* \| *create* \| *new* \| *deep-scrub* \| *df* \| *down* \| *dump* \| *erasure-code-profile* \| *find* \| *getcrushmap* \| *getmap* \| *getmaxosd* \| *in* \| *ls* \| *lspools* \| *map* \| *metadata* \| *ok-to-stop* \| *out* \| *pause* \| *perf* \| *pg-temp* \| *force-create-pg* \| *primary-affinity* \| *primary-temp* \| *repair* \| *reweight* \| *reweight-by-pg* \| *rm* \| *destroy* \| *purge* \| *safe-to-destroy* \| *scrub* \| *set* \| *setcrushmap* \| *setmaxosd*  \| *stat* \| *tree* \| *unpause* \| *unset* ] ...
 
@@ -543,6 +543,23 @@ mon
 用法： ::
 
 	ceph mon getmap {<int[0-]>}
+
+子命令 ``enable_stretch_mode`` 可启用扩展模式，
+此模式会改变所有存储池的互联规则和故障处理方式。
+要使指定的 PG 成功互联并标记为活跃，现在就需要 ``min_size`` 个副本在所有
+（目前是两个） <dividing_bucket> 类型的 CRUSH 桶下处于活动状态。
+
+<tiebreaker_mon> 是发生网络脑裂时将启用的 tiebreaker mon （终裁监视器）。
+
+<dividing_bucket> 是要横跨的桶类型。
+这个桶通常是数据中心（ ``datacenter`` ）或其他 CRUSH 分级结构桶类型，
+表示物理上或逻辑上距离较远的分区。
+
+<new_crush_rule> 将被设置为所有存储池的 CRUSH 规则。
+
+用法： ::
+
+	ceph mon enable_stretch_mode <tiebreaker_mon> <new_crush_rule> <dividing_bucket>
 
 子命令 ``remove`` 用于删除名为 <name> 的监视器。
 
@@ -1315,7 +1332,7 @@ indep 更适合纠删码存储池）。
 
 用法： ::
 
-	ceph osd tier cache-mode <poolname> writeback|readproxy|readonly|none
+	ceph osd tier cache-mode <poolname> writeback|proxy|readproxy|readonly|none
 
 子命令 ``remove`` 删掉基础存储池 <pool> （第一个）的马甲存储池
 <tierpool> （第二个）。

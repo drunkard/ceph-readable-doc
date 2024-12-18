@@ -186,6 +186,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../cloud-transition/">Cloud Transition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../metrics/">Metrics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../uadk-accel/">UADK Acceleration for Compression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bucket_logging/">桶的日志记录</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../mgr/">Ceph 管理器守护进程</a></li>
@@ -322,7 +323,7 @@ Vault agent, such as having the Vault agent listen only to localhost.</p>
 <h3>Token policies for the object gateway<a class="headerlink" href="#token-policies-for-the-object-gateway" title="Permalink to this heading"></a></h3>
 <p>All Vault tokens have powers as specified by the polices attached
 to that token.  Multiple policies may be associated with one
-token.  You should only use the policy necessary for your
+token.  You should only use the policies necessary for your
 configuration.</p>
 <p>When using the kv secret engine with the object gateway:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">policy</span> <span class="n">write</span> <span class="n">rgw</span><span class="o">-</span><span class="n">kv</span><span class="o">-</span><span class="n">policy</span> <span class="o">-&lt;&lt;</span><span class="n">EOF</span>
@@ -366,6 +367,18 @@ transit secret engine, you might need the following policy:</p>
 <span class="n">EOF</span>
 </pre></div>
 </div>
+<p>If you are using both sse-kms and sse-s3, then you should point
+each to separate containers.  You could either use separate
+vault instances, or you could use either separately mounted
+transit instances, or different branches under a common transit
+point.  If you are not using separate vault instances, you can
+use these to point kms and sse-s3 to separate containers:
+<code class="docutils literal notranslate"><span class="pre">rgw_crypt_vault_prefix</span></code>
+and/or
+<code class="docutils literal notranslate"><span class="pre">rgw_crypt_sse_s3_vault_prefix</span></code>.
+When granting vault permissions to sse-kms bucket owners, you should
+not give them permission to muck around with sse-s3 keys;
+only ceph itself should be doing that.</p>
 </section>
 <section id="token-authentication">
 <h3>Token authentication<a class="headerlink" href="#token-authentication" title="Permalink to this heading"></a></h3>
@@ -380,54 +393,6 @@ with the following settings:</p>
 <p>Adjust these settings to match your configuration.
 For security reasons, the token file must be readable by the Object Gateway
 only.</p>
-<p>You might set up vault agent as follows:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">write</span> <span class="n">auth</span><span class="o">/</span><span class="n">approle</span><span class="o">/</span><span class="n">role</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">ap</span> \
-  <span class="n">token_policies</span><span class="o">=</span><span class="n">rgw</span><span class="o">-</span><span class="n">transit</span><span class="o">-</span><span class="n">policy</span><span class="p">,</span><span class="n">default</span> \
-  <span class="n">token_max_ttl</span><span class="o">=</span><span class="mi">60</span><span class="n">m</span>
-</pre></div>
-</div>
-<p>Change the policy here to match your configuration.</p>
-<p>Get the role-id:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">auth</span><span class="o">/</span><span class="n">approle</span><span class="o">/</span><span class="n">role</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">ap</span><span class="o">/</span><span class="n">role</span><span class="o">-</span><span class="nb">id</span> <span class="o">-</span><span class="nb">format</span><span class="o">=</span><span class="n">json</span> <span class="o">|</span> \
-  <span class="n">jq</span> <span class="o">-</span><span class="n">r</span> <span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">role_id</span>
-</pre></div>
-</div>
-<p>Store the output in some file, such as /usr/local/etc/vault/.rgw-ap-role-id</p>
-<p>Get the secret-id:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">auth</span><span class="o">/</span><span class="n">approle</span><span class="o">/</span><span class="n">role</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">ap</span><span class="o">/</span><span class="n">role</span><span class="o">-</span><span class="nb">id</span> <span class="o">-</span><span class="nb">format</span><span class="o">=</span><span class="n">json</span> <span class="o">|</span> \
-  <span class="n">jq</span> <span class="o">-</span><span class="n">r</span> <span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">role_id</span>
-</pre></div>
-</div>
-<p>Store the output in some file, such as /usr/local/etc/vault/.rgw-ap-secret-id</p>
-<p>Create configuration for the Vault agent, such as:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pid_file</span> <span class="o">=</span> <span class="s2">&quot;/run/rgw-vault-agent-pid&quot;</span>
-<span class="n">auto_auth</span> <span class="p">{</span>
-  <span class="n">method</span> <span class="s2">&quot;AppRole&quot;</span> <span class="p">{</span>
-    <span class="n">mount_path</span> <span class="o">=</span> <span class="s2">&quot;auth/approle&quot;</span>
-    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
-      <span class="n">role_id_file_path</span> <span class="o">=</span><span class="s2">&quot;/usr/local/etc/vault/.rgw-ap-role-id&quot;</span>
-      <span class="n">secret_id_file_path</span> <span class="o">=</span><span class="s2">&quot;/usr/local/etc/vault/.rgw-ap-secret-id&quot;</span>
-      <span class="n">remove_secret_id_file_after_reading</span> <span class="o">=</span><span class="s2">&quot;false&quot;</span>
-    <span class="p">}</span>
-  <span class="p">}</span>
-  <span class="n">sink</span> <span class="s2">&quot;file&quot;</span> <span class="p">{</span>
-    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
-      <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/run/.rgw-vault-token&quot;</span>
-    <span class="p">}</span>
-  <span class="p">}</span>
-<span class="p">}</span>
-<span class="n">vault</span> <span class="p">{</span>
-  <span class="n">address</span> <span class="o">=</span> <span class="s2">&quot;https://vault-server-fqdn:8200&quot;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>Then use systemctl or another method of your choice to run
-a persistent daemon with the following arguments:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">vault</span> <span class="n">agent</span> <span class="o">-</span><span class="n">config</span><span class="o">=/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">vault</span><span class="o">/</span><span class="n">rgw</span><span class="o">-</span><span class="n">agent</span><span class="o">.</span><span class="n">hcl</span>
-</pre></div>
-</div>
-<p>Once the vault agent is running, the token file should be populated
-with a valid token.</p>
 </section>
 <section id="vault-agent">
 <h3>Vault agent<a class="headerlink" href="#vault-agent" title="Permalink to this heading"></a></h3>
@@ -547,7 +512,7 @@ exportable.  They can be created with:</p>
 <p>The command above creates a keyring, which contains a key of type
 <code class="docutils literal notranslate"><span class="pre">aes256-gcm96</span></code> by default. To verify that the key was correctly created, use
 the following command:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">transit</span><span class="o">/</span><span class="n">mybucketkey</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vault</span> <span class="n">read</span> <span class="n">transit</span><span class="o">/</span><span class="n">keys</span><span class="o">/</span><span class="n">mybucketkey</span>
 </pre></div>
 </div>
 <p>Sample output:</p>
