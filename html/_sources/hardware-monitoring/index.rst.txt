@@ -1,10 +1,12 @@
 .. _hardware-monitoring:
 
-Hardware monitoring
-===================
+硬件监控
+========
+.. Hardware monitoring
 
-`node-proxy` is the internal name to designate the running agent which inventories a machine's hardware, provides the different statuses and enable the operator to perform some actions.
-It gathers details from the RedFish API, processes and pushes data to agent endpoint in the Ceph manager daemon.
+`node-proxy` 是一个内部名称，用于指定运行中的代理，该代理负责清点机器的硬件、
+报告各种状态、还能让操作员执行某些操作。它通过 RedFish API 收集详细信息、
+处理数据并将数据推送到 Ceph 管理器守护进程中的代理终结点。
 
 .. graphviz::
 
@@ -20,26 +22,26 @@ It gathers details from the RedFish API, processes and pushes data to agent endp
          dashboard:dashboard -> mgr [label=" 3."color=lightgreen];
          node [shape=plaintext];
          legend [label=<<table border="0" cellborder="1" cellspacing="0">
-             <tr><td bgcolor="lightgrey">Legend</td></tr>
-             <tr><td align="center">1. Collects data from redfish API</td></tr>
-             <tr><td align="left">2. Pushes data to ceph mgr</td></tr>
-             <tr><td align="left">3. Query ceph mgr</td></tr>
+             <tr><td bgcolor="lightgrey">图例</td></tr>
+             <tr><td align="center">1. 通过 redfish API 收集数据</td></tr>
+             <tr><td align="left">2. 把数据推送到 ceph mgr</td></tr>
+             <tr><td align="left">3. 查询 ceph mgr</td></tr>
          </table>>];
      }
 
+必备条件
+--------
+.. Limitations
 
-Limitations
------------
+目前， `node-proxy` 代理依赖于 RedFish API 。这意味着
+`node-proxy` 代理和 `ceph-mgr` 守护进程都需要接入带外网络才能工作。
 
-For the time being, the `node-proxy` agent relies on the RedFish API.
-It implies both `node-proxy` agent and `ceph-mgr` daemon need to be able to access the Out-Of-Band network to work.
+代理的部署
+----------
+.. Deploying the agent
 
-
-Deploying the agent
--------------------
-
-| The first step is to provide the out of band management tool credentials.
-| This can be done when adding the host with a service spec file:
+| 第一步就是提供带外管理工具的凭证。
+| 在向服务规范文件里添加主机的时候可以写上凭证。
 
 .. code-block:: bash
 
@@ -53,14 +55,14 @@ Deploying the agent
     username: admin
     password: p@ssword
 
-Apply the spec:
+应用此规范：
 
 .. code-block:: bash
 
   # ceph orch apply -i host.yml
   Added host 'node-10' with addr '10.10.10.10'
 
-Deploy the agent:
+部署此代理：
 
 .. code-block:: bash
 
@@ -71,7 +73,7 @@ CLI
 
 | **orch** **hardware** **status** [hostname] [--category CATEGORY] [--format plain | json]
 
-supported categories are:
+支持的类别（ category ）有：
 
 * summary (default)
 * memory
@@ -83,12 +85,12 @@ supported categories are:
 * firmwares
 * criticals
 
-Examples
-********
+实例
+****
 
-
-hardware health statuses summary 
-++++++++++++++++++++++++++++++++
+硬件健康状态概况
+++++++++++++++++
+.. hardware health statuses summary 
 
 .. code-block:: bash
 
@@ -99,9 +101,9 @@ hardware health statuses summary
   |   node-10  |    ok   |  ok |  ok |   ok   |   ok  |  ok  |
   +------------+---------+-----+-----+--------+-------+------+
 
-
-storage devices report
-++++++++++++++++++++++
+存储设备报告
+++++++++++++
+.. storage devices report
 
 .. code-block:: bash
 
@@ -127,10 +129,9 @@ storage devices report
   |   node-10  |           Disk 1 on AHCI Controller in SL 6            |  MTFDDAV240TDU   |  240057409536  |   SATA   |  22373BB1E0D5  |   OK   | Enabled |
   +------------+--------------------------------------------------------+------------------+----------------+----------+----------------+--------+---------+
 
-
-
-firmwares details
-+++++++++++++++++
+固件详情
+++++++++
+.. firmwares details
 
 .. code-block:: bash
 
@@ -147,9 +148,9 @@ firmwares details
   |   node-10  |               previous-25227-6.10.30.20__idrac.embedded.1-1                |             Integrated Remote Access Controller              |      00:00:00Z       |  6.10.30.20 |   OK   |
   +------------+----------------------------------------------------------------------------+--------------------------------------------------------------+----------------------+-------------+--------+
 
-
-hardware critical warnings report
-+++++++++++++++++++++++++++++++++
+硬件严重警告报告
+++++++++++++++++
+.. hardware critical warnings report
 
 .. code-block:: bash
 
@@ -160,9 +161,9 @@ hardware critical warnings report
   |   node-10  |   power   | PS2 Status | critical |    unplugged    |
   +------------+-----------+------------+----------+-----------------+
 
-
-Developpers
------------
+开发资料
+--------
+.. Developpers
 
 .. py:currentmodule:: cephadm.agent
 .. autoclass:: NodeProxyEndpoint
