@@ -6,108 +6,108 @@
 
 .. program:: rgw-restore-bucket-index
 
-Synopsis
-========
+提纲
+====
 
 | **rgw-restore-bucket-index**
 
-Description
-===========
+描述
+====
 
-:program:`rgw-restore-bucket-index` is an *EXPERIMENTAL* RADOS gateway
-user administration utility. It scans the data pool for objects that
-belong to a given bucket and tries to add those objects back to the
-bucket index. It's intended as a **last resort** after a
-**catastrophic** loss of a bucket index. Please thorougly review the
-*Warnings* listed below.
+:program:`rgw-restore-bucket-index` 是一个\
+*实验性的* RADOS 网关用户管理工具。
+它能在数据存储池中扫描属于指定桶的对象，
+并尝试将这些对象加回桶索引。
+它应该作为桶索引发生\ *灾难性*\ 丢失的\ *最后挽回手段*\ 。
+请仔细阅读以下\ *警告*\ 。
 
-The utility works with regular (i.e., un-versioned) buckets, versioned
-buckets, and buckets were versioning has been suspended.
+该实用程序可处理常规（即未版本化的）桶、
+已版本化的桶、和已暂停版本化的桶。
 
-Warnings
-========
+警告
+====
 
-This utility is currently considered *EXPERIMENTAL*.
+该实用程序目前还是\ *试验性的*\ 。
 
-The results are unpredictable if the bucket is in
-active use while this utility is running.
+如果在运行此工具时，桶还在使用中，
+那么结果将无法预测。
 
-The results are unpredictable if only some bucket's objects are
-missing from the bucket index. In such a case, consider using the
-"object reindex" subcommand of `radosgw-admin` to restore object's to
-the bucket index one-by-one.
+如果桶索引中只缺少某一些桶的对象，
+结果也无法预测。这种情形，
+应该考虑使用 `radosgw-admin` 的 "object reindex" 子命令，
+将对象逐一恢复到桶索引中。
 
-For objects in versioned buckets, if the latest version is a delete
-marker, it will be restored. If a delete marker has been written over
-with a new version, then that delete marker will not be restored. This
-should have minimal impact on results in that the it recovers the
-latest version and previous versions are all accessible.
+对于启用了版本控制的桶里面的对象，如果最新版本是删除标记，
+它会被恢复。如果删除标记已经被新版本覆盖写入，
+则不会恢复该删除标记。
+这样应该对最终结果的影响最小，因为它恢复了最新版本，
+而且之前的版本也都可以访问。
 
-Command-Line Arguments
-======================
+
+命令行参数
+==========
 
 .. option:: -b <bucket>
 
-   Specify the bucket to be reindexed.
+   指定要重新索引的桶。
 
 .. option:: -p <pool>
 
-   Optional, specify the data pool containing head objects for the
-   bucket. If omitted the utility will try to determine the data pool
-   on its own.
+   可选项，指定包含桶头部对象的数据存储池。
+   如果省略，此工具将尝试自行确定数据存储池。
 
 .. option:: -r <realm-name>
 
-   Optional, specify the realm if the restoration is not being applied
-   to the default realm.
+   可选项，如果恢复的不是默认 realm ，
+   需要指定 realm 。
 
 .. option:: -g <zonegroup-name>
 
-   Optional, specify the zonegroup if the restoration is not being applied
-   to the default zonegroup.
+   可选项，如果要恢复的不是默认域组，
+   需要指定域组。
 
 .. option:: -z <zone-name>
 
-   Optional, specify the zone if the restoration is not being applied
-   to the default zone.
+   可选项，如果要恢复的不是默认域，
+   需要指定域。
 
 .. option:: -l <rados-ls-output-file>
 
-   Optional, specify a file containing the output of a rados listing
-   of the data pool. Since listing the data pool can be an expensive
-   and time-consuming operation, if trying to recover the indices for
-   multiple buckets, it could be more efficient to re-use the same
-   listing.
+   可选项，指定包含数据存储池 rados 对象列表的一个文件。
+   由于列出数据存储池里的对象可能是一项费时费力的操作，
+   如果要恢复的是多个桶的索引，
+   重复使用同一份列表应该会更高效。
 
 .. option:: -t <temporary-directory>
 
-   Optional, specify a directory in which to store temporary files.
-   The size of the temporary files is highly dependent on the number
-   of bucket entries involved, so the partition on which the temporary
-   directory exists should be of suitable size.
+   可选项，指定用于存储临时文件的目录。
+   临时文件的大小在很大程度上取决于\
+   所涉及的桶条目的数量，
+   因此临时目录所在分区的大小应该要容得下。
 
 .. option:: -y
 
-   Optional, proceed without further prompting. Without this option
-   the utility will display some information and prompt the user as to
-   whether to proceed. When provided, the utility will simply
-   proceed. Please use caution when using this option.
+   可选项，无需进一步提示即可继续。
+   如果没有该选项，本工具将显示一些信息，
+   并询问用户是否继续。如果提供了该选项，
+   本工具将直接继续。使用此选项时请谨慎。
 
-Examples
-========
 
-Attempt to restore the index for a bucket named *summer-2023-photos*::
+实例
+====
+
+尝试为名字是 *summer-2023-photos* 的桶恢复索引： :: 
 
         $ rgw-restore-bucket-index -b summer-2023-photos
 
-Availability
-============
 
-:program:`rgw-restore-bucket-index` is part of Ceph, a massively
-scalable, open-source, distributed storage system.  Please refer to
-the Ceph documentation at https://docs.ceph.com for more information.
-
-See also
+适用范围
 ========
+
+:program:`rgw-restore-bucket-index` 是 Ceph 的一部分，这是个伸缩力强、\
+开源、分布式的存储系统，更多信息参见 https://docs.ceph.com 。
+
+参考
+====
 
 :doc:`radosgw-admin <radosgw-admin>`\(8)
