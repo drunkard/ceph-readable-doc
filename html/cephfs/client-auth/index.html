@@ -121,9 +121,10 @@
 <li class="toctree-l4"><a class="reference internal" href="#p">布局和配额使用条件（ p 标记）</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#s">快照使用条件（ s 标记）</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id5">网络限定</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#file-system-information-restriction">File system Information Restriction</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mds-communication-restriction">MDS communication restriction</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#root-squash">Root squash</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fs-authorize-multifs">文件系统信息限定</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mds">MDS 通信限定</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">根目录保护</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fs-authorize">用 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 更改能力</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../mount-prerequisites/"> 挂载 CephFS: 前提条件</a></li>
@@ -206,27 +207,32 @@
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Using Erasure Coded(EC) pools with CephFS is supported only with the
-BlueStore Backend. They cannot be used as metadata pools and overwrites must
-be enabled on the data pools.</p>
+<p>只有 <a class="reference internal" href="../../glossary/#term-BlueStore"><span class="xref std std-term">BlueStore</span></a> 支持把纠删码 (EC) 存储池用于 CephFS 。纠删码存储池不能用作元数据存储池。
+必须在纠删码数据存储池上启用覆盖写（ overwrite ）。</p>
 </div>
 <section id="id1">
 <h2>路径限定<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
 <p>默认情况下，客户端不会被限制只能挂载某些目录；而且，当客户端挂载了一个子目录后，如 <code class="docutils literal notranslate"><span class="pre">/home/user</span></code> ， MDS 默认情况下也不会检查后续操作都“锁定”在那个目录里面。</p>
 <p>要把客户端限定为只能挂载某个特定目录、且只能在其内工作，可以用基于路径的 MDS 鉴权能力实现。</p>
+<p>这一限制<em>只影响</em>文件系统的层次结构，换句话说，
+也就是由 MDS 管理的元数据树。客户端仍可直接访问
+RADOS 中的底层文件数据。要想完全隔离客户端，
+可将不信任的客户端隔离在自己的 RADOS 命名空间中。
+你可以用<a class="reference internal" href="../file-layouts/#file-layouts"><span class="std std-ref">文件布局</span></a>将客户端的文件系统子树放置到特定的命名空间中，然后用
+<a class="reference internal" href="../../rados/operations/user-management/#modify-user-capabilities"><span class="std std-ref">OSD 能力</span></a>限制客户端对这个命名空间的 RADOS 访问。</p>
 <section id="id2">
 <h3>语法<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h3>
-<p>如果只想授予指定目录读写（ rw ）权限，我们在给这个客户端创建密钥时就要提及这个目录，语法如下：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">authorize</span> <span class="o">&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span> <span class="n">client</span><span class="o">.&lt;</span><span class="n">client_id</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">-</span><span class="ow">in</span><span class="o">-</span><span class="n">cephfs</span><span class="o">&gt;</span> <span class="n">rw</span>
-</pre></div>
-</div>
-<p>比如，要想把 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 客户端限定为只能在 <code class="docutils literal notranslate"><span class="pre">cephfs_a</span></code> 文件系统的
-<code class="docutils literal notranslate"><span class="pre">bar</span></code> 目录下写，命令如下：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">authorize</span> <span class="n">cephfs_a</span> <span class="n">client</span><span class="o">.</span><span class="n">foo</span> <span class="o">/</span> <span class="n">r</span> <span class="o">/</span><span class="n">bar</span> <span class="n">rw</span>
-
-<span class="n">results</span> <span class="ow">in</span><span class="p">:</span>
-
-<span class="n">client</span><span class="o">.</span><span class="n">foo</span>
+<p>如果只想授予指定目录 <code class="docutils literal notranslate"><span class="pre">rw</span></code> （读写）权限，我们在给这个客户端创建密钥时就要提及这个目录，命令语法如下：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "# ";
+}
+</style><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>client.&lt;client_id&gt;<span class="w"> </span>&lt;path-in-cephfs&gt;<span class="w"> </span>rw</span>
+</pre></div></div><p>比如，要想把 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 客户端限定为只能在 <code class="docutils literal notranslate"><span class="pre">cephfs_a</span></code> 文件系统的
+<code class="docutils literal notranslate"><span class="pre">bar</span></code> 目录下写，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>cephfs_a<span class="w"> </span>client.foo<span class="w"> </span>/<span class="w"> </span>r<span class="w"> </span>/bar<span class="w"> </span>rw</span>
+</pre></div></div><p>此命令会输出：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span><span class="o">.</span><span class="n">foo</span>
   <span class="n">key</span><span class="p">:</span> <span class="o">*</span><span class="n">key</span><span class="o">*</span>
   <span class="n">caps</span><span class="p">:</span> <span class="p">[</span><span class="n">mds</span><span class="p">]</span> <span class="n">allow</span> <span class="n">r</span><span class="p">,</span> <span class="n">allow</span> <span class="n">rw</span> <span class="n">path</span><span class="o">=/</span><span class="n">bar</span>
   <span class="n">caps</span>  <span class="p">[</span><span class="n">mon</span><span class="p">]</span> <span class="n">allow</span> <span class="n">r</span>
@@ -234,35 +240,34 @@ be enabled on the data pools.</p>
 </pre></div>
 </div>
 <p>要完全把此客户端限定在 <code class="docutils literal notranslate"><span class="pre">bar</span></code> 目录下，去掉根目录即可：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">fs</span> <span class="n">authorize</span> <span class="n">cephfs</span> <span class="n">client</span><span class="o">.</span><span class="n">foo</span> <span class="o">/</span><span class="n">bar</span> <span class="n">rw</span>
-</pre></div>
-</div>
-<p>需要注意的是，如果一个客户端的读权限被限定到了某一路径，它们就只能挂载文件系统下的这个可读路径，在挂载命令里必须指定（如下）。</p>
-<p>文件系统名指定为 <code class="docutils literal notranslate"><span class="pre">all</span></code> 或 <code class="docutils literal notranslate"><span class="pre">*</span></code> 时，权限将授予每个文件系统。注意，一般都得给 <code class="docutils literal notranslate"><span class="pre">*</span></code> 加引号，以免被 shell 误用。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>cephfs_a<span class="w"> </span>client.foo<span class="w"> </span>/bar<span class="w"> </span>rw</span>
+</pre></div></div><p>如果一个客户端的读权限被限定到了某一路径，
+它在挂载文件系统的时候就必须指定这个有权限读取的路径，
+（如下）。</p>
+<p>文件系统名指定为 <code class="docutils literal notranslate"><span class="pre">all</span></code> 或 <code class="docutils literal notranslate"><span class="pre">*</span></code> 时，
+将授予每个文件系统的访问权限。一般都得给 <code class="docutils literal notranslate"><span class="pre">*</span></code> 加引号，以免被 shell 误用。</p>
 <p>关于用户管理的细节，请参阅<a class="reference external" href="../../rados/operations/user-management/#add-a-user-to-a-keyring">用户管理 - 把用户加入密钥环</a>。</p>
-<p>要把客户端限定于指定的子目录，在挂载时还需指定这个目录，语法如下：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">fuse</span> <span class="o">-</span><span class="n">n</span> <span class="n">client</span><span class="o">.*</span><span class="n">client_name</span><span class="o">*</span> <span class="o">*</span><span class="n">mount_path</span><span class="o">*</span> <span class="o">-</span><span class="n">r</span> <span class="o">*</span><span class="n">directory_to_be_mounted</span><span class="o">*</span>
-</pre></div>
-</div>
-<p>例如，要把客户端 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 限定于 <code class="docutils literal notranslate"><span class="pre">mnt/bar</span></code> 目录，命令是：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">fuse</span> <span class="o">-</span><span class="n">n</span> <span class="n">client</span><span class="o">.</span><span class="n">foo</span> <span class="n">mnt</span> <span class="o">-</span><span class="n">r</span> <span class="o">/</span><span class="n">bar</span>
-</pre></div>
-</div>
-</section>
+<p>要把客户端限定于指定的子目录，在挂载时还需指定这个目录，
+命令语法如下：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph-fuse<span class="w"> </span>-n<span class="w"> </span>client.&lt;client_id&gt;<span class="w"> </span>&lt;mount-path&gt;<span class="w"> </span>-r<span class="w"> </span>*directory_to_be_mounted*</span>
+</pre></div></div><p>例如，要把客户端 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 限定于 <code class="docutils literal notranslate"><span class="pre">mnt/bar</span></code> 目录，
+命令是：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph-fuse<span class="w"> </span>-n<span class="w"> </span>client.foo<span class="w"> </span>mnt<span class="w"> </span>-r<span class="w"> </span>/bar</span>
+</pre></div></div></section>
 <section id="id3">
 <h3>报告的空闲空间<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h3>
-<p>默认情况下，在客户端挂载子目录时，报告的已用空间（ <code class="docutils literal notranslate"><span class="pre">df</span></code> ）是根据这个子目录的配额计算出来的，而不是整个集群的已用空间。</p>
-<p>如果你想让客户端报告整个文件系统的总体使用情况，而不止是已挂载子目录的配额使用情况，可以给客户端加如下配置：</p>
+<p>客户端挂载了一个子目录后，已用空间（ <code class="docutils literal notranslate"><span class="pre">df</span></code> ）是根据这个子目录的配额计算出来的，而不是在 CephFS 文件系统上的已用空间总和。</p>
+<p>如果你想让客户端报告总的文件系统占用情况，而不止是已挂载子目录的配额使用情况，可以给客户端加如下配置：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span> <span class="n">quota</span> <span class="n">df</span> <span class="o">=</span> <span class="n">false</span>
 </pre></div>
 </div>
-<p>如果没有启用配额、或者没有给挂载的子目录设置配额，那么不管这个选项配置成什么，都会报告整个文件系统的使用情况。</p>
+<p>如果没有启用配额、或者没有给挂载的子目录设置配额，那么不管这个选项配置成什么，都会报告文件系统的总体占用情况。</p>
 </section>
 </section>
 <section id="p">
 <span id="cephfs-layout-and-quota-restriction"></span><h2>布局和配额使用条件（ p 标记）<a class="headerlink" href="#p" title="Permalink to this heading"></a></h2>
-<p>要设置布局或配额，客户端不但得有 <code class="docutils literal notranslate"><span class="pre">rw</span></code> 标记，还得有 <code class="docutils literal notranslate"><span class="pre">p</span></code> 标记。这种方法会限制所有以 <code class="docutils literal notranslate"><span class="pre">ceph.</span></code> 为前缀的特殊扩展属性、也会限制以其它方法配置这些字段（如对布局进行 openc 操作）。</p>
-<p>例如，在下面的配置片段中， client.0 可以更改 cephfs_a 文件系统的布局和配额，而 client.1 却不能。</p>
+<p>要设置布局或配额，客户端不但得有 <code class="docutils literal notranslate"><span class="pre">rw</span></code> 标记，还得有 <code class="docutils literal notranslate"><span class="pre">p</span></code> 标记。这种方法会限制所有以 <code class="docutils literal notranslate"><span class="pre">ceph.</span></code> 为前缀的特殊扩展属性、也会限制以其它方法配置这些字段（如对布局进行 <code class="docutils literal notranslate"><span class="pre">openc</span></code> 操作）。</p>
+<p>例如，在下面的配置片段中， <code class="docutils literal notranslate"><span class="pre">client.0</span></code> 可以更改 <code class="docutils literal notranslate"><span class="pre">cephfs_a</span></code> 文件系统的布局和配额，而 <code class="docutils literal notranslate"><span class="pre">client.1</span></code> 却不能。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span><span class="mf">.0</span>
     <span class="n">key</span><span class="p">:</span> <span class="n">AQAz7EVWygILFRAAdIcuJ12opU</span><span class="o">/</span><span class="n">JKyfFmxhuaw</span><span class="o">==</span>
     <span class="n">caps</span><span class="p">:</span> <span class="p">[</span><span class="n">mds</span><span class="p">]</span> <span class="n">allow</span> <span class="n">rwp</span>
@@ -279,12 +284,11 @@ be enabled on the data pools.</p>
 </section>
 <section id="s">
 <h2>快照使用条件（ s 标记）<a class="headerlink" href="#s" title="Permalink to this heading"></a></h2>
-<p>To create or delete snapshots, clients require the ‘s’ flag in addition to
-‘rw’. Note that when capability string also contains the ‘p’ flag, the ‘s’
-flag must appear after it (all flags except ‘rw’ must be specified in
-alphabetical order).</p>
-<p>For example, in the following snippet client.0 can create or delete snapshots
-in the <code class="docutils literal notranslate"><span class="pre">bar</span></code> directory of file system <code class="docutils literal notranslate"><span class="pre">cephfs_a</span></code>:</p>
+<p>要创建或删除快照，客户端除需要 <code class="docutils literal notranslate"><span class="pre">rw</span></code> 标志外，还需要 <code class="docutils literal notranslate"><span class="pre">s</span></code> 标志。
+注意，当能力字符串还包含 <code class="docutils literal notranslate"><span class="pre">p</span></code> 标志时， <code class="docutils literal notranslate"><span class="pre">s</span></code> 标志必须排在它后面
+（除 <code class="docutils literal notranslate"><span class="pre">rw</span></code> 外的所有标志都必须按字母顺序指定）。</p>
+<p>例如，在下面的代码段中， <code class="docutils literal notranslate"><span class="pre">client.0</span></code> 可以在 <code class="docutils literal notranslate"><span class="pre">cephfs_a</span></code> 文件系统的
+<code class="docutils literal notranslate"><span class="pre">bar</span></code> 目录里创建或删除快照：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span><span class="mf">.0</span>
     <span class="n">key</span><span class="p">:</span> <span class="n">AQAz7EVWygILFRAAdIcuJ12opU</span><span class="o">/</span><span class="n">JKyfFmxhuaw</span><span class="o">==</span>
     <span class="n">caps</span><span class="p">:</span> <span class="p">[</span><span class="n">mds</span><span class="p">]</span> <span class="n">allow</span> <span class="n">rw</span><span class="p">,</span> <span class="n">allow</span> <span class="n">rws</span> <span class="n">path</span><span class="o">=/</span><span class="n">bar</span>
@@ -302,106 +306,244 @@ in the <code class="docutils literal notranslate"><span class="pre">bar</span></
   <span class="n">caps</span><span class="p">:</span> <span class="p">[</span><span class="n">osd</span><span class="p">]</span> <span class="n">allow</span> <span class="n">rw</span> <span class="n">tag</span> <span class="n">cephfs</span> <span class="n">data</span><span class="o">=</span><span class="n">cephfs_a</span> <span class="n">network</span> <span class="mf">10.0.0.0</span><span class="o">/</span><span class="mi">8</span>
 </pre></div>
 </div>
-<p>The optional <code class="docutils literal notranslate"><span class="pre">{network/prefix}</span></code> is a standard network name and
-prefix length in CIDR notation (e.g., <code class="docutils literal notranslate"><span class="pre">10.3.0.0/16</span></code>).  If present,
-the use of this capability is restricted to clients connecting from
-this network.</p>
+<p>可选的 <code class="docutils literal notranslate"><span class="pre">{network/prefix}</span></code> 是以 CIDR 方法表示的标准“网络名和前缀”
+（例如 <code class="docutils literal notranslate"><span class="pre">10.3.0.0/16</span></code> ）。如果 <code class="docutils literal notranslate"><span class="pre">{network/prefix}</span></code> 存在，
+那么此功能的使用仅限于从这个网络连接进来的客户端。</p>
 </section>
-<section id="file-system-information-restriction">
-<span id="fs-authorize-multifs"></span><h2>File system Information Restriction<a class="headerlink" href="#file-system-information-restriction" title="Permalink to this heading"></a></h2>
-<p>If desired, the monitor cluster can present a limited view of the file systems
-available. In this case, the monitor cluster will only inform clients about
-file systems specified by the administrator. Other file systems will not be
-reported and commands affecting them will fail as if the file systems do
-not exist.</p>
-<p>Consider following example. The Ceph cluster has 2 FSs:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs ls
-name: cephfs, metadata pool: cephfs_metadata, data pools: [cephfs_data ]
-name: cephfs2, metadata pool: cephfs2_metadata, data pools: [cephfs2_data ]
+<section id="fs-authorize-multifs">
+<span id="id6"></span><h2>文件系统信息限定<a class="headerlink" href="#fs-authorize-multifs" title="Permalink to this heading"></a></h2>
+<p>监视器集群可以展现可用文件系统的有限视图。在这种情况下，
+监视器集群只会给客户端通告管理员指定的文件系统。不会报告其他文件系统，
+涉及到它们的命令也会失败，就好像那个文件系统不存在一样。</p>
+<p>比如在下面的例子中， Ceph 集群有 2 个文件系统：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>ls</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">name</span><span class="p">:</span> <span class="n">cephfs</span><span class="p">,</span> <span class="n">metadata</span> <span class="n">pool</span><span class="p">:</span> <span class="n">cephfs_metadata</span><span class="p">,</span> <span class="n">data</span> <span class="n">pools</span><span class="p">:</span> <span class="p">[</span><span class="n">cephfs_data</span> <span class="p">]</span>
+<span class="n">name</span><span class="p">:</span> <span class="n">cephfs2</span><span class="p">,</span> <span class="n">metadata</span> <span class="n">pool</span><span class="p">:</span> <span class="n">cephfs2_metadata</span><span class="p">,</span> <span class="n">data</span> <span class="n">pools</span><span class="p">:</span> <span class="p">[</span><span class="n">cephfs2_data</span> <span class="p">]</span>
 </pre></div>
 </div>
-<p>But we authorize client <code class="docutils literal notranslate"><span class="pre">someuser</span></code> for only one FS:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs authorize cephfs client.someuser / rw
-[client.someuser]
-    key = AQAmthpf89M+JhAAiHDYQkMiCq3x+J0n9e8REQ==
-$ cat ceph.client.someuser.keyring
-[client.someuser]
-    key = AQAmthpf89M+JhAAiHDYQkMiCq3x+J0n9e8REQ==
-    caps mds = &quot;allow rw fsname=cephfs&quot;
-    caps mon = &quot;allow r fsname=cephfs&quot;
-    caps osd = &quot;allow rw tag cephfs data=cephfs&quot;
+<p>我们只给 <code class="docutils literal notranslate"><span class="pre">someuser</span></code> 客户端授权了一个文件系统：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>cephfs<span class="w"> </span>client.someuser<span class="w"> </span>/<span class="w"> </span>rw</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">someuser</span><span class="p">]</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">AQAmthpf89M</span><span class="o">+</span><span class="n">JhAAiHDYQkMiCq3x</span><span class="o">+</span><span class="n">J0n9e8REQ</span><span class="o">==</span>
 </pre></div>
 </div>
-<p>And the client can only see the FS that it has authorization for:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs ls -n client.someuser -k ceph.client.someuser.keyring
-name: cephfs, metadata pool: cephfs_metadata, data pools: [cephfs_data ]
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cat<span class="w"> </span>ceph.client.someuser.keyring</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">someuser</span><span class="p">]</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">AQAmthpf89M</span><span class="o">+</span><span class="n">JhAAiHDYQkMiCq3x</span><span class="o">+</span><span class="n">J0n9e8REQ</span><span class="o">==</span>
+    <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow rw fsname=cephfs&quot;</span>
+    <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=cephfs&quot;</span>
+    <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=cephfs&quot;</span>
 </pre></div>
 </div>
-<p>Standby MDS daemons will always be displayed. Note that the information about
-restricted MDS daemons and file systems may become available by other means,
-such as <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">health</span> <span class="pre">detail</span></code>.</p>
+<p>这个客户端就只能看到被授权的文件系统：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>ls<span class="w"> </span>-n<span class="w"> </span>client.someuser<span class="w"> </span>-k<span class="w"> </span>ceph.client.someuser.keyring</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">name</span><span class="p">:</span> <span class="n">cephfs</span><span class="p">,</span> <span class="n">metadata</span> <span class="n">pool</span><span class="p">:</span> <span class="n">cephfs_metadata</span><span class="p">,</span> <span class="n">data</span> <span class="n">pools</span><span class="p">:</span> <span class="p">[</span><span class="n">cephfs_data</span> <span class="p">]</span>
+</pre></div>
+</div>
+<p>热备的 MDS 守护进程始终都会展示。有关受限 MDS 守护进程和文件系统的信息还能通过其他方式获取，比如运行 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">health</span> <span class="pre">detail</span></code> 。</p>
 </section>
-<section id="mds-communication-restriction">
-<h2>MDS communication restriction<a class="headerlink" href="#mds-communication-restriction" title="Permalink to this heading"></a></h2>
-<p>By default, user applications may communicate with any MDS, whether or not
-they are allowed to modify data on an associated file system (see
-<cite>Path restriction</cite> above). Client’s communication can be restricted to MDS
-daemons associated with particular file system(s) by adding MDS caps for that
-particular file system. Consider the following example where the Ceph cluster
-has 2 FSs:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs ls
-name: cephfs, metadata pool: cephfs_metadata, data pools: [cephfs_data ]
-name: cephfs2, metadata pool: cephfs2_metadata, data pools: [cephfs2_data ]
+<section id="mds">
+<h2>MDS 通信限定<a class="headerlink" href="#mds" title="Permalink to this heading"></a></h2>
+<p>默认情况下，用户应用程序可以与任何 MDS 通信，不管它们是否有权修改相关文件系统上的数据（参见上文的<cite>路径限定</cite>）。
+客户端通信可以限定到与指定文件系统相关联的 MDS 守护进程上，
+给那个指定的文件系统添加 MDS 能力即可。下面的示例中，
+Ceph 集群有两个文件系统：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>ls</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">name</span><span class="p">:</span> <span class="n">cephfs</span><span class="p">,</span> <span class="n">metadata</span> <span class="n">pool</span><span class="p">:</span> <span class="n">cephfs_metadata</span><span class="p">,</span> <span class="n">data</span> <span class="n">pools</span><span class="p">:</span> <span class="p">[</span><span class="n">cephfs_data</span> <span class="p">]</span>
+<span class="n">name</span><span class="p">:</span> <span class="n">cephfs2</span><span class="p">,</span> <span class="n">metadata</span> <span class="n">pool</span><span class="p">:</span> <span class="n">cephfs2_metadata</span><span class="p">,</span> <span class="n">data</span> <span class="n">pools</span><span class="p">:</span> <span class="p">[</span><span class="n">cephfs2_data</span> <span class="p">]</span>
 </pre></div>
 </div>
-<p>Client <code class="docutils literal notranslate"><span class="pre">someuser</span></code> is authorized only for one FS:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs authorize cephfs client.someuser / rw
-[client.someuser]
-    key = AQBPSARfg8hCJRAAEegIxjlm7VkHuiuntm6wsA==
-$ ceph auth get client.someuser &gt; ceph.client.someuser.keyring
-exported keyring for client.someuser
-$ cat ceph.client.someuser.keyring
-[client.someuser]
-    key = AQBPSARfg8hCJRAAEegIxjlm7VkHuiuntm6wsA==
-    caps mds = &quot;allow rw fsname=cephfs&quot;
-    caps mon = &quot;allow r&quot;
-    caps osd = &quot;allow rw tag cephfs data=cephfs&quot;
+<p><code class="docutils literal notranslate"><span class="pre">someuser</span></code> 客户端只有一个文件系统的授权：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>cephfs<span class="w"> </span>client.someuser<span class="w"> </span>/<span class="w"> </span>rw</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">someuser</span><span class="p">]</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">AQBPSARfg8hCJRAAEegIxjlm7VkHuiuntm6wsA</span><span class="o">==</span>
 </pre></div>
 </div>
-<p>Mounting <code class="docutils literal notranslate"><span class="pre">cephfs1</span></code> with <code class="docutils literal notranslate"><span class="pre">someuser</span></code> works:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo ceph-fuse /mnt/cephfs1 -n client.someuser -k ceph.client.someuser.keyring --client-fs=cephfs
-ceph-fuse[96634]: starting ceph client
-ceph-fuse[96634]: starting fuse
-$ mount | grep ceph-fuse
-ceph-fuse on /mnt/cephfs1 type fuse.ceph-fuse (rw,nosuid,nodev,relatime,user_id=0,group_id=0,allow_other)
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.someuser<span class="w"> </span>&gt;<span class="w"> </span>ceph.client.someuser.keyring</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">exported</span> <span class="n">keyring</span> <span class="k">for</span> <span class="n">client</span><span class="o">.</span><span class="n">someuser</span>
 </pre></div>
 </div>
-<p>But mounting <code class="docutils literal notranslate"><span class="pre">cephfs2</span></code> does not:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo ceph-fuse /mnt/cephfs2 -n client.someuser -k ceph.client.someuser.keyring --client-fs=cephfs2
-ceph-fuse[96599]: starting ceph client
-ceph-fuse[96599]: ceph mount failed with (1) Operation not permitted
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cat<span class="w"> </span>ceph.client.someuser.keyring</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">someuser</span><span class="p">]</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">AQBPSARfg8hCJRAAEegIxjlm7VkHuiuntm6wsA</span><span class="o">==</span>
+    <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow rw fsname=cephfs&quot;</span>
+    <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r&quot;</span>
+    <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=cephfs&quot;</span>
+</pre></div>
+</div>
+<p>以 <code class="docutils literal notranslate"><span class="pre">someuser</span></code> 身份把 <code class="docutils literal notranslate"><span class="pre">cephfs1</span></code> 挂载到先前创建的 <code class="docutils literal notranslate"><span class="pre">/mnt/cephfs1</span></code> 下是可以的：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sudo<span class="w"> </span>ceph-fuse<span class="w"> </span>/mnt/cephfs1<span class="w"> </span>-n<span class="w"> </span>client.someuser<span class="w"> </span>-k<span class="w"> </span>ceph.client.someuser.keyring<span class="w"> </span>--client-fs<span class="o">=</span>cephfs</span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>执行上述命令前，如果没有目录 <code class="docutils literal notranslate"><span class="pre">/mnt/cephfs1</span></code> ，
+执行 <code class="docutils literal notranslate"><span class="pre">mkdir</span> <span class="pre">/mnt/cephfs1</span></code> 先创建它。</p>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">fuse</span><span class="p">[</span><span class="mi">96634</span><span class="p">]:</span> <span class="n">starting</span> <span class="n">ceph</span> <span class="n">client</span>
+<span class="n">ceph</span><span class="o">-</span><span class="n">fuse</span><span class="p">[</span><span class="mi">96634</span><span class="p">]:</span> <span class="n">starting</span> <span class="n">fuse</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">mount<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>ceph-fuse</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">fuse</span> <span class="n">on</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">cephfs1</span> <span class="nb">type</span> <span class="n">fuse</span><span class="o">.</span><span class="n">ceph</span><span class="o">-</span><span class="n">fuse</span> <span class="p">(</span><span class="n">rw</span><span class="p">,</span><span class="n">nosuid</span><span class="p">,</span><span class="n">nodev</span><span class="p">,</span><span class="n">relatime</span><span class="p">,</span><span class="n">user_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">group_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">allow_other</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>以 <code class="docutils literal notranslate"><span class="pre">someuser</span></code> 身份挂载 <code class="docutils literal notranslate"><span class="pre">cephfs2</span></code> 就不行：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sudo<span class="w"> </span>ceph-fuse<span class="w"> </span>/mnt/cephfs2<span class="w"> </span>-n<span class="w"> </span>client.someuser<span class="w"> </span>-k<span class="w"> </span>ceph.client.someuser.keyring<span class="w"> </span>--client-fs<span class="o">=</span>cephfs2</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">fuse</span><span class="p">[</span><span class="mi">96599</span><span class="p">]:</span> <span class="n">starting</span> <span class="n">ceph</span> <span class="n">client</span>
+<span class="n">ceph</span><span class="o">-</span><span class="n">fuse</span><span class="p">[</span><span class="mi">96599</span><span class="p">]:</span> <span class="n">ceph</span> <span class="n">mount</span> <span class="n">failed</span> <span class="k">with</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="n">Operation</span> <span class="ow">not</span> <span class="n">permitted</span>
 </pre></div>
 </div>
 </section>
-<section id="root-squash">
-<h2>Root squash<a class="headerlink" href="#root-squash" title="Permalink to this heading"></a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">root</span> <span class="pre">squash</span></code> feature is implemented as a safety measure to prevent
-scenarios such as accidental <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">rm</span> <span class="pre">-rf</span> <span class="pre">/path</span></code>. You can enable
-<code class="docutils literal notranslate"><span class="pre">root_squash</span></code> mode in MDS caps to disallow clients with uid=0 or gid=0 to
-perform write access operations -- e.g., rm, rmdir, rmsnap, mkdir, mksnap.
-However, the mode allows the read operations of a root client unlike in
-other file systems.</p>
-<p>Following is an example of enabling root_squash in a filesystem except within
-‘/volumes’ directory tree in the filesystem:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs authorize a client.test_a / rw root_squash /volumes rw
-$ ceph auth get client.test_a
-[client.test_a]
-    key = AQBZcDpfEbEUKxAADk14VflBXt71rL9D966mYA==
-    caps mds = &quot;allow rw fsname=a root_squash, allow rw fsname=a path=/volumes&quot;
-    caps mon = &quot;allow r fsname=a&quot;
-    caps osd = &quot;allow rw tag cephfs data=a&quot;
+<section id="id7">
+<h2>根目录保护<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">root</span> <span class="pre">squash</span></code> 功能是实现了一种保险措施，以预防某些情形，
+像不小心强制删除某个路径（例如， <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">rm</span> <span class="pre">-rf</span> <span class="pre">/path</span></code> ）。
+在 MDS 能力中启用 <code class="docutils literal notranslate"><span class="pre">root_squash</span></code> 模式，禁止 <code class="docutils literal notranslate"><span class="pre">uid=0</span></code> 或 <code class="docutils literal notranslate"><span class="pre">gid=0</span></code> 的客户端执行写操作（比如 <code class="docutils literal notranslate"><span class="pre">rm</span></code> 、 <code class="docutils literal notranslate"><span class="pre">rmdir</span></code> 、 <code class="docutils literal notranslate"><span class="pre">rmsnap</span></code> 、 <code class="docutils literal notranslate"><span class="pre">mkdir</span></code> 和 <code class="docutils literal notranslate"><span class="pre">mksnap</span></code> ）。
+此模式允许 root 客户端进行读取操作，这与其他文件系统的行为不同。</p>
+<p>下面的例子在整个文件系统上都启用了 <code class="docutils literal notranslate"><span class="pre">root_squash</span></code> ，
+唯独 <code class="docutils literal notranslate"><span class="pre">/volumes</span></code> 之下的目录树除外：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.test_a<span class="w"> </span>/<span class="w"> </span>rw<span class="w"> </span>root_squash<span class="w"> </span>/volumes<span class="w"> </span>rw</span>
+<span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.test_a</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">test_a</span><span class="p">]</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">AQBZcDpfEbEUKxAADk14VflBXt71rL9D966mYA</span><span class="o">==</span>
+    <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow rw fsname=a root_squash, allow rw fsname=a path=/volumes&quot;</span>
+    <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a&quot;</span>
+    <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=a&quot;</span>
 </pre></div>
 </div>
+</section>
+<section id="fs-authorize">
+<h2>用 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 更改能力<a class="headerlink" href="#fs-authorize" title="Permalink to this heading"></a></h2>
+<p>从 Ceph 的 Reef 版开始， <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 可为现有客户端
+（另一个 CephFS 或同一文件系统中的另一个路径）增加新能力。</p>
+<p>下面的示例演示了运行 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">fs</span> <span class="pre">authorize</span> <span class="pre">a</span> <span class="pre">client.x</span> <span class="pre">/</span> <span class="pre">rw</span></code> 命令两次后产生的行为。</p>
+<ol class="arabic">
+<li><p>创建一个新客户端：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.x<span class="w"> </span>/<span class="w"> </span>rw</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">AQAOtSVk9WWtIhAAJ3gSpsjwfIQ0gQ6vfSx</span><span class="o">/</span><span class="mi">0</span><span class="n">w</span><span class="o">==</span>
+</pre></div>
+</div>
+</li>
+<li><p>查看此客户端的能力：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.x</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+      <span class="n">key</span> <span class="o">=</span> <span class="n">AQAOtSVk9WWtIhAAJ3gSpsjwfIQ0gQ6vfSx</span><span class="o">/</span><span class="mi">0</span><span class="n">w</span><span class="o">==</span>
+      <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow rw fsname=a&quot;</span>
+      <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a&quot;</span>
+      <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=a&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p>以前，第二次运行 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span> <span class="pre">a</span> <span class="pre">client.x</span> <span class="pre">/</span> <span class="pre">rw</span></code> 会打印错误信息。
+在 Reef 版和以后的版本中，此命令会打印一条信息，说没有更新能力：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">./bin/ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.x<span class="w"> </span>/<span class="w"> </span>rw</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">no</span> <span class="n">update</span> <span class="k">for</span> <span class="n">caps</span> <span class="n">of</span> <span class="n">client</span><span class="o">.</span><span class="n">x</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<section id="id8">
+<h3>用 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 增加新能力<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h3>
+<p>在同一 CephFS 中给另一个路径增加能力：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.x<span class="w"> </span>/dir1<span class="w"> </span>rw</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">updated</span> <span class="n">caps</span> <span class="k">for</span> <span class="n">client</span><span class="o">.</span><span class="n">x</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.x</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">AQAOtSVk9WWtIhAAJ3gSpsjwfIQ0gQ6vfSx</span><span class="o">/</span><span class="mi">0</span><span class="n">w</span><span class="o">==</span>
+        <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a, allow rw fsname=a path=some/dir&quot;</span>
+        <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a&quot;</span>
+        <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=a&quot;</span>
+</pre></div>
+</div>
+<p>给这个 Ceph 集群上的另一个 CephFS 增加能力：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>b<span class="w"> </span>client.x<span class="w"> </span>/<span class="w"> </span>rw</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">updated</span> <span class="n">caps</span> <span class="k">for</span> <span class="n">client</span><span class="o">.</span><span class="n">x</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.x</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">AQD6tiVk0uJdARAABMaQuLRotxTi3Qdj47FkBA</span><span class="o">==</span>
+        <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow rw fsname=a, allow rw fsname=b&quot;</span>
+        <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a, allow r fsname=b&quot;</span>
+        <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=a, allow rw tag cephfs data=b&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="rw">
+<h3>更改能力中的 rw 权限<a class="headerlink" href="#rw" title="Permalink to this heading"></a></h3>
+<p>只有在不得不更改读/写权限的时候，才能运行 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 来更改能力。
+这是因为此时 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 命令可能会含糊不清。例如，
+用户运行 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span> <span class="pre">cephfs1</span> <span class="pre">client.x</span> <span class="pre">/dir1</span> <span class="pre">rw</span></code> 创建客户端，
+然后运行 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span> <span class="pre">cephfs1</span> <span class="pre">client.x</span> <span class="pre">/dir2</span> <span class="pre">rw</span></code> （注意
+<code class="docutils literal notranslate"><span class="pre">/dir1</span></code> 已更改为 <code class="docutils literal notranslate"><span class="pre">/dir2</span></code> ）。运行第二条命令可以解释为：
+以当前能力将 <code class="docutils literal notranslate"><span class="pre">/dir1</span></code> 更改为 <code class="docutils literal notranslate"><span class="pre">/dir2</span></code> ，
+也可以解释为给客户端的路径 <code class="docutils literal notranslate"><span class="pre">/dir2</span></code> 授予新权限。
+之前已经展示过，命令是按第二种解释执行的，也就因此不可能更改授予的部分权限，
+除了 <code class="docutils literal notranslate"><span class="pre">rw</span></code> 权限以外。下面显示了如何更改 <code class="docutils literal notranslate"><span class="pre">client.x</span></code> 的读/写权限：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.x<span class="w"> </span>/<span class="w"> </span>r</span>
+<span class="prompt1"><span class="w"> </span><span class="o">[</span>client.x<span class="o">]</span></span>
+<span class="prompt1"><span class="w">     </span><span class="nv">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AQBBKjBkIFhBDBAA6q5PmDDWaZtYjd+jafeVUQ<span class="o">==</span></span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.x</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">AQBBKjBkIFhBDBAA6q5PmDDWaZtYjd</span><span class="o">+</span><span class="n">jafeVUQ</span><span class="o">==</span>
+        <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a&quot;</span>
+        <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a&quot;</span>
+        <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow r tag cephfs data=a&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id9">
+<h3><code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 从不削减能力的任何部分<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h3>
+<p>授权给客户端的能力不能通过再次运行 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 来删除。例如，
+假设一个客户端在某个 CephFS 上的能力里面有 <code class="docutils literal notranslate"><span class="pre">root_squash</span></code> ，
+那么在同一个 CephFS 上再次运行 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 但不加 <code class="docutils literal notranslate"><span class="pre">root_squash</span></code>
+将不会有任何更改，这个客户端的能力仍将保持不变：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.x<span class="w"> </span>/<span class="w"> </span>rw<span class="w"> </span>root_squash</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">AQD61CVkcA1QCRAAd0XYqPbHvcc</span><span class="o">+</span><span class="n">lpUAuc6Vcw</span><span class="o">==</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.x</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">AQD61CVkcA1QCRAAd0XYqPbHvcc</span><span class="o">+</span><span class="n">lpUAuc6Vcw</span><span class="o">==</span>
+        <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow rw fsname=a root_squash&quot;</span>
+        <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a&quot;</span>
+        <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=a&quot;</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.x<span class="w"> </span>/<span class="w"> </span>rw</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">AQD61CVkcA1QCRAAd0XYqPbHvcc</span><span class="o">+</span><span class="n">lpUAuc6Vcw</span><span class="o">==</span>
+<span class="n">no</span> <span class="n">update</span> <span class="n">was</span> <span class="n">performed</span> <span class="k">for</span> <span class="n">caps</span> <span class="n">of</span> <span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="o">.</span> <span class="n">caps</span> <span class="n">of</span> <span class="n">client</span><span class="o">.</span><span class="n">x</span> <span class="n">remains</span> <span class="n">unchanged</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>如果客户端已经拥有文件系统名字 <code class="docutils literal notranslate"><span class="pre">a</span></code> 和路径 <code class="docutils literal notranslate"><span class="pre">dir1</span></code> 的能力，
+再次带入文件系统名字 <code class="docutils literal notranslate"><span class="pre">a</span></code> 和路径 <code class="docutils literal notranslate"><span class="pre">dir2</span></code> 执行 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">authorize</span></code> 命令的话，
+不会修改客户端已经拥有的能力，而是会授予 <code class="docutils literal notranslate"><span class="pre">dir2</span></code> 一套新能力：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.x<span class="w"> </span>/dir1<span class="w"> </span>rw</span>
+<span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.x</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">AQC1tyVknMt</span><span class="o">+</span><span class="n">JxAAp0pVnbZGbSr</span><span class="o">/</span><span class="n">nJrmkMNKqA</span><span class="o">==</span>
+        <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow rw fsname=a path=/dir1&quot;</span>
+        <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a&quot;</span>
+        <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=a&quot;</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>authorize<span class="w"> </span>a<span class="w"> </span>client.x<span class="w"> </span>/dir2<span class="w"> </span>rw</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">updated</span> <span class="n">caps</span> <span class="k">for</span> <span class="n">client</span><span class="o">.</span><span class="n">x</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>get<span class="w"> </span>client.x</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">AQC1tyVknMt</span><span class="o">+</span><span class="n">JxAAp0pVnbZGbSr</span><span class="o">/</span><span class="n">nJrmkMNKqA</span><span class="o">==</span>
+        <span class="n">caps</span> <span class="n">mds</span> <span class="o">=</span> <span class="s2">&quot;allow rw fsname=a path=dir1, allow rw fsname=a path=dir2&quot;</span>
+        <span class="n">caps</span> <span class="n">mon</span> <span class="o">=</span> <span class="s2">&quot;allow r fsname=a&quot;</span>
+        <span class="n">caps</span> <span class="n">osd</span> <span class="o">=</span> <span class="s2">&quot;allow rw tag cephfs data=a&quot;</span>
+</pre></div>
+</div>
+</section>
 </section>
 </section>
 
