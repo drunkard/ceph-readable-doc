@@ -1,24 +1,23 @@
 .. _cephfs_add_remote_mds:
 
-.. warning:: The material on this page is to be used only for manually setting
-   up a Ceph cluster. If you intend to use an automated tool such as
-   :doc:`/cephadm/index` to set up a Ceph cluster, do not use the
-   instructions on this page.
+.. warning:: 本资料仅用于手动配置起 Ceph 集群。
+   如果您打算使用 :doc:`/cephadm/index`
+   这样的自动化工具来配置 Ceph 集群，
+   请勿使用本页面上的指导。
 
-.. note:: If you are certain that you know what you are doing and you intend to
-   manually deploy MDS daemons, see :doc:`/cephadm/services/mds/` before
-   proceeding.
+.. note:: 如果您确信知道自己在做什么，
+   并打算手动部署 MDS 守护进程，
+   请在动手之前参阅 :doc:`/cephadm/services/mds/` 。
 
 ==================
  部署元数据服务器
 ==================
 .. Deploying Metadata Servers
 
-Each CephFS file system requires at least one MDS. The cluster operator will
-generally use their automated deployment tool to launch required MDS servers as
-needed.  Rook and ansible (via the ceph-ansible playbooks) are recommended
-tools for doing this. For clarity, we also show the systemd commands here which
-may be run by the deployment technology if executed on bare-metal.
+每个 CephFS 文件系统至少需要一个 MDS 。
+集群操作员通常会根据需要、使用自动部署工具来启动所需的 MDS 服务器。
+建议使用 Rook 和 ansible （通过 ceph-ansible playbooks ）工具来完成此操作。
+为清楚起见，我们还展示了 systemd 命令，如果在裸机上执行，部署工具可能会运行这些命令。
 
 关于元数据服务器的配置，见 `MDS 配置参考`_\ 。
 
@@ -27,70 +26,68 @@ may be run by the deployment technology if executed on bare-metal.
 ===============
 .. Provisioning Hardware for an MDS
 
-The present version of the MDS is single-threaded and CPU-bound for most
-activities, including responding to client requests. An MDS under the most
-aggressive client loads uses about 2 to 3 CPU cores. This is due to the other
-miscellaneous upkeep threads working in tandem.
+目前版本的 MDS 是单线程的，大多数活动
+（包括响应客户请求）都绑在一个 CPU 上。
+在客户端负载最大的情况下， MDS 大约使用 2 到 3 个 CPU 核心。
+这是因为其他杂项维护线程在协同工作。
 
-Even so, it is recommended that an MDS server be well provisioned with an
-advanced CPU with sufficient cores. Development is on-going to make better use
-of available CPU cores in the MDS; it is expected in future versions of Ceph
-that the MDS server will improve performance by taking advantage of more cores.
+尽管如此，我们还是建议为 MDS 服务器配备有足够核心数的高端 CPU 。
+目前正在进行开发，以更好地利用 MDS 中的闲置 CPU 核心；
+希望在未来的 Ceph 版本中， MDS 服务器能够利用更多核心来提高性能。
 
-The other dimension to MDS performance is the available RAM for caching. The
-MDS necessarily manages a distributed and cooperative metadata cache among all
-clients and other active MDSs. Therefore it is essential to provide the MDS
-with sufficient RAM to enable faster metadata access and mutation. The default
-MDS cache size (see also :doc:`/cephfs/cache-configuration`) is 4GB. It is
-recommended to provision at least 8GB of RAM for the MDS to support this cache
-size.
+影响 MDS 性能的另一个因素是可用于缓存的 RAM 。
+MDS 必须管理所有客户端和其他活跃 MDS 之间的分布式、
+且相互协作的元数据缓存。
+因此，有必要给 MDS 提供足够的 RAM ，
+才能让元数据的访问和变更快一些。
+默认的 MDS 缓存大小（另请参阅 :doc:`/cephfs/cache-configuration` ）为 4GB 。
+建议为 MDS 提供至少 8GB 内存，作为这样的缓存。
 
-Generally, an MDS serving a large cluster of clients (1000 or more) will use at
-least 64GB of cache. An MDS with a larger cache is not well explored in the
-largest known community clusters; there may be diminishing returns where
-management of such a large cache negatively impacts performance in surprising
-ways. It would be best to do analysis with expected workloads to determine if
-provisioning more RAM is worthwhile.
+一般来说，为大型客户端集群（ 1000 个以上）提供服务的 MDS
+将使用至少 64GB 的缓存。在已知的最大集群中，
+使用更大缓存的 MDS 还没有深入探索过；可能会出现收益降低的情况，
+即管理如此大的缓存会以意想不到的方式对性能产生负面影响。
+最好在预想的载荷下进行分析，
+以确定配置更多内存是否可行。
 
-In a bare-metal cluster, the best practice is to over-provision hardware for
-the MDS server. Even if a single MDS daemon is unable to fully utilize the
-hardware, it may be desirable later on to start more active MDS daemons on the
-same node to fully utilize the available cores and memory. Additionally, it may
-become clear with workloads on the cluster that performance improves with
-multiple active MDS on the same node rather than over-provisioning a single
-MDS.
+在裸机集群中，最佳做法是为 MDS 服务器超额配置硬件。
+即使单个 MDS 守护进程不能充分利用硬件，
+以后也可以根据需要在同一节点上启动更多活跃 MDS 守护进程，
+以充分利用可用核心和内存。此外，
+随着集群上载荷的增加，可能会发现在同一节点上\
+启用多个活跃 MDS 比单个满载的 MDS 性能好。
 
-Finally, be aware that CephFS is a highly-available file system by supporting
-standby MDS (see also :ref:`mds-standby`) for rapid failover. To get a real
-benefit from deploying standbys, it is usually necessary to distribute MDS
-daemons across at least two nodes in the cluster. Otherwise, a hardware failure
-on a single node may result in the file system becoming unavailable.
+最后，还要注意 CephFS 是一种高可用文件系统，支持热备 MDS
+（另请参阅 :ref:`mds-standby` ），可以实现快速故障切换。
+要让部署的热备 MDS 真能发挥作用，集群中的热备 MDS 守护进程\
+通常有必要部署到两个以上的不同节点上。否则，
+单个节点的硬件故障就可能导致文件系统不可用。
 
-Co-locating the MDS with other Ceph daemons (hyperconverged) is an effective
-and recommended way to accomplish this so long as all daemons are configured to
-use available hardware within certain limits.  For the MDS, this generally
-means limiting its cache size.
+把 MDS 和其他 Ceph 守护进程（超融合）一起部署在同一台机器上是推荐做法，
+只要硬件能满足所有守护进程的条件就行。
+对于 MDS 而言，就意味着限制它的缓存尺寸。
 
 
 增加一个 MDS
 ============
 .. Adding an MDS
 
-#. Create an mds data point ``/var/lib/ceph/mds/ceph-${id}``. The daemon only uses this directory to store its keyring.
+#. 创建 mds 目录 ``/var/lib/ceph/mds/ceph-${id}`` 。
+   守护进程只用这个目录存储它的密钥。
 
-#. Create the authentication key, if you use CephX: ::
+#. 如果启用 CephX 的话，创建认证密钥： ::
 
 	$ sudo ceph auth get-or-create mds.${id} mon 'profile mds' mgr 'profile mds' mds 'allow *' osd 'allow *' > /var/lib/ceph/mds/ceph-${id}/keyring
 
-#. Start the service: ::
+#. 启动服务： ::
 
 	$ sudo systemctl start ceph-mds@${id}
 
-#. The status of the cluster should show: ::
+#. 集群状态应该是： ::
 
 	mds: ${id}:1 {0=${id}=up:active} 2 up:standby
 
-#. Optionally, configure the file system the MDS should join (:ref:`mds-join-fs`): ::
+#. 可选配置，让 MDS 加入哪个文件系统（ :ref:`mds-join-fs` ）： ::
 
     $ ceph config set mds.${id} mds_join_fs ${fs}
 
@@ -99,33 +96,31 @@ means limiting its cache size.
 ============
 .. Removing an MDS
 
-If you have a metadata server in your cluster that you'd like to remove, you may use
-the following method.
+如果你有想要删除的元数据服务器，可以用以下方法。
 
-#. (Optionally:) Create a new replacement Metadata Server. If there are no
-   replacement MDS to take over once the MDS is removed, the file system will
-   become unavailable to clients.  If that is not desirable, consider adding a
-   metadata server before tearing down the metadata server you would like to
-   take offline.
+#. (可选操作：）创建元数据服务器的新替代。
+   如果删除 MDS 后没有替代的 MDS 来接管，
+   客户端将无法使用文件系统。如果不希望出现这种情况，
+   应该在拆除元数据服务器之前先添加一个元数据服务器。
 
-#. Stop the MDS to be removed. ::
+#. 关闭要删除的 MDS 。 ::
 
 	$ sudo systemctl stop ceph-mds@${id}
 
-   The MDS will automatically notify the Ceph monitors that it is going down.
-   This enables the monitors to perform instantaneous failover to an available
-   standby, if one exists. It is unnecessary to use administrative commands to
-   effect this failover, e.g. through the use of ``ceph mds fail mds.${id}``.
+   MDS 会自动通知所有 Ceph 监视器它将停机。
+   这样，监视器就能即时把业务切换到可用的热备（如果有的话）。
+   无需使用管理命令做故障切换，
+   比如用 ``ceph mds fail mds.${id}`` 。
 
-#. Remove the ``/var/lib/ceph/mds/ceph-${id}`` directory on the MDS. ::
+#. 删除 MDS 服务器的 ``/var/lib/ceph/mds/ceph-${id}`` 目录。 ::
 
 	$ sudo rm -rf /var/lib/ceph/mds/ceph-${id}
 
 
-.. note:: When an active MDS either has health warning MDS_TRIM or
-   MDS_CACHE_OVERSIZED, confirmation flag (--yes-i-really-mean-it)
-   needs to be passed, else the command will fail. It is not recommended to
-   restart an MDS which has these warnings since slow recovery at restart may
-   lead to more problems.
+.. note:: 如果活跃 MDS 有 MDS_TRIM 或 MDS_CACHE_OVERSIZED 健康警告时，
+   需要加上确认标志（ ``--yes-i-really-mean-it`` ），
+   否则命令会失败。不建议重启有这些警告的 MDS ，
+   因为重启时恢复缓慢，可能会导致更多问题。
+
 
 .. _MDS 配置参考: ../mds-config-ref

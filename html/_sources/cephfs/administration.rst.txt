@@ -361,8 +361,8 @@ JSON 格式的输出包括 MDS 最后出现的时间结。
 | client_mds_auth_caps       | squid+bp     | PLANNED         |
 +----------------------------+--------------+-----------------+
 
-..
-    Comment: use `git describe --tags --abbrev=0 <commit>` to lookup release
+
+.. Comment: use `git describe --tags --abbrev=0 <commit>` to lookup release
 
 
 CephFS 功能描述
