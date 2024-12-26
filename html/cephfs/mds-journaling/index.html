@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>MDS Journaling &mdash; Ceph Documentation</title>
+  <title>MDS 日志记录 &mdash; Ceph Documentation</title>
   
 
   
@@ -59,7 +59,7 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../">Ceph 文件系统</a> &raquo;</li>
-      <li>MDS Journaling</li>
+      <li>MDS 日志记录</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/cephfs/mds-journaling.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -119,10 +119,12 @@
 <li class="toctree-l3"><a class="reference internal" href="../mds-states/"> MDS 的各种状态</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../posix/"> POSIX 兼容性</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#"> MDS 日志记录</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#cephfs-metadata-pool">CephFS Metadata Pool</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#cephfs-mds-journaling">CephFS MDS Journaling</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#journal-events">Journal Events</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#journal-event-types">Journal Event Types</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cephfs">CephFS 元数据存储池</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cephfs-mds">CephFS MDS 日志记录</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1">日志事件</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">日志事件类型</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">日志分段</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">配置</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../file-layouts/"> 文件布局</a></li>
@@ -193,73 +195,159 @@
   </div>
 
   
-  <section id="mds-journaling">
-<h1>MDS Journaling<a class="headerlink" href="#mds-journaling" title="Permalink to this heading"></a></h1>
-<section id="cephfs-metadata-pool">
-<h2>CephFS Metadata Pool<a class="headerlink" href="#cephfs-metadata-pool" title="Permalink to this heading"></a></h2>
-<p>CephFS uses a separate (metadata) pool for managing file metadata (inodes and
-dentries) in a Ceph File System. The metadata pool has all the information about
-files in a Ceph File System including the File System hierarchy. Additionally,
-CephFS maintains meta information related to other entities in a file system
-such as file system journals, open file table, session map, etc.</p>
-<p>This document describes how Ceph Metadata Servers use and rely on journaling.</p>
+  <section id="mds">
+<h1>MDS 日志记录<a class="headerlink" href="#mds" title="Permalink to this heading"></a></h1>
+<section id="cephfs">
+<h2>CephFS 元数据存储池<a class="headerlink" href="#cephfs" title="Permalink to this heading"></a></h2>
+<p>CephFS 用一个单独的（元数据）存储池来管理 Ceph 文件系统中的文件元数据
+（ inodes 和 dentry ）。元数据存储池拥有 Ceph 文件系统中文件的所有信息，
+包括文件系统层次结构。此外， CephFS 还维护与文件系统中其他实体相关的元信息，
+如文件系统日志、打开文件表、会话映射等。</p>
+<p>本文档介绍 Ceph 元数据服务器如何使用和依赖日志。</p>
 </section>
-<section id="cephfs-mds-journaling">
-<h2>CephFS MDS Journaling<a class="headerlink" href="#cephfs-mds-journaling" title="Permalink to this heading"></a></h2>
-<p>CephFS metadata servers stream a journal of metadata events into RADOS in the metadata
-pool prior to executing a file system operation. Active MDS daemon(s) manage metadata
-for files and directories in CephFS.</p>
-<p>CephFS uses journaling for couple of reasons:</p>
+<section id="cephfs-mds">
+<h2>CephFS MDS 日志记录<a class="headerlink" href="#cephfs-mds" title="Permalink to this heading"></a></h2>
+<p>在执行文件系统操作之前， CephFS 元数据服务器会把元数据事件汇集成日志流，
+放入元数据存储池中的 RADOS 。活跃 MDS 守护进程管理 CephFS 中文件和目录的元数据。</p>
+<p>CephFS 使用日志有几个原因：</p>
 <ol class="arabic simple">
-<li><p>Consistency: On an MDS failover, the journal events can be replayed to reach a
-consistent file system state. Also, metadata operations that require multiple
-updates to the backing store need to be journaled for crash consistency (along
-with other consistency mechanisms such as locking, etc..).</p></li>
-<li><p>Performance: Journal updates are (mostly) sequential, hence updates to journals
-are fast. Furthermore, updates can be batched into single write, thereby saving
-disk seek time involved in updates to different parts of a file. Having a large
-journal also helps a standby MDS to warm its cache which helps indirectly during
-MDS failover.</p></li>
+<li><p>一致性：在 MDS 故障切换时，通过重放日志事件可以达到一致的文件系统状态。
+此外，需要对后端存储进行多次更新的元数据操作也需要日志来实现崩溃一致性
+（以及其他一致性机制，如加锁等）。</p></li>
+<li><p>性能：日志更新（大部分）是顺序操作，因此日志的更新速度很快。
+此外，可以一次写入一批更新，从而节省了更新文件不同部分所需的磁盘寻道时间。
+拥有大容量日志还有助于热备 MDS 预热缓存，
+从而间接地帮助 MDS 故障切换。</p></li>
 </ol>
-<p>Each active metadata server maintains its own journal in the metadata pool. Journals
-are striped over multiple objects. Journal entries which are not required (deemed as
-old) are trimmed by the metadata server.</p>
+<p>每个活跃的元数据服务器都在元数据存储池中维护着自己的日志。
+日志条带花到了多个对象上。元数据服务器会剔除不需要的日志条目（视为旧日志）。</p>
 </section>
-<section id="journal-events">
-<h2>Journal Events<a class="headerlink" href="#journal-events" title="Permalink to this heading"></a></h2>
-<p>Apart from journaling file system metadata updates, CephFS journals various other events
-such as client session info and directory import/export state to name a few. These events
-are used by the metadata sever to reestablish correct state as required, e.g., Ceph MDS
-tries to reconnect clients on restart when journal events get replayed and a specific
-event type in the journal specifies that a client entity type has a session with the MDS
-before it was restarted.</p>
-<p>To examine the list of such events recorded in the journal, CephFS provides a command
-line utility <cite>cephfs-journal-tool</cite> which can be used as follows:</p>
+<section id="id1">
+<h2>日志事件<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
+<p>除了记录文件系统元数据更新日志外， CephFS 还记录各种其他事件，
+如客户端会话信息、和目录导入/导出状态等。
+这些事件在元数据服务器重建正确的状态时是必需的，比如，
+Ceph MDS 在重启后试图重连客户端，重放日志事件时，
+日志里的一种事件类型表明：有个客户端实体类型和这个 MDS 重启前有过一个会话。</p>
+<p>要检查日志中记录的此类事件， CephFS 有一个命令行工具
+<cite>cephfs-journal-tool</cite> ，使用方法如下：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span><span class="o">=&lt;</span><span class="n">fs</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">rank</span><span class="o">&gt;</span> <span class="n">event</span> <span class="n">get</span> <span class="nb">list</span>
 </pre></div>
 </div>
-<p><cite>cephfs-journal-tool</cite> is also used to discover and repair a damaged Ceph File System.
-(See <a class="reference internal" href="../cephfs-journal-tool/"><span class="doc">cephfs-journal-tool</span></a> for more details)</p>
+<p><cite>cephfs-journal-tool</cite> 还能用于发现和修复损坏的 Ceph 文件系统。
+（详情见 <a class="reference internal" href="../cephfs-journal-tool/"><span class="doc">cephfs-journal-tool</span></a> ）</p>
 </section>
-<section id="journal-event-types">
-<h2>Journal Event Types<a class="headerlink" href="#journal-event-types" title="Permalink to this heading"></a></h2>
-<p>Following are various event types that are journaled by the MDS.</p>
+<section id="id2">
+<h2>日志事件类型<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
+<p>下面是 MDS 记入日志的各种事件类型。</p>
 <ol class="arabic simple">
-<li><p><cite>EVENT_COMMITTED</cite>: Mark a request (id) as committed.</p></li>
-<li><p><cite>EVENT_EXPORT</cite>: Maps directories to an MDS rank.</p></li>
-<li><p><cite>EVENT_FRAGMENT</cite>: Tracks various stages of directory fragmentation (split/merge).</p></li>
-<li><p><cite>EVENT_IMPORTSTART</cite>: Logged when an MDS rank starts importing directory fragments.</p></li>
-<li><p><cite>EVENT_IMPORTFINISH</cite>: Logged when an MDS rank finishes importing directory fragments.</p></li>
-<li><p><cite>EVENT_NOOP</cite>: No operation event type for skipping over a journal region.</p></li>
-<li><p><cite>EVENT_OPEN</cite>: Tracks which inodes have open file handles.</p></li>
-<li><p><cite>EVENT_RESETJOURNAL</cite>: Used to mark a journal as <cite>reset</cite> post truncation.</p></li>
-<li><p><cite>EVENT_SESSION</cite>: Tracks open client sessions.</p></li>
-<li><p><cite>EVENT_SLAVEUPDATE</cite>: Logs various stages of an operation that has been forwarded to a (slave) mds.</p></li>
-<li><p><cite>EVENT_SUBTREEMAP</cite>: Map of directory inodes to directory contents (subtree partition).</p></li>
-<li><p><cite>EVENT_TABLECLIENT</cite>: Log transition states of MDSs view of client tables (snap/anchor).</p></li>
-<li><p><cite>EVENT_TABLESERVER</cite>: Log transition states of MDSs view of server tables (snap/anchor).</p></li>
-<li><p><cite>EVENT_UPDATE</cite>: Log file operations on an inode.</p></li>
+<li><p><cite>EVENT_COMMITTED</cite>: 把一个请求（ id ）标记为已提交。</p></li>
+<li><p><cite>EVENT_EXPORT</cite>: 把目录映射到一个 MDS rank 。</p></li>
+<li><p><cite>EVENT_FRAGMENT</cite>: 跟踪目录分段的各种阶段（分割、合并）。</p></li>
+<li><p><cite>EVENT_IMPORTSTART</cite>: 一个 MDS rank 开始导入目录分段时做个记录。</p></li>
+<li><p><cite>EVENT_IMPORTFINISH</cite>: 一个 MDS rank 完成目录分段导入后做个记录。</p></li>
+<li><p><cite>EVENT_NOOP</cite>: 无操作事件类型用于跳过一段日志区间。</p></li>
+<li><p><cite>EVENT_OPEN</cite>: 跟踪那些 inode 有打开的文件句柄。</p></li>
+<li><p><cite>EVENT_RESETJOURNAL</cite>: 用于把日志标记为截断后重置（ <cite>reset</cite> ）。</p></li>
+<li><p><cite>EVENT_SESSION</cite>: 跟踪打开的客户端会话。</p></li>
+<li><p><cite>EVENT_SLAVEUPDATE</cite>: 记录转发到其他（辅助的） mds 的那个操作的各种阶段。</p></li>
+<li><p><cite>EVENT_SUBTREEMAP</cite>: 目录 inode 到目录内容（子树分区）的映射关系。</p></li>
+<li><p><cite>EVENT_TABLECLIENT</cite>: 记录 MDS 视角下的客户端表（快照 snap 、锚点 anchor ）的转换状态。</p></li>
+<li><p><cite>EVENT_TABLESERVER</cite>: 记录 MDS 视角下的服务器表（快照、锚点）的转换状态。</p></li>
+<li><p><cite>EVENT_UPDATE</cite>: 记录一个 inode 上的文件操作。</p></li>
+<li><p><cite>EVENT_SEGMENT</cite>: 记录一个新日志分段的边界。</p></li>
+<li><p><cite>EVENT_LID</cite>: 标记没有逻辑子树映射的日志起始点。</p></li>
 </ol>
+</section>
+<section id="id3">
+<h2>日志分段<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
+<p>MDS 日志由逻辑段组成，代码中称为 LogSegments 。
+这些分段用于把多个事件的元数据更新收集到一个逻辑单元中，以方便修剪。
+每当日志尝试提交元数据操作（例如把文件创建作为 omap 更新刷到 dirfrag 对象）时，
+日志都会在 LogSegment 中把它们汇集成可重放的一批更新。
+这些更新必须是可重放的，以防 MDS 在对各种元数据对象进行一系列更新时出现故障。
+之所以要批量更新，是因为要把对同一元数据对象（一个 dirfrag ）的更新进行分组，
+因为多个 omap 条目可能是在同一时间段内更新的。</p>
+<p>一旦某个分段被修剪掉，就会被视为“过期了”。过期的分段可由日志程序删除，
+因为它的所有更新都已经刷回到后端的 RADOS 对象里了。
+具体做法是更新日志程序的“过期位置 (expire position)”，使其超过过期分段的末尾。
+某些过期分段可能会保留在日志中，以便在 MDS 重启时有更多缓存位于本地。</p>
+<p>在 CephFS 的大部分历史中（直到 2023 年），日志分段都是由子树映射（ <code class="docutils literal notranslate"><span class="pre">ESubtreeMap</span></code> 事件）划分的。这样做的主要原因是，
+日志恢复必须从子树映射的副本开始，然后才能重放其他事件。</p>
+<p>现在，日志段可以通过 <code class="docutils literal notranslate"><span class="pre">SegmentBoundary</span></code> 事件来划分。
+这些事件包括 <code class="docutils literal notranslate"><span class="pre">ESubtreeMap</span></code> 、 <code class="docutils literal notranslate"><span class="pre">EResetJournal</span></code> 、
+<code class="docutils literal notranslate"><span class="pre">ESegment</span></code> (2023) 或 <code class="docutils literal notranslate"><span class="pre">ELid</span></code> (2023)。
+对于 <code class="docutils literal notranslate"><span class="pre">ESegment</span></code> ，这种轻量级分段边界允许 MDS 减少记录子树映射日志的频率，
+还能保持较小的日志段，同时修剪事件也简短。
+为了维持约束条件，也就是日志重放看到的第一个事件是 <code class="docutils literal notranslate"><span class="pre">ESubtreeMap</span></code> ，
+以该事件开头的分段被当作“主要段 (major segments)”，
+并在删除过期段时增加了新的约束条件：
+日志的第一个段必须始终是主要段。</p>
+<p><code class="docutils literal notranslate"><span class="pre">ELid</span></code> 事件用于把 MDS 日志标记为“新的”，这个时候，
+对其他操作来说逻辑 <code class="docutils literal notranslate"><span class="pre">LogSegment</span></code> 和日志序列号是必需的，
+特别是 MDSTable 操作。
+MDS 在创建 rank 或关闭 rank 时使用该事件。
+从这个初始状态重放 rank 时，不需要子树映射。</p>
+</section>
+<section id="id4">
+<h2>配置<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
+<p>以事件数量为单位的日志分段目标大小由以下因素控制：</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-mds_log_events_per_segment">
+<span class="sig-name descname"><span class="pre">mds_log_events_per_segment</span></span><a class="headerlink" href="#confval-mds_log_events_per_segment" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>一个 MDS 日志分段里事件的最大数量。</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1024</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<p>上一个主要日志段之后的次要 mds 日志段数量由以下参数控制：</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-mds_log_minor_segments_per_major_segment">
+<span class="sig-name descname"><span class="pre">mds_log_minor_segments_per_major_segment</span></span><a class="headerlink" href="#confval-mds_log_minor_segments_per_major_segment" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>自上一个主要分段之后的次要 mds 日志分段数，在它之后启动/记录一个主要分段。</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">16</span></code></p>
+</dd>
+<dt class="field-odd">min</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">8</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<p>此选项控制 MDS 修剪过期日志段的频率（值越高，
+MDS 更新日志过期位置以便修剪的频率越低）。</p>
+<p>分段的目标最大数由以下选项控制：</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-mds_log_max_segments">
+<span class="sig-name descname"><span class="pre">mds_log_max_segments</span></span><a class="headerlink" href="#confval-mds_log_max_segments" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>日志里的片段（对象）达到多少时开始裁剪， 设为 <code class="docutils literal notranslate"><span class="pre">-1</span></code> 取消限制。</p>
+<dl class="field-list simple">
+<dt class="field-odd">type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">128</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<p>由于非主要分段等着修剪成下一个主要分段，因此 MDS 通常会略高于这个数字。</p>
 </section>
 </section>
 
