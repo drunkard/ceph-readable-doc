@@ -3,25 +3,32 @@ Mantle
 
 .. warning::
 
-    Mantle 的本意是用于研究和开发元数据均衡算法，不是给 CephFS
-    生产集群用的。
+    Mantle 的初衷是用于研究和开发元数据均衡算法，
+    不是给 CephFS 生产集群用的。
 
-Multiple, active MDSs can migrate directories to balance metadata load. The
-policies for when, where, and how much to migrate are hard-coded into the
-metadata balancing module. Mantle is a programmable metadata balancer built
-into the MDS. The idea is to protect the mechanisms for balancing load
-(migration, replication, fragmentation) but stub out the balancing policies
-using Lua. Mantle is based on [1] but the current implementation does *NOT*
-have the following features from that paper:
+Mantle 是内置于 MDS 的可编程元数据均衡器。
 
-1. Balancing API: in the paper, the user fills in when, where, how much, and
-   load calculation policies; currently, Mantle only requires that Lua policies
-   return a table of target loads (e.g., how much load to send to each MDS)
-2. "How much" hook: in the paper, there was a hook that let the user control
-   the fragment selector policy; currently, Mantle does not have this hook
-3. Instantaneous CPU utilization as a metric
+默认情况下（没有 Mantle 时），多个活跃 MDS 可以迁移目录，
+以均衡元数据载荷。决定何时、何地、迁移多少的策略\
+是硬编码在元数据均衡模块中的。
 
-[1] Supercomputing '15 Paper:
+Mantle 工作方式是保护负载均衡的机制
+（迁移、复制、分片），同时用 Lua 脚本抑制均衡策略。
+Mantle 基于 [1] ，
+但目前的实现还不具备该论文说的以下功能：
+
+#. 均衡 API ：在该论文中，用户需要填写何时、何地、
+   多少以及负载计算策略。目前，
+   Mantle 只要求 Lua 策略返回一张目标负载表
+   （例如，向每个 MDS 分配多少负载）。
+
+#. “多少”钩子：在论文中，有一个钩子允许用户控制
+   “分片选择器策略（ fragment selector policy ）”。
+   目前， Mantle 没有这个钩子。
+
+#. 作为指标的“ CPU 瞬时利用率”。
+
+[1] Supercomputing '15 论文：
 http://sc15.supercomputing.org/schedule/event_detail-evid=pap168.html
 
 vstart 快速入门
@@ -30,18 +37,16 @@ vstart 快速入门
 
 .. warning::
 
-    Developing balancers with vstart is difficult because running all daemons
-    and clients on one node can overload the system. Let it run for a while, even
-    though you will likely see a bunch of lost heartbeat and laggy MDS warnings.
-    Most of the time this guide will work but sometimes all MDSs lock up and you
-    cannot actually see them spill. It is much better to run this on a cluster.
+   使用 vstart 开发均衡器很困难，因为在一个节点上运行\
+   所有守护进程和客户端会使系统超载。让系统运行一段时间，
+   即使可能会出现许多心跳丢失警告和许多 MDS 滞后警告。
+   大多数情况下，本指南都有用，但有时在使用 vstart 开发时，
+   所有 MDS 都会锁死，实际上看不到它们溢出。最好在多节点集群上运行。
 
-As a prerequisite, we assume you have installed `mdtest
-<https://sourceforge.net/projects/mdtest/>`_ or pulled the `Docker image
-<https://hub.docker.com/r/michaelsevilla/mdtest/>`_. We use mdtest because we
-need to generate enough load to get over the MIN_OFFLOAD threshold that is
-arbitrarily set in the balancer. For example, this does not create enough
-metadata load:
+作为前提条件，我们假设您已经安装了 `mdtest <https://sourceforge.net/projects/mdtest/>`_
+或已经拉取了 `Docker 镜像 <https://hub.docker.com/r/michaelsevilla/mdtest/>`_ 。
+我们使用 mdtest ，是因为需要产生足够的负载，才能超过均衡器中\
+任意设置的 MIN_OFFLOAD 阈值。例如，下面的不会产生足够的元数据负载：
 
 ::
 
@@ -50,10 +55,11 @@ metadata load:
     done
 
 
-Mantle with `vstart.sh`
-~~~~~~~~~~~~~~~~~~~~~~~
+Mantle 和 `vstart.sh` 调试
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. Mantle with `vstart.sh`
 
-1. Start Ceph and tune the logging so we can see migrations happen:
+1. 启动 Ceph 并调整日志记录，我们才能看到是否有迁移：
 
 ::
 
@@ -66,14 +72,14 @@ Mantle with `vstart.sh`
     done
 
 
-2. Put the balancer into RADOS:
+2. 把均衡器放进 RADOS:
 
 ::
 
     bin/rados put --pool=cephfs_metadata_a greedyspill.lua ../src/mds/balancers/greedyspill.lua
 
 
-3. Activate Mantle:
+3. 激活 Mantle:
 
 ::
 
@@ -81,7 +87,7 @@ Mantle with `vstart.sh`
     bin/ceph fs set cephfs_a balancer greedyspill.lua
 
 
-4. Mount CephFS in another window:
+4. 在另一个窗口，挂载 CephFS ：
 
 ::
 
@@ -89,12 +95,11 @@ Mantle with `vstart.sh`
      tail -f out/mds.a.log
 
 
-   Note that if you look at the last MDS (which could be a, b, or c -- it's
-   random), you will see an an attempt to index a nil value. This is because the
-   last MDS tries to check the load of its neighbor, which does not exist.
+.. note:: 注意，如果查看最后一个 MDS （可能是 a 、 b 或 c --
+   它是随机的。你会看到索引零值的尝试。这是因为\
+   最后一个 MDS 试图检查其邻居的负载，而邻居并不存在。
 
-5. Run a simple benchmark. In our case, we use the Docker mdtest image to
-   create load:
+5. 运行个简单的压力测试。我们用的是 Docker mdtest 映像，用它产生负载：
 
 ::
 
@@ -107,7 +112,7 @@ Mantle with `vstart.sh`
     done
 
 
-6. When you're done, you can kill all the clients with:
+6. 结束后，用下列命令清理客户端：
 
 ::
 
@@ -118,8 +123,9 @@ Mantle with `vstart.sh`
 ~~~~~~~~
 .. Output
 
-Looking at the log for the first MDS (could be a, b, or c), we see that
-everyone has no load::
+查看第一个 MDS （可能是 a 、 b 或 c ）的日志，看到大家都没有负载：
+
+::
 
     2016-08-21 06:44:01.763930 7fd03aaf7700  0 lua.balancer MDS0: < auth.meta_load=0.0 all.meta_load=0.0 req_rate=1.0 queue_len=0.0 cpu_load_avg=1.35 > load=0.0
     2016-08-21 06:44:01.763966 7fd03aaf7700  0 lua.balancer MDS1: < auth.meta_load=0.0 all.meta_load=0.0 req_rate=0.0 queue_len=0.0 cpu_load_avg=1.35 > load=0.0
@@ -128,9 +134,11 @@ everyone has no load::
     2016-08-21 06:44:01.764033 7fd03aaf7700  2 mds.0.bal  mantle decided that new targets={}
 
 
-After the jobs starts, MDS0 gets about 1953 units of load. The greedy spill
-balancer dictates that half the load goes to your neighbor MDS, so we see that
-Mantle tries to send 1953 load units to MDS1. ::
+作业开始后， MDS0 有大概 1953 个单位的负载。
+激进的分配均衡器决定，将一半的负载分配给邻居 MDS ，
+因此我们看到 Mantle 尝试将 1953 个负载单位发送到 MDS1。
+
+::
 
     2016-08-21 06:45:21.869994 7fd03aaf7700  0 lua.balancer MDS0: < auth.meta_load=5834.188908912 all.meta_load=1953.3492228857 req_rate=12591.0 queue_len=1075.0 cpu_load_avg=3.05 > load=1953.3492228857
     2016-08-21 06:45:21.870017 7fd03aaf7700  0 lua.balancer MDS1: < auth.meta_load=0.0 all.meta_load=0.0 req_rate=0.0 queue_len=0.0 cpu_load_avg=3.05 > load=0.0
@@ -141,7 +149,9 @@ Mantle tries to send 1953 load units to MDS1. ::
     2016-08-21 06:45:21.870151 7fd03aaf7700  0 mds.0.migrator nicely exporting to mds.1 [dir 100000006ab /client-test2/ [2,head] auth pv=33 v=32 cv=32/0 ap=2+3+4 state=1610612802|complete f(v0 m2016-08-21 06:44:20.366935 1=0+1) n(v2 rc2016-08-21 06:44:30.946816 3790=3788+2) hs=1+0,ss=0+0 dirty=1 | child=1 dirty=1 authpin=1 0x55d2762fd690]
 
 
-Eventually load moves around::
+最终，负载只是到处移动：
+
+::
 
     2016-08-21 06:47:10.210253 7fd03aaf7700  0 lua.balancer MDS0: < auth.meta_load=415.77414300449 all.meta_load=415.79000078186 req_rate=82813.0 queue_len=0.0 cpu_load_avg=11.97 > load=415.79000078186
     2016-08-21 06:47:10.210277 7fd03aaf7700  0 lua.balancer MDS1: < auth.meta_load=228.72023977691 all.meta_load=186.5606496623 req_rate=28580.0 queue_len=0.0 cpu_load_avg=11.97 > load=186.5606496623
@@ -154,113 +164,106 @@ Eventually load moves around::
 --------
 .. Implementation Details
 
-Most of the implementation is in MDBalancer. Metrics are passed to the balancer
-policies via the Lua stack and a list of loads is returned back to MDBalancer.
-It sits alongside the current balancer implementation and it's enabled with a
-Ceph CLI command ("ceph fs set cephfs balancer mybalancer.lua"). If the Lua policy
-fails (for whatever reason), we fall back to the original metadata load
-balancer. The balancer is stored in the RADOS metadata pool and a string in the
-MDSMap tells the MDSs which balancer to use.
+大部分实现都在 MDBalancer 里面。度量指标通过 Lua 栈传递给均衡策略，
+负载列表则返回给 MDBalancer 。它与当前的均衡器实现并存，可通过 Ceph CLI 命令
+（ ``ceph fs set cephfs balancer mybalancer.lua`` ）启用。如果 Lua 策略失效
+（无论出于何种原因），将回退到最初的元数据负载均衡器。这个均衡器存储在
+RADOS 元数据存储池中， MDSMap 中的字符串会告诉 MDS 使用哪个均衡器。
 
-Exposing Metrics to Lua
-~~~~~~~~~~~~~~~~~~~~~~~
+把指标暴露给 Lua
+~~~~~~~~~~~~~~~~
+.. Exposing Metrics to Lua
 
-Metrics are exposed directly to the Lua code as global variables instead of
-using a well-defined function signature. There is a global "mds" table, where
-each index is an MDS number (e.g., 0) and each value is a dictionary of metrics
-and values. The Lua code can grab metrics using something like this:
+度量指标作为全局变量直接暴露给 Lua 代码，而不是用明确定义的函数符号。
+有一个全局 "mds" 表，其中每个索引都是一个 MDS 编号（例如 0），
+每个值都是指标和值组成的字典。 Lua 代码可以用类似下面的方法获取指标：
 
 ::
 
     mds[0]["queue_len"]
 
 
-This is in contrast to cls-lua in the OSDs, which has well-defined arguments
-(e.g., input/output bufferlists). Exposing the metrics directly makes it easier
-to add new metrics without having to change the API on the Lua side; we want
-the API to grow and shrink as we explore which metrics matter. The downside of
-this approach is that the person programming Lua balancer policies has to look
-at the Ceph source code to see which metrics are exposed. We figure that the
-Mantle developer will be in touch with MDS internals anyways.
+这与 OSD 中的 cls-lua 形成鲜明对比，后者有明确定义的参数
+（例如输入/输出缓冲列表）。直接暴露指标可以更方便地增加新指标，
+而无需更改 Lua 这边的 API ；我们想让 API 能随着我们对指标的探索而自如地扩展和收缩。
+这种方法的缺点是，做 Lua 均衡策略编程的人员必须查看 Ceph 源代码，
+才能知道暴露了哪些指标。我们认为，
+Mantle 开发人员无论如何都得接触 MDS 的内部结构。
 
-The metrics exposed to the Lua policy are the same ones that are already stored
-in mds_load_t: auth.meta_load(), all.meta_load(), req_rate, queue_length,
-cpu_load_avg.
+暴露给 Lua 策略的指标与已存储在 mds_load_t 中的指标相同： auth.meta_load() 、
+all.meta_load() 、 req_rate 、 queue_length 、 cpu_load_avg。
 
 
 编译、执行均衡器
 ~~~~~~~~~~~~~~~~
 .. Compile/Execute the Balancer
 
-Here we use `lua_pcall` instead of `lua_call` because we want to handle errors
-in the MDBalancer. We do not want the error propagating up the call chain. The
-cls_lua class wants to handle the error itself because it must fail gracefully.
-For Mantle, we don't care if a Lua error crashes our balancer -- in that case,
-we'll fall back to the original balancer.
+这里我们使用 `lua_pcall` 而不是 `lua_call` ，是因为我们想在 MDBalancer 中\
+处理错误。我们不希望错误沿着调用链传播出去。 cls_lua 类希望自己处理错误，
+因为它必须可控地失败。对于 Mantle 而言，我们不在乎 Lua 错误是否会\
+导致均衡器崩溃，如果遇到了，我们就回退到原来的均衡器。
 
-The performance improvement of using `lua_call` over `lua_pcall` would not be
-leveraged here because the balancer is invoked every 10 seconds by default. 
-
-
-Returning Policy Decision to C++
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-We force the Lua policy engine to return a table of values, corresponding to
-the amount of load to send to each MDS. These loads are inserted directly into
-the MDBalancer "my_targets" vector. We do not allow the MDS to return a table
-of MDSs and metrics because we want the decision to be completely made on the
-Lua side.
-
-Iterating through tables returned by Lua is done through the stack. In Lua
-jargon: a dummy value is pushed onto the stack and the next iterator replaces
-the top of the stack with a (k, v) pair. After reading each value, pop that
-value but keep the key for the next call to `lua_next`. 
+使用 `lua_call` 而不是 `lua_pcall` 带来的性能提升没多大影响，
+因为均衡器默认每 10 秒调用一次。
 
 
-Reading from RADOS
-~~~~~~~~~~~~~~~~~~
+把策略的决策返回给 C++
+~~~~~~~~~~~~~~~~~~~~~~
+.. Returning Policy Decision to C++
 
-All MDSs will read balancing code from RADOS when the balancer version changes
-in the MDS Map. The balancer pulls the Lua code from RADOS synchronously. We do
-this with a timeout: if the asynchronous read does not come back within half
-the balancing tick interval the operation is cancelled and a Connection Timeout
-error is returned. By default, the balancing tick interval is 10 seconds, so
-Mantle will use a 5 second second timeout. This design allows Mantle to
-immediately return an error if anything RADOS-related goes wrong.
+我们强制 Lua 策略引擎返回一个张表的数值，
+这些值对应发送到每个 MDS 的负载量。
+这些负载会直接插入 MDBalancer 的 my_targets 向量中。
+我们不允许 MDS 返回 MDS 和指标表，
+因为我们希望完全由 Lua 做出决策。
 
-We use this implementation because we do not want to do a blocking OSD read
-from inside the global MDS lock. Doing so would bring down the MDS cluster if
-any of the OSDs are not responsive -- this is tested in the ceph-qa-suite by
-setting all OSDs to down/out and making sure the MDS cluster stays active.
+遍历 Lua 返回的表是通过堆栈完成的。
+用 Lua 的行话说就是：一个假值被推到堆栈上，
+下一个迭代器用 (k, v) 对替换堆栈顶部。读取每个值后，
+弹出该值，但保留键，用于下一次调用 `lua_next` 。
 
-One approach would be to asynchronously fire the read when handling the MDS Map
-and fill in the Lua code in the background. We cannot do this because the MDS
-does not support daemon-local fallbacks and the balancer assumes that all MDSs
-come to the same decision at the same time (e.g., importers, exporters, etc.).
+
+从 RADOS 读取
+~~~~~~~~~~~~~
+.. Reading from RADOS
+
+当 MDS 运行图中的均衡器版本变化时，所有 MDS 都将从 RADOS 读取均衡代码。
+均衡器从 RADOS 同步地读取 Lua 代码。这个操作带超时限制：
+如果异步读取没有在半个均衡时间间隔内返回，操作就会被取消，
+并返回 Connection Timeout （连接超时）错误。默认情况下，
+均衡时间间隔为 10 秒，这样 Mantle 的超时时间是 5 秒。
+这种设计会让 Mantle 在任何与 RADOS 相关的操作出错时立即返回错误信息。
+
+我们用这种实现方式，是因为我们不想在全局 MDS 锁内进行阻塞式 OSD 读取。
+如果有哪个 OSD 没有响应，这样做会导致 MDS 集群宕机 --
+这在 ceph-qa-suite 中测试过了，把所有 OSD 设置为 down/out ，并确保 MDS 集群保持活跃。
+
+一种方法是在处理 MDS 运行图时异步触发读取，并在后台装入 Lua 代码。
+我们不能这样做，因为 MDS 不支持守护进程本地回退，
+而且均衡器假定所有 MDS 都在同一时间做出相同的决策（例如，导入器、导出器等）。
 
 
 调试
 ~~~~
 
-Logging in a Lua policy will appear in the MDS log. The syntax is the same as
-the cls logging interface:
+Lua 策略中的日志将显示在 MDS 日志中。语法与 cls 日志接口相同：
 
 ::
 
     BAL_LOG(0, "this is a log message")
 
 
-It is implemented by passing a function that wraps the `dout` logging framework
-(`dout_wrapper`) to Lua with the `lua_register()` primitive. The Lua code is
-actually calling the `dout` function in C++.
+它是通过传递一个函数来实现的，该函数使用 `lua_register()` 原语\
+将 `dout` 日志框架( `dout_wrapper` ) 封装到 Lua 中。
+Lua 代码实际上是在调用 C++ 中的 `dout` 函数。
 
-Warning and Info messages are centralized using the clog/Beacon. Successful
-messages are only sent on version changes by the first MDS to avoid spamming
-the `ceph -w` utility. These messages are used for the integration tests.
+Warning 和 Info 消息通过 clog/Beacon 集中处理。
+成功消息仅在第一个 MDS 进行版本变更时发送，
+以避免对 ``ceph -w`` 工具产生垃圾信息。这些消息用于集成测试。
 
 
 测试
 ~~~~
 
-Testing is done with the ceph-qa-suite (tasks.cephfs.test_mantle). We do not
-test invalid balancer logging and loading the actual Lua VM.
+测试使用 ceph-qa-suite (tasks.cephfs.test_mantle) 完成。
+我们不测试无效的平衡器日志记录和实际的 Lua VM 加载。
