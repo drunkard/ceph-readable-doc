@@ -21,17 +21,17 @@ CephFS 的每个 ``ceph-mds`` 进程刚启动时都没有 rank ，\
 首次配置 ``ceph-mds`` 守护进程时，管理员需分配固定的\ *名字*\ ，\
 一般都会用守护进程所在的主机名作为其守护进程名字。
 
-A ``ceph-mds`` daemon may be assigned to a specific file system by
-setting its ``mds_join_fs`` configuration option to the file system's
-``name``.
+把一个 MDS 的 ``mds_join_fs`` 配置选项设置为指定文件系统的名字，
+可以将 ``ceph-mds`` 守护进程分配给这个文件系统。
 
 ``ceph-mds`` 守护进程每次启动时，还会被分配一个整数 ``GID`` ，\
 它对于当前这个守护进程的进程生命周期来说它是唯一的。换句话说，\
 当一个 ``ceph-mds`` 守护进程重启后，它会作为新进程、\
 而且会被分配一个 *新的* 、不同于之前进程的 ``GID`` 。
 
-.. todo:: 译者注： rank 翻译为“席位”、“座席”？它们共同处理元数\
-   据，且动态分配，类似客服中心的座席。
+.. todo:: 译者注： rank 翻译为“席位”、“座席”？它们共同处理元数据，
+   且动态分配，类似客服中心的座席。
+
 
 MDS 守护进程的引用
 ------------------
@@ -41,14 +41,12 @@ MDS 守护进程的引用
 一个灵活的参数格式，可以指定 ``rank`` 、 ``GID`` 或 ``name`` 。
 
 使用 ``rank`` 时，它前面可以加文件系统的 ``name`` 或 ``GID`` ，\
-也可以不加。如果某个守护进程是灾备的\
-（即当前还没给它分配 ``rank`` ），\
+也可以不加。如果某个守护进程是灾备的（即当前还没给它分配 ``rank`` ），\
 那就只能通过它的 ``GID`` 或 ``name`` 引用。
 
-例如，假设我们有一个 MDS 守护进程，名为 myhost ，\
-其 ``GID`` 为 5446 ，分配的 ``rank`` 是 0 ，\
-它位于名为 myfs 的文件系统内，文件系统的 ``FSCID`` 是 3 ，\
-那么，下面的几种形式都适用于 ``fail`` 命令：
+例如，假设我们有一个 MDS 守护进程，名为 myhost ，其 ``GID`` 为 5446 ，
+分配的 ``rank`` 是 0 ，它位于名为 myfs 的文件系统内，
+文件系统的 ``FSCID`` 是 3 ，那么，下面的几种形式都适用于 ``fail`` 命令：
 
 ::
 
@@ -57,6 +55,7 @@ MDS 守护进程的引用
     ceph mds fail 0        # Unqualified rank
     ceph mds fail 3:0      # FSCID and rank
     ceph mds fail myfs:0   # Filesystem name and rank
+
 
 故障切换的管理
 --------------
@@ -82,29 +81,28 @@ MDS 守护进程的引用
 
 .. _mds-standby-replay:
 
-热备的配置
-----------
+热备（ standby-replay ）的配置
+------------------------------
 .. Configuring standby-replay
 
-Each CephFS file system may be configured to add ``standby-replay`` daemons.
-These standby daemons follow the active MDS's metadata journal in order to
-reduce failover time in the event that the active MDS becomes unavailable. Each
-active MDS may have only one ``standby-replay`` daemon following it.
+每个 CephFS 文件系统都能做配置，增加几个热备（ ``standby-replay`` ）守护进程。
+这些备用守护进程会跟踪活动 MDS 的元数据日志，
+以便在活跃 MDS 不可用时减少故障切换时间。
+每个活跃 MDS 只能有一个 ``standby-replay`` 守护进程跟着它。
 
-Configuration of ``standby-replay`` on a file system is done using the below:
+在文件系统上配置 ``standby-replay`` 的方法如下：
 
 ::
 
     ceph fs set <fs name> allow_standby_replay <bool>
 
-Once set, the monitors will assign available standby daemons to follow the
-active MDSs in that file system.
+设置以后，监视器将分配可用的备用守护进程，让它们跟随此文件系统中的活跃 MDS 。
 
-Once an MDS has entered the ``standby-replay`` state, it will only be used as a
-standby for the ``rank`` that it is following. If another ``rank`` fails, this
-``standby-replay`` daemon will not be used as a replacement, even if no other
-standbys are available. For this reason, it is advised that if ``standby-replay``
-is used then *every* active MDS should have a ``standby-replay`` daemon.
+一旦 MDS 进入 ``standby-replay`` 状态，它就只能用作跟随着的 ``rank`` 的备机。
+如果另一个 ``rank`` 发生故障，即使没有其他备机，也不会用这个
+``standby-replay`` 守护进程作替代品。因此，如果启用 ``standby-replay`` ，
+建议\ *每个*\ 活跃 MDS 都应该配备一个 ``standby-replay`` 守护进程。
+
 
 .. _mds-join-fs:
 
@@ -112,27 +110,32 @@ is used then *every* active MDS should have a ``standby-replay`` daemon.
 ---------------------------
 .. Configuring MDS file system affinity
 
-You might elect to dedicate an MDS to a particular file system. Or, perhaps you
-have MDSs that run on better hardware that should be preferred over a last-resort
-standby on modest or over-provisioned systems. To configure this preference,
-CephFS provides a configuration option for MDS called ``mds_join_fs`` which
-enforces this affinity.
+您可能会选择将 MDS 焊死到指定的文件系统上。或者，让 MDS 在较好的硬件上运行，
+而不是在普通的或还有空余资源的系统上运行。要配置出这种优先级，
+CephFS 为 MDS 提供了一个名为 ``mds_join_fs`` 的配置选项，
+用于实现这种亲和性。
 
-When failing over MDS daemons, a cluster's monitors will prefer standby daemons with
-``mds_join_fs`` equal to the file system ``name`` with the failed ``rank``.  If no
-standby exists with ``mds_join_fs`` equal to the file system ``name``, it will
-choose an unqualified standby (no setting for ``mds_join_fs``) for the replacement,
-or any other available standby, as a last resort. Note, this does not change the
-behavior that ``standby-replay`` daemons are always selected before
-other standbys.
+当 MDS 守护进程做故障切换时，集群的监视器会优先选择 ``mds_join_fs`` 值\
+等于故障 ``rank`` 对应文件系统名字 ``name`` 的备用守护进程。
+如果不存在 ``mds_join_fs`` 等于文件系统名的备机，
+它将选择一个不合格的备用系统（没有设置 ``mds_join_fs`` ）来替代。
+在万不得已的情况下，系统会选择另一个文件系统的备机，
+但这种行为可以禁用：
 
-Even further, the monitors will regularly examine the CephFS file systems even when
-stable to check if a standby with stronger affinity is available to replace an
-MDS with lower affinity. This process is also done for ``standby-replay`` daemons:
-if a regular standby has stronger affinity than the ``standby-replay`` MDS, it will
-replace the standby-replay MDS.
+::
 
-For example, given this stable and healthy file system:
+    ceph fs set <fs name> refuse_standby_for_another_fs true
+
+注意，配置 MDS 的文件系统亲和性不会改变备机选择行为，
+总是先选择 ``standby-replay`` 守护进程、再选其他备机。
+
+此外，即使在稳定状态下，监视器也会定期检查 CephFS 文件系统，
+以检查是否有亲和性更强的备机来替换亲和性较低的 MDS 。
+这个过程也适用于 ``standby-replay`` 守护进程：
+如果常规备机的亲和性比 ``standby-replay`` MDS 更强，
+它就会取代 ``standby-replay`` MDS 。
+
+例如，这是个稳定、健康的文件系统：
 
 ::
 
@@ -156,11 +159,11 @@ For example, given this stable and healthy file system:
     [mds.b{-1:10420} state up:standby seq 2 addr [v2:127.0.0.1:6856/2745199145,v1:127.0.0.1:6857/2745199145]]
 
 
-You may set ``mds_join_fs`` on the standby to enforce your preference: ::
+给备机配置 ``mds_join_fs`` ，展现自己的偏好： ::
 
     $ ceph config set mds.b mds_join_fs cephfs
 
-after automatic failover: ::
+发生故障，自动切换后： ::
 
     $ ceph fs dump
     dumped fsmap epoch 405
@@ -181,10 +184,10 @@ after automatic failover: ::
 
     [mds.a{-1:10720} state up:standby seq 2 addr [v2:127.0.0.1:6854/1340357658,v1:127.0.0.1:6855/1340357658]]
 
-Note in the above example that ``mds.b`` now has ``join_fscid=27``. In this
-output, the file system name from ``mds_join_fs`` is changed to the file system
-identifier (27). If the file system is recreated with the same name, the
-standby will follow the new file system as expected.
+注意上例中 ``mds.b`` 现在是 ``join_fscid=27`` 。
+在此输出中， ``mds_join_fs`` 中的文件系统名称已经改成了文件系统标识符 (27)。
+如果以相同的名字重新创建文件系统，
+备机将按照预期跟随新文件系统。
 
-Finally, if the file system is degraded or undersized, no failover will occur
-to enforce ``mds_join_fs``.
+最后，如果文件系统降级或副本数降低，
+故障转移不会影响 ``mds_join_fs`` 的施行。
