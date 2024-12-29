@@ -208,8 +208,9 @@ The actual dump is similar to the schema, except that average values are grouped
 
 .. _Labeled Perf Counters:
 
-Labeled Perf Counters
----------------------
+带标签的性能计数器
+------------------
+.. Labeled Perf Counters
 
 A Ceph daemon has the ability to emit a set of perf counter instances with varying labels. These counters are intended for visualizing specific metrics in 3rd party tools like Prometheus and Grafana.
 

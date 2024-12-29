@@ -15,74 +15,76 @@ CephFS 把元数据分配给各 MDS 处理，用的是\
 ------------
 .. Dynamic Subtree Partitioning
 
-在传统的子树分区中，文件系统层次结构的子树被分配给各个 MDS。这种元数据分布策略提供了良好的层次定位、高速缓存的线性增长和跨 MDS 的横向扩展，以及跨 MDS 的相当好的元数据分布。
+在传统的子树分区中，文件系统层次结构的子树被分配给各个（相互独立的） MDS 。
+这种元数据分布策略提供了良好的层次局部化、缓存的线性增长和\
+跨 MDS 的横向扩展，以及跨 MDS 时元数据相当好的分布。
 
 .. image:: subtree-partitioning.svg
 
-The problem with traditional subtree partitioning is that the workload
-growth by depth (across a single MDS) leads to a hotspot of activity.
-This results in lack of vertical scaling and wastage of non-busy resources/MDSs. 
+传统子树分区的问题在于，
+载荷的深度增长（跨单个 MDS）会导致活动热点。
+这导致纵向扩展性的缺乏、以及非繁忙资源/ MDS 的浪费。
 
-This led to the adoption of a more dynamic way of handling
-metadata: Dynamic Subtree Partitioning, where load intensive portions
-of the directory hierarchy from busy MDSs are migrated to non busy MDSs. 
+这个问题导致我们采用了一种更加动态的方式来处理元数据：
+“动态子树分区（ Dynamic Subtree Partitioning ）”，
+将目录层次结构中负载密集的部分从繁忙的 MDS 迁移到不忙的 MDS 。
 
-This strategy ensures that activity hotspots are relieved as they
-appear and so leads to vertical scaling of the metadata workload in
-addition to horizontal scaling.
+这种策略可确保活动热点在出现后能得到缓解，
+因此在横向扩展之上，还实现了元数据载荷的纵向扩展。
 
-Export Process During Subtree Migration
----------------------------------------
 
-Once the exporter verifies that the subtree is permissible to be exported
-(Non degraded cluster, non-frozen subtree root), the subtree root
-directory is temporarily auth pinned, the subtree freeze is initiated,
-and the exporter is committed to the subtree migration, barring an
-intervening failure of the importer or itself.
+子树迁移期间的导出过程
+----------------------
+.. Export Process During Subtree Migration
 
-The MExportDiscover message is exchanged to ensure that the inode for the
-base directory being exported is open on the destination node. It is
-auth pinned by the importer to prevent it from being trimmed. This occurs
-before the exporter completes the freeze of the subtree to ensure that
-the importer is able to replicate the necessary metadata. When the
-exporter receives the MDiscoverAck, it allows the freeze to proceed by
-removing its temporary auth pin.
+一旦导出者确认可以导出子树
+（集群没降级、子树根目录没冻结），
+子树根目录将被临时锁定（ auth pinned ）、然后冻结子树，
+而后导出者将全力迁移子树，
+除非在此期间导入者或者它自身发生故障。
 
-A warning stage occurs only if the base subtree directory is open by
-nodes other than the importer and exporter. If it is not, then this
-implies that no metadata within or nested beneath the subtree is
-replicated by any node other than the importer and exporter. If it is,
-then an MExportWarning message informs any bystanders that the
-authority for the region is temporarily ambiguous, and lists both the
-exporter and importer as authoritative MDS nodes. In particular,
-bystanders who are trimming items from their cache must send
-MCacheExpire messages to both the old and new authorities. This is
-necessary to ensure that the surviving authority reliably receives all
-expirations even if the importer or exporter fails. While the subtree
-is frozen (on both the importer and exporter), expirations will not be
-immediately processed; instead, they will be queued until the region
-is unfrozen and it can be determined that the node is or is not
-authoritative.
+二者将交换 MExportDiscover 消息，是为了确保正在导出的目录，
+它的上一级 inode 在目标节点上是打开的。
+导入程序会把它锁定，以防止它被清理掉。
+这个机制会一直持续，直到导出者完成子树冻结、
+导入者能够复制必要的元数据。
+当导出者收到 MDiscoverAck 时，
+它会去掉临时锁定，允许冻结继续进行。
 
-The exporter then packages an MExport message containing all metadata
-of the subtree and flags the objects as non-authoritative. The MExport message sends
-the actual subtree metadata to the importer. Upon receipt, the
-importer inserts the data into its cache, marks all objects as
-authoritative, and logs a copy of all metadata in an EImportStart
-journal message. Once that has safely flushed, it replies with an
-MExportAck. The exporter can now log an EExport journal entry, which
-ultimately specifies that the export was a success. In the presence
-of failures, it is the existence of the EExport entry only that
-disambiguates authority during recovery.
+只有在导入者和导出者以外的其他节点打开了子树基目录时，
+才会出现警告阶段。如果没有，
+那就意味着子树内或子树嵌套的下级都没有元数据\
+正在被导入者和导出者以外的其他节点复制。
+如果是，那么会有一条 MExportWarning 消息通知\
+所有旁观者这个区域的权威暂时不明确，
+并将导出者和导入者都列为权威 MDS 节点。特别是，
+正在从它们的缓存中清理项目的旁观者必须\
+同时向新、旧权威节点发送 MCacheExpire 消息。
+这样做是必要的，可以确保即使导入者或导出者出现故障，
+幸存的权威节点也能可靠地接收到所有过期信息。
+子树被冻结后（在导入者和导出者上），
+过期的不会被马上处理；相反，它们会被排进队列，
+直到这个区域解冻，并能够确定这个节点是不是权威的。
 
-Once logged, the exporter will send an MExportNotify to any
-bystanders, informing them that the authority is no longer ambiguous
-and cache expirations should be sent only to the new authority (the
-importer). Once these are acknowledged back to the exporter,
-implicitly flushing the bystander to exporter message streams of any
-stray expiration notices, the exporter unfreezes the subtree, cleans
-up its migration-related state, and sends a final MExportFinish to the
-importer. Upon receipt, the importer logs an EImportFinish(true)
-(noting locally that the export was indeed a success), unfreezes its
-subtree, processes any queued cache expirations, and cleans up its
-state.
+然后，导出程序会打包一条 MExport 消息，
+其中包含子树的所有元数据、并将对象标记为非权威对象。
+MExport 消息会将实际的子树元数据发送给导入者。
+导入程序收到后，会将数据插入其缓存、
+将所有对象标记为权威对象，并把所有元数据的一份副本\
+记录到一条 EImportStart 日志消息中。
+安全地刷回后，它会回复一条 MExportAck 。
+现在，导出程序可以记录一条 EExport 日志条目，
+最终记录导出成功了。在出现故障时，
+只有 EExport 条目存在，才能在恢复过程中明确权威。
+
+一旦记录完成，导出者将向所有旁观者发送 MExportNotify ，
+通知他们，权威不再模糊，
+缓存过期消息应该只发送给新权威（导入者）。
+这些通知被确认并反馈给导出者后，
+导出者就会清空旁观者到导出者的消息流中杂散的过期通知，
+然后解冻子树，清理与迁移相关的状态，
+并向导入者发送最终的 MExportFinish 。
+导入者收到后，会记录一个 EImportFinish(true)
+（在本地记录导出确实成功了），解冻它的子树，
+处理队列里的所有缓存过期，
+并清理其状态。
