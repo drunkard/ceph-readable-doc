@@ -3,17 +3,17 @@
 ===================
 .. Capabilities in CephFS
 
-一个客户端想要操作索引节点时，它会向 MDS 发起多种查询， MDS 会\
-授予此客户端一系列\ *能力（ capabilities ）*\ ，有了这些能力，\
-客户端就有权限操作索引节点了。与其它网络文件系统（如 NFS 或 SMB
-）相比，一个主要的区别在于这些授予的能力非常粗糙，而且它允许多\
-个客户端同时持有同一索引节点的不同能力。
+一个客户端想要操作索引节点时，它会向 MDS 发起多种查询，
+MDS 会授予此客户端一系列\ *能力（ capabilities ）*\ ，有了这些能力，\
+客户端就有权限操作索引节点了。与其它网络文件系统（如 NFS 或 SMB ）相比，
+一个主要的区别在于这些授予的能力非常粗糙，
+而且它允许多个客户端同时持有同一索引节点的不同能力。
 
 能力的种类
 ----------
 .. Types of Capabilities
 
-有几种“常规”能力位，以下是定义。
+有几种“常规”能力位，下面的表示这个能力位授予它哪种能力。
 
 .. code-block:: cpp
 
@@ -27,8 +27,7 @@
         #define CEPH_CAP_GWREXTEND  64  /* (file) client can extend EOF (a) */
         #define CEPH_CAP_GLAZYIO   128  /* (file) client can perform lazy io (l) */
 
-这些能力是通过二进制数字的位翻转定义的，用以表示与某一索引节点\
-的数据或元数据相关的能力：
+然后，给这些数字做一定数量的位移。这些表示能力是要授权给 inode 的数据或元数据的一部分：
 
 .. code-block:: cpp
 
@@ -42,24 +41,20 @@
 
 :译文: 然而，以前只有某些常规能力授予了其中的一些“位移”，特别是，只有
        FILE 位移多于前两位。
-:原文: Only certain generic cap types are ever granted for some of those "shifts",
-       however. In particular, only the FILE shift ever has more than the first two
-       bits.
+:原文: Only certain generic cap types are ever granted for some of those "shifts", however. In particular, only the FILE shift ever has more than the first two bits.
 
 ::
 
         | AUTH | LINK | XATTR | FILE
         2      4      6       8
 
-从以上定义我们得到一个常数，它是用各个位值移位到相应的位（用\
-变量表示）生成的：
+从以上定义我们得到几个常数，它是用各个位值移位到相应的位（用变量表示）生成的：
 
 .. code-block:: cpp
 
         #define CEPH_CAP_AUTH_SHARED  (CEPH_CAP_GSHARED  << CEPH_CAP_SAUTH)
 
-然后，这些位就可以通过或操作产生位掩码（ bitmask ），用以表示\
-一系列能力。
+然后，这些位就可以通过或操作产生位掩码（ bitmask ），用以表示一系列能力。
 
 有一个例外的：
 
@@ -84,99 +79,104 @@ pin 只是把 inode 插入内存，不授予任何能力。
 -------------------
 .. Abilities granted by each cap
 
-这就解释完了能力是如何授予的（和通讯的），以下重要的位说明了允\
-许客户端干什么：
+这就解释了能力是如何授予的（和通讯的），重要的位是它允许客户端干什么：
 
-* PIN: 只是把 inode 插入内存。这足以让客户端取得 inode 号，还\
-  有其它的不可变信息，如设备 inode 的主、次设备号、或符号链接\
-  内容。
+* **PIN**: 只是把 inode 插入内存。这足以让客户端取得 inode 号，
+  还有其它的不可变信息，如设备 inode 的主、次设备号、或符号链接内容。
 
-* AUTH: 授予能力以获取与认证相关的元数据，特别是所有者、组和权\
-  限位。需要注意的是，完整的权限检查也许还要获取 ACL ，它是存\
-  在扩展属性（ xattrs ）里的。
+* **AUTH**: 授予能力以获取与认证相关的元数据，
+  特别是所有者、组和权限位。需要注意的是，
+  完整的权限检查也许还要获取 ACL ，它是存在扩展属性（ xattrs ）里的。
 
-* LINK: inode 的链接计数。
+* **LINK**: inode 的链接计数。
 
-* XATTR: 访问或修改扩展属性的能力。另外，由于 ACL 定义存在扩展\
-  属性里，有时候检查权限还需访问它们。
+* **XATTR**: 访问或修改扩展属性的能力。另外，由于 ACL 定义存在扩展属性里，
+  有时候检查权限还需访问它们。
 
-* FILE: 这是个大头，允许客户端访问和修改数据。也涵盖了与文件数\
-  据相关的元数据——特别是尺寸、 mtime 、 atime 、 ctime 。
+* **FILE**: 这是个大头，允许客户端访问和修改数据。
+  也涵盖了与文件数据相关的元数据——
+  特别是尺寸、 mtime 、 atime 、 ctime 。
 
 
 简写
 ----
 .. Shorthand
 
-需要注意的是，客户端日志里会紧凑地表达各个能力，例如： ::
+需要注意的是，客户端日志里会紧凑地表达各个能力，例如：
+
+::
 
         pAsLsXsFs
 
 其中， p 表示 pin ，各大写字母对应位移值，而位移值后面的小写\
 字母是真正赋予此位置的的能力。
 
-The relation between the lock states and the capabilities
----------------------------------------------------------
-In MDS there are four different locks for each inode, they are simplelock,
-scatterlock, filelock and locallock. Each lock has several different lock
-states, and the MDS will issue capabilities to clients based on the lock
-state.
+锁状态和能力之间的关系
+----------------------
+.. The relation between the lock states and the capabilities
 
-In each state the MDS Locker will always try to issue all the capabilities to the
-clients allowed, even some capabilities are not needed or wanted by the clients,
-as pre-issuing capabilities could reduce latency in some cases.
+在 MDS 中，每个节点有四种不同的锁，分别是 simplelock 、
+scatterlock 、 filelock 和 locallock 。每种锁都有几种不同的锁状态，
+MDS 会根据锁状态向客户端发放能力。
 
-If there is only one client, usually it will be the loner client for all the inodes.
-While in multiple clients case, the MDS will try to caculate a loner client out for
-each inode depending on the capabilities the clients (needed | wanted), but usually
-it will fail. The loner client will always get all the capabilities.
+在每种状态下， MDS Locker 都会尝试向客户端发布所有允许的能力，
+即使有些能力是客户端不需要或不想要的，
+因为某些情况下，预先发放能力可以减少延时。
 
-The filelock will control files' partial metadatas' and the file contents' access
-permissions. The metadatas include **mtime**, **atime**, **size**, etc.
+如果只有一个客户端，它通常是所有节点的独行客户端（ loner client ）。
+而在有多个客户端的情况下， MDS 会尝试根据客户端（需要 | 想要）的能力
+为每个节点计算出一个独行客户端，
+但通常会失败。独行客户端将始终获得所有能力。
 
-**Fs**: Once a client has it, all other clients are denied **Fw**.
+filelock 会控制文件的、部分元数据的、和文件内容的访问权限。
+元数据包括 **mtime** 、 **atime** 、 **size** 等。
 
-**Fx**: Only the loner client is allowed this capability. Once the lock state transitions
-        to LOCK_EXCL, the loner client is granted this along with all other file capabilities
-        except the **Fl**.
+* **Fs**: 客户端一旦拥有它，其他所有客户端的 **Fw** 都将被拒绝。
 
-**Fr**: Once a client has it, the **Fb** capability will be already revoked from all
-        the other clients.
+* **Fx**: 只有独行客户端才可拥有此能力。
+  一旦锁状态转换为 LOCK_EXCL ，独行客户端就会被授予此能力，
+  以及其他所有除 **Fl** 以外的能力.
 
-        If clients only request to read the file, the lock state will be transferred
-        to LOCK_SYNC stable state directly. All the clients can be granted **Fscrl**
-        capabilities from the auth MDS and **Fscr** capabilities from the replica MDSes.
+* **Fr**: 一旦某个客户端拥有了它，说明\
+  其他所有客户端的 **Fb** 能力都已经被撤销。
 
-        If multiple clients read from and write to the same file, then the lock state
-        will be transferred to LOCK_MIX stable state finally and all the clients could
-        have the **Frwl** capabilities from the auth MDS, and the **Fr** from the replica
-        MDSes. The **Fcb** capabilities won't be granted to all the clients and the
-        clients will do sync read/write.
+  如果客户端只要求读取文件，锁状态将直接转为 LOCK_SYNC 稳定状态。
+  所有客户端都可以从权威 MDS 获得 **Fscrl** 能力，
+  从副本 MDS 获得 **Fscr** 能力。
 
-**Fw**: If there is no loner client and once a client have this capability, the **Fsxcb**
-        capabilities won't be granted to other clients.
+  如果多个客户端读出和写入同一个文件，
+  那么锁状态将最终转换到 LOCK_MIX 稳定状态，
+  所有客户端都可以获得权威 MDS 的 **Frwl** 能力和副本 MDS 的 **Fr** 能力。
+  **Fcb** 能力不会授予所有客户端，客户端们将做同步读/写操作。
 
-        If multiple clients read from and write to the same file, then the lock state
-        will be transferred to LOCK_MIX stable state finally and all the clients could
-        have the **Frwl** capabilities from the auth MDS, and the **Fr** from the replica
-        MDSes. The **Fcb** capabilities won't be granted to all the clients and the
-        clients will do sync read/write.
+* **Fw**: 如果没有独行客户端，并且一旦某个客户端获得此能力，
+  **Fsxcb** 能力将不能授予其他客户端。
 
-**Fc**: This capability means the clients could cache file read and should be issued
-        together with **Fr** capability and only in this use case will it make sense.
-        While actually in some stable or interim transitional states they tend to keep
-        the **Fc** allowed even the **Fr** capability isn't granted as this can avoid
-        forcing clients to drop full caches, for example on a simple file size extension
-        or truncating use case.
+  如果多个客户端读出和写入同一个文件，
+  那么锁状态将最终转换到 LOCK_MIX 稳定状态，
+  所有客户端都可以获取权威 MDS 的 **Frwl** 能力和来自副本 MDS 的 **Fr** 能力。
+  **Fcb** 能力不会授予所有客户端，
+  客户端们将做同步读/写操作。
 
-**Fb**: This capability means the clients could buffer file write and should be issued
-        together with **Fw** capability and only in this use case will it make sense.
-        While actually in some stable or interim transitional states they tend to keep
-        the **Fc** allowed even the **Fw** capability isn't granted as this can avoid
-        forcing clients to drop dirty buffers, for example on a simple file size extension
-        or truncating use case.
+* **Fc**: 该能力意味着客户端们可以缓存文件读出操作，
+  应与 **Fr** 能力一起发放，
+  只有在这种用例中才有意义。
 
-**Fl**: This capability means the clients could perform lazy io. LazyIO relaxes POSIX
-        semantics. Buffered reads/writes are allowed even when a file is opened by multiple
-        applications on multiple clients. Applications are responsible for managing cache
-        coherency themselves.
+  实际上，在一些稳定或临时过渡状态下，
+  即使没有授予 **Fr** 能力，也会允许使用 **Fc** ，
+  因为这样可以避免强制客户端丢弃完整缓存，
+  例如在简单的文件大小扩展或截断用例中。
+
+* **Fb**: 该能力意味着客户端可以缓冲文件写入操作，
+  应与 **Fw** 能力一起发放，
+  只有在这种情境下才有意义。
+
+  实际上，在某些稳定或临时过渡状态下，
+  即使不授予 **Fw** 能力，也会保留 **Fc** 能力，
+  因为这样可以避免强制客户端丢弃脏缓冲区，
+  例如在简单的文件大小扩展或截断用例中。
+
+* **Fl**: 这个能力意味着客户端可以施行懒惰 IO 。
+  LazyIO 放宽了 POSIX 语义。即使一个文件同时\
+  被多个客户端上的多个应用程序打开，也允许缓冲读/写。
+  应用程序它们自行负责管理缓存一致性。

@@ -48,7 +48,7 @@
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
     <link rel="next" title="CephFS API （编程接口）" href="../api/" />
-    <link rel="prev" title="Journaler" href="../journaler/" /> 
+    <link rel="prev" title="Journaler （日志记录器）" href="../journaler/" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -196,11 +196,13 @@
   
   <section id="cephfs">
 <h1>CephFS 支持的能力<a class="headerlink" href="#cephfs" title="Permalink to this heading"></a></h1>
-<p>一个客户端想要操作索引节点时，它会向 MDS 发起多种查询， MDS 会授予此客户端一系列<em>能力（ capabilities ）</em>，有了这些能力，客户端就有权限操作索引节点了。与其它网络文件系统（如 NFS 或 SMB
-）相比，一个主要的区别在于这些授予的能力非常粗糙，而且它允许多个客户端同时持有同一索引节点的不同能力。</p>
+<p>一个客户端想要操作索引节点时，它会向 MDS 发起多种查询，
+MDS 会授予此客户端一系列<em>能力（ capabilities ）</em>，有了这些能力，客户端就有权限操作索引节点了。与其它网络文件系统（如 NFS 或 SMB ）相比，
+一个主要的区别在于这些授予的能力非常粗糙，
+而且它允许多个客户端同时持有同一索引节点的不同能力。</p>
 <section id="id1">
 <h2>能力的种类<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
-<p>有几种“常规”能力位，以下是定义。</p>
+<p>有几种“常规”能力位，下面的表示这个能力位授予它哪种能力。</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* generic cap bits */</span>
 <span class="cp">#define CEPH_CAP_GSHARED     1  </span><span class="cm">/* (metadata) client can reads (s) */</span>
 <span class="cp">#define CEPH_CAP_GEXCL       2  </span><span class="cm">/* (metadata) client can read and update (x) */</span>
@@ -212,7 +214,7 @@
 <span class="cp">#define CEPH_CAP_GLAZYIO   128  </span><span class="cm">/* (file) client can perform lazy io (l) */</span>
 </pre></div>
 </div>
-<p>这些能力是通过二进制数字的位翻转定义的，用以表示与某一索引节点的数据或元数据相关的能力：</p>
+<p>然后，给这些数字做一定数量的位移。这些表示能力是要授权给 inode 的数据或元数据的一部分：</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* per-lock shift */</span>
 <span class="cp">#define CEPH_CAP_SAUTH      2 </span><span class="cm">/* A */</span>
 <span class="cp">#define CEPH_CAP_SLINK      4 </span><span class="cm">/* L */</span>
@@ -230,16 +232,14 @@
 FILE 位移多于前两位。</p>
 </dd>
 <dt class="field-even">原文</dt>
-<dd class="field-even"><p>Only certain generic cap types are ever granted for some of those “shifts”,
-however. In particular, only the FILE shift ever has more than the first two
-bits.</p>
+<dd class="field-even"><p>Only certain generic cap types are ever granted for some of those “shifts”, however. In particular, only the FILE shift ever has more than the first two bits.</p>
 </dd>
 </dl>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|</span> <span class="n">AUTH</span> <span class="o">|</span> <span class="n">LINK</span> <span class="o">|</span> <span class="n">XATTR</span> <span class="o">|</span> <span class="n">FILE</span>
 <span class="mi">2</span>      <span class="mi">4</span>      <span class="mi">6</span>       <span class="mi">8</span>
 </pre></div>
 </div>
-<p>从以上定义我们得到一个常数，它是用各个位值移位到相应的位（用变量表示）生成的：</p>
+<p>从以上定义我们得到几个常数，它是用各个位值移位到相应的位（用变量表示）生成的：</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#define CEPH_CAP_AUTH_SHARED  (CEPH_CAP_GSHARED  &lt;&lt; CEPH_CAP_SAUTH)</span>
 </pre></div>
 </div>
@@ -261,13 +261,19 @@ bits.</p>
 </section>
 <section id="cap">
 <h2>各个 cap 授予的能力<a class="headerlink" href="#cap" title="Permalink to this heading"></a></h2>
-<p>这就解释完了能力是如何授予的（和通讯的），以下重要的位说明了允许客户端干什么：</p>
+<p>这就解释了能力是如何授予的（和通讯的），重要的位是它允许客户端干什么：</p>
 <ul class="simple">
-<li><p>PIN: 只是把 inode 插入内存。这足以让客户端取得 inode 号，还有其它的不可变信息，如设备 inode 的主、次设备号、或符号链接内容。</p></li>
-<li><p>AUTH: 授予能力以获取与认证相关的元数据，特别是所有者、组和权限位。需要注意的是，完整的权限检查也许还要获取 ACL ，它是存在扩展属性（ xattrs ）里的。</p></li>
-<li><p>LINK: inode 的链接计数。</p></li>
-<li><p>XATTR: 访问或修改扩展属性的能力。另外，由于 ACL 定义存在扩展属性里，有时候检查权限还需访问它们。</p></li>
-<li><p>FILE: 这是个大头，允许客户端访问和修改数据。也涵盖了与文件数据相关的元数据——特别是尺寸、 mtime 、 atime 、 ctime 。</p></li>
+<li><p><strong>PIN</strong>: 只是把 inode 插入内存。这足以让客户端取得 inode 号，
+还有其它的不可变信息，如设备 inode 的主、次设备号、或符号链接内容。</p></li>
+<li><p><strong>AUTH</strong>: 授予能力以获取与认证相关的元数据，
+特别是所有者、组和权限位。需要注意的是，
+完整的权限检查也许还要获取 ACL ，它是存在扩展属性（ xattrs ）里的。</p></li>
+<li><p><strong>LINK</strong>: inode 的链接计数。</p></li>
+<li><p><strong>XATTR</strong>: 访问或修改扩展属性的能力。另外，由于 ACL 定义存在扩展属性里，
+有时候检查权限还需访问它们。</p></li>
+<li><p><strong>FILE</strong>: 这是个大头，允许客户端访问和修改数据。
+也涵盖了与文件数据相关的元数据——
+特别是尺寸、 mtime 、 atime 、 ctime 。</p></li>
 </ul>
 </section>
 <section id="id2">
@@ -278,60 +284,62 @@ bits.</p>
 </div>
 <p>其中， p 表示 pin ，各大写字母对应位移值，而位移值后面的小写字母是真正赋予此位置的的能力。</p>
 </section>
-<section id="the-relation-between-the-lock-states-and-the-capabilities">
-<h2>The relation between the lock states and the capabilities<a class="headerlink" href="#the-relation-between-the-lock-states-and-the-capabilities" title="Permalink to this heading"></a></h2>
-<p>In MDS there are four different locks for each inode, they are simplelock,
-scatterlock, filelock and locallock. Each lock has several different lock
-states, and the MDS will issue capabilities to clients based on the lock
-state.</p>
-<p>In each state the MDS Locker will always try to issue all the capabilities to the
-clients allowed, even some capabilities are not needed or wanted by the clients,
-as pre-issuing capabilities could reduce latency in some cases.</p>
-<p>If there is only one client, usually it will be the loner client for all the inodes.
-While in multiple clients case, the MDS will try to caculate a loner client out for
-each inode depending on the capabilities the clients (needed | wanted), but usually
-it will fail. The loner client will always get all the capabilities.</p>
-<p>The filelock will control files’ partial metadatas’ and the file contents’ access
-permissions. The metadatas include <strong>mtime</strong>, <strong>atime</strong>, <strong>size</strong>, etc.</p>
-<p><strong>Fs</strong>: Once a client has it, all other clients are denied <strong>Fw</strong>.</p>
-<dl>
-<dt><strong>Fx</strong>: Only the loner client is allowed this capability. Once the lock state transitions</dt><dd><p>to LOCK_EXCL, the loner client is granted this along with all other file capabilities
-except the <strong>Fl</strong>.</p>
-</dd>
-<dt><strong>Fr</strong>: Once a client has it, the <strong>Fb</strong> capability will be already revoked from all</dt><dd><p>the other clients.</p>
-<p>If clients only request to read the file, the lock state will be transferred
-to LOCK_SYNC stable state directly. All the clients can be granted <strong>Fscrl</strong>
-capabilities from the auth MDS and <strong>Fscr</strong> capabilities from the replica MDSes.</p>
-<p>If multiple clients read from and write to the same file, then the lock state
-will be transferred to LOCK_MIX stable state finally and all the clients could
-have the <strong>Frwl</strong> capabilities from the auth MDS, and the <strong>Fr</strong> from the replica
-MDSes. The <strong>Fcb</strong> capabilities won’t be granted to all the clients and the
-clients will do sync read/write.</p>
-</dd>
-<dt><strong>Fw</strong>: If there is no loner client and once a client have this capability, the <strong>Fsxcb</strong></dt><dd><p>capabilities won’t be granted to other clients.</p>
-<p>If multiple clients read from and write to the same file, then the lock state
-will be transferred to LOCK_MIX stable state finally and all the clients could
-have the <strong>Frwl</strong> capabilities from the auth MDS, and the <strong>Fr</strong> from the replica
-MDSes. The <strong>Fcb</strong> capabilities won’t be granted to all the clients and the
-clients will do sync read/write.</p>
-</dd>
-<dt><strong>Fc</strong>: This capability means the clients could cache file read and should be issued</dt><dd><p>together with <strong>Fr</strong> capability and only in this use case will it make sense.
-While actually in some stable or interim transitional states they tend to keep
-the <strong>Fc</strong> allowed even the <strong>Fr</strong> capability isn’t granted as this can avoid
-forcing clients to drop full caches, for example on a simple file size extension
-or truncating use case.</p>
-</dd>
-<dt><strong>Fb</strong>: This capability means the clients could buffer file write and should be issued</dt><dd><p>together with <strong>Fw</strong> capability and only in this use case will it make sense.
-While actually in some stable or interim transitional states they tend to keep
-the <strong>Fc</strong> allowed even the <strong>Fw</strong> capability isn’t granted as this can avoid
-forcing clients to drop dirty buffers, for example on a simple file size extension
-or truncating use case.</p>
-</dd>
-<dt><strong>Fl</strong>: This capability means the clients could perform lazy io. LazyIO relaxes POSIX</dt><dd><p>semantics. Buffered reads/writes are allowed even when a file is opened by multiple
-applications on multiple clients. Applications are responsible for managing cache
-coherency themselves.</p>
-</dd>
-</dl>
+<section id="id3">
+<h2>锁状态和能力之间的关系<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
+<p>在 MDS 中，每个节点有四种不同的锁，分别是 simplelock 、
+scatterlock 、 filelock 和 locallock 。每种锁都有几种不同的锁状态，
+MDS 会根据锁状态向客户端发放能力。</p>
+<p>在每种状态下， MDS Locker 都会尝试向客户端发布所有允许的能力，
+即使有些能力是客户端不需要或不想要的，
+因为某些情况下，预先发放能力可以减少延时。</p>
+<p>如果只有一个客户端，它通常是所有节点的独行客户端（ loner client ）。
+而在有多个客户端的情况下， MDS 会尝试根据客户端（需要 | 想要）的能力
+为每个节点计算出一个独行客户端，
+但通常会失败。独行客户端将始终获得所有能力。</p>
+<p>filelock 会控制文件的、部分元数据的、和文件内容的访问权限。
+元数据包括 <strong>mtime</strong> 、 <strong>atime</strong> 、 <strong>size</strong> 等。</p>
+<ul>
+<li><p><strong>Fs</strong>: 客户端一旦拥有它，其他所有客户端的 <strong>Fw</strong> 都将被拒绝。</p></li>
+<li><p><strong>Fx</strong>: 只有独行客户端才可拥有此能力。
+一旦锁状态转换为 LOCK_EXCL ，独行客户端就会被授予此能力，
+以及其他所有除 <strong>Fl</strong> 以外的能力.</p></li>
+<li><p><strong>Fr</strong>: 一旦某个客户端拥有了它，说明其他所有客户端的 <strong>Fb</strong> 能力都已经被撤销。</p>
+<p>如果客户端只要求读取文件，锁状态将直接转为 LOCK_SYNC 稳定状态。
+所有客户端都可以从权威 MDS 获得 <strong>Fscrl</strong> 能力，
+从副本 MDS 获得 <strong>Fscr</strong> 能力。</p>
+<p>如果多个客户端读出和写入同一个文件，
+那么锁状态将最终转换到 LOCK_MIX 稳定状态，
+所有客户端都可以获得权威 MDS 的 <strong>Frwl</strong> 能力和副本 MDS 的 <strong>Fr</strong> 能力。
+<strong>Fcb</strong> 能力不会授予所有客户端，客户端们将做同步读/写操作。</p>
+</li>
+<li><p><strong>Fw</strong>: 如果没有独行客户端，并且一旦某个客户端获得此能力，
+<strong>Fsxcb</strong> 能力将不能授予其他客户端。</p>
+<p>如果多个客户端读出和写入同一个文件，
+那么锁状态将最终转换到 LOCK_MIX 稳定状态，
+所有客户端都可以获取权威 MDS 的 <strong>Frwl</strong> 能力和来自副本 MDS 的 <strong>Fr</strong> 能力。
+<strong>Fcb</strong> 能力不会授予所有客户端，
+客户端们将做同步读/写操作。</p>
+</li>
+<li><p><strong>Fc</strong>: 该能力意味着客户端们可以缓存文件读出操作，
+应与 <strong>Fr</strong> 能力一起发放，
+只有在这种用例中才有意义。</p>
+<p>实际上，在一些稳定或临时过渡状态下，
+即使没有授予 <strong>Fr</strong> 能力，也会允许使用 <strong>Fc</strong> ，
+因为这样可以避免强制客户端丢弃完整缓存，
+例如在简单的文件大小扩展或截断用例中。</p>
+</li>
+<li><p><strong>Fb</strong>: 该能力意味着客户端可以缓冲文件写入操作，
+应与 <strong>Fw</strong> 能力一起发放，
+只有在这种情境下才有意义。</p>
+<p>实际上，在某些稳定或临时过渡状态下，
+即使不授予 <strong>Fw</strong> 能力，也会保留 <strong>Fc</strong> 能力，
+因为这样可以避免强制客户端丢弃脏缓冲区，
+例如在简单的文件大小扩展或截断用例中。</p>
+</li>
+<li><p><strong>Fl</strong>: 这个能力意味着客户端可以施行懒惰 IO 。
+LazyIO 放宽了 POSIX 语义。即使一个文件同时被多个客户端上的多个应用程序打开，也允许缓冲读/写。
+应用程序它们自行负责管理缓存一致性。</p></li>
+</ul>
 </section>
 </section>
 
@@ -347,7 +355,7 @@ coherency themselves.</p>
            
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../journaler/" class="btn btn-neutral float-left" title="Journaler" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../journaler/" class="btn btn-neutral float-left" title="Journaler （日志记录器）" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../api/" class="btn btn-neutral float-right" title="CephFS API （编程接口）" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
