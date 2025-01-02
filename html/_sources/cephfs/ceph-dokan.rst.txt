@@ -1,52 +1,52 @@
 .. _ceph-dokan:
 
-=======================
-Mount CephFS on Windows
-=======================
+==========================
+ 在 Windows 上挂载 CephFS
+==========================
+.. Mount CephFS on Windows
 
-``ceph-dokan`` can be used for mounting CephFS filesystems on Windows.
-It leverages Dokany, a Windows driver that allows implementing filesystems in
-userspace, pretty much like FUSE.
+``ceph-dokan`` 可用于在 Windows 上挂载 CephFS 文件系统。它利用了
+Windows 驱动程序 Dokany ，该驱动程序允许在用户空间实现文件系统，很像 FUSE 。
 
-Please check the `installation guide`_ to get started.
+请查看\ `安装指南`_\ 开始使用。
 
-Usage
-=====
+用法
+====
+.. Usage
 
-Mounting filesystems
---------------------
+挂载文件系统
+------------
+.. Mounting filesystems
 
-In order to mount a ceph filesystem, the following command can be used::
+要挂载 ceph 文件系统，可以用以下命令： ::
 
     ceph-dokan.exe -c c:\ceph.conf -l x
 
-This will mount the default ceph filesystem using the drive letter ``x``.
-If ``ceph.conf`` is placed at the default location, which is
-``%ProgramData%\ceph\ceph.conf``, then this argument becomes optional.
+此命令会把默认的 ceph 文件系统挂载到驱动盘符 ``x`` 下。如果 ``ceph.conf``
+放在默认位置（即 ``%ProgramData%\ceph\ceph.conf`` ），则此参数变为可选参数。
 
-The ``-l`` argument also allows using an empty folder as a mountpoint
-instead of a drive letter.
+``-l`` 参数还允许用空文件夹作为挂载点，而不是驱动盘符。
 
-The uid and gid used for mounting the filesystem default to 0 and may be
-changed using the following ``ceph.conf`` options::
+用于挂载文件系统的 uid 和 gid 默认为 0 ，
+可以用以下 ``ceph.conf`` 选项进行更改： ::
 
     [client]
     # client_permissions = true
     client_mount_uid = 1000
     client_mount_gid = 1000
 
-If you have more than one FS on your Ceph cluster, use the option
-``--client_fs`` to mount the non-default FS::
+如果 Ceph 集群上有多个 FS ，
+用选项 ``--client_fs`` 挂载非默认 FS ： ::
 
     mkdir -Force C:\mnt\mycephfs2
     ceph-dokan.exe --mountpoint C:\mnt\mycephfs2 --client_fs mycephfs2
 
-CephFS subdirectories can be mounted using the ``--root-path`` parameter::
+CephFS 子目录可以用 ``--root-path`` 参数指定挂载： ::
 
     ceph-dokan -l y --root-path /a
 
-If the ``-o --removable`` flags are set, the mounts will show up in the
-``Get-Volume`` results::
+如果加了 ``-o --removable`` 选项，
+挂载后可以显示在 ``Get-Volume`` 的结果中： ::
 
     PS C:\> Get-Volume -FriendlyName "Ceph*" | `
             Select-Object -Property @("DriveLetter", "Filesystem", "FilesystemLabel")
@@ -56,47 +56,47 @@ If the ``-o --removable`` flags are set, the mounts will show up in the
               Z Ceph       Ceph
               W Ceph       Ceph - new_fs
 
-Please use ``ceph-dokan --help`` for a full list of arguments.
+用 ``ceph-dokan --help`` 查看所有的参数。
 
-Credentials
------------
+凭证
+----
+.. Credentials
 
-The ``--id`` option passes the name of the CephX user whose keyring we intend to
-use for mounting CephFS. The following commands are equivalent::
+``--id`` 选项传入 CephX 用户名，我们要用该用户的密钥环挂载 CephFS 。
+下列命令是等效的： ::
 
     ceph-dokan --id foo -l x
     ceph-dokan --name client.foo -l x
 
-Unmounting filesystems
-----------------------
+卸载文件系统
+------------
+.. Unmounting filesystems
 
-The mount can be removed by either issuing ctrl-c or using the unmap command,
-like so::
+发出 ctrl-c 或者用 unmap 命令，就可以卸载： ::
 
     ceph-dokan.exe unmap -l x
 
-Note that when unmapping Ceph filesystems, the exact same mountpoint argument
-must be used as when the mapping was created.
+注意，在取消 Ceph 文件系统映射时，必须用与创建映射时完全相同的挂载点参数。
 
-Limitations
------------
+局限性
+------
+.. Limitations
 
-Be aware that Windows ACLs are ignored. Posix ACLs are supported but cannot be
-modified using the current CLI. In the future, we may add some command actions
-to change file ownership or permissions.
+注意， Windows ACL 会被忽略。支持 Posix ACL ，但是不能用当前的 CLI 修改。
+将来，我们可能会添加一些命令操作来更改文件所有权或权限。
 
-Another thing to note is that cephfs doesn't support mandatory file locks, which
-Windows is heavily rely upon. At the moment, we're letting Dokan handle file
-locks, which are only enforced locally.
+还有一点需要注意， cephfs 不支持强制文件锁，
+而 Windows 则非常依赖。目前，我们让 Dokan 来处理文件锁，
+它只能在本地执行。
 
-Unlike ``rbd-wnbd``, ``ceph-dokan`` doesn't currently provide a ``service``
-command. In order for the cephfs mount to survive host reboots, consider using
-``NSSM``.
+与 ``rbd-wnbd`` 不同， ``ceph-dokan`` 目前没有 ``service`` 命令。
+为了让 cephfs 挂载在主机重启后继续运行，考虑用 ``NSSM`` 。
 
-Troubleshooting
-===============
+故障排除
+========
+.. Troubleshooting
 
-Please consult the `Windows troubleshooting`_ page.
+请参考 `Windows 故障排除`_\ 。
 
-.. _Windows troubleshooting: ../../install/windows-troubleshooting
-.. _installation guide: ../../install/windows-install
+.. _Windows 故障排除: ../../install/windows-troubleshooting
+.. _安装指南: ../../install/windows-install

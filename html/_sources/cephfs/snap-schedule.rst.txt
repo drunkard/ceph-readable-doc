@@ -1,74 +1,73 @@
 .. _snap-schedule:
 
-==========================
-Snapshot Scheduling Module
-==========================
-This module implements scheduled snapshots for CephFS.
-It provides a user interface to add, query and remove snapshots schedules and
-retention policies, as well as a scheduler that takes the snapshots and prunes
-existing snapshots accordingly.
+==============
+ 快照计划模块
+==============
+.. Snapshot Scheduling Module
+
+该模块为 CephFS 实现了按计划做快照。它提供了一个用户界面，可以添加、查询和删除\
+快照计划和保留策略，还提供了一个调度程序，用于拍下快照并相应修剪现有快照。
 
 
-How to enable
-=============
+如何启用
+========
+.. How to enable
 
-The *snap_schedule* module is enabled with::
+*snap_schedule* 模块可以这样启用： ::
 
   ceph mgr module enable snap_schedule
 
-Usage
-=====
 
-This module uses :doc:`/dev/cephfs-snapshots`, please consider this documentation
-as well.
+用法
+====
+.. Usage
 
-This module's subcommands live under the `ceph fs snap-schedule` namespace.
-Arguments can either be supplied as positional arguments or as keyword
-arguments. Once a keyword argument was encountered, all following arguments are
-assumed to be keyword arguments too.
+此模块用到 :doc:`/dev/cephfs-snapshots` ，最好也读一下这篇文档。
 
-Snapshot schedules are identified by path, their repeat interval and their start
-time. The
-repeat interval defines the time between two subsequent snapshots. It is
-specified by a number and a period multiplier, one of `h(our)`, `d(ay)`,
-`w(eek)`, `M(onth)` and `y(ear)`. E.g. a repeat interval of `12h` specifies one
-snapshot every 12 hours.
-The start time is specified as a time string (more details about passing times
-below). By default
-the start time is last midnight. So when a snapshot schedule with repeat
-interval `1h` is added at 13:50
-with the default start time, the first snapshot will be taken at 14:00.
-The time zone is assumed to be UTC if none is explicitly included in the string.
-An explicit time zone will be mapped to UTC at execution.
-The start time must be in ISO8601 format. Examples below:
+此模块的子命令位于 ``ceph fs snap-schedule`` 命名空间下。
+参数可以是位置参数或关键字参数。一旦遇到关键字参数，
+后面的所有参数也会被认为是关键字参数。
 
-UTC: 2022-08-08T05:30:00 i.e. 5:30 AM UTC, without explicit time zone offset
-IDT: 2022-08-08T09:00:00+03:00 i.e. 6:00 AM UTC
-EDT: 2022-08-08T05:30:00-04:00 i.e. 9:30 AM UTC
+快照计划由路径、重复时间间隔和开始时间确定。
+重复间隔定义了两个连续快照之间的时间间隔。
+它由一个数字和一个周期乘数指定，是 `h(our)` 、 `d(ay)` 、
+`w(eek)` 、 `M(onth)` 和 `y(ear)` 中的一个。
+例如， `12h` 的重复间隔表示每 12 小时拍一次快照。
+开始时间是一个时间字符串
+（下文将详细介绍传递时间）。
+默认情况下，开始时间是前一天半夜。
+因此，如果在 13:50 添加重复间隔为 `1h` 的快照计划，
+并采用默认开始时间，那么第一个快照将在 14:00 拍下。
+如果字符串里没有明确指定时区，那就假定时区是 UTC 。
+明确指定的时区将在执行时映射成 UTC 时间。
+开始时间必须按 ISO8601 格式。示例如下：
 
-Retention specifications are identified by path and the retention spec itself. A
-retention spec consists of either a number and a time period separated by a
-space or concatenated pairs of `<number><time period>`.
-The semantics are that a spec will ensure `<number>` snapshots are kept that are
-at least `<time period>` apart. For Example `7d` means the user wants to keep 7
-snapshots that are at least one day (but potentially longer) apart from each other.
-The following time periods are recognized: `h(our)`, `d(ay)`, `w(eek)`, `M(onth)`, 
-`y(ear)` and `n`. The latter is a special modifier where e.g. `10n` means keep
-the last 10 snapshots regardless of timing,
+- UTC：2022-08-08T05:30:00 即上午 5:30 UTC ，没指定时区偏移
+- IDT：2022-08-08T09:00:00+03:00 即上午 6:00 UTC
+- EDT：2022-08-08T05:30:00-04:00 即上午 9:30 UTC
 
-All subcommands take optional `fs` argument to specify paths in
-multi-fs setups and :doc:`/cephfs/fs-volumes` managed setups. If not
-passed `fs` defaults to the first file system listed in the fs_map.
-When using :doc:`/cephfs/fs-volumes` the argument `fs` is equivalent to a
-`volume`.
+保留规范由路径和保留规范本身标识。
+保留规范由一个数字和一个时间段组成，
+中间用空格隔开，或者由 `<数字><时间段>` 对拼接而成。
+其含义是，该规范将确保保留至少相隔 `<时间段>` 的 `<数字>` 个快照。
+例如， `7d` 表示用户希望保留 7 个快照，
+这些快照之间至少相隔一天（也可能更长）。
+支持的时间段有： `h(our)` 、 `d(ay)` 、 `w(eek)` 、 `M(onth)` 、
+`y(ear)` 和 `n` ，最后一个是个特殊的修饰符，
+例如 `10n` 意思是保留最后 10 个快照，而不是按时间算、
 
-When a timestamp is passed (the `start` argument in the `add`, `remove`,
-`activate` and `deactivate` subcommands) the ISO format `%Y-%m-%dT%H:%M:%S` will
-always be accepted. When either python3.7 or newer is used or
-https://github.com/movermeyer/backports.datetime_fromisoformat is installed, any
-valid ISO timestamp that is parsed by python's `datetime.fromisoformat` is valid.
+所有子命令都接受可选的 `fs` 参数，用于指定\
+多文件系统配置和 :doc:`/cephfs/fs-volumes` 管理配置中的路径。
+如果没有传递 `fs` 参数，则默认使用 fs_map 中列出的第一个文件系统。
+使用 :doc:`/cephfs/fs-volumes` 时，参数 `fs` 等同于 `volume` 。
 
-When no subcommand is supplied a synopsis is printed::
+当传入时间戳时（ `add` 、 `remove` 、 `activate` 和 `deactivate` 子命令中的 `start` 参数），
+ISO 格式 `%Y-%m-%dT%H:%M:%S` 最通用。
+如果用的是 python3.7 或更高版本，
+或安装了 https://github.com/movermeyer/backports.datetime_fromisoformat ，
+则任何能被 python 的 `datetime.fromisoformat` 解析的有效 ISO 时间戳都是可以用的。
+
+没有提供子命令时，将打印出命令提纲： ::
 
   #> ceph fs snap-schedule
   no valid command found; 8 closest matches:
@@ -82,24 +81,25 @@ When no subcommand is supplied a synopsis is printed::
   fs snap-schedule deactivate <path> [<repeat>] [<start>] [<fs>]
   Error EINVAL: invalid command
 
-Note:
-^^^^^
-A `subvolume` argument is no longer accepted by the commands.
+注意
+^^^^
+.. Note:
+
+此命令不再支持 `subvolume` 参数。
 
 
-Inspect snapshot schedules
---------------------------
+查验快照计划
+------------
+.. Inspect snapshot schedules
 
-The module offers two subcommands to inspect existing schedules: `list` and
-`status`. Bother offer plain and json output via the optional `format` argument.
-The default is plain.
-The `list` sub-command will list all schedules on a path in a short single line
-format. It offers a `recursive` argument to list all schedules in the specified
-directory and all contained directories.
-The `status` subcommand prints all available schedules and retention specs for a
-path.
+此模块有两个子命令来检查当前的计划表： `list` 和 `status` 。
+用可选的 `format` 参数选择纯文本或 json 格式的输出，
+默认为纯文本。`list` 子命令会以简短的单行格式列出路径上的所有计划表。
+它提供了一个 `recursive` （递归）参数，
+可以列出指定目录和及其包含目录中的所有计划表。
+`status` 子命令会打印一个路径的所有可用计划表和保留规格。
 
-Examples::
+实例： ::
 
   ceph fs snap-schedule status /
   ceph fs snap-schedule status /foo/bar --format=json
@@ -107,22 +107,21 @@ Examples::
   ceph fs snap-schedule list / --recursive=true # list all schedules in the tree
 
 
-Add and remove schedules
-------------------------
-The `add` and `remove` subcommands add and remove snapshots schedules
-respectively. Both require at least a `path` argument, `add` additionally
-requires a `schedule` argument as described in the USAGE section.
+增加或删除计划
+--------------
+.. Add and remove schedules
 
-Multiple different schedules can be added to a path. Two schedules are considered
-different from each other if they differ in their repeat interval and their
-start time.
+`add` 和 `remove` 子命令分别用于添加和删除快照计划。二者都需要\
+至少一个 `path` 参数， `add` 还需要一个 `schedule` 参数，如 USAGE 章节所述。
 
-If multiple schedules have been set on a path, `remove` can remove individual
-schedules on a path by specifying the exact repeat interval and start time, or
-the subcommand can remove all schedules on a path when just a `path` is
-specified.
+一个路径可以添加多个不同的计划表。
+如果两个计划表的重复时间间隔和开始时间不同，则认为它们彼此不同。
 
-Examples::
+如果在路径上设置了多个计划表，指定精确的重复间隔和开始时间后，
+`remove` 可以删除一个路径的单个计划，或者在只指定 `path` （路径）时，
+这个子命令会删除此路径的所有计划。
+
+实例： ::
 
   ceph fs snap-schedule add / 1h
   ceph fs snap-schedule add / 1h 11:55
@@ -131,17 +130,18 @@ Examples::
   ceph fs snap-schedule remove / 1h # removes all schedules with --repeat=1h
   ceph fs snap-schedule remove / # removes all schedules on path /
 
-Add and remove retention policies
----------------------------------
-The `retention add` and `retention remove` subcommands allow to manage
-retention policies. One path has exactly one retention policy. A policy can
-however contain multiple count-time period pairs in order to specify complex
-retention policies.
-Retention policies can be added and removed individually or in bulk via the
-forms `ceph fs snap-schedule retention add <path> <time period> <count>` and
-`ceph fs snap-schedule retention add <path> <countTime period>[countTime period]`
+增加或删除保留策略
+------------------
+.. Add and remove retention policies
 
-Examples::
+`retention add` 和 `retention remove` 子命令允许管理保留策略。
+一个路径只有一个保留策略，
+但一个策略可以包含多个计时对，以便指定复杂的保留策略。
+可以通过 `ceph fs snap-schedule retention add <path> <time period> <count>`
+和 `ceph fs snap-schedule retention add <path> <countTime period>[countTime period]`
+单独地或批量地添加、删除保留策略。
+
+实例： ::
 
   ceph fs snap-schedule retention add / h 24 # keep 24 snapshots at least an hour apart
   ceph fs snap-schedule retention add / d 7 # and 7 snapshots at least a day apart
@@ -149,61 +149,70 @@ Examples::
   ceph fs snap-schedule retention add / 24h4w # add 24 hourly and 4 weekly to retention
   ceph fs snap-schedule retention remove / 7d4w # remove 7 daily and 4 weekly, leaves 24 hourly
 
-.. note: When adding a path to snap-schedule, remember to strip off the mount
-   point path prefix. Paths to snap-schedule should start at the appropriate
-   CephFS file system root and not at the host file system root.
-   e.g. if the Ceph File System is mounted at ``/mnt`` and the path under which
-   snapshots need to be taken is ``/mnt/some/path`` then the acutal path required
-   by snap-schedule is only ``/some/path``.
+.. note:: 向 snap-schedule 添加路径时，记住去掉挂载点的路径前缀。
+   给 snap-schedule 指定的路径应该是从相应的 CephFS 文件系统根目录开始，
+   而不是从客户端主机的文件系统根目录开始。例如，
+   假设 Ceph 文件系统挂载在 ``/mnt`` ，而需要拍快照的路径是 ``/mnt/some/path`` ，
+   那么 snap-schedule 所需的实际路径就只有 ``/some/path`` 。
 
-.. note: It should be noted that the "created" field in the snap-schedule status
-   command output is the timestamp at which the schedule was created. The "created"
-   timestamp has nothing to do with the creation of actual snapshots. The actual
-   snapshot creation is accounted for in the "created_count" field, which is a
-   cumulative count of the total number of snapshots created so far.
+.. note:: 需要注意的是， snap-schedule status 命令输出中\
+   的“ created ”字段是创建计划时的时间戳。
+   created 时间戳与实际快照的创建无关。
+   实际快照创建情况在 created_count 字段中说明，
+   该字段是迄今为止创建的快照总数的累积计数。
 
-.. note: The maximum number of snapshots to retain per directory is limited by the
-   config tunable `mds_max_snaps_per_dir`. This tunable defaults to 100.
-   To ensure a new snapshot can be created, one snapshot less than this will be
-   retained. So by default, a maximum of 99 snapshots will be retained.
+.. note:: 每个目录保留快照的最大数量由配置选项
+   `mds_max_snaps_per_dir` 限制，其默认值为 100 。
+   为确保能创建新快照，将保留比该数量少一个的快照。
+   因此，默认情况下最多保留 99 个快照。
 
-.. note: The --fs argument is now required if there is more than one file system.
+.. note:: 如果有多个文件系统，还得加上 --fs 参数。
 
-Active and inactive schedules
------------------------------
-Snapshot schedules can be added for a path that doesn't exist yet in the
-directory tree. Similarly a path can be removed without affecting any snapshot
-schedules on that path.
-If a directory is not present when a snapshot is scheduled to be taken, the
-schedule will be set to inactive and will be excluded from scheduling until
-it is activated again.
-A schedule can manually be set to inactive to pause the creating of scheduled
-snapshots.
-The module provides the `activate` and `deactivate` subcommands for this
-purpose.
 
-Examples::
+有效和无效的计划
+----------------
+.. Active and inactive schedules
+
+可以为目录树中还不存在的路径添加快照计划。
+同样，删除路径也不会影响该路径的快照计划。
+如果按计划拍快照时目录不存在，
+此计划将被设置为无效（ inactive ），
+并将被排除在计划调度之外，直到再次激活为止。
+可以手动把计划设置为无效，以暂停按计划创建快照。
+本模块为此功能提供了 `activate` （激活）\
+和 `deactivate` （停用）子命令。
+
+实例： ::
 
   ceph fs snap-schedule activate / # activate all schedules on the root directory
   ceph fs snap-schedule deactivate / 1d # deactivates daily snapshots on the root directory
 
-Limitations
------------
-Snapshots are scheduled using python Timers. Under normal circumstances
-specifying 1h as the schedule will result in snapshots 1 hour apart fairly
-precisely. If the mgr daemon is under heavy load however, the Timer threads
-might not get scheduled right away, resulting in a slightly delayed snapshot. If
-this happens, the next snapshot will be schedule as if the previous one was not
-delayed, i.e. one or more delayed snapshots will not cause drift in the overall
-schedule.
 
-In order to somewhat limit the overall number of snapshots in a file system, the
-module will only keep a maximum of 50 snapshots per directory. If the retention
-policy results in more then 50 retained snapshots, the retention list will be
-shortened to the newest 50 snapshots.
+局限性
+------
+.. Limitations
 
-Data storage
-------------
-The snapshot schedule data is stored in a rados object in the cephfs metadata
-pool. At runtime all data lives in a sqlite database that is serialized and
-stored as a rados object.
+快照使用 python Timer （计时器）进行调度。
+在正常情况下，指定 1h 的计划会让拍快照相当精确地间隔 1 小时。
+但是，如果 mgr 守护进程负载过重，定时器线程可能无法立即调度，
+导致快照稍有延迟。如果出现这种情况，
+下一个快照仍将照旧，就像前一个快照没延迟过一样，
+即一个或多个延迟的快照不会导致计划表的整体偏移。
+
+如果在卷上快照计划处于活动状态时删除了卷，那么在这些卷上执行命令时，
+可能会在日志文件或命令行中看到 Python Tracebacks （回溯）。
+虽然我们已采取措施考虑 fs_map 的变化、并删除活跃的计时器、
+关闭数据库连接，以避免 Python 回溯，但由于问题的固有性质，不可能完全消除回溯。
+在出现此类回溯的情况下，要使系统达到稳定状态，
+唯一的解决办法就是禁用并重新启用 snap_schedule 管理器模块。
+
+为了在一定程度上限制文件系统中快照的总体数量，
+该模块只为每个目录保留最多 50 个快照。
+如果保留策略想要保留的快照超过 50 个，保留列表将缩短成最新的 50 个快照。
+
+数据存储
+--------
+.. Data storage
+
+快照计划数据存储在 cephfs 元数据存储池里的一个 rados 对象中。运行时，
+所有数据都放在一个 sqlite 数据库中；存储时，就被序列化成一个 rados 对象。
