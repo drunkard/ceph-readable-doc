@@ -136,17 +136,17 @@
 <li class="toctree-l3"><a class="reference internal" href="../cephfs-top/"> CephFS Top 工具</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../snap-schedule/"> 定时快照</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#"> CephFS 快照镜像</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#requirements">Requirements</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#creating-users">Creating Users</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#starting-mirror-daemon">Starting Mirror Daemon</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#interface">Interface</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mirroring-module">Mirroring Module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#bootstrap-peers">Bootstrap Peers</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#snapshot-mirroring">Snapshot Mirroring</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mirroring-status">Mirroring Status</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#metrics">Metrics</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#configuration-options">Configuration Options</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#re-adding-peers">Re-adding Peers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1">所需条件</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cephfs-mirroring-creating-users">创建用户</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">启动镜像守护进程</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">管理接口</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">镜像模块</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cephfs-mirroring-bootstrap-peers">启动互联节点</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cephfs-mirroring-mirroring-status">开始镜像快照</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">镜像状态</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">指标</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">配置选项</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id11">重新添加互联节点</a></li>
 </ul>
 </li>
 </ul>
@@ -214,155 +214,143 @@
   
   <section id="cephfs">
 <span id="cephfs-mirroring"></span><h1>CephFS 快照镜像<a class="headerlink" href="#cephfs" title="Permalink to this heading"></a></h1>
-<p>CephFS supports asynchronous replication of snapshots to a remote CephFS file system via
-the <cite>cephfs-mirror</cite> tool. Snapshots are synchronized by mirroring snapshot data followed by
-creating a remote snapshot with the same name (for a given directory on the remote file system) as
-the source snapshot.</p>
-<section id="requirements">
-<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this heading"></a></h2>
-<p>The primary (local) and secondary (remote) Ceph clusters version should be Pacific or later.</p>
+<p>CephFS 支持通过 <cite>cephfs-mirror</cite> 工具，把快照异步地复制到远程 CephFS 文件系统。
+快照的同步方式是镜像快照数据，
+然后创建一个与源快照同名（给远程文件系统上的指定目录）的远程快照。</p>
+<section id="id1">
+<h2>所需条件<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
+<p>主的（本地）和次的（远程） Ceph 集群版本应该是 Pacific 或更高版本。</p>
 </section>
-<section id="creating-users">
-<span id="cephfs-mirroring-creating-users"></span><h2>Creating Users<a class="headerlink" href="#creating-users" title="Permalink to this heading"></a></h2>
-<p>Start by creating a Ceph user (on the primary/local cluster) for the <cite>cephfs-mirror</cite> daemon. This user
-requires write capability on the metadata pool to create RADOS objects (index objects)
-for watch/notify operation and read capability on the data pool(s):</p>
+<section id="cephfs-mirroring-creating-users">
+<span id="id2"></span><h2>创建用户<a class="headerlink" href="#cephfs-mirroring-creating-users" title="Permalink to this heading"></a></h2>
+<p>首先，在主的/本地集群上给 <cite>cephfs-mirror</cite> 守护进程创建一个 Ceph 用户。
+此用户需要元数据存储池的写入能力，以创建用于监视/通知操作的
+RADOS 对象（索引对象），还需要数据存储池的读取能力：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph auth get-or-create client.mirror mon &#39;profile cephfs-mirror&#39; mds &#39;allow r&#39; osd &#39;allow rw tag cephfs metadata=*, allow r tag cephfs data=*&#39; mgr &#39;allow r&#39;
 </pre></div>
 </div>
-<p>Create a Ceph user for each file system peer (on the secondary/remote cluster). This user needs
-to have full capabilities on the MDS (to take snapshots) and the OSDs:</p>
+<p>给每个文件系统互联节点（在次要的/远程集群上）创建一个 Ceph 用户。
+此用户需要具备 MDS （要拍快照）和 OSD 的全部能力：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs authorize &lt;fs_name&gt; client.mirror_remote / rwps
 </pre></div>
 </div>
-<p>This user will be supplied as part of the peer specification when adding a peer.</p>
+<p>添加互联节点时，这个用户是互联节点规范的一部分。</p>
 </section>
-<section id="starting-mirror-daemon">
-<h2>Starting Mirror Daemon<a class="headerlink" href="#starting-mirror-daemon" title="Permalink to this heading"></a></h2>
-<p>The mirror daemon should be spawned using <cite>systemctl(1)</cite> unit files:</p>
+<section id="id3">
+<h2>启动镜像守护进程<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
+<p>镜像守护进程应该用 <cite>systemctl(1)</cite> 单元文件启动：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ systemctl enable cephfs-mirror@mirror
 $ systemctl start cephfs-mirror@mirror
 </pre></div>
 </div>
-<p><cite>cephfs-mirror</cite> daemon can be run in foreground using:</p>
+<p><cite>cephfs-mirror</cite> 守护进程可以在前台运行，如下：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cephfs-mirror --id mirror --cluster site-a -f
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The user specified here is <cite>mirror</cite>, the creation of which is
-described in the <a class="reference internal" href="#cephfs-mirroring-creating-users"><span class="std std-ref">Creating Users</span></a>
-section.</p>
+<p>这里指定的用户是 <cite>mirror</cite> ，其创建方法在
+<a class="reference internal" href="#cephfs-mirroring-creating-users"><span class="std std-ref">Creating Users</span></a> 说明。</p>
 </div>
-<p>Multiple <code class="docutils literal notranslate"><span class="pre">cephfs-mirror</span></code> daemons may be deployed for concurrent
-synchronization and high availability. Mirror daemons share the synchronization
-load using a simple <code class="docutils literal notranslate"><span class="pre">M/N</span></code> policy, where <code class="docutils literal notranslate"><span class="pre">M</span></code> is the number of directories
-and <code class="docutils literal notranslate"><span class="pre">N</span></code> is the number of <code class="docutils literal notranslate"><span class="pre">cephfs-mirror</span></code> daemons.</p>
-<p>When <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> is used to manage a Ceph cluster, <code class="docutils literal notranslate"><span class="pre">cephfs-mirror</span></code> daemons can be
-deployed by running the following command:</p>
+<p>可以部署多个 <code class="docutils literal notranslate"><span class="pre">cephfs-mirror</span></code> 守护进程，以实现并行同步和高可用性。
+镜像守护进程用简单的 <code class="docutils literal notranslate"><span class="pre">M/N</span></code> 策略分担同步载荷，
+其中 <code class="docutils literal notranslate"><span class="pre">M</span></code> 是目录数， <code class="docutils literal notranslate"><span class="pre">N</span></code> 是 <code class="docutils literal notranslate"><span class="pre">cephfs-mirror</span></code> 守护进程数量。</p>
+<p>用 <code class="docutils literal notranslate"><span class="pre">cephadm</span></code> 管理 Ceph 集群时，可运行下列命令部署 <code class="docutils literal notranslate"><span class="pre">cephfs-mirror</span></code> 守护进程：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
 span.prompt1:before {
   content: "$ ";
 }
 </style><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>apply<span class="w"> </span>cephfs-mirror</span>
-</pre></div></div><p>To deploy multiple mirror daemons, run a command of the following form:</p>
+</pre></div></div><p>要部署多个镜像守护进程，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>orch<span class="w"> </span>apply<span class="w"> </span>cephfs-mirror<span class="w"> </span>--placement<span class="o">=</span>&lt;placement-spec&gt;</span>
-</pre></div></div><p>For example, to deploy 3 <cite>cephfs-mirror</cite> daemons on different hosts, run a command of the following form:</p>
+</pre></div></div><p>例如，要在不同主机上部署 3 个 <cite>cephfs-mirror</cite> 守护进程，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">$<span class="w"> </span>ceph<span class="w"> </span>orch<span class="w"> </span>apply<span class="w"> </span>cephfs-mirror<span class="w"> </span>--placement<span class="o">=</span><span class="s2">&quot;3 host1,host2,host3&quot;</span></span>
 </pre></div></div></section>
-<section id="interface">
-<h2>Interface<a class="headerlink" href="#interface" title="Permalink to this heading"></a></h2>
-<p>The <cite>Mirroring</cite> module (manager plugin) provides interfaces for managing
-directory snapshot mirroring. These are (mostly) wrappers around monitor
-commands for managing file system mirroring and is the recommended control
-interface.</p>
+<section id="id4">
+<h2>管理接口<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
+<p><cite>Mirroring</cite> 模块（管理器插件）提供了管理目录快照镜像的接口。
+这些接口（大多）是监视器命令的套壳，用于管理文件系统镜像，是建议使用的控制接口。</p>
 </section>
-<section id="mirroring-module">
-<h2>Mirroring Module<a class="headerlink" href="#mirroring-module" title="Permalink to this heading"></a></h2>
-<p>The mirroring module is responsible for assigning directories to mirror daemons
-for synchronization. Multiple mirror daemons can be spawned to achieve
-concurrency in directory snapshot synchronization. When mirror daemons are
-spawned (or terminated), the mirroring module discovers the modified set of
-mirror daemons and rebalances directory assignments across the new set, thus
-providing high-availability.</p>
+<section id="id5">
+<h2>镜像模块<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h2>
+<p>镜像模块负责将目录分配给镜像守护进程进行同步。
+可以派生出多个镜像守护进程，以并行地同步目录快照。
+派生（或终止）镜像守护进程时，
+镜像模块会发现有更改的一堆镜像守护进程，
+然后重新均衡地分配一下镜像守护进程上的目录，从而提供高可用性。</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Deploying a single mirror daemon is recommended. Running multiple
-daemons is untested.</p>
+<p>建议只部署一个镜像守护进程。
+运行多个守护进程未经测试。</p>
 </div>
-<p>The following file types are supported by the mirroring:</p>
+<p>镜像功能支持的文件类型如下：</p>
 <ul class="simple">
-<li><p>Regular files (-)</p></li>
-<li><p>Directory files (d)</p></li>
-<li><p>Symbolic link file (l)</p></li>
+<li><p>常规文件 (-)</p></li>
+<li><p>目录文件 (d)</p></li>
+<li><p>符号链接 (l)</p></li>
 </ul>
-<p>The other file types are ignored by the mirroring. So they won’t be
-available on a successfully synchronized peer.</p>
-<p>The mirroring module is disabled by default. To enable the mirroring module,
-run the following command:</p>
+<p>镜像会忽略其他文件类型。因此，
+在同步成功的对等节点上它们也不可用。</p>
+<p>镜像模块默认是禁用的。
+要启用镜像模块，运行以下命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>mgr<span class="w"> </span>module<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>mirroring</span>
-</pre></div></div><p>The mirroring module provides a family of commands that can be used to control
-the mirroring of directory snapshots. To add or remove directories, mirroring
-must be enabled for a given file system. To enable mirroring for a given file
-system, run a command of the following form:</p>
+</pre></div></div><p>镜像模块提供了一系列命令，
+可用于控制目录快照的镜像。
+要添加或删除目录，必须在指定文件系统上启用镜像功能。
+要在指定文件系统上启用镜像功能，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>&lt;fs_name&gt;</span>
 </pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>“Mirroring module” commands are prefixed with <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">snapshot</span> <span class="pre">mirror</span></code>.
-This distinguishes them from “monitor commands”, which are prefixed with <code class="docutils literal notranslate"><span class="pre">fs</span>
-<span class="pre">mirror</span></code>. Enabling mirroring by using monitor commands will result in the mirror daemon
-entering the “failed” state due to the absence of the <cite>cephfs_mirror</cite> index object.
-So be sure (in this context) to use module commands.</p>
+<p>“Mirroring module” （镜像模块）命令的前缀是 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">snapshot</span> <span class="pre">mirror</span></code> 。
+这样调用就把它们和“监视器命令”区分开了，监视器命令前缀是 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">mirror</span></code> 。
+用监视器命令启用镜像功能会导致镜像守护进程进入“失败（ failed ）”状态，
+原因是缺少 <cite>cephfs_mirror</cite> 索引对象。
+因此（在这种情况下）一定要用模块命令。</p>
 </div>
-<p>To disable mirroring for a given file system, run a command of the following form:</p>
+<p>要禁用指定文件系统的镜像功能，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span>disable<span class="w"> </span>&lt;fs_name&gt;</span>
-</pre></div></div><p>After mirroring is enabled, add a peer to which directory snapshots are to be
-mirrored. Peers are specified by the <code class="docutils literal notranslate"><span class="pre">&lt;client&gt;&#64;&lt;cluster&gt;</span></code> format, which is
-referred to elsewhere in this document as the <code class="docutils literal notranslate"><span class="pre">remote_cluster_spec</span></code>. Peers
-are assigned a unique-id (UUID) when added. See the <a class="reference internal" href="#cephfs-mirroring-creating-users"><span class="std std-ref">Creating
-Users</span></a> section for instructions that describe
-how to create Ceph users for mirroring.</p>
-<p>To add a peer, run a command of the following form:</p>
+</pre></div></div><p>启用镜像功能后，可以添加目录快照的镜像对端互联节点。
+互联节点按照 <code class="docutils literal notranslate"><span class="pre">&lt;client&gt;&#64;&lt;cluster&gt;</span></code> 格式指定，
+在本文档的其他地方叫做 <code class="docutils literal notranslate"><span class="pre">remote_cluster_spec</span></code> 。
+添加互联节点时会分配一个唯一标识（ UUID ）。
+有关如何创建用于做镜像的 Ceph 用户，
+请参阅 <a class="reference internal" href="#cephfs-mirroring-creating-users"><span class="std std-ref">创建用户</span></a> 部分。</p>
+<p>要添加互联节点，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span>peer_add<span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>&lt;remote_cluster_spec&gt;<span class="w"> </span><span class="o">[</span>&lt;remote_fs_name&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>&lt;remote_mon_host&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>&lt;cephx_key&gt;<span class="o">]</span></span>
-</pre></div></div><p><code class="docutils literal notranslate"><span class="pre">&lt;remote_cluster_spec&gt;</span></code> is of the format <code class="docutils literal notranslate"><span class="pre">client.&lt;id&gt;&#64;&lt;cluster_name&gt;</span></code>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">&lt;remote_fs_name&gt;</span></code> is optional, and defaults to <cite>&lt;fs_name&gt;</cite> (on the remote
-cluster).</p>
-<p>For this command to succeed, the remote cluster’s Ceph configuration and user
-keyring must be available in the primary cluster. For example, if a user named
-<code class="docutils literal notranslate"><span class="pre">client_mirror</span></code> is created on the remote cluster which has <code class="docutils literal notranslate"><span class="pre">rwps</span></code>
-permissions for the remote file system named <code class="docutils literal notranslate"><span class="pre">remote_fs</span></code> (see <cite>Creating
-Users</cite>) and the remote cluster is named <code class="docutils literal notranslate"><span class="pre">remote_ceph</span></code> (that is, the remote
-cluster configuration file is named <code class="docutils literal notranslate"><span class="pre">remote_ceph.conf</span></code> on the primary
-cluster), run the following command to add the remote filesystem as a peer to
-the primary filesystem <code class="docutils literal notranslate"><span class="pre">primary_fs</span></code>:</p>
+</pre></div></div><p><code class="docutils literal notranslate"><span class="pre">&lt;remote_cluster_spec&gt;</span></code> 的格式是 <code class="docutils literal notranslate"><span class="pre">client.&lt;id&gt;&#64;&lt;cluster_name&gt;</span></code> 。</p>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;remote_fs_name&gt;</span></code> 是可选的，默认值是 <cite>&lt;fs_name&gt;</cite>
+（在远端集群上）。</p>
+<p>这个命令要想成功执行的话，远端集群的 Ceph 配置和用户密钥环必须在主集群中能访问到。例如，
+如果在远程集群上创建了名为 <code class="docutils literal notranslate"><span class="pre">client_mirror</span></code> 的用户，
+该用户在名为 <code class="docutils literal notranslate"><span class="pre">remote_fs</span></code> 的远程文件系统上拥有
+<code class="docutils literal notranslate"><span class="pre">rwps</span></code> 权限（参阅<cite>创建用户</cite>），且远程集群名为 <code class="docutils literal notranslate"><span class="pre">remote_ceph</span></code>
+（即主集群上的远程集群配置文件名是 <code class="docutils literal notranslate"><span class="pre">remote_ceph.conf</span></code> ），
+则运行以下命令，可以将远程文件系统添加成主文件系统 <code class="docutils literal notranslate"><span class="pre">primary_fs</span></code> 的对等文件系统：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span>peer_add<span class="w"> </span>primary_fs<span class="w"> </span>client.mirror_remote@remote_ceph<span class="w"> </span>remote_fs</span>
-</pre></div></div><p>To avoid having to maintain the remote cluster configuration file and remote
-ceph user keyring in the primary cluster, users can bootstrap a peer (which
-stores the relevant remote cluster details in the monitor config store on the
-primary cluster). See the <a class="reference internal" href="#cephfs-mirroring-bootstrap-peers"><span class="std std-ref">Bootstrap
-Peers</span></a> section.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">peer_add</span></code> command supports passing the remote cluster monitor address
-and the user key. However, bootstrapping a peer is the recommended way to add a
-peer.</p>
+</pre></div></div><p>为避免在主集群中维护远程集群配置文件和远程 ceph 用户密钥环，用户可以启动一个互联节点
+（把相关远程集群的详细信息存入主集群上的监视器配置存储库中）。
+参阅“<a class="reference internal" href="#cephfs-mirroring-bootstrap-peers"><span class="std std-ref">启动互联节点</span></a>”部分。</p>
+<p><code class="docutils literal notranslate"><span class="pre">peer_add</span></code> 命令可以加上远程集群监视器地址和用户密钥。
+不过，添加互联节点的推荐方法是启动（ bootstrap ）互联节点。</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Only a single peer is currently supported.</p>
+<p>当前只支持单个互联节点。</p>
 </div>
-<p>To remove a peer, run a command of the following form:</p>
+<p>要删除一个互联节点，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span>peer_remove<span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>&lt;peer_uuid&gt;</span>
-</pre></div></div><p>To list file system mirror peers, run a command of the following form:</p>
+</pre></div></div><p>要罗列出文件系统的镜像互联节点，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span>peer_list<span class="w"> </span>&lt;fs_name&gt;</span>
-</pre></div></div><p>To configure a directory for mirroring, run a command of the following form:</p>
+</pre></div></div><p>配置一个要镜像的目录，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span>add<span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>&lt;path&gt;</span>
-</pre></div></div><p>To list the configured directories, run a command of the following form:</p>
+</pre></div></div><p>要罗列配置的目录，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span>ls<span class="w"> </span>&lt;fs_name&gt;</span>
-</pre></div></div><p>To stop mirroring directory snapshots, run a command of the following form:</p>
+</pre></div></div><p>要停止目录快照的镜像功能，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span>snapshot<span class="w"> </span>mirror<span class="w"> </span>remove<span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>&lt;path&gt;</span>
-</pre></div></div><p>Only absolute directory paths are allowed.</p>
-<p>Paths are normalized by the mirroring module. This means that <code class="docutils literal notranslate"><span class="pre">/a/b/../b</span></code> is
-equivalent to <code class="docutils literal notranslate"><span class="pre">/a/b</span></code>. Paths always start from the CephFS file-system root and
-not from the host system mount point.</p>
-<p>For example:</p>
+</pre></div></div><p>只能用目录的绝对路径。</p>
+<p>路径是由镜像模块规范化的。这意味着 <code class="docutils literal notranslate"><span class="pre">/a/b/.../b</span></code>
+等同于 <code class="docutils literal notranslate"><span class="pre">/a/b</span></code> 。路径总是从 CephFS 文件系统根目录开始，
+而不是从主机系统挂载点开始。</p>
+<p>例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mkdir -p /d0/d1/d2
 $ ceph fs snapshot mirror add cephfs /d0/d1/d2
 {}
@@ -370,53 +358,48 @@ $ ceph fs snapshot mirror add cephfs /d0/d1/../d1/d2
 Error EEXIST: directory /d0/d1/d2 is already tracked
 </pre></div>
 </div>
-<p>After a directory is added for mirroring, the additional mirroring of
-subdirectories or ancestor directories is disallowed:</p>
+<p>配置好一个目录的镜像后，不允许再镜像它的子目录或它的上级目录目录：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs snapshot mirror add cephfs /d0/d1
 Error EINVAL: /d0/d1 is a ancestor of tracked path /d0/d1/d2
 $ ceph fs snapshot mirror add cephfs /d0/d1/d2/d3
 Error EINVAL: /d0/d1/d2/d3 is a subtree of tracked path /d0/d1/d2
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="#cephfs-mirroring-mirroring-status"><span class="std std-ref">Mirroring Status</span></a> section contains
-information about the commands for checking the directory mapping (to mirror
-daemons) and for checking the directory distribution.</p>
+<p><a class="reference internal" href="#cephfs-mirroring-mirroring-status"><span class="std std-ref">镜像状态</span></a>段落包含一些信息，是用于检查目录映射（到镜像守护进程的）和检查目录分布的命令。</p>
 </section>
-<section id="bootstrap-peers">
-<span id="cephfs-mirroring-bootstrap-peers"></span><h2>Bootstrap Peers<a class="headerlink" href="#bootstrap-peers" title="Permalink to this heading"></a></h2>
-<p>Adding a peer (via <cite>peer_add</cite>) requires the peer cluster configuration and user keyring
-to be available in the primary cluster (manager host and hosts running the mirror daemon).
-This can be avoided by bootstrapping and importing a peer token. Peer bootstrap involves
-creating a bootstrap token on the peer cluster via:</p>
+<section id="cephfs-mirroring-bootstrap-peers">
+<span id="id6"></span><h2>启动互联节点<a class="headerlink" href="#cephfs-mirroring-bootstrap-peers" title="Permalink to this heading"></a></h2>
+<p>添加互联节点（通过 <cite>peer_add</cite> ）时，要求在主集群（管理器主机和运行镜像守护进程的主机）上能看到互联节点的集群配置和用户密钥环。
+这可以通过启动和导入一个互联节点的令牌来避免。
+互联节点的启动包括在互联集群上创建一个启动令牌：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs snapshot mirror peer_bootstrap create &lt;fs_name&gt; &lt;client_entity&gt; &lt;site-name&gt;
 </pre></div>
 </div>
-<p>e.g.:</p>
+<p>例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs snapshot mirror peer_bootstrap create backup_fs client.mirror_remote site-remote
 {&quot;token&quot;: &quot;eyJmc2lkIjogIjBkZjE3MjE3LWRmY2QtNDAzMC05MDc5LTM2Nzk4NTVkNDJlZiIsICJmaWxlc3lzdGVtIjogImJhY2t1cF9mcyIsICJ1c2VyIjogImNsaWVudC5taXJyb3JfcGVlcl9ib290c3RyYXAiLCAic2l0ZV9uYW1lIjogInNpdGUtcmVtb3RlIiwgImtleSI6ICJBUUFhcDBCZ0xtRmpOeEFBVnNyZXozai9YYUV0T2UrbUJEZlJDZz09IiwgIm1vbl9ob3N0IjogIlt2MjoxOTIuMTY4LjAuNTo0MDkxOCx2MToxOTIuMTY4LjAuNTo0MDkxOV0ifQ==&quot;}
 </pre></div>
 </div>
-<p><cite>site-name</cite> refers to a user-defined string to identify the remote filesystem. In context
-of <cite>peer_add</cite> interface, <cite>site-name</cite> is the passed in <cite>cluster</cite> name from <cite>remote_cluster_spec</cite>.</p>
-<p>Import the bootstrap token in the primary cluster via:</p>
+<p><cite>site-name</cite> 指的是用户定义的字符串，用于标识远程文件系统。在 <cite>peer_add</cite> 接口的上下文中， <cite>site-name</cite> 就是 <cite>remote_cluster_spec</cite> 里传入的集群名（ <cite>cluster_name</cite> ）。</p>
+<p>在主集群里导入启动令牌，用命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs snapshot mirror peer_bootstrap import &lt;fs_name&gt; &lt;token&gt;
 </pre></div>
 </div>
-<p>e.g.:</p>
+<p>例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs snapshot mirror peer_bootstrap import cephfs eyJmc2lkIjogIjBkZjE3MjE3LWRmY2QtNDAzMC05MDc5LTM2Nzk4NTVkNDJlZiIsICJmaWxlc3lzdGVtIjogImJhY2t1cF9mcyIsICJ1c2VyIjogImNsaWVudC5taXJyb3JfcGVlcl9ib290c3RyYXAiLCAic2l0ZV9uYW1lIjogInNpdGUtcmVtb3RlIiwgImtleSI6ICJBUUFhcDBCZ0xtRmpOeEFBVnNyZXozai9YYUV0T2UrbUJEZlJDZz09IiwgIm1vbl9ob3N0IjogIlt2MjoxOTIuMTY4LjAuNTo0MDkxOCx2MToxOTIuMTY4LjAuNTo0MDkxOV0ifQ==
 </pre></div>
 </div>
 </section>
-<section id="snapshot-mirroring">
-<span id="cephfs-mirroring-mirroring-status"></span><h2>Snapshot Mirroring<a class="headerlink" href="#snapshot-mirroring" title="Permalink to this heading"></a></h2>
-<p>To initiate snapshot mirroring, create a snapshot of the configured directory in the primary cluster:</p>
+<section id="cephfs-mirroring-mirroring-status">
+<span id="id7"></span><h2>开始镜像快照<a class="headerlink" href="#cephfs-mirroring-mirroring-status" title="Permalink to this heading"></a></h2>
+<p>要启动快照镜像，在主集群中给已配置的目录创建一个快照：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mkdir -p /d0/d1/d2/.snap/snap1
 </pre></div>
 </div>
 </section>
-<section id="mirroring-status">
-<h2>Mirroring Status<a class="headerlink" href="#mirroring-status" title="Permalink to this heading"></a></h2>
-<p>CephFS mirroring module provides <cite>mirror daemon status</cite> interface to check mirror daemon status:</p>
+<section id="id8">
+<h2>镜像状态<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h2>
+<p>CephFS 镜像模块提供了 <cite>mirror daemon status</cite> 接口，用于检查镜像守护进程的状态：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs snapshot mirror daemon status
 [
   {
@@ -446,11 +429,10 @@ of <cite>peer_add</cite> interface, <cite>site-name</cite> is the passed in <cit
 ]
 </pre></div>
 </div>
-<p>An entry per mirror daemon instance is displayed along with information such as configured
-peers and basic stats. For more detailed stats, use the admin socket interface as detailed
-below.</p>
-<p>CephFS mirror daemons provide admin socket commands for querying mirror status. To check
-available commands for mirror status use:</p>
+<p>每个镜像守护进程实例都会显示一个条目，以及已配置的互联节点和基本统计信息。
+想知道更详细的统计信息，可以用管理套接字接口，详情如下。</p>
+<p>CephFS 镜像守护进程提供用于查询镜像状态的管理员套接字命令。
+要查看和镜像状态有关的命令，用：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph --admin-daemon /path/to/mirror/daemon/admin/socket help
 {
     ....
@@ -461,12 +443,11 @@ available commands for mirror status use:</p>
 }
 </pre></div>
 </div>
-<p>Commands prefixed with`fs mirror status` provide mirror status for mirror enabled
-file systems. Note that <cite>cephfs&#64;360</cite> is of format <cite>filesystem-name&#64;filesystem-id</cite>.
-This format is required since mirror daemons get asynchronously notified regarding
-file system mirror status (A file system can be deleted and recreated with the same
-name).</p>
-<p>This command currently provides minimal information regarding mirror status:</p>
+<p>以 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">mirror</span> <span class="pre">status</span></code> 为前缀的命令可查看镜像状态，适用于启用了镜像功能的文件系统。
+注意， <cite>cephfs&#64;360</cite> 是按照 <cite>filesystem-name&#64;filesystem-id</cite> 这个格式。
+需要使用这种格式，是因为镜像守护进程会异步地收到有关文件系统镜像状态的通知
+（文件系统可以用同一名称删除和重新创建）。</p>
+<p>该命令目前只提供有关镜像状态的最基本信息：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph --admin-daemon /var/run/ceph/cephfs-mirror.asok fs mirror status cephfs@360
 {
   &quot;rados_inst&quot;: &quot;192.168.0.5:0/1476644347&quot;,
@@ -485,11 +466,12 @@ name).</p>
 }
 </pre></div>
 </div>
-<p>The <cite>Peers</cite> section in the command output above shows the peer information including the unique
-peer-id (UUID) and specification. The peer-id is required when removing an existing peer
-as mentioned in the <cite>Mirror Module and Interface</cite> section.</p>
-<p>Commands prefixed with <cite>fs mirror peer status</cite> provide peer synchronization status. This
-command is of format <cite>filesystem-name&#64;filesystem-id peer-uuid</cite>:</p>
+<p>上面命令输出中的 <cite>Peers</cite> 一段显示的是互联节点信息，
+包括唯一的互联节点标识（ UUID ）和镜像规范。
+删除现有互联节点时需要使用互联节点 ID （ peer-id ），
+在<cite>镜像模块和接口</cite>小节说过了。</p>
+<p>以 <code class="docutils literal notranslate"><span class="pre">fs</span> <span class="pre">mirror</span> <span class="pre">peer</span> <span class="pre">status</span></code> 为前缀的命令能查看互联节点的同步状态。
+命令格式为 <cite>filesystem-name&#64;filesystem-id peer-uuid</cite>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph --admin-daemon /var/run/ceph/cephfs-mirror.asok fs mirror peer status cephfs@360 a2dc7784-e7a1-4723-b103-03ee8d8768f8
 {
   &quot;/d0&quot;: {
@@ -508,17 +490,17 @@ command is of format <cite>filesystem-name&#64;filesystem-id peer-uuid</cite>:</
 }
 </pre></div>
 </div>
-<p>Synchronization stats including <cite>snaps_synced</cite>, <cite>snaps_deleted</cite> and <cite>snaps_renamed</cite> are reset
-on daemon restart and/or when a directory is reassigned to another mirror daemon (when
-multiple mirror daemons are deployed).</p>
-<p>A directory can be in one of the following states:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>- `idle`: The directory is currently not being synchronized
-- `syncing`: The directory is currently being synchronized
-- `failed`: The directory has hit upper limit of consecutive failures
+<p>当重启守护进程和/或把目录重新分配给另一个镜像守护进程时
+（假设部署了多个镜像守护进程），包括 <cite>snaps_synced</cite> 、 <cite>snaps_deleted</cite> 和
+<cite>snaps_renamed</cite> 在内的这些同步统计信息将被重置。</p>
+<p>目录状态可以是以下之一：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>- `idle`: 此目录当前尚未同步
+- `syncing`: 此目录当前正在同步
+- `failed`: 此目录已达到最大连续失败数
 </pre></div>
 </div>
-<p>When a directory is currently being synchronized, the mirror daemon marks it as <cite>syncing</cite> and
-<cite>fs mirror peer status</cite> shows the snapshot being synchronized under the <cite>current_syncing_snap</cite>:</p>
+<p>当现在正同步某个目录时，镜像守护进程会把它标记为 <cite>syncing</cite> ，并且
+<cite>fs mirror peer status</cite> 会在 <cite>current_syncing_snap</cite> 内显示正在同步的快照：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph --admin-daemon /var/run/ceph/cephfs-mirror.asok fs mirror peer status cephfs@360 a2dc7784-e7a1-4723-b103-03ee8d8768f8
 {
   &quot;/d0&quot;: {
@@ -541,14 +523,13 @@ multiple mirror daemons are deployed).</p>
 }
 </pre></div>
 </div>
-<p>The mirror daemon marks it back to <cite>idle</cite>, when the syncing completes.</p>
-<p>When a directory experiences a configured number of consecutive synchronization failures, the
-mirror daemon marks it as <cite>failed</cite>. Synchronization for these directories is retried.
-By default, the number of consecutive failures before a directory is marked as failed
-is controlled by <cite>cephfs_mirror_max_consecutive_failures_per_directory</cite> configuration
-option (default: 10) and the retry interval for failed directories is controlled via
-<cite>cephfs_mirror_retry_failed_directories_interval</cite> configuration option (default: 60s).</p>
-<p>E.g., adding a regular file for synchronization would result in failed status:</p>
+<p>同步完成后，镜像守护进程仍然把它标记为 <cite>idle</cite> 。</p>
+<p>当某个目录同步的连续失败次数达到设定值时，镜像守护进程会把它标记为 <cite>failed</cite> 。
+稍后会重试同步这些目录。默认情况下，目录被标记为失败的连续失败次数由
+<cite>cephfs_mirror_max_consecutive_failures_per_directory</cite> 配置选项控制
+（默认值： 10 ），失败目录的重试间隔由
+<cite>cephfs_mirror_retry_failed_directories_interval</cite> 配置选项控制（默认值：60s）。</p>
+<p>例如，添加一个普通文件进行同步会导致失败状态：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs snapshot mirror add cephfs /f0
 $ ceph --admin-daemon /var/run/ceph/cephfs-mirror.asok fs mirror peer status cephfs@360 a2dc7784-e7a1-4723-b103-03ee8d8768f8
 {
@@ -574,12 +555,10 @@ $ ceph --admin-daemon /var/run/ceph/cephfs-mirror.asok fs mirror peer status cep
 }
 </pre></div>
 </div>
-<p>This allows a user to add a non-existent directory for synchronization. The mirror daemon
-will mark such a directory as failed and retry (less frequently). When the directory is
-created, the mirror daemon will clear the failed state upon successful synchronization.</p>
-<p>Adding a new snapshot or a new directory manually in the .snap directory of the
-remote filesystem will result in failed status of the corresponding configured directory.
-In the remote filesystem:</p>
+<p>系统允许用户添加不存在的目录进行同步。镜像守护进程会把此类目录标记为失败并重试
+（频率较低）。这个目录创建后，镜像守护进程会在同步成功后清除之前标记的失败状态。</p>
+<p>在远程文件系统的 .snap 目录中手动增加新快照或新目录，
+会导致配置的对应目录进入失败状态。在远程文件系统中操作：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph fs subvolume snapshot create cephfs subvol1 snap2 group1
 or
 $ mkdir /d0/.snap/snap2
@@ -608,118 +587,114 @@ $ ceph --admin-daemon /var/run/ceph/cephfs-mirror.asok fs mirror peer status cep
 }
 </pre></div>
 </div>
-<p>When the snapshot or the directory is removed from the remote filesystem, the mirror daemon will
-clear the failed state upon successful synchronization of the pending snapshots, if any.</p>
+<p>当远程文件系统删除快照或目录后，镜像守护进程将在成功地同步以前积攒的待处理快照（如有的话）后清除 failed 状态。</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Treat the remote filesystem as read-only. Nothing is inherently enforced by CephFS.
-But with the right mds caps, users would not be able to snapshot directories in the
-remote file system.</p>
+<p>把远程文件系统当作只读的。 CephFS 本身没有什么必须要做的操作。
+但是， mds 能力配置正确的话，在远程文件系统上，用户就无法对目录拍快照。</p>
 </div>
-<p>When mirroring is disabled, the respective <cite>fs mirror status</cite> command for the file system
-will not show up in command help.</p>
+<p>禁用镜像功能后，对应文件系统的 <cite>fs mirror status</cite> 命令就不会显示在命令帮助中。</p>
 </section>
-<section id="metrics">
-<h2>Metrics<a class="headerlink" href="#metrics" title="Permalink to this heading"></a></h2>
-<p>CephFS exports mirroring metrics as <a class="reference internal" href="../../dev/perf_counters/#labeled-perf-counters"><span class="std std-ref">带标签的性能计数器</span></a> which will be consumed by the OCP/ODF Dashboard to provide monitoring of the Geo Replication. These metrics can be used to measure the progress of cephfs_mirror syncing and thus provide the monitoring capability. CephFS exports the following mirroring metrics, which are displayed using the <code class="docutils literal notranslate"><span class="pre">counter</span> <span class="pre">dump</span></code> command.</p>
-<table class="colwidths-given docutils align-default" id="id1">
-<caption><span class="caption-text">Mirror Status Metrics</span><a class="headerlink" href="#id1" title="Permalink to this table"></a></caption>
+<section id="id9">
+<h2>指标<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h2>
+<p>CephFS 把镜像指标导出成了 <a class="reference internal" href="../../dev/perf_counters/#labeled-perf-counters"><span class="std std-ref">带标签的性能计数器</span></a> ， OCP/ODF Dashboard 将使用这些计数器来做 Geo Replication 监控。这些指标可用于衡量 cephfs_mirror 同步的进度，
+从而提供监控功能。 CephFS 会导出以下镜像指标，用 <code class="docutils literal notranslate"><span class="pre">counter</span> <span class="pre">dump</span></code> 命令可显示这些指标。</p>
+<table class="colwidths-given docutils align-default" id="id12">
+<caption><span class="caption-text">镜像状态指标</span><a class="headerlink" href="#id12" title="Permalink to this table"></a></caption>
 <colgroup>
 <col style="width: 20%" />
 <col style="width: 20%" />
 <col style="width: 60%" />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"><p>Name</p></th>
-<th class="head"><p>Type</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p>名字</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>描述</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p>mirroring_peers</p></td>
 <td><p>Gauge</p></td>
-<td><p>The number of peers involved in mirroring</p></td>
+<td><p>镜像涉及的互联节点数量</p></td>
 </tr>
 <tr class="row-odd"><td><p>directory_count</p></td>
 <td><p>Gauge</p></td>
-<td><p>The total number of directories being synchronized</p></td>
+<td><p>需要同步的目录总数</p></td>
 </tr>
 <tr class="row-even"><td><p>mirrored_filesystems</p></td>
 <td><p>Gauge</p></td>
-<td><p>The total number of filesystems which are mirrored</p></td>
+<td><p>要镜像的文件系统总数</p></td>
 </tr>
 <tr class="row-odd"><td><p>mirror_enable_failures</p></td>
 <td><p>Counter</p></td>
-<td><p>Enable mirroring failures</p></td>
+<td><p>镜像功能启用失败</p></td>
 </tr>
 </tbody>
 </table>
-<table class="colwidths-given docutils align-default" id="id2">
-<caption><span class="caption-text">Replication Metrics</span><a class="headerlink" href="#id2" title="Permalink to this table"></a></caption>
+<table class="colwidths-given docutils align-default" id="id13">
+<caption><span class="caption-text">复制指标</span><a class="headerlink" href="#id13" title="Permalink to this table"></a></caption>
 <colgroup>
 <col style="width: 20%" />
 <col style="width: 20%" />
 <col style="width: 60%" />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"><p>Name</p></th>
-<th class="head"><p>Type</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p>名字</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>描述</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p>snaps_synced</p></td>
 <td><p>Counter</p></td>
-<td><p>The total number of snapshots successfully synchronized</p></td>
+<td><p>成功同步的快照总数</p></td>
 </tr>
 <tr class="row-odd"><td><p>sync_bytes</p></td>
 <td><p>Counter</p></td>
-<td><p>The total bytes being synchronized</p></td>
+<td><p>已同步的总字节数</p></td>
 </tr>
 <tr class="row-even"><td><p>sync_failures</p></td>
 <td><p>Counter</p></td>
-<td><p>The total number of failed snapshot synchronizations</p></td>
+<td><p>快照同步的失败总数</p></td>
 </tr>
 <tr class="row-odd"><td><p>snaps_deleted</p></td>
 <td><p>Counter</p></td>
-<td><p>The total number of snapshots deleted</p></td>
+<td><p>删掉的快照总数</p></td>
 </tr>
 <tr class="row-even"><td><p>snaps_renamed</p></td>
 <td><p>Counter</p></td>
-<td><p>The total number of snapshots renamed</p></td>
+<td><p>重命名的快照总数</p></td>
 </tr>
 <tr class="row-odd"><td><p>avg_sync_time</p></td>
 <td><p>Gauge</p></td>
-<td><p>The average time taken by all snapshot synchronizations</p></td>
+<td><p>所有快照同步花费的时间平均值</p></td>
 </tr>
 <tr class="row-even"><td><p>last_synced_start</p></td>
 <td><p>Gauge</p></td>
-<td><p>The sync start time of the last synced snapshot</p></td>
+<td><p>上次同步快照的同步开始时间</p></td>
 </tr>
 <tr class="row-odd"><td><p>last_synced_end</p></td>
 <td><p>Gauge</p></td>
-<td><p>The sync end time of the last synced snapshot</p></td>
+<td><p>上次同步快照的同步结束时间</p></td>
 </tr>
 <tr class="row-even"><td><p>last_synced_duration</p></td>
 <td><p>Gauge</p></td>
-<td><p>The time duration of the last synchronization</p></td>
+<td><p>上次同步的持续时间</p></td>
 </tr>
 <tr class="row-odd"><td><p>last_synced_bytes</p></td>
 <td><p>counter</p></td>
-<td><p>The total bytes being synchronized for the last synced snapshot</p></td>
+<td><p>上次同步的快照，同步过去的总字节数</p></td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="configuration-options">
-<h2>Configuration Options<a class="headerlink" href="#configuration-options" title="Permalink to this heading"></a></h2>
+<section id="id10">
+<h2>配置选项<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h2>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-cephfs_mirror_max_concurrent_directory_syncs">
 <span class="sig-name descname"><span class="pre">cephfs_mirror_max_concurrent_directory_syncs</span></span><a class="headerlink" href="#confval-cephfs_mirror_max_concurrent_directory_syncs" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>maximum number of directory snapshots that can be synchronized
-concurrently by cephfs-mirror daemon. Controls the number of
-synchronization threads.</p>
+<div><p>cephfs-mirror 守护进程最多可以同时同步多少目录快照。 控制的是同步线程的数量。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
@@ -757,8 +732,7 @@ synchronization threads.</p>
 <dt class="sig sig-object std" id="confval-cephfs_mirror_restart_mirror_on_blocklist_interval">
 <span class="sig-name descname"><span class="pre">cephfs_mirror_restart_mirror_on_blocklist_interval</span></span><a class="headerlink" href="#confval-cephfs_mirror_restart_mirror_on_blocklist_interval" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Interval in seconds to restart blocklisted mirror instances. Setting
-to zero (0) disables restarting blocklisted instances.</p>
+<div><p>被阻塞的（ blocklisted ）镜像例程的重启时间间隔，秒数。 设置为零（ 0 ）意思是禁止重启被阻塞的例程。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">secs</span></code></p>
@@ -777,8 +751,7 @@ to zero (0) disables restarting blocklisted instances.</p>
 <dt class="sig sig-object std" id="confval-cephfs_mirror_max_snapshot_sync_per_cycle">
 <span class="sig-name descname"><span class="pre">cephfs_mirror_max_snapshot_sync_per_cycle</span></span><a class="headerlink" href="#confval-cephfs_mirror_max_snapshot_sync_per_cycle" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>maximum number of snapshots to mirror when a directory is picked up
-for mirroring by worker threads.</p>
+<div><p>镜像工作线程选中目录开始镜像时， 一个周期可以选中的最大快照数。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
@@ -797,8 +770,7 @@ for mirroring by worker threads.</p>
 <dt class="sig sig-object std" id="confval-cephfs_mirror_directory_scan_interval">
 <span class="sig-name descname"><span class="pre">cephfs_mirror_directory_scan_interval</span></span><a class="headerlink" href="#confval-cephfs_mirror_directory_scan_interval" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>interval in seconds to scan configured directories for snapshot
-mirroring.</p>
+<div><p>快照镜像程序对配置的目录间隔多少秒扫描一次。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
@@ -817,9 +789,7 @@ mirroring.</p>
 <dt class="sig sig-object std" id="confval-cephfs_mirror_max_consecutive_failures_per_directory">
 <span class="sig-name descname"><span class="pre">cephfs_mirror_max_consecutive_failures_per_directory</span></span><a class="headerlink" href="#confval-cephfs_mirror_max_consecutive_failures_per_directory" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>number of consecutive snapshot synchronization failures to mark a
-directory as “failed”. failed directories are retried for
-synchronization less frequently.</p>
+<div><p>连续的快照同步失败多少次，就把这个目录标记为 “failed” 。 失败的目录在同步时的重试频率低一些。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
@@ -838,7 +808,7 @@ synchronization less frequently.</p>
 <dt class="sig sig-object std" id="confval-cephfs_mirror_retry_failed_directories_interval">
 <span class="sig-name descname"><span class="pre">cephfs_mirror_retry_failed_directories_interval</span></span><a class="headerlink" href="#confval-cephfs_mirror_retry_failed_directories_interval" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>interval in seconds to retry synchronization for failed directories.</p>
+<div><p>对于失败的目录，同步时的重试时间间隔。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
@@ -857,8 +827,7 @@ synchronization less frequently.</p>
 <dt class="sig sig-object std" id="confval-cephfs_mirror_restart_mirror_on_failure_interval">
 <span class="sig-name descname"><span class="pre">cephfs_mirror_restart_mirror_on_failure_interval</span></span><a class="headerlink" href="#confval-cephfs_mirror_restart_mirror_on_failure_interval" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Interval in seconds to restart failed mirror instances. Setting to
-zero (0) disables restarting failed mirror instances.</p>
+<div><p>间隔多少秒重启一次失败的镜像例程。 设置为零（ 0 ）意思是禁止重启失败的镜像例程。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">secs</span></code></p>
@@ -877,11 +846,8 @@ zero (0) disables restarting failed mirror instances.</p>
 <dt class="sig sig-object std" id="confval-cephfs_mirror_mount_timeout">
 <span class="sig-name descname"><span class="pre">cephfs_mirror_mount_timeout</span></span><a class="headerlink" href="#confval-cephfs_mirror_mount_timeout" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
-<div><p>Timeout in seconds for mounting primary or secondary (remote) ceph
-file system by the cephfs-mirror daemon. Setting this to a higher
-value could result in the mirror daemon getting stalled when mounting
-a file system if the cluster is not reachable. This option is used to
-override the usual client_mount_timeout.</p>
+<div><p>cephfs-mirror 守护进程挂载主的或次要的（远程的） ceph 文件系统的超时时间，秒数。如果集群不可达，
+把此值设置得过高可能导致镜像守护进程在挂载文件系统时卡死。 此选项用于覆盖常见的 client_mount_timeout 。</p>
 <dl class="field-list simple">
 <dt class="field-odd">type</dt>
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">secs</span></code></p>
@@ -916,15 +882,12 @@ override the usual client_mount_timeout.</p>
 </dd></dl>
 
 </section>
-<section id="re-adding-peers">
-<h2>Re-adding Peers<a class="headerlink" href="#re-adding-peers" title="Permalink to this heading"></a></h2>
-<p>When re-adding (reassigning) a peer to a file system in another cluster, ensure that
-all mirror daemons have stopped synchronization to the peer. This can be checked
-via <cite>fs mirror status</cite> admin socket command (the <cite>Peer UUID</cite> should not show up
-in the command output). Also, it is recommended to purge synchronized directories
-from the peer  before re-adding it to another file system (especially those directories
-which might exist in the new primary file system). This is not required if re-adding
-a peer to the same primary file system it was earlier synchronized from.</p>
+<section id="id11">
+<h2>重新添加互联节点<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h2>
+<p>给另一个集群的文件系统重新添加（重新分配）一个互联节点时，要确保所有镜像守护进程都已停止向这个互联节点的同步。可以用 <cite>fs mirror status</cite> admin socket
+命令来检查（命令输出中应该不会显示 <cite>Peer UUID</cite> ）。而且，想要把这个互联节点重新添加给另一个文件系统的话，建议先清除它上面已经同步的目录
+（尤其是新的主文件系统中可能存在的同名目录）。
+如果还是把互联节点重新添加到先前同步的同一个主文件系统，那就不需要清除。</p>
 </section>
 </section>
 
