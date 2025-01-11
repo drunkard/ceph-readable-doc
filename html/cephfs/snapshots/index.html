@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Ceph 文件系统 IO 路径 &mdash; Ceph Documentation</title>
+  <title>CephFS Snapshots &mdash; Ceph Documentation</title>
   
 
   
@@ -47,8 +47,8 @@
     
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
-    <link rel="next" title="LazyIO" href="../lazyio/" />
-    <link rel="prev" title="CephFS 动态元数据管理" href="../dynamic-metadata-management/" /> 
+    <link rel="next" title="Ceph 文件系统客户端的驱逐" href="../eviction/" />
+    <link rel="prev" title="多活 MDS 守护进程的配置" href="../multimds/" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -59,9 +59,9 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../">Ceph 文件系统</a> &raquo;</li>
-      <li>Ceph 文件系统 IO 路径</li>
+      <li>CephFS Snapshots</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../../_sources/cephfs/cephfs-io-path.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../../_sources/cephfs/snapshots.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -122,11 +122,16 @@
 <li class="toctree-l3"><a class="reference internal" href="../file-layouts/"> 文件布局</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../mdcache/"> 分布式元数据缓存</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../dynamic-metadata-management/"> CephFS 内的动态元数据管理</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#"> CephFS IO 路径</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cephfs-io-path/"> CephFS IO 路径</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../lazyio/"> LazyIO</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../dirfrags/"> 目录分片的配置</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../multimds/"> 多活 MDS 的配置</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../snapshots/"> 快照</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#"> 快照</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#snapshot-creation">Snapshot Creation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#using-snapshot-to-recover-data">Using snapshot to recover data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#snapshot-deletion">Snapshot Deletion</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../#id7">故障排除和灾难恢复</a></li>
@@ -188,23 +193,82 @@
   </div>
 
   
-  <section id="ceph-io">
-<h1>Ceph 文件系统 IO 路径<a class="headerlink" href="#ceph-io" title="Permalink to this heading"></a></h1>
-<p>CephFS 里的所有文件数据都存储成了 RADOS 对象，客户端们可以直接访问 RADOS
-来操作文件数据。 MDS 只处理元数据操作。</p>
-<p>要读、写一个 CephFS 文件，客户端需要有对应 inode 上的 “file read/write” 能力。
-如果客户端没有必需的能力，它会向 MDS 发送 “cap message” ，
-告诉 MDS 它想要什么。如果可能的话， MDS 会把所需的能力发给客户端。
-一旦客户端有了 “file read/write” 能力，它就能直接访问 RADOS ，
-以读取、写入文件数据了。文件数据以 RADOS 对象存储，
-名字格式是 &lt;inode number&gt;.&lt;object index&gt; 。
-更多信息见 <a class="reference external" href="../architecture">体系结构</a> 的“数据条带化”一节。如果某个文件只被一个客户端打开了，
-MDS 也只会这个客户端发放 “file cache/buffer” 能力。
-“file cache” 能力的含义是，文件读取操作可以由客户端缓存来满足。
-“file buffer” 能力的含义是，文件的写入可以缓冲在客户端缓存中。</p>
-<p class="ditaa">
-<img src="../../_images/ditaa-a00543c2c8ce2b679f3befd3c717fb26bd55ab9c.png"/>
-</p>
+  <section id="cephfs-snapshots">
+<h1>CephFS Snapshots<a class="headerlink" href="#cephfs-snapshots" title="Permalink to this heading"></a></h1>
+<p>CephFS snapshots create an immutable view of the file system at the point
+in time they are taken. CephFS support snapshots which is managed in a
+special hidden subdirectory named <code class="docutils literal notranslate"><span class="pre">.snap</span></code> .Snapshots are created using
+<code class="docutils literal notranslate"><span class="pre">mkdir</span></code> inside this directory.</p>
+<p>Snapshots can be exposed with a different name by changing the following client configurations.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">snapdirname</span></code> which is a mount option for kernel clients</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">client_snapdir</span></code> which is a mount option for ceph-fuse.</p></li>
+</ul>
+<section id="snapshot-creation">
+<h2>Snapshot Creation<a class="headerlink" href="#snapshot-creation" title="Permalink to this heading"></a></h2>
+<p>CephFS snapshot feature is enabled by default on new file systems. To enable
+it on existing file systems, use the command below.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>allow_new_snaps<span class="w"> </span><span class="nb">true</span>
+</pre></div>
+</div>
+<p>When snapshots are enabled, all directories in CephFS will have a special <code class="docutils literal notranslate"><span class="pre">.snap</span></code>
+directory. (You may configure a different name with the client snapdir setting if
+you wish.)
+To create a CephFS snapshot, create a subdirectory under <code class="docutils literal notranslate"><span class="pre">.snap</span></code> with a name of
+your choice.
+For example, to create a snapshot on directory <code class="docutils literal notranslate"><span class="pre">/file1/</span></code>, invoke <code class="docutils literal notranslate"><span class="pre">mkdir</span> <span class="pre">/file1/.snap/snapshot-name</span></code></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>touch<span class="w"> </span>file1
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>.snap
+$<span class="w"> </span>mkdir<span class="w"> </span>my_snapshot
+</pre></div>
+</div>
+</section>
+<section id="using-snapshot-to-recover-data">
+<h2>Using snapshot to recover data<a class="headerlink" href="#using-snapshot-to-recover-data" title="Permalink to this heading"></a></h2>
+<p>Snapshots can also be used to recover some deleted files.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">create</span> <span class="pre">a</span> <span class="pre">file1</span> <span class="pre">and</span> <span class="pre">create</span> <span class="pre">snapshot</span> <span class="pre">snap1</span></code></p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>touch<span class="w"> </span>/mnt/cephfs/file1
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>.snap
+$<span class="w"> </span>mkdir<span class="w"> </span>snap1
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">create</span> <span class="pre">a</span> <span class="pre">file2</span> <span class="pre">and</span> <span class="pre">create</span> <span class="pre">snapshot</span> <span class="pre">snap2</span></code></p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>touch<span class="w"> </span>/mnt/cephfs/file2
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>.snap
+$<span class="w"> </span>mkdir<span class="w"> </span>snap2
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">delete</span> <span class="pre">file1</span> <span class="pre">and</span> <span class="pre">create</span> <span class="pre">a</span> <span class="pre">new</span> <span class="pre">snapshot</span> <span class="pre">snap3</span></code></p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>rm<span class="w"> </span>/mnt/cephfs/file1
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>.snap
+$<span class="w"> </span>mkdir<span class="w"> </span>snap3
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">recover</span> <span class="pre">file1</span> <span class="pre">using</span> <span class="pre">snapshot</span> <span class="pre">snap2</span> <span class="pre">using</span> <span class="pre">cp</span> <span class="pre">command</span></code></p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>.snap
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>snap2
+$<span class="w"> </span>cp<span class="w"> </span>file1<span class="w"> </span>/mnt/cephfs/
+</pre></div>
+</div>
+</section>
+<section id="snapshot-deletion">
+<h2>Snapshot Deletion<a class="headerlink" href="#snapshot-deletion" title="Permalink to this heading"></a></h2>
+<p>Snapshots are deleted by invoking <code class="docutils literal notranslate"><span class="pre">rmdir</span></code> on the <code class="docutils literal notranslate"><span class="pre">.snap</span></code> directory they are
+rooted in. (Attempts to delete a directory which roots the snapshots will fail;
+you must delete the snapshots first.)</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>.snap
+$<span class="w"> </span>rmdir<span class="w"> </span>my_snapshot
+</pre></div>
+</div>
+</section>
 </section>
 
 
@@ -219,8 +283,8 @@ MDS 也只会这个客户端发放 “file cache/buffer” 能力。
            
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../dynamic-metadata-management/" class="btn btn-neutral float-left" title="CephFS 动态元数据管理" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../lazyio/" class="btn btn-neutral float-right" title="LazyIO" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../multimds/" class="btn btn-neutral float-left" title="多活 MDS 守护进程的配置" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../eviction/" class="btn btn-neutral float-right" title="Ceph 文件系统客户端的驱逐" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

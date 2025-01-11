@@ -92,6 +92,7 @@ Ceph `编排器`_ 会自动给你的文件系统创建和配置 MDS ，
     CephFS Top 工具 <cephfs-top>
     定时快照 <snap-schedule>
     CephFS 快照镜像 <cephfs-mirroring>
+    清理队列 <purge-queue>
 
 .. raw:: html
 
@@ -147,6 +148,7 @@ CephFS 内幕
     LazyIO <lazyio>
     目录分片的配置 <dirfrags>
     多活 MDS 的配置 <multimds>
+    快照 <snapshots>
 
 
 .. raw:: html

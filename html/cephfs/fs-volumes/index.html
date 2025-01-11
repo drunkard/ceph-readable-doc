@@ -146,6 +146,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../cephfs-top/"> CephFS Top 工具</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../snap-schedule/"> 定时快照</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cephfs-mirroring/"> CephFS 快照镜像</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../purge-queue/"> 清理队列</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../#id5">挂载 CephFS</a></li>
@@ -1272,42 +1273,44 @@ ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </
 要激活该模式，需要传递一个 <code class="docutils literal notranslate"><span class="pre">--if-version=&lt;version&gt;</span></code> 参数，
 该参数将与集合的 db 版本进行比较，只有当数值匹配时，操作才会继续。
 否则，命令不会执行，并返回状态 <code class="docutils literal notranslate"><span class="pre">ESTALE</span></code> 。</p>
-<p>要知道一个集合的版本很容易，因为每一条修改集合的命令都会在 stdout 上返回该集合的版本，与退出状态无关。在上面的示例中，我们可以注意到每一个集合都带有一个 “版本 ”属性，每当这个集合被修改，无论是用户显式修改还是隐式修改，这个属性都会被更新。</p>
-<p>在本小节开头的示例中，初始 quiesce 命令 (1) 会返回新创建的集合，其 id 为 “快照”，版本为 13。由于在使用命令（2、3、4）制作快照时，我们不希望对集合进行任何其他更改，因此发布命令（5）可能是这样的</p>
+<p>要知道一个集合应该期待的版本很容易，因为每条修改集合的命令都会在 stdout 上返回该集合，不管退出状态如何。在上面的示例中，我们可以看到，
+每个集合都带一个 <code class="docutils literal notranslate"><span class="pre">&quot;version&quot;</span></code> 属性，每次修改这个集合，
+无论是用户显式修改还是隐式修改，这个属性都会更新。</p>
+<p>在本小节开头的示例中，初始 quiesce 命令 <cite>(1)</cite> 会返回新创建的集合，
+其 id 为 <code class="docutils literal notranslate"><span class="pre">&quot;snapshots&quot;</span></code> ，版本为 13 。
+由于用命令 <cite>(2,3,4)</cite> 拍快照时，我们不希望对集合做任何更改，
+因此 release （释放）命令 <cite>(5)</cite> 可能是这样的：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;snapshots&quot;</span><span class="w"> </span>--release<span class="w"> </span>--await<span class="w"> </span>--if-version<span class="o">=</span><span class="m">13</span><span class="w"> </span><span class="c1"># (5)</span></span>
-</pre></div></div><p>This way, the result of the release command would have been <code class="docutils literal notranslate"><span class="pre">ESTALE</span></code> instead of 0, and we would
-know that something wasn’t right with the quiesce set and our snapshots might not be consistent.</p>
+</pre></div></div><p>这样， release 命令的结果就会是 <code class="docutils literal notranslate"><span class="pre">ESTALE</span></code> ，而不是 0 ，
+我们就能知道 quiesce 集合不对劲，拍下的快照也可能不一致。</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>When <code class="docutils literal notranslate"><span class="pre">--if-version</span></code> and the command returns <code class="docutils literal notranslate"><span class="pre">ESTALE</span></code>, the requested action is <strong>not</strong> executed.
-It means that the script may want to execute some unconditional command on the set to adjust its state
-according to the requirements</p>
+<p>当 <code class="docutils literal notranslate"><span class="pre">--if-version</span></code> 和命令返回 <code class="docutils literal notranslate"><span class="pre">ESTALE</span></code> 时，
+请求的操作<strong>不会</strong>执行。这意味着脚本可能还需要对这个集合执行某些无条件命令（ unconditional command ），以根据要求调整其状态。</p>
 </div>
-<p>There is another use of the <code class="docutils literal notranslate"><span class="pre">--if-version</span></code> argument which could come handy for automation software.
-As we have discussed earlier, it is possible to create a new quiesce set with a given set id. Drivers like
-the CSI for Kubernetes could use their internal request id to eliminate the need to keep an additional mapping
-to the quiesce set id. However, to guarantee uniqueness, the driver may want to verify that the set is
-indeed new. For that, <code class="docutils literal notranslate"><span class="pre">if-version=0</span></code> may be used, and it will only create the new set if no other
-set with this id was present in the database</p>
+<p>对于自动化软件来说， <code class="docutils literal notranslate"><span class="pre">--if-version</span></code> 参数还有另一种用途。
+正如我们前面所讨论的，可以用指定集合 id 创建个新的 quiesce 集合。
+像用于 Kubernetes 的 CSI 这样的驱动程序，可以用其内部请求 ID ，
+这样就无需维护与 quiesce 集合 ID 的额外映射。不过，为了保证唯一性，
+驱动程序可能需要验证该集合确实是新的。为此，可以用 <code class="docutils literal notranslate"><span class="pre">if-version=0</span></code> ，
+而且只有当数据库中没有这个集合 id 时，才会创建新集合。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">ceph<span class="w"> </span>fs<span class="w"> </span>quiesce<span class="w"> </span>fs1<span class="w"> </span>sub1<span class="w"> </span>sub2<span class="w"> </span>sub3<span class="w"> </span>--set-id<span class="o">=</span><span class="s2">&quot;external-id&quot;</span><span class="w"> </span>--if-version<span class="o">=</span><span class="m">0</span></span>
 </pre></div></div></section>
 </section>
 <section id="disabling-volumes-plugin">
 <span id="id33"></span><h2>禁用卷插件<a class="headerlink" href="#disabling-volumes-plugin" title="Permalink to this heading"></a></h2>
-<p>By default the volumes plugin is enabled and set to <code class="docutils literal notranslate"><span class="pre">always</span> <span class="pre">on</span></code>. However, in
-certain cases it might be appropriate to disable it. For example, when a CephFS
-is in a degraded state, the volumes plugin commands may accumulate in MGR
-instead of getting served. Which eventually causes policy throttles to kick in
-and the MGR becomes unresponsive.</p>
-<p>In this event, volumes plugin can be disabled even though it is an
-<code class="docutils literal notranslate"><span class="pre">always</span> <span class="pre">on</span></code> module in MGR. To do so, run <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">mgr</span> <span class="pre">module</span> <span class="pre">disable</span> <span class="pre">volumes</span>
-<span class="pre">--yes-i-really-mean-it</span></code>. Do note that this command will disable operations
-and remove commands of volumes plugin since it will disable all CephFS
-services on the Ceph cluster accessed through this plugin.</p>
-<p>Before resorting to a measure as drastic as this, it is a good idea to try less
-drastic measures and then assess if the file system experience has improved due
-to it. One example of such less drastic measure is to disable asynchronous
-threads launched by volumes plugins for cloning and purging trash.</p>
+<p>默认情况下， volumes 插件是启用的、且设置成了 <code class="docutils literal notranslate"><span class="pre">always</span> <span class="pre">on</span></code> （始终打开）。
+但在某些情况下，禁用它可能更合适。例如，当 CephFS 处于降级状态时，
+卷插件命令可能会堆积在 MGR 中，而不是顺利执行。
+这最终会导致策略节流启动，而且 MGR 变得反应迟钝。</p>
+<p>在这种情况下，可以禁用 volumes 插件，即便它在 MGR 中是始终开启的
+（ <code class="docutils literal notranslate"><span class="pre">always</span> <span class="pre">on</span></code> ）模块。要禁用，可执行
+<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">mgr</span> <span class="pre">module</span> <span class="pre">disable</span> <span class="pre">volumes</span> <span class="pre">--yes-i-really-mean-it</span></code> 命令。
+注意，此命令会禁用 volume 插件的操作并删除 volumes 插件的命令，
+因为它要禁用 Ceph 集群上、所有通过这个插件访问的 CephFS 服务。</p>
+<p>在采取类似这样激烈的措施之前，最好先尝试不那么激烈的措施，
+然后评估文件系统体验是否因此得到改善。类似措施比如，
+禁用 volumes 插件启动的、用于克隆和清除垃圾的异步线程。</p>
 </section>
 </section>
 
