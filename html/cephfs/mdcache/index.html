@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>CephFS Distributed Metadata Cache &mdash; Ceph Documentation</title>
+  <title>CephFS 分布式元数据缓存 &mdash; Ceph Documentation</title>
   
 
   
@@ -59,7 +59,7 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../">Ceph 文件系统</a> &raquo;</li>
-      <li>CephFS Distributed Metadata Cache</li>
+      <li>CephFS 分布式元数据缓存</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/cephfs/mdcache.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -121,8 +121,8 @@
 <li class="toctree-l3"><a class="reference internal" href="../mds-journaling/"> MDS 日志记录</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../file-layouts/"> 文件布局</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#"> 分布式元数据缓存</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#client-metadata-requests">Client Metadata Requests</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#distributed-locks-in-an-mds-cluster">Distributed Locks in an MDS Cluster</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1">客户端元数据请求</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mds">MDS 集群里的分布式锁</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../dynamic-metadata-management/"> CephFS 内的动态元数据管理</a></li>
@@ -191,71 +191,61 @@
   </div>
 
   
-  <section id="cephfs-distributed-metadata-cache">
-<h1>CephFS Distributed Metadata Cache<a class="headerlink" href="#cephfs-distributed-metadata-cache" title="Permalink to this heading"></a></h1>
-<p>While the data for inodes in a Ceph file system is stored in RADOS and
-accessed by the clients directly, inode metadata and directory
-information is managed by the Ceph metadata server (MDS). The MDS’s
-act as mediator for all metadata related activity, storing the resulting
-information in a separate RADOS pool from the file data.</p>
-<p>CephFS clients can request that the MDS fetch or change inode metadata
-on its behalf, but an MDS can also grant the client <strong>capabilities</strong>
-(aka <strong>caps</strong>) for each inode (see <a class="reference internal" href="../capabilities/"><span class="doc">CephFS 支持的能力</span></a>).</p>
-<p>A capability grants the client the ability to cache and possibly
-manipulate some portion of the data or metadata associated with the
-inode. When another client needs access to the same information, the MDS
-will revoke the capability and the client will eventually return it,
-along with an updated version of the inode’s metadata (in the event that
-it made changes to it while it held the capability).</p>
-<p>Clients can request capabilities and will generally get them, but when
-there is competing access or memory pressure on the MDS, they may be
-<strong>revoked</strong>. When a capability is revoked, the client is responsible for
-returning it as soon as it is able. Clients that fail to do so in a
-timely fashion may end up <strong>blocklisted</strong> and unable to communicate with
-the cluster.</p>
-<p>Since the cache is distributed, the MDS must take great care to ensure
-that no client holds capabilities that may conflict with other clients’
-capabilities, or operations that it does itself. This allows cephfs
-clients to rely on much greater cache coherence than a filesystem like
-NFS, where the client may cache data and metadata beyond the point where
-it has changed on the server.</p>
-<section id="client-metadata-requests">
-<h2>Client Metadata Requests<a class="headerlink" href="#client-metadata-requests" title="Permalink to this heading"></a></h2>
-<p>When a client needs to query/change inode metadata or perform an
-operation on a directory, it has two options. It can make a request to
-the MDS directly, or serve the information out of its cache. With
-CephFS, the latter is only possible if the client has the necessary
-caps.</p>
-<p>Clients can send simple requests to the MDS to query or request changes
-to certain metadata. The replies to these requests may also grant the
-client a certain set of caps for the inode, allowing it to perform
-subsequent requests without consulting the MDS.</p>
-<p>Clients can also request caps directly from the MDS, which is necessary
-in order to read or write file data.</p>
+  <section id="cephfs">
+<h1>CephFS 分布式元数据缓存<a class="headerlink" href="#cephfs" title="Permalink to this heading"></a></h1>
+<p>在 Ceph 文件系统中， inode 的数据存储在 RADOS 中，客户端可以直接访问，
+而 inode 元数据和目录信息则由 Ceph 元数据服务器（ MDS ）管理。
+MDS 充当所有元数据相关活动的中介，
+将产生的信息存储在与文件数据不同的 RADOS 存储池中。</p>
+<p>CephFS 客户端可以请求 MDS 代表它提取或更改 inode 元数据，
+但 MDS 也可以给每个 inode 授予客户端能力（又叫 caps ）
+（参阅 <a class="reference internal" href="../capabilities/"><span class="doc">CephFS 支持的能力</span></a> ）。</p>
+<p>能力授予客户端后，它能够缓存并可能操作与这个 inode 相关联的部分数据或元数据。
+当其他客户端需要访问同一个信息时， MDS 会撤销该能力，
+客户端最终会把这个能力、连同更新过的新版 inode 元数据
+（如果客户端在持有该能力时对它进行了更改）一并返回。</p>
+<p>客户端可以请求能力，通常也会获得这些能力，
+但在遇到竞争访问或 MDS 存在内存压力时，
+这些能力可能会<strong>被撤销（ revoked ）</strong>。
+当能力被撤销时，客户端有责任尽快归还能力。
+未能及时归还的客户端可能会被列入<strong>阻塞名单</strong>，
+无法与集群通信。</p>
+<p>由于缓存是分布式的，因此 MDS 必须非常小心地确保，
+所有客户端所持有的能力都不会与其他客户端的能力、或自己的操作发生冲突。
+这使得 cephfs 客户端可以信赖比其他文件系统（如 NFS ）更强的缓存一致性，
+比如客户端可以放心地缓存数据和元数据，
+而它们在服务器上已经被更改过了。</p>
+<section id="id1">
+<h2>客户端元数据请求<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
+<p>当客户端需要查询/更改 inode 元数据或对目录做个操作时，
+有两种选择。它可以直接向 MDS 发出请求，或者把要修改的信息注入缓存。
+在 CephFS 中，只有当客户端拥有必要的 caps 时，才可以用后者。</p>
+<p>客户端可以向 MDS 发送简单请求，以查询或请求更改某些元数据。
+对这些请求的回复可能是授予这个客户端一组特定的 caps ，
+让它操作 inode ，无需咨询 MDS 即可执行后续请求。</p>
+<p>客户端还可以直接向 MDS 申请 caps ，要读取或写入文件数据时有必要这样。</p>
 </section>
-<section id="distributed-locks-in-an-mds-cluster">
-<h2>Distributed Locks in an MDS Cluster<a class="headerlink" href="#distributed-locks-in-an-mds-cluster" title="Permalink to this heading"></a></h2>
-<p>When an MDS wants to read or change information about an inode, it must
-gather the appropriate locks for it. The MDS cluster may have a series
-of different types of locks on the given inode and each MDS may have
-disjoint sets of locks.</p>
-<p>If there are outstanding caps that would conflict with these locks, then
-they must be revoked before the lock can be acquired. Once the competing
-caps are returned to the MDS, then it can get the locks and do the
-operation.</p>
-<p>On a filesystem served by multiple MDS’, the metadata cache is also
-distributed among the MDS’ in the cluster. For every inode, at any given
-time, only one MDS in the cluster is considered <strong>authoritative</strong>. Any
-requests to change that inode must be done by the authoritative MDS,
-though non-authoritative MDS can forward requests to the authoritative
-one.</p>
-<p>Non-auth MDS’ can also obtain read locks that prevent the auth MDS from
-changing the data until the lock is dropped, so that they can serve
-inode info to the clients.</p>
-<p>The auth MDS for an inode can change over time as well. The MDS’ will
-actively balance responsibility for the inode cache amongst
-themselves, but this can be overridden by <strong>pinning</strong> certain subtrees
-to a single MDS.</p>
+<section id="mds">
+<h2>MDS 集群里的分布式锁<a class="headerlink" href="#mds" title="Permalink to this heading"></a></h2>
+<p>当一个 MDS 想要读取或更改一个 inode 的信息时，
+它必须收集对应的锁。 MDS 集群可能在指定的
+inode 上有一系列不同类型的锁，
+每个 MDS 可能都有互不关联的锁集。</p>
+<p>如果有未完成的 caps 和这些锁有冲突，
+那就必须先撤销这些 caps 让它们变得可获取。
+等竞争的 caps 归还给 MDS 后，
+它就可以获得锁并执行操作。</p>
+<p>在由多个 MDS 提供服务的文件系统中，
+元数据缓存也分布在集群中的多个 MDS 之间。
+对于每一个 inode ，不管什么时候，集群中只有一个 MDS 是<strong>权威的</strong>。
+所有需要更改这个 inode 的请求都必须由权威 MDS 完成，
+虽说非权威 MDS 可以接受请求，但它得转发给权威 MDS 。</p>
+<p>非权威 MDS 还可以获取读出锁，
+它能阻止授权 MDS 更改数据，直到锁被释放，
+这样它们就可以向客户端提供 inode 信息。</p>
+<p>一个 inode 的权威 MDS 也会随时间而变化。
+MDS 们会时刻相互平衡、负责 inode 的缓存，
+但这种行为可以改变，把某些子树<strong>锁定（ pinning ）</strong>到指定的单个 MDS 即可。</p>
 </section>
 </section>
 
