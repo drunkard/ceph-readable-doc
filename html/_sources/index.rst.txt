@@ -6,16 +6,16 @@ Ceph 在一个统一的系统中同时提供了\ **对象、块、和文件存�
 
 .. warning::
 
-   :ref:`If this is your first time using Ceph, read the "Basic Workflow"
-   page in the Ceph Developer Guide to learn how to contribute to the
-   Ceph project. (Click anywhere in this paragraph to read the "Basic
-   Workflow" page of the Ceph Developer Guide.) <basic workflow dev guide>`.
+   :ref:`如果这是你第一次使用 Ceph ，请阅读《 Ceph 开发者指南》中的\
+   “基本工作流程”页面，了解如何向 Ceph 项目贡献。
+   （点击本段任意位置，可阅读《Ceph 开发者指南》里的
+   “基本工作流程”页面。） <basic workflow dev guide>`.
 
 .. note::
 
-   :ref:`If you want to make a commit to the documentation but you don't
-   know how to get started, read the "Documenting Ceph" page. (Click anywhere
-   in this paragraph to read the "Documenting Ceph" page.) <documenting_ceph>`.
+   :ref:`如果您想提交文档变更，但不知道如何开始，
+   请阅读“为 Ceph 写作文档”页面。
+   (点击本段中的任意位置可阅读“为 Ceph 写作文档”页面。） <documenting_ceph>`
 
 .. container:: columns-3
 

@@ -130,16 +130,16 @@
 <li class="toctree-l4"><a class="reference internal" href="#id9">删除存储池</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id11">重命名存储池</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id12">查看存储池统计信息</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id13">拍下存储池快照</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">给指定存储池拍快照</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id14">删除存储池快照</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#setpoolvalues">调整存储池选项值</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id17">获取存储池选项值</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id18">设置对象副本数</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id19">获取对象副本数</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#managing-pools-that-are-flagged-with-bulk">Managing pools that are flagged with <code class="docutils literal notranslate"><span class="pre">--bulk</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#setting-values-for-a-stretch-pool">Setting values for a stretch pool</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#unsetting-values-for-a-stretch-pool">Unsetting values for a stretch pool</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#showing-values-of-a-stretch-pool">Showing values of a stretch pool</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rados">设置 RADOS 对象副本数</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id18">获取对象副本数</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id19">管理加了 <code class="docutils literal notranslate"><span class="pre">--bulk</span></code> 标记的存储池</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#stretch">配置 stretch 存储池的值</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#setting-values-for-a-stretch-pool">取消给 stretch 存储池设置的值</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id21">显示一个 stretch 存储池设置的值</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../erasure-code/">纠删码</a></li>
@@ -230,29 +230,33 @@
   <section id="rados-pools">
 <span id="id1"></span><h1>存储池<a class="headerlink" href="#rados-pools" title="Permalink to this heading"></a></h1>
 <p>存储池是存储对象时的逻辑分区。</p>
-<p>如果你开始部署集群时没有创建存储池， Ceph 会用默认存储池存数据。
-存储池提供的功能：</p>
-<ul class="simple">
-<li><p><strong>自恢复力：</strong> 你可以设置在不丢数据的前提下允许多少 OSD 失效，
-对多副本存储池来说，此值是一对象应达到的副本数。
-典型配置是存储一个对象和它的两个副本（即 <code class="docutils literal notranslate"><span class="pre">size</span> <span class="pre">=</span> <span class="pre">3</span></code> ），
-但你可以更改单个存储池的副本数；
+<p>存储池提供的功能：</p>
+<ul>
+<li><p><strong>自恢复力（ Resilience ）：</strong> 你可以设置在不丢数据的前提下允许多少 OSD 失效，
+如果你的集群用的是多副本存储池，在不丢失数据的前提下，
+可以失效的 OSD 数量等于副本数。</p>
+<p>例如：典型配置是存储一个对象和两个 RADOS 对象副本
+（即 <code class="docutils literal notranslate"><span class="pre">size</span> <span class="pre">=</span> <span class="pre">3</span></code> ），但你可以单独配置每个存储池的副本数；
 对<a class="reference external" href="../erasure-code">纠删码存储池</a>来说，
-此值是编码块数（即<strong>纠删码配置</strong>里的 <code class="docutils literal notranslate"><span class="pre">m=2</span></code> ）。</p></li>
-<li><p><strong>归置组：</strong> 你可以设置一个存储池的归置组数量。
-典型配置给每个 OSD 分配大约 100 个归置组，
+自恢复力的定义是编码块数
+（例如，默认<strong>纠删码配置</strong>里的 <code class="docutils literal notranslate"><span class="pre">m=2</span></code> ）。</p>
+</li>
+<li><p><strong>归置组：</strong> <a class="reference internal" href="../placement-groups/#pg-autoscaler"><span class="std std-ref">autoscaler</span></a>
+会设置存储池的归置组（ PG ）数量。
+典型配置中，目标 PG 数是每个 OSD 大约 150 个，
 这样，不用过多计算资源就能得到较优的均衡。
-配置了多个存储池时，要整体考虑到各个存储池和整个集群的归置组数量都要合理。注意，
-各个 PG 都属于某一个具体的存储池，所以多个存储池共用一些相同的 OSD 时，
-你必须注意，每个 OSD 上 PG 数的 <strong>总和</strong> 才是它们的目标 PG 数。</p></li>
+配置了多个存储池时，要整体考虑到各个存储池和整个集群的归置组数量都要合理。
+每个 PG 都属于一个特定的存储池，所以多个存储池共用一些相同的 OSD 时，
+要确保每个 OSD 上 PG 数的 <strong>总和</strong> 在每 OSD 的 PG 数（ PG-per-OSD ）目标范围内。
+想了解如何手动设置每个存储池的归置组数量，
+看 <a class="reference internal" href="../placement-groups/#setting-the-number-of-placement-groups"><span class="std std-ref">设置归置组数量</span></a> ，
+（没有采用 autoscaler 时才需要这个步骤）。</p></li>
 <li><p><strong>CRUSH 规则：</strong> 当你往存储池里存数据的时候，
 此集群内对象及其副本（或纠删码存储池里的数据块）的归置由 CRUSH 规则控制。如果默认规则不符合你的使用情形，
 你可以给自己的存储池定制 CRUSH 规则。</p></li>
 <li><p><strong>快照：</strong> 用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">mksnap</span></code> 创建快照的时候，
 实际上创建了某一特定存储池的快照。</p></li>
 </ul>
-<p>要把数据组织到存储池里，你可以列出、创建、删除存储池，
-也可以查看每个存储池的利用率。</p>
 <section id="id3">
 <h2>存储池命名<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
 <p>以 <code class="docutils literal notranslate"><span class="pre">.</span></code> 打头的存储池名字是为 Ceph 内部操作保留的，
@@ -260,34 +264,57 @@
 </section>
 <section id="id4">
 <h2>列出存储池<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
-<p>要列出集群的存储池，命令如下：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">lspools</span>
+<p>有多种方法获取集群存储池列表。</p>
+<p>只罗列集群的存储池名字（写脚本方便），执行：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>ls</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">root</span>
+<span class="n">default</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">log</span>
+<span class="n">default</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">control</span>
+<span class="n">default</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">meta</span>
 </pre></div>
 </div>
+<p>要罗列集群存储池时带上它的编号，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>lspools</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span> <span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">root</span>
+<span class="mi">2</span> <span class="n">default</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">log</span>
+<span class="mi">3</span> <span class="n">default</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">control</span>
+<span class="mi">4</span> <span class="n">default</span><span class="o">.</span><span class="n">rgw</span><span class="o">.</span><span class="n">meta</span>
+</pre></div>
+</div>
+<p>要罗列集群存储池的额外信息，执行：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>ls<span class="w"> </span>detail</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pool</span> <span class="mi">1</span> <span class="s1">&#39;.rgw.root&#39;</span> <span class="n">replicated</span> <span class="n">size</span> <span class="mi">3</span> <span class="n">min_size</span> <span class="mi">1</span> <span class="n">crush_rule</span> <span class="mi">0</span> <span class="n">object_hash</span> <span class="n">rjenkins</span> <span class="n">pg_num</span> <span class="mi">1</span> <span class="n">pgp_num</span> <span class="mi">1</span> <span class="n">autoscale_mode</span> <span class="n">on</span> <span class="n">last_change</span> <span class="mi">19</span> <span class="n">flags</span> <span class="n">hashpspool</span> <span class="n">stripe_width</span> <span class="mi">0</span> <span class="n">application</span> <span class="n">rgw</span> <span class="n">read_balance_score</span> <span class="mf">4.00</span>
+<span class="n">pool</span> <span class="mi">2</span> <span class="s1">&#39;default.rgw.log&#39;</span> <span class="n">replicated</span> <span class="n">size</span> <span class="mi">3</span> <span class="n">min_size</span> <span class="mi">1</span> <span class="n">crush_rule</span> <span class="mi">0</span> <span class="n">object_hash</span> <span class="n">rjenkins</span> <span class="n">pg_num</span> <span class="mi">1</span> <span class="n">pgp_num</span> <span class="mi">1</span> <span class="n">autoscale_mode</span> <span class="n">on</span> <span class="n">last_change</span> <span class="mi">21</span> <span class="n">flags</span> <span class="n">hashpspool</span> <span class="n">stripe_width</span> <span class="mi">0</span> <span class="n">application</span> <span class="n">rgw</span> <span class="n">read_balance_score</span> <span class="mf">4.00</span>
+<span class="n">pool</span> <span class="mi">3</span> <span class="s1">&#39;default.rgw.control&#39;</span> <span class="n">replicated</span> <span class="n">size</span> <span class="mi">3</span> <span class="n">min_size</span> <span class="mi">1</span> <span class="n">crush_rule</span> <span class="mi">0</span> <span class="n">object_hash</span> <span class="n">rjenkins</span> <span class="n">pg_num</span> <span class="mi">1</span> <span class="n">pgp_num</span> <span class="mi">1</span> <span class="n">autoscale_mode</span> <span class="n">on</span> <span class="n">last_change</span> <span class="mi">23</span> <span class="n">flags</span> <span class="n">hashpspool</span> <span class="n">stripe_width</span> <span class="mi">0</span> <span class="n">application</span> <span class="n">rgw</span> <span class="n">read_balance_score</span> <span class="mf">4.00</span>
+<span class="n">pool</span> <span class="mi">4</span> <span class="s1">&#39;default.rgw.meta&#39;</span> <span class="n">replicated</span> <span class="n">size</span> <span class="mi">3</span> <span class="n">min_size</span> <span class="mi">1</span> <span class="n">crush_rule</span> <span class="mi">0</span> <span class="n">object_hash</span> <span class="n">rjenkins</span> <span class="n">pg_num</span> <span class="mi">1</span> <span class="n">pgp_num</span> <span class="mi">1</span> <span class="n">autoscale_mode</span> <span class="n">on</span> <span class="n">last_change</span> <span class="mi">25</span> <span class="n">flags</span> <span class="n">hashpspool</span> <span class="n">stripe_width</span> <span class="mi">0</span> <span class="n">pg_autoscale_bias</span> <span class="mi">4</span> <span class="n">application</span> <span class="n">rgw</span> <span class="n">read_balance_score</span> <span class="mf">4.00</span>
+</pre></div>
+</div>
+<p>要查看更多信息，执行此命令时可以加上 <code class="docutils literal notranslate"><span class="pre">--format</span></code> （或 <code class="docutils literal notranslate"><span class="pre">-f</span></code> ）选项，
+还有它的值 <code class="docutils literal notranslate"><span class="pre">json</span></code> 、 <code class="docutils literal notranslate"><span class="pre">json-pretty</span></code> 、 <code class="docutils literal notranslate"><span class="pre">xml</span></code> 或 <code class="docutils literal notranslate"><span class="pre">xml-pretty</span></code> 。</p>
 </section>
 <section id="createpool">
 <span id="id5"></span><h2>创建存储池<a class="headerlink" href="#createpool" title="Permalink to this heading"></a></h2>
 <p>创建存储池前先看看<a class="reference external" href="../../configuration/pool-pg-config-ref">存储池、归置组和 CRUSH 配置参考</a>。
-你最好在配置文件里重置默认归置组数量，因为默认值并不理想。
-关于归置组数量请参考<a class="reference external" href="../placement-groups#set-the-number-of-placement-groups">设置归置组数量</a>。</p>
+放在监视器集群里的 Ceph 中央配置数据库，里面有个配置选项（名为 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> ），
+用于决定每个存储池的 PG 数量，在创建存储池、
+却没给它单独指定 PG 数时就用这个值。这个值的默认数值可以更改。
+关于每个存储池的归置组数量，见<a class="reference external" href="../placement-groups#set-the-number-of-placement-groups">设置归置组数量</a>。</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>从 Luminous 版起，所有存储池都需要与使用它们的应用程序关联。
 详情见<a class="reference internal" href="#id7">关联存储池与应用程序</a>。</p>
 </div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">osd_pool_default_pg_num</span> <span class="o">=</span> <span class="mi">128</span>
-<span class="n">osd_pool_default_pgp_num</span> <span class="o">=</span> <span class="mi">128</span>
-</pre></div>
-</div>
-<p>要创建一个存储池，执行：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">create</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">[{</span><span class="n">pg</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="p">[{</span><span class="n">pgp</span><span class="o">-</span><span class="n">num</span><span class="p">}]]</span> <span class="p">[</span><span class="n">replicated</span><span class="p">]</span> \
-     <span class="p">[</span><span class="n">crush</span><span class="o">-</span><span class="n">rule</span><span class="o">-</span><span class="n">name</span><span class="p">]</span> <span class="p">[</span><span class="n">expected</span><span class="o">-</span><span class="n">num</span><span class="o">-</span><span class="n">objects</span><span class="p">]</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">create</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">[{</span><span class="n">pg</span><span class="o">-</span><span class="n">num</span><span class="p">}</span> <span class="p">[{</span><span class="n">pgp</span><span class="o">-</span><span class="n">num</span><span class="p">}]]</span>   <span class="n">erasure</span> \
-     <span class="p">[</span><span class="n">erasure</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">profile</span><span class="p">]</span> <span class="p">[</span><span class="n">crush</span><span class="o">-</span><span class="n">rule</span><span class="o">-</span><span class="n">name</span><span class="p">]</span> <span class="p">[</span><span class="n">expected_num_objects</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">autoscale</span><span class="o">-</span><span class="n">mode</span><span class="o">=&lt;</span><span class="n">on</span><span class="p">,</span><span class="n">off</span><span class="p">,</span><span class="n">warn</span><span class="o">&gt;</span><span class="p">]</span>
-</pre></div>
-</div>
-<p>参数含义如下：</p>
+<p>要创建一个存储池，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>create<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">[{</span>pg-num<span class="o">}</span><span class="w"> </span><span class="o">[{</span>pgp-num<span class="o">}]]</span><span class="w"> </span><span class="o">[</span>replicated<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+<span class="w">         </span><span class="o">[</span>crush-rule-name<span class="o">]</span><span class="w"> </span><span class="o">[</span>expected-num-objects<span class="o">]</span></span>
+</pre></div></div><p>或者：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>create<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">[{</span>pg-num<span class="o">}</span><span class="w"> </span><span class="o">[{</span>pgp-num<span class="o">}]]</span><span class="w">   </span>erasure<span class="w"> </span><span class="se">\</span>
+<span class="w">         </span><span class="o">[</span>erasure-code-profile<span class="o">]</span><span class="w"> </span><span class="o">[</span>crush-rule-name<span class="o">]</span><span class="w"> </span><span class="o">[</span>expected_num_objects<span class="o">]</span><span class="w"> </span><span class="o">[</span>--autoscale-mode<span class="o">=</span>&lt;on,off,warn&gt;<span class="o">]</span></span>
+</pre></div></div><p>上述命令里各元素的简要描述，见下文：</p>
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{pool-name}</span></span></dt>
@@ -306,7 +333,7 @@
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{pg-num}</span></span></dt>
 <dd><p>存储池拥有的归置组总数。
-关于如何计算合适的数值，请参见<a class="reference internal" href="../placement-groups/#id1"><span class="std std-ref">归置组</span></a>。
+关于如何计算合适的数值，参见<a class="reference internal" href="../placement-groups/#id1"><span class="std std-ref">归置组</span></a>。
 默认值 <code class="docutils literal notranslate"><span class="pre">8</span></code> 对大多数系统都 <strong>不合适</strong> 。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型</dt>
@@ -344,11 +371,10 @@
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{replicated|erasure}</span></span></dt>
 <dd><p>存储池类型，可以是<strong>replicated （多副本）</strong>
-（保存多份对象副本，以便从丢失的 OSD 恢复）
-或<strong>erasure （纠删）</strong>（获得类似 <a class="reference external" href="../erasure-code">通用 RAID5</a> 的恢复能力）。
-<strong>replicated</strong> 存储池需更多原始存储空间，
-但已实现所有 Ceph 操作；
-<strong>纠删码</strong>存储池所需原始存储空间较少，但目前仅实现了部分 Ceph 操作。</p>
+（保存多份对象副本，以便从丢失的 OSD 恢复）或<strong>erasure （纠删）</strong>（获得类似 <a class="reference external" href="../erasure-code">通用奇偶校验 RAID</a> 能力）。
+<strong>replicated</strong> 存储池需更多原始存储空间，但能实现所有 Ceph 操作；
+<strong>erasure</strong>存储池所需原始存储空间较少，但只能执行部分 Ceph 任务，
+而且可能性能也不尽如人意。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>String</p>
@@ -375,9 +401,9 @@
 <dd class="field-even"><p>No.</p>
 </dd>
 <dt class="field-odd">默认值</dt>
-<dd class="field-odd"><p>对于多副本存储池（ <strong>replicated pool</strong> ）来说，
-其规则由 <a class="reference internal" href="../../configuration/pool-pg-config-ref/#confval-osd_pool_default_crush_rule"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_pool_default_crush_rule</span></code></a> 配置决定，
-此规则必须存在。对于纠删码存储池（ <strong>erasure pool</strong> ）来说，
+<dd class="field-odd"><p>对于多副本存储池（ <strong>replicated pool</strong> ）来说，其规则由
+<a class="reference internal" href="../../configuration/pool-pg-config-ref/#confval-osd_pool_default_crush_rule"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_pool_default_crush_rule</span></code></a> 配置指定，此规则必须存在。
+对于纠删码存储池（ <strong>erasure pool</strong> ）来说，
 如果用的是 <code class="docutils literal notranslate"><span class="pre">default</span></code> <a class="reference external" href="../erasure-code-profile">纠删码配置</a>那就是 <code class="docutils literal notranslate"><span class="pre">erasure-code</span></code> ，
 否则就是 <code class="docutils literal notranslate"><span class="pre">{pool-name}</span></code> 。如果此规则不存在，会悄悄地创建。</p>
 </dd>
@@ -387,8 +413,7 @@
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">[erasure-code-profile=profile]</span></span></dt>
-<dd><p>仅适用于<strong>纠删</strong>存储池。指定<a class="reference external" href="../erasure-code-profile">纠删码配置</a>框架，此配置必须已经由 <strong>osd erasure-code-profile set</strong>
-定义好了。</p>
+<dd><p>仅适用于<strong>纠删</strong>存储池。指定<a class="reference external" href="../erasure-code-profile">纠删码配置</a>框架，此配置必须已经由 <strong>osd erasure-code-profile set</strong> 定义好了。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>String</p>
@@ -402,9 +427,11 @@
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">--autoscale-mode=&lt;on,off,warn&gt;</span></span></dt>
-<dd><p>如果你把 autoscale 模式设置为 <code class="docutils literal notranslate"><span class="pre">on</span></code> 或 <code class="docutils literal notranslate"><span class="pre">warn</span></code> ，
-系统会根据使用情况分别会自动调整、或给存储池里的归置组推荐一个数量，
-如果让它保持关闭，你应该参考一下 <a class="reference internal" href="../placement-groups/#id1"><span class="std std-ref">归置组</span></a>。</p>
+<dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">on</span></code>: Ceph 集群会根据存储池里 PG 数的实际使用情况自动调整、或给出更改建议。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">warn</span></code>: Ceph 集群会根据存储池里 PG 数的实际使用情况自动调整、或给出更改建议。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">off</span></code>: 详情参考 <a class="reference internal" href="../placement-groups/#id1"><span class="std std-ref">归置组</span></a>。</p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>String</p>
@@ -421,9 +448,8 @@
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">[expected-num-objects]</span></span></dt>
-<dd><p>为这个存储池预估的对象数。
-设置此值（要同时把 <strong>filestore merge threshold</strong> 设置为负数）后，
-在创建存储池时就会拆分 PG 文件夹，
+<dd><p>为这个存储池预估的对象数。设置此值（要同时把 <strong>filestore merge threshold</strong>
+设置为负数）后，在创建存储池时就会拆分 PG 文件夹，
 以免运行时拆分文件夹导致延时增大。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型</dt>
@@ -441,15 +467,11 @@
 </section>
 <section id="associate-pool-to-application">
 <span id="id7"></span><h2>关联存储池与应用程序<a class="headerlink" href="#associate-pool-to-application" title="Permalink to this heading"></a></h2>
-<p>存储池要先与应用程序关联才能使用。
-要用于 CephFS 的存储池、或由 RGW 创建的存储池已经自动关联过了；
-计划用于 RBD 的存储池应该用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 工具初始化
-（详情见<a class="reference external" href="../../../rbd/rados-rbd-cmds/#create-a-block-device-pool">块设备命令</a>）。</p>
-<p>对于其它案例，你可以手动关联存储池与应用程序名字。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">application</span> <span class="n">enable</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">application</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
-</pre></div>
-</div>
-<div class="admonition note">
+<p>存储池要先与应用程序关联才能使用。要用于 CephFS 的存储池、
+或由 RGW 创建的存储池已经自动关联过了；计划用于 RBD 的存储池应该用 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> 工具初始化（详情见<a class="reference external" href="../../../rbd/rados-rbd-cmds/#create-a-block-device-pool">块设备命令</a>）。</p>
+<p>对于其它案例，你可以手动关联存储池与应用程序名字（格式自由），执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>application<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">{</span>application-name<span class="o">}</span></span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>CephFS 的应用程序名字是 <code class="docutils literal notranslate"><span class="pre">cephfs</span></code> ； RBD 的应用程序名字是 <code class="docutils literal notranslate"><span class="pre">rbd</span></code> ， RGW 的应用程序名字是 <code class="docutils literal notranslate"><span class="pre">rgw</span></code> 。</p>
 </div>
@@ -457,91 +479,70 @@
 <section id="id8">
 <h2>设置存储池配额<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h2>
 <p>存储池配额可设置最大字节数、和/或每存储池最大对象数。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span><span class="o">-</span><span class="n">quota</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">[</span><span class="n">max_objects</span> <span class="p">{</span><span class="n">obj</span><span class="o">-</span><span class="n">count</span><span class="p">}]</span> <span class="p">[</span><span class="n">max_bytes</span> <span class="p">{</span><span class="nb">bytes</span><span class="p">}]</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span><span class="o">-</span><span class="n">quota</span> <span class="n">data</span> <span class="n">max_objects</span> <span class="mi">10000</span>
-</pre></div>
-</div>
-<p>要取消配额，设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>set-quota<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">[</span>max_objects<span class="w"> </span><span class="o">{</span>obj-count<span class="o">}]</span><span class="w"> </span><span class="o">[</span>max_bytes<span class="w"> </span><span class="o">{</span>bytes<span class="o">}]</span></span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>set-quota<span class="w"> </span>data<span class="w"> </span>max_objects<span class="w"> </span><span class="m">10000</span></span>
+</pre></div></div><p>要取消配额，设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 。</p>
 </section>
 <section id="id9">
 <h2>删除存储池<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h2>
-<p>要删除一存储池，执行：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">delete</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">[{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span><span class="p">]</span>
-</pre></div>
-</div>
-<p>要删除存储池，监视器配置的 mon_allow_pool_delete 标志必须设置为 true ，
-否则它会拒绝删除存储池。</p>
+<p>要删除一存储池，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>delete<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">[{</span>pool-name<span class="o">}</span><span class="w"> </span>--yes-i-really-really-mean-it<span class="o">]</span></span>
+</pre></div></div><p>要删除存储池，监视器配置的 <code class="docutils literal notranslate"><span class="pre">mon_allow_pool_delete</span></code> 标志必须设置为 <code class="docutils literal notranslate"><span class="pre">true</span></code> ，
+否则监视器们会拒绝删除存储池。</p>
 <p>详情见<a class="reference external" href="../../configuration/mon-config-ref">监视器配置</a>。</p>
-<p>如果你给自建的存储池创建了定制的规则，那么没有存储池在用它时你应该删掉它：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">get</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="n">crush_rule</span>
-</pre></div>
-</div>
-<p>假设规则 id 为 123 ，你可以这样找出还在用它的其它存储池：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">dump</span> <span class="o">|</span> <span class="n">grep</span> <span class="s2">&quot;^pool&quot;</span> <span class="o">|</span> <span class="n">grep</span> <span class="s2">&quot;crush_rule 123&quot;</span>
-</pre></div>
-</div>
-<p>如果没有别的存储池使用这个定制规则，那就可以安全地从集群里删掉它。</p>
-<p>如果你曾创建过一些用户及其权限、并与存储池绑死了，但如今这些存储池已不存在，最好也删除那些用户：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">auth</span> <span class="n">ls</span> <span class="o">|</span> <span class="n">grep</span> <span class="o">-</span><span class="n">C</span> <span class="mi">5</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
-<span class="n">ceph</span> <span class="n">auth</span> <span class="k">del</span> <span class="p">{</span><span class="n">user</span><span class="p">}</span>
-</pre></div>
-</div>
-</section>
+<p>如果有给存储池创建的自定义规则，应该删掉它们。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>get<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span>crush_rule</span>
+</pre></div></div><p>例如，假设规则 id 为 123 ，检查所有存储池，看它们是否在用此规则，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;^pool&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;crush_rule 123&quot;</span></span>
+</pre></div></div><p>如果没有别的存储池使用这个定制规则，那就可以安全地从集群里删掉它。</p>
+<p>同样地，如果有用户及其权限与存储池绑死了，但如今这些存储池已不存在，
+最好也删除那些用户，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>ls<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-C<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span></span>
+<span class="prompt1">ceph<span class="w"> </span>auth<span class="w"> </span>del<span class="w"> </span><span class="o">{</span>user<span class="o">}</span></span>
+</pre></div></div></section>
 <section id="id11">
 <h2>重命名存储池<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h2>
-<p>要重命名一个存储池，执行：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">rename</span> <span class="p">{</span><span class="n">current</span><span class="o">-</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">new</span><span class="o">-</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>如果重命名了一个存储池，且认证用户有每存储池能力，
-那你必须用新存储池名字更新用户的能力（即 caps ）。</p>
+<p>要重命名一个存储池，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>rename<span class="w"> </span><span class="o">{</span>current-pool-name<span class="o">}</span><span class="w"> </span><span class="o">{</span>new-pool-name<span class="o">}</span></span>
+</pre></div></div><p>如果重命名了一个存储池，而它之前的认证用户有每存储池能力，
+那你必须用新存储池名字更新这个用户的能力（即 caps ）。</p>
 </section>
 <section id="id12">
 <h2>查看存储池统计信息<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h2>
-<p>要查看某存储池的使用统计信息，执行命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rados</span> <span class="n">df</span>
-</pre></div>
-</div>
-<p>另外，要获取某个或所有存储池的 I/O 信息，用命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">stats</span> <span class="p">[{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}]</span>
-</pre></div>
-</div>
-</section>
+<p>要查看某存储池的利用率统计信息，执行下列命令:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rados<span class="w"> </span>df</span>
+</pre></div></div><p>要获取某个指定的或所有存储池的 I/O 信息，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>stats<span class="w"> </span><span class="o">[{</span>pool-name<span class="o">}]</span></span>
+</pre></div></div></section>
 <section id="id13">
-<h2>拍下存储池快照<a class="headerlink" href="#id13" title="Permalink to this heading"></a></h2>
-<p>要拍下某存储池的快照，执行命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">mksnap</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">snap</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
-</pre></div>
-</div>
-</section>
+<h2>给指定存储池拍快照<a class="headerlink" href="#id13" title="Permalink to this heading"></a></h2>
+<p>要拍下某存储池的快照，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>mksnap<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">{</span>snap-name<span class="o">}</span></span>
+</pre></div></div></section>
 <section id="id14">
 <h2>删除存储池快照<a class="headerlink" href="#id14" title="Permalink to this heading"></a></h2>
-<p>要删除某存储池的一个快照，执行命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">rmsnap</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">snap</span><span class="o">-</span><span class="n">name</span><span class="p">}</span>
-</pre></div>
-</div>
-</section>
+<p>要删除某存储池的一个快照，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>rmsnap<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">{</span>snap-name<span class="o">}</span></span>
+</pre></div></div></section>
 <section id="setpoolvalues">
 <span id="id15"></span><h2>调整存储池选项值<a class="headerlink" href="#setpoolvalues" title="Permalink to this heading"></a></h2>
-<p>要设置一个存储池的选项值，执行命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">key</span><span class="p">}</span> <span class="p">{</span><span class="n">value</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>你可以设置下列键的值：</p>
+<p>要设置一个存储池的配置选项值，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">{</span>key<span class="o">}</span><span class="w"> </span><span class="o">{</span>value<span class="o">}</span></span>
+</pre></div></div><p>你可以设置下列键的值：</p>
 <span class="target" id="compression-algorithm"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">compression_algorithm</span></span></dt>
-<dd><p>设置底层 BlueStore 所用的内联压缩算法。
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置向底层 BlueStore 后端存储数据时所用的内联压缩算法。
 此选项会覆盖全局配置 <a class="reference internal" href="../../configuration/bluestore-config-ref/#confval-bluestore_compression_algorithm"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_algorithm</span></code></a> 。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>String</p>
 </dd>
-<dt class="field-even">有效选项</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">lz4</span></code>, <code class="docutils literal notranslate"><span class="pre">snappy</span></code>, <code class="docutils literal notranslate"><span class="pre">zlib</span></code>, <code class="docutils literal notranslate"><span class="pre">zstd</span></code></p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">有效选项</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">lz4</span></code>, <code class="docutils literal notranslate"><span class="pre">snappy</span></code>, <code class="docutils literal notranslate"><span class="pre">zlib</span></code>, <code class="docutils literal notranslate"><span class="pre">zstd</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -549,14 +550,16 @@
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">compression_mode</span></span></dt>
-<dd><p>设置底层 BlueStore 所用压缩算法的策略。
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置向底层 BlueStore 后端存储数据时所用内联压缩算法的策略。
 此选项会覆盖全局配置 <a class="reference internal" href="../../configuration/bluestore-config-ref/#confval-bluestore_compression_mode"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_mode</span></code></a> 。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>String</p>
 </dd>
-<dt class="field-even">有效选项</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">none</span></code>, <code class="docutils literal notranslate"><span class="pre">passive</span></code>, <code class="docutils literal notranslate"><span class="pre">aggressive</span></code>, <code class="docutils literal notranslate"><span class="pre">force</span></code></p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>String</p>
+</dd>
+<dt class="field-odd">有效选项</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">none</span></code>, <code class="docutils literal notranslate"><span class="pre">passive</span></code>, <code class="docutils literal notranslate"><span class="pre">aggressive</span></code>, <code class="docutils literal notranslate"><span class="pre">force</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -564,10 +567,17 @@
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">compression_min_blob_size</span></span></dt>
-<dd><p>小于这个的数据块不会被压缩。此选项会覆盖全局配置
-<a class="reference internal" href="../../configuration/bluestore-config-ref/#confval-bluestore_compression_min_blob_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_min_blob_size</span></code></a> 、
-<a class="reference internal" href="../../configuration/bluestore-config-ref/#confval-bluestore_compression_min_blob_size_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_min_blob_size_hdd</span></code></a> 、和
-<a class="reference internal" href="../../configuration/bluestore-config-ref/#confval-bluestore_compression_min_blob_size_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_min_blob_size_ssd</span></code></a> 。</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置可压缩数据块的最小尺寸：小于此值的数据块不会被压缩。
+此设置会覆盖下列全局配置：</p>
+</dd>
+</dl>
+<ul class="simple">
+<li><p><a class="reference internal" href="../../configuration/bluestore-config-ref/#confval-bluestore_compression_min_blob_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_min_blob_size</span></code></a></p></li>
+<li><p><a class="reference internal" href="../../configuration/bluestore-config-ref/#confval-bluestore_compression_min_blob_size_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_min_blob_size_hdd</span></code></a></p></li>
+<li><p><a class="reference internal" href="../../configuration/bluestore-config-ref/#confval-bluestore_compression_min_blob_size_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">bluestore_compression_min_blob_size_ssd</span></code></a></p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>Unsigned Integer</p>
@@ -578,10 +588,13 @@
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">compression_max_blob_size</span></span></dt>
-<dd><p>大于此数值的数据块在压缩前会破碎成尺寸为 <code class="docutils literal notranslate"><span class="pre">compression_max_blob_size</span></code> 的较小二进制块。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Unsigned Integer</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置数据块的最大尺寸：大于此数值的数据块在压缩前会破碎成尺寸为
+<code class="docutils literal notranslate"><span class="pre">compression_max_blob_size</span></code> 的较小二进制块（ blob ）。</p>
+</dd>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Unsigned Integer</p>
 </dd>
 </dl>
 </dd></dl>
@@ -589,11 +602,13 @@
 <span class="target" id="size"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">size</span></span></dt>
-<dd><p>设置存储池中的对象副本数，详情参见<a class="reference internal" href="#id18">设置对象副本数</a>。
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置存储池中的对象副本数，详情见<a class="reference internal" href="#rados">设置 RADOS 对象副本数</a>。
 仅适用于多副本存储池。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+</dd>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
 </dd>
 </dl>
 </dd></dl>
@@ -601,17 +616,17 @@
 <span class="target" id="min-size"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">min_size</span></span></dt>
-<dd><p>设置 I/O 需要的最小副本数，详情参见<a class="reference internal" href="#id18">设置对象副本数</a> 。
-对于纠删码存储池，这个值应该设置成大于 k 的值，因为，
-如果我们让这个值等于 k ，那就没有冗余，
-在遇到永久的 OSD 故障这样的事件时，数据会丢失。
-更多信息见<a class="reference external" href="../erasure-code">纠删码</a> 。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置 I/O 要求的最小副本数，详情参见<a class="reference internal" href="#rados">设置 RADOS 对象副本数</a> 。对于纠删码存储池，
+这个值应该设置成大于 k 的值，因为，如果我们让这个值等于 k ，那就没有冗余，
+在遇到永久的 OSD 故障这样的事件时，数据会丢失。更多信息见<a class="reference external" href="../erasure-code">纠删码</a> 。</p>
 </dd>
-<dt class="field-even">适用版本</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0.54</span></code> 及以上。</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
+</dd>
+<dt class="field-odd">适用版本</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0.54</span></code> 及以上。</p>
 </dd>
 </dl>
 </dd></dl>
@@ -619,13 +634,15 @@
 <span class="target" id="pg-num"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">pg_num</span></span></dt>
-<dd><p>计算数据归置时使用的有效归置组数量。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>计算数据归置时使用的有效归置组数量。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>不高于 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 的当前值。</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
+</dd>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code> 到 <code class="docutils literal notranslate"><span class="pre">mon_max_pool_pg_num</span></code> 。如果设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，将采用 <code class="docutils literal notranslate"><span class="pre">osd_pool_default_pg_autoscale</span></code> 的值。</p>
 </dd>
 </dl>
 </dd></dl>
@@ -633,13 +650,15 @@
 <span class="target" id="pgp-num"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">pgp_num</span></span></dt>
-<dd><p>计算数据归置时使用的、用于归置的有效归置组数量。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>计算数据归置时使用的、用于归置的有效归置组数量。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>等于或小于 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 。</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
+</dd>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p>在 <code class="docutils literal notranslate"><span class="pre">1</span></code> 和 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 的当前数值之间。</p>
 </dd>
 </dl>
 </dd></dl>
@@ -647,10 +666,12 @@
 <span class="target" id="crush-rule"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">crush_rule</span></span></dt>
-<dd><p>集群内映射对象归置时使用的规则。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>String</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>Ceph 用以在存储池内映射对象归置时使用的 CRUSH 规则。</p>
+</dd>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>String</p>
 </dd>
 </dl>
 </dd></dl>
@@ -658,12 +679,14 @@
 <span class="target" id="allow-ec-overwrites"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">allow_ec_overwrites</span></span></dt>
-<dd><p>写入一个纠删码存储池时是否允许更新对象的部分数据，
-允许后 CephFS 和 RBD 才能用这个存储池，
-详情见<a class="reference external" href="../erasure-code#erasure-coding-with-overwrites">在纠删码存储池上启用重写功能</a>。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Boolean</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>写入一个纠删码存储池时是否允许只更新 RADOS 对象的部分数据，打开后
+CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用户数据
+（但不能用于元数据）。详情见<a class="reference external" href="../erasure-code#erasure-coding-with-overwrites">带重写功能的纠删码编码</a>。</p>
+</dd>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Boolean</p>
 </dd>
 </dl>
 <div class="versionadded">
@@ -671,16 +694,18 @@
 </div>
 </dd></dl>
 
-<span class="target" id="hashpspool"></span><dl class="describe">
+<dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">hashpspool</span></span></dt>
-<dd><p>给指定存储池设置/取消 HASHPSPOOL 标志。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>给指定存储池设置/取消 HASHPSPOOL 标志。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>1 开启， 0 取消</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
+</dd>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p>1 开启， 0 取消</p>
 </dd>
 </dl>
 </dd></dl>
@@ -688,16 +713,18 @@
 <span class="target" id="nodelete"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">nodelete</span></span></dt>
-<dd><p>给指定存储池设置/取消 NODELETE 标志。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>给指定存储池设置/取消 NODELETE 标志。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>1 开启， 0 取消</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
 </dd>
-<dt class="field-odd">适用版本</dt>
-<dd class="field-odd"><p>Version <code class="docutils literal notranslate"><span class="pre">FIXME</span></code></p>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p>1 开启， 0 取消</p>
+</dd>
+<dt class="field-even">适用版本</dt>
+<dd class="field-even"><p>Version <code class="docutils literal notranslate"><span class="pre">FIXME</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -705,16 +732,18 @@
 <span class="target" id="nopgchange"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">nopgchange</span></span></dt>
-<dd><p>给指定存储池设置/取消 NOPGCHANGE 标志。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>给指定存储池设置/取消 NOPGCHANGE 标志。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>1 开启， 0 取消</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
 </dd>
-<dt class="field-odd">适用版本</dt>
-<dd class="field-odd"><p>Version <code class="docutils literal notranslate"><span class="pre">FIXME</span></code></p>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p>1 开启， 0 取消</p>
+</dd>
+<dt class="field-even">适用版本</dt>
+<dd class="field-even"><p>Version <code class="docutils literal notranslate"><span class="pre">FIXME</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -722,16 +751,18 @@
 <span class="target" id="nosizechange"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">nosizechange</span></span></dt>
-<dd><p>给指定存储池设置/取消 NOSIZECHANGE 标志。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>给指定存储池设置/取消 NOSIZECHANGE 标志。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>1 开启， 0 取消</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
 </dd>
-<dt class="field-odd">适用版本</dt>
-<dd class="field-odd"><p>Version <code class="docutils literal notranslate"><span class="pre">FIXME</span></code></p>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p>1 开启， 0 取消</p>
+</dd>
+<dt class="field-even">适用版本</dt>
+<dd class="field-even"><p>Version <code class="docutils literal notranslate"><span class="pre">FIXME</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -739,13 +770,15 @@
 <span class="target" id="bulk"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">bulk</span></span></dt>
-<dd><p>设置、取消指定存储池的 bulk 标志。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Boolean</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置、取消指定存储池的 bulk 标志。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>true/1 设置标志， false/0 取消标志</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Boolean</p>
+</dd>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p>true/1 设置标志， false/0 取消标志</p>
 </dd>
 </dl>
 </dd></dl>
@@ -753,13 +786,15 @@
 <span class="target" id="write-fadvise-dontneed"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">write_fadvise_dontneed</span></span></dt>
-<dd><p>设置或取消指定存储池的 WRITE_FADVISE_DONTNEED 标志。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Integer</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置或取消指定存储池的 WRITE_FADVISE_DONTNEED 标志。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>1 开启， 0 取消</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Integer</p>
+</dd>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p>1 开启， 0 取消</p>
 </dd>
 </dl>
 </dd></dl>
@@ -767,13 +802,15 @@
 <span class="target" id="noscrub"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">noscrub</span></span></dt>
-<dd><p>设置或取消指定存储池的 NOSCRUB 标志。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Integer</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置或取消指定存储池的 NOSCRUB 标志。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>1 设置， 0 取消</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Integer</p>
+</dd>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">1</span></code> 设置， <code class="docutils literal notranslate"><span class="pre">0</span></code> 取消</p>
 </dd>
 </dl>
 </dd></dl>
@@ -781,123 +818,15 @@
 <span class="target" id="nodeep-scrub"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">nodeep-scrub</span></span></dt>
-<dd><p>设置或取消指定存储池的 NODEEP_SCRUB 标志。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Integer</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置或取消指定存储池的 NODEEP_SCRUB 标志。</p>
 </dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>1 开启， 0 取消</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Integer</p>
 </dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="hit-set-type"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">hit_set_type</span></span></dt>
-<dd><p>启用缓存存储池的命中集跟踪，
-详情见 <a class="reference external" href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom 过滤器</a>。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>String</p>
-</dd>
-<dt class="field-even">有效值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">bloom</span></code>, <code class="docutils literal notranslate"><span class="pre">explicit_hash</span></code>, <code class="docutils literal notranslate"><span class="pre">explicit_object</span></code></p>
-</dd>
-<dt class="field-odd">默认值</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bloom</span></code> ，其它是用于测试的。</p>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="hit-set-count"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">hit_set_count</span></span></dt>
-<dd><p>为缓存存储池保留的命中集数量。此值越高，
-<code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 守护进程消耗的内存越多。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
-</dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1</span></code>. Agent doesn’t handle &gt; 1 yet.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="hit-set-period"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">hit_set_period</span></span></dt>
-<dd><p>为缓存存储池保留的命中集有效期。
-此值越高， <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 消耗的内存
-越多。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
-</dd>
-<dt class="field-even">实例</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">3600</span></code> 1hr</p>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="hit-set-fpp"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">hit_set_fpp</span></span></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">bloom</span></code> 命中集类型的假阳性概率。
-详情见 <a class="reference external" href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom 过滤器</a>。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Double</p>
-</dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>0.0 - 1.0</p>
-</dd>
-<dt class="field-odd">默认值</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="cache-target-dirty-ratio"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">cache_target_dirty_ratio</span></span></dt>
-<dd><p>缓存存储池包含的已修改（脏 dirty ）对象达到多大百分比时，
-分级缓存代理就把它们回写到后端的存储池。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Double</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">.4</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="cache-target-dirty-high-ratio"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">cache_target_dirty_high_ratio</span></span></dt>
-<dd><p>缓存存储池内包含的已修改（脏的）对象达到这个百分比时，缓存层代理就会更快地把脏对象刷回到后端存储池。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Double</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">.6</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="cache-target-full-ratio"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">cache_target_full_ratio</span></span></dt>
-<dd><p>缓存存储池包含的未修改（干净的）对象达到多大百分比时，分级缓存代理就把它们赶出缓存存储池。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Double</p>
-</dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">.8</span></code></p>
+<dt class="field-odd">有效范围</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">1</span></code> 开启， <code class="docutils literal notranslate"><span class="pre">0</span></code> 取消</p>
 </dd>
 </dl>
 </dd></dl>
@@ -905,14 +834,15 @@
 <span class="target" id="target-max-bytes"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">target_max_bytes</span></span></dt>
-<dd><p>达到 <code class="docutils literal notranslate"><span class="pre">max_bytes</span></code> 阀值时
-Ceph 就回写或赶出对象。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>达到 <code class="docutils literal notranslate"><span class="pre">max_bytes</span></code> 阀值时 Ceph 就回写或赶出对象。</p>
 </dd>
-<dt class="field-even">实例</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1000000000000</span></code>  #1-TB</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
+</dd>
+<dt class="field-odd">实例</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">1000000000000</span></code>  #1-TB</p>
 </dd>
 </dl>
 </dd></dl>
@@ -920,76 +850,15 @@ Ceph 就回写或赶出对象。</p>
 <span class="target" id="target-max-objects"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">target_max_objects</span></span></dt>
-<dd><p>达到 <code class="docutils literal notranslate"><span class="pre">max_objects</span></code> 阀值时
-Ceph 就回写或赶出对象。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>达到 <code class="docutils literal notranslate"><span class="pre">max_objects</span></code> 阀值时 Ceph 就回写或赶出对象。</p>
 </dd>
-<dt class="field-even">实例</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1000000</span></code> #1M objects</p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>整数</p>
 </dd>
-</dl>
-</dd></dl>
-
-<dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">hit_set_grade_decay_rate</span></span></dt>
-<dd><p>在两个连续 hit_sets 间的热度衰退速率。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Integer</p>
-</dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>0 - 100</p>
-</dd>
-<dt class="field-odd">默认值</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">20</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">hit_set_search_last_n</span></span></dt>
-<dd><p>计算热度时，在 hit_sets 里最多计数 N 次。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Integer</p>
-</dd>
-<dt class="field-even">有效范围</dt>
-<dd class="field-even"><p>0 - hit_set_count</p>
-</dd>
-<dt class="field-odd">默认值</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="cache-min-flush-age"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">cache_min_flush_age</span></span></dt>
-<dd><p>达到此时间（单位为秒）时，分级缓存代理就把某些对象从缓存存储池刷回到存储池。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
-</dd>
-<dt class="field-even">实例</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">600</span></code> 10min</p>
-</dd>
-</dl>
-</dd></dl>
-
-<span class="target" id="cache-min-evict-age"></span><dl class="describe">
-<dt class="sig sig-object">
-<span class="sig-name descname"><span class="pre">cache_min_evict_age</span></span></dt>
-<dd><p>达到此时间（单位为秒）时，分级缓存代理就把某些对象从缓存存储池赶出。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>整数</p>
-</dd>
-<dt class="field-even">实例</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1800</span></code> 30min</p>
+<dt class="field-odd">实例</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">1000000</span></code> #1M objects</p>
 </dd>
 </dl>
 </dd></dl>
@@ -997,19 +866,18 @@ Ceph 就回写或赶出对象。</p>
 <span class="target" id="fast-read"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">fast_read</span></span></dt>
-<dd><p>在纠删码存储池上，如果打开了这个标志，
-读请求会向所有分片发送子操作读，然后等着，
-直到收到的分片足以解码给客户端。
-对 jerasure 和 isa 纠删码插件来说，只要前 K 个请求返回，
-就能立即解码、并先把这些数据发给客户端。
-这样有助于资源折衷，以提升性能。
-当前，这些标志还只能用于纠删码存储池。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Boolean</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>在纠删码存储池上，如果打开了这个标志，读请求会向所有分片发送子操作读（ sub reads ），
+然后等着，直到收到的分片足以解码给客户端。对 <em>jerasure</em> 或 <em>isa</em> 纠删码插件来说，
+只要前 <em>K</em> 个请求返回，就能立即解码、并先把这些数据发给客户端。
+这样有助于资源折衷，以提升性能。此标志只支持纠删码存储池。</p>
 </dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Boolean</p>
+</dd>
+<dt class="field-odd">默认值</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1017,15 +885,16 @@ Ceph 就回写或赶出对象。</p>
 <span class="target" id="scrub-min-interval"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">scrub_min_interval</span></span></dt>
-<dd><p>在负载低时，洗刷存储池的最小间隔秒数。
-如果是 0 ，就按照配置文件里的
-osd_scrub_min_interval 执行。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Double</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>在负载低时，洗刷存储池 PG 的最小间隔秒数。如果是 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，
+就按照中央配置库里的 <code class="docutils literal notranslate"><span class="pre">osd_scrub_min_interval</span></code> 执行。</p>
 </dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Double</p>
+</dd>
+<dt class="field-odd">默认值</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1033,15 +902,16 @@ osd_scrub_min_interval 执行。</p>
 <span class="target" id="scrub-max-interval"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">scrub_max_interval</span></span></dt>
-<dd><p>不管集群负载如何，都要洗刷存储池的最大间隔秒数。
-如果是 0 ，就按照配置文件里的
-osd_scrub_max_interval 。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Double</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>不管集群负载如何，都要洗刷存储池 PG 的最大间隔秒数。如果 <code class="docutils literal notranslate"><span class="pre">scrub_max_interval</span></code>
+的值是 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，就采用中央配置库里的 <code class="docutils literal notranslate"><span class="pre">osd_scrub_max_interval</span></code> 数值。</p>
 </dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Double</p>
+</dd>
+<dt class="field-odd">默认值</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1049,14 +919,16 @@ osd_scrub_max_interval 。</p>
 <span class="target" id="deep-scrub-interval"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">deep_scrub_interval</span></span></dt>
-<dd><p>“深度”洗刷存储池的间隔秒数。
-如果是 0 ，就按照配置文件里的 osd_deep_scrub_interval 。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Double</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>“深度”洗刷存储池 PG 的间隔秒数。如果 <code class="docutils literal notranslate"><span class="pre">deep_scrub_interval</span></code> 的数值是 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，
+就采用中央配置库里的 <code class="docutils literal notranslate"><span class="pre">osd_deep_scrub_interval</span></code> 。</p>
 </dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Double</p>
+</dd>
+<dt class="field-odd">默认值</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1064,16 +936,16 @@ osd_scrub_max_interval 。</p>
 <span class="target" id="recovery-priority"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">recovery_priority</span></span></dt>
-<dd><p>设置此值后，它会提高或降低计算出的保留优先级，
-此值必须介于 -10 到 10 之间。
-给不太重要的存储池分配负值，
-其优先级就低于其它新存储池。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Integer</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置此值可调整存储池计算出的保留优先级。此值必须介于 <code class="docutils literal notranslate"><span class="pre">-10</span></code> 到 <code class="docutils literal notranslate"><span class="pre">10</span></code> 之间。
+所有分配了负值的存储池，其优先级都会低于所有新存储池，所以用户应该给低优先级存储池分配负值。</p>
 </dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Integer</p>
+</dd>
+<dt class="field-odd">默认值</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1081,13 +953,16 @@ osd_scrub_max_interval 。</p>
 <span class="target" id="recovery-op-priority"></span><dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">recovery_op_priority</span></span></dt>
-<dd><p>指定此存储池恢复操作的优先级，而非 <a class="reference internal" href="../../configuration/osd-config-ref/#confval-osd_recovery_op_priority"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_op_priority</span></code></a> 。</p>
-<dl class="field-list simple">
-<dt class="field-odd">类型</dt>
-<dd class="field-odd"><p>Integer</p>
+<dd><dl class="field-list simple">
+<dt class="field-odd">描述</dt>
+<dd class="field-odd"><p>设置指定存储池 PG 的恢复操作优先级。本选项会覆盖
+<a class="reference internal" href="../../configuration/osd-config-ref/#confval-osd_recovery_op_priority"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_op_priority</span></code></a> 设置的通用优先级。</p>
 </dd>
-<dt class="field-even">默认值</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+<dt class="field-even">类型</dt>
+<dd class="field-even"><p>Integer</p>
+</dd>
+<dt class="field-odd">默认值</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1095,11 +970,9 @@ osd_scrub_max_interval 。</p>
 </section>
 <section id="id17">
 <h2>获取存储池选项值<a class="headerlink" href="#id17" title="Permalink to this heading"></a></h2>
-<p>要获取一个存储池的选项值，执行命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="n">get</span> <span class="p">{</span><span class="n">pool</span><span class="o">-</span><span class="n">name</span><span class="p">}</span> <span class="p">{</span><span class="n">key</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>你可以获取到下列选项的值：</p>
+<p>要获取一个存储池选项（ key ）的值，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>get<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">{</span>key<span class="o">}</span></span>
+</pre></div></div><p>你可以获取到下列选项的值：</p>
 <p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
@@ -1147,75 +1020,6 @@ osd_scrub_max_interval 。</p>
 <dt class="field-odd">描述</dt>
 <dd class="field-odd"><p>见 <a class="reference internal" href="#crush-rule">crush_rule</a></p>
 </dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>整数</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">hit_set_type</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#hit-set-type">hit_set_type</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>String</p>
-</dd>
-<dt class="field-odd">有效选项</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bloom</span></code> 、 <code class="docutils literal notranslate"><span class="pre">explicit_hash</span></code> 、 <code class="docutils literal notranslate"><span class="pre">explicit_object</span></code></p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">hit_set_count</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#hit-set-count">hit_set_count</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>整数</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">hit_set_period</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#hit-set-period">hit_set_period</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>整数</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">hit_set_fpp</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#hit-set-fpp">hit_set_fpp</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Double</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">cache_target_dirty_ratio</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#cache-target-dirty-ratio">cache_target_dirty_ratio</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Double</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">cache_target_dirty_high_ratio</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#cache-target-dirty-high-ratio">cache_target_dirty_high_ratio</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Double</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">cache_target_full_ratio</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#cache-target-full-ratio">cache_target_full_ratio</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>Double</p>
-</dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">target_max_bytes</span></code></p>
 <dl class="field-list simple">
@@ -1230,24 +1034,6 @@ osd_scrub_max_interval 。</p>
 <dl class="field-list simple">
 <dt class="field-odd">描述</dt>
 <dd class="field-odd"><p>见 <a class="reference internal" href="#target-max-objects">target_max_objects</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>整数</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">cache_min_flush_age</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#cache-min-flush-age">cache_min_flush_age</a></p>
-</dd>
-<dt class="field-even">类型</dt>
-<dd class="field-even"><p>整数</p>
-</dd>
-</dl>
-<p><code class="docutils literal notranslate"><span class="pre">cache_min_evict_age</span></code></p>
-<dl class="field-list simple">
-<dt class="field-odd">描述</dt>
-<dd class="field-odd"><p>见 <a class="reference internal" href="#cache-min-evict-age">cache_min_evict_age</a></p>
 </dd>
 <dt class="field-even">类型</dt>
 <dd class="field-even"><p>整数</p>
@@ -1317,62 +1103,51 @@ osd_scrub_max_interval 。</p>
 </dd>
 </dl>
 </section>
-<section id="id18">
-<h2>设置对象副本数<a class="headerlink" href="#id18" title="Permalink to this heading"></a></h2>
-<p>要设置多副本存储池的对象副本数，执行命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">poolname</span><span class="p">}</span> <span class="n">size</span> <span class="p">{</span><span class="n">num</span><span class="o">-</span><span class="n">replicas</span><span class="p">}</span>
-</pre></div>
-</div>
-<div class="admonition important">
+<section id="rados">
+<h2>设置 RADOS 对象副本数<a class="headerlink" href="#rados" title="Permalink to this heading"></a></h2>
+<p>要设置多副本存储池的对象副本数，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>poolname<span class="o">}</span><span class="w"> </span>size<span class="w"> </span><span class="o">{</span>num-replicas<span class="o">}</span></span>
+</pre></div></div><div class="admonition important">
 <p class="admonition-title">Important</p>
-<p><code class="docutils literal notranslate"><span class="pre">{num-replicas}</span></code> 包括对象自身，
-如果你想要对象自身及其两份拷贝共计三份，
-指定 3 。</p>
+<p><code class="docutils literal notranslate"><span class="pre">{num-replicas}</span></code> 参数包括主对象自身。
+例如，如果你想要对象自身及其两份副本共计三份，执行下列命令指定 <code class="docutils literal notranslate"><span class="pre">3</span></code> ：</p>
 </div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">data</span> <span class="n">size</span> <span class="mi">3</span>
-</pre></div>
-</div>
-<p>你可以在每个存储池上执行这个命令。<strong>注意</strong>，
-一个处于降级模式的对象其副本数小于规定值 <code class="docutils literal notranslate"><span class="pre">pool</span> <span class="pre">size</span></code> ，
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>data<span class="w"> </span>size<span class="w"> </span><span class="m">3</span></span>
+</pre></div></div><p>你可以在每个存储池上执行这个命令。</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>一个处于降级模式的对象，其副本数小于规定值 <code class="docutils literal notranslate"><span class="pre">pool</span> <span class="pre">size</span></code> ，
 但仍可接受 I/O 请求。为保证 I/O 正常，
-可用 <code class="docutils literal notranslate"><span class="pre">min_size</span></code> 选项为其设置个最低副本数。例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">data</span> <span class="n">min_size</span> <span class="mi">2</span>
-</pre></div>
+可用 <code class="docutils literal notranslate"><span class="pre">min_size</span></code> 选项为其设置个最低副本数。例如，执行下列命令：</p>
 </div>
-<p>这确保数据存储池里任何副本数小于 <code class="docutils literal notranslate"><span class="pre">min_size</span></code> 的对象都不会收到 I/O 了。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>data<span class="w"> </span>min_size<span class="w"> </span><span class="m">2</span></span>
+</pre></div></div><p>此命令可确保数据存储池里任何副本数小于 <code class="docutils literal notranslate"><span class="pre">min_size</span></code> 的对象都不会收到 I/O 了。</p>
+</section>
+<section id="id18">
+<h2>获取对象副本数<a class="headerlink" href="#id18" title="Permalink to this heading"></a></h2>
+<p>要获取对象副本数，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;replicated size&#39;</span></span>
+</pre></div></div><p>Ceph 会列出存储池，且高亮 <code class="docutils literal notranslate"><span class="pre">replicated</span> <span class="pre">size</span></code> 属性。默认情况下，
+Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 <code class="docutils literal notranslate"><span class="pre">3</span></code> ）。</p>
 </section>
 <section id="id19">
-<h2>获取对象副本数<a class="headerlink" href="#id19" title="Permalink to this heading"></a></h2>
-<p>要获取对象副本数，执行命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">dump</span> <span class="o">|</span> <span class="n">grep</span> <span class="s1">&#39;replicated size&#39;</span>
-</pre></div>
-</div>
-<p>Ceph 会列出存储池，且高亮 <code class="docutils literal notranslate"><span class="pre">replicated</span> <span class="pre">size</span></code> 属性。默认情况下，
-Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 3 ）。</p>
+<h2>管理加了 <code class="docutils literal notranslate"><span class="pre">--bulk</span></code> 标记的存储池<a class="headerlink" href="#id19" title="Permalink to this heading"></a></h2>
+<p>见 <a class="reference internal" href="../placement-groups/#managing-bulk-flagged-pools"><span class="std std-ref">管理带有 bulk 标志的存储池</span></a> 。</p>
 </section>
-<section id="managing-pools-that-are-flagged-with-bulk">
-<h2>Managing pools that are flagged with <code class="docutils literal notranslate"><span class="pre">--bulk</span></code><a class="headerlink" href="#managing-pools-that-are-flagged-with-bulk" title="Permalink to this heading"></a></h2>
-<p>See <a class="reference internal" href="../placement-groups/#managing-bulk-flagged-pools"><span class="std std-ref">管理带有 bulk 标志的存储池</span></a>.</p>
-</section>
-<section id="setting-values-for-a-stretch-pool">
-<h2>Setting values for a stretch pool<a class="headerlink" href="#setting-values-for-a-stretch-pool" title="Permalink to this heading"></a></h2>
-<p>To set values for a stretch pool, run a command of the following form:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
-span.prompt1:before {
-  content: "$ ";
-}
-</style><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>stretch<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">{</span>peering_crush_bucket_count<span class="o">}</span><span class="w"> </span><span class="o">{</span>peering_crush_bucket_target<span class="o">}</span><span class="w"> </span><span class="o">{</span>peering_crush_bucket_barrier<span class="o">}</span><span class="w"> </span><span class="o">{</span>crush_rule<span class="o">}</span><span class="w"> </span><span class="o">{</span>size<span class="o">}</span><span class="w"> </span><span class="o">{</span>min_size<span class="o">}</span><span class="w"> </span><span class="o">[</span>--yes-i-really-mean-it<span class="o">]</span></span>
-</pre></div></div><p>Here are the break downs of the arguments:</p>
+<section id="stretch">
+<h2>配置 stretch 存储池的值<a class="headerlink" href="#stretch" title="Permalink to this heading"></a></h2>
+<p>要配置 stretch 存储池的值，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>stretch<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">{</span>peering_crush_bucket_count<span class="o">}</span><span class="w"> </span><span class="o">{</span>peering_crush_bucket_target<span class="o">}</span><span class="w"> </span><span class="o">{</span>peering_crush_bucket_barrier<span class="o">}</span><span class="w"> </span><span class="o">{</span>crush_rule<span class="o">}</span><span class="w"> </span><span class="o">{</span>size<span class="o">}</span><span class="w"> </span><span class="o">{</span>min_size<span class="o">}</span><span class="w"> </span><span class="o">[</span>--yes-i-really-mean-it<span class="o">]</span></span>
+</pre></div></div><p>以下是参数解析：</p>
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{pool-name}</span></span></dt>
-<dd><p>The name of the pool. It must be an existing pool, this command doesn’t create a new pool.</p>
+<dd><p>此存储池的名字。它必须是存在的存储池，此命令不会创建一个新存储池。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>String</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>
@@ -1381,14 +1156,12 @@ span.prompt1:before {
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{peering_crush_bucket_count}</span></span></dt>
-<dd><p>The value is used along with peering_crush_bucket_barrier to determined whether the set of
-OSDs in the chosen acting set can peer with each other, based on the number of distinct
-buckets there are in the acting set.</p>
+<dd><p>此值与 peering_crush_bucket_barrier 一起使用，可以决定选定的 acting set 内的一组 OSD 是否能相互建立对等互联，根据的是 actine set 中不同桶的数量。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>Integer</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>
@@ -1397,13 +1170,13 @@ buckets there are in the acting set.</p>
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{peering_crush_bucket_target}</span></span></dt>
-<dd><p>This value is used along with peering_crush_bucket_barrier and size to calculate
-the value bucket_max which limits the number of OSDs in the same bucket from getting chose to be in the acting set of a PG.</p>
+<dd><p>此值与 peering_crush_bucket_barrier 和 size 一起用于计算 bucket_max 值，
+这个值限制着同一个桶内被选入 PG actine set 的 OSD 数量。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>Integer</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>
@@ -1412,12 +1185,12 @@ the value bucket_max which limits the number of OSDs in the same bucket from get
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{peering_crush_bucket_barrier}</span></span></dt>
-<dd><p>The type of bucket a pool is stretched across, e.g., rack, row, or datacenter.</p>
+<dd><p>一个存储池能跨越的桶类型，例如 rack 、 row 、 datacenter 。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>String</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>
@@ -1426,13 +1199,12 @@ the value bucket_max which limits the number of OSDs in the same bucket from get
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{crush_rule}</span></span></dt>
-<dd><p>The crush rule to use for the stretch pool. The type of pool must match the type of crush_rule
-(replicated or erasure).</p>
+<dd><p>stretch 存储池所用的 crush 规则。存储池类型和 crush_rule 类型必须相匹配（replicated 或 erasure ）。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>String</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>
@@ -1441,12 +1213,12 @@ the value bucket_max which limits the number of OSDs in the same bucket from get
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{size}</span></span></dt>
-<dd><p>The number of replicas for objects in the stretch pool.</p>
+<dd><p>stretch 存储池内的对象副本数。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>Integer</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>
@@ -1455,12 +1227,12 @@ the value bucket_max which limits the number of OSDs in the same bucket from get
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{min_size}</span></span></dt>
-<dd><p>The minimum number of replicas required for I/O in the stretch pool.</p>
+<dd><p>stretch 存储池维持正常 I/O 操作所需的最低副本数。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>Integer</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>
@@ -1469,57 +1241,56 @@ the value bucket_max which limits the number of OSDs in the same bucket from get
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{--yes-i-really-mean-it}</span></span></dt>
-<dd><p>This flag is required to confirm that you really want to by-pass
-the safety checks and set the values for a stretch pool, e.g,
-when you are trying to set <code class="docutils literal notranslate"><span class="pre">peering_crush_bucket_count</span></code> or
-<code class="docutils literal notranslate"><span class="pre">peering_crush_bucket_target</span></code> to be more than the number of buckets in the crush map.</p>
+<dd><p>需要使用该标记来确认您是否真的想绕过安全检查并为某个 stretch 存储池设置值，
+例如，当你试图把 <code class="docutils literal notranslate"><span class="pre">peering_crush_bucket_count</span></code> 或 <code class="docutils literal notranslate"><span class="pre">peering_crush_bucket_target</span></code>
+设置为大于 crush 图中的桶数量时。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>Flag</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>No.</p>
 </dd>
 </dl>
 </dd></dl>
 
 </section>
-<section id="unsetting-values-for-a-stretch-pool">
-<span id="id20"></span><h2>Unsetting values for a stretch pool<a class="headerlink" href="#unsetting-values-for-a-stretch-pool" title="Permalink to this heading"></a></h2>
-<p>To move the pool back to non-stretch, run a command of the following form:</p>
+<section id="setting-values-for-a-stretch-pool">
+<span id="id20"></span><h2>取消给 stretch 存储池设置的值<a class="headerlink" href="#setting-values-for-a-stretch-pool" title="Permalink to this heading"></a></h2>
+<p>要把存储池恢复回非 stretch 状态时，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>stretch<span class="w"> </span><span class="nb">unset</span><span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span></span>
-</pre></div></div><p>Here are the break downs of the argument:</p>
+</pre></div></div><p>以下是参数解析：</p>
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{pool-name}</span></span></dt>
-<dd><p>The name of the pool. It must be an existing pool that is stretched,
-i.e., it has already been set with the command <cite>ceph osd pool stretch set</cite>.</p>
+<dd><p>存储池的名字。它必须是存在的存储池且为 stretch 模式，
+就是说，它必须是已经用 <cite>ceph osd pool stretch set</cite> 命令设置过的。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>String</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>
 </dd></dl>
 
 </section>
-<section id="showing-values-of-a-stretch-pool">
-<h2>Showing values of a stretch pool<a class="headerlink" href="#showing-values-of-a-stretch-pool" title="Permalink to this heading"></a></h2>
-<p>To show values for a stretch pool, run a command of the following form:</p>
+<section id="id21">
+<h2>显示一个 stretch 存储池设置的值<a class="headerlink" href="#id21" title="Permalink to this heading"></a></h2>
+<p>要显示一个 stretch 存储池的值，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>stretch<span class="w"> </span>show<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span></span>
-</pre></div></div><p>Here are the break downs of the argument:</p>
+</pre></div></div><p>以下是参数解析：</p>
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{pool-name}</span></span></dt>
-<dd><p>The name of the pool. It must be an existing pool that is stretched,
-i.e., it has already been set with the command <cite>ceph osd pool stretch set</cite>.</p>
+<dd><p>存储池的名字。它必须是存在的存储池且为 stretch 模式，
+就是说，它必须是已经用 <cite>ceph osd pool stretch set</cite> 命令设置过的。</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">类型</dt>
 <dd class="field-odd"><p>String</p>
 </dd>
-<dt class="field-even">Required</dt>
+<dt class="field-even">是否必需</dt>
 <dd class="field-even"><p>Yes.</p>
 </dd>
 </dl>

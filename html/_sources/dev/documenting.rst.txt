@@ -1,6 +1,7 @@
 ==================
  为 Ceph 写作文档
 ==================
+.. Documenting Ceph
 
 用户文档
 ========
@@ -66,6 +67,7 @@ C 和 C++ 可以用 Doxygen_ 生成文档，我们用 Breathe_ 工具，它\
 
 绘图
 ====
+.. Drawing diagrams
 
 Graphviz
 --------
