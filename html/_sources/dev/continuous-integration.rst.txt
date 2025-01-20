@@ -92,7 +92,7 @@ Shaman
    is a server offering RESTful API allowing the clients to query the
    information of repos hosted by chacra nodes. Shaman is also known
    for its `Web UI`_. But please note, shaman does not build the
-   packages, it justs offers information of the builds.
+   packages, it just offers information on the builds.
 
 As the following shows, `chacra`_ manages multiple projects whose metadata
 are stored in a database. These metadata are exposed via Shaman as a web
@@ -210,7 +210,7 @@ libraries in our dist tarball. They are
 - pmdk
 
 ``make-dist`` is a script used by our CI pipeline to create dist tarball so the
-tarball can be used to build the Ceph packages in a clean room environmet. When
+tarball can be used to build the Ceph packages in a clean room environment. When
 we need to upgrade these third party libraries, we should
 
 - update the CMake script
@@ -222,7 +222,7 @@ Uploading Dependencies
 
 To ensure that prebuilt packages are available by the jenkins agents, we need to
 upload them to either ``apt-mirror.front.sepia.ceph.com`` or `chacra`_. To upload
-packages to the former would require the help our our lab administrator, so if we
+packages to the former would require the help of our lab administrator, so if we
 want to maintain the package repositories on regular basis, a better choice would be
 to manage them using `chacractl`_. `chacra`_ represents packages repositories using
 a resource hierarchy, like::
@@ -241,9 +241,9 @@ branch
 ref
     a unique id of a given version of a set packages. This id is used to reference
     the set packages under the ``<project>/<branch>``. It is a good practice to
-    version the packaging recipes, like the ``debian`` directory for building deb
-    packages and the ``spec`` for building rpm packages, and use ths sha1 of the
-    packaging receipe for the ``ref``. But you could also the a random string for
+    version the packaging recipes, like the ``debian`` directory for building DEB
+    packages and the ``spec`` for building RPM packages, and use the SHA1 of the
+    packaging recipe for the ``ref``. But you could also use a random string for
     ``ref``, like the tag name of the built source tree.
 
 distro

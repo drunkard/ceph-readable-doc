@@ -1,6 +1,7 @@
-===========
-Ceph 的升级
-===========
+=========
+升级 Ceph
+=========
+.. Upgrading Ceph
 
 Cephadm can safely upgrade Ceph from one point release to the next.  For
 example, you can upgrade from v15.2.0 (the first Octopus release) to the next

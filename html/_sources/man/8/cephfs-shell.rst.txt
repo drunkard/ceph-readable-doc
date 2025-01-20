@@ -167,6 +167,23 @@ cat
 
 * file - 文件名
 
+ln
+--
+
+给现有文件增加一个硬链接，或者给现有文件或目录创建一个符号链接。
+
+用法：
+
+    ln [options] <target> [link_name]
+
+* target - 准备创建一个链接的源文件/目录
+* link_name - 用指定的名字 link_name 链接到目标
+
+选项：
+  -s, --symbolic  创建符号链接
+  -v, --verbose   打印各个被链接文件的名字
+  -f, --force     强行创建链接、符号链接
+
 cd
 --
 

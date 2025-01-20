@@ -126,6 +126,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#encryption-format">Encryption Format</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#encryption-load">Encryption Load</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#supported-formats">Supported Formats</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#examples">Examples</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../rbd-config-ref/">配置选项 (librbd)</a></li>
@@ -224,9 +225,13 @@ be lower than the raw image size. See the <a class="reference external" href="#s
 details.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Currently only flat images (i.e. not cloned) can be formatted.
-Clones of an encrypted image are inherently encrypted using the same format
-and secret.</p>
+<p>Unless explicitly (re-)formatted, clones of an encrypted image are
+inherently encrypted using the same format and secret.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Clones of an encrypted image are always encrypted.
+Re-formatting to plaintext is not supported.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -251,11 +256,11 @@ image.</p>
 <p>In order to safely perform encrypted IO on the formatted image, an additional
 <em>encryption load</em> operation should be applied after opening the image. The
 encryption load operation requires supplying the encryption format and a secret
-for unlocking the encryption key. Following a successful encryption load
-operation, all IOs for the opened image will be encrypted / decrypted.
-For a cloned image, this includes IOs for ancestor images as well. The
-encryption key will be stored in-memory by the RBD client until the image is
-closed.</p>
+for unlocking the encryption key for the image itself and each of its explicitly
+formatted ancestor images. Following a successful encryption load operation,
+all IOs for the opened image will be encrypted / decrypted. For a cloned
+image, this includes IOs for ancestor images as well. The encryption keys will
+be stored in-memory by the RBD client until the image is closed.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Once encryption has been loaded, no other encryption load / format
@@ -264,7 +269,33 @@ operations can be applied to the context of the opened image.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Once encryption has been loaded, API calls for retrieving the image size
-using the opened image context will return the effective image size.</p>
+and the parent overlap using the opened image context will return the
+effective image size and the effective parent overlap respectively.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Once encryption has been loaded, API calls for resizing the image will
+interpret the specified target size as effective image size.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If a clone of an encrypted image is explicitly formatted, the operation of
+flattening the cloned image ceases to be transparent since the parent data
+must be re-encrypted according to the cloned image format as it is copied
+from the parent snapshot. If encryption is not loaded before the flatten
+operation is issued, any parent data that was previously accessible in the
+cloned image may become unreadable.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If a clone of an encrypted image is explicitly formatted, the operation of
+shrinking the cloned image ceases to be transparent since in some cases
+(e.g. if the cloned image has snapshots or if the cloned image is being
+shrunk to a size that is not aligned with the object size) it involves
+copying some data from the parent snapshot, similar to flattening. If
+encryption is not loaded before the shrink operation is issued, any parent
+data that was previously accessible in the cloned image may become
+unreadable.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -291,28 +322,32 @@ into the image) and loaded by RBD encryption.</p>
 Additionally, xts-plain64 is currently the only supported encryption mode.</p>
 </div>
 <p>To use the LUKS format, start by formatting the image:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd encryption format {pool-name}/{image-name} {luks1|luks2} {passphrase-file} [–cipher-alg {aes-128 | aes-256}]
-</pre></div>
-</div>
-<p>The encryption format operation generates a LUKS header and writes it to the
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">rbd<span class="w"> </span>encryption<span class="w"> </span>format<span class="w"> </span><span class="o">[</span>--cipher-alg<span class="w"> </span><span class="o">{</span>aes-128<span class="p">|</span>aes-256<span class="o">}]</span><span class="w"> </span><span class="o">{</span>image-spec<span class="o">}</span><span class="w"> </span><span class="o">{</span>luks1<span class="p">|</span>luks2<span class="o">}</span><span class="w"> </span><span class="o">{</span>passphrase-file<span class="o">}</span></span>
+</pre></div></div><p>The encryption format operation generates a LUKS header and writes it to the
 beginning of the image. The header is appended with a single keyslot holding a
 randomly-generated encryption key, and is protected by the passphrase read from
 <cite>passphrase-file</cite>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>If the content of <cite>passphrase-file</cite> ends with a newline character, it will
-be stripped off.</p>
+<p>In older versions, if the content of <cite>passphrase-file</cite> ended with a newline
+character, it was stripped off.</p>
 </div>
 <p>By default, AES-256 in xts-plain64 mode (which is the current recommended mode,
 and the usual default for other tools) will be used. The format operation
 allows selecting AES-128 as well. Adding / removing passphrases is currently
 not supported by RBD, but can be applied to the raw RBD data using compatible
 tools such as cryptsetup.</p>
-<p>The LUKS header size can vary (upto 136MiB in LUKS2), but is usually upto
+<p>The LUKS header size can vary (up to 136MiB in LUKS2), but is usually up to
 16MiB, depending on the version of <cite>libcryptsetup</cite> installed. For optimal
 performance, the encryption format will set the data offset to be aligned with
-the image object size. For example expect a minimum overhead of 8MiB if using
-an imageconfigured with an 8MiB object size.</p>
+the image stripe period size. For example, expect a minimum overhead of 8MiB if
+using an image configured with an 8MiB object size and a minimum overhead of
+12MiB if using an image configured with a 4MiB object size and <a class="reference external" href="../../man/8/rbd/#striping">stripe count</a>
+of 3.</p>
 <p>In LUKS1, sectors, which are the minimal encryption units, are fixed at 512
 bytes. LUKS2 supports larger sectors, and for better performance we set
 the default sector size to the maximum of 4KiB. Writes which are either smaller
@@ -321,17 +356,71 @@ read-modify-write chain on the client, with a considerable latency penalty.
 A batch of such unaligned writes can lead to IO races which will further
 deteriorate performance. Thus it is advisable to avoid using RBD encryption
 in cases where incoming writes cannot be guaranteed to be sector-aligned.</p>
-<p>To mount a LUKS-encrypted image run:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rbd -p {pool-name} device map -t nbd -o encryption-format={luks1|luks2},encryption-passphrase-file={passphrase-file}
-</pre></div>
-</div>
-<p>Note that for security reasons, both the encryption format and encryption load
+<p>To map a LUKS-formatted image run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt2:before {
+  content: "# ";
+}
+</style><span class="prompt2">rbd<span class="w"> </span>device<span class="w"> </span>map<span class="w"> </span>-t<span class="w"> </span>nbd<span class="w"> </span>-o<span class="w"> </span>encryption-passphrase-file<span class="o">={</span>passphrase-file<span class="o">}</span><span class="w"> </span><span class="o">{</span>image-spec<span class="o">}</span></span>
+</pre></div></div><p>Note that for security reasons, both the encryption format and encryption load
 operations are CPU-intensive, and may take a few seconds to complete. For the
 encryption operations of actual image IO, assuming AES-NI is enabled,
 a relative small microseconds latency should be added, as well as a small
 increase in CPU utilization.</p>
 </section>
 </section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading"></a></h2>
+<p>Create a LUKS2-formatted image with the effective size of 50GiB:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rbd<span class="w"> </span>create<span class="w"> </span>--size<span class="w"> </span>50G<span class="w"> </span>mypool/myimage</span>
+<span class="prompt1">rbd<span class="w"> </span>encryption<span class="w"> </span>format<span class="w"> </span>mypool/myimage<span class="w"> </span>luks2<span class="w"> </span>passphrase.bin</span>
+<span class="prompt1">rbd<span class="w"> </span>resize<span class="w"> </span>--size<span class="w"> </span>50G<span class="w"> </span>--encryption-passphrase-file<span class="w"> </span>passphrase.bin<span class="w"> </span>mypool/myimage</span>
+</pre></div></div><p><code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">resize</span></code> command at the end grows the image to compensate for the
+overhead associated with the LUKS2 header.</p>
+<p>Given a LUKS2-formatted image, create a LUKS2-formatted clone with the
+same effective size:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rbd<span class="w"> </span>snap<span class="w"> </span>create<span class="w"> </span>mypool/myimage@snap</span>
+<span class="prompt1">rbd<span class="w"> </span>snap<span class="w"> </span>protect<span class="w"> </span>mypool/myimage@snap</span>
+<span class="prompt1">rbd<span class="w"> </span>clone<span class="w"> </span>mypool/myimage@snap<span class="w"> </span>mypool/myclone</span>
+<span class="prompt1">rbd<span class="w"> </span>encryption<span class="w"> </span>format<span class="w"> </span>mypool/myclone<span class="w"> </span>luks2<span class="w"> </span>clone-passphrase.bin</span>
+</pre></div></div><p>Given a LUKS2-formatted image with the effective size of 50GiB, create
+a LUKS1-formatted clone with the same effective size:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rbd<span class="w"> </span>snap<span class="w"> </span>create<span class="w"> </span>mypool/myimage@snap</span>
+<span class="prompt1">rbd<span class="w"> </span>snap<span class="w"> </span>protect<span class="w"> </span>mypool/myimage@snap</span>
+<span class="prompt1">rbd<span class="w"> </span>clone<span class="w"> </span>mypool/myimage@snap<span class="w"> </span>mypool/myclone</span>
+<span class="prompt1">rbd<span class="w"> </span>encryption<span class="w"> </span>format<span class="w"> </span>mypool/myclone<span class="w"> </span>luks1<span class="w"> </span>clone-passphrase.bin</span>
+<span class="prompt1">rbd<span class="w"> </span>resize<span class="w"> </span>--size<span class="w"> </span>50G<span class="w"> </span>--allow-shrink<span class="w"> </span>--encryption-passphrase-file<span class="w"> </span>clone-passphrase.bin<span class="w"> </span>--encryption-passphrase-file<span class="w"> </span>passphrase.bin<span class="w"> </span>mypool/myclone</span>
+</pre></div></div><p>Since LUKS1 header is usually smaller than LUKS2 header, <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">resize</span></code>
+command at the end shrinks the cloned image to get rid of unneeded
+space allowance.</p>
+<p>Given a LUKS1-formatted image with the effective size of 50GiB, create
+a LUKS2-formatted clone with the same effective size:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rbd<span class="w"> </span>resize<span class="w"> </span>--size<span class="w"> </span>51G<span class="w"> </span>mypool/myimage</span>
+<span class="prompt1">rbd<span class="w"> </span>snap<span class="w"> </span>create<span class="w"> </span>mypool/myimage@snap</span>
+<span class="prompt1">rbd<span class="w"> </span>snap<span class="w"> </span>protect<span class="w"> </span>mypool/myimage@snap</span>
+<span class="prompt1">rbd<span class="w"> </span>clone<span class="w"> </span>mypool/myimage@snap<span class="w"> </span>mypool/myclone</span>
+<span class="prompt1">rbd<span class="w"> </span>encryption<span class="w"> </span>format<span class="w"> </span>mypool/myclone<span class="w"> </span>luks2<span class="w"> </span>clone-passphrase.bin</span>
+<span class="prompt1">rbd<span class="w"> </span>resize<span class="w"> </span>--size<span class="w"> </span>50G<span class="w"> </span>--allow-shrink<span class="w"> </span>--encryption-passphrase-file<span class="w"> </span>passphrase.bin<span class="w"> </span>mypool/myimage</span>
+<span class="prompt1">rbd<span class="w"> </span>resize<span class="w"> </span>--size<span class="w"> </span>50G<span class="w"> </span>--allow-shrink<span class="w"> </span>--encryption-passphrase-file<span class="w"> </span>clone-passphrase.bin<span class="w"> </span>--encryption-passphrase-file<span class="w"> </span>passphrase.bin<span class="w"> </span>mypool/myclone</span>
+</pre></div></div><p>Since LUKS2 header is usually bigger than LUKS1 header, <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">resize</span></code>
+command at the beginning temporarily grows the parent image to reserve
+some extra space in the parent snapshot and consequently the cloned
+image. This is necessary to make all parent data accessible in the
+cloned image. <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">resize</span></code> commands at the end shrink the parent
+image back to its original size (this does not impact the parent
+snapshot) and also the cloned image to get rid of unused reserved
+space.</p>
+<p>The same applies to creating a formatted clone of an unformatted
+(plaintext) image since an unformatted image does not have a header at
+all.</p>
+<p>To map a formatted clone, provide encryption formats and passphrases
+for the clone itself and all of its explicitly formatted parent images.
+The order in which <code class="docutils literal notranslate"><span class="pre">encryption-format</span></code> and <code class="docutils literal notranslate"><span class="pre">encryption-passphrase-file</span></code>
+options should be provided is based on the image hierarchy: start with
+that of the cloned image, then its parent and so on.</p>
+<p>Here is an example of a command that maps a formatted clone:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">rbd<span class="w"> </span>device<span class="w"> </span>map<span class="w"> </span>-t<span class="w"> </span>nbd<span class="w"> </span>-o<span class="w"> </span>encryption-passphrase-file<span class="o">=</span>clone-passphrase.bin,encryption-passphrase-file<span class="o">=</span>passphrase.bin<span class="w"> </span>mypool/myclone</span>
+</pre></div></div></section>
 </section>
 
 

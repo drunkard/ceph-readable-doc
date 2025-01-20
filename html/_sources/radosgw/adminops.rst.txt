@@ -2121,12 +2121,18 @@ None.
 
 ``Golang``
 
+ - `ceph/go-ceph`_
  - `IrekFasikhov/go-rgwadmin`_
  - `QuentinPerez/go-radosgw`_
 
 ``Java``
 
  - `twonote/radosgw-admin4j`_
+
+``PHP``
+
+ - `lbausch/php-ceph-radosgw-admin`_
+ - `myENA/php-rgw-api`_
 
 ``Python``
 
@@ -2137,10 +2143,15 @@ None.
 
 .. _管理指南: ../admin
 .. _配额管理: ../admin#quota-management
+.. _IrekFasikhov/go-rgwadmin: https://github.com/IrekFasikhov/go-rgwadmin
+.. _QuentinPerez/go-radosgw: https://github.com/QuentinPerez/go-radosgw
+.. _ceph/go-ceph: https://github.com/ceph/go-ceph/
 .. _限速管理: ../admin#rate-limit-management
 .. _IrekFasikhov/go-rgwadmin: https://github.com/IrekFasikhov/go-rgwadmin
 .. _QuentinPerez/go-radosgw: https://github.com/QuentinPerez/go-radosgw
 .. _twonote/radosgw-admin4j: https://github.com/twonote/radosgw-admin4j
+.. _lbausch/php-ceph-radosgw-admin: https://github.com/lbausch/php-ceph-radosgw-admin
+.. _myENA/php-rgw-api: https://github.com/myENA/php-rgw-api
 .. _UMIACS/rgwadmin: https://github.com/UMIACS/rgwadmin
 .. _valerytschopp/python-radosgw-admin: https://github.com/valerytschopp/python-radosgw-admin
 

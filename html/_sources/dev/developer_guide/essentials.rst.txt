@@ -187,7 +187,7 @@ file `CONTRIBUTING.rst`_ in the top-level directory of the source-code
 tree. There may be some overlap between this guide and that file.
 
 .. _`CONTRIBUTING.rst`:
-  https://github.com/ceph/ceph/blob/master/CONTRIBUTING.rst
+  https://github.com/ceph/ceph/blob/main/CONTRIBUTING.rst
 
 All newcomers are encouraged to read that file carefully.
 

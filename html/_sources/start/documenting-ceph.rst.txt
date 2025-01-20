@@ -32,11 +32,14 @@ Ceph 文档源码位于 Ceph 源码库的 ``ceph/doc`` 目录下，\
 ======================
 .. Viewing Old Ceph Documentation
 
-https://docs.ceph.com 链接默认展示 ``master`` 分支，也可以查看较早版本
-（如 ``mimic`` ）的文档，把 URL 里（如
-`https://docs.ceph.com/en/pacific <https://docs.ceph.com/en/pacific>`_ 里的 ``pacific`` ）
-的版本名替换成你想看的分支即可（如 ``mimic`` ， URL 就成了
-`https://docs.ceph.com/en/mimic/ <https://docs.ceph.com/en/mimic/>`_ ）。
+https://docs.ceph.com 链接默认展示最新版
+（例如，假设 Reef 是最新版，那么
+https://docs.ceph.com 默认展示的就是 Reef 的文档），
+也可以查看较早版本的文档（例如 ``quincy`` ），
+把 URL 里的版本名（如
+`https://docs.ceph.com/en/reef/ <https://docs.ceph.com/en/reef>`_ 里的 ``reef`` ）
+替换成你想看的分支即可（如 ``quincy`` ， URL 就成了
+`https://docs.ceph.com/en/quincy/ <https://docs.ceph.com/en/quincy/>`_ ）。
 
 
 .. _making_contributions:
@@ -142,13 +145,13 @@ Ceph 文档按它自身的主要组件来分类组织。
 .. Select a Branch
 
 如果只是细小的变更，像修正排版错误、或换一种措辞，
-直接提交到 ``master`` 分支（默认的）即可；
-为当前版本的功能提供文档时也应该提交到 ``master`` 分支。
-``master`` 是最常用的分支。
+直接提交到 ``main`` 分支（默认的）即可；
+为当前版本的功能提供文档时也应该提交到 ``main`` 分支。
+``main`` 是最常用的分支。
 
 .. prompt:: bash $
 
-	git checkout master
+	git checkout main
 
 给未来版本提供文档时应该提交到 ``next`` 分支，
 ``next`` 分支是第二常用的分支。
@@ -159,7 +162,7 @@ Ceph 文档按它自身的主要组件来分类组织。
 
 你在为尚未发布的功能写文档时，
 如果这部分文档和已追踪的某个问题有关，
-或者想在它被合并到 ``master`` 分支前看看它在 ceph.com 网站上的预览，
+或者想在它被合并到 ``main`` 分支前看看它在 ceph.com 网站上的预览，
 你应该另外创建个分支。为标识这是个只包含文档的更新，
 按惯例用 ``wip-doc`` 作前缀，
 按这个格式 ``wip-doc-{your-branch-name}`` 。

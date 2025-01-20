@@ -1000,11 +1000,11 @@
 
 把一个桶从原来的全局租户空间挪到指定租户： ::
 
-        $ radosgw-admin bucket link --bucket=/foo --uid='12345678$12345678'
+        $ radosgw-admin bucket link --bucket=foo --uid='12345678$12345678'
 
 把桶链接到指定用户、并更改对象的 ACL ： ::
 
-        $ radosgw-admin bucket chown --bucket=/foo --uid='12345678$12345678'
+        $ radosgw-admin bucket chown --bucket=foo --uid='12345678$12345678'
 
 显示一个桶从 2012 年 4 月 1 日起的日志： ::
 

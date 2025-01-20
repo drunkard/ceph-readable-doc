@@ -6,33 +6,30 @@ Ceph 仪表盘
 
 概述
 ----
-The Ceph Dashboard is a built-in web-based Ceph management and monitoring
-application to administer various aspects and objects of the cluster. It is
-implemented as a :ref:`ceph-manager-daemon` module.
 
-The original Ceph Manager Dashboard that was shipped with Ceph Luminous started
-out as a simple read-only view into various run-time information and performance
-data of a Ceph cluster. It used a very simple architecture to achieve the
-original goal. However, there was a growing demand for adding more web-based
-management capabilities, to make it easier to administer Ceph for users that
-prefer a WebUI over using the command line.
+The Ceph Dashboard is a web-based Ceph management-and-monitoring tool that can
+be used to inspect and administer resources in the cluster. It is implemented
+as a :ref:`ceph-manager-daemon` module.
 
-The new :term:`Ceph Dashboard` module is a replacement of the previous one and
-adds a built-in web based monitoring and administration application to the Ceph
-Manager. The architecture and functionality of this new module is derived from
-and inspired by the `openATTIC Ceph management and monitoring tool
-<https://openattic.org/>`_. The development is actively driven by the team
-behind openATTIC at `SUSE <https://www.suse.com/>`_, with a lot of support from
-companies like `Red Hat <https://redhat.com/>`_ and other members of the Ceph
-community.
+The original Ceph Dashboard shipped with Ceph Luminous and was a simple
+read-only view into the run-time information and performance data of Ceph
+clusters. It had a simple architecture. However, demand grew for richer,
+web-based management capabilities for users who prefer a WebUI over the CLI.
 
-The dashboard module's backend code uses the CherryPy framework and a custom
-REST API implementation. The WebUI implementation is based on
-Angular/TypeScript, merging both functionality from the original dashboard as
-well as adding new functionality originally developed for the standalone version
-of openATTIC. The Ceph Dashboard module is implemented as a web
-application that visualizes information and statistics about the Ceph cluster
-using a web server hosted by ``ceph-mgr``.
+The :term:`Ceph Dashboard` module adds web-based monitoring and administration
+to the Ceph Manager. The architecture and functionality of this new module are
+derived from the `openATTIC Ceph management and monitoring tool
+<https://openattic.org/>`_. Development was originally driven by the openATTIC
+team at `SUSE <https://www.suse.com/>`_, with support from members of the Ceph
+community and from companies including `Red Hat <https://redhat.com/>`_.
+
+The dashboard module's backend code uses the CherryPy framework, and implements
+a custom REST API. The WebUI implementation is based on Angular/TypeScript and
+includes both functionality from the original dashboard and new features
+originally developed for the standalone version of openATTIC. The Ceph
+Dashboard module is implemented as an application that provides a graphical
+representation of information and statistics through a web server hosted by
+``ceph-mgr``.
 
 
 功能概述

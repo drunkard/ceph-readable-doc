@@ -3,7 +3,7 @@
 ==================
 
 你可以去\ `位于 github 的 Ceph 源码库`_\ 克隆某个 Ceph 分支，\
-先选择一个分支（默认是 ``master`` ），然后点击 **Download ZIP**
+先选择一个分支（默认是 ``main`` ），然后点击 **Download ZIP**
 按钮。
 
 .. _位于 github 的 Ceph 源码库: https://github.com/ceph/ceph

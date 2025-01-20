@@ -17,13 +17,13 @@ What ?
 Where ?
 ^^^^^^^
 
-Features are merged to the master branch. Bug fixes should be merged
-to the corresponding named branch (e.g. "jewel" for 10.0.z, "kraken"
-for 11.0.z, etc.). However, this is not mandatory - bug fixes can be
-merged to the master branch as well, since the master branch is
-periodically merged to the named branch during the development
-releases phase. In either case, if the bugfix is important it can also
-be flagged for backport to one or more previous stable releases.
+Features are merged to the *main* branch. Bug fixes should be merged to the
+corresponding named branch (e.g. *nautilus* for 14.0.z, *pacific* for 16.0.z,
+etc.). However, this is not mandatory - bug fixes and documentation
+enhancements can be merged to the *main* branch as well, since the *main*
+branch is itself occasionally merged to the named branch during the development
+releases phase. In either case, if a bug fix is important it can also be
+flagged for backport to one or more previous stable releases.
 
 When ?
 ^^^^^^
@@ -31,17 +31,17 @@ When ?
 After the stable release candidates of the previous release enters
 phase 2 (see below).  For example: the "jewel" named branch was
 created when the infernalis release candidates entered phase 2. From
-this point on, master was no longer associated with infernalis. As
-soon as the named branch of the next stable release is created, master
+this point on, main was no longer associated with infernalis. As
+soon as the named branch of the next stable release is created, main
 starts getting periodically merged into it.
 
 分支合并
 ^^^^^^^^
 .. Branch merges
 
-* 稳定版的分支会周期性地并入 master ；
-* master 分支会周期性地并入稳定版；
-* 每次开发版 x.0.z 发布后， master 会立即并入稳定版分支；
+* 稳定版的分支会周期性地并入 main ；
+* main 分支会周期性地并入稳定版；
+* 每次开发版 x.0.z 发布后， main 会立即并入稳定版分支；
 
 稳定版候选（即 x.1.z ）阶段一
 -----------------------------
@@ -56,12 +56,12 @@ Where ?
 ^^^^^^^
 
 The branch of the stable release (e.g. "jewel" for 10.0.z, "kraken"
-for 11.0.z, etc.) or master.  Bug fixes should be merged to the named
+for 11.0.z, etc.) or main.  Bug fixes should be merged to the named
 branch corresponding to the stable release candidate (e.g. "jewel" for
-10.1.z) or to master. During this phase, all commits to master will be
+10.1.z) or to main. During this phase, all commits to main will be
 merged to the named branch, and vice versa. In other words, it makes
 no difference whether a commit is merged to the named branch or to
-master - it will make it into the next release candidate either way.
+main - it will make it into the next release candidate either way.
 
 When ?
 ^^^^^^
@@ -72,9 +72,9 @@ x.1.0 tag is set in the release branch.
 Branch merges
 ^^^^^^^^^^^^^
 
-* 稳定版的分支会周期性地并入 master ；
-* master 分支会周期性地并入稳定版；
-* 每次候选版 x.1.z 发布后， master 会立即并入稳定版分支；
+* 稳定版的分支会周期性地并入 main ；
+* main 分支会周期性地并入稳定版；
+* 每次候选版 x.1.z 发布后， main 会立即并入稳定版分支；
 
 稳定版候选（即 x.1.z ）阶段二
 -----------------------------
@@ -88,7 +88,7 @@ Where ?
 ^^^^^^^
 The branch of the stable release (e.g. "jewel" for 10.0.z, "kraken"
 for 11.0.z, etc.). During this phase, all commits to the named branch
-will be merged into master. Cherry-picking to the named branch during
+will be merged into main. Cherry-picking to the named branch during
 release candidate phase 2 is done manually since the official
 backporting process only begins when the release is pronounced
 "stable".
@@ -102,7 +102,7 @@ After Sage Weil decides it is time for phase 2 to happen.
 ^^^^^^^^
 .. Branch merges
 
-* The branch of the stable release is merged periodically into master.
+* The branch of the stable release is merged periodically into main.
 
 稳定版（即 x.2.z ）
 -------------------
@@ -113,9 +113,9 @@ What ?
 
 * bug fixes
 * features are sometime accepted
-* commits should be cherry-picked from master when possible
+* commits should be cherry-picked from main when possible
 
-* commits that are not cherry-picked from master must be about a bug unique to
+* commits that are not cherry-picked from main must be about a bug unique to
   the stable release
 * see also `the backport HOWTO`_
 
@@ -131,8 +131,8 @@ etc.)
 When ?
 ^^^^^^
 
-After the stable release is published, i.e. after the "vx.2.0" tag is set in
-the release branch.
+After the first stable release candidate is published, i.e. after the
+x.1.0 tag is set in the release branch.
 
 分支合并
 ^^^^^^^^

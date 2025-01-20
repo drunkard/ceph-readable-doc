@@ -2,9 +2,8 @@
  管理指南
 ==========
 
-你配置好 Ceph 对象存储服务并运行正常之后，
-就可以管理服务了，有用户管理、访问控制、
-配额管理、和使用情况跟踪等功能。
+你配置好 Ceph 对象存储服务并运行正常之后，就可以管理服务了，
+有用户管理、访问控制、配额管理、和使用情况跟踪等功能。
 
 
 .. _radosgw-user-management:
@@ -16,6 +15,7 @@
 Ceph 对象存储的用户管理指的是 Ceph 对象存储服务的用户（换句话说，
 不是 Ceph 对象网关作为 Ceph 存储集群的一个用户）。你必须创建一个用户、
 访问密钥和私钥，这样最终用户才能和 Ceph 对象网关服务交互。
+为了便于管理，还可以选择让用户归属于 `Accounts`_ 。
 
 有两种用户类型：
 
@@ -26,35 +26,45 @@ Ceph 对象存储的用户管理指的是 Ceph 对象存储服务的用户（换
 .. ditaa::
 
            +---------+
-           |   User  |
-           +----+----+
-                |
-                |     +-----------+
-                +-----+  Subuser  |
-                      +-----------+
+           | Account |
+           +----+----+  
+                |     
+                |     +---------+
+                +-----+  User   |
+                      +----+----+
+                           |
+                           |     +-----------+
+                           +-----+  Subuser  |
+                                 +-----------+
 
-You can create, modify, view, suspend and remove users and subusers. In addition
-to user and subuser IDs, you may add a display name and an email address for a
-user.  You can specify a key and secret, or generate a key and secret
-automatically. When generating or specifying keys, note that user IDs correspond
-to an S3 key type and subuser IDs correspond to a swift key type. Swift keys
-also have access levels of ``read``, ``write``, ``readwrite`` and ``full``.
+Users and subusers can be created, modified, viewed, suspended and removed.
+you may add a Display names and an email addresses can be added to user
+profiles. Keys and secrets can either be specified or generated automatically.
+When generating or specifying keys, remember that user IDs correspond to S3 key
+types and subuser IDs correspond to Swift key types. 
+
+Swift keys have access levels of ``read``, ``write``, ``readwrite`` and
+``full``.
 
 
 创建用户
 --------
 .. Create a User
 
-To create a user (S3 interface), execute the following::
+To create a user (S3 interface), run a command of the following form:
 
-	radosgw-admin user create --uid={username} --display-name="{display-name}" [--email={email}]
+.. prompt:: bash
 
-例如::
+   radosgw-admin user create --uid={username} --display-name="{display-name}" [--email={email}]
 
-    radosgw-admin user create --uid=johndoe --display-name="John Doe" --email=john@example.com
+例如：
 
+.. prompt:: bash
+	
+   radosgw-admin user create --uid=johndoe --display-name="John Doe" --email=john@example.com
+  
 .. code-block:: javascript
-
+  
   { "user_id": "johndoe",
     "display_name": "John Doe",
     "email": "john@example.com",
@@ -78,16 +88,15 @@ To create a user (S3 interface), execute the following::
         "max_objects": -1},
     "temp_url_keys": []}
 
-Creating a user also creates an ``access_key`` and ``secret_key`` entry for use
-with any S3 API-compatible client.
+The creation of a user entails the creation of an ``access_key`` and a
+``secret_key`` entry, which can be used with any S3 API-compatible client.  
 
-.. important:: Check the key output. Sometimes ``radosgw-admin``
-   generates a JSON escape (``\``) character, and some clients
-   do not know how to handle JSON escape characters. Remedies include
-   removing the JSON escape character (``\``), encapsulating the string
-   in quotes, regenerating the key and ensuring that it
-   does not have a JSON escape character or specify the key and secret
-   manually.
+.. important:: Check the key output. Sometimes ``radosgw-admin`` generates a
+   JSON escape (``\``) character, and some clients do not know how to handle
+   JSON escape characters. Remedies include removing the JSON escape character
+   (``\``), encapsulating the string in quotes, regenerating the key and
+   ensuring that it does not have a JSON escape character, or specifying the
+   key and secret manually.
 
 
 创建子用户
@@ -95,16 +104,21 @@ with any S3 API-compatible client.
 .. Create a Subuser
 
 要创建用户的子用户（ Swift 接口），必须指定用户 ID （
-``--uid={username}`` ）、子用户 ID 和这个子用户的访问级别。 ::
+``--uid={username}`` ）、子用户 ID 和这个子用户的访问级别。
 
-  radosgw-admin subuser create --uid={uid} --subuser={uid} --access=[ read | write | readwrite | full ]
+.. prompt:: bash
 
-例如： ::
+   radosgw-admin subuser create --uid={uid} --subuser={uid} --access=[ read | write | readwrite | full ]
 
-  radosgw-admin subuser create --uid=johndoe --subuser=johndoe:swift --access=full
+例如：
 
-.. note:: ``full`` 不等于 ``readwrite`` ，因为它还包括访问控制\
-  策略。
+.. prompt:: bash
+
+   radosgw-admin subuser create --uid=johndoe --subuser=johndoe:swift --access=full
+
+
+.. note:: ``full`` 和 ``readwrite`` 不一样。 ``full`` 访问级别包括
+   ``read`` 和 ``write`` ，而且还包括访问控制策略。
 
 .. code-block:: javascript
 
@@ -138,59 +152,76 @@ with any S3 API-compatible client.
 ------------
 .. Get User Info
 
-要获取某一用户的信息，可指定 ``user info`` 和用户 ID （
-``--uid={username}`` ）。 ::
+要获取某一用户的信息，可指定 ``user info`` 和用户 ID （ ``--uid={username}`` ）。
+执行下列命令：
 
-	radosgw-admin user info --uid=johndoe
+.. prompt:: bash
+
+   radosgw-admin user info --uid=johndoe
 
 
 修改用户信息
 ------------
 .. Modify User Info
 
-To modify information about a user, you must specify the user ID (``--uid={username}``)
-and the attributes you want to modify. Typical modifications are to keys and secrets,
-email addresses, display names and access levels. 例如::
+To modify information about a user, specify the user ID (``--uid={username}``)
+and the attributes that you want to modify. Typical modifications are made to
+keys and secrets, email addresses, display names, and access levels. Use a
+command of the following form: 
 
-	radosgw-admin user modify --uid=johndoe --display-name="John E. Doe"
+.. prompt:: bash
 
-To modify subuser values, specify ``subuser modify``, user ID and the subuser ID. 例如::
+   radosgw-admin user modify --uid=johndoe --display-name="John E. Doe"
 
-	radosgw-admin subuser modify --uid=johndoe --subuser=johndoe:swift --access=full
+To modify subuser values, specify ``subuser modify``, user ID and the subuser
+ID. Use a command of the following form:
+
+.. prompt:: bash
+
+   radosgw-admin subuser modify --uid=johndoe --subuser=johndoe:swift --access=full
 
 
-用户的启用、暂停
-----------------
-.. User Enable/Suspend
+User Suspend
+------------
 
-When you create a user, the user is enabled by default. However, you may suspend
-user  privileges and re-enable them at a later time. To suspend a user, specify
-``user suspend`` and the user ID. ::
+When a user is created, the user is enabled by default. However, it is possible
+to suspend user privileges and to re-enable them at a later time. To suspend a
+user, specify ``user suspend`` and the user ID in a command of the following
+form:
 
-	radosgw-admin user suspend --uid=johndoe
+.. prompt:: bash
 
-To re-enable a suspended user, specify ``user enable`` and the user ID. ::
+   radosgw-admin user suspend --uid=johndoe
 
-	radosgw-admin user enable --uid=johndoe
+User Enable
+-----------
+To re-enable a suspended user, provide ``user enable`` and specify the user ID
+in a command of the following form:
 
-.. note:: Disabling the user disables the subuser.
+.. prompt:: bash
+
+   radosgw-admin user enable --uid=johndoe
+
+.. note:: Disabling the user also disables any subusers.
 
 
 删除用户
 --------
 .. Remove a User
 
-删除用户时，这个用户以及他的子用户都会被删除。当然，如果你愿意，\
-可以只删除子用户。要删除用户（及其子用户），可指定 ``user rm`` \
-和用户 ID ： ::
+删除用户时，这个用户以及他的子用户都会被删除。
 
-	radosgw-admin user rm --uid=johndoe
+可以只删除子用户。
+It is possible to remove a subuser without removing its associated user. This
+is covered in the section called :ref:`Remove a Subuser <radosgw-admin-remove-a-subuser>`.
 
-只想删除子用户时，可指定 ``subuser rm`` 和子用户 ID 。 ::
+要删除用户（及其子用户），可指定 ``user rm`` 和用户 ID ：
 
-	radosgw-admin subuser rm --subuser=johndoe:swift
+.. prompt:: bash
 
-其它可选操作：
+   radosgw-admin user rm --uid=johndoe
+
+选项有：
 
 - **清除数据：** 加 ``--purge-data`` 选项可清除与此 UID 相关的所有\
   数据。
@@ -199,17 +230,22 @@ To re-enable a suspended user, specify ``user enable`` and the user ID. ::
   密钥。
 
 
+.. _radosgw-admin-remove-a-subuser:
+
 删除子用户
 ----------
 .. Remove a Subuser
 
 你删除子用户的同时，也失去了 Swift 接口的访问方式，但是这个用\
-户还在系统中存在。要删除子用户，可指定 ``subuser rm`` 及子用户
-ID ： ::
+户还在系统中存在。
 
-	radosgw-admin subuser rm --subuser=johndoe:swift
+要删除子用户，可指定 ``subuser rm`` 及子用户 ID ：
 
-其它可选操作：
+.. prompt:: bash
+
+   radosgw-admin subuser rm --subuser=johndoe:swift
+
+选项有：
 
 - **清除密钥：** 加 ``--purge-keys`` 选项可清除与此 UID 相关的\
   所有密钥。
@@ -217,7 +253,7 @@ ID ： ::
 
 增加、删除密钥
 --------------
-.. Add / Remove a Key
+.. Add or  Remove a Key
 
 用户和子用户都必须有密钥才能访问 S3 或 Swift 接口。用 S3 访问\
 时，用户需要一个由访问密钥和私钥组成的密钥对；而用 Swift 访问\
@@ -230,10 +266,16 @@ ID ： ::
 - ``--secret-key=<key>`` 手动指定 S3 私钥或者 Swift 私钥；
 - ``--gen-access-key`` 自动生成随机的 S3 访问密钥；
 - ``--gen-secret`` 自动生成一个随机的 S3 私钥或随机的 Swift 私钥。
+- ``--generate-key`` create user with or without credentials. If sets to false, then user cannot set ``gen-secret/gen-access-key/access-key/secret-key``
 
-给用户人为指定 S3 密钥对的实例如下： ::
+Adding S3 keys
+~~~~~~~~~~~~~~
 
-	radosgw-admin key create --uid=foo --key-type=s3 --access-key fooAccessKey --secret-key fooSecretKey
+给用户人为指定 S3 密钥对的实例如下：
+
+.. prompt:: bash
+
+   radosgw-admin key create --uid=foo --key-type=s3 --access-key fooAccessKey --secret-key fooSecretKey
 
 .. code-block:: javascript
 
@@ -248,11 +290,16 @@ ID ： ::
         "secret_key": "fooSecretKey"}],
   }
 
-请注意，你可以给一个用户创建多个 S3 密钥对。
+.. note:: 你可以给一个用户创建多个 S3 密钥对。
 
-给一个子用户配置指定的 swift 私钥： ::
+Adding Swift secret keys
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-	radosgw-admin key create --subuser=foo:bar --key-type=swift --secret-key barSecret
+给一个子用户配置指定的 swift 私钥：
+
+.. prompt:: bash
+
+   radosgw-admin key create --subuser=foo:bar --key-type=swift --secret-key barSecret
 
 .. code-block:: javascript
 
@@ -268,11 +315,18 @@ ID ： ::
       { "user": "foo:bar",
         "secret_key": "asfghjghghmgm"}]}
 
-请注意，一个子用户只能有一个 swift 私钥。
+.. note:: 一个子用户只能有一个 swift 私钥。
 
-如果将子用户与 S3 密钥对关联，那么这些子用户也能用于 S3 API::
+Associating subusers with S3 key pairs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	radosgw-admin key create --subuser=foo:bar --key-type=s3 --access-key barAccessKey --secret-key barSecretKey
+如果将子用户与 S3 密钥对关联，那么这些子用户也能用于 S3 API ，执行下列命令：
+
+.. prompt:: bash
+
+   radosgw-admin key create --subuser=foo:bar --key-type=s3 --access-key barAccessKey --secret-key barSecretKey
+	
+.. code-block:: javascript
 
 .. code-block:: javascript
 
@@ -290,13 +344,23 @@ ID ： ::
         "secret_key": "barSecretKey"}],
   }
 
-要删除一个 S3 密钥对，需指定访问密钥。 ::
+Removing S3 key pairs
+~~~~~~~~~~~~~~~~~~~~~
 
-	radosgw-admin key rm --uid=foo --key-type=s3 --access-key=fooAccessKey
+要删除一个 S3 密钥对，需指定访问密钥。
 
-删除 swift 私钥。 ::
+.. prompt:: bash
 
-	radosgw-admin key rm --subuser=foo:bar --key-type=swift
+   radosgw-admin key rm --uid=foo --key-type=s3 --access-key=fooAccessKey 
+
+Removing Swift secret keys
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+删除 swift 私钥。
+
+.. prompt:: bash
+
+   radosgw-admin key rm --subuser=foo:bar --key-type=swift
 
 
 增加、删除管理能力
@@ -307,7 +371,7 @@ Ceph 存储集群提供了一个管理 API ，用户可以通过 REST API 使用
 理功能。默认情况下，用户\ **无权**\ 访问这个 API ，给用户分配\
 管理能力后，他才能使用管理功能。
 
-要给用户分配管理能力，执行下面的：
+要给用户分配管理能力，执行下列命令：
 
 .. prompt:: bash
 
@@ -359,9 +423,11 @@ Ceph 对象网关允许你给用户及其拥有的桶设置配额，可设置的
 ------------
 .. Set User Quota
 
-启用配额前，必须先配置配额参数。例如： ::
+启用配额前，必须先配置配额参数。例如：
 
-	radosgw-admin quota set --quota-scope=user --uid=<uid> [--max-objects=<num objects>] [--max-size=<max size>]
+.. prompt:: bash
+
+   radosgw-admin quota set --quota-scope=user --uid=<uid> [--max-objects=<num objects>] [--max-size=<max size>]
 
 例如：
 
@@ -508,13 +574,15 @@ latest quota statistics, run a command of the following form:
 
 .. prompt:: bash
 
-	radosgw-admin global quota get
+   radosgw-admin global quota get
 
 全局配额选项可以用 ``global quota`` 系列命令修改，如
-``quota set`` 、 ``quota enable`` 和 ``quota disable`` 命令。 ::
+``quota set`` 、 ``quota enable`` 和 ``quota disable`` 命令。
 
-	radosgw-admin global quota set --quota-scope bucket --max-objects 1024
-	radosgw-admin global quota enable --quota-scope bucket
+.. prompt:: bash
+
+   radosgw-admin global quota set --quota-scope bucket --max-objects 1024
+   radosgw-admin global quota enable --quota-scope bucket
 
 .. note:: 多站配置方案中有 realm 和 period ，改变全局配额后，\
    必须用 ``period update --commit`` 提交变更。如果压根没有
@@ -780,17 +848,19 @@ Ceph 对象网关会记录每个用户的使用情况，
 选项有：
 
 - **Start Date:** The ``--start-date`` option allows you to filter usage
-  stats from a particular start date (**format:** ``yyyy-mm-dd[HH:MM:SS]``).
+  stats from a specified start date and an optional start time
+  (**format:** ``yyyy-mm-dd [HH:MM:SS]``).
 
 - **End Date:** The ``--end-date`` option allows you to filter usage up
-  to a particular date (**format:** ``yyyy-mm-dd[HH:MM:SS]``).
+  to a particular end date and an optional end time
+  (**format:** ``yyyy-mm-dd [HH:MM:SS]``). 
 
 - **Log Entries:** The ``--show-log-entries`` option allows you to specify
-  whether or not to include log entries with the usage stats
+  whether to include log entries with the usage stats 
   (options: ``true`` | ``false``).
 
-.. note:: You may specify time with minutes and seconds, but it is stored
-   with 1 hour resolution.
+.. note:: You can specify time to a precision of minutes and seconds, but the
+   specified time is stored only with a one-hour resolution.
 
 
 查看使用情况
@@ -833,3 +903,4 @@ example commands:
 .. _radosgw-admin: ../../man/8/radosgw-admin/
 .. _Pool Configuration: ../../rados/configuration/pool-pg-config-ref/
 .. _Ceph 对象网关配置参考: ../config-ref/
+.. _Accounts: ../account/

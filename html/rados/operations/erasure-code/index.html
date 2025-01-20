@@ -126,6 +126,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#id2">创建纠删码存储池样板</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id3">纠删码配置</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id4">在纠删码存储池上启用重写功能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#erasure-coded-pool-overhead">Erasure-coded pool overhead</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id6">纠删码存储池与缓存分级</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id9">纠删码存储池的恢复</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id10">术语</a></li>
@@ -218,33 +219,59 @@
   
   <section id="ecpool">
 <span id="id1"></span><h1>纠删码<a class="headerlink" href="#ecpool" title="Permalink to this heading"></a></h1>
-<p>A Ceph pool is associated to a type to sustain the loss of an OSD
-(i.e. a disk since most of the time there is one OSD per disk). The
-default choice when <a class="reference external" href="../pools">creating a pool</a> is <em>replicated</em>,
-meaning every object is copied on multiple disks. The <a class="reference external" href="https://en.wikipedia.org/wiki/Erasure_code">Erasure Code</a> pool type can be used
-instead to save space.</p>
+<p>By default, Ceph <a class="reference external" href="../pools">pools</a> are created with the type “replicated”. In
+replicated-type pools, every object is copied to multiple disks. This
+multiple copying is the method of data protection known as “replication”.</p>
+<p>By contrast, <a class="reference external" href="https://en.wikipedia.org/wiki/Erasure_code">erasure-coded</a>
+pools use a method of data protection that is different from replication. In
+erasure coding, data is broken into fragments of two kinds: data blocks and
+parity blocks. If a drive fails or becomes corrupted, the parity blocks are
+used to rebuild the data. At scale, erasure coding saves space relative to
+replication.</p>
+<p>In this documentation, data blocks are referred to as “data chunks”
+and parity blocks are referred to as “coding chunks”.</p>
+<p>Erasure codes are also called “forward error correction codes”. The
+first forward error correction code was developed in 1950 by Richard
+Hamming at Bell Laboratories.</p>
 <section id="id2">
 <h2>创建纠删码存储池样板<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
 <p>The simplest erasure coded pool is equivalent to <a class="reference external" href="https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_5">RAID5</a> and
 requires at least three hosts:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd pool create ecpool erasure
-pool &#39;ecpool&#39; created
-$ echo ABCDEFGHI | rados --pool ecpool put NYAN -
-$ rados --pool ecpool get NYAN -
-ABCDEFGHI
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>create<span class="w"> </span>ecpool<span class="w"> </span>erasure</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pool</span> <span class="s1">&#39;ecpool&#39;</span> <span class="n">created</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1"><span class="nb">echo</span><span class="w"> </span>ABCDEFGHI<span class="w"> </span><span class="p">|</span><span class="w"> </span>rados<span class="w"> </span>--pool<span class="w"> </span>ecpool<span class="w"> </span>put<span class="w"> </span>NYAN<span class="w"> </span>-</span>
+<span class="prompt1">rados<span class="w"> </span>--pool<span class="w"> </span>ecpool<span class="w"> </span>get<span class="w"> </span>NYAN<span class="w"> </span>-</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ABCDEFGHI</span>
 </pre></div>
 </div>
 </section>
 <section id="id3">
 <h2>纠删码配置<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
 <p>默认的纠删码配置可容忍两个 OSD 的损失，相当于副本数为三的多副本存储池，但只需 2TB 的空间即可存储 1TB 数据，而无需 3TB 。默认配置可这样查看：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd erasure-code-profile get default
-k=2
-m=2
-plugin=jerasure
-crush-failure-domain=host
-technique=reed_sol_van
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>erasure-code-profile<span class="w"> </span>get<span class="w"> </span>default</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">k</span><span class="o">=</span><span class="mi">2</span>
+<span class="n">m</span><span class="o">=</span><span class="mi">2</span>
+<span class="n">plugin</span><span class="o">=</span><span class="n">jerasure</span>
+<span class="n">crush</span><span class="o">-</span><span class="n">failure</span><span class="o">-</span><span class="n">domain</span><span class="o">=</span><span class="n">host</span>
+<span class="n">technique</span><span class="o">=</span><span class="n">reed_sol_van</span>
 </pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The profile just displayed is for the <em>default</em> erasure-coded pool, not the
+<em>simplest</em> erasure-coded pool. These two pools are not the same:</p>
+<blockquote>
+<div><p>The default erasure-coded pool has two data chunks (K) and two coding chunks
+(M). The profile of the default erasure-coded pool is “k=2 m=2”.</p>
+<p>The simplest erasure-coded pool has two data chunks (K) and one coding chunk
+(M). The profile of the simplest erasure-coded pool is “k=2 m=1”.</p>
+</div></blockquote>
 </div>
 <p>确定合理的配置文件很重要，因为存储池创建后就不能再修改了。
 要改的话，只能另外创建一个采用新配置的存储池，
@@ -253,14 +280,14 @@ technique=reed_sol_van
 <em>crush-failure-domain</em> ，因为它们决定了存储的开销和数据的持久性。
 例如，假设期望的系统架构必须能承受两个故障机架和 67% 的开销，
 可以用下列配置文件：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd erasure-code-profile set myprofile \
-   k=3 \
-   m=2 \
-   crush-failure-domain=rack
-$ ceph osd pool create ecpool erasure myprofile
-$ echo ABCDEFGHI | rados --pool ecpool put NYAN -
-$ rados --pool ecpool get NYAN -
-ABCDEFGHI
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>erasure-code-profile<span class="w"> </span><span class="nb">set</span><span class="w"> </span>myprofile<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nv">k</span><span class="o">=</span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nv">m</span><span class="o">=</span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>crush-failure-domain<span class="o">=</span>rack</span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>create<span class="w"> </span>ecpool<span class="w"> </span>erasure<span class="w"> </span>myprofile</span>
+<span class="prompt1"><span class="nb">echo</span><span class="w"> </span>ABCDEFGHI<span class="w"> </span><span class="p">|</span><span class="w"> </span>rados<span class="w"> </span>--pool<span class="w"> </span>ecpool<span class="w"> </span>put<span class="w"> </span>NYAN<span class="w"> </span>-</span>
+<span class="prompt1">rados<span class="w"> </span>--pool<span class="w"> </span>ecpool<span class="w"> </span>get<span class="w"> </span>NYAN<span class="w"> </span>-</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ABCDEFGHI</span>
 </pre></div>
 </div>
 <p>对象 <em>NYAN</em> 将被分割成三块（ <em>K=3</em> ）、
@@ -276,59 +303,255 @@ ABCDEFGHI
 <h2>在纠删码存储池上启用重写功能<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
 <p>默认情况下，纠删码存储池只适用于像 RGW 这样进行完整对象写入和追加的场景。</p>
 <p>从 Luminous 起，在纠删码存储池里进行部分写入的功能可以在存储池配置里启用，这样 RBD 和 CephFS 就可以使用纠删码存储池存储数据了：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">ec_pool</span> <span class="n">allow_ec_overwrites</span> <span class="n">true</span>
-</pre></div>
-</div>
-<p>只有当存储池座落于 bluestore 格式的 OSD 上时才能启用此功能，因为 bluestore 的校验和功能在深度洗刷时能探测到位翻转或者其它的损坏。除了不安全外，在 filestore 上使用 EC 重写的性能也比
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ec_pool<span class="w"> </span>allow_ec_overwrites<span class="w"> </span><span class="nb">true</span></span>
+</pre></div></div><p>只有当存储池座落于 bluestore 格式的 OSD 上时才能启用此功能，因为 bluestore 的校验和功能在深度洗刷时能探测到位翻转或者其它的损坏。除了不安全外，在 filestore 上使用 EC 重写的性能也比
 bluestore 上差得多。</p>
 <p>纠删码存储池不支持 omap ，所以用于 RBD 和 CephFS 时你必须让它们把数据存到 EC 存储池里、而元数据存到副本存储池里。对 RBD 而言，这意味着在创建映像时要用纠删码存储池作 <code class="docutils literal notranslate"><span class="pre">--data-pool</span></code> （数据存储池）的参数：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rbd</span> <span class="n">create</span> <span class="o">--</span><span class="n">size</span> <span class="mi">1</span><span class="n">G</span> <span class="o">--</span><span class="n">data</span><span class="o">-</span><span class="n">pool</span> <span class="n">ec_pool</span> <span class="n">replicated_pool</span><span class="o">/</span><span class="n">image_name</span>
-</pre></div>
-</div>
-<p>对 CephFS 而言，可在文件系统创建期间、或通过<a class="reference external" href="../../../cephfs/file-layouts">文件布局</a>把一个纠删码存储池设置为默认的数据存储池。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rbd<span class="w"> </span>create<span class="w"> </span>--size<span class="w"> </span>1G<span class="w"> </span>--data-pool<span class="w"> </span>ec_pool<span class="w"> </span>replicated_pool/image_name</span>
+</pre></div></div><p>对 CephFS 而言，可在文件系统创建期间、或通过<a class="reference external" href="../../../cephfs/file-layouts">文件布局</a>把一个纠删码存储池设置为默认的数据存储池。</p>
+</section>
+<section id="erasure-coded-pool-overhead">
+<h2>Erasure-coded pool overhead<a class="headerlink" href="#erasure-coded-pool-overhead" title="Permalink to this heading"></a></h2>
+<p>The overhead factor (space amplification) of an erasure-coded pool
+is <cite>(k+m) / k</cite>.  For a 4,2 profile, the overhead is
+thus 1.5, which means that 1.5 GiB of underlying storage are used to store
+1 GiB of user data.  Contrast with default three-way replication, with
+which the overhead factor is 3.0.  Do not mistake erasure coding for a free
+lunch: there is a significant performance tradeoff, especially when using HDDs
+and when performing cluster recovery or backfill.</p>
+<p>Below is a table showing the overhead factors for various values of <cite>k</cite> and <cite>m</cite>.
+As <cite>m</cite> increases above 2, the incremental capacity overhead gain quickly
+experiences diminishing returns but the performance impact grows proportionally.
+We recommend that you do not choose a profile with <cite>k</cite> &gt; 4 or <cite>m</cite> &gt; 2 until
+and unless you fully understand the ramifications, including the number of
+failure domains your cluster topology must contain.  If  you choose <cite>m=1</cite>,
+expect data unavailability during maintenance and data loss if component
+failures overlap.</p>
+<table class="colwidths-given docutils align-default" id="id12">
+<caption><span class="caption-text">Erasure coding overhead</span><a class="headerlink" href="#id12" title="Permalink to this table"></a></caption>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head stub"></th>
+<th class="head"><p>m=1</p></th>
+<th class="head"><p>m=2</p></th>
+<th class="head"><p>m=3</p></th>
+<th class="head"><p>m=4</p></th>
+<th class="head"><p>m=5</p></th>
+<th class="head"><p>m=6</p></th>
+<th class="head"><p>m=7</p></th>
+<th class="head"><p>m=8</p></th>
+<th class="head"><p>m=9</p></th>
+<th class="head"><p>m=10</p></th>
+<th class="head"><p>m=11</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><th class="stub"><p>k=1</p></th>
+<td><p>2.00</p></td>
+<td><p>3.00</p></td>
+<td><p>4.00</p></td>
+<td><p>5.00</p></td>
+<td><p>6.00</p></td>
+<td><p>7.00</p></td>
+<td><p>8.00</p></td>
+<td><p>9.00</p></td>
+<td><p>10.00</p></td>
+<td><p>11.00</p></td>
+<td><p>12.00</p></td>
+</tr>
+<tr class="row-odd"><th class="stub"><p>k=2</p></th>
+<td><p>1.50</p></td>
+<td><p>2.00</p></td>
+<td><p>2.50</p></td>
+<td><p>3.00</p></td>
+<td><p>3.50</p></td>
+<td><p>4.00</p></td>
+<td><p>4.50</p></td>
+<td><p>5.00</p></td>
+<td><p>5.50</p></td>
+<td><p>6.00</p></td>
+<td><p>6.50</p></td>
+</tr>
+<tr class="row-even"><th class="stub"><p>k=3</p></th>
+<td><p>1.33</p></td>
+<td><p>1.67</p></td>
+<td><p>2.00</p></td>
+<td><p>2.33</p></td>
+<td><p>2.67</p></td>
+<td><p>3.00</p></td>
+<td><p>3.33</p></td>
+<td><p>3.67</p></td>
+<td><p>4.00</p></td>
+<td><p>4.33</p></td>
+<td><p>4.67</p></td>
+</tr>
+<tr class="row-odd"><th class="stub"><p>k=4</p></th>
+<td><p>1.25</p></td>
+<td><p>1.50</p></td>
+<td><p>1.75</p></td>
+<td><p>2.00</p></td>
+<td><p>2.25</p></td>
+<td><p>2.50</p></td>
+<td><p>2.75</p></td>
+<td><p>3.00</p></td>
+<td><p>3.25</p></td>
+<td><p>3.50</p></td>
+<td><p>3.75</p></td>
+</tr>
+<tr class="row-even"><th class="stub"><p>k=5</p></th>
+<td><p>1.20</p></td>
+<td><p>1.40</p></td>
+<td><p>1.60</p></td>
+<td><p>1.80</p></td>
+<td><p>2.00</p></td>
+<td><p>2.20</p></td>
+<td><p>2.40</p></td>
+<td><p>2.60</p></td>
+<td><p>2.80</p></td>
+<td><p>3.00</p></td>
+<td><p>3.20</p></td>
+</tr>
+<tr class="row-odd"><th class="stub"><p>k=6</p></th>
+<td><p>1.16</p></td>
+<td><p>1.33</p></td>
+<td><p>1.50</p></td>
+<td><p>1.66</p></td>
+<td><p>1.83</p></td>
+<td><p>2.00</p></td>
+<td><p>2.17</p></td>
+<td><p>2.33</p></td>
+<td><p>2.50</p></td>
+<td><p>2.66</p></td>
+<td><p>2.83</p></td>
+</tr>
+<tr class="row-even"><th class="stub"><p>k=7</p></th>
+<td><p>1.14</p></td>
+<td><p>1.29</p></td>
+<td><p>1.43</p></td>
+<td><p>1.58</p></td>
+<td><p>1.71</p></td>
+<td><p>1.86</p></td>
+<td><p>2.00</p></td>
+<td><p>2.14</p></td>
+<td><p>2.29</p></td>
+<td><p>2.43</p></td>
+<td><p>2.58</p></td>
+</tr>
+<tr class="row-odd"><th class="stub"><p>k=8</p></th>
+<td><p>1.13</p></td>
+<td><p>1.25</p></td>
+<td><p>1.38</p></td>
+<td><p>1.50</p></td>
+<td><p>1.63</p></td>
+<td><p>1.75</p></td>
+<td><p>1.88</p></td>
+<td><p>2.00</p></td>
+<td><p>2.13</p></td>
+<td><p>2.25</p></td>
+<td><p>2.38</p></td>
+</tr>
+<tr class="row-even"><th class="stub"><p>k=9</p></th>
+<td><p>1.11</p></td>
+<td><p>1.22</p></td>
+<td><p>1.33</p></td>
+<td><p>1.44</p></td>
+<td><p>1.56</p></td>
+<td><p>1.67</p></td>
+<td><p>1.78</p></td>
+<td><p>1.88</p></td>
+<td><p>2.00</p></td>
+<td><p>2.11</p></td>
+<td><p>2.22</p></td>
+</tr>
+<tr class="row-odd"><th class="stub"><p>k=10</p></th>
+<td><p>1.10</p></td>
+<td><p>1.20</p></td>
+<td><p>1.30</p></td>
+<td><p>1.40</p></td>
+<td><p>1.50</p></td>
+<td><p>1.60</p></td>
+<td><p>1.70</p></td>
+<td><p>1.80</p></td>
+<td><p>1.90</p></td>
+<td><p>2.00</p></td>
+<td><p>2.10</p></td>
+</tr>
+<tr class="row-even"><th class="stub"><p>k=11</p></th>
+<td><p>1.09</p></td>
+<td><p>1.18</p></td>
+<td><p>1.27</p></td>
+<td><p>1.36</p></td>
+<td><p>1.45</p></td>
+<td><p>1.54</p></td>
+<td><p>1.63</p></td>
+<td><p>1.72</p></td>
+<td><p>1.82</p></td>
+<td><p>1.91</p></td>
+<td><p>2.00</p></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="id6">
 <h2>纠删码存储池与缓存分级<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h2>
-<p>纠删码存储池与副本存储池相比需要的计算资源更多，而且还缺少一些功能，像 omap 。要消除这些局限性，可以在纠删码存储池前加一个<a class="reference external" href="../cache-tiering">缓存层</a>。</p>
-<p>例如，假设存储池 <em>hot-storage</em> 性能比较好：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph osd tier add ecpool hot-storage
-$ ceph osd tier cache-mode hot-storage writeback
-$ ceph osd tier set-overlay ecpool hot-storage
-</pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cache tiering is deprecated in Reef.</p>
 </div>
-<p>这样就把 <em>hot-storage</em> 存储池配置成了 <em>ecpool</em> 的缓存层，模式为
-<em>writeback</em> 。如此一来，到 <em>ecpool</em> 的每个写和读实际上用的是
+<p>纠删码存储池与副本存储池相比需要的计算资源更多，而且还缺少一些功能，像 omap 。要消除这些局限性，可以在纠删码存储池前加一个<a class="reference external" href="../cache-tiering">缓存层</a>。</p>
+<p>For example, if the pool <em>hot-storage</em> is made of fast storage, the following commands
+will place the <em>hot-storage</em> pool as a tier of <em>ecpool</em> in <em>writeback</em>
+mode:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>add<span class="w"> </span>ecpool<span class="w"> </span>hot-storage</span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>cache-mode<span class="w"> </span>hot-storage<span class="w"> </span>writeback</span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>set-overlay<span class="w"> </span>ecpool<span class="w"> </span>hot-storage</span>
+</pre></div></div><p>如此一来，到 <em>ecpool</em> 的每个写和读实际上用的是
 <em>hot-storage</em> ，而且还受益于其灵活性和速度。</p>
-<p>更详细的文档请参阅<a class="reference external" href="../cache-tiering">分级缓存</a>。</p>
+<p>更详细的文档请参阅<a class="reference external" href="../cache-tiering">分级缓存</a>。
+注意：缓存分级功能已经废弃，以后的版本会完全删除。</p>
 </section>
 <section id="id9">
 <h2>纠删码存储池的恢复<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h2>
-<p>If an erasure coded pool loses some shards, it must recover them from the others.
-This generally involves reading from the remaining shards, reconstructing the data, and
-writing it to the new peer.
-In Octopus, erasure coded pools can recover as long as there are at least <em>K</em> shards
+<p>If an erasure-coded pool loses any data shards, it must recover them from others.
+This recovery involves reading from the remaining shards, reconstructing the data, and
+writing new shards.</p>
+<p>In Octopus and later releases, erasure-coded pools can recover as long as there are at least <em>K</em> shards
 available. (With fewer than <em>K</em> shards, you have actually lost data!)</p>
-<p>Prior to Octopus, erasure coded pools required at least <em>min_size</em> shards to be
-available, even if <em>min_size</em> is greater than <em>K</em>. (We generally recommend min_size
-be <em>K+2</em> or more to prevent loss of writes and data.)
-This conservative decision was made out of an abundance of caution when designing the new pool
-mode but also meant pools with lost OSDs but no data loss were unable to recover and go active
-without manual intervention to change the <em>min_size</em>.</p>
+<p>Prior to Octopus, erasure-coded pools required that at least <code class="docutils literal notranslate"><span class="pre">min_size</span></code> shards be
+available, even if <code class="docutils literal notranslate"><span class="pre">min_size</span></code> was greater than <code class="docutils literal notranslate"><span class="pre">K</span></code>. This was a conservative
+decision made out of an abundance of caution when designing the new pool
+mode. As a result, however, pools with lost OSDs but without complete data loss were
+unable to recover and go active without manual intervention to temporarily change
+the <code class="docutils literal notranslate"><span class="pre">min_size</span></code> setting.</p>
+<p>We recommend that <code class="docutils literal notranslate"><span class="pre">min_size</span></code> be <code class="docutils literal notranslate"><span class="pre">K+1</span></code> or greater to prevent loss of writes and
+loss of data.</p>
 </section>
 <section id="id10">
 <h2>术语<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h2>
 <dl class="simple">
-<dt><em>chunk</em></dt><dd><p>when the encoding function is called, it returns chunks of the same
-size. Data chunks which can be concatenated to reconstruct the original
-object and coding chunks which can be used to rebuild a lost chunk.</p>
+<dt><em>chunk</em></dt><dd><p>When the encoding function is called, it returns chunks of the same size as each other. There are two
+kinds of chunks: (1) <em>data chunks</em>, which can be concatenated to reconstruct the original object, and
+(2) <em>coding chunks</em>, which can be used to rebuild a lost chunk.</p>
 </dd>
-<dt><em>K</em></dt><dd><p>the number of data <em>chunks</em>, i.e. the number of <em>chunks</em> in which the
-original object is divided. For instance if <em>K</em> = 2 a 10KB object
-will be divided into <em>K</em> objects of 5KB each.</p>
+<dt><em>K</em></dt><dd><p>The number of data chunks into which an object is divided. For example, if <em>K</em> = 2, then a 10KB object
+is divided into two objects of 5KB each.</p>
 </dd>
-<dt><em>M</em></dt><dd><p>the number of coding <em>chunks</em>, i.e. the number of additional <em>chunks</em>
-computed by the encoding functions. If there are 2 coding <em>chunks</em>,
-it means 2 OSDs can be out without losing data.</p>
+<dt><em>M</em></dt><dd><p>The number of coding chunks computed by the encoding function. <em>M</em> is equal to the number of OSDs that can
+be missing from the cluster without the cluster suffering data loss. For example, if there are two coding
+chunks, then two OSDs can be missing without data loss.</p>
 </dd>
 </dl>
 </section>

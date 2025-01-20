@@ -154,7 +154,7 @@
 
 要修改一个角色的 assume role 策略文本，执行命令： ::
 
-	radosgw-admin role modify --role-name={role-name} --assume-role-policy-doc={trust-policy-document}
+	radosgw-admin role-trust-policy modify --role-name={role-name} --assume-role-policy-doc={trust-policy-document}
 
 请求参数
 ~~~~~~~~
@@ -170,7 +170,7 @@
 
 例如::
 
-  radosgw-admin role modify --role-name=S3Access1 --assume-role-policy-doc=\{\"Version\":\"2012-10-17\",\"Statement\":\[\{\"Effect\":\"Allow\",\"Principal\":\{\"AWS\":\[\"arn:aws:iam:::user/TESTER2\"\]\},\"Action\":\[\"sts:AssumeRole\"\]\}\]\}
+  radosgw-admin role-trust-policy modify --role-name=S3Access1 --assume-role-policy-doc=\{\"Version\":\"2012-10-17\",\"Statement\":\[\{\"Effect\":\"Allow\",\"Principal\":\{\"AWS\":\[\"arn:aws:iam:::user/TESTER2\"\]\},\"Action\":\[\"sts:AssumeRole\"\]\}\]\}
 
 .. code-block:: javascript
 

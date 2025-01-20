@@ -36,6 +36,22 @@ Ceph 管理器的 ``Stats`` 插件有接口获取这些指标。
 
    执行一次自检。这个模式对 ``stats`` 模块执行一次健全性检查。
 
+.. option:: --conffile [CONFFILE]
+
+   集群配置文件的路径
+
+.. option:: -d [DELAY], --delay [DELAY]
+
+   刷新间隔秒数（默认： 1 ）
+
+.. option:: --dump
+
+   把指标都转储到 stdout
+
+.. option:: --dumpfs <fs_name>
+
+   把指定文件系统的指标都转储到 stdout
+
 字段描述
 ========
 

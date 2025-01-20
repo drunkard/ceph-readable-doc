@@ -204,11 +204,12 @@ To populate the OSD directory (which has already been mounted), use this ``ceph-
 All of the information from the previous steps is used in the above command.      
 
 
-.. Partitioning
 .. _ceph-volume-lvm-partitions:
 
 分区
 ----
+.. Partitioning
+
 ``ceph-volume lvm`` does not currently create partitions from a whole device.
 If using device partitions the only requirement is that they contain the
 ``PARTUUID`` and that it is discoverable by ``blkid``. Both ``fdisk`` and
@@ -244,11 +245,12 @@ a ``PARTUUID`` that is needed by ``ceph-volume``::
     /dev/sdd1: PARTLABEL="primary" PARTUUID="16399d72-1e1f-467d-96ee-6fe371a7d0d4"
 
 
-.. Existing OSDs
 .. _ceph-volume-lvm-existing-osds:
 
 对于已有 OSD
 ------------
+.. Existing OSDs
+
 For existing clusters that want to use this new system and have OSDs that are
 already running there are a few things to take into account:
 
@@ -274,21 +276,22 @@ can be started later (for detailed metadata description see
 :ref:`ceph-volume-lvm-tags`).
 
 
-.. Crush device class
-
 CRUSH 设备类
 ------------
+.. Crush device class
+
 要设置 OSD 所属的 CRUSH 设备类，用 ``--crush-device-class``
 选项。对基于 bluestore 和 filestore 的 OSD 都适用： ::
 
     ceph-volume lvm prepare --bluestore --data vg/lv --crush-device-class foo
 
 
-.. ``multipath`` support
 .. _ceph-volume-lvm-multipath:
 
 ``multipath`` 支持
 ------------------
+.. ``multipath`` support
+
 ``multipath`` devices are supported if ``lvm`` is configured properly.
 
 **Leave it to LVM**
@@ -305,10 +308,10 @@ provided in ``lvm.conf``. ``ceph-volume`` must not be able to use both the
 multipath device and its multipath components.
 
 
-.. Storing metadata
-
 存入元数据
 ----------
+.. Storing metadata
+
 不管是什么类型的卷（日志或数据）或 OSD 对象存储器，下面的标签\
 都会在准备过程中打上：
 
@@ -330,10 +333,10 @@ multipath device and its multipath components.
 .. note:: 完整的 LVM 标签惯例见 :ref:`ceph-volume-lvm-tag-api` 。
 
 
-.. Summary
-
 总结
 ----
+.. Summary
+
 To recap the ``prepare`` process for :term:`bluestore`:
 
 #. Accepts raw physical devices, partitions on physical devices or logical volumes as arguments.

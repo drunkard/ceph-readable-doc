@@ -104,6 +104,10 @@
 |                                [--registry-password REGISTRY_PASSWORD]
 |                                [--registry-json REGISTRY_JSON] [--fsid FSID]
 
+| **cephadm** **list-images**
+
+| **cephadm** **update-osd-service** [-h] [--fsid FSID] --osd-ids OSD_IDS --service-name SERVICE_NAME
+
 
 描述
 ====
@@ -193,6 +197,16 @@ adopt
 * [--config-json CONFIG_JSON]  JSON 格式的额外配置信息
 * [--skip-firewalld]           不要配置 firewalld
 * [--skip-pull]                采用前不要拉取最新映像
+
+配置：
+
+启动 shell 时， cephadm 按如下顺序查找配置信息。只采用第一个找到的值：
+
+1. 明确指定的、用户提供的配置文件路径（ ``-c/--config`` 选项）
+2. 用 ``--name`` 参数（ ``/var/lib/ceph/<fsid>/<daemon-name>/config`` ）指定的守护进程配置文件。
+3. ``/var/lib/ceph/<fsid>/config/ceph.conf`` ，如果它存在的话
+4. 如果有的话，采用 ``mon`` 守护进程（ ``/var/lib/ceph/<fsid>/mon.<mon-id>/config`` ）的配置文件
+5. 最后：回退到默认文件 ``/etc/ceph/ceph.conf``
 
 
 bootstrap
@@ -323,11 +337,15 @@ install
 
 inspect-image
 -------------
-检查本地的 ceph 容器映像。
+
+检查本地的 ceph 容器映像。从 Reef 版起，必须用 ``--image`` 指定要检查的映像： ::
+
+    cephadm --image IMAGE_NAME inspect-image
 
 
 list-networks
 -------------
+
 罗列 IP 网络段。
 
 
@@ -511,6 +529,24 @@ unit
 
 * [--fsid FSID]           集群的 FSID
 * [--name NAME, -n NAME]  守护进程的名字 (type.id)
+
+
+list-images
+-----------
+
+按 ini 格式列出所有服务的默认容器映像。可以用自定义镜像修改输出，并在引导过程中传递给 --config 标志。
+
+
+update-osd-service
+------------------
+
+更新指定 OSD 的 OSD 服务。
+
+参数：
+
+* [--fsid FSID]                 集群 FSID
+* --osd-ids OSD_IDS             逗号分隔的 OSD IDs
+* --service-name SERVICE_NAME   OSD 服务名字
 
 
 使用范围

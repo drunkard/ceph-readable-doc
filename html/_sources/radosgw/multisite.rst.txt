@@ -468,7 +468,7 @@ realm 包含域组和域的多站配置信息，同时在 realm 内\
 
 .. prompt:: bash #
 
-   radosgw-admin zone rm --rgw-zone=default
+   radosgw-admin zone delete --rgw-zone=default
 
 最后，如果有必要，删除 Ceph 存储集群内的默认存储池。
 
@@ -1432,7 +1432,7 @@ realm 并非 period 的一部分，所以，对 realm 的重命名只在本地�
 
 .. prompt:: bash #
 
-   radosgw-admin zone rm --rgw-zone<name>
+   radosgw-admin zone delete --rgw-zone<name>
 
 最后，更新 period ：
 
@@ -1455,15 +1455,17 @@ realm 并非 period 的一部分，所以，对 realm 的重命名只在本地�
 .. prompt:: bash #
 
    ceph osd pool rm <del-zone>.rgw.control <del-zone>.rgw.control --yes-i-really-really-mean-it
-   ceph osd pool rm <del-zone>.rgw.data.root <del-zone>.rgw.data.root --yes-i-really-really-mean-it
-   ceph osd pool rm <del-zone>.rgw.gc <del-zone>.rgw.gc --yes-i-really-really-mean-it
+   ceph osd pool rm <del-zone>.rgw.meta <del-zone>.rgw.meta --yes-i-really-really-mean-it
    ceph osd pool rm <del-zone>.rgw.log <del-zone>.rgw.log --yes-i-really-really-mean-it
-   ceph osd pool rm <del-zone>.rgw.users.uid <del-zone>.rgw.users.uid --yes-i-really-really-mean-it
+   ceph osd pool rm <del-zone>.rgw.otp <del-zone>.rgw.otp --yes-i-really-really-mean-it
+   ceph osd pool rm <del-zone>.rgw.buckets.index <del-zone>.rgw.buckets.index --yes-i-really-really-mean-it
+   ceph osd pool rm <del-zone>.rgw.buckets.non-ec <del-zone>.rgw.buckets.non-ec --yes-i-really-really-mean-it
+   ceph osd pool rm <del-zone>.rgw.buckets.data <del-zone>.rgw.buckets.data --yes-i-really-really-mean-it
 
 
 修改域配置
 ~~~~~~~~~~
-.. Modify a Zone
+.. Modifying a Zone
 
 修改域配置需指定域名、以及你想更改的参数。
 

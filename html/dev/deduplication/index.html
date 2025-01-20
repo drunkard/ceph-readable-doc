@@ -150,6 +150,11 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#rados-machinery">RADOS Machinery</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#status-and-future-work">Status and Future Work</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-use-deduplication">How to use deduplication</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#prerequisite">Prerequisite</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#deatiled-instructions">Deatiled Instructions</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../delayed-delete/">CephFS delayed deletion</a></li>
@@ -365,6 +370,254 @@ to radosgw.</p>
 <p>Aside from radosgw, completing work on manifest object support in the
 OSD particularly as it relates to snapshots would be the next step for
 rbd and cephfs workloads.</p>
+</section>
+<section id="how-to-use-deduplication">
+<h2>How to use deduplication<a class="headerlink" href="#how-to-use-deduplication" title="Permalink to this heading"></a></h2>
+<blockquote>
+<div><ul class="simple">
+<li><p>This feature is highly experimental and is subject to change or removal.</p></li>
+</ul>
+</div></blockquote>
+<p>Ceph provides deduplication using RADOS machinery.
+Below we explain how to perform deduplication.</p>
+<section id="prerequisite">
+<h3>Prerequisite<a class="headerlink" href="#prerequisite" title="Permalink to this heading"></a></h3>
+<p>If the Ceph cluster is started from Ceph mainline, users need to check
+<code class="docutils literal notranslate"><span class="pre">ceph-test</span></code> package which is including ceph-dedup-tool is installed.</p>
+</section>
+<section id="deatiled-instructions">
+<h3>Deatiled Instructions<a class="headerlink" href="#deatiled-instructions" title="Permalink to this heading"></a></h3>
+<p>Users can use ceph-dedup-tool with <code class="docutils literal notranslate"><span class="pre">estimate</span></code>, <code class="docutils literal notranslate"><span class="pre">sample-dedup</span></code>,
+<code class="docutils literal notranslate"><span class="pre">chunk-scrub</span></code>, and <code class="docutils literal notranslate"><span class="pre">chunk-repair</span></code> operations. To provide better
+convenience for users, we have enabled necessary operations through
+ceph-dedup-tool, and we recommend using the following operations freely
+by using any types of scripts.</p>
+<section id="estimate-space-saving-ratio-of-a-target-pool-using-ceph-dedup-tool">
+<h4>1. Estimate space saving ratio of a target pool using <code class="docutils literal notranslate"><span class="pre">ceph-dedup-tool</span></code>.<a class="headerlink" href="#estimate-space-saving-ratio-of-a-target-pool-using-ceph-dedup-tool" title="Permalink to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>estimate
+<span class="w">  </span>--pool<span class="w"> </span><span class="o">[</span>BASE_POOL<span class="o">]</span>
+<span class="w">  </span>--chunk-size<span class="w"> </span><span class="o">[</span>CHUNK_SIZE<span class="o">]</span>
+<span class="w">  </span>--chunk-algorithm<span class="w"> </span><span class="o">[</span>fixed<span class="p">|</span>fastcdc<span class="o">]</span>
+<span class="w">  </span>--fingerprint-algorithm<span class="w"> </span><span class="o">[</span>sha1<span class="p">|</span>sha256<span class="p">|</span>sha512<span class="o">]</span>
+<span class="w">  </span>--max-thread<span class="w"> </span><span class="o">[</span>THREAD_COUNT<span class="o">]</span>
+</pre></div>
+</div>
+<p>This CLI command will show how much storage space can be saved when deduplication
+is applied on the pool. If the amount of the saved space is higher than user’s expectation,
+the pool probably is worth performing deduplication.
+Users should specify the <code class="docutils literal notranslate"><span class="pre">BASE_POOL</span></code>, within which the object targeted for deduplication
+is stored. The users also need to run ceph-dedup-tool multiple time
+with varying <code class="docutils literal notranslate"><span class="pre">chunk_size</span></code> to find the optimal chunk size. Note that the
+optimal value probably differs in the content of each object in case of fastcdc
+chunk algorithm (not fixed).</p>
+<p>Example output:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">{</span>
+<span class="w">  </span><span class="s2">&quot;chunk_algo&quot;</span>:<span class="w"> </span><span class="s2">&quot;fastcdc&quot;</span>,
+<span class="w">  </span><span class="s2">&quot;chunk_sizes&quot;</span>:<span class="w"> </span><span class="o">[</span>
+<span class="w">    </span><span class="o">{</span>
+<span class="w">      </span><span class="s2">&quot;target_chunk_size&quot;</span>:<span class="w"> </span><span class="m">8192</span>,
+<span class="w">      </span><span class="s2">&quot;dedup_bytes_ratio&quot;</span>:<span class="w"> </span><span class="m">0</span>.4897049
+<span class="w">      </span><span class="s2">&quot;dedup_object_ratio&quot;</span>:<span class="w"> </span><span class="m">34</span>.567315
+<span class="w">      </span><span class="s2">&quot;chunk_size_average&quot;</span>:<span class="w"> </span><span class="m">64439</span>,
+<span class="w">      </span><span class="s2">&quot;chunk_size_stddev&quot;</span>:<span class="w"> </span><span class="m">33620</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">  </span><span class="o">]</span>,
+<span class="w">  </span><span class="s2">&quot;summary&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="s2">&quot;examined_objects&quot;</span>:<span class="w"> </span><span class="m">95</span>,
+<span class="w">    </span><span class="s2">&quot;examined_bytes&quot;</span>:<span class="w"> </span><span class="m">214968649</span>
+<span class="w">  </span><span class="o">}</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+<p>The above is an example output when executing <code class="docutils literal notranslate"><span class="pre">estimate</span></code>. <code class="docutils literal notranslate"><span class="pre">target_chunk_size</span></code> is the same as
+<code class="docutils literal notranslate"><span class="pre">chunk_size</span></code> given by the user. <code class="docutils literal notranslate"><span class="pre">dedup_bytes_ratio</span></code> shows how many bytes are redundant from
+examined bytes. For instance, 1 - <code class="docutils literal notranslate"><span class="pre">dedup_bytes_ratio</span></code> means the percentage of saved storage space.
+<code class="docutils literal notranslate"><span class="pre">dedup_object_ratio</span></code> is the generated chunk objects / <code class="docutils literal notranslate"><span class="pre">examined_objects</span></code>. <code class="docutils literal notranslate"><span class="pre">chunk_size_average</span></code>
+means that the divided chunk size on average when performing CDC---this may differnet from <code class="docutils literal notranslate"><span class="pre">target_chunk_size</span></code>
+because CDC genarates different chunk-boundary depending on the content. <code class="docutils literal notranslate"><span class="pre">chunk_size_stddev</span></code>
+represents the standard deviation of the chunk size.</p>
+</section>
+<section id="create-chunk-pool">
+<h4>2. Create chunk pool.<a class="headerlink" href="#create-chunk-pool" title="Permalink to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>create<span class="w"> </span><span class="o">[</span>CHUNK_POOL<span class="o">]</span>
+</pre></div>
+</div>
+</section>
+<section id="run-dedup-command-there-are-two-ways">
+<h4>3. Run dedup command (there are two ways).<a class="headerlink" href="#run-dedup-command-there-are-two-ways" title="Permalink to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>sample-dedup</strong></p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>sample-dedup
+<span class="w">  </span>--pool<span class="w"> </span><span class="o">[</span>BASE_POOL<span class="o">]</span>
+<span class="w">  </span>--chunk-pool<span class="w"> </span><span class="o">[</span>CHUNK_POOL<span class="o">]</span>
+<span class="w">  </span>--chunk-size<span class="w"> </span><span class="o">[</span>CHUNK_SIZE<span class="o">]</span>
+<span class="w">  </span>--chunk-algorithm<span class="w"> </span><span class="o">[</span>fastcdc<span class="o">]</span>
+<span class="w">  </span>--fingerprint-algorithm<span class="w"> </span><span class="o">[</span>sha1<span class="p">|</span>sha256<span class="p">|</span>sha512<span class="o">]</span>
+<span class="w">  </span>--chunk-dedup-threshold<span class="w"> </span><span class="o">[</span>THRESHOLD<span class="o">]</span>
+<span class="w">  </span>--max-thread<span class="w"> </span><span class="o">[</span>THREAD_COUNT<span class="o">]</span>
+<span class="w">  </span>--sampling-ratio<span class="w"> </span><span class="o">[</span>SAMPLE_RATIO<span class="o">]</span>
+<span class="w">  </span>--wakeup-period<span class="w"> </span><span class="o">[</span>WAKEUP_PERIOD<span class="o">]</span>
+<span class="w">  </span>--loop
+<span class="w">  </span>--snap
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">sample-dedup</span></code> comamnd spawns threads specified by <code class="docutils literal notranslate"><span class="pre">THREAD_COUNT</span></code> to deduplicate objects on
+the <code class="docutils literal notranslate"><span class="pre">BASE_POOL</span></code>. According to sampling-ratio---do a full search if <code class="docutils literal notranslate"><span class="pre">SAMPLE_RATIO</span></code> is 100, the threads selectively
+perform deduplication if the chunk is redundant over <code class="docutils literal notranslate"><span class="pre">THRESHOLD</span></code> times during iteration.
+If --loop is set, the theads will wakeup after <code class="docutils literal notranslate"><span class="pre">WAKEUP_PERIOD</span></code>. If not, the threads will exit after one iteration.</p>
+<p>Example output:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>bin/ceph<span class="w"> </span>df
+---<span class="w"> </span>RAW<span class="w"> </span>STORAGE<span class="w"> </span>---
+CLASS<span class="w">     </span>SIZE<span class="w">    </span>AVAIL<span class="w">     </span>USED<span class="w">  </span>RAW<span class="w"> </span>USED<span class="w">  </span>%RAW<span class="w"> </span>USED
+ssd<span class="w">    </span><span class="m">303</span><span class="w"> </span>GiB<span class="w">  </span><span class="m">294</span><span class="w"> </span>GiB<span class="w">  </span><span class="m">9</span>.0<span class="w"> </span>GiB<span class="w">   </span><span class="m">9</span>.0<span class="w"> </span>GiB<span class="w">       </span><span class="m">2</span>.99
+TOTAL<span class="w">  </span><span class="m">303</span><span class="w"> </span>GiB<span class="w">  </span><span class="m">294</span><span class="w"> </span>GiB<span class="w">  </span><span class="m">9</span>.0<span class="w"> </span>GiB<span class="w">   </span><span class="m">9</span>.0<span class="w"> </span>GiB<span class="w">       </span><span class="m">2</span>.99
+
+---<span class="w"> </span>POOLS<span class="w"> </span>---
+POOL<span class="w">   </span>ID<span class="w">  </span>PGS<span class="w">   </span>STORED<span class="w">  </span>OBJECTS<span class="w">     </span>USED<span class="w">  </span>%USED<span class="w">  </span>MAX<span class="w"> </span>AVAIL
+.mgr<span class="w">    </span><span class="m">1</span><span class="w">    </span><span class="m">1</span><span class="w">  </span><span class="m">577</span><span class="w"> </span>KiB<span class="w">        </span><span class="m">2</span><span class="w">  </span><span class="m">1</span>.7<span class="w"> </span>MiB<span class="w">      </span><span class="m">0</span><span class="w">     </span><span class="m">97</span><span class="w"> </span>GiB
+base<span class="w">    </span><span class="m">2</span><span class="w">   </span><span class="m">32</span><span class="w">  </span><span class="m">2</span>.0<span class="w"> </span>GiB<span class="w">      </span><span class="m">517</span><span class="w">  </span><span class="m">6</span>.0<span class="w"> </span>GiB<span class="w">   </span><span class="m">2</span>.02<span class="w">     </span><span class="m">97</span><span class="w"> </span>GiB
+chunk<span class="w">   </span><span class="m">3</span><span class="w">   </span><span class="m">32</span><span class="w">   </span><span class="m">0</span><span class="w">  </span>B<span class="w">          </span><span class="m">0</span><span class="w">    </span><span class="m">0</span><span class="w">   </span>B<span class="w">      </span><span class="m">0</span><span class="w">     </span><span class="m">97</span><span class="w"> </span>GiB
+
+$<span class="w"> </span>bin/ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>sample-dedup<span class="w"> </span>--pool<span class="w"> </span>base<span class="w"> </span>--chunk-pool<span class="w"> </span>chunk
+<span class="w">  </span>--fingerprint-algorithm<span class="w"> </span>sha1<span class="w"> </span>--chunk-algorithm<span class="w"> </span>fastcdc<span class="w"> </span>--loop<span class="w"> </span>--sampling-ratio<span class="w"> </span><span class="m">100</span>
+<span class="w">  </span>--chunk-dedup-threshold<span class="w"> </span><span class="m">2</span><span class="w"> </span>--chunk-size<span class="w"> </span><span class="m">8192</span><span class="w"> </span>--max-thread<span class="w"> </span><span class="m">4</span><span class="w"> </span>--wakeup-period<span class="w"> </span><span class="m">60</span>
+
+$<span class="w"> </span>bin/ceph<span class="w"> </span>df
+---<span class="w"> </span>RAW<span class="w"> </span>STORAGE<span class="w"> </span>---
+CLASS<span class="w">     </span>SIZE<span class="w">    </span>AVAIL<span class="w">     </span>USED<span class="w">  </span>RAW<span class="w"> </span>USED<span class="w">  </span>%RAW<span class="w"> </span>USED
+ssd<span class="w">    </span><span class="m">303</span><span class="w"> </span>GiB<span class="w">  </span><span class="m">298</span><span class="w"> </span>GiB<span class="w">  </span><span class="m">5</span>.4<span class="w"> </span>GiB<span class="w">   </span><span class="m">5</span>.4<span class="w"> </span>GiB<span class="w">       </span><span class="m">1</span>.80
+TOTAL<span class="w">  </span><span class="m">303</span><span class="w"> </span>GiB<span class="w">  </span><span class="m">298</span><span class="w"> </span>GiB<span class="w">  </span><span class="m">5</span>.4<span class="w"> </span>GiB<span class="w">   </span><span class="m">5</span>.4<span class="w"> </span>GiB<span class="w">       </span><span class="m">1</span>.80
+
+---<span class="w"> </span>POOLS<span class="w"> </span>---
+POOL<span class="w">   </span>ID<span class="w">  </span>PGS<span class="w">   </span>STORED<span class="w">  </span>OBJECTS<span class="w">     </span>USED<span class="w">  </span>%USED<span class="w">  </span>MAX<span class="w"> </span>AVAIL
+.mgr<span class="w">    </span><span class="m">1</span><span class="w">    </span><span class="m">1</span><span class="w">  </span><span class="m">577</span><span class="w"> </span>KiB<span class="w">        </span><span class="m">2</span><span class="w">  </span><span class="m">1</span>.7<span class="w"> </span>MiB<span class="w">      </span><span class="m">0</span><span class="w">     </span><span class="m">98</span><span class="w"> </span>GiB
+base<span class="w">    </span><span class="m">2</span><span class="w">   </span><span class="m">32</span><span class="w">  </span><span class="m">452</span><span class="w"> </span>MiB<span class="w">      </span><span class="m">262</span><span class="w">  </span><span class="m">1</span>.3<span class="w"> </span>GiB<span class="w">   </span><span class="m">0</span>.50<span class="w">     </span><span class="m">98</span><span class="w"> </span>GiB
+chunk<span class="w">   </span><span class="m">3</span><span class="w">   </span><span class="m">32</span><span class="w">  </span><span class="m">258</span><span class="w"> </span>MiB<span class="w">   </span><span class="m">25</span>.91k<span class="w">  </span><span class="m">938</span><span class="w"> </span>MiB<span class="w">   </span><span class="m">0</span>.31<span class="w">     </span><span class="m">98</span><span class="w"> </span>GiB
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>object dedup</strong></p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>object-dedup
+<span class="w">  </span>--pool<span class="w"> </span><span class="o">[</span>BASE_POOL<span class="o">]</span>
+<span class="w">  </span>--object<span class="w"> </span><span class="o">[</span>OID<span class="o">]</span>
+<span class="w">  </span>--chunk-pool<span class="w"> </span><span class="o">[</span>CHUNK_POOL<span class="o">]</span>
+<span class="w">  </span>--fingerprint-algorithm<span class="w"> </span><span class="o">[</span>sha1<span class="p">|</span>sha256<span class="p">|</span>sha512<span class="o">]</span>
+<span class="w">  </span>--dedup-cdc-chunk-size<span class="w"> </span><span class="o">[</span>CHUNK_SIZE<span class="o">]</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">object-dedup</span></code> command triggers deduplication on the RADOS object specified by <code class="docutils literal notranslate"><span class="pre">OID</span></code>.
+All parameters shown above must be specified. <code class="docutils literal notranslate"><span class="pre">CHUNK_SIZE</span></code> should be taken from
+the results of step 1 above.
+Note that when this command is executed, <code class="docutils literal notranslate"><span class="pre">fastcdc</span></code> will be set by default and other parameters
+such as <code class="docutils literal notranslate"><span class="pre">fingerprint-algorithm</span></code> and <code class="docutils literal notranslate"><span class="pre">CHUNK_SIZE</span></code> will be set as defaults for the pool.
+Deduplicated objects will appear in the chunk pool. If the object is mutated over time, user needs to re-run
+<code class="docutils literal notranslate"><span class="pre">object-dedup</span></code> because chunk-boundary should be recalculated based on updated contents.
+The user needs to specify <code class="docutils literal notranslate"><span class="pre">snap</span></code> if the target object is snapshotted. After deduplication is done, the target
+object size in <code class="docutils literal notranslate"><span class="pre">BASE_POOL</span></code> is zero (evicted) and chunks objects are genereated---these appear in <code class="docutils literal notranslate"><span class="pre">CHUNK_POOL</span></code>.</p>
+</section>
+<section id="read-write-i-os">
+<h4>4. Read/write I/Os<a class="headerlink" href="#read-write-i-os" title="Permalink to this heading"></a></h4>
+<p>After step 3, the users don’t need to consider anything about I/Os. Deduplicated objects are
+completely compatible with existing RADOS operations.</p>
+</section>
+<section id="run-scrub-to-fix-reference-count">
+<h4>5. Run scrub to fix reference count<a class="headerlink" href="#run-scrub-to-fix-reference-count" title="Permalink to this heading"></a></h4>
+<p>Reference mismatches can on rare occasions occur to false positives when handling reference counts for
+deduplicated RADOS objects. These mismatches will be fixed by periodically scrubbing the pool:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>chunk-scrub
+<span class="w">  </span>--chunk-pool<span class="w"> </span><span class="o">[</span>CHUNK_POOL<span class="o">]</span>
+<span class="w">  </span>--pool<span class="w"> </span><span class="o">[</span>POOL<span class="o">]</span>
+<span class="w">  </span>--max-thread<span class="w"> </span><span class="o">[</span>THREAD_COUNT<span class="o">]</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">chunk-scrub</span></code> command identifies reference mismatches between a
+metadata object and a chunk object. The <code class="docutils literal notranslate"><span class="pre">chunk-pool</span></code> parameter tells
+where the target chunk objects are located to the ceph-dedup-tool.</p>
+<p>Example output:</p>
+<p>A reference mismatch is intentionally created by inserting a reference (dummy-obj) into a chunk object (2ac67f70d3dd187f8f332bb1391f61d4e5c9baae) by using chunk-get-ref.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>bin/ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>dump-chunk-refs<span class="w"> </span>--chunk-pool<span class="w"> </span>chunk<span class="w"> </span>--object<span class="w"> </span>2ac67f70d3dd187f8f332bb1391f61d4e5c9baae
+<span class="o">{</span>
+<span class="w">  </span><span class="s2">&quot;type&quot;</span>:<span class="w"> </span><span class="s2">&quot;by_object&quot;</span>,
+<span class="w">  </span><span class="s2">&quot;count&quot;</span>:<span class="w"> </span><span class="m">2</span>,
+<span class="w">    </span><span class="s2">&quot;refs&quot;</span>:<span class="w"> </span><span class="o">[</span>
+<span class="w">    </span><span class="o">{</span>
+<span class="w">      </span><span class="s2">&quot;oid&quot;</span>:<span class="w"> </span><span class="s2">&quot;testfile2&quot;</span>,
+<span class="w">            </span><span class="s2">&quot;key&quot;</span>:<span class="w"> </span><span class="s2">&quot;&quot;</span>,
+<span class="w">            </span><span class="s2">&quot;snapid&quot;</span>:<span class="w"> </span>-2,
+<span class="w">            </span><span class="s2">&quot;hash&quot;</span>:<span class="w"> </span><span class="m">2905889452</span>,
+<span class="w">            </span><span class="s2">&quot;max&quot;</span>:<span class="w"> </span><span class="m">0</span>,
+<span class="w">            </span><span class="s2">&quot;pool&quot;</span>:<span class="w"> </span><span class="m">2</span>,
+<span class="w">            </span><span class="s2">&quot;namespace&quot;</span>:<span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="o">}</span>,
+<span class="w">    </span><span class="o">{</span>
+<span class="w">      </span><span class="s2">&quot;oid&quot;</span>:<span class="w"> </span><span class="s2">&quot;dummy-obj&quot;</span>,
+<span class="w">      </span><span class="s2">&quot;key&quot;</span>:<span class="w"> </span><span class="s2">&quot;&quot;</span>,
+<span class="w">      </span><span class="s2">&quot;snapid&quot;</span>:<span class="w"> </span>-2,
+<span class="w">      </span><span class="s2">&quot;hash&quot;</span>:<span class="w"> </span><span class="m">1203585162</span>,
+<span class="w">      </span><span class="s2">&quot;max&quot;</span>:<span class="w"> </span><span class="m">0</span>,
+<span class="w">      </span><span class="s2">&quot;pool&quot;</span>:<span class="w"> </span><span class="m">2</span>,
+<span class="w">      </span><span class="s2">&quot;namespace&quot;</span>:<span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">  </span><span class="o">]</span>
+<span class="o">}</span>
+
+$<span class="w"> </span>bin/ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>chunk-scrub<span class="w"> </span>--chunk-pool<span class="w"> </span>chunk<span class="w"> </span>--max-thread<span class="w"> </span><span class="m">10</span>
+<span class="m">10</span><span class="w"> </span>seconds<span class="w"> </span>is<span class="w"> </span><span class="nb">set</span><span class="w"> </span>as<span class="w"> </span>report<span class="w"> </span>period<span class="w"> </span>by<span class="w"> </span>default
+join
+join
+2ac67f70d3dd187f8f332bb1391f61d4e5c9baae
+--done--
+2ac67f70d3dd187f8f332bb1391f61d4e5c9baae<span class="w"> </span>ref<span class="w"> </span><span class="m">10</span>:5102bde2:::dummy-obj:head:<span class="w"> </span>referencing<span class="w"> </span>pool<span class="w"> </span>does<span class="w"> </span>not<span class="w"> </span>exist
+--done--
+<span class="w"> </span>Total<span class="w"> </span>object<span class="w"> </span>:<span class="w"> </span><span class="m">1</span>
+<span class="w"> </span>Examined<span class="w"> </span>object<span class="w"> </span>:<span class="w"> </span><span class="m">1</span>
+<span class="w"> </span>Damaged<span class="w"> </span>object<span class="w"> </span>:<span class="w"> </span><span class="m">1</span>
+</pre></div>
+</div>
+</section>
+<section id="repair-a-mismatched-chunk-reference">
+<h4>6. Repair a mismatched chunk reference<a class="headerlink" href="#repair-a-mismatched-chunk-reference" title="Permalink to this heading"></a></h4>
+<p>If any reference mismatches occur after the <code class="docutils literal notranslate"><span class="pre">chunk-scrub</span></code>, it is
+recommended to perform the <code class="docutils literal notranslate"><span class="pre">chunk-repair</span></code> operation to fix reference
+mismatches. The <code class="docutils literal notranslate"><span class="pre">chunk-repair</span></code> operation helps in resolving the
+reference mismatch and restoring consistency.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>chunk-repair
+<span class="w">  </span>--chunk-pool<span class="w"> </span><span class="o">[</span>CHUNK_POOL_NAME<span class="o">]</span>
+<span class="w">  </span>--object<span class="w"> </span><span class="o">[</span>CHUNK_OID<span class="o">]</span>
+<span class="w">  </span>--target-ref<span class="w"> </span><span class="o">[</span>TARGET_OID<span class="o">]</span>
+<span class="w">  </span>--target-ref-pool-id<span class="w"> </span><span class="o">[</span>TARGET_POOL_ID<span class="o">]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">chunk-repair</span></code> fixes the <code class="docutils literal notranslate"><span class="pre">target-ref</span></code>, which is a wrong reference of
+an <code class="docutils literal notranslate"><span class="pre">object</span></code>. To fix it correctly, the users must enter the correct
+<code class="docutils literal notranslate"><span class="pre">TARGET_OID</span></code> and <code class="docutils literal notranslate"><span class="pre">TARGET_POOL_ID</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>bin/ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>chunk-repair<span class="w"> </span>--chunk-pool<span class="w"> </span>chunk<span class="w"> </span>--object<span class="w"> </span>2ac67f70d3dd187f8f332bb1391f61d4e5c9baae<span class="w"> </span>--target-ref<span class="w"> </span>dummy-obj<span class="w"> </span>--target-ref-pool-id<span class="w"> </span><span class="m">10</span>
+2ac67f70d3dd187f8f332bb1391f61d4e5c9baae<span class="w"> </span>has<span class="w"> </span><span class="m">1</span><span class="w"> </span>references<span class="w"> </span><span class="k">for</span><span class="w"> </span>dummy-obj
+dummy-obj<span class="w"> </span>has<span class="w"> </span><span class="m">0</span><span class="w"> </span>references<span class="w"> </span><span class="k">for</span><span class="w"> </span>2ac67f70d3dd187f8f332bb1391f61d4e5c9baae
+<span class="w"> </span>fix<span class="w"> </span>dangling<span class="w"> </span>reference<span class="w"> </span>from<span class="w"> </span><span class="m">1</span><span class="w"> </span>to<span class="w"> </span><span class="m">0</span>
+
+$<span class="w"> </span>bin/ceph-dedup-tool<span class="w"> </span>--op<span class="w"> </span>dump-chunk-refs<span class="w"> </span>--chunk-pool<span class="w"> </span>chunk<span class="w"> </span>--object<span class="w"> </span>2ac67f70d3dd187f8f332bb1391f61d4e5c9baae
+<span class="o">{</span>
+<span class="w">  </span><span class="s2">&quot;type&quot;</span>:<span class="w"> </span><span class="s2">&quot;by_object&quot;</span>,
+<span class="w">  </span><span class="s2">&quot;count&quot;</span>:<span class="w"> </span><span class="m">1</span>,
+<span class="w">  </span><span class="s2">&quot;refs&quot;</span>:<span class="w"> </span><span class="o">[</span>
+<span class="w">    </span><span class="o">{</span>
+<span class="w">      </span><span class="s2">&quot;oid&quot;</span>:<span class="w"> </span><span class="s2">&quot;testfile2&quot;</span>,
+<span class="w">      </span><span class="s2">&quot;key&quot;</span>:<span class="w"> </span><span class="s2">&quot;&quot;</span>,
+<span class="w">      </span><span class="s2">&quot;snapid&quot;</span>:<span class="w"> </span>-2,
+<span class="w">      </span><span class="s2">&quot;hash&quot;</span>:<span class="w"> </span><span class="m">2905889452</span>,
+<span class="w">      </span><span class="s2">&quot;max&quot;</span>:<span class="w"> </span><span class="m">0</span>,
+<span class="w">      </span><span class="s2">&quot;pool&quot;</span>:<span class="w"> </span><span class="m">2</span>,
+<span class="w">      </span><span class="s2">&quot;namespace&quot;</span>:<span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">  </span><span class="o">]</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+</section>
+</section>
 </section>
 </section>
 

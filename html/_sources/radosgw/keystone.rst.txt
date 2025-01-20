@@ -1,8 +1,7 @@
-.. Integrating with OpenStack Keystone
-
 ============================
  与 OpenStack Keystone 对接
 ============================
+.. Integrating with OpenStack Keystone
 
 Ceph 对象网关可以与 Keystone 对接，它是 OpenStack 的鉴权服务。\
 这需要让网关把 Keystone 当作用户认证机构，经过 Keystone 授权、\
@@ -52,10 +51,9 @@ never use implicit tenants.  Some older versions of ceph
 only supported implicit tenants with swift.
 
 
-.. Ocata (and later)
-
 Ocata （及后续版本）
 --------------------
+.. Ocata (and later)
 
 Keystone 自身作为对象存储服务的入口（ endpoint ），需要配置为\
 指向 Ceph 对象网关。 ::
@@ -125,10 +123,9 @@ radosgw 的节点上安装 Keystone 的 SSL 证书；另外， radosgw
 .. _Openstack Keystone 文档: http://docs.openstack.org/developer/keystone/configuringservices.html#setting-up-projects-users-and-roles
 
 
-.. Cross Project(Tenant) Access
-
 跨 Project(Tenant) 访问
 -----------------------
+.. Cross Project(Tenant) Access
 
 In order to let a project (earlier called a 'tenant') access buckets belonging to a different project, the following config option needs to be enabled::
 
@@ -154,12 +151,30 @@ The Keystone object-store endpoint must accordingly be configured to include the
   | service_type | object-store                                                 |
   +--------------+--------------------------------------------------------------+
 
-.. Keystone integration with the S3 API
-
 Keystone 与 S3 API 对接
 -----------------------
+.. Keystone integration with the S3 API
 
 It is possible to use Keystone for authentication even when using the
 S3 API (with AWS-like access and secret keys), if the ``rgw s3 auth
 use keystone`` option is set. For details, see
 :doc:`s3/authentication`.
+
+Service token support
+---------------------
+
+Service tokens can be enabled to support RadosGW Keystone integration
+to allow expired tokens when coupled with a valid service token in the request.
+
+Enable the support with ``rgw keystone service token enabled`` and use the
+``rgw keystone service token accepted roles`` option to specify which roles are considered
+service roles.
+
+The ``rgw keystone expired token cache expiration`` option can be used to tune the cache
+expiration for an expired token allowed with a service token, please note that this must
+be lower than the ``[token]/allow_expired_window`` option in the Keystone configuration.
+
+Enabling this will cause an expired token given in the X-Auth-Token header to be allowed
+if coupled with a X-Service-Token header that contains a valid token with the accepted
+roles. This can allow long running processes using a user token in X-Auth-Token to function
+beyond the expiration of the token.

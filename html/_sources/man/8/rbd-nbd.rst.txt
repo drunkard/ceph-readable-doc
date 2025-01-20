@@ -53,7 +53,7 @@
 
 .. option:: --encryption-format
 
-   映像加密格式。可用的有： *luks1* 、 *luks2*
+   映像加密格式。可用的有： *luks* 、 *luks1* 、 *luks2*
 
 .. option:: --encryption-passphrase-file
 
@@ -68,6 +68,10 @@
 
    旧的 rbd-nbd 进程解绑后，内核等待多久才允许新进程绑定。
    默认是 30 秒。
+
+.. option:: --snap-id *snapid*
+
+   用 ID 而不是名字给 map/unmap/attach/detach 指定快照。
 
 映像名和快照名规则
 ==================

@@ -187,18 +187,24 @@
 <li class="toctree-l2"><a class="reference internal" href="../rbd-layering/">RBD Layering</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../release-checklists/">Release checklists</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Ceph Release Process</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#build-environment">1. Build environment</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#setup-keyring-for-signing-packages">2. Setup keyring for signing packages</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#set-up-build-area">3. Set up build area</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#update-build-version-numbers">4.  Update Build version numbers</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#create-makefiles">5. Create Makefiles</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#run-the-release-scripts">6. Run the release scripts</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#create-rpm-repo">7. Create RPM Repo</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#create-debian-repo">8. Create Debian repo</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#push-repos-to-ceph-org">9.  Push repos to ceph.org</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#update-git">10. Update Git</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#point-release">Point release</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#development-and-stable-releases">Development and Stable releases</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#prerequisites">Prerequisites</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#signing-machine">Signing Machine</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#new-major-releases">New Major Releases</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#summarized-build-process">Summarized build process</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#hotfix-release-process-deviation">Hotfix Release Process Deviation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#security-release-process-deviation">Security Release Process Deviation</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#preparing-the-release-branch">1. Preparing the release branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#starting-the-build">2. Starting the build</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#release-notes">3. Release Notes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#signing-and-publishing-the-build">4. Signing and Publishing the Build</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#build-containers">5. Build Containers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#announce-the-release">6. Announce the Release</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#version-commit-pr">Version Commit PR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#announcing">Announcing</a></li>
 </ul>
 </li>
 </ul>
@@ -266,160 +272,301 @@
   
   <section id="ceph-release-process">
 <h1>Ceph Release Process<a class="headerlink" href="#ceph-release-process" title="Permalink to this heading"></a></h1>
-<section id="build-environment">
-<h2>1. Build environment<a class="headerlink" href="#build-environment" title="Permalink to this heading"></a></h2>
-<p>There are multiple build environments, debian based packages are built via pbuilder for multiple distributions.  The build hosts are listed in the <code class="docutils literal notranslate"><span class="pre">deb_hosts</span></code> file, and the list of distributions are in <code class="docutils literal notranslate"><span class="pre">deb_dist</span></code>.  All distributions are build on each of the build hosts.  Currently there is 1 64 bit and 1 32 bit build host.</p>
-<p>The RPM based packages are built natively, so one distribution per build host.  The list of hosts is found in <code class="docutils literal notranslate"><span class="pre">rpm_hosts</span></code>.</p>
-<p>Prior to building, it’s necessary to update the pbuilder seed tarballs:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">update_all_pbuilders</span><span class="o">.</span><span class="n">sh</span>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this heading"></a></h2>
+<section id="signing-machine">
+<h3>Signing Machine<a class="headerlink" href="#signing-machine" title="Permalink to this heading"></a></h3>
+<p>The signing machine is a virtual machine in the <a class="reference external" href="https://wiki.sepia.ceph.com/doku.php?id=start">Sepia lab</a>. SSH access to the signing
+machine is limited to the usual Infrastructure Admins along with a few other
+component leads (e.g., nfs-ganesha, ceph-iscsi).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ubuntu</span></code> user on the machine has some <a class="reference external" href="https://github.com/ceph/ceph-build/tree/main/scripts">build scripts</a> that help with pulling, pushing, and signing packages.</p>
+<p>The GPG signing key permanently lives on a <a class="reference external" href="https://shop.nitrokey.com/shop/product/nkpr2-nitrokey-pro-2-3">Nitrokey Pro</a> and is passed through to the VM via RHV. This helps to ensure that the key cannot be exported or leave the datacenter in any way.</p>
+</section>
+<section id="new-major-releases">
+<h3>New Major Releases<a class="headerlink" href="#new-major-releases" title="Permalink to this heading"></a></h3>
+<p>For each new major (alphabetical) release, you must create one <code class="docutils literal notranslate"><span class="pre">ceph-release</span></code> RPM for each RPM repo (e.g., one for el8 and one for el9). <a class="reference external" href="https://github.com/ceph/chacra">chacra</a> is a python service we use to store DEB and RPM repos. The chacra repos are configured to include this ceph-release RPM, but it must be built separately. You must make sure that chacra is properly configured to include this RPM for each particular release.</p>
+<ol class="arabic simple">
+<li><p>Update chacra so it is aware of the new Ceph release.  See <a class="reference external" href="https://github.com/ceph/chacra/pull/219">this PR</a> for an example.</p></li>
+<li><p>Redeploy chacra (e.g., <code class="docutils literal notranslate"><span class="pre">ansible-playbook</span> <span class="pre">chacra.ceph.com.yml</span></code>)</p></li>
+<li><p>Run <a class="reference external" href="https://jenkins.ceph.com/view/all/job/ceph-release-rpm/">https://jenkins.ceph.com/view/all/job/ceph-release-rpm/</a></p></li>
+</ol>
+</section>
+</section>
+<section id="summarized-build-process">
+<h2>Summarized build process<a class="headerlink" href="#summarized-build-process" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>QE finishes testing and finds a stopping point.  That commit is pushed to the <code class="docutils literal notranslate"><span class="pre">$release-release</span></code> branch in ceph.git (e.g., <code class="docutils literal notranslate"><span class="pre">quincy-release</span></code>).  This allows work to continue in the working <code class="docutils literal notranslate"><span class="pre">$release</span></code> branch without having to freeze it during the release process.</p></li>
+<li><p>The Ceph Council approves and notifies the “Build Lead”.</p></li>
+<li><p>The “Build Lead” starts the <a class="reference external" href="https://jenkins.ceph.com/view/all/job/ceph">Jenkins multijob</a>, which triggers all builds.</p></li>
+<li><p>Packages are pushed to chacra.ceph.com.</p></li>
+<li><p>Packages are pulled from chacra.ceph.com to the Signer VM.</p></li>
+<li><p>Packages are signed.</p></li>
+<li><p>Packages are pushed to a prerelease area on download.ceph.com.</p></li>
+<li><p>Prerelease containers are built and pushed to quay.ceph.io.</p></li>
+<li><p>Final test and validation are done on prerelease packages and containers.</p></li>
+<li><p>Prerelease packages and containers are promoted to official releases on
+download.ceph.com and quay.io.</p></li>
+</ol>
+<section id="hotfix-release-process-deviation">
+<h3>Hotfix Release Process Deviation<a class="headerlink" href="#hotfix-release-process-deviation" title="Permalink to this heading"></a></h3>
+<p>A hotfix release has a couple differences.</p>
+<ol class="arabic simple">
+<li><p>Check out the most recent tag. For example, if we’re releasing a hotfix on top of 17.2.3, <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">checkout</span> <span class="pre">-f</span> <span class="pre">-B</span> <span class="pre">quincy-release</span> <span class="pre">tags/v17.2.3</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">cherry-pick</span> <span class="pre">-x</span></code> the necessary hotfix commits (Note: only “cherry-pick” must be used).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">-f</span> <span class="pre">origin</span> <span class="pre">quincy-release</span></code>.</p></li>
+<li><p>Verify the commits in the <code class="docutils literal notranslate"><span class="pre">$release-release</span></code> branch:</p>
+<ol class="arabic simple">
+<li><p>To check against the previous point release (if we are making 17.2.4, this would be 17.2.3), run <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">log</span> <span class="pre">--pretty=oneline</span> <span class="pre">--no-merges</span> <span class="pre">tags/v17.2.3..origin/quincy-release</span></code>. Verify that the commits produced are exactly what we want in the next point release.</p></li>
+<li><p>To check against the RC in the “ceph-ci” repo (<code class="docutils literal notranslate"><span class="pre">ceph-ci</span></code> in this example), run <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">log</span> <span class="pre">--pretty=oneline</span> <span class="pre">--no-merges</span> <span class="pre">origin/quincy-release...ceph-ci/quincy-release</span></code>. There should be no output produced if the <code class="docutils literal notranslate"><span class="pre">$release-release</span></code> branch in the ceph repo is identical to the RC in <code class="docutils literal notranslate"><span class="pre">ceph-ci</span></code>. Note the use of git <a class="reference external" href="https://git-scm.com/book/en/v2/Git-Tools-Revision-Selection">triple dot notation</a>, which shows any commit discrepencies between both references.</p></li>
+</ol>
+</li>
+<li><p>Notify the “Build Lead” to start the build.</p></li>
+<li><p>The “Build Lead” should set <code class="docutils literal notranslate"><span class="pre">RELEASE_TYPE=HOTFIX</span></code> instead of <code class="docutils literal notranslate"><span class="pre">STABLE</span></code>.</p></li>
+</ol>
+</section>
+<section id="security-release-process-deviation">
+<h3>Security Release Process Deviation<a class="headerlink" href="#security-release-process-deviation" title="Permalink to this heading"></a></h3>
+<p>A security/CVE release is similar to a hotfix release with two differences:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>The fix should be pushed to the <a class="reference external" href="https://github.com/ceph/ceph-private">ceph-private</a> repo instead of ceph.git (requires GitHub Admin Role).</p></li>
+<li><p>The tags (e.g., v17.2.4) must be manually pushed to ceph.git by the “Build Lead.”</p></li>
+</ol>
+</div></blockquote>
+<ol class="arabic">
+<li><p>Check out the most recent tag. For example, if we’re releasing a security fix on top of 17.2.3, <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">checkout</span> <span class="pre">-f</span> <span class="pre">-B</span> <span class="pre">quincy-release</span> <span class="pre">origin/v17.2.3</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">cherry-pick</span> <span class="pre">-x</span></code> the necessary security fix commits</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">remote</span> <span class="pre">add</span> <span class="pre">security</span> <span class="pre">git&#64;github.com:ceph/ceph-private.git</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">-f</span> <span class="pre">security</span> <span class="pre">quincy-release</span></code></p></li>
+<li><p>Notify the “Build Lead” to start the build.</p></li>
+<li><p>The “Build Lead” should set <code class="docutils literal notranslate"><span class="pre">RELEASE_TYPE=SECURITY</span></code> instead of <code class="docutils literal notranslate"><span class="pre">STABLE</span></code>.</p></li>
+<li><p>Finally, the <a class="reference external" href="https://github.com/ceph/ceph-build/blob/main/ansible/roles/ceph-release/tasks/push.yml">ceph-tag</a> steps need to be manually run by the “Build Lead” as close to the Announcement time as possible:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example using quincy pretending 17.2.4 is the security release version</span>
+<span class="c1"># Add the ceph-releases repo (also requires GitHub Admin Role). The `ceph-setup &lt;https://jenkins.ceph.com/job/ceph-setup&gt;`_ job will have already created and pushed the tag to ceph-releases.git.</span>
+<span class="n">git</span> <span class="n">remote</span> <span class="n">add</span> <span class="n">releases</span> <span class="n">git</span><span class="nd">@github</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">releases</span><span class="o">.</span><span class="n">git</span>
+<span class="n">git</span> <span class="n">fetch</span> <span class="o">--</span><span class="nb">all</span>
+<span class="c1"># Check out the version commit</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">f</span> <span class="o">-</span><span class="n">B</span> <span class="n">quincy</span><span class="o">-</span><span class="n">release</span> <span class="n">releases</span><span class="o">/</span><span class="n">quincy</span><span class="o">-</span><span class="n">release</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">f</span> <span class="n">origin</span> <span class="n">quincy</span><span class="o">-</span><span class="n">release</span>
+<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">v17</span><span class="mf">.2.4</span>
+<span class="c1"># Now create a Pull Request of quincy-release targeting quincy to merge the version commit and security fixes back into the quincy branch</span>
 </pre></div>
 </div>
+</li>
+</ol>
 </section>
-<section id="setup-keyring-for-signing-packages">
-<h2>2. Setup keyring for signing packages<a class="headerlink" href="#setup-keyring-for-signing-packages" title="Permalink to this heading"></a></h2>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">GNUPGHOME</span><span class="o">=&lt;</span><span class="n">path</span> <span class="n">to</span> <span class="n">keyring</span> <span class="nb">dir</span><span class="o">&gt;</span>
+</section>
+<section id="preparing-the-release-branch">
+<h2>1. Preparing the release branch<a class="headerlink" href="#preparing-the-release-branch" title="Permalink to this heading"></a></h2>
+<p>Once QE has determined a stopping point in the working (e.g., <code class="docutils literal notranslate"><span class="pre">quincy</span></code>) branch, that commit should be pushed to the corresponding <code class="docutils literal notranslate"><span class="pre">quincy-release</span></code> branch.</p>
+<p>Notify the “Build Lead” that the release branch is ready.</p>
+</section>
+<section id="starting-the-build">
+<h2>2. Starting the build<a class="headerlink" href="#starting-the-build" title="Permalink to this heading"></a></h2>
+<p>We’ll use a stable/regular 15.2.17 release of Octopus as an example throughout this document.</p>
+<ol class="arabic">
+<li><p>Browse to <a class="reference external" href="https://jenkins.ceph.com/view/all/job/ceph/build?delay=0sec">https://jenkins.ceph.com/view/all/job/ceph/build?delay=0sec</a></p></li>
+<li><p>Log in with GitHub OAuth</p></li>
+<li><p>Set the parameters as necessary:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BRANCH</span><span class="o">=</span><span class="n">octopus</span>
+<span class="n">TAG</span><span class="o">=</span><span class="n">checked</span>
+<span class="n">VERSION</span><span class="o">=</span><span class="mf">15.2.17</span>
+<span class="n">RELEASE_TYPE</span><span class="o">=</span><span class="n">STABLE</span>
+<span class="n">ARCHS</span><span class="o">=</span><span class="n">x86_64</span> <span class="n">arm64</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>NOTE: if for some reason the build has to be restarted (for example if one distro failed) then the <code class="docutils literal notranslate"><span class="pre">TAG</span></code> option has to be unchecked.</p>
+<ol class="arabic" start="4">
+<li><p>Use <a class="reference external" href="https://docs.ceph.com/en/latest/start/os-recommendations/?highlight=debian#platforms">https://docs.ceph.com/en/latest/start/os-recommendations/?highlight=debian#platforms</a> to determine the <code class="docutils literal notranslate"><span class="pre">DISTROS</span></code> parameter.  For example,</p>
+<blockquote>
+<div><table class="docutils align-default">
+<colgroup>
+<col style="width: 28%" />
+<col style="width: 72%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Release</p></th>
+<th class="head"><p>Distro Codemap</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>pacific (16.X.X)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">focal</span> <span class="pre">bionic</span> <span class="pre">buster</span> <span class="pre">bullseye</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>quincy (17.X.X)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">jammy</span> <span class="pre">focal</span> <span class="pre">centos9</span> <span class="pre">bullseye</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>reef (18.X.X)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">jammy</span> <span class="pre">focal</span> <span class="pre">centos9</span> <span class="pre">windows</span> <span class="pre">bookworm</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>squid (19.X.X)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">jammy</span> <span class="pre">centos9</span> <span class="pre">windows</span> <span class="pre">bookworm</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</li>
+<li><p>Click <code class="docutils literal notranslate"><span class="pre">Build</span></code>.</p></li>
+</ol>
+</section>
+<section id="release-notes">
+<h2>3. Release Notes<a class="headerlink" href="#release-notes" title="Permalink to this heading"></a></h2>
+<p>Packages take hours to build. Use those hours to create the Release Notes and Announcements:</p>
+<ol class="arabic simple">
+<li><p>ceph.git Release Notes (e.g., <a class="reference external" href="https://github.com/ceph/ceph/pull/47198">v15.2.17’s ceph.git (docs.ceph.com) PR</a>)</p></li>
+<li><p>ceph.io Release Notes (e.g., <a class="reference external" href="https://github.com/ceph/ceph.io/pull/427">v15.2.17’s ceph.io.git (www.ceph.io) PR</a>)</p></li>
+<li><p>E-mail announcement</p></li>
+</ol>
+<p>See <a class="reference external" href="https://tracker.ceph.com/projects/ceph-releases/wiki/HOWTO_write_the_release_notes">the Ceph Tracker wiki page that explains how to write the release notes</a>.</p>
+</section>
+<section id="signing-and-publishing-the-build">
+<h2>4. Signing and Publishing the Build<a class="headerlink" href="#signing-and-publishing-the-build" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Obtain the sha1 of the version commit from the <a class="reference external" href="https://jenkins.ceph.com/view/all/job/ceph">build job</a> or the <code class="docutils literal notranslate"><span class="pre">sha1</span></code> file created by the <a class="reference external" href="https://jenkins.ceph.com/job/ceph-setup/">ceph-setup</a> job.</p></li>
+</ol>
+<p>#. Download the packages from chacra.ceph.com to the signing virtual machine. These packages get downloaded to <code class="docutils literal notranslate"><span class="pre">/opt/repos</span></code> where the <a class="reference external" href="https://wiki.sepia.ceph.com/doku.php?id=services:longrunningcluster">Sepia Lab Long Running (Ceph) Cluster</a> is mounted.  Note: this step will also run a command to transfer the
+source tarballs from chacra.ceph.com to download.ceph.com directly, by
+ssh’ing to download.ceph.com and running /home/signer/bin/get-tarballs.sh.</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">ssh<span class="w"> </span>ubuntu@signer.front.sepia.ceph.com</span>
+<span class="prompt1">sync-pull<span class="w"> </span>ceph<span class="w"> </span><span class="o">[</span>pacific<span class="p">|</span>quincy<span class="p">|</span>etc<span class="o">]</span><span class="w"> </span>&lt;sha1&gt;</span>
+</pre></div></div><p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sync-pull ceph octopus 8a82819d84cf884bd39c17e3236e0632ac146dc4
+sync for: ceph octopus
+********************************************
+Found the most packages (332) in ubuntu/bionic.
+No JSON object could be decoded
+No JSON object could be decoded
+ubuntu@chacra.ceph.com:/opt/repos/ceph/octopus/8a82819d84cf884bd39c17e3236e0632ac146dc4/ubuntu/bionic/flavors/default/* /opt/repos/ceph/octopus-15.2.17/debian/jessie/
+--------------------------------------------
+receiving incremental file list
+db/
+ db/checksums.db
+        180.22K 100%    2.23MB/s    0:00:00 (xfr#1, to-chk=463/467)
+db/contents.cache.db
+        507.90K 100%    1.95MB/s    0:00:00 (xfr#2, to-chk=462/467)
+db/packages.db
 
-<span class="c1"># verify it&#39;s accessible</span>
-<span class="n">gpg</span> <span class="o">--</span><span class="nb">list</span><span class="o">-</span><span class="n">keys</span>
+etc...
 </pre></div>
 </div>
-<p>The release key should be present:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pub</span>   <span class="mi">4096</span><span class="n">R</span><span class="o">/</span><span class="mi">17</span><span class="n">ED316D</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">20</span>
-<span class="n">uid</span>   <span class="n">Ceph</span> <span class="n">Release</span> <span class="n">Key</span> <span class="o">&lt;</span><span class="n">sage</span><span class="nd">@newdream</span><span class="o">.</span><span class="n">net</span><span class="o">&gt;</span>
+</div></blockquote>
+<ol class="arabic">
+<li><p>Sign the DEBs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">merfi<span class="w"> </span>gpg<span class="w"> </span>/opt/repos/ceph/octopus-15.2.17/debian</span>
+</pre></div></div><p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ merfi gpg /opt/repos/ceph/octopus-15.2.17/debian
+--&gt; Starting path collection, looking for files to sign
+--&gt; 18 matching paths found
+--&gt; will sign with the following commands:
+--&gt; gpg --batch --yes --armor --detach-sig --output Release.gpg Release
+--&gt; gpg --batch --yes --clearsign --output InRelease Release
+--&gt; signing: /opt/repos/ceph/octopus-15.2.17/debian/jessie/dists/bionic/Release
+--&gt; Running command: gpg --batch --yes --armor --detach-sig --output Release.gpg Release
+--&gt; Running command: gpg --batch --yes --clearsign --output InRelease Release
+--&gt; signing: /opt/repos/ceph/octopus-15.2.17/debian/jessie/dists/focal/Release
+--&gt; Running command: gpg --batch --yes --armor --detach-sig --output Release.gpg Release
+--&gt; Running command: gpg --batch --yes --clearsign --output InRelease Release
+
+etc...
 </pre></div>
 </div>
+</li>
+<li><p>Sign the RPMs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sign-rpms<span class="w"> </span>ceph<span class="w"> </span>octopus</span>
+</pre></div></div><p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sign-rpms ceph octopus
+Checking packages in: /opt/repos/ceph/octopus-15.2.17/centos/7
+signing:  /opt/repos/ceph/octopus-15.2.17/centos/7/SRPMS/ceph-release-1-1.el7.src.rpm
+/opt/repos/ceph/octopus-15.2.17/centos/7/SRPMS/ceph-release-1-1.el7.src.rpm:
+signing:  /opt/repos/ceph/octopus-15.2.17/centos/7/SRPMS/ceph-15.2.17-0.el7.src.rpm
+/opt/repos/ceph/octopus-15.2.17/centos/7/SRPMS/ceph-15.2.17-0.el7.src.rpm:
+signing:  /opt/repos/ceph/octopus-15.2.17/centos/7/noarch/ceph-mgr-modules-core-15.2.17-0.el7.noarch.rpm
+
+etc...
+</pre></div>
+</div>
+</li>
+</ol>
+<ol class="arabic" start="5">
+<li><p>Publish the packages to download.ceph.com:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sync-push<span class="w"> </span>ceph<span class="w"> </span>octopus</span>
+</pre></div></div></li>
+</ol>
+<p>This leaves the packages, and the tarball, in a password-protected
+prerelease area at <a class="reference external" href="https://download.ceph.com/prerelease/ceph">https://download.ceph.com/prerelease/ceph</a>.  Verify them
+from there.  When done and ready for release, log into download.ceph.com and
+mv the directories and the tarballs from the prerelease home
+(/data/download.ceph.com/www/prerelease/ceph) to the release directory
+(/data/download.ceph.com/www).</p>
 </section>
-<section id="set-up-build-area">
-<h2>3. Set up build area<a class="headerlink" href="#set-up-build-area" title="Permalink to this heading"></a></h2>
-<p>Clone the ceph and ceph-build source trees:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">.</span><span class="n">git</span>
-<span class="n">git</span> <span class="n">clone</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">ceph</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">build</span><span class="o">.</span><span class="n">git</span>
-</pre></div>
-</div>
-<p>In the ceph source directory, checkout next branch (for point releases use the {codename} branch):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="nb">next</span>
-</pre></div>
-</div>
-<p>Checkout the submodules:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">submodule</span> <span class="n">update</span> <span class="o">--</span><span class="n">force</span> <span class="o">--</span><span class="n">init</span> <span class="o">--</span><span class="n">recursive</span>
-</pre></div>
-</div>
+<section id="build-containers">
+<h2>5. Build Containers<a class="headerlink" href="#build-containers" title="Permalink to this heading"></a></h2>
+<p>Architecture-specific containers are built during the ceph build and
+pushed to quay.ceph.io/ceph/prerelease-{amd64,arm64}, containing the
+packages built in that ceph build.  The prerelease ‘fat’ container,
+or manifest-list container, that refers to both arch-specific containers,
+is built by hand using the command “make-manifest-list.py” in
+ceph.git:src/container/make-manifest-list.py.  Note that you must
+be logged into the appropriate container repos for any of these
+manipulations: quay.ceph.io for fetching prerelease arch-specific
+containers and pushing the prerelease manifest-list container, and
+quay.io for promoting the prerelease containers to released containers.</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1"><span class="nb">cd</span><span class="w"> </span>&lt;ceph-checkout&gt;/src/container</span>
+<span class="prompt1">./make-manifest-list.py</span>
+</pre></div></div></div></blockquote>
+<p>Reasonable defaults are set for all inputs, but environment variables
+can be used to override:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>ARCH_SPECIFIC_HOST (default ‘quay.ceph.io’): host of prerelease repos</p></li>
+<li><p>AMD64_REPO (default ‘ceph/prerelease-amd64’) prerelease amd64 repo</p></li>
+<li><p>ARM64_REPO (default ‘ceph/prerelease-arm64’) prerelease arm64 repo</p></li>
+</ul>
+</div></blockquote>
+<p>(prerelease arch-specific containers will be copied from here)</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>MANIFEST_HOST (default ‘quay.ceph.io’) prerelease manifest-list host</p></li>
+<li><p>MANIFEST_REPO (default ‘ceph/prerelease’) prerelease manifest-list repo</p></li>
+</ul>
+</div></blockquote>
+<p>(prerelease manifest-list containers will be placed here)</p>
+<p>Finally, when all appropriate testing/ verification is done on the
+container images, you can use make-manifest-list.py to promote them to
+their final release location on quay.io/ceph/ceph:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1"><span class="nb">cd</span><span class="w"> </span>&lt;ceph-checkout&gt;/src/container</span>
+<span class="prompt1">./make-manifest-list.py<span class="w"> </span>--promote</span>
+</pre></div></div></div></blockquote>
+<p>Two more environment variables can override the default destination for
+promotion (the source of the prerelease container to be promoted is
+as above, in MANIFEST_HOST/REPO):</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>RELEASE_MANIFEST_HOST (default ‘quay.io’) release host</p></li>
+<li><p>RELEASE_MANIFEST_REPO (default ‘ceph/ceph’) release repo</p></li>
+</ul>
+</div></blockquote>
 </section>
-<section id="update-build-version-numbers">
-<h2>4.  Update Build version numbers<a class="headerlink" href="#update-build-version-numbers" title="Permalink to this heading"></a></h2>
-<p>Substitute the ceph release number where indicated below by the string <code class="docutils literal notranslate"><span class="pre">0.xx</span></code>.</p>
-<p>Edit configure.ac and update the version number. Example diff:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span><span class="n">AC_INIT</span><span class="p">([</span><span class="n">ceph</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.54</span><span class="p">],</span> <span class="p">[</span><span class="n">ceph</span><span class="o">-</span><span class="n">devel</span><span class="nd">@vger</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">org</span><span class="p">])</span>
-<span class="o">+</span><span class="n">AC_INIT</span><span class="p">([</span><span class="n">ceph</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.55</span><span class="p">],</span> <span class="p">[</span><span class="n">ceph</span><span class="o">-</span><span class="n">devel</span><span class="nd">@vger</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">org</span><span class="p">])</span>
-</pre></div>
-</div>
-<p>Update the version number in the debian change log:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">DEBEMAIL</span> <span class="n">user</span><span class="nd">@host</span> <span class="n">dch</span> <span class="o">-</span><span class="n">v</span> <span class="mf">0.</span><span class="n">xx</span><span class="o">-</span><span class="mi">1</span>
-</pre></div>
-</div>
-<p>Commit the changes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">a</span>
-</pre></div>
-</div>
-<p>Tag the release:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">../</span><span class="n">ceph</span><span class="o">-</span><span class="n">build</span><span class="o">/</span><span class="n">tag</span><span class="o">-</span><span class="n">release</span> <span class="n">v0</span><span class="o">.</span><span class="n">xx</span>
-</pre></div>
-</div>
+<section id="announce-the-release">
+<h2>6. Announce the Release<a class="headerlink" href="#announce-the-release" title="Permalink to this heading"></a></h2>
+<section id="version-commit-pr">
+<h3>Version Commit PR<a class="headerlink" href="#version-commit-pr" title="Permalink to this heading"></a></h3>
+<p>The <a class="reference external" href="https://jenkins.ceph.com/job/ceph-tag">ceph-tag Jenkins job</a> creates a Pull Request in ceph.git that targets the release branch.</p>
+<p>If this was a regular release (not a hotfix release or a security release), the only commit in that Pull Request should be the version commit.  For example, see <a class="reference external" href="https://github.com/ceph/ceph/pull/47520">v15.2.17’s version commit PR</a>.</p>
+<p>Request a review and then merge the Pull Request.</p>
 </section>
-<section id="create-makefiles">
-<h2>5. Create Makefiles<a class="headerlink" href="#create-makefiles" title="Permalink to this heading"></a></h2>
-<p>The actual configure options used to build packages are in the
-<code class="docutils literal notranslate"><span class="pre">ceph.spec.in</span></code> and <code class="docutils literal notranslate"><span class="pre">debian/rules</span></code> files.  At this point we just
-need to create a Makefile.:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">do_autogen</span><span class="o">.</span><span class="n">sh</span>
-</pre></div>
-</div>
-</section>
-<section id="run-the-release-scripts">
-<h2>6. Run the release scripts<a class="headerlink" href="#run-the-release-scripts" title="Permalink to this heading"></a></h2>
-<p>This creates tarballs and copies them, with other needed files to
-the build hosts listed in deb_hosts and rpm_hosts, runs a local build
-script, then rsyncs the results back to the specified release directory.:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">../</span><span class="n">ceph</span><span class="o">-</span><span class="n">build</span><span class="o">/</span><span class="n">do_release</span><span class="o">.</span><span class="n">sh</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">release</span>
-</pre></div>
-</div>
-</section>
-<section id="create-rpm-repo">
-<h2>7. Create RPM Repo<a class="headerlink" href="#create-rpm-repo" title="Permalink to this heading"></a></h2>
-<p>Copy the rpms to the destination repo:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">rpm</span><span class="o">-</span><span class="n">repo</span>
-<span class="o">../</span><span class="n">ceph</span><span class="o">-</span><span class="n">build</span><span class="o">/</span><span class="n">push_to_rpm_repo</span><span class="o">.</span><span class="n">sh</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">release</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">rpm</span><span class="o">-</span><span class="n">repo</span> <span class="mf">0.</span><span class="n">xx</span>
-</pre></div>
-</div>
-<p>Next add any additional rpms to the repo that are needed such as leveldb.
-See RPM Backports section</p>
-<p>Finally, sign the rpms and build the repo indexes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">../</span><span class="n">ceph</span><span class="o">-</span><span class="n">build</span><span class="o">/</span><span class="n">sign_and_index_rpm_repo</span><span class="o">.</span><span class="n">sh</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">release</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">rpm</span><span class="o">-</span><span class="n">repo</span> <span class="mf">0.</span><span class="n">xx</span>
-</pre></div>
-</div>
-</section>
-<section id="create-debian-repo">
-<h2>8. Create Debian repo<a class="headerlink" href="#create-debian-repo" title="Permalink to this heading"></a></h2>
-<p>The key-id used below is the id of the ceph release key from step 2:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">debian</span><span class="o">-</span><span class="n">repo</span>
-<span class="o">../</span><span class="n">ceph</span><span class="o">-</span><span class="n">build</span><span class="o">/</span><span class="n">gen_reprepro_conf</span><span class="o">.</span><span class="n">sh</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">debian</span><span class="o">-</span><span class="n">repo</span> <span class="n">key</span><span class="o">-</span><span class="nb">id</span>
-<span class="o">../</span><span class="n">ceph</span><span class="o">-</span><span class="n">build</span><span class="o">/</span><span class="n">push_to_deb_repo</span><span class="o">.</span><span class="n">sh</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">release</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">debian</span><span class="o">-</span><span class="n">repo</span> <span class="mf">0.</span><span class="n">xx</span> <span class="n">main</span>
-</pre></div>
-</div>
-<p>Next add any addition debian packages that are needed such as leveldb.
-See the Debian Backports section below.</p>
-<p>Debian packages are signed when added to the repo, so no further action is
-needed.</p>
-</section>
-<section id="push-repos-to-ceph-org">
-<h2>9.  Push repos to ceph.org<a class="headerlink" href="#push-repos-to-ceph-org" title="Permalink to this heading"></a></h2>
-<p>For a development release:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rcp</span> <span class="n">ceph</span><span class="o">-</span><span class="mf">0.</span><span class="n">xx</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">bz2</span> <span class="n">ceph</span><span class="o">-</span><span class="mf">0.</span><span class="n">xx</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span> \
-     <span class="n">ceph_site</span><span class="nd">@ceph</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">ceph</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">downloads</span><span class="o">/.</span>
-<span class="n">rsync</span> <span class="o">-</span><span class="n">av</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">rpm</span><span class="o">-</span><span class="n">repo</span><span class="o">/</span><span class="mf">0.</span><span class="n">xx</span><span class="o">/</span> <span class="n">ceph_site</span><span class="nd">@ceph</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">ceph</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">rpm</span><span class="o">-</span><span class="n">testing</span>
-<span class="n">rsync</span> <span class="o">-</span><span class="n">av</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">debian</span><span class="o">-</span><span class="n">repo</span><span class="o">/</span> <span class="n">ceph_site</span><span class="nd">@ceph</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">ceph</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">debian</span><span class="o">-</span><span class="n">testing</span>
-</pre></div>
-</div>
-<p>For a stable release, replace {CODENAME} with the release codename (e.g., <code class="docutils literal notranslate"><span class="pre">argonaut</span></code> or <code class="docutils literal notranslate"><span class="pre">bobtail</span></code>):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rcp</span> <span class="n">ceph</span><span class="o">-</span><span class="mf">0.</span><span class="n">xx</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">bz2</span> \
-    <span class="n">ceph_site</span><span class="nd">@ceph</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">ceph</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">downloads</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mf">0.</span><span class="n">xx</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">bz2</span>
-<span class="n">rcp</span> <span class="n">ceph</span><span class="o">-</span><span class="mf">0.</span><span class="n">xx</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>  \
-    <span class="n">ceph_site</span><span class="nd">@ceph</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">ceph</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">downloads</span><span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="mf">0.</span><span class="n">xx</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
-<span class="n">rsync</span> <span class="o">-</span><span class="n">av</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">rpm</span><span class="o">-</span><span class="n">repo</span><span class="o">/</span><span class="mf">0.</span><span class="n">xx</span><span class="o">/</span> <span class="n">ceph_site</span><span class="nd">@ceph</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">ceph</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">rpm</span><span class="o">-</span><span class="p">{</span><span class="n">CODENAME</span><span class="p">}</span>
-<span class="n">rsync</span> <span class="o">-</span><span class="n">auv</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">debian</span><span class="o">-</span><span class="n">repo</span><span class="o">/</span> <span class="n">ceph_site</span><span class="nd">@ceph</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">ceph</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">debian</span><span class="o">-</span><span class="p">{</span><span class="n">CODENAME</span><span class="p">}</span>
-</pre></div>
-</div>
-</section>
-<section id="update-git">
-<h2>10. Update Git<a class="headerlink" href="#update-git" title="Permalink to this heading"></a></h2>
-<section id="point-release">
-<h3>Point release<a class="headerlink" href="#point-release" title="Permalink to this heading"></a></h3>
-<p>For point releases just push the version number update to the
-branch and the new tag:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="p">{</span><span class="n">codename</span><span class="p">}</span>
-<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">v0</span><span class="o">.</span><span class="n">xx</span>
-</pre></div>
-</div>
-</section>
-<section id="development-and-stable-releases">
-<h3>Development and Stable releases<a class="headerlink" href="#development-and-stable-releases" title="Permalink to this heading"></a></h3>
-<p>For a development release, update tags for <code class="docutils literal notranslate"><span class="pre">ceph.git</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">v0</span><span class="o">.</span><span class="n">xx</span>
-<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">last</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">merge</span> <span class="nb">next</span>
-<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">HEAD</span><span class="p">:</span><span class="nb">next</span>
-</pre></div>
-</div>
-<p>Similarly, for a development release, for both <code class="docutils literal notranslate"><span class="pre">teuthology.git</span></code> and <code class="docutils literal notranslate"><span class="pre">ceph-qa-suite.git</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">reset</span> <span class="o">--</span><span class="n">hard</span> <span class="n">origin</span><span class="o">/</span><span class="n">master</span>
-<span class="n">git</span> <span class="n">branch</span> <span class="o">-</span><span class="n">f</span> <span class="n">last</span> <span class="n">origin</span><span class="o">/</span><span class="nb">next</span>
-<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">f</span> <span class="n">origin</span> <span class="n">last</span>
-<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">f</span> <span class="n">origin</span> <span class="n">master</span><span class="p">:</span><span class="nb">next</span>
-</pre></div>
-</div>
+<section id="announcing">
+<h3>Announcing<a class="headerlink" href="#announcing" title="Permalink to this heading"></a></h3>
+<p>Publish the Release Notes on ceph.io before announcing the release by email, because the e-mail announcement references the ceph.io blog post.</p>
 </section>
 </section>
 </section>

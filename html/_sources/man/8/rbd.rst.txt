@@ -308,7 +308,6 @@ RBD 映像是简单的块设备，
 :command:`encryption format` *image-spec* *format* *passphrase-file* [--cipher-alg *alg*]
   把映像格式化成加密格式。
   之前写入此映像的所有数据都将不可读。
-  虽然加密的映像可以被克隆，但是克隆的映像不能被格式化。
   支持的格式有： *luks1* 、 *luks2* 。
   支持的加密算法： *aes-128* 、 *aes-256* （默认）。
 
@@ -333,7 +332,7 @@ RBD 映像是简单的块设备，
   启用指定镜像的某些功能，
   可以一次指定多个功能。
 
-:command:`flatten` *image-spec*
+:command:`flatten` [--encryption-format *encryption-format* --encryption-passphrase-file *passphrase-file*]... *image-spec*
   如果映像是个克隆品，就从父快照拷贝所有共享块，
   并使子快照独立于父快照、切断父子快照间的链接。
   如果没有克隆品引用此父快照了，

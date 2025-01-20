@@ -164,7 +164,7 @@ Ceph 块设备映像，比如你有一个 qcow2 映像，可以这样转： ::
 	qemu -m 1024 -drive format=raw,file=rbd:data/squeeze,id=drive1,if=none \
 		-device driver=ide-hd,drive=drive1,discard_granularity=512
 
-注意，这个使用 IDE 驱动器， virtio 驱动不支持 discard 。
+注意，这个使用 IDE 驱动器， virtio 驱动从 Linux 内核版本 5.0 开始支持 discard 。
 
 如果用的是 libvirt ，得用 ``virsh edit`` 编辑配置文件，
 加上 ``xmlns:qemu`` 值。然后加一个 ``qemu:commandline`` 块\

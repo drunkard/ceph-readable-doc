@@ -146,12 +146,16 @@ GC 操作是 Ceph 对象网关各种操作的常规部分，
 .. confval:: rgw_run_sync_thread
 .. confval:: rgw_data_log_window
 .. confval:: rgw_data_log_changes_size
-.. confval:: rgw_data_log_obj_prefix
 .. confval:: rgw_data_log_num_shards
 .. confval:: rgw_md_log_max_shards
+.. confval:: rgw_data_sync_poll_interval
+.. confval:: rgw_meta_sync_poll_interval
+.. confval:: rgw_bucket_sync_spawn_window
+.. confval:: rgw_data_sync_spawn_window
+.. confval:: rgw_meta_sync_spawn_window
 
-.. important:: 开始同步后就不应该再更改 ``rgw data log num shards`` 和
-   ``rgw md log max shards`` 的取值了。
+.. important:: 开始同步后就不应该再更改 :confval:`rgw_data_log_num_shards` 和
+   :confval:`rgw_md_log_max_shards` 的取值了。
 
 S3 选项
 =======
@@ -197,7 +201,6 @@ Keystone 选项
 .. Keystone Settings
 
 .. confval:: rgw_keystone_url
-.. confval:: rgw_keystone_api_version
 .. confval:: rgw_keystone_admin_domain
 .. confval:: rgw_keystone_admin_project
 .. confval:: rgw_keystone_admin_token
@@ -209,6 +212,9 @@ Keystone 选项
 .. confval:: rgw_keystone_accepted_roles
 .. confval:: rgw_keystone_token_cache_size
 .. confval:: rgw_keystone_verify_ssl
+.. confval:: rgw_keystone_service_token_enabled
+.. confval:: rgw_keystone_service_token_accepted_roles
+.. confval:: rgw_keystone_expired_token_cache_expiration
 
 服务端加密选项
 ==============
