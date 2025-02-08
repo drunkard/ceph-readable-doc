@@ -90,7 +90,7 @@ will fail.
 List a Container's Objects
 ==========================
 
-To list the objects within a container, make a ``GET`` request with the with the 
+To list the objects within a container, make a ``GET`` request with the 
 API version, account, and the name of the container.  You can specify query 
 parameters to filter the full list, or leave out the parameters to return a list 
 of the first 10,000 object names stored in the container.
@@ -255,7 +255,7 @@ Syntax
 	X-Auth-Token: {auth-token}
 	X-Container-Meta-Color: red
 	X-Container-Meta-Taste: salty
-
+	
 Request Headers
 ~~~~~~~~~~~~~~~
 
@@ -319,7 +319,7 @@ Delete a Container
 To delete a container, make a ``DELETE`` request with the API version, account,
 and the name of the container. The container must be empty. If you'd like to check 
 if the container is empty, execute a ``HEAD`` request against the container. Once 
-you've successfully removed the container, you'll be able to reuse the container name.
+you have successfully removed the container, you will be able to reuse the container name.
 
 Syntax
 ~~~~~~

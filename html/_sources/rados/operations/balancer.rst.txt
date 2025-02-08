@@ -1,12 +1,12 @@
 .. _balancer:
 
-均衡器
-======
-.. Balancer
+均衡器模块
+==========
+.. Balancer Module
 
-The *balancer* can optimize the placement of PGs across OSDs in
-order to achieve a balanced distribution, either automatically or in a
-supervised fashion.
+The *balancer* can optimize the allocation of placement groups (PGs) across
+OSDs in order to achieve a balanced distribution. The balancer can operate
+either automatically or in a supervised fashion.
 
 状态
 ----
@@ -46,14 +46,14 @@ is desired. For more details, see :ref:`read_balancer`.
 ----
 .. Throttling
 
-No adjustments will be made to the PG distribution if the cluster is
-degraded (e.g., because an OSD has failed and the system has not yet
-healed itself).
+If the cluster is degraded (that is, if an OSD has failed and the system hasn't
+healed itself yet), then the balancer will not make any adjustments to the PG
+distribution.
 
-When the cluster is healthy, the balancer will throttle its changes
-such that the percentage of PGs that are misplaced (i.e., that need to
-be moved) is below a threshold of (by default) 5%.  The
-``target_max_misplaced_ratio`` threshold can be adjusted with:
+When the cluster is healthy, the balancer will incrementally move a small
+fraction of unbalanced PGs in order to improve distribution.  This fraction
+will not exceed a certain threshold that defaults to 5%. To adjust this
+``target_max_misplaced_ratio`` threshold setting, run the following command:
 
    .. prompt:: bash $
 

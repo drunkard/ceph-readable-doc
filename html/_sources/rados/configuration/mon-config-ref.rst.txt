@@ -287,7 +287,6 @@ Ceph 监视器有存储数据的默认路径。为优化性能，在生产集群
 .. confval:: mon_data_size_warn
 .. confval:: mon_data_avail_warn
 .. confval:: mon_data_avail_crit
-.. confval:: mon_warn_on_cache_pools_without_hit_sets
 .. confval:: mon_warn_on_crush_straw_calc_version_zero
 .. confval:: mon_warn_on_legacy_crush_tunables
 .. confval:: mon_crush_min_required_version

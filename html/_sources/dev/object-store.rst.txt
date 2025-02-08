@@ -1,17 +1,12 @@
-.. _Object Store Architecture Overview:
-
 ==================
  对象存储架构概述
 ==================
+.. Object Store Architecture Overview
 
 .. graphviz::
 
-  /*
-   * Rough outline of object store module dependencies
-   */
-
-  digraph object_store {
-    size="12,12";
+   digraph object_store {
+    size="7,7";
     node [color=lightblue2, style=filled, fontname="Serif"];
 
     "testrados" -> "librados"
@@ -58,15 +53,11 @@
     "PrimaryLogPG" -> "ObjectStore"
     "PrimaryLogPG" -> "OSDMap"
 
-    "ObjectStore" -> "FileStore"
     "ObjectStore" -> "BlueStore"
 
     "BlueStore" -> "rocksdb"
-
-    "FileStore" -> "xfs"
-    "FileStore" -> "btrfs"
-    "FileStore" -> "ext4"
   }
 
 
 .. todo:: write more here
+

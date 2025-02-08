@@ -129,16 +129,17 @@
 <li class="toctree-l4"><a class="reference internal" href="#id8">创建缓存层</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id9">配置缓存层</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id15">拆除缓存层</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id18">排查找不到的对象</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../upmap/">使用 pg-upmap</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../read-balancer/">Operating the Read (Primary) Balancer</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../balancer/">均衡器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../balancer/">均衡器模块</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../crush-map-edits/">手动编辑一个 CRUSH 图</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stretch-mode/">Stretch Clusters</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../change-mon-elections/">Configure Monitor Election Strategies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../change-mon-elections/">Configuring Monitor Election Strategies</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../add-or-rm-osds/">增加/删除 OSD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../add-or-rm-mons/">增加/删除监视器</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../devices/">设备管理</a></li>
@@ -216,6 +217,13 @@
   
   <section id="id1">
 <h1>分级缓存<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Cache tiering has been deprecated in the Reef release as it
+has lacked a maintainer for a very long time. This does not mean
+it will be certainly removed, but we may choose to remove it
+without much further notice.</p>
+</div>
 <p>分级缓存可提升后端存储内某些（热点）数据的 I/O 性能。
 分级缓存需创建一个由高速而昂贵存储设备（如 SSD ）组成的存储池、
 作为缓存层，以及一个相对低速/廉价设备组成的后端存储池
@@ -229,17 +237,18 @@ Ceph 的对象处理器决定往哪里存储对象，
 <p>缓存层代理负责自动处理缓存层和后端存储之间的数据迁移。
 然而，管理员仍可干预此迁移规则，
 主要有两种场景：</p>
-<ul class="simple">
+<ul>
 <li><p><strong>writeback</strong> （回写）模式：管理员把缓存层配置为 <code class="docutils literal notranslate"><span class="pre">writeback</span></code> 模式时，
 Ceph 客户端们会把数据写入缓存层、
 并收到缓存层发来的 ACK ；随后，
 写入缓存层的数据会被迁移到存储层、然后从缓存层刷掉。
-直观地看，缓存层位于后端存储层的“前面”，
-当 Ceph 客户端要读取的数据位于存储层时，
+直观地看，缓存层位于后端存储层的“前面”，</p>
+<p>当 Ceph 客户端要读取的数据位于存储层时，
 缓存层代理会把这些数据迁移到缓存层，
 然后再发往 Ceph 客户端。从此， Ceph 客户端将与缓存层进行 I/O 操作，
 直到数据不再被读写。
-此模式对于易变数据来说较理想（如照片/视频编辑、事务数据等）。</p></li>
+此模式对于易变数据来说较理想（如照片/视频编辑、事务数据等）。</p>
+</li>
 <li><p><strong>readproxy</strong> （读代理）模式：在这个模式下，
 会直接用缓存层已有的对象，
 可某一对象没在缓存中时，这个请求会被代理到底下一层。
@@ -354,58 +363,43 @@ OSD 守护进程运行得最优。
 <section id="id8">
 <h2>创建缓存层<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h2>
 <p>设置一缓存层需把缓存存储池挂接到后端存储池上：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">add</span> <span class="p">{</span><span class="n">storagepool</span><span class="p">}</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">add</span> <span class="n">cold</span><span class="o">-</span><span class="n">storage</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span>
-</pre></div>
-</div>
-<p>用下列命令设置缓存模式：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">cache</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="p">{</span><span class="n">cache</span><span class="o">-</span><span class="n">mode</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">cache</span><span class="o">-</span><span class="n">mode</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">writeback</span>
-</pre></div>
-</div>
-<p>缓存层盖在后端存储层之上，所以要多一步：
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>add<span class="w"> </span><span class="o">{</span>storagepool<span class="o">}</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span></span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>add<span class="w"> </span>cold-storage<span class="w"> </span>hot-storage</span>
+</pre></div></div><p>用下列命令设置缓存模式：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>cache-mode<span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span><span class="o">{</span>cache-mode<span class="o">}</span></span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>cache-mode<span class="w"> </span>hot-storage<span class="w"> </span>writeback</span>
+</pre></div></div><p>缓存层盖在后端存储层之上，所以要多一步：
 必须把所有客户端流量从存储池迁移到缓存存储池。
 用此命令把客户端流量指向缓存存储池：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="nb">set</span><span class="o">-</span><span class="n">overlay</span> <span class="p">{</span><span class="n">storagepool</span><span class="p">}</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="nb">set</span><span class="o">-</span><span class="n">overlay</span> <span class="n">cold</span><span class="o">-</span><span class="n">storage</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span>
-</pre></div>
-</div>
-</section>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>set-overlay<span class="w"> </span><span class="o">{</span>storagepool<span class="o">}</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span></span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>set-overlay<span class="w"> </span>cold-storage<span class="w"> </span>hot-storage</span>
+</pre></div></div></section>
 <section id="id9">
 <h2>配置缓存层<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h2>
 <p>缓存层支持几个配置选项，
 可按下列语法配置：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="p">{</span><span class="n">key</span><span class="p">}</span> <span class="p">{</span><span class="n">value</span><span class="p">}</span>
-</pre></div>
-</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span><span class="o">{</span>key<span class="o">}</span><span class="w"> </span><span class="o">{</span>value<span class="o">}</span></span>
+</pre></div></div><p>See <a href="#id23"><span class="problematic" id="id24">`Pools - Set Pool Values`_</span></a> for details.</p>
 <p>详情见<a class="reference external" href="../pools#set-pool-values">存储池——调整存储池</a>。</p>
 <section id="id10">
 <h3>目标尺寸和类型<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h3>
 <p>生产环境下，缓存层的 <code class="docutils literal notranslate"><span class="pre">hit_set_type</span></code> 用 <a class="reference external" href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom 过滤器</a>：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">hit_set_type</span> <span class="n">bloom</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">hit_set_type</span> <span class="n">bloom</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">hit_set_count</span></code> 和 <code class="docutils literal notranslate"><span class="pre">hit_set_period</span></code> 选项定义了要保留多少个这样的 HitSet ，
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>hit_set_type<span class="w"> </span>bloom</span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>hot-storage<span class="w"> </span>hit_set_type<span class="w"> </span>bloom</span>
+</pre></div></div><p><code class="docutils literal notranslate"><span class="pre">hit_set_count</span></code> 和 <code class="docutils literal notranslate"><span class="pre">hit_set_period</span></code> 选项定义了要保留多少个这样的 HitSet ，
 以及各 HitSet 覆盖的时间区间。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">hit_set_count</span> <span class="mi">12</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">hit_set_period</span> <span class="mi">14400</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">target_max_bytes</span> <span class="mi">1000000000000</span>
-</pre></div>
-</div>
-<div class="admonition note">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>hit_set_count<span class="w"> </span><span class="m">12</span></span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>hit_set_period<span class="w"> </span><span class="m">14400</span></span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>target_max_bytes<span class="w"> </span><span class="m">1000000000000</span></span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code class="docutils literal notranslate"><span class="pre">hit_set_count</span></code> 设置得越大，
 <code class="docutils literal notranslate"><span class="pre">ceph-osd</span></code> 消耗的 RAM 越多。</p>
@@ -422,11 +416,9 @@ OSD 守护进程运行得最优。
 <code class="docutils literal notranslate"><span class="pre">min_read_recency_for_promote</span></code> 个 HitSet 里的任意一个，那就提升它。</p>
 <p>还有一个相似的参数用于配置写操作，
 它是 <code class="docutils literal notranslate"><span class="pre">min_write_recency_for_promote</span></code> 。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">min_read_recency_for_promote</span> <span class="mi">2</span>
-<span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">min_write_recency_for_promote</span> <span class="mi">2</span>
-</pre></div>
-</div>
-<div class="admonition note">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>min_read_recency_for_promote<span class="w"> </span><span class="m">2</span></span>
+<span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>min_write_recency_for_promote<span class="w"> </span><span class="m">2</span></span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>统计时间越长，
 <code class="docutils literal notranslate"><span class="pre">min_read_recency_for_promote</span></code> 和 <code class="docutils literal notranslate"><span class="pre">min_write_recency_for_promote</span></code> 的值越高，
@@ -448,22 +440,14 @@ OSD 守护进程运行得最优。
 <h4>绝对空间消长<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h4>
 <p>缓存分层代理可根据总字节数或对象数量来刷回或赶出对象，
 用下列命令可指定最大字节数：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">target_max_bytes</span> <span class="p">{</span><span class="c1">#bytes}</span>
-</pre></div>
-</div>
-<p>例如，用下列命令配置在达到 1TB 时刷回或赶出：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">target_max_bytes</span> <span class="mi">1000000000000</span>
-</pre></div>
-</div>
-<p>用下列命令指定缓存对象的最大数量：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">target_max_objects</span> <span class="p">{</span><span class="c1">#objects}</span>
-</pre></div>
-</div>
-<p>例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">target_max_objects</span> <span class="mi">1000000</span>
-</pre></div>
-</div>
-<div class="admonition note">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>target_max_bytes<span class="w"> </span><span class="o">{</span><span class="c1">#bytes}</span></span>
+</pre></div></div><p>例如，用下列命令配置在达到 1TB 时刷回或赶出：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>hot-storage<span class="w"> </span>target_max_bytes<span class="w"> </span><span class="m">1099511627776</span></span>
+</pre></div></div><p>用下列命令指定缓存对象的最大数量：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>target_max_objects<span class="w"> </span><span class="o">{</span><span class="c1">#objects}</span></span>
+</pre></div></div><p>例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>hot-storage<span class="w"> </span>target_max_objects<span class="w"> </span><span class="m">1000000</span></span>
+</pre></div></div><div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Ceph 不能自动确定缓存池的大小，所以这里必须配置绝对尺寸，
 否则刷回、或赶出就不会生效。如果两个都配置了，
@@ -481,56 +465,36 @@ OSD 守护进程运行得最优。
 <code class="docutils literal notranslate"><span class="pre">target_max_bytes</span></code> 和 <code class="docutils literal notranslate"><span class="pre">target_max_objects</span></code> 确定的）刷回或赶出对象。
 当缓存池包含的已修改（或脏）对象达到一定比例时，
 缓存分层代理就把它们刷回到存储池。用下列命令设置 <code class="docutils literal notranslate"><span class="pre">cache_target_dirty_ratio</span></code> ：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">cache_target_dirty_ratio</span> <span class="p">{</span><span class="mf">0.0</span><span class="o">.</span><span class="mf">.1.0</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如，设置为 <code class="docutils literal notranslate"><span class="pre">0.4</span></code> 时，脏对象达到缓存池容量的 40% 就开始刷回：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">cache_target_dirty_ratio</span> <span class="mf">0.4</span>
-</pre></div>
-</div>
-<p>当脏对象达到其容量的一定比例时，要更快地刷回脏对象。用下列命令设置 <code class="docutils literal notranslate"><span class="pre">cache_target_dirty_high_ratio</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">cache_target_dirty_high_ratio</span> <span class="p">{</span><span class="mf">0.0</span><span class="o">.</span><span class="mf">.1.0</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如，设置为 <code class="docutils literal notranslate"><span class="pre">0.6</span></code> 表示：脏对象达到缓存存储池容量的 60% 时，
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>cache_target_dirty_ratio<span class="w"> </span><span class="o">{</span><span class="m">0</span>.0..1.0<span class="o">}</span></span>
+</pre></div></div><p>例如，设置为 <code class="docutils literal notranslate"><span class="pre">0.4</span></code> 时，脏对象达到缓存池容量的 40% 就开始刷回：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>hot-storage<span class="w"> </span>cache_target_dirty_ratio<span class="w"> </span><span class="m">0</span>.4</span>
+</pre></div></div><p>当脏对象达到其容量的一定比例时，要更快地刷回脏对象。用下列命令设置 <code class="docutils literal notranslate"><span class="pre">cache_target_dirty_high_rati</span></code></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>cache_target_dirty_high_ratio<span class="w"> </span><span class="o">{</span><span class="m">0</span>.0..1.0<span class="o">}</span></span>
+</pre></div></div><p>例如，设置为 <code class="docutils literal notranslate"><span class="pre">0.6</span></code> 表示：脏对象达到缓存存储池容量的 60% 时，
 将开始更激进地刷回脏对象。显然，
 其值最好在 dirty_ratio 和 full_ratio 之间：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">cache_target_dirty_high_ratio</span> <span class="mf">0.6</span>
-</pre></div>
-</div>
-<p>当缓存池利用率达到总容量的一定比例时，
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>hot-storage<span class="w"> </span>cache_target_dirty_high_ratio<span class="w"> </span><span class="m">0</span>.6</span>
+</pre></div></div><p>当缓存池利用率达到总容量的一定比例时，
 缓存分层代理会赶出部分对象以维持空闲空间。
 执行此命令设置 <code class="docutils literal notranslate"><span class="pre">cache_target_full_ratio</span></code> ：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">cache_target_full_ratio</span> <span class="p">{</span><span class="mf">0.0</span><span class="o">.</span><span class="mf">.1.0</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如，设置为 <code class="docutils literal notranslate"><span class="pre">0.8</span></code> 时，
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>cache_target_full_ratio<span class="w"> </span><span class="o">{</span><span class="m">0</span>.0..1.0<span class="o">}</span></span>
+</pre></div></div><p>例如，设置为 <code class="docutils literal notranslate"><span class="pre">0.8</span></code> 时，
 干净对象占到总容量的 80% 就开始赶出缓存池：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">cache_target_full_ratio</span> <span class="mf">0.8</span>
-</pre></div>
-</div>
-</section>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>hot-storage<span class="w"> </span>cache_target_full_ratio<span class="w"> </span><span class="m">0</span>.8</span>
+</pre></div></div></section>
 </section>
 <section id="id14">
 <h3>缓存时长<a class="headerlink" href="#id14" title="Permalink to this heading"></a></h3>
 <p>你可以规定缓存层代理必须延迟多久才能把某个已修改（脏）对象刷回后端存储池：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">cache_min_flush_age</span> <span class="p">{</span><span class="c1">#seconds}</span>
-</pre></div>
-</div>
-<p>例如，让已修改（或脏）对象需至少延迟 10 分钟才能刷回，
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>cache_min_flush_age<span class="w"> </span><span class="o">{</span><span class="c1">#seconds}</span></span>
+</pre></div></div><p>例如，让已修改（或脏）对象需至少延迟 10 分钟才能刷回，
 执行此命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">cache_min_flush_age</span> <span class="mi">600</span>
-</pre></div>
-</div>
-<p>你可以指定某对象在缓存层至少放置多长时间才能被赶出：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="p">{</span><span class="n">cache</span><span class="o">-</span><span class="n">tier</span><span class="p">}</span> <span class="n">cache_min_evict_age</span> <span class="p">{</span><span class="c1">#seconds}</span>
-</pre></div>
-</div>
-<p>例如，要规定 30 分钟后才赶出对象，执行此命令：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">pool</span> <span class="nb">set</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">cache_min_evict_age</span> <span class="mi">1800</span>
-</pre></div>
-</div>
-</section>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>hot-storage<span class="w"> </span>cache_min_flush_age<span class="w"> </span><span class="m">600</span></span>
+</pre></div></div><p>你可以指定某对象在缓存层至少放置多长时间才能被赶出：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="o">{</span>cache-tier<span class="o">}</span><span class="w"> </span>cache_min_evict_age<span class="w"> </span><span class="o">{</span><span class="c1">#seconds}</span></span>
+</pre></div></div><p>例如，要规定 30 分钟后才赶出对象，执行此命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>hot-storage<span class="w"> </span>cache_min_evict_age<span class="w"> </span><span class="m">1800</span></span>
+</pre></div></div></section>
 </section>
 <section id="id15">
 <h2>拆除缓存层<a class="headerlink" href="#id15" title="Permalink to this heading"></a></h2>
@@ -540,23 +504,15 @@ OSD 守护进程运行得最优。
 <p>只读缓存不含变更数据，所以禁用它不会导致任何近期更改的数据丢失。</p>
 <ol class="arabic">
 <li><p>把缓存模式改为 <code class="docutils literal notranslate"><span class="pre">none</span></code> 即可禁用。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">cache</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">none</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">cache</span><span class="o">-</span><span class="n">mode</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">none</span>
-</pre></div>
-</div>
-</li>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>cache-mode<span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>none</span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>cache-mode<span class="w"> </span>hot-storage<span class="w"> </span>none</span>
+</pre></div></div></li>
 <li><p>去除后端存储池的缓存池。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">remove</span> <span class="p">{</span><span class="n">storagepool</span><span class="p">}</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">remove</span> <span class="n">cold</span><span class="o">-</span><span class="n">storage</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span>
-</pre></div>
-</div>
-</li>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>remove<span class="w"> </span><span class="o">{</span>storagepool<span class="o">}</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span></span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>remove<span class="w"> </span>cold-storage<span class="w"> </span>hot-storage</span>
+</pre></div></div></li>
 </ol>
 </section>
 <section id="id17">
@@ -566,43 +522,81 @@ OSD 守护进程运行得最优。
 必须采取些手段以免丢失缓存内近期更改的对象。</p>
 <ol class="arabic">
 <li><p>把缓存模式改为 <code class="docutils literal notranslate"><span class="pre">proxy</span></code> ，这样新的和更改过的对象将直接刷回到后端存储池。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">cache</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">proxy</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">cache</span><span class="o">-</span><span class="n">mode</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span> <span class="n">proxy</span>
-</pre></div>
-</div>
-</li>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>cache-mode<span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>proxy</span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>cache-mode<span class="w"> </span>hot-storage<span class="w"> </span>proxy</span>
+</pre></div></div></li>
 <li><p>确保缓存池已刷回，可能要等数分钟：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">ls</span>
-</pre></div>
-</div>
-<p>如果缓存池还有对象，你可以手动刷回，例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rados</span> <span class="o">-</span><span class="n">p</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span> <span class="n">cache</span><span class="o">-</span><span class="n">flush</span><span class="o">-</span><span class="n">evict</span><span class="o">-</span><span class="nb">all</span>
-</pre></div>
-</div>
-</li>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rados<span class="w"> </span>-p<span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>ls</span>
+</pre></div></div><p>如果缓存池还有对象，你可以手动刷回，例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rados<span class="w"> </span>-p<span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span><span class="w"> </span>cache-flush-evict-all</span>
+</pre></div></div></li>
 <li><p>去除此盖子，这样客户端就不会被指到缓存了。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">remove</span><span class="o">-</span><span class="n">overlay</span> <span class="p">{</span><span class="n">storagetier</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">remove</span><span class="o">-</span><span class="n">overlay</span> <span class="n">cold</span><span class="o">-</span><span class="n">storage</span>
-</pre></div>
-</div>
-</li>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>remove-overlay<span class="w"> </span><span class="o">{</span>storagetier<span class="o">}</span></span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>remove-overlay<span class="w"> </span>cold-storage</span>
+</pre></div></div></li>
 <li><p>最后，从后端存储池剥离缓存层存储池。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">remove</span> <span class="p">{</span><span class="n">storagepool</span><span class="p">}</span> <span class="p">{</span><span class="n">cachepool</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">osd</span> <span class="n">tier</span> <span class="n">remove</span> <span class="n">cold</span><span class="o">-</span><span class="n">storage</span> <span class="n">hot</span><span class="o">-</span><span class="n">storage</span>
-</pre></div>
-</div>
-</li>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>remove<span class="w"> </span><span class="o">{</span>storagepool<span class="o">}</span><span class="w"> </span><span class="o">{</span>cachepool<span class="o">}</span></span>
+</pre></div></div><p>例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>tier<span class="w"> </span>remove<span class="w"> </span>cold-storage<span class="w"> </span>hot-storage</span>
+</pre></div></div></li>
 </ol>
 </section>
+</section>
+<section id="id18">
+<h2>排查找不到的对象<a class="headerlink" href="#id18" title="Permalink to this heading"></a></h2>
+<p>Under certain circumstances, restarting OSDs may result in unfound objects.</p>
+<p>Here is an example of unfound objects appearing during an upgrade from Ceph
+14.2.6 to Ceph 14.2.7:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">2</span><span class="o">/</span><span class="mi">543658058</span> <span class="n">objects</span> <span class="n">unfound</span> <span class="p">(</span><span class="mf">0.000</span><span class="o">%</span><span class="p">)</span>
+<span class="n">pg</span> <span class="mf">19.12</span> <span class="n">has</span> <span class="mi">1</span> <span class="n">unfound</span> <span class="n">objects</span>
+<span class="n">pg</span> <span class="mf">19.2</span><span class="n">d</span> <span class="n">has</span> <span class="mi">1</span> <span class="n">unfound</span> <span class="n">objects</span>
+
+<span class="n">Possible</span> <span class="n">data</span> <span class="n">damage</span><span class="p">:</span> <span class="mi">2</span> <span class="n">pgs</span> <span class="n">recovery_unfound</span>
+<span class="n">pg</span> <span class="mf">19.12</span> <span class="ow">is</span> <span class="n">active</span><span class="o">+</span><span class="n">recovery_unfound</span><span class="o">+</span><span class="n">undersized</span><span class="o">+</span><span class="n">degraded</span><span class="o">+</span><span class="n">remapped</span><span class="p">,</span> <span class="n">acting</span> <span class="p">[</span><span class="mi">299</span><span class="p">,</span><span class="mi">310</span><span class="p">],</span> <span class="mi">1</span> <span class="n">unfound</span>
+<span class="n">pg</span> <span class="mf">19.2</span><span class="n">d</span> <span class="ow">is</span> <span class="n">active</span><span class="o">+</span><span class="n">recovery_unfound</span><span class="o">+</span><span class="n">undersized</span><span class="o">+</span><span class="n">degraded</span><span class="o">+</span><span class="n">remapped</span><span class="p">,</span> <span class="n">acting</span> <span class="p">[</span><span class="mi">290</span><span class="p">,</span><span class="mi">309</span><span class="p">],</span> <span class="mi">1</span> <span class="n">unfound</span>
+
+<span class="c1"># ceph pg 19.12 list_unfound</span>
+<span class="p">{</span>
+    <span class="s2">&quot;num_missing&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;num_unfound&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;objects&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;oid&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;oid&quot;</span><span class="p">:</span> <span class="s2">&quot;hit_set_19.12_archive_2020-02-25 13:43:50.256316Z_2020-02-25 13:43:50.325825Z&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;snapid&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+                <span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="mi">18</span><span class="p">,</span>
+                <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;pool&quot;</span><span class="p">:</span> <span class="mi">19</span><span class="p">,</span>
+                <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;.ceph-internal&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;need&quot;</span><span class="p">:</span> <span class="s2">&quot;3312398&#39;55868341&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;have&quot;</span><span class="p">:</span> <span class="s2">&quot;0&#39;0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;flags&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;locations&quot;</span><span class="p">:</span> <span class="p">[]</span>
+        <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;more&quot;</span><span class="p">:</span> <span class="n">false</span>
+</pre></div>
+</div>
+<p>Some tests in the field indicate that the unfound objects can be deleted with
+no adverse effects (see <a class="reference external" href="https://tracker.ceph.com/issues/44286#note-3">Tracker Issue #44286, Note 3</a>). Pawel Stefanski suggests
+that deleting missing or unfound objects is safe as long as the objects are a
+part of <code class="docutils literal notranslate"><span class="pre">.ceph-internal::hit_set_PGID_archive</span></code>.</p>
+<p>Various members of the upstream Ceph community have reported in <a class="reference external" href="https://tracker.ceph.com/issues/44286">Tracker Issue
+#44286</a> that the following versions of
+Ceph have been affected by this issue:</p>
+<ul class="simple">
+<li><p>14.2.8</p></li>
+<li><p>14.2.16</p></li>
+<li><p>15.2.15</p></li>
+<li><p>16.2.5</p></li>
+<li><p>17.2.7</p></li>
+</ul>
+<p>See <a class="reference external" href="https://tracker.ceph.com/issues/44286">Tracker Issue #44286</a> for the
+history of this issue.</p>
 </section>
 </section>
 

@@ -2,6 +2,7 @@
  ISA 纠删码插件
 ================
 
+The *isa* plugin is the default for Ceph erasure coded pools.
 *isa* 插件封装了 `ISA
 <https://01.org/intel%C2%AE-storage-acceleration-library-open-source-version/>`_
 库。
@@ -9,19 +10,22 @@
 
 创建 isa 配置
 =============
+.. Create an isa profile
 
-要新建 *isa* 纠删码配置： ::
+要新建 *isa* 纠删码配置：
 
-        ceph osd erasure-code-profile set {name} \
-             plugin=isa \
-             technique={reed_sol_van|cauchy} \
-             [k={data-chunks}] \
-             [m={coding-chunks}] \
-             [crush-root={root}] \
-             [crush-failure-domain={bucket-type}] \
-             [crush-device-class={device-class}] \
-             [directory={directory}] \
-             [--force]
+.. prompt:: bash $
+
+   ceph osd erasure-code-profile set {name} \
+     plugin=isa \
+     technique={reed_sol_van|cauchy} \
+     [k={data-chunks}] \
+     [m={coding-chunks}] \
+     [crush-root={root}] \
+     [crush-failure-domain={bucket-type}] \
+     [crush-device-class={device-class}] \
+     [directory={directory}] \
+     [--force]
 
 其中：
 

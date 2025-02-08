@@ -315,8 +315,38 @@ Get-Disk -Number $diskNumber | `
     Initialize-Disk -PassThru | `
     New-Partition -AssignDriveLetter -UseMaximumSize | `
     Format-Volume -Force -Confirm:$false
+
+# Show the partition letter (for example, &quot;D:&quot; or &quot;F:&quot;):
+(Get-Partition -DiskNumber $diskNumber).DriveLetter
 </pre></div>
 </div>
+</section>
+<section id="san-policy">
+<h3>SAN policy<a class="headerlink" href="#san-policy" title="Permalink to this heading"></a></h3>
+<p>The Windows SAN policy determines which disks will be automatically mounted.
+The default policy (<code class="docutils literal notranslate"><span class="pre">offlineShared</span></code>) specifies that:</p>
+<blockquote>
+<div><p>All newly discovered disks that do not reside on a shared bus (such as SCSI
+and iSCSI) are brought online and made read-write. Disks that are left
+offline will be read-only by default.”</p>
+</div></blockquote>
+<p>Note that recent WNBD driver versions report rbd-wnbd disks as SAS, which is
+also considered a shared bus. As a result, the disks will be offline and
+read-only by default.</p>
+<p>In order to turn a disk online (mounting the disk partitions) and clear the
+read-only flag, use the following commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Set-Disk -Number $diskNumber -IsOffline $false
+Set-Disk -Number $diskNumber -IsReadOnly $false
+</pre></div>
+</div>
+<p>Please check the <a class="reference internal" href="#limitations">Limitations</a> section to learn about the Windows limitations
+that affect automatically mounted disks.</p>
+<p>Windows documentation:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-partitionmanager-sanpolicy">SAN policy reference</a></p></li>
+<li><p><a class="reference external" href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/san">san command</a></p></li>
+<li><p><a class="reference external" href="https://learn.microsoft.com/en-us/powershell/module/storage/set-storagesetting?view=windowsserver2022-ps">StorageSetting command</a></p></li>
+</ul>
 </section>
 <section id="limitations">
 <h3>Limitations<a class="headerlink" href="#limitations" title="Permalink to this heading"></a></h3>
@@ -348,6 +378,19 @@ disk attachments.</p></li>
 <li><p>use the Openstack Hyper-V driver, which automatically refreshes the VM disk
 attachments before powering them back on.</p></li>
 </ul>
+</section>
+<section id="automatically-mounted-disks">
+<h4>Automatically mounted disks<a class="headerlink" href="#automatically-mounted-disks" title="Permalink to this heading"></a></h4>
+<p>Disks that are marked as “online” or “writable” will remain so after being
+reconnected (e.g. due to host reboots, Ceph service restarts, etc).</p>
+<p>Unfortunately, Windows restores the disk status based on the disk number,
+ignoring the disk unique identifier. However, the disk numbers can change
+after being reconnected. This issue also affects iSCSI and Fibre Channel disks.</p>
+<p>Let’s assume that the <a class="reference internal" href="#san-policy">SAN policy</a> is set to <code class="docutils literal notranslate"><span class="pre">offlineShared</span></code>, three
+RBD images are attached and disk 1 is turned online. After a reboot, disk 1
+will become online but it may now correspond to a different RBD image. This can
+be an issue if the disk that was mounted on the host was actually meant for a
+VM.</p>
 </section>
 </section>
 </section>

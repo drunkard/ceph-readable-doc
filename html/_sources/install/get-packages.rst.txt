@@ -122,7 +122,7 @@ Ceph 正式版软件包
 
   https://download.ceph.com/rpm-{version}
 
-Ceph 的主要版本都汇总到了 :ref:`ceph-releases-general`\ 。
+Ceph 的主要版本都汇总到了 `各个版本`_ 。
 
 .. tip:: 对不在美国的用户来说，你也许可以从比较近的镜像下载
    Ceph 。请参考 `Ceph 镜像`_\ 。
@@ -252,6 +252,18 @@ openSUSE Tumbleweed 版
 
 Ceph 的最新主版本在普通 Tumbleweed 软件库里已经能用了。没必要手动另外加软件库。
 
+openEuler
+^^^^^^^^^
+
+There are two Ceph releases supported in normal openEuler repositories. They are Ceph 12.2.8 in the openEuler-20.03-LTS series and Ceph 16.2.7 in the openEuler-22.03-LTS series. There’s no need to add another package repository manually.
+You can install Ceph by executing the following:
+
+.. prompt:: bash $
+
+    sudo yum -y install ceph
+
+Also you can download packages manually from https://repo.openeuler.org/openEuler-{release}/everything/{arch}/Packages/.
+
 
 Ceph 开发版软件包
 -----------------
@@ -376,6 +388,7 @@ Ceph 依赖一些第三方库。执行下列命令添加 EPEL 库：
 
 
 
+.. _各个版本: https://docs.ceph.com/en/latest/releases/
 .. _Debian 测试版软件库: https://download.ceph.com/debian-testing/dists
 .. _shaman 网页: https://shaman.ceph.com
 .. _Ceph 镜像: ../mirrors

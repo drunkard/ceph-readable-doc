@@ -64,9 +64,9 @@
 
 如果日志损坏或因故 MDS 不能重放它，你可以这样裁截它：
 
-::
+.. prompt:: bash #
 
-    cephfs-journal-tool [--rank=N] journal reset
+   cephfs-journal-tool [--rank=<fs_name>:{mds-rank|all}] journal reset --yes-i-really-really-mean-it
 
 如果这个文件系统有、或曾经有多个活跃的 MDS ，
 可以用 ``--rank`` 选项指定 rank 。
@@ -107,18 +107,19 @@ SessionMap 、 SnapServer ）的内容变得不一致。
 也许有必要更新 MDS 图以反映元数据存储池的内容。
 可以用下面的命令把 MDS 图重置到单个 MDS ：
 
-::
+.. prompt:: bash #
 
     ceph fs reset <fs name> --yes-i-really-mean-it
 
-运行此命令之后， MDS rank 保存在 RADOS 上的任何不为 0 的状态\
+运行此命令之后， MDS rank 保存在 RADOS 上的任何不为 ``0`` 的状态\
 都会被忽略：因此这有可能导致数据丢失。
 
-也许有人想知道 'fs reset' 和 'fs remove; fs new' 的不同。
-主要区别在于，执行删除、新建操作会使 rank 0 处于 creating 状态，
-那样会覆盖所有根索引节点、并使所有文件变成孤儿；
-相反， reset 命令会使 rank 0 处于 active 状态，
-这样下一个要认领此 rank 的 MDS 守护进程会继续、并使用已存在于 RADOS 中的元数据。
+``fs reset`` 命令和 ``fs remove`` 命令有个不同点。
+``fs reset`` 命令会把 rank ``0`` 留在 ``active`` 状态，
+这样下一个要认领此 rank 的 MDS 守护进程会继续使用已存在于 RADOS 中的元数据；
+``fs remove`` 命令会把 rank ``0`` 留在 ``creating`` 状态，
+意味着磁盘上的现有根索引节点（ root inodes ）会被覆盖。
+执行 ``fs remove`` 命令会把现有文件变成孤儿文件。
 
 
 元数据对象丢失的恢复
@@ -137,66 +138,74 @@ SessionMap 、 SnapServer ）的内容变得不一致。
 	# InoTable 索引节点表
 	cephfs-table-tool 0 reset inode
 	# Journal 日志
-	cephfs-journal-tool --rank=0 journal reset
+    cephfs-journal-tool --rank=<fs_name>:0 journal reset --yes-i-really-really-mean-it
 	# 根索引节点（ / 和所有 MDS 目录）
 	cephfs-data-scan init
 
 最后，根据数据存储池中的内容重新生成\
 丢失文件和目录的元数据对象。
-这要分两步完成，首先，扫描\ *所有*\ 对象以计算索引节点的尺寸和
-mtime 元数据；其次，从每个文件的第一个对象扫描出\
-元数据并注入元数据存储池。
+这是个三阶段过程：
+
+#. 扫描\ *所有*\ 对象以计算索引节点的尺寸和 mtime 元数据；
+#. 从每个文件的第一个对象扫描出\
+   元数据并注入元数据存储池。
+#. 检查 inode 的链接情况并修复发现的错误。
 
 ::
 
-    cephfs-data-scan scan_extents <data pool>
-    cephfs-data-scan scan_inodes <data pool>
+    cephfs-data-scan scan_extents [<data pool> [<extra data pool> ...]]
+    cephfs-data-scan scan_inodes [<data pool>]
     cephfs-data-scan scan_links
 
-如果数据存储池内的文件很多、或者有很大的文件， scan_extents 和
-scan_inodes 命令就要花费\ *很长时间*\ 。
+如果数据存储池内的文件很多、或者有很大的文件， ``scan_extents`` 和
+``scan_inodes`` 命令可能得花费\ *很长时间*\ 。
 
-要加快处理，可以让这个工具多跑几个例程。
+要加快 ``scan_extents`` 或 ``scan_inodes`` 的处理进程，
+可以让这个工具多跑几个例程。
 
-先确定例程数量、再传递给每个例程一个数字 N ，此数字应大于 0 且\
-小于 (worker_m - 1) 。
+确定例程数量、再传递给每个例程一个数字，在 ``(worker_m - 1)`` 范围内
+（也就是 '0 到 worker_m 减 1'）。
 
 下面的实例演示了如何同时运行 4 个例程：
 
 ::
 
     # Worker 0
-    cephfs-data-scan scan_extents --worker_n 0 --worker_m 4 <data pool>
+    cephfs-data-scan scan_extents --worker_n 0 --worker_m 4
     # Worker 1
-    cephfs-data-scan scan_extents --worker_n 1 --worker_m 4 <data pool>
+    cephfs-data-scan scan_extents --worker_n 1 --worker_m 4
     # Worker 2
-    cephfs-data-scan scan_extents --worker_n 2 --worker_m 4 <data pool>
+    cephfs-data-scan scan_extents --worker_n 2 --worker_m 4
     # Worker 3
-    cephfs-data-scan scan_extents --worker_n 3 --worker_m 4 <data pool>
+    cephfs-data-scan scan_extents --worker_n 3 --worker_m 4
 
     # Worker 0
-    cephfs-data-scan scan_inodes --worker_n 0 --worker_m 4 <data pool>
+    cephfs-data-scan scan_inodes --worker_n 0 --worker_m 4
     # Worker 1
-    cephfs-data-scan scan_inodes --worker_n 1 --worker_m 4 <data pool>
+    cephfs-data-scan scan_inodes --worker_n 1 --worker_m 4
     # Worker 2
-    cephfs-data-scan scan_inodes --worker_n 2 --worker_m 4 <data pool>
+    cephfs-data-scan scan_inodes --worker_n 2 --worker_m 4
     # Worker 3
-    cephfs-data-scan scan_inodes --worker_n 3 --worker_m 4 <data pool>
+    cephfs-data-scan scan_inodes --worker_n 3 --worker_m 4
 
-**切记！！！**\ 所有运行 scan_extents 阶段的例程都结束后才能\
-开始 scan_inodes 。
+**切记！！！**\ 所有运行 ``scan_extents`` 阶段的例程都结束后\
+才能开始进入 ``scan_inodes`` 阶段。
 
 元数据恢复完后，你可以清理掉恢复期间产生的辅助数据。
+执行下列命令运行清理操作：
 
-::
+.. prompt:: bash #
 
-    cephfs-data-scan cleanup <data pool>
+   cephfs-data-scan cleanup <data pool>
 
-注意， scan_extents 、 scan_inodes 和 cleanup 命令的数据存储池参数是可选的，
-通常工具能够自动探测存储池。
-不过，你也可以覆盖它。
-scan_extents 命令需要指定所有数据存储池，
-而 scan_inodes 和 cleanup 命令只需要指定主数据存储池。
+.. note::
+
+   ``scan_extents`` 、 ``scan_inodes`` 和 ``cleanup`` 命令\
+   的数据存储池参数是可选的，通常工具能够自动探测存储池。
+   不过，你也可以覆盖它。
+   ``scan_extents`` 命令需要指定所有数据存储池，
+   而 ``scan_inodes`` 和 ``cleanup`` 命令\
+   只需要指定主数据存储池。
 
 
 用另一个元数据存储池进行恢复
@@ -220,103 +229,132 @@ scan_extents 命令需要指定所有数据存储池，
    以免更改数据存储池内容。一旦恢复结束，
    就应该归档或删除损坏的元数据存储池。
 
-开始前，应该关闭现有文件系统，如果还没关闭，
-为防止数据存储池被更改更多，先卸载所有客户端、
-然后把这个文件系统标记为已失效：
+#. 关闭现有文件系统，以防止数据存储池被更改更多；
+   卸载所有客户端。客户端们全部卸载后，
+   用下列命令把这个文件系统标记为已失效：
 
-::
+   .. prompt:: bash #
 
-    ceph fs fail <fs_name>
+      ceph fs fail <fs_name>
 
-.. note::
+   .. note::
 
-   <fs_name> 在这里和下文都是指最初的、损坏的文件系统。
+      ``<fs_name>`` 在这里和下文都是指最初的、损坏的文件系统。
 
-接下来，创建一个恢复文件系统，我们将给它迁移新的元数据存储池、
-其后端还挂着原来的数据存储池。
+#. 创建一个恢复文件系统。
+   这个恢复文件系统将用于恢复已损坏存储池中的数据。
+   首先，给这个文件系统部署一个数据存储池，
+   然后，把新元数据存储池关联到新数据存储池上，
+   然后，设置这个新元数据存储池的后端是旧数据存储池。
 
-::
+   .. prompt:: bash #
 
-    ceph osd pool create cephfs_recovery_meta
-    ceph fs new cephfs_recovery cephfs_recovery_meta <data_pool> --recover --allow-dangerous-metadata-overlay
+      ceph osd pool create cephfs_recovery_meta
+      ceph fs new cephfs_recovery cephfs_recovery_meta <data_pool> --recover --allow-dangerous-metadata-overlay
 
-.. note::
+   .. note::
 
-   以后，你可以重命名用于恢复的元数据存储池和文件系统。
-   ``--recover`` 标记会阻止所有 MDS 加入新文件系统。
+      以后，你可以重命名用于恢复的元数据存储池和文件系统。
+      ``--recover`` 标记会阻止所有 MDS 加入新文件系统。
 
-接下来，我们会给这个文件系统创建初始元数据：
+#. 给这个文件系统创建初始元数据：
 
-::
+   .. prompt:: bash #
 
-    cephfs-table-tool cephfs_recovery:0 reset session
-    cephfs-table-tool cephfs_recovery:0 reset snap
-    cephfs-table-tool cephfs_recovery:0 reset inode
-    cephfs-journal-tool --rank cephfs_recovery:0 journal reset --force --yes-i-really-really-mean-it
+      cephfs-table-tool cephfs_recovery:0 reset session
 
-现在进行从数据存储池到元数据存储池的恢复：
+   .. prompt:: bash #
 
-::
+      cephfs-table-tool cephfs_recovery:0 reset snap
 
-    cephfs-data-scan init --force-init --filesystem cephfs_recovery --alternate-pool cephfs_recovery_meta
-    cephfs-data-scan scan_extents --alternate-pool cephfs_recovery_meta --filesystem <fs_name>
-    cephfs-data-scan scan_inodes --alternate-pool cephfs_recovery_meta --filesystem <fs_name> --force-corrupt
-    cephfs-data-scan scan_links --filesystem cephfs_recovery
+   .. prompt:: bash #
 
-.. note::
+      cephfs-table-tool cephfs_recovery:0 reset inode
 
-   上面的每一个扫描都要覆盖整个数据存储池。
-   需要相当多的时间才能完成。
-   看看前面的段落，把这个任务分配到多个作业进程上。
+   .. prompt:: bash #
 
-如果损坏的文件系统包含脏日志数据，
-随后可以用如下命令恢复：
+      cephfs-journal-tool --rank cephfs_recovery:0 journal reset --force --yes-i-really-really-mean-it
 
-::
+#. 从数据存储池重建元数据存储池，执行下列命令：
 
-    cephfs-journal-tool --rank=<fs_name>:0 event recover_dentries list --alternate-pool cephfs_recovery_meta
+   .. prompt:: bash #
 
-恢复完之后，有些恢复过来的目录其统计信息不对。
-首先确保 ``mds_verify_scatter`` 和 ``mds_debug_scatterstat``
-参数的值为 ``false`` （默认值），以防 MDS 检查这些统计信息：
+      cephfs-data-scan init --force-init --filesystem cephfs_recovery --alternate-pool cephfs_recovery_meta
 
-::
+   .. prompt:: bash #
 
-    ceph config rm mds mds_verify_scatter
-    ceph config rm mds mds_debug_scatterstat
+      cephfs-data-scan scan_extents --alternate-pool cephfs_recovery_meta --filesystem <fs_name>
 
-.. note::
+   .. prompt:: bash #
 
-   还需要核对尚未全局设置、或用本地 ceph.conf 文件配置的。
+      cephfs-data-scan scan_inodes --alternate-pool cephfs_recovery_meta --filesystem <fs_name> --force-corrupt
 
-现在，允许 MDS 接管恢复的文件系统：
+   .. prompt:: bash #
 
-::
+      cephfs-data-scan scan_links --filesystem cephfs_recovery
 
-    ceph fs set cephfs_recovery joinable true
+   .. note::
 
-最后，运行正向\ `洗刷 scrub </cephfs/scrub>` 以修复统计信息。\
-确保有一个 MDS 在运行，然后执行命令：
+      上面的每一个扫描都要覆盖整个数据存储池。
+      需要相当多的时间才能完成。
+      看看前面的段落，把这个任务分配到多个作业进程上。
 
-::
+   如果损坏的文件系统包含脏日志数据，
+   随后可以用如下命令恢复：
 
-    ceph tell mds.cephfs_recovery:0 scrub start / recursive,repair,force
+   .. prompt:: bash #
 
-.. note::
+      cephfs-journal-tool --rank=<fs_name>:0 event recover_dentries list --alternate-pool cephfs_recovery_meta
 
-   符号链接被恢复成了空的普通文件。
-   `符号链接恢复 <https://tracker.ceph.com/issues/46166>`_
-   按计划会在 Pacific 版支持。
+#. 恢复完之后，有些恢复过来的目录其统计信息不对。
+   首先确保 ``mds_verify_scatter`` 和 ``mds_debug_scatterstat``
+   参数的值为 ``false`` （默认值），
+   以防 MDS 检查这些统计信息：
 
-强烈建议尽快迁移已恢复文件系统上的数据。
-已恢复的文件系统可以运作后，不要再恢复旧文件系统。
+   .. prompt:: bash #
 
-.. note::
+      ceph config rm mds mds_verify_scatter
 
-    如果数据存储池也损坏了，有些文件可能没法恢复，
-    因为回溯信息丢失了。如果有数据对象丢失了
-    （由于数据存储池上的归置组丢失之类的问题），
-    恢复的文件里在丢失数据的位置会有空洞。
+   .. prompt:: bash #
+
+      ceph config rm mds mds_debug_scatterstat
+
+   .. note::
+
+      还需要核对尚未全局设置、
+      或用本地 ``ceph.conf`` 文件配置的。
+
+#. 允许 MDS 加入恢复文件系统：
+
+   .. prompt:: bash #
+
+      ceph fs set cephfs_recovery joinable true
+
+#. 运行正向\ `洗刷 scrub </cephfs/scrub>` 以修复递归统计信息。\
+   确保有一个 MDS 守护进程在运行，然后执行命令：
+
+   .. prompt:: bash #
+
+      ceph tell mds.cephfs_recovery:0 scrub start / recursive,repair,force
+
+   .. note::
+
+      `符号链接恢复 <https://tracker.ceph.com/issues/46166>`_
+      从 Quincy 版开始支持。
+
+      符号链接被恢复成了空的普通文件。
+
+   建议尽快迁移已恢复文件系统上的数据。
+   已恢复的文件系统可以运作后，
+   不要再恢复旧文件系统。
+
+   .. note::
+
+      如果数据存储池也损坏了，有些文件可能没法恢复，
+      因为与之相关的回溯信息丢失了。
+      如果有数据对象丢失了
+      （由于数据存储池内的归置组丢失之类的问题），
+      恢复的文件里在丢失数据的位置会有空洞。
 
 
 .. _符号链接恢复: https://tracker.ceph.com/issues/46166

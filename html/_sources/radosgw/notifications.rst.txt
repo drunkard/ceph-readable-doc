@@ -121,8 +121,8 @@ Dump (in JSON format) all pending bucket notifications of a persistent topic by 
    radosgw-admin topic dump --topic={topic-name} [--tenant={tenant}] [--max-entries={max-entries}]
 
 
-Notification Performance Stats
-------------------------------
+Notification Performance Statistics
+-----------------------------------
 
 - ``pubsub_event_triggered``: a running counter of events that have at least one topic associated with them
 - ``pubsub_event_lost``: a running counter of events that had topics associated with them, but that were not pushed to any of the endpoints
@@ -188,6 +188,7 @@ updating, use the name of an existing topic and different endpoint values).
    [&Attributes.entry.15.key=Policy&Attributes.entry.15.value=<policy-JSON-string>]
    [&Attributes.entry.16.key=user-name&Attributes.entry.16.value=<user-name-string>]
    [&Attributes.entry.17.key=password&Attributes.entry.17.value=<password-string>]
+   [&Attributes.entry.18.key=kafka-brokers&Attributes.entry.18.value=<kafka-broker-list>]
 
 Request parameters:
 
@@ -258,9 +259,9 @@ Request parameters:
    broker before being delivered to their final destinations. Three ack methods
    exist:
 
-  - "none": message is considered "delivered" if sent to broker
-  - "broker": message is considered "delivered" if acked by broker (default)
-  - "routable": message is considered "delivered" if broker can route to a consumer
+  - "none": The message is considered "delivered" if it is sent to the broker.
+  - "broker": The message is considered "delivered" if it is acked by the broker (default).
+  - "routable": The message is considered "delivered" if the broker can route to a consumer.
 
 .. tip:: The topic-name (see :ref:`Create a Topic`) is used for the
    AMQP topic ("routing key" for a topic exchange).
@@ -296,6 +297,8 @@ Request parameters:
   - "broker": Messages are considered "delivered" if acked by the broker. (This
     is the default.)
 
+ - kafka-brokers: A command-separated list of host:port of kafka brokers. These brokers (may contain a broker which is defined in kafka uri) will be added to kafka uri to support sending notifcations to a kafka cluster.
+
 .. note::
 
     - The key-value pair of a specific parameter need not reside in the same
@@ -307,7 +310,7 @@ Request parameters:
       attributes format. In our case, however, different keys and values are
       used.
 
-The response will have the following format:
+The response has the following format:
 
 ::
 
@@ -341,7 +344,7 @@ information, if provided.
    Action=GetTopicAttributes
    &TopicArn=<topic-arn>
 
-Response will have the following format:
+The response has the following format:
 
 ::
 
@@ -408,7 +411,7 @@ AWS compliant `GetTopicAttributes` API.
    Action=GetTopic
    &TopicArn=<topic-arn>
 
-Response will have the following format:
+The response has the following format:
 
 ::
 
@@ -458,7 +461,7 @@ Delete Topic
    Action=DeleteTopic
    &TopicArn=<topic-arn>
 
-Delete the specified topic.
+This deletes the specified topic.
 
 .. note::
 
@@ -467,7 +470,7 @@ Delete the specified topic.
   - Deleting a topic does not automatically delete all notifications associated
     with it.
 
-The response will have the following format:
+The response has the following format:
 
 ::
 
@@ -488,7 +491,7 @@ List all topics associated with a tenant.
 
    Action=ListTopics
 
-Response will have the following format:
+The response has the following format:
 
 ::
 
@@ -571,6 +574,7 @@ Valid AttributeName that can be passed:
   - mechanism: may be provided together with user/password (default: ``PLAIN``).
   - kafka-ack-level: No end2end acknowledgement is required. Messages may persist in the
     broker before being delivered to their final destinations. 
+  - kafka-brokers: Set endpoint with broker(s) as a comma-separated list of host or host:port (default port 9092).
 
 Notifications
 ~~~~~~~~~~~~~

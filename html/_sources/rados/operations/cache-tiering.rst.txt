@@ -3,6 +3,11 @@
 ==========
 .. Cache Tiering
 
+.. warning:: Cache tiering has been deprecated in the Reef release as it
+             has lacked a maintainer for a very long time. This does not mean
+             it will be certainly removed, but we may choose to remove it
+             without much further notice.
+
 分级缓存可提升后端存储内某些（热点）数据的 I/O 性能。
 分级缓存需创建一个由高速而昂贵存储设备（如 SSD ）组成的存储池、
 作为缓存层，以及一个相对低速/廉价设备组成的后端存储池
@@ -49,6 +54,7 @@ Ceph 的对象处理器决定往哪里存储对象，
   并收到缓存层发来的 ACK ；随后，
   写入缓存层的数据会被迁移到存储层、然后从缓存层刷掉。
   直观地看，缓存层位于后端存储层的“前面”，
+
   当 Ceph 客户端要读取的数据位于存储层时，
   缓存层代理会把这些数据迁移到缓存层，
   然后再发往 Ceph 客户端。从此， Ceph 客户端将与缓存层进行 I/O 操作，
@@ -199,31 +205,43 @@ OSD 守护进程运行得最优。
 ==========
 .. Creating a Cache Tier
 
-设置一缓存层需把缓存存储池挂接到后端存储池上： ::
+设置一缓存层需把缓存存储池挂接到后端存储池上：
 
-	ceph osd tier add {storagepool} {cachepool}
+.. prompt:: bash $
 
-例如： ::
+   ceph osd tier add {storagepool} {cachepool}
 
-	ceph osd tier add cold-storage hot-storage
+例如：
 
-用下列命令设置缓存模式： ::
+.. prompt:: bash $
 
-	ceph osd tier cache-mode {cachepool} {cache-mode}
+   ceph osd tier add cold-storage hot-storage
 
-例如： ::
+用下列命令设置缓存模式：
 
-	ceph osd tier cache-mode hot-storage writeback
+.. prompt:: bash $
+
+   ceph osd tier cache-mode {cachepool} {cache-mode}
+
+例如：
+
+.. prompt:: bash $
+
+   ceph osd tier cache-mode hot-storage writeback
 
 缓存层盖在后端存储层之上，所以要多一步：
 必须把所有客户端流量从存储池迁移到缓存存储池。
-用此命令把客户端流量指向缓存存储池： ::
+用此命令把客户端流量指向缓存存储池：
 
-	ceph osd tier set-overlay {storagepool} {cachepool}
+.. prompt:: bash $
 
-例如： ::
+   ceph osd tier set-overlay {storagepool} {cachepool}
 
-	ceph osd tier set-overlay cold-storage hot-storage
+例如：
+
+.. prompt:: bash $
+
+   ceph osd tier set-overlay cold-storage hot-storage
 
 
 配置缓存层
@@ -231,9 +249,13 @@ OSD 守护进程运行得最优。
 .. Configuring a Cache Tier
 
 缓存层支持几个配置选项，
-可按下列语法配置： ::
+可按下列语法配置：
 
-	ceph osd pool set {cachepool} {key} {value}
+.. prompt:: bash $
+
+   ceph osd pool set {cachepool} {key} {value}
+   
+See `Pools - Set Pool Values`_ for details.
 
 详情见\ `存储池——调整存储池`_\ 。
 
@@ -242,20 +264,26 @@ OSD 守护进程运行得最优。
 --------------
 .. Target Size and Type
 
-生产环境下，缓存层的 ``hit_set_type`` 用 `Bloom 过滤器`_\ ： ::
+生产环境下，缓存层的 ``hit_set_type`` 用 `Bloom 过滤器`_\ ：
 
-	ceph osd pool set {cachepool} hit_set_type bloom
+.. prompt:: bash $
 
-例如： ::
+   ceph osd pool set {cachepool} hit_set_type bloom
 
-	ceph osd pool set hot-storage hit_set_type bloom
+例如：
+
+.. prompt:: bash $
+
+   ceph osd pool set hot-storage hit_set_type bloom
 
 ``hit_set_count`` 和 ``hit_set_period`` 选项定义了要保留多少个这样的 HitSet ，
-以及各 HitSet 覆盖的时间区间。 ::
+以及各 HitSet 覆盖的时间区间。
 
-	ceph osd pool set {cachepool} hit_set_count 12
-	ceph osd pool set {cachepool} hit_set_period 14400
-	ceph osd pool set {cachepool} target_max_bytes 1000000000000
+.. prompt:: bash $
+
+   ceph osd pool set {cachepool} hit_set_count 12
+   ceph osd pool set {cachepool} hit_set_period 14400
+   ceph osd pool set {cachepool} target_max_bytes 1000000000000
 
 .. note:: ``hit_set_count`` 设置得越大，
    ``ceph-osd`` 消耗的 RAM 越多。
@@ -274,10 +302,12 @@ OSD 守护进程运行得最优。
 ``min_read_recency_for_promote`` 个 HitSet 里的任意一个，那就提升它。
 
 还有一个相似的参数用于配置写操作，
-它是 ``min_write_recency_for_promote`` 。 ::
+它是 ``min_write_recency_for_promote`` 。
 
-	ceph osd pool set {cachepool} min_read_recency_for_promote 2
-	ceph osd pool set {cachepool} min_write_recency_for_promote 2
+.. prompt:: bash $
+
+   ceph osd pool set {cachepool} min_read_recency_for_promote 2
+   ceph osd pool set {cachepool} min_write_recency_for_promote 2
 
 .. note:: 统计时间越长，
    ``min_read_recency_for_promote`` 和 ``min_write_recency_for_promote`` 的值越高，
@@ -304,22 +334,29 @@ OSD 守护进程运行得最优。
 .. Absolute Sizing
 
 缓存分层代理可根据总字节数或对象数量来刷回或赶出对象，
-用下列命令可指定最大字节数： ::
+用下列命令可指定最大字节数：
 
-	ceph osd pool set {cachepool} target_max_bytes {#bytes}
+.. prompt:: bash $
 
-例如，用下列命令配置在达到 1TB 时刷回或赶出： ::
+   ceph osd pool set {cachepool} target_max_bytes {#bytes}
 
-	ceph osd pool set hot-storage target_max_bytes 1000000000000
+例如，用下列命令配置在达到 1TB 时刷回或赶出：
 
+.. prompt:: bash $
 
-用下列命令指定缓存对象的最大数量： ::
+   ceph osd pool set hot-storage target_max_bytes 1099511627776
 
-	ceph osd pool set {cachepool} target_max_objects {#objects}
+用下列命令指定缓存对象的最大数量：
 
-例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出： ::
+.. prompt:: bash $
 
-	ceph osd pool set hot-storage target_max_objects 1000000
+   ceph osd pool set {cachepool} target_max_objects {#objects}
+
+例如，用下列命令配置对象数量达到 1M 时开始刷回或赶出：
+
+.. prompt:: bash $
+
+   ceph osd pool set hot-storage target_max_objects 1000000
 
 .. note:: Ceph 不能自动确定缓存池的大小，所以这里必须配置绝对尺寸，
    否则刷回、或赶出就不会生效。如果两个都配置了，
@@ -336,35 +373,47 @@ OSD 守护进程运行得最优。
 缓存分层代理可根据缓存存储池相对大小（\ `绝对空间消长`_\ 里由
 ``target_max_bytes`` 和 ``target_max_objects`` 确定的）刷回或赶出对象。
 当缓存池包含的已修改（或脏）对象达到一定比例时，
-缓存分层代理就把它们刷回到存储池。用下列命令设置 ``cache_target_dirty_ratio`` ： ::
+缓存分层代理就把它们刷回到存储池。用下列命令设置 ``cache_target_dirty_ratio`` ：
 
-	ceph osd pool set {cachepool} cache_target_dirty_ratio {0.0..1.0}
+.. prompt:: bash $
 
-例如，设置为 ``0.4`` 时，脏对象达到缓存池容量的 40% 就开始刷回： ::
+   ceph osd pool set {cachepool} cache_target_dirty_ratio {0.0..1.0}
 
-	ceph osd pool set hot-storage cache_target_dirty_ratio 0.4
+例如，设置为 ``0.4`` 时，脏对象达到缓存池容量的 40% 就开始刷回：
+
+.. prompt:: bash $
+
+   ceph osd pool set hot-storage cache_target_dirty_ratio 0.4
 
 当脏对象达到其容量的一定比例时，要更快地刷回脏对象。用下列命令\
-设置 ``cache_target_dirty_high_ratio``::
+设置 ``cache_target_dirty_high_rati``
 
-	ceph osd pool set {cachepool} cache_target_dirty_high_ratio {0.0..1.0}
+.. prompt:: bash $
+
+   ceph osd pool set {cachepool} cache_target_dirty_high_ratio {0.0..1.0}
 
 例如，设置为 ``0.6`` 表示：脏对象达到缓存存储池容量的 60% 时，
 将开始更激进地刷回脏对象。显然，
-其值最好在 dirty_ratio 和 full_ratio 之间： ::
+其值最好在 dirty_ratio 和 full_ratio 之间：
 
-	ceph osd pool set hot-storage cache_target_dirty_high_ratio 0.6
+.. prompt:: bash $
+
+   ceph osd pool set hot-storage cache_target_dirty_high_ratio 0.6
 
 当缓存池利用率达到总容量的一定比例时，
 缓存分层代理会赶出部分对象以维持空闲空间。
-执行此命令设置 ``cache_target_full_ratio`` ： ::
+执行此命令设置 ``cache_target_full_ratio`` ：
 
-	ceph osd pool set {cachepool} cache_target_full_ratio {0.0..1.0}
+.. prompt:: bash $
+
+   ceph osd pool set {cachepool} cache_target_full_ratio {0.0..1.0}
 
 例如，设置为 ``0.8`` 时，
-干净对象占到总容量的 80% 就开始赶出缓存池： ::
+干净对象占到总容量的 80% 就开始赶出缓存池：
 
-	ceph osd pool set hot-storage cache_target_full_ratio 0.8
+.. prompt:: bash $
+
+   ceph osd pool set hot-storage cache_target_full_ratio 0.8
 
 
 缓存时长
@@ -372,22 +421,30 @@ OSD 守护进程运行得最优。
 .. Cache Age
 
 你可以规定缓存层代理必须延迟多久才能把某个已修改（脏）对象刷回\
-后端存储池： ::
+后端存储池：
 
-	ceph osd pool set {cachepool} cache_min_flush_age {#seconds}
+.. prompt:: bash $
+
+   ceph osd pool set {cachepool} cache_min_flush_age {#seconds}
 
 例如，让已修改（或脏）对象需至少延迟 10 分钟才能刷回，
-执行此命令： ::
+执行此命令：
 
-	ceph osd pool set hot-storage cache_min_flush_age 600
+.. prompt:: bash $
 
-你可以指定某对象在缓存层至少放置多长时间才能被赶出： ::
+   ceph osd pool set hot-storage cache_min_flush_age 600
 
-	ceph osd pool {cache-tier} cache_min_evict_age {#seconds}
+你可以指定某对象在缓存层至少放置多长时间才能被赶出：
 
-例如，要规定 30 分钟后才赶出对象，执行此命令： ::
+.. prompt:: bash $
 
-	ceph osd pool set hot-storage cache_min_evict_age 1800
+   ceph osd pool {cache-tier} cache_min_evict_age {#seconds}
+
+例如，要规定 30 分钟后才赶出对象，执行此命令：
+
+.. prompt:: bash $
+
+   ceph osd pool set hot-storage cache_min_evict_age 1800
 
 
 拆除缓存层
@@ -403,21 +460,29 @@ OSD 守护进程运行得最优。
 
 只读缓存不含变更数据，所以禁用它不会导致任何近期更改的数据丢失。
 
-#. 把缓存模式改为 ``none`` 即可禁用。 ::
+#. 把缓存模式改为 ``none`` 即可禁用。
 
-	ceph osd tier cache-mode {cachepool} none
+   .. prompt:: bash 
 
-   例如： ::
+        ceph osd tier cache-mode {cachepool} none
 
-	ceph osd tier cache-mode hot-storage none
+   例如：
 
-#. 去除后端存储池的缓存池。 ::
+   .. prompt:: bash 
 
-	ceph osd tier remove {storagepool} {cachepool}
+        ceph osd tier cache-mode hot-storage none
 
-   例如： ::
+#. 去除后端存储池的缓存池。
 
-	ceph osd tier remove cold-storage hot-storage
+   .. prompt:: bash 
+
+        ceph osd tier remove {storagepool} {cachepool}
+
+   例如：
+
+   .. prompt:: bash 
+
+      ceph osd tier remove cold-storage hot-storage
 
 
 拆除回写缓存
@@ -430,41 +495,116 @@ OSD 守护进程运行得最优。
 
 
 #. 把缓存模式改为 ``proxy`` ，这样新的和更改过的对象将直接\
-   刷回到后端存储池。 ::
+   刷回到后端存储池。
 
-	ceph osd tier cache-mode {cachepool} proxy
+   .. prompt:: bash $
 
-   例如： ::
+      ceph osd tier cache-mode {cachepool} proxy
 
-	ceph osd tier cache-mode hot-storage proxy
+   例如：
 
+   .. prompt:: bash $
 
-#. 确保缓存池已刷回，可能要等数分钟： ::
-
-	rados -p {cachepool} ls
-
-   如果缓存池还有对象，你可以手动刷回，例如： ::
-
-	rados -p {cachepool} cache-flush-evict-all
+      ceph osd tier cache-mode hot-storage proxy
 
 
-#. 去除此盖子，这样客户端就不会被指到缓存了。 ::
+#. 确保缓存池已刷回，可能要等数分钟：
 
-	ceph osd tier remove-overlay {storagetier}
+   .. prompt:: bash $
 
-   例如： ::
+      rados -p {cachepool} ls
 
-	ceph osd tier remove-overlay cold-storage
+   如果缓存池还有对象，你可以手动刷回，例如：
+
+   .. prompt:: bash $
+
+      rados -p {cachepool} cache-flush-evict-all
 
 
-#. 最后，从后端存储池剥离缓存层存储池。 ::
+#. 去除此盖子，这样客户端就不会被指到缓存了。
 
-	ceph osd tier remove {storagepool} {cachepool}
+   .. prompt:: bash $
 
-   例如： ::
+      ceph osd tier remove-overlay {storagetier}
 
-	ceph osd tier remove cold-storage hot-storage
+   例如：
 
+   .. prompt:: bash $
+
+      ceph osd tier remove-overlay cold-storage
+
+
+#. 最后，从后端存储池剥离缓存层存储池。
+
+   .. prompt:: bash $
+
+      ceph osd tier remove {storagepool} {cachepool}
+
+   例如：
+
+   .. prompt:: bash $
+
+      ceph osd tier remove cold-storage hot-storage
+
+
+排查找不到的对象
+================
+.. Troubleshooting Unfound Objects
+
+Under certain circumstances, restarting OSDs may result in unfound objects.
+
+Here is an example of unfound objects appearing during an upgrade from Ceph
+14.2.6 to Ceph 14.2.7::
+
+   2/543658058 objects unfound (0.000%)
+   pg 19.12 has 1 unfound objects
+   pg 19.2d has 1 unfound objects
+   
+   Possible data damage: 2 pgs recovery_unfound
+   pg 19.12 is active+recovery_unfound+undersized+degraded+remapped, acting [299,310], 1 unfound
+   pg 19.2d is active+recovery_unfound+undersized+degraded+remapped, acting [290,309], 1 unfound
+   
+   # ceph pg 19.12 list_unfound
+   {
+       "num_missing": 1,
+       "num_unfound": 1,
+       "objects": [
+           {
+               "oid": {
+                   "oid": "hit_set_19.12_archive_2020-02-25 13:43:50.256316Z_2020-02-25 13:43:50.325825Z",
+                   "key": "",
+                   "snapid": -2,
+                   "hash": 18,
+                   "max": 0,
+                   "pool": 19,
+                   "namespace": ".ceph-internal"
+               },
+               "need": "3312398'55868341",
+               "have": "0'0",
+               "flags": "none",
+               "locations": []
+           }
+       ],
+       "more": false
+
+Some tests in the field indicate that the unfound objects can be deleted with
+no adverse effects (see `Tracker Issue #44286, Note 3
+<https://tracker.ceph.com/issues/44286#note-3>`_). Pawel Stefanski suggests
+that deleting missing or unfound objects is safe as long as the objects are a
+part of ``.ceph-internal::hit_set_PGID_archive``.
+
+Various members of the upstream Ceph community have reported in `Tracker Issue
+#44286 <https://tracker.ceph.com/issues/44286>`_ that the following versions of
+Ceph have been affected by this issue:
+
+* 14.2.8
+* 14.2.16
+* 15.2.15
+* 16.2.5
+* 17.2.7
+
+See `Tracker Issue #44286 <https://tracker.ceph.com/issues/44286>`_ for the
+history of this issue.
 
 
 .. _创建存储池: ../pools#create-a-pool

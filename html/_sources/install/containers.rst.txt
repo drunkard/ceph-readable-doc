@@ -5,6 +5,7 @@ Ceph 容器映像
 .. Ceph Container Images
 
 .. important::
+
    不鼓励使用 ``:latest`` 标签。如果你用了 ``:latest`` 标签，
    没法保证所有主机上的映像相同，在这样的状态下，
    升级后可能无法正常运行。记着， ``:latest``

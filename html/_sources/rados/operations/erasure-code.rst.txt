@@ -54,8 +54,9 @@ requires at least three hosts:
 ----------
 .. Erasure-code profiles
 
-默认的纠删码配置可容忍两个 OSD 的损失，相当于副本数为三的\
-多副本存储池，但只需 2TB 的空间即可存储 1TB 数据，而无需 3TB 。\
+默认的纠删码配置可容忍连续两个 OSD 的损失，而不丢失数据。
+这个纠删码配置相当于副本数为三的多副本存储池，但存储需求却不同：
+它只需 2TB 的空间即可存储 1TB 数据，而不是 3TB 空间存储 1TB 数据。\
 默认配置可这样查看：
 
 .. prompt:: bash $
@@ -80,9 +81,13 @@ requires at least three hosts:
    The simplest erasure-coded pool has two data chunks (K) and one coding chunk
    (M). The profile of the simplest erasure-coded pool is "k=2 m=1".
 
-确定合理的配置文件很重要，因为存储池创建后就不能再修改了。
-要改的话，只能另外创建一个采用新配置的存储池，
-然后再把所有对象挪过去。
+确定合理的配置很重要，因为存储池创建后就不能再修改了。
+If you find that you need an erasure-coded pool with
+a profile different than the one you have created, you must create a new pool
+with a different (and presumably more carefully considered) profile. When the
+new pool is created, all objects from the wrongly configured pool must be moved
+to the newly created pool. There is no way to alter the profile of a pool after
+the pool has been created.
 
 配置文件里最重要的参数是 *K* 、 *M* 和
 *crush-failure-domain* ，因为它们决定了存储的开销和数据的持久性。

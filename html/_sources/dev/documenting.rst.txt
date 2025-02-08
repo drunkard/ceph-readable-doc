@@ -89,6 +89,10 @@ Graphviz
 
   .. graphviz:: myfile.dot
 
+参阅 `Dot 用户手册 <https://www.graphviz.org/pdf/dotguide.pdf>`_\ ，
+作者是 Emden R. Gansner 、 Eleftherios Koutsofios 、和 Stephen North ，
+里面有 digraphs 实例。对第一次使用 GraphViz 的人来说，这些实例非常有用。
+
 
 Ditaa
 -----

@@ -10,6 +10,27 @@ the translation tooling suits for any language, maybe :-D, you are allowed to
 reuse them for your translation, just let me known,
 email me <gongfan193@gmail.com>
 
+.. code:: bash
+
+    22:29:30 ~/ceph-Chinese-doc $ ./qa
+
+    Progress by subsys:
+        start/                91.17%
+        install/              76.39%
+        rados/                70.14%
+        radosgw/              55.82%
+        rbd/                  63.35%
+        cephfs/               100.0%
+        man/                  100.0%
+        cephadm/              21.84%
+        ceph-volume/          27.52%
+        mgr/                  27.05%
+        monitoring/           100.0%
+        hardware-monitoring/  100.0%
+        jaegertracing/        34.38%
+        security/             23.5%
+    Overall progress:   65.5% (11935 of 34594 rows to translate)
+
 ----
 
 这里是 Ceph 文档中文版的源码，编译好的位于：
@@ -91,6 +112,11 @@ https://github.com/drunkard/ceph-readable-doc ，可以克隆到本地，启动H
 #. 对照着 Ceph 项目源码内与 doc/ 目录相关的 git commit ，把文档里变更过的部分\
    同步到本项目的对应文件；
 #. 根据本项目脚本 ./qa 的输出结果，选择自己喜欢的子系统、文件进行翻译。
+
+我写了个翻译辅助脚本，通过 deepl.com 翻译每一个段落，用法： ::
+
+    ./translation_cn/online_translate.py -h
+
 
 下面会分别介绍各自的流程。
 

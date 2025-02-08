@@ -197,7 +197,7 @@ CRUSH 图定义了一系列的 *类型* ，用于描述这些节点。
 
 .. prompt:: bash $
 
-   ceph osd crush tree
+   ceph osd tree
 
 规则
 ----
@@ -326,7 +326,7 @@ CRUSH 分级结构的影子条目可以这样查看： ::
 
 .. prompt:: bash #
 
-   ceph osd crush tree
+   ceph osd tree
 
 *compat* 和 *per-pool* 两种权重集都在使用时，
 如果某个存储池有它自己的 per-pool 权重集，那就使用它；
@@ -395,7 +395,7 @@ CRUSH 分级结构的影子条目可以这样查看： ::
 
 调整 OSD 的权重
 ---------------
-.. Adjust OSD weight
+.. Adjusting OSD weight
 
 .. note:: 正常情况下， OSD 是在创建时自动加入 CRUSH 图的。
    这一段里的命令很少用到。
@@ -426,7 +426,7 @@ CRUSH 分级结构的影子条目可以这样查看： ::
 
 删除 OSD
 --------
-.. Remove an OSD
+.. Removing an OSD
 
 .. note:: 通常 OSD 会随 ``ceph osd purge`` 命令从 CRUSH 图中删除。
    这个命令很少用到。
@@ -448,7 +448,7 @@ CRUSH 分级结构的影子条目可以这样查看： ::
 
 增加桶
 ------
-.. Add a Bucket
+.. Adding a CRUSH Bucket
 
 .. note:: 新加 OSD 时如果指定了 ``{bucket-type}={bucket-name}``
    这样的位置参数，而且没有那个名字的桶，就会隐式地创建这个桶。

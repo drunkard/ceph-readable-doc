@@ -263,6 +263,9 @@
     仪表盘插件
         <原文空>
 
+    DC
+        **D**\ata **C**\enter, 数据中心。
+
     Flapping OSD
     打摆子的 OSD
         OSD 的状态接连被反复标记为 ``up`` 而后 ``down`` 。
@@ -441,7 +444,7 @@
         为入门者介绍了 RADOS 。
         有兴趣深入了解 RADOS 的读者可参阅
         `《RADOS：一个可扩展、可靠的 PB 级存储集群》
-        Clusters <https://ceph.io/assets/pdfs/weil-rados-pdsw07.pdf>`_ 。
+        <https://ceph.io/assets/pdfs/weil-rados-pdsw07.pdf>`_ 。
 
     RADOS Cluster
     RADOS 集群
