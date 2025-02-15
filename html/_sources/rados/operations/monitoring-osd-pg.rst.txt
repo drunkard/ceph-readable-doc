@@ -22,13 +22,16 @@ OSD 和归置组有助于找出问题所在。
 ========
 .. Monitoring OSDs
 
-某 OSD 的状态可以是在集群内（ ``in`` ）或集群外（ ``out`` ）、\
-也可以是活着且在运行（ ``up`` ）或挂了且不在运行（ ``down`` ）。
-如果一个 OSD 活着，它也可以是 ``in`` （你可以读写数据）或者
-``out`` 集群。如果它以前是 ``in`` 但最近 ``out`` 了，
-Ceph 会把其归置组迁移到其他 OSD 。如果一 OSD ``out`` 了，
-CRUSH 就不会再分配归置组给它。如果它挂了（ ``down`` ）
-其状态也应该是 ``out`` 。
+某个 OSD 可能是在提供服务（ ``in`` ）或不能提供服务（ ``out`` ）；
+可以是在运行且可达（ ``up`` ）或不在运行且不可达（ ``down`` ）。
+
+如果一个 OSD 状态为 ``up`` ，它可能正在提供服务（ ``in`` ，客户端可以读写数据）
+或者可能没在提供服务（ ``out`` ）。如果一个 OSD 它以前是 ``in``
+但随后由于故障或手动操作、设置成了 ``out`` 状态，
+Ceph 会把其归置组迁移到其他 OSD ，以维持预先配置的冗余性。
+
+如果一个 OSD 没在提供服务（ ``out`` ）， CRUSH 就不会再分配归置组给它。
+如果它挂了（ ``down`` ），其状态也应该是 ``out`` 。
 
 .. note:: 如果一 OSD 状态为 ``down`` 且 ``in`` ，必定有问题，\
    而且集群处于非健康状态。
@@ -64,9 +67,11 @@ CRUSH 就不会再分配归置组给它。如果它挂了（ ``down`` ）
 
 OSD 监控的一个重要事情是，当集群启动并运行时，
 所有 OSD 也应该是启动（ ``up`` ）并在集群内（ ``in`` ）运行。
-用下列命令查看： ::
+用下列命令查看：
 
-	ceph osd stat
+.. prompt:: bash $
+
+   ceph osd stat
 
 其结果会告诉你 OSD 总数（ x ）、多少个是 ``up`` 的（ y ）、\
 多少个是 ``in`` 的（ z ）、还有运行图的 epoch (eNNNN) 。 ::
@@ -75,11 +80,13 @@ OSD 监控的一个重要事情是，当集群启动并运行时，
 
 如果处于 ``in`` 状态的 OSD 多于 ``up`` 的，
 用下列命令看看哪些 ``ceph-osd`` 守护进程\
-没在运行： ::
+没在运行：
 
-	ceph osd tree
+.. prompt:: bash $
 
-:: 
+   ceph osd tree
+
+::
 
 	#ID CLASS WEIGHT  TYPE NAME             STATUS REWEIGHT PRI-AFF
 	 -1       2.00000 pool openstack
@@ -91,9 +98,11 @@ OSD 监控的一个重要事情是，当集群启动并运行时，
 .. tip:: 精心设计的 CRUSH 分级结构可以帮你更快的定位到物理位置、\
    加快故障排除。
 
-若一个 OSD 状态为 ``down`` ，启动它： ::
+若一个 OSD 状态为 ``down`` ，启动它：
 
-	sudo systemctl start ceph-osd@1
+.. prompt:: bash $
+
+   sudo systemctl start ceph-osd@1
 
 和 OSD 没运行或不启动相关的问题请看 `OSD 没运行`_\ 。
 
@@ -104,43 +113,47 @@ OSD 监控的一个重要事情是，当集群启动并运行时，
 
 CRUSH 要把归置组分配到 OSD 时，它先查询这个存储池的副本数设置，\
 再把归置组分配到 OSD ，这样就把归置组的各副本分配到了不同 OSD 。\
-比如，如果存储池要求归置组有 3 个副本，
-CRUSH 可能把它们分别分配到
+比如，如果存储池要求归置组有 3 个副本， CRUSH 可能把它们分别分配到
 ``osd.1`` 、 ``osd.2`` 、 ``osd.3`` 。\
 考虑到你设置于 `CRUSH 运行图`_\ 中的失败域，\
 实际上 CRUSH 找出的是伪随机位置，所以在大型集群中，\
 你很少能看到归置组被分配到了相邻的 OSD 。
 
-Ceph 靠 **Acting Set** 处理客户端请求，它们是最终处理请求的一系列 \
-OSD ，因为它们有一个完整的、可以正常工作的归置组分片。
-这一系列的 OSD 们应该拥有和 **Up Set** 一样的一组特定归置组，
-也就是数据将被挪到、复制到的目的地
-（或者是计划中的目的地）。
+Ceph 靠 **Acting Set** 处理客户端请求，
+它们是最终处理请求的一系列 OSD ，
+因为它们有一个完整的、可以正常工作的归置组分片版本。
+相比之下， **Up Set** 是一系列的 OSD 们，它们内含一个特定归置组，
+数据将被移动到、复制到 **Up Set** ，或是计划移动到、复制到 **Up Set** 。
+参见 :ref:`归置组概念 <rados_operations_pg_concepts>` 。
 
 在某些情形下，位于 acting set 中的一个 OSD ``down`` 了\
 或者不能为归置组内的对象提供服务，这些情形发生时无需惊慌，\
 常见原因如下：
 
-- 你增加或拆除了一个 OSD 。然后 CRUSH 把那个归置组分配到了\
-  其他 OSD ，因此改变了 Acting Set 的构成、\
-  并且用 backfill 进程启动了数据迁移；
+- 你增加或拆除了一个 OSD ，然后 CRUSH 把那个归置组分配到了\
+  其他 OSD ，并且这个重分配改变了 Acting Set 的构成、\
+  并触发了 backfill （回填）进程做数据迁移；
 - 一 OSD ``down`` 了、重启了、而现在正恢复（ ``recovering`` ）；
 - acting set 中的一个 OSD 挂了，不能提供服务，\
   另一个 OSD 临时接替其工作。
 
-大多数情况下 up set 和 acting set 是相同的，如果不同，\
-说明可能 Ceph 在迁移 PG （它被重映射了）、某个 OSD 在恢复、\
-或者哪里有问题。这种情况下， Ceph 通常表现为 HEALTH WARN 状态，\
+大多数情况下 Up Set 和 Acting Set 是相同的，如果不同，\
+说明可能 Ceph 正在迁移这个 PG （换句话说就是，这个 PG 被重映射了）、
+原因可能是某个 OSD 正在恢复、或者集群哪里有问题。
+这种情况下， Ceph 通常显示 "HEALTH WARN" 状态，\
 还有 "stuck stale" 消息。
 
-用下列命令获取归置组列表： ::
+用下列命令获取归置组列表：
 
-	ceph pg dump
+.. prompt:: bash $
 
-要根据指定归置组号查看哪些 OSD 位于 Acting Set 或 Up Set 里，\
-执行： ::
+   ceph pg dump
 
-	ceph pg map {pg-num}
+要查看指定归置组的 Acting Set 和 Up Set 里有哪些 OSD ，执行下列命令：
+
+.. prompt:: bash $
+
+   ceph pg map {pg-num}
 
 其结果会告诉你 osdmap 版本（ eNNN ）、归置组号（ {pg-num} ）、 \
 Up Set 内的 OSD （ up[] ）、和 Acting Set 内的 OSD
@@ -189,7 +202,7 @@ OSD 们也向监视器报告自己的状态，
 
 监控归置组状态
 ==============
-.. Monitoring Placement Group States
+.. Monitoring PG States
 
 如果你执行过 ``ceph health`` 、 ``ceph -s`` 、或 ``ceph -w`` 命令，
 你也许注意到了集群并非总返回 ``HEALTH OK`` 。
@@ -209,9 +222,11 @@ OSD 们也向监视器报告自己的状态，
 归置组监控的一件重要事情是保证集群起来并运行着，
 所有归置组都处于 ``active`` 状态、
 并且最好是 ``clean`` 状态。
-用下列命令查看所有归置组状态： ::
+用下列命令查看所有归置组状态：
 
-	ceph pg stat
+.. prompt:: bash $
+
+   ceph pg stat
 
 其结果会告诉你归置组总数（ x ）、
 有多少归置组处于某种特定状态，
@@ -219,44 +234,47 @@ OSD 们也向监视器报告自己的状态，
 
 	x pgs: y active+clean; z bytes data, aa MB used, bb GB / cc GB avail
 
-.. note:: 对 Ceph 来说，同时报告出归置组的多种状态是正常的。
+.. note:: 对 Ceph 来说，同时报告出归置组的多种状态是正常的。例如
+   ``active+clean`` 、 ``active+clean+remapped`` 、 ``active+clean+scrubbing`` 。
 
 除了归置组状态之外， Ceph 也会报告已用的存储容量（ aa ）、
-剩余空间（ bb ）和归置组总容量。
-这些数字在某些情况下是很重要的：
+剩余空间（ bb ）和归置组总容量。这些数字在某些情况下是很重要的：
 
 - 快达到 ``near full ratio`` 或 ``full ratio`` 时；
-- 由于 CRUSH 配置错误致使你的数据\
-  没能在集群内分布。
+- 由于 CRUSH 配置错误致使你的数据没能在集群内分布。
 
+.. topic:: 归置组唯一标识符（ PG ID ）
 
-.. topic:: 归置组唯一标识符
-
-   归置组 ID 由存储池号（不是存储池名字）、
-   后面跟一个点（ . ）、然后是归置组 ID ，
-   它是一个十六进制数字。
+   归置组 ID 由存储池号（不是存储池名字）、后面跟一个点（ . ）、
+   然后是归置组 ID ，它是一个十六进制数字。
    用 ``ceph osd lspools`` 可查看存储池号及其名字，
    例如，第一个创建的存储池对应于存储池号 1 。
    完整的归置组 ID 格式如下： ::
 
-   	{pool-num}.{pg-id}
+      	{pool-num}.{pg-id}
 
    典型长相： ::
 
    	1.1f
 
 
-用下列命令获取归置组列表： ::
+用下列命令获取归置组列表：
 
-	ceph pg dump
+.. prompt:: bash $
 
-你也可以让它输出到 JSON 格式，并保存到文件： ::
+    ceph pg dump
+
+你也可以让它输出到 JSON 格式，并保存到文件：
+
+.. prompt:: bash $
 
 	ceph pg dump -o {filename} --format=json
 
-要查询某个归置组，用下列命令： ::
+要查询某个归置组，用下列命令：
 
-	ceph pg {poolnum}.{pg-id} query
+.. prompt:: bash $
+
+   ceph pg {poolnum}.{pg-id} query
 
 Ceph 会输出成 JSON 格式。
 
@@ -267,9 +285,10 @@ Ceph 会输出成 JSON 格式。
 ------------
 .. Creating
 
-创建存储池时，它会创建指定数量的归置组。
-Ceph 在创建一或多个归置组时会显示 ``creating`` ；
-创建完后，在其归置组的 Acting Set 里的 OSD 将建立互联；
+PG 是创建存储池时创建的：创建存储池的命令会指定这个存储池的 PG 总数，
+并且会在创建存储池后，也一并创建所有 PG 。
+Ceph 在创建归置组时会显示 ``creating`` ；
+创建完后，归置组的 Acting Set 里的 OSD 们将建立互联；
 一旦互联完成，归置组状态应该变为 ``active+clean`` ，
 意思是 Ceph 客户端可以向归置组写入数据了。
 
@@ -284,11 +303,10 @@ Ceph 在创建一或多个归置组时会显示 ``creating`` ；
 ----------
 .. Peering
 
-Ceph 为归置组建立互联时，会让存储归置组副本的 OSD 之间\
-就其中的对象和元数据状态\ **达成一致**\ 。
-Ceph 完成了互联，也就意味着存储着归置组的 OSD
-就其当前状态达成了一致。然而，
-互联过程的完成并\ **不能**\ 表明各副本都有了数据的最新版本。
+归置组建立互联时，会让存储数据副本的 OSD 们\
+就这个 PG 内的数据和元数据状态\ **达成一致**\ 。
+互联完成，就意味着 OSD 们就那个 PG 的状态达成了一致。
+然而，互联过程的完成并\ **不能**\ 表明各副本都有了数据的最新版本。
 
 .. topic:: 权威历史
 
@@ -307,17 +325,16 @@ Ceph 完成了互联，也就意味着存储着归置组的 OSD
 ----
 .. Active
 
-Ceph 完成互联后，一归置组状态会变为 ``active`` 。 ``active`` \
-状态意味着数据已完好地保存到了主归置组和副本归置组。
+Ceph 完成互联后，一归置组状态会变为 ``active`` 。 ``active`` 状态意味着\
+此 PG 内的数据通常是可用的，在主 OSD 和副本 OSD 上都可以做读出和写入操作。
 
 
 整洁
 ----
 .. Clean
 
-某一归置组处于 ``clean`` 状态时，主 OSD 和副本 OSD 已成功互联，\
-并且没有偏离的归置组。 Ceph 已把归置组中的所有对象复制了\
-规定份数。
+当一个归置组处于 ``clean`` 状态时，存储着其数据和元数据的所有 OSD 们都已成功互联，\
+并且没有孤立的副本。 Ceph 已把归置组中的所有对象复制了正确的份数。
 
 
 已降级
@@ -326,7 +343,7 @@ Ceph 完成互联后，一归置组状态会变为 ``active`` 。 ``active`` \
 
 当客户端向主 OSD 写入数据时，由主 OSD 负责\
 把数据副本写入其余副本 OSD 。主 OSD 把对象写入存储器后，
-在副本 OSD 创建完对象副本并报告给主 OSD 之前，
+在副本 OSD 创建完对象副本并向主 OSD 确认之前，
 主 OSD 会一直停留在 ``degraded`` 状态。
 
 归置组状态可以处于 ``active+degraded`` 状态，
@@ -360,17 +377,19 @@ Ceph 被设计为可容错，可抵御一定规模的软、硬件问题。
 
 恢复并非总是这些小事，因为一次硬件失败可能牵连多个 OSD 。
 比如一个机柜或房间的网络交换机失败了，
-这会导致多个主机上的 OSD 落后于集群的当前状态，
-故障恢复后每一个 OSD 都必须恢复。
+这会导致多个主机上的 OSD 们集体落后于集群的当前状态。
+在这种场景下，只能等故障解决后，
+各个 OSD 才能开始恢复。
 
 Ceph 提供了几个选项来均衡资源竞争，
-如新服务请求、恢复数据对象和恢复归置组到当前状态。
-``osd recovery delay start`` 选项允许一 OSD 在开始恢复进程前，
+如新服务请求、恢复数据对象\
+和恢复归置组到当前状态。
+``osd_recovery_delay_start`` 选项允许一 OSD 在开始恢复进程前，
 先重启、重建互联、甚至处理一些重放请求；
-``osd recovery thread timeout`` 设置线程超时，
+``osd_recovery_thread_timeout`` 设置线程超时，
 因为多个 OSD 可能交替失败、重启和重建互联；
-``osd recovery max active`` 选项限制一 OSD 最多同时接受多少请求，
-以防它压力过大而不能正常服务；
+``osd_recovery_max_active`` 选项限制一个 OSD
+最多同时处理多少个恢复请求，以防它压力过大而不能正常服务；
 ``osd recovery max chunk`` 选项限制恢复数据块尺寸，
 以防网络拥塞。
 
@@ -397,26 +416,31 @@ PG 们可能挪走，空间就腾出来了。
 ``backfill_toofull`` 和 ``backfill_wait`` 相似的地方在于，
 随着环境的变化，回填可以继续进行。
 
-Ceph 有多个选项可以解决重分配归置组给一 OSD （特别是新 OSD ）\
-时相关的负载问题。默认情况下，
-``osd_max_backfills`` 把双向的回填并发量都设置为 1 ；
-``backfill full ratio`` 可让一 OSD 在快到\
+Ceph 提供了几个选项，用于管理重分配归置组给一个 OSD
+（特别是新 OSD ）时产生的爆发性负载。
+``osd_max_backfills`` 设置一个 OSD 双向的最大并发回填数
+（默认为 1 。注意，使用 `mClock`_ 调度器时不能更改此选项，
+除非你设置了 ``osd_mclock_override_recovery_settings = true`` ，
+参阅 `mClock 回填`_\ ）。
+``backfill_full_ratio`` 可让一 OSD 在快到\
 占满率（默认 90% ）时拒绝回填请求，
 占满率可以用 ``ceph osd set-backfillfull-ratio`` 命令更改。
-如果一 OSD 拒绝了回填请求，
-在间隔 ``osd backfill retry interval`` 时间之后将重试（默认 30 秒）；
-OSD 也能用 ``osd backfill scan min`` 和 ``osd backfill scan max``
-来管理扫描间隔（默认 64 和 512 ）。
+如果一个 OSD 拒绝了回填请求，
+在间隔 ``osd_backfill_retry_interval`` 时间之后将重试
+（默认 30 秒）； OSD 也能用 ``osd_backfill_scan_min``
+和 ``osd_backfill_scan_max`` 来管理扫描间隔
+（默认分别是 64 和 512 ）。
 
 
 被重映射
 --------
 .. Remapped
 
-负责维护某一归置组的 Acting Set 变更时，数据要从旧集合迁移到新的。
+负责维护某一 PG 的 Acting Set 变更时，
+数据要从旧的 Acting Set 迁移到新的 Acting Set 。
 新的主 OSD 要花费一些时间才能提供服务，
 所以老的主 OSD 还要持续提供服务、直到归置组迁移完。
-数据迁移完后，运行图会包含新 acting set 里的主 OSD 。
+数据迁移完后，运行图会包含新 Acting Set 里的主 OSD 。
 
 
 发蔫
@@ -452,11 +476,13 @@ OSD 也能用 ``osd backfill scan min`` 和 ``osd backfill scan max``
   一个持有最新数据的 OSD 回到 ``up`` 状态；
 - **Stale**: 归置组们处于一种未知状态，
   因为存储它们的 OSD 有一阵子没向监视器报告了\
-  （由 ``mon osd report timeout`` 配置）。
+  （由 ``mon_osd_report_timeout`` 配置）。
 
-为找出卡住的归置组，执行： ::
+为找出卡住的归置组，执行下列命令：
 
-	ceph pg dump_stuck [unclean|inactive|stale|undersized|degraded]
+.. prompt:: bash $
+
+   ceph pg dump_stuck [unclean|inactive|stale|undersized|degraded]
 
 详情见\ `归置组子系统`_\ ，
 关于排除卡住的归置组见\ `排除归置组错误`_\ 。
@@ -474,36 +500,45 @@ OSD 也能用 ``osd backfill scan min`` 和 ``osd backfill scan max``
 Ceph 客户端索取最新集群运行图、
 并用 CRUSH 算法计算对象到\ `归置组`_\ 的映射，
 然后计算如何动态地把归置组映射到 OSD 。
-要定位对象，只需要知道对象名和存储池名字，例如： ::
+要定位对象，只需要知道对象名和存储池名字，例如：
 
-	ceph osd map {poolname} {object-name} [namespace]
+.. prompt:: bash $
+
+   ceph osd map {poolname} {object-name} [namespace]
 
 .. topic:: 练习：定位一个对象
 
    反正是练习，我们先创建一个对象。给 ``rados put`` 命令指定\
    一对象名、一个包含数据的测试文件路径、和一个存储池名字，\
-   例如： ::
+   例如：
 
-	rados put {object-name} {file-path} --pool=data
-	rados put test-object-1 testfile.txt --pool=data
+   .. prompt:: bash $
 
-   用下列命令确认 Ceph 对象存储已经包含此对象： ::
+      rados put {object-name} {file-path} --pool=data
+      rados put test-object-1 testfile.txt --pool=data
 
-	rados -p data ls
+   用下列命令确认 Ceph 对象存储已经包含此对象：
 
-   现在可以定位对象了： ::
+   .. prompt:: bash $
 
-	ceph osd map {pool-name} {object-name}
-	ceph osd map data test-object-1
+      rados -p data ls
+
+   现在可以定位对象了：
+
+   .. prompt:: bash $
+
+      ceph osd map {pool-name} {object-name}
+      ceph osd map data test-object-1
 
    Ceph 应该输出对象的位置，例如： ::
 
         osdmap e537 pool 'data' (1) object 'test-object-1' -> pg 1.d1743484 (1.4) -> up ([0,1], p0) acting ([0,1], p0)
 
-   要删除测试对象，用 ``rados rm`` 即可，如： ::
+   要删除测试对象，用 ``rados rm`` 即可，如：
 
-	rados rm test-object-1 --pool=data
+   .. prompt:: bash $
 
+      rados rm test-object-1 --pool=data
 
 随着集群的运转，对象位置会动态改变。
 Ceph 动态重均衡的优点之一，就是把你从人工迁移中解救了，
@@ -513,6 +548,8 @@ Ceph 动态重均衡的优点之一，就是把你从人工迁移中解救了，
 .. _数据归置: ../data-placement
 .. _存储池: ../pools
 .. _归置组: ../placement-groups
+.. _mClock: ../../configuration/mclock-config-ref.rst
+.. _mClock 回填: ../../configuration/mclock-config-ref.rst#recovery-backfill-options
 .. _体系结构: ../../../architecture
 .. _OSD 没运行: ../../troubleshooting/troubleshooting-osd#osd-not-running
 .. _排除归置组错误: ../../troubleshooting/troubleshooting-pg#troubleshooting-pg-errors

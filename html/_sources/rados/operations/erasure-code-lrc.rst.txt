@@ -1,8 +1,7 @@
-.. Locally repairable erasure code plugin
-
 ======================
  局部自修复纠删码插件
 ======================
+.. Locally repairable erasure code plugin
 
 用 *jerasure* 插件时，纠删码编码的对象存储在多个 OSD 上，丢失\
 一个 OSD 的恢复过程需读取所有其他的 OSD 。比如 *jerasure* 的\
@@ -15,60 +14,62 @@
 即可恢复，而不需要八个。
 
 
-.. Erasure code profile examples
-
 纠删码配置实例
 ==============
-
-.. Reduce recovery bandwidth between hosts
+.. Erasure code profile examples
 
 降低主机间的恢复带宽
 --------------------
+.. Reduce recovery bandwidth between hosts
 
 虽然当所有主机都接入同一交换机时，这不会是诱人的用法，但是带宽\
-利用率确实降低了。 ::
+利用率确实降低了。
 
-        $ ceph osd erasure-code-profile set LRCprofile \
-             plugin=lrc \
-             k=4 m=2 l=3 \
-             crush-failure-domain=host
-        $ ceph osd pool create lrcpool erasure LRCprofile
+.. prompt:: bash $
 
+   ceph osd erasure-code-profile set LRCprofile \
+      plugin=lrc \
+      k=4 m=2 l=3 \
+      crush-failure-domain=host
+   ceph osd pool create lrcpool erasure LRCprofile
 
-.. Reduce recovery bandwidth between racks
 
 降低机架间的恢复带宽
 --------------------
+.. Reduce recovery bandwidth between racks
 
-在 Firefly 版中，只有主 OSD 与丢失块位于同一机架时所需带宽才能\
-降低。 ::
+在 Firefly 版中，只有主 OSD 与丢失块位于\
+同一机架时所需带宽才能降低。
 
-        $ ceph osd erasure-code-profile set LRCprofile \
-             plugin=lrc \
-             k=4 m=2 l=3 \
-             crush-locality=rack \
-             crush-failure-domain=host
-        $ ceph osd pool create lrcpool erasure LRCprofile
+.. prompt:: bash $
 
+   ceph osd erasure-code-profile set LRCprofile \
+      plugin=lrc \
+      k=4 m=2 l=3 \
+      crush-locality=rack \
+      crush-failure-domain=host
+   ceph osd pool create lrcpool erasure LRCprofile
 
-.. Create an lrc profile
 
 创建 lrc 配置
 =============
+.. Create an lrc profile
 
-要新建 *lrc* 纠删码配置： ::
+要新建 *lrc* 纠删码配置：
 
-        ceph osd erasure-code-profile set {name} \
-             plugin=lrc \
-             k={data-chunks} \
-             m={coding-chunks} \
-             l={locality} \
-             [crush-root={root}] \
-             [crush-locality={bucket-type}] \
-             [crush-failure-domain={bucket-type}] \
-             [crush-device-class={device-class}] \
-             [directory={directory}] \
-             [--force]
+.. prompt:: bash $
+
+   ceph osd erasure-code-profile set {name} \
+       plugin=lrc \
+       k={data-chunks} \
+       m={coding-chunks} \
+       l={locality} \
+       [crush-root={root}] \
+       [crush-locality={bucket-type}] \
+       [crush-failure-domain={bucket-type}] \
+       [crush-device-class={device-class}] \
+       [directory={directory}] \
+       [--force]
 
 其中：
 
@@ -157,17 +158,19 @@
 :是否必需: No.
 
 
-.. Low level plugin configuration
-
 低级插件配置
 ============
+.. Low level plugin configuration
 
-**k** 与 **m** 之和必须是 **l** 参数的整数倍。低级配置参数没有\
-强加这样的限制，并且在某些场合下更有益。因此有可能配置两个组，\
-一组 4 块、另一组 3 块；也有可能递归地定义局部集合，如数据中心\
-和机架再组合为数据中心。 **k/m/l** 可通过生成低级配置来实现。
+**k** 与 **m** 之和必须是 **l** 参数的整数倍。
+低级配置参数没有强加这样的限制，
+并且在某些场合下更有益。因此有可能配置两个组，\
+一组 4 块、另一组 3 块；也有可能递归地定义局部集合，
+如数据中心和机架再组合为数据中心。
+**k/m/l** 可通过生成低级配置来实现。
 
-*lrc* 纠删码插件递归地使用纠删码技术，这样一些块丢失的恢复大多只需\
+*lrc* 纠删码插件递归地使用纠删码技术，
+这样一些块丢失的恢复大多只需\
 少部分数据块的子集。
 
 比如，三步编码描述为如下： ::
@@ -177,91 +180,98 @@
    step 2      cDDD____
    step 3      ____cDDD
 
-其中， *c* 是从数据块 *D* 计算出的编码块，块 *7* 丢失后能从后四个\
-块恢复，块 *2* 丢失后能从前四个块恢复。
+其中， *c* 是从数据块 *D* 计算出的编码块，
+块 *7* 丢失后能从后四个块恢复，
+块 *2* 丢失后能从前四个块恢复。
 
-
-.. Erasure code profile examples using low level configuration
 
 使用低级配置的纠删码配置实例
 ============================
+.. Erasure code profile examples using low level configuration
 
-
-.. Minimal testing
 
 最小测试
 --------
+.. Minimal testing
 
 此例其实完全等价于 *K=2* *M=1* 纠删码配置， *DD* 其实就是
-*K=2* 、 *c* 就是 *M=1* 并且默认使用 *jerasure* 插件。 ::
+*K=2* 、 *c* 就是 *M=1* 并且默认使用 *lrc* 插件：
 
-        $ ceph osd erasure-code-profile set LRCprofile \
-             plugin=lrc \
-             mapping=DD_ \
-             layers='[ [ "DDc", "" ] ]'
-        $ ceph osd pool create lrcpool erasure LRCprofile
+.. prompt:: bash $
 
+   ceph osd erasure-code-profile set LRCprofile \
+      plugin=lrc \
+      mapping=DD_ \
+      layers='[ [ "DDc", "" ] ]'
+   ceph osd pool create lrcpool erasure LRCprofile
 
-.. Reduce recovery bandwidth between hosts
 
 降低主机间的恢复带宽
 --------------------
+.. Reduce recovery bandwidth between hosts
 
 虽然当所有主机都接入同一交换机时，这不会是诱人的用法，但是\
 带宽利用率确实降低了。它等价于 **k=4** 、 **m=2** 且 **l=3** ，\
-尽管数据块的布局不同： ::
+尽管数据块的布局不同。 **警告：提示符是可选的**
 
-        $ ceph osd erasure-code-profile set LRCprofile \
-             plugin=lrc \
-             mapping=__DD__DD \
-             layers='[
-                       [ "_cDD_cDD", "" ],
-                       [ "cDDD____", "" ],
-                       [ "____cDDD", "" ],
-                     ]'
-        $ ceph osd pool create lrcpool erasure LRCprofile
+::
 
+   $ ceph osd erasure-code-profile set LRCprofile \
+        plugin=lrc \
+        mapping=__DD__DD \
+        layers='[
+                  [ "_cDD_cDD", "" ],
+                  [ "cDDD____", "" ],
+                  [ "____cDDD", "" ],
+                ]'
+   $ ceph osd pool create lrcpool erasure LRCprofile
 
-.. Reduce recovery bandwidth between racks
 
 降低机架间的恢复带宽
 --------------------
+.. Reduce recovery bandwidth between racks
 
 在 Firefly 版中，只有主 OSD 与丢失块位于同一机架时所需带宽才能\
-降低。 ::
+降低。 **警告：提示符是可选的**
 
-        $ ceph osd erasure-code-profile set LRCprofile \
-             plugin=lrc \
-             mapping=__DD__DD \
-             layers='[
-                       [ "_cDD_cDD", "" ],
-                       [ "cDDD____", "" ],
-                       [ "____cDDD", "" ],
-                     ]' \
-             crush-steps='[
-                             [ "choose", "rack", 2 ],
-                             [ "chooseleaf", "host", 4 ],
-                            ]'
-        $ ceph osd pool create lrcpool erasure LRCprofile
+::
 
+   $ ceph osd erasure-code-profile set LRCprofile \
+       plugin=lrc \
+       mapping=__DD__DD \
+       layers='[
+                 [ "_cDD_cDD", "" ],
+                 [ "cDDD____", "" ],
+                 [ "____cDDD", "" ],
+               ]' \
+       crush-steps='[
+                       [ "choose", "rack", 2 ],
+                       [ "chooseleaf", "host", 4 ],
+                      ]'
+  
+   $ ceph osd pool create lrcpool erasure LRCprofile
 
-.. Testing with different Erasure Code backends
 
 不同纠删码后端测试
 ------------------
+.. Testing with different Erasure Code backends
 
 LRC 当前用 jerasure 作为默认 EC 后端。使用低级配置时，你可以为\
 每一级分别指定 EC 后端、算法。 layers='[ [ "DDc", "" ] ]' 里的\
 第二个参数其实是用于本级的纠删码配置。下面的例子为
-lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
+lrcpool 存储池配置了 cauchy 技术的 ISA 后端。
 
-        $ ceph osd erasure-code-profile set LRCprofile \
-             plugin=lrc \
-             mapping=DD_ \
-             layers='[ [ "DDc", "plugin=isa technique=cauchy" ] ]'
-        $ ceph osd pool create lrcpool erasure LRCprofile
+.. prompt:: bash $
 
-你也可以为各级分别使用不同的纠删码配置。 ::
+   ceph osd erasure-code-profile set LRCprofile \
+      plugin=lrc \
+      mapping=DD_ \
+      layers='[ [ "DDc", "plugin=jerasure technique=cauchy" ] ]'
+   ceph osd pool create lrcpool erasure LRCprofile
+
+你也可以为各级分别使用不同的纠删码配置。 **警告：提示符是可选的**
+
+::
 
         $ ceph osd erasure-code-profile set LRCprofile \
              plugin=lrc \
@@ -274,10 +284,9 @@ lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
         $ ceph osd pool create lrcpool erasure LRCprofile
 
 
-.. Erasure coding and decoding algorithm
-
 纠删编码和解码算法
 ==================
+.. Erasure coding and decoding algorithm
 
 在层描述中找出的步骤： ::
 
@@ -287,18 +296,19 @@ lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
    step 2      cDDD____
    step 3      ____cDDD
 
-将被依次应用。比如一个 4K 的对象要被编码，它要先通过 **step 1**
-被分割为四个 1K 的块（四个大写的 D ），分别依次存储于 2 、 3 、
-6 和 7 。这些数据产生了两个编码块（两个小写 c ），它们分别\
-存储于 1 和 5 。
+将被依次应用。比如一个 4K 的对象要被编码，
+它要先通过 **step 1** 被分割为四个 1K 的块（四个大写的 D ），
+分别依次存储于 2 、 3 、 6 和 7 。
+这些数据产生了两个编码块（两个小写 c ），
+它们分别存储于 1 和 5 。
 
-*step 2* 以相似的方式重用 *step 1* 创建的内容，并把单个\
-编码块 *c* 存储于位置 0 。最后四个下划线（ *_* ）标记是为提高\
-可读性的，被忽略了。
+*step 2* 以相似的方式重用 *step 1* 创建的内容，
+并把单个编码块 *c* 存储于位置 0 。
+最后四个下划线（ *_* ）标记是为提高可读性的，被忽略了。
 
-*step 3* 把单个编码块存储到了位置 4 ， *step 1* 创建的三个块\
-被用于计算此编码块，也就是 *step 1* 产生的编码块成了 *step 3*
-的数据块。
+*step 3* 把单个编码块存储到了位置 4 ，
+*step 1* 创建的三个块被用于计算此编码块，
+也就是 *step 1* 产生的编码块成了 *step 3* 的数据块。
 
 如果 *2* 块丢失了： ::
 
@@ -308,15 +318,17 @@ lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
    step 2      cD D____
    step 3      __ _cDDD
 
-将通过解码来恢复它，反向依次执行： *step 3* 然后 *step 2* 最后\
-是 *step 1* 。
+将通过解码来恢复它，反向依次执行：
+*step 3* 然后 *step 2* 最后是 *step 1* 。
 
 *step 3* 对 *2* 一无所知（即它是下划线），所以跳过此步。
 
-*step 2* 里的编码块存储在 *0* 块中，可用来恢复 *2* 块的内容。\
+*step 2* 里的编码块存储在 *0* 块中，
+可用来恢复 *2* 块的内容。\
 没有需要恢复的数据块了，不再考虑 *step 1* ，进程终止。
 
-恢复块 *2* 需读取块 *0, 1, 3* 并写回块 *2* 。
+恢复块 *2* 需读取块 *0, 1, 3*
+并写回块 *2* 。
 
 如果块 *2, 3, 6* 丢失： ::
 
@@ -334,10 +346,12 @@ lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
    step 2      cD  ____
    step 3      __  cDDD
 
-*step 2* 未能恢复被跳过了，因为丢失了两块（ *2, 3* ），它只能\
-恢复一个块的丢失。
+*step 2* 未能恢复被跳过了，
+因为丢失了两块（ *2, 3* ），
+它只能恢复一个块的丢失。
 
-*step 1* 中的编码块位于块 *1, 5* ，因此能恢复块 *2, 3* 的内容。 ::
+*step 1* 中的编码块位于块 *1, 5* ，
+因此能恢复块 *2, 3* 的内容。 ::
 
    chunk nr    01234567
 
@@ -346,10 +360,9 @@ lrcpool 存储池配置了 cauchy 技术的 ISA 后端。 ::
    step 3      ____cDDD
 
 
-.. Controlling CRUSH placement
-
 CRUSH 归置的控制
 ================
+.. Controlling CRUSH placement
 
 默认的 CRUSH 规则会选择位于不同主机的 OSD ，例如： ::
 
@@ -359,9 +372,10 @@ CRUSH 归置的控制
    step 2      cDDD____
    step 3      ____cDDD
 
-需要整整 8 个 OSD ，分别存储 8 个块。如果这些主机分别位于相邻\
-的机架，前四块可放到第一个机架，后四块可放到第二个机架，这样丢\
-失单个 OSD 恢复时就不会用到机架间的带宽。
+需要整整 8 个 OSD ，分别存储 8 个块。
+如果这些主机分别位于相邻的机架，
+前四块可放到第一个机架，后四块可放到第二个机架，
+这样丢失单个 OSD 恢复时就不会用到机架间的带宽。
 
 例如： ::
 

@@ -1,6 +1,7 @@
 =================
  SHEC 纠删码插件
 =================
+.. SHEC erasure code plugin
 
 *shec* 插件封装了 `multiple SHEC
 <http://tracker.ceph.com/projects/ceph/wiki/Shingled_Erasure_Code_(SHEC)>`_
@@ -9,8 +10,11 @@
 
 创建 SHEC 配置
 ==============
+.. Create an SHEC profile
 
-要新建 *shec* 纠删码配置： ::
+要新建 *shec* 纠删码配置：
+
+.. prompt:: bash $
 
         ceph osd erasure-code-profile set {name} \
              plugin=shec \
@@ -118,7 +122,6 @@ SHEC 的第三个参数（ =c ）是一个持久性估值，它大致等于在\
 
 ``durability estimator of SHEC(4,3,2) = 2``
 
-
 恢复效率
 --------
 .. Recovery Efficiency
@@ -133,10 +136,10 @@ SHEC 的第三个参数（ =c ）是一个持久性估值，它大致等于在\
 ==============
 .. Erasure code profile examples
 
-::
+.. prompt:: bash $
 
-	$ ceph osd erasure-code-profile set SHECprofile \
-		plugin=shec \
-		k=8 m=4 c=3 \
-		crush-failure-domain=host
-	$ ceph osd pool create shecpool erasure SHECprofile
+   ceph osd erasure-code-profile set SHECprofile \
+       plugin=shec \
+       k=8 m=4 c=3 \
+       crush-failure-domain=host
+   ceph osd pool create shecpool erasure SHECprofile
