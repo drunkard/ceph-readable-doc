@@ -147,6 +147,10 @@ Ceph 的管理用户可在创建或更新某用户时赋予他能力。
 
         pool={pool-name} [namespace={namespace-name}] [object_prefix {prefix}]
 
+        [pool={pool-name}] namespace={namespace-name} [object_prefix {prefix}]
+
+        [pool={pool-name}] [namespace={namespace-name}] object_prefix {prefix}
+
         [namespace={namespace-name}] tag {application} {key}={value}
 
   可选的 ``{network/prefix}`` 是一个标准网络名、且前缀长度遵循

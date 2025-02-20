@@ -744,6 +744,10 @@
 
    归置靶的索引类型（ normal 、 indexless 或 #id ）。
 
+.. option:: --placement-inline-data=<true>
+
+   是否把归置靶配置成可以在头对象里内联存储数据块。
+
 .. option:: --tier-type=<type>
 
    zone tier 类型。

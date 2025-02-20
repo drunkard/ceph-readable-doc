@@ -5,19 +5,20 @@
 ================
 
 想帮助 Ceph 项目可以贡献文档。
-即使是小小的贡献也对 Ceph 项目有益，
-比如修正拼写错误或者重写含糊不清的语句。
+即使是小小的贡献也对 Ceph 项目有益。
 
-纠正文档最简单的方法就是往 `ceph-users@ceph.io` 发送电子邮件。在标题行写上
-"ATTN: DOCS" 或者 "Attention: Docs" 或者 "Attention: Documentation" 。
-在 email 正文，写上要纠正的文本（以便我在代码库里找到它）、还有你的更正。
+纠正文档最简单的方法就是往 `ceph-users@ceph.io` 发送电子邮件。
+在标题行写上 "ATTN: DOCS" 或者 "Attention: Docs"
+或者 "Attention: Documentation" 。
+在 email 正文，写上要纠正的文本
+（以便我在代码库里找到它）、还有你的更正。
 
 纠正文档的另外一种方法是发出一个拉取请求。
-向 Ceph 文档提出拉取请求的说明位于 :ref:`making_contributions` 。
+向 Ceph 文档提出拉取请求的说明位于
+:ref:`making_contributions` 。
 
-如果这是你第一次改进文档、或者假设你发现了\
-一个小小的错误（比如拼写错误或者错别字），
-发一封邮件比提出拉取请求更简单。
+如果这是你第一次改进文档、或者假设你发现了一个小小的错误
+（比如拼写错误或者错别字），发一封邮件比提出拉取请求更简单。
 这次改进将归功于你，除非你向 Ceph 文档上游明确提出不要归功于你。
 
 
@@ -107,9 +108,10 @@ Ceph 文档位于和源码同一仓库内的 ``ceph/doc`` 目录下，\
 
 #. 创建 `github`_ 帐户（假如没有的话）。
 
-#. 创建 Ceph 项目的分支，参见 https://github.com/ceph/ceph 。
+#. 创建 Ceph 项目的分支，见 https://github.com/ceph/ceph 。
 
-#. 把已分支项目克隆到本机。
+#. 把你自己的 Ceph 分支项目克隆到本机。
+   这样就创建了“本地工作副本”。
 
 
 Ceph 文档按它自身的主要组件来分类组织。
@@ -283,12 +285,13 @@ Ceph 文档按它自身的主要组件来分类组织。
 ~~~~~~~~~~~~~~~~
 .. Build the Source (First Time)
 
-Ceph 用 Python Sphinx 构建文档，此软件一般都没安装。首次构建文\
-档时，它会生成一个用于 doxygen 的 XML 树，这个过程比较耗时.
+Ceph 用 Python Sphinx 构建文档，此软件一般都没安装。
+首次构建文档时，它会生成一个用于
+doxygen 的 XML 树，这个过程比较耗时.
 
-Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构建文\
-档时，如果你没安装必要工具，构建脚本会提示你。要运行 Sphinx 并\
-成功构建文档，至少要安装下面这些软件包：
+Python Sphinx 的依赖软件包根据发行版不同而有所区别。
+首次构建文档时，如果你没安装必要工具，构建脚本会提示你。
+要运行 Sphinx 并成功构建文档，至少要安装下面这些软件包：
 
 .. raw:: html
 
@@ -352,8 +355,8 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构
 
 .. prompt:: bash $
 
-	sudo apt-get install gcc python-dev python-pip libxml2-dev libxslt-dev doxygen graphviz ant ditaa
-	sudo apt-get install python-sphinx
+	sudo apt-get install gcc python-dev python3-pip libxml2-dev libxslt-dev doxygen graphviz ant ditaa
+	sudo apt-get install python3-sphinx python3-venv cython3
 
 在 Fedora 发行版上可以执行：
 
@@ -364,9 +367,10 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。首次构
    sudo yum install python-jinja2 python-pygments python-docutils python-sphinx
    sudo yum install jericho-html ditaa
 
-在 CentOS/RHEL 发行版上，最好安装 ``epel`` (Extra Packages for
-Enterprise Linux) 软件库，因为它提供了很多默认软件库所没有的软\
-件包。可执行此命令安装 ``epel`` ：
+在 CentOS/RHEL 发行版上，最好安装 ``epel``
+(Extra Packages for Enterprise Linux) 软件库，
+因为它提供了很多默认软件库所没有的软件包。
+可执行此命令安装 ``epel`` ：
 
 .. prompt:: bash $
 
@@ -379,9 +383,9 @@ Enterprise Linux) 软件库，因为它提供了很多默认软件库所没有�
 	sudo yum install gcc python-devel python-pip libxml2-devel libxslt-devel doxygen graphviz ant
 	sudo pip install html2text
 
-对于 CentOS/RHEL 发行版，其余软件包不包含在默认及 ``epel`` 软\
-件库内，所以得到 http://rpmfind.net/ 找，然后到合适的镜像下载\
-并安装它们，比如：
+对于 CentOS/RHEL 发行版，其余软件包不包含在默认及 ``epel`` 软件库内，
+所以得到 http://rpmfind.net/ 找，然后到合适的镜像下载并安装它们，
+比如：
 
 .. prompt:: bash $
 
@@ -396,10 +400,10 @@ Enterprise Linux) 软件库，因为它提供了很多默认软件库所没有�
 
 Ceph 文档大量使用了 `ditaa`_ ，
 它没有对应的 CentOS/RHEL7 二进制包。
-如果你要修改 `ditaa`_ 图，
-那你必须安装 `ditaa`_ 才能确认你新增或修改的 `ditaa`_ 图可以正确渲染。
+如果你要修改 ``ditaa`` 图，
+那你必须安装 ``ditaa`` 才能确认你新增或修改的 ``ditaa`` 图可以正确渲染。
 你可以自己去找与 CentOS/RHEL7 发行版兼容的包，并手动安装。
-在 CentOS/RHEL7 下 `ditaa`_ 依赖下列软件包：
+在 CentOS/RHEL7 下 ``ditaa`` 依赖下列软件包：
 
 - jericho-html
 - jai-imageio-core
@@ -419,8 +423,8 @@ Ceph 文档大量使用了 `ditaa`_ ，
 	wget http://rpmfind.net/linux/fedora/linux/releases/22/Everything/x86_64/os/Packages/d/ditaa-0.9-13.r74.fc21.noarch.rpm
 	sudo yum install ditaa-0.9-13.r74.fc21.noarch.rpm
 
-安装好所有这些包之后，就可以按照\ `构建文档源码`_\ 里的步骤构\
-建文档了。
+安装好所有这些包之后，就可以按照\ `构建文档源码`_\
+里的步骤构建文档了。
 
 
 提交变更
@@ -512,8 +516,7 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 .. Push the Change
 
 你完成一或多个提交后，必须从本地推送到位于 ``github`` 的仓库。
-某些图形化工具（如 ``git-gui`` ）有推送菜单。
-如果你之前创建了分支：
+某些图形化工具（如 ``git-gui`` ）有推送菜单。如果你之前创建了分支：
 
 .. prompt:: bash $
 
@@ -533,12 +536,272 @@ Ceph文档的提交虽然简单，却遵循着严格的惯例：
 前面已经说过了，你可以依照\ `分支并拉取`_\ 方法共享文档。
 
 
+合并额外的提交
+--------------
+.. Squash Extraneous Commits
+
+每个拉取请求（ pull request ）应该只关联一个提交（ commit ）。
+如果您在新功能工作分支上做出了多个提交，则需要“合并（ squash ）”这些提交。
+“合并”是一种特定类型“交互式重置（ interactive rebase ）”的俗称。
+“合并”的方式有很多，但本例涉及的是有三个提交、
+且三个提交中的改动都要保留的情形。这三个提交将被合并成一个提交。
+
+#. 先做出提交，稍后合并它们。
+
+   A. 做出第一个提交。
+
+      ::
+
+         doc/glossary: improve "CephX" entry
+
+         Improve the glossary entry for "CephX".
+
+         Signed-off-by: Zac Dover <zac.dover@proton.me>
+
+         # Please enter the commit message for your changes. Lines starting
+         # with '#' will be ignored, and an empty message aborts the commit.
+         #
+         # On branch wip-doc-2023-03-28-glossary-cephx
+         # Changes to be committed:
+         #       modified:   glossary.rst
+         #
+
+   B. 做出第二个提交。
+
+      ::
+
+         doc/glossary: add link to architecture doc
+
+         Add a link to a section in the architecture document, which link
+         will be used in the process of improving the "CephX" glossary entry.
+
+         Signed-off-by: Zac Dover <zac.dover@proton.me>
+
+            # Please enter the commit message for your changes. Lines starting
+            # with '#' will be ignored, and an empty message aborts the commit.
+            #
+            # On branch wip-doc-2023-03-28-glossary-cephx
+            # Your branch is up to date with 'origin/wip-doc-2023-03-28-glossary-cephx'.
+            #
+            # Changes to be committed:
+            #       modified:   architecture.rst
+
+   C. 做出第三个提交。
+
+      ::
+
+         doc/glossary: link to Arch doc in "CephX" glossary
+
+         Link to the Architecture document from the "CephX" entry in the
+         Glossary.
+
+         Signed-off-by: Zac Dover <zac.dover@proton.me>
+
+         # Please enter the commit message for your changes. Lines starting
+         # with '#' will be ignored, and an empty message aborts the commit.
+         #
+         # On branch wip-doc-2023-03-28-glossary-cephx
+         # Your branch is up to date with 'origin/wip-doc-2023-03-28-glossary-cephx'.
+         #
+         # Changes to be committed:
+         #       modified:   glossary.rst
+
+#. 功能分支中现在有三个提交。
+   现在我们开始将它们合并为一个提交。
+
+   A. 执行命令 ``git rebase -i main`` ，它会把当前分支
+      （功能分支）重置到 ``main`` 分支：
+
+      .. prompt:: bash
+
+         git rebase -i main
+
+   B. 会出现一个提交列表，就是之前在功能分支上做出的那些提交，
+      样子类似下面：
+
+      ::
+
+         pick d395e500883 doc/glossary: improve "CephX" entry
+         pick b34986e2922 doc/glossary: add link to architecture doc
+         pick 74d0719735c doc/glossary: link to Arch doc in "CephX" glossary
+
+         # Rebase 0793495b9d1..74d0719735c onto 0793495b9d1 (3 commands)
+         #
+         # Commands:
+         # p, pick <commit> = use commit
+         # r, reword <commit> = use commit, but edit the commit message
+         # e, edit <commit> = use commit, but stop for amending
+         # s, squash <commit> = use commit, but meld into previous commit
+         # f, fixup [-C | -c] <commit> = like "squash" but keep only the previous
+         #                    commit's log message, unless -C is used, in which case
+         #                    keep only this commit's message; -c is same as -C but
+         #                    opens the editor
+         # x, exec <command> = run command (the rest of the line) using shell
+         # b, break = stop here (continue rebase later with 'git rebase --continue')
+         # d, drop <commit> = remove commit
+         # l, label <label> = label current HEAD with a name
+         # t, reset <label> = reset HEAD to a label
+         # m, merge [-C <commit> | -c <commit>] <label> [# <oneline>]
+         #         create a merge commit using the original merge commit's
+         #         message (or the oneline, if no original merge commit was
+         #         specified); use -c <commit> to reword the commit message
+         # u, update-ref <ref> = track a placeholder for the <ref> to be updated
+         #                       to this position in the new commits. The <ref> is
+         #                       updated at the end of the rebase
+         #
+         # These lines can be re-ordered; they are executed from top to bottom.
+         #
+         # If you remove a line here THAT COMMIT WILL BE LOST.
+
+      找到屏幕上显示 pick 的部分，这是需要您修改的部分。
+      现在有三个提交被标为 pick 。
+      我们选择其中一个继续标记为 pick ，
+      并将另外两个提交标记为 squash 。
+
+#. 把三个提交中的两个标记为 ``squash``:
+
+   ::
+
+      pick d395e500883 doc/glossary: improve "CephX" entry
+      squash b34986e2922 doc/glossary: add link to architecture doc
+      squash 74d0719735c doc/glossary: link to Arch doc in "CephX" glossary
+
+      # Rebase 0793495b9d1..74d0719735c onto 0793495b9d1 (3 commands)
+      #
+      # Commands:
+      # p, pick <commit> = use commit
+      # r, reword <commit> = use commit, but edit the commit message
+      # e, edit <commit> = use commit, but stop for amending
+      # s, squash <commit> = use commit, but meld into previous commit
+      # f, fixup [-C | -c] <commit> = like "squash" but keep only the previous
+      #                    commit's log message, unless -C is used, in which case
+      #                    keep only this commit's message; -c is same as -C but
+      #                    opens the editor
+      # x, exec <command> = run command (the rest of the line) using shell
+      # b, break = stop here (continue rebase later with 'git rebase --continue')
+      # d, drop <commit> = remove commit
+      # l, label <label> = label current HEAD with a name
+      # t, reset <label> = reset HEAD to a label
+      # m, merge [-C <commit> | -c <commit>] <label> [# <oneline>]
+      #         create a merge commit using the original merge commit's
+      #         message (or the oneline, if no original merge commit was
+      #         specified); use -c <commit> to reword the commit message
+      # u, update-ref <ref> = track a placeholder for the <ref> to be updated
+      #                       to this position in the new commits. The <ref> is
+      #                       updated at the end of the rebase
+      #
+      # These lines can be re-ordered; they are executed from top to bottom.
+      #
+      # If you remove a line here THAT COMMIT WILL BE LOST.
+
+#. 现在，我们创建一条提交信息，
+   它适用于所有合并在一起的提交：
+
+   A. 保存并关闭指定要合并的提交列表后，
+      会出现包含所有三条提交信息的列表，
+      如下所示：
+
+      ::
+
+         # This is a combination of 3 commits.
+         # This is the 1st commit message:
+
+         doc/glossary: improve "CephX" entry
+
+         Improve the glossary entry for "CephX".
+
+         Signed-off-by: Zac Dover <zac.dover@proton.me>
+
+         # This is the commit message #2:
+
+         doc/glossary: add link to architecture doc
+
+         Add a link to a section in the architecture document, which link
+         will be used in the process of improving the "CephX" glossary entry.
+
+         Signed-off-by: Zac Dover <zac.dover@proton.me>
+
+         # This is the commit message #3:
+
+         doc/glossary: link to Arch doc in "CephX" glossary
+
+         Link to the Architecture document from the "CephX" entry in the
+         Glossary.
+
+         Signed-off-by: Zac Dover <zac.dover@proton.me>
+
+         # Please enter the commit message for your changes. Lines starting
+         # with '#' will be ignored, and an empty message aborts the commit.
+         #
+         # Date:      Tue Mar 28 18:42:11 2023 +1000
+         #
+         # interactive rebase in progress; onto 0793495b9d1
+         # Last commands done (3 commands done):
+         #    squash b34986e2922 doc/glossary: add link to architecture doc
+         #    squash 74d0719735c doc/glossary: link to Arch doc in "CephX" glossary
+         # No commands remaining.
+         # You are currently rebasing branch 'wip-doc-2023-03-28-glossary-cephx' on '0793495b9d1'.
+         #
+         # Changes to be committed:
+         #       modified:   doc/architecture.rst
+         #       modified:   doc/glossary.rst
+
+   B. 提交信息已改编成了此处所示更简单的格式：
+
+      ::
+
+         doc/glossary: improve "CephX" entry
+
+         Improve the glossary entry for "CephX".
+
+         Signed-off-by: Zac Dover <zac.dover@proton.me>
+
+         # Please enter the commit message for your changes. Lines starting
+         # with '#' will be ignored, and an empty message aborts the commit.
+         #
+         # Date:      Tue Mar 28 18:42:11 2023 +1000
+         #
+         # interactive rebase in progress; onto 0793495b9d1
+         # Last commands done (3 commands done):
+         #    squash b34986e2922 doc/glossary: add link to architecture doc
+         #    squash 74d0719735c doc/glossary: link to Arch doc in "CephX" glossary
+         # No commands remaining.
+         # You are currently rebasing branch 'wip-doc-2023-03-28-glossary-cephx' on '0793495b9d1'.
+         #
+         # Changes to be committed:
+         #       modified:   doc/architecture.rst
+         #       modified:   doc/glossary.rst
+
+#. 将本地工作副本中合并后的提交强制推送（ push ）到远程的上游分支。
+   之所以需要强制推送，是因为新合并的提交在远程分支中没有祖先（ ancestor ）。
+   如果你对此感到困惑，只需运行此命令，
+   先别多想：
+
+   .. prompt:: bash $
+
+      git push -f
+
+   ::
+
+      Enumerating objects: 9, done.
+      Counting objects: 100% (9/9), done.
+      Delta compression using up to 8 threads
+      Compressing objects: 100% (5/5), done.
+      Writing objects: 100% (5/5), 722 bytes | 722.00 KiB/s, done.
+      Total 5 (delta 4), reused 0 (delta 0), pack-reused 0
+      remote: Resolving deltas: 100% (4/4), completed with 4 local objects.
+      To github.com:zdover23/ceph.git
+       + b34986e2922...02e3a5cb763 wip-doc-2023-03-28-glossary-cephx -> wip-doc-2023-03-28-glossary-cephx (forced update)
+
+
+
 通知我们
 --------
 .. Notify Us
 
 如果发出的 PR 长时间没人审核，
-请联系相应组件 :ref:`ctl` 的负责人。
+请联系相应组件的负责人，询问一下这么久是什么原因。
+组件负责人列表见 :ref:`ctl` 。
 
 
 文档风格指南
@@ -584,8 +847,7 @@ Ceph 文档项目的目标之一就是可读性，
 我们应该尽可能维持此惯例，包括文本、项目、文字文本
 （允许例外）、表格、和 ``ditaa`` 图形。
 
-#. **段落：** 段落前后各有一空行，
-   且宽度不超过 80 字符，
+#. **段落：** 段落前后各有一空行，且宽度不超过 80 字符，
    这样文档源码就可以在任何标准终端正确显示。
 
 #. **引文文本：** 要创建引文文本（如展示命令行用法），
@@ -654,21 +916,162 @@ TOC 和超链接
 所有文档都必须被链接到其他文档或列表内，
 否则构建时会被警告。
 
-Ceph 项目采用 ``.. toctree::`` 指令（详情见 `TOC 树`_\ ）。
-渲染时，最好用 ``:maxdepth:`` 参数把 TOC 修饰得简洁些。
+Sphinx 管理的 Ceph 文档套件中的每个文档
+（每个 ``.rst`` 文件）都必须链接到
+(1) 文档套件中的另一个文档，或 (2) 目录 (TOC)。
+如果文档套件中存在文档没有以这种方式链接，
+则 ``build-doc`` 脚本在尝试构建文档时会产生警告。
+
+Ceph 项目使用了 ``.. toctree::`` 指令（详情见 `TOC 树`_\ ）。
+渲染内容表（ TOC ）时，最好指定 ``:maxdepth:`` 参数，
+这样渲染出的 TOC 不至于太长。
 
 链接目标是个惟一标识符（如 ``.. _unique-target-id:`` ）、
 而且某一引用明确引用了它（如 ``:ref: `uniq-target-id``` ），
-这时应该优先用 ``:ref:`` 语法。这样，
-如果源文件位置或文档结构变更之后链接仍然有效，
+这时应该优先用 ``:ref:`` 语法。
+遵循此惯例的话，即使
+``.rst`` 源文件在 ``ceph/doc`` 内移动位置后链接仍然有效，
 详情见\ `交叉引用任意位置`_\ 。
 
-Ceph 文档内的链接可以这样写：
-反引号（重音符号）、之后跟着链接文本、另一个反引号、最后是下划线；
-Sphinx 允许你内联链接目标。然而，我们喜欢这样用：
-在文档底部加 ``.. _Link Text: ../path`` ，
-因为这样的写法在命令行下可读性好。
 
+.. _start_external_hyperlink_example:
+
+外部超链接实例
+~~~~~~~~~~~~~~
+.. External Hyperlink Example
+
+还可以创建一个指向文档某段落的链接，并在链接正文中显示自定义文本。
+当保留的链接句子文本比明确引用链接部分的标题更重要时，
+这种方法就很有用。
+
+例如，链接到 Sphinx Python 文档生成器主页的 RST ，
+生成一句 "Click here to learn more about Python Sphinx." ，
+像这样书写：
+
+::
+
+    ``Click `here <https://www.sphinx-doc.org>`_ to learn more about Python
+    Sphinx.``
+
+然后，渲染成这样：
+
+Click `here <https://www.sphinx-doc.org>`_ to learn more about Python Sphinx. 。
+
+请特别注意反引号后面的下划线。如果你忘了加下划线，
+而这又是你第一天使用 RST ，那么你有可能得花一整天去找到底哪里出了问题，
+却不知道自己只是漏掉了下划线。此外，
+请特别注意替换文本（本例中为 "here" ）与小于号之间的空格，
+小于号把链接目标与显示的文本分隔开来。
+如果没有这个空格，链接将无法正常渲染。
+
+链接自定义
+~~~~~~~~~~
+.. Linking Customs
+
+根据 Ceph 在 Inktank 时代形成的惯例，
+Ceph 项目的文档贡献者倾向于把
+``.. _Link Text: ../path`` 链接放在文档底部，
+然后用 ``:ref:`path``` 形式的引用链接到它们。
+这一约定更受欢迎，因为这样文档在命令行界面中的可读性更好。
+但截至 2023 年，我们不再偏爱其中一种。
+使用哪种惯例能让文本更容易阅读，就采用哪种惯例。
+
+使用句子的一部分作为超链接， `像这样 <docs.ceph.com>`_\ ，不太好。
+建议优先采用“参见 X ”这样的惯例。以下是一些推荐的表述方式：
+
+#. 详情见 `docs.ceph.com <docs.ceph.com>`_ 。
+
+#. 参见 `docs.ceph.com <docs.ceph.com>`_ 。
+
+
+RST 格式的怪异之处
+------------------
+.. Quirks of ReStructured Text
+
+外部链接
+~~~~~~~~
+.. External Links
+
+.. _external_link_with_inline_text:
+
+用下面的公式渲染链接，就是把读者导向 Ceph 文档之外的链接地址：
+
+::
+
+   `inline text <http:www.foo.com>`_
+
+.. note:: 在内联文本和小于号之间不要丢了空格。
+
+   最后一个反引号后面别丢了下划线。
+
+   要链接到 Ceph 文档以外的地址，
+   必须在内联文本和外部地址前的角括号之间加上空格。
+   这个惯例与链接到 Ceph 文档内部位置的内联文本正好相反。
+   参阅 :ref:`here <internal_link_with_inline_text>`
+   以了解此惯例的实例。
+
+   如果您觉得这玩意儿不一致且令人困惑，您的感觉是对的。
+   它的确前后不一，令人困惑。
+
+另请参阅 ":ref:`外部超链接示例 <start_external_hyperlink_example>`" 。
+
+
+内部链接
+~~~~~~~~
+.. Internal Links
+
+要链接到 Ceph 文档中的某个段落，您必须
+（1）在该部分之前定义一个目标链接，然后（2）在文档中的另一个位置链接到该目标。
+以下是目标和链接到这些目标的方式：
+
+定义目标::
+
+   .. _target:
+
+   Title of Targeted Section
+   =========================
+
+   Lorem ipsum...
+
+链接到目标::
+
+   :ref:`target`
+
+.. _internal_link_with_inline_text:
+
+链接到目标时带上内联文本： ::
+
+   :ref:`inline text<target>`
+
+.. note::
+
+   "inline text" 与紧随其后的角括号之间没有空格。这恰恰与
+   :ref:`链接到 Ceph 文档之外位置的内联文本<external_link_with_inline_text>`
+   语法相反。如果您觉得这似乎不一致且令人困惑，
+   您的感觉没错。它就是前后不一，令人困惑。
+
+
+在单词中标记粗体字符
+~~~~~~~~~~~~~~~~~~~~
+.. Escaping Bold Characters within Words
+
+本节介绍如何将单词中的某些字母加粗，而让单词中的其他字母保持常规（非加粗）。
+
+下面的单行段落就是一个例子：
+
+**C**\eph **F**\ile **S**\ystem 。
+
+在 RST 文本里，下面的写法行不通：
+
+::
+
+   **C**eph **F**ile **S**ystem
+
+必须使用转义字符 (\\) 关闭加粗符号，如下所示：
+
+::
+
+   **C**\eph **F**\ile **S**\ystem
 
 
 .. _Python Sphinx: http://sphinx-doc.org

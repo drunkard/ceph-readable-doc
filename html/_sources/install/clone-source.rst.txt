@@ -1,15 +1,14 @@
 ==================
  克隆 Ceph 源码库
 ==================
+.. Cloning the Ceph Source Code Repository
 
 你可以去\ `位于 github 的 Ceph 源码库`_\ 克隆某个 Ceph 分支，\
-先选择一个分支（默认是 ``main`` ），然后点击 **Download ZIP**
-按钮。
+先选择一个分支（默认是 ``main`` ），然后点击 **Download ZIP** 按钮。
 
 .. _位于 github 的 Ceph 源码库: https://github.com/ceph/ceph
 
-
-要克隆整个 git 源码库，你得先安装、配置 ``git`` 。
+要克隆整个 git 源码库，你得先\ :ref:`安装 <install-git>`\ 并配置 ``git`` 。
 
 
 .. _install-git:
@@ -40,6 +39,7 @@
 
 添加 SSH 密钥（可选）
 =====================
+.. Add SSH Keys (Optional)
 
 如果你计划向 Ceph 贡献代码、或者想通过 SSH 克隆（ \
 ``git@github.com:ceph/ceph.git`` ），你必须生成一个 SSH 密钥对。
@@ -58,7 +58,7 @@
 
 .. prompt:: bash $
 
-	cat .ssh/id_rsa.pub
+   cat .ssh/id_rsa.pub
 
 复制公钥。
 

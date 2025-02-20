@@ -126,6 +126,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../cache-tiering/">分级缓存</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../upmap/">使用 pg-upmap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upmap/#id1">在线优化</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../read-balancer/">Operating the Read (Primary) Balancer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../balancer/">均衡器模块</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
@@ -135,7 +136,6 @@
 <li class="toctree-l4"><a class="reference internal" href="#stretch-cluster-issues">Stretch Cluster Issues</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#individual-stretch-pools">Individual Stretch Pools</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#stretch-mode1">Stretch Mode</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#exiting-stretch-mode">Exiting Stretch Mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#limitations-of-stretch-mode">Limitations of Stretch Mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#other-commands">Other commands</a></li>
 </ul>
@@ -316,12 +316,27 @@ See <a class="reference external" href="https://tracker.ceph.com/issues/68338">h
 </section>
 <section id="stretch-mode1">
 <span id="id2"></span><h2>Stretch Mode<a class="headerlink" href="#stretch-mode1" title="Permalink to this heading"></a></h2>
-<p>Stretch mode is designed to handle deployments in which you cannot guarantee the
-replication of data across two data centers. This kind of situation can arise
-when the cluster’s CRUSH rule specifies that three copies are to be made, but
-then a copy is placed in each data center with a <code class="docutils literal notranslate"><span class="pre">min_size</span></code> of 2. Under such
-conditions, a placement group can become active with two copies in the first
-data center and no copies in the second data center.</p>
+<p>Stretch mode is designed to handle netsplit scenarios between two data zones as well
+as the loss of one data zone. It handles the netsplit scenario by choosing the surviving zone
+that has the better connection to the <code class="docutils literal notranslate"><span class="pre">tiebreaker</span> <span class="pre">monitor</span></code>. It handles the loss of one zone by
+reducing the <code class="docutils literal notranslate"><span class="pre">min_size</span></code> of all pools to <code class="docutils literal notranslate"><span class="pre">1</span></code>, allowing the cluster to continue operating
+with the remaining zone. When the lost zone comes back, the cluster will recover the lost data
+and return to normal operation.</p>
+<section id="connectivity-monitor-election-strategy">
+<h3>Connectivity Monitor Election Strategy<a class="headerlink" href="#connectivity-monitor-election-strategy" title="Permalink to this heading"></a></h3>
+<p>When using stretch mode, the monitor election strategy must be set to <code class="docutils literal notranslate"><span class="pre">connectivity</span></code>.
+This strategy tracks network connectivity between the monitors and is
+used to determine which zone should be favored when the cluster is in a netsplit scenario.</p>
+<p>See <a class="reference external" href="../change-mon-elections">Changing Monitor Elections</a></p>
+</section>
+<section id="stretch-peering-rule">
+<h3>Stretch Peering Rule<a class="headerlink" href="#stretch-peering-rule" title="Permalink to this heading"></a></h3>
+<p>One critical behavior of stretch mode is its ability to prevent a PG from going active if the acting set
+contains only replicas from a single zone. This safeguard is crucial for mitigating the risk of data
+loss during site failures because if a PG were allowed to go active with replicas only in a single site,
+writes could be acknowledged despite a lack of redundancy. In the event of a site failure, all data in the
+affected PG would be lost.</p>
+</section>
 <section id="entering-stretch-mode">
 <h3>Entering Stretch Mode<a class="headerlink" href="#entering-stretch-mode" title="Permalink to this heading"></a></h3>
 <p>To enable stretch mode, you must set the location of each monitor, matching
@@ -447,9 +462,8 @@ sites to peer, and no longer requires the site that was up throughout the
 duration of the downtime when peering (which makes failover to the other site
 possible, if needed).</p>
 </section>
-</section>
 <section id="exiting-stretch-mode">
-<h2>Exiting Stretch Mode<a class="headerlink" href="#exiting-stretch-mode" title="Permalink to this heading"></a></h2>
+<h3>Exiting Stretch Mode<a class="headerlink" href="#exiting-stretch-mode" title="Permalink to this heading"></a></h3>
 <p>To exit stretch mode, run the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>mon<span class="w"> </span>disable_stretch_mode<span class="w"> </span><span class="o">[{</span>crush_rule<span class="o">}]</span><span class="w"> </span>--yes-i-really-mean-it</span>
 </pre></div></div><dl class="describe">
@@ -476,6 +490,7 @@ to the desired number of OSDs if they choose to operate with less number of OSDs
 <p>Please note that the command will not execute when the cluster is in
 <code class="docutils literal notranslate"><span class="pre">recovery</span> <span class="pre">stretch</span> <span class="pre">mode</span></code>. The command will only execute when the cluster
 is in <code class="docutils literal notranslate"><span class="pre">degraded</span> <span class="pre">stretch</span> <span class="pre">mode</span></code> or <code class="docutils literal notranslate"><span class="pre">healthy</span> <span class="pre">stretch</span> <span class="pre">mode</span></code>.</p>
+</section>
 </section>
 <section id="limitations-of-stretch-mode">
 <h2>Limitations of Stretch Mode<a class="headerlink" href="#limitations-of-stretch-mode" title="Permalink to this heading"></a></h2>
