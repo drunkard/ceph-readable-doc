@@ -28,9 +28,9 @@
 ======
 .. Option names
 
-All Ceph configuration options have a unique name consisting of words
-formed with lower-case characters and connected with underscore
-(``_``) characters.
+Each of the Ceph configuration options has a unique name that consists of words
+formed with lowercase characters and connected with underscore characters
+(``_``).
 
 When option names are specified on the command line, either underscore
 (``_``) or dash (``-``) characters can be used interchangeable (e.g.,
@@ -46,8 +46,9 @@ throughout this documentation.
 ========
 .. Config sources
 
-每个 Ceph 守护进程、进程、和库都从好几个来源获取它的配置信息，在下面列出了。
-列表里位于后面的会覆盖靠前的同一选项。
+每个 Ceph 守护进程、进程、和库都从好几个来源获取它的配置信息，
+在下面列出了。列表里位于后面的会覆盖靠前的同一选项
+（二者都存在的时候）。
 
 - 编译时内建的默认值
 - 监视器集群的中央配置数据库
@@ -66,12 +67,13 @@ throughout this documentation.
 
 自举引导选项
 ------------
+.. Bootstrap options
 
-Some configuration options affect the process's ability to contact the
-monitors, to authenticate, and to retrieve the cluster-stored configuration.
-For this reason, these options might need to be stored locally on the node, and
-set by means of a local configuration file. These options include the
-following:
+Bootstrap options are configuration options that affect the process's ability
+to contact the monitors, to authenticate, and to retrieve the cluster-stored
+configuration.  For this reason, these options might need to be stored locally
+on the node, and set by means of a local configuration file. These options
+include the following:
 
 .. confval:: mon_host
 .. confval:: mon_host_override
@@ -80,14 +82,15 @@ following:
 - :confval:`mon_data`, :confval:`osd_data`, :confval:`mds_data`,
   :confval:`mgr_data`, and similar options that define which local directory
   the daemon stores its data in.
-- :confval:`keyring`, :confval:`keyfile`, and/or :confval:`key`, which can be used to
-  specify the authentication credential to use to authenticate with
-  the monitor.  Note that in most cases the default keyring location
-  is in the data directory specified above.
+- :confval:`keyring`, :confval:`keyfile`, and/or :confval:`key`, which can be
+  used to specify the authentication credential to use to authenticate with the
+  monitor. Note that in most cases the default keyring location is in the data
+  directory specified above.
 
 大多数情况下，这些选项的默认值都是恰当的。有一个例外：
 用于指示集群监视器地址的 :confval:`mon_host`  选项。
-使用 DNS 来查找监视器时，可以完全忽视本地配置文件。
+:ref:`使用 DNS 来查找监视器<mon-dns-lookup>`\ 时，
+可以完全忽视本地配置文件。
 
 
 跳过监视器配置
@@ -106,14 +109,14 @@ following:
 ========
 .. Configuration sections
 
-Any given process or daemon has a single value for each configuration
-option.  However, values for an option may vary across different
-daemon types even daemons of the same type.  Ceph options that are
-stored in the monitor configuration database or in local configuration
-files are grouped into sections to indicate which daemons or clients
-they apply to.
+Each of the configuration options associated with a single process or daemon
+has a single value. However, the values for a configuration option can vary
+across daemon types, and can vary even across different daemons of the same
+type. Ceph options that are stored in the monitor configuration database or in
+local configuration files are grouped into sections |---| so-called "configuration
+sections" |---| to indicate which daemons or clients they apply to.
 
-These sections include:
+这些段落如下：
 
 .. confsec:: global
 
@@ -160,22 +163,22 @@ These sections include:
 
    :example: ``objecter_inflight_ops = 512``
 
-Sections may also specify an individual daemon or client name.  For example,
+Configuration sections can also specify an individual daemon or client name. For example,
 ``mon.foo``, ``osd.123``, and ``client.smith`` are all valid section names.
 
-Any given daemon will draw its settings from the global section, the
-daemon or client type section, and the section sharing its name.
-Settings in the most-specific section take precedence, so for example
-if the same option is specified in both :confsec:`global`, :confsec:`mon`, and
-``mon.foo`` on the same source (i.e., in the same configurationfile),
-the ``mon.foo`` value will be used.
+Any given daemon will draw its settings from the global section, the daemon- or
+client-type section, and the section sharing its name. Settings in the
+most-specific section take precedence so precedence: for example, if the same
+option is specified in both :confsec:`global`, :confsec:`mon`, and ``mon.foo``
+on the same source (i.e. that is, in the same configuration file), the
+``mon.foo`` setting will be used.
 
 If multiple values of the same configuration option are specified in the same
-section, the last value wins.
+section, the last value specified takes precedence.
 
-Note that values from the local configuration file always take
-precedence over values from the monitor configuration database,
-regardless of which section they appear in.
+Note that values from the local configuration file always take precedence over
+values from the monitor configuration database, regardless of the section in
+which they appear.
 
 
 .. _ceph-metavariables:
@@ -286,19 +289,21 @@ surrounded by square brackets. For example,
 ----------------
 .. Config file option values
 
-The value of a configuration option is a string. If it is too long to
-fit in a single line, you can put a backslash (``\``) at the end of line
-as the line continuation marker, so the value of the option will be
-the string after ``=`` in current line combined with the string in the next
-line::
+The value of a configuration option is a string. If the string is too long to
+fit on a single line, you can put a backslash (``\``) at the end of the line
+and the backslash will act as a line continuation marker. In such a case, the
+value of the option will be the string after ``=`` in the current line,
+combined with the string in the next line. Here is an example::
 
   [global]
   foo = long long ago\
   long ago
 
-In the example above, the value of "``foo``" would be "``long long ago long ago``".
+In this example, the value of the "``foo``" option is "``long long ago long
+ago``".
 
-Normally, the option value ends with a new line, or a comment, like
+An option value typically ends with either a newline or a comment. For
+example:
 
 .. code-block:: ini
 
@@ -306,20 +311,24 @@ Normally, the option value ends with a new line, or a comment, like
     obscure one = difficult to explain # I will try harder in next release
     simpler one = nothing to explain
 
-In the example above, the value of "``obscure one``" would be "``difficult to explain``";
-and the value of "``simpler one`` would be "``nothing to explain``".
+In this example, the value of the "``obscure one``" option is "``difficult to
+explain``" and the value of the "``simpler one`` options is "``nothing to
+explain``".
 
-If an option value contains spaces, and we want to make it explicit, we
-could quote the value using single or double quotes, like
+When an option value contains spaces, it can be enclosed within single quotes
+or double quotes in order to make its scope clear and in order to make sure
+that the first space in the value is not interpreted as the end of the value.
+For example:
 
 .. code-block:: ini
 
     [global]
     line = "to be, or not to be"
 
-Certain characters are not allowed to be present in the option values directly.
-They are ``=``, ``#``, ``;`` and ``[``. If we have to, we need to escape them,
-like
+In option values, there are four characters that are treated as escape
+characters: ``=``, ``#``, ``;`` and ``[``. They are permitted to occur in an
+option value only if they are immediately preceded by the backslash character
+(``\``). For example:
 
 .. code-block:: ini
 
@@ -330,68 +339,72 @@ Every configuration option is typed with one of the types below:
 
 .. describe:: int
 
-   64-bit signed integer, Some SI prefixes are supported, like "K", "M", "G",
-   "T", "P", "E", meaning, respectively, 10\ :sup:`3`, 10\ :sup:`6`,
-   10\ :sup:`9`, etc.  And "B" is the only supported unit. So, "1K", "1M", "128B" and "-1" are all valid
-   option values. Some times, a negative value implies "unlimited" when it comes to
-   an option for threshold or limit.
+   64-bit signed integer. Some SI suffixes are supported, such as "K", "M",
+   "G", "T", "P", and "E" (meaning, respectively, 10\ :sup:`3`, 10\ :sup:`6`,
+   10\ :sup:`9`, etc.). "B" is the only supported unit string. Thus "1K", "1M",
+   "128B" and "-1" are all valid option values. When a negative value is
+   assigned to a threshold option, this can indicate that the option is
+   "unlimited" -- that is, that there is no threshold or limit in effect.
 
    :example: ``42``, ``-1``
 
 .. describe:: uint
 
-   It is almost identical to ``integer``. But a negative value will be rejected.
+   This differs from ``integer`` only in that negative values are not
+   permitted.
 
    :example: ``256``, ``0``
 
 .. describe:: str
 
-   Free style strings encoded in UTF-8, but some characters are not allowed. Please
-   reference the above notes for the details.
+   A string encoded in UTF-8. Certain characters are not permitted. Reference
+   the above notes for the details.
 
    :example: ``"hello world"``, ``"i love \#"``, ``yet-another-name``
 
 .. describe:: boolean
 
-   one of the two values ``true`` or ``false``. But an integer is also accepted,
-   where "0" implies ``false``, and any non-zero values imply ``true``.
+   Typically either of the two values ``true`` or ``false``. However, any
+   integer is permitted: "0" implies ``false``, and any non-zero value implies
+   ``true``.
 
    :example: ``true``, ``false``, ``1``, ``0``
 
 .. describe:: addr
 
-   a single address optionally prefixed with ``v1``, ``v2`` or ``any`` for the messenger
-   protocol. If the prefix is not specified, ``v2`` protocol is used. Please see
-   :ref:`address_formats` for more details.
+   A single address, optionally prefixed with ``v1``, ``v2`` or ``any`` for the
+   messenger protocol. If no prefix is specified, the ``v2`` protocol is used.
+   For more details, see :ref:`address_formats`.
 
    :example: ``v1:1.2.3.4:567``, ``v2:1.2.3.4:567``, ``1.2.3.4:567``, ``2409:8a1e:8fb6:aa20:1260:4bff:fe92:18f5::567``, ``[::1]:6789``
 
 .. describe:: addrvec
 
-   a set of addresses separated by ",". The addresses can be optionally quoted with ``[`` and ``]``.
+   A set of addresses separated by ",". The addresses can be optionally quoted
+   with ``[`` and ``]``.
 
    :example: ``[v1:1.2.3.4:567,v2:1.2.3.4:568]``, ``v1:1.2.3.4:567,v1:1.2.3.14:567``  ``[2409:8a1e:8fb6:aa20:1260:4bff:fe92:18f5::567], [2409:8a1e:8fb6:aa20:1260:4bff:fe92:18f5::568]``
 
 .. describe:: uuid
 
-   the string format of a uuid defined by `RFC4122 <https://www.ietf.org/rfc/rfc4122.txt>`_.
-   And some variants are also supported, for more details, see
-   `Boost document <https://www.boost.org/doc/libs/1_74_0/libs/uuid/doc/uuid.html#String%20Generator>`_.
+   The string format of a uuid defined by `RFC4122
+   <https://www.ietf.org/rfc/rfc4122.txt>`_. Certain variants are also
+   supported: for more details, see `Boost document
+   <https://www.boost.org/doc/libs/1_74_0/libs/uuid/doc/uuid.html#String%20Generator>`_.
 
    :example: ``f81d4fae-7dec-11d0-a765-00a0c91e6bf6``
 
 .. describe:: size
 
-   denotes a 64-bit unsigned integer. Both SI prefixes and IEC prefixes are
-   supported. And "B" is the only supported unit. A negative value will be
-   rejected.
+   64-bit unsigned integer. Both SI prefixes and IEC prefixes are supported.
+   "B" is the only supported unit string. Negative values are not permitted.
 
    :example: ``1Ki``, ``1K``, ``1KiB`` and ``1B``.
 
 .. describe:: secs
 
-   denotes a duration of time. By default the unit is second if not specified.
-   Following units of time are supported:
+   Denotes a duration of time. The default unit of time is the second.
+   The following units of time are supported:
 
               * second: "s", "sec", "second", "seconds"
               * minute: "m", "min", "minute", "minutes"
@@ -403,52 +416,52 @@ Every configuration option is typed with one of the types below:
 
    :example: ``1 m``, ``1m`` and ``1 week``
 
+
 .. _ceph-conf-database:
 
 监视器配置数据库
 ================
 .. Monitor configuration database
 
-The monitor cluster manages a database of configuration options that
-can be consumed by the entire cluster, enabling streamlined central
-configuration management for the entire system.  The vast majority of
-configuration options can and should be stored here for ease of
-administration and transparency.
+The monitor cluster manages a database of configuration options that can be
+consumed by the entire cluster. This allows for streamlined central
+configuration management of the entire system. For ease of administration and
+transparency, the vast majority of configuration options can and should be
+stored in this database.
 
-A handful of settings may still need to be stored in local
-configuration files because they affect the ability to connect to the
-monitors, authenticate, and fetch configuration information.  In most
-cases this is limited to the ``mon_host`` option, although this can
-also be avoided through the use of DNS SRV records.
+Some settings might need to be stored in local configuration files because they
+affect the ability of the process to connect to the monitors, to authenticate,
+and to fetch configuration information. In most cases this applies only to the
+``mon_host`` option. This issue can be avoided by using :ref:`DNS SRV
+records<mon-dns-lookup>`.
 
 段落和掩码
 ----------
 .. Sections and masks
 
-Configuration options stored by the monitor can live in a global
-section, daemon type section, or specific daemon section, just like
-options in a configuration file can.
+Configuration options stored by the monitor can be stored in a global section,
+in a daemon-type section, or in a specific daemon section. In this, they are
+no different from the options in a configuration file.
 
-In addition, options may also have a *mask* associated with them to
-further restrict which daemons or clients the option applies to.
-Masks take two forms:
+In addition, options may have a *mask* associated with them to further restrict
+which daemons or clients the option applies to. Masks take two forms:
 
-#. ``type:location`` where *type* is a CRUSH property like `rack` or
-   `host`, and *location* is a value for that property.  For example,
+#. ``type:location`` where ``type`` is a CRUSH property like ``rack`` or
+   ``host``, and ``location`` is a value for that property. For example,
    ``host:foo`` would limit the option only to daemons or clients
    running on a particular host.
-#. ``class:device-class`` where *device-class* is the name of a CRUSH
-   device class (e.g., ``hdd`` or ``ssd``).  For example,
+#. ``class:device-class`` where ``device-class`` is the name of a CRUSH
+   device class (for example, ``hdd`` or ``ssd``). For example,
    ``class:ssd`` would limit the option only to OSDs backed by SSDs.
-   (This mask has no effect for non-OSD daemons or clients.)
+   (This mask has no effect on non-OSD daemons or clients.)
 
-When setting a configuration option, the `who` may be a section name,
-a mask, or a combination of both separated by a slash (``/``)
-character.  For example, ``osd/rack:foo`` would mean all OSD daemons
-in the ``foo`` rack.
+In commands that specify a configuration option, the argument of the option (in
+the following examples, this is the "who" string) may be a section name, a
+mask, or a combination of both separated by a slash character (``/``). For
+example, ``osd/rack:foo`` would refer to all OSD daemons in the ``foo`` rack.
 
-When viewing configuration options, the section name and mask are
-generally separated out into separate fields or columns to ease readability.
+When configuration options are shown, the section name and mask are presented
+in separate fields or columns to make them more readable.
 
 
 命令
@@ -518,7 +531,7 @@ For example:
     Can update at runtime: false
     See also: [log_to_stderr,err_to_stderr,log_to_syslog,err_to_syslog]
 
-or:
+或者：
 
 .. prompt:: bash $
 

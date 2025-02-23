@@ -45,19 +45,25 @@ Getting librados for C/C++
 --------------------------
 
 To install ``librados`` development support files for C/C++ on Debian/Ubuntu
-distributions, execute the following::
+distributions, execute the following:
 
-	sudo apt-get install librados-dev
+.. prompt:: bash $
+
+   sudo apt-get install librados-dev
 
 To install ``librados`` development support files for C/C++ on RHEL/CentOS
-distributions, execute the following::
+distributions, execute the following:
 
-	sudo yum install librados2-devel
+.. prompt:: bash $
+
+   sudo yum install librados2-devel libradospp-devel
 
 Once you install ``librados`` for developers, you can find the required 
-headers for C/C++ under ``/usr/include/rados``. ::
+headers for C/C++ under ``/usr/include/rados``:
 
-	ls /usr/include/rados
+.. prompt:: bash $
+
+   ls /usr/include/rados
 
 
 获取 librados 的 Python 支持
@@ -97,37 +103,49 @@ CentOS/RHEL 系统上安装到了 ``/usr/lib/python*/site-packages`` 。
 
 要安装 ``librados`` 的 Java 支持，你需要执行下列步骤：
 
-#. 安装 ``jna.jar`` 。在 Debian/Ubuntu 系统下应执行： ::
+#. 安装 ``jna.jar`` 。在 Debian/Ubuntu 系统下应执行：
 
-	sudo apt-get install libjna-java
+   .. prompt:: bash $
 
-   在 CentOS/RHEL 下应执行： ::
+      sudo apt-get install libjna-java
 
-	sudo yum install jna
+   在 CentOS/RHEL 下应执行：
+
+   .. prompt:: bash $
+
+      sudo yum install jna
 
    JAR 文件位于 ``/usr/share/java`` 。
 
-#. 克隆 ``rados-java`` 软件库： ::
+#. 克隆 ``rados-java`` 软件库：
 
-	git clone --recursive https://github.com/ceph/rados-java.git
+   .. prompt:: bash $
 
-#. 构建 ``rados-java`` 软件库： ::
+      git clone --recursive https://github.com/ceph/rados-java.git
 
-	cd rados-java
-	ant
+#. 构建 ``rados-java`` 软件库：
+
+   .. prompt:: bash $
+
+      cd rados-java
+      ant
 
    JAR 文件位于 ``rados-java/target`` 。
 
 #. 把 RADOS 的 JAR 文件复制到统一位置（如 ``/usr/share/java`` ），并确保它\
-   和 JNA JAR 都位于 JVM 的类路径里。例如： ::
+   和 JNA JAR 都位于 JVM 的类路径里。例如：
 
-	sudo cp target/rados-0.1.3.jar /usr/share/java/rados-0.1.3.jar
-	sudo ln -s /usr/share/java/jna-3.2.7.jar /usr/lib/jvm/default-java/jre/lib/ext/jna-3.2.7.jar
-	sudo ln -s /usr/share/java/rados-0.1.3.jar  /usr/lib/jvm/default-java/jre/lib/ext/rados-0.1.3.jar
+   .. prompt:: bash $
 
-要编译文档，用下列命令： ::
+      sudo cp target/rados-0.1.3.jar /usr/share/java/rados-0.1.3.jar
+      sudo ln -s /usr/share/java/jna-3.2.7.jar /usr/lib/jvm/default-java/jre/lib/ext/jna-3.2.7.jar  
+      sudo ln -s /usr/share/java/rados-0.1.3.jar  /usr/lib/jvm/default-java/jre/lib/ext/rados-0.1.3.jar
 
-	ant docs
+要编译文档，用下列命令：
+
+.. prompt:: bash $
+
+   ant docs
 
 
 获取 librados 的 PHP 绑定
@@ -135,25 +153,33 @@ CentOS/RHEL 系统上安装到了 ``/usr/lib/python*/site-packages`` 。
 
 要安装 ``librados`` 的 PHP 扩展，可按如下步骤：
 
-#. 安装 php-dev ，在 Debian/Ubuntu 下应该执行： ::
+#. 安装 php-dev ，在 Debian/Ubuntu 下应该执行：
 
-	sudo apt-get install php5-dev build-essential
+   .. prompt:: bash $
 
-   在 CentOS/RHEL 下应该执行： ::
+      sudo apt-get install php5-dev build-essential
 
-	sudo yum install php-devel
+   在 CentOS/RHEL 下应该执行：
 
-#. 克隆 ``phprados`` 源码库： ::
+   .. prompt:: bash $
 
-	git clone https://github.com/ceph/phprados.git
+      sudo yum install php-devel
 
-#. 构建 ``phprados``::
+#. 克隆 ``phprados`` 源码库：
 
-	cd phprados
-	phpize
-	./configure
-	make
-	sudo make install
+   .. prompt:: bash $
+
+      git clone https://github.com/ceph/phprados.git
+
+#. 构建 ``phprados`` ：
+
+   .. prompt:: bash $
+
+      cd phprados
+      phpize
+      ./configure
+      make
+      sudo make install
 
 #. 把下列配置加入 php.ini 以启用 ``phprados``::
 
@@ -334,9 +360,11 @@ it and connecting to the cluster might look something like this:
 
 	}
 
-Compile your client and link to ``librados`` using ``-lrados``. For example:: 
+Compile your client and link to ``librados`` using ``-lrados``. For example:
 
-	gcc ceph-client.c -lrados -o ceph-client
+.. prompt:: bash $
+
+   gcc ceph-client.c -lrados -o ceph-client
 
 
 C++ Example
@@ -412,10 +440,12 @@ you to initialize a ``librados::Rados`` cluster handle object:
 
 
 Compile the source; then, link ``librados`` using ``-lrados``. 
-For example::
+For example:
 
-	g++ -g -c ceph-client.cc -o ceph-client.o
-	g++ -g ceph-client.o -lrados -o ceph-client
+.. prompt:: bash $
+
+   g++ -g -c ceph-client.cc -o ceph-client.o
+   g++ -g ceph-client.o -lrados -o ceph-client
 
 
 
@@ -449,9 +479,11 @@ into exceptions.
 		print("Connected to the cluster.")
 
 
-Execute the example to verify that it connects to your cluster. ::
+Execute the example to verify that it connects to your cluster:
 
-	python ceph-client.py
+.. prompt:: bash $
+
+   python ceph-client.py
 
 
 Java Example
@@ -491,10 +523,12 @@ binding converts C++-based errors into exceptions.
 
 Compile the source; then, run it. If you have copied the JAR to
 ``/usr/share/java`` and sym linked from your ``ext`` directory, you won't need
-to specify the classpath. For example::
+to specify the classpath. For example:
 
-	javac CephClient.java
-	java CephClient
+.. prompt:: bash $
+
+   javac CephClient.java
+   java CephClient
 
 
 PHP 实例
@@ -505,6 +539,7 @@ PHP 实例
 .. code-block:: php
 
 	<?php
+
 	$r = rados_create();
 	rados_conf_read_file($r, '/etc/ceph/ceph.conf');
 	if (!rados_connect($r)) {
@@ -514,9 +549,11 @@ PHP 实例
 	}
 
 
-把上述内容保存为 rados.php 并运行： ::
+把上述内容保存为 rados.php 并运行：
 
-	php rados.php
+.. prompt:: bash $
+
+   php rados.php
 
 
 Step 3: Creating an I/O Context

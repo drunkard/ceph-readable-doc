@@ -511,6 +511,7 @@ function. This will result in a circular locking exception.
 .. automethod:: MgrModule.get_perf_schema
 .. automethod:: MgrModule.get_counter
 .. automethod:: MgrModule.get_mgr_id
+.. automethod:: MgrModule.get_daemon_health_metrics
 
 
 暴露给健康检查

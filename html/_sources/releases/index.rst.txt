@@ -22,7 +22,6 @@
 
    Squid (v19.2.*) <squid>
    Reef (v18.2.*) <reef>
-   Quincy (v17.2.*) <quincy>
 
 .. ceph_releases:: releases.yml current
 
@@ -39,6 +38,7 @@
    :maxdepth: 1
    :hidden:
 
+   Quincy (v17.2.*) <quincy>
    Pacific (v16.2.*) <pacific>
    Octopus (v15.2.*) <octopus>
    Nautilus (v14.2.*) <nautilus>
@@ -65,6 +65,7 @@
 
 .. _Squid: squid
 .. _19.2.0: squid#v19-2-0-squid
+.. _19.2.1: squid#v19-2-1-squid
 
 .. _Reef: reef
 .. _18.2.0: reef#v18-2-0-reef
