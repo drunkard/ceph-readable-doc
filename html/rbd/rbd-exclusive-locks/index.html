@@ -186,68 +186,97 @@
   
   <section id="rbd-exclusive-locks">
 <span id="id1"></span><h1>RBD Exclusive Locks<a class="headerlink" href="#rbd-exclusive-locks" title="Permalink to this heading"></a></h1>
-<p id="index-0">Exclusive locks are a mechanism designed to prevent multiple processes
-from accessing the same Rados Block Device (RBD) in an uncoordinated
-fashion. Exclusive locks are heavily used in virtualization (where
-they prevent VMs from clobbering each others’ writes), and also in RBD
-mirroring (where they are a prerequisite for journaling).</p>
-<p>Exclusive locks are enabled on newly created images by default, unless
-overridden via the <code class="docutils literal notranslate"><span class="pre">rbd_default_features</span></code> configuration option or
-the <code class="docutils literal notranslate"><span class="pre">--image-feature</span></code> flag for <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">create</span></code>.</p>
-<p>In order to ensure proper exclusive locking operations, any client
-using an RBD image whose <code class="docutils literal notranslate"><span class="pre">exclusive-lock</span></code> feature is enabled should
-be using a CephX identity whose capabilities include <code class="docutils literal notranslate"><span class="pre">profile</span> <span class="pre">rbd</span></code>.</p>
-<p>Exclusive locking is mostly transparent to the user.</p>
-<ol class="arabic simple">
-<li><p>Whenever any <code class="docutils literal notranslate"><span class="pre">librbd</span></code> client process or kernel RBD client
-starts using an RBD image on which exclusive locking has been
-enabled, it obtains an exclusive lock on the image before the first
-write.</p></li>
-<li><p>Whenever any such client process gracefully terminates, it
-automatically relinquishes the lock.</p></li>
-<li><p>This subsequently enables another process to acquire the lock, and
-write to the image.</p></li>
-</ol>
-<p>Note that it is perfectly possible for two or more concurrently
-running processes to merely open the image, and also to read from
-it. The client acquires the exclusive lock only when attempting to
-write to the image. To disable transparent lock transitions between
-multiple clients, it needs to acquire the lock specifically with
-<code class="docutils literal notranslate"><span class="pre">RBD_LOCK_MODE_EXCLUSIVE</span></code>.</p>
+<p id="index-0">Exclusive locks are mechanisms designed to prevent multiple processes from
+accessing the same Rados Block Device (RBD) in an uncoordinated fashion.
+Exclusive locks are used heavily in virtualization (where they prevent VMs from
+clobbering each other’s writes) and in <a class="reference external" href="../rbd-mirroring">RBD mirroring</a> (where they are a
+prerequisite for journaling in journal-based mirroring and fast generation of
+incremental diffs in snapshot-based mirroring).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">exclusive-lock</span></code> feature is enabled on newly created images. This default
+can be overridden via the <code class="docutils literal notranslate"><span class="pre">rbd_default_features</span></code> configuration option or the
+<code class="docutils literal notranslate"><span class="pre">--image-feature</span></code> and <code class="docutils literal notranslate"><span class="pre">--image-shared</span></code> options for <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">create</span></code> command.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Many image features, including <code class="docutils literal notranslate"><span class="pre">object-map</span></code> and <code class="docutils literal notranslate"><span class="pre">fast-diff</span></code>, depend upon
+exclusive locking. Disabling the <code class="docutils literal notranslate"><span class="pre">exclusive-lock</span></code> feature will negatively
+affect the performance of some operations.</p>
+</div>
+<p>To maintain multi-client access, the <code class="docutils literal notranslate"><span class="pre">exclusive-lock</span></code> feature implements
+automatic cooperative lock transitions between clients. It ensures that only
+a single client can write to an RBD image at any given time and thus protects
+internal image structures such as the object map, the journal or the <a class="reference external" href="../rbd-persistent-write-log-cache">PWL
+cache</a> from concurrent modification.</p>
+<p>Exclusive locking is mostly transparent to the user:</p>
+<ul class="simple">
+<li><p>Whenever a client (a <code class="docutils literal notranslate"><span class="pre">librbd</span></code> process or, in case of a <code class="docutils literal notranslate"><span class="pre">krbd</span></code> client,
+a client node’s kernel) needs to handle a write to an RBD image on which
+exclusive locking has been enabled, it first acquires an exclusive lock on
+the image. If the lock is already held by some other client, that client is
+requested to release it.</p></li>
+<li><p>Whenever a client that holds an exclusive lock on an RBD image gets
+a request to release the lock, it stops handling writes, flushes its caches
+and releases the lock.</p></li>
+<li><p>Whenever a client that holds an exclusive lock on an RBD image terminates
+gracefully, the lock is also released gracefully.</p></li>
+<li><p>A graceful release of an exclusive lock on an RBD image (whether by request
+or due to client termination) enables another, subsequent, client to acquire
+the lock and start handling writes.</p></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>By default, the <code class="docutils literal notranslate"><span class="pre">exclusive-lock</span></code> feature does not prevent two or more
+concurrently running clients from opening the same RBD image and writing to
+it in turns (whether on the same node or not). In effect, their writes just
+get linearized as the lock is automatically transitioned back and forth in
+a cooperative fashion.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>To disable automatic lock transitions between clients, the
+<code class="docutils literal notranslate"><span class="pre">RBD_LOCK_MODE_EXCLUSIVE</span></code> flag may be specified when acquiring the
+exclusive lock. This is exposed by the <code class="docutils literal notranslate"><span class="pre">--exclusive</span></code> option for <code class="docutils literal notranslate"><span class="pre">rbd</span>
+<span class="pre">device</span> <span class="pre">map</span></code> command.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">exclusive-lock</span></code> feature is incompatible with RBD advisory locks
+(the <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">lock</span> <span class="pre">add</span></code> and <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">lock</span> <span class="pre">rm</span></code> commands).</p>
+</div>
 <section id="blocklisting">
 <h2>Blocklisting<a class="headerlink" href="#blocklisting" title="Permalink to this heading"></a></h2>
-<p>Sometimes, a client process (or, in case of a krbd client, a client
-node’s kernel thread) that previously held an exclusive lock on an
-image does not terminate gracefully, but dies abruptly. This may be
-due to having received a <code class="docutils literal notranslate"><span class="pre">KILL</span></code> or <code class="docutils literal notranslate"><span class="pre">ABRT</span></code> signal, for example, or
-a hard reboot or power failure of the client node. In that case, the
-exclusive lock is never gracefully released. Thus, when a new process
-starts and attempts to use the device, it needs a way to break the
-previously held exclusive lock.</p>
-<p>However, a process (or kernel thread) may also hang, or merely lose
-network connectivity to the Ceph cluster for some amount of time. In
-that case, simply breaking the lock would be potentially catastrophic:
-the hung process or connectivity issue may resolve itself, and the old
-process may then compete with one that has started in the interim,
-accessing RBD data in an uncoordinated and destructive manner.</p>
-<p>Thus, in the event that a lock cannot be acquired in the standard
-graceful manner, the overtaking process not only breaks the lock, but
-also blocklists the previous lock holder. This is negotiated between
-the new client process and the Ceph Mon: upon receiving the blocklist
-request,</p>
+<p>Sometimes a client that previously held an exclusive lock on an RBD image does
+not terminate gracefully, but dies abruptly. This may be because the client
+process received a <code class="docutils literal notranslate"><span class="pre">KILL</span></code> or <code class="docutils literal notranslate"><span class="pre">ABRT</span></code> signal, or because the client node
+underwent a hard reboot or suffered a power failure. In cases like this, the
+lock is never gracefully released. This means that any new client that comes up
+and attempts to write to the image must break the previously held exclusive
+lock.</p>
+<p>However, a process (or kernel thread) may hang or merely lose network
+connectivity to the Ceph cluster for some amount of time. In that case,
+breaking the lock would be potentially catastrophic: the hung process or
+connectivity issue could resolve itself and the original process might then
+compete with one that started in the interim, thus accessing RBD data in an
+uncoordinated and destructive manner.</p>
+<p>In the event that a lock cannot be acquired in the standard graceful manner,
+the overtaking process not only breaks the lock but also blocklists the
+previous lock holder. This is negotiated between the new client process and the
+Ceph Monitor.</p>
 <ul class="simple">
-<li><p>the Mon instructs the relevant OSDs to no longer serve requests from
-the old client process;</p></li>
-<li><p>once the associated OSD map update is complete, the Mon grants the
-lock to the new client;</p></li>
-<li><p>once the new client has acquired the lock, it can commence writing
+<li><p>Upon receiving the blocklist request, the monitor instructs the relevant OSDs
+to no longer serve requests from the old client process;</p></li>
+<li><p>after the associated OSD map update is complete, the new client can break the
+previously held lock;</p></li>
+<li><p>after the new client has acquired the lock, it can commence writing
 to the image.</p></li>
 </ul>
 <p>Blocklisting is thus a form of storage-level resource <a class="reference external" href="https://en.wikipedia.org/wiki/Fencing_(computing)">fencing</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
 <p>In order for blocklisting to work, the client must have the <code class="docutils literal notranslate"><span class="pre">osd</span>
 <span class="pre">blocklist</span></code> capability. This capability is included in the <code class="docutils literal notranslate"><span class="pre">profile</span>
-<span class="pre">rbd</span></code> capability profile, which should generally be set on all Ceph
+<span class="pre">rbd</span></code> capability profile, which should be set generally on all Ceph
 <a class="reference internal" href="../../rados/operations/user-management/#user-management"><span class="std std-ref">client identities</span></a> using RBD.</p>
+</div>
 </section>
 </section>
 
