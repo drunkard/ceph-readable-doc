@@ -272,7 +272,8 @@ CephFS 内要挂载到挂载点的路径。</p>
 可用的模式有 <code class="docutils literal notranslate"><span class="pre">no</span></code> 和 <code class="docutils literal notranslate"><span class="pre">clean</span></code> ，默认是 <code class="docutils literal notranslate"><span class="pre">no</span></code> 。</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">no</span></code>: 客户端探测到自己被屏蔽后永远不要尝试重连。
-被屏蔽的客户端不会尝试重连，并且它们的操作也会失败。</p></li>
+被屏蔽的客户端不会尝试重连，
+并且它们的操作也会失败。</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">clean</span></code>: 客户端们探测到自己被屏蔽后会自动重连到 Ceph 集群。
 在重连期间，客户端会丢弃脏数据、元数据，使得页缓存和可写的文件句柄失效。
 重连后，各文件锁会落伍，因为 MDS 失去了对它们的追踪。
@@ -281,10 +282,20 @@ CephFS 内要挂载到挂载点的路径。</p>
 </ul>
 </dd>
 </dl>
+<dl class="field-list simple">
+<dt class="field-odd">command<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>fs=&lt;fs-name&gt;</cite>
+使用旧语法时，指定要挂载的非默认文件系统。</p>
+</dd>
+<dt class="field-even">command<span class="colon">:</span></dt>
+<dd class="field-even"><p><cite>mds_namespace=&lt;fs-name&gt;</cite>
+“fs=” 的同义词（已废弃）。</p>
+</dd>
+</dl>
 </section>
 <section id="id5">
 <h3>高级的<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h3>
-<dl class="simple">
+<dl>
 <dt><strong class="command">cap_release_safety</strong></dt><dd><p>整数。默认：自行计算</p>
 </dd>
 <dt><strong class="command">caps_wanted_delay_max</strong></dt><dd><p>整数，能力释放延迟时间。默认：60</p>
@@ -327,11 +338,51 @@ CephFS 内要挂载到挂载点的路径。</p>
 （回写用较小的 wsize 和条带单元）</p>
 </dd>
 <dt><strong class="command">wsync</strong></dt><dd><p>同步地执行所有命名空间操作。
-这能确保只有收到 MDS 的回复才算命名空间操作完成。这是默认的。</p>
+这能确保只有收到 MDS 的回复才算命名空间操作完成。</p>
 </dd>
 <dt><strong class="command">nowsync</strong></dt><dd><p>允许客户端异步执行命名空间操作。
 启用此选项后，命名空间操作在收到 MDS 的回复前就可以完成，
 如果它有足够的能力这样做。</p>
+</dd>
+<dt><strong class="command">crush_location=x</strong></dt><dd><p>根据 CRUSH 层次结构指定客户端的位置（自 5.8 版起）。
+这是一组用 “|” 分隔的键值对，键值之间用 “:” 分隔。
+注意， ‘|’ 可能需要加引号或转义，
+以避免被 shell 解释为管道。
+键是桶类型的名称（如 rack 、 datacenter
+或默认数据桶类型的区域），值是桶的名字。
+例如，表示客户端位于机架 “myrack” 、
+数据中心 “mydc” 和地区 “myregion” ：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">crush_location</span><span class="o">=</span><span class="n">rack</span><span class="p">:</span><span class="n">myrack</span><span class="o">|</span><span class="n">datacenter</span><span class="p">:</span><span class="n">mydc</span><span class="o">|</span><span class="n">region</span><span class="p">:</span><span class="n">myregion</span>
+</pre></div>
+</div>
+<p>每个键值对都是独立的： myrack 不需要位于 mydc 中，
+而 mydc 也不需要位于 myregion 中。
+这里的位置不是通向层次结构根节点的路径，
+而是一组独立匹配的节点。它支持“多路径”位置，
+因此可以在多个并行层次结构里筛选出位置：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">crush_location</span><span class="o">=</span><span class="n">rack</span><span class="p">:</span><span class="n">myrack1</span><span class="o">|</span><span class="n">rack</span><span class="p">:</span><span class="n">myrack2</span><span class="o">|</span><span class="n">datacenter</span><span class="p">:</span><span class="n">mydc</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong class="command">read_from_replica=&lt;no|balance|localize&gt;</strong></dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">no</span></code>: 禁止读副本，总是选择主 OSD （从 5.8 版起，默认行为）。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">balance</span></code>: 一个多副本存储池收到读请求时，
+从这个 PG 的 acting set 里随机选取一个 OSD 提供服务（从 5.8 版起支持）。</p>
+<p>此模式只有在 Octopus （即 “ceph osd require-osd-release octopus”
+之后）版之后才能安全地随便用；
+不是的话，应该仅限于只读载荷，比如快照。</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">localize</span></code>: 当多副本存储池收到读取请求时，
+挑选最靠近的 OSD 为其提供服务（自 5.8 版起）。
+距离指标是根据 crush_location 给出的客户端位置计算的；
+匹配到的等级最低的桶类型获胜。例如，
+匹配到机架的 OSD 比匹配到数据中心的 OSD 更接近，
+而匹配数据中心的 OSD 又比匹配 region 的 OSD 更接近。</p>
+<p>此模式只有在 Octopus （即 “ceph osd require-osd-release octopus”
+之后）版之后才能安全地随便用；
+不是的话，应该仅限于只读载荷，比如快照。</p>
+</li>
+</ul>
 </dd>
 </dl>
 </section>
@@ -368,6 +419,10 @@ CephFS 内要挂载到挂载点的路径。</p>
 </div>
 <p>如果 Ceph 集群关闭了认证，忽略与凭证相关的选项：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span><span class="o">.</span><span class="n">ceph</span> <span class="n">fs_user</span><span class="o">@.</span><span class="n">mycephfs2</span><span class="o">=/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span>
+</pre></div>
+</div>
+<p>按照旧语法挂载：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mount</span> <span class="o">-</span><span class="n">t</span> <span class="n">ceph</span> <span class="mf">192.168.0.1</span><span class="p">:</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">mycephfs</span>
 </pre></div>
 </div>
 </section>

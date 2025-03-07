@@ -125,12 +125,14 @@ MDS 守护进程能定位各种各样不该出现的状况，并通过 ``ceph st
     名为 *name* 的客户端没能推进它最老的客户端、回刷 tid 。
   描述
     CephFS 的客户端-MDS 协议有一个名为 *oldest tid* 的字段，\
-    可让客户端通知 MDS 哪些请求全部完成了，这样的话它就有可能被 MDS 遗忘。
+    可让客户端通知 MDS 哪些请求全部完成了，这样的话它就可以被 MDS 遗忘。
     如果一个有缺陷的客户端未能上报这个字段，\
     那么与之相关的 MDS 就不能擅自清理这些请求所占用的资源。\
     如果某个客户端的请求在 MDS 端已完成、但尚未收到客户端上报的
     *oldest tid* 值，这样的请求数量超过 ``max_completed_requests``
     （默认为 100000 ）时，此消息就会出现。
+    MDS 用于修剪已完成的客户端请求（或刷回）的最后一个 tid ，
+    会包含在 `session ls` （或 `client ls` ）命令里，作为调试的辅助信息。
 
 ``MDS_DAMAGE``
 --------------
@@ -238,3 +240,40 @@ MDS 守护进程能定位各种各样不该出现的状况，并通过 ``ceph st
 
   描述
     所有 MDS rank 都不可用，导致文件系统完全离线。
+
+``MDS_CLIENTS_LAGGY``
+----------------------------
+  消息
+    "Client *ID* is laggy; not evicted because some OSD(s) is/are laggy"
+    客户端 *ID* 滞后了，没驱逐是因为有些 OSD 滞后了。
+
+  描述
+    如果 OSD 滞后（由于某些条件，如网络割接等），那么它可能导致客户端滞后
+    （会话可能空闲或无法刷回脏数据以撤销能力）。
+    如果 ``defer_client_eviction_on_laggy_osds`` 设置为 true
+    （默认为 true ），就不会驱逐客户端，并因此产生这条健康警告。
+
+``MDS_CLIENTS_BROKEN_ROOTSQUASH``
+---------------------------------
+  消息
+    "X client(s) with broken root_squash implementation (MDS_CLIENTS_BROKEN_ROOTSQUASH)"
+    X 个客户端的 root_squash 实现有问题（ MDS_CLIENTS_BROKEN_ROOTSQUASH ）
+
+  描述
+    在 root_squash 中发现了一个缺陷，它可能会丢失带有 root_squash 能力\
+    的客户端所做的更改。要修正次问题需要更改协议，而且需要升级客户端。
+
+    这是一个 HEALTH_ERR 警告，因为存在不一致和丢失数据的危险。
+    建议同时升级客户端、在此期间停止使用 root_squash ，或者根据需要关闭警告。
+
+    要驱逐并永久阻止有问题的客户端连接到集群，
+    请设置 ``required_client_feature`` 位的 ``client_mds_auth_caps`` 。
+
+``MDS_ESTIMATED_REPLAY_TIME``
+-----------------------------
+  消息
+    "HEALTH_WARN Replay: x% complete. Estimated time remaining *x* seconds"
+    HEALTH_WARN 重放： x% 已完成，预计剩余 *x* 秒。
+
+  描述
+    当一个 MDS 的日志重放耗时超过 30 秒时，此消息会显示预计完成时间。

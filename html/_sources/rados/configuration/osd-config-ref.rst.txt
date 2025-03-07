@@ -187,6 +187,9 @@ Ceph 生成一个所有对象的目录，并比对每个主对象及其副本以
 .. confval:: osd_op_num_shards
 .. confval:: osd_op_num_shards_hdd
 .. confval:: osd_op_num_shards_ssd
+.. confval:: osd_op_num_threads_per_shard
+.. confval:: osd_op_num_threads_per_shard_hdd
+.. confval:: osd_op_num_threads_per_shard_ssd
 .. confval:: osd_op_queue
 .. confval:: osd_op_queue_cut_off
 .. confval:: osd_client_op_priority
@@ -203,6 +206,11 @@ Ceph 生成一个所有对象的目录，并比对每个主对象及其副本以
 .. confval:: osd_op_history_size
 .. confval:: osd_op_history_duration
 .. confval:: osd_op_log_threshold
+.. confval:: osd_op_thread_suicide_timeout
+.. note:: See https://old.ceph.com/planet/dealing-with-some-osd-timeouts/ for
+   more on ``osd_op_thread_suicide_timeout``. Be aware that this is a link to a
+   reworking of a blog post from 2017, and that its conclusion will direct you
+   back to this page "for more information".
 
 
 .. _dmclock-qos:

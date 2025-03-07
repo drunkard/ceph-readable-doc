@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>配额管理 &mdash; Ceph Documentation</title>
+  <title>CephFS 配额管理 &mdash; Ceph Documentation</title>
   
 
   
@@ -57,7 +57,7 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../">Ceph 文件系统</a></li>
-      <li class="breadcrumb-item active">配额管理</li>
+      <li class="breadcrumb-item active">CephFS 配额管理</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/cephfs/quota.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -125,8 +125,8 @@
 <li class="toctree-l3"><a class="reference internal" href="../app-best-practices/"> 应用最佳实践</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fs-volumes/"> FS 卷和子卷</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#"> CephFS 配额管理</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">空间利用率报告和 CephFS 配额</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id2">局限性</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id3">配置</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../health-messages/"> 健康消息</a></li>
@@ -199,12 +199,88 @@
   </div>
 
   
-  <section id="id1">
-<h1>配额管理<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h1>
-<p>CephFS 允许给系统内的任意目录设置配额，这个配额可以限制目录树中这一点以下的<em>字节</em>数或者<em>文件</em>数。</p>
+  <section id="cephfs">
+<h1>CephFS 配额管理<a class="headerlink" href="#cephfs" title="Permalink to this heading"></a></h1>
+<p>CephFS 允许给系统内的任意目录设置配额，
+这个配额可以限制目录树中这一点以下的<em>字节</em>数或者<em>文件</em>数。</p>
+<p>就像 CephFS 里的其它配置一样，
+配额也是用虚拟扩展属性来配置的：</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ceph.quota.max_files</span></code> -- 文件限额</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ceph.quota.max_bytes</span></code> -- 字节数限额</p></li>
+</ul>
+</div></blockquote>
+<p>如果这些属性出现在目录索引节点里，就意味着那里配置了配额；
+如果不存在，那么那个目录就没设置配额
+（然而父目录仍然有可能配置了）。</p>
+<p>要设置配额，给 CephFS 目录的扩展属性设置数值即可：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_bytes</span> <span class="o">-</span><span class="n">v</span> <span class="mi">100000000</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>     <span class="c1"># 100 MB</span>
+<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_files</span> <span class="o">-</span><span class="n">v</span> <span class="mi">10000</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>         <span class="c1"># 10,000 files</span>
+</pre></div>
+</div>
+<p>设置 <code class="docutils literal notranslate"><span class="pre">ceph.quota.max_bytes</span></code> 数值时也可以加上人性化单位：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_bytes</span> <span class="o">-</span><span class="n">v</span> <span class="mi">100</span><span class="n">K</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>          <span class="c1"># 100 KiB</span>
+<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_bytes</span> <span class="o">-</span><span class="n">v</span> <span class="mi">5</span><span class="n">Gi</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>           <span class="c1"># 5 GiB</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>即使输入的是 SI （国际）单位，数值也将严格转换为 IEC 单位，
+例如 1K 转换为 1024 字节。</p>
+</div>
+<p>要查看设置的配额：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ getfattr -n ceph.quota.max_bytes /some/dir
+# file: dir1/
+ceph.quota.max_bytes=&quot;100000000&quot;
+$
+$ getfattr -n ceph.quota.max_files /some/dir
+# file: dir1/
+ceph.quota.max_files=&quot;10000&quot;
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>在一个 CephFS 目录上执行 <code class="docutils literal notranslate"><span class="pre">getfattr</span> <span class="pre">/some/dir</span> <span class="pre">-d</span> <span class="pre">-m</span> <span class="pre">-</span></code>
+命令将不会打印任何 CephFS 扩展属性。这是因为 CephFS 核心和
+FUSE 客户端隐藏了 <code class="docutils literal notranslate"><span class="pre">listxattr(2)</span></code> 系统调用返回的这些信息。
+相反，可以通过执行 <code class="docutils literal notranslate"><span class="pre">getfattr</span> <span class="pre">/some/dir</span> <span class="pre">-n</span> <span class="pre">ceph.&lt;some-xattr&gt;</span></code>
+查看特定的 CephFS 扩展属性。</p>
+</div>
+<p>要删除或禁用配额，可以删除相应的扩展属性或把它的数值设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 。</p>
+<p>这样删除：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ setfattr -x ceph.quota.max_bytes /some/dir
+$ getfattr /some/dir -n ceph.quota.max_bytes
+/some/dir/: ceph.quota.max_bytes: No such attribute
+$
+$ setfattr -x ceph.quota.max_files /some/dir
+$ getfattr /some/dir/ -n ceph.quota.max_files
+/some/dir/: ceph.quota.max_files: No such attribute
+</pre></div>
+</div>
+<p>通过把数值设置为零来删除：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ setfattr -n ceph.quota.max_bytes -v 0 /some/dir
+$ getfattr /some/dir -n ceph.quota.max_bytes
+/some/dir/: ceph.quota.max_bytes: No such attribute
+$
+$ setfattr -n ceph.quota.max_files -v 0 /some/dir
+$ getfattr /some/dir/ -n ceph.quota.max_files
+/some/dir/: ceph.quota.max_files: No such attribute
+</pre></div>
+</div>
+<section id="id1">
+<h2>空间利用率报告和 CephFS 配额<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
+<p>当 CephFS 挂载的根目录设置了配额时，空间利用率报告工具（如 <code class="docutils literal notranslate"><span class="pre">df</span></code> ）报告的
+CephFS 可用空间就是基于配额限制的。也就是说， <code class="docutils literal notranslate"><span class="pre">可用空间</span> <span class="pre">=</span> <span class="pre">配额限制</span> <span class="pre">-</span> <span class="pre">已用空间</span></code> ，
+而不是 <code class="docutils literal notranslate"><span class="pre">可用空间</span> <span class="pre">=</span> <span class="pre">总空间</span> <span class="pre">-</span> <span class="pre">已用空间</span></code> 。</p>
+<p>这种行为可以在 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> 的客户端部分设置下列选项来禁用：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span> <span class="n">quota</span> <span class="n">df</span> <span class="o">=</span> <span class="n">false</span>
+</pre></div>
+</div>
+</section>
 <section id="id2">
 <h2>局限性<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
-<ol class="arabic simple">
+<ol class="arabic">
 <li><p><em>配额是合作性的、非对抗性的。</em> CephFS 的配额功能依赖于挂载它的客户端的合作，
 在达到上限时要停止写入；
 无法阻止篡改过的或者对抗性的客户端，
@@ -227,41 +303,24 @@ mimic 及更高版本的集群上支持。内核客户端（即使是最近的�
 这样才能执行配额管理。如果某一客户端被 MDS 能力限制成了只能访问一个特定路径（如 <code class="docutils literal notranslate"><span class="pre">/home/user</span></code> ），
 并且它们无权访问配置了配额的父目录（如 <code class="docutils literal notranslate"><span class="pre">/home</span></code> ），
 这个客户端就不会按配额执行。所以，
-基于路径做访问控制时，最好在限制了客户端的那个目录
-（如 <code class="docutils literal notranslate"><span class="pre">/home/user</span></code> ）、或者它下面的子目录上配置配额。</p></li>
+基于路径做访问控制时，
+最好在限制了客户端的那个目录
+（如 <code class="docutils literal notranslate"><span class="pre">/home/user</span></code> ）、
+或者它下面的子目录上配置配额。</p>
+<p>如果是内核客户端，在一个目录 inode 上设置了配额后，
+还需要有其父目录的访问权限，才能执行配额。
+如果配额设置在一个目录路径上（如 <code class="docutils literal notranslate"><span class="pre">/home/volumes/group</span></code> ），
+则 kclient 需要有访问其父节点
+（如 <code class="docutils literal notranslate"><span class="pre">/home/volumes</span></code> ）的权限。</p>
+<p>创建这样的用户命令示例如下：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph auth get-or-create client.guest mds &#39;allow r path=/home/volumes, allow rw path=/home/volumes/group&#39; mgr &#39;allow rw&#39; osd &#39;allow rw tag cephfs metadata=*&#39; mon &#39;allow r&#39;
+</pre></div>
+</div>
+<p>参阅: <a class="reference external" href="https://tracker.ceph.com/issues/55090">https://tracker.ceph.com/issues/55090</a></p>
+</li>
 <li><p><em>此后删除或更改的快照文件数据不计入配额。</em>
 另见 <a class="reference external" href="http://tracker.ceph.com/issues/24284">http://tracker.ceph.com/issues/24284</a> 。</p></li>
 </ol>
-</section>
-<section id="id3">
-<h2>配置<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
-<p>就像 CephFS 里的其它配置一样，配额也是用虚拟扩展属性来配置的：</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ceph.quota.max_files</span></code> -- 文件限额</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ceph.quota.max_bytes</span></code> -- 字节数限额</p></li>
-</ul>
-</div></blockquote>
-<p>如果这些属性出现在目录索引节点里，就意味着那里配置了配额；
-如果不存在，那么那个目录就没设置配额
-（然而父目录仍然有可能配置了）。</p>
-<p>要设置配额：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_bytes</span> <span class="o">-</span><span class="n">v</span> <span class="mi">100000000</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>     <span class="c1"># 100 MB</span>
-<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_files</span> <span class="o">-</span><span class="n">v</span> <span class="mi">10000</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>         <span class="c1"># 10,000 files</span>
-</pre></div>
-</div>
-<p>要查看设置的配额：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">getfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_bytes</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>
-<span class="n">getfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_files</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>
-</pre></div>
-</div>
-<p>需要留意的是，如果这些扩展属性的值是 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，
-就说明没设置配额。</p>
-<p>要删除配额：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_bytes</span> <span class="o">-</span><span class="n">v</span> <span class="mi">0</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>
-<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">quota</span><span class="o">.</span><span class="n">max_files</span> <span class="o">-</span><span class="n">v</span> <span class="mi">0</span> <span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="nb">dir</span>
-</pre></div>
-</div>
 </section>
 </section>
 

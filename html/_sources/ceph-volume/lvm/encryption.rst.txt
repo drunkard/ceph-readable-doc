@@ -26,16 +26,16 @@ Ceph.
 
 LUKS on LVM
 -----------
-Encryption is done on top of existing logical volumes (unlike encrypting the
-physical device). Any single logical volume can be encrypted while other
-volumes can remain unencrypted. This method also allows for flexible logical
+Encryption is done on top of existing logical volumes (this is not the same as
+encrypting the physical device). Any single logical volume can be encrypted,
+leaving other volumes unencrypted. This method also allows for flexible logical
 volume setups, since encryption will happen once the LV is created.
 
 
-.. Workflow
-
 工作流程
 --------
+.. Workflow
+
 装配起 OSD 的过程中，需要创建一个密钥，它会包装成 JSON 格式以
 ``stdin`` 传递给监视器，以免被记入日志。
 
@@ -48,19 +48,19 @@ JSON 内容形似： ::
         }
 
 The naming convention for the keys is **strict**, and they are named like that
-for the hardcoded (legacy) names ceph-disk used.
+for the hardcoded (legacy) names used by ceph-disk.
 
 * ``cephx_secret`` : The cephx key used to authenticate
 * ``dmcrypt_key`` : The secret (or private) key to unlock encrypted devices
 * ``cephx_lockbox_secret`` : The authentication key used to retrieve the
   ``dmcrypt_key``. It is named *lockbox* because ceph-disk used to have an
-  unencrypted partition named after it, used to store public keys and other
-  OSD metadata.
+  unencrypted partition named after it, which was used to store public keys and
+  other OSD metadata.
 
 The naming convention is strict because Monitors supported the naming
-convention by ceph-disk, which used these key names. In order to keep
-compatibility and prevent ceph-disk from breaking, ceph-volume will use the same
-naming convention *although they don't make sense for the new encryption
+convention of ceph-disk, which used these key names. In order to maintain 
+compatibility and prevent ceph-disk from breaking, ceph-volume uses the same
+naming convention *although it does not make sense for the new encryption
 workflow*.
 
 After the common steps of setting up the OSD during the "prepare stage" (
@@ -68,8 +68,8 @@ with :term:`bluestore`), the logical volume is left ready
 to be activated, regardless of the state of the device (encrypted or
 decrypted).
 
-At activation time, the logical volume will get decrypted and the OSD started
-once the process completes correctly.
+At the time of its activation, the logical volume is decrypted. The OSD starts
+after the process completes correctly.
 
 Summary of the encryption workflow for creating a new OSD
 ----------------------------------------------------------

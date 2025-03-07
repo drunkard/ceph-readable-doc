@@ -106,13 +106,20 @@ mount 辅助程序的惯例是前两个选项分别为要挂载的设备和目�
     可用的模式有 ``no`` 和 ``clean`` ，默认是 ``no`` 。
 
     - ``no``: 客户端探测到自己被屏蔽后永远不要尝试重连。
-      被屏蔽的客户端不会尝试重连，并且它们的操作也会失败。
+      被屏蔽的客户端不会尝试重连，
+      并且它们的操作也会失败。
 
     - ``clean``: 客户端们探测到自己被屏蔽后会自动重连到 Ceph 集群。
       在重连期间，客户端会丢弃脏数据、元数据，使得页缓存和可写的文件句柄失效。
       重连后，各文件锁会落伍，因为 MDS 失去了对它们的追踪。
       如果一个 inode 内有落伍的文件锁，所有落伍文件锁释放之前，
       这个 inode 不允许读写。
+
+:command: `fs=<fs-name>`
+    使用旧语法时，指定要挂载的非默认文件系统。
+
+:command: `mds_namespace=<fs-name>`
+    "fs=" 的同义词（已废弃）。
 
 
 高级的
@@ -183,12 +190,56 @@ mount 辅助程序的惯例是前两个选项分别为要挂载的设备和目�
 
 :command:`wsync`
     同步地执行所有命名空间操作。
-    这能确保只有收到 MDS 的回复才算命名空间操作完成。这是默认的。
+    这能确保只有收到 MDS 的回复\
+    才算命名空间操作完成。
 
 :command:`nowsync`
     允许客户端异步执行命名空间操作。
-    启用此选项后，命名空间操作在收到 MDS 的回复前就可以完成，
+    启用此选项后，命名空间操作在\
+    收到 MDS 的回复前就可以完成，
     如果它有足够的能力这样做。
+
+:command:`crush_location=x`
+    根据 CRUSH 层次结构指定客户端的位置（自 5.8 版起）。
+    这是一组用 "|" 分隔的键值对，键值之间用 ":" 分隔。
+    注意， '|' 可能需要加引号或转义，
+    以避免被 shell 解释为管道。
+    键是桶类型的名称（如 rack 、 datacenter
+    或默认数据桶类型的区域），值是桶的名字。
+    例如，表示客户端位于机架 "myrack" 、
+    数据中心 "mydc" 和地区 "myregion" ： ::
+
+      crush_location=rack:myrack|datacenter:mydc|region:myregion
+
+    每个键值对都是独立的： myrack 不需要位于 mydc 中，
+    而 mydc 也不需要位于 myregion 中。
+    这里的位置不是通向层次结构根节点的路径，
+    而是一组独立匹配的节点。它支持“多路径”位置，
+    因此可以在多个并行层次结构里筛选出位置： ::
+
+      crush_location=rack:myrack1|rack:myrack2|datacenter:mydc
+
+
+:command:`read_from_replica=<no|balance|localize>`
+    - ``no``: 禁止读副本，总是选择主 OSD （从 5.8 版起，默认行为）。
+
+    - ``balance``: 一个多副本存储池收到读请求时，
+      从这个 PG 的 acting set 里随机选取一个 OSD 提供服务（从 5.8 版起支持）。
+
+      此模式只有在 Octopus （即 "ceph osd require-osd-release octopus"
+      之后）版之后才能安全地随便用；
+      不是的话，应该仅限于只读载荷，比如快照。
+
+    - ``localize``: 当多副本存储池收到读取请求时，
+      挑选最靠近的 OSD 为其提供服务（自 5.8 版起）。
+      距离指标是根据 crush_location 给出的客户端位置计算的；
+      匹配到的等级最低的桶类型获胜。例如，
+      匹配到机架的 OSD 比匹配到数据中心的 OSD 更接近，
+      而匹配数据中心的 OSD 又比匹配 region 的 OSD 更接近。
+
+      此模式只有在 Octopus （即 "ceph osd require-osd-release octopus"
+      之后）版之后才能安全地随便用；
+      不是的话，应该仅限于只读载荷，比如快照。
 
 
 实例
@@ -225,6 +276,10 @@ mount 辅助程序的惯例是前两个选项分别为要挂载的设备和目�
 如果 Ceph 集群关闭了认证，忽略与凭证相关的选项： ::
 
     mount.ceph fs_user@.mycephfs2=/ /mnt/mycephfs
+
+按照旧语法挂载： ::
+
+    mount -t ceph 192.168.0.1:/ /mnt/mycephfs
 
 
 使用范围

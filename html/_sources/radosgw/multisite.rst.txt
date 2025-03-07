@@ -1391,7 +1391,7 @@ realm 并非 period 的一部分，所以，对 realm 的重命名只在本地�
 
 创建域
 ~~~~~~
-.. Create a Zone
+.. Creating a Zone
 
 创建域时，需指定其名字。如果创建的是主域，得加上 ``--master`` 选项，
 一个域组只能有一个主域；若要把域加入域组，
@@ -1440,7 +1440,8 @@ realm 并非 period 的一部分，所以，对 realm 的重命名只在本地�
 
    radosgw-admin period update --commit
 
-.. important:: 从域组删掉域之前先不要删除这个域，否则更新 period 时会失败。
+.. important:: 从域组删掉域之前先不要删除这个域，
+   否则更新 period 时会失败。
 
 域被删除后，如果其它地方也不需要与之相关的存储池，可以考虑删除掉，
 把下面实例中的 ``<del-zone>`` 替换成已删除域的名字即可。

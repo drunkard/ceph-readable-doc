@@ -16,14 +16,10 @@
 描述
 ====
 
-**ceph-rbdnamer** 把指定 RBD 设备所属的\
-存储池和映像名打印到标准输出，
-以便 `udev` （使用类似如下的规则）
-设置设备的符号链接：
-
-::
-
-        KERNEL=="rbd[0-9]*", PROGRAM="/usr/bin/ceph-rbdnamer %n", SYMLINK+="rbd/%c{1}/%c{2}"
+**ceph-rbdnamer** 会把指定 RBD 设备的存储池、
+命名空间、映像名和快照名打印到标准输出。
+`udev` 设备管理器用这些信息来配置 RBD 设备的符号链接。
+合理的 `udev` 规则已经写入了名为 `50-rbd.rules` 的文件里。
 
 
 使用范围
@@ -31,7 +27,6 @@
 
 **ceph-rbdnamer** 是 Ceph 的一部分，这是个伸缩力强、开源、
 分布式的存储系统，更多信息参见 https://docs.ceph.com 。
-
 
 
 参考

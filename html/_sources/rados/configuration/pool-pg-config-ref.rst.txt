@@ -7,11 +7,40 @@
 
 .. index:: pools; configuration
 
-当你创建存储池并分别给它们设置归置组数量时，\
-如果你没指定 Ceph 就用默认值。**我们建议**\ 覆盖一些默认值，\
-特别是存储池的副本数和默认归置组数量，\
-可以在运行 `pool`_ 命令的时候设置这些值。\
-你也可以把配置写入 Ceph 配置文件的 ``[global]`` 段来覆盖默认值。
+CRUSH 算法分配给每个存储池的归置组数量，
+由监视器集群的中央配置数据库中的变量值决定。
+
+Ceph 的容器化部署（用 ``cephadm`` 或 Rook 做的部署）和 Ceph 的非容器化部署\
+都依赖监视器集群内、中央配置数据库里的值为存储池分配归置组。
+
+命令实例
+--------
+.. Example Commands
+
+要查看指定存储池中决定归置组数量的变量值，执行下列命令：
+
+.. prompt:: bash
+
+   ceph config get osd osd_pool_default_pg_num
+
+要设置指定存储池中决定归置组数量的变量值，执行下列命令：
+
+.. prompt:: bash
+
+   ceph config set osd osd_pool_default_pg_num
+
+手动调整
+--------
+.. Manual Tuning
+
+有些情况下，覆盖某些默认值更好。例如，您可能想设置存储池的副本数并\
+覆盖存储池中归置组的默认数量。您可以用 `pool`_ 命令设置这些值。
+
+参考
+----
+.. See Also
+
+参见 :ref:`pg-autoscaler` 。
 
 
 .. literalinclude:: pool-pg.conf
@@ -40,7 +69,6 @@
 .. confval:: osd_max_pg_log_entries
 .. confval:: osd_default_data_pool_replay_window
 .. confval:: osd_max_pg_per_osd_hard_ratio
-
 
 .. _pool: ../../operations/pools
 .. _监控 OSD 和归置组: ../../operations/monitoring-osd-pg#peering

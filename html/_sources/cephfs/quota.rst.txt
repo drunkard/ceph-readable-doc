@@ -1,10 +1,84 @@
-配额管理
-========
-.. Quotas
+CephFS 配额管理
+===============
+.. CephFS Quotas
 
-CephFS 允许给系统内的任意目录设置配额，这个配额可以限制目录树\
-中这一点以下的\ *字节*\ 数或者\ *文件*\ 数。
+CephFS 允许给系统内的任意目录设置配额，
+这个配额可以限制目录树中这一点以下的\
+*字节*\ 数或者\ *文件*\ 数。
 
+就像 CephFS 里的其它配置一样，
+配额也是用虚拟扩展属性来配置的：
+
+ * ``ceph.quota.max_files`` -- 文件限额
+ * ``ceph.quota.max_bytes`` -- 字节数限额
+
+如果这些属性出现在目录索引节点里，就意味着那里配置了配额；
+如果不存在，那么那个目录就没设置配额
+（然而父目录仍然有可能配置了）。
+
+要设置配额，给 CephFS 目录的扩展属性设置数值即可： ::
+
+    setfattr -n ceph.quota.max_bytes -v 100000000 /some/dir     # 100 MB
+    setfattr -n ceph.quota.max_files -v 10000 /some/dir         # 10,000 files
+
+设置 ``ceph.quota.max_bytes`` 数值时也可以加上人性化单位： ::
+
+  setfattr -n ceph.quota.max_bytes -v 100K /some/dir          # 100 KiB
+  setfattr -n ceph.quota.max_bytes -v 5Gi /some/dir           # 5 GiB
+
+.. note:: 即使输入的是 SI （国际）单位，数值也将严格转换为 IEC 单位，
+   例如 1K 转换为 1024 字节。
+
+要查看设置的配额： ::
+
+  $ getfattr -n ceph.quota.max_bytes /some/dir
+  # file: dir1/
+  ceph.quota.max_bytes="100000000"
+  $
+  $ getfattr -n ceph.quota.max_files /some/dir
+  # file: dir1/
+  ceph.quota.max_files="10000"
+
+.. note:: 在一个 CephFS 目录上执行 ``getfattr /some/dir -d -m -``
+   命令将不会打印任何 CephFS 扩展属性。这是因为 CephFS 核心和
+   FUSE 客户端隐藏了 ``listxattr(2)`` 系统调用返回的这些信息。
+   相反，可以通过执行 ``getfattr /some/dir -n ceph.<some-xattr>``
+   查看特定的 CephFS 扩展属性。
+
+要删除或禁用配额，可以删除相应的扩展属性或\
+把它的数值设置为 ``0`` 。
+
+这样删除： ::
+
+  $ setfattr -x ceph.quota.max_bytes /some/dir
+  $ getfattr /some/dir -n ceph.quota.max_bytes
+  /some/dir/: ceph.quota.max_bytes: No such attribute
+  $
+  $ setfattr -x ceph.quota.max_files /some/dir
+  $ getfattr /some/dir/ -n ceph.quota.max_files
+  /some/dir/: ceph.quota.max_files: No such attribute
+
+通过把数值设置为零来删除： ::
+
+  $ setfattr -n ceph.quota.max_bytes -v 0 /some/dir
+  $ getfattr /some/dir -n ceph.quota.max_bytes
+  /some/dir/: ceph.quota.max_bytes: No such attribute
+  $
+  $ setfattr -n ceph.quota.max_files -v 0 /some/dir
+  $ getfattr /some/dir/ -n ceph.quota.max_files
+  /some/dir/: ceph.quota.max_files: No such attribute
+
+空间利用率报告和 CephFS 配额
+----------------------------
+.. Space Usage Reporting and CephFS Quotas
+
+当 CephFS 挂载的根目录设置了配额时，空间利用率报告工具（如 ``df`` ）报告的
+CephFS 可用空间就是基于配额限制的。也就是说， ``可用空间 = 配额限制 - 已用空间`` ，
+而不是 ``可用空间 = 总空间 - 已用空间`` 。
+
+这种行为可以在 ``ceph.conf`` 的客户端部分设置下列选项来禁用： ::
+
+    client quota df = false
 
 局限性
 ------
@@ -37,40 +111,22 @@ CephFS 允许给系统内的任意目录设置配额，这个配额可以限制�
    限制成了只能访问一个特定路径（如 ``/home/user`` ），
    并且它们无权访问配置了配额的父目录（如 ``/home`` ），
    这个客户端就不会按配额执行。所以，
-   基于路径做访问控制时，最好在限制了客户端的那个目录
-   （如 ``/home/user`` ）、或者它下面的子目录上配置配额。
+   基于路径做访问控制时，
+   最好在限制了客户端的那个目录
+   （如 ``/home/user`` ）、
+   或者它下面的子目录上配置配额。
+
+   如果是内核客户端，在一个目录 inode 上设置了配额后，
+   还需要有其父目录的访问权限，才能执行配额。
+   如果配额设置在一个目录路径上（如 ``/home/volumes/group`` ），
+   则 kclient 需要有访问其父节点
+   （如 ``/home/volumes`` ）的权限。
+
+   创建这样的用户命令示例如下： ::
+
+     $ ceph auth get-or-create client.guest mds 'allow r path=/home/volumes, allow rw path=/home/volumes/group' mgr 'allow rw' osd 'allow rw tag cephfs metadata=*' mon 'allow r'
+
+   参阅: https://tracker.ceph.com/issues/55090
 
 #. *此后删除或更改的快照文件数据不计入配额。*
    另见 http://tracker.ceph.com/issues/24284 。
-
-
-配置
-----
-.. Configuration
-
-就像 CephFS 里的其它配置一样，配额也是用虚拟扩展属性来配置的：
-
- * ``ceph.quota.max_files`` -- 文件限额
- * ``ceph.quota.max_bytes`` -- 字节数限额
-
-如果这些属性出现在目录索引节点里，就意味着那里配置了配额；
-如果不存在，那么那个目录就没设置配额
-（然而父目录仍然有可能配置了）。
-
-要设置配额： ::
-
-    setfattr -n ceph.quota.max_bytes -v 100000000 /some/dir     # 100 MB
-    setfattr -n ceph.quota.max_files -v 10000 /some/dir         # 10,000 files
-
-要查看设置的配额： ::
-
-	getfattr -n ceph.quota.max_bytes /some/dir
-	getfattr -n ceph.quota.max_files /some/dir
-
-需要留意的是，如果这些扩展属性的值是 ``0`` ，
-就说明没设置配额。
-
-要删除配额： ::
-
-	setfattr -n ceph.quota.max_bytes -v 0 /some/dir
-	setfattr -n ceph.quota.max_files -v 0 /some/dir
