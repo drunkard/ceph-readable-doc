@@ -7,108 +7,142 @@
 
 .. index:: monitor, high availability
 
-When a cluster encounters monitor-related troubles there's a tendency to
-panic, and sometimes with good reason. Losing one or more monitors doesn't
-necessarily mean that your cluster is down, so long as a majority are up,
-running, and form a quorum.
-Regardless of how bad the situation is, the first thing you should do is to
-calm down, take a breath, and step through the below troubleshooting steps.
+即使集群出现与监视器相关的问题，也不一定会有瘫痪的危险。
+如果集群失去了多个监视器，只要有足够多活着的监视器们能形成法定人数，
+集群仍能保持正常运行。
+
+如果您的集群出现监视器相关问题，建议您参考以下故障排除信息。
 
 
 开始排障
 ========
 .. Initial Troubleshooting
 
+在排除 Ceph 监视器故障的过程中，首先要确保监视器正在运行，
+并且能够与网络通信、并且在网络上能看到它。
+按照本节中的步骤排除监视器故障的最简单起因。
 
-**监视器在运行吗？**
+#. **确保监视器在运行。**
 
-  First of all, we need to make sure the monitor (*mon*) daemon processes
-  (``ceph-mon``) are running.  You would be amazed by how often Ceph admins
-  forget to start the mons, or to restart them after an upgrade. There's no
-  shame, but try to not lose a couple of hours looking for a deeper problem.
-  When running Kraken or later releases also ensure that the manager
-  daemons (``ceph-mgr``) are running, usually alongside each ``ceph-mon``.
- 
+   确保监视器（ *mon* ）守护进程的各个进程
+   （ ``ceph-mon`` ）在运行。
+   有可能是升级后没有重启监视器进程。
+   查验这一简单的疏忽可以省去数小时艰苦的故障排除工作。
 
-**到各个监视器节点是否可达？**
+   确保管理器守护进程（ ``ceph-mgr`` ）在运行也很重要。
+   记住，典型的集群配置为每个监视器（ ``ceph-mon`` ）
+   配备了一个管理器（ ``ceph-mgr`` ）。
 
-  Doesn't happen often, but sometimes there are ``iptables`` rules that
-  block accesse to mon nodes or TCP ports. These may be leftovers from
-  prior stress-testing or rule development. Try SSHing into
-  the server and, if that succeeds, try connecting to the monitor's ports
-  (``tcp/3300`` and ``tcp/6789``) using a ``telnet``, ``nc``, or similar tools.
+   .. note:: 在 v1.12.5 之前的版本中，
+   Rook 不会运行两个以上管理器。
 
-**ceph -s 是否能运行并收到集群回复？**
+#. **确保到各个监视器节点可达。**
 
-  如果答案是肯定的，那么你的集群已启动并运行着。可以向你保证\
-  的是，监视器们必须形成法定人数之后才会响应 ``status`` 请求。
-  还必须确定能联系到至少一个 ``mgr`` 守护进程，最好是全部都在。
+   在某些罕见的情况下， ``iptables`` 规则可能会拦截\
+   到监视器节点或 TCP 端口的访问。
+   这些规则可能是以前压力测试或开发规则时遗留下来的。
+   要检查是否存在这样的规则，可通过 SSH 进入每个监视器节点，
+   并用 ``telnet`` 或 ``nc`` 或类似工具尝试连接\
+   其他监视器节点的 ``tcp/3300`` 和 ``tcp/6789`` 端口。
 
-  If ``ceph -s`` hangs without obtaining a reply from the cluster
-  or showing ``fault`` messages, then it is likely that your monitors
-  are either down completely or just a fraction are up -- a fraction
-  insufficient to form a majority quorum.  This check will connect to an
-  arbitrary mon; in rare cases it may be illuminating to bind to specific
-  mons in sequence by adding e.g. ``-m mymon1`` to the command.
+#. **确保 "ceph status" 命令能运行，并收到集群回复。**
 
-**ceph -s 没返回是什么情况？**
+   如果 ``ceph status`` 命令收到了来自集群的回复，
+   那就说明集群已启动并正在运行。
+   监视器们只有形成法定人数后才会响应 ``status`` 请求。
+   确认（ ``status`` 命令）报告了一个或多个 ``mgr`` 守护进程正在运行。
+   在没有缺陷的集群中， ``ceph status`` 应该报告所有 ``mgr`` 守护进程都在运行。
 
-  如果你还没跑通所有步骤，先回头做完。
+   如果 ``ceph status`` 命令没有收到来自集群的回复，
+   则可能没有足够的监视器状态为 ``up`` 来形成法定人数。
+   如果运行 ``ceph -s`` 命令时没有加更多选项，
+   它将连接到任意选择的监视器。但在某些情况下，
+   在命令中加上 ``-m`` 标志连接到指定监视器
+   （或依次连接到多个指定监视器）：
+   例如， ``ceph status -m mymon1`` 。
 
-  你可以单独连线各监视器去询问其状态，不论是否达成法定人数。\
-  用 ``ceph tell mon.ID mon_status`` 命令，其中 ID 是监视器的\
-  标识符，它是针对集群内单个监视器的命令。在\
-  `理解 mon_status`_ 小节中，我们将会解读此命令的输出。
+#. **这些都不行，怎么办？**
 
-  你还可以 ssh 登录到各监视器节点、并查看其守护进程的
-  admin socket （管理套接字）。
+   如果上述解决方法没能解决你的问题，
+   挨个检查监视器们也许有用。即使没有达成法定人数，
+   也可以单独连线各监视器去询问其状态，
+   用 ``ceph tell mon.ID mon_status`` 命令
+   （其中 ID 是监视器的标识符）。
 
+   执行 ``ceph tell mon.ID mon_status`` 命令查询集群内的各个监视器。
+   关于此命令的输出详情，参阅\ :ref:`深入理解 mon_status
+   <rados_troubleshoting_troubleshooting_mon_understanding_mon_status>` 。
+
+   还有另外一种方法单独连接各个监视器：
+   SSH 登录到各监视器节点、并查询那个守护进程的
+   admin socket （管理套接字）。参阅 :ref:`使用监视器的管理套接字
+   <rados_troubleshoting_troubleshooting_mon_using_admin_socket>` 。
+
+
+.. _rados_troubleshoting_troubleshooting_mon_using_admin_socket:
 
 使用监视器的管理套接字
 ======================
 .. Using the monitor's admin socket
 
-通过管理套接字，你可以用 Unix 套接字文件直接与指定守护进程交互。\
-这个文件位于你监视器的 ``run`` 目录下，默认配置时它位于 \
-``/var/run/ceph/ceph-mon.ID.asok`` ，但你要是改过就不一定在那里\
-了。如果你在那里没找到它，请看看 ``ceph.conf`` 里是否配置了其它\
-路径、或者用下面的命令获取： ::
+通过管理套接字（ admin socket ），你可以用 Unix 套接字文件\
+直接与指定守护进程交互。这个文件位于你监视器的 ``run`` 目录下。
 
-	ceph-conf --name mon.ID --show-config-value admin_socket
+管理套接字默认位于 ``/var/run/ceph/ceph-mon.ID.asok`` 。
+管理套接字的默认位置可以覆盖掉。
+如果其默认位置被覆盖掉了，那么管理套接字就在别处。
+集群守护进程部署在容器内时，常常出现这种情况。
 
-请牢记，只有在监视器运行时管理套接字才可用。监视器正常关闭时，\
-管理套接字会被删除；如果监视器不运行了、但管理套接字还存在，就\
-说明监视器不是正常关闭的。不管怎样，监视器没在运行，你就不能使\
-用管理套接字， ``ceph`` 命令会返回类似 \
-``Error 111: Connection Refused`` 的错误消息。
+要找出管理套接字的目录，看一下 ``ceph.conf`` 里是否配置了其它路径、
+或者执行下列命令：
 
-Accessing the admin socket is as simple as running ``ceph tell`` on the daemon
-you are interested in. For example::
+.. prompt:: bash $
 
-  ceph tell mon.<id> mon_status
+   ceph-conf --name mon.ID --show-config-value admin_socket
 
-Under the hood, this passes the command ``help`` to the running MON daemon
-``<id>`` via its "admin socket", which is a file ending in ``.asok``
-somewhere under ``/var/run/ceph``. Once you know the full path to the file,
-you can even do this yourself::
+只有在监视器运行时管理套接字才可用。
+每次监视器正常关闭时，管理套接字会被删除；
+如果监视器不运行了、但管理套接字还存在，
+就说明监视器不是正常关闭的。如果监视器没在运行，
+你就不能使用管理套接字，而且 ``ceph`` 命令会返回类似 \
+``Error 111: Connection Refused`` 的消息。
 
-  ceph --admin-daemon <full_path_to_asok_file> <command>
+要访问管理员套接字，执行 ``ceph tell`` 命令
+（指定你感兴趣的守护进程）：
 
-``ceph`` 工具的 ``help`` 命令会显示管理套接字支持的其它命令。请\
-仔细了解一下 ``config get`` 、 ``config show`` 、 ``mon_status`` \
-和 ``quorum_status`` 命令，在排除监视器故障时它们能给你些启发。
+.. prompt:: bash $
 
+   ceph tell mon.<id> mon_status
+
+此命令通过管理套接字向指定的、运行中监视器守护进程 ``<id>`` 传入 ``help`` 命令。
+如果知道管理员套接字文件的完整路径，
+可以更直接地操作，执行下列命令：
+
+.. prompt:: bash $
+
+   ceph --admin-daemon <full_path_to_asok_file> <command>
+
+执行 ``ceph help`` 可显示管理套接字支持的所有命令。
+特别关注一下 ``config get`` 、 ``config show`` 、 ``mon stat`` \
+和 ``quorum_status`` 命令。
+
+
+.. _rados_troubleshoting_troubleshooting_mon_understanding_mon_status:
 
 理解 mon_status
 ===============
 .. Understanding mon_status
 
-``mon_status`` can always be obtained via the admin socket. This command will
-output a multitude of information about the monitor, including the same output
-you would get with ``quorum_status``.
+监视器的状态（由 ``ceph tell mon.X mon_status`` 命令报告的）
+可通过管理套接字获取。 ``ceph tell mon.X mon_status``
+命令会输出大量有关监视器的信息
+（包括在 ``quorum_status`` 命令输出中找到的信息）。
 
-Take the following example output of ``ceph tell mon.c mon_status``::
+.. note:: ``ceph tell mon.X mon_status`` 命令并不意味着要按字面输入。
+   运行该命令时， ``mon.X`` 的 ``X`` 部分应替换为 Ceph 集群的特定值。
 
+要了解此命令的输出，参考下面的示例，
+我们将看到 ``ceph tell mon.c mon_status`` 的输出： ::
   
   { "name": "c",
     "rank": 2,
@@ -135,138 +169,183 @@ Take the following example output of ``ceph tell mon.c mon_status``::
                 "name": "c",
                 "addr": "127.0.0.1:6795\/0"}]}}
 
-A couple of things are obvious: we have three monitors in the monmap (*a*, *b*
-and *c*), the quorum is formed by only two monitors, and *c* is in the quorum
-as a *peon*.
+输出结果显示， monmap 中有三个监视器
+（ ``a`` 、 ``b`` 和 ``c`` ），
+法定人数由两个监视器组成，并且 ``c`` 是 ``peon`` 。
 
-Which monitor is out of the quorum?
+**哪个监视器在法定人数之外？**
 
-  The answer would be **a**.
+  答案是 ``a`` （即 ``mon.a`` ）。 ``mon.a`` 在法定人数之外。
 
-Why?
+**在本例中，我们如何知道 mon.a 不在法定人数之列？**
 
-  Take a look at the ``quorum`` set. We have two monitors in this set: *1*
-  and *2*. These are not monitor names. These are monitor ranks, as established
-  in the current monmap. We are missing the monitor with rank 0, and according
-  to the monmap that would be ``mon.a``.
+  我们之所以知道 ``mon.a`` 不在法定人数之列，是因为它的 rank 为 ``0`` ，
+  而根据定义， rank 为 ``0`` 的监视器不在法定人数之列。
 
-By the way, how are ranks established?
+  如果我们检查一下 ``quorum`` 集合，就会清楚地发现此集合里有两个监视器：
+  ``1`` 和 ``2`` ，但这些不是监视器名称。
+  它们是监视器的 rank ，正如当前 ``monmap`` 所确定的那样。
+  法定人数集合不包括 rank 为 ``0`` 的监视器，
+  而根据 ``monmap`` ，该监视器就是 ``mon.a`` 。
 
-  Ranks are (re)calculated whenever you add or remove monitors and follow a
-  simple rule: the **greater** the ``IP:PORT`` combination, the **lower** the
-  rank is. In this case, considering that ``127.0.0.1:6789`` is lower than all
-  the remaining ``IP:PORT`` combinations, ``mon.a`` has rank 0.
+**监视器 rank 是如何确定的？**
+
+  每当有监视器加入或移出集群时，都会计算（或重新计算）
+  监视器的 rank 。 rank 的计算遵循一个简单的规则： ``IP:PORT`` 组合\ **越大**\ ，
+  其 rank **就越低**\ 。在本例中，由于 ``127.0.0.1:6789`` (``mon.a``) 
+  在数值上小于其他两个 ``IP:PORT`` 组合（“监视器 b”的组合是 ``127.0.0.1:6790``
+  而“监视器 c”的是 ``127.0.0.1:6795`` ），
+  因此 ``mon.a`` 的 rank 最高：即 rank ``0`` 。
 
 
 最常见的监视器问题
 ==================
 .. Most Common Monitor Issues
 
-存在法定人数但是挂了不止一个监视器
-----------------------------------
-.. Have Quorum but at least one Monitor is down
+集群存在法定人数但是挂了不止一个监视器
+--------------------------------------
+.. The Cluster Has Quorum but at Least One Monitor is Down
 
-When this happens, depending on the version of Ceph you are running,
-you should be seeing something similar to::
+集群达成了法定人数，但至少有一个监视器挂掉时，
+``ceph health detail`` 会返回类似下面的消息： ::
 
       $ ceph health detail
       [snip]
       mon.a (rank 0) addr 127.0.0.1:6789/0 is down (out of quorum)
 
-How to troubleshoot this?
+**Ceph 集群存在法定人数却至少有一个监视器挂掉时，如何排查？**
 
-  First, make sure ``mon.a`` is running.
+  #. 确认一下 ``mon.a`` 在运行。
 
-  Second, make sure you are able to connect to ``mon.a``'s node from the
-  other mon nodes. Check the TCP ports as well. Check ``iptables`` and
-  ``nf_conntrack`` on all nodes and ensure that you are not
-  dropping/rejecting connections.
+  #. 确保可以从其他监视器节点连接到 ``mon.a`` 所在的节点。
+     同时还要检查 TCP 端口。检查所有节点上的 ``iptables`` 和
+     ``nf_conntrack`` ，确保没有丢弃/拒绝连接。
 
-  If this initial troubleshooting doesn't solve your problems, then it's
-  time to go deeper.
+  如果这些初步的故障排除没有解决问题，
+  则需要进一步调查。
 
-  First, check the problematic monitor's ``mon_status`` via the admin
-  socket as explained in `使用监视器的管理套接字`_ and
-  `理解 mon_status`_.
+  首先，通过管理套接字检查问题监视器的 ``mon_status`` ，
+  方法在 `使用监视器的管理套接字`_ 和
+  `理解 mon_status`_ 里介绍过了。
 
-  If the monitor is out of the quorum, its state should be one of
-  ``probing``, ``electing`` or ``synchronizing``. If it happens to be either
-  ``leader`` or ``peon``, then the monitor believes to be in quorum, while
-  the remaining cluster is sure it is not; or maybe it got into the quorum
-  while we were troubleshooting the monitor, so check you ``ceph -s`` again
-  just to make sure. Proceed if the monitor is not yet in the quorum.
-
-What if the state is ``probing``?
-
-  This means the monitor is still looking for the other monitors. Every time
-  you start a monitor, the monitor will stay in this state for some time
-  while trying to find the rest of the monitors specified in the ``monmap``.
-  The time a monitor will spend in this state can vary. For instance, when on
-  a single-monitor cluster, the monitor will pass through the probing state
-  almost instantaneously, since there are no other monitors around. On a
-  multi-monitor cluster, the monitors will stay in this state until they
-  find enough monitors to form a quorum -- this means that if you have 2 out
-  of 3 monitors down, the one remaining monitor will stay in this state
-  indefinitively until you bring one of the other monitors up.
-
-  If you have a quorum, however, the monitor should be able to find the
-  remaining monitors pretty fast, as long as they can be reached. If your
-  monitor is stuck probing and you've gone through with all the communication
-  troubleshooting, then there is a fair chance that the monitor is trying
-  to reach the other monitors on a wrong address. ``mon_status`` outputs the
-  ``monmap`` known to the monitor: check if the other monitor's locations
-  match reality. If they don't, jump to
-  `修复监视器损坏的 monmap`_; if they do, then it may be related
-  to severe clock skews amongst the monitor nodes and you should refer to
-  `时钟偏移`_ first, but if that doesn't solve your problem then it is
-  the time to prepare some logs and reach out to the community (please refer
-  to `收集所需日志`_ on how to best prepare your logs).
+  如果有个监视器不在法定人数内，那么它的状态将是以下状态之一：
+  ``probing`` 、 ``electing`` 或 ``synchronizing`` 。
+  如果监视器的状态是 ``leader`` 或 ``peon`` ，那么这个监视器认为\
+  自己在法定人数中，但集群的其余部分认为它不在法定人数中。
+  处于 ``probing`` 、 ``electing`` 或 ``synchronizing`` 状态的监视器\
+  有可能在故障排除过程中就已经进入了法定人数。
+  在故障排除期间，再次检查 ``ceph status`` ，
+  以确定监视器是否已进入了法定人数。
+  如果监视器仍然在法定人数之外，
+  那就继续进行本节文档所述的排查。
 
 
-What if state is ``electing``?
+**监视器状态为 ``probing`` 时，是什么意思？**
 
-  This means the monitor is in the middle of an election. With recent Ceph
-  releases these typically complete quickly, but at times the monitors can
-  get stuck in what is known as an *election storm*. This can indicate
-  clock skew among the monitor nodes; jump to
-  `时钟偏移`_ for more information. If all your clocks are properly
-  synchronized, you should search the mailing lists and tracker.
-  This is not a state that is likely to persist and aside from
-  (*really*) old bugs there is not an obvious reason besides clock skews on
-  why this would happen.  Worst case, if there are enough surviving mons,
-  down the problematic one while you investigate.
+  如果 ``ceph health detail`` 显示监视器的状态为 ``probing`` ，
+  表示这个监视器仍在寻找其他监视器。
+  每个监视器在启动时都会保持这种状态一段时间。
+  当监视器连接到 ``monmap`` 中指定的其他监视器后，
+  就不再处于 ``probing`` 状态。监视器处于
+  ``probing`` 状态的时间长短取决于其所在集群的参数。
+  例如，当监视器是单监视器集群的一部分时
+  （在生产环境中切勿这样做），监视器几乎会瞬间通过 probing 状态。
+  在多监视器集群中，监视器会一直处于 ``probing`` 状态，
+  直到找到足够的监视器能形成法定人数为止，
+  这意味着如果集群的三个监视器中有两个 ``down`` 掉了，
+  剩下的一个监视器将无限期地处于 ``probing`` 状态，
+  直到其他监视器中的一个启动。
 
-What if state is ``synchronizing``?
+  如果法定人数已经建立，只要它们能够被联系到，
+  那么监视器守护进程应该能快速找到其他监视器。
+  如果监视器卡在 ``probing`` 状态，
+  并且您已经用尽了前述排查监视器之间通信故障的步骤，
+  那么有可能是问题监视器试图用错误的地址联系其他监视器。
+  ``mon_status`` 会输出这个监视器已知的 ``monmap`` ：
+  确定 ``monmap`` 中指定的其他监视器的位置\
+  是否与网络中监视器的位置相匹配。
+  如果不匹配，参阅 :ref:`修复监视器损坏的 monmap
+  <rados_troubleshooting_troubleshooting_mon_recovering_broken_monmap>` 。
+  如果 ``monmap`` 中指定的监视器位置与监视器在网络中的位置一致，
+  那么持续的 ``probing`` 状态可能与\
+  监视器节点之间严重的时钟偏移有关。
+  参阅\ `时钟偏移`_\ 。如果\ `时钟偏移`_\
+  中的信息无法使监视器摆脱 ``probing`` 状态，
+  则请准备好系统日志并向 Ceph 社区寻求帮助。
+  有关正确准备日志的信息，参阅\ `收集所需日志`_\ 。
 
-  This means the monitor is synchronizing with the rest of the cluster in
-  order to join the quorum. The synchronization process is as faster as
-  smaller your monitor store is, so if you have a big store it may
-  take a while. Don't worry, it should be finished soon enough.
 
-  However, if you notice that the monitor jumps from ``synchronizing`` to
-  ``electing`` and then back to ``synchronizing``, then you do have a
-  problem: the cluster state is advancing (i.e., generating new maps) way
-  too fast for the synchronization process to keep up. This used to be a
-  thing in early Cuttlefish, but since then the synchronization process was
-  quite refactored and enhanced to avoid just this sort of behavior. If this
-  happens in later versions let us know. And bring some logs
-  (see `收集所需日志`_).
+**监视器状态为 ``electing`` 时，是什么意思？**
 
-What if state is ``leader`` or ``peon``?
+  如果 ``ceph health detail`` 显示监视器的状态为 ``electing`` ，
+  则表示监视器们正在进行选举。选举通常会很快完成，
+  但有时监视器会陷入所谓的\ *选举风暴（ election storm ）*\ 。
+  有关监视器选举的更多信息，参阅
+  :ref:`监视器选举 <dev_mon_elections>` 。
 
-  This should not happen. There is a chance this might happen however, and
-  it has a lot to do with clock skews -- see `时钟偏移`_. If you're not
-  suffering from clock skews, then please prepare your logs (see
-  `收集所需日志`_) and reach out to us.
+  选举风暴的出现可能表明监视器节点之间存在时钟偏差。
+  详情见\ `时钟偏差`_\ 。
 
+  如果您的时钟已正确同步，请在邮件列表和 bug tracker 中搜索\
+  与您的问题相似的问题。 ``electing`` 状态不太可能一直持续。
+  在 Cuttlefish 版之后的 Ceph 版本中，
+  除了时钟偏移之外，没有其他已知原因可以解释为何
+  ``electing`` 状态会持续存在。
+
+  如果在调查时把问题监视器置于 ``down`` 状态，
+  有可能查出它持续处于 ``electing`` 状态的起因。
+  这只有在监视器数量足以形成法定人数时才有可能。
+
+**监视器状态为 ``synchronizing`` 时，是什么意思？**
+
+  如果 ``ceph health detail`` 显示监视器状态为 ``synchronizing`` （正在同步），
+  则表示监视器正在赶上集群的其他部分，以便加入法定人数。
+  监视器与其他法定人数同步所需的时间\
+  取决于集群监视器存储的大小、
+  集群的规模以及集群的状态。
+  与较小的、新集群相比，较大的和降级的集群，
+  它们的监视器处于 ``synchronizing`` 状态的时间更长。
+
+  监视器的状态从 ``synchronizing`` 变为 ``electing`` ，
+  然后又变回 ``synchronizing`` ，这说明了一个问题：
+  集群状态的变化（即生成新的映射图）可能太快了，
+  同步过程跟不上创建新映射图的产生速度。
+  这个问题在 Cuttlefish 版之前比在最近的版本中出现得更频繁，
+  因为从那时起，为了避免这种动态变化，同步过程经过了重构和增强。
+  如果您在之后的版本中遇到此问题，请在
+  `Ceph bug 跟踪器 <https://tracker.ceph.com>`_ 中报告此问题。
+  准备并提供日志以证实您提出的 bug 。
+  有关正确准备日志的信息，参阅\ `收集所需日志`_\ 。
+
+**监视器状态为 ``leader`` 或 ``peon`` 时，是什么意思？**
+
+  集群处于 ``HEALTH_OK`` 状态下的常规 Ceph 操作期间，
+  Ceph 集群中的一个监视器处于 ``leader`` 状态，
+  其余监视器处于 ``peon`` 状态。可以检查
+  ``ceph tell <mon_name> mon_status`` 命令\
+  返回的、状态键的值来确定指定监视器的状态。
+
+  如果 ``ceph health detail`` 显示监视器处于 ``leader`` 状态或
+  ``peon`` 状态，那么很可能存在时钟偏移。
+  按照\ `时钟偏差`_\ 中的指导进行操作。如果已经做过了那些操作，
+  但 ``ceph health detail`` 仍然显示监视器处于 ``leader`` 状态或
+  ``peon`` 状态，请在 `Ceph bug 跟踪器
+  <https://tracker.ceph.com>`_ 中报告该问题。
+  如果您提出了问题，请提供日志以证实该问题。
+  有关正确准备日志的信息，参阅\ `收集所需日志`_\ 。
+
+
+.. _rados_troubleshooting_troubleshooting_mon_recovering_broken_monmap:
 
 修复监视器损坏的 monmap
 -----------------------
-.. Recovering a Monitor's Broken monmap
+.. Recovering a Monitor's Broken "monmap"
 
-This is how a ``monmap`` usually looks, depending on the number of
-monitors::
+如\ :ref:`深入理解 mon_status
+<rados_troubleshoting_troubleshooting_mon_understanding_mon_status>` 所述，
+可以用 ``ceph tell mon.c mon_status`` 命令来获取 monmap 。
 
+下面是一个 ``monmap`` 的示例： ::
 
       epoch 3
       fsid 5c4e9d53-e2e1-478a-8061-f543f8be4cf8
@@ -275,145 +354,162 @@ monitors::
       0: 127.0.0.1:6789/0 mon.a
       1: 127.0.0.1:6790/0 mon.b
       2: 127.0.0.1:6795/0 mon.c
-      
-This may not be what you have however. For instance, in some versions of
-early Cuttlefish there was a bug that could cause your ``monmap``
-to be nullified.  Completely filled with zeros. This means that not even
-``monmaptool`` would be able to make sense of cold, hard, inscrutable zeros.
-It's also possible to end up with a monitor with a severely outdated monmap,
-notably if the node has been down for months while you fight with your vendor's
-TAC.  The subject ``ceph-mon`` daemon might be unable to find the surviving
-monitors (e.g., say ``mon.c`` is down; you add a new monitor ``mon.d``,
-then remove ``mon.a``, then add a new monitor ``mon.e`` and remove
-``mon.b``; you will end up with a totally different monmap from the one
-``mon.c`` knows).
 
-In this situation you have two possible solutions:
+此 ``monmap`` 正常，但您的 ``monmap`` 可能不正常。
+某个节点中的 ``monmap`` 可能已经过时，因为该节点宕机了很长时间，
+在此期间集群的监视器发生了变化。
 
-Scrap the monitor and redeploy
+更新监视器过时的 ``monmap`` 有两种方法： 
 
-  You should only take this route if you are positive that you won't
-  lose the information kept by that monitor; that you have other monitors
-  and that they are running just fine so that your new monitor is able
-  to synchronize from the remaining monitors. Keep in mind that destroying
-  a monitor, if there are no other copies of its contents, may lead to
-  loss of data.
+A. **废弃这些监视器并重新部署。**
 
-Inject a monmap into the monitor
+    只有在确定不会丢失已报废监视器所保存信息的情况下，
+    才可以这样做。确保其他监视器状态良好，
+    这样新监视器才能与活着的监视器们同步。记住，
+    如果没有监视器的其他内容副本，销毁监视器可能会导致数据丢失。
 
-  Usually the safest path. You should grab the monmap from the remaining
-  monitors and inject it into the monitor with the corrupted/lost monmap.
+B. **把一份 monmap 注入监视器。**
 
-  These are the basic steps:
+    可以这样修复监视器：从集群中活着的监视器中提取出最新的
+    ``monmap`` ，并将其注入损坏或丢失了 ``monmap`` 的监视器，
+    来修复 ``monmap`` 过时了的监视器。
 
-  1. Is there a formed quorum? If so, grab the monmap from the quorum::
+    执行以下步骤，施行此解决方案： 
 
-      $ ceph mon getmap -o /tmp/monmap
+    #. 通过以下两种方式之一提取 ``monmap`` ：
 
-  2. No quorum? Grab the monmap directly from another monitor (this
-     assumes the monitor you're grabbing the monmap from has id ID-FOO
-     and has been stopped)::
+       a. **如果监视器们达成了法定人数：**
 
-      $ ceph-mon -i ID-FOO --extract-monmap /tmp/monmap
+          从法定人数提取 ``monmap`` ：
 
-  3. Stop the monitor you're going to inject the monmap into.
+             .. prompt:: bash
 
-  4. Inject the monmap::
+                ceph mon getmap -o /tmp/monmap
 
-      $ ceph-mon -i ID --inject-monmap /tmp/monmap
+       b. **如果监视器们没有达成法定人数：**
 
-  5. Start the monitor
+          直接从已经停机的监视器提取 ``monmap`` ：
 
-  Please keep in mind that the ability to inject monmaps is a powerful
-  feature that can cause havoc with your monitors if misused as it will
-  overwrite the latest, existing monmap kept by the monitor.
+             .. prompt:: bash
+
+                ceph-mon -i ID-FOO --extract-monmap /tmp/monmap
+
+          在本例中，已停机的监视器的 ID 是 ``ID-FOO`` 。
+
+    #. 停掉要注入 ``monmap`` 的那个监视器：
+
+       .. prompt:: bash 
+
+          service ceph -a stop mon.{mon-id}
+
+    #. 把 monmap 注入已停掉的监视器：
+
+       .. prompt:: bash
+
+          ceph-mon -i ID --inject-monmap /tmp/monmap
+
+    #. 启动这个监视器。
+
+       .. warning:: 向监视器注入 ``monmap`` 可能会导致严重问题。
+          注入 ``monmap`` 会覆盖监视器上存储的最新 ``monmap`` 。
+          务必小心！
 
 
 时钟偏移
 --------
 .. Clock Skews
 
-Monitor operation can be severely affected by clock skew among the quorum's
-mons, as the PAXOS consensus algorithm requires tight time alignment.
-Skew can result in weird behavior with no obvious
-cause. To avoid such issues, you must run a clock synchronization tool
-on your monitor nodes:  ``Chrony`` or the legacy ``ntpd``.  Be sure to
-configure the mon nodes with the `iburst` option and multiple peers:
+Paxos 共识算法需要严格的时间同步，这意味着法定人数内部、
+监视器之间的时钟偏差会对监视器的运行产生严重影响。
+由此产生的行为可能会令人费解。为避免这一问题，
+需要在监视器节点上运行时钟同步工具：例如，
+用 ``Chrony`` 或传统的 ``ntpd`` 工具。配置每个监视器节点，
+使 `iburst` 选项生效，这样每个监视器就有多个对等节点，
+包括以下内容： 
 
-* Each other
-* Internal ``NTP`` servers
-* Multiple external, public pool servers
+* 相互之间
+* 内部 ``NTP`` 服务器
+* 多个外部的、公用的 pool 服务器
 
-For good measure, *all* nodes in your cluster should also sync against
-internal and external servers, and perhaps even your mons.  ``NTP`` servers
-should run on bare metal; VM virtualized clocks are not suitable for steady
-timekeeping.  Visit `https://www.ntp.org <https://www.ntp.org>`_ for more info.  Your
-organization may already have quality internal ``NTP`` servers you can use.  
-Sources for ``NTP`` server appliances include:
+.. note:: ``iburst`` 选项会一次发送八个数据包组成的一组数据包，
+   而不是通常的单个数据包，
+   在让两个节点进行初始同步时会这样运行。
 
-* Microsemi (formerly Symmetricom) `https://microsemi.com <https://www.microsemi.com/product-directory/3425-timing-synchronization>`_
+此外，最好将集群中的 *所有* 节点与内部和外部服务器同步，
+甚至可能与监视器同步。要在物理裸机上运行 ``NTP`` 服务器：
+VM 的虚拟化时钟不适合用于稳定的计时。
+有关网络时间协议 (NTP) 的更多信息，
+参阅 `https://www.ntp.org <https://www.ntp.org>`_ 。
+您的组织可能已经有了高质量的内部 ``NTP`` 服务器。
+``NTP`` 服务器设备的来源有以下几种：
+
+* Microsemi (之前叫 Symmetricom) `https://microsemi.com <https://www.microsemi.com/product-directory/3425-timing-synchronization>`_
 * EndRun `https://endruntechnologies.com <https://endruntechnologies.com/products/ntp-time-servers>`_
 * Netburner `https://www.netburner.com <https://www.netburner.com/products/network-time-server/pk70-ex-ntp-network-time-server>`_
 
+时钟偏移问答
+~~~~~~~~~~~~
+.. Clock Skew Questions and Answers
 
-What's the maximum tolerated clock skew?
+**容许的最大时钟偏移量是多少？**
 
-  By default the monitors will allow clocks to drift up to 0.05 seconds (50 ms).
+  默认情况下，监视器允许时钟偏移最多 0.05 秒（ 50 毫秒）。
 
+**我可以增大容许的最大时钟偏移吗？**
 
-Can I increase the maximum tolerated clock skew?
+  可以，但我们强烈建议不要这样做。允许的最大时钟偏移可通过
+  ``mon-clock-drift-allowed`` （允许的时钟偏移）
+  选项进行配置，但更改此选项差不多肯定是个馊主意。
+  之所以设置最大时钟偏移，是因为发生了时钟偏移的监视器不再可靠。
+  目前的默认值已经证明了其价值，
+  就是在监视器出现严重问题之前向用户发出警报。
+  更改此值可能会对监视器的稳定性、
+  和整个集群的健康状况造成不可预见的影响。
 
-  The maximum tolerated clock skew is configurable via the
-  ``mon-clock-drift-allowed`` option, and
-  although you *CAN* you almost certainly *SHOULDN'T*. The clock skew mechanism
-  is in place because clock-skewed monitors are liely to misbehave. We, as
-  developers and QA aficionados, are comfortable with the current default
-  value, as it will alert the user before the monitors get out hand. Changing
-  this value may cause unforeseen effects on the
-  stability of the monitors and overall cluster health.
+**我如何判断是否出现了时钟偏移？**
 
-How do I know there's a clock skew?
-
-  The monitors will warn you via the cluster status ``HEALTH_WARN``. ``ceph health
-  detail`` or ``ceph status`` should show something like::
+  监视器会通过集群状态 ``HEALTH_WARN`` 警告你。
+  出现时钟偏移时， ``ceph health detail`` 和 ``ceph status``
+  命令会返回类似下面的输出： ::
 
       mon.c addr 10.10.0.1:6789/0 clock skew 0.08235s > max 0.05s (latency 0.0045s)
 
-  That means that ``mon.c`` has been flagged as suffering from a clock skew.
+  在本例中，监视器 ``mon.c`` 被标记为遭遇了时钟偏移。
 
-  On releases beginning with Luminous you can issue the
-  ``ceph time-sync-status`` command to check status.  Note that the lead mon
-  is typically the one with the numerically lowest IP address.  It will always
-  show ``0``: the reported offsets of other mons are relative to
-  the lead mon, not to any external reference source.
+  在 Luminous 及其后续版本中，可以执行
+  ``ceph time-sync-status`` 命令来检查时钟偏移。
+  注意， lead 监视器通常拥有数值最小的 IP 地址。
+  它将始终显示 ``0`` ：其他监视器报告的偏移量是相对于 lead 监视器的，
+  而不是相对于哪一个外部源的。
 
+**如果出现了时钟偏移，我该怎么办？**
 
-What should I do if there's a clock skew?
-
-  Synchronize your clocks. Running an NTP client may help. If you are already
-  using one and you hit this sort of issues, check if you are using some NTP
-  server remote to your network and consider hosting your own NTP server on
-  your network.  This last option tends to reduce the amount of issues with
-  monitor clock skews.
+  同步时钟。可能要靠 NTP 客户端。不过，
+  如果您已经在使用 NTP 客户端，但仍遇到时钟偏差问题，
+  请确定您使用的 NTP 服务器是位于远程网络的\
+  还是托管在您自己的网络上。
+  搭建自己的 NTP 服务器往往能减轻时钟偏差问题。
 
 
 客户端不能连接或挂载
 --------------------
 .. Client Can't Connect or Mount
 
-检查防火墙配置。有些系统安装工具把 ``REJECT`` 规则加入了
-``iptables`` ，它会拒绝除 ``ssh`` 以外的所有入栈连接。如果你的\
-监视器主机有这样的 ``REJECT`` 规则，别的客户端进来的连接将遇到\
-超时错误而不能挂载。得先找到这条拒绝客户端连入的 ``iptables`` \
-规则，例如，你要找到形似以下的规则： ::
+如果一个客户端不能连接到集群或不能挂载，检查防火墙配置。
+有些操作系统安装工具把 ``REJECT`` 规则加入了 ``iptables`` ，
+它会拒绝除 ``ssh`` 以外的所有入栈连接。
+如果你的监视器主机的 iptables 有这样的 ``REJECT`` 规则，
+别的客户端进来的连接就会失败，进而导致超时错误。
+得先找到拒绝客户端连接 Ceph 守护进程的 ``iptables`` 规则。
+例如： ::
 
-	REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
+   REJECT all -- anywhere anywhere reject-with icmp-host-prohibited
 
-你也许还要在 Ceph 主机上增加 iptables 规则来放通 Ceph 监视器\
-端口（即默认的 6789 端口）、和 OSD 端口（默认从 6800 到 7300
-）。例如： ::
+你也许还要在 Ceph 主机上增加 iptables 规则\
+来放通 Ceph 监视器的 TCP 端口（默认是 6789 端口）、
+和 Ceph OSD 端口（默认从 6800 到 7568 ）。例如： ::
 
-	iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:7300 -j ACCEPT
+   iptables -A INPUT -m multiport -p tcp -s {ip-address}/{netmask} --dports 6789,6800:7300 -j ACCEPT
 
 
 监视器存储故障
@@ -424,9 +520,8 @@ What should I do if there's a clock skew?
 --------------
 .. Symptoms of store corruption
 
-Ceph 监视器把\ :term:`集群运行图`\ 存储在键值数据库里，像
-LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日志里\
-可能出现如下错误消息： ::
+Ceph 监视器把\ :term:`集群运行图`\ 存储在键值数据库里。如果某个监视器\
+由于键值存储损坏而发生故障，监视器日志里可能出现如下错误消息： ::
 
   Corruption: error in middle of record
 
@@ -439,9 +534,9 @@ LevelDB 。如果某个监视器由于键值存储损坏而失败，监视器日
 ------------------
 .. Recovery using healthy monitor(s)
 
-只要有幸存的，我们就可以用新的\ :ref:`替换掉 <adding-and-removing-monitors>`\
-损坏的；而且新加入的监视器启动后会与健康节点同步，完全同步后就\
-可以服务于客户端了。
+如果集群内还有幸存的监视器，就可以用新监视器\
+:ref:`替换掉 <adding-and-removing-monitors>`\ 损坏的。新监视器启动后，
+会与健康节点同步。新监视器完全同步后，就可以服务客户端了。
 
 
 .. _mon-store-recovery-using-osds:
@@ -551,7 +646,7 @@ may want them. However, your logs may not have the necessary information. If
 you don't find your monitor logs at their default location, you can check
 where they should be by running::
 
-	ceph-conf --name mon.FOO --show-config-value log_file
+   ceph-conf --name mon.FOO --show-config-value log_file
 
 The amount of information in the logs are subject to the debug levels being
 enforced by your configuration files. If you have not enforced a specific
@@ -568,8 +663,8 @@ related to your issue. This may not be an easy task for someone unfamiliar
 with troubleshooting Ceph. For most situations, setting the following options
 on your monitors will be enough to pinpoint a potential source of the issue::
 
-	debug mon = 10
-	debug ms = 1
+   debug mon = 10
+   debug ms = 1
 
 If we find that these debug levels are not enough, there's a chance we may
 ask you to raise them or even define other debug subsystems to obtain infos

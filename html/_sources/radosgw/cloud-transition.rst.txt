@@ -279,7 +279,7 @@ For example,
 Object modification & Limitations
 ----------------------------------
 
-The cloud storage class once configured can then be used like any other storage class in the bucket lifecyle rules. For example,
+The cloud storage class once configured can then be used like any other storage class in the bucket lifecycle rules. For example,
 
 ::
 
@@ -301,6 +301,18 @@ Due to API limitations there is no way to preserve original object modification 
    x-amz-meta-rgwx-source-key: lc.txt
    x-amz-meta-rgwx-source-mtime: 1608546349.757100363
    x-amz-meta-rgwx-versioned-epoch: 0
+
+In order to allow some cloud services detect the source and map the user-defined 'x-amz-meta-' attributes, below two additional new attributes are added to the objects being transitioned 
+
+::
+    
+   x-rgw-cloud : true/false
+   (set to "true", by default, if the object is being transitioned from RGW)
+
+   x-rgw-cloud-keep-attrs : true/false
+   (if set to default value "true", the cloud service should map and store all the x-amz-meta-* attributes. If it cannot, then the operation should fail.
+    if set to "false", the cloud service can ignore such attributes and just store the object data being sent.)
+
 
 By default, post transition, the source object gets deleted. But it is possible to retain its metadata but with updated values (like storage-class and object-size) by setting config option 'retain_head_object' to true. However GET on those objects shall still fail with 'InvalidObjectState' error.
 
@@ -351,6 +363,6 @@ Future Work
 
 * Federation between RGW and Cloud services.
 
-* Support transition to other cloud provideres (like Azure).
+* Support transition to other cloud providers (like Azure).
 
 .. _`Multisite Configuration`: ../multisite

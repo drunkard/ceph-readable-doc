@@ -100,7 +100,7 @@ Compile openresty, Make sure that you have pcre lib and openssl lib::
 Put in-place your Nginx configuration files and edit them according to
 your environment:
 
- * All Nginx conf files are under: https://github.com/ceph/ceph/tree/master/examples/rgw-cache
+ * All Nginx conf files are under: https://github.com/ceph/ceph/tree/main/examples/rgw-cache
  * `nginx.conf` should go to `/etc/nginx/nginx.conf`
  * `nginx-lua-file.lua` should go to `/etc/nginx/nginx-lua-file.lua`
  * `nginx-default.conf` should go to `/etc/nginx/conf.d/nginx-default.conf`

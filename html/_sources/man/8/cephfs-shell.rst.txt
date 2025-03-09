@@ -57,8 +57,8 @@ CephFS Shell 的行为可以用 ``cephfs-shell.conf`` 调整。
 
 .. code:: bash
 
-    [build]$ python3 -m venv venv && source venv/bin/activate && pip3 install cmd2
-    [build]$ source vstart_environment.sh && source venv/bin/activate && python3 ../src/tools/cephfs/cephfs-shell
+    [build]$ python3 -m venv venv && source venv/bin/activate && pip3 install cmd2 colorama
+    [build]$ source vstart_environment.sh && source venv/bin/activate && python3 ../src/tools/cephfs/shell/cephfs-shell
 
 
 命令
