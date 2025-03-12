@@ -130,24 +130,24 @@ Ceph 配置文件的配置将覆盖默认值，
 
 #. 把初始监视器写入 Ceph 配置文件。 ::
 
-	mon initial members = {hostname}[,{hostname}]
+	mon_initial_members = {hostname}[,{hostname}]
 
    例如： ::
 
-	mon initial members = mon-node1
+	mon_initial_members = mon-node1
 
 
 #. 把初始监视器的 IP 地址写入 Ceph 配置文件、
    并保存。 ::
 
-        mon host = {ip-address}[,{ip-address}]
+        mon_host = {ip-address}[,{ip-address}]
 
    例如： ::
 
-        mon host = 192.168.0.1
+        mon_host = 192.168.0.1
 
    **注意：** 你可以用 IPv6 地址取代 IPv4 地址，
-   但必须设置 ``ms bind ipv6 = true`` 。
+   但必须设置 ``ms_bind_ipv6 = true`` 。
    详情见\ `网络配置参考`_\ 。
 
 
@@ -213,36 +213,32 @@ Ceph 配置文件的配置将覆盖默认值，
 
 	[global]
 	fsid = {cluster-id}
-	mon initial members = {hostname}[, {hostname}]
-	mon host = {ip-address}[, {ip-address}]
-	public network = {network}[, {network}]
-	cluster network = {network}[, {network}]
-	auth cluster required = cephx
-	auth service required = cephx
-	auth client required = cephx
-	osd journal size = {n}
-	osd pool default size = {n}  # Write an object n times.
-	osd pool default min size = {n} # 在降级状态下允许写 n 个副本
-	osd pool default pg num = {n}
-	osd pool default pgp num = {n}
-	osd crush chooseleaf type = {n}
+	mon_initial_members = {hostname}[, {hostname}]
+	mon_host = {ip-address}[, {ip-address}]
+	public_network = {network}[, {network}]
+	cluster_network = {network}[, {network}]
+	auth_cluster required = cephx
+	auth_service required = cephx
+	auth_client required = cephx
+	osd_pool_default_size = {n}  # Write an object n times.
+	osd_pool_default_min_size = {n} # 在降级状态下允许写 n 个副本
+	osd_pool_default_pg_num = {n}
+	osd_crush_chooseleaf_type = {n}
 
    按前述实例， ``[global]`` 段的配置大致如下： ::
 
 	[global]
 	fsid = a7f64266-0894-4f1e-a635-d0aeaca0e993
-	mon initial members = mon-node1
-	mon host = 192.168.0.1
-	public network = 192.168.0.0/24
-	auth cluster required = cephx
-	auth service required = cephx
-	auth client required = cephx
-	osd journal size = 1024
-	osd pool default size = 3
-	osd pool default min size = 2
-	osd pool default pg num = 333
-	osd pool default pgp num = 333
-	osd crush chooseleaf type = 1
+	mon_initial_members = mon-node1
+	mon_host = 192.168.0.1
+	public_network = 192.168.0.0/24
+	auth_cluster_required = cephx
+	auth_service_required = cephx
+	auth_client_required = cephx
+	osd_pool_default_size = 3
+	osd_pool_default_min_size = 2
+	osd_pool_default_pg_num = 333
+	osd_crush_chooseleaf_type = 1
 
 
 #. 启动监视器。
@@ -295,7 +291,7 @@ Ceph 配置文件的配置将覆盖默认值，
 
 你的初始监视器可以正常运行后就可以添加 OSD 了。要想让集群达到
 ``active + clean`` 状态，必须安装足够多的 OSD 来处理对象副本\
-（如 ``osd pool default size = 2`` 需要至少 2 个 OSD ）。在\
+（如 ``osd_pool_default_size = 2`` 需要至少 2 个 OSD ）。在\
 完成监视器自举引导后，集群就有了默认的 CRUSH 图，但现在此图\
 还是空的，里面没有任何 OSD 映射到 Ceph 节点。
 
@@ -311,8 +307,6 @@ Ceph 软件包提供了 ``ceph-volume`` 工具，可为 Ceph 准备好逻辑卷�
 此工具把后面将提到的\ `细致型`_\ 里面的步骤都自动化了。
 为按照精简型创建前两个 OSD ，为各 OSD 执行下列命令：
 
-bluestore 后端
-^^^^^^^^^^^^^^
 #. 创建 OSD 。 ::
 
 	copy /var/lib/ceph/bootstrap-osd/ceph.keyring from monitor node (mon-node1) to /var/lib/ceph/bootstrap-osd/ceph.keyring on osd node (osd-node1)
@@ -350,44 +344,6 @@ bluestore 后端
    例如： ::
 
 	sudo ceph-volume lvm activate 0 a7f64266-0894-4f1e-a635-d0aeaca0e993
-
-
-filestore 后端
-^^^^^^^^^^^^^^
-#. 创建 OSD 。 ::
-
-	ssh {node-name}
-	sudo ceph-volume lvm create --filestore --data {data-path} --journal {journal-path}
-
-   例如： ::
-
-	ssh osd-node1
-	sudo ceph-volume lvm create --filestore --data /dev/hdd1 --journal /dev/hdd2
-
-或者，可以把创建过程分拆成两步（准备和激活）：
-
-#. 准备 OSD 。 ::
-
-	ssh {node-name}
-	sudo ceph-volume lvm prepare --filestore --data {data-path} --journal {journal-path}
-
-   例如： ::
-
-	ssh osd-node1
-	sudo ceph-volume lvm prepare --filestore --data /dev/hdd1 --journal /dev/hdd2
-
-   准备完成后，已准备好的 OSD 的 ``ID`` 和 ``FSID`` 是激活所\
-   必需的。它们可以通过罗列当前服务器上的 OSD 获得： ::
-
-    sudo ceph-volume lvm list
-
-#. 激活 OSD： ::
-
-	sudo ceph-volume lvm activate --filestore {ID} {FSID}
-
-   例如： ::
-
-	sudo ceph-volume lvm activate --filestore 0 a7f64266-0894-4f1e-a635-d0aeaca0e993
 
 
 细致型
@@ -505,6 +461,52 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 
 #. 现在准备好了，你可以\ `创建 Ceph 文件系统`_\ 了。
 
+
+Manually Installing RADOSGW
+===========================
+
+For a more involved discussion of the procedure presented here, see `this
+thread on the ceph-users mailing list
+<https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/message/LB3YRIKAPOHXYCW7MKLVUJPYWYRQVARU/>`_.
+
+#. Install ``radosgw`` packages on the nodes that will be the RGW nodes.
+
+#. From a monitor or from a node with admin privileges, run a command of the
+   following form:
+
+   .. prompt:: bash #
+      
+      ceph auth get-or-create client.$(hostname -s) mon 'allow rw' osd 'allow rwx'
+
+#. On one of the RGW nodes, do the following:
+
+   a. Create a ``ceph-user``-owned directory. For example: 
+
+      .. prompt:: bash #
+
+         install -d -o ceph -g ceph /var/lib/ceph/radosgw/ceph-$(hostname -s)
+
+   b. Enter the directory just created and create a ``keyring`` file: 
+
+      .. prompt:: bash #
+
+         touch /var/lib/ceph/radosgw/ceph-$(hostname -s)/keyring
+
+      Use a command similar to this one to put the key from the earlier ``ceph
+      auth get-or-create`` step in the ``keyring`` file. Use your preferred
+      editor:
+
+      .. prompt:: bash #
+
+         $EDITOR /var/lib/ceph/radosgw/ceph-$(hostname -s)/keyring
+
+   c. Repeat these steps on every RGW node.
+
+#. Start the RADOSGW service by running the following command:
+
+   .. prompt:: bash #
+
+      systemctl start ceph-radosgw@$(hostname -s).service
 
 总结
 ====

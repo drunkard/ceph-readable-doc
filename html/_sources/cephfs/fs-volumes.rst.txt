@@ -4,7 +4,7 @@ FS 卷和子卷
 ===========
 .. FS volumes and subvolumes
 
-:term:`Ceph 管理器`\ 守护进程（ ceph-mgr ）的卷模块为
+:term:`Ceph 管理器`\ 守护进程（ ceph-mgr ）的 volumes 模块为
 CephFS 导出提供了单一可信来源。 OpenStack 共享文件系统服务
 （ manila_ ）和 Ceph 容器存储接口（ CSI_ ）存储管理员\
 可以用 ceph-mgr ``volumes`` 模块提供的通用 CLI 来管理 CephFS 导出。
@@ -23,6 +23,7 @@ ceph-mgr ``volumes`` 模块实现了以下的文件系统导出抽象层：
 * FS 子卷，用于 Manila 共享或 CSI 卷；
 
 * FS 子卷组，用作 Manila 共享组
+
 
 必备条件
 --------
@@ -67,9 +68,8 @@ FS 卷
 此命令用于删除文件系统及其数据和元数据存储池。
 如果已启用 Ceph 管理器 orchestrator 模块，还会尝试删除 MDS 守护进程。
 
-.. note:: 卷删除后，如果在同一集群上\
-   创建了新文件系统且正在使用子卷接口，
-   我们建议重启 `ceph-mgr` 。
+.. note:: 卷删除后，如果在同一集群上创建了新文件系统\
+   且正在使用子卷接口，我们建议重启 `ceph-mgr` 。
    详情见 https://tracker.ceph.com/issues/49605#note-5 。
 
 .. note:: 如果 Ceph 管理器模块 snap-schedule 正用于某个卷，
@@ -156,6 +156,7 @@ FS 卷
         "used_size": 0
     }
 
+
 FS 子卷组
 ---------
 .. FS Subvolume groups
@@ -185,8 +186,7 @@ uid ``0`` 、 gid ``0`` 、数据存储池布局继承其父目录的。
 当命令的参数是一个不存在的子卷组时，
 ``--force`` 标志可以让命令成功执行。
 
-获取子卷组的绝对路径，
-执行下列命令：
+获取子卷组的绝对路径，执行下列命令：
 
 .. prompt:: bash #
 
@@ -1017,6 +1017,124 @@ earmark 机制能确保正确地标记和管理子卷，
 文件系统内的一个可用 rank 。
 
 
+规范化和大小写敏感
+------------------
+.. Normalization and Case Sensitivity
+
+subvolumegroup 和 subvolume 接口有一个 porcelain layer API （统一抽象层），
+用于操作 ``ceph.dir.charmap`` 配置（另请参阅 :ref:`charmap` ）。
+
+charmap 的配置
+~~~~~~~~~~~~~~
+.. Configuring the charmap
+
+要给一个 subvolumegroup 配置 charmap ：
+
+.. prompt:: bash #
+
+    ceph fs subvolumegroup charmap set <vol_name> <group_name> <setting> <value>
+
+或者给一个 subvolume 配置：
+
+.. prompt:: bash #
+
+    ceph fs subvolume charmap set <vol_name> <subvol> <--group_name=name> <setting> <value>
+
+例如：
+
+.. prompt:: bash #
+
+    ceph fs subvolumegroup charmap set vol csi normalization nfd
+
+命令输出：
+
+::
+
+    {"casesensitive":true,"normalization":"nfd","encoding":"utf8"}
+
+
+读取 charmap
+~~~~~~~~~~~~
+.. Reading the charmap
+
+要读取一个 subvolumegroup 的配置：
+
+.. prompt:: bash #
+
+    ceph fs subvolumegroup charmap get <vol_name> <group_name> <setting>
+
+或者一个 subvolume 的：
+
+.. prompt:: bash #
+
+    ceph fs subvolume charmap get <vol_name> <subvol> <--group_name=name> <setting>
+
+例如：
+
+.. prompt:: bash #
+
+    ceph fs subvolume charmap get vol subvol --group_name=csi casesensitive
+
+::
+
+    0
+
+要读取完整的 ``charmap`` ，读取 subvolumegroup 的：
+
+.. prompt:: bash #
+
+    ceph fs subvolumegroup charmap get <vol_name> <group_name>
+
+或者读取 subvolume 的：
+
+.. prompt:: bash #
+
+    ceph fs subvolume charmap get <vol_name> <subvol> <--group_name=name>
+
+例如：
+
+.. prompt:: bash #
+
+    ceph fs subvolumegroup charmap get vol csi
+
+命令输出：
+
+::
+
+    {"casesensitive":false,"normalization":"nfd","encoding":"utf8"}
+
+
+删除 charmap
+~~~~~~~~~~~~
+.. Removing the charmap
+
+要删除一个 subvolumegroup 的配置：
+
+.. prompt:: bash #
+
+    ceph fs subvolumegroup charmap rm <vol_name> <group_name
+
+或者一个 subvolume 的：
+
+.. prompt:: bash #
+
+    ceph fs subvolume charmap rm <vol_name> <subvol> <--group_name=name>
+
+例如：
+
+.. prompt:: bash #
+
+    ceph fs subvolumegroup charmap rm vol csi
+
+输出：
+
+::
+
+    {}
+
+.. note:: 只有当 subvolumegroup 或 subvolume 为空的时候才能删除 charmap 。
+
+
 子卷静默（ subvolume quiesce ）
 -------------------------------
 .. Subvolume quiesce
@@ -1044,10 +1162,9 @@ CephFS 快照不能保证强一致性，因为在多个客户端执行写操作�
   $ ceph fs quiesce <vol_name> --set-id myset1 --release --await
   # 如果成功，就认为此集合的所有成员仍被暂停着，然后释放它们
 
-``fs quiesce`` 功能基于更底层的 ``quiesce db`` 服务，
-它是由 MDS 守护进程提供的，操作粒度可达到文件系统路径。
-`volumes` 插件只是把子卷名映射到指定文件系统内的相应路径，
-然后向 MDS 发出相应的 ``quiesce db`` 命令。
+``fs quiesce`` 功能基于更底层的 ``quiesce db`` 服务，它是由 MDS 守护进程提供的，
+操作粒度可达到文件系统路径。 `volumes` 插件只是把子卷名映射到\
+指定文件系统内的相应路径，然后向 MDS 发出相应的 ``quiesce db`` 命令。
 有关底层服务的更多信息，参阅开发者文档。
 
 
@@ -1072,11 +1189,10 @@ quiesce （静默）操作可以作用于一个或多个子卷（就是文件系
 还有同一控制循环批次中其他可能的成功操作的状态一致。
 
 有些集合的状态是 `awaitable` 。我们将在下文讨论这些状态，但现在有必要提及的是，
-上述所有命令都可以用 **await** 修饰符进行修改，
-这会让它们在应用想要的修改后一直阻塞在集合上，前提是此集合状态为 `awaitable` 。
-这样的命令会一直阻塞，直到集合到达等待的那个状态、或被其他命令修改、
-或转换成另一个状态。返回码会明确说明退出的条件，
-响应内容将始终包含已知的最新集合状态。
+上述所有命令都可以用 **await** 修饰符进行修改，这会让它们在应用想要的修改后\
+一直阻塞在集合上，前提是此集合状态为 `awaitable` 。这样的命令会一直阻塞，
+直到集合到达等待的那个状态、或被其他命令修改、或转换成另一个状态。
+返回码会明确说明退出的条件，响应内容将始终包含已知的最新集合状态。
 
 .. image:: quiesce-set-states.svg
 
@@ -1090,9 +1206,8 @@ quiesce （静默）操作可以作用于一个或多个子卷（就是文件系
 * 查询有效的、或所有已知集合，还有
 * 取消所有
 
-通过 `include` 或 `reset` 命令拉进成员，即可创建一个新集合。
-可以指定集合 id ，而且如果它是新 id ，
-那么这个集合带着指定成员一创建就处于 `QUIESCING` 状态。
+通过 `include` 或 `reset` 命令拉进成员，即可创建一个新集合。可以指定集合 id ，
+而且如果它是新 id ，那么这个集合带着指定成员一创建就处于 `QUIESCING` 状态。
 如果在包含或重置成员时没有指定集合 id ，就会创建一个具有唯一集合 id 的新集合。
 在输出里就能找到它的集合 id ：
 
@@ -1430,8 +1545,8 @@ If Version （判断版本）
 
 .. _disabling-volumes-plugin:
 
-禁用卷插件
-----------
+禁用 volumes 插件
+-----------------
 .. Disabling Volumes Plugin
 
 默认情况下， volumes 插件是启用的、且设置成了 ``always on`` （始终打开）。

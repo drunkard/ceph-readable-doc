@@ -141,7 +141,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../cache-tiering/">分级缓存</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../placement-groups/">归置组</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../upmap/">使用 pg-upmap</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../upmap/#id1">在线优化</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../read-balancer/">Operating the Read (Primary) Balancer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../balancer/">均衡器模块</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../crush-map/">CRUSH 图</a></li>
@@ -347,15 +346,19 @@ span.prompt1:before {
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{pgp-num}</span></span></dt>
-<dd><p>用于归置的归置组总数。
-此值<strong>应该等于归置组总数</strong>，
-归置组分割的情况下除外。</p>
+<dd><p>用于归置的 PG 总数。此值<strong>应该等于 PG 总数</strong>，
+除非是 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 正在增加或减少时的短暂期间。
+注意，从 Nautilus 版起，一般不会直接更改 <code class="docutils literal notranslate"><span class="pre">pgp_num</span></code> ：
+存储池的 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 被更改后， Ceph 会自动伸缩这个存储池的 <code class="docutils literal notranslate"><span class="pre">pgp_num</span></code> 。
+<code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 的调整可以是 PG autoscaler 做出的；
+如果某个存储池的 autoscaler 被禁用了，
+还可以通过 CLI 或 仪表盘手动设置。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型<span class="colon">:</span></dt>
 <dd class="field-odd"><p>整数</p>
 </dd>
 <dt class="field-even">是否必需<span class="colon">:</span></dt>
-<dd class="field-even"><p>没指定的话读取默认值、或 Ceph 配置文件里的值。</p>
+<dd class="field-even"><p>是的。命令行中没指定的话读取默认值（除非 Ceph 配置文件里另外配置了值）。</p>
 </dd>
 <dt class="field-odd">默认值<span class="colon">:</span></dt>
 <dd class="field-odd"><p>8</p>
@@ -366,11 +369,16 @@ span.prompt1:before {
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{replicated|erasure}</span></span></dt>
-<dd><p>存储池类型，可以是<strong>replicated （多副本）</strong>
-（保存多份对象副本，以便从丢失的 OSD 恢复）或<strong>erasure （纠删）</strong>（获得类似 <a class="reference external" href="../erasure-code">通用奇偶校验 RAID</a> 能力）。
-<strong>replicated</strong> 存储池需更多原始存储空间，但能实现所有 Ceph 操作；
-<strong>erasure</strong>存储池所需原始存储空间较少，但只能执行部分 Ceph 任务，
-而且可能性能也不尽如人意。</p>
+<dd><p>存储池的数据保护策略，可以是<code class="docutils literal notranslate"><span class="pre">replicated</span></code>
+（多副本，像 RAID1 和 RAID10 ）、
+<code class="docutils literal notranslate"><span class="pre">erasure</span></code> （纠删，一种<a class="reference external" href="../erasure-code">通用奇偶校验 RAID</a> 策略，类似 RAID6 但更加灵活）。
+<code class="docutils literal notranslate"><span class="pre">replicated</span></code> 在给定的原始存储空间中产生的可用容量较少，
+但可以适用所有 Ceph 组件和使用案例；
+<code class="docutils literal notranslate"><span class="pre">erasure</span></code> (EC) 在给定的原始存储空间中产生的可用容量比多副本存储池更多，
+但只能适用部分 Ceph 组件和使用案例。
+根据载荷与特定配置的不同， EC 通常需要比多副本存储池更多的故障域，
+并且性能还是降级的，但它可以容许更多的驱动器重叠、
+或主机故障。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型<span class="colon">:</span></dt>
 <dd class="field-odd"><p>String</p>
@@ -388,7 +396,7 @@ span.prompt1:before {
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">[crush-rule-name]</span></span></dt>
 <dd><p>此存储池所用的 CRUSH 规则名字。
-指定的规则必须存在。</p>
+指定的规则必须是已经存在的，否则此命令会失败。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型<span class="colon">:</span></dt>
 <dd class="field-odd"><p>String</p>
@@ -409,7 +417,12 @@ span.prompt1:before {
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">[erasure-code-profile=profile]</span></span></dt>
-<dd><p>仅适用于<strong>纠删</strong>存储池。指定<a class="reference external" href="../erasure-code-profile">纠删码配置</a>框架，此配置必须已经由 <strong>osd erasure-code-profile set</strong> 定义好了。</p>
+<dd><p>仅适用于<strong>纠删</strong>存储池。让 Ceph 采用指定的<a class="reference external" href="../erasure-code-profile">纠删码配置</a>。
+此配置必须是已经存在的配置，通过仪表盘定义、
+或调用 <code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">erasure-code-profile</span> <span class="pre">set</span></code> 定义的。
+注意，在存储池创建以后，对其 EC 配置的更改<em>不会</em>生效。
+要更改现有存储池的 EC 配置，必须更改存储池，
+让它使用另外一个按需要定义好的 CRUSH 规则。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型<span class="colon">:</span></dt>
 <dd class="field-odd"><p>String</p>
@@ -436,7 +449,7 @@ span.prompt1:before {
 <dd class="field-even"><p>No.</p>
 </dd>
 <dt class="field-odd">默认值<span class="colon">:</span></dt>
-<dd class="field-odd"><p>默认行为由 <code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_pool_default_pg_autoscale</span></code> 选项控制。</p>
+<dd class="field-odd"><p>默认行为由 <a class="reference internal" href="../../configuration/pool-pg-config-ref/#confval-osd_pool_default_pg_autoscale_mode"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_pool_default_pg_autoscale_mode</span></code></a> 选项控制。</p>
 </dd>
 </dl>
 </dd></dl>
@@ -478,13 +491,14 @@ span.prompt1:before {
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>set-quota<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">[</span>max_objects<span class="w"> </span><span class="o">{</span>obj-count<span class="o">}]</span><span class="w"> </span><span class="o">[</span>max_bytes<span class="w"> </span><span class="o">{</span>bytes<span class="o">}]</span></span>
 </pre></div></div><p>例如：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>set-quota<span class="w"> </span>data<span class="w"> </span>max_objects<span class="w"> </span><span class="m">10000</span></span>
-</pre></div></div><p>要取消配额，设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 。</p>
+</pre></div></div><p>要取消配额，把此数值设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> 。注意，设置配额时，
+可以只设置字节数、或只设置 RADOS 对象数，或者二者都设置。</p>
 </section>
 <section id="id9">
 <h2>删除存储池<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h2>
 <p>要删除一存储池，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>delete<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">[{</span>pool-name<span class="o">}</span><span class="w"> </span>--yes-i-really-really-mean-it<span class="o">]</span></span>
-</pre></div></div><p>要删除存储池，监视器配置的 <code class="docutils literal notranslate"><span class="pre">mon_allow_pool_delete</span></code> 标志必须设置为 <code class="docutils literal notranslate"><span class="pre">true</span></code> ，
+</pre></div></div><p>要删除存储池，中央配置的 <code class="docutils literal notranslate"><span class="pre">mon_allow_pool_delete</span></code> 标志必须设置为 <code class="docutils literal notranslate"><span class="pre">true</span></code> ，
 否则监视器们会拒绝删除存储池。</p>
 <p>详情见<a class="reference external" href="../../configuration/mon-config-ref">监视器配置</a>。</p>
 <p>如果有给存储池创建的自定义规则，应该删掉它们。</p>
@@ -601,7 +615,8 @@ span.prompt1:before {
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
 <dd class="field-odd"><p>设置存储池中的对象副本数，详情见<a class="reference internal" href="#rados">设置 RADOS 对象副本数</a>。
-仅适用于多副本存储池。</p>
+仅适用于多副本存储池。 EC 存储池<strong>回应</strong>的 <code class="docutils literal notranslate"><span class="pre">size</span></code> 数值等于 K+M ，
+但不能这样直接<strong>设置</strong>这个数值。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -614,9 +629,9 @@ span.prompt1:before {
 <span class="sig-name descname"><span class="pre">min_size</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>设置 I/O 要求的最小副本数，详情参见<a class="reference internal" href="#rados">设置 RADOS 对象副本数</a> 。对于纠删码存储池，
-这个值应该设置成大于 k 的值，因为，如果我们让这个值等于 k ，那就没有冗余，
-在遇到永久的 OSD 故障这样的事件时，数据会丢失。更多信息见<a class="reference external" href="../erasure-code">纠删码</a> 。</p>
+<dd class="field-odd"><p>为保证 PG 活跃且能处理 I/O 操作，要求设置的最小活跃副本数（或分片数），
+详情见<a class="reference internal" href="#rados">设置 RADOS 对象副本数</a> 。对于纠删码存储池，此值应该设置成大于 <code class="docutils literal notranslate"><span class="pre">K</span></code> 的值。
+如果只有 <code class="docutils literal notranslate"><span class="pre">K</span></code> 个分片的时候仍然允许 I/O ，那将没有冗余，并且在遇到另外一件永久 OSD 故障这样的事件时，数据会丢失。更多信息见<a class="reference external" href="../erasure-code">纠删码</a> 。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -632,13 +647,14 @@ span.prompt1:before {
 <span class="sig-name descname"><span class="pre">pg_num</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>计算数据归置时使用的有效归置组数量。</p>
+<dd class="field-odd"><p>指定存储池的 PG 总数。注意 PG autoscaler ，
+如果在指定存储池上启用了，可能会覆盖手动分配的数值。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
 </dd>
 <dt class="field-odd">有效范围<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code> 到 <code class="docutils literal notranslate"><span class="pre">mon_max_pool_pg_num</span></code> 。如果设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，将采用 <code class="docutils literal notranslate"><span class="pre">osd_pool_default_pg_autoscale</span></code> 的值。</p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">0</span></code> 到 <code class="docutils literal notranslate"><span class="pre">mon_max_pool_pg_num</span></code> 。如果设置为 <code class="docutils literal notranslate"><span class="pre">0</span></code> ，将采用 <code class="docutils literal notranslate"><span class="pre">osd_pool_default_pg_num</span></code> 的值。</p>
 </dd>
 </dl>
 </dd></dl>
@@ -648,7 +664,8 @@ span.prompt1:before {
 <span class="sig-name descname"><span class="pre">pgp_num</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>计算数据归置时使用的、用于归置的有效归置组数量。</p>
+<dd class="field-odd"><p>计算数据归置时使用的、用于归置的有效归置组数量。使用 Nautilus 及以上版本时，
+管理员一般无需明确设置此值， Ceph 会自动递增或递减此值，以匹配 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -664,7 +681,7 @@ span.prompt1:before {
 <span class="sig-name descname"><span class="pre">crush_rule</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Ceph 用以在存储池内映射对象归置时使用的 CRUSH 规则。</p>
+<dd class="field-odd"><p>设置 CRUSH 规则， Ceph 用它把存储池对象映射到正确的 OSD 。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>String</p>
@@ -695,7 +712,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">hashpspool</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>给指定存储池设置/取消 HASHPSPOOL 标志。</p>
+<dd class="field-odd"><p>给指定存储池设置/取消 <code class="docutils literal notranslate"><span class="pre">HASHPSPOOL</span></code> 标志。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -711,7 +728,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">nodelete</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>给指定存储池设置/取消 NODELETE 标志。</p>
+<dd class="field-odd"><p>给指定存储池设置/取消 <code class="docutils literal notranslate"><span class="pre">NODELETE</span></code> 标志。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -730,7 +747,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">nopgchange</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>给指定存储池设置/取消 NOPGCHANGE 标志。</p>
+<dd class="field-odd"><p>给指定存储池设置/取消 <code class="docutils literal notranslate"><span class="pre">NOPGCHANGE</span></code> 标志。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -749,7 +766,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">nosizechange</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>给指定存储池设置/取消 NOSIZECHANGE 标志。</p>
+<dd class="field-odd"><p>给指定存储池设置/取消 <code class="docutils literal notranslate"><span class="pre">NOSIZECHANGE</span></code> 标志。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -768,7 +785,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">bulk</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>设置、取消指定存储池的 bulk 标志。</p>
+<dd class="field-odd"><p>设置、取消指定存储池的 <code class="docutils literal notranslate"><span class="pre">BULK</span></code> 标志。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>Boolean</p>
@@ -784,7 +801,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">write_fadvise_dontneed</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>设置或取消指定存储池的 WRITE_FADVISE_DONTNEED 标志。</p>
+<dd class="field-odd"><p>设置或取消指定存储池的 <code class="docutils literal notranslate"><span class="pre">WRITE_FADVISE_DONTNEED</span></code> 标志。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>Integer</p>
@@ -800,7 +817,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">noscrub</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>设置或取消指定存储池的 NOSCRUB 标志。</p>
+<dd class="field-odd"><p>设置或取消指定存储池的 <code class="docutils literal notranslate"><span class="pre">NOSCRUB</span></code> 标志。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>Integer</p>
@@ -816,7 +833,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">nodeep-scrub</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>设置或取消指定存储池的 NODEEP_SCRUB 标志。</p>
+<dd class="field-odd"><p>设置或取消指定存储池的 <code class="docutils literal notranslate"><span class="pre">NODEEP_SCRUB</span></code> 标志。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>Integer</p>
@@ -832,7 +849,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">target_max_bytes</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>达到 <code class="docutils literal notranslate"><span class="pre">max_bytes</span></code> 阀值时 Ceph 就回写或赶出对象。</p>
+<dd class="field-odd"><p>启用了已废弃的缓存层功能、且达到 <code class="docutils literal notranslate"><span class="pre">max_bytes</span></code> 阀值时， Ceph 就回写或赶出对象。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -848,7 +865,7 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">target_max_objects</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>达到 <code class="docutils literal notranslate"><span class="pre">max_objects</span></code> 阀值时 Ceph 就回写或赶出对象。</p>
+<dd class="field-odd"><p>启用了已废弃的缓存层功能，且达到 <code class="docutils literal notranslate"><span class="pre">max_objects</span></code> 阀值时 Ceph 就回写或赶出对象。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>整数</p>
@@ -864,10 +881,10 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <span class="sig-name descname"><span class="pre">fast_read</span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
-<dd class="field-odd"><p>在纠删码存储池上，如果打开了这个标志，读请求会向所有分片发送子操作读（ sub reads ），
-然后等着，直到收到的分片足以解码给客户端。对 <em>jerasure</em> 或 <em>isa</em> 纠删码插件来说，
-只要前 <em>K</em> 个请求返回，就能立即解码、并先把这些数据发给客户端。
-这样有助于资源折衷，以提升性能。此标志只支持纠删码存储池。</p>
+<dd class="field-odd"><p>在纠删码存储池上，如果打开这个标志（ <code class="docutils literal notranslate"><span class="pre">on</span></code> ），读请求会向所有分片发送子操作读
+（ sub reads ），然后等着，直到收到的分片足以解码给客户端。
+对 <em>jerasure</em> 或 <em>isa</em> 纠删码插件来说，只要前 <em>K</em> 个请求返回，就能立即解码、
+并先把这些数据发给客户端。这样有助于资源折衷，以提升性能。此标志只支持纠删码存储池。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>Boolean</p>
@@ -935,7 +952,8 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 <dd><dl class="field-list simple">
 <dt class="field-odd">描述<span class="colon">:</span></dt>
 <dd class="field-odd"><p>设置此值可调整存储池计算出的保留优先级。此值必须介于 <code class="docutils literal notranslate"><span class="pre">-10</span></code> 到 <code class="docutils literal notranslate"><span class="pre">10</span></code> 之间。
-所有分配了负值的存储池，其优先级都会低于所有新存储池，所以用户应该给低优先级存储池分配负值。</p>
+所有分配了负值的存储池，其优先级都会低于所有新存储池，
+所以用户应该给低优先级存储池分配负值。</p>
 </dd>
 <dt class="field-even">类型<span class="colon">:</span></dt>
 <dd class="field-even"><p>Integer</p>
@@ -1117,14 +1135,16 @@ CephFS 和 RBD 才能用 EC （erasure-coded ，纠删码）存储池存储用�
 可用 <code class="docutils literal notranslate"><span class="pre">min_size</span></code> 选项为其设置个最低副本数。例如，执行下列命令：</p>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>data<span class="w"> </span>min_size<span class="w"> </span><span class="m">2</span></span>
-</pre></div></div><p>此命令可确保数据存储池里任何副本数小于 <code class="docutils literal notranslate"><span class="pre">min_size</span></code> 的对象都不会收到 I/O 了。</p>
+</pre></div></div><p>此命令可确保数据存储池里任何副本数小于 <code class="docutils literal notranslate"><span class="pre">min_size</span></code> 的对象都不会收到 I/O 了。
+注意，在生产环境下设置 <code class="docutils literal notranslate"><span class="pre">size</span></code> 为 <code class="docutils literal notranslate"><span class="pre">2</span></code> 或者 <code class="docutils literal notranslate"><span class="pre">min_size</span></code> 为 <code class="docutils literal notranslate"><span class="pre">1</span></code> 有丢数据的风险，
+只有在情况紧急的时候才能这样做，而且只能是临时性的。</p>
 </section>
 <section id="id18">
 <h2>获取对象副本数<a class="headerlink" href="#id18" title="Permalink to this heading"></a></h2>
 <p>要获取对象副本数，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;replicated size&#39;</span></span>
 </pre></div></div><p>Ceph 会列出存储池，且高亮 <code class="docutils literal notranslate"><span class="pre">replicated</span> <span class="pre">size</span></code> 属性。默认情况下，
-Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 <code class="docutils literal notranslate"><span class="pre">3</span></code> ）。</p>
+Ceph 会维持三个副本或复制品，也就是 size 值为 <code class="docutils literal notranslate"><span class="pre">3</span></code> 。</p>
 </section>
 <section id="id19">
 <h2>管理加了 <code class="docutils literal notranslate"><span class="pre">--bulk</span></code> 标记的存储池<a class="headerlink" href="#id19" title="Permalink to this heading"></a></h2>
@@ -1152,7 +1172,9 @@ Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 <c
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{peering_crush_bucket_count}</span></span></dt>
-<dd><p>此值与 peering_crush_bucket_barrier 一起使用，可以决定选定的 acting set 内的一组 OSD 是否能相互建立对等互联，根据的是 actine set 中不同桶的数量。</p>
+<dd><p>此值与 <code class="docutils literal notranslate"><span class="pre">peering_crush_bucket_barrier</span></code> 一起使用，
+可以决定选定的 acting set 内的一组 OSD 是否能相互建立对等互联，
+根据的是 actine set 中不同桶的数量。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Integer</p>
@@ -1166,7 +1188,7 @@ Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 <c
 <dl class="describe">
 <dt class="sig sig-object">
 <span class="sig-name descname"><span class="pre">{peering_crush_bucket_target}</span></span></dt>
-<dd><p>此值与 peering_crush_bucket_barrier 和 size 一起用于计算 bucket_max 值，
+<dd><p>此值与 <code class="docutils literal notranslate"><span class="pre">peering_crush_bucket_barrier</span></code> 和 <code class="docutils literal notranslate"><span class="pre">size</span></code> 一起用于计算 <code class="docutils literal notranslate"><span class="pre">bucket_max</span></code> 值，
 这个值限制着同一个桶内被选入 PG actine set 的 OSD 数量。</p>
 <dl class="field-list simple">
 <dt class="field-odd">类型<span class="colon">:</span></dt>

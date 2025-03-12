@@ -219,7 +219,7 @@ configurations.</p>
 <section id="deploying-nfs-ganesha">
 <h2>Deploying NFS ganesha<a class="headerlink" href="#deploying-nfs-ganesha" title="Permalink to this heading"></a></h2>
 <p>Cephadm deploys NFS Ganesha daemon (or set of daemons).  The configuration for
-NFS is stored in the <code class="docutils literal notranslate"><span class="pre">nfs-ganesha</span></code> pool and exports are managed via the
+NFS is stored in the <code class="docutils literal notranslate"><span class="pre">.nfs</span></code> pool and exports are managed via the
 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">nfs</span> <span class="pre">export</span> <span class="pre">...</span></code> commands and via the dashboard.</p>
 <p>To deploy a NFS Ganesha gateway, run the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
@@ -295,6 +295,88 @@ a <em>port</em> property that is not 2049 to avoid conflicting with the
 ingress service, which could be placed on the same host(s).</p></li>
 </ul>
 </div></blockquote>
+<section id="nfs-with-virtual-ip-but-no-haproxy">
+<h3>NFS with virtual IP but no haproxy<a class="headerlink" href="#nfs-with-virtual-ip-but-no-haproxy" title="Permalink to this heading"></a></h3>
+<p>Cephadm also supports deploying nfs with keepalived but not haproxy. This
+offers a virtual ip supported by keepalived that the nfs daemon can directly bind
+to instead of having traffic go through haproxy.</p>
+<p>In this setup, you’ll either want to set up the service using the nfs module
+(see <a class="reference internal" href="../../../mgr/nfs/#nfs-module-cluster-create"><span class="std std-ref">Create NFS Ganesha Cluster</span></a>) or place the ingress service first, so
+the virtual IP is present for the nfs daemon to bind to. The ingress service
+should include the attribute <code class="docutils literal notranslate"><span class="pre">keepalive_only</span></code> set to true. For example</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress</span>
+<span class="nt">service_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nfs.foo</span>
+<span class="nt">placement</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host1</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host2</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host3</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend_service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nfs.foo</span>
+<span class="w">  </span><span class="nt">monitor_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9049</span>
+<span class="w">  </span><span class="nt">virtual_ip</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.122.100/24</span>
+<span class="w">  </span><span class="nt">keepalive_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+<p>Then, an nfs service could be created that specifies a <code class="docutils literal notranslate"><span class="pre">virtual_ip</span></code> attribute
+that will tell it to bind to that specific IP.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nfs</span>
+<span class="nt">service_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo</span>
+<span class="nt">placement</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host1</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host2</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host3</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2049</span>
+<span class="w">  </span><span class="nt">virtual_ip</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.122.100</span>
+</pre></div>
+</div>
+<p>Note that in these setups, one should make sure to include <code class="docutils literal notranslate"><span class="pre">count:</span> <span class="pre">1</span></code> in the
+nfs placement, as it’s only possible for one nfs daemon to bind to the virtual IP.</p>
+</section>
+<section id="nfs-with-haproxy-protocol-support">
+<h3>NFS with HAProxy Protocol Support<a class="headerlink" href="#nfs-with-haproxy-protocol-support" title="Permalink to this heading"></a></h3>
+<p>Cephadm supports deploying NFS in High-Availability mode with additional
+HAProxy protocol support. This works just like High-availability NFS but also
+supports client IP level configuration on NFS Exports.  This feature requires
+<a class="reference external" href="https://github.com/nfs-ganesha/nfs-ganesha/wiki/ReleaseNotes_5">NFS-Ganesha v5.0</a> or later.</p>
+<p>To use this mode, you’ll either want to set up the service using the nfs module
+(see <a class="reference internal" href="../../../mgr/nfs/#nfs-module-cluster-create"><span class="std std-ref">Create NFS Ganesha Cluster</span></a>) or manually create services with the
+extra parameter <code class="docutils literal notranslate"><span class="pre">enable_haproxy_protocol</span></code> set to true. Both NFS Service and
+Ingress service must have <code class="docutils literal notranslate"><span class="pre">enable_haproxy_protocol</span></code> set to the same value.
+For example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress</span>
+<span class="nt">service_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nfs.foo</span>
+<span class="nt">placement</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host1</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host2</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host3</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend_service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nfs.foo</span>
+<span class="w">  </span><span class="nt">monitor_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9049</span>
+<span class="w">  </span><span class="nt">virtual_ip</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.122.100/24</span>
+<span class="w">  </span><span class="nt">enable_haproxy_protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">service_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nfs</span>
+<span class="nt">service_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo</span>
+<span class="nt">placement</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host1</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host2</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host3</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2049</span>
+<span class="w">  </span><span class="nt">enable_haproxy_protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+</section>
 </section>
 <section id="further-reading">
 <h2>Further Reading<a class="headerlink" href="#further-reading" title="Permalink to this heading"></a></h2>

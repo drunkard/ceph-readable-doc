@@ -1,15 +1,17 @@
 .. _upmap:
 
+=============
 使用 pg-upmap
 =============
-.. Using the pg-upmap
+.. Using pg-upmap
 
-从 Luminous v12.2.z 版起， OSDMap 里有一张新的 *pg-upmap* 例外\
-表，以支持指定 PG 映射到指定的 OSD 。这样可以让集群可以更好地\
-调整数据分布，在多数情况下，可以把 PG 完美地散布到各 OSD 上。
+从 Luminous v12.2.z 版起， OSDMap 里有一张新的 *pg-upmap* 例外表，
+以支持指定 PG 映射到指定的 OSD 。这样可以让集群可以更好地调整数据分布，
+在多数情况下，可以把 PG 均匀地散布到各 OSD 上。
 
-这个新机制的关键点是，它需要所有客户端都能理解 OSDMap 里新增的
-*pg-upmap* 数据结构。
+不过，这个新功能的关键点是：它需要所有客户端都能理解 OSDMap
+里新增的 *pg-upmap* 数据结构。
+
 
 在线优化
 ========

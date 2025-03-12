@@ -36,8 +36,8 @@ a failed drive was replaced.
 ============
 .. Converting existing OSDs
 
-“标记为 out “的替代
--------------------
+“标记为 ``out`` ”的替代
+-----------------------
 .. "Mark-``out``" replacement
 
 The simplest approach is to verify that the cluster is healthy and
@@ -149,6 +149,7 @@ Disadvantages:
 
 “整机”替换
 ----------
+.. "Whole host" replacement
 
 If you have a spare host in the cluster, or sufficient free space to evacuate
 an entire host for use as a spare, then the conversion can be done on a
@@ -168,7 +169,6 @@ Ideally the host will have roughly the same capacity as each of the other hosts
 you will be converting.  Add the host to the CRUSH hierarchy, but do not attach
 it to the root:
 
-
 .. prompt:: bash $
 
    NEWHOST=<empty-host-name>
@@ -179,7 +179,7 @@ Make sure that Ceph packages are installed on the new host.
 
 利用已有主机
 ^^^^^^^^^^^^
-.. Use an existing host
+.. Using an existing host
 
 If you would like to use an existing host that is already part of the cluster,
 and if there is sufficient free space on that host so that all of its data can

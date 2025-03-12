@@ -145,22 +145,32 @@
 
 .. describe:: {pgp-num}
 
-   用于归置的归置组总数。
-   此值\ **应该等于归置组总数**\ ，
-   归置组分割的情况下除外。
+   用于归置的 PG 总数。此值\ **应该等于 PG 总数**\ ，
+   除非是 ``pg_num`` 正在增加或减少时的短暂期间。
+   注意，从 Nautilus 版起，一般不会直接更改 ``pgp_num`` ：
+   存储池的 ``pg_num`` 被更改后， Ceph 会自动伸缩这个存储池的 ``pgp_num`` 。
+   ``pg_num`` 的调整可以是 PG autoscaler 做出的；
+   如果某个存储池的 autoscaler 被禁用了，
+   还可以通过 CLI 或 仪表盘手动设置。
 
    :类型: 整数
-   :是否必需: 没指定的话读取默认值、或 Ceph 配置文件里的值。
+   :是否必需: 是的。命令行中没指定的话读取默认值（除非 Ceph 配置文件里另外配置了值）。
    :默认值: 8
 
 .. describe:: {replicated|erasure}
 
-   存储池类型，可以是\ **replicated （多副本）**
-   （保存多份对象副本，以便从丢失的 OSD 恢复）或\ **erasure （纠删）**\
-   （获得类似 `通用奇偶校验 RAID <../erasure-code>`_ 能力）。
-   **replicated** 存储池需更多原始存储空间，但能实现所有 Ceph 操作；
-   **erasure**\ 存储池所需原始存储空间较少，但只能执行部分 Ceph 任务，
-   而且可能性能也不尽如人意。
+   存储池的数据保护策略，可以是\ ``replicated``
+   （多副本，像 RAID1 和 RAID10 ）、
+   ``erasure`` （纠删，一种\
+   `通用奇偶校验 RAID <../erasure-code>`_ 策略，类似 RAID6 但更加灵活）。
+   ``replicated`` 在给定的原始存储空间中产生的可用容量较少，
+   但可以适用所有 Ceph 组件和使用案例；
+   ``erasure`` (EC) 在给定的原始存储空间中产生的\
+   可用容量比多副本存储池更多，
+   但只能适用部分 Ceph 组件和使用案例。
+   根据载荷与特定配置的不同， EC 通常需要比多副本存储池更多的故障域，
+   并且性能还是降级的，但它可以容许更多的驱动器重叠、
+   或主机故障。
 
    :类型: String
    :是否必需: No.
@@ -169,7 +179,7 @@
 .. describe:: [crush-rule-name]
 
    此存储池所用的 CRUSH 规则名字。
-   指定的规则必须存在。
+   指定的规则必须是已经存在的，否则此命令会失败。
 
    :类型: String
    :是否必需: No.
@@ -181,8 +191,12 @@
 
 .. describe:: [erasure-code-profile=profile]
 
-   仅适用于\ **纠删**\ 存储池。指定\ `纠删码配置`_\ 框架，\
-   此配置必须已经由 **osd erasure-code-profile set** 定义好了。
+   仅适用于\ **纠删**\ 存储池。让 Ceph 采用指定的\ `纠删码配置`_\ 。
+   此配置必须是已经存在的配置，通过仪表盘定义、
+   或调用 ``osd erasure-code-profile set`` 定义的。
+   注意，在存储池创建以后，对其 EC 配置的更改\ *不会*\ 生效。
+   要更改现有存储池的 EC 配置，必须更改存储池，
+   让它使用另外一个按需要定义好的 CRUSH 规则。
 
    :类型: String
    :是否必需: No.
@@ -197,7 +211,7 @@
 
    :类型: String
    :是否必需: No.
-   :默认值:  默认行为由 :confval:`osd_pool_default_pg_autoscale` 选项控制。
+   :默认值:  默认行为由 :confval:`osd_pool_default_pg_autoscale_mode` 选项控制。
 
 .. describe:: [expected-num-objects]
 
@@ -246,7 +260,8 @@
 
    ceph osd pool set-quota data max_objects 10000
 
-要取消配额，设置为 ``0`` 。
+要取消配额，把此数值设置为 ``0`` 。注意，设置配额时，
+可以只设置字节数、或只设置 RADOS 对象数，或者二者都设置。
 
 
 删除存储池
@@ -259,7 +274,7 @@
 
    ceph osd pool delete {pool-name} [{pool-name} --yes-i-really-really-mean-it]
 
-要删除存储池，监视器配置的 ``mon_allow_pool_delete`` 标志必须设置为 ``true`` ，
+要删除存储池，中央配置的 ``mon_allow_pool_delete`` 标志必须设置为 ``true`` ，
 否则监视器们会拒绝删除存储池。
 
 详情见\ `监视器配置`_\ 。
@@ -392,16 +407,18 @@
 .. describe:: size
 
    :描述: 设置存储池中的对象副本数，详情见\ `设置 RADOS 对象副本数`_\ 。
-          仅适用于多副本存储池。
+          仅适用于多副本存储池。 EC 存储池\ **回应**\ 的 ``size`` 数值等于 K+M ，
+          但不能这样直接\ **设置**\ 这个数值。
    :类型: 整数
 
 .. _min_size:
 
 .. describe:: min_size
 
-   :描述: 设置 I/O 要求的最小副本数，详情参见\ `设置 RADOS 对象副本数`_ 。对于纠删码存储池，
-          这个值应该设置成大于 k 的值，因为，如果我们让这个值等于 k ，那就没有冗余，
-          在遇到永久的 OSD 故障这样的事件时，数据会丢失。更多信息见\ `纠删码 <../erasure-code>`_ 。
+   :描述: 为保证 PG 活跃且能处理 I/O 操作，要求设置的最小活跃副本数（或分片数），
+          详情见\ `设置 RADOS 对象副本数`_ 。对于纠删码存储池，此值应该设置成大于 ``K`` 的值。
+          如果只有 ``K`` 个分片的时候仍然允许 I/O ，那将没有冗余，并且在遇到另外一件\
+          永久 OSD 故障这样的事件时，数据会丢失。更多信息见\ `纠删码 <../erasure-code>`_ 。
    :类型: 整数
    :适用版本: ``0.54`` 及以上。
 
@@ -409,15 +426,17 @@
 
 .. describe:: pg_num
 
-   :描述: 计算数据归置时使用的有效归置组数量。
+   :描述: 指定存储池的 PG 总数。注意 PG autoscaler ，
+          如果在指定存储池上启用了，可能会覆盖手动分配的数值。
    :类型: 整数
-   :有效范围: ``0`` 到 ``mon_max_pool_pg_num`` 。如果设置为 ``0`` ，将采用 ``osd_pool_default_pg_autoscale`` 的值。
+   :有效范围: ``0`` 到 ``mon_max_pool_pg_num`` 。如果设置为 ``0`` ，将采用 ``osd_pool_default_pg_num`` 的值。
 
 .. _pgp_num:
 
 .. describe:: pgp_num
 
-   :描述: 计算数据归置时使用的、用于归置的有效归置组数量。
+   :描述: 计算数据归置时使用的、用于归置的有效归置组数量。使用 Nautilus 及以上版本时，
+          管理员一般无需明确设置此值， Ceph 会自动递增或递减此值，以匹配 ``pg_num`` 。
    :类型: 整数
    :有效范围: 在 ``1`` 和 ``pg_num`` 的当前数值之间。
 
@@ -425,7 +444,7 @@
 
 .. describe:: crush_rule
 
-   :描述: Ceph 用以在存储池内映射对象归置时使用的 CRUSH 规则。
+   :描述: 设置 CRUSH 规则， Ceph 用它把存储池对象映射到正确的 OSD 。
    :类型: String
 
 .. _allow_ec_overwrites:
@@ -441,7 +460,7 @@
 
 .. describe:: hashpspool
 
-   :描述: 给指定存储池设置/取消 HASHPSPOOL 标志。
+   :描述: 给指定存储池设置/取消 ``HASHPSPOOL`` 标志。
    :类型: 整数
    :有效范围: 1 开启， 0 取消
 
@@ -449,7 +468,7 @@
 
 .. describe:: nodelete
 
-   :描述: 给指定存储池设置/取消 NODELETE 标志。
+   :描述: 给指定存储池设置/取消 ``NODELETE`` 标志。
    :类型: 整数
    :有效范围: 1 开启， 0 取消
    :适用版本: Version ``FIXME``
@@ -458,7 +477,7 @@
 
 .. describe:: nopgchange
 
-   :描述: 给指定存储池设置/取消 NOPGCHANGE 标志。
+   :描述: 给指定存储池设置/取消 ``NOPGCHANGE`` 标志。
    :类型: 整数
    :有效范围: 1 开启， 0 取消
    :适用版本: Version ``FIXME``
@@ -467,7 +486,7 @@
 
 .. describe:: nosizechange
 
-   :描述: 给指定存储池设置/取消 NOSIZECHANGE 标志。
+   :描述: 给指定存储池设置/取消 ``NOSIZECHANGE`` 标志。
    :类型: 整数
    :有效范围: 1 开启， 0 取消
    :适用版本: Version ``FIXME``
@@ -476,7 +495,7 @@
 
 .. describe:: bulk
 
-   :描述: 设置、取消指定存储池的 bulk 标志。
+   :描述: 设置、取消指定存储池的 ``BULK`` 标志。
    :类型: Boolean
    :有效范围: true/1 设置标志， false/0 取消标志
 
@@ -484,7 +503,7 @@
 
 .. describe:: write_fadvise_dontneed
 
-   :描述: 设置或取消指定存储池的 WRITE_FADVISE_DONTNEED 标志。
+   :描述: 设置或取消指定存储池的 ``WRITE_FADVISE_DONTNEED`` 标志。
    :类型: Integer
    :有效范围: 1 开启， 0 取消
 
@@ -492,7 +511,7 @@
 
 .. describe:: noscrub
 
-   :描述: 设置或取消指定存储池的 NOSCRUB 标志。
+   :描述: 设置或取消指定存储池的 ``NOSCRUB`` 标志。
    :类型: Integer
    :有效范围: ``1`` 设置， ``0`` 取消
 
@@ -500,7 +519,7 @@
 
 .. describe:: nodeep-scrub
 
-   :描述: 设置或取消指定存储池的 NODEEP_SCRUB 标志。
+   :描述: 设置或取消指定存储池的 ``NODEEP_SCRUB`` 标志。
    :类型: Integer
    :有效范围: ``1`` 开启， ``0`` 取消
 
@@ -508,7 +527,7 @@
 
 .. describe:: target_max_bytes
 
-   :描述: 达到 ``max_bytes`` 阀值时 Ceph 就回写或赶出对象。
+   :描述: 启用了已废弃的缓存层功能、且达到 ``max_bytes`` 阀值时， Ceph 就回写或赶出对象。
    :类型: 整数
    :实例: ``1000000000000``  #1-TB
 
@@ -516,7 +535,7 @@
 
 .. describe:: target_max_objects
 
-   :描述: 达到 ``max_objects`` 阀值时 Ceph 就回写或赶出对象。
+   :描述: 启用了已废弃的缓存层功能，且达到 ``max_objects`` 阀值时 Ceph 就回写或赶出对象。
    :类型: 整数
    :实例: ``1000000`` #1M objects
 
@@ -524,10 +543,10 @@
 
 .. describe:: fast_read
 
-   :描述: 在纠删码存储池上，如果打开了这个标志，读请求会向所有分片发送子操作读（ sub reads ），
-          然后等着，直到收到的分片足以解码给客户端。对 *jerasure* 或 *isa* 纠删码插件来说，
-          只要前 *K* 个请求返回，就能立即解码、并先把这些数据发给客户端。
-          这样有助于资源折衷，以提升性能。此标志只支持纠删码存储池。
+   :描述: 在纠删码存储池上，如果打开这个标志（ ``on`` ），读请求会向所有分片发送子操作读
+          （ sub reads ），然后等着，直到收到的分片足以解码给客户端。
+          对 *jerasure* 或 *isa* 纠删码插件来说，只要前 *K* 个请求返回，就能立即解码、
+          并先把这些数据发给客户端。这样有助于资源折衷，以提升性能。此标志只支持纠删码存储池。
    :类型: Boolean
    :默认值: ``0``
 
@@ -563,7 +582,8 @@
 .. describe:: recovery_priority
 
    :描述: 设置此值可调整存储池计算出的保留优先级。此值必须介于 ``-10`` 到 ``10`` 之间。
-          所有分配了负值的存储池，其优先级都会低于所有新存储池，所以用户应该给低优先级存储池分配负值。
+          所有分配了负值的存储池，其优先级都会低于所有新存储池，
+          所以用户应该给低优先级存储池分配负值。
    :类型: Integer
    :默认值: ``0``
 
@@ -710,6 +730,8 @@
    ceph osd pool set data min_size 2
 
 此命令可确保数据存储池里任何副本数小于 ``min_size`` 的对象都不会收到 I/O 了。
+注意，在生产环境下设置 ``size`` 为 ``2`` 或者 ``min_size`` 为 ``1`` 有丢数据的风险，
+只有在情况紧急的时候才能这样做，而且只能是临时性的。
 
 
 获取对象副本数
@@ -723,7 +745,7 @@
    ceph osd dump | grep 'replicated size'
 
 Ceph 会列出存储池，且高亮 ``replicated size`` 属性。默认情况下，
-Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 ``3`` ）。
+Ceph 会维持三个副本或复制品，也就是 size 值为 ``3`` 。
 
 
 管理加了 ``--bulk`` 标记的存储池
@@ -754,15 +776,16 @@ Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 ``
 
 .. describe:: {peering_crush_bucket_count}
 
-   此值与 peering_crush_bucket_barrier 一起使用，可以决定选定的 acting set 内\
-   的一组 OSD 是否能相互建立对等互联，根据的是 actine set 中不同桶的数量。
+   此值与 ``peering_crush_bucket_barrier`` 一起使用，
+   可以决定选定的 acting set 内的一组 OSD 是否能相互建立对等互联，
+   根据的是 actine set 中不同桶的数量。
 
    :类型: Integer
    :是否必需: Yes.
 
 .. describe:: {peering_crush_bucket_target}
 
-   此值与 peering_crush_bucket_barrier 和 size 一起用于计算 bucket_max 值，
+   此值与 ``peering_crush_bucket_barrier`` 和 ``size`` 一起用于计算 ``bucket_max`` 值，
    这个值限制着同一个桶内被选入 PG actine set 的 OSD 数量。
 
    :类型: Integer
@@ -853,3 +876,4 @@ Ceph 会创建一对象的两个副本（一共三个副本，或 size 值为 ``
 .. _设置归置组数量: ../placement-groups#set-the-number-of-placement-groups
 .. _带重写功能的纠删码编码: ../erasure-code#erasure-coding-with-overwrites
 .. _块设备命令: ../../../rbd/rados-rbd-cmds/#create-a-block-device-pool
+.. _pgcalc: ../pgcalc
