@@ -40,8 +40,9 @@ NFS-Ganesha 配置
 ----------------
 .. NFS-Ganesha configuration
 
-这里有个用 FSAL_CEPH_ 配置的 `ganesha.conf 样本`_ 。它适合独立的 NFS-Ganesha 服务器，
-或者主从式的 NFS-Ganesha 服务器，这样适合让某些集群化软件管理（如 Pacemaker ）。
+这里有个用 FSAL_CEPH_ 配置的 `ganesha.conf 样本`_ 。
+它适合独立的 NFS-Ganesha 服务器，或者主从式的 NFS-Ganesha 服务器，
+这样适合让某些集群化软件管理（如 Pacemaker ）。
 关于选项的重要信息在样板配置的注释里。其中有些选项是：
 
 - 尽可能最小化 Ganesha 的缓存，因为 FSAL_CEPH_ 的 libcephfs 客户端也会激进地缓存；
@@ -54,6 +55,17 @@ NFS-Ganesha 配置
 
 - 启用读取授权（需要最低 v13.0.1 版的 ``libcephfs2`` 软件包和
   v2.6.0 稳定版的 ``nfs-ganesha`` 和 ``nfs-ganesha-ceph`` 软件包）
+
+.. important::
+
+   在某些情况下，使用 CephFS FSAL 的 NFS 访问会失败。
+   这会导致抛出 "Input/output error" （输入/输出错误）错误信息。
+   在这种情况下，必须给 CephFS 元数据和数据存储池设置应用程序元数据。
+   运行以下命令进行设置：
+
+   .. prompt:: bash $
+
+      ceph osd pool application set <cephfs_metadata_pool> cephfs <cephfs_data_pool> cephfs
 
 
 给 libcephfs 客户端的配置
