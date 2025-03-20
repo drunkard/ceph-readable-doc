@@ -1,63 +1,63 @@
 .. _charmap:
 
-CephFS Directory Entry Name Normalization and Case Folding
-==========================================================
+CephFS 目录条目名字规范化和大小写折叠
+=====================================
+.. CephFS Directory Entry Name Normalization and Case Folding
 
-CephFS allows configuring directory trees to **normalize** and possibly **case
-fold** directory entry names. This is typically a useful property for file
-systems exported by gateways like Samba which enforce a case-insensitive view
-of the file system, typically with performance penalties on file systems which
-are not case-insensitive.
+CephFS 允许把目录树配置成可以对目录条目名字施行\ **规范化**\
+并有可能\ **大小写折叠**\ 。对于像 Samba 这样的、通过网关导出的文件系统来说，
+此功能一般是个有用的属性，因为这些网关会强制执行文件系统不区分大小写的视图，
+所以，通常对接不区分大小写的文件系统会造成性能损失。
 
-The following virtual extended attributes control the **character mapping**
-rules for directory entries:
+以下虚拟扩展属性可控制目录条目的\ **字符映射**\ （ character mapping ）规则： 
 
-* ``ceph.dir.casesensitive``: A boolean setting for the case sensitivity of the directory. If true, case fold the directory entry names.
-* ``ceph.dir.normalization``: A string setting for the type of Unicode normalization to apply for directory entry names. Currently the normalization forms D (``nfd``), C (``nfc``), KD (``nfkd``), and KC (``nfkc``) are understood by the client.
-* ``ceph.dir.encoding``: A string setting for the encoding to use and enforce for directory entry names. The default and presently only supported encoding is UTF-8 (``utf8``).
+* ``ceph.dir.casesensitive``: 用于设置目录大小写敏感性的布尔值。
+  如果为 true ，则对目录条目名称进行大小写折叠。
+* ``ceph.dir.normalization``: 用于设置目录条目名称的 Unicode 规范化类型的字符串。
+  目前，客户端支持 D (``nfd``)、C (``nfc``)、KD (``nfkd``)和 KC (``nfkc``)等规范化格式。
+* ``ceph.dir.encoding``: 为目录条目名称使用和执行的编码设置字符串。
+  默认和目前唯一支持的编码是 UTF-8 (``utf8``)。
 
-There is also a convenience virtual extended attribute that is useful for
-getting the JSON encoding of the case sensitivity, normalization, and encoding
-configurations:
+还有一个方便的虚拟扩展属性，可用于获取大小写敏感性、
+规范化和编码配置的 JSON 编码： 
 
-* ``ceph.dir.charmap``: The complete character mapping configuration for a directory.
+* ``ceph.dir.charmap``: 目录的完整字符映射配置。
 
-It can also be used to **remove** all settings and restore the default CephFS behavior
-for directory entry names: uninterpreted bytes without ``/`` that are NUL terminated.
+它还可用于\ **删除**\ 所有设置，并恢复目录条目名称的默认 CephFS 行为：
+以 NUL 结尾、不含 ``/`` 的未解释字节。
 
-Note the following restrictions on manipulating any of these extended attributes:
+操作这些扩展属性时，要注意以下限制： 
 
-* The directory must be empty.
-* The directory must not be part of a snapshot.
+* 目录必须为空。
+* 目录不得是快照的一部分。
 
-New subdirectories created under a directory with a ``charmap`` configuration will
-inherit (copy) the parent's configuration.
+在已配置了 ``charmap`` 的目录下创建的新子目录将继承（复制）父目录的配置。
 
-.. note:: You can remove a ``charmap`` on a subdirectory which inherited
-          the configuration so long as the preconditions apply: it is empty
-          and not part of an existing snapshot.
+.. note:: 您可以删除子目录继承的 ``charmap`` 配置，
+   前提条件是：该子目录为空，且不属于现有快照的一部分。
 
 
-Normalization
--------------
+规范化
+------
+.. Normalization
 
-The ``ceph.dir.normalization`` attribute accepts the following normalization forms:
+``ceph.dir.normalization`` 属性支持下列规范化格式：
 
-* **nfd**: Form D (Canonical Decomposition)
-* **nfc**: Form C (Canonical Decomposition, followed by Canonical Composition)
-* **nfkd**: Form KD (Compatibility Decomposition)
-* **nfkc**: Form KC (Compatibility Decomposition, followed by Canonical Composition)
+* **nfd**: Form D (Canonical Decomposition ，标准分解)
+* **nfc**: Form C (Canonical Decomposition, followed by Canonical Composition ，标准分解而后标准合成)
+* **nfkd**: Form KD (Compatibility Decomposition， 兼容分解)
+* **nfkc**: Form KC (Compatibility Decomposition, followed by Canonical Composition，兼容分解而后标准合成)
 
-The default normalization for a character mapping configuration is ``nfd``.
+字符映射配置的默认规范化格式是 ``nfd`` 。
 
-.. note:: For more information about Unicode normalization forms, please see `Unicode normalization standard documents`_.
+.. note:: 有关 Unicode 规范化格式的详情，参阅 `Unicode 规范化标准文档`_\ 。
 
-Whenever a directory entry name is generated during path traversal or lookup,
-the client will apply the normalization to the name before submitting any
-operation to the MDS. On the MDS side, the directory entry names which
-are stored are only these normalized names.
+每当在路径遍历或查找过程中生成目录条目名称时，
+在向 MDS 提交任何操作之前，
+客户端会对名字进行规范化处理。在 MDS 端，
+存储的只是这些已经规范化过的目录条目名字。
 
-For example, to set the normalization on a directory:
+例如，在目录上设置规范化： 
 
 ::
 
@@ -71,10 +71,10 @@ For example, to set the normalization on a directory:
     # file: foo/
     ceph.dir.normalization="nfd"
 
-.. note:: Setting the empty string will cause the MDS to pick the default normalization.
+.. note:: 设置空字符串时， MDS 将采用默认规范化。
 
-All character mapping configurations must have a normalization enabled. Removing the normalization
-will cause the default to be restored:
+所有字符映射配置都必须启用一种规范化。
+删除规范化将恢复默认值： 
 
 ::
 
@@ -82,32 +82,32 @@ will cause the default to be restored:
     $ getfattr -n ceph.dir.normalization foo/
     # file: foo/
     ceph.dir.normalization="nfc"
-    
+
     $ setfattr -x ceph.dir.normalization foo/
     $ getfattr -n ceph.dir.normalization foo/
     # file: foo/
     ceph.dir.normalization="nfd"
 
-To remove normlization on a directory, you must remove the ``ceph.dir.charmap``
-configuration.
+要删除一个目录的规范化，
+必须删除配置的 ``ceph.dir.charmap`` 。
 
-.. note:: The MDS maintains an ``alternate_name`` metadata (also used for
-          encryption) for directory entries which allows the client to persist the
-          original un-normalized name used by the application. The MDS does not
-          interpret this metadata in any way; it's only used by clients to reconstruct
-          the original name of the directory entry.
+.. note:: MDS 会给目录条目维护一个 ``alternate_name`` 元数据
+   （也用于加密），可以给客户端保留应用程序要用的、
+   原始的未规范化过的名字。 MDS 不会对此元数据做任何解释；
+   它仅仅用于让客户端重建目录条目的原始名字。
 
 
-Case Folding
-------------
+大小写折叠
+----------
+.. Case Folding
 
-The ``ceph.dir.casesensitive`` attribute accepts a boolean value. By
-default, names are case-sensitive (as normal in a POSIX file system). Setting
-this value to false will make the directory (and its children)
-case-insensitive.
+``ceph.dir.casesensitive`` 属性应该设置布尔值。
+默认情况下，名字区分大小写（是 POSIX 文件系统的正常情况）。
+把此值设为 false 后，此目录（及其子目录）
+将不区分大小写。
 
-Case folding requires that names are also normalized. By default, after setting
-a directory to be case-insensitive, the ``charmap`` will be:
+大小写折叠要求对名称也进行规范化处理。默认情况下，
+在把目录设置为大小写不敏感后， ``charmap`` 配置是这样的：
 
 ::
 
@@ -120,68 +120,68 @@ a directory to be case-insensitive, the ``charmap`` will be:
     # file: foo/
     ceph.dir.charmap="{\"casesensitive\":false,\"normalization\":\"nfd\",\"encoding\":\"utf8\"}"
 
-Note that setting the case sensitivity on a directory will cause the default
-normalization to be selected.
+注意，设置目录的大小写敏感性时，
+会顺带选定默认的规范化配置。
 
-.. note:: Normalization is applied before case folding. The directory entry name used
-          by the MDS is the case folded and normalized name.
+.. note:: 规范化在大小写折叠之前应用。
+   MDS 所用的目录条目名字是经过大小写折叠和规范化的名字。
 
 
-Removing Character Mapping
---------------------------
+删除字符映射
+------------
+.. Removing Character Mapping
 
-If a directory is empty and not part of a snapshot, the ``charmap`` can be
-removed:
+如果目录是空的，也不属于快照，
+那么它的 ``charmap`` 就可以删掉：
 
 ::
 
    $ setfattr -x ceph.dir.charmap foo/
 
-One can confirm that this restores the normal CephFS behavior:
+可以用下面的方法确认，此目录已经恢复成了默认的 CephFS 行为：
 
 ::
 
    $ getfattr -n ceph.dir.charmap foo/
    foo/: ceph.dir.charmap: No such attribute
 
-If the attribute does not exist, then there is no character mapping for the
-directory. Note that a (future) child or parent directory may have a charmap
-configuration but it will have no effect on this directory. A charmap
-configuration is only inherited at directory creation.
+如果这个属性不存在，就说明这个目录没有配置字符映射。
+注意，（以后）其子目录或父目录可能会有 charmap 配置，
+但那个配置对本目录没有影响。
+只有在创建目录时才会继承 charmap 配置。
+
+.. note:: 默认的 charmap 包含规范化配置，此行为不能禁用。
+   关闭此功能的唯一方法是删除这个
+   ``charmap`` 虚拟扩展属性。
 
 
-.. note:: The default charmap includes normalization that cannot be disabled.
-          The only way to turn off this functionality is by removing
-          this ``charmap`` virtual extended attribute.
+限制不兼容的客户端访问
+----------------------
+.. Restricting Incompatible Client Access
 
+MDS 用一个新的客户端特性位来保护带有 ``charmap`` 的目录树的访问权限。
+MDS 不允许不支持 ``charmap`` 功能的客户端修改那些配置了 ``charmap`` 的目录。
+unlink 文件或删除子目录操作除外。
 
-Restricting Incompatible Client Access
---------------------------------------
-
-The MDS protects access to directory trees with a ``charmap`` via a new client
-feature bit.  The MDS will not allow a client that does not understand the
-``charmap`` feature to modify a directory with a ``charmap`` configuration
-except to unlink files or remove subdirectories.
-
-You can also require that all clients understand the ``charmap`` feature
-to use the file system at all:
+您也可以要求所有客户端都必须理解 ``charmap`` 功能，
+才能使用文件系统： 
 
 .. prompt:: bash #
 
     ceph fs required_client_features <fs_name> add charmap
 
-.. note:: The kernel driver does not understand the ``charmap`` feature
-          and probably will not because existing kernel libraries have
-          opinionated case folding and normalization forms. For this reason,
-          adding ``charmap`` to the required client features is not
-          recommended.
-
-Permissions
------------
-
-As with other CephFS virtual extended atributes, a client may only set the
-``charmap`` configuration on a directory with the **p** MDS auth cap.  Viewing
-the configuration does not require this cap.
+.. note:: 内核驱动程序并不支持 ``charmap`` 功能，
+   而且很可能也不会支持，因为现有的内核库对于\
+   大小写折叠和规范化格式不赞同。因此，
+   不建议把 ``charmap`` 加到必需的客户端功能中。
 
 
-.. _Unicode normalization standard documents: https://unicode.org/reports/tr15/
+权限
+----
+.. Permissions
+
+与其他 CephFS 虚拟扩展属性一样，客户端只能在具有 **p** 这个 MDS
+auth cap 的目录上做 ``charmap`` 配置。查看配置不需要此 cap 。
+
+
+.. _Unicode 规范化标准文档: https://unicode.org/reports/tr15/
