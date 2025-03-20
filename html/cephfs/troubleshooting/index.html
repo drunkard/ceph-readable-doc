@@ -118,14 +118,19 @@
 <li class="toctree-l3"><a class="reference internal" href="../disaster-recovery-experts/"> 元数据修复</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#"> 故障排除</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id2">慢或卡住的操作</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">恢复期间卡住了</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mds">加快 MDS 日志修剪</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rados">RADOS 健康状况</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#mds">MDS 问题</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">MDS 问题</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ceph-fuse">ceph-fuse 的调试</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#kernel-mount-debugging">内核挂载的调试</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id7">断线后又重新挂载的文件系统</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id8">挂载问题</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id11">动态调试</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id12">报告问题</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">断线后又重新挂载的文件系统</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id11">挂载问题</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">动态调试</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">转储内存中的日志</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id16">升级后无法访问文件系统</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#volumes">禁用 volumes 插件</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id17">报告问题</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../disaster-recovery/"> 灾难恢复</a></li>
@@ -211,14 +216,151 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <p>如果 MDS 设置了较高的日志级别，那里差不多肯定有我们需要的诊断信息，
 解决问题有望了。</p>
 </section>
+<section id="id3">
+<h2>恢复期间卡住了<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
+<section id="up-replay">
+<h3>卡在 up:replay<a class="headerlink" href="#up-replay" title="Permalink to this heading"></a></h3>
+<p>如果您的 MDS 卡在 <code class="docutils literal notranslate"><span class="pre">up:replay</span></code> 状态，说明日志可能很长。
+您是否看到过 <code class="docutils literal notranslate"><span class="pre">MDS_HEALTH_TRIM</span></code> 集群警告，说 MDS 在修剪日志方面已经落后？
+如果日志过于长，读取日志可能需要数小时。
+虽然无法解决这个问题，但还是有办法加快速度的：</p>
+<p>把 MDS 调试级别降低到 0 。即使在默认设置下， MDS 也会把一些信息记录到内存中，
+以便在遇到致命错误时转储。可以避免这种情况：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mds<span class="w"> </span>debug_mds<span class="w"> </span><span class="m">0</span>
+ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mds<span class="w"> </span>debug_ms<span class="w"> </span><span class="m">0</span>
+ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mds<span class="w"> </span>debug_monc<span class="w"> </span><span class="m">0</span>
+</pre></div>
+</div>
+<p>注意，如果 MDS 发生故障，则几乎没有任何信息可以确定原因。
+如果能算出 <code class="docutils literal notranslate"><span class="pre">up:replay</span></code> 完成的时间，
+应该在进入下一状态前恢复这些配置：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph<span class="w"> </span>config<span class="w"> </span>rm<span class="w"> </span>mds<span class="w"> </span>debug_mds
+ceph<span class="w"> </span>config<span class="w"> </span>rm<span class="w"> </span>mds<span class="w"> </span>debug_ms
+ceph<span class="w"> </span>config<span class="w"> </span>rm<span class="w"> </span>mds<span class="w"> </span>debug_monc
+</pre></div>
+</div>
+<p>重放速度加快后，就可以计算 MDS 的完成时间。可以检查日志重放状态来确定：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ceph<span class="w"> </span>tell<span class="w"> </span>mds.&lt;fs_name&gt;:0<span class="w"> </span>status<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.replay_status
+<span class="o">{</span>
+<span class="w">  </span><span class="s2">&quot;journal_read_pos&quot;</span>:<span class="w"> </span><span class="m">4195244</span>,
+<span class="w">  </span><span class="s2">&quot;journal_write_pos&quot;</span>:<span class="w"> </span><span class="m">4195244</span>,
+<span class="w">  </span><span class="s2">&quot;journal_expire_pos&quot;</span>:<span class="w"> </span><span class="m">4194304</span>,
+<span class="w">  </span><span class="s2">&quot;num_events&quot;</span>:<span class="w"> </span><span class="m">2</span>,
+<span class="w">  </span><span class="s2">&quot;num_segments&quot;</span>:<span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+<p>当 <code class="docutils literal notranslate"><span class="pre">journal_read_pos</span></code> 追上 <code class="docutils literal notranslate"><span class="pre">journal_write_pos</span></code> 时，重放就完成了。
+重放期间，写入位置不会改变。
+跟踪读取位置的进展，就可以计算出预计完成的时间。</p>
+</section>
+<section id="id4">
+<h3>避免恢复障碍<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h3>
+<p>在断电期间尝试紧急恢复文件系统时，需要做以下几件事：</p>
+<ul class="simple">
+<li><p><strong>拒绝所有到客户端的重连。</strong> 这将有效阻止所有已有的 CephFS 会话，
+因此所有挂载都将挂起或不可用。</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="w"> </span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mds<span class="w"> </span>mds_deny_all_reconnect<span class="w"> </span><span class="nb">true</span>
+
+记着在所有<span class="w"> </span>MDS<span class="w"> </span>守护进程都活跃后撤销此操作。
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>此操作不会阻止新会话连接。想要那个效果的话，参阅文件系统的 <code class="docutils literal notranslate"><span class="pre">refuse_clien</span> <span class="pre">t_session</span></code> 设置。</p>
+</div>
+<ul class="simple">
+<li><p><strong>延长 MDS 心跳宽限期。</strong> 这样可以避免更换正在执行某些操作时看起来像 “卡死” 的 MDS 。
+有时，一个 MDS 在恢复时的某个操作可能比预期的时间要长
+（从程序员的角度来看）。当恢复所需的时间已经超过正常时间时，
+就更有可能出现这种情况（要不您怎么会读本文档呢）。
+通过延长心跳宽限期可以避免不必要的替换死循环：</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mds<span class="w"> </span>mds_heartbeat_grace<span class="w"> </span><span class="m">3600</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>这样做的效果是，即使 MDS 的内部 “心跳（ heartbeat ）” 机制在一小时内没有重置（跳动），它也会继续向监视器发送信标。
+以前实现这一功能的机制是通过 <code class="docutils literal notranslate"><span class="pre">mds_beacon_grace</span></code> 监视器选项。</p>
+</div>
+<ul class="simple">
+<li><p><strong>禁用打开文件表（ open file table ）的预取功能。</strong> 通常，
+MDS 会在恢复期间预取目录内容，以预热缓存。
+在长时间恢复过程中，缓存可能已经很热<strong>而且很大</strong>。
+因此，这种行为可能变得与预期效果不相符。这样禁用：</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mds<span class="w"> </span>mds_oft_prefetch_dirfrags<span class="w"> </span><span class="nb">false</span>
+</pre></div>
+</div>
+<ul>
+<li><p><strong>关闭客户端。</strong> 客户端重新连接到刚刚变为 <code class="docutils literal notranslate"><span class="pre">up:active</span></code> 状态的 MDS 时，
+可能会给刚恢复正常的文件系统带来新的负载。
+在重新接受工作载荷之前，可能需要进行一些常规维护。
+例如，如果恢复时间过长是因为重放读取的日志过大，
+那么加快日志的修剪可能是明智之举。</p>
+<p>您可以手动或使用新的文件系统可调选项来完成：</p>
+</li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>refuse_client_session<span class="w"> </span><span class="nb">true</span>
+
+它可以防止所有客户端和<span class="w"> </span>MDS<span class="w"> </span>建立新会话。
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>不要调整 max_mds</strong> 在故障排除或恢复过程中，
+更改 FS 配置变量 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> 有时会被当作一个很好的步骤。
+相反，这样做可能会进一步破坏集群的稳定性。
+如果形势所迫，必须更改 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> ，应该执行命令更改 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> ，
+还要加上确认标记（ <code class="docutils literal notranslate"><span class="pre">--yes-i-really-mean-it</span></code> ）。</p></li>
+<li><p><strong>关闭异步清除线程</strong> volumes 插件会产生线程，
+用于异步清除被销毁/删除的子卷。为帮助故障排除或恢复工作，
+可以用以下方法禁用这些清除线程：</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="w">  </span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mgr<span class="w"> </span>mgr/volumes/pause_purging<span class="w"> </span><span class="nb">true</span>
+
+恢复清除功能，执行：<span class="w"> </span>::
+
+<span class="w">  </span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mgr<span class="w"> </span>mgr/volumes/pause_purging<span class="w"> </span><span class="nb">false</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>关闭异步克隆线程</strong> volumes 插件会产生用于异步克隆子卷快照的线程。
+为了帮助排除故障或进行恢复，
+可以用以下方法禁用这些克隆线程：</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="w">  </span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mgr<span class="w"> </span>mgr/volumes/pause_cloning<span class="w"> </span><span class="nb">true</span>
+
+恢复克隆功能，执行：<span class="w"> </span>::
+
+<span class="w">  </span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mgr<span class="w"> </span>mgr/volumes/pause_cloning<span class="w"> </span><span class="nb">false</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="mds">
+<h2>加快 MDS 日志修剪<a class="headerlink" href="#mds" title="Permalink to this heading"></a></h2>
+<p>如果您的 MDS 日志过大（也许您的 MDS 曾长时间卡在 up:replay 状态！），
+就需要让 MDS 更频繁地修剪它的日志。
+您可以通过 <code class="docutils literal notranslate"><span class="pre">MDS_HEALTH_TRIM</span></code> 警告来了解日志是否过大。</p>
+<p>要做到这一点，可以调整的主要是修改 MDS 的 tick 间隔。
+tick 时间间隔驱动着 MDS 中的多项维护活动。
+强烈建议在文件系统负载不太大的时候修改 tick 间隔。
+此配置只影响处于 <code class="docutils literal notranslate"><span class="pre">up:active</span></code> 状态的 MDS 。
+恢复期间， MDS 不会修剪日志。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>mds<span class="w"> </span>mds_tick_interval<span class="w"> </span><span class="m">2</span>
+</pre></div>
+</div>
+</section>
 <section id="rados">
 <h2>RADOS 健康状况<a class="headerlink" href="#rados" title="Permalink to this heading"></a></h2>
 <p>如果 CephFS 的元数据或者数据存储池的某一部分不可用、且 CephFS 不响应，
 很有可能是 RADOS 本身有问题，应该先解决这样的问题
 （ <a class="reference internal" href="../../rados/troubleshooting/"><span class="doc">故障排除</span></a> ）。</p>
 </section>
-<section id="mds">
-<h2>MDS 问题<a class="headerlink" href="#mds" title="Permalink to this heading"></a></h2>
+<section id="id5">
+<h2>MDS 问题<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h2>
 <p>如果某个操作卡在了 MDS 内部，类似 “slow requests are blocked” 的消息最终会出现在 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">health</span></code> 里；也可能指出是客户端的问题，
 如 “failing to respond” 或其它形式的异常行为。
 如果 MDS 认定某些客户端的行为异常，你应该弄明白起因。常见起因有：</p>
@@ -231,7 +373,7 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 </ol>
 <p>除此之外，你也许遇到了新的软件缺陷，应该报告给开发者！</p>
 <section id="slow-requests">
-<span id="id3"></span><h3>慢请求（ MDS 端）<a class="headerlink" href="#slow-requests" title="Permalink to this heading"></a></h3>
+<span id="id6"></span><h3>慢请求（ MDS 端）<a class="headerlink" href="#slow-requests" title="Permalink to this heading"></a></h3>
 <p>通过管理套接字，你可以罗列当前正在运行的操作：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="n">daemon</span> <span class="n">mds</span><span class="o">.&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">dump_ops_in_flight</span>
 </pre></div>
@@ -249,19 +391,19 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <section id="ceph-fuse">
 <span id="ceph-fuse-debugging"></span><h2>ceph-fuse 的调试<a class="headerlink" href="#ceph-fuse" title="Permalink to this heading"></a></h2>
 <p>ceph-fuse 也支持 dump_ops_in_flight 命令，可以查看是否卡住、卡在哪里了。</p>
-<section id="id4">
-<h3>调试输出<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h3>
+<section id="id7">
+<h3>调试输出<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h3>
 <p>要想看到 ceph-fuse 的更多调试信息，试试在前台运行，让日志输出到控制台（ <code class="docutils literal notranslate"><span class="pre">-d</span></code> ）、打开客户端调试（ <code class="docutils literal notranslate"><span class="pre">--debug-client=20</span></code> ）、打印发送过的所有消息（ <code class="docutils literal notranslate"><span class="pre">--debug-ms=1</span></code> ）。</p>
 <p>如果你怀疑是监视器的问题，也可以打开监视器调试开关（ <code class="docutils literal notranslate"><span class="pre">--debug-monc=20</span></code> ）。</p>
 </section>
 </section>
 <section id="kernel-mount-debugging">
-<span id="id5"></span><h2>内核挂载的调试<a class="headerlink" href="#kernel-mount-debugging" title="Permalink to this heading"></a></h2>
+<span id="id8"></span><h2>内核挂载的调试<a class="headerlink" href="#kernel-mount-debugging" title="Permalink to this heading"></a></h2>
 <p>如果内核客户端有问题，最重要的是找出问题起因是在内核客户端上、
 还是在 MDS 上，通常都比较容易发现。如果内核客户端直接垮了，
 <code class="docutils literal notranslate"><span class="pre">dmesg</span></code> 里会有输出信息，要收集好它们、还有任何不对劲的内核状态。</p>
-<section id="id6">
-<h3>慢请求<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h3>
+<section id="id9">
+<h3>慢请求<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h3>
 <p>遗憾的是内核客户端不支持管理套接字，可是如果你的内核启用了
 （如果限制过） debugfs ，那么它就有相似的接口了。
 <code class="docutils literal notranslate"><span class="pre">sys/kernel/debug/ceph/</span></code> 路径下有一个文件夹（其名字形如
@@ -284,8 +426,8 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <p>如果数据存储池处于 NEARFULL 状态，那么内核 cephfs 客户端将会切换到同步写，此时会非常慢。</p>
 </section>
 </section>
-<section id="id7">
-<h2>断线后又重新挂载的文件系统<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
+<section id="id10">
+<h2>断线后又重新挂载的文件系统<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h2>
 <p>因为 CephFS 有个“一致性缓存”，如果你的网络连接中断时间较长，
 客户端就会被系统强制断开，此时，内核客户端仍然傻站着（ in a bind ）：
 它不能安全地写回脏数据，另外很多应用程序在 close() 时不能正确处理 IO 错误。
@@ -307,15 +449,15 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 即便你的应用程序不能良好地应对这些情况。长远来看，在不违背 POSIX 语义的情况下，
 我们希望可以重连和回收数据（通常是其它客户端尚未访问、或修改的数据）。</p>
 </section>
-<section id="id8">
-<h2>挂载问题<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h2>
-<section id="id9">
-<h3>挂载错误 5<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h3>
+<section id="id11">
+<h2>挂载问题<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h2>
+<section id="id12">
+<h3>挂载错误 5<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h3>
 <p>mount 5 错误通常是 MDS 服务器滞后或崩溃导致的。
 要确保至少有一个 MDS 是启动且运行的，集群也要处于 <code class="docutils literal notranslate"><span class="pre">active+healthy</span></code> 状态。</p>
 </section>
-<section id="id10">
-<h3>挂载错误 12<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h3>
+<section id="id13">
+<h3>挂载错误 12<a class="headerlink" href="#id13" title="Permalink to this heading"></a></h3>
 <p>mount 12 错误显示 <code class="docutils literal notranslate"><span class="pre">cannot</span> <span class="pre">allocate</span> <span class="pre">memory</span></code> ，常见于 <a class="reference internal" href="../../glossary/#term-4"><span class="xref std std-term">Ceph 客户端</span></a>和
 <a class="reference internal" href="../../glossary/#term-28"><span class="xref std std-term">Ceph 存储集群</span></a>版本不匹配。用以下命令检查版本：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span> <span class="o">-</span><span class="n">v</span>
@@ -328,13 +470,93 @@ MDS 、抑或是连接二者的网络。从存在卡顿操作的地方下手（�
 <p>你也许得卸载、清理和删除 <code class="docutils literal notranslate"><span class="pre">ceph-common</span></code> ，然后再重新安装，以确保安装的是最新版。</p>
 </section>
 </section>
-<section id="id11">
-<h2>动态调试<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h2>
+<section id="id14">
+<h2>动态调试<a class="headerlink" href="#id14" title="Permalink to this heading"></a></h2>
 <p>你可以对 CephFS 模块开启动态调试。</p>
 <p>请看： <a class="reference external" href="https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh">https://github.com/ceph/ceph/blob/master/src/script/kcon_all.sh</a></p>
 </section>
-<section id="id12">
-<h2>报告问题<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h2>
+<section id="id15">
+<h2>转储内存中的日志<a class="headerlink" href="#id15" title="Permalink to this heading"></a></h2>
+<p>在较低级别的调试过程中（日志级别 &lt; 10 ），可以设置
+<code class="docutils literal notranslate"><span class="pre">mds_extraordinary_events_dump_interval</span></code> 来转储内存日志。
+<code class="docutils literal notranslate"><span class="pre">mds_extraordinary_events_dump_interval</span></code> 是指，当发生非正常
+（ Extra-Ordinary ）事件时，转储最近内存日志的时间间隔（以秒为单位）。</p>
+<p>非正常事件分为以下几类：</p>
+<ul class="simple">
+<li><p>客户端驱逐</p></li>
+<li><p>未收到监视器发来的信标 ACK</p></li>
+<li><p>内部心跳未收到</p></li>
+</ul>
+<p>内存日志转储（ In-memory Log Dump ）默认是禁用的，以防生产环境中日志文件膨胀。
+以下命令可依次启用它：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph config set mds debug_mds &lt;log_level&gt;/&lt;gather_level&gt;
+$ ceph config set mds mds_extraordinary_events_dump_interval &lt;seconds&gt;
+</pre></div>
+</div>
+<p>要启用内存日志转储， <code class="docutils literal notranslate"><span class="pre">log_level</span></code> 应小于 10 ， <code class="docutils literal notranslate"><span class="pre">gather_level</span></code> 应该 &gt;= 10 。
+启用后， MDS 会每隔 <code class="docutils literal notranslate"><span class="pre">mds_extraordinary_events_dump_interval</span></code> 秒检查一次异常事件，如果有异常事件发生，
+MDS 会把包含着相关事件细节的内存日志转储到 ceph-mds 日志中。</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>对于较高的日志级别（ log_level &gt;= 10 ），没必要转储内存日志，
+而较低的收集级别（ gather_level &lt; 10 ）又不足以收集内存日志。
+因此， debug_mds 中，日志级别 &gt;=10 或收集级别 &lt; 10 会阻止启用内存日志转储。
+在这种情况下，出现故障时，需要把 mds_extraordinary_events_dump_interval
+的值重置为 0 ，然后再用上述命令启用。</p>
+</div>
+<p>内存日志转储可以这样禁用：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ceph config set mds mds_extraordinary_events_dump_interval 0
+</pre></div>
+</div>
+</section>
+<section id="id16">
+<h2>升级后无法访问文件系统<a class="headerlink" href="#id16" title="Permalink to this heading"></a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>在升级前运行此程序，可以避免出现 <code class="docutils literal notranslate"><span class="pre">operation</span> <span class="pre">not</span> <span class="pre">permitted</span></code>
+（不允许操作）的错误。截至 2023 年 5 月， Nautilus （含）之后的升级似乎会出现这里讨论的那种 <code class="docutils literal notranslate"><span class="pre">operation</span> <span class="pre">not</span> <span class="pre">permitted</span></code> 错误。</p>
+</div>
+<p><strong>如果</strong></p>
+<p>您的 CephFS 文件系统中的数据存储池和元数据存储池是用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">fs</span> <span class="pre">new</span></code> 命令创建的
+（这意味着它们不是用默认值创建的）。</p>
+<p><strong>或者</strong></p>
+<p>您已经有一个 CephFS 文件系统，并且正在升级到新的、高于 Nautilus 的 Ceph 主版本</p>
+<p><strong>那么</strong></p>
+<p>为了使文档中的 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">fs</span> <span class="pre">authorize...</span></code> 命令按文档所述的行为运行
+（并避免除 <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> 用户外的所有用户们在做文件 I/O 时出现
+‘operation not permitted’ 错误、或类似的安全相关问题），您必须首先运行：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>application<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;your<span class="w"> </span>metadata<span class="w"> </span>pool<span class="w"> </span>name&gt;<span class="w"> </span>cephfs<span class="w"> </span>metadata<span class="w"> </span>&lt;your<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>filesystem<span class="w"> </span>name&gt;</span>
+</pre></div></div><p>和</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>application<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;your<span class="w"> </span>data<span class="w"> </span>pool<span class="w"> </span>name&gt;<span class="w"> </span>cephfs<span class="w"> </span>data<span class="w"> </span>&lt;your<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>filesystem<span class="w"> </span>name&gt;</span>
+</pre></div></div><p>否则，当 OSD 收到读取或写入数据（不是目录信息，而是文件数据）的请求时，
+它们将不知道要查找哪个 Ceph 文件系统名字。
+存储池名字也是如此，因为主要版本的“默认值”本身发生了变化，从:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="n">pool</span><span class="o">=</span><span class="n">fsname</span>
+<span class="n">metadata</span> <span class="n">pool</span><span class="o">=</span><span class="n">fsname_metadata</span>
+</pre></div>
+</div>
+<p>变成了：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="n">pool</span><span class="o">=</span><span class="n">fsname</span><span class="o">.</span><span class="n">data</span> <span class="ow">and</span>
+<span class="n">metadata</span> <span class="n">pool</span><span class="o">=</span><span class="n">fsname</span><span class="o">.</span><span class="n">meta</span>
+</pre></div>
+</div>
+<p>所有用 <code class="docutils literal notranslate"><span class="pre">client.admin</span></code> 进行挂载的都不会遇到这个问题，
+因为 admin 密钥赋予了全部权限。</p>
+<p>临时解决办法是把挂载请求改为 ‘client.admin’ 用户及其密钥。
+另一个不那么彻底但也能凑合的办法是把用户的 osd cap 改为
+<code class="docutils literal notranslate"><span class="pre">caps</span> <span class="pre">osd</span> <span class="pre">=</span> <span class="pre">&quot;allow</span> <span class="pre">rw&quot;</span></code> ，然后删除 <code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">cephfs</span> <span class="pre">data=....</span></code> 。</p>
+</section>
+<section id="volumes">
+<h2>禁用 volumes 插件<a class="headerlink" href="#volumes" title="Permalink to this heading"></a></h2>
+<p>在某些情况下，可能需要禁用 Volumes 插件，以防止影响 Ceph 集群的其他部分。
+详情见 <a class="reference internal" href="../fs-volumes/#disabling-volumes-plugin"><span class="std std-ref">禁用 volumes 插件</span></a> 。</p>
+</section>
+<section id="id17">
+<h2>报告问题<a class="headerlink" href="#id17" title="Permalink to this heading"></a></h2>
 <p>如果你确信发现了问题，报告时请附带尽可能多的信息，特别是重要信息：</p>
 <ul class="simple">
 <li><p>客户端和服务器所安装的 Ceph 版本；</p></li>

@@ -128,6 +128,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#rank">减少 rank 数量</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#cephfs-pinning">手动将目录树插入特定的 rank</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#cephfs-ephemeral-pinning">设置子树分区策略</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">动态子树分区</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rank-balancer">在指定 rank 上用 balancer 进行动态子树分区</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../snapshots/"> 快照</a></li>
@@ -305,16 +307,16 @@ MDS 在日志中记录了哪些子树是临时挂单的，
 并把它的分片作为临时挂单子树散布出去。
 借助这个特性正好可以把直系子目录散布到一系列 MDS rank 上。
 经典的应用案例就是 <code class="docutils literal notranslate"><span class="pre">/home</span></code> 目录：我们希望每个用户的家目录都被散布到整个 MDS 集群上。这样设置：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="o">/</span><span class="n">cephfs</span><span class="o">/</span><span class="n">home</span>
-</pre></div>
-</div>
-<p><strong>随机的临时挂单</strong>: 这个策略表面它下面的任意子目录分支都可以被临时挂单出去。
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "# ";
+}
+</style><span class="prompt1">setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.pin.distributed<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span><span class="w"> </span>/cephfs/home</span>
+</pre></div></div><p><strong>随机的临时挂单</strong>: 这个策略表面它下面的任意子目录分支都可以被临时挂单出去。
 这是通过扩展属性 <code class="docutils literal notranslate"><span class="pre">ceph.dir.pin.random</span></code> 设置的，
 值是允许挂单的目录百分比。例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">random</span> <span class="o">-</span><span class="n">v</span> <span class="mf">0.5</span> <span class="o">/</span><span class="n">cephfs</span><span class="o">/</span><span class="n">tmp</span>
-</pre></div>
-</div>
-<p>这将使得任何被载入缓存的、或者在 <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> 下创建的目录在 50% 的时间里都可以临时挂单。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.pin.random<span class="w"> </span>-v<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>/cephfs/tmp</span>
+</pre></div></div><p>这将使得任何被载入缓存的、或者在 <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> 下创建的目录在 50% 的时间里都可以临时挂单。</p>
 <p>建议你只设置很小的数值，像 <code class="docutils literal notranslate"><span class="pre">.001</span></code> 或 <code class="docutils literal notranslate"><span class="pre">0.1%</span></code> 。
 子树太多的话会降低性能。正因为如此，
 配置选项 <code class="docutils literal notranslate"><span class="pre">mds_export_ephemeral_random_max</span></code> 对这一比例的上限进行了规定（默认为 <code class="docutils literal notranslate"><span class="pre">.01</span></code> ）。
@@ -326,23 +328,67 @@ MDS 在日志中记录了哪些子树是临时挂单的，
 <p>临时挂单可以覆盖父级导出的 pin ，反之亦然。
 施行哪条策略遵循的规则是最近的父级：
 如果一个比较近的父级目录有一条策略冲突，就用这一条。例如：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar1</span><span class="o">/</span><span class="n">baz</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar2</span>
-<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">0</span> <span class="n">foo</span>
-<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="n">foo</span><span class="o">/</span><span class="n">bar1</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">foo/bar1/baz</span></code> 这一目录就会被临时挂单，
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">mkdir<span class="w"> </span>-p<span class="w"> </span>foo/bar1/baz<span class="w"> </span>foo/bar2</span>
+<span class="prompt1">setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.pin<span class="w"> </span>-v<span class="w"> </span><span class="m">0</span><span class="w"> </span>foo</span>
+<span class="prompt1">setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.pin.distributed<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span><span class="w"> </span>foo/bar1</span>
+</pre></div></div><p><code class="docutils literal notranslate"><span class="pre">foo/bar1/baz</span></code> 这一目录就会被临时挂单，
 因为 <code class="docutils literal notranslate"><span class="pre">foo/bar1</span></code> 策略覆盖了 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 上的 export pin 。
 <code class="docutils literal notranslate"><span class="pre">foo/bar2</span></code> 会正常地遵守 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 上的 pin 。</p>
 <p>对于相反的情况：</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">home</span><span class="o">/</span><span class="p">{</span><span class="n">patrick</span><span class="p">,</span><span class="n">john</span><span class="p">}</span>
-<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span><span class="o">.</span><span class="n">distributed</span> <span class="o">-</span><span class="n">v</span> <span class="mi">1</span> <span class="n">home</span>
-<span class="n">setfattr</span> <span class="o">-</span><span class="n">n</span> <span class="n">ceph</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">pin</span> <span class="o">-</span><span class="n">v</span> <span class="mi">2</span> <span class="n">home</span><span class="o">/</span><span class="n">patrick</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">home/patrick</span></code> 目录及其子目录会被插入 rank 2,
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">mkdir<span class="w"> </span>-p<span class="w"> </span>home/<span class="o">{</span>patrick,john<span class="o">}</span></span>
+<span class="prompt1">setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.pin.distributed<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span><span class="w"> </span>home</span>
+<span class="prompt1">setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.pin<span class="w"> </span>-v<span class="w"> </span><span class="m">2</span><span class="w"> </span>home/patrick</span>
+</pre></div></div><p><code class="docutils literal notranslate"><span class="pre">home/patrick</span></code> 目录及其子目录会被插入 rank 2,
 因为它的 export pin 覆盖了 <code class="docutils literal notranslate"><span class="pre">home</span></code> 上的策略。</p>
+<p>要删除分区策略，删除相应的扩展属性或把它的值设为 0 。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">$<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.pin.distributed<span class="w"> </span>-v<span class="w"> </span><span class="m">0</span><span class="w"> </span>home</span>
+<span class="prompt1"><span class="c1"># or</span></span>
+<span class="prompt1">$<span class="w"> </span>setfattr<span class="w"> </span>-x<span class="w"> </span>ceph.dir.pin.distributed<span class="w"> </span>home</span>
+</pre></div></div><p>对于导出的 pin ，可以删除其扩展属性、
+或把它的值设置为 <cite>-1</cite> 。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">$<span class="w"> </span>setfattr<span class="w"> </span>-n<span class="w"> </span>ceph.dir.pin<span class="w"> </span>-v<span class="w"> </span>-1<span class="w"> </span>home</span>
+</pre></div></div></section>
+<section id="id6">
+<h2>动态子树分区<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h2>
+<p>CephFS 很早就有了一个动态元数据均衡器（ dynamic metadata balancer ）
+（有时称为 “默认均衡器”），它可以拆分或合并子树，
+同时将它们放在“较冷”的 MDS rank 上。
+通过这样移动元数据可以提高整个文件系统的吞吐量和缓存大小。</p>
+<p>不过，均衡器有时效率不高或速度较慢，因此默认是关闭的。
+这是为了避免管理员通过增大 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> 设置来“打开 multimds ”，
+结果却发现均衡器把集群性能搞得一团糟
+（从这种混乱状态恢复过来很简单，但需要一段时间）。</p>
+<p>要打开均衡器，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>balance_automate<span class="w"> </span><span class="nb">true</span></span>
+</pre></div></div><p>最好在配置恰当后再开启均衡器，
+例如包含 <code class="docutils literal notranslate"><span class="pre">bal_rank_mask</span></code>
+（见 <a class="reference internal" href="#bal-rank-mask"><span class="std std-ref">below</span></a> ）的配置信息。</p>
+<p>建议小心地监控文件系统性能和 MDS 。</p>
 </section>
+<section id="rank-balancer">
+<h2>在指定 rank 上用 balancer 进行动态子树分区<a class="headerlink" href="#rank-balancer" title="Permalink to this heading"></a></h2>
+<p id="bal-rank-mask">CephFS 文件系统用 <code class="docutils literal notranslate"><span class="pre">bal_rank_mask</span></code> 选项控制均衡器（ balancer ），
+让它动态地重新均衡某一个活跃 MDS rank 中的子树（ subtree ）。
+这样，管理员就可以在不同的活跃 MDS rank 中同时使用动态子树分区和静态固定（ static pining ）方案，
+从而根据用户需求优化元数据负载。例如，在现实的云存储环境中，
+大量子卷（ subvolume ）被分配给多个计算节点（如虚拟机和容器），
+一些需要高性能的子卷由静态分区（ static partitioning ）管理，
+而大部分工作量适中的子卷则由均衡器管理。
+由于均衡器会把元数据工作载荷平均分配给所有活跃的 MDS rank ，
+静态固定子卷的性能难免会受到影响或降级。
+如果启用此选项，由均衡器管理的子卷不会受到静态固定子树的影响。</p>
+<p>可以使用 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">fs</span> <span class="pre">set</span></code> 命令配置该选项。例如 ：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>bal_rank_mask<span class="w"> </span>&lt;hex&gt;</span>
+</pre></div></div><p>数字 <code class="docutils literal notranslate"><span class="pre">&lt;hex&gt;</span></code> 的每个位字段对应一个指定的 rank 。如果 <code class="docutils literal notranslate"><span class="pre">&lt;hex&gt;</span></code> 设置为
+<code class="docutils literal notranslate"><span class="pre">0x3</span></code> ，均衡器就会在活跃的 <code class="docutils literal notranslate"><span class="pre">0</span></code> 和 <code class="docutils literal notranslate"><span class="pre">1</span></code> rank 上运行。例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>bal_rank_mask<span class="w"> </span>0x3</span>
+</pre></div></div><p>如果 <code class="docutils literal notranslate"><span class="pre">bal_rank_mask</span></code> 设置为 <code class="docutils literal notranslate"><span class="pre">-1</span></code> 或 <code class="docutils literal notranslate"><span class="pre">all</span></code> ，表示屏蔽所有 rank ，
+均衡器可以使用所有 rank 。例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>bal_rank_mask<span class="w"> </span>-1</span>
+</pre></div></div><p>相反，如果想要禁用均衡器，
+<code class="docutils literal notranslate"><span class="pre">bal_rank_mask</span></code> 应该设置成 <code class="docutils literal notranslate"><span class="pre">0x0</span></code> 。例如：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>fs<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;fs_name&gt;<span class="w"> </span>bal_rank_mask<span class="w"> </span>0x0</span>
+</pre></div></div></section>
 </section>
 
 

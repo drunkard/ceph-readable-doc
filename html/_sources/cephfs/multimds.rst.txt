@@ -226,4 +226,91 @@ MDS 在日志中记录了哪些子树是临时挂单的，
 ``home/patrick`` 目录及其子目录会被插入 rank 2,
 因为它的 export pin 覆盖了 ``home`` 上的策略。
 
-要删除分区策略，请删除相应的扩展属性或将其值设为 0。
+要删除分区策略，删除相应的扩展属性或把它的值设为 0 。
+
+.. prompt:: bash #
+
+   $ setfattr -n ceph.dir.pin.distributed -v 0 home
+   # or
+   $ setfattr -x ceph.dir.pin.distributed home
+
+对于导出的 pin ，可以删除其扩展属性、
+或把它的值设置为 `-1` 。
+
+.. prompt:: bash #
+
+   $ setfattr -n ceph.dir.pin -v -1 home
+
+
+动态子树分区
+~~~~~~~~~~~~
+.. Dynamic Subtree Partitioning
+
+CephFS 很早就有了一个动态元数据均衡器（ dynamic metadata balancer ）
+（有时称为 “默认均衡器”），它可以拆分或合并子树，
+同时将它们放在“较冷”的 MDS rank 上。
+通过这样移动元数据可以提高整个文件系统的吞吐量和缓存大小。
+
+不过，均衡器有时效率不高或速度较慢，因此默认是关闭的。
+这是为了避免管理员通过增大 ``max_mds`` 设置来“打开 multimds ”，
+结果却发现均衡器把集群性能搞得一团糟
+（从这种混乱状态恢复过来很简单，但需要一段时间）。
+
+要打开均衡器，执行下列命令：
+
+.. prompt:: bash #
+
+   ceph fs set <fs_name> balance_automate true
+
+最好在配置恰当后再开启均衡器，
+例如包含 ``bal_rank_mask``
+（见 :ref:`below <bal-rank-mask>` ）的配置信息。
+
+建议小心地监控文件系统性能和 MDS 。
+
+
+在指定 rank 上用 balancer 进行动态子树分区
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. Dynamic subtree partitioning with Balancer on specific ranks
+
+.. _bal-rank-mask:
+
+CephFS 文件系统用 ``bal_rank_mask`` 选项控制均衡器（ balancer ），
+让它动态地重新均衡某一个活跃 MDS rank 中的子树（ subtree ）。
+这样，管理员就可以在不同的活跃 MDS rank 中\
+同时使用动态子树分区和静态固定（ static pining ）方案，
+从而根据用户需求优化元数据负载。例如，在现实的云存储环境中，
+大量子卷（ subvolume ）被分配给多个计算节点（如虚拟机和容器），
+一些需要高性能的子卷由静态分区（ static partitioning ）管理，
+而大部分工作量适中的子卷则由均衡器管理。
+由于均衡器会把元数据工作载荷平均分配给所有活跃的 MDS rank ，
+静态固定子卷的性能难免会受到影响或降级。
+如果启用此选项，由均衡器管理的子卷\
+不会受到静态固定子树的影响。
+
+可以使用 ``ceph fs set`` 命令配置该选项。例如 ：
+
+.. prompt:: bash #
+
+    ceph fs set <fs_name> bal_rank_mask <hex> 
+
+数字 ``<hex>`` 的每个位字段对应一个指定的 rank 。如果 ``<hex>`` 设置为
+``0x3`` ，均衡器就会在活跃的 ``0`` 和 ``1`` rank 上运行。例如：
+
+.. prompt:: bash #
+
+    ceph fs set <fs_name> bal_rank_mask 0x3
+
+如果 ``bal_rank_mask`` 设置为 ``-1`` 或 ``all`` ，表示屏蔽所有 rank ，
+均衡器可以使用所有 rank 。例如：
+
+.. prompt:: bash #
+
+    ceph fs set <fs_name> bal_rank_mask -1
+
+相反，如果想要禁用均衡器，
+``bal_rank_mask`` 应该设置成 ``0x0`` 。例如：
+
+.. prompt:: bash #
+
+    ceph fs set <fs_name> bal_rank_mask 0x0
