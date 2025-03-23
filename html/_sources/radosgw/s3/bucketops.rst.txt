@@ -73,7 +73,7 @@ DELETE Bucket
 
 Deletes a bucket. You can reuse bucket names following a successful bucket removal.
 
-Syntax
+语法
 ~~~~~~
 
 ::
@@ -83,7 +83,7 @@ Syntax
 
     Authorization: AWS {access-key}:{hash-of-header-and-secret}
 
-HTTP Response
+HTTP 响应
 ~~~~~~~~~~~~~
 
 +---------------+---------------+------------------+
@@ -123,7 +123,7 @@ GET Bucket
 +---------------------+-----------+-------------------------------------------------------------------------------------------------+
 
 
-HTTP Response
+HTTP 响应
 ~~~~~~~~~~~~~
 
 +---------------+---------------+--------------------+
@@ -185,7 +185,7 @@ Retrieves the bucket's region. The user needs to be the bucket owner
 to call this. A bucket can be constrained to a region by providing
 ``LocationConstraint`` during a PUT request.
 
-Syntax
+语法
 ~~~~~~
 Add the ``location`` subresource to bucket resource as shown below
 
@@ -212,7 +212,7 @@ Get Bucket ACL
 Retrieves the bucket access control list. The user needs to be the bucket
 owner or to have been granted ``READ_ACP`` permission on the bucket.
 
-Syntax
+语法
 ~~~~~~
 Add the ``acl`` subresource to the bucket request as shown below.
 
@@ -251,7 +251,7 @@ PUT Bucket ACL
 Sets an access control to an existing bucket. The user needs to be the bucket
 owner or to have been granted ``WRITE_ACP`` permission on the bucket.
 
-Syntax
+语法
 ~~~~~~
 Add the ``acl`` subresource to the bucket request as shown below.
 
@@ -288,7 +288,7 @@ List Bucket Multipart Uploads
 ``GET /?uploads`` returns a list of the current in-progress multipart uploads--i.e., the application initiates a multipart upload, but
 the service hasn't completed all the uploads yet.
 
-Syntax
+语法
 ~~~~~~
 
 ::
@@ -370,15 +370,13 @@ Response Entities
 ENABLE/SUSPEND BUCKET VERSIONING
 --------------------------------
 
-``PUT /?versioning`` 这个子资源用于设置已有桶的版本化状态。只有桶\
-所有者才能设置版本化状态。
+``PUT /?versioning`` 这个子资源用于设置已有桶的版本化状态。
+只有桶所有者才能设置版本化状态。
 
 版本化状态可以设置为如下取值之一：
 
-- Enabled : 为桶内的对象启用版本化支持，放入桶内的对象都会收到一个\
-  唯一的版本 ID 。
-- Suspended : 为桶内的对象禁用版本化支持，放入桶内的对象其版本 ID \
-  都是 null 。
+- Enabled : 为桶内的对象启用版本化支持，放入桶内的对象都会收到一个唯一的版本 ID 。
+- Suspended : 为桶内的对象禁用版本化支持，放入桶内的对象其版本 ID 都是 null 。
 
 如果从没给某一个桶设置过版本化状态，那它就没有版本化状态； \
 GET versioning 请求就不会返回版本化状态值。
@@ -410,7 +408,7 @@ PUT BUCKET OBJECT LOCK
 Places an Object Lock configuration on the specified bucket. The rule specified in the Object Lock configuration will be
 applied by default to every new object placed in the specified bucket.
 
-Syntax
+语法
 ~~~~~~
 
 ::
@@ -438,7 +436,7 @@ Request Entities
 | ``Years``                   | Integer     | The number of years specified for the default retention period.                        |   No     |
 +-----------------------------+-------------+----------------------------------------------------------------------------------------+----------+
 
-HTTP Response
+HTTP 响应
 ~~~~~~~~~~~~~
 
 If the bucket object lock is not enabled when creating the bucket, the operation will fail.
@@ -457,7 +455,7 @@ GET BUCKET OBJECT LOCK
 Gets the Object Lock configuration for a bucket. The rule specified in the Object Lock configuration will be applied by
 default to every new object placed in the specified bucket.
 
-Syntax
+语法
 ~~~~~~
 
 ::
@@ -491,7 +489,7 @@ Create Notification
 
 Create a publisher for a specific bucket into a topic.
 
-Syntax
+语法
 ~~~~~~
 
 ::
@@ -575,7 +573,7 @@ Parameters are XML encoded in the body of the request, in the following format:
 +-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
 
 
-HTTP Response
+HTTP 响应
 ~~~~~~~~~~~~~
 
 +---------------+-----------------------+----------------------------------------------------------+
@@ -602,7 +600,7 @@ Delete a specific, or all, notifications from a bucket.
     - When the bucket is deleted, any notification defined on it is also deleted 
     - Deleting an unknown notification (e.g. double delete) is not considered an error
 
-Syntax
+语法
 ~~~~~~
 
 ::
@@ -619,7 +617,7 @@ Parameters
 | ``notification-id``    | String    | Name of the notification. If not provided, all notifications on the bucket are deleted |
 +------------------------+-----------+----------------------------------------------------------------------------------------+
 
-HTTP Response
+HTTP 响应
 ~~~~~~~~~~~~~
 
 +---------------+-----------------------+----------------------------------------------------------+
@@ -633,7 +631,7 @@ Get/List Notification
 
 Get a specific notification, or list all notifications configured on a bucket.
 
-Syntax
+语法
 ~~~~~~
 
 ::
@@ -701,7 +699,7 @@ Response is XML encoded in the body of the request, in the following format:
 | ``Filter``                    | Container | Holding the filters configured for this notification                                 | No       |
 +-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
 
-HTTP Response
+HTTP 响应
 ~~~~~~~~~~~~~
 
 +---------------+-----------------------+----------------------------------------------------------+
@@ -713,3 +711,234 @@ HTTP Response
 +---------------+-----------------------+----------------------------------------------------------+
 
 .. _S3 Notification Compatibility: ../../s3-notification-compatibility
+
+
+启用 bucket 日志记录
+--------------------
+.. Enable Bucket Logging
+
+启用一个 bucket 的日志记录功能。
+
+语法
+~~~~~~
+
+::
+
+    PUT /{bucket}?logging HTTP/1.1
+
+
+Request Entities
+~~~~~~~~~~~~~~~~
+
+Parameters are XML encoded in the body of the request, in the following format:
+
+::
+
+  <BucketLoggingStatus xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <LoggingEnabled>
+      <TargetBucket>string</TargetBucket>
+      <TargetGrants>
+        <Grant>
+          <Grantee>
+            <DisplayName>string</DisplayName>
+            <EmailAddress>string</EmailAddress>
+            <ID>string</ID>
+            <xsi:type>string</xsi:type>
+            <URI>string</URI>
+          </Grantee>
+          <Permission>string</Permission>
+        </Grant>
+      </TargetGrants>
+      <TargetObjectKeyFormat>
+        <PartitionedPrefix>
+          <PartitionDateSource>DeliveryTime|EventTime</PartitionDateSource>
+        </PartitionedPrefix>
+        <SimplePrefix>
+        </SimplePrefix>
+      </TargetObjectKeyFormat>
+      <TargetPrefix>string</TargetPrefix>
+      <LoggingType>Standard|Journal</LoggingType>
+      <ObjectRollTime>integer</ObjectRollTime>
+      <Filter>
+        <S3Key>
+          <FilterRule>
+            <Name>suffix/prefix/regex</Name>
+            <Value></Value>
+          </FilterRule>
+        </S3Key>
+      </Filter>
+    </LoggingEnabled>
+  </BucketLoggingStatus>
+
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| Name                          | Type      | Description                                                                          | Required |
++===============================+===========+======================================================================================+==========+
+| ``BucketLoggingStatus``       | Container | Enabling/Disabling logging configuration for the bucket.                             | Yes      |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``LoggingEnabled``            | Container | Holding the logging configuration for the bucket.                                    | Yes      |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``TargetBucket``              | String    | The bucket where the logs are stored. The log bucket cannot have bucket logging      | Yes      |
+|                               |           | enabled.                                                                             |          |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``TargetGrants``              | Container | Not supported. The owner of the log bucket is the owner of the log objects.          | No       |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``TargetObjectKeyFormat``     | Container | The format of the log object key. Contains either ``PartitionedPrefix`` or           | No       |
+|                               |           | ``SimplePrefix`` entities.                                                           |          |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``PartitionedPrefix``         | Container | Indicates a partitioned  log object key format. Note that ``PartitionDateSource``    | No       |
+|                               |           | is ignored and hardcoded as ``DeliveryTime``                                         |          |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``SimplePrefix``              | Container | Indicates a simple log object key format (default format)                            | No       |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``TargetPrefix``              | String    | The prefix for the log objects. Used in both formats. May be used to distinguish     | No       |
+|                               |           | between different source buckets writing log records to the same log bucket.         |          |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``LoggingType``               | String    | The type of logging. Valid values are:                                               | No       |
+|                               |           | ``Standard`` (default) all bucket operations are logged after being perfomed.        |          |
+|                               |           | The log record will contain all fields.                                              |          |
+|                               |           | ``Journal`` only PUT, COPY, MULTI/DELETE and MPU operations are logged.              |          |
+|                               |           | Will record the minimum subset of fields in the log record that is needed            |          |
+|                               |           | for journaling.                                                                      |          |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+| ``ObjectRollTime``            | Integer   | The time in seconds after which a new log object is created, and the previous log    | No       |
+|                               |           | object added to the log bucket. Default is 3600 seconds (1 hour).                    |          |
++-------------------------------+-----------+--------------------------------------------------------------------------------------+----------+
+
+
+HTTP 响应
+~~~~~~~~~~~~~
+
++---------------+-----------------------+----------------------------------------------------------+
+| HTTP Status   | Status Code           | Description                                              |
++===============+=======================+==========================================================+
+| ``400``       | MalformedXML          | The XML is not well-formed                               |
++---------------+-----------------------+----------------------------------------------------------+
+| ``400``       | InvalidArgument       | Missing mandatory value or invalid value                 |
++---------------+-----------------------+----------------------------------------------------------+
+| ``404``       | NoSuchBucket          | The bucket does not exist                                |
++---------------+-----------------------+----------------------------------------------------------+
+
+
+Disable Bucket Logging
+----------------------
+
+Disable bucket logging from a bucket.
+
+语法
+~~~~~~
+
+::
+
+    PUT /{bucket}?logging HTTP/1.1
+
+
+Request Entities
+~~~~~~~~~~~~~~~~
+
+Parameters are XML encoded in the body of the request, in the following format:
+
+::
+
+  <BucketLoggingStatus xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  </BucketLoggingStatus>
+
+
+HTTP 响应
+~~~~~~~~~~~~~
+
++---------------+-----------------------+----------------------------------------------------------+
+| HTTP Status   | Status Code           | Description                                              |
++===============+=======================+==========================================================+
+| ``404``       | NoSuchBucket          | The bucket does not exist                                |
++---------------+-----------------------+----------------------------------------------------------+
+
+Get Bucket Logging
+------------------
+
+Get logging configured on a bucket.
+
+语法
+~~~~~~
+
+::
+
+    GET /{bucket}?logging HTTP/1.1 
+
+
+Response Entities
+~~~~~~~~~~~~~~~~~
+
+Response is XML encoded in the body of the request, in the following format:
+
+::
+
+  <BucketLoggingStatus xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <LoggingEnabled>
+      <TargetBucket>string</TargetBucket>
+      <TargetGrants>
+        <Grant>
+          <Grantee>
+            <DisplayName>string</DisplayName>
+            <EmailAddress>string</EmailAddress>
+            <ID>string</ID>
+            <xsi:type>string</xsi:type>
+            <URI>string</URI>
+          </Grantee>
+          <Permission>string</Permission>
+        </Grant>
+      </TargetGrants>
+      <TargetObjectKeyFormat>
+        <PartitionedPrefix>
+          <PartitionDateSource>DeliveryTime|EventTime</PartitionDateSource>
+        </PartitionedPrefix>
+        <SimplePrefix>
+        </SimplePrefix>
+      </TargetObjectKeyFormat>
+      <TargetPrefix>string</TargetPrefix>
+      <LoggingType>Standard|Journal</LoggingType>
+      <ObjectRollTime>integer</ObjectRollTime>
+      <Filter>
+        <S3Key>
+          <FilterRule>
+            <Name>suffix/prefix/regex</Name>
+            <Value></Value>
+          </FilterRule>
+        </S3Key>
+      </Filter>
+    </LoggingEnabled>
+  </BucketLoggingStatus>
+
+
+HTTP 响应
+~~~~~~~~~~~~~
+
++---------------+-----------------------+----------------------------------------------------------+
+| HTTP Status   | Status Code           | Description                                              |
++===============+=======================+==========================================================+
+| ``404``       | NoSuchBucket          | The bucket does not exist                                |
++---------------+-----------------------+----------------------------------------------------------+
+
+Flush Bucket Logging
+--------------------
+
+Flushes all logging objects for a given source bucket (logging bucket are written lazily).
+
+语法
+~~~~~~
+
+::
+
+    POST /{bucket}?logging HTTP/1.1
+
+
+HTTP 响应
+~~~~~~~~~~~~~
+
++---------------+-----------------------+----------------------------------------------------------+
+| HTTP Status   | Status Code           | Description                                              |
++===============+=======================+==========================================================+
+| ``201``       | Created               | Flushed all logging objects successfully                 |
++---------------+-----------------------+----------------------------------------------------------+
+| ``404``       | NoSuchBucket          | The bucket does not exist                                |
++---------------+-----------------------+----------------------------------------------------------+
+

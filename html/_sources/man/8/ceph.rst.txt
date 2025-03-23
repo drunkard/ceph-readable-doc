@@ -23,7 +23,7 @@
 
 | **ceph** **df** *{detail}*
 
-| **ceph** **fs** [ *ls* \| *new* \| *reset* \| *rm* \| *authorize* ] ...
+| **ceph** **fs** [ *add_data_pool* \| *authorize* \| *dump* \| *feature ls* \| *flag set* \| *get* \| *ls* \| *lsflags* \| *new* \| *rename* \| *reset* \| *required_client_features add* \| *required_client_features rm* \| *rm* \| *rm_data_pool* \| *set* \| *swap* ] ...
 
 | **ceph** **fsid**
 
@@ -361,17 +361,92 @@ fs
 
 用于管理 cephfs 文件系统，需额外加子命令。
 
+子命令 ``add_data_pool`` 向 FS 新增一个数据存储池。
+这个存储池可以用于文件布局，作为存储文件数据的额外位置。
+
+用法： ::
+
+    ceph fs add_data_pool <fs-name> <pool name/id>
+
+
+子命令 ``authorize`` 创建一个新客户端（如果集群内还没有此客户端），
+并把 ``<fs_name>`` 路径授权给它；传入 ``/`` 可以授权整个文件系统。
+下面的 ``<perms>`` 可以是 ``r`` 、 ``rw`` 或 ``rwp`` 。
+
+对现有客户端运行此命令可以给它授予新能力
+（同一集群上不同 CephFS 的能力、或同一 CephFS 上不同路径的功能）。
+或者，它也可以更改客户端已拥有能力中的读/写权限。
+
+用法： ::
+
+    ceph fs authorize <fs_name> client.<client_id> <path> <perms> [<path> <perms>...]
+
+
+子命令 ``dump`` 用于显示指定 epoch 的 FSMap （默认：当前的）。
+包括所有文件系统配置、 MDS 守护进程、以及它们持有的 rank 、
+备用 MDS 守护进程列表。
+
+用法： ::
+
+    ceph fs dump [epoch]
+
+子命令 ``feature ls`` 罗列当前版本的 Ceph 支持的所有 CephFS 功能。
+
+用法： ::
+
+    ceph fs feature ls
+
+
+子命令 ``flag set`` 用于设置全局 CephFS 标志。目前，
+只有一个 ``enable_multiple`` 标志，表示允许一套 Ceph 集群上有多个 CephFS 。
+
+用法： ::
+
+    ceph fs flag set <flag-name> <flag-val> --yes-i-really-mean-it
+
+
+子命令 ``get`` 用于显示 FS 信息，包括配置和 rank 。
+此命令打印的信息是 ``fs dump`` 命令输出信息的一部分。
+
+用法： ::
+
+    ceph fs get <fs-name>
+
+
 子命令 ``ls`` 用于罗列文件系统。
 
 用法： ::
 
 	ceph fs ls
 
+子命令 ``lsflags`` 用于显示指定 FS 上设置的所有标志。
+
+用法： ::
+
+    ceph fs lsflags <fs-name>
+
 子命令 ``new`` 用指定的存储池 <metadata> 和 <data> 创建新文件系统。
 
 用法： ::
 
 	ceph fs new <fs_name> <metadata> <data>
+
+子命令 ``rename`` 用于给 CephFS 分配个新名字，
+并更新此 CephFS 存储池的应用程序标签。
+
+用法： ::
+
+    ceph fs rename <fs-name> <new-fs-name> {--yes-i-really-mean-it}
+
+
+子命令 ``required_client_features`` 禁止不具备指定功能的客户端连接。
+这个子命令有两个子命令，一个用于添加必需项、另一个用于删除必需项。
+
+用法： ::
+
+    ceph fs required_client_features <fs name> add <feature-name>
+    ceph fs required_client_features <fs name> rm <feature-name>
+
 
 子命令 ``reset`` 仅适用于灾难恢复：重置成单 MDS 运行图。
 
@@ -385,13 +460,28 @@ fs
 
 	ceph fs rm <fs_name> {--yes-i-really-mean-it}
 
-子命令 ``authorize`` 创建一个新客户端，
-并把 ``<fs_name>`` 路径授权给它；传入 ``/`` 可以授权整个文件系统。
-下面的 ``<perms>`` 可以是 ``r`` 、 ``rw`` 或 ``rwp`` 。
+
+子命令 ``rm_data_pool`` 从 FS 的数据存储池列表中删除指定的存储池。
+此存储池中的文件数据将不可用。默认的数据存储池不能删除。
 
 用法： ::
 
-    ceph fs authorize <fs_name> client.<client_id> <path> <perms> [<path> <perms>...]
+    ceph fs rm_data_pool <fs-name> <pool name/id>
+
+子命令 ``set`` 用于设置或更新一个 FS 配置选项的值，需指定 FS 名字。
+
+用法： ::
+
+    ceph fs set <fs-name> <fs-setting> <value>
+
+
+子命令 ``swap`` 用于交换两个 Ceph 文件系统的名字，
+并相应地更新文件系统存储池上的应用程序标签。还有个可选选项，
+加上 ``--swap-fscids`` 可以在交换文件系统名字的同时也交换 FSID 。
+
+用法： ::
+
+    ceph fs swap <fs1-name> <fs1-id> <fs2-name> <fs2-id> [--swap-fscids] {--yes-i-really-meant-it}
 
 
 fsid
@@ -687,8 +777,8 @@ base64 编码 cephx 密钥、和一个 dm-crypt 密钥。指定 dm-crypt
 
     ceph osd new {<uuid>} {<id>} -i {<params.json>}
 
-JSON 文件内的参数是可选的，但是如果设置了，就必须遵守下面的\
-几种格式之一： ::
+JSON 文件内的参数是可选的，但是如果设置了，
+就必须遵守下面的几种格式之一： ::
 
     {
         "cephx_secret": "AQBWtwhZdBO5ExAAIDyjK2Bh16ZXylmzgYYEjg==",
@@ -1637,6 +1727,22 @@ version
    输出格式。
 
    注意：只有 orch 命令支持 yaml 。
+
+.. option:: --daemon-output-file OUTPUT_FILE
+
+   加 --format=json|json-pretty 选项时，可以在这个守护进程\
+   所在的主机上指定一个文件名，以便把输出流写入该文件。
+   注意，（此文件与）运行 ceph 命令的可能不是同一台主机。
+   因此，要分析输出的内容，在命令完成后还得取回文件。
+
+   OUTPUT_FILE 也可以是 ``:tmp:`` ，表示守护进程应该创建一个临时文件
+   （由 tmp_dir 和 tmp_file_template 选项配置）。
+
+   ``tell`` 命令将输出 json ，包括写入输出文件的路径、
+   文件大小、命令结果代码、
+   以及命令产生的其余输出。
+
+   注意：此选项仅适用于 ``ceph tell`` 命令。
 
 .. option:: --connect-timeout CLUSTER_TIMEOUT
 
