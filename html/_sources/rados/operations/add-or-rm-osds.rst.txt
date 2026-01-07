@@ -284,7 +284,7 @@ CRUSH 图条目都需要保持不变。
 
 观察数据迁移
 ------------
-Observing the Data Migration
+.. Observing the Data Migration
 
 一旦把 OSD 踢出（ ``out`` ）集群， Ceph 就会开始重新均衡集群、\
 把归置组迁出将删除的 OSD 。可以用 `ceph`_ 工具观察此过程，执行下列命令：

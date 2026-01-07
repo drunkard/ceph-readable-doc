@@ -3,10 +3,10 @@
 ==========
 .. Cache Tiering
 
-.. warning:: Cache tiering has been deprecated in the Reef release as it
-             has lacked a maintainer for a very long time. This does not mean
-             it will be certainly removed, but we may choose to remove it
-             without much further notice.
+.. warning:: 在 Reef 版本中，缓存分层已废弃，
+   因为它已经很久没有维护者了。
+   这并不意味着它一定会被移除，
+   但我们可能会选择在不另行通知的情况下将其移除。
 
 分级缓存可提升后端存储内某些（热点）数据的 I/O 性能。
 分级缓存需创建一个由高速而昂贵存储设备（如 SSD ）组成的存储池、
@@ -377,7 +377,8 @@ OSD 守护进程运行得最优。
 
    ceph osd pool set {cachepool} cache_target_dirty_ratio {0.0..1.0}
 
-例如，设置为 ``0.4`` 时，脏对象达到缓存池容量的 40% 就开始刷回：
+例如，设置为 ``0.4`` 时，
+脏对象达到缓存池容量的 40% 就开始刷回：
 
 .. prompt:: bash $
 
@@ -456,7 +457,8 @@ OSD 守护进程运行得最优。
 ------------
 .. Removing a Read-Only Cache
 
-只读缓存不含变更数据，所以禁用它不会导致任何近期更改的数据丢失。
+只读缓存不含变更数据，
+所以禁用它不会导致任何近期更改的数据丢失。
 
 #. 把缓存模式改为 ``none`` 即可禁用。
 
@@ -549,10 +551,10 @@ OSD 守护进程运行得最优。
 ================
 .. Troubleshooting Unfound Objects
 
-Under certain circumstances, restarting OSDs may result in unfound objects.
+在某些特定情形下，重启 OSD 可能会导致产生找不到的对象。
 
-Here is an example of unfound objects appearing during an upgrade from Ceph
-14.2.6 to Ceph 14.2.7::
+这里是个实例，在 Ceph 14.2.6 升级到 14.2.7 期间，
+出现了找不到的对象： ::
 
    2/543658058 objects unfound (0.000%)
    pg 19.12 has 1 unfound objects
@@ -585,15 +587,15 @@ Here is an example of unfound objects appearing during an upgrade from Ceph
        ],
        "more": false
 
-Some tests in the field indicate that the unfound objects can be deleted with
-no adverse effects (see `Tracker Issue #44286, Note 3
-<https://tracker.ceph.com/issues/44286#note-3>`_). Pawel Stefanski suggests
-that deleting missing or unfound objects is safe as long as the objects are a
-part of ``.ceph-internal::hit_set_PGID_archive``.
+一些现场测试表明，删除未找到的对象不会产生任何不良影响
+（见 `Tracker Issue #44286, Note 3
+<https://tracker.ceph.com/issues/44286#note-3>`_ ）。 
+Pawel Stefanski 建议删除丢失或未找到的对象是安全的，
+只要这些对象是 ``.ceph-internal::hit_set_PGID_archive`` 的一部分。
 
-Various members of the upstream Ceph community have reported in `Tracker Issue
-#44286 <https://tracker.ceph.com/issues/44286>`_ that the following versions of
-Ceph have been affected by this issue:
+上游 Ceph 社区的多名成员在 `Tracker Issue #44286
+<https://tracker.ceph.com/issues/44286>`_ 中报告说，
+以下版本的 Ceph 受此问题影响：                                         
 
 * 14.2.8
 * 14.2.16
@@ -601,8 +603,8 @@ Ceph have been affected by this issue:
 * 16.2.5
 * 17.2.7
 
-See `Tracker Issue #44286 <https://tracker.ceph.com/issues/44286>`_ for the
-history of this issue.
+这个问题的历史见
+`Tracker Issue #44286 <https://tracker.ceph.com/issues/44286>`_ 。
 
 
 .. _创建存储池: ../pools#create-a-pool

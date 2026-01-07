@@ -87,7 +87,9 @@ Ceph 对象网关可与 CephFS 客户端或 Ceph 块设备客户端共用一个\
    Lua Scripting <lua-scripting>
    D3N Data Cache <d3n_datacache>
    Cloud Transition <cloud-transition>
+   Cloud Restore <cloud-restore>
    Metrics <metrics>
    UADK Acceleration for Compression <uadk-accel>
    桶的日志记录 <bucket_logging>
+   全文对象去重 <s3_objects_dedup>
 

@@ -118,6 +118,7 @@ Ceph 的强大可以改变您公司的 IT 基础架构和海量数据管理能�
    governance
    foundation
    ceph-volume/index
+   crimson/crimson
    releases/general
    releases/index
    security/index

@@ -2,7 +2,7 @@
  ISA 纠删码插件
 ================
 
-The *isa* plugin is the default for Ceph erasure coded pools.
+*isa* 是 Ceph 纠删码存储池的默认插件。
 *isa* 插件封装了 `ISA
 <https://01.org/intel%C2%AE-storage-acceleration-library-open-source-version/>`_
 库。
@@ -40,8 +40,9 @@ The *isa* plugin is the default for Ceph erasure coded pools.
 
 ``m={coding-chunks}``
 
-:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。编码块的\
-       数量等同于在不丢数据的前提下允许同时失效的 OSD 数量。
+:描述: 计算各对象的\ **编码块**\ 、并存储于不同 OSD 。
+       编码块的数量等同于在不丢数据的前提下\
+       允许同时失效的 OSD 数量。
 :类型: Integer
 :是否必需: No.
 :默认值: 3
@@ -72,10 +73,11 @@ The *isa* plugin is the default for Ceph erasure coded pools.
 
 ``crush-failure-domain={bucket-type}``
 
-:描述: 确保两个编码块不会存在于同一故障域的桶中。比如，假设\
-       故障域是 **host** ，就不会有两个编码块存储到同一主机；\
-       此值用于在 CRUSH 规则中创建类似 **step chooseleaf host**
-       的步骤。
+:描述: 确保两个编码块不会存在于同一故障域的桶中。
+       比如，假设故障域是 **host** ，
+       就不会有两个编码块存储到同一主机；\
+       此值用于在 CRUSH 规则中创建类似
+       **step chooseleaf host** 的步骤。
 :类型: String
 :是否必需: No.
 :默认值: host
@@ -83,9 +85,8 @@ The *isa* plugin is the default for Ceph erasure coded pools.
 
 ``crush-device-class={device-class}``
 
-:描述: 使归置限于指定的设备类（比如 ``ssd`` 或 ``hdd`` ）之\
-       内，在 CRUSH 图里使用设备类的名字。
-
+:描述: 使归置限于指定的设备类（比如 ``ssd`` 或 ``hdd`` ）
+       之内，在 CRUSH 图里使用设备类的名字。
 :类型: String
 :是否必需: No.
 :默认值:

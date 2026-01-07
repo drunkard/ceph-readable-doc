@@ -88,3 +88,4 @@ The definitions are illustrated as follows (PG stands for placement group):
    Jerasure 插件 <erasure_coding/jerasure>
    高级设计文档 <erasure_coding/ecbackend>
    纠删码增强设计文档 <erasure_coding/enhancements>
+   直读设计文档 <erasure_coding/direct_reads>

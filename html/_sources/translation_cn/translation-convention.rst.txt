@@ -766,8 +766,16 @@ UMARK VMARK WMARK XMARK YMARK ZMARK
         脱离了目录树，不知道原来的上一级是谁的目录。
         和孤儿目录/文件（ orphan ）应该是同一个东西。
 
+    stretch cluster
+        跨区域集群
+
+    stretch mode
+        跨区域模式
+
+        dividing buckets, dividing CRUSH buckets, 隔离的 CRUSH 桶；
+
     stretch pool
-        弹性存储池、跨区域存储池？
+        跨区域存储池
 
     string interpolation
         字符串插值， https://en.wikipedia.org/wiki/String_interpolation

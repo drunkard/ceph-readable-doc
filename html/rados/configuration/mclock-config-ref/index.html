@@ -81,8 +81,6 @@
           </a>
 
           
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search/" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -166,6 +164,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../governance/">项目管理</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../foundation/">Ceph 基金会</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../ceph-volume/">ceph-volume</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../crimson/crimson/">Crimson (Tech Preview)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/general/">Ceph 版本（总目录）</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Ceph 版本（索引）</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../security/">Security</a></li>
@@ -553,6 +552,10 @@ sleep options are disabled (set to 0),</p>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_sleep_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep_hdd</span></code></a></p></li>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_sleep_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep_ssd</span></code></a></p></li>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_recovery_sleep_hybrid"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep_hybrid</span></code></a></p></li>
+<li><p><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep_degraded</span></code></p></li>
+<li><p><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep_degraded_hdd</span></code></p></li>
+<li><p><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep_degraded_ssd</span></code></p></li>
+<li><p><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_recovery_sleep_degraded_hybrid</span></code></p></li>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_scrub_sleep"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_scrub_sleep</span></code></a></p></li>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_delete_sleep"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_delete_sleep</span></code></a></p></li>
 <li><p><a class="reference internal" href="../osd-config-ref/#confval-osd_delete_sleep_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_delete_sleep_hdd</span></code></a></p></li>
@@ -813,7 +816,7 @@ following additional step is recommended to address this:</p>
 <p>If the default OSD capacity is not accurate, the recommendation is to run a
 custom benchmark using your preferred tool (e.g. Fio) on the drive and then
 override the <code class="docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_[hdd,</span> <span class="pre">ssd]</span></code> option as described
-in the <a class="reference internal" href="#specifying-max-osd-capacity">Specifying  Max OSD Capacity</a> section.</p>
+in the <a class="reference internal" href="#set-or-override-max-iops-capacity-of-an-osd">Set or Override Max IOPS Capacity of an OSD</a> section.</p>
 <p>This step is highly recommended until an alternate mechansim is worked upon.</p>
 </section>
 </section>
@@ -830,7 +833,7 @@ Otherwise, you may skip this section entirely.</p>
 <p class="admonition-title">Tip</p>
 <p>If you have already determined the benchmark data and wish to manually
 override the max osd capacity for an OSD, you may skip to section
-<a class="reference internal" href="#specifying-max-osd-capacity">Specifying  Max OSD Capacity</a>.</p>
+<a class="reference internal" href="#set-or-override-max-iops-capacity-of-an-osd">Set or Override Max IOPS Capacity of an OSD</a>.</p>
 </div>
 <p>Any existing benchmarking tool (e.g. Fio) can be used for this purpose. In this
 case, the steps use the <em>Ceph OSD Bench</em> command described in the next section.
@@ -907,23 +910,82 @@ overall throughput was roughly equal to the baseline throughput. Note that in
 general for HDDs, the bluestore throttle values are expected to be higher when
 compared to SSDs.</p>
 </section>
-<section id="specifying-max-osd-capacity">
-<h3>Specifying  Max OSD Capacity<a class="headerlink" href="#specifying-max-osd-capacity" title="Permalink to this heading"></a></h3>
-<p>The steps in this section may be performed only if you want to override the
-max osd capacity automatically set during OSD initialization. The option
-<code class="docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_[hdd,</span> <span class="pre">ssd]</span></code> for an OSD can be set by running the
-following command:</p>
-<blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd.N<span class="w"> </span>osd_mclock_max_capacity_iops_<span class="o">[</span>hdd,ssd<span class="o">]</span><span class="w"> </span>&lt;value&gt;</span>
-</pre></div></div></div></blockquote>
-<p>For example, the following command sets the max capacity for a specific OSD
+<section id="set-or-override-max-iops-capacity-of-an-osd">
+<span id="override-max-iops-capacity"></span><h3>Set or Override Max IOPS Capacity of an OSD<a class="headerlink" href="#set-or-override-max-iops-capacity-of-an-osd" title="Permalink to this heading"></a></h3>
+<p>The steps in this section may be performed to set or override the max IOPS
+capacity of an OSD. The <code class="docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_[hdd,</span> <span class="pre">ssd]</span></code> option for
+an OSD can be overridden by running a command of the following form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd.N<span class="w"> </span>osd_mclock_max_capacity_iops_<span class="o">[</span>hdd,ssd<span class="o">]</span><span class="w"> </span>&lt;value&gt;</span>
+</pre></div></div><p>For example, the following command sets the max capacity for a specific OSD
 (say “osd.0”) whose underlying device type is HDD to 350 IOPS:</p>
-<blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd.0<span class="w"> </span>osd_mclock_max_capacity_iops_hdd<span class="w"> </span><span class="m">350</span></span>
-</pre></div></div></div></blockquote>
-<p>Alternatively, you may specify the max capacity for OSDs within the Ceph
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>osd.0<span class="w"> </span>osd_mclock_max_capacity_iops_hdd<span class="w"> </span><span class="m">350</span></span>
+</pre></div></div><p>Alternatively, you may specify the max capacity for OSDs within the Ceph
 configuration file under the respective [osd.N] section. See
 <a class="reference internal" href="../ceph-conf/#ceph-conf-settings"><span class="std std-ref">配置文件段落</span></a> for more details.</p>
+</section>
+<section id="global-override-of-max-iops-capacity-for-multiple-osds">
+<h3>Global Override of Max IOPS Capacity for multiple OSDs<a class="headerlink" href="#global-override-of-max-iops-capacity-for-multiple-osds" title="Permalink to this heading"></a></h3>
+<p>The max IOPS capacity of multiple OSDs may be overridden by a global config
+specification. This section shows the steps to globally override the
+individually scoped values in the mon store.</p>
+<blockquote>
+<div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The examples use <a class="reference internal" href="#confval-osd_mclock_max_capacity_iops_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_hdd</span></code></a> and
+the steps are also applicable for SSD based OSDs in which case
+the option to use is <a class="reference internal" href="#confval-osd_mclock_max_capacity_iops_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_mclock_max_capacity_iops_ssd</span></code></a>.</p>
+</div>
+</div></blockquote>
+<p>Below are steps to override the IOPS capacities of individual OSDs. Note that
+the individual value is taken by the OSD after it runs the usual startup
+benchmark.</p>
+<ol class="arabic">
+<li><p>Run the following command to verify the individual values set for the OSDs in
+the central config database:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>osd_mclock_max_capacity_iops</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">WHO</span>     <span class="n">MASK</span>  <span class="n">LEVEL</span>  <span class="n">OPTION</span>                            <span class="n">VALUE</span>       <span class="n">RO</span>
+<span class="n">osd</span><span class="mf">.0</span>         <span class="n">basic</span>  <span class="n">osd_mclock_max_capacity_iops_hdd</span>  <span class="mf">379.197568</span>
+<span class="n">osd</span><span class="mf">.1</span>         <span class="n">basic</span>  <span class="n">osd_mclock_max_capacity_iops_hdd</span>  <span class="mf">400.903575</span>
+<span class="n">osd</span><span class="mf">.2</span>         <span class="n">basic</span>  <span class="n">osd_mclock_max_capacity_iops_hdd</span>  <span class="mf">398.303428</span>
+<span class="n">osd</span><span class="mf">.3</span>         <span class="n">basic</span>  <span class="n">osd_mclock_max_capacity_iops_hdd</span>  <span class="mf">419.035854</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>If there are no individual values reported, skip to the next step. Otherwise,
+remove all the individual values reported in the previous step with a command
+of the following form (where ‘x’ is the OSD id):</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>rm<span class="w"> </span>osd.x<span class="w"> </span>osd_mclock_max_capacity_iops_hdd</span>
+</pre></div></div></div></blockquote>
+</li>
+<li><p>Confirm that the <cite>ceph config dump</cite> command from step 1 does not show any
+individual values.</p></li>
+<li><p>Set the global value of <cite>osd_mclock_max_capacity_iops_hdd</cite> with a command of
+the following form:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>global<span class="w"> </span>osd_mclock_max_capacity_iops_hdd<span class="w"> </span><span class="m">111</span></span>
+</pre></div></div></div></blockquote>
+</li>
+<li><p>Confirm that the global option is set by running:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>osd_mclock_max_capacity_iops</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">global</span>        <span class="n">basic</span>  <span class="n">osd_mclock_max_capacity_iops_hdd</span>  <span class="mf">111.000000</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Confirm that the global setting is now in effect for any OSD that no longer
+has a specific per-OSD central config setting:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span>show<span class="w"> </span>osd.0<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>osd_mclock_max_capacity_iops_hdd</span>
+</pre></div></div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">osd_mclock_max_capacity_iops_hdd</span>                 <span class="mf">111.000000</span>                               <span class="n">mon</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
 </section>
 </section>
 <section id="index-7">
