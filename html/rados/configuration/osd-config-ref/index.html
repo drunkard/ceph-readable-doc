@@ -110,6 +110,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../ceph-conf/">配置 Ceph</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../common/">通用选项</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../common/#ceph-network-config">网络</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../common/#temporary-directory">Temporary Directory</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../common/#id3">监视器</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../common/#ceph-osd-config">认证</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../common/#osds">OSDs</a></li>
@@ -211,10 +212,10 @@
   
   <section id="osd">
 <h1>OSD 配置参考<a class="headerlink" href="#osd" title="Permalink to this heading"></a></h1>
-<p id="index-0">你可以通过配置文件调整 OSD ，
+<p id="index-0">你可以通过配置文件来配置 Ceph OSD ，
 （或者通过近期版本里的中央配置库）
 但靠默认值和极少的配置 OSD 守护进程就能运行。
-最简 OSD 配置需设置 <code class="docutils literal notranslate"><span class="pre">osd</span> <span class="pre">journal</span> <span class="pre">size</span></code> 和 <code class="docutils literal notranslate"><span class="pre">host</span></code> ，
+最简 OSD 配置需设置 <code class="docutils literal notranslate"><span class="pre">host</span></code> ，
 其他几乎都能用默认值。</p>
 <p>Ceph 的 OSD 守护进程用递增的数字作标识，
 按惯例以 <code class="docutils literal notranslate"><span class="pre">0</span></code> 开始，如下：</p>
@@ -245,9 +246,12 @@ Ceph 部署脚本通常会自动生成 UUID 。</p>
 <p class="admonition-title">Warning</p>
 <p><strong>不要</strong>更改数据和日志的默认路径，因为这样会增加后续的排障难度。</p>
 </div>
-<p>日志尺寸应该大于期望的驱动器速度和 <code class="docutils literal notranslate"><span class="pre">filestore</span> <span class="pre">max</span> <span class="pre">sync</span> <span class="pre">interval</span></code> 之乘积的两倍；
-最常见的方法是为日志驱动器（通常是 SSD ）分区并挂载好，
-这样 Ceph 就可以用整个分区做日志。</p>
+<p>使用 Filestore 时，日志尺寸应该大于驱动器预期速度和
+<code class="docutils literal notranslate"><span class="pre">filestore</span> <span class="pre">max</span> <span class="pre">sync</span> <span class="pre">interval</span></code> 之乘积的两倍；
+但是，最常见的方法是为日志驱动器（通常是 SSD ）分区并挂载好，
+这样 Ceph 就可以用整个分区做日志。
+注意， Filestore 在几个版本前已经废弃，
+所有旧的 Filestore OSD 都应该迁移到 BlueStore 。</p>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-osd_uuid">
 <span class="sig-name descname"><span class="pre">osd_uuid</span></span><a class="headerlink" href="#confval-osd_uuid" title="Permalink to this definition"></a></dt>
@@ -1339,7 +1343,12 @@ these queues neither interact nor share information among them. The
 number of shards can be controlled with the configuration options
 <a class="reference internal" href="#confval-osd_op_num_shards"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_shards</span></code></a>, <a class="reference internal" href="#confval-osd_op_num_shards_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_shards_hdd</span></code></a>, and
 <a class="reference internal" href="#confval-osd_op_num_shards_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_shards_ssd</span></code></a>. A lower number of shards will increase the
-impact of the mClock queues, but may have other deleterious effects.</p>
+impact of the mClock queues, but may have other deleterious effects.
+This is especially the case if there are insufficient shard worker
+threads. The number of shard worker threads can be controlled with the
+configuration options <a class="reference internal" href="#confval-osd_op_num_threads_per_shard"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_threads_per_shard</span></code></a>,
+<a class="reference internal" href="#confval-osd_op_num_threads_per_shard_hdd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_threads_per_shard_hdd</span></code></a> and
+<a class="reference internal" href="#confval-osd_op_num_threads_per_shard_ssd"><code class="xref std std-confval docutils literal notranslate"><span class="pre">osd_op_num_threads_per_shard_ssd</span></code></a>.</p>
 <p>Second, requests are transferred from the operation queue to the
 operation sequencer, in which they go through the phases of
 execution. The operation queue is where mClock resides and mClock
@@ -1600,6 +1609,11 @@ recovery when appropriate</p>
 归置组和对象的迁移会导致集群运营性能显著降低，为维持运营性能，
 Ceph 用 backfilling 来执行此迁移，
 它可以使得 Ceph 的回填操作优先级低于用户读写请求。</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>如果启用了 <a class="reference external" href="../mclock-config-ref">mClock</a> 调度器，下面有些配置选项会被自动重置，
+见 <a class="reference external" href="../mclock-config-ref#recovery-backfill-options">mClock 回填</a>。</p>
+</div>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-osd_max_backfills">
 <span class="sig-name descname"><span class="pre">osd_max_backfills</span></span><a class="headerlink" href="#confval-osd_max_backfills" title="Permalink to this definition"></a></dt>
@@ -1727,6 +1741,11 @@ Ceph 用一些选项来确保 OSD 运行图增大时仍运行良好。</p>
 <p>当集群启动、或某 OSD 守护进程崩溃后重启时，此 OSD 开始与其它 OSD 们建立连接，这样才能正常工作。详情见<a class="reference external" href="../../operations/monitoring-osd-pg#peering">监控 OSD 和归置组</a>。</p>
 <p>如果某 OSD 崩溃并重生，通常会落后于其他 OSD ，也就是没有同归置组内最新版本的对象。这时， OSD 守护进程进入恢复模式并检索最新数据副本，并更新运行图。根据 OSD 挂的时间长短， OSD 的对象和归置组可能落后得厉害，另外，如果挂的是一个失效域（如一个机柜），多个 OSD 会同时重生，这样恢复时间更长、更耗资源。</p>
 <p>为保持运营性能， Ceph 进行恢复时会限制恢复请求数、线程数、对象块尺寸，这样在降级状态下也能保持良好的性能。</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>如果启用了 <a class="reference external" href="../mclock-config-ref">mClock</a> 调度器，下面有些配置选项会被自动重置，
+见 <a class="reference external" href="../mclock-config-ref#recovery-backfill-options">mClock 回填</a>。</p>
+</div>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-osd_recovery_delay_start">
 <span class="sig-name descname"><span class="pre">osd_recovery_delay_start</span></span><a class="headerlink" href="#confval-osd_recovery_delay_start" title="Permalink to this definition"></a></dt>

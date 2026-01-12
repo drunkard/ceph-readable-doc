@@ -335,6 +335,15 @@ Ceph 的管理用户可在创建或更新某用户时赋予他能力。
               with the manager ``crash`` module to upload daemon crash
               dumps into monitor storage for later analysis.
 
+.. important:: If you run the command ``ceph auth caps client.admin mgr
+   'allow*'``, you will remove necessary capabilities from ``client.admin``. To
+   repair this, run a command of the following form from within the
+   ``/var/lib/ceph/mon/<monitor_name>`` directory:
+
+      .. prompt:: bash #
+
+         ceph -n mon. --keyring keyring auth caps client.admin mds 'allow \*' osd 'allow \*' mon 'allow \*'
+
 
 存储池
 ------

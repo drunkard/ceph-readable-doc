@@ -21,7 +21,7 @@ for all reporting entities are returned in text exposition format.
 
 *prometheus* 模块可这样启用：
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph mgr module enable prometheus
 
@@ -32,7 +32,7 @@ for all reporting entities are returned in text exposition format.
 
 .. note::
 
-    The Prometheus manager module needs to be restarted for configuration changes to be applied.
+    The ``prometheus`` Manager module must be restarted to apply configuration changes.
 
 .. mgr_module:: prometheus
 .. confval:: server_addr
@@ -45,6 +45,7 @@ for all reporting entities are returned in text exposition format.
 .. confval:: standby_behaviour
 .. confval:: standby_error_status_code
 .. confval:: exclude_perf_counters
+.. confval:: healthcheck_history_max_entries
 
 By default the module will accept HTTP requests on port ``9283`` on all IPv4
 and IPv6 addresses on the host.  The port and listen address are both
@@ -53,7 +54,7 @@ configurable with ``ceph config set``, with keys
 is registered with Prometheus's `registry
 <https://github.com/prometheus/prometheus/wiki/Default-port-allocations>`_.
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/server_addr 0.0.0.
    ceph config set mgr mgr/prometheus/server_port 9283
@@ -73,7 +74,7 @@ might be useful to increase the scrape interval.
 To set a different scrape interval in the Prometheus module, set
 ``scrape_interval`` to the desired value:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/scrape_interval 20
 
@@ -94,37 +95,38 @@ This behavior can be configured. By default, it will return a 503 HTTP status
 code (service unavailable). You can set other options using the ``ceph config
 set`` commands.
 
-To tell the module to respond with possibly stale data, set it to ``return``:
+To configure the module to respond with possibly stale data, set
+the cache strategy to ``return``:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
-    ceph config set mgr mgr/prometheus/stale_cache_strategy return
+   ceph config set mgr mgr/prometheus/stale_cache_strategy return
 
-To tell the module to respond with "service unavailable", set it to ``fail``:
+To configure the module to respond with "service unavailable", set it to ``fail``:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/stale_cache_strategy fail
 
 If you are confident that you don't require the cache, you can disable it:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/cache false
 
-If you are using the prometheus module behind some kind of reverse proxy or
-loadbalancer, you can simplify discovering the active instance by switching
+If you are using the ``prometheus`` module behind a reverse proxy or
+load balancer, you can simplify discovery of the active instance by switching
 to ``error``-mode:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/standby_behaviour error
 
-If set, the prometheus module will respond with a HTTP error when requesting ``/``
+If set, the ``prometheus`` module will respond with a HTTP error when requesting ``/``
 from the standby instance. The default error code is 500, but you can configure
 the HTTP response code with:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/standby_error_status_code 503
 
@@ -132,7 +134,7 @@ Valid error codes are between 400-599.
 
 To switch back to the default behaviour, simply set the config key to ``default``:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/standby_behaviour default
 
@@ -143,9 +145,9 @@ Ceph 健康检查
 -------------
 .. Ceph Health Checks
 
-The mgr/prometheus module also tracks and maintains a history of Ceph health checks,
-exposing them to the Prometheus server as discrete metrics. This allows Prometheus
-alert rules to be configured for specific health check events.
+The Manager ``prometheus`` module tracks and maintains a history of Ceph health checks,
+exposing them to the Prometheus server as discrete metrics. This allows Alertmanager
+rules to be configured for specific health check events.
 
 The metrics take the following form;
 
@@ -159,17 +161,29 @@ The metrics take the following form;
 
 The health check history is made available through the following commands;
 
+The module also maintains an in-memory history of health-check states.
+By default the history retains a maximum of 1000 entries. This limit is configurable via the following runtime option:
+
+  ``mgr/prometheus/healthcheck_history_max_entries`` - the maximum number of unique health check entries to track in memory (default: 1000).
+
+This setting helps avoid unbounded memory growth in large or long-lived clusters.
+
+The health check history may be retrieved and cleared by running the following commands:
+
+.. prompt:: bash #
+
+   ceph healthcheck history ls [--format {plain|json|json-pretty}]
+   ceph healthcheck history clear
+
+The ``ceph healthcheck ls`` command provides an overview of the health checks that the cluster has
+encountered since the last ``clear`` command was issued:
+
+.. prompt:: bash #
+
+   ceph healthcheck history ls
+
 ::
 
-    healthcheck history ls [--format {plain|json|json-pretty}]
-    healthcheck history clear
-
-The ``ls`` command provides an overview of the health checks that the cluster has
-encountered, or since the last ``clear`` command was issued. The example below;
-
-::
-
-    [ceph: root@c8-node1 /]# ceph healthcheck history ls
     Healthcheck Name          First Seen (UTC)      Last seen (UTC)       Count  Active
     OSDMAP_FLAGS              2021/09/16 03:17:47   2021/09/16 22:07:40       2    No
     OSD_DOWN                  2021/09/17 00:11:59   2021/09/17 00:11:59       1   Yes
@@ -190,13 +204,13 @@ statistics are collected for all namespaces in the pool.
 
 Example to activate the RBD-enabled pools ``pool1``, ``pool2`` and ``poolN``:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/rbd_stats_pools "pool1,pool2,poolN"
 
 The wildcard can be used to indicate all pools or namespaces:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/rbd_stats_pools "*"
 
@@ -207,9 +221,9 @@ parameter (in sec) and is 300 sec (5 minutes) by default. The module will
 force refresh earlier if it detects statistics from a previously unknown
 RBD image.
 
-Example to turn up the sync interval to 10 minutes:
+To set the sync interval to 10 minutes run the following command:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/rbd_stats_pools_refresh_interval 600
 
@@ -220,7 +234,7 @@ With the introduction of ``ceph-exporter`` daemon, the prometheus module will no
 perf counters as prometheus metrics by default. However, one may re-enable exporting these metrics by setting
 the module option ``exclude_perf_counters`` to ``false``:
 
-.. prompt:: bash $
+.. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/exclude_perf_counters false
 
@@ -229,28 +243,26 @@ the module option ``exclude_perf_counters`` to ``false``:
 ================
 .. Statistic names and labels
 
-The names of the stats are exactly as Ceph names them, with
-illegal characters ``.``, ``-`` and ``::`` translated to ``_``, 
-and ``ceph_`` prefixed to all names.
+These Prometheus stats names are the Ceph native names with
+illegal characters ``.``, ``-`` and ``::`` translated to ``_``,
+and ``ceph_`` prepended.
 
+All daemon statistics have a ``ceph_daemon`` label with a value
+that identifies the type and ID of the daemon they come from,
+for example ``osd.123``.
+A given metric may be reported by multiple types of daemon, so for
+example when when querying an OSD RocksDB stats, you may constrain
+the query with a pattern of the form ``ceph_daemon=~'osd.*'`` so that Monitor
+RocksDB metrics are excluded.
 
-All *daemon* statistics have a ``ceph_daemon`` label such as "osd.123"
-that identifies the type and ID of the daemon they come from.  Some
-statistics can come from different types of daemon, so when querying
-e.g. an OSD's RocksDB stats, you would probably want to filter
-on ceph_daemon starting with "osd" to avoid mixing in the monitor
-rocksdb stats.
-
-
-The *cluster* statistics (i.e. those global to the Ceph cluster)
-have labels appropriate to what they report on.  For example, 
+Cluster statistics (i.e. those global to the Ceph cluster)
+have labels appropriate to the entity for which they are reported.  For example,
 metrics relating to pools have a ``pool_id`` label.
 
-
-The long running averages that represent the histograms from core Ceph
-are represented by a pair of ``<name>_sum`` and ``<name>_count`` metrics.
+Long-running averages that represent Ceph statistic histograms
+are represented by paired ``<name>_sum`` and ``<name>_count`` metrics.
 This is similar to how histograms are represented in `Prometheus <https://prometheus.io/docs/concepts/metric_types/#histogram>`_
-and they can also be treated `similarly <https://prometheus.io/docs/practices/histograms/>`_.
+and they are  treated `similarly <https://prometheus.io/docs/practices/histograms/>`_.
 
 
 存储池和 OSD 元数据系列
@@ -277,28 +289,29 @@ OSDs have a ``ceph_osd_metadata`` field like this:
 ----------------------------------
 .. Correlating drive statistics with node_exporter
 
-The prometheus output from Ceph is designed to be used in conjunction
-with the generic host monitoring from the Prometheus node_exporter.
+Ceph cluster Prometheus metrics are used in conjunction
+with generic host metrics from the Prometheus ``node_exporter``.
 
-To enable correlation of Ceph OSD statistics with node_exporter's 
-drive statistics, special series are output like this:
+To enable correlation of Ceph OSD statistics with ``node_exporter``'s
+drive statistics, Ceph creates series of the below form:
 
 ::
 
     ceph_disk_occupation{ceph_daemon="osd.0",device="sdd", exported_instance="myhost"}
 
-To use this to get disk statistics by OSD ID, use either the ``and`` operator or
-the ``*`` operator in your prometheus query. All metadata metrics (like ``
-ceph_disk_occupation`` have the value 1 so they act neutral with ``*``. Using ``*``
-allows to use ``group_left`` and ``group_right`` grouping modifiers, so that
-the resulting metric has additional labels from one side of the query.
+To query drive metrics by OSD ID, use either the ``and`` operator or
+the ``*`` operator in your Prometheus query. All metadata
+metrics (like ``ceph_disk_occupation_human``) have the value ``1`` so that they
+combine in a neutral fashion with the PromQL ``*`` operator. Using ``*``
+allows the use of the ``group_left`` and ``group_right`` grouping modifiers
+so that the results have additional labels from one side of the query.
 
-See the
-`prometheus documentation`__ for more information about constructing queries.
+See the `prometheus documentation`__ for more information about constructing
+PromQL queries and exploring interactively via the Prometheus expression browser..
 
 __ https://prometheus.io/docs/prometheus/latest/querying/basics
 
-The goal is to run a query like
+For example we can run a query like the below:
 
 ::
 

@@ -648,6 +648,8 @@ Override values can be set in two ways:
    values are shown to have a source of ``override``.
 
 
+.. _configuring_ceph_runtime_view:
+
 查看运行时配置
 ==============
 .. Viewing runtime settings

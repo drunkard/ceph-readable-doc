@@ -1,109 +1,135 @@
-.. Operating a Cluster
-
 ==========
  操纵集群
 ==========
+.. Operating a Cluster
 
 .. index:: systemd; operating a cluster
 
-.. Running Ceph with systemd
 
 用 systemd 控制 Ceph
 ====================
-现在，所有支持 systemd 的发行版（ CentOS 7 、 Fedora 、Debian
-Jessie 以及更高版、 SUSE ）都用原生的 systemd 文件来管理 ceph
-守护进程，不再使用原来的 sysvinit 脚本了。例如： ::
+.. Running Ceph with systemd
 
-        sudo systemctl start ceph.target       # start all daemons
-        sudo systemctl status ceph-osd@12      # check status of osd.12
+在所有支持 systemd 的发行版上（ CentOS 7 、 Fedora 、Debian Jessie 8
+以及更高版、 SUSE ），都用 systemd 文件（\ **不是**\ 老的 SysVinit 脚本）
+来管理 Ceph 守护进程。因此， Ceph 守护进程也像其他守护进程一样，
+可以用 ``systemctl`` 命令来控制，如下例：
 
-罗列节点上 Ceph 的 systemd unit 用此命令： ::
+.. prompt:: bash $
 
-        sudo systemctl status ceph\*.service ceph\*.target
+   sudo systemctl start ceph.target       # start all daemons
+   sudo systemctl status ceph-osd@12      # check status of osd.12
+
+要罗列节点上 Ceph 的所有 systemd unit ，执行下列命令：
+
+.. prompt:: bash $
+
+   sudo systemctl status ceph\*.service ceph\*.target
 
 
 启动所有守护进程
 ----------------
+.. Starting all daemons
 
-要启动一 Ceph 节点（任何类型）上的所有守护进程，用下列命令： ::
+要启动一个 Ceph 节点（不管什么类型）上的所有守护进程，执行下列命令：
 
-        sudo systemctl start ceph.target
+.. prompt:: bash $
+
+   sudo systemctl start ceph.target
 
 
 停止所有守护进程
 ----------------
+.. Stopping all daemons
 
-要停止一 Ceph 节点（任何类型）上的所有守护进程，用下列命令： ::
+要停止一个 Ceph 节点（不管什么类型）上的所有守护进程，执行下列命令：
 
-        sudo systemctl stop ceph\*.service ceph\*.target
+.. prompt:: bash $
+
+   sudo systemctl stop ceph\*.service ceph\*.target
 
 
 按类型启动所有守护进程
 ----------------------
+.. Starting all daemons by type
 
-要启动一节点上的某一类守护进程，用下列命令： ::
+要启动一节点上的某一类守护进程，用下列命令：
 
-        sudo systemctl start ceph-osd.target
-        sudo systemctl start ceph-mon.target
-        sudo systemctl start ceph-mds.target
+.. prompt:: bash $
+
+   sudo systemctl start ceph-osd.target
+   sudo systemctl start ceph-mon.target
+   sudo systemctl start ceph-mds.target
 
 
 按类型停止所有守护进程
 ----------------------
+.. Stopping all daemons by type
 
-要停止一节点上的某一类守护进程，用下列命令： ::
+要停止一节点上的某一类守护进程，用下列命令：
 
-        sudo systemctl stop ceph-mon\*.service ceph-mon.target
-        sudo systemctl stop ceph-osd\*.service ceph-osd.target
-        sudo systemctl stop ceph-mds\*.service ceph-mds.target
+.. prompt:: bash $
+
+   sudo systemctl stop ceph-osd\*.service ceph-osd.target
+   sudo systemctl stop ceph-mon\*.service ceph-mon.target
+   sudo systemctl stop ceph-mds\*.service ceph-mds.target
 
 
 启动单个进程
 ------------
+.. Starting a daemon
 
-要启动某节点上的某个守护进程例程，用下列命令之一： ::
+要启动某节点上的某个守护进程例程，用下列命令之一：
 
-        sudo systemctl start ceph-osd@{id}
-        sudo systemctl start ceph-mon@{hostname}
-        sudo systemctl start ceph-mds@{hostname}
+.. prompt:: bash $
 
-例如： ::
+   sudo systemctl start ceph-osd@{id}
+   sudo systemctl start ceph-mon@{hostname}
+   sudo systemctl start ceph-mds@{hostname}
 
-        sudo systemctl start ceph-osd@1
-        sudo systemctl start ceph-mon@ceph-server
-        sudo systemctl start ceph-mds@ceph-server
+例如：
+
+.. prompt:: bash $
+
+   sudo systemctl start ceph-osd@1
+   sudo systemctl start ceph-mon@ceph-server
+   sudo systemctl start ceph-mds@ceph-server
 
 
 停止单个进程
 ------------
+.. Stopping a daemon
 
-要停止某节点上的某个守护进程例程，用下列命令之一： ::
+要停止某节点上的某个守护进程例程，用下列命令之一：
 
-        sudo systemctl stop ceph-osd@{id}
-        sudo systemctl stop ceph-mon@{hostname}
-        sudo systemctl stop ceph-mds@{hostname}
+.. prompt:: bash $
 
-例如： ::
+   sudo systemctl stop ceph-osd@{id}
+   sudo systemctl stop ceph-mon@{hostname}
+   sudo systemctl stop ceph-mds@{hostname}
 
-        sudo systemctl stop ceph-osd@1
-        sudo systemctl stop ceph-mon@ceph-server
-        sudo systemctl stop ceph-mds@ceph-server
+例如：
+
+.. prompt:: bash $
+
+   sudo systemctl stop ceph-osd@1
+   sudo systemctl stop ceph-mon@ceph-server
+   sudo systemctl stop ceph-mds@ceph-server
 
 
 .. index:: sysvinit; operating a cluster
 
-用 sysvinit 运行 Ceph
+用 SysVinit 运行 Ceph
 =====================
-.. Running Ceph
+.. Running Ceph with SysVinit
 
-每次用命令\ **启动**\ 、\ **重启**\ 、\ **停止** Ceph 守护进程\
-（或整个集群）时，你必须指定至少一个选项和一个命令，还可能要指\
-定守护进程类型或具体例程。 ::
+每次\ **启动**\ 、\ **重启**\ 、\ **停止** Ceph 守护进程时，你必须指定\
+至少一个选项和一个命令。同样，每次启动、重启、停止整个集群时，也必须指定\
+至少一个选项和一个命令。上述两种情况，都能额外指定守护进程类型或具体的守护进程例程。 ::
 
         {commandline} [options] [commands] [daemons]
 
-
-``ceph`` 命令的选项包括：
+``ceph`` 的选项包括：
 
 +-----------------+----------+-------------------------------------------------+
 | 选项            | 简写     | 描述                                            |
@@ -122,7 +148,7 @@ Jessie 以及更高版、 SUSE ）都用原生的 systemd 文件来管理 ceph
 | ``--conf``      |  ``-c``  | 使用另外一个配置文件。                          |
 +-----------------+----------+-------------------------------------------------+
 
-Ceph 子命令包括：
+``ceph`` 子命令包括：
 
 +------------------+-----------------------------------------------------------+
 | 命令             | 描述                                                      |
@@ -140,8 +166,8 @@ Ceph 子命令包括：
 | ``cleanalllogs`` | 清理掉日志目录内的\ **所有**\ 文件。                      |
 +------------------+-----------------------------------------------------------+
 
-至于子系统操作， ``ceph`` 服务能指定守护进程类型，在
-``[daemons]`` 处指定守护进程类型就行了，守护进程类型包括：
+``[daemons]`` 选项是让 ``ceph`` 服务定位守护进程类型的，
+这样就可以进行子系统操作。守护进程类型包括：
 
 - ``mon``
 - ``osd``

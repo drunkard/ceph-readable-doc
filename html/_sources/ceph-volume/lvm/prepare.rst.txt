@@ -280,10 +280,11 @@ CRUSH 设备类
 ------------
 .. Crush device class
 
-要设置 OSD 所属的 CRUSH 设备类，用 ``--crush-device-class``
-选项。对基于 bluestore 和 filestore 的 OSD 都适用： ::
+要设置 OSD 所属的 CRUSH 设备类，用 ``--crush-device-class`` 选项。
 
-    ceph-volume lvm prepare --bluestore --data vg/lv --crush-device-class foo
+.. prompt:: bash #
+
+   ceph-volume lvm prepare --bluestore --data vg/lv --crush-device-class foo
 
 
 .. _ceph-volume-lvm-multipath:

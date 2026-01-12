@@ -1,7 +1,7 @@
 .. _rados-cephx-config-ref:
 
 ================
- Cephx 配置参考
+ CephX 配置参考
 ================
 
 CephX 协议会默认开启。\
@@ -13,9 +13,8 @@ CephX 的加密认证要耗费一定计算资源，但通常很低。\
 .. note:: 如果禁用了认证，就会有篡改客户端/服务器消息\
    这样的中间人攻击风险，这会导致灾难性后果。
 
-关于创建用户请参考\ `用户管理`_\ ；\
-关于 Cephx 的体系结构请参考\
-`体系结构——高可用性认证`_\ 。
+关于创建用户请参考\ :ref:`user-management` ；\
+关于 Cephx 的体系结构请参考 :ref:`arch_high_availability_authentication` 。
 
 
 部署场景
@@ -53,8 +52,8 @@ CephX 的加密认证要耗费一定计算资源，但通常很低。\
 
 启用 ``cephx`` 后， Ceph 将在默认搜索路径（包括
 ``/etc/ceph/ceph.$name.keyring`` ）里查找密钥环。你可以在
-`Ceph 配置`_\ 文件的 ``[global]`` 段里添加 ``keyring`` 选项来\
-修改，但不推荐。
+:ref:`Ceph 配置 <configuring-ceph>`\ 文件的 ``[global]`` 段里添加
+``keyring`` 选项来修改，但不推荐。
 
 在禁用了 CephX 的集群上执行下面的步骤来启用它，如果你
 （或者部署工具）已经生成了密钥，你可以跳过相关步骤。
@@ -102,7 +101,7 @@ CephX 的加密认证要耗费一定计算资源，但通常很低。\
 
       ceph auth get-or-create mds.{$id} mon 'allow rwx' osd 'allow *' mds 'allow *' mgr 'allow profile mds' -o /var/lib/ceph/mds/ceph-{$id}/keyring
 
-#. 把以下配置加入 `Ceph 配置`_\ 文件的
+#. 把以下配置加入 :ref:`Ceph 配置 <configuring-ceph>`\ 文件的
    ``[global]`` 段下以启用 CephX 认证：
 
    .. code-block:: ini
@@ -118,7 +117,7 @@ CephX 的加密认证要耗费一定计算资源，但通常很低。\
 
 禁用 Cephx
 ----------
-.. Disabling Cephx
+.. Disabling CephX
 
 下述步骤描述了如何禁用 CephX 。
 如果你的集群环境相对安全，可以减少\
@@ -126,8 +125,8 @@ CephX 的加密认证要耗费一定计算资源，但通常很低。\
 但是临时禁用认证会使安装、和/或排障更简单，
 可以稍后重新启用。
 
-#. 把下列配置加入 `Ceph 配置`_\ 文件的 ``[global]`` 段下\
-   即可禁用 CephX 认证：
+#. 把下列配置加入 :ref:`Ceph 配置 <configuring-ceph>`\ 文件的
+   ``[global]`` 段下即可禁用 CephX 认证：
 
    .. code-block:: ini
 
@@ -182,6 +181,7 @@ CephX 的加密认证要耗费一定计算资源，但通常很低。\
 :默认值: ``cephx``.
 
 
+
 .. index:: keys; keyring
 
 密钥
@@ -195,8 +195,8 @@ CephX 的加密认证要耗费一定计算资源，但通常很低。\
 就是把密钥环放到 ``/etc/ceph`` 目录下。
 Octopus 以及后续版本用 ``cephadm`` ，
 其文件名通常是 ``ceph.client.admin.keyring`` 。
-如果密钥环位于 ``/etc/ceph`` 目录下，
-就不需要在 Ceph 配置文件里指定 ``keyring`` 选项了。
+如果密钥环位于 ``/etc/ceph`` 目录下，就不需要在
+:ref:`Ceph 配置 <configuring-ceph>`\ 文件里指定 ``keyring`` 选项了。
 
 由于 Ceph 存储集群的密钥环包含 ``client.admin`` 密钥，
 我们建议把这个密钥环复制到你执行管理命令的节点上。
@@ -212,7 +212,8 @@ Octopus 以及后续版本用 ``cephadm`` ，
 
 你可以用 ``key`` 选项把密钥写在配置文件里
 （建议别用此方法），
-或者在 Ceph 配置文件里用 ``keyfile`` 选项指定密钥文件的路径。
+或者在 Ceph 配置文件里用 ``keyfile`` 选项指定\
+密钥文件的路径。
 
 
 ``keyring``
@@ -374,6 +375,3 @@ Ceph 施行的签名检查可以为消息提供一些有限的保护，
 .. _监视器的自举引导: ../../../install/manual-deployment#monitor-bootstrapping
 .. _操纵集群: ../../operations/operating
 .. _手动部署: ../../../install/manual-deployment
-.. _Ceph 配置: ../ceph-conf
-.. _体系结构——高可用性认证: ../../../architecture#high-availability-authentication
-.. _用户管理: ../../operations/user-management

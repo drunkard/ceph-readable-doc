@@ -11,9 +11,9 @@
 
     :ref:`BlueStore<rados_config_storage_devices_bluestore>`
         OSD BlueStore 是 OSD 守护进程使用的一个存储后端，是特意为 Ceph 设计的 。
-        BlueStore 最早在 Kraken 版本引进，从 Luminous 版起， BlueStore 取代
-        FileStore 被提升为默认 OSD 后端，完全取代了 FileStore 。到 Reef 版时，
-        就不能再使用 FileStore 作为存储后端了。
+        BlueStore 最早在 Kraken 版本引进，从 Luminous 版起，
+        BlueStore 被提升为默认 OSD 后端，完全取代了 FileStore 。
+        到 Reef 版时，就不能再使用 FileStore 作为存储后端了。
 
         BlueStore 直接在原始块设备或分区上存储对象，不会与挂载的文件系统\
         产生交互操作。 BlueStore 利用 RocksDB 的键/值数据库来把对象名映射到\
@@ -227,6 +227,10 @@
         和 CRUSH 图，它们合在一起就是 Ceph 集群的状态。详情见
         :ref:`体系结构文档的“集群运行图”一节<architecture_cluster_map>` 。
 
+    CRC
+        *C*\yclic *R*\edundancy *C*\heck ，循环冗余校验。一种算法，
+        用于检测数据传输中的错误。 CRC 不能纠正错误。
+
     Crimson
         下一代 OSD 架构，其主要目标是减少跨核通信所导致的延迟成本。
         通过减少数据路径中分片之间的通信，重新设计的 OSD 减少了锁争用。
@@ -261,7 +265,12 @@
 
     Dashboard Plugin
     仪表盘插件
-        <原文空>
+        仪表板插件是 Mimic 时期的一款 Web 应用程序，它通过
+        :ref:`Ceph 管理器 <ceph-manager-daemon>` 托管的 Web 服务器，
+        把 Ceph 集群的信息和统计数据可视化。
+
+        见 `Mimic 时期的仪表盘插件文档
+        <https://docs.ceph.com/en/mimic/mgr/dashboard/>`_.
 
     DC
         **D**\ata **C**\enter, 数据中心。
@@ -338,7 +347,7 @@
     对象存储设备（实体）
         参阅 :term:`OSD` 。
 
-    OMAP
+    omap
         “对象映射（ object map ）"。键值存储库（一种数据库），用于缩短\
         从 Ceph 集群读出数据和向 Ceph 集群写入数据的时间。
         RGW 桶索引存储为 OMAP。纠删码存储池不能存储 RADOS OMAP 数据结构。

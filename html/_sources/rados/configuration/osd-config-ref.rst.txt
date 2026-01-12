@@ -4,10 +4,10 @@
 
 .. index:: OSD; configuration
 
-你可以通过配置文件调整 OSD ，
+你可以通过配置文件来配置 Ceph OSD ，
 （或者通过近期版本里的中央配置库）
 但靠默认值和极少的配置 OSD 守护进程就能运行。
-最简 OSD 配置需设置 ``osd journal size`` 和 ``host`` ，
+最简 OSD 配置需设置 ``host`` ，
 其他几乎都能用默认值。
 
 Ceph 的 OSD 守护进程用递增的数字作标识，
@@ -46,9 +46,12 @@ Ceph 部署脚本通常会自动生成 UUID 。
 .. warning:: **不要**\ 更改数据和日志的默认路径，\
    因为这样会增加后续的排障难度。
 
-日志尺寸应该大于期望的驱动器速度和 ``filestore max sync interval`` 之乘积的两倍；
-最常见的方法是为日志驱动器（通常是 SSD ）分区并挂载好，
+使用 Filestore 时，日志尺寸应该大于驱动器预期速度和
+``filestore max sync interval`` 之乘积的两倍；
+但是，最常见的方法是为日志驱动器（通常是 SSD ）分区并挂载好，
 这样 Ceph 就可以用整个分区做日志。
+注意， Filestore 在几个版本前已经废弃，
+所有旧的 Filestore OSD 都应该迁移到 BlueStore 。
 
 .. confval:: osd_uuid
 .. confval:: osd_data
@@ -310,6 +313,11 @@ number of shards can be controlled with the configuration options
 :confval:`osd_op_num_shards`, :confval:`osd_op_num_shards_hdd`, and
 :confval:`osd_op_num_shards_ssd`. A lower number of shards will increase the
 impact of the mClock queues, but may have other deleterious effects.
+This is especially the case if there are insufficient shard worker
+threads. The number of shard worker threads can be controlled with the
+configuration options :confval:`osd_op_num_threads_per_shard`,
+:confval:`osd_op_num_threads_per_shard_hdd` and
+:confval:`osd_op_num_threads_per_shard_ssd`.
 
 Second, requests are transferred from the operation queue to the
 operation sequencer, in which they go through the phases of
@@ -369,6 +377,9 @@ mClock and dmClock experiments on the ``ceph-devel`` mailing list.
 Ceph 用 backfilling 来执行此迁移，
 它可以使得 Ceph 的回填操作优先级低于用户读写请求。
 
+.. note:: 如果启用了 `mClock`_ 调度器，下面有些配置选项会被自动重置，
+   见 `mClock 回填`_\ 。
+
 .. confval:: osd_max_backfills
 .. confval:: osd_backfill_scan_min
 .. confval:: osd_backfill_scan_max
@@ -407,6 +418,9 @@ OSD 们建立连接，这样才能正常工作。详情见\ `监控 OSD 和归�
 为保持运营性能， Ceph 进行恢复时会限制恢复请求数、线程数、对象\
 块尺寸，这样在降级状态下也能保持良好的性能。
 
+.. note:: 如果启用了 `mClock`_ 调度器，下面有些配置选项会被自动重置，
+   见 `mClock 回填`_\ 。
+
 .. confval:: osd_recovery_delay_start
 .. confval:: osd_recovery_max_active
 .. confval:: osd_recovery_max_active_hdd
@@ -418,6 +432,10 @@ OSD 们建立连接，这样才能正常工作。详情见\ `监控 OSD 和归�
 .. confval:: osd_recovery_sleep_hdd
 .. confval:: osd_recovery_sleep_ssd
 .. confval:: osd_recovery_sleep_hybrid
+.. confval:: osd_recovery_sleep_degraded
+.. confval:: osd_recovery_sleep_degraded_hdd
+.. confval:: osd_recovery_sleep_degraded_ssd
+.. confval:: osd_recovery_sleep_degraded_hybrid
 .. confval:: osd_recovery_priority
 
 
@@ -448,6 +466,8 @@ OSD 们建立连接，这样才能正常工作。详情见\ `监控 OSD 和归�
 .. _pool: ../../operations/pools
 .. _监视器与 OSD 交互的配置: ../mon-osd-interaction
 .. _监控 OSD 和归置组: ../../operations/monitoring-osd-pg#peering
+.. _mClock: ../mclock-config-ref
+.. _mClock 回填: ../mclock-config-ref#recovery-backfill-options
 .. _存储池和归置组配置参考: ../pool-pg-config-ref
 .. _日志配置参考: ../journal-ref
 .. _cache target dirty high ratio: ../../operations/pools#cache-target-dirty-high-ratio

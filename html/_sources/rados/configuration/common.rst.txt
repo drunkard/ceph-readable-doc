@@ -42,6 +42,27 @@ See the `Network Configuration Reference`_ for a detailed discussion about
 configuring a network for use with Ceph.
 
 
+Temporary Directory
+===================
+
+Some operations will cause a daemon to write to a temporary file. These files
+are located according to the ``tmp_dir`` config.
+
+.. confval:: tmp_dir
+
+The ``$TMPDIR`` environment variable is used to initialize the config, if
+present, but may be overriden on the command-line. A default may also
+be set for the cluster using the usual ``ceph config`` API.
+
+The template for the temporary files created by daemons is controlled
+by the ``tmp_file_template`` config.
+
+.. confval:: tmp_file_template
+
+One example where temporary files are created by daemons is the use of the
+``--daemon-output-file=:tmp:`` argument to the ``ceph tell`` command.
+
+
 监视器
 ======
 .. Monitors
@@ -68,9 +89,7 @@ foregoing directory would evaluate to::
 
 	/var/lib/ceph/mon/ceph-a
 
-For additional details, see the `Monitor Config Reference`_.
-
-.. _Monitor Config Reference: ../mon-config-ref
+详情见 :ref:`monitor-config-reference` 。
 
 
 .. _ceph-osd-config:
@@ -90,9 +109,7 @@ authentication in the ``[global]`` section of your Ceph configuration file.
 	auth_service_required = cephx
 	auth_client_required = cephx
 
-Additionally, you should enable message signing. See `Cephx Config Reference`_ for details.
-
-.. _Cephx Config Reference: ../auth-config-ref
+另外，你应该打开消息签名功能，细节见 :ref:`rados-cephx-config-ref` 。
 
 
 .. _ceph-monitor-config:
@@ -101,54 +118,42 @@ Additionally, you should enable message signing. See `Cephx Config Reference`_ f
 OSDs
 ====
 
-Ceph production clusters typically deploy :term:`Ceph OSD Daemons` where one node
-has one OSD daemon running a filestore on one storage drive. A typical
-deployment specifies a journal size. For example:
+By default, Ceph expects to store a Ceph OSD Daemon's data on the following
+path::
 
-.. code-block:: ini
+    /var/lib/ceph/osd/$cluster-$id
 
-	[osd]
-	osd journal size = 10000
+You or a deployment tool (for example, ``cephadm``) must create the
+corresponding directory. With metavariables fully expressed and a cluster named
+"ceph", the path specified in the above example evaluates to::
 
-	[osd.0]
-	host = {hostname} #manual deployments only.
+    /var/lib/ceph/osd/ceph-0
 
-
-By default, Ceph expects to store a Ceph OSD Daemon's data at the
-following path::
-
-	/var/lib/ceph/osd/$cluster-$id
-
-You or a deployment tool (e.g., ``cephadm``) must create the corresponding
-directory. With metavariables fully expressed and a cluster named "ceph", this
-example would evaluate to::
-
-	/var/lib/ceph/osd/ceph-0
-
-You may override this path using the ``osd data`` setting. We don't recommend
-changing the default location. Create the default directory on your OSD host.
+You can override this path using the ``osd_data`` setting. We recommend that
+you do not change the default location. To create the default directory on your
+OSD host, run the following commands:
 
 .. prompt:: bash $
 
-	ssh {osd-host}
-	sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
+    ssh {osd-host}
+    sudo mkdir /var/lib/ceph/osd/ceph-{osd-number}
 
-The ``osd data`` path ideally leads to a mount point with a hard disk that is
-separate from the hard disk storing and running the operating system and
-daemons. If the OSD is for a disk other than the OS disk, prepare it for
-use with Ceph, and mount it to the directory you just created
+The ``osd_data`` path must lead to a device that is not shared with the
+operating system. To use a device other than the device that contains the
+operating system and the daemons, prepare it for use with Ceph and mount it on
+the directory you just created by running commands of the following form:
 
 .. prompt:: bash $
 
-	ssh {new-osd-host}
-	sudo mkfs -t {fstype} /dev/{disk}
-	sudo mount -o user_xattr /dev/{hdd} /var/lib/ceph/osd/ceph-{osd-number}
+    ssh {new-osd-host}
+    sudo mkfs -t {fstype} /dev/{disk}
+    sudo mount -o user_xattr /dev/{disk} /var/lib/ceph/osd/ceph-{osd-number}
 
-We recommend using the ``xfs`` file system when running
-:command:`mkfs`.  (``btrfs`` and ``ext4`` are not recommended and no
-longer tested.)
+We recommend using the ``xfs`` file system when running :command:`mkfs`. (The
+``btrfs`` and ``ext4`` file systems are not recommended and are no longer
+tested.)
 
-See the `OSD Config Reference`_ for additional configuration details.
+For additional configuration details, see `OSD Config Reference`_.
 
 
 心跳
@@ -179,6 +184,16 @@ Logging`_ for details on log rotation.
 ceph.conf 实例
 ==============
 .. Example ceph.conf
+
+Note that since the Mimic release the Monitors maintain a database of option
+settings: the *central config*.  Node-local ``ceph.conf`` files are still
+supported, but in most cases need only contain the first three lines shown
+below.  Maintaining full ``ceph.conf`` files across cluster nodes can be
+tedious and prone to omission and error, especially when daemons are containerized.
+The below file is provided as a reference example. Clusters running recent
+releases are best managed primary by central config, with a minimal ``ceph.conf``
+file that defines only how to reach the Monitors and thus rarely requires
+modification.
 
 .. literalinclude:: demo-ceph.conf
    :language: ini

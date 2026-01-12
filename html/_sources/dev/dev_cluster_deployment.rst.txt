@@ -39,10 +39,6 @@ osd 、和/或 mds ，不指定的话会启动所有类型。
 
     创建一个纠删码存储池。
 
-.. option:: -f, --filestore
-
-    指定 filestore 作为 OSD 的对象存储后端。
-
 .. option:: --hitset <pool> <hit_set_type>
 
     启用 hitset 追踪。

@@ -15,7 +15,7 @@
 ------
 .. Limitations
 
-* Cephadm 仅适配 BlueStore OSDs；集群内的 FileStore OSDs 不能用 ``cephadm`` 管理。
+* Cephadm 仅适配 BlueStore OSDs 。
 
 准备工作
 --------

@@ -62,13 +62,12 @@ Ceph 元数据服务器（ MDS ）在启用了 CephFS 提供文件服务时\
 .. Storing Data
 
 Ceph 存储集群从 :term:`Ceph 客户端`\ 接收数据——
-不管是来自 :term:`Ceph 块设备`\ 、 :term:`Ceph 对象存储`\ 、
+不管数据是来自 :term:`Ceph 块设备`\ 、 :term:`Ceph 对象存储`\ 、
 :term:`Ceph 文件系统`\ 、还是基于 ``librados`` 自己实现的\
-——并存储为 RADOS 对象。 Ceph OSD 守护进程负责在存储驱动器上\
-处理读、写、还有复制操作。在比较老的 Filestore 后端上，\
-每个 RADOS 对象都是在传统文件系统（通常是 XFS ）上\
-存储的一个独立文件；在新的、默认的 BlueStore 后端上，\
-对象以类似单体数据库的方式存储。
+——并存储为 RADOS 对象。 Ceph 存储集群接收到的数据会存储为 RADOS 对象。
+每个对象都会存储在一个 :term:`对象存储设备` （它也叫做 OSD ）上。
+Ceph OSD 控制着在存储驱动器上的读、写、还有复制操作。
+默认的 BlueStore 后端以类似单体数据库的方式存储对象。
 
 .. ditaa::
 

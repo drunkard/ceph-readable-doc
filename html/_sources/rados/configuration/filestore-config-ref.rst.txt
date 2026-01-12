@@ -2,8 +2,17 @@
  filestore 配置参考
 ====================
 
+.. note:: Since the Luminous release of Ceph, Filestore has not been Ceph's
+   default storage back end. Since the Luminous release of Ceph, BlueStore has
+   been Ceph's default storage back end. However, Filestore OSDs are still
+   supported up to Quincy. Filestore OSDs are not supported in Reef. See
+   :ref:`OSD Back Ends <rados_config_storage_devices_osd_backends>`. See
+   :ref:`BlueStore Migration <rados_operations_bluestore_migration>` for
+   instructions explaining how to replace an existing Filestore back end with a
+   BlueStore back end.
 
-``filestore debug omap check``
+
+``filestore_debug_omap_check``
 
 :描述: 打开对同步检查过程的调试。代价很高，仅用于调试。
 :类型: Boolean
@@ -11,63 +20,66 @@
 :默认值: ``false``
 
 
-.. _Extended Attributes:
-
 .. index:: filestore; extended attributes
 
 扩展属性
 ========
 
-扩展属性（ XATTR ）是配置里的重要部分。一些文件系统对 XATTR
-字节数有限制，另外在某些情况下文件系统存储 XATTR 的速度不如\
-其他方法。下面的选项让你用独立于文件系统的存储方法，或许能\
-提升性能。
+扩展属性（ XATTR ）对于 Filestore OSD 来说很重要。然而，
+用底层文件系统来存储 XATTR 的时候可能会遇到特定的弊端：
+一些文件系统对 XATTR 字节数有限制，
+而且在某些情况下文件系统的运行速度\
+会比换种方法存储存储 XATTR 的速度慢。
+正因如此，用一种外部调用法向底层文件系统存储 XATTR 可能会提升性能。
+要实现这样的外部调用法，可以参考如下设置。
 
-Ceph 扩展属性用底层文件系统的 XATTR （如果没有尺寸限制）存储\
-为 ``inline xattr`` 。如果有限制，如 ext4 限制为 4KB ，达到
-``filestore max inline xattr size`` 或
-``filestore max inline xattrs`` 阀值时一些 XATTR 将存储到键/\
-值数据库内。
+如果底层文件系统没有尺寸限制， Ceph XATTR 就用
+``inline xattr`` 方式存储，用底层文件系统的 XATTR 。
+如果有尺寸限制（如 ext4 限制总大小为 4KB ），
+那么在达到限制尺寸时有些 Ceph XATTR 将会存储在一个减/值数据库内。
+更准确地说，在达到 ``filestore_max_inline_xattr_size`` 或
+``filestore_max_inline_xattrs`` 阀值时这种情况就会出现。
 
 
-``filestore max inline xattr size``
+``filestore_max_inline_xattr_size``
 
-:描述: 每个对象在文件系统（如 XFS 、 btrfs 、 ext4 等）里存储
-       XATTR 的最大尺寸，应该小于文件系统支持的尺寸。默认值 0
-       表示用特定于底层文件系统的值。
+:描述: 每个对象在文件系统（如 XFS 、 btrfs 、 ext4 等）里\
+       存储 XATTR 的最大尺寸，
+       应该小于文件系统支持的尺寸。
+       默认值 0 表示用特定于底层文件系统的值。
 :类型: Unsigned 32-bit Integer
 :是否必需: No
 :默认值: ``0``
 
 
-``filestore max inline xattr size xfs``
+``filestore_max_inline_xattr_size_xfs``
 
-:描述: XFS 文件系统存储 XATTR 的最大尺寸，仅在
-       ``filestore max inline xattr size`` 为 0 时生效。
+:描述: XFS 文件系统存储 XATTR 的最大尺寸，
+       仅在 ``filestore_max_inline_xattr_size`` 为 0 时生效。
 :类型: Unsigned 32-bit Integer
 :是否必需: No
 :默认值: ``65536``
 
 
-``filestore max inline xattr size btrfs``
+``filestore_max_inline_xattr_size_btrfs``
 
-:描述: btrfs 文件系统存储 XATTR 的最大尺寸，仅在
-       ``filestore max inline xattr size`` 为 0 时生效。
+:描述: btrfs 文件系统存储 XATTR 的最大尺寸，
+       仅在 ``filestore_max_inline_xattr_size`` == 0 时生效。
 :类型: Unsigned 32-bit Integer
 :是否必需: No
 :默认值: ``2048``
 
 
-``filestore max inline xattr size other``
+``filestore_max_inline_xattr_size_other``
 
 :描述: 其它文件系统存储 XATTR 的最大尺寸，仅在
-       ``filestore max inline xattr size`` 为 0 时生效。
+       ``filestore_max_inline_xattr_size`` 为 0 时生效。
 :类型: Unsigned 32-bit Integer
 :是否必需: No
 :默认值: ``512``
 
 
-``filestore max inline xattrs``
+``filestore_max_inline_xattrs``
 
 :描述: 每个对象可在文件系统里存储 XATTR 的最大数量。默认值 0
        表示用特定于底层文件系统的值。
@@ -76,31 +88,32 @@ Ceph 扩展属性用底层文件系统的 XATTR （如果没有尺寸限制）�
 :默认值: ``0``
 
 
-``filestore max inline xattrs xfs``
+``filestore_max_inline_xattrs_xfs``
 
 :描述: 每个对象可在 XFS 文件系统上存储 XATTR 的最大数量，仅在
-       ``filestore max inline xattrs`` 为 0 时生效。
+       ``filestore_max_inline_xattrs`` 为 0 时生效。
 :类型: 32-bit Integer
 :是否必需: No
 :默认值: ``10``
 
 
-``filestore max inline xattrs btrfs``
+``filestore_max_inline_xattrs_btrfs``
 
 :描述: 每个对象可在 btrfs 文件系统上存储 XATTR 的最大数量，仅在
-       ``filestore max inline xattrs`` 为 0 时生效。
+       ``filestore_max_inline_xattrs`` 为 0 时生效。
 :类型: 32-bit Integer
 :是否必需: No
 :默认值: ``10``
 
 
-``filestore max inline xattrs other``
+``filestore_max_inline_xattrs_other``
 
 :描述: 每个对象可在其它文件系统上存储 XATTR 的最大数量，仅在
-       ``filestore max inline xattrs`` 为 0 时生效。
+       ``filestore_max_inline_xattrs`` 为 0 时生效。
 :类型: 32-bit Integer
 :是否必需: No
 :默认值: ``2``
+
 
 
 .. index:: filestore; synchronization
@@ -108,9 +121,14 @@ Ceph 扩展属性用底层文件系统的 XATTR （如果没有尺寸限制）�
 同步间隔
 ========
 
-filestore 需要周期性地静默写入、同步文件系统，这创建了一个提交点，然后就能释放相应\
-的日志条目了。较大的同步频率可减小执行同步的时间及保存在日志里的数据量；较小的频率使\
-得后端的文件系统能优化归并较小的数据和元数据写入，因此可能使同步更有效。
+Filestore 需要周期性地静默写入、同步文件系统，
+每次同步都会创建一个提交点。这个提交点创建后，
+Filestore 就能释放这个点之前的所有日志条目了。
+较大的同步频率可减小执行同步的时间、
+以及保存在日志里的数据量；
+较小的频率使得后端的文件系统能优化归并较小的数据和元数据更新，
+因此可能使同步更有效，
+同时也可能增加尾部延时。
 
 
 ``filestore max sync interval``
@@ -135,9 +153,10 @@ filestore 需要周期性地静默写入、同步文件系统，这创建了一�
 回写器
 ======
 
-filestore 回写器强制使用 ``sync file range`` 来写出大块数据，\
-这样处理有望减小最终同步的代价。实践中，禁用“ filestore 回写\
-器”有时候能提升性能。
+filestore 回写器强制使用
+``sync_file_range`` 来写出大块数据，\
+这样处理有望减小最终同步的代价。实践中，
+禁用“ filestore 回写器”有时候能提升性能。
 
 
 ``filestore flusher``
@@ -289,8 +308,8 @@ B-Tree 文件系统
 
 ``filestore merge threshold``
 
-:描述: 并入父目录前，子目录内的最小文件数。注：负值表示禁用\
-       子目录合并功能。
+:描述: 并入父目录前，子目录内的最小文件数。
+       注：负值表示禁用子目录合并功能。
 :类型: Integer
 :是否必需: No
 :默认值: ``-10``

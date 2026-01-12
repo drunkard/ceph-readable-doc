@@ -80,8 +80,8 @@ batch
 
 .. program:: ceph-volume lvm batch
 
-用一串设备创建基于 ``filestore`` 或 ``bluestore`` （默认的）的
-OSD 。它会创建 OSD 正常运行所必需的卷组和逻辑卷。
+用一串设备创建基于 ``bluestore`` （默认的）的 OSD 。
+它会创建 OSD 正常运行所必需的卷组和逻辑卷。
 
 加三个设备的用法实例： ::
 
@@ -96,10 +96,6 @@ OSD 。它会创建 OSD 正常运行所必需的卷组和逻辑卷。
 .. option:: --bluestore
 
    使用 bluestore 对象存储器（默认）
-
-.. option:: --filestore
-
-   使用 filestore 对象存储器
 
 .. option:: --yes
 
@@ -177,10 +173,6 @@ activate
 
    对象存储器是 bluestore （默认的）
 
-.. option:: --filestore
-
-   对象存储器是 filestore
-
 .. option:: --all
 
    激活系统内找到的所有 OSD
@@ -189,11 +181,10 @@ activate
 
    不要创建、启用 systemd 单元、和启动 OSD 服务
 
-用（ idempotent ） ``--all`` 标记可以一次激活多个 OSD ： ::
+用（ idempotent 幂等，重复执行结果不变） ``--all``
+标记可以一次激活多个 OSD ： ::
 
     ceph-volume lvm activate --all
-
-
 
 
 prepare
@@ -201,13 +192,12 @@ prepare
 
 .. program:: ceph-volume lvm prepare
 
-准备一个用作 OSD 及其日志（配置为 ``filestore`` 或默认的
-``bluestore`` ）的逻辑卷。除了额外增加元数据之外，它不会创建\
-或修改逻辑卷。
+准备一个用作 OSD 及其日志的逻辑卷，配置为默认的 ``bluestore`` 。
+除了额外增加元数据之外，它不会创建或修改逻辑卷。
 
 用法： ::
 
-    ceph-volume lvm prepare --filestore --data <data lv> --journal <journal device>
+    ceph-volume lvm prepare --bluestore --data <data lv> --journal <journal device>
 
 可选参数：
 
@@ -230,10 +220,6 @@ prepare
 .. option:: --block.db
 
    bluestore block.db 的逻辑卷或分区路径
-
-.. option:: --filestore
-
-   使用 filestore 对象存储器
 
 .. option:: --dmcrypt
 
@@ -264,8 +250,9 @@ prepare
 create
 ^^^^^^
 
-把开通新 OSD 的两步过程（先调用 ``prepare`` 之后 ``activate``
-）包装成一步。倾向于使用 ``prepare`` 再 ``activate`` 的原因是\
+把开通新 OSD 的两步过程（先调用 ``prepare``
+之后 ``activate`` ）包装成一步。
+倾向于使用 ``prepare`` 再 ``activate`` 的原因是\
 为了把新 OSD 们缓慢地加入集群，以避免大量数据被重新均衡。
 
 这个单步调用过程统一了 ``prepare`` 和 ``activate`` 所做的事\
@@ -475,10 +462,9 @@ activate
 
 .. program:: ceph-volume simple activate
 
-启用写死了 OSD ID 及其 UUID （在 Ceph CLI 工具里也叫 ``fsid``
-）的 systemd 单元，这样，在系统引导时，通过读取之前创建并保存在
-``/etc/ceph/osd/`` 内的 JSON 数据，它就能知道哪个 OSD 被启用了、
-且需挂载。
+启用写死了 OSD ID 及其 UUID （在 Ceph CLI 工具里也叫 ``fsid`` ）的
+systemd 单元，这样，在系统引导时，通过读取之前创建并保存在 ``/etc/ceph/osd/``
+内的 JSON 数据，它就能知道哪个 OSD 被启用了、且需挂载。
 
 用法： ::
 
@@ -493,10 +479,6 @@ activate
 .. option:: --bluestore
 
    使用 bluestore 对象存储器（默认）
-
-.. option:: --filestore
-
-   使用 filestore 对象存储器
 
 .. note::
 

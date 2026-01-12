@@ -1,7 +1,9 @@
 ==============
  日志配置参考
 ==============
+.. Journal Config Reference
 
+.. warning:: Filestore 在 Reef 版已经废弃，且不再支持。
 .. index:: journal; journal configuration
 
 基于 Filestore 的 OSD 使用日志的原因有二：速度和一致性。
