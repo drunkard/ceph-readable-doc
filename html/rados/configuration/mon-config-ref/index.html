@@ -126,6 +126,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#index-5">监视器的配置</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pool-settings">存储池选项</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id17">杂项</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nvme-of">NVMe-oF 监视器客户端</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../mon-lookup-dns/">通过 DNS 查询监视器</a></li>
@@ -205,14 +206,26 @@
   <section id="monitor-config-reference">
 <span id="id1"></span><h1>监视器配置参考<a class="headerlink" href="#monitor-config-reference" title="Permalink to this heading"></a></h1>
 <p>理解如何配置 <a class="reference internal" href="../../../glossary/#term-14"><span class="xref std std-term">Ceph 监视器</span></a>是构建可靠的
-<a class="reference internal" href="../../../glossary/#term-28"><span class="xref std std-term">Ceph 存储集群</span></a>的重要方面，<strong>任何 Ceph 集群都需要至少一个监视器</strong>。一个监视器通常相当一致，但是你可以增加、删除、或替换集群中的监视器，详情见<a class="reference external" href="../../operations/add-or-rm-mons">增加/删除监视器</a>。</p>
+<a class="reference internal" href="../../../glossary/#term-28"><span class="xref std std-term">Ceph 存储集群</span></a>的重要方面，<strong>任何 Ceph 集群都需要至少一个监视器</strong>。一个监视器通常相当一致，但是你可以增加、删除、或替换集群中的监视器，
+详情见<a class="reference internal" href="../../operations/add-or-rm-mons/#adding-and-removing-monitors"><span class="std std-ref">增加/删除监视器</span></a> 。</p>
 <section id="index-0">
 <span id="id2"></span><h2>背景<a class="headerlink" href="#index-0" title="Permalink to this heading"></a></h2>
 <p>Ceph 监视器们维护着<a class="reference internal" href="../../../glossary/#term-32"><span class="xref std std-term">集群运行图</span></a>的“主副本”。</p>
-<p><a class="reference internal" href="../../../glossary/#term-4"><span class="xref std std-term">Ceph 客户端</span></a>只要连到一个 Ceph 监视器并获取一份当前的集群运行图就能确定所有监视器、 OSD 和元数据服务器的位置。
-Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视器，用当前的集群运行图副本和 CRUSH 算法，客户端能计算出任何对象的位置，拥有计算对象位置的技能——故此客户端可以直接与 OSD 通讯，
-这对 Ceph 的高伸缩性、高性能来说非常重要。更多信息见<a class="reference external" href="../../../architecture#scalability-and-high-availability">伸缩性和高可用性</a>。</p>
-<p>监视器的主要角色是维护集群运行图的主副本，它也提供认证和日志记录服务。 Ceph 监视器们把监视器服务的所有更改写入一个单独的 Paxos 例程，然后 Paxos 以键/值方式存储所有变更以实现高度一致性。同步期间， Ceph 监视器能查询集群运行图的近期版本，它们通过操作键/值存储快照和迭代器（用 leveldb ）来进行存储级同步。</p>
+<p><a class="reference internal" href="../../../glossary/#term-32"><span class="xref std std-term">集群运行图</span></a>的存在使得 <a class="reference internal" href="../../../glossary/#term-4"><span class="xref std std-term">Ceph 客户端</span></a>能够确定所有 Ceph 监视器、 Ceph OSD 守护进程和 Ceph 元数据服务器的位置。
+客户端只要连到其中一个 Ceph 监视器并获取一份当前的集群运行图即可。
+Ceph 客户端必须先连到一个监视器，然后才能读写 OSD 或元数据服务器。
+用当前的集群运行图副本和 CRUSH 算法，
+客户端能计算出集群内任意对象的位置，
+这样， Ceph 客户端就有能力直接与 Ceph OSD 守护进程通讯。
+客户端与 Ceph OSD 守护进程直接通讯是重大改进，
+传统存储架构下客户端必须和一个中央组件通讯。
+更多信息见<a class="reference internal" href="../../../architecture/#arch-scalability-and-high-availability"><span class="std std-ref">伸缩性和高可用性</span></a> 。</p>
+<p>监视器的主要角色是维护集群运行图的主副本，
+它也提供认证和日志记录服务。
+Ceph 监视器们把监视器服务的所有更改都写入一个单独的 Paxos 例程，
+然后 Paxos 以键/值方式存储所有变更以实现高度一致性。
+同步期间， Ceph 监视器能查询集群运行图的近期版本，它们通过操作键/值存储快照和迭代器
+（用 RocksDB ）来进行存储级同步。</p>
 <p class="ditaa">
 <img src="../../../_images/ditaa-0b302948cea8bd256db191b550473cf52d143131.png"/>
 </p>
@@ -342,7 +355,7 @@ Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视�
 <p>一旦部署完 Ceph 集群，监视器 IP 地址就<strong>不应该</strong>更改了。然而，如果你决意要改，必须严格遵循特定的步骤，
 详情见<a class="reference internal" href="../../operations/add-or-rm-mons/#ip"><span class="std std-ref">更改监视器的 IP 地址</span></a>。</p>
 <p>也可以让客户端通过 DNS 的 SRV 记录发现监视器，
-详情见<a class="reference external" href="../mon-lookup-dns">通过 DNS 查询监视器</a>。</p>
+详情见<a class="reference internal" href="../mon-lookup-dns/#mon-dns-lookup"><span class="std std-ref">通过 DNS 查询监视器</span></a> 。</p>
 </section>
 <section id="id">
 <h3>集群 ID<a class="headerlink" href="#id" title="Permalink to this heading"></a></h3>
@@ -807,7 +820,9 @@ leader 让它去和 provider 同步。</p>
 <p class="ditaa">
 <img src="../../../_images/ditaa-f13d9d9ecfaf9cb774d8d952e40c240b5bb03070.png"/>
 </p>
-<p>新监视器加入集群时有必要进行同步。在运行中，监视器会不定时收到集群运行图的更新，这就意味着 leader 和 provider 角色可能在监视器间变幻。
+<p>新监视器加入集群时有必要进行同步。
+在运行中，监视器会不定时收到集群运行图的更新，
+这就意味着 leader 和 provider 角色可能在监视器间变幻。
 如果这事发生在同步期间（如 provider 落后于 leader ），
 provider 能终结和 requester 间的同步。</p>
 <p>一旦同步完成， Ceph 需要修复整个集群，
@@ -1206,8 +1221,12 @@ upper bound when trim sizes are high  (0 disables it)</p>
 <p>你必须在所有监视器主机上安装 NTP 或 PTP 守护进程以确保监视器集群在时钟同步的前提下运行。可以让各个监视器之间相互同步、
 也可以和几个高品质的上游时间源同步。</p>
 </div>
-<p>时钟漂移即使尚未造成损坏也能被 NTP 感知， Ceph 的时钟漂移或时钟偏差警告即使在 NTP 同步水平合理时也会被触发。提高时钟漂移值有时候尚可容忍，然而很多因素（像载荷、网络延时、覆盖默认超时值和<a class="reference internal" href="#id13">监视器存储同步</a>选项）都能在不降低 Paxos 保证级别的情况下影响可接受的时钟漂移水平。</p>
-<p>Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。</p>
+<p>时钟漂移即使尚未造成损坏也能被 NTP 感知，
+Ceph 的时钟漂移或时钟偏差警告即使在 NTP 同步水平合理时也会被触发。
+提高时钟漂移值有时候尚可容忍，
+然而很多因素（像载荷、网络延时、覆盖默认超时值和<a class="reference internal" href="#id13">监视器存储同步</a>选项）都能在不降低 Paxos 保证级别的情况下影响可接受的时钟漂移水平。</p>
+<p>Ceph 提供了下列这些可调选项，
+让你自己琢磨可接受的值。</p>
 <dl class="std confval">
 <dt class="sig sig-object std" id="confval-mon_tick_interval">
 <span class="sig-name descname"><span class="pre">mon_tick_interval</span></span><a class="headerlink" href="#confval-mon_tick_interval" title="Permalink to this definition"></a></dt>
@@ -1855,6 +1874,42 @@ be kept mapped in memory with cache auto-tuning enabled.</p>
 </dd>
 <dt class="field-even">default<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</section>
+<section id="nvme-of">
+<h2>NVMe-oF 监视器客户端<a class="headerlink" href="#nvme-of" title="Permalink to this heading"></a></h2>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-nvmeof_mon_client_disconnect_panic">
+<span class="sig-name descname"><span class="pre">nvmeof_mon_client_disconnect_panic</span></span><a class="headerlink" href="#confval-nvmeof_mon_client_disconnect_panic" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The duration, expressed in seconds, after which the nvmeof gateway
+should trigger a panic if it loses connection to the monitor</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">secs</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">100</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-nvmeof_mon_client_tick_period">
+<span class="sig-name descname"><span class="pre">nvmeof_mon_client_tick_period</span></span><a class="headerlink" href="#confval-nvmeof_mon_client_tick_period" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Period in seconds of nvmeof gateway beacon messages to monitor</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">secs</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">2</span></code></p>
 </dd>
 </dl>
 </div></blockquote>

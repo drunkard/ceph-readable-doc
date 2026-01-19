@@ -4,16 +4,16 @@
  Prometheus 模块
 =================
 
-Provides a Prometheus exporter to pass on Ceph performance counters
-from the collection point in ceph-mgr.  Ceph-mgr receives MMgrReport
-messages from all MgrClient processes (mons and OSDs, for instance)
-with performance counter schema data and actual counter data, and keeps
-a circular buffer of the last N samples.  This module creates an HTTP
-endpoint (like all Prometheus exporters) and retrieves the latest sample
-of every counter when polled (or "scraped" in Prometheus terminology).
-The HTTP path and query parameters are ignored; all extant counters
-for all reporting entities are returned in text exposition format.
-(See the Prometheus `documentation <https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details>`_.)
+The Manager ``prometheus`` module implements a Prometheus exporter to expose
+Ceph performance counters from the collection point in the Manager.  The
+Manager receives ``MMgrReport`` messages from all ``MgrClient`` processes
+(including mons and OSDs) with performance counter schema data and counter
+data, and maintains a circular buffer of the latest samples.  This module
+listens on an HTTP endpoint and retrieves the latest sample of every counter
+when scraped.  The HTTP path and query parameters are ignored. All extant
+counters for all reporting entities are returned in the Prometheus exposition
+format.  (See the Prometheus `documentation
+<https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details>`_.)
 
 启用 prometheus 输出
 ====================
@@ -87,9 +87,8 @@ stale.  The cache is considered stale when the time to fetch the metrics from
 Ceph exceeds the configured :confval:`mgr/prometheus/scrape_interval`.
 
 If that is the case, **a warning will be logged** and the module will either
-
-* respond with a 503 HTTP status code (service unavailable) or,
-* it will return the content of the cache, even though it might be stale.
+respond with a 503 HTTP status code (service unavailable) or
+it will return the content of the cache, even though it might be stale.
 
 This behavior can be configured. By default, it will return a 503 HTTP status
 code (service unavailable). You can set other options using the ``ceph config
@@ -159,8 +158,6 @@ The metrics take the following form;
     ceph_health_detail{name="OSD_DOWN",severity="HEALTH_WARN"} 1.0
     ceph_health_detail{name="PG_DEGRADED",severity="HEALTH_WARN"} 1.0
 
-The health check history is made available through the following commands;
-
 The module also maintains an in-memory history of health-check states.
 By default the history retains a maximum of 1000 entries. This limit is configurable via the following runtime option:
 
@@ -195,29 +192,29 @@ RBD IO 统计
 -----------
 .. RBD IO statistics
 
-The module can optionally collect RBD per-image IO statistics by enabling
-dynamic OSD performance counters. The statistics are gathered for all images
-in the pools that are specified in the ``mgr/prometheus/rbd_stats_pools``
+The ``prometheus`` module can optionally collect RBD per-image IO statistics by enabling
+dynamic OSD performance counters. Statistics are gathered for all images
+in the pools that are specified by the ``mgr/prometheus/rbd_stats_pools``
 configuration parameter. The parameter is a comma or space separated list
-of ``pool[/namespace]`` entries. If the namespace is not specified the
+of ``pool[/namespace]`` entries. If the RBD namespace is not specified,
 statistics are collected for all namespaces in the pool.
 
-Example to activate the RBD-enabled pools ``pool1``, ``pool2`` and ``poolN``:
+要在 RBD 存储池 ``pool1`` 、 ``pool2`` 和 ``poolN`` 上打开统计信息收集：
 
 .. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/rbd_stats_pools "pool1,pool2,poolN"
 
-The wildcard can be used to indicate all pools or namespaces:
+可以用通配符匹配所有存储池或命名空间：
 
 .. prompt:: bash #
 
    ceph config set mgr mgr/prometheus/rbd_stats_pools "*"
 
-The module makes the list of all available images scanning the specified
-pools and namespaces and refreshes it periodically. The period is
+The module maintains a list of all available images by scanning the specified
+pools and namespaces. The refresh period is
 configurable via the ``mgr/prometheus/rbd_stats_pools_refresh_interval``
-parameter (in sec) and is 300 sec (5 minutes) by default. The module will
+parameter, which defaults to 300 seconds (5 minutes). The module will
 force refresh earlier if it detects statistics from a previously unknown
 RBD image.
 
@@ -227,11 +224,13 @@ To set the sync interval to 10 minutes run the following command:
 
    ceph config set mgr mgr/prometheus/rbd_stats_pools_refresh_interval 600
 
-Ceph daemon performance counters metrics
------------------------------------------
 
-With the introduction of ``ceph-exporter`` daemon, the prometheus module will no longer export Ceph daemon
-perf counters as prometheus metrics by default. However, one may re-enable exporting these metrics by setting
+Ceph 守护进程的性能计数器指标
+-----------------------------
+.. Ceph daemon performance counters metrics
+
+With the introduction of the ``ceph-exporter`` daemon, the ``prometheus`` module will no longer export Ceph daemon
+perf counters as Prometheus metrics by default. However, one may re-enable exporting these metrics by setting
 the module option ``exclude_perf_counters`` to ``false``:
 
 .. prompt:: bash #
@@ -339,11 +338,11 @@ The following two section outline two approaches to remedy this.
 ==================
 .. Use label_replace
 
-The ``label_replace`` function (cp.
-`label_replace documentation <https://prometheus.io/docs/prometheus/latest/querying/functions/#label_replace>`_)
-can add a label to, or alter a label of, a metric within a query.
+``label_replace`` 函数（例如 `label_replace 文档
+<https://prometheus.io/docs/prometheus/latest/querying/functions/#label_replace>`_\ ）
+可以在一个查询内给指标加标签、或修改指标的标签。
 
-To correlate an OSD and its disks write rate, the following query can be used:
+要对比一个 OSD 及其磁盘的写入速率，可以用下列查询：
 
 ::
 
@@ -395,8 +394,8 @@ the correlation in the future.
 --------
 .. Example configuration
 
-This example shows a single node configuration running ceph-mgr and
-node_exporter on a server called ``senta04``. Note that this requires one
+This example shows a deployment with a Manager and ``node_exporter`` placed
+on a server named ``senta04``. Note that this requires one
 to add an appropriate and unique ``instance`` label to each ``node_exporter`` target.
 
 This is just an example: there are other ways to configure prometheus
@@ -456,15 +455,15 @@ node_targets.yml
 ========
 .. Notes
 
-Counters and gauges are exported; currently histograms and long-running 
-averages are not.  It's possible that Ceph's 2-D histograms could be 
-reduced to two separate 1-D histograms, and that long-running averages
-could be exported as Prometheus' Summary type.
+Counters and gauges are exported. Histograms and long-running
+averages are currently not exported.  It is possible that Ceph's 2-D histograms
+could be reduced to two separate 1-D histograms, and that long-running averages
+could be exported as metrics of Prometheus' ``Summary`` type.
 
-Timestamps, as with many Prometheus exporters, are established by
-the server's scrape time (Prometheus expects that it is polling the
-actual counter process synchronously).  It is possible to supply a
+Timestamps, as with many exporters, are set by Prometheus at ingest to
+the Prometheus server's scrape time. Prometheus expects that it is polling the
+actual counter process synchronously.  It is possible to supply a
 timestamp along with the stat report, but the Prometheus team strongly
-advises against this.  This means that timestamps will be delayed by
-an unpredictable amount; it's not clear if this will be problematic,
-but it's worth knowing about.
+advises against this.  This would mean that timestamps would be delayed by
+an unpredictable amount. It is not clear if this would be problematic,
+but it is worth knowing about.

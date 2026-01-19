@@ -8,8 +8,8 @@
 理解如何配置 :term:`Ceph 监视器`\ 是构建可靠的
 :term:`Ceph 存储集群`\ 的重要方面，\
 **任何 Ceph 集群都需要至少一个监视器**\ 。一个监视器通常相当\
-一致，但是你可以增加、删除、或替换集群中的监视器，详情见\
-`增加/删除监视器`_\ 。
+一致，但是你可以增加、删除、或替换集群中的监视器，
+详情见\ :ref:`adding-and-removing-monitors` 。
 
 
 .. index:: Ceph Monitor; Paxos
@@ -20,23 +20,24 @@
 
 Ceph 监视器们维护着\ :term:`集群运行图`\ 的“主副本”。
 
-.. TODO
+:term:`集群运行图`\ 的存在使得 :term:`Ceph 客户端`\ 能够确定\
+所有 Ceph 监视器、 Ceph OSD 守护进程和 Ceph 元数据服务器的位置。
+客户端只要连到其中一个 Ceph 监视器并获取一份当前的集群运行图即可。
+Ceph 客户端必须先连到一个监视器，然后才能读写 OSD 或元数据服务器。
+用当前的集群运行图副本和 CRUSH 算法，
+客户端能计算出集群内任意对象的位置，
+这样， Ceph 客户端就有能力直接与 Ceph OSD 守护进程通讯。
+客户端与 Ceph OSD 守护进程直接通讯是重大改进，
+传统存储架构下客户端必须和一个中央组件通讯。
+更多信息见\ :ref:`arch_scalability_and_high_availability` 。
 
-:term:`Ceph 客户端`\ 只要连到一个 Ceph 监视器并获取一份当前的\
-集群运行图就能确定所有监视器、 OSD 和元数据服务器的位置。
-Ceph 客户端读写 OSD 或元数据服务器前，必须先连到一个监视器，\
-用当前的集群运行图副本和 CRUSH 算法，客户端能计算出任何对象的\
-位置，拥有计算对象位置的技能——故此客户端可以直接与 OSD 通讯，
-这对 Ceph 的高伸缩性、高性能来说非常重要。更多信息见\
-`伸缩性和高可用性`_\ 。
-
-监视器的主要角色是维护集群运行图的主副本，它也提供认证和\
-日志记录服务。 Ceph 监视器们把监视器服务的所有更改写入一个\
-单独的 Paxos 例程，然后 Paxos 以键/值方式存储所有变更以实现\
-高度一致性。同步期间， Ceph 监视器能查询集群运行图的近期版本，\
-它们通过操作键/值存储快照和迭代器（用 leveldb ）来进行\
-存储级同步。
-
+监视器的主要角色是维护集群运行图的主副本，
+它也提供认证和日志记录服务。
+Ceph 监视器们把监视器服务的所有更改都写入一个单独的 Paxos 例程，
+然后 Paxos 以键/值方式存储所有变更以实现高度一致性。
+同步期间， Ceph 监视器能查询集群运行图的近期版本，\
+它们通过操作键/值存储快照和迭代器
+（用 RocksDB ）来进行存储级同步。
 
 .. ditaa::
 
@@ -226,7 +227,7 @@ Ceph 监视器的最简配置必须包括一主机名及其监视器地址，
 详情见\ :ref:`更改监视器的 IP 地址`\ 。
 
 也可以让客户端通过 DNS 的 SRV 记录发现监视器，
-详情见\ `通过 DNS 查询监视器`_\ 。
+详情见\ :ref:`mon-dns-lookup` 。
 
 
 集群 ID
@@ -500,8 +501,9 @@ leader 让它去和 provider 同步。
                   |                    |
 
 
-新监视器加入集群时有必要进行同步。在运行中，监视器会不定时收到\
-集群运行图的更新，这就意味着 leader 和 provider 角色可能在监视器间变幻。
+新监视器加入集群时有必要进行同步。
+在运行中，监视器会不定时收到集群运行图的更新，
+这就意味着 leader 和 provider 角色可能在监视器间变幻。
 如果这事发生在同步期间（如 provider 落后于 leader ），
 provider 能终结和 requester 间的同步。
 
@@ -553,13 +555,15 @@ Ceph 的守护进程会相互传递关键消息，
    以确保监视器集群在时钟同步的前提下运行。可以让各个监视器之间相互同步、
    也可以和几个高品质的上游时间源同步。
 
-时钟漂移即使尚未造成损坏也能被 NTP 感知， Ceph 的时钟漂移或时\
-钟偏差警告即使在 NTP 同步水平合理时也会被触发。提高时钟漂移值\
-有时候尚可容忍，然而很多因素（像载荷、网络延时、覆盖默认超时值\
-和\ `监视器存储同步`_\ 选项）都能在不降低 Paxos 保证级别的情况\
-下影响可接受的时钟漂移水平。
+时钟漂移即使尚未造成损坏也能被 NTP 感知，
+Ceph 的时钟漂移或时钟偏差警告即使在 NTP 同步水平合理时也会被触发。
+提高时钟漂移值有时候尚可容忍，
+然而很多因素（像载荷、网络延时、覆盖默认超时值和\
+`监视器存储同步`_\ 选项）都能\
+在不降低 Paxos 保证级别的情况下影响可接受的时钟漂移水平。
 
-Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
+Ceph 提供了下列这些可调选项，
+让你自己琢磨可接受的值。
 
 .. confval:: mon_tick_interval
 .. confval:: mon_clock_drift_allowed
@@ -626,17 +630,25 @@ Ceph 提供了下列这些可调选项，让你自己琢磨可接受的值。
 .. confval:: mon_osd_cache_size_min
 .. confval:: mon_memory_target
 .. confval:: mon_memory_autotune
+.. confval:: enable_availability_tracking
+.. confval:: pool_availability_update_interval
+
+
+NVMe-oF 监视器客户端
+====================
+.. NVMe-oF Monitor Client
+
+.. confval:: nvmeof_mon_client_disconnect_panic
+.. confval:: nvmeof_mon_client_connect_panic
+.. confval:: nvmeof_mon_client_tick_period
 
 
 .. _Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 .. _监视器密钥环: ../../../dev/mon-bootstrap#secret-keys
 .. _Ceph 配置文件: ../ceph-conf/#monitors
 .. _网络配置参考: ../network-config-ref
-.. _通过 DNS 查询监视器: ../mon-lookup-dns
 .. _ACID: https://en.wikipedia.org/wiki/ACID
-.. _增加/删除监视器: ../../operations/add-or-rm-mons
 .. _监控集群: ../../operations/monitoring
 .. _监控 OSD 和归置组: ../../operations/monitoring-osd-pg
 .. _初始化监视器: ../../../dev/mon-bootstrap
 .. _监视器与 OSD 的交互: ../mon-osd-interaction
-.. _伸缩性和高可用性: ../../../architecture#scalability-and-high-availability

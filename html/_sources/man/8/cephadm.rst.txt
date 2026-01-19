@@ -124,8 +124,7 @@
 
 .. option:: --image IMAGE
 
-   容器映像。也可以通过 CEPHADM_IMAGE 环境变量设置
-   （默认：无）。
+   容器映像。也可以通过 CEPHADM_IMAGE 环境变量设置（默认：无）。
 
 .. option:: --docker
 
@@ -261,12 +260,12 @@ bootstrap
 
 ceph-volume
 -----------
-
 在容器内运行 ceph-volume::
 
     cephadm ceph-volume inventory
 
 位置参数：
+
 * [command]               命令
 
 参数：
@@ -279,7 +278,6 @@ ceph-volume
 
 check-host
 ----------
-
 检查主机配置是否适合 Ceph 集群。
 
 参数：
@@ -311,12 +309,12 @@ deploy
 
 enter
 -----
-
 在运行着的守护进程容器内打开一个交互式 shell::
 
     cephadm enter --name mgr.myhost.ysubfo
 
 位置参数：
+
 * [command]               命令
 
 参数：
@@ -439,6 +437,23 @@ Cephadm 将尝试让调用主机登录进那个注册处： ::
        "password":"REGISTRY_PASSWORD"
       }
 
+对于多个注册登录，参考下面的格式： ::
+
+    {
+      "registry_credentials": [
+        {
+          "url": "REGISTRY_URL1",
+          "username": "REGISTRY_USERNAME1",
+          "password": "REGISTRY_PASSWORD1"
+        },
+        {
+          "url": "REGISTRY_URL2",
+          "username": "REGISTRY_USERNAME2",
+          "password": "REGISTRY_PASSWORD2"
+        }
+      ]
+    }
+
 然后用命令代入它： ::
 
       cephadm registry-login --registry-json [JSON FILE]
@@ -450,6 +465,7 @@ Cephadm 将尝试让调用主机登录进那个注册处： ::
 * [--registry-password REGISTRY_PASSWORD] 登录注册处的帐户密码
 * [--registry-json REGISTRY_JSON] 包含注册处登录信息的 JSON 文件
 * [--fsid FSID]                   集群的 FSID
+
 
 rm-daemon
 ---------

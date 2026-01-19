@@ -1,3 +1,5 @@
+.. _radosgw-s3-notification-compatibility:
+
 ===================
  S3 桶通知的兼容性
 ===================

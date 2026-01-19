@@ -66,10 +66,11 @@ https://docs.ceph.com 默认展示的就是 Reef 的文档），
 ----------
 .. Get the Source
 
-Ceph 文档位于和源码同一仓库内的 ``ceph/doc`` 目录下，\
-关于 github 和 Ceph 的关系细节情况见\ :ref:`Get Involved`\ 。
+Ceph 文档的源码是一系列 ReStructured Text 文本文件，
+位于和源码同一仓库内的 ``ceph/doc`` 目录下，\
+关于 Github 和 Ceph 的关系细节情况见\ :ref:`Get Involved`\ 。
 
-最常用的贡献方法是\ `分支并拉取`_\ 。\
+贡献文档的方法是\ `分支并拉取`_\ 。\
 为此，必须先做到：
 
 #. 在本地安装 git 。在 Debian/Ubuntu 下用此命令：
@@ -114,7 +115,7 @@ Ceph 文档位于和源码同一仓库内的 ``ceph/doc`` 目录下，\
    这样就创建了“本地工作副本”。
 
 
-Ceph 文档按它自身的主要组件来分类组织。
+Ceph 文档是按它的组件来分类组织的：
 
 - **Ceph 存储集群：**\ Ceph 存储集群文档位于
   ``doc/rados`` 目录下；
@@ -291,6 +292,7 @@ doxygen 的 XML 树，这个过程比较耗时.
 
 Python Sphinx 的依赖软件包根据发行版不同而有所区别。
 首次构建文档时，如果你没安装必要工具，构建脚本会提示你。
+
 要运行 Sphinx 并成功构建文档，至少要安装下面这些软件包：
 
 .. raw:: html
@@ -309,6 +311,7 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。
 - graphviz
 - ant
 - ditaa
+- cython3
 
 .. raw:: html
 
@@ -351,7 +354,7 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。
 
 
 缺少的依赖都要安装，基于 Debian/Ubuntu 发行版的系统\
-可以用此命令安装：
+执行此命令安装：
 
 .. prompt:: bash $
 
@@ -374,17 +377,17 @@ Python Sphinx 的依赖软件包根据发行版不同而有所区别。
 
 .. prompt:: bash $
 
-        sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+   sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
 在 CentOS/RHEL 发行版上可以执行：
 
 .. prompt:: bash $
 
-	sudo yum install gcc python-devel python-pip libxml2-devel libxslt-devel doxygen graphviz ant
-	sudo pip install html2text
+   sudo yum install gcc python-devel python-pip libxml2-devel libxslt-devel doxygen graphviz ant
+   sudo pip install html2text
 
 对于 CentOS/RHEL 发行版，其余软件包不包含在默认及 ``epel`` 软件库内，
-所以得到 http://rpmfind.net/ 找，然后到合适的镜像下载并安装它们，
+所以需要到 http://rpmfind.net/ 找，然后到合适的镜像下载并安装它们，
 比如：
 
 .. prompt:: bash $
