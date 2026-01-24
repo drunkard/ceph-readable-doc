@@ -829,6 +829,13 @@ UMARK VMARK WMARK XMARK YMARK ZMARK
 
 
     UMARK
+    Unicode normalization
+        Unicode 归一化。 Unicode normalization form 归一化方式。
+        规范相等(Cononical equivalence)
+        兼容相等(Compatibility equivalence)
+        码点(code point)
+        解构(Decomposition)和组合(Composition)
+
     unlink bucket
         断开、切断桶链接、解绑桶、解除连接，视具体语境采用。
 

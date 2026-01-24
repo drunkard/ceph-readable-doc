@@ -161,7 +161,7 @@ auth
 compact
 -------
 
-让监视器压缩其 leveldb 存储。
+让监视器压缩其 RocksDB 存储。
 
 用法： ::
 

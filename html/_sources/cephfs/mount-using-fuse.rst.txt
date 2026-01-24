@@ -1,3 +1,5 @@
+.. _cephfs_mount_using_fuse:
+
 =====================
  用 FUSE 挂载 CephFS
 =====================

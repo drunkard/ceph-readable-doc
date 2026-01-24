@@ -9,14 +9,14 @@
 提纲
 ====
 
-| **ceph-kvstore-tool** <leveldb|rocksdb|bluestore-kv> <store path> *command* [args...]
+| **ceph-kvstore-tool** <rocksdb|bluestore-kv> <store path> *command* [args...]
 
 
 描述
 ====
 
 :program:`ceph-kvstore-tool` 是个 kvstore （键值存储）操作工具，\
-可以用来离线操作 leveldb/rocksdb 的数据（比如 OSD 的 omap ）。
+可以用来离线操作 RocksDB 的数据（比如 OSD 的 omap ）。
 
 
 命令

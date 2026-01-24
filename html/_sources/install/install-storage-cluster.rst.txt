@@ -61,7 +61,7 @@
 
 #. 安装依赖的的软件包： ::
 
-    sudo yum install snappy leveldb gdisk python-argparse gperftools-libs
+    sudo yum install snappy gdisk python-argparse gperftools-libs
 
 
 成功添加正式版或开发版软件包的库文件之后，或把 ``ceph.repo`` \

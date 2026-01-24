@@ -1,3 +1,5 @@
+.. _cephfs_mds_cache_configuration:
+
 ==============
  MDS 缓存配置
 ==============
@@ -22,6 +24,8 @@ MDS 只能丢弃那些没有客户端引用的元数据状态。
 如果 MDS 回收的内部节流跟不上客户端工作负载的速度，
 就有必要这样做。
 
+
+.. _cephfs_cache_configuration_mds_cache_memory_limit:
 
 MDS 缓存尺寸
 ------------
@@ -95,8 +99,6 @@ MDS 约束着对客户端状态（能力/租约）的回收，
 从单个客户端回收能力的最大数量：
 
 .. confval:: mds_recall_max_caps
-
-一个会话中，衰减计数器的阈值和衰减率：
 
 .. confval:: mds_recall_max_decay_threshold
 

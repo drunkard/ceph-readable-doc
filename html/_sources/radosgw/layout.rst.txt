@@ -129,11 +129,10 @@ omap 里。在罗列桶、更新桶内容、以及更新和检索桶的统计信
 ----
 .. Footnotes
 
-[1] Omap 是个与对象相关联的键值存储，类似扩展属性\
-与 POSIX 文件的关联一样。对象的 omap 与对象数据在物理上是分离的，
-但是对 RADOS 网关来说是不可见、无形的。在 Hammer 版里，
-每个 OSD 内部用 LevelDB 数据库来存储 omap 数据；
-后续版本默认用 RocksDB ，但可以配置成使用 LevelDB 。
+[1] Omap 是个与对象相关联的键值存储，
+类似扩展属性（ XATTRs ）与 POSIX 文件的关联一样。
+对象的 omap 与对象数据在物理上是分离的，
+但是对 RADOS 网关来说是不可见、无形的。
 
 [2] 在 Dumpling 版之前还没有 bucket.instance 元数据，
 这些信息存储在 bucket 元数据里。所以，
@@ -150,18 +149,18 @@ omap 里。在罗列桶、更新桶内容、以及更新和检索桶的统计信
 
 已知存储池：
 
-.rgw.root
+``.rgw.root``
   不确定的 region 、 zone 以及全局信息，每条使用一个对象。
 
-<zone>.rgw.control
+``<zone>.rgw.control``
   notify.<N>
 
-<zone>.rgw.meta
+``<zone>.rgw.meta``
   多种元数据组成的多个命名空间：
 
-  namespace: root
+  namespace: ``root``
     <bucket>
-    .bucket.meta.<bucket>:<marker>   # 参见 put_bucket_instance_info()
+    ``.bucket.meta.<bucket>:<marker>``   # 参见 put_bucket_instance_info()
 
     租户是用来区分桶的，而不是桶例程。例如： ::
 
@@ -172,7 +171,7 @@ omap 里。在罗列桶、更新桶内容、以及更新和检索桶的统计信
       prodtx/test%25star
       testcont
 
-  namespace: users.uid
+  namespace: ``users.uid``
     包含两种信息，存储于 <user> 对象里的单个用户信息（ \
     RGWUserInfo ）、及各个用户的桶列表，储存在 <user>.buckets \
     对象的 omap 内。如果配置了租户，也会包含在 <user> 内，如：
@@ -183,26 +182,26 @@ omap 里。在罗列桶、更新桶内容、以及更新和检索桶的统计信
       prodtx$prodt.buckets
       test2
 
-  namespace: users.email
+  namespace: ``users.email``
     不重要
 
-  namespace: users.keys
+  namespace: ``users.keys``
     47UA98JSTJZ9YAN3OS3O
 
-    这样，在认证时 radosgw 就可以通过访问密钥查寻用户。
+    这样，在认证时 ``radosgw`` 就可以通过访问密钥查寻用户。
 
-  namespace: users.swift
+  namespace: ``users.swift``
     test:tester
 
-<zone>.rgw.buckets.index
-  对象命名规则为 .dir.<marker> ，它们都有各自的桶索引。如果索\
+``<zone>.rgw.buckets.index``
+  对象命名规则为 ``.dir.<marker>`` ，它们都有各自的桶索引。如果索\
   引分片了， marker 之后的各个分片后面还要追加分片索引。
 
-<zone>.rgw.buckets.data
-  default.7593.4__shadow_.488urDFerTYXavx4yAd-Op8mxehnvTI_1
+``<zone>.rgw.buckets.data``
+  实例： ``default.7593.4__shadow_.488urDFerTYXavx4yAd-Op8mxehnvTI_1``
   <marker>_<key>
 
-marker 长得像 "default.16004.1" 或者 "default.7593.4" 。\
-当前，其格式为 "<zone>.<instance_id>.<bucket_id>" ，可是\
+marker 长得像 ``default.16004.1`` 或者 ``default.7593.4`` 。\
+当前，其格式为 ``<zone>.<instance_id>.<bucket_id>`` ，可是\
 一旦生成， marker 就不会再被解析，所以未来它的格式可以自\
 由更改。

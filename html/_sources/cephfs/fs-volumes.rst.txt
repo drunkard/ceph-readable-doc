@@ -46,9 +46,11 @@ FS 卷
 
 .. prompt:: bash #
 
-   ceph fs volume create <vol_name> [placement]
+   ceph fs volume create <vol_name> [placement] [--data-pool <data-pool-name>] [--meta-pool <metadata-pool-name>]
 
 这将创建一个 CephFS 文件系统及其数据和元数据存储池。
+另外，如果创建 CephFS 卷所需的数据存储池和/元数据存储池已经存在，
+可以把这些存储池名字代入这个命令，这样就用这些已有存储池创建了卷。
 此命令还能用 Ceph 管理器的 orchestrator 模块（如 Rook）
 为文件系统部署 MDS 守护进程。参阅 :doc:`/mgr/orchestrator` 。
 
@@ -117,9 +119,11 @@ FS 卷
 输出是 JSON 格式，会包含下列字段：
 
 * ``pools``: 数据和元数据存储池属性
+
         * ``avail``: 可用的空闲空间，单位是字节
         * ``used``: 已消耗的存储量，单位是字节
         * ``name``: 存储池名字
+
 * ``mon_addrs``: Ceph 监视器地址列表
 * ``used_size``: 当前已经用掉的 CephFS 卷大小，单位是字节
 * ``pending_subvolume_deletions``: 等待被删除的子卷数量
@@ -174,7 +178,30 @@ FS 子卷组
 以八进制数字表示的文件模式、以及按字节计算的大小。
 子卷组的大小可设置配额来指定（参阅 :doc:`/cephfs/quota` ）。
 默认情况下，创建的子卷组：文件权限位是八进制的 ``755`` 、
-uid ``0`` 、 gid ``0`` 、数据存储池布局继承其父目录的。
+UID ``0`` 、 GID ``0`` 、数据存储池布局继承其父目录的。
+
+您还可以用 ``--normalization`` 选项指定 Unicode 归一化方式。
+这将用于内部文件名处理，以便可以把不同 Unicode 码位序列表示的
+Unicode 字符都映射到相同的表示形式，
+这意味着它们都将访问同一个文件。但是，
+用户看到的还是他们在创建文件时使用的那个名称。
+
+Unicode 归一化方式的有效值有：
+
+    - nfd: 规范解构（默认）
+    - nfc: 规范解构，而后进行规范组合
+    - nfkd: 兼容解构
+    - nfkc: 兼容解构，而后进行规范组合
+
+如需了解更多 Unicode 归一化方式的信息，访问 https://unicode.org/reports/tr15
+
+子卷组也可以配置成不区分大小写的访问，
+加上 ``--casesensitive=0`` 选项即可。加了这个选项后，
+只有字符大小写不同的文件名将被映射到同一个文件。
+新建文件时所用文件名的大小写将保持不变。
+
+.. note:: 设置 ``--casesensitive=0`` 选项会\
+   隐式地启用子卷组上的 Unicode 归一化。
 
 删除子卷组，执行下列命令：
 
@@ -216,8 +243,8 @@ uid ``0`` 、 gid ``0`` 、数据存储池布局继承其父目录的。
   格式是 ``YYYY-MM-DD HH:MM:SS``
 * ``ctime``: 子卷组路径的最近更改时间，
   格式是 ``YYYY-MM-DD HH:MM:SS``
-* ``uid``: 子卷组路径的 uid
-* ``gid``: 子卷组路径的 gid
+* ``uid``: 子卷组路径的 UID
+* ``gid``: 子卷组路径的 GID
 * ``mode``: 子卷组路径的权限位（ mode ）
 * ``mon_addrs``: 监视器地址列表
 * ``bytes_pcent``: 如果设置了配额，这里就显示已用配额的百分比；否则显示 "undefined"
@@ -291,7 +318,7 @@ FS 子卷
 即使要创建的子卷已经存在，此命令也会返回成功。
 
 创建子卷时，可以指定它的子卷组、数据存储池布局、
-uid 、 gid 、八进制的文件模式以及以字节表示的大小。
+UID 、 GID 、八进制的文件模式以及以字节表示的大小。
 子卷的大小是用配额来指定的（参阅 :doc:`/cephfs/quota` ）。
 可以在单独的 RADOS 命名空间中创建子卷，加 ``--namespace-isolated`` 选项。
 默认情况下，子卷会在默认子卷组内创建，
@@ -312,10 +339,13 @@ earmark 机制能确保正确地标记和管理子卷，
 .. Valid Earmarks
 
 - **对于 NFS:**
+
    - 可用的 earmark 格式是顶级范围（ top-level scope ）： ``'nfs'`` 。
 
 - **对于 SMB:**
+
    - 可用的 earmark 格式有：
+
       - 顶级范围： ``'smb'`` 。
       - 顶级范围、加上模块内级别范围： ``'smb.cluster.{cluster_id}'`` ，
         其中， ``cluster_id`` 是唯一标识集群的短字符串。
@@ -325,6 +355,37 @@ earmark 机制能确保正确地标记和管理子卷，
 .. note:: 如果要把 earmark 从一个范围改成另一个（比如 nfs 改为 smb ，或反过来），
    注意与先前范围相关的用户权限和 ACL 可能仍然有效。
    确保根据需要更新必要的权限，以维持正确的访问控制。
+
+您还可以用 ``--normalization`` 选项指定 Unicode 归一化方式。
+这将用于内部文件名处理，以便可以把不同 Unicode 码位序列表示的
+Unicode 字符都映射到相同的表示形式，
+这意味着它们都将访问同一个文件。但是，
+用户看到的还是他们在创建文件时使用的那个名称。
+
+Unicode 归一化方式的有效值有：
+
+    - nfd: 规范解构（默认）
+    - nfc: 规范解构，而后进行规范组合
+    - nfkd: 兼容解构
+    - nfkc: 兼容解构，而后进行规范组合
+
+如需了解更多 Unicode 归一化方式的信息，访问 https://unicode.org/reports/tr15
+
+子卷组也可以配置成不区分大小写的访问，
+加上 ``--casesensitive=0`` 选项即可。加了这个选项后，
+只有字符大小写不同的文件名将被映射到同一个文件。
+新建文件时所用文件名的大小写将保持不变。
+
+.. note:: 设置 ``--casesensitive=0`` 选项会\
+   隐式地启用子卷组上的 Unicode 归一化。
+
+加密时可使用一个单独的加密标签（ encryption tag ）。
+这样可以给子卷打上一个标识符，对系统管理员或其他服务有用。
+默认情况下，此标签为空，而且是可选的。
+
+加密标签可用于把子卷与其关联的加密主密钥和策略对应起来。
+可以把加密标签（ enctag ）的值与相应的主密钥进行映射。
+这样就可以用于解锁子卷。这个主密钥可以存储在安全位置，如密钥管理服务器中。
 
 
 删除子卷
@@ -338,14 +399,16 @@ earmark 机制能确保正确地标记和管理子卷，
    ceph fs subvolume rm <vol_name> <subvol_name> [--group_name <subvol_group_name>] [--force] [--retain-snapshots]
 
 此命令将删除子卷及其内容，分两步完成。
-首先，把子卷移至垃圾文件夹；其次，异步地清除垃圾文件夹中的内容。
+首先，把子卷移至垃圾文件夹；
+其次，异步地清除垃圾文件夹中的内容。
 
 如果子卷有快照或不存在，子卷移除将失败。
 加 ``--force`` 选项可以让 "non-existent subvolume remove" 的命令成功。
 
 要在删除子卷的同时保留该子卷的快照，用 ``--retain-snapshots`` 标志。
 如果保留与指定子卷相关联的快照，
-那么所有与保留的快照不相干的操作，都会把这个子卷视为空卷。
+那么所有与保留的快照不相干的操作，
+都会把这个子卷视为空卷。
 
 .. note:: 可以用 ``ceph fs subvolume create`` 命令重新创建保留了快照的子卷。
 
@@ -363,7 +426,7 @@ earmark 机制能确保正确地标记和管理子卷，
    ceph fs subvolume resize <vol_name> <subvol_name> <new_size> [--group_name <subvol_group_name>] [--no_shrink]
 
 此命令用于调整子卷配额的大小，新尺寸是 ``new_size`` 。
-``--no_shrink`` 标志可防止子卷缩小到低于当前子卷的“used size （已用大小）”。
+``--no_shrink`` 标志可防止子卷缩小到低于当前子卷的 "used size （已用大小）"。
 
 子卷大小可以调整为逻辑上无限大（却是稀疏的），
 传入 ``inf`` 或 ``infinite`` 作为 ``<new_size>`` 。
@@ -435,8 +498,8 @@ earmark 机制能确保正确地标记和管理子卷，
 * ``atime``: 子卷路径的访问时间，按格式 ``YYYY-MM-DD HH:MM:SS``
 * ``mtime``: 子卷路径的修改时间，按格式 ``YYYY-MM-DD HH:MM:SS``
 * ``ctime``: 子卷路径的变更时间，按格式 ``YYYY-MM-DD HH:MM:SS``
-* ``uid``: 子卷路径的 uid
-* ``gid``: 子卷路径的 gid
+* ``uid``: 子卷路径的 UID
+* ``gid``: 子卷路径的 GID
 * ``mode``: 子卷路径的权限位
 * ``mon_addrs``: 监视器地址列表
 * ``bytes_pcent``: 如果设置了配额，这里就显示已用配额的百分比；
@@ -444,8 +507,8 @@ earmark 机制能确保正确地标记和管理子卷，
 * ``bytes_quota``: 如果设置了配额，这里就显示配额大小，字节数；
   否则显示 ``infinite``
 * ``bytes_used``: 当前用掉的子卷组大小，字节数
-* ``created_at``: 子卷组的创建时间，按格式
-  ``YYYY-MM-DD HH:MM:SS``
+* ``created_at``: 子卷组的创建时间，
+  按格式 ``YYYY-MM-DD HH:MM:SS``
 * ``data_pool``: 子卷组所属的数据存储池
 * ``path``: 子卷的绝对路径
 * ``type``: 子卷类型，标明它是 ``clone`` 还是 ``subvolume``
@@ -453,6 +516,11 @@ earmark 机制能确保正确地标记和管理子卷，
 * ``features``: 子卷支持的功能
 * ``state``: 这个子卷当前的状态
 * ``earmark``: 这个子卷的 earmark
+* ``source``: 仅当子卷是克隆品时存在。它包含源快照的名字，
+  还有此快照所在位置的卷名、子卷组和子卷。
+  如果此克隆品是用 Tentacle 或更早版本创建，
+  此字段的值是 'N/A' 。
+* ``enctag``: 本子卷的加密标签。
 
 如果子卷已经删除，而它的快照保留下来了，
 那么输出会只包含下列字段。
@@ -503,6 +571,7 @@ earmark 机制能确保正确地标记和管理子卷，
 
 * ``subvolume exists``: 如果指定的 ``group_name`` 里面有子卷
 * ``no subvolume exists``: 如果指定的 ``group_name`` 里面没有子卷
+
 
 在一个子卷上设置自定义元数据
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -587,6 +656,36 @@ earmark 机制能确保正确地标记和管理子卷，
 
    ceph fs subvolume earmark rm <vol_name> <subvol_name> [--group_name <subvol_group_name>]
 
+查看子卷的 enctag
+~~~~~~~~~~~~~~~~~
+.. Getting enctag of a subvolume
+
+要查看一个子卷的 enctag ，执行下列命令：
+
+.. prompt:: bash #
+
+   ceph fs subvolume enctag get <vol_name> <subvol_name> [--group_name <subvol_group_name>]
+
+设置子卷的 enctag
+~~~~~~~~~~~~~~~~~
+.. Setting enctag of a subvolume
+
+要给一个子卷设置 enctag ，执行下列命令：
+
+.. prompt:: bash #
+
+   ceph fs subvolume enctag set <vol_name> <subvol_name> [--group_name <subvol_group_name>] <enctag>
+
+删除子卷的 enctag
+~~~~~~~~~~~~~~~~~
+.. Removing enctag of a subvolume
+
+要删除一个子卷的 enctag ，执行下列命令：
+
+.. prompt:: bash #
+
+   ceph fs subvolume enctag rm <vol_name> <subvol_name> [--group_name <subvol_group_name>]
+
 创建子卷的快照
 ~~~~~~~~~~~~~~
 .. Creating a Snapshot of a Subvolume
@@ -610,6 +709,16 @@ earmark 机制能确保正确地标记和管理子卷，
 加 ``--force`` 选项可以让此命令成功，否则它可能失败（假如快照不存在）。
 
 .. note:: 对于一个保留了快照的子卷，如果它的最后一个快照删掉了，这个子卷也会删掉。
+
+获取一个子卷快照的路径
+----------------------
+.. Fetching Path of a Snapshot of a Subvolume
+
+要获取一个子卷快照的绝对路径，执行下列命令：
+
+.. prompt:: base #
+
+    ceph fs subvolume snapshot getpath <volname> <subvol_name> <snap_name> [<group_name>]
 
 罗列子卷的快照
 ~~~~~~~~~~~~~~
@@ -712,7 +821,7 @@ earmark 机制能确保正确地标记和管理子卷，
    ceph fs subvolume snapshot metadata get <vol_name> <subvol_name> <snap_name> <key_name> [--group_name <subvol_group_name>]
 
 罗列一个快照上设置的自定义元数据
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. Listing Custom Metadata that has been Set on a Snapshot
 
 罗列快照上设置的自定义元数据（键值对），执行下列命令：
@@ -737,13 +846,10 @@ earmark 机制能确保正确地标记和管理子卷，
 --------
 .. Cloning Snapshots
 
-可以通过克隆子卷快照来创建子卷。
-克隆是一种异步操作，可将数据从快照复制到子卷。
-由于克隆是一种涉及大批量复制的操作，
-因此对于非常大的数据集来说，速度会比较慢。
+可以通过克隆子卷快照来创建子卷。克隆是一种异步操作，可将数据从快照复制到子卷。
+由于克隆是一种涉及大批量复制的操作，因此对于非常大的数据集来说，速度会比较慢。
 
-.. note:: 如果有待定或正在进行的克隆操作，
-   删除快照（源子卷）会失败。
+.. note:: 如果有待定或正在进行的克隆操作，删除快照（源子卷）会失败。
 
 在 Nautilus 版里，克隆之前先保护快照是前提条件。
 为此引入了可以保护和解除保护快照的命令。
@@ -949,7 +1055,6 @@ earmark 机制能确保正确地标记和管理子卷，
 .. note:: 删除已取消的克隆品用 ``fs subvolume rm`` 命令，
    要加 ``--force`` 选项。
 
-
 可配置选项
 ~~~~~~~~~~
 .. Configurables
@@ -960,7 +1065,8 @@ earmark 机制能确保正确地标记和管理子卷，
 
    ceph config set mgr mgr/volumes/max_concurrent_clones <value>
 
-暂停异步清除回收站子卷的线程。此选项在集群恢复期间有用：
+暂停异步清除回收站子卷的线程。
+此选项在集群恢复期间有用：
 
 .. prompt:: bash #
 
@@ -1004,6 +1110,98 @@ earmark 机制能确保正确地标记和管理子卷，
    ceph config get mgr mgr/volumes/snapshot_clone_no_wait
 
 
+控制子卷快照的可见性
+--------------------
+.. Controlling Subvolume Snapshot Visibility
+
+.. note:: 当前只有 FUSE/libcephfs 客户端支持此功能。
+   内核客户端支持正在实现：进度可以在这里查看
+   https://tracker.ceph.com/issues/72589 。
+
+通过以下两个操作，可以使子卷的快照对兼容客户端隐藏：
+
+#. 将子卷的 ``snapshot_visibility`` 标志设置为 ``false`` （默认为 ``true`` ）。
+#. 将目标客户端的客户端一侧配置选项 ``client_respect_subvolume_snapshot_visibility``
+   设置为 ``true`` （默认为 ``false`` ）。
+
+切换 ``snapshot_visibility`` 的 CLI 命令如下：
+
+.. prompt:: bash #
+
+   ceph fs subvolume snapshot_visibility set <vol_name> <sub_volname> [--group-name <subvol_group_name>] <true|false>
+
+此命令用于更新内部 vxattr ``ceph.dir.subvolume.snaps.visible`` ，
+并在 dirinode （即子卷）的 SnapRealm 中设置
+``is_snapdir_visible`` 标志。
+
+.. note:: 虽然可以直接修改，但建议使用子卷 API 。
+          这样更方便，并且在设置 vxattr 时\
+          可以避免可能出现的 ``EPERM`` （无权限被拒）错误，
+          尤其是在客户端缺乏所需能力的情况下。
+          设置此 vxattr 的方法是：
+
+          .. prompt:: bash #
+
+             setfattr -n ceph.dir.subvolume.snaps.visible -v 0|1 <subvolume_path>
+
+``client_respect_subvolume_snapshot_visibility`` 选项决定着\
+一个客户端是否会遵守子卷的可见性标志。
+可以对每个客户端设置，用命令：
+
+.. prompt:: bash #
+
+   ceph config set client.<id> client_respect_subvolume_snapshot_visibility <true|false>
+
+.. note:: 其中的 ``<id>`` 参数是 CephX 用户。
+
+要给所有客户端全局地配置 ``client_respect_subvolume_snapshot_visibility`` ，
+执行命令时不要指定 ``id`` 即可：
+
+.. prompt:: bash #
+
+   ceph config set client client_respect_subvolume_snapshot_visibility <true|false>
+
+.. note:: MGR 守护进程作为具有特权的 CephFS 客户端运行，
+   因此可以绕过快照可见性限制。
+   这种行为对于确保快照调度和快照克隆等操作的可靠执行是必要的。
+   因此，修改 ``client_respect_subvolume_snapshot_visibility``
+   配置选项对运行在 MGR 守护进程内的 CephFS 实例没有影响。
+
+
+如何在一个子卷上禁用快照可见性？
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. How to Disable Snapshot Visibility on a Subvolume?
+
+例如，要想防止以 ``client.user1`` CephX 用户验证过身份的客户端\
+查看 ``vol1`` 卷下的 ``sv1`` 子卷的快照，
+首先，用下列命令禁用 ``sv1`` 上的 ``snapshot_visibility`` 标志：
+
+.. prompt:: bash #
+
+   ceph fs subvolume snapshot_visibility set vol1 sv1 false
+
+然后切换此客户端的配置，用命令：
+
+.. prompt:: bash #
+
+   ceph config set client.user1 client_respect_subvolume_snapshot_visibility true
+
+这有效地防止了使用 ``client.user1`` 挂载的客户端\
+对 ``sv1`` 子卷的 ``.snap`` 目录执行 ``lookup()`` 调用，
+从而隐藏了其快照。
+
+.. note:: 当子卷的快照可见性被禁用时，
+   任何快照操作（包括快照创建、删除或重命名）都将被阻止，
+   因为这些操作需要先成功地找到 ``.snap`` 目录。
+
+.. note:: 子卷快照的可见性完全取决于客户端是否配置为\
+   遵守子卷的 ``snapshot_visibility`` 标志。
+   也就是说，不管子卷上的这个标志设置为 ``true`` 还是 ``false`` ，
+   除非客户端的 ``client_respect_subvolume_snapshot_visibility``
+   配置选项明确设置为 ``true`` ，
+   否则该标志都将被忽略。
+
+
 .. _subvol-pinning:
 
 锁定子卷和子卷组
@@ -1042,12 +1240,13 @@ earmark 机制能确保正确地标记和管理子卷，
 文件系统内的一个可用 rank 。
 
 
-规范化和大小写敏感
+归一化和大小写敏感
 ------------------
 .. Normalization and Case Sensitivity
 
 subvolumegroup 和 subvolume 接口有一个 porcelain layer API （统一抽象层），
 用于操作 ``ceph.dir.charmap`` 配置（另请参阅 :ref:`charmap` ）。
+
 
 charmap 的配置
 ~~~~~~~~~~~~~~
@@ -1082,7 +1281,7 @@ charmap 的配置
 ~~~~~~~~~~~~
 .. Reading the charmap
 
-要读取一个 subvolumegroup 的配置：
+要读取一个 subvolumegroup 的 ``charmap`` 配置：
 
 .. prompt:: bash #
 
@@ -1104,7 +1303,7 @@ charmap 的配置
 
     0
 
-要读取完整的 ``charmap`` ，读取 subvolumegroup 的：
+要读取一个 subvolumegroup 的完整 ``charmap`` ：
 
 .. prompt:: bash #
 
@@ -1133,7 +1332,7 @@ charmap 的配置
 ~~~~~~~~~~~~
 .. Removing the charmap
 
-要删除一个 subvolumegroup 的配置：
+要删除一个 subvolumegroup 的 ``charmap`` 配置：
 
 .. prompt:: bash #
 
@@ -1157,7 +1356,7 @@ charmap 的配置
 
     {}
 
-.. note:: 只有当 subvolumegroup 或 subvolume 为空的时候才能删除 charmap 。
+.. note:: 只有当 subvolumegroup 或 subvolume 为空的时候才能删除其 ``charmap`` 。
 
 
 子卷静默（ subvolume quiesce ）
@@ -1177,7 +1376,7 @@ CephFS 快照不能保证强一致性，因为在多个客户端执行写操作�
 可以保证应用程序在暂停前到达的所有持久（已写入的）检查点、
 都可以从暂停期间拍下的快照中恢复。
 
-`volumes` 插件提供了一个 CLI ，用于启动和等待一组子卷的暂停。
+``volumes`` 插件提供了一个 CLI ，用于启动和等待一组子卷的暂停。
 这种暂停称为 `quiesce` （静默），也用作命令名称：
 
 .. prompt:: bash $ auto
@@ -1188,9 +1387,9 @@ CephFS 快照不能保证强一致性，因为在多个客户端执行写操作�
   # 如果成功，就认为此集合的所有成员仍被暂停着，然后释放它们
 
 ``fs quiesce`` 功能基于更底层的 ``quiesce db`` 服务，它是由 MDS 守护进程提供的，
-操作粒度可达到文件系统路径。 `volumes` 插件只是把子卷名映射到\
+操作粒度可达到文件系统路径。 ``volumes`` 插件只是把子卷名映射到\
 指定文件系统内的相应路径，然后向 MDS 发出相应的 ``quiesce db`` 命令。
-有关底层服务的更多信息，参阅开发者文档。
+有关底层服务的更多信息，参阅\ :ref:`开发者指南 <dev_mds_internals_quiesce>`\ 。
 
 
 可用操作
@@ -1278,9 +1477,9 @@ quiesce （静默）操作可以作用于一个或多个子卷（就是文件系
 任何操作有效集合的命令都可以加 ``--timeout`` 或 ``--expiration`` 参数，
 用以更新这个集合的值。如果存在，那么此命令请求执行的操作之前，会先应用更新的值。
 
-.. prompt:: bash $ auto
+.. prompt:: bash # auto
 
-  $ ceph fs quiesce fs1 --set-id=unique-id --timeout=10 > /dev/null
+  # ceph fs quiesce fs1 --set-id=unique-id --timeout=10 > /dev/null
   Error EPERM:  
 
 对我们的 ``unique-id`` 集合来说已经太晚了，因为它已处于终结状态。
@@ -1401,9 +1600,9 @@ await 有两种类型： `quiesce await` 和 `release await` 。前者是默认�
 由于集合在等着应用程序（命令加了 ``--await`` 参数）， await 操作可能会用它自己的\
 错误掩盖成功的结果。一个很好的例子就是尝试 cancel-await （等着取消）一个集合：
 
-.. prompt:: bash $ auto
+.. prompt:: bash # auto
 
-  $ ceph fs quiesce fs1 --set-id set1 --cancel --await
+  # ceph fs quiesce fs1 --set-id set1 --cancel --await
   {
       // ...
       "sets": {
@@ -1420,7 +1619,7 @@ await 有两种类型： `quiesce await` 和 `release await` 。前者是默认�
   Error EPERM: 
 
 虽然对处于有效状态的集合， ``--cancel`` 会同步地成功，但不允许等待已经取消的集合，
-因此这个调用会导致 `EPERM`` 。这是有意与返回 ``EINVAL`` 错误
+因此这个调用会导致 ``EPERM`` 。这是有意与返回 ``EINVAL`` 错误
 （表示用户方面出错）不同的，目的是简化请求 ``--await`` 时的系统行为。
 这样，对于用户来说，这也是一个更简单的模型。
 
@@ -1431,9 +1630,9 @@ await 有两种类型： `quiesce await` 和 `release await` 。前者是默认�
 但不会被当作错误。如果同时存在 ``--await`` 和 ``--await-for`` 参数，
 那么前者将被忽略，而采纳 ``--await-for`` 的时间限制。
 
-.. prompt:: bash $ auto
+.. prompt:: bash # auto
 
-  $ time ceph fs quiesce fs1 sub1 --timeout=10 --await-for=2
+  # time ceph fs quiesce fs1 sub1 --timeout=10 --await-for=2
   {
       "epoch": 6,
       "set_version": 3,
@@ -1471,16 +1670,16 @@ await 有两种类型： `quiesce await` 和 `release await` 。前者是默认�
 长期运行的多步进程，在 IO 暂停状态下，通过重复等待（ ``--await`` ）\
 已静默（ `QUIESCED` ）的集合。看下面的示例脚本：
 
-.. prompt:: bash $ auto
+.. prompt:: bash # auto
 
-  $ set -e   # (1)
-  $ ceph fs quiesce fs1 sub1 sub2 sub3 --timeout=30 --expiration=10 --set-id="snapshots" --await # (2)
-  $ ceph fs subvolume snapshot create a sub1 snap1-sub1  # (3)
-  $ ceph fs quiesce fs1 --set-id="snapshots" --await  # (4)
-  $ ceph fs subvolume snapshot create a sub2 snap1-sub2  # (3)
-  $ ceph fs quiesce fs1 --set-id="snapshots" --await  # (4)
-  $ ceph fs subvolume snapshot create a sub3 snap1-sub3  # (3)
-  $ ceph fs quiesce fs1 --set-id="snapshots" --release --await  # (5)
+  # set -e   # (1)
+  # ceph fs quiesce fs1 sub1 sub2 sub3 --timeout=30 --expiration=10 --set-id="snapshots" --await # (2)
+  # ceph fs subvolume snapshot create a sub1 snap1-sub1  # (3)
+  # ceph fs quiesce fs1 --set-id="snapshots" --await  # (4)
+  # ceph fs subvolume snapshot create a sub2 snap1-sub2  # (3)
+  # ceph fs quiesce fs1 --set-id="snapshots" --await  # (4)
+  # ceph fs subvolume snapshot create a sub3 snap1-sub3  # (3)
+  # ceph fs quiesce fs1 --set-id="snapshots" --release --await  # (5)
 
 .. warning:: 本例用任意超时来阐述这一概念。现实中，
    这个数值必须根据实际的系统要求和规格谨慎选择。
@@ -1513,20 +1712,20 @@ If Version （判断版本）
 有时，仅仅观察到成功的退出或释放还不够。
 原因可能是另一个客户端同时更改了这个集合。看这个例子：
 
-.. prompt:: bash $ auto
+.. prompt:: bash # auto
 
-  $ ceph fs quiesce fs1 sub1 sub2 sub3 --timeout=30 --expiration=60 --set-id="snapshots" --await  # (1)
-  $ ceph fs subvolume snapshot create a sub1 snap1-sub1  # (2)
-  $ ceph fs subvolume snapshot create a sub2 snap1-sub2  # (3)
-  $ ceph fs subvolume snapshot create a sub3 snap1-sub3  # (4)
-  $ ceph fs quiesce fs1 --set-id="snapshots" --release --await  # (5)
+  # ceph fs quiesce fs1 sub1 sub2 sub3 --timeout=30 --expiration=60 --set-id="snapshots" --await  # (1)
+  # ceph fs subvolume snapshot create a sub1 snap1-sub1  # (2)
+  # ceph fs subvolume snapshot create a sub2 snap1-sub2  # (3)
+  # ceph fs subvolume snapshot create a sub3 snap1-sub3  # (4)
+  # ceph fs quiesce fs1 --set-id="snapshots" --release --await  # (5)
 
 顺序看起来没问题，释放 `(5)` 也成功完成了。但是，有可能在 sub3 `(4)` 的\
 快照拍下之前，另一个会话把 sub3 从集合中排除掉了，恢复了它的 IO 。
 
-.. prompt:: bash $ auto
+.. prompt:: bash # auto
 
-  $ ceph fs quiesce fs1 --set-id="snapshots" --exclude sub3
+   # ceph fs quiesce fs1 --set-id="snapshots" --exclude sub3
 
 由于从集合中删除成员不会影响它的 `QUIESCED` 状态，因此 release 命令 `(5)`
 没理由失败。它会确认 sub1 和 sub2 这两个未被排除的成员，并报告成功。
@@ -1546,9 +1745,9 @@ If Version （判断版本）
 由于用命令 `(2,3,4)` 拍快照时，我们不希望对集合做任何更改，
 因此 release （释放）命令 `(5)` 可能是这样的：
 
-.. prompt:: bash $ auto
+.. prompt:: bash # auto
 
-  $ ceph fs quiesce fs1 --set-id="snapshots" --release --await --if-version=13 # (5)
+  # ceph fs quiesce fs1 --set-id="snapshots" --release --await --if-version=13 # (5)
 
 这样， release 命令的结果就会是 ``ESTALE`` ，而不是 0 ，
 我们就能知道 quiesce 集合不对劲，拍下的快照也可能不一致。
@@ -1589,6 +1788,14 @@ If Version （判断版本）
 在采取类似这样激烈的措施之前，最好先尝试不那么激烈的措施，
 然后评估文件系统体验是否因此得到改善。类似措施比如，
 禁用 volumes 插件启动的、用于克隆和清除垃圾的异步线程。
+有关详情见 :ref:`暂停清除线程 <pause-purge-threads>` 和
+:ref:`暂停克隆线程 <pause-clone-threads>`\ 。
+
+.. note:: 直到 Tentacle ， CephFS 卷所属存储池命名空间的名字\
+   都是按这个格式： "fsvolumens__<subvol-name>" 。然而，
+   当两个同名子卷分别位于不同子卷组时，这可能导致命名空间冲突。
+   因此，在 Tentacle 版以后，存储池命名格式改成了
+   "fsvolumens__<subvol-grp-name>_<subvol-name>" 。
 
 
 .. _manila: https://github.com/openstack/manila
