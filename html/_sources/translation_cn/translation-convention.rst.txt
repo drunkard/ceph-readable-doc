@@ -113,6 +113,13 @@ UMARK VMARK WMARK XMARK YMARK ZMARK
     cache thrashing
         缓存颠簸。
 
+    cache tiering
+        分级缓存。
+
+        相关术语：
+        base tier 基础层；
+        cache tier 缓存层；
+
     capability
         能力， cephfs 、 MDS 相关术语。本意是潜在能力。
         另一个常一起出现的 `release state (释放状态)` 。
@@ -690,7 +697,7 @@ UMARK VMARK WMARK XMARK YMARK ZMARK
         这些 OSD 就称为 acting set 。也是个变化的集合。
 
         *hit set:*
-        在 cache tering 中译为：命中集
+        在 cache tiering 中译为：命中集
 
         *missing set:*
         Each OSD notes update log entries and if they imply updates to the

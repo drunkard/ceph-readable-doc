@@ -148,9 +148,8 @@ Debian 二进制包
 
    echo deb https://download.ceph.com/debian-|stable-release|/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
-对于早期 Ceph 发布，可用 Ceph 发布名替换 ``{release-name}`` 。\
-用命令 ``lsb_release -sc`` 可获取短代码名，然后用它替换下列\
-命令里的 ``{codename}`` 。
+对于早期 Ceph 发布，可用 Ceph 发布名替换 ``{release-name}`` 。用命令
+``lsb_release -sc`` 可获取短代码名，然后用它替换下列命令里的 ``{codename}`` 。
 
 .. prompt:: bash $
 
@@ -214,8 +213,7 @@ RHEL
 	gpgcheck=1
 	gpgkey=https://download.ceph.com/keys/release.asc
 
-对于某些包，你可以通过名字直接下载。
-按照我们的开发进度，每 3-4 周会发布一次。
+对于某些包，你可以通过名字直接下载。按照我们的开发进度，每 3-4 周会发布一次。
 这些包的变动比主要发布频繁，开发版会迅速地集成新功能，
 然而这些新功能需要几周时间的质检才会发布。
 
@@ -255,22 +253,22 @@ Ceph 的最新主版本在普通 Tumbleweed 软件库里已经能用了。没必
 openEuler
 ^^^^^^^^^
 
-There are two Ceph releases supported in normal openEuler repositories. They are Ceph 12.2.8 in the openEuler-20.03-LTS series and Ceph 16.2.7 in the openEuler-22.03-LTS series. There’s no need to add another package repository manually.
-You can install Ceph by executing the following:
+标准 openEuler 软件库里有两个支持的 Ceph 版本，分别是
+openEuler-20.03-LTS 系列里的 12.2.8 和 openEuler-22.03-LTS 系列里的 16.2.7 。
+没必要另外手动添加软件库。执行下列命令安装 Ceph ：
 
 .. prompt:: bash $
 
     sudo yum -y install ceph
 
-Also you can download packages manually from https://repo.openeuler.org/openEuler-{release}/everything/{arch}/Packages/.
+你还可以从这个网址手动下载软件包 https://repo.openeuler.org/openEuler-{release}/everything/{arch}/Packages/ 。
 
 
 Ceph 开发版软件包
 -----------------
 .. Ceph Development Packages
 
-如果你在参与 Ceph 开发，想要部署并测试某个分支，确保先删除\
-主版本库的配置文件。
+如果你在参与 Ceph 开发，想要部署并测试某个分支，确保先删除主版本库的配置文件。
 
 
 DEB 二进制包

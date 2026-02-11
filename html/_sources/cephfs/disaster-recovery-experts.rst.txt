@@ -15,6 +15,12 @@
     如果你没有专业的技术支持，可以在 ceph-users 邮件列表\
     或 #ceph IRC 频道咨询。
 
+.. note:: 在 Ceph 文件系统上用元数据修复工具操作之前，
+   该文件系统必须处于离线状态。如果在文件系统处于在线状态时调用这些工具，
+   它们将发出警告。如果有任何一个恢复步骤未能成功完成，
+   **决不要**\ 继续运行任何其他恢复步骤。如果任何恢复步骤失败，
+   请通过邮件列表、 IRC 频道和 Slack 频道向专家寻求帮助。
+
 
 导出日志
 --------
@@ -25,6 +31,14 @@
 .. prompt:: bash #
 
    cephfs-journal-tool journal export backup.bin
+
+如果恢复过程未按预期进行，备份的日志将派上用场。
+通过从备份的日志导入，
+可以把 MDS 日志恢复到它最初的状态：
+
+.. prompt:: bash #
+
+   cephfs-journal-tool journal import backup.bin
 
 
 从日志中恢复 dentry
@@ -39,7 +53,8 @@
    cephfs-journal-tool event recover_dentries summary
 
 此命令默认会操作 rank ``0`` 的 MDS ，给 ``cephfs-journal-tool`` 命令\
-加选项 ``--rank=<n>`` 来操作其它 rank 。
+加选项 ``--rank=<n>`` 来操作其它 rank ，
+或者加 ``--rank=all`` 来操作所有 MDS rank 。
 
 此命令会把日志中所有可恢复的 inode/dentry 写入后端存储，
 但是，仅限于这些 inode/dentry 的版本号高于后端存储中已有内容的版本时才行。
@@ -71,17 +86,43 @@
 如果这个文件系统有、或曾经有多个活跃的 MDS ，
 可以用 ``--rank`` 选项指定 rank 。
 
-.. warning::
-
-    重置日志\ *会*\ 导致元数据丢失，除非你已经用其它方法
-    （如 ``recover_dentries`` ）提取过了。
-    此操作很可能会在数据存储池中留下一些孤儿对象，
-    并导致已写过的索引节点被重分配，以致权限规则被破坏。
+.. warning:: 重置日志\ *会*\ 导致元数据丢失，除非你已经用其它方法
+   （如 ``recover_dentries`` ）提取过了。
+   重置日志很可能会在数据存储池中留下一些孤儿对象，
+   并导致已写过的索引节点被重分配，进而导致文件系统产生故障。
 
 
 擦除 MDS 表
 -----------
 .. MDS table wipes
+
+在恢复过程中，并非每张 MDS 表都必须重置。
+如果对应的 RADOS 对象缺失（例如，由于某些 PG 丢失）
+或者表与 RADOS 后端存储的元数据不一致，
+就需要重置 MDS 表。要检查表对象是否缺失，
+执行下列命令：
+
+Session 表：
+
+.. prompt:: bash #
+
+   rados -p <metadata-pool> stat mds0_sessionmap
+
+Inode 表:
+
+.. prompt:: bash #
+
+   rados -p <metadata-pool> stat mds0_inotable
+
+Snap 表：
+
+.. prompt:: bash #
+
+   rados -p <metadata-pool> stat mds_snaptable
+
+.. note:: ``sessionmap`` 和 ``inotable`` 对象是和 MDS rank 对应的
+   （对象名里包含了 rank 号 - mds0_inotable 、 mds1_inotable 等等）。
+
 
 重置日志后，系统状态可能和 MDS 的几张表（ InoTables 、
 SessionMap 、 SnapServer ）的内容变得不一致。

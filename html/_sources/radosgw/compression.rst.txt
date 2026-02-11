@@ -1,3 +1,5 @@
+.. _radosgw-compression:
+
 ======
  压缩
 ======
@@ -5,8 +7,27 @@
 
 .. versionadded:: Kraken
 
-Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已有的\
-压缩插件实现。
+Ceph 对象网关支持在服务器端压缩上传的对象。
+
+.. note:: The Reef release added a :ref:`feature_compress_encrypted` zonegroup
+   feature to enable compression with :ref:`Server-Side Encryption <radosgw-encryption>`.
+
+Supported compression plugins include the following:
+
+* lz4
+* snappy
+* zlib
+* zstd
+
+.. note:: Ceph Object Gateway compression is performed by RGW daemons only
+   for RGW objects, and is distinct from BlueStore compression that is performed 
+   by OSDs at pool granularity. It is typical to only enable one or the other. 
+   Enabling at both levels does not cause a problem, but one should make the decision 
+   based on the use case. If your cluster only serves object storage and the nodes 
+   where RGW runs have more available CPU than OSD nodes, RGW level compression may be appealing. 
+   Compressing at the OSD level does mean compressing the same user data more 
+   than once since it is post-replication, but in a cluster with far more OSDs 
+   than RGWs this strategy may result in better performance.
 
 
 配置
@@ -24,13 +45,17 @@ Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已
 这个压缩选项对所有新上传到桶（桶使用了这个归置目标）内的对象起\
 作用。 ``type`` 设置为空字符串或 ``none`` 时禁用压缩。
 
-例如： ::
+例如：
 
-  $ radosgw-admin zone placement modify \
-        --rgw-zone default \
-        --placement-id default-placement \
-        --storage-class STANDARD \
-        --compression zlib
+.. prompt:: bash #
+
+   radosgw-admin zone placement modify --rgw-zone default \
+                                         --placement-id default-placement \
+                                         --storage-class STANDARD \
+                                         --compression zlib
+
+::
+
   {
   ...
       "placement_pools": [
@@ -52,8 +77,8 @@ Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已
   ...
   }
 
-.. note:: 如果你没做过\ `多站配置`_\ ，那么此命令会创建默认域
-   ``default`` 。
+.. note:: 如果你没做过\ :ref:`多站配置 <multisite>`\ ，
+   那么此命令会创建默认域 ``default`` 。
 
 
 统计信息
@@ -61,9 +86,14 @@ Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已
 .. Statistics
 
 当前，所有命令和 API 都是基于未压缩数据上报对象和桶的大小，某\
-个桶的压缩统计信息可通过 ``bucket stats`` 命令查看： ::
+个桶的压缩统计信息可通过 ``bucket stats`` 命令查看：
 
-  $ radosgw-admin bucket stats --bucket=<name>
+.. prompt:: bash #
+
+   radosgw-admin bucket stats --bucket=<name>
+
+::
+
   {
   ...
       "usage": {
@@ -80,8 +110,8 @@ Ceph 对象网关支持在服务器端压缩上传的对象，可以用任何已
   ...
   }
 
+其它命令和 API 会基于其未压缩的数据来报告对象和桶的尺寸。
+
 ``size_utilized`` 和 ``size_kb_utilized`` 字段表示已压缩数据的\
 总尺寸，单位分别是字节和千字节。
 
-
-.. _`多站配置`: ../multisite

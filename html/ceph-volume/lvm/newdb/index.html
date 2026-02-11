@@ -209,6 +209,43 @@ Logical volume name format is vg/lv. Fails if OSD has already got attached DB.</
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceph</span><span class="o">-</span><span class="n">volume</span> <span class="n">lvm</span> <span class="n">new</span><span class="o">-</span><span class="n">db</span> <span class="o">--</span><span class="n">osd</span><span class="o">-</span><span class="nb">id</span> <span class="mi">1</span> <span class="o">--</span><span class="n">osd</span><span class="o">-</span><span class="n">fsid</span> <span class="mi">55</span><span class="n">BD4219</span><span class="o">-</span><span class="mi">16</span><span class="n">A7</span><span class="o">-</span><span class="mi">4037</span><span class="o">-</span><span class="n">BC20</span><span class="o">-</span><span class="mi">0</span><span class="n">F158EFCC83D</span> <span class="o">--</span><span class="n">target</span> <span class="n">vgname</span><span class="o">/</span><span class="n">new_db</span>
 </pre></div>
 </div>
+<section id="reversing-bluefs-spillover-to-slow-devices">
+<h2>Reversing BlueFS Spillover to Slow Devices<a class="headerlink" href="#reversing-bluefs-spillover-to-slow-devices" title="Permalink to this heading"></a></h2>
+<p>Under certain circumstances, OSD RocksDB databases spill onto slow storage and
+the Ceph cluster returns specifics regarding BlueFS spillover warnings. <code class="docutils literal notranslate"><span class="pre">ceph</span>
+<span class="pre">health</span> <span class="pre">detail</span></code> returns these spillover warnings.  Here is an example of a
+spillover warning:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">osd</span><span class="mf">.76</span> <span class="n">spilled</span> <span class="n">over</span> <span class="mi">128</span> <span class="n">KiB</span> <span class="n">metadata</span> <span class="kn">from</span><span class="w"> </span><span class="s1">&#39;db&#39;</span> <span class="n">device</span> <span class="p">(</span><span class="mi">56</span> <span class="n">GiB</span> <span class="n">used</span> <span class="n">of</span> <span class="mi">60</span> <span class="n">GiB</span><span class="p">)</span> <span class="n">to</span> <span class="n">slow</span> <span class="n">device</span>
+</pre></div>
+</div>
+<p>To move this DB metadata from the slower device to the faster device, take the
+following steps:</p>
+<ol class="arabic">
+<li><p>Expand the database’s logical volume (LV):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "# ";
+}
+</style><span class="prompt1">lvextend<span class="w"> </span>-l<span class="w"> </span><span class="si">${</span><span class="nv">size</span><span class="si">}</span><span class="w"> </span><span class="si">${</span><span class="nv">lv</span><span class="si">}</span>/<span class="si">${</span><span class="nv">db</span><span class="si">}</span><span class="w"> </span><span class="si">${</span><span class="nv">ssd_dev</span><span class="si">}</span></span>
+</pre></div></div></li>
+<li><p>Stop the OSD:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephadm<span class="w"> </span>unit<span class="w"> </span>--fsid<span class="w"> </span><span class="nv">$cid</span><span class="w"> </span>--name<span class="w"> </span>osd.<span class="si">${</span><span class="nv">osd</span><span class="si">}</span><span class="w"> </span>stop</span>
+</pre></div></div></li>
+<li><p>Run the <code class="docutils literal notranslate"><span class="pre">bluefs-bdev-expand</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephadm<span class="w"> </span>shell<span class="w"> </span>--fsid<span class="w"> </span><span class="nv">$cid</span><span class="w"> </span>--name<span class="w"> </span>osd.<span class="si">${</span><span class="nv">osd</span><span class="si">}</span><span class="w"> </span>--<span class="w"> </span>ceph-bluestore-tool<span class="w"> </span>bluefs-bdev-expand<span class="w"> </span>--path<span class="w"> </span>/var/lib/ceph/osd/ceph-<span class="si">${</span><span class="nv">osd</span><span class="si">}</span></span>
+</pre></div></div></li>
+<li><p>Run the <code class="docutils literal notranslate"><span class="pre">bluefs-bdev-migrate</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephadm<span class="w"> </span>shell<span class="w"> </span>--fsid<span class="w"> </span><span class="nv">$cid</span><span class="w"> </span>--name<span class="w"> </span>osd.<span class="si">${</span><span class="nv">osd</span><span class="si">}</span><span class="w"> </span>--<span class="w"> </span>ceph-bluestore-tool<span class="w"> </span>bluefs-bdev-migrate<span class="w"> </span>--path<span class="w"> </span>/var/lib/ceph/osd/ceph-<span class="si">${</span><span class="nv">osd</span><span class="si">}</span><span class="w"> </span>--devs-source<span class="w"> </span>/var/lib/ceph/osd/ceph-<span class="si">${</span><span class="nv">osd</span><span class="si">}</span>/block<span class="w"> </span>--dev-target<span class="w"> </span>/var/lib/ceph/osd/ceph-<span class="si">${</span><span class="nv">osd</span><span class="si">}</span>/block.db</span>
+</pre></div></div></li>
+<li><p>Restart the OSD:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephadm<span class="w"> </span>unit<span class="w"> </span>--fsid<span class="w"> </span><span class="nv">$cid</span><span class="w"> </span>--name<span class="w"> </span>osd.<span class="si">${</span><span class="nv">osd</span><span class="si">}</span><span class="w"> </span>start</span>
+</pre></div></div></li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><em>The above procedure was developed by Chris Dunlop on the [ceph-users] mailing list, and can be seen in its original context here:</em> <a class="reference external" href="https://lists.ceph.io/hyperkitty/list/ceph-users&#64;ceph.io/message/POPUFSZGXR3P2RPYPJ4WJ4HGHZ3QESF6/">[ceph-users] Re: Fixing BlueFS spillover (pacific 16.2.14)</a></p>
+</div>
+</section>
 </section>
 
 

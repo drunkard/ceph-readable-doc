@@ -1,3 +1,5 @@
+.. _radosgw-encryption:
+
 ======
  加密
 ======

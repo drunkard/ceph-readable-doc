@@ -149,8 +149,8 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Health Reports</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#how-to-get-reports">How to Get Reports</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#where-are-the-reports-generated">Where are the Reports Generated</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#aggregator-of-aggregators">Aggregator of Aggregators</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#ceph-mgr-a-delegate-aggregator">ceph-mgr -- A Delegate Aggregator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#monitor-aggregator-of-aggregators">Monitor: Aggregator of Aggregators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#manager-a-delegate-aggregator">Manager: a Delegate Aggregator</a></li>
 </ul>
 </li>
 </ul>
@@ -191,7 +191,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../rbd-layering/">RBD Layering</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../release-checklists/">Release checklists</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../release-process/">Ceph Release Process</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../seastore/">SeaStore</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../sepia/">Sepia 社区测试实验室</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../session_authentication/">Session Authentication for the Cephx Protocol</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../testing/">测试笔记</a></li>
@@ -259,57 +258,59 @@
 <h2>How to Get Reports<a class="headerlink" href="#how-to-get-reports" title="Permalink to this heading"></a></h2>
 <p>In general, there are two channels to retrieve the health reports:</p>
 <dl class="simple">
-<dt>ceph (CLI)</dt><dd><p>which sends <code class="docutils literal notranslate"><span class="pre">health</span></code> mon command for retrieving the health status of the cluster</p>
+<dt>ceph (CLI)</dt><dd><p>The <code class="docutils literal notranslate"><span class="pre">ceph</span></code> CLI command sends the <code class="docutils literal notranslate"><span class="pre">health</span></code> Monitor command for retrieving
+the health status of the cluster.</p>
 </dd>
-<dt>mgr module</dt><dd><p>which calls <code class="docutils literal notranslate"><span class="pre">mgr.get('health')</span></code> for the same report in the form of a JSON encoded string</p>
+<dt>Manager module</dt><dd><p>A Manager module calls the <code class="docutils literal notranslate"><span class="pre">mgr.get('health')</span></code> method for the same report
+in the form of a JSON encoded string.</p>
 </dd>
 </dl>
-<p>The following diagrams outline the involved parties and how the interact when the clients
-query for the reports:</p>
-</section>
+<p>The following diagrams outline the involved parties and how they interact when
+the clients query for the reports:</p>
+<img alt="../../_images/health_reports_sequence1.svg" src="../../_images/health_reports_sequence1.svg" /><img alt="../../_images/health_reports_sequence2.svg" src="../../_images/health_reports_sequence2.svg" /></section>
 <section id="where-are-the-reports-generated">
 <h2>Where are the Reports Generated<a class="headerlink" href="#where-are-the-reports-generated" title="Permalink to this heading"></a></h2>
-<section id="aggregator-of-aggregators">
-<h3>Aggregator of Aggregators<a class="headerlink" href="#aggregator-of-aggregators" title="Permalink to this heading"></a></h3>
-<p>Health reports are aggregated from multiple Paxos services:</p>
+<section id="monitor-aggregator-of-aggregators">
+<h3>Monitor: Aggregator of Aggregators<a class="headerlink" href="#monitor-aggregator-of-aggregators" title="Permalink to this heading"></a></h3>
+<p>Monitor aggregates health reports from multiple Paxos services:</p>
 <ul class="simple">
-<li><p>AuthMonitor</p></li>
-<li><p>HealthMonitor</p></li>
-<li><p>MDSMonitor</p></li>
-<li><p>MgrMonitor</p></li>
-<li><p>MgrStatMonitor</p></li>
-<li><p>MonmapMonitor</p></li>
-<li><p>OSDMonitor</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AuthMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">HealthMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MDSMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MgrMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MgrStatMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MonmapMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OSDMonitor</span></code></p></li>
 </ul>
-<p>When persisting the pending changes in their own domain, each of them identifies the
-health related issues and store them into the monstore with the prefix of <code class="docutils literal notranslate"><span class="pre">health</span></code>
-using the same transaction. For instance, <code class="docutils literal notranslate"><span class="pre">OSDMonitor</span></code> checks a pending new osdmap
-for possible issues, like down OSDs and missing scrub flag in a pool, and then stores
+<p>When each of the Paxos services persist the pending changes in their own domain,
+health-related issues are identified and stored into monstore with the prefix <code class="docutils literal notranslate"><span class="pre">health</span></code>
+using the same transaction. For instance:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">OSDMonitor</span></code> checks a pending osdmap for possible issues such as
+<code class="docutils literal notranslate"><span class="pre">down</span></code> OSDs and a missing scrub flag in a pool and then stores
 the encoded form of the health reports along with the new osdmap. These reports are
-later loaded and decoded, so they can be collected on demand. When it comes to
-<code class="docutils literal notranslate"><span class="pre">MDSMonitor</span></code>, it persists the health metrics in the beacon sent by the MDS daemons,
-and prepares health reports when storing the pending changes.</p>
-<p>So, if we want to add a new warning related to cephfs, probably the best place to
+later loaded and decoded, so they can be collected on demand.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MDSMonitor</span></code> persists the health metrics contained in the beacon sent by the MDS daemons
+and prepares health reports when storing the pending changes.</p></li>
+</ul>
+<img alt="../../_images/health_reports_sequence3.svg" src="../../_images/health_reports_sequence3.svg" /><p>To add a new warning related to CephFS, for example, a good place to
 start is <code class="docutils literal notranslate"><span class="pre">MDSMonitor::encode_pending()</span></code>, where health reports are collected from
 the latest <code class="docutils literal notranslate"><span class="pre">FSMap</span></code> and the health metrics reported by MDS daemons.</p>
-<p>But it’s noteworthy that <code class="docutils literal notranslate"><span class="pre">MgrStatMonitor</span></code> does <em>not</em> prepare the reports by itself,
-it just stores whatever the health reports received from mgr!</p>
+<p>It is noteworthy that <code class="docutils literal notranslate"><span class="pre">MgrStatMonitor</span></code> does not prepare health reports. It
+receives aggregated reports from the Manager and then persists them to monstore.</p>
 </section>
-<section id="ceph-mgr-a-delegate-aggregator">
-<h3>ceph-mgr -- A Delegate Aggregator<a class="headerlink" href="#ceph-mgr-a-delegate-aggregator" title="Permalink to this heading"></a></h3>
-<p>In Ceph, mgr is created to share the burden of monitor, which is used to establish
-the consensus of information which is critical to keep the cluster function.
-Apparently, osdmap, mdsmap and monmap fall into this category. But what about the
-aggregated statistics of the cluster? They are crucial for the administrator to
-understand the status of the cluster, but they might not be that important to keep
-the cluster running. To address this scalability issue,  we offloaded the work of
-collecting and aggregating the metrics to mgr.</p>
-<p>Now, mgr is responsible for receiving and processing the <code class="docutils literal notranslate"><span class="pre">MPGStats</span></code> messages from
-OSDs. And we also developed a protocol allowing a daemon to periodically report its
-metrics and status to mgr using <code class="docutils literal notranslate"><span class="pre">MMgrReport</span></code>. On the mgr side, it periodically sends
-an aggregated report to the <code class="docutils literal notranslate"><span class="pre">MgrStatMonitor</span></code> service on mon. As explained earlier,
-this service just persists the health reports in the aggregated report to the monstore.</p>
-</section>
+<section id="manager-a-delegate-aggregator">
+<h3>Manager: a Delegate Aggregator<a class="headerlink" href="#manager-a-delegate-aggregator" title="Permalink to this heading"></a></h3>
+<p>Monitor establishes consensus information including osdmap, mdsmap and monmap
+which is critical for cluster functioning. Aggregated statistics of the cluster
+are crucial for the administrator to understand the status of the cluster but
+they are not critical for cluster functioning. For scalability reasons they are
+offloaded to Manager which collects and aggregates the metrics.</p>
+<p>Manager receives and processes <code class="docutils literal notranslate"><span class="pre">MPGStats</span></code> messages from OSDs. Daemons also
+report metrics and status periodically to Manager using <code class="docutils literal notranslate"><span class="pre">MMgrReport</span></code>. An
+aggregated report is then sent periodically to the Monitor <code class="docutils literal notranslate"><span class="pre">MgrStatMonitor</span></code>
+service which persists the data to monstore.</p>
+<img alt="../../_images/health_reports_sequence4.svg" src="../../_images/health_reports_sequence4.svg" /></section>
 </section>
 </section>
 

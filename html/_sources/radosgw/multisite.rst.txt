@@ -30,7 +30,7 @@
 从 Kraken 版起， Ceph 逐步能够支持好几种对象网关的多站配置方案：
 
 - **多域（ Multi-zone ）：** “多域”配置具有复杂的拓扑结构。
-  一套多域配置由一个域组和多个域组成。每个域由一或多个 `ceph-radosgw` 例程组成，
+  一套多域配置由一个域组和多个域组成。每个域由一或多个 ``ceph-radosgw`` 例程组成，
   **每个域都由它自己的 Ceph 存储集群支撑。**
 
   一个域组内存在多个域是为了让这个域组具备灾难恢复能力，
@@ -828,8 +828,7 @@ Ceph 集群是容器化的。如果用了 ``cephadm`` 命令并拥有一个容�
 
       systemctl restart ceph-radosgw@rgw.`hostname -s`
 
-完成这一步以后，可以继续\
-`配置一个副域 <#configure-secondary-zones>`_ ，
+完成这一步以后，可以继续 :ref:`secondary-zone-label`
 并在主域组中创建第二个域。
 
 
@@ -1538,8 +1537,7 @@ realm 并非 period 的一部分，所以，对 realm 的重命名只在本地�
 
 配置域时需指定一系列 Ceph 对象网关例程的存储池，\
 考虑到一致性，我们建议用域的名字作为存储池前缀。\
-存储池如何配置见\
-`存储池 <http://docs.ceph.com/en/latest/rados/operations/pools/#pools>`__ 。
+存储池如何配置见 :ref:`rados_pools` 。
 
 要配置域，需创建一个包含存储池的 JSON 对象，并存入一个文件
 （如 ``zone.json`` ），然后执行下列命令，把 ``{zone-name}`` 替换为域的名字：
@@ -1577,10 +1575,9 @@ realm 并非 period 的一部分，所以，对 realm 的重命名只在本地�
 ------------
 .. Zonegroup and Zone Settings
 
-配置默认的域组和域时，存储池名字里包含域的名字，
-例如：
+配置默认的域组和域时，存储池名字里包含域的名字，例如： ::
 
--  ``default.rgw.control``
+    ``default.rgw.control``
 
 要更改默认值，把下列选项写入 Ceph 配置文件里 \
 ``[client.radosgw.{instance-name}]`` 例程配置段下面。
@@ -1599,8 +1596,3 @@ realm 并非 period 的一部分，所以，对 realm 的重命名只在本地�
 | ``rgw_default_zone_group_info_oid`` | 用于存储默认域组的 OID 。    | String  | ``default.zonegroup`` |
 |                                     | 我们不建更改此选项。         |         |                       |
 +-------------------------------------+------------------------------+---------+-----------------------+
-
-
-
-.. _`存储池`: ../pools
-.. _`同步策略配置`: ../multisite-sync-policy

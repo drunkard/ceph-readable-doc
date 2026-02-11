@@ -1,192 +1,192 @@
 .. _fscrypt:
 
-Fscrypt Encryption on CephFS
-============================
+CephFS 上的 Fscrypt 加密
+========================
+.. Fscrypt Encryption on CephFS
 
-Fscrypt is an encryption implementation at the file system level. This file
-system encryption allows for encrypting on a per-directory level. This allows
-for file systems to have encrypted and regular non-encrypted portions. Fscrypt
-encryption encrypts file names and data contents.
+Fscrypt 是一种文件系统级的加密实现。这种文件系统加密允许在单个目录的级别上\
+进行加密。这样文件系统就可以同时包含加密部分和常规的非加密部分。
+Fscrypt 加密会加密文件名和数据内容。
 
-How Fscrypt Encryption Works
-----------------------------
 
-Encryption Keys
-~~~~~~~~~~~~~~~
+Fscrypt 如何加密
+----------------
+.. How Fscrypt Encryption Works
 
-Each fscrypt tree has a master encryption key. This master key will provide the
-"secret" that is needed to encrypt directories. This key can be up to 256 bits
-in length.
-
-Policies
+加密密钥
 ~~~~~~~~
+.. Encryption Keys
 
-An fscrypt root is assigned to an encryption policy. This policy contains items such
-as which encryption cipher to use and a master key id. This tells the client how
-to encrypt/decrypt and to validate a given master key id to the encrypted inode.
+每个 fscrypt 树都有一个主加密密钥。这个主密钥将提供加密目录所需的“密钥”。
+这个密钥的长度最多可达 256 位。
 
-Encryption happens completely on the client side. The MDS and OSD are not aware
-of encryption policies or master keys. There has been minimal change to those
-server components. They continue for the most part to store file names and data
-contents (which in this case happen to be encrypted).
+策略
+~~~~
+.. Policies
 
-Access Semantics
-~~~~~~~~~~~~~~~~
+fscrypt 根目录会被分配一个加密策略。
+该策略包含诸如使用哪种加密密码和主密钥 ID 等项。
+这告诉客户端如何加密/解密，以及如何验证指定主密钥 ID 与加密 inode 的对应关系。
 
-There are semantics that allow different access depending on if the client has
-the master key present for a directory or not.
+加密完全在客户端进行。 MDS 和 OSD 并不知晓加密策略或主密钥，
+这些服务器组件的改动极小，它们的大部分工作仍然是存储文件名和数据内容
+（在这里，只是这些内容恰好是加密过的）。
 
-With the key
+存取语义
+~~~~~~~~
+.. Access Semantics
 
-* You can access the filesystem as you normally would.
-* You can see filenames, data contents and link targets.
+有些语义允许根据客户端是否拥有某个目录的主密钥来决定不同的访问权限。
 
-Without the key
+有密钥的话
 
-* You do not see plaintext file names or link targets.
-* You cannot open a file.
-* You cannot access data contents in any form, not even the encrypted versions.
-* You cannot truncate a file.
-* You will see other metadata such as times, mode, ownership, and extended attributes.
+* 你可以像平时一样正常访问文件系统。
+* 你可以看到文件名、数据内容和链接目标。
 
-.. note::
-   You cannot backup or restore without the key.
+没有密钥的话
 
-Learning by Example
-~~~~~~~~~~~~~~~~~~~
+* 你看不到明文的文件名或者链接目标。
+* 你打不开文件。
+* 你不可能访问数据内容，设置是加密过的内容也看不到。
+* 你不可能删减一个文件。
+* 你能看到其他元数据，比如时间、权限模式、所有者、还有扩展属性。
 
-Consider a filesystem named ``cephfs``. A client has two master keys and two
-directories (``encdir1`` and ``encdira``). Each directory can have a different encryption
-master key. For example, ``encdir1`` can have ``key1`` and then ``encdira`` can use ``keyb``.
-Then a regular directory (``regdir``) will also be present. Please note that ``regdir`` is an
-unencrypted directory and shown for multi-tenant purposes. Figure 1 below
-illustrates this.
+.. note:: 没有密钥你不能做备份或恢复操作。
 
-When a policy is set on the directory, the directory must be empty. Then any subsequent
-directories, files or links created in the subtree will inherit policy information
-from its parent directory.
+通过实例学习
+~~~~~~~~~~~~
+.. Learning by Example
+
+比如有一个名为 ``cephfs`` 的文件系统，有个客户端有两个主密钥和两个目录
+（ ``encdir1`` 和 ``encdira`` ），每个目录都有不同的加密主密钥；例如，
+``encdir1`` 的主密钥是 ``key1`` ，且 ``encdira`` 的是 ``keyb`` 。
+还有一个是普通目录 ``regdir`` 。请注意， ``regdir`` 是个未加密的目录，
+会在多租户环境下显示。如下图 1 所示。
+
+在目录上设置策略时，此目录必须为空。那么，在该子树中创建的任何目录、
+文件或链接都将继承其父目录的策略信息。
 
 .. figure:: cephfs_fscrypt_overview.svg
 
-   Figure 1
+   图 1
 
-Key Management
---------------
 
-Each client has a unique view of the filesystem and the fscrypt tree. For this
-example please refer to Figure 2 below. There are three clients, the first two
-have a newer version of the CephFS client that includes the fscrypt feature
-and the third does not. The key management of the keys are on a per-client basis.
-What one client does pertaining to fscrypt the other is not aware of. Let's take
-a closer look to see the nuances in detail.
+密钥管理
+--------
+.. Key Management
 
-The first client, Client 1, has the master key present and is able to view the
-encrypted tree transparently, this is the unlocked mode.
+每个客户端都有个独一无二的文件系统视图和 fscrypt 树视图。在此例中，
+请参阅下图 2 。这里有三个客户端，前两个客户端使用的是支持 fscrypt 功能的
+新版 CephFS 客户端，而第三个客户端则不支持。密钥管理是以单个客户端为准的。
+一个客户端与 fscrypt 的关系和其他客户端并无瓜葛。
+让我们仔细看看其中的细节差异。
 
-The second, Client 2, does not have the master key and does not have full
-functionality, this is the locked mode. During locked mode, users cannot view
-plaintext filenames or data contents. When a user lists the directory contents, it
-will see a hashed version of the encrypted file name. Then when an ``open()`` occurs,
-an error will be returned and operation will be denied. Things such as file
-sizes, mode, timestamps and other inode metadata will be stored plaintext and
-are available in this mode.
+第一个客户端（ Client 1 ）拥有主密钥，能够透明地查看加密树，这是未加锁模式。
 
-Finally, Client 3, is using an older version of CephFS client and does not have
-fscrypt feature present. In this mode, users have the same view as before, but
-are able to do some data operations to encrypted files. This mode is not
-recommend and not supported.
+第二个， Client 2 ，他没有主密钥，功能也不完整，即处于锁定模式。
+在锁定模式下，用户无法查看明文文件名或数据内容。当用户罗列目录内容时，
+只会看到加密文件名的哈希数值。然后，当做 ``open()`` 操作时，
+系统会返回错误，并拒绝执行该操作。
+文件大小、权限模式、时间戳和其他索引节点元数据\
+会以明文存储，并且在此模式下可用。
+
+最后， Client 3 使用的是较旧版本的 CephFS 客户端，且不具备 fscrypt 功能。
+在此模式下，用户看到的视图与之前相同，
+但可以对加密文件执行一些数据操作。
+此模式并不推荐，也不受支持。
 
 .. figure:: cephfs_fscrypt_multiclient.svg
 
-   Figure 2
+   图 2
 
-CephFS Support
+
+CephFS 支持情况
+---------------
+.. CephFS Support
+
+CephFS 中存在两种 fscrypt 的实现方式。 CephFS 内核客户端支持 fscrypt 。这种实现方式扩展了内核库中的现有功能，并利用了内核加密密钥环。
+
+其次，用户空间客户端支持“ceph-fuse”和“libcephfs”中的fscrypt。这两个版本旨在实现互操作性，但存在一些限制。
+
+
+用户空间局限性
 --------------
+.. Userspace Limitations
 
-There are two implementations of fscrypt within CephFS. It is supported in the
-CephFS kernel client. This implementation extends capabilities that exist within
-the kernel libraries and utilizes the kernel crypto keyring.
+要使用用户空间的 fscrypt ，需要一个自定义的 fscrypt 命令行界面（ CLI ）。
+这是因为内核中（ ``ceph-fuse`` 所用的）永久配置定义有误。
+相反，有一个作为 Ceph 项目一部分维护的 fscrypt 命令行工具。
+这个版本包含了配置和使用 fscrypt 所需的必要变更。
 
-Secondly, the userspace client supports fscrypt within ``ceph-fuse`` and ``libcephfs``.
-Both of these versions are meant to be interoperable, but with some limitations.
+这个版本位于： https://github.com/ceph/fscrypt/tree/wip-ceph-fuse
 
-Userspace Limitations
----------------------
+当前， fscrypt 用户空间支持部分加密算法，它们有：
 
-A custom fscrypt CLI will be needed to use userspace fscrypt. This is due to
-permanent configurations in the kernel (which ``ceph-fuse`` utilizes) that are incorrectly
-defined. Instead, there's a fscrypt command line utility that is maintained
-as a part of the Ceph project. This version includes necessary changes to configure
-and use fscrypt.
+- AES-256-XTS 用于内容加密
+- AES-256-CBC-CTS 用于文件名加密
 
-This version is available at: https://github.com/ceph/fscrypt/tree/wip-ceph-fuse
+在文件夹上设置策略时，其他所有加密算法都会被拒绝。
 
-Currently a subset of fscrypt ciphers are supported in user space.
-They are:
 
-- AES-256-XTS for contents
-- AES-256-CBC-CTS for filenames
+如何使用
+--------
+.. How to Use
 
-Any other ciphers used during setting a policy on a folder will be rejected.
-
-How to Use
-----------
-
-Setup system-wide encryption. This will initialize ``/etc/fscrypt.conf``
+配置系统级的加密。这将需要配置 ``/etc/fscrypt.conf`` 。
 
 .. prompt:: bash #
  
        fscrypt setup
 
-Setup mount-wide encryption. This has to be applied to the mount point for the
-filesystem. This will setup internal fscrypt CLI config files for managing and
-keeping track of encryption keys
+设置挂载点级的加密。这必须应用于文件系统的挂载点。
+这将设置内部 fscrypt CLI 配置文件，用于管理和跟踪加密密钥
 
 .. prompt:: bash #
 
        fscrypt setup <mount pt>
 
-To setup a dir to be encrypted (it must be empty)
+要配置一个目录的加密（它必须是空的）
 
 .. prompt:: bash #
 
        fscrypt encrypt <dir>
 
-To lock an encrypted dir
+给加密目录上锁：
 
 .. prompt:: bash #
 
        fscrypt lock <dir>
 
-To unlock an encrypted dir
+给加密目录解锁：
 
 .. prompt:: bash #
 
        fscrypt unlock <dir>
 
-To view status of a directory (it can be a regular or encrypted dir)
+查看一个目录的状态（可能是普通的或加密的目录）：
 
 .. prompt:: bash #
 
        fscrypt status <dir>
 
-Behavior of Master Key in Snapshots and Clones
-----------------------------------------------
 
-All snapshots and clones derived from an fscrypt directory will have their lock
-state tied together. This means that all derived datasets will be locked or
-unlocked at the same time.
+主密钥在快照和克隆品中的行为
+----------------------------
+.. Behavior of Master Key in Snapshots and Clones
 
-For example, consider:
+所有源自 fscrypt 目录的快照和克隆品的锁定状态将相互关联。
+这意味着所有派生的数据集将同时被锁定或解锁。
 
-#. Encrypted ``encdir1`` is unlocked.
-#. Snapshot of ``encdir1`` is created as ``encdir1_snap``.
-#. Clone of snapshot ``encdir1_snap`` is created as ``encdir1_snap_clone1``.
+例如，考虑以下情况：
 
-In this current state, ``encdir1``, ``encdir1_snap`` and ``encdir1_snap_clone1`` are unlocked
-and file names and data is accessible as expected in each state. If you perform a
-lock on any of the three, all three will become locked.
+#. 加密的 ``encdir1`` 已解锁。
+#. ``encdir1`` 的快照名为 ``encdir1_snap`` 。
+#. 快照 ``encdir1_snap`` 的克隆品是 ``encdir1_snap_clone1`` 。
+
+在当前状态下， ``encdir1`` 、 ``encdir1_snap`` 和 ``encdir1_snap_clone1``
+均已解锁，而且各个状态下的文件名和数据均可按预期访问。
+如果您对这三个中的任何一个进行锁定，则所有三个都将被锁定。
 
 .. note::
 
-       Snapshot names are not encrypted.
+   快照名是未加密的。

@@ -374,7 +374,7 @@ failures overlap.
 ----------------------
 .. Erasure-coded pools and cache tiering
 
-.. note:: Cache tiering is deprecated in Reef.
+.. note:: 分级缓存在 Reef 版已经废弃。我们强烈建议别再部署新的分级缓存，并把现有部署删掉。
 
 纠删码存储池与副本存储池相比需要的计算资源更多，而且还缺少一些\
 功能，像 omap 。要消除这些局限性，可以在纠删码存储池前加一个\

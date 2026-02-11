@@ -199,6 +199,14 @@
 <p>尝试修复前，非常有必要理解清楚文件系统的问题到底是什么。</p>
 <p>如果你没有专业的技术支持，可以在 ceph-users 邮件列表或 #ceph IRC 频道咨询。</p>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>在 Ceph 文件系统上用元数据修复工具操作之前，
+该文件系统必须处于离线状态。如果在文件系统处于在线状态时调用这些工具，
+它们将发出警告。如果有任何一个恢复步骤未能成功完成，
+<strong>决不要</strong>继续运行任何其他恢复步骤。如果任何恢复步骤失败，
+请通过邮件列表、 IRC 频道和 Slack 频道向专家寻求帮助。</p>
+</div>
 <section id="id2">
 <h2>导出日志<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
 <p>尝试危险的操作前，先备份个日志副本，执行下列命令：</p>
@@ -207,13 +215,18 @@ span.prompt1:before {
   content: "# ";
 }
 </style><span class="prompt1">cephfs-journal-tool<span class="w"> </span>journal<span class="w"> </span><span class="nb">export</span><span class="w"> </span>backup.bin</span>
+</pre></div></div><p>如果恢复过程未按预期进行，备份的日志将派上用场。
+通过从备份的日志导入，
+可以把 MDS 日志恢复到它最初的状态：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-journal-tool<span class="w"> </span>journal<span class="w"> </span>import<span class="w"> </span>backup.bin</span>
 </pre></div></div></section>
 <section id="dentry">
 <h2>从日志中恢复 dentry<a class="headerlink" href="#dentry" title="Permalink to this heading"></a></h2>
 <p>如果日志损坏、或因其它原因导致 MDS 不能重放它，
 可以这样尝试恢复文件元数据，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-journal-tool<span class="w"> </span>event<span class="w"> </span>recover_dentries<span class="w"> </span>summary</span>
-</pre></div></div><p>此命令默认会操作 rank <code class="docutils literal notranslate"><span class="pre">0</span></code> 的 MDS ，给 <code class="docutils literal notranslate"><span class="pre">cephfs-journal-tool</span></code> 命令加选项 <code class="docutils literal notranslate"><span class="pre">--rank=&lt;n&gt;</span></code> 来操作其它 rank 。</p>
+</pre></div></div><p>此命令默认会操作 rank <code class="docutils literal notranslate"><span class="pre">0</span></code> 的 MDS ，给 <code class="docutils literal notranslate"><span class="pre">cephfs-journal-tool</span></code> 命令加选项 <code class="docutils literal notranslate"><span class="pre">--rank=&lt;n&gt;</span></code> 来操作其它 rank ，
+或者加 <code class="docutils literal notranslate"><span class="pre">--rank=all</span></code> 来操作所有 MDS rank 。</p>
 <p>此命令会把日志中所有可恢复的 inode/dentry 写入后端存储，
 但是，仅限于这些 inode/dentry 的版本号高于后端存储中已有内容的版本时才行。
 日志中丢失或损坏的部分会被跳过。</p>
@@ -239,12 +252,28 @@ span.prompt1:before {
 <p class="admonition-title">Warning</p>
 <p>重置日志<em>会</em>导致元数据丢失，除非你已经用其它方法
 （如 <code class="docutils literal notranslate"><span class="pre">recover_dentries</span></code> ）提取过了。
-此操作很可能会在数据存储池中留下一些孤儿对象，
-并导致已写过的索引节点被重分配，以致权限规则被破坏。</p>
+重置日志很可能会在数据存储池中留下一些孤儿对象，
+并导致已写过的索引节点被重分配，进而导致文件系统产生故障。</p>
 </div>
 </section>
 <section id="mds">
 <h2>擦除 MDS 表<a class="headerlink" href="#mds" title="Permalink to this heading"></a></h2>
+<p>在恢复过程中，并非每张 MDS 表都必须重置。
+如果对应的 RADOS 对象缺失（例如，由于某些 PG 丢失）
+或者表与 RADOS 后端存储的元数据不一致，
+就需要重置 MDS 表。要检查表对象是否缺失，
+执行下列命令：</p>
+<p>Session 表：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rados<span class="w"> </span>-p<span class="w"> </span>&lt;metadata-pool&gt;<span class="w"> </span>stat<span class="w"> </span>mds0_sessionmap</span>
+</pre></div></div><p>Inode 表:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rados<span class="w"> </span>-p<span class="w"> </span>&lt;metadata-pool&gt;<span class="w"> </span>stat<span class="w"> </span>mds0_inotable</span>
+</pre></div></div><p>Snap 表：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rados<span class="w"> </span>-p<span class="w"> </span>&lt;metadata-pool&gt;<span class="w"> </span>stat<span class="w"> </span>mds_snaptable</span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">sessionmap</span></code> 和 <code class="docutils literal notranslate"><span class="pre">inotable</span></code> 对象是和 MDS rank 对应的
+（对象名里包含了 rank 号 - mds0_inotable 、 mds1_inotable 等等）。</p>
+</div>
 <p>重置日志后，系统状态可能和 MDS 的几张表（ InoTables 、
 SessionMap 、 SnapServer ）的内容变得不一致。</p>
 <p>要重置 SessionMap （抹掉所有会话），用命令：</p>

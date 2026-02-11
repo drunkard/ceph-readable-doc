@@ -5,10 +5,17 @@
 Configuring Ceph with LTTng
 ===========================
 
-Use -DWITH_LTTNG option (default: ON)::
+if you compile code, please use -DWITH_LTTNG option (default: ON)::
 
   ./do_cmake -DWITH_LTTNG=ON
 
+If your Ceph deployment is package-based (YUM, DNF, APT) vs containerized, install the required software packages according to the module which you want to track， otherwise, it may cause a coredump due to missing ``*tp.solibrary`` files::
+
+  librbd-devel    
+  librgw-devel    
+  librados-devel  
+
+  
 Config option for tracing must be set to true in ceph.conf.
 Following options are currently available::
 
@@ -55,7 +62,7 @@ Create tracing session, enable tracepoints and start trace::
   lttng enable-event --userspace osd:*
   lttng start
 
-Perform some ceph operatin::
+Perform some Ceph operation::
 
   rados bench -p ec 5 write
 
@@ -71,6 +78,9 @@ Destroy tracing session::
 =========================
  Tracing Ceph With Blkin
 =========================
+
+.. deprecated:: This feature was deprecated in the Squid release and will
+   be removed in a later release.
 
 Ceph can use Blkin, a library created by Marios Kogias and others,
 which enables tracking a specific request from the time it enters

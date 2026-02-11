@@ -1,3 +1,5 @@
+.. _radosgw-role:
+
 ======
  角色
 ======
@@ -9,6 +11,7 @@
 访问权限授权给用户、给应用程序、给没权限访问特定 S3 资源的服务。
 
 下面的 ``radosgw-admin`` 命令可以用来创建、删除或者更新角色，及其相关联的权限。
+
 
 新建一个角色
 ------------
@@ -51,6 +54,7 @@
     "assume_role_policy_document": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/TESTER\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
   }
 
+
 删除一角色
 ----------
 .. Delete a Role
@@ -75,6 +79,7 @@
     radosgw-admin role delete --role-name=S3Access1
 
 注意：在没有捆绑任何权限策略的时候才能删除此角色。
+
 
 查看一角色
 ----------

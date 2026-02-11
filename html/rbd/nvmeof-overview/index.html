@@ -45,7 +45,7 @@
     
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
-    <link rel="next" title="NVME-oF Gateway Requirements" href="../nvmeof-requirements/" />
+    <link rel="next" title="NVMe-oF Gateway Requirements" href="../nvmeof-requirements/" />
     <link rel="prev" title="RBD on Windows" href="../rbd-windows/" /> 
 </head>
 
@@ -119,7 +119,10 @@
 <li class="toctree-l3"><a class="reference internal" href="../rbd-cloudstack/">CloudStack</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../iscsi-overview/">LIO iSCSI Gateway</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../rbd-windows/">Windows</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">NVMe-oF 网关</a><ul>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Ceph NVMe-oF Gateway</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#high-availability-with-nvme-of-gateway-group">High Availability with NVMe-oF gateway group</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scaling-out-with-nvme-of-gateway">Scaling-out with NVMe-oF gateway</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nvme-of-gateway-discovery">NVMe-oF gateway Discovery</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../nvmeof-requirements/">Requirements</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../nvmeof-target-configure/">Configuring the NVME-oF Target</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../nvmeof-initiators/">Configuring the NVMe-oF Initiators</a></li>
@@ -188,18 +191,34 @@
   
   <section id="ceph-nvme-of-gateway">
 <span id="ceph-nvmeof"></span><h1>Ceph NVMe-oF Gateway<a class="headerlink" href="#ceph-nvme-of-gateway" title="Permalink to this heading"></a></h1>
-<p>The NVMe-oF Gateway presents an NVMe-oF target that exports
-RADOS Block Device (RBD) images as NVMe namespaces. The NVMe-oF protocol allows
-clients (initiators) to send NVMe commands to storage devices (targets) over a
-TCP/IP network, enabling clients without native Ceph client support to access
-Ceph block storage.</p>
-<p>Each NVMe-oF gateway consists of an <a class="reference external" href="https://spdk.io/">SPDK</a> NVMe-oF target
-with <code class="docutils literal notranslate"><span class="pre">bdev_rbd</span></code> and a control daemon. Ceph’s NVMe-oF gateway can be used to
-provision a fully integrated block-storage infrastructure with all the features
-and benefits of a conventional Storage Area Network (SAN).</p>
+<p>Storage administrators can install and configure an NVMe over Fabrics (NVMe-oF) gateways for a Storage Ceph cluster. With Ceph NVMe-oF gateways, you can effectively run a fully integrated block storage infrastructure with all features and benefits of a conventional Storage Area Network (SAN).</p>
+<p>The NVMe-oF gateway integrates Storage Ceph with the NVMe over TCP (NVMe/TCP) protocol to provide an NVMe/TCP target that exports RADOS Block Device (RBD) images. The NVMe/TCP protocol allows clients, which are known as initiators, to send NVMe-oF commands to storage devices, which are known as targets, over an Internet Protocol network. Initiators can be Linux clients, VMWare clients, or both. For VMWare clients, the NVMe/TCP volumes are shown as VMFS Datastore and for Linux clients, the NVMe/TCP volumes are shown as block devices.</p>
 <p class="ditaa">
 <img src="../../_images/ditaa-63052bd06221b1282e03c27d63ec0576f587467d.png"/>
 </p>
+</section>
+<section id="high-availability-with-nvme-of-gateway-group">
+<h1>High Availability with NVMe-oF gateway group<a class="headerlink" href="#high-availability-with-nvme-of-gateway-group" title="Permalink to this heading"></a></h1>
+<p>High Availability (HA) provides I/O and control path redundancies for the host initiators. High Availability is also sometimes referred to as failover and failback support. The redundancy that HA creates is critical to protect against one or more gateway failures. With HA, the host can continue the I/O with only the possibility of performance latency until the failed gateways are back and functioning correctly.</p>
+<p>NVMe-oF gateways are virtually grouped into gateway groups and the HA domain sits within the gateway group. An NVMe-oF gateway group currently supports eight gateways. Each NVMe-oF gateway in the gateway group can be used as a path to any of the subsystems or namespaces that are defined in that gateway group. HA is effective with two or more gateways in a gateway group.</p>
+<p>High Availability is enabled by default. To use High Availability, a minimum of two gateways and listeners must be defined for the subsystems on every GW.</p>
+<p>It is important to create redundancy between the host and the gateways. To create a fully redundant network connectivity, be sure that the host has two Ethernet ports that are connected to the gateways over a network with redundancy (for example, two network switches).</p>
+<p>The HA feature uses the Active/Standby approach for each namespace. Using Active/Standby means that at any point in time, only one of the NVMe-oF gateways in the group serve I/O from the host to a specific namespace. To properly use all NVMe-oF gateways, each namespace is assigned to a different load-balancing group. The number of load-balancing groups is equal to the number of NVMe-oF gateways in the gateway group.</p>
+<p>In case the one or more GWs in the group dies or cannot be seen by the Ceph NVMe-oF monitor, an automatic failover is triggered, and another GW in the group will assume reponsibilty to the load-balancing group of the failed GW(s). That means that there is no disruption to the IO, because another GW will continue serving these namespaces. If the failing GW(s) are showing up again, a failback is automatically triggered.</p>
+<p>The NVMe-oF initoator on the host, will also continue trying to connect a failing GW, for the amount of time that was specified in the connect-all command. The recommended amount is 1800 seconds.</p>
+</section>
+<section id="scaling-out-with-nvme-of-gateway">
+<h1>Scaling-out with NVMe-oF gateway<a class="headerlink" href="#scaling-out-with-nvme-of-gateway" title="Permalink to this heading"></a></h1>
+<p>The NVMe-oF gateway supports scale-out. NVMe-oF gateway scale-out supports:
+Up to four NVMe-oF gateway groups.
+Up to eight NVMe-oF gateways in a gateway group.
+Up to 128 NVMe-oF subsystems within a gateway group.
+Up to 32 hosts per NVMe-oF subsystem.
+1024 namespaces per gateway group.</p>
+</section>
+<section id="nvme-of-gateway-discovery">
+<h1>NVMe-oF gateway Discovery<a class="headerlink" href="#nvme-of-gateway-discovery" title="Permalink to this heading"></a></h1>
+<p>Ceph NVMe-oF gateways support Discovery. Each NVMe-oF gateway that runs in the Ceph cluster also runs a Discovery Controller. The Discovery Controller reports all of the Subsystems in the GW group.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../nvmeof-requirements/">Requirements</a></li>
@@ -222,7 +241,7 @@ and benefits of a conventional Storage Area Network (SAN).</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../rbd-windows/" class="btn btn-neutral float-left" title="RBD on Windows" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../nvmeof-requirements/" class="btn btn-neutral float-right" title="NVME-oF Gateway Requirements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../nvmeof-requirements/" class="btn btn-neutral float-right" title="NVMe-oF Gateway Requirements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

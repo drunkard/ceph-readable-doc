@@ -31,7 +31,7 @@ RBD
 
 For RBD, the primary goal is for either an OSD-internal agent or a
 cluster-external agent to be able to transparently shift portions
-of the consituent 4MB extents between a dedup pool and a hot base
+of the constituent 4MB extents between a dedup pool and a hot base
 pool.
 
 As such, RBD operations (including class operations and snapshots)
@@ -218,6 +218,8 @@ we may want to exploit.
 The dedup-tool needs to be updated to use ``LIST_SNAPS`` to discover
 clones as part of leak detection.
 
+.. _osd-make-writeable:
+
 An important question is how we deal with the fact that many clones
 will frequently have references to the same backing chunks at the same
 offset.  In particular, ``make_writeable`` will generally create a clone
@@ -229,7 +231,7 @@ refcounts on backing objects (or risk a reference to a dead object)
 Thus, we introduce a simple convention: consecutive clones which
 share a reference at the same offset share the same refcount.  This
 means that a write that invokes ``make_writeable`` may decrease refcounts,
-but not increase them.  This has some conquences for removing clones.
+but not increase them.  This has some consequences for removing clones.
 Consider the following sequence ::
 
   write foo [0, 1024)
@@ -288,40 +290,6 @@ This seems complicated, but it gets us two valuable properties:
 
 All clone operations will need to consider adjacent ``chunk_maps``
 when adding or removing references.
-
-Cache/Tiering
--------------
-
-There already exists a cache/tiering mechanism based on whiteouts.
-One goal here should ultimately be for this manifest machinery to
-provide a complete replacement.
-
-See ``cache-pool.rst``
-
-The manifest machinery already shares some code paths with the
-existing cache/tiering code, mainly ``stat_flush``.
-
-In no particular order, here's in incomplete list of things that need
-to be wired up to provide feature parity:
-
-* Online object access information: The osd already has pool configs
-  for maintaining bloom filters which provide estimates of access
-  recency for objects.  We probably need to modify this to permit
-  hitset maintenance for a normal pool -- there are already
-  ``CEPH_OSD_OP_PG_HITSET*`` interfaces for querying them.
-* Tiering agent: The osd already has a background tiering agent which
-  would need to be modified to instead flush and evict using
-  manifests.
-
-* Use exiting existing features regarding the cache flush policy such as
-  histset, age, ratio.
-  - hitset
-  - age, ratio, bytes
-
-* Add tiering-mode to ``manifest-tiering``
-  - Writeback
-  - Read-only
-
 
 Data Structures
 ===============

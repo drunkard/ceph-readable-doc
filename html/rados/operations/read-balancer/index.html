@@ -122,6 +122,7 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Operating the Read (Primary) Balancer</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#online-optimization">Online Optimization</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#offline-optimization">Offline Optimization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../balancer/">均衡器模块</a></li>
@@ -277,6 +278,56 @@ kicks in), you should consider rechecking the scores and rerunning the balancer 
 <p>To see some details about what the tool is doing, you can pass
 <code class="docutils literal notranslate"><span class="pre">--debug-osd</span> <span class="pre">10</span></code> to <code class="docutils literal notranslate"><span class="pre">osdmaptool</span></code>. To see even more details, pass
 <code class="docutils literal notranslate"><span class="pre">--debug-osd</span> <span class="pre">20</span></code> to <code class="docutils literal notranslate"><span class="pre">osdmaptool</span></code>.</p>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this heading"></a></h2>
+<section id="removing-pg-upmap-primary-mappings">
+<h3>Removing pg-upmap-primary mappings<a class="headerlink" href="#removing-pg-upmap-primary-mappings" title="Permalink to this heading"></a></h3>
+<p>For scenarios where you need to manually remove <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code> mappings, Ceph provides the following
+developer-level commands. These commands should be used with caution, as they directly modify
+primary PG mappings and can impact read performance (this excludes any data movement).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Users affected by <a class="reference external" href="https://tracker.ceph.com/issues/66867">#66867</a> or <a class="reference external" href="https://tracker.ceph.com/issues/61948">#61948</a>
+may find these commands useful when dealing with unexpected <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code> behavior.</p>
+</div>
+<p>To remove a specific <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code> mapping, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>rm-pg-upmap-primary<span class="w"> </span>&lt;pgid&gt;</span>
+</pre></div></div><p>If you need to clear <strong>all</strong> <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code> mappings in your cluster, you may use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>rm-pg-upmap-primary-all</span>
+</pre></div></div></section>
+<section id="unable-to-use-kernel-client">
+<h3>Unable to Use Kernel Client<a class="headerlink" href="#unable-to-use-kernel-client" title="Permalink to this heading"></a></h3>
+<p>If you are unable to use the kernel client to map RBD images or mount a filesystem while
+<code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code> mappings are in your cluster, this is because <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code>
+is not yet supported by the kernel client (as of 2025-09-08).</p>
+<p>Follow these steps to confirm this scenario:</p>
+<ol class="arabic simple">
+<li><p>Confirm that your cluster contains <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code> mappings:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;pg_upmap_primary&quot;</span></span>
+</pre></div></div><ol class="arabic simple" start="2">
+<li><p>Check for this error message in the kernel log:</p></li>
+</ol>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>dmesg<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail
+
+<span class="go">[73393.901029] libceph: mon2 (1)10.64.24.186:6789 feature set mismatch, my 2f018fb87aa4aafe &lt; server&#39;s 2f018fb8faa4aafe, missing 80000000</span>
+<span class="go">[73393.901037] libceph: mon2 (1)10.64.24.186:6789 missing required protocol features</span>
+</pre></div>
+</div>
+<p>Those details confirm that the cluster is using features that the kernel client doesn’t support.
+Until the kernel client supports <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code>, you must remove the mappings to successfully
+perform mounts. You may do so with the following commands:</p>
+<ol class="arabic simple">
+<li><p>If using the balancer module, change the mode back to one that does not use <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code>.
+This prevents additional mappings from being made:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>balancer<span class="w"> </span>mode<span class="w"> </span>upmap</span>
+</pre></div></div><ol class="arabic simple" start="2">
+<li><p>Remove all <code class="docutils literal notranslate"><span class="pre">pg-upmap-primary</span></code> mappings:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>rm-pg-upmap-primary-all</span>
+</pre></div></div></section>
 </section>
 </section>
 

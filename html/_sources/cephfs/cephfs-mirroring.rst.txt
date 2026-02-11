@@ -5,7 +5,7 @@ CephFS 快照镜像
 ===============
 .. CephFS Snapshot Mirroring
 
-CephFS 支持通过 `cephfs-mirror` 工具，把快照异步地复制到远程 CephFS 文件系统。
+CephFS 支持通过 ``cephfs-mirror`` 工具，把快照异步地复制到远程 CephFS 文件系统。
 快照的同步方式是镜像快照数据，
 然后创建一个与源快照同名（给远程文件系统上的指定目录）的远程快照。
 
@@ -22,7 +22,7 @@ CephFS 支持通过 `cephfs-mirror` 工具，把快照异步地复制到远程 C
 --------
 .. Creating Users
 
-首先，在主的/本地集群上给 `cephfs-mirror` 守护进程创建一个 Ceph 用户。
+首先，在主的/本地集群上给 ``cephfs-mirror`` 守护进程创建一个 Ceph 用户。
 此用户需要元数据存储池的写入能力，以创建用于监视/通知操作的
 RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
 
@@ -39,17 +39,18 @@ RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
 ----------------
 .. Starting Mirror Daemon
 
-镜像守护进程应该用 `systemctl(1)` 单元文件启动： ::
+镜像守护进程用 ``systemd`` 管理，即便如此，
+大多数情况下还是最好用 ``cephadm`` 接口： ::
 
   $ systemctl enable cephfs-mirror@mirror
   $ systemctl start cephfs-mirror@mirror
 
-`cephfs-mirror` 守护进程可以在前台运行，如下： ::
+``cephfs-mirror`` 守护进程可以在前台运行，如下： ::
 
   $ cephfs-mirror --id mirror --cluster site-a -f
 
 .. note:: 这里指定的用户是 `mirror` ，其创建方法在
-   :ref:`Creating Users<cephfs_mirroring_creating_users>` 说明。
+   :ref:`新建用户 <cephfs_mirroring_creating_users>` 说明。
 
 可以部署多个 ``cephfs-mirror`` 守护进程，以实现并行同步和高可用性。
 镜像守护进程用简单的 ``M/N`` 策略分担同步载荷，
@@ -67,7 +68,7 @@ RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
 
    ceph orch apply cephfs-mirror --placement=<placement-spec>
 
-例如，要在不同主机上部署 3 个 `cephfs-mirror` 守护进程，执行下列命令：
+例如，要在不同主机上部署 3 个 ``cephfs-mirror`` 守护进程，执行下列命令：
 
 .. prompt:: bash $
 
@@ -77,11 +78,11 @@ RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
 --------
 .. Interface
 
-`Mirroring` 模块（管理器插件）提供了管理目录快照镜像的接口。
+``mirroring`` 模块（管理器插件）提供了管理目录快照镜像的接口。
 这些接口（大多）是监视器命令的套壳，用于管理文件系统镜像，是建议使用的控制接口。
 
-镜像模块
---------
+mirroring 模块
+--------------
 .. Mirroring Module
 
 镜像模块负责将目录分配给镜像守护进程进行同步。
@@ -151,10 +152,10 @@ RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
 这个命令要想成功执行的话，远端集群的 Ceph 配置\
 和用户密钥环必须在主集群中能访问到。例如，
 如果在远程集群上创建了名为 ``client_mirror`` 的用户，
-该用户在名为 ``remote_fs`` 的远程文件系统上拥有
-``rwps`` 权限（参阅\ `创建用户`\ ），且远程集群名为 ``remote_ceph``
-（即主集群上的远程集群配置文件名是 ``remote_ceph.conf`` ），
-则运行以下命令，可以将远程文件系统添加成\
+该用户在名为 ``remote_fs`` 的远程文件系统上拥有 ``rwps`` 权限
+（参阅\ :ref:`创建用户 <cephfs_mirroring_creating_users>`\ ），
+且远程集群名为 ``remote_ceph`` （即主集群上的远程集群配置文件名是
+``remote_ceph.conf`` ），则运行以下命令，可以将远程文件系统添加成\
 主文件系统 ``primary_fs`` 的对等文件系统：
 
 .. prompt:: bash $
@@ -172,6 +173,8 @@ RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
 互联节点。
 
 .. note:: 当前只支持单个互联节点。
+   ``peer_add`` 命令已废弃，将来的版本会完全删掉，
+   现在用 ``peer_bootstrap`` 这个命令。
 
 要删除一个互联节点，执行下列命令：
 
@@ -235,7 +238,7 @@ RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
 ------------
 .. Bootstrap Peers
 
-添加互联节点（通过 `peer_add` ）时，要求在主集群（管理器主机和\
+添加互联节点（通过 ``peer_add`` ）时，要求在主集群（管理器主机和\
 运行镜像守护进程的主机）上能看到互联节点的集群配置和用户密钥环。
 这可以通过启动和导入一个互联节点的令牌来避免。
 互联节点的启动包括在互联集群上创建一个启动令牌： ::
@@ -247,8 +250,8 @@ RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
   $ ceph fs snapshot mirror peer_bootstrap create backup_fs client.mirror_remote site-remote
   {"token": "eyJmc2lkIjogIjBkZjE3MjE3LWRmY2QtNDAzMC05MDc5LTM2Nzk4NTVkNDJlZiIsICJmaWxlc3lzdGVtIjogImJhY2t1cF9mcyIsICJ1c2VyIjogImNsaWVudC5taXJyb3JfcGVlcl9ib290c3RyYXAiLCAic2l0ZV9uYW1lIjogInNpdGUtcmVtb3RlIiwgImtleSI6ICJBUUFhcDBCZ0xtRmpOeEFBVnNyZXozai9YYUV0T2UrbUJEZlJDZz09IiwgIm1vbl9ob3N0IjogIlt2MjoxOTIuMTY4LjAuNTo0MDkxOCx2MToxOTIuMTY4LjAuNTo0MDkxOV0ifQ=="}
 
-`site-name` 指的是用户定义的字符串，用于标识远程文件系统。在 `peer_add` 接口的\
-上下文中， `site-name` 就是 `remote_cluster_spec` 里传入的集群名（ `cluster_name` ）。
+``site-name`` 指的是用户定义的字符串，用于标识远程文件系统。在 ``peer_add`` 接口的\
+上下文中， ``site-name`` 就是 ``remote_cluster_spec`` 里传入的集群名（ ``cluster_name`` ）。
 
 在主集群里导入启动令牌，用命令： ::
 
@@ -273,7 +276,7 @@ RADOS 对象（索引对象），还需要数据存储池的读取能力： ::
 --------
 .. Mirroring Status
 
-CephFS 镜像模块提供了 `mirror daemon status` 接口，用于检查镜像守护进程的状态： ::
+CephFS 镜像模块提供了 ``mirror daemon status`` 接口，用于检查镜像守护进程的状态： ::
 
   $ ceph fs snapshot mirror daemon status
   [
@@ -319,7 +322,7 @@ CephFS 镜像守护进程提供用于查询镜像状态的管理员套接字命�
   }
 
 以 ``fs mirror status`` 为前缀的命令可查看镜像状态，适用于启用了镜像功能的文件系统。
-注意， `cephfs@360` 是按照 `filesystem-name@filesystem-id` 这个格式。
+注意， ``cephfs@360`` 是按照 ``filesystem-name@filesystem-id`` 这个格式。
 需要使用这种格式，是因为镜像守护进程会异步地收到有关文件系统镜像状态的通知
 （文件系统可以用同一名称删除和重新创建）。
 
@@ -342,12 +345,12 @@ CephFS 镜像守护进程提供用于查询镜像状态的管理员套接字命�
     }
   }
 
-上面命令输出中的 `Peers` 一段显示的是互联节点信息，包括唯一的互联节点标识
-（ UUID ）和镜像规范。删除现有互联节点时需要使用互联节点 ID （ peer-id ），
-在\ `镜像模块和接口`\ 小节说过了。
+上面命令输出中的 ``peers`` 一段显示的是互联节点信息，包括唯一的互联节点标识
+（ UUID ）和镜像规范。删除现有互联节点时需要指定互联节点 ID （ peer-id ），
+在\ `mirroring 模块`\ 小节说过了。
 
 以 ``fs mirror peer status`` 为前缀的命令能查看互联节点的同步状态。
-命令格式为 `filesystem-name@filesystem-id peer-uuid`::
+命令参数格式为 ``filesystem-name@filesystem-id peer-uuid``::
 
   $ ceph --admin-daemon /var/run/ceph/cephfs-mirror.asok fs mirror peer status cephfs@360 a2dc7784-e7a1-4723-b103-03ee8d8768f8
   {
@@ -366,9 +369,9 @@ CephFS 镜像守护进程提供用于查询镜像状态的管理员套接字命�
     }
   }
 
-当重启守护进程和/或把目录重新分配给另一个镜像守护进程时
-（假设部署了多个镜像守护进程），包括 `snaps_synced` 、 `snaps_deleted` 和
-`snaps_renamed` 在内的这些同步统计信息将被重置。
+当把一个目录重新分配给另一个镜像守护进程时（假设部署了多个镜像守护进程），
+包括 ``snaps_synced`` 、 ``snaps_deleted`` 和 ``snaps_renamed`` 在内的\
+这些同步统计信息在守护进程重启时将被重置。
 
 目录状态可以是以下之一： ::
 
@@ -376,8 +379,8 @@ CephFS 镜像守护进程提供用于查询镜像状态的管理员套接字命�
   - `syncing`: 此目录当前正在同步
   - `failed`: 此目录已达到最大连续失败数
 
-当现在正同步某个目录时，镜像守护进程会把它标记为 `syncing` ，并且
-`fs mirror peer status` 会在 `current_syncing_snap` 内显示正在同步的快照： ::
+当现在正同步某个目录时，镜像守护进程会把它标记为 ``syncing`` ，并且
+``fs mirror peer status`` 会在 ``current_syncing_snap`` 内显示正在同步的快照： ::
 
   $ ceph --admin-daemon /var/run/ceph/cephfs-mirror.asok fs mirror peer status cephfs@360 a2dc7784-e7a1-4723-b103-03ee8d8768f8
   {
@@ -400,13 +403,13 @@ CephFS 镜像守护进程提供用于查询镜像状态的管理员套接字命�
     }
   }
 
-同步完成后，镜像守护进程仍然把它标记为 `idle` 。
+同步完成后，镜像守护进程仍然把它标记为 ``idle`` 。
 
-当某个目录同步的连续失败次数达到设定值时，镜像守护进程会把它标记为 `failed` 。
+当某个目录同步的连续失败次数达到设定值时，镜像守护进程会把它标记为 ``failed`` 。
 稍后会重试同步这些目录。默认情况下，目录被标记为失败的连续失败次数由
-`cephfs_mirror_max_consecutive_failures_per_directory` 配置选项控制
-（默认值： 10 ），失败目录的重试间隔由
-`cephfs_mirror_retry_failed_directories_interval` 配置选项控制（默认值：60s）。
+``cephfs_mirror_max_consecutive_failures_per_directory`` 配置选项控制
+（默认值： ``10`` ），失败目录的重试间隔由
+``cephfs_mirror_retry_failed_directories_interval`` 配置选项控制（默认值： ``60s`` ）。
 
 例如，添加一个普通文件进行同步会导致失败状态： ::
 
@@ -437,7 +440,7 @@ CephFS 镜像守护进程提供用于查询镜像状态的管理员套接字命�
 系统允许用户添加不存在的目录进行同步。镜像守护进程会把此类目录标记为失败并重试
 （频率较低）。这个目录创建后，镜像守护进程会在同步成功后清除之前标记的失败状态。
 
-在远程文件系统的 .snap 目录中手动增加新快照或新目录，
+在远程文件系统的 ``.snap`` 目录中手动增加新快照或新目录，
 会导致配置的对应目录进入失败状态。在远程文件系统中操作： ::
 
   $ ceph fs subvolume snapshot create cephfs subvol1 snap2 group1
@@ -470,10 +473,13 @@ CephFS 镜像守护进程提供用于查询镜像状态的管理员套接字命�
 当远程文件系统删除快照或目录后，镜像守护进程将在成功地同步\
 以前积攒的待处理快照（如有的话）后清除 failed 状态。
 
+.. note:: 在远程文件系统上正在被镜像的目录配置 snap-schedule ，
+   会导致镜像守护进程报错，如 ``invalid metadata`` 。
+
 .. note:: 把远程文件系统当作只读的。 CephFS 本身没有什么必须要做的操作。
    但是， mds 能力配置正确的话，在远程文件系统上，用户就无法对目录拍快照。
 
-禁用镜像功能后，对应文件系统的 `fs mirror status` 命令就不会显示在命令帮助中。
+禁用镜像功能后，对应文件系统的 ``fs mirror status`` 命令就不会显示在命令帮助中。
 
 指标
 ----
@@ -561,8 +567,8 @@ CephFS 把镜像指标导出成了 :ref:`Labeled Perf Counters` ， OCP/ODF Dash
 .. Re-adding Peers
 
 给另一个集群的文件系统重新添加（重新分配）一个互联节点时，要确保所有\
-镜像守护进程都已停止向这个互联节点的同步。可以用 `fs mirror status` admin socket
-命令来检查（命令输出中应该不会显示 `Peer UUID` ）。而且，想要把这个互联节点\
+镜像守护进程都已停止向这个互联节点的同步。可以用 ``fs mirror status`` admin socket
+命令来检查（命令输出中应该不会显示 *Peer UUID* ）。而且，想要把这个互联节点\
 重新添加给另一个文件系统的话，建议先清除它上面已经同步的目录
 （尤其是新的主文件系统中可能存在的同名目录）。
 如果还是把互联节点重新添加到先前同步的同一个主文件系统，那就不需要清除。
