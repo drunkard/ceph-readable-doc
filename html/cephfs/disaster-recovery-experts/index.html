@@ -120,7 +120,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#mds">擦除 MDS 表</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id4">重置 MDS 运行图</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id5">元数据对象丢失的恢复</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6">用另一个元数据存储池进行恢复</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">已知的局限性和陷阱</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">用另一个元数据存储池进行恢复</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../troubleshooting/"> 故障排除</a></li>
@@ -261,8 +262,7 @@ span.prompt1:before {
 <p>在恢复过程中，并非每张 MDS 表都必须重置。
 如果对应的 RADOS 对象缺失（例如，由于某些 PG 丢失）
 或者表与 RADOS 后端存储的元数据不一致，
-就需要重置 MDS 表。要检查表对象是否缺失，
-执行下列命令：</p>
+就需要重置 MDS 表。要检查表对象是否缺失，执行下列命令：</p>
 <p>Session 表：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rados<span class="w"> </span>-p<span class="w"> </span>&lt;metadata-pool&gt;<span class="w"> </span>stat<span class="w"> </span>mds0_sessionmap</span>
 </pre></div></div><p>Inode 表:</p>
@@ -274,14 +274,31 @@ span.prompt1:before {
 <p><code class="docutils literal notranslate"><span class="pre">sessionmap</span></code> 和 <code class="docutils literal notranslate"><span class="pre">inotable</span></code> 对象是和 MDS rank 对应的
 （对象名里包含了 rank 号 - mds0_inotable 、 mds1_inotable 等等）。</p>
 </div>
-<p>重置日志后，系统状态可能和 MDS 的几张表（ InoTables 、
-SessionMap 、 SnapServer ）的内容变得不一致。</p>
-<p>要重置 SessionMap （抹掉所有会话），用命令：</p>
+<p>即使表对象存在，它也可能与 RADOS 后端存储的元数据不一致。
+然而，如果元数据事实上已经不一致或已损坏，
+在不将文件系统上线的情况下，很难检测到不一致。
+在类似情况下， MDS 会将自己标记为 <cite>down:damaged</cite> 。
+要重置单个的表，执行下列命令：</p>
+<p>Session 表：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-table-tool<span class="w"> </span><span class="m">0</span><span class="w"> </span>reset<span class="w"> </span>session</span>
+</pre></div></div><p>table:
+SnapServer ：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-table-tool<span class="w"> </span><span class="m">0</span><span class="w"> </span>reset<span class="w"> </span>snap</span>
+</pre></div></div><p>InoTable ：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-table-tool<span class="w"> </span><span class="m">0</span><span class="w"> </span>reset<span class="w"> </span>inode</span>
+</pre></div></div><p>上述命令会针对一个特定 MDS rank 上的表执行。
+要在状态为 <code class="docutils literal notranslate"><span class="pre">in</span></code> 的所有 MDS rank 的表中执行，
+把上述命令里的 MDS rank 号换成 <code class="docutils literal notranslate"><span class="pre">all</span></code> ，如下列命令所示：</p>
+<p>Session 表：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-table-tool<span class="w"> </span>all<span class="w"> </span>reset<span class="w"> </span>session</span>
-</pre></div></div><p>此命令会在状态为 <code class="docutils literal notranslate"><span class="pre">in</span></code> 的所有 MDS rank 的表中执行。
-如果只想在指定 rank 中执行，把 <code class="docutils literal notranslate"><span class="pre">all</span></code> 换成对应的 MDS rank 。</p>
-<p>在所有表中，会话表是最有可能需要重置的表，但是如果你知道你还需要重置其它表，
-那就把 <code class="docutils literal notranslate"><span class="pre">session</span></code> 换成 <code class="docutils literal notranslate"><span class="pre">snap</span></code> 或者 <code class="docutils literal notranslate"><span class="pre">inode</span></code> 。</p>
+</pre></div></div><p>SnapServer ：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-table-tool<span class="w"> </span>all<span class="w"> </span>reset<span class="w"> </span>snap</span>
+</pre></div></div><p>InoTable ：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-table-tool<span class="w"> </span>all<span class="w"> </span>reset<span class="w"> </span>inode</span>
+</pre></div></div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>session 表重置之后，需要重挂载或重启所有 CephFS 客户端。</p>
+</div>
 </section>
 <section id="id4">
 <h2>重置 MDS 运行图<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
@@ -300,31 +317,63 @@ SessionMap 、 SnapServer ）的内容变得不一致。</p>
 <section id="id5">
 <h2>元数据对象丢失的恢复<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h2>
 <p>取决于丢失或被篡改的是哪种对象，
-你得运行几个命令生成这些对象的默认版本。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>    <span class="c1"># 会话表</span>
-    <span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="mi">0</span> <span class="n">reset</span> <span class="n">session</span>
-    <span class="c1"># SnapServer 快照服务器</span>
-    <span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="mi">0</span> <span class="n">reset</span> <span class="n">snap</span>
-    <span class="c1"># InoTable 索引节点表</span>
-    <span class="n">cephfs</span><span class="o">-</span><span class="n">table</span><span class="o">-</span><span class="n">tool</span> <span class="mi">0</span> <span class="n">reset</span> <span class="n">inode</span>
-    <span class="c1"># Journal 日志</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">journal</span><span class="o">-</span><span class="n">tool</span> <span class="o">--</span><span class="n">rank</span><span class="o">=&lt;</span><span class="n">fs_name</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">0</span> <span class="n">journal</span> <span class="n">reset</span> <span class="o">--</span><span class="n">yes</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">really</span><span class="o">-</span><span class="n">mean</span><span class="o">-</span><span class="n">it</span>
-    <span class="c1"># 根索引节点（ / 和所有 MDS 目录）</span>
-    <span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">init</span>
-</pre></div>
+你也许得额外运行几个命令生成这些对象的默认版本。</p>
+<p>注意，数据扫描工具可能耗时巨长。要想看到操作进度，启用 cli_api 工具。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>mgr<span class="w"> </span>module<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>cli_api</span>
+</pre></div></div><p>用 ceph status 跟踪进度，它会显示长时间任务的预计完成时间。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>-s</span>
+</pre></div></div><p>如果启用了 <code class="docutils literal notranslate"><span class="pre">cli_api</span></code> 模块，数据扫描工具
+（ <code class="docutils literal notranslate"><span class="pre">scan_extents</span></code>, <code class="docutils literal notranslate"><span class="pre">scan_inodes</span></code>, and <code class="docutils literal notranslate"><span class="pre">scan_links</span></code> ）
+就会自动把它们的进度报告给 Ceph 管理器。进度更新包括：</p>
+<ul class="simple">
+<li><p>处理过的对象数和总对象数</p></li>
+<li><p>已完成的百分比</p></li>
+<li><p>预计完成时间（ ETA ）</p></li>
+<li><p>平均处理速率</p></li>
+</ul>
+<p>大概每 5 秒更新一次进度，并出现在 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">-s</span></code> 输出的 Progress 段内。
+每次扫描操作都会创建一个唯一的进度事件，
+用操作名和进程 ID 标识。</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">ceph</span></code> 命令必须位于系统 PATH 之内，
+进度更新才能正常运转。
+如果进度更新没出现在 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">-s</span></code> 里，检查一下：</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cli_api</span></code> 是否启用</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ceph</span></code> 命令位于 PATH 变量之内</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CEPH_CONF</span></code> 环境变量（如果设置过）
+指向一个正确的配置文件</p></li>
+</ul>
 </div>
+<p>如果系统无法与 Ceph 管理器通信或必需模块不可用，
+进度更新将自动禁用。
+即使管理器更新被禁用，
+控制台输出仍能继续显示本地进度信息。</p>
+<p>如果根节点或 MDS 目录（ <code class="docutils literal notranslate"><span class="pre">~mdsdir</span></code> ）丢失或损坏，执行下列命令：</p>
+<p>根节点（ “/” 和 MDS 目录）：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-data-scan<span class="w"> </span>init</span>
+</pre></div></div><p>运行此命令通常是安全的，因为如果根索引节点和
+mdsdir 索引节点已存在，此命令会跳过生成这些节点。
+但如果这些索引节点已损坏，则必须重新生成。
+可以通过尝试使文件系统重新上线来鉴定损坏情况
+（此时， MDS 将转变为 <code class="docutils literal notranslate"><span class="pre">down:damaged</span></code> 状态，并在 [ MDS 日志中]
+显示相应的日志消息，指出在加载根索引节点或 mdsdir 索引节点时可能存在的问题）。
+另一种方法是用 <code class="docutils literal notranslate"><span class="pre">ceph-dencoder</span></code> 工具来解码索引节点。
+此步骤稍微复杂一些。</p>
 <p>最后，根据数据存储池中的内容重新生成丢失文件和目录的元数据对象。
 这是个三阶段过程：</p>
-<ol class="arabic simple">
-<li><p>扫描<em>所有</em>对象以计算索引节点的尺寸和 mtime 元数据；</p></li>
-<li><p>从每个文件的第一个对象扫描出元数据并注入元数据存储池。</p></li>
-<li><p>检查 inode 的链接情况并修复发现的错误。</p></li>
+<ol class="arabic">
+<li><p>扫描<em>所有</em>对象以计算索引节点的尺寸和 mtime 元数据；</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-data-scan<span class="w"> </span>scan_extents<span class="w"> </span><span class="o">[</span>&lt;data<span class="w"> </span>pool&gt;<span class="w"> </span><span class="o">[</span>&lt;extra<span class="w"> </span>data<span class="w"> </span>pool&gt;<span class="w"> </span>...<span class="o">]]</span></span>
+</pre></div></div></li>
+<li><p>从每个文件的第一个对象扫描出元数据并注入元数据存储池。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-data-scan<span class="w"> </span>scan_inodes<span class="w"> </span><span class="o">[</span>&lt;data<span class="w"> </span>pool&gt;<span class="o">]</span></span>
+</pre></div></div></li>
+<li><p>检查 inode 的链接情况并修复发现的错误。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-data-scan<span class="w"> </span>scan_links</span>
+</pre></div></div></li>
 </ol>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_extents</span> <span class="p">[</span><span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">&lt;</span><span class="n">extra</span> <span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span> <span class="o">...</span><span class="p">]]</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_inodes</span> <span class="p">[</span><span class="o">&lt;</span><span class="n">data</span> <span class="n">pool</span><span class="o">&gt;</span><span class="p">]</span>
-<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">scan_links</span>
-</pre></div>
-</div>
 <p>如果数据存储池内的文件很多、或者有很大的文件， <code class="docutils literal notranslate"><span class="pre">scan_extents</span></code> 和
 <code class="docutils literal notranslate"><span class="pre">scan_inodes</span></code> 命令可能得花费<em>很长时间</em>。</p>
 <p>要加快 <code class="docutils literal notranslate"><span class="pre">scan_extents</span></code> 或 <code class="docutils literal notranslate"><span class="pre">scan_inodes</span></code> 的处理进程，
@@ -355,7 +404,18 @@ SessionMap 、 SnapServer ）的内容变得不一致。</p>
 <p>元数据恢复完后，你可以清理掉恢复期间产生的辅助数据。
 执行下列命令运行清理操作：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">cephfs-data-scan<span class="w"> </span>cleanup<span class="w"> </span>&lt;data<span class="w"> </span>pool&gt;</span>
-</pre></div></div><div class="admonition note">
+</pre></div></div><p>清理阶段可以运行多个例程来加速执行：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Worker 0</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">cleanup</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">0</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span>
+<span class="c1"># Worker 1</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">cleanup</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">1</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span>
+<span class="c1"># Worker 2</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">cleanup</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">2</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span>
+<span class="c1"># Worker 3</span>
+<span class="n">cephfs</span><span class="o">-</span><span class="n">data</span><span class="o">-</span><span class="n">scan</span> <span class="n">cleanup</span> <span class="o">--</span><span class="n">worker_n</span> <span class="mi">3</span> <span class="o">--</span><span class="n">worker_m</span> <span class="mi">4</span>
+</pre></div>
+</div>
+<div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code class="docutils literal notranslate"><span class="pre">scan_extents</span></code> 、 <code class="docutils literal notranslate"><span class="pre">scan_inodes</span></code> 和 <code class="docutils literal notranslate"><span class="pre">cleanup</span></code> 命令的数据存储池参数是可选的，通常工具能够自动探测存储池。
 不过，你也可以覆盖它。
@@ -364,10 +424,38 @@ SessionMap 、 SnapServer ）的内容变得不一致。</p>
 </div>
 </section>
 <section id="id6">
-<h2>用另一个元数据存储池进行恢复<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h2>
+<h2>已知的局限性和陷阱<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h2>
+<p>灾难恢复过程可能既耗时又艰巨。
+必须严格按照上述详细步骤谨慎执行恢复操作，
+以确保任何步骤的失败都能清清楚楚地理解。
+你必须能绝对确定地判断是否可以安全地继续下一步。
+如果你确信自己能应对这些挑战，
+那么在尝试进行灾难恢复之前，请先研究以下限制和陷阱：</p>
+<ol class="arabic simple">
+<li><p>数据扫描命令无法提供其操作完成时间的预估。
+目前正在开发一项能够提供此类预估的功能。
+详情见 <a class="reference external" href="https://tracker.ceph.com/issues/63191">https://tracker.ceph.com/issues/63191</a> 。</p></li>
+<li><p>在恢复之后、 CephFS 客户端开始使用文件系统之前，
+执行一次文件系统清理非常有必要。</p></li>
+<li><p>一般来说，我们不建议在出现问题时更改任何与 MDS 相关的设置
+（例如 <code class="docutils literal notranslate"><span class="pre">max_mds</span></code> ）。</p></li>
+<li><p>目前，灾难恢复是一个手动过程。我们计划通过
+Disaster Recovery Super Tool （灾难恢复超级工具）实现恢复过程的自动化。
+详情见 <a class="reference external" href="https://tracker.ceph.com/issues/71804">https://tracker.ceph.com/issues/71804</a> 。</p></li>
+<li><p>一个众所周知的技巧（一些社区用户在用）是，
+当由于日志过长，导致 MDS 貌似卡在 <code class="docutils literal notranslate"><span class="pre">up_replay</span></code> 状态时，
+可以采用灾难恢复步骤（特别是 <code class="docutils literal notranslate"><span class="pre">recover_dentries</span></code> 步骤）。
+在 MDS 重放日志需要较长时间时，不要急于调用 <code class="docutils literal notranslate"><span class="pre">recover_dentries</span></code> ，
+而应该考虑按照 <a class="reference internal" href="../troubleshooting/#cephfs-dr-stuck-during-recovery"><span class="std std-ref">恢复期间卡住了</span></a>
+中详述的步骤试着加快日志重放速度。</p></li>
+</ol>
+</section>
+<section id="id7">
+<h2>用另一个元数据存储池进行恢复<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>这个方法尚未全面地测试过，下手时要格外小心。</p>
+<p>这个方法尚未广泛测试过。我们建议按照前述过程来恢复文件系统，
+除非你有更恰当的理由。这个步骤在下手时要格外小心。</p>
 </div>
 <p>如果一个在用的文件系统损坏了、且无法使用，
 可以创建一个新的元数据存储池、
@@ -455,8 +543,7 @@ SessionMap 、 SnapServer ）的内容变得不一致。</p>
 <p class="admonition-title">Note</p>
 <p>如果数据存储池也损坏了，有些文件可能没法恢复，
 因为与之相关的回溯信息丢失了。
-如果有数据对象丢失了
-（由于数据存储池内的归置组丢失之类的问题），
+如果有数据对象丢失了（由于数据存储池内的归置组丢失之类的问题），
 恢复的文件里在丢失数据的位置会有空洞。</p>
 </div>
 </li>

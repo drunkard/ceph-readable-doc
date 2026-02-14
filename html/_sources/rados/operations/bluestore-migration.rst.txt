@@ -7,29 +7,26 @@
 
 .. warning:: Filestore 在 Reef 版已经废弃了，且不再支持。请迁移到 BlueStore 。
 
-Each OSD must be formatted as either Filestore or BlueStore. However, a Ceph
-cluster can operate with a mixture of both Filestore OSDs and BlueStore OSDs.
-Because BlueStore is superior to Filestore in performance and robustness, and
-because Filestore is not supported by Ceph releases beginning with Reef, users
-deploying Filestore OSDs should transition to BlueStore. There are several
-strategies for making the transition to BlueStore.
+每个 OSD 都必须格式化成 Filestore 或 BlueStore 。然而，
+Ceph 集群可以同时靠 Filestore OSD 和 BlueStore OSD 的混合体运行。
+由于 BlueStore 在性能和稳健性方面优于 Filestore ，并且从 Reef 版本开始，
+Ceph 就不再支持 Filestore ，因此部署 Filestore OSD 的用户应迁移到 BlueStore 。
+迁移到 BlueStore 有几种策略。
 
-BlueStore is so different from Filestore that an individual OSD cannot be
-converted in place. Instead, the conversion process must use either (1) the
-cluster's normal replication and healing support, or (2) tools and strategies
-that copy OSD content from an old (Filestore) device to a new (BlueStore) one.
+BlueStore 与 Filestore 截然不同，因此单个 OSD 无法直接转换。
+相反，转换过程必须使用以下两种方法之一：
+(1) 利用集群的常规复制和修复功能，或
+(2) 用工具和策略将 OSD 内容从旧（ Filestore ）设备复制到新（ BlueStore ）设备。
 
 
 用 BlueStore 部署新 OSD
 =======================
 .. Deploying new OSDs with BlueStore
 
-Use BlueStore when deploying new OSDs (for example, when the cluster is
-expanded). Because this is the default behavior, no specific change is
-needed.
+在部署新的 OSD （例如，集群扩展时）时，要用 BlueStore 。
+由于这是默认行为，所以无需任何特殊更改。
 
-Similarly, use BlueStore for any OSDs that have been reprovisioned after
-a failed drive was replaced.
+同样，在更换故障驱动器后，重新配置 OSD 时也要用 BlueStore 。
 
 
 转换已有 OSD
@@ -40,43 +37,43 @@ a failed drive was replaced.
 -----------------------
 .. "Mark-``out``" replacement
 
-The simplest approach is to verify that the cluster is healthy and
-then follow these steps for each Filestore OSD in succession: mark the OSD
-``out``, wait for the data to replicate across the cluster, reprovision the OSD, 
-mark the OSD back ``in``, and wait for recovery to complete before proceeding
-to the next OSD. This approach is easy to automate, but it entails unnecessary
-data migration that carries costs in time and SSD wear.
+最简单的方法是先验证集群是否正常运行，
+然后依次对每个 Filestore OSD 执行以下步骤：
+把这个 OSD 标记为 ``out`` ，等待数据在集群中复制完成，
+重新配置这个 OSD ，再把这个 OSD 标记回 ``in`` ，
+并等待恢复完成，再继续处理下一个 OSD 。这种方法易于自动化，
+但会带来不必要的数据迁移，从而产生时间和 SSD 磨损方面的成本。
 
-#. Identify a Filestore OSD to replace::
+#. 找一个要替换掉 Filestore OSD::
 
      ID=<osd-id-number>
      DEVICE=<disk-device>
 
-   #. Determine whether a given OSD is Filestore or BlueStore:
+   #. 判断指定的 OSD 是 Filestore 还是 BlueStore ：
 
       .. prompt:: bash $
 
          ceph osd metadata $ID | grep osd_objectstore
 
-   #. Get a current count of Filestore and BlueStore OSDs:
+   #. 获取 Filestore 和 BlueStore OSD 当前的数量：
 
       .. prompt:: bash $
 
          ceph osd count-metadata osd_objectstore
 
-#. Mark a Filestore OSD ``out``:
+#. 把一个 Filestore OSD 标记为 ``out`` ：
 
    .. prompt:: bash $
 
       ceph osd out $ID
 
-#. Wait for the data to migrate off this OSD:
+#. 等待数据迁移出这个 OSD ：
 
    .. prompt:: bash $
 
       while ! ceph osd safe-to-destroy $ID ; do sleep 60 ; done
 
-#. Stop the OSD:
+#. 停止 OSD ：
 
    .. prompt:: bash $
 
@@ -84,117 +81,109 @@ data migration that carries costs in time and SSD wear.
 
    .. _osd_id_retrieval: 
 
-#. Note which device the OSD is using:
+#. 记下这个 OSD 在使用哪个设备：
 
    .. prompt:: bash $
 
       mount | grep /var/lib/ceph/osd/ceph-$ID
 
-#. Unmount the OSD:
+#. 卸载这个 OSD ：
 
    .. prompt:: bash $
 
       umount /var/lib/ceph/osd/ceph-$ID
 
-#. Destroy the OSD's data. Be *EXTREMELY CAREFUL*! These commands will destroy
-   the contents of the device; you must be certain that the data on the device is
-   not needed (in other words, that the cluster is healthy) before proceeding:
+#. 销毁 OSD 的数据。请 *务必小心*\ ！
+   这些命令将销毁设备的内容；在继续操作之前，
+   必须确保设备上的数据不再需要（换句话说，集群状态良好）：
 
    .. prompt:: bash $
 
       ceph-volume lvm zap $DEVICE
 
-#. Tell the cluster that the OSD has been destroyed (and that a new OSD can be
-   reprovisioned with the same OSD ID):
+#. 告诉集群这个 OSD 已经销毁了
+   （并且可以用同一个 OSD ID 重新部署新 OSD 了）：
 
    .. prompt:: bash $
 
       ceph osd destroy $ID --yes-i-really-mean-it
 
-#. Provision a BlueStore OSD in place by using the same OSD ID. This requires
-   you to identify which device to wipe, and to make certain that you target
-   the correct and intended device, using the information that was retrieved in
-   the :ref:`"Note which device the OSD is using" <osd_id_retrieval>` step.  BE
-   CAREFUL!  Note that you may need to modify these commands when dealing with
-   hybrid OSDs:
+#. 用同一个 OSD ID 在原地部署 BlueStore OSD 。
+   这就要求你根据 :ref:`"注意 OSD 正在使用的设备" <osd_id_retrieval>`
+   这一步骤中检索到的信息，确定要擦除的设备、
+   并确保目标设备是正确且预期的设备。
+   **务必小心！** 注意，在操作混合式 OSD 时，
+   你可能需要修改这些命令：
 
    .. prompt:: bash $
 
       ceph-volume lvm create --bluestore --data $DEVICE --osd-id $ID
 
-#. Repeat.
+#. 如此往复。
 
-You may opt to (1) have the balancing of the replacement BlueStore OSD take
-place concurrently with the draining of the next Filestore OSD, or instead
-(2) follow the same procedure for multiple OSDs in parallel. In either case,
-however, you must ensure that the cluster is fully clean (in other words, that
-all data has all replicas) before destroying any OSDs. If you opt to reprovision
-multiple OSDs in parallel, be **very** careful to destroy OSDs only within a
-single CRUSH failure domain (for example, ``host`` or ``rack``). Failure to
-satisfy this requirement will reduce the redundancy and availability of your
-data and increase the risk of data loss (or even guarantee data loss).
+您可以选择 (1) 在替换 BlueStore OSD 的同时，对下一个 Filestore OSD 进行数据迁移，
+或者 (2) 并行地对多个 OSD 执行相同的操作。但无论哪种情况，在销毁任何 OSD 之前，
+必须确保集群完全一致（即所有数据都复制够了所有副本）。
+如果你选择并行地重新配置多个 OSD ，\ **务必小心**\ ，
+只能销毁单个 CRUSH 故障域（例如 ``host`` 或 ``rack`` ）内的 OSD 。
+如果不满足此要求，将降低数据的冗余性和可用性，
+而且增加了数据丢失的风险（甚至导致数据丢失）。 
 
-Advantages:
+优点：
 
-* Simple.
-* Can be done on a device-by-device basis.
-* No spare devices or hosts are required.
+* 简单。
+* 可以按设备逐个地完成。
+* 不需要备用设备或主机。
 
-Disadvantages:
+缺点：
 
-* Data is copied over the network twice: once to another OSD in the cluster (to
-  maintain the specified number of replicas), and again back to the
-  reprovisioned BlueStore OSD.
+* 数据通过网络复制两次：一次是复制到集群中的另一个 OSD
+  （以维持指定的副本数），另一次是复制回重新配置过的 BlueStore OSD 。
 
 
 “整机”替换
 ----------
 .. "Whole host" replacement
 
-If you have a spare host in the cluster, or sufficient free space to evacuate
-an entire host for use as a spare, then the conversion can be done on a
-host-by-host basis so that each stored copy of the data is migrated only once.
+如果集群中有备用主机，或者有足够的空闲空间来腾出一整台主机作为备用，
+那么就可以逐台主机进行转换，这样存储的每个数据副本只需迁移一次。 
 
-To use this approach, you need an empty host that has no OSDs provisioned.
-There are two ways to do this: either by using a new, empty host that is not
-yet part of the cluster, or by offloading data from an existing host that is
-already part of the cluster.
+要用这种方法，你需要一台没配置过 OSD 的空主机。有两种方法可以实现：
+一是使用全新的、尚未加入集群的空主机，二是从已加入集群的现有主机上卸载数据。 
 
 
 利用新的、空主机
 ^^^^^^^^^^^^^^^^
 .. Using a new, empty host
 
-Ideally the host will have roughly the same capacity as each of the other hosts
-you will be converting.  Add the host to the CRUSH hierarchy, but do not attach
-it to the root:
+理想情况下，一台主机的容量应该与将要转换的其他每台主机的容量差不多。
+把这台主机加进 CRUSH 分级结构中，但不要把它绑到 root 节点：
 
 .. prompt:: bash $
 
    NEWHOST=<empty-host-name>
    ceph osd crush add-bucket $NEWHOST host
 
-Make sure that Ceph packages are installed on the new host.
+确保在新主机上安装了 Ceph 软件包。
 
 
 利用已有主机
 ^^^^^^^^^^^^
 .. Using an existing host
 
-If you would like to use an existing host that is already part of the cluster,
-and if there is sufficient free space on that host so that all of its data can
-be migrated off to other cluster hosts, you can do the following (instead of
-using a new, empty host):
+如果你想用已经是集群一部分的现有主机，并且该主机上有足够的空闲空间，
+足以将所有数据迁移到集群内的其他主机上，
+那么您可以采用以下步骤（而不是用新的空主机）：
 
 .. prompt:: bash $
 
    OLDHOST=<existing-cluster-host-to-offload>
    ceph osd crush unlink $OLDHOST default
 
-where "default" is the immediate ancestor in the CRUSH map. (For
-smaller clusters with unmodified configurations this will normally
-be "default", but it might instead be a rack name.) You should now
-see the host at the top of the OSD tree output with no parent:
+其中， "default" 是 CRUSH 图中的直接父节点。
+（对于配置未修改的小型集群，这通常为 "default" ，
+但也可能是一个机架名。）现在，
+您应该会在 OSD 树输出的顶部看到该主机，而且它没有父节点：
 
 .. prompt:: bash $
 
@@ -214,22 +203,20 @@ see the host at the top of the OSD tree output with no parent:
    2   ssd 1.00000         osd.2     up  1.00000 1.00000
   ...
 
-If everything looks good, jump directly to the :ref:`"Wait for the data
-migration to complete" <bluestore_data_migration_step>` step below and proceed
-from there to clean up the old OSDs.
-
+如果一切安好，直接跳到下面 :ref:`"等待数据迁移完成"
+<bluestore_data_migration_step>` 这个步骤，然后从那里开始清理旧 OSD 。
 
 迁移过程
 ^^^^^^^^
 .. Migration process
 
-If you're using a new host, start at :ref:`the first step
-<bluestore_migration_process_first_step>`. If you're using an existing host,
-jump to :ref:`this step <bluestore_data_migration_step>`.
+如果你用的是新主机，从 :ref:`第一步 <bluestore_migration_process_first_step>`
+开始；如果你用的是现有主机，跳转到 
+:ref:`这一步 <bluestore_data_migration_step>` 。
 
 .. _bluestore_migration_process_first_step:
 
-#. Provision new BlueStore OSDs for all devices:
+#. 在所有设备上配置新的 BlueStore OSD ：
 
    .. prompt:: bash $
 
@@ -259,34 +246,33 @@ jump to :ref:`this step <bluestore_data_migration_step>`.
       2   ssd 1.00000         osd.2     up  1.00000 1.00000
      ...
 
-#. Identify the first target host to convert:
+#. 找出第一台要转换的主机：
 
    .. prompt:: bash $
 
       OLDHOST=<existing-cluster-host-to-convert>
 
-#. Swap the new host into the old host's position in the cluster:
+#. 交换集群里新旧主机的位置：
 
    .. prompt:: bash $
 
       ceph osd crush swap-bucket $NEWHOST $OLDHOST
 
-   At this point all data on ``$OLDHOST`` will begin migrating to the OSDs on
-   ``$NEWHOST``.  If there is a difference between the total capacity of the
-   old hosts and the total capacity of the new hosts, you may also see some
-   data migrate to or from other nodes in the cluster. Provided that the hosts
-   are similarly sized, however, this will be a relatively small amount of
-   data.
+   此时， ``$OLDHOST`` 上的所有数据将开始迁移到 ``$NEWHOST`` 上的 OSD 。
+   如果旧主机的总容量与新主机的总容量有差异，
+   您可能还会看到一些数据迁移到集群中的其他节点，
+   或从其他节点迁移出来。然而，
+   如果主机的大小相似，那么迁移的数据量将相对较少。
 
    .. _bluestore_data_migration_step:
 
-#. Wait for the data migration to complete:
+#. 等待数据迁移完成：
 
    .. prompt:: bash $
 
       while ! ceph osd safe-to-destroy $(ceph osd ls-tree $OLDHOST); do sleep 60 ; done
 
-#. Stop all old OSDs on the now-empty ``$OLDHOST``:
+#. 现在 ``$OLDHOST`` 主机空了，停止其上的所有旧 OSD ：
 
    .. prompt:: bash $
 
@@ -294,7 +280,7 @@ jump to :ref:`this step <bluestore_data_migration_step>`.
       systemctl kill ceph-osd.target
       umount /var/lib/ceph/osd/ceph-*
 
-#. Destroy and purge the old OSDs:
+#. 销毁并擦除旧的 OSD ：
 
    .. prompt:: bash $
 
@@ -302,68 +288,70 @@ jump to :ref:`this step <bluestore_data_migration_step>`.
          ceph osd purge $osd --yes-i-really-mean-it
       done
 
-#. Wipe the old OSDs. This requires you to identify which devices are to be
-   wiped manually. BE CAREFUL! For each device:
+#. 擦除旧的 OSD 。你得手动找出要擦除的设备。
+   **谨慎！** 在每个设备上：
 
    .. prompt:: bash $
 
       ceph-volume lvm zap $DEVICE
 
-#. Use the now-empty host as the new host, and repeat:
+#. 把当前为空的主机作为新主机，重复：
 
    .. prompt:: bash $
 
       NEWHOST=$OLDHOST
 
-Advantages:
+优点：
 
-* Data is copied over the network only once.
-* An entire host's OSDs are converted at once.
-* Can be parallelized, to make possible the conversion of multiple hosts at the same time.
-* No host involved in this process needs to have a spare device.
+* 数据通过网络只复制一次。
+* 整台主机上的 OSD 一次就能转换完毕。
+* 可以并行化，有可能实现多台主机同时转换。
+* 此过程中涉及的所有主机都不需要备用设备。
 
-Disadvantages:
+缺点：
 
-* A spare host is required.
-* An entire host's worth of OSDs will be migrating data at a time. This
-  is likely to impact overall cluster performance.
-* All migrated data still makes one full hop over the network.
+* 需要一台备用主机。
+* 整台主机上健在的 OSD 将会同时迁移数据。
+  这很可能影响整个集群的性能。
+* 所有迁移的数据仍然需要通过网络完整地进行一次传输。
 
-Per-OSD device copy
--------------------
-A single logical OSD can be converted by using the ``copy`` function
-included in ``ceph-objectstore-tool``. This requires that the host have one or more free
-devices to provision a new, empty BlueStore OSD. For
-example, if each host in your cluster has twelve OSDs, then you need a
-thirteenth unused OSD so that each OSD can be converted before the
-previous OSD is reclaimed to convert the next OSD.
 
-Caveats:
+逐个 OSD 设备进行复制
+---------------------
+.. Per-OSD device copy
 
-* This approach requires that we prepare an empty BlueStore OSD but that we do not allocate
-  a new OSD ID to it. The ``ceph-volume`` tool does not support such an operation. **IMPORTANT:**
-  because the setup of *dmcrypt* is closely tied to the identity of the OSD, this approach does not
-  work with encrypted OSDs.
+单个逻辑 OSD 可以用 ``ceph-objectstore-tool`` 中的 ``copy`` 功能来转换。
+这要求主机有一或多个空闲设备来配置一个新的、空的 BlueStore OSD 。
+例如，如果集群中的每个主机有 12 个 OSD ，那么你需要第 13 个未使用的 OSD ，
+这样就能在回收前一个 OSD 之后逐个转换下一个 OSD 。
 
-* The device must be manually partitioned.
+注意事项：
 
-* An unsupported user-contributed script that demonstrates this process may be found here:
+* 此方法要求我们准备一个空的 BlueStore OSD ，但不给它分配新 OSD ID 。
+  ``ceph-volume`` 工具不支持这样的操作。 **重要提示**\ ：
+  由于 *dmcrypt* 的配置与 OSD 的身份识别紧密相关，
+  因此这种方法不适用于加密 OSD 。
+
+* 这个设备必须手动分区。
+
+* 有个无支持的、用户贡献的脚本，演示了这个过程，脚本在这里：
   https://github.com/ceph/ceph/blob/master/src/script/contrib/ceph-migrate-bluestore.bash
 
 优点：
 
-* 转换期间，只要 OSD 或集群上设置了 `noout` 或者 `norecover`/`norebalance`  标记，
+* 转换期间，只要 OSD 或集群上设置了
+  `noout` 或者 `norecover`/`norebalance`  标记，
   就只会有少量或没有数据通过网络迁移。
 
 缺点：
 
 * 工具链尚未完全实现、支持、或有文档；
 
-* Each host must have an appropriate spare or empty device for staging.
+* 每台主机必须有一个合适的备用或空闲设备，用于腾挪。
 
-* The OSD is offline during the conversion, which means new writes to PGs
-  with the OSD in their acting set may not be ideally redundant until the
-  subject OSD comes up and recovers. This increases the risk of data
-  loss due to an overlapping failure.  However, if another OSD fails before
-  conversion and start-up are complete, the original Filestore OSD can be
-  started to provide access to its original data.
+* 在转换期间， OSD 处于离线状态，这意味着\
+  在目标 OSD 启动并恢复之前，对 acting set 中\
+  包含这个 OSD 的 PG 的新写入可能不会实现预期的冗余度。
+  这会增加由于重叠故障而导致数据丢失的风险。
+  然而，如果在转换和启动完成之前另一个 OSD 发生故障，
+  还可以启动原先的 Filestore OSD 以访问其原始数据。

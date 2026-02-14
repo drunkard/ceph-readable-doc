@@ -79,7 +79,7 @@
   你必须有 ``client.admin`` 用户，所以你要创建此用户及其密钥，
   并把他们加入密钥环。
 
-前述必要条件并未提及 Ceph 配置文件的创建，
+前述必要条件并未提及 :ref:`Ceph 配置文件 <configuring-ceph>`\ 的创建，
 然而，实践中最好创建个配置文件，并写好
 ``fsid`` 、 ``mon initial members`` 和
 ``mon host`` 配置。
@@ -178,7 +178,6 @@ Ceph 配置文件的配置将覆盖默认值，
 
 	sudo chown ceph:ceph /tmp/ceph.mon.keyring
 
-
 #. 用规划好的主机名、对应 IP 地址、和 FSID 生成一个监视器图，\
    并保存为 ``/tmp/monmap`` 。 ::
 
@@ -187,7 +186,6 @@ Ceph 配置文件的配置将覆盖默认值，
    例如： ::
 
         monmaptool --create --add mon-node1 192.168.0.1 --fsid a7f64266-0894-4f1e-a635-d0aeaca0e993 /tmp/monmap
-
 
 #. 在监视器主机上分别创建数据目录。 ::
 
@@ -199,7 +197,6 @@ Ceph 配置文件的配置将覆盖默认值，
 
    详情见\ `监视器配置参考——数据`_\ 。
 
-
 #. 用监视器图和密钥环组装守护进程所需的初始数据。 ::
 
 	sudo -u ceph ceph-mon [--cluster {cluster-name}] --mkfs -i {hostname} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
@@ -207,7 +204,6 @@ Ceph 配置文件的配置将覆盖默认值，
    例如： ::
 
 	sudo -u ceph ceph-mon --mkfs -i mon-node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
-
 
 #. 仔细斟酌 Ceph 配置文件，公共的全局配置包括这些： ::
 
@@ -240,15 +236,20 @@ Ceph 配置文件的配置将覆盖默认值，
 	osd_pool_default_pg_num = 333
 	osd_crush_chooseleaf_type = 1
 
-
 #. 启动监视器。
 
    用 systemd 启动服务： ::
 
     sudo systemctl start ceph-mon@mon-node1
 
+#. 确保给 ceph-mon 打开了防火墙端口。
 
-#. 确认下集群在运行。 ::
+   用 firewalld 打开防火墙端口::
+
+    sudo firewall-cmd --zone=public --add-service=ceph-mon
+    sudo firewall-cmd --zone=public --add-service=ceph-mon --permanent
+
+#. 确认下监视器在运行。 ::
 
     sudo ceph -s
 
@@ -462,51 +463,50 @@ CRUSH 图。对于每个 OSD ，执行下列详细步骤。
 #. 现在准备好了，你可以\ `创建 Ceph 文件系统`_\ 了。
 
 
-Manually Installing RADOSGW
-===========================
+手动安装 RADOSGW
+================
+.. Manually Installing RADOSGW
 
-For a more involved discussion of the procedure presented here, see `this
-thread on the ceph-users mailing list
-<https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/message/LB3YRIKAPOHXYCW7MKLVUJPYWYRQVARU/>`_.
+关于以下步骤的更深入的讨论，看 `ceph-users 邮件列表里的这个帖子
+<https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/message/LB3YRIKAPOHXYCW7MKLVUJPYWYRQVARU/>`_ 。
 
-#. Install ``radosgw`` packages on the nodes that will be the RGW nodes.
+#. 在 RGW 节点上都安装 ``radosgw`` 软件包。
 
-#. From a monitor or from a node with admin privileges, run a command of the
-   following form:
+#. 在一个有管理权限的监视器主机上，执行下列命令：
 
    .. prompt:: bash #
       
       ceph auth get-or-create client.$(hostname -s) mon 'allow rw' osd 'allow rwx'
 
-#. On one of the RGW nodes, do the following:
+#. 在其中一个 RGW 节点上，执行如下：
 
-   a. Create a ``ceph-user``-owned directory. For example: 
+   a. 创建一个所有者为 ``ceph-user`` 的目录。例如：
 
       .. prompt:: bash #
 
          install -d -o ceph -g ceph /var/lib/ceph/radosgw/ceph-$(hostname -s)
 
-   b. Enter the directory just created and create a ``keyring`` file: 
+   b. 进入刚刚创建的目录，并创建一个 ``keyring`` 文件：
 
       .. prompt:: bash #
 
          touch /var/lib/ceph/radosgw/ceph-$(hostname -s)/keyring
 
-      Use a command similar to this one to put the key from the earlier ``ceph
-      auth get-or-create`` step in the ``keyring`` file. Use your preferred
-      editor:
+      用类似下面的命令，把之前 ``ceph auth get-or-create`` 步骤里\
+      获取到的密钥放进 ``keyring`` 文件里。用你喜欢的编辑器：
 
       .. prompt:: bash #
 
          $EDITOR /var/lib/ceph/radosgw/ceph-$(hostname -s)/keyring
 
-   c. Repeat these steps on every RGW node.
+   c. 在每一个 RGW 节点上重复以上步骤。
 
-#. Start the RADOSGW service by running the following command:
+#. 启动 RADOSGW 服务，执行下列命令：
 
    .. prompt:: bash #
 
       systemctl start ceph-radosgw@$(hostname -s).service
+
 
 总结
 ====
@@ -530,11 +530,10 @@ thread on the ceph-users mailing list
 	-3	1		host osd-node2
 	1	1			osd.1	up	1
 
-要增加（或删除）额外监视器，参见\ `增加/删除监视器`_\ 。
+要增加（或删除）额外监视器，参见\ :ref:`adding-and-removing-monitors` 。
 要增加（或删除）额外 OSD ，参见\ `增加/删除 OSD`_ 。
 
 
-.. _增加/删除监视器: ../../rados/operations/add-or-rm-mons
 .. _增加/删除 OSD: ../../rados/operations/add-or-rm-osds
 .. _网络配置参考: ../../rados/configuration/network-config-ref
 .. _监视器配置参考——数据: ../../rados/configuration/mon-config-ref#data

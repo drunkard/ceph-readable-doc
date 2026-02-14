@@ -1,15 +1,15 @@
 ====================
  filestore 配置参考
 ====================
+.. Filestore Config Reference
 
-.. note:: Since the Luminous release of Ceph, Filestore has not been Ceph's
-   default storage back end. Since the Luminous release of Ceph, BlueStore has
-   been Ceph's default storage back end. However, Filestore OSDs are still
-   supported up to Quincy. Filestore OSDs are not supported in Reef. See
-   :ref:`OSD Back Ends <rados_config_storage_devices_osd_backends>`. See
-   :ref:`BlueStore Migration <rados_operations_bluestore_migration>` for
-   instructions explaining how to replace an existing Filestore back end with a
-   BlueStore back end.
+.. note:: Ceph 从 Luminous 版起， Filestore 就不再是 Ceph 的默认存储后端。
+   从 Luminous 版起， BlueStore 变成了 Ceph 的默认存储后端。
+   尽管如此， Filestore OSD 仍然可以正常使用到 Quincy 版。
+   Reef 版就不再支持 Filestore OSD 。
+   见 :ref:`OSD Back Ends <rados_config_storage_devices_osd_backends>` 。
+   关于如何把现有 Filestore 后端替换成 BlueStore 后端的指南，
+   见 :ref:`BlueStore Migration <rados_operations_bluestore_migration>` 。
 
 
 ``filestore_debug_omap_check``

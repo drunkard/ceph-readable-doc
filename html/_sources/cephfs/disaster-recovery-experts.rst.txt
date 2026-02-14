@@ -99,8 +99,7 @@
 在恢复过程中，并非每张 MDS 表都必须重置。
 如果对应的 RADOS 对象缺失（例如，由于某些 PG 丢失）
 或者表与 RADOS 后端存储的元数据不一致，
-就需要重置 MDS 表。要检查表对象是否缺失，
-执行下列命令：
+就需要重置 MDS 表。要检查表对象是否缺失，执行下列命令：
 
 Session 表：
 
@@ -123,21 +122,53 @@ Snap 表：
 .. note:: ``sessionmap`` 和 ``inotable`` 对象是和 MDS rank 对应的
    （对象名里包含了 rank 号 - mds0_inotable 、 mds1_inotable 等等）。
 
+即使表对象存在，它也可能与 RADOS 后端存储的元数据不一致。
+然而，如果元数据事实上已经不一致或已损坏，
+在不将文件系统上线的情况下，很难检测到不一致。
+在类似情况下， MDS 会将自己标记为 `down:damaged` 。
+要重置单个的表，执行下列命令：
 
-重置日志后，系统状态可能和 MDS 的几张表（ InoTables 、
-SessionMap 、 SnapServer ）的内容变得不一致。
-
-要重置 SessionMap （抹掉所有会话），用命令：
+Session 表：
 
 .. prompt:: bash #
 
-    cephfs-table-tool all reset session
+   cephfs-table-tool 0 reset session
+table:
+SnapServer ：
 
-此命令会在状态为 ``in`` 的所有 MDS rank 的表中执行。
-如果只想在指定 rank 中执行，把 ``all`` 换成对应的 MDS rank 。
+.. prompt:: bash #
 
-在所有表中，会话表是最有可能需要重置的表，但是如果你知道你还需要重置其它表，
-那就把 ``session`` 换成 ``snap`` 或者 ``inode`` 。
+   cephfs-table-tool 0 reset snap
+
+InoTable ：
+
+.. prompt:: bash #
+
+   cephfs-table-tool 0 reset inode
+
+上述命令会针对一个特定 MDS rank 上的表执行。
+要在状态为 ``in`` 的所有 MDS rank 的表中执行，
+把上述命令里的 MDS rank 号换成 ``all`` ，如下列命令所示：
+
+Session 表：
+
+.. prompt:: bash #
+
+   cephfs-table-tool all reset session
+
+SnapServer ：
+
+.. prompt:: bash #
+
+   cephfs-table-tool all reset snap
+
+InoTable ：
+
+.. prompt:: bash #
+
+   cephfs-table-tool all reset inode
+
+.. note:: session 表重置之后，需要重挂载或重启所有 CephFS 客户端。
 
 
 重置 MDS 运行图
@@ -168,35 +199,84 @@ SessionMap 、 SnapServer ）的内容变得不一致。
 .. Recovery from missing metadata objects
 
 取决于丢失或被篡改的是哪种对象，
-你得运行几个命令生成这些对象的默认版本。
+你也许得额外运行几个命令生成这些对象的默认版本。
 
-::
+注意，数据扫描工具可能耗时巨长。要想看到操作进度，启用 cli_api 工具。
 
-	# 会话表
-	cephfs-table-tool 0 reset session
-	# SnapServer 快照服务器
-	cephfs-table-tool 0 reset snap
-	# InoTable 索引节点表
-	cephfs-table-tool 0 reset inode
-	# Journal 日志
-    cephfs-journal-tool --rank=<fs_name>:0 journal reset --yes-i-really-really-mean-it
-	# 根索引节点（ / 和所有 MDS 目录）
-	cephfs-data-scan init
+.. prompt:: bash #
 
-最后，根据数据存储池中的内容重新生成\
-丢失文件和目录的元数据对象。
+    ceph mgr module enable cli_api
+
+用 ceph status 跟踪进度，它会显示长时间任务的预计完成时间。
+
+.. prompt:: bash #
+
+    ceph -s
+
+如果启用了 ``cli_api`` 模块，数据扫描工具
+（ ``scan_extents``, ``scan_inodes``, and ``scan_links`` ）
+就会自动把它们的进度报告给 Ceph 管理器。进度更新包括：
+
+- 处理过的对象数和总对象数
+- 已完成的百分比
+- 预计完成时间（ ETA ）
+- 平均处理速率
+
+大概每 5 秒更新一次进度，并出现在 ``ceph -s`` 输出的 Progress 段内。
+每次扫描操作都会创建一个唯一的进度事件，
+用操作名和进程 ID 标识。
+
+.. note:: ``ceph`` 命令必须位于系统 PATH 之内，
+   进度更新才能正常运转。
+   如果进度更新没出现在 ``ceph -s`` 里，检查一下：
+
+   - ``cli_api`` 是否启用
+   - ``ceph`` 命令位于 PATH 变量之内
+   - ``CEPH_CONF`` 环境变量（如果设置过）
+     指向一个正确的配置文件
+
+如果系统无法与 Ceph 管理器通信或必需模块不可用，
+进度更新将自动禁用。
+即使管理器更新被禁用，
+控制台输出仍能继续显示本地进度信息。 
+
+如果根节点或 MDS 目录（ ``~mdsdir`` ）丢失或损坏，执行下列命令：
+
+根节点（ "/" 和 MDS 目录）：
+
+.. prompt:: bash #
+
+   cephfs-data-scan init
+
+运行此命令通常是安全的，因为如果根索引节点和
+mdsdir 索引节点已存在，此命令会跳过生成这些节点。
+但如果这些索引节点已损坏，则必须重新生成。
+可以通过尝试使文件系统重新上线来鉴定损坏情况
+（此时， MDS 将转变为 ``down:damaged`` 状态，并在 [ MDS 日志中]
+显示相应的日志消息，指出在加载根索引节点或 mdsdir 索引节点时可能存在的问题）。
+另一种方法是用 ``ceph-dencoder`` 工具来解码索引节点。
+此步骤稍微复杂一些。 
+
+最后，根据数据存储池中的内容重新生成丢失文件和目录的元数据对象。
 这是个三阶段过程：
 
 #. 扫描\ *所有*\ 对象以计算索引节点的尺寸和 mtime 元数据；
-#. 从每个文件的第一个对象扫描出\
-   元数据并注入元数据存储池。
+
+   .. prompt:: bash #
+
+      cephfs-data-scan scan_extents [<data pool> [<extra data pool> ...]]
+
+#. 从每个文件的第一个对象扫描出元数据并注入元数据存储池。
+
+   .. prompt:: bash #
+
+      cephfs-data-scan scan_inodes [<data pool>]
+
 #. 检查 inode 的链接情况并修复发现的错误。
 
-::
+   .. prompt:: bash #
 
-    cephfs-data-scan scan_extents [<data pool> [<extra data pool> ...]]
-    cephfs-data-scan scan_inodes [<data pool>]
-    cephfs-data-scan scan_links
+      cephfs-data-scan scan_links
 
 如果数据存储池内的文件很多、或者有很大的文件， ``scan_extents`` 和
 ``scan_inodes`` 命令可能得花费\ *很长时间*\ 。
@@ -239,6 +319,17 @@ SessionMap 、 SnapServer ）的内容变得不一致。
 
    cephfs-data-scan cleanup <data pool>
 
+清理阶段可以运行多个例程来加速执行： ::
+
+    # Worker 0
+    cephfs-data-scan cleanup --worker_n 0 --worker_m 4
+    # Worker 1
+    cephfs-data-scan cleanup --worker_n 1 --worker_m 4
+    # Worker 2
+    cephfs-data-scan cleanup --worker_n 2 --worker_m 4
+    # Worker 3
+    cephfs-data-scan cleanup --worker_n 3 --worker_m 4
+
 .. note::
 
    ``scan_extents`` 、 ``scan_inodes`` 和 ``cleanup`` 命令\
@@ -249,13 +340,41 @@ SessionMap 、 SnapServer ）的内容变得不一致。
    只需要指定主数据存储池。
 
 
+已知的局限性和陷阱
+------------------
+.. Known Limitations And Pitfalls
+
+灾难恢复过程可能既耗时又艰巨。
+必须严格按照上述详细步骤谨慎执行恢复操作，
+以确保任何步骤的失败都能清清楚楚地理解。
+你必须能绝对确定地判断是否可以安全地继续下一步。
+如果你确信自己能应对这些挑战，
+那么在尝试进行灾难恢复之前，请先研究以下限制和陷阱：
+
+#. 数据扫描命令无法提供其操作完成时间的预估。
+   目前正在开发一项能够提供此类预估的功能。
+   详情见 https://tracker.ceph.com/issues/63191 。
+#. 在恢复之后、 CephFS 客户端开始使用文件系统之前，
+   执行一次文件系统清理非常有必要。
+#. 一般来说，我们不建议在出现问题时更改任何与 MDS 相关的设置
+   （例如 ``max_mds`` ）。
+#. 目前，灾难恢复是一个手动过程。我们计划通过
+   Disaster Recovery Super Tool （灾难恢复超级工具）实现恢复过程的自动化。
+   详情见 https://tracker.ceph.com/issues/71804 。
+#. 一个众所周知的技巧（一些社区用户在用）是，
+   当由于日志过长，导致 MDS 貌似卡在 ``up_replay`` 状态时，
+   可以采用灾难恢复步骤（特别是 ``recover_dentries`` 步骤）。
+   在 MDS 重放日志需要较长时间时，不要急于调用 ``recover_dentries`` ，
+   而应该考虑按照 :ref:`cephfs_dr_stuck_during_recovery`
+   中详述的步骤试着加快日志重放速度。
+
+
 用另一个元数据存储池进行恢复
 ----------------------------
 .. Using an alternate metadata pool for recovery
 
-.. warning::
-
-   这个方法尚未全面地测试过，下手时要格外小心。
+.. warning:: 这个方法尚未广泛测试过。我们建议按照前述过程来恢复文件系统，
+   除非你有更恰当的理由。这个步骤在下手时要格外小心。
 
 如果一个在用的文件系统损坏了、且无法使用，
 可以创建一个新的元数据存储池、
@@ -393,8 +512,7 @@ SessionMap 、 SnapServer ）的内容变得不一致。
 
       如果数据存储池也损坏了，有些文件可能没法恢复，
       因为与之相关的回溯信息丢失了。
-      如果有数据对象丢失了
-      （由于数据存储池内的归置组丢失之类的问题），
+      如果有数据对象丢失了（由于数据存储池内的归置组丢失之类的问题），
       恢复的文件里在丢失数据的位置会有空洞。
 
 
