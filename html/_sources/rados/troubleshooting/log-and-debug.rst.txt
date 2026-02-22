@@ -3,26 +3,29 @@
 ================
 .. Logging and Debugging
 
-你应该在运行时增加调试选项来调试问题；
-也可以把调试选项添加到 Ceph 配置文件里来调试启动问题，
-然后查看 ``/var/log/ceph`` （默认位置）下的日志文件。
+Ceph 的组件调试日志级别可以在运行时调整，就是在对外提供服务的同时。
+在某些情况下，您可能想在 ``ceph.conf`` 或中央配置库里调节调试日志级别。
+如果您在操作集群时遇到问题，增加的调试日志输出可能会有所帮助。
+默认情况下， Ceph 日志文件位于 ``/var/log/ceph`` ；
+容器化部署通常会把日志记录到 ``/var/log`` 下的其他位置。 
 
-.. tip:: 调试输出会拖慢系统，
-   这种延时有可能掩盖竞争条件。
+.. tip:: 记住，调试输出会拖慢系统，
+   这种延时有可能掩盖竞态条件（ race condition ）。
 
-日志记录是资源密集型任务。如果你碰到的问题在集群的某个特定区域，
-只启用那个区域对应的日志功能即可。例如，
-你的 OSD 运行良好、元数据服务器却不行，
-这时应该先打开那个可疑元数据服务器例程的调试日志；
-如果不行再打开各子系统的日志。
+日志记录是资源密集型任务。如果你碰到的问题在集群的某个特定组件，
+只启用那个组件对应的日志功能即可。例如，
+你的 OSD 运行良好、 CephFS 元数据服务器却不行，
+打开那个可疑例程的日志记录功能即可；
+有必要再打开各子系统的日志。
 
-.. important:: 详尽的日志每小时可能超过 1GB ，如果你的系统盘满了，
-   这个节点就会停止工作。
+.. important:: 详尽的日志每小时可能超过 1GB 。
+   如果你的系统盘满了，这个节点就会停止工作。
 
-如果你要打开或增加 Ceph 日志级别，确保系统盘空间足够。
+如果你要打开或增加 Ceph 日志级别，确保有足够的容量存日志，
+因为它们的尺寸会急剧增长。
 滚动日志文件的方法见\ `加快日志滚动`_\ 。
 集群稳定运行后，可以关闭不必要的调试选项以更好地运行。
-在运营中记录调试输出会拖慢系统、且浪费资源。
+在运营中记录调试输出会拖慢系统、且浪费集群资源。
 
 可用选项参见\ `子系统、日志和调试选项`_\ 。
 
@@ -44,25 +47,28 @@
 
    ceph daemon osd.0 config show | less
 
-要在运行时激活 Ceph 的调试输出（即 ``dout()`` ），用
-``ceph tell`` 命令把参数注入运行时配置：
+要在运行时激活 Ceph 的调试输出（即 ``dout()`` 日志记录函数），
+用 ``ceph tell`` 命令把参数注入运行时配置，
+按如下格式：
 
 .. prompt:: bash $
 
    ceph tell {daemon-type}.{daemon id or *} config set {name} {value}
 
 用 ``osd`` 、 ``mon`` 或 ``mds`` 替代 ``{daemon-type}`` 。
-你可以用星号（ ``*`` ）把配置应用到同类型的所有守护进程，
-或者指定具体守护进程的 ID 。例如，要给名为 ``ods.0`` 的
-``ceph-osd`` 守护进程提高调试级别，用下列命令：
+你可以用星号（用通配符 ``*`` 作为 ID ）把配置应用到同类型的所有守护进程，
+或者指定具体守护进程的 ID 。例如，要给名为
+``ods.0`` 的 ``ceph-osd`` 守护进程提高调试级别，
+执行下列命令：
 
 .. prompt:: bash $
 
    ceph tell osd.0 config set debug_osd 0/5
 
-``ceph tell`` 命令会贯穿所有监视器。如果你不能绑定监视器，
-还可以登录你要改的那台主机用 ``ceph daemon`` 来更改。
-例如：
+``ceph tell`` 命令会贯穿所有监视器。但是，
+如果你不能绑定到监视器，还有另外一种方法可以激活 Ceph 的调试输出：
+用 ``ceph daemon`` 命令登录到包含那个特定守护进程的那台主机，
+然后更改它的配置。例如：
 
 .. prompt:: bash $
 
@@ -75,11 +81,13 @@
 ======
 .. Boot Time
 
-要在启动时激活调试输出（\ *即* ``dout()`` ），
-你得把选项加入配置文件。
-各进程共有配置可写在配置文件的 ``[global]`` 下，
-某类进程的配置可写在守护进程段下
-（\ *比如* ``[mon]`` 、 ``[osd]`` 、 ``[mds]`` ）。例如：
+要在启动时激活 Ceph 的调试输出（即 ``dout()`` 日志记录函数），
+你得把选项加入你的 Ceph 配置文件
+（或者在中央配置库里设置相应的值）。
+所有守护进程共有的子系统配置可写在配置文件的 ``[global]`` 下。
+某个特定守护进程的子系统配置可写在相关的守护进程段下
+（\ *比如* ``[mon]`` 、 ``[osd]`` 、 ``[mds]`` ）。
+下面的 Ceph 配置文件例子展示了可能的调试选项配置方式：
 
 .. code-block:: ini
 
@@ -101,7 +109,7 @@
         debug mds = 1
         debug mds balancer = 1
 
-可用选项参见\ `子系统、日志和调试选项`_\ 。
+详情见\ `子系统、日志和调试选项`_\ 。
 
 
 加快日志滚动
@@ -113,7 +121,8 @@
 要增加日志滚动频率（可以保证文件系统空间不会耗尽），
 可以在 ``weekly`` 频率指令后加一个 ``size`` （尺寸）指令。
 为使卷利用曲线平滑些，可以考虑把 ``weekly`` 改成 ``daily`` 、
-把 ``rotate`` 改成 ``30`` 。增加 size 选项的过程如下：
+把 ``rotate`` 改成 ``30`` 。
+增加 size 选项的过程如下：
 
 #. 注意 ``/etc/logrotate.d/ceph`` 文件的默认配置： ::
 
@@ -136,27 +145,30 @@
 
       crontab -e
 
-#. 增加一个 crontab 条目，让 cron 去检查 ``/etc/logrorate.d/ceph`` 文件： ::
+#. 增加一个 crontab 条目，让 cron 去检查
+   ``/etc/logrorate.d/ceph`` 文件： ::
 
       30 * * * * /usr/sbin/logrotate /etc/logrotate.d/ceph >/dev/null 2>&1
 
-本例中，每 30 分钟检查一次 ``/etc/logrorate.d/ceph`` 文件，并可能滚动一次。
+本例中，每 30 分钟检查一次 ``/etc/logrorate.d/ceph`` 文件，
+并可能滚动一次。
 
 
 Valgrind
 ========
 
-你也许还得追踪内存和线程问题，
-可以在 Valgrind 中运行一个守护进程、一类进程、或整个集群。
-Valgrind 是计算密集型程序，应该只用于开发或调试，
-否则会拖慢系统。其消息记录到 ``stderr`` 。
+调试集群性能问题时，你也许还得追踪内存和线程问题。
+Valgrind 工具集可以用于探测\
+某个特定守护进程、一类进程、或整个集群的问题。
+由于 Valgrind 计算量大，应该只用于 Ceph 的开发或调试，
+其它时候使用会拖慢系统。 Valgrind 消息会记录到 ``stderr`` 。
 
 
 子系统、日志和调试选项
 ======================
 .. Subsystem, Log and Debug Settings
 
-大多数情况下你可以通过子系统打开调试。
+通常，通过子系统打开调试日志的输出。
 
 
 Ceph 子系统概览
@@ -174,11 +186,10 @@ Ceph 的日志级别从 ``1`` 到 ``20`` ，
 除非满足下面的一个或多个条件：：
 
 - 致命信号冒出来了，或者
-- 源码中的 ``assert`` 断言被触发，或者
-- 手动要求把内存里的日志发送到输出日志。详情见
-  `Ceph 管理工具文档里的一个例子，
-  叙述了如何提交管理套接字命令
-  <http://docs.ceph.com/en/latest/man/8/ceph/#daemon>`_ 。
+- Ceph 源码中的 ``assert`` 断言被触发，或者
+- 手动要求把内存里的日志发送到输出日志。
+  详情见 :ref:`"Ceph 管理工具" 文档里的一部分，
+  叙述了如何提交管理套接字命令 <man-ceph-daemon>`\ 。
 
 日志级别和内存级别可以一起设置或分别设置。
 如果给一个子系统分配了单个数值，那么日志级别和内存级别都会设置为这个级别。
@@ -196,10 +207,8 @@ Ceph 的日志级别从 ``1`` 到 ``20`` ，
     #for example
     debug mds balancer = 1/20
 
-
 下表列出了 Ceph 子系统及其默认日志和内存级别。
-一旦你完成调试，应该恢复默认值、
-或一个适合日常运营的级别。
+一旦你完成调试，应该恢复默认值、或一个适合日常运营的级别。
 
 +--------------------------+-----------+--------------+
 | 子系统                   | 日志级别  | 内存日志级别 |
@@ -295,6 +304,8 @@ Ceph 的日志级别从 ``1`` 到 ``20`` ，
 | ``rgw lifecycle``        |     1     |      5       |
 +--------------------------+-----------+--------------+
 | ``rgw notification``     |     1     |      5       |
++--------------------------+-----------+--------------+
+| ``rgw bucket logging``   |     1     |      5       |
 +--------------------------+-----------+--------------+
 | ``javaclient``           |     1     |      5       |
 +--------------------------+-----------+--------------+
@@ -394,9 +405,22 @@ Ceph 的日志级别从 ``1`` 到 ``20`` ，
 .. confval:: log_flush_on_exit
 .. confval:: clog_to_monitors
 .. confval:: clog_to_syslog
-.. confval:: mon_cluster_log_to_syslog
-.. confval:: mon_cluster_log_file
 
+监视器
+------
+.. Monitors
+
+.. confval:: mon_cluster_log_level
+.. confval:: mon_cluster_log_file
+.. confval:: mon_cluster_log_to_file
+.. confval:: mon_cluster_log_to_syslog
+.. confval:: mon_cluster_log_to_syslog_facility
+.. confval:: mon_cluster_log_to_stderr
+.. confval:: mon_cluster_log_to_journald
+.. confval:: mon_cluster_log_to_graylog
+.. confval:: mon_cluster_log_to_graylog_host
+.. confval:: mon_cluster_log_to_graylog_port
+.. confval:: mon_log_max
 
 OSD
 ---
@@ -404,12 +428,10 @@ OSD
 .. confval:: osd_debug_drop_ping_probability
 .. confval:: osd_debug_drop_ping_duration
 
-
 Filestore
 ---------
 
 .. confval:: filestore_debug_omap_check
-
 
 MDS
 ---
@@ -418,7 +440,6 @@ MDS
 - :confval:`mds_debug_frag`
 - :confval:`mds_debug_auth_pins`
 - :confval:`mds_debug_subtrees`
-
 
 RADOS 网关
 ----------

@@ -14,9 +14,9 @@
 
   例如：典型配置是存储一个对象和两个 RADOS 对象副本
   （即 ``size = 3`` ），但你可以单独配置每个存储池的副本数；
-  对\ `纠删码存储池 <../erasure-code>`_\ 来说，
+  对\ :ref:`纠删码存储池 <ecpool>`_\ 来说，
   自恢复力的定义是编码块数
-  （例如，默认\ **纠删码配置**\ 里的 ``m=2`` ）。
+  （例如，默认纠删码配置里的 ``m=2`` ）。
 
 - **归置组：** :ref:`autoscaler <pg-autoscaler>`
   会设置存储池的归置组（ PG ）数量。
@@ -29,6 +29,8 @@
   想了解如何手动设置每个存储池的归置组数量，
   看 :ref:`设置归置组数量 <setting the number of placement groups>` ，
   （没有采用 autoscaler 时才需要这个步骤）。
+  有个适用各种场景以及存储池、副本、和每个 OSD 内目标 PG 副本\
+  各种组合的便捷计算器，可在 :ref:`pgcalc` 中获得指导。
 
 - **CRUSH 规则：** 当你往存储池里存数据的时候，
   此集群内对象及其副本（或纠删码存储池里的数据块）的归置\
@@ -37,6 +39,7 @@
 
 - **快照：** 用 ``ceph osd pool mksnap`` 创建快照的时候，
   实际上创建了某一特定存储池的快照。
+
 
 存储池命名
 ==========
@@ -101,13 +104,13 @@
 ==========
 .. Creating a Pool
 
-创建存储池前先看看\ `存储池、归置组和 CRUSH 配置参考`_\ 。
-放在监视器集群里的 Ceph 中央配置数据库，里面有个配置选项（名为 ``pg_num`` ），
-用于决定每个存储池的 PG 数量，在创建存储池、
+创建存储池前先看看 :ref:`rados_config_pool_pg_crush_ref` 。
+在 Ceph 中央配置数据库里有个默认配置选项（名为 ``osd_pool_default_pg_num`` ），
+用于确定每个新存储池的 PG 数量，在创建存储池、
 却没给它单独指定 PG 数时就用这个值。这个值的默认数值可以更改。
-关于每个存储池的归置组数量，见\ `设置归置组数量`_\ 。
+关于每个存储池的归置组数量，见\ :ref:`setting the number of placement groups` 。
 
-.. note:: 从 Luminous 版起，所有存储池都需要与使用它们的应用程序关联。
+.. note:: 从 Luminous 版起，所有存储池都必须与使用它们的应用程序关联。
    详情见\ `关联存储池与应用程序`_\ 。
 
 要创建一个存储池，执行下列命令：
@@ -135,13 +138,12 @@
 
 .. describe:: {pg-num}
 
-   存储池拥有的归置组总数。
-   关于如何计算合适的数值，参见\ :ref:`归置组`\ 。
-   默认值 ``8`` 对大多数系统都 **不合适** 。
+   存储池拥有的归置组总数。关于如何计算合适的数值，参见
+   :ref:`归置组`\ 。默认值对大多数系统都 **不合适** 。
 
    :类型: 整数
    :是否必需: Yes
-   :默认值: 8
+   :默认值: 32
 
 .. describe:: {pgp-num}
 
@@ -155,14 +157,14 @@
 
    :类型: 整数
    :是否必需: 是的。命令行中没指定的话读取默认值（除非 Ceph 配置文件里另外配置了值）。
-   :默认值: 8
+   :默认值: 32
 
 .. describe:: {replicated|erasure}
 
    存储池的数据保护策略，可以是\ ``replicated``
    （多副本，像 RAID1 和 RAID10 ）、
    ``erasure`` （纠删，一种\
-   `通用奇偶校验 RAID <../erasure-code>`_ 策略，类似 RAID6 但更加灵活）。
+   :ref:`通用奇偶校验 RAID <ecpool>` 策略，类似 RAID6 但更加灵活）。
    ``replicated`` 在给定的原始存储空间中产生的可用容量较少，
    但可以适用所有 Ceph 组件和使用案例；
    ``erasure`` (EC) 在给定的原始存储空间中产生的\
@@ -183,25 +185,22 @@
 
    :类型: String
    :是否必需: No.
-   :默认值: 对于多副本存储池（ **replicated pool** ）来说，其规则由
+   :默认值: 对于多副本存储池（ ``replicated`` ）来说，其规则由
         :confval:`osd_pool_default_crush_rule` 配置指定，此规则必须存在。
-        对于纠删码存储池（ **erasure pool** ）来说，
-        如果用的是 ``default`` `纠删码配置`_\ 那就是 ``erasure-code`` ，
+        对于纠删码存储池（ ``erasure`` ）来说，如果用的是 ``default``
+        :ref:`纠删码配置 <erasure-code-profiles>`\ 那就是 ``erasure-code`` ，
         否则就是 ``{pool-name}`` 。如果此规则不存在，会悄悄地创建。
 
 .. describe:: [erasure-code-profile=profile]
 
-   仅适用于\ **纠删**\ 存储池。让 Ceph 采用指定的\ `纠删码配置`_\ 。
-   此配置必须是已经存在的配置，通过仪表盘定义、
-   或调用 ``osd erasure-code-profile set`` 定义的。
-   注意，在存储池创建以后，对其 EC 配置的更改\ *不会*\ 生效。
-   要更改现有存储池的 EC 配置，必须更改存储池，
-   让它使用另外一个按需要定义好的 CRUSH 规则。
+   仅适用于\ ``纠删``\ 存储池。让 Ceph 采用指定的\
+   :ref:`纠删码配置 <erasure-code-profiles>`\ 。此配置必须是已经存在的配置，
+   通过仪表盘定义、或调用 ``osd erasure-code-profile set`` 定义的。
+   注意，在存储池创建以后，对其 EC 配置的更改\ *不会*\ 生效。要更改现有存储池的
+   EC 配置，必须更改存储池，让它使用另外一个按需要定义好的 CRUSH 规则。
 
    :类型: String
    :是否必需: No.
-
-.. _纠删码配置: ../erasure-code-profile
 
 .. describe:: --autoscale-mode=<on,off,warn>
 
@@ -215,9 +214,8 @@
 
 .. describe:: [expected-num-objects]
 
-   为这个存储池预估的对象数。设置此值（要同时把 **filestore merge threshold**
-   设置为负数）后，在创建存储池时就会拆分 PG 文件夹，
-   以免运行时拆分文件夹导致延时增大。
+   为这个存储池预估的对象数。如果设置了此值，
+   在创建存储池时就会拆分 PG ，以免运行时拆分文件夹导致延时增大。
 
    :类型: Integer
    :是否必需: No.
@@ -230,11 +228,11 @@
 ====================
 .. Associating a Pool with an Application
 
-存储池要先与应用程序关联才能使用。要用于 CephFS 的存储池、
+每个存储池都必须先与应用程序关联才能使用。要用于 CephFS 的存储池、
 或由 RGW 创建的存储池已经自动关联过了；计划用于 RBD 的存储池应该\
-用 ``rbd`` 工具初始化（详情见\ `块设备命令`_\ ）。
+通过仪表盘或 ``rbd`` CLI 工具初始化（详情见\ `块设备命令`_\ ）。
 
-对于其它案例，你可以手动关联存储池与应用程序名字（格式自由），执行下列命令：
+对于其它用例，你可以手动关联存储池与应用程序名字（格式自由），执行下列命令：
 
 .. prompt:: bash $
 
@@ -248,7 +246,7 @@
 ==============
 .. Setting Pool Quotas
 
-存储池配额可设置最大字节数、和/或每存储池最大对象数。
+每个存储池的配额都可以设置最大字节数、或每存储池最大对象数，执行下列命令：
 
 .. prompt:: bash $
 
@@ -275,19 +273,17 @@
    ceph osd pool delete {pool-name} [{pool-name} --yes-i-really-really-mean-it]
 
 要删除存储池，中央配置的 ``mon_allow_pool_delete`` 标志必须设置为 ``true`` ，
-否则监视器们会拒绝删除存储池。
+否则 Ceph 监视器们会拒绝删除存储池。
 
-详情见\ `监视器配置`_\ 。
+详情见\ :ref:`监视器配置 <monitor-config-reference>`\ 。
 
-.. _监视器配置: ../../configuration/mon-config-ref
-
-如果有给存储池创建的自定义规则，应该删掉它们。
+如果有自定义规则不再使用或不再需要，应该删掉它们。
 
 .. prompt:: bash $
 
    ceph osd pool get {pool-name} crush_rule
 
-例如，假设规则 id 为 123 ，检查所有存储池，看它们是否在用此规则，执行下列命令：
+例如，假设自定义规则为 123 ，检查所有存储池看它们是否在用此规则，执行下列命令：
 
 .. prompt:: bash $
 
@@ -304,6 +300,8 @@
     ceph auth del {user}
 
 
+.. _rados_renaming_a_pool:
+
 重命名存储池
 ============
 .. Renaming a Pool
@@ -316,6 +314,7 @@
 
 如果重命名了一个存储池，而它之前的认证用户有每存储池能力，
 那你必须用新存储池名字更新这个用户的能力（即 caps ）。
+关于更新一个用户能力的说明，见 :ref:`修改用户能力 <modify-user-capabilities>` 。
 
 
 查看存储池统计信息
@@ -345,6 +344,7 @@
 
    ceph osd pool mksnap {pool-name} {snap-name}
 
+
 删除存储池快照
 ==============
 .. Removing a Snapshot of a Pool
@@ -354,6 +354,7 @@
 .. prompt:: bash $
 
    ceph osd pool rmsnap {pool-name} {snap-name}
+
 
 .. _setpoolvalues:
 
@@ -387,8 +388,7 @@
 
 .. describe:: compression_min_blob_size
 
-   :描述: 设置可压缩数据块的最小尺寸：小于此值的数据块不会被压缩。
-          此设置会覆盖下列全局配置：
+   :描述: 设置可压缩数据块的最小尺寸：小于此值的数据块不会被压缩。此设置会覆盖下列全局配置：
 
    * :confval:`bluestore_compression_min_blob_size`
    * :confval:`bluestore_compression_min_blob_size_hdd`
@@ -401,6 +401,11 @@
    :描述: 设置数据块的最大尺寸：大于此数值的数据块在压缩前会破碎成尺寸为
           ``compression_max_blob_size`` 的较小二进制块（ blob ）。
    :类型: Unsigned Integer
+
+.. note:: 用 ``ceph df detail`` 可以查看压缩存储池的统计信息。
+   通过大多数 API 调用或 CLI 命令，压缩池中的对象将显示其原始未压缩时的大小。
+   例如：直接放置在压缩 RADOS 存储池中却未进行 RGW 级别压缩的 RGW 桶，
+   将通过 ``radosgw-admin`` 报告其未压缩的桶大小。 
 
 .. _size:
 
@@ -418,7 +423,7 @@
    :描述: 为保证 PG 活跃且能处理 I/O 操作，要求设置的最小活跃副本数（或分片数），
           详情见\ `设置 RADOS 对象副本数`_ 。对于纠删码存储池，此值应该设置成大于 ``K`` 的值。
           如果只有 ``K`` 个分片的时候仍然允许 I/O ，那将没有冗余，并且在遇到另外一件\
-          永久 OSD 故障这样的事件时，数据会丢失。更多信息见\ `纠删码 <../erasure-code>`_ 。
+          永久 OSD 故障这样的事件时，数据会丢失。更多信息见\ :ref:`ecpool` 。
    :类型: 整数
    :适用版本: ``0.54`` 及以上。
 
@@ -426,8 +431,7 @@
 
 .. describe:: pg_num
 
-   :描述: 指定存储池的 PG 总数。注意 PG autoscaler ，
-          如果在指定存储池上启用了，可能会覆盖手动分配的数值。
+   :描述: 指定存储池的 PG 总数。注意 PG autoscaler ，如果在指定存储池上启用了，可能会覆盖手动分配的数值。
    :类型: 整数
    :有效范围: ``0`` 到 ``mon_max_pool_pg_num`` 。如果设置为 ``0`` ，将采用 ``osd_pool_default_pg_num`` 的值。
 
@@ -457,6 +461,15 @@
    :类型: Boolean
 
    .. versionadded:: 12.2.0
+
+.. describe:: allow_ec_optimizations
+
+   :描述: 允许为纠删码存储池实现性能和容量优化。这些优化专为 CephFS 和 RBD 载荷设计；
+          RGW 载荷有大量小对象或小的随机访问读取，也可以从中受益。有大块顺序读、
+          写操作的 RGW 载荷则受益甚微。详情见 :ref:`rados_ops_erasure_coding_optimizations` 。
+   :类型: Boolean
+
+   .. versionadded:: 20.2.0
 
 .. describe:: hashpspool
 
@@ -527,7 +540,7 @@
 
 .. describe:: target_max_bytes
 
-   :描述: 启用了已废弃的缓存层功能、且达到 ``max_bytes`` 阀值时， Ceph 就回写或赶出对象。
+   :描述: 启用了已废弃的分级缓存功能、且达到 ``max_bytes`` 阀值时， Ceph 就回写或赶出对象。
    :类型: 整数
    :实例: ``1000000000000``  #1-TB
 
@@ -535,7 +548,7 @@
 
 .. describe:: target_max_objects
 
-   :描述: 启用了已废弃的缓存层功能，且达到 ``max_objects`` 阀值时 Ceph 就回写或赶出对象。
+   :描述: 启用了已废弃的缓存层功能，且达到 ``max_objects`` 阀值时， Ceph 就回写或赶出对象。
    :类型: 整数
    :实例: ``1000000`` #1M objects
 
@@ -554,8 +567,8 @@
 
 .. describe:: scrub_min_interval
 
-   :描述: 在负载低时，洗刷存储池 PG 的最小间隔秒数。如果是 ``0`` ，
-          就按照中央配置库里的 ``osd_scrub_min_interval`` 执行。
+   :描述: 存储池 PG 两次成功的轻度洗刷之间的最小间隔秒数。如果这个存储池属性\
+          还是默认值 ``0`` ，就采用中央配置库里的 ``osd_scrub_min_interval`` 。
    :类型: Double
    :默认值: ``0``
 
@@ -563,8 +576,9 @@
 
 .. describe:: scrub_max_interval
 
-   :描述: 不管集群负载如何，都要洗刷存储池 PG 的最大间隔秒数。如果 ``scrub_max_interval``
-          的值是 ``0`` ，就采用中央配置库里的 ``osd_scrub_max_interval`` 数值。
+   :描述: 存储池 PG 两次成功的轻度洗刷之间间隔的最大秒数。影响 overdue 属性，
+          在洗刷调度器转储里会出现。如果默认值还是 ``0`` ，
+          就采用中央配置库里的 ``osd_scrub_max_interval`` 数值。
    :类型: Double
    :默认值: ``0``
 
@@ -572,8 +586,7 @@
 
 .. describe:: deep_scrub_interval
 
-   :描述: “深度”洗刷存储池 PG 的间隔秒数。如果 ``deep_scrub_interval`` 的数值是 ``0`` ，
-          就采用中央配置库里的 ``osd_deep_scrub_interval`` 。
+   :描述: “深度”洗刷存储池 PG 的间隔秒数。如果仍是默认值 ``0`` ，就采用中央配置库里的 ``osd_deep_scrub_interval`` 。
    :类型: Double
    :默认值: ``0``
 
@@ -706,14 +719,16 @@
 =====================
 .. Setting the Number of RADOS Object Replicas
 
-要设置多副本存储池的对象副本数，执行下列命令：
+要设置多副本存储池的对象副本数，
+执行下列命令：
 
 .. prompt:: bash $
 
    ceph osd pool set {poolname} size {num-replicas}
 
 .. important:: ``{num-replicas}`` 参数包括主对象自身。
-   例如，如果你想要对象自身及其两份副本共计三份，执行下列命令指定 ``3`` ：
+   例如，如果你想要对象自身及其两份副本共计三份，
+   执行下列命令指定 ``3`` ：
 
 .. prompt:: bash $
 
@@ -721,16 +736,18 @@
 
 你可以在每个存储池上执行这个命令。
 
-.. note:: 一个处于降级模式的对象，其副本数小于规定值 ``pool size`` ，
-   但仍可接受 I/O 请求。为保证 I/O 正常，
-   可用 ``min_size`` 选项为其设置个最低副本数。例如，执行下列命令：
+.. note:: 一个处于降级模式的 PG ，其副本数小于规定值 ``pool size`` ，
+   但仍可接受 I/O 请求。要设置一个 I/O 正常运作所需的最小副本数，
+   应该用 ``min_size`` 选项。
+   例如，执行下列命令：
 
 .. prompt:: bash $
 
    ceph osd pool set data min_size 2
 
-此命令可确保数据存储池里任何副本数小于 ``min_size`` 的对象都不会收到 I/O 了。
-注意，在生产环境下设置 ``size`` 为 ``2`` 或者 ``min_size`` 为 ``1`` 有丢数据的风险，
+此命令可确保数据存储池里任何副本数小于 ``min_size`` （这里是 2 ）
+的对象都不会收到 I/O 了。注意，在生产环境下设置 ``size``
+为 ``2`` 或者 ``min_size`` 为 ``1`` 有丢数据的风险，
 只有在情况紧急的时候才能这样做，而且只能是临时性的。
 
 
@@ -776,9 +793,8 @@ Ceph 会维持三个副本或复制品，也就是 size 值为 ``3`` 。
 
 .. describe:: {peering_crush_bucket_count}
 
-   此值与 ``peering_crush_bucket_barrier`` 一起使用，
-   可以决定选定的 acting set 内的一组 OSD 是否能相互建立对等互联，
-   根据的是 actine set 中不同桶的数量。
+   此值与 ``peering_crush_bucket_barrier`` 一起使用，可以决定选定的 acting set
+   内的一组 OSD 是否能相互建立对等互联，根据的是 actine set 中不同桶的数量。
 
    :类型: Integer
    :是否必需: Yes.
@@ -793,40 +809,41 @@ Ceph 会维持三个副本或复制品，也就是 size 值为 ``3`` 。
 
 .. describe:: {peering_crush_bucket_barrier}
 
-   一个存储池能跨越的桶类型，例如 rack 、 row 、 datacenter 。
+   一个存储池能跨越的桶类型，例如 ``rack`` 、 ``row`` 、 ``datacenter`` 。
 
    :类型: String
    :是否必需: Yes.
 
 .. describe:: {crush_rule}
 
-   stretch 存储池所用的 crush 规则。存储池类型和 crush_rule 类型必须相匹配（replicated 或 erasure ）。
+   此存储池所用的 CRUSH 规则。存储池类型和 CRUSH 规则类型必须相匹配（ ``replicated`` 或 ``erasure`` ）。
 
    :类型: String
    :是否必需: Yes.
 
 .. describe:: {size}
 
-   stretch 存储池内的对象副本数。
+   存储池内的 RADOS 对象副本数（ PG 也如此）。
    
    :类型: Integer
    :是否必需: Yes.
 
 .. describe:: {min_size}
 
-   stretch 存储池维持正常 I/O 操作所需的最低副本数。
+   存储池能正常提供 IO 服务所需的最低副本数。
 
    :类型: Integer
    :是否必需: Yes.
 
 .. describe:: {--yes-i-really-mean-it}
 
-   需要使用该标记来确认您是否真的想绕过\安全检查并为某个 stretch 存储池设置值，
+   需要使用该标记来确认您是否真的想绕过安全检查并为某个存储池设置值，
    例如，当你试图把 ``peering_crush_bucket_count`` 或 ``peering_crush_bucket_target``
    设置为大于 crush 图中的桶数量时。
 
    :类型: Flag
    :是否必需: No.
+
 
 .. _setting_values_for_a_stretch_pool:
 
@@ -850,11 +867,34 @@ Ceph 会维持三个副本或复制品，也就是 size 值为 ``3`` 。
    :类型: String
    :是否必需: Yes.
 
+.. describe:: {crush_rule}
+
+   退出 stretch 存储池模式后采用的 CRUSH 规则。存储池类型和
+   CRUSH 规则类型必须相匹配（ ``replicated`` 或 ``erasure`` ）。
+
+   :类型: String
+   :是否必需: Yes.
+
+.. describe:: {size}
+
+   退出 stretch 存储池模式后的对象副本数。
+
+   :类型: Integer
+   :是否必需: Yes.
+
+.. describe:: {min_size}
+
+   退出 stretch 存储池模式后，能正常提供 I/O 服务必需的最低副本数。
+
+   :类型: Integer
+   :是否必需: Yes.
+
+
 显示一个 stretch 存储池设置的值
 ===============================
 .. Showing values of a stretch pool
 
-要显示一个 stretch 存储池的值，执行下列命令：
+要查看一个 stretch 存储池的值，执行下列命令：
 
 .. prompt:: bash $
 
@@ -871,9 +911,7 @@ Ceph 会维持三个副本或复制品，也就是 size 值为 ``3`` 。
    :是否必需: Yes.
 
 
-.. _存储池、归置组和 CRUSH 配置参考: ../../configuration/pool-pg-config-ref
 .. _Bloom 过滤器: https://en.wikipedia.org/wiki/Bloom_filter
-.. _设置归置组数量: ../placement-groups#set-the-number-of-placement-groups
 .. _带重写功能的纠删码编码: ../erasure-code#erasure-coding-with-overwrites
 .. _块设备命令: ../../../rbd/rados-rbd-cmds/#create-a-block-device-pool
 .. _pgcalc: ../pgcalc
