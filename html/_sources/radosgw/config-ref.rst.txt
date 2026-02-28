@@ -1,3 +1,5 @@
+.. _radosgw-config-ref:
+
 =======================
  Ceph 对象网关配置参考
 =======================
@@ -57,13 +59,14 @@ rgw 或 radosgw-admin 命令执行时，如果指定了例程名，
 .. confval:: rgw_account_default_quota_max_size
 .. confval:: rgw_verify_ssl
 .. confval:: rgw_max_chunk_size
+.. confval:: rgw_multi_obj_del_max_aio
 
 
 生命周期配置
 ============
 .. Lifecycle Settings
 
-桶的生命周期（ Lifecycle ）配置可以用于管理对象，
+桶的生命周期（ Lifecycle, LC ）配置可以用于管理对象，
 使得它们在整个生命周期内得到有效存储。在以前的版本中，
 生命周期的处理效率被单线程耽误了；到 Nautilus 版，这个问题得到了彻底解决，
 Ceph 对象网关现在可以调用另外的 Ceph 对象网关例程、并用随机排序的序列取代了\
@@ -81,6 +84,10 @@ Ceph 对象网关现在可以调用另外的 Ceph 对象网关例程、并用随
 
 .. note:: 试着调整这两个特定的取值前，请验证当前的集群性能、
    以及 Ceph 对象网关的利用率。
+
+而且，在每个 zone 中，必须在至少一个 RGW 守护进程上启用生命周期维护线程。
+
+.. confval:: rgw_enable_lc_threads
 
 
 垃圾回收选项
@@ -129,6 +136,10 @@ GC 操作是 Ceph 对象网关各种操作的常规部分，
 
 这些值调整得高于默认值后，需要在垃圾回收期间监控集群性能，
 检验一下增加这些值没有对性能带来负面影响。
+
+在每个 zone 中，必须有至少一个 RGW 运行垃圾回收维护线程：
+
+.. confval:: rgw_enable_gc_threads
 
 
 多站设置
@@ -203,8 +214,6 @@ Keystone 选项
 .. confval:: rgw_keystone_url
 .. confval:: rgw_keystone_admin_domain
 .. confval:: rgw_keystone_admin_project
-.. confval:: rgw_keystone_admin_token
-.. confval:: rgw_keystone_admin_token_path
 .. confval:: rgw_keystone_admin_tenant
 .. confval:: rgw_keystone_admin_user
 .. confval:: rgw_keystone_admin_password
@@ -267,10 +276,10 @@ QoS 选项
 
 .. versionadded:: Nautilus
 
-``civetweb`` 前端有一个线程池模型，它给每个连接使用一个线程，因此它在接受请求时\
-自动接受 ``rgw thread pool size`` 配置的约束。 ``beast`` 前端在接受新连接时\
-不受线程池大小的限制，所以 Nautilus 版引进了调度器抽象层，
-以此支持未来调度请求的多种方法。
+较老的、现在也不再是默认的 ``civetweb`` 前端有一个线程池模型，
+它给每个连接使用一个线程，因此它在接受请求时自动接受 :confval:`rgw_thread_pool_size`
+配置的约束。较新的、默认的 ``beast`` 前端在接受新连接时不受线程池大小的限制，
+所以 Nautilus 版引进了调度器抽象层，以支持额外的调度请求方法。
 
 当前，这个调度器默认就是个减速器，它可以把活跃连接数压制到配置的限值之下。
 基于 mClock 的 QoS 现在还处于 *实验* 阶段，而且也不建议用于生产环境。
@@ -301,3 +310,58 @@ QoS 选项
 .. _Barbican: ../barbican
 .. _加密: ../encryption
 .. _HTTP 前端: ../frontends
+
+
+D4N 选项
+========
+.. D4N Settings
+
+D4N 是一种缓存架构，它通过在 Ceph 对象网关（RGW）守护进程之间建立共享数据库，
+利用 Redis 来加速 S3 对象存储操作。 
+
+D4N 架构一次只能在一个 Redis 实例上运行。
+地址是可配置的，可以通过访问下面的参数进行更改。 
+
+.. confval:: rgw_d4n_address
+.. confval:: rgw_d4n_l1_datacache_persistent_path
+.. confval:: rgw_d4n_l1_datacache_disk_reserve
+.. confval:: rgw_d4n_l1_evict_cache_on_start
+.. confval:: rgw_d4n_l1_fadvise
+.. confval:: rgw_d4n_libaio_aio_threads
+.. confval:: rgw_d4n_libaio_aio_num
+.. confval:: rgw_lfuda_sync_frequency
+.. confval:: rgw_d4n_l1_datacache_address
+
+
+主题持续性选项
+==============
+.. Topic Persistency Settings
+
+主题持续性会反复推送通知，直至成功。如需更多信息，见 `桶通知`_ 。
+
+默认行为是无限期且尽可能频繁地进行推送。通过这些选项，
+您可以配置最大保留时间和/或最大重试次数，从而控制多久重试一次失败通知、以及频率。
+推送重试的时间间隔可以通过睡眠持续时间参数进行配置。
+
+所有这些选项的默认值均为 `0` ，
+这意味着持续保留是无限期的，并且会尽可能频繁地重试通知。
+
+.. confval:: rgw_topic_persistency_time_to_live
+.. confval:: rgw_topic_persistency_max_retries
+.. confval:: rgw_topic_persistency_sleep_duration
+
+.. _桶通知: ../notifications
+
+   
+云恢复选项
+==========
+.. Cloud Restore Settings
+
+云恢复功能目前支持将已迁移至 S3 兼容云服务的对象恢复到 Ceph 对象网关\
+（ RGW ）中。恢复请求由 Restore 工作线程在后台异步地处理。
+
+.. confval:: rgw_restore_max_objs
+.. confval:: rgw_restore_lock_max_time
+.. confval:: rgw_restore_processor_period
+
+这些值可以根据您的具体载荷进行调整，以进一步提高恢复处理的积极程度。

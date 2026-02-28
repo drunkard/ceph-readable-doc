@@ -254,10 +254,11 @@ span.prompt1:before {
 </style><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>pg_autoscale_mode<span class="w"> </span>&lt;mode&gt;</span>
 </pre></div></div><p>例如，要在 <code class="docutils literal notranslate"><span class="pre">foo</span></code> 存储池上启用自动伸缩，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>foo<span class="w"> </span>pg_autoscale_mode<span class="w"> </span>on</span>
-</pre></div></div><p>你也可以配置默认的 <code class="docutils literal notranslate"><span class="pre">pg_autoscale_mode</span></code> ，
-它将应用于之后创建的所有存储池。用下列命令更改此配置：</p>
+</pre></div></div><p>还有个中央配置库的 <code class="docutils literal notranslate"><span class="pre">pg_autoscale_mode</span></code> 选项，
+控制着集群自最初设置好以来所创建存储池的自动伸缩模式。
+用下列命令更改此配置：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>global<span class="w"> </span>osd_pool_default_pg_autoscale_mode<span class="w"> </span>&lt;mode&gt;</span>
-</pre></div></div><p>您可以使用 <code class="docutils literal notranslate"><span class="pre">noautoscale</span></code> 标志禁用或启用所有存储池的自动伸缩功能。
+</pre></div></div><p>您可以用 <code class="docutils literal notranslate"><span class="pre">noautoscale</span></code> 标志禁用或启用所有存储池的自动伸缩器 autoscaler 。
 默认情况下，该标记设置为关闭 <code class="docutils literal notranslate"><span class="pre">off</span></code> ，
 但可以通过运行以下命令将其设置为开启 <code class="docutils literal notranslate"><span class="pre">on</span></code> ：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>noautoscale</span>
@@ -294,29 +295,39 @@ RATIO 的定义是 (SIZE * RATE) / RAW CAPACITY 。</p></li>
 （即管理员指定的，此存储池预计会消耗的存储量）
 与所有其他已设置目标比率的存储池的总预期存储量之比。
 如果同时指定 <code class="docutils literal notranslate"><span class="pre">target_size_bytes</span></code> 和 <code class="docutils literal notranslate"><span class="pre">target_size_ratio</span></code> ，
-则 <code class="docutils literal notranslate"><span class="pre">target_size_ratio</span></code> 优先。</p></li>
+则 <code class="docutils literal notranslate"><span class="pre">target_size_ratio</span></code> 优先。注意，当 BIAS 值不为 1 时，
+尤其是对于 CephFS 元数据和 RGW 索引存储池，最好保持目标比率不变，
+因为同时调整二者，可能会由于双重调整反而得到不合适的 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 值。</p></li>
 <li><p><strong>EFFECTIVE RATIO</strong> 是对目标比率进行两次调整的结果：</p>
 <ol class="arabic simple">
 <li><p>减去已设置目标尺寸的存储池预计使用的所有容量。</p></li>
-<li><p>对于已设置目标比率的存储池，
-把它们的目标比率进行归一化处理，
-使它们统称为目标集群容量。例如，
+<li><p>对于已设置目标比率的存储池，把它们的目标比率进行归一化处理，
+使它们共同达到目标集群容量。例如，
 四个 target_ratio 为 1.0 的存储池的有效比率为 0.25 。</p></li>
 </ol>
 <p>系统在计算时会使用这两个比率
 （即目标比率和有效比率）中较大的一个。</p>
 </li>
 <li><p><strong>BIAS</strong> 是用于手动调整存储池 PG 数的一个乘数，
-根据先前的信息，预估某个指定存储池应该有多少个 PG 。</p></li>
-<li><p><strong>PG_NUM</strong> 是与存储池相关联的当前 PG 数量，
-或者，如果正在进行 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 变更，
-则是该存储池正要实现的当前 PG 数量。</p></li>
-<li><p><strong>NEW PG_NUM</strong> （如果存在）是系统建议的存储池 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 值。
+根据先前的信息，预估某个指定存储池应该有多少个 PG 。
+对于主要将数据存储在 omap 而非 RADOS 对象中的存储池而言，
+尤其是 RGW 索引和 CephFS / RBD EC 元数据存储池，这一点至关重要。
+当给存储池设置非 1.0 的 bias 值时，建议不要设置目标比率（ target ratio ）。</p></li>
+<li><p><strong>PG_NUM</strong> 是当前与存储池相关联的 PG 数量，或者，
+如果正在进行 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 变更，则是该存储池正要达到的 PG 数量。</p></li>
+<li><p><strong>NEW PG_NUM</strong> （如果存在）是系统给当前存储池建议的 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 值。
 它总是 2 的幂次，
-只有当建议值与当前值的差异超过默认系数 3 时才会出现。
+只有当建议值与当前值的差异超过伸缩阈值时才会出现。
+此阈值默认为配置的系数 <code class="docutils literal notranslate"><span class="pre">3</span></code> 。
+在调低时，仅使用配置的因子；
+而在扩展时，阈值会动态降低：
+如果推荐的 NEW PG_NUM 为 512 或 1024 ，则阈值设置为 1.0 ；
+如果推荐的 NEW PG_NUM 为 2048 ，则阈值设置为 2.0 。
 要调整这个倍数（在下面的示例中，
-它被改为 2），执行以下命令：</p>
+它被改为 <code class="docutils literal notranslate"><span class="pre">2</span></code> ），执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>threshold<span class="w"> </span><span class="m">2</span>.0</span>
+</pre></div></div><p>要查看当前的 <code class="docutils literal notranslate"><span class="pre">threshold</span></code> 值，执行下列命令：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>get<span class="w"> </span>threshold</span>
 </pre></div></div></li>
 <li><p><strong>AUTOSCALE</strong> 是存储池的 <code class="docutils literal notranslate"><span class="pre">pg_autoscale_mode</span></code> ，可设置为
 <code class="docutils literal notranslate"><span class="pre">on</span></code> 、 <code class="docutils literal notranslate"><span class="pre">off</span></code> 或 <code class="docutils literal notranslate"><span class="pre">warn</span></code> 。</p></li>
@@ -347,19 +358,25 @@ RATIO 的定义是 (SIZE * RATE) / RAW CAPACITY 。</p></li>
 </section>
 <section id="id4">
 <h3>自动化的伸缩<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h3>
-<p>在自动伸缩的方法中，最简单的可以允许集群根据使用情况自动伸缩 <code class="docutils literal notranslate"><span class="pre">pgp_num</span></code> 。
-Ceph 会考虑整个系统的总空闲空间和 PG 的目标数量、
-考虑每个存储池中存储了多少数据，并相应地分配 PG 。
-系统的做法比较保守，只有在当前 PG 数量（ <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> ）与建议数量相差超过 3 倍时，才会对存储池进行更改。</p>
+<p>在自动伸缩的途径中，最简单的是允许集群根据使用情况自动伸缩 <code class="docutils literal notranslate"><span class="pre">pgp_num</span></code> 。
+Ceph 会考虑整个系统的总空闲空间、每个 OSD 的目标 PG 数量、
+以及每个存储池中存储了多少数据，并相应地分配 PG 。
+系统的做法比较保守，只有在当前 PG 数量（ <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> ）与建议数量相差超过伸缩阈值时，才会对存储池进行更改。
+在收缩时，只使用这个配置的因子；然而，在扩大时，
+这个阈值会动态地降低：当推荐的 NEW PG_NUM 为 512 或 1024 时，
+阈值会自动设置为 1.0 ；为 2048 时自动设置为 2.0 。</p>
 <p>每个 OSD 的目标 PG 数由 <code class="docutils literal notranslate"><span class="pre">mon_target_pg_per_osd</span></code>
 参数（默认值： 100 ）决定，
 可执行以下命令进行调整：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>global<span class="w"> </span>mon_target_pg_per_osd<span class="w"> </span><span class="m">100</span></span>
-</pre></div></div><p>自动伸缩器会分析存储池，并根据每个子树进行调整。
+</pre></div></div><p>除了最小化的部署外，建议将该值设置为 200 。
+值高于 500 可能会导致过多对等流量以及 RAM 占用量过大。</p>
+<p>自动伸缩器（ autoscaler ）会分析存储池，并以子树为单位进行调整。
 由于每个存储池可能映射到不同的 CRUSH 规则，
-而每个规则可能会把数据摊派到不同的设备上，
-因此 Ceph 将独立考虑分级结构中每个子树的利用率。例如，
-映射到 <code class="docutils literal notranslate"><span class="pre">ssd</span></code> 类 OSD 的存储池和映射到 <code class="docutils literal notranslate"><span class="pre">hdd</span></code> 类 OSD 的存储池各自的最佳 PG 数量将取决于这两种不同类型设备的数量。</p>
+而每个规则可能会把数据摊派到不同的、还可能重叠的设备上，
+因此 Ceph 将独立考虑分级结构中每个子树的利用率。
+例如，映射到 <code class="docutils literal notranslate"><span class="pre">ssd</span></code> 类 OSD 的存储池和映射到 <code class="docutils literal notranslate"><span class="pre">hdd</span></code> 类 OSD 的存储池，
+它们各自的最佳 PG 数量将取决于这两种不同类型设备的数量。</p>
 <p>如果存储池使用了两个或更多 CRUSH 根下的 OSD
 （例如，同时使用 <code class="docutils literal notranslate"><span class="pre">ssd</span></code> 和 <code class="docutils literal notranslate"><span class="pre">hdd</span></code> 设备的影子树），
 自动伸缩器会在管理器日志中向用户发出警告。
@@ -389,7 +406,8 @@ Ceph 会考虑整个系统的总空闲空间和 PG 的目标数量、
 但在某些情况下，集群管理员知道长期运行后，
 哪些存储池可能会消耗系统的大部分容量。
 如果向 Ceph 提供了这些信息，可以从一开始就分配更合适的 PG 数量，
-从而避免随后更改 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 以及随之而来的重新归位数据带来的开销。</p>
+从而避免随后更改 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 以及随之而来的重新归位数据带来的开销。
+确保 PG 分布到所有可用的 OSD 上，这也有助于提升性能和数据一致性。</p>
 <p>存储池的<em>目标大小（ target size ）</em>有两种指定方式：
 一种是设置存储池的绝对大小（以字节为单位），
 一种是相对于所有其他设置了 <code class="docutils literal notranslate"><span class="pre">target_size_ratio</span></code> 的存储池的权重。</p>
@@ -414,22 +432,25 @@ Ceph 会考虑整个系统的总空闲空间和 PG 的目标数量、
 <p>如果同时为存储池指定了 <code class="docutils literal notranslate"><span class="pre">target_size_ratio</span></code> 和 <code class="docutils literal notranslate"><span class="pre">target_size_bytes</span></code> ，
 那么后者将被忽略，前者将用于系统计算，
 并触发健康检查消息（ <code class="docutils literal notranslate"><span class="pre">POOL_HAS_TARGET_SIZE_BYTES_AND_RATIO</span></code> ）。</p>
+<p>注意，大多数情况下，建议不要在同一存储池上同时设置 1.0 以外的 bias 值和目标比率。
+对于元数据或 omap 相对多的存储池，可设置较高的 bias 值；
+对于 RADOS 数据相对多的存储池，应设置目标比率。</p>
 </section>
 <section id="id6">
 <h3>设置存储池的 PG 数量界限<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h3>
 <p>可以给存储池指定最小 PG 数和最大 PG 数。</p>
 <section id="pg-pg">
 <h4>设置最小 PG 数和最大 PG 数<a class="headerlink" href="#pg-pg" title="Permalink to this heading"></a></h4>
-<p>如果设置了最小值，则 Ceph 自己不会将 PG 数量缩减
-（也不建议您缩减）到配置值以下。
+<p>如果给一个存储池设置了最小值，那么 Ceph 自己不会把这个存储池的
+<code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 值缩减（也不建议您缩减）到配置值以下。
 设置最小值的目的是为了给客户端 I/O 过程的并行数量设定一个下限，
 即使存储池大部分是空的也是如此。</p>
-<p>如果设置了最大值，则 Ceph 自己不会将 PG 数量增加
+<p>如果设置了最大值，则 Ceph 自己不会把 PG 数量增加
 （也不建议您增加）到配置值以上。</p>
 <p>要设置存储池的最小 PG 数量，
-执行以下形式的命令：</p>
+执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>pg_num_min<span class="w"> </span>&lt;num&gt;</span>
-</pre></div></div><p>要设置存储池的最大 PG 数，执行以下命令：</p>
+</pre></div></div><p>要设置存储池的最大 PG 数，执行下列命令：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;pool-name&gt;<span class="w"> </span>pg_num_max<span class="w"> </span>&lt;num&gt;</span>
 </pre></div></div><p>另外，命令 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">pool</span> <span class="pre">create</span></code> 有两个命令行选项，
 可以用于在创建时指定存储池的最小或最大 PG 数：
@@ -442,13 +463,16 @@ Ceph 会考虑整个系统的总空闲空间和 PG 的目标数量、
 <p>用下列命令创建存储池时，你可以加选项预先设置 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 参数的值：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span>create<span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span><span class="o">[</span>pg_num<span class="o">]</span></span>
 </pre></div></div><p>如果你不在这个命令里指定 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> ，
-集群会基于存储池内的数据量，用 PG 自动伸缩器自动配置这个参数，
+集群会基于这个存储池内的数据量，用 PG 自动伸缩器自动配置这个参数，
 （见 <a class="reference internal" href="#pg-autoscaler"><span class="std std-ref">自动伸缩归置组</span></a> ）。</p>
 <p>不过，创建时指定或不指定 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 对以后集群是否会自动调整该参数没有任何影响。
 在前面已经叙述过， PG 的自动伸缩是通过运行以下命令启用或禁用的：</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">ceph<span class="w"> </span>osd<span class="w"> </span>pool<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="o">{</span>pool-name<span class="o">}</span><span class="w"> </span>pg_autoscale_mode<span class="w"> </span><span class="o">(</span>on<span class="p">|</span>off<span class="p">|</span>warn<span class="o">)</span></span>
-</pre></div></div><p>在没有均衡器的情况下，建议的目标是每个 OSD 上大约 100 个 PG 副本。
-有均衡器时，初始目标为每个 OSD 上 50 个 PG 副本是合理的。</p>
+</pre></div></div><p>在没有均衡器（ balancer ）的情况下，给大部分集群建议的
+（但不是默认值）目标是每个 OSD 上大约 200 个 PG 副本。
+打开均衡器且采用默认值时，最初每个 OSD 上应该有大约 50-70 个 PG 副本。
+这个数值位于 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">df</span></code> 输出下的 <code class="docutils literal notranslate"><span class="pre">PGS</span></code> 一列，
+而且，它不是这个集群的总 PG 数除以 OSD 数得出的。</p>
 <p>自动伸缩器试图满足以下条件：</p>
 <ul class="simple">
 <li><p>每个 OSD 上的 PG 数量应该与存储池中的数据量成比例</p></li>
@@ -459,8 +483,9 @@ Ceph 会考虑整个系统的总空闲空间和 PG 的目标数量、
 <section id="id7">
 <h2>归置组的使用<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
 <p>存储池内的归置组（ PG ）把对象汇聚在一起，
-因为跟踪每一个 RADOS 对象的位置及其元数据的计算代价太大——
-即一个拥有数百万对象的系统，不可能在对象这一级追踪位置。</p>
+因为跟踪每一个 RADOS 对象的位置及其元数据的计算代价太大。
+对于一个拥有数百万对象的系统，
+不可能以对象为单位去有效地追踪它们的位置。</p>
 <p class="ditaa">
 <img src="../../../_images/ditaa-e06a40fed57ca0d6741624eddbbb2c2f8c15d142.png"/>
 </p>
@@ -480,17 +505,20 @@ Ceph 会考虑整个系统的总空闲空间和 PG 的目标数量、
 <p>分配给 PG 的 OSD 并没有被这个 PG 独占，
 而是与来自同一存储池或其他存储池的其他 PG 共享。
 在本例中， OSD #2 由归置组 #1 和归置组 #2 共享。
-如果 OSD #2 出现故障，那么归置组 #2 必须恢复对象副本
-（利用 OSD #3 ）。</p>
+如果 OSD #2 出现故障，那么归置组 #2 必须恢复对象副本（利用 OSD #3 ）。</p>
 <p>PG 数量增加时，会产生几种后果。
 新 PG 会被分配 OSD 。 CRUSH 函数的结果会发生变化，
-这意味着现有 PG 中的某些对象会被复制到新 PG 中，
-并从旧的 PG 中移除。</p>
+这意味着现有 PG 中的某些对象会被复制到新 PG 中，并从旧的 PG 中移除。</p>
 </section>
 <section id="id8">
 <h2>指定 pg_num 时的相关因素<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h2>
-<p>一方面，从数据的持久性和在 OSD 之间的均匀分布来看，使用较多的 PG 比较好；
-另一方面，从节省 CPU 资源和尽量减少内存使用量的角度考虑， PG 数量越少越好。</p>
+<p>性能以及数据均衡地分布到各 OSD 上都倾向于使用更多的 PG ；
+而节约 CPU 资源和最小化内存用量则倾向于使用较少的 PG 。
+在 Filestore OSD 废弃前，后者更为重要；因此，
+而最新的集群采用 BlueStore OSD ，更倾向于前者，
+于是把 <code class="docutils literal notranslate"><span class="pre">mon_target_pg_per_osd</span></code> 配置为 200-250 ，
+把 <code class="docutils literal notranslate"><span class="pre">mon_max_pg_per_osd</span></code> 配置为 500 。
+注意，后者仅作为故障保护机制，本身并不影响 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 的计算。</p>
 <section id="data-durability">
 <span id="id9"></span><h3>数据持久性<a class="headerlink" href="#data-durability" title="Permalink to this heading"></a></h3>
 <p>当 OSD 出现故障时，数据丢失的风险就会增加，
@@ -509,10 +537,12 @@ Ceph 会考虑整个系统的总空闲空间和 PG 的目标数量、
 如果该 OSD 恰好包含某一对象的唯一剩余副本，
 则这个对象将永久丢失。</p></li>
 </ol>
+<p>这就是为什么 <code class="docutils literal notranslate"><span class="pre">size=2</span></code> 的多副本存储池和 <code class="docutils literal notranslate"><span class="pre">m=1</span></code> 的
+EC 存储池有风险、且通常不建议使用的微妙原因。</p>
 <p>在一个包含 10 个 OSD 和 512 个 PG 的三副本存储池集群中，
 CRUSH 将为每个 PG 分配三个 OSD 。最终，
 每个 OSD 承载 <span class="math notranslate nohighlight">\(\frac{(512 * 3)}{10} = ~150\)</span> 个 PG 。
-因此，在上述情形下，当第一个 OSD 出现故障时，所有 150 个 PG 将同时开始恢复。</p>
+因此，在上述情形下，当第一个 OSD 出现故障时，所有 ~150 个 PG 将同时开始恢复。</p>
 <p>被恢复的 150 个 PG 可能会均匀地分布在剩余的 9 个 OSD 中。
 因此，每个仍健在的 OSD 都有可能向所有其他 OSD 发送对象副本，
 也有可能要存入一些新对象，
@@ -593,9 +623,9 @@ CRUSH 会尽力将 OSD 平均地分配给所有现有的 PG 。</p>
 </section>
 <section id="resource-usage">
 <span id="id11"></span><h3>内存、处理器和网络使用情况<a class="headerlink" href="#resource-usage" title="Permalink to this heading"></a></h3>
-<p>集群中的每一个归置组都会对 OSD 和 MON 产生内存、网络、处理器方面的需求。
+<p>集群中的每一个归置组都会对 OSD 和监视器产生内存、网络、处理器方面的需求。
 这些需求必须随时得到满足，在恢复期间还会增加。
-事实上，开发出 PG 的主要原因之一就是通过把对象聚集在一起来分担这种开销。</p>
+事实上，开发出 PG 的主要原因之一就是通过把对象聚集成可管理的尺寸来分担这种开销。</p>
 <p>因此，最小化 PG 数量可节省不少资源。</p>
 </section>
 </section>
@@ -614,16 +644,17 @@ CRUSH 会尽力将 OSD 平均地分配给所有现有的 PG 。</p>
 <blockquote>
 <div><p>PG 总数 = <span class="math notranslate nohighlight">\(\frac{OSDs \times 100}{pool \: size}\)</span></p>
 </div></blockquote>
-<p>这里存储池副本数（ pool size ）是指多副本存储池的副本数或纠删码存储池的 K+M 之和。
-要获取这个和，运行命令 <code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">erasure-code-profile</span> <span class="pre">get</span></code> 。</p>
-<p>接下来，检验一下生成的基准值是否与您设计的 Ceph 集群一致，即最大限度地提高<a class="reference internal" href="#id9">数据持久性</a>和<a class="reference internal" href="#id10">一个存储池内的对象分布</a>，并最大限度地减少<a class="reference internal" href="#id11">内存、处理器和网络使用情况</a>。</p>
+<p>这里的<strong>pool size （存储池副本数）</strong>是指多副本存储池的副本数或纠删码存储池的 K+M 之和。要获取这个和，运行命令
+<code class="docutils literal notranslate"><span class="pre">ceph</span> <span class="pre">osd</span> <span class="pre">erasure-code-profile</span> <span class="pre">get</span></code> 。</p>
+<p>接下来，检验一下生成的基准值是否与您设计的 Ceph 集群一致，
+即最大化<a class="reference internal" href="#data-durability"><span class="std std-ref">数据持久性</span></a>和<a class="reference internal" href="#object-distribution"><span class="std std-ref">一个存储池内的对象分布</span></a>，
+并最大限度地减少<a class="reference internal" href="#resource-usage"><span class="std std-ref">内存、处理器和网络使用情况</span></a>。</p>
 <p>这个值应该<strong>四舍五入到最接近的 2 的幂次</strong>。</p>
 <p>每个存储池的 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 应该是 2 的幂次。
 其他值可能会导致数据在 OSD 中的分布不均匀。
 最好在设置下一个最高的 2 的幂次是可行和可取的情况下，
 再增加存储池的 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 。注意， 2 的幂次这个规则是针对每个存储池的；
-把所有存储池的 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 之和凑成 2 的幂次既没有必要，
-也不容易。</p>
+把所有存储池的 <code class="docutils literal notranslate"><span class="pre">pg_num</span></code> 之和凑成 2 的幂次既没有必要，也不容易。</p>
 <p>比如，一个配置了 200 个 OSD 且存储池副本数为 3 的集群，
 你可以这样估算归置组数量：</p>
 <blockquote>

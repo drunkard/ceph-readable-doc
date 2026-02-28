@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>序列化（编码、解码） &mdash; Ceph Documentation</title>
+  <title>Serialization (encode/decode) &mdash; Ceph Documentation</title>
   
 
   
@@ -57,7 +57,7 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../internals/">Ceph 内幕</a></li>
-      <li class="breadcrumb-item active">序列化（编码、解码）</li>
+      <li class="breadcrumb-item active">Serialization (encode/decode)</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/dev/encoding.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -141,7 +141,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../development-workflow/">开发流程</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../documenting/">为 Ceph 写作文档</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../dpdk/">Ceph messenger DPDKStack</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">序列化（编码、解码）</a><ul>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Serialization (encode/decode)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#terminology">Terminology</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#principles-for-format-change">Principles for format change</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#frameworks">Frameworks</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#adding-a-field-to-a-structure">Adding a field to a structure</a></li>
 </ul>
 </li>
@@ -247,12 +250,72 @@
   </div>
 
   
-  <section id="id1">
-<h1>序列化（编码、解码）<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h1>
+  <section id="serialization-encode-decode">
+<h1>Serialization (encode/decode)<a class="headerlink" href="#serialization-encode-decode" title="Permalink to this heading"></a></h1>
 <p>When a structure is sent over the network or written to disk, it is
-encoded into a string of bytes.  Serializable structures have
-<code class="docutils literal notranslate"><span class="pre">encode</span></code> and <code class="docutils literal notranslate"><span class="pre">decode</span></code> methods that write and read from <code class="docutils literal notranslate"><span class="pre">bufferlist</span></code>
-objects representing byte strings.</p>
+encoded into a string of bytes. Usually (but not always -- multiple
+serialization facilities coexist in Ceph) serializable structures
+have <code class="docutils literal notranslate"><span class="pre">encode</span></code> and <code class="docutils literal notranslate"><span class="pre">decode</span></code> methods that write and read from
+<code class="docutils literal notranslate"><span class="pre">bufferlist</span></code> objects representing byte strings.</p>
+<section id="terminology">
+<h2>Terminology<a class="headerlink" href="#terminology" title="Permalink to this heading"></a></h2>
+<p>It is best to think not in the domain of daemons and clients but
+encoders and decoders. An encoder serializes a structure into a bufferlist
+while a decoder does the opposite.</p>
+<p>Encoders and decoders can be referred collectively as dencoders.</p>
+<p>Dencoders (both encoders and docoders) live within daemons and clients.
+For instance, when an RBD client issues an IO operation, it prepares
+an instance of the <code class="docutils literal notranslate"><span class="pre">MOSDOp</span></code> structure and encodes it into a bufferlist
+that is put on the wire.
+An OSD reads these bytes and decodes them back into an <code class="docutils literal notranslate"><span class="pre">MOSDOp</span></code> instance.
+Here encoder was used by the client while decoder by the OSD. However,
+these roles can swing -- just imagine handling of the response: OSD encodes
+the <code class="docutils literal notranslate"><span class="pre">MOSDOpReply</span></code> while RBD clients decode.</p>
+<p>Encoder and decoder operate accordingly to a format which is defined
+by a programmer by implementing the <code class="docutils literal notranslate"><span class="pre">encode</span></code> and <code class="docutils literal notranslate"><span class="pre">decode</span></code> methods.</p>
+</section>
+<section id="principles-for-format-change">
+<h2>Principles for format change<a class="headerlink" href="#principles-for-format-change" title="Permalink to this heading"></a></h2>
+<p>It is not unusual for the format of serialization to change. This
+process requires careful attention both during development
+and review.</p>
+<p>The general rule is that a decoder must understand what has been encoded by an
+encoder. Most difficulties arise during the process of ensuring the continuity
+of compatibility of old decoders with new encoders, and ensuring the continuity
+of compatibility of new decoders with old decoders. One should assume -- if not
+otherwise specified -- that any mix of old and new is possible in a cluster.
+There are two primary concerns:</p>
+<ol class="arabic simple">
+<li><p><strong>Upgrades.</strong> Although there are recommendations related to the order of
+entity types (mons/OSDs/clients), it is not mandatory and no assumption
+should be made.</p></li>
+<li><p><strong>Huge variability of client versions.</strong> It has always been the case that
+kernel upgrades (and thus kernel clients) are decoupled from Ceph upgrades.
+Containerization brings variability even to <code class="docutils literal notranslate"><span class="pre">librbd</span></code> -- now user space
+libraries live in the container itself:</p></li>
+</ol>
+<p>There are a few rules limiting the degree of interoperability between
+dencoders:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n-2</span></code> for dencoding between daemons,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n-3</span></code> hard requirement for client scenarios,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n-3..</span></code> soft requirement for client scenarios. Ideally every client should
+be able to talk to any version of daemons.</p></li>
+</ul>
+<p>As the underlying reasons are the same, the rules that dencoders
+follow are nearly the same as the rules for deprecations of our features
+bits. See the <code class="docutils literal notranslate"><span class="pre">Notes</span> <span class="pre">on</span> <span class="pre">deprecation</span></code> in <code class="docutils literal notranslate"><span class="pre">src/include/ceph_features.h</span></code>.</p>
+</section>
+<section id="frameworks">
+<h2>Frameworks<a class="headerlink" href="#frameworks" title="Permalink to this heading"></a></h2>
+<p>Currently multiple genres of dencoding helpers co-exist.</p>
+<ul class="simple">
+<li><p>encoding.h (the most proliferated one),</p></li>
+<li><p>denc.h (performance optimized, seen mostly in <code class="docutils literal notranslate"><span class="pre">BlueStore</span></code>),</p></li>
+<li><p>the <cite>Message</cite> hierarchy.</p></li>
+</ul>
+<p>Although details vary, the interoperability rules stay the same.</p>
+</section>
 <section id="adding-a-field-to-a-structure">
 <h2>Adding a field to a structure<a class="headerlink" href="#adding-a-field-to-a-structure" title="Permalink to this heading"></a></h2>
 <p>You can see examples of this all over the Ceph code, but here’s an
@@ -289,7 +352,7 @@ do not require incrementing compat_version.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">DECODE_START</span></code> macro takes an argument specifying the most recent
 message version that the code can handle.  This is compared with the
 compat_version encoded in the message, and if the message is too new then
-an exception will be thrown.  Because changes to compat_verison are rare,
+an exception will be thrown.  Because changes to compat_version are rare,
 this isn’t usually something to worry about when adding fields.</p>
 <p>In practice, changes to encoding usually involve simply adding the desired fields
 at the end of the <code class="docutils literal notranslate"><span class="pre">encode</span></code> and <code class="docutils literal notranslate"><span class="pre">decode</span></code> functions, and incrementing
@@ -330,6 +393,62 @@ version 1 -- they will just ignore the trailing bytes where we encode <code clas
 because we might still be passed older-versioned messages that do not
 have the field.  The <code class="docutils literal notranslate"><span class="pre">struct_v</span></code> variable is a local set by the <code class="docutils literal notranslate"><span class="pre">DECODE_START</span></code>
 macro.</p>
+<p># Into the weeeds</p>
+<p>The append-extendability of our dencoders is a result of the forward
+compatibility that the <code class="docutils literal notranslate"><span class="pre">ENCODE_START</span></code> and <code class="docutils literal notranslate"><span class="pre">DECODE_FINISH</span></code> macros bring.</p>
+<p>They are implementing extensibility facilities. An encoder, when filling
+the bufferlist, prepends three fields: version of the current format,
+minimal version of a decoder compatible with it and the total size of
+all encoded fields.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/**</span>
+<span class="cm"> * start encoding block</span>
+<span class="cm"> *</span>
+<span class="cm"> * @param v current (code) version of the encoding</span>
+<span class="cm"> * @param compat oldest code version that can decode it</span>
+<span class="cm"> * @param bl bufferlist to encode to</span>
+<span class="cm"> *</span>
+<span class="cm"> */</span>
+<span class="cp">#define ENCODE_START(v, compat, bl)                             \</span>
+<span class="cp">  __u8 struct_v = v;                                            \</span>
+<span class="cp">  __u8 struct_compat = compat;                                  \</span>
+<span class="cp">  ceph_le32 struct_len;                                         \</span>
+<span class="cp">  auto filler = (bl).append_hole(sizeof(struct_v) +             \</span>
+<span class="cp">    sizeof(struct_compat) + sizeof(struct_len));                \</span>
+<span class="cp">  const auto starting_bl_len = (bl).length();                   \</span>
+<span class="cp">  using ::ceph::encode;                                         \</span>
+<span class="cp">  do {</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">struct_len</span></code> field allows the decoder to eat all the bytes that were
+left undecoded in the user-provided <code class="docutils literal notranslate"><span class="pre">decode</span></code> implementation.
+Analogically, decoders tracks how much input has been decoded in the
+user-provided <code class="docutils literal notranslate"><span class="pre">decode</span></code> methods.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#define DECODE_START(bl)                                        \</span>
+<span class="cp">  unsigned struct_end = 0;                                      \</span>
+<span class="cp">  __u32 struct_len;                                             \</span>
+<span class="cp">  decode(struct_len, bl);                                       \</span>
+<span class="cp">  ...                                                           \</span>
+<span class="cp">  struct_end = bl.get_off() + struct_len;                       \</span>
+<span class="cp">  }                                                             \</span>
+<span class="cp">  do {</span>
+</pre></div>
+</div>
+<p>Decoder uses this information to discard the extra bytes it does not
+understand. Advancing bufferlist is critical as dencoders tend to be nested;
+just leaving it intact would work only for the very last <code class="docutils literal notranslate"><span class="pre">deocde</span></code> call
+in a nested structure.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#define DECODE_FINISH(bl)                                       \</span>
+<span class="cp">  } while (false);                                              \</span>
+<span class="cp">  if (struct_end) {                                             \</span>
+<span class="cp">    ...                                                         \</span>
+<span class="cp">    if (bl.get_off() &lt; struct_end)                              \</span>
+<span class="cp">      bl += struct_end - bl.get_off();                          \</span>
+<span class="cp">  }</span>
+</pre></div>
+</div>
+<p>This entire, cooperative mechanism allows encoder (its further revisions)
+to generate more byte stream (due to e.g. adding a new field at the end)
+and not worry that the residue will crash older decoder revisions.</p>
 </section>
 </section>
 

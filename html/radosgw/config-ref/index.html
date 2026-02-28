@@ -128,6 +128,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#qos">QoS 选项</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#d4n">D4N 选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">主题持续性选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id14">云恢复选项</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../admin/">管理指南</a></li>
@@ -231,7 +234,7 @@
 
   
   <section id="ceph">
-<h1>Ceph 对象网关配置参考<a class="headerlink" href="#ceph" title="Permalink to this heading"></a></h1>
+<span id="radosgw-config-ref"></span><h1>Ceph 对象网关配置参考<a class="headerlink" href="#ceph" title="Permalink to this heading"></a></h1>
 <p>下列的选项可加入 Ceph 配置文件（一般是 <code class="docutils literal notranslate"><span class="pre">ceph.conf</span></code> ）的
 <code class="docutils literal notranslate"><span class="pre">[client.radosgw.{instance-name}]</span></code> 段下，很多选项都有默认值，你若未指定，自然用默认。</p>
 <p>rgw 或 radosgw-admin 命令执行时，如果指定了例程名，
@@ -971,9 +974,26 @@ object.</p>
 </div></blockquote>
 </dd></dl>
 
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_multi_obj_del_max_aio">
+<span class="sig-name descname"><span class="pre">rgw_multi_obj_del_max_aio</span></span><a class="headerlink" href="#confval-rgw_multi_obj_del_max_aio" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Max number of concurrent RADOS requests per multi-object delete
+request.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">16</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
 <section id="id2">
 <h2>生命周期配置<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h2>
-<p>桶的生命周期（ Lifecycle ）配置可以用于管理对象，
+<p>桶的生命周期（ Lifecycle, LC ）配置可以用于管理对象，
 使得它们在整个生命周期内得到有效存储。在以前的版本中，
 生命周期的处理效率被单线程耽误了；到 Nautilus 版，这个问题得到了彻底解决，
 Ceph 对象网关现在可以调用另外的 Ceph 对象网关例程、并用随机排序的序列取代了按顺序排列的索引分片枚举，以此实现了桶生命周期的并行多线程处理。</p>
@@ -1021,6 +1041,31 @@ work pool. This option can help accelerate processing each bucket.</p>
 <p>试着调整这两个特定的取值前，请验证当前的集群性能、
 以及 Ceph 对象网关的利用率。</p>
 </div>
+<p>而且，在每个 zone 中，必须在至少一个 RGW 守护进程上启用生命周期维护线程。</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_enable_lc_threads">
+<span class="sig-name descname"><span class="pre">rgw_enable_lc_threads</span></span><a class="headerlink" href="#confval-rgw_enable_lc_threads" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The lifecycle maintenance thread is responsible for lifecycle related
+maintenance work. The thread itself can be disabled, but in order for
+lifecycle to work correctly, at least one RGW in each zone needs to
+have this thread running. Havingthe thread enabled on multiple RGW
+processes within the same zone can spread some of the maintenance work
+between them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p>
+</dd>
+<dt class="field-odd">see also<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-rgw_enable_gc_threads"><code class="xref std std-confval docutils literal notranslate"><span class="pre">rgw_enable_gc_threads</span></code></a>, <code class="xref std std-confval docutils literal notranslate"><span class="pre">rgw_enable_quota_threads</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
 </section>
 <section id="id3">
 <h2>垃圾回收选项<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
@@ -1157,6 +1202,31 @@ collection thread will use when purging old data.</p>
 </div>
 <p>这些值调整得高于默认值后，需要在垃圾回收期间监控集群性能，
 检验一下增加这些值没有对性能带来负面影响。</p>
+<p>在每个 zone 中，必须有至少一个 RGW 运行垃圾回收维护线程：</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_enable_gc_threads">
+<span class="sig-name descname"><span class="pre">rgw_enable_gc_threads</span></span><a class="headerlink" href="#confval-rgw_enable_gc_threads" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The garbage collection maintenance thread is responsible for garbage
+collector maintenance work. The thread itself can be disabled, but in
+order for garbage collection to work correctly, at least one RGW in
+each zone needs to have this thread running.  Having the thread
+enabled on multiple RGW processes within the same zone can spread some
+of the maintenance work between them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p>
+</dd>
+<dt class="field-odd">see also<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref std std-confval docutils literal notranslate"><span class="pre">rgw_enable_quota_threads</span></code>, <a class="reference internal" href="#confval-rgw_enable_lc_threads"><code class="xref std std-confval docutils literal notranslate"><span class="pre">rgw_enable_lc_threads</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
 </section>
 <section id="id4">
 <h2>多站设置<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h2>
@@ -1939,42 +2009,6 @@ these headers in any request.)</p>
 </dd></dl>
 
 <dl class="std confval">
-<dt class="sig sig-object std" id="confval-rgw_keystone_admin_token">
-<span class="sig-name descname"><span class="pre">rgw_keystone_admin_token</span></span><a class="headerlink" href="#confval-rgw_keystone_admin_token" title="Permalink to this definition"></a></dt>
-<dd><blockquote>
-<div><p>Keystone 的管理令牌（共享密钥）。 在 Ceph RadosGW 认证时，会优先用管理令牌， 然后才是管理凭证（
-<code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_user</span></code> 、 <code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_password</span></code> 、
-<code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_tenant</span></code> 、 <code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_project</span></code> 、
-<code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_domain</span></code> ）。 管理令牌功能已经废弃，但还能用来与旧环境对接。
-应该优先考虑配置此选项，而非配置 <code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_token_path</span></code> ， 以免暴露令牌。</p>
-<dl class="field-list simple">
-<dt class="field-odd">type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
-</dd>
-</dl>
-</div></blockquote>
-</dd></dl>
-
-<dl class="std confval">
-<dt class="sig sig-object std" id="confval-rgw_keystone_admin_token_path">
-<span class="sig-name descname"><span class="pre">rgw_keystone_admin_token_path</span></span><a class="headerlink" href="#confval-rgw_keystone_admin_token_path" title="Permalink to this definition"></a></dt>
-<dd><blockquote>
-<div><p>Path to a file containing the Keystone admin token (shared secret).
-In Ceph RadosGW authentication with the admin token has priority over
-authentication with the admin credentials
-(<code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_user</span></code>, <code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_password</span></code>,
-<code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_tenant</span></code>, <code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_project</span></code>,
-<code class="docutils literal notranslate"><span class="pre">rgw_keystone_admin_domain</span></code>). The Keystone admin token has been
-deprecated, but can be used to integrate with older environments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
-</dd>
-</dl>
-</div></blockquote>
-</dd></dl>
-
-<dl class="std confval">
 <dt class="sig sig-object std" id="confval-rgw_keystone_admin_tenant">
 <span class="sig-name descname"><span class="pre">rgw_keystone_admin_tenant</span></span><a class="headerlink" href="#confval-rgw_keystone_admin_tenant" title="Permalink to this definition"></a></dt>
 <dd><blockquote>
@@ -2595,8 +2629,10 @@ individuals on the same Vault Enterprise instance, e.g.
 <div class="versionadded">
 <p><span class="versionmodified added">New in version Nautilus.</span></p>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">civetweb</span></code> 前端有一个线程池模型，它给每个连接使用一个线程，因此它在接受请求时自动接受 <code class="docutils literal notranslate"><span class="pre">rgw</span> <span class="pre">thread</span> <span class="pre">pool</span> <span class="pre">size</span></code> 配置的约束。 <code class="docutils literal notranslate"><span class="pre">beast</span></code> 前端在接受新连接时不受线程池大小的限制，所以 Nautilus 版引进了调度器抽象层，
-以此支持未来调度请求的多种方法。</p>
+<p>较老的、现在也不再是默认的 <code class="docutils literal notranslate"><span class="pre">civetweb</span></code> 前端有一个线程池模型，
+它给每个连接使用一个线程，因此它在接受请求时自动接受 <a class="reference internal" href="#confval-rgw_thread_pool_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">rgw_thread_pool_size</span></code></a>
+配置的约束。较新的、默认的 <code class="docutils literal notranslate"><span class="pre">beast</span></code> 前端在接受新连接时不受线程池大小的限制，
+所以 Nautilus 版引进了调度器抽象层，以支持额外的调度请求方法。</p>
 <p>当前，这个调度器默认就是个减速器，它可以把活跃连接数压制到配置的限值之下。
 基于 mClock 的 QoS 现在还处于 <em>实验</em> 阶段，而且也不建议用于生产环境。
 当前实现的 <em>dmclock_client</em> 操作队列会把 RGW 的各种操作分割成管理的、认证的
@@ -2875,6 +2911,305 @@ one of <code class="docutils literal notranslate"><span class="pre">admin</span>
 </dd></dl>
 
 </section>
+</section>
+<section id="d4n">
+<h2>D4N 选项<a class="headerlink" href="#d4n" title="Permalink to this heading"></a></h2>
+<p>D4N 是一种缓存架构，它通过在 Ceph 对象网关（RGW）守护进程之间建立共享数据库，
+利用 Redis 来加速 S3 对象存储操作。</p>
+<p>D4N 架构一次只能在一个 Redis 实例上运行。
+地址是可配置的，可以通过访问下面的参数进行更改。</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_d4n_address">
+<span class="sig-name descname"><span class="pre">rgw_d4n_address</span></span><a class="headerlink" href="#confval-rgw_d4n_address" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The current D4N implementation supports one Redis node which the D4N
+directory, policy, and overall filter communicate with. This default
+value is also the address that a Redis server with no additional
+configuration will use.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">127.0.0.1:6379</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_d4n_l1_datacache_persistent_path">
+<span class="sig-name descname"><span class="pre">rgw_d4n_l1_datacache_persistent_path</span></span><a class="headerlink" href="#confval-rgw_d4n_l1_datacache_persistent_path" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>One cache backend option for D4N is the local SSD, which uses this
+path to write and read object data. This is the default cache backend
+chosen by the D4N filter. Only the SSD cache backend uses this path
+for object data storage since the RedisDriver uses a Redis server
+instead and there are no additional cache backend implementations
+available at the moment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">/tmp/rgw_d4n_datacache/</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_d4n_l1_datacache_disk_reserve">
+<span class="sig-name descname"><span class="pre">rgw_d4n_l1_datacache_disk_reserve</span></span><a class="headerlink" href="#confval-rgw_d4n_l1_datacache_disk_reserve" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The local SSD cache uses this option to determine how much disk space
+to reserve. The cache can grow until disk usage reaches (total disk
+space - reserved space).</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">size</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">1Gi</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_d4n_l1_evict_cache_on_start">
+<span class="sig-name descname"><span class="pre">rgw_d4n_l1_evict_cache_on_start</span></span><a class="headerlink" href="#confval-rgw_d4n_l1_evict_cache_on_start" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The local SSD cache uses this option to clear the contents of the path
+supplied by the rgw_d4n_l1_datacache_persistent_path config option on
+start. If false, the path’s contents will be retained.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_d4n_l1_fadvise">
+<span class="sig-name descname"><span class="pre">rgw_d4n_l1_fadvise</span></span><a class="headerlink" href="#confval-rgw_d4n_l1_fadvise" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>For example, to bypass the page-cache - POSIX_FADV_DONTNEED=4</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">4</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_d4n_libaio_aio_threads">
+<span class="sig-name descname"><span class="pre">rgw_d4n_libaio_aio_threads</span></span><a class="headerlink" href="#confval-rgw_d4n_libaio_aio_threads" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>This option is used by the SSD cache backend during initialization to
+set the maximum number of worker threads libaio may use. It does not
+apply to the Redis cache backend.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">20</span></code></p>
+</dd>
+<dt class="field-odd">see also<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-rgw_thread_pool_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">rgw_thread_pool_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_d4n_libaio_aio_num">
+<span class="sig-name descname"><span class="pre">rgw_d4n_libaio_aio_num</span></span><a class="headerlink" href="#confval-rgw_d4n_libaio_aio_num" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>This option is used by the SSD cache backend during initialization to
+set the maximum number of simultaneous I/O requests that libaio can
+expect to enqueue. It does not apply to the Redis cache backend.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">64</span></code></p>
+</dd>
+<dt class="field-odd">see also<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#confval-rgw_thread_pool_size"><code class="xref std std-confval docutils literal notranslate"><span class="pre">rgw_thread_pool_size</span></code></a></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_lfuda_sync_frequency">
+<span class="sig-name descname"><span class="pre">rgw_lfuda_sync_frequency</span></span><a class="headerlink" href="#confval-rgw_lfuda_sync_frequency" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>By default, the D4N cache uses the Least Frequently Used with Dynamic
+Aging (LFUDA) cache replacement policy. This class globally stores
+values that are used by the policy’s algorithm. However, strong
+consistency for these values is not necessary and adds additional
+overhead to support. As a result, a thread periodically retrieves
+these global values and posts updates when certain conditions are
+satisfied. This Redis thread completes this logic in a loop that is
+called once every interval, with the interval being set by this
+option.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">60</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_d4n_l1_datacache_address">
+<span class="sig-name descname"><span class="pre">rgw_d4n_l1_datacache_address</span></span><a class="headerlink" href="#confval-rgw_d4n_l1_datacache_address" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>This is the address used to configure the Redis cache backend
+connection. The default value is the same address used by Redis
+without any additional configuration. The SSD cache does not use this
+option.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">127.0.0.1:6379</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</section>
+<section id="id12">
+<h2>主题持续性选项<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h2>
+<p>主题持续性会反复推送通知，直至成功。如需更多信息，见 <a class="reference external" href="../notifications">桶通知</a> 。</p>
+<p>默认行为是无限期且尽可能频繁地进行推送。通过这些选项，
+您可以配置最大保留时间和/或最大重试次数，从而控制多久重试一次失败通知、以及频率。
+推送重试的时间间隔可以通过睡眠持续时间参数进行配置。</p>
+<p>所有这些选项的默认值均为 <cite>0</cite> ，
+这意味着持续保留是无限期的，并且会尽可能频繁地重试通知。</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_topic_persistency_time_to_live">
+<span class="sig-name descname"><span class="pre">rgw_topic_persistency_time_to_live</span></span><a class="headerlink" href="#confval-rgw_topic_persistency_time_to_live" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The rgw retention of persistent topics by time (seconds)</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_topic_persistency_max_retries">
+<span class="sig-name descname"><span class="pre">rgw_topic_persistency_max_retries</span></span><a class="headerlink" href="#confval-rgw_topic_persistency_max_retries" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The maximum number sending a persistent notification would be tried.
+Note that the value of one would mean no retries, and the value of
+zero would mean that the notification would be tried indefinitely</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_topic_persistency_sleep_duration">
+<span class="sig-name descname"><span class="pre">rgw_topic_persistency_sleep_duration</span></span><a class="headerlink" href="#confval-rgw_topic_persistency_sleep_duration" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The minimum time (in seconds) between two tries of the same persistent
+notification. note that the actual time between the tries may be
+longer</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">uint</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</section>
+<section id="id14">
+<h2>云恢复选项<a class="headerlink" href="#id14" title="Permalink to this heading"></a></h2>
+<p>云恢复功能目前支持将已迁移至 S3 兼容云服务的对象恢复到 Ceph 对象网关（ RGW ）中。恢复请求由 Restore 工作线程在后台异步地处理。</p>
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_restore_max_objs">
+<span class="sig-name descname"><span class="pre">rgw_restore_max_objs</span></span><a class="headerlink" href="#confval-rgw_restore_max_objs" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Number of RADOS objects to use for storing restore entries which are
+in progress. This affects concurrency of restore maintenance, as
+shards can be processed in parallel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">32</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_restore_lock_max_time">
+<span class="sig-name descname"><span class="pre">rgw_restore_lock_max_time</span></span><a class="headerlink" href="#confval-rgw_restore_lock_max_time" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">90</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="std confval">
+<dt class="sig sig-object std" id="confval-rgw_restore_processor_period">
+<span class="sig-name descname"><span class="pre">rgw_restore_processor_period</span></span><a class="headerlink" href="#confval-rgw_restore_processor_period" title="Permalink to this definition"></a></dt>
+<dd><blockquote>
+<div><p>The cycle time for restore state processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+<dt class="field-even">default<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">15</span> <span class="pre">minutes</span></code></p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<p>这些值可以根据您的具体载荷进行调整，以进一步提高恢复处理的积极程度。</p>
 </section>
 </section>
 
